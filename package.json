@@ -1,6 +1,6 @@
 {
   "name": "@jbearak/dta-parser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript parser for Stata .dta files",
   "type": "module",
   "license": "GPL-3.0",
