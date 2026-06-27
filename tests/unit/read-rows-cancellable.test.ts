@@ -69,6 +69,21 @@ describe('read_rows (cancellable)', () => {
             expect(the_chunked).toEqual(the_single);
         });
 
+        it('falls back to the default for invalid chunk_rows', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const the_single = await my_file.read_rows(0, 74);
+            const my_controller = new AbortController();
+            for (const my_bad of [0, -5, NaN, 2.5]) {
+                const the_chunked = await my_file.read_rows(
+                    0, 74, undefined, undefined,
+                    { signal: my_controller.signal, chunk_rows: my_bad }
+                );
+                expect(the_chunked).toEqual(the_single);
+            }
+        });
+
         it('chunk_rows larger than count reads in one go', async () => {
             my_file = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'auto_v118.dta')

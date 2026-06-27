@@ -233,9 +233,15 @@ export class DtaFile {
         // Cancellable path: read in chunks, yielding to the event
         // loop between them so a queued abort is observed promptly.
         const my_signal = options.signal;
-        const my_chunk_rows = Math.max(
-            1, Math.floor(options.chunk_rows ?? DEFAULT_CHUNK_ROWS)
-        );
+        // Guard against 0, negative, NaN, or fractional chunk sizes; any
+        // of these would stall or corrupt the chunk loop.
+        const my_requested_chunk = options.chunk_rows;
+        const my_chunk_rows =
+            typeof my_requested_chunk === 'number'
+                && Number.isFinite(my_requested_chunk)
+                && my_requested_chunk >= 1
+                ? Math.floor(my_requested_chunk)
+                : DEFAULT_CHUNK_ROWS;
         throw_if_aborted(my_signal);
 
         const the_rows: Row[] = [];
