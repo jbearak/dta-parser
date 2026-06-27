@@ -1,4 +1,16 @@
 import type { VariableInfo, Row } from './types';
+/** Options for {@link DtaFile.read_rows}. */
+export interface ReadRowsOptions {
+    /**
+     * When provided, the read is performed in chunks that yield to the
+     * event loop between them, and is abandoned with an `AbortError` as
+     * soon as the signal fires. Without a signal, the read is a single
+     * synchronous pass (the original fast path).
+     */
+    signal?: AbortSignal;
+    /** Rows per chunk on the cancellable path (default 65536). */
+    chunk_rows?: number;
+}
 export declare class DtaFile {
     private _fd;
     private readonly _metadata;
@@ -32,8 +44,20 @@ export declare class DtaFile {
      * @param count - Number of rows to read
      * @param col_start - First column (inclusive, optional)
      * @param col_end - Last column (exclusive, optional)
+     * @param options - Cancellation options (see {@link ReadRowsOptions}).
+     *   When `options.signal` is provided, the read is chunked and
+     *   yields between chunks so the abort can be observed; it rejects
+     *   with an `AbortError` if the signal fires. Without a signal the
+     *   read is a single synchronous pass identical to prior behavior.
      */
-    read_rows(start: number, count: number, col_start?: number, col_end?: number): Promise<Row[]>;
+    read_rows(start: number, count: number, col_start?: number, col_end?: number, options?: ReadRowsOptions): Promise<Row[]>;
+    /**
+     * Read a contiguous row range in a single synchronous pass and
+     * resolve any strL columns in range. Shared by both the fast path
+     * and each chunk of the cancellable path. Callers must ensure the
+     * file is open (`_fd !== null`).
+     */
+    private _read_rows_range;
     /**
      * Release the open file handle and internal caches.
      * After close, read_rows returns empty arrays.
