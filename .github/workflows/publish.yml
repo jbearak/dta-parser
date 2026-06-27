@@ -10,7 +10,7 @@ name: Publish to npm
 #     - Organization or user: jbearak
 #     - Repository:           dta-parser
 #     - Workflow filename:    publish.yml
-#     - Environment:          (leave blank)
+#     - Environment:          release   (must match the job's environment)
 #   That links this exact workflow to the package; GitHub's OIDC token is
 #   exchanged for a short-lived publish token at run time. Provenance is
 #   attached automatically. Nothing to store or rotate.
@@ -33,6 +33,12 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Publishing runs through the "release" environment. Bind the npm
+    # trusted publisher to this same environment name, and add protection
+    # rules on GitHub (Settings → Environments → release): require a
+    # reviewer to approve each publish, and/or restrict deployments to
+    # v*.*.* tags. Only runs that clear those rules can mint a publish token.
+    environment: release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
