@@ -40,6 +40,36 @@ const INITIAL_METADATA_READ_SIZE = 64 * 1024;
 const MAX_READ_RETRIES = 2;
 const DATA_TAG_LENGTH = '<data>'.length;
 
+// Default rows per chunk for the cancellable read path. Bounds the
+// synchronous work between event-loop yields so an abort posted while
+// a large column is being read can be observed promptly.
+const DEFAULT_CHUNK_ROWS = 65536;
+
+/** Options for {@link DtaFile.read_rows}. */
+export interface ReadRowsOptions {
+    /**
+     * When provided, the read is performed in chunks that yield to the
+     * event loop between them, and is abandoned with an `AbortError` as
+     * soon as the signal fires. Without a signal, the read is a single
+     * synchronous pass (the original fast path).
+     */
+    signal?: AbortSignal;
+    /** Rows per chunk on the cancellable path (default 65536). */
+    chunk_rows?: number;
+}
+
+function throw_if_aborted(signal: AbortSignal): void {
+    if (signal.aborted) {
+        throw new DOMException(
+            'The read was aborted', 'AbortError'
+        );
+    }
+}
+
+function yield_to_event_loop(): Promise<void> {
+    return new Promise(resolve => setImmediate(resolve));
+}
+
 // -----------------------------------------------------------
 // DtaFile class
 // -----------------------------------------------------------
@@ -165,12 +195,18 @@ export class DtaFile {
      * @param count - Number of rows to read
      * @param col_start - First column (inclusive, optional)
      * @param col_end - Last column (exclusive, optional)
+     * @param options - Cancellation options (see {@link ReadRowsOptions}).
+     *   When `options.signal` is provided, the read is chunked and
+     *   yields between chunks so the abort can be observed; it rejects
+     *   with an `AbortError` if the signal fires. Without a signal the
+     *   read is a single synchronous pass identical to prior behavior.
      */
     async read_rows(
         start: number,
         count: number,
         col_start?: number,
-        col_end?: number
+        col_end?: number,
+        options?: ReadRowsOptions
     ): Promise<Row[]> {
         if (this._closed || this._fd === null) return [];
 
@@ -186,17 +222,79 @@ export class DtaFile {
             return [];
         }
 
+        // Fast path: no signal → single synchronous read,
+        // byte-identical to the original implementation.
+        if (!options?.signal) {
+            return this._read_rows_range(
+                start, my_actual_count, col_start, col_end
+            );
+        }
+
+        // Cancellable path: read in chunks, yielding to the event
+        // loop between them so a queued abort is observed promptly.
+        const my_signal = options.signal;
+        const my_chunk_rows = Math.max(
+            1, Math.floor(options.chunk_rows ?? DEFAULT_CHUNK_ROWS)
+        );
+        throw_if_aborted(my_signal);
+
+        const the_rows: Row[] = [];
+        let my_read = 0;
+        while (my_read < my_actual_count) {
+            // Yield before every chunk after the first, then check the
+            // signal, so an abort delivered during the yield is caught
+            // before the next (potentially long) synchronous read.
+            if (my_read > 0) {
+                await yield_to_event_loop();
+                throw_if_aborted(my_signal);
+            }
+            // A close during the yield must not surface a partial
+            // column; matching the "closed returns []" contract keeps
+            // a truncated read from masquerading as success.
+            if (this._closed || this._fd === null) return [];
+
+            const my_chunk_count = Math.min(
+                my_chunk_rows, my_actual_count - my_read
+            );
+            const my_chunk = this._read_rows_range(
+                start + my_read,
+                my_chunk_count,
+                col_start,
+                col_end
+            );
+            for (const my_row of my_chunk) {
+                the_rows.push(my_row);
+            }
+            my_read += my_chunk_count;
+        }
+
+        throw_if_aborted(my_signal);
+        return the_rows;
+    }
+
+    /**
+     * Read a contiguous row range in a single synchronous pass and
+     * resolve any strL columns in range. Shared by both the fast path
+     * and each chunk of the cancellable path. Callers must ensure the
+     * file is open (`_fd !== null`).
+     */
+    private _read_rows_range(
+        start: number,
+        count: number,
+        col_start?: number,
+        col_end?: number
+    ): Row[] {
         const my_data_buffer = read_data_rows(
-            this._fd,
+            this._fd!,
             this._metadata,
             start,
-            my_actual_count
+            count
         );
         const the_rows = read_rows_from_data_buffer(
             my_data_buffer,
             this._metadata,
             start,
-            my_actual_count,
+            count,
             col_start,
             col_end
         );
