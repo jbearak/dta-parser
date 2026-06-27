@@ -1575,7 +1575,7 @@ var DtaFile = class _DtaFile {
     }
     const my_signal = options.signal;
     const my_requested_chunk = options.chunk_rows;
-    const my_chunk_rows = typeof my_requested_chunk === "number" && Number.isFinite(my_requested_chunk) && my_requested_chunk >= 1 ? Math.floor(my_requested_chunk) : DEFAULT_CHUNK_ROWS;
+    const my_chunk_rows = typeof my_requested_chunk === "number" && Number.isInteger(my_requested_chunk) && my_requested_chunk >= 1 ? my_requested_chunk : DEFAULT_CHUNK_ROWS;
     throw_if_aborted(my_signal);
     const the_rows = [];
     let my_read = 0;
