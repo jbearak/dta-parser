@@ -153,13 +153,19 @@ describe('DtaFile.read_columns', () => {
         const my_numeric_reads = await count_reads(() =>
             my_file!.read_columns([0, 1, 2])
         );
-        // Reading the strL column loads the section exactly once on top
-        // of the data-chunk reads — not once per row (would be nobs+1).
-        const my_strl_reads = await count_reads(() =>
+        // The first strL read loads the section exactly once on top of
+        // the data-chunk reads — not once per row (would be nobs+1).
+        const my_first_strl_reads = await count_reads(() =>
+            my_file!.read_columns([my_strl_idx])
+        );
+        // A second strL read reuses the cached section: no extra reads
+        // beyond the data chunk(s).
+        const my_second_strl_reads = await count_reads(() =>
             my_file!.read_columns([my_strl_idx])
         );
 
-        expect(my_strl_reads).toBe(my_numeric_reads + 1);
+        expect(my_first_strl_reads).toBe(my_numeric_reads + 1);
+        expect(my_second_strl_reads).toBe(my_numeric_reads);
     });
 
     it('rejects out-of-bounds column indices', async () => {

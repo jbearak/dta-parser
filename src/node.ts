@@ -524,12 +524,13 @@ export class DtaFile {
      */
     private _ensure_gso(): void {
         if (this._gso_loaded) return;
-        this._gso_loaded = true;
 
         if (
             this._fd === null
             || this._strl_col_indices.length === 0
         ) {
+            // Nothing to load; this outcome is stable across retries.
+            this._gso_loaded = true;
             return;
         }
 
@@ -538,8 +539,15 @@ export class DtaFile {
         const my_length =
             this._metadata.section_offsets.value_labels
             - my_start;
-        if (my_length <= 0) return;
+        if (my_length <= 0) {
+            this._gso_loaded = true;
+            return;
+        }
 
+        // Mark loaded only after the read and index succeed: if either
+        // throws (truncated file, >32-bit obs count) the error must
+        // propagate and a later retry must be free to try again, rather
+        // than be short-circuited into resolving strL cells to ''.
         const my_buffer = read_range(
             this._fd, my_start, my_length
         );
@@ -548,6 +556,7 @@ export class DtaFile {
         );
         this._gso_section = new Uint8Array(my_buffer);
         this._gso_base = my_start;
+        this._gso_loaded = true;
     }
 
     /**

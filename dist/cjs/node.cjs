@@ -1855,13 +1855,16 @@ var DtaFile = class _DtaFile {
    */
   _ensure_gso() {
     if (this._gso_loaded) return;
-    this._gso_loaded = true;
     if (this._fd === null || this._strl_col_indices.length === 0) {
+      this._gso_loaded = true;
       return;
     }
     const my_start = this._metadata.section_offsets.strls;
     const my_length = this._metadata.section_offsets.value_labels - my_start;
-    if (my_length <= 0) return;
+    if (my_length <= 0) {
+      this._gso_loaded = true;
+      return;
+    }
     const my_buffer = read_range(
       this._fd,
       my_start,
@@ -1874,6 +1877,7 @@ var DtaFile = class _DtaFile {
     );
     this._gso_section = new Uint8Array(my_buffer);
     this._gso_base = my_start;
+    this._gso_loaded = true;
   }
   /**
    * Post-process rows to resolve strL placeholders.
