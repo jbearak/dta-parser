@@ -14,9 +14,9 @@ reused by other codebases such as
 
 The purpose note should briefly describe both known consumers:
 
-- Sight uses `.dta` parsing for its editor data browser, where users can open
-  Stata datasets in VS Code-like editors and inspect rows, columns, formats,
-  and value labels.
+- Sight uses `.dta` parsing for its data browser in VS Code and forks that
+  support VS Code extensions, where users can open Stata datasets and inspect
+  rows, columns, formats, and value labels.
 - `manuscript-markdown` uses `.dta` parsing for embedded table workflows, where
   manuscript or documentation sources can include tables backed by external
   `.dta` files.
