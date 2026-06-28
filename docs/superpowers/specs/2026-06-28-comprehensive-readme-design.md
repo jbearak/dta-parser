@@ -87,6 +87,11 @@ or document maintainer-only release processes in detail.
 
 8. Supported files
    - Supported `.dta` format versions: 113, 114, 115, 117, 118, and 119.
+   - Include the Stata version mapping in parentheses, using "current as of"
+     wording where that is more accurate than implying a one-to-one mapping:
+     113 (Stata 8), 114 (Stata 10), 115 (Stata 12), 117 (Stata 13),
+     118 (Stata 14-19), and 119 (Stata 15-19 for datasets with more than
+     32,767 variables).
    - Unsupported older formats should fail fast.
    - Note that modern `strL` values are resolved by `DtaFile`.
 
