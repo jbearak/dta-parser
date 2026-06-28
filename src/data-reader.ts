@@ -275,3 +275,55 @@ export function read_rows_from_data_buffer(
         col_end
     );
 }
+
+/**
+ * Decode a set of columns from a contiguous chunk buffer in a single
+ * pass, appending each column's values to its array in `out`.
+ *
+ * The buffer must contain exactly `count` observations starting at its
+ * first byte (as produced for one chunk). Every index in `col_indices`
+ * must already have an entry in `out`. strL cells decode to the
+ * `'__strl__'` placeholder and must be resolved by the caller.
+ *
+ * One DataView/Uint8Array is built per call (not per column), and cells
+ * are written straight into the flat column arrays — avoiding the
+ * per-column re-parse and throwaway single-element rows that result from
+ * calling the row reader once per column.
+ */
+export function read_columns_from_data_buffer(
+    buffer: ArrayBuffer,
+    metadata: DtaMetadata,
+    count: number,
+    col_indices: number[],
+    out: Map<number, RowCell[]>
+): void {
+    if (count <= 0 || col_indices.length === 0) return;
+
+    const view = new DataView(buffer);
+    const bytes = new Uint8Array(buffer);
+    const little_endian = metadata.byte_order === 'LSF';
+
+    const my_vars = col_indices.map(
+        my_col => metadata.variables[my_col]
+    );
+    const my_targets = col_indices.map(
+        my_col => out.get(my_col)!
+    );
+
+    for (let i = 0; i < count; i++) {
+        const my_row_offset = i * metadata.obs_length;
+        for (let k = 0; k < col_indices.length; k++) {
+            const my_var = my_vars[k];
+            my_targets[k].push(
+                read_cell(
+                    view,
+                    bytes,
+                    my_row_offset + my_var.byte_offset,
+                    my_var.type,
+                    my_var.byte_width,
+                    little_endian
+                )
+            );
+        }
+    }
+}
