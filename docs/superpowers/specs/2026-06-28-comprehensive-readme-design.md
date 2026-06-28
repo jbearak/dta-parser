@@ -48,7 +48,11 @@ or document maintainer-only release processes in detail.
 
 2. Installation
    - Show npm, bun, and pnpm install commands.
-   - Mention Node >=20 for the Node entrypoint.
+   - State that the `/node` entrypoint requires Node.js because it uses the
+     filesystem.
+   - Do not frame Node 20 as the recommended runtime. If the minimum runtime
+     is mentioned, point to the package `engines.node` field instead of
+     hard-coding old release guidance in README prose.
 
 3. Entrypoints
    - Explain `@jbearak/dta-parser` as the portable/core API.
