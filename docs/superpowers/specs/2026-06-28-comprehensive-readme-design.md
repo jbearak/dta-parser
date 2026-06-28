@@ -8,8 +8,18 @@ consume `@jbearak/dta-parser`.
 The README should explain what the package is for, how to choose the correct
 entrypoint, and how to use the public APIs without drifting into marketing
 copy. The package exists because the `.dta` parsing code was first written for
-Sight, then extracted so it can also be reused by other codebases such as
-`manuscript-markdown`.
+[Sight](https://github.com/jbearak/sight), then extracted so it can also be
+reused by other codebases such as
+[manuscript-markdown](https://github.com/jbearak/manuscript-markdown).
+
+The purpose note should briefly describe both known consumers:
+
+- Sight uses `.dta` parsing for its editor data browser, where users can open
+  Stata datasets in VS Code-like editors and inspect rows, columns, formats,
+  and value labels.
+- `manuscript-markdown` uses `.dta` parsing for embedded table workflows, where
+  manuscript or documentation sources can include tables backed by external
+  `.dta` files.
 
 ## Audience
 
@@ -29,8 +39,12 @@ or document maintainer-only release processes in detail.
 
 1. Title and short purpose statement
    - State that this is a TypeScript parser for Stata `.dta` files.
-   - Mention extraction from Sight for reuse in Sight and
-     `manuscript-markdown`.
+   - Mention extraction from [Sight](https://github.com/jbearak/sight) for
+     reuse in Sight and
+     [manuscript-markdown](https://github.com/jbearak/manuscript-markdown).
+   - Briefly state that Sight uses it for editor data browsing, while
+     `manuscript-markdown` uses it to read `.dta` files as embedded table
+     sources.
 
 2. Installation
    - Show npm, bun, and pnpm install commands.
@@ -89,4 +103,3 @@ After editing:
 - Confirm the `/node` section does not imply a local path.
 - Run `npm run typecheck`.
 - Run `git diff --check`.
-
