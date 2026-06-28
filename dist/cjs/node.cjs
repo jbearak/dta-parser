@@ -1035,6 +1035,34 @@ function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, c
     col_end
   );
 }
+function read_columns_from_data_buffer(buffer, metadata, count, col_indices, out) {
+  if (count <= 0 || col_indices.length === 0) return;
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  const little_endian = metadata.byte_order === "LSF";
+  const my_vars = col_indices.map(
+    (my_col) => metadata.variables[my_col]
+  );
+  const my_targets = col_indices.map(
+    (my_col) => out.get(my_col)
+  );
+  for (let i = 0; i < count; i++) {
+    const my_row_offset = i * metadata.obs_length;
+    for (let k = 0; k < col_indices.length; k++) {
+      const my_var = my_vars[k];
+      my_targets[k].push(
+        read_cell(
+          view,
+          bytes,
+          my_row_offset + my_var.byte_offset,
+          my_var.type,
+          my_var.byte_width,
+          little_endian
+        )
+      );
+    }
+  }
+}
 
 // src/strl-reader.ts
 var GSO_MARKER = [71, 83, 79];
@@ -1504,18 +1532,57 @@ function throw_if_aborted(signal) {
 function yield_to_event_loop() {
   return new Promise((resolve) => setImmediate(resolve));
 }
+function normalise_chunk_rows(requested_chunk_rows) {
+  return typeof requested_chunk_rows === "number" && Number.isInteger(requested_chunk_rows) && requested_chunk_rows >= 1 ? requested_chunk_rows : DEFAULT_CHUNK_ROWS;
+}
+function normalise_column_indices(col_indices, nvar) {
+  const the_seen = /* @__PURE__ */ new Set();
+  const the_columns = [];
+  for (const my_col of col_indices) {
+    if (!Number.isInteger(my_col)) {
+      throw new Error(
+        `Column index ${my_col} must be an integer`
+      );
+    }
+    if (my_col < 0 || my_col >= nvar) {
+      throw new Error(
+        `Column index ${my_col} is out of bounds for ${nvar} columns`
+      );
+    }
+    if (!the_seen.has(my_col)) {
+      the_seen.add(my_col);
+      the_columns.push(my_col);
+    }
+  }
+  return the_columns;
+}
 var DtaFile = class _DtaFile {
   _fd;
   _metadata;
+  // strL (GSO) state, populated lazily by `_ensure_gso()` the first
+  // time an strL cell is actually resolved. Files without strL columns,
+  // and reads that never touch an strL column, never read or retain the
+  // section. Once loaded, the section bytes stay resident so each cell
+  // resolves with an in-memory slice + decode rather than a per-cell
+  // disk read. `_gso_base` is the section's file offset, used to map an
+  // entry's absolute offset into `_gso_section`.
   _gso_index;
+  _gso_section;
+  _gso_base;
+  _gso_loaded;
   _value_label_tables;
   _closed;
   // Precomputed: column indices of strL variables
   _strl_col_indices;
-  constructor(fd, metadata, gso_index, value_label_tables) {
+  // Same set, for O(1) membership tests in per-column reads
+  _strl_col_set;
+  constructor(fd, metadata, value_label_tables) {
     this._fd = fd;
     this._metadata = metadata;
-    this._gso_index = gso_index;
+    this._gso_index = /* @__PURE__ */ new Map();
+    this._gso_section = null;
+    this._gso_base = 0;
+    this._gso_loaded = false;
     this._value_label_tables = value_label_tables;
     this._closed = false;
     const the_indices = [];
@@ -1525,6 +1592,7 @@ var DtaFile = class _DtaFile {
       }
     }
     this._strl_col_indices = the_indices;
+    this._strl_col_set = new Set(the_indices);
   }
   /**
    * Open a .dta file and parse all metadata.
@@ -1541,10 +1609,6 @@ var DtaFile = class _DtaFile {
         my_fd,
         my_file_size
       );
-      const my_gso_index = read_gso_index(
-        my_fd,
-        my_metadata
-      );
       const my_labels = read_value_labels(
         my_fd,
         my_metadata
@@ -1552,7 +1616,6 @@ var DtaFile = class _DtaFile {
       return new _DtaFile(
         my_fd,
         my_metadata,
-        my_gso_index,
         my_labels
       );
     } catch (my_err) {
@@ -1617,8 +1680,9 @@ var DtaFile = class _DtaFile {
       );
     }
     const my_signal = options.signal;
-    const my_requested_chunk = options.chunk_rows;
-    const my_chunk_rows = typeof my_requested_chunk === "number" && Number.isInteger(my_requested_chunk) && my_requested_chunk >= 1 ? my_requested_chunk : DEFAULT_CHUNK_ROWS;
+    const my_chunk_rows = normalise_chunk_rows(
+      options.chunk_rows
+    );
     throw_if_aborted(my_signal);
     const the_rows = [];
     let my_read = 0;
@@ -1645,6 +1709,91 @@ var DtaFile = class _DtaFile {
     }
     throw_if_aborted(my_signal);
     return the_rows;
+  }
+  /**
+   * Read multiple columns in a single pass over the data section,
+   * parsing only the requested columns.
+   *
+   * @param col_indices - Distinct or repeated 0-based column indices.
+   *   Repeats are deduplicated, and the returned map is keyed by the
+   *   requested absolute column indices.
+   * @param options - Chunking and cancellation options.
+   * @returns A map keyed by the requested distinct column indices, each
+   *   mapping to that column's value for every observation. A closed
+   *   file (at entry or closed mid-read) yields an empty map with NO
+   *   keys — deliberately distinct from the keyed-but-empty map returned
+   *   for an empty request or a zero-row dataset. Callers must treat a
+   *   missing key as "not read" (e.g. fall back to reading that column
+   *   directly) rather than assuming every requested key is present.
+   */
+  async read_columns(col_indices, options) {
+    if (this._closed || this._fd === null) {
+      return /* @__PURE__ */ new Map();
+    }
+    const the_columns = normalise_column_indices(
+      col_indices,
+      this._metadata.nvar
+    );
+    const the_values = /* @__PURE__ */ new Map();
+    for (const my_col of the_columns) {
+      the_values.set(my_col, []);
+    }
+    if (the_columns.length === 0 || this._metadata.nobs === 0) {
+      return the_values;
+    }
+    const my_signal = options?.signal;
+    if (my_signal) {
+      throw_if_aborted(my_signal);
+    }
+    const my_chunk_rows = normalise_chunk_rows(
+      options?.chunk_rows
+    );
+    let my_read = 0;
+    while (my_read < this._metadata.nobs) {
+      if (my_read > 0) {
+        await yield_to_event_loop();
+        if (my_signal) {
+          throw_if_aborted(my_signal);
+        }
+      }
+      if (this._closed || this._fd === null) {
+        return /* @__PURE__ */ new Map();
+      }
+      const my_chunk_count = Math.min(
+        my_chunk_rows,
+        this._metadata.nobs - my_read
+      );
+      const my_chunk_start = my_read;
+      const my_data_buffer = read_data_rows(
+        this._fd,
+        this._metadata,
+        my_chunk_start,
+        my_chunk_count
+      );
+      read_columns_from_data_buffer(
+        my_data_buffer,
+        this._metadata,
+        my_chunk_count,
+        the_columns,
+        the_values
+      );
+      for (const my_col of the_columns) {
+        if (this._strl_col_set.has(my_col)) {
+          this._resolve_strl_column(
+            the_values.get(my_col),
+            my_chunk_start,
+            my_data_buffer,
+            my_col,
+            my_chunk_count
+          );
+        }
+      }
+      my_read += my_chunk_count;
+    }
+    if (my_signal) {
+      throw_if_aborted(my_signal);
+    }
+    return the_values;
   }
   /**
    * Read a contiguous row range in a single synchronous pass and
@@ -1691,20 +1840,59 @@ var DtaFile = class _DtaFile {
     }
     this._closed = true;
     this._gso_index = /* @__PURE__ */ new Map();
+    this._gso_section = null;
     this._value_label_tables = /* @__PURE__ */ new Map();
   }
   // -------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------
   /**
+   * Lazily read and index the strL (GSO) section on first use. Called
+   * only from the strL resolution paths, so a file whose strL columns
+   * are never read pays nothing: the section is neither read nor
+   * retained. The whole section is read once (a single sequential
+   * read) and kept resident so subsequent cells resolve from memory.
+   */
+  _ensure_gso() {
+    if (this._gso_loaded) return;
+    if (this._fd === null || this._strl_col_indices.length === 0) {
+      this._gso_loaded = true;
+      return;
+    }
+    const my_start = this._metadata.section_offsets.strls;
+    const my_length = this._metadata.section_offsets.value_labels - my_start;
+    if (my_length <= 0) {
+      this._gso_loaded = true;
+      return;
+    }
+    const my_buffer = read_range(
+      this._fd,
+      my_start,
+      my_length
+    );
+    this._gso_index = build_gso_index(
+      my_buffer,
+      this._metadata,
+      my_start
+    );
+    this._gso_section = new Uint8Array(my_buffer);
+    this._gso_base = my_start;
+    this._gso_loaded = true;
+  }
+  /**
    * Post-process rows to resolve strL placeholders.
    *
-   * For each strL column in the requested range, decode
-   * the pointer from the row buffer and fetch the GSO
-   * payload through the open file descriptor.
+   * For each strL column in the requested range, decode the pointer
+   * from the row buffer and resolve the GSO payload from the
+   * in-memory strL section (no per-cell disk reads).
    */
   _resolve_strls(the_rows, data_buffer, col_start, col_end) {
     if (this._fd === null) return;
+    const my_has_strl_in_range = this._strl_col_indices.some(
+      (my_col) => my_col >= col_start && my_col < col_end
+    );
+    if (!my_has_strl_in_range) return;
+    this._ensure_gso();
     const my_view = new DataView(data_buffer);
     for (const my_abs_col of this._strl_col_indices) {
       if (my_abs_col < col_start || my_abs_col >= col_end) {
@@ -1714,30 +1902,55 @@ var DtaFile = class _DtaFile {
       const my_var = this._metadata.variables[my_abs_col];
       for (let i = 0; i < the_rows.length; i++) {
         const my_pointer_offset = i * this._metadata.obs_length + my_var.byte_offset;
-        const my_pointer = read_strl_pointer(
+        the_rows[i][my_row_col] = this._resolve_strl_at(
           my_view,
-          this._metadata,
           my_pointer_offset
         );
-        if (!my_pointer) {
-          the_rows[i][my_row_col] = "";
-          continue;
-        }
-        const my_key = my_pointer.v + ":" + my_pointer.o;
-        const my_entry = this._gso_index.get(
-          my_key
-        );
-        if (!my_entry) {
-          the_rows[i][my_row_col] = "";
-          continue;
-        }
-        const my_resolved = read_gso_content(
-          this._fd,
-          my_entry
-        );
-        the_rows[i][my_row_col] = my_resolved ?? "";
       }
     }
+  }
+  /**
+   * Resolve the strL placeholders of one column, in place, into a
+   * flat column array. Used by the single-pass read_columns path,
+   * where `read_columns_from_data_buffer` first fills the column
+   * with placeholders. `base_index` is where this chunk's values
+   * begin in `col_values`.
+   */
+  _resolve_strl_column(col_values, base_index, data_buffer, abs_col, count) {
+    this._ensure_gso();
+    const my_view = new DataView(data_buffer);
+    const my_var = this._metadata.variables[abs_col];
+    for (let i = 0; i < count; i++) {
+      const my_pointer_offset = i * this._metadata.obs_length + my_var.byte_offset;
+      col_values[base_index + i] = this._resolve_strl_at(
+        my_view,
+        my_pointer_offset
+      );
+    }
+  }
+  /**
+   * Resolve a single strL pointer at `pointer_offset` within the
+   * chunk's data buffer to its string value, reading the GSO payload
+   * from the in-memory strL section. Returns '' for a null pointer
+   * or an unresolvable/absent entry.
+   */
+  _resolve_strl_at(view, pointer_offset) {
+    const my_pointer = read_strl_pointer(
+      view,
+      this._metadata,
+      pointer_offset
+    );
+    if (!my_pointer) return "";
+    const my_entry = this._gso_index.get(
+      my_pointer.v + ":" + my_pointer.o
+    );
+    if (!my_entry || this._gso_section === null) {
+      return "";
+    }
+    return decode_gso_entry(this._gso_section, {
+      ...my_entry,
+      content_offset: my_entry.content_offset - this._gso_base
+    });
   }
 };
 var LEGACY_VERSION_BYTES = /* @__PURE__ */ new Set([113, 114, 115]);
@@ -1817,29 +2030,6 @@ function read_modern_metadata(fd, file_size) {
   }
   throw my_last_error;
 }
-function read_gso_index(fd, metadata) {
-  const my_has_strl = metadata.variables.some(
-    (my_var) => my_var.type === "strL"
-  );
-  if (!my_has_strl) {
-    return /* @__PURE__ */ new Map();
-  }
-  const my_section_start = metadata.section_offsets.strls;
-  const my_section_length = metadata.section_offsets.value_labels - metadata.section_offsets.strls;
-  if (my_section_length <= 0) {
-    return /* @__PURE__ */ new Map();
-  }
-  const my_buffer = read_range(
-    fd,
-    my_section_start,
-    my_section_length
-  );
-  return build_gso_index(
-    my_buffer,
-    metadata,
-    my_section_start
-  );
-}
 function read_value_labels(fd, metadata) {
   const my_section_start = metadata.section_offsets.value_labels;
   const my_section_length = metadata.section_offsets.end_of_file - metadata.section_offsets.value_labels;
@@ -1864,20 +2054,6 @@ function read_data_rows(fd, metadata, start, count) {
   const my_offset = metadata.section_offsets.data + my_tag_length + start * metadata.obs_length;
   const my_length = count * metadata.obs_length;
   return read_range(fd, my_offset, my_length);
-}
-function read_gso_content(fd, entry) {
-  const my_buffer = read_range(
-    fd,
-    entry.content_offset,
-    entry.content_length
-  );
-  return decode_gso_entry(
-    new Uint8Array(my_buffer),
-    {
-      ...entry,
-      content_offset: 0
-    }
-  );
 }
 function read_range(fd, offset, length) {
   const my_buffer = Buffer.allocUnsafe(length);
