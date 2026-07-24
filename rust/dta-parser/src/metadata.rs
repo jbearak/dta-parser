@@ -1,4 +1,7 @@
-use crate::endian::{checked_add, checked_mul, read_u16, read_u32, read_u64, read_u8, slice_at};
+use crate::endian::{
+    checked_add, checked_mul, ensure_map_offset, expect_at, offset_to_usize, read_u16, read_u32,
+    read_u64, read_u8, slice_at,
+};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -59,19 +62,6 @@ fn field_widths(version: FormatVersion) -> FieldWidths {
             unreachable!("legacy releases are rejected before widths are selected")
         }
     }
-}
-
-fn expect_at(
-    bytes: &[u8],
-    offset: usize,
-    tag: &'static [u8],
-    expected: &'static str,
-) -> Result<usize, DtaError> {
-    let actual = slice_at(bytes, offset, tag.len(), expected)?;
-    if actual != tag {
-        return Err(DtaError::UnexpectedTag { expected, offset });
-    }
-    checked_add(offset, tag.len(), expected)
 }
 
 fn parse_release(bytes: &[u8]) -> Result<(FormatVersion, usize), DtaError> {
@@ -237,26 +227,7 @@ fn validate_map(
         }
     }
 
-    ensure_next_offset("variable_types", after_map, offsets.variable_types)
-}
-
-fn offset_to_usize(offset: u64, context: &'static str) -> Result<usize, DtaError> {
-    usize::try_from(offset).map_err(|_| DtaError::OffsetOutOfRange { context, offset })
-}
-
-fn ensure_next_offset(section: &'static str, expected: usize, actual: u64) -> Result<(), DtaError> {
-    let expected = u64::try_from(expected).map_err(|_| DtaError::OffsetOutOfRange {
-        context: section,
-        offset: u64::MAX,
-    })?;
-    if actual != expected {
-        return Err(DtaError::MapOffsetMismatch {
-            section,
-            expected,
-            actual,
-        });
-    }
-    Ok(())
+    ensure_map_offset("variable_types", after_map, offsets.variable_types)
 }
 
 fn parse_variable_types(
@@ -276,7 +247,7 @@ fn parse_variable_types(
         cursor = checked_add(cursor, 2, "variable type")?;
     }
     cursor = expect_at(bytes, cursor, VARIABLE_TYPES_CLOSE, "</variable_types>")?;
-    ensure_next_offset("varnames", cursor, offsets.varnames)?;
+    ensure_map_offset("varnames", cursor, offsets.varnames)?;
     Ok(types)
 }
 
@@ -312,7 +283,7 @@ fn parse_fixed_string_section(
 
     cursor = checked_add(cursor, payload_length, "string section length")?;
     cursor = expect_at(bytes, cursor, section.close, section.close_name)?;
-    ensure_next_offset(section.next_name, cursor, section.next_offset)?;
+    ensure_map_offset(section.next_name, cursor, section.next_offset)?;
     Ok(strings)
 }
 
@@ -330,7 +301,7 @@ fn validate_sortlist(
     slice_at(bytes, cursor, payload_length, "sortlist")?;
     cursor = checked_add(cursor, payload_length, "sortlist length")?;
     cursor = expect_at(bytes, cursor, SORTLIST_CLOSE, "</sortlist>")?;
-    ensure_next_offset("formats", cursor, offsets.formats)
+    ensure_map_offset("formats", cursor, offsets.formats)
 }
 
 fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {

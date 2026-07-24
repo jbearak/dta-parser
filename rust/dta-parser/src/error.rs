@@ -1,6 +1,6 @@
-use crate::FormatVersion;
+use crate::{DtaType, FormatVersion};
 
-/// Errors returned while parsing `.dta` metadata.
+/// Errors returned while parsing modern `.dta` files.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DtaError {
     /// The input does not start with a recognized Stata file header.
@@ -63,6 +63,61 @@ pub enum DtaError {
     /// A variable type code is invalid for the detected format version.
     #[error("unknown type code {code} for format v{version}")]
     UnknownTypeCode { code: u16, version: FormatVersion },
+
+    /// A requested source variable index is outside the metadata range.
+    #[error("column index {index} is out of bounds for {nvar} variables")]
+    InvalidColumnIndex { index: u32, nvar: u32 },
+
+    /// Decoding for the selected storage type belongs to a later feature slice.
+    #[error("column index {index} has unsupported storage type {dta_type}")]
+    UnsupportedColumnType { index: u32, dta_type: DtaType },
+
+    /// A signed value-label count or length was negative.
+    #[error("negative {field} value {value} in value-label table at byte offset {offset}")]
+    NegativeValueLabelField {
+        field: &'static str,
+        value: i32,
+        offset: usize,
+    },
+
+    /// A value-label table's declared payload length disagreed with its fields.
+    #[error(
+        "value-label table at byte offset {offset} declares {declared} payload bytes, expected {expected}"
+    )]
+    InvalidValueLabelLength {
+        offset: usize,
+        declared: usize,
+        expected: usize,
+    },
+
+    /// A label text offset did not point inside the table's text block.
+    #[error(
+        "value-label entry {entry_index} at byte offset {offset} has text offset {text_offset}, outside a {text_length}-byte text block"
+    )]
+    InvalidValueLabelTextOffset {
+        entry_index: usize,
+        offset: usize,
+        text_offset: i32,
+        text_length: usize,
+    },
+
+    /// Value-label keys must be strictly increasing in modern table payloads.
+    #[error(
+        "value-label table at byte offset {table_offset} is not strictly ascending at entry {entry_index}: {value} follows {previous}"
+    )]
+    UnsortedValueLabelValues {
+        table_offset: usize,
+        entry_index: usize,
+        previous: i32,
+        value: i32,
+    },
+
+    /// A required NUL terminator was absent from a bounded label field.
+    #[error("unterminated {context} at byte offset {offset}")]
+    MissingNulTerminator {
+        context: &'static str,
+        offset: usize,
+    },
 
     /// Checked offset or size arithmetic overflowed.
     #[error("integer overflow while calculating {0}")]
