@@ -1066,13 +1066,31 @@ function build_gso_index(buffer, metadata, base_offset = 0) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const little_endian = metadata.byte_order === "LSF";
-  let pos = metadata.section_offsets.strls - base_offset + STRLS_TAG_LENGTH;
+  const my_section_start = metadata.section_offsets.strls - base_offset;
+  if (my_section_start < 0 || my_section_start + STRLS_TAG_LENGTH > bytes.length || UTF8_DECODER2.decode(bytes.subarray(
+    my_section_start,
+    my_section_start + STRLS_TAG_LENGTH
+  )) !== STRLS_TAG) {
+    throw new Error("Invalid <strls> section opening tag");
+  }
+  let pos = my_section_start + STRLS_TAG_LENGTH;
   const my_section_end = metadata.section_offsets.value_labels - base_offset;
-  while (pos + 3 <= my_section_end) {
-    if (bytes[pos] !== GSO_MARKER[0] || bytes[pos + 1] !== GSO_MARKER[1] || bytes[pos + 2] !== GSO_MARKER[2]) {
-      break;
+  const my_close_start = my_section_end - 8;
+  if (my_close_start < pos || my_section_end > bytes.length || UTF8_DECODER2.decode(bytes.subarray(
+    my_close_start,
+    my_section_end
+  )) !== "</strls>") {
+    throw new Error("Invalid </strls> section closing tag");
+  }
+  while (pos < my_close_start) {
+    if (pos + 3 > my_close_start || bytes[pos] !== GSO_MARKER[0] || bytes[pos + 1] !== GSO_MARKER[1] || bytes[pos + 2] !== GSO_MARKER[2]) {
+      throw new Error(`Invalid GSO marker at offset ${pos + base_offset}`);
     }
     pos += 3;
+    const my_header_tail = metadata.format_version === 117 ? 13 : 17;
+    if (pos + my_header_tail > my_close_start) {
+      throw new Error("Truncated GSO header");
+    }
     const my_v = view.getUint32(pos, little_endian);
     pos += 4;
     let my_o;
@@ -1080,44 +1098,48 @@ function build_gso_index(buffer, metadata, base_offset = 0) {
       my_o = view.getUint32(pos, little_endian);
       pos += 4;
     } else {
-      if (little_endian) {
-        my_o = view.getUint32(pos, true);
-        const my_hi = view.getUint32(
-          pos + 4,
-          true
+      const my_big_o = view.getBigUint64(
+        pos,
+        little_endian
+      );
+      if (my_big_o > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new Error(
+          "strL observation number exceeds JavaScript safe integer range"
         );
-        if (my_hi !== 0) {
-          throw new Error(
-            "strL observation number exceeds 32-bit range"
-          );
-        }
-        pos += 8;
-      } else {
-        const my_hi = view.getUint32(pos, false);
-        if (my_hi !== 0) {
-          throw new Error(
-            "strL observation number exceeds 32-bit range"
-          );
-        }
-        const my_lo = view.getUint32(
-          pos + 4,
-          false
-        );
-        my_o = my_lo;
-        pos += 8;
       }
+      my_o = Number(my_big_o);
+      pos += 8;
+    }
+    const my_variable = metadata.variables[my_v - 1];
+    if (my_v < 1 || my_o < 1 || my_o > metadata.nobs || !my_variable || my_variable.type !== "strL") {
+      throw new Error(`Invalid GSO key ${my_v}:${my_o}`);
     }
     const my_type = bytes[pos];
+    if (my_type !== 129 && my_type !== 130) {
+      throw new Error(`Unsupported GSO type ${my_type}`);
+    }
     pos += 1;
     const my_len = view.getUint32(pos, little_endian);
     pos += 4;
+    if (pos + my_len > my_close_start) {
+      throw new Error("Truncated GSO content");
+    }
+    if (my_type === 130 && (my_len === 0 || bytes[pos + my_len - 1] !== 0)) {
+      throw new Error("Type-130 GSO content is not NUL-terminated");
+    }
     const my_key = my_v + ":" + my_o;
+    if (my_index.has(my_key)) {
+      throw new Error(`Duplicate GSO key ${my_key}`);
+    }
     my_index.set(my_key, {
       content_offset: pos + base_offset,
       content_length: my_len,
       type: my_type
     });
     pos += my_len;
+  }
+  if (pos !== my_close_start) {
+    throw new Error("Unexpected bytes in <strls> section");
   }
   return my_index;
 }
@@ -1132,7 +1154,9 @@ function resolve_strl(buffer, metadata, gso_index, pointer_offset) {
   if (!my_pointer) return "";
   const my_key = my_pointer.v + ":" + my_pointer.o;
   const my_entry = gso_index.get(my_key);
-  if (!my_entry) return null;
+  if (!my_entry) {
+    throw new Error(`Dangling strL pointer ${my_key}`);
+  }
   return decode_gso_entry(bytes, my_entry);
 }
 function read_strl_pointer(view, metadata, pointer_offset) {
@@ -1150,10 +1174,15 @@ function read_strl_pointer(view, metadata, pointer_offset) {
     );
   } else if (little_endian) {
     my_v = view.getUint16(pointer_offset, true);
-    my_o = view.getUint32(
+    const my_lo = view.getUint32(
       pointer_offset + 2,
       true
     );
+    const my_hi = view.getUint16(
+      pointer_offset + 6,
+      true
+    );
+    my_o = my_hi * 4294967296 + my_lo;
   } else {
     my_v = view.getUint16(pointer_offset, false);
     const my_hi = view.getUint16(
@@ -1169,11 +1198,27 @@ function read_strl_pointer(view, metadata, pointer_offset) {
   if (my_v === 0 && my_o === 0) {
     return null;
   }
+  const my_variable = metadata.variables[my_v - 1];
+  if (my_v < 1 || my_o < 1 || my_o > metadata.nobs || !my_variable || my_variable.type !== "strL") {
+    throw new Error(`Invalid strL pointer ${my_v}:${my_o}`);
+  }
   return { v: my_v, o: my_o };
 }
 function decode_gso_entry(bytes, entry) {
+  if (entry.type !== 129 && entry.type !== 130) {
+    throw new Error(`Unsupported GSO type ${entry.type}`);
+  }
+  const my_content_end = entry.content_offset + entry.content_length;
+  if (entry.content_offset < 0 || entry.content_length < 0 || my_content_end > bytes.length) {
+    throw new Error("Truncated GSO content");
+  }
   if (entry.type === 130) {
-    const my_str_len = entry.content_length > 0 ? entry.content_length - 1 : 0;
+    if (entry.content_length === 0 || bytes[my_content_end - 1] !== 0) {
+      throw new Error(
+        "Type-130 GSO content is not NUL-terminated"
+      );
+    }
+    const my_str_len = entry.content_length - 1;
     return UTF8_DECODER2.decode(
       bytes.subarray(
         entry.content_offset,

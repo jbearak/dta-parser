@@ -1,20 +1,25 @@
 //! Native parsing primitives for Stata `.dta` files.
 //!
-//! The crate parses metadata, numeric and fixed-string observations, row and
-//! column projections, missing tags, and value-label tables for format
-//! versions 117 through 119. `strL` payload resolution is intentionally not
-//! part of the current API.
+//! The crate parses releases 113–115 and 117–119 into column-oriented data,
+//! including numeric and fixed-string observations, resolved `strL` payloads,
+//! exact missing tags, metadata, and value-label tables. Byte-slice APIs are
+//! complemented by bounded, projected [`DtaFile`] reads over `Read + Seek`.
 
 mod data_reader;
 mod endian;
 mod error;
+mod file;
+mod legacy;
 mod metadata;
 mod missing;
+mod strl;
+mod text;
 mod types;
 mod value_labels;
 
 pub use data_reader::{read_dta, read_dta_with_options};
 pub use error::DtaError;
+pub use file::{DtaFile, FileOptions};
 pub use metadata::parse_metadata;
 pub use missing::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,

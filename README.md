@@ -57,12 +57,12 @@ want portable parsing utilities. Use `@jbearak/dta-parser/node` when you want
 filesystem-backed random access.
 
 This repository also contains the native Rust core in `rust/dta-parser`. Its
-current public API reads releases 117–119 from byte slices into
-storage-preserving, column-oriented vectors, with row/column projection,
-extended missing tags, and value-label associations. Rust callers should see
-the [crate README](rust/dta-parser/README.md) for examples and the current
-scope; legacy releases and `strL`/GSO resolution remain implemented only by the
-TypeScript package at this stage.
+public byte-slice and bounded `Read + Seek` APIs read releases 113–115 and
+117–119 into storage-preserving, column-oriented vectors, with row/column
+projection, exact missing tags, Windows-1252 legacy text, value-label
+associations, cooperative cancellation, and strict `strL`/GSO resolution. Rust
+callers should see the [crate README](rust/dta-parser/README.md) for examples
+and the precise I/O contract.
 
 | Entrypoint | Use For | Notable Exports |
 | --- | --- | --- |
@@ -321,6 +321,11 @@ using `DtaFile`, the root entrypoint exports helpers for working with the
 long-string record a Generic String Object (GSO); each such record starts with
 the literal `GSO` marker. The `build_gso_index()` and `decode_gso_entry()`
 names follow that file-format term.
+
+The TypeScript buffer helpers and `DtaFile` apply the same strict GSO rules as
+the Rust core: invalid or duplicate keys, unsupported types, truncated or
+unterminated payloads, partial pointers, and dangling non-null references are
+rejected. Multiple pointers to the same valid key resolve deterministically.
 
 ## API Reference
 

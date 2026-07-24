@@ -4,6 +4,7 @@ import * as path from 'path';
 import { parse_metadata } from '../../src/header';
 import {
     build_gso_index,
+    decode_gso_entry,
     resolve_strl,
 } from '../../src/strl-reader';
 import type { DtaMetadata } from '../../src/types';
@@ -181,5 +182,92 @@ describe('build_gso_index', () => {
             buffer, metadata
         );
         expect(my_index.size).toBe(0);
+    });
+
+    it('resolves a shared GSO reference deterministically', () => {
+        const { buffer, metadata } =
+            load_fixture('strl_test_v118.dta');
+        const my_copy = buffer.slice(0);
+        const my_bytes = new Uint8Array(my_copy);
+        const my_data_start = metadata.section_offsets.data + 6;
+        const my_strl = metadata.variables[0];
+        const my_first = my_data_start + my_strl.byte_offset;
+        const my_fifth = my_first + 4 * metadata.obs_length;
+        my_bytes.set(my_bytes.subarray(my_first, my_first + 8), my_fifth);
+        const my_index = build_gso_index(my_copy, metadata);
+        expect(resolve_strl(
+            my_copy, metadata, my_index, my_first
+        )).toBe(resolve_strl(
+            my_copy, metadata, my_index, my_fifth
+        ));
+    });
+
+    it('rejects partial and dangling pointers like the Rust core', () => {
+        const { buffer, metadata } =
+            load_fixture('strl_test_v118.dta');
+        const my_pointer = metadata.section_offsets.data + 6;
+
+        const my_partial = buffer.slice(0);
+        new DataView(my_partial).setUint16(my_pointer, 0, true);
+        expect(() => resolve_strl(
+            my_partial,
+            metadata,
+            build_gso_index(my_partial, metadata),
+            my_pointer
+        )).toThrow('Invalid strL pointer 0:1');
+
+        const my_dangling = buffer.slice(0);
+        const my_view = new DataView(my_dangling);
+        my_view.setUint32(my_pointer + 2, 4, true);
+        my_view.setUint16(my_pointer + 6, 0, true);
+        expect(() => resolve_strl(
+            my_dangling,
+            metadata,
+            build_gso_index(my_dangling, metadata),
+            my_pointer
+        )).toThrow('Dangling strL pointer 1:4');
+    });
+
+    it('rejects duplicate keys, invalid types, and unterminated text like Rust', () => {
+        const { buffer, metadata } =
+            load_fixture('strl_test_v118.dta');
+        const my_first = metadata.section_offsets.strls + 7;
+        const my_length = new DataView(buffer).getUint32(
+            my_first + 16, true
+        );
+        const my_second = my_first + 20 + my_length;
+
+        const my_duplicate = buffer.slice(0);
+        const my_duplicate_bytes = new Uint8Array(my_duplicate);
+        my_duplicate_bytes.set(
+            new Uint8Array(buffer, my_first + 3, 12),
+            my_second + 3
+        );
+        expect(() => build_gso_index(
+            my_duplicate, metadata
+        )).toThrow('Duplicate GSO key 1:1');
+
+        const my_invalid_type = buffer.slice(0);
+        new Uint8Array(my_invalid_type)[my_first + 15] = 42;
+        expect(() => build_gso_index(
+            my_invalid_type, metadata
+        )).toThrow('Unsupported GSO type 42');
+
+        const my_unterminated = buffer.slice(0);
+        new Uint8Array(my_unterminated)[
+            my_first + 20 + my_length - 1
+        ] = 0x78;
+        expect(() => build_gso_index(
+            my_unterminated, metadata
+        )).toThrow('not NUL-terminated');
+
+        expect(() => decode_gso_entry(
+            new Uint8Array([0x61]),
+            { content_offset: 0, content_length: 1, type: 130 }
+        )).toThrow('not NUL-terminated');
+        expect(() => decode_gso_entry(
+            new Uint8Array([0]),
+            { content_offset: 0, content_length: 2, type: 130 }
+        )).toThrow('Truncated GSO content');
     });
 });

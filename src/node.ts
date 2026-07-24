@@ -644,8 +644,8 @@ export class DtaFile {
     /**
      * Resolve a single strL pointer at `pointer_offset` within the
      * chunk's data buffer to its string value, reading the GSO payload
-     * from the in-memory strL section. Returns '' for a null pointer
-     * or an unresolvable/absent entry.
+     * from the in-memory strL section. Returns '' only for a null pointer;
+     * a missing non-null key is corrupt input.
      */
     private _resolve_strl_at(
         view: DataView,
@@ -660,7 +660,9 @@ export class DtaFile {
             my_pointer.v + ':' + my_pointer.o
         );
         if (!my_entry || this._gso_section === null) {
-            return '';
+            throw new Error(
+                `Dangling strL pointer ${my_pointer.v}:${my_pointer.o}`
+            );
         }
 
         return decode_gso_entry(this._gso_section, {

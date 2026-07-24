@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -6,6 +6,7 @@ use dta_parser::{
     read_dta, read_dta_with_options, ColumnValues, DtaError, DtaType, MissingTag, ReadOptions,
 };
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 
 fn fixture_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/dta")
@@ -166,9 +167,105 @@ struct CanonicalSnapshot {
 
 #[derive(Debug, Deserialize)]
 struct CanonicalFixture {
-    format_version: u16,
-    row_count: u64,
+    sha256: String,
+    metadata: CanonicalMetadata,
     columns: Vec<CanonicalColumn>,
+    value_label_tables: Vec<CanonicalValueLabelTable>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CanonicalMetadata {
+    format_version: u16,
+    byte_order: String,
+    nvar: u32,
+    nobs: u64,
+    dataset_label: String,
+    obs_length: u64,
+    section_offsets: CanonicalSectionOffsets,
+    variables: Vec<CanonicalVariable>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CanonicalVariable {
+    name: String,
+    #[serde(rename = "type")]
+    storage_type: String,
+    type_code: u16,
+    format: String,
+    label: String,
+    value_label_name: String,
+    byte_width: u32,
+    byte_offset: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct CanonicalSectionOffsets {
+    stata_data: u64,
+    map: u64,
+    variable_types: u64,
+    varnames: u64,
+    sortlist: u64,
+    formats: u64,
+    value_label_names: u64,
+    variable_labels: u64,
+    characteristics: u64,
+    data: u64,
+    strls: u64,
+    value_labels: u64,
+    stata_data_close: u64,
+    end_of_file: u64,
+}
+
+impl CanonicalSectionOffsets {
+    fn as_array(&self) -> [u64; 14] {
+        [
+            self.stata_data,
+            self.map,
+            self.variable_types,
+            self.varnames,
+            self.sortlist,
+            self.formats,
+            self.value_label_names,
+            self.variable_labels,
+            self.characteristics,
+            self.data,
+            self.strls,
+            self.value_labels,
+            self.stata_data_close,
+            self.end_of_file,
+        ]
+    }
+}
+
+fn actual_section_offsets(offsets: &dta_parser::SectionOffsets) -> [u64; 14] {
+    [
+        offsets.stata_data,
+        offsets.map,
+        offsets.variable_types,
+        offsets.varnames,
+        offsets.sortlist,
+        offsets.formats,
+        offsets.value_label_names,
+        offsets.variable_labels,
+        offsets.characteristics,
+        offsets.data,
+        offsets.strls,
+        offsets.value_labels,
+        offsets.stata_data_close,
+        offsets.end_of_file,
+    ]
+}
+
+#[derive(Debug, Deserialize)]
+struct CanonicalValueLabelTable {
+    name: String,
+    entries: Vec<CanonicalValueLabelEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CanonicalValueLabelEntry {
+    value: i32,
+    label: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -230,39 +327,106 @@ fn assert_canonical_numeric(
 }
 
 #[test]
-fn every_supported_projected_cell_matches_the_typescript_haven_oracle() {
+fn every_checked_fixture_matches_the_typescript_haven_oracle() {
     let snapshot: CanonicalSnapshot =
         serde_json::from_str(include_str!("data/modern-canonical.json")).unwrap();
-    assert_eq!(snapshot.schema_version, 1);
-    assert!(snapshot.source.contains("TypeScript read_rows_from_buffer"));
-    assert_eq!(snapshot.fixtures.len(), 17);
+    assert_eq!(snapshot.schema_version, 2);
+    assert!(snapshot.source.contains("Production TypeScript DtaFile"));
+    let (fixture_inventory, support_inventory) = fs::read_dir(fixture_dir())
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .map(|path| {
+            assert!(
+                path.is_file(),
+                "unexpected fixture-directory entry: {path:?}"
+            );
+            let is_fixture = path.extension().is_some_and(|extension| extension == "dta");
+            (
+                path.file_name().unwrap().to_string_lossy().into_owned(),
+                is_fixture,
+            )
+        })
+        .fold(
+            (BTreeSet::new(), BTreeSet::new()),
+            |(mut fixtures, mut support), (name, is_fixture)| {
+                if is_fixture {
+                    fixtures.insert(name);
+                } else {
+                    support.insert(name);
+                }
+                (fixtures, support)
+            },
+        );
+    assert_eq!(
+        support_inventory,
+        BTreeSet::from([
+            "generate_fixtures.do".to_owned(),
+            "generate_legacy_fixtures.do".to_owned(),
+        ])
+    );
+    let snapshot_inventory = snapshot.fixtures.keys().cloned().collect::<BTreeSet<_>>();
+    assert_eq!(fixture_inventory, snapshot_inventory);
+    assert_eq!(snapshot.fixtures.len(), 29);
 
     for (fixture_name, expected_fixture) in snapshot.fixtures {
         let bytes = fixture(&fixture_name);
-        let metadata = dta_parser::parse_metadata(&bytes).unwrap();
+        let actual_sha256 = format!("{:x}", Sha256::digest(&bytes));
+        assert_eq!(actual_sha256, expected_fixture.sha256, "{fixture_name}");
+        let data = read_dta(&bytes)
+            .unwrap_or_else(|error| panic!("failed to read {fixture_name}: {error}"));
+        let metadata = &data.metadata;
+        let expected_metadata = &expected_fixture.metadata;
         assert_eq!(
             metadata.format_version.as_u16(),
-            expected_fixture.format_version,
+            expected_metadata.format_version,
             "{fixture_name}"
         );
-        let supported_count = metadata
-            .variables
-            .iter()
-            .filter(|variable| variable.dta_type != DtaType::StrL)
-            .count();
         assert_eq!(
-            expected_fixture.columns.len(),
-            supported_count,
+            match metadata.byte_order {
+                dta_parser::ByteOrder::Lsf => "LSF",
+                dta_parser::ByteOrder::Msf => "MSF",
+            },
+            expected_metadata.byte_order,
             "{fixture_name}"
         );
-        let projected_indices = expected_fixture
-            .columns
-            .iter()
-            .map(|column| column.variable_index)
-            .collect();
-        let data = read_dta_with_options(&bytes, &options(0, None, projected_indices))
-            .unwrap_or_else(|error| panic!("failed to read {fixture_name}: {error}"));
-        assert_eq!(data.row_count, expected_fixture.row_count, "{fixture_name}");
+        assert_eq!(metadata.nvar, expected_metadata.nvar, "{fixture_name}");
+        assert_eq!(metadata.nobs, expected_metadata.nobs, "{fixture_name}");
+        assert_eq!(
+            metadata.dataset_label, expected_metadata.dataset_label,
+            "{fixture_name}"
+        );
+        assert_eq!(
+            metadata.obs_length, expected_metadata.obs_length,
+            "{fixture_name}"
+        );
+        assert_eq!(
+            actual_section_offsets(&metadata.section_offsets),
+            expected_metadata.section_offsets.as_array(),
+            "{fixture_name}"
+        );
+        assert_eq!(
+            metadata.variables.len(),
+            expected_metadata.variables.len(),
+            "{fixture_name}"
+        );
+        for (actual, expected) in metadata.variables.iter().zip(&expected_metadata.variables) {
+            assert_eq!(actual.name, expected.name, "{fixture_name}");
+            assert_eq!(
+                actual.dta_type.to_string(),
+                expected.storage_type,
+                "{fixture_name}"
+            );
+            assert_eq!(actual.type_code, expected.type_code, "{fixture_name}");
+            assert_eq!(actual.format, expected.format, "{fixture_name}");
+            assert_eq!(actual.label, expected.label, "{fixture_name}");
+            assert_eq!(
+                actual.value_label_name, expected.value_label_name,
+                "{fixture_name}"
+            );
+            assert_eq!(actual.byte_width, expected.byte_width, "{fixture_name}");
+            assert_eq!(actual.byte_offset, expected.byte_offset, "{fixture_name}");
+        }
+        assert_eq!(data.row_count, expected_metadata.nobs, "{fixture_name}");
         assert_eq!(data.columns.len(), expected_fixture.columns.len());
 
         for (column, expected_column) in data.columns.iter().zip(&expected_fixture.columns) {
@@ -356,6 +520,46 @@ fn every_supported_projected_cell_matches_the_typescript_haven_oracle() {
                         }
                     }
                 }
+                ColumnValues::StrL { values } => {
+                    assert_eq!(values.len(), expected_column.cells.len());
+                    for (row, (actual, expected)) in
+                        values.iter().zip(&expected_column.cells).enumerate()
+                    {
+                        match expected {
+                            CanonicalCell::String(expected) => assert_eq!(
+                                actual, expected,
+                                "{fixture_name}:{}:row {row}",
+                                variable.name
+                            ),
+                            other => panic!(
+                                "{fixture_name}:{}:row {row}: expected strL string, found {other:?}",
+                                variable.name
+                            ),
+                        }
+                    }
+                }
+            }
+        }
+
+        assert_eq!(
+            data.value_label_tables.len(),
+            expected_fixture.value_label_tables.len(),
+            "{fixture_name}"
+        );
+        for (actual, expected) in data
+            .value_label_tables
+            .iter()
+            .zip(&expected_fixture.value_label_tables)
+        {
+            assert_eq!(actual.name, expected.name, "{fixture_name}");
+            assert_eq!(
+                actual.entries.len(),
+                expected.entries.len(),
+                "{fixture_name}"
+            );
+            for (actual, expected) in actual.entries.iter().zip(&expected.entries) {
+                assert_eq!(actual.value, expected.value, "{fixture_name}");
+                assert_eq!(actual.label, expected.label, "{fixture_name}");
             }
         }
     }
@@ -369,7 +573,10 @@ fn nominal_auto_v119_filename_does_not_override_its_release_118_header() {
     let metadata = dta_parser::parse_metadata(&fixture("auto_v119.dta")).unwrap();
 
     assert_eq!(metadata.format_version, dta_parser::FormatVersion::V118);
-    assert_eq!(expected.format_version, metadata.format_version.as_u16());
+    assert_eq!(
+        expected.metadata.format_version,
+        metadata.format_version.as_u16()
+    );
 }
 
 #[test]
@@ -612,7 +819,7 @@ fn preserves_raw_numeric_missing_values_and_all_storage_tags() {
 }
 
 #[test]
-fn clamps_ranges_supports_empty_projection_and_rejects_invalid_or_strl_columns() {
+fn clamps_ranges_supports_empty_projection_and_resolves_strl_columns() {
     let bytes = fixture("all_types_v118.dta");
     let past_end = read_dta_with_options(&bytes, &options(99, Some(10), vec![0])).unwrap();
     assert_eq!((past_end.row_start, past_end.row_count), (5, 0));
@@ -626,13 +833,20 @@ fn clamps_ranges_supports_empty_projection_and_rejects_invalid_or_strl_columns()
         read_dta_with_options(&bytes, &options(0, None, vec![8])),
         Err(DtaError::InvalidColumnIndex { index: 8, nvar: 8 })
     ));
-    assert!(matches!(
-        read_dta(&bytes),
-        Err(DtaError::UnsupportedColumnType {
-            index: 7,
-            dta_type: DtaType::StrL
-        })
-    ));
+    let full = read_dta(&bytes).unwrap();
+    match &full.columns[7].values {
+        ColumnValues::StrL { values } => assert_eq!(
+            values,
+            &[
+                "This is a strL value for obs 1",
+                "This is a strL value for obs 2",
+                "This is a strL value for obs 3",
+                "This is a strL value for obs 4",
+                "This is a strL value for obs 5",
+            ]
+        ),
+        other => panic!("unexpected strL storage: {other:?}"),
+    }
 }
 
 #[test]
