@@ -187,3 +187,4 @@ preserves Stata missing tags as explicit objects.
 ## Recorded runs
 
 - [Apple M4 Max, 2026-07-24](benchmark-results/2026-07-24-apple-m4-max.md)
+- [Experimental R package versus haven, 2026-07-24](benchmark-results/2026-07-24-r-package.md)

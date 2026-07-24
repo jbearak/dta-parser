@@ -50,7 +50,10 @@
     "typecheck": "tsc -p tsconfig.types.json --noEmit",
     "test": "bun test ./tests",
     "test:reproducibility": "bun run benchmarks/dta-vs-haven/run.ts --correctness-only",
-    "benchmark": "bun run benchmarks/dta-vs-haven/run.ts"
+    "benchmark": "bun run benchmarks/dta-vs-haven/run.ts",
+    "build:r-package": "esbuild src/index.ts --bundle --platform=browser --target=es2020 --format=iife --global-name=DtaParser --outfile=r-package/dtaparser/inst/js/dta-parser.js",
+    "test:r-package": "npm run build:r-package && R CMD build r-package/dtaparser && R CMD check --no-manual dtaparser_0.1.0.tar.gz && Rscript benchmarks/dta-vs-haven/r-package-reproducibility.R",
+    "benchmark:r-package": "npm run build:r-package && Rscript benchmarks/dta-vs-haven/r-package-benchmark.R"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

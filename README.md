@@ -360,3 +360,16 @@ The opt-in reproducibility check covers every checked-in `.dta` fixture:
 ```sh
 npm run test:reproducibility
 ```
+
+An experimental R package lives in `r-package/dtaparser`. It exposes a
+haven-compatible function signature through `dtaparser::read_dta()` and runs
+the parser in a persistent in-process V8 context:
+
+```sh
+npm run build:r-package
+R CMD INSTALL r-package/dtaparser
+npm run benchmark:r-package
+```
+
+See the [recorded R-package benchmark](docs/benchmark-results/2026-07-24-r-package.md)
+for the current bridge costs and interpretation.

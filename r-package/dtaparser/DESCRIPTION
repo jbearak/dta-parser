@@ -1,0 +1,24 @@
+Package: dtaparser
+Title: Read Stata DTA Files with dta-parser
+Version: 0.1.0
+Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"),
+    email = "jbearak@guttmacher.org")
+Author: Jonathan Bearak [aut, cre]
+Maintainer: Jonathan Bearak <jbearak@guttmacher.org>
+Description: Provides an in-process R interface to the TypeScript dta-parser
+    using an embedded V8 JavaScript context. It preserves Stata metadata,
+    value labels, long strings, and extended missing-value tags and includes
+    helpers for reproducible comparisons with haven.
+License: GPL (>= 3)
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    rlang,
+    tibble,
+    tidyselect,
+    V8
+Suggests:
+    haven,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
