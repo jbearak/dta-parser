@@ -18,6 +18,15 @@ pub(crate) fn checked_mul(
         .ok_or(DtaError::ArithmeticOverflow(context))
 }
 
+pub(crate) fn checked_sub(
+    left: usize,
+    right: usize,
+    context: &'static str,
+) -> Result<usize, DtaError> {
+    left.checked_sub(right)
+        .ok_or(DtaError::ArithmeticOverflow(context))
+}
+
 pub(crate) fn slice_at<'a>(
     bytes: &'a [u8],
     offset: usize,
@@ -37,6 +46,10 @@ pub(crate) fn read_u8(bytes: &[u8], offset: usize, context: &'static str) -> Res
     Ok(slice_at(bytes, offset, 1, context)?[0])
 }
 
+pub(crate) fn read_i8(bytes: &[u8], offset: usize, context: &'static str) -> Result<i8, DtaError> {
+    Ok(i8::from_ne_bytes([read_u8(bytes, offset, context)?]))
+}
+
 pub(crate) fn read_u16(
     bytes: &[u8],
     offset: usize,
@@ -52,6 +65,16 @@ pub(crate) fn read_u16(
     })
 }
 
+pub(crate) fn read_i16(
+    bytes: &[u8],
+    offset: usize,
+    byte_order: ByteOrder,
+    context: &'static str,
+) -> Result<i16, DtaError> {
+    let value = read_u16(bytes, offset, byte_order, context)?;
+    Ok(i16::from_ne_bytes(value.to_ne_bytes()))
+}
+
 pub(crate) fn read_u32(
     bytes: &[u8],
     offset: usize,
@@ -65,6 +88,16 @@ pub(crate) fn read_u32(
         ByteOrder::Lsf => u32::from_le_bytes(value),
         ByteOrder::Msf => u32::from_be_bytes(value),
     })
+}
+
+pub(crate) fn read_i32(
+    bytes: &[u8],
+    offset: usize,
+    byte_order: ByteOrder,
+    context: &'static str,
+) -> Result<i32, DtaError> {
+    let value = read_u32(bytes, offset, byte_order, context)?;
+    Ok(i32::from_ne_bytes(value.to_ne_bytes()))
 }
 
 pub(crate) fn read_u64(
@@ -99,6 +132,15 @@ mod tests {
             read_u64(&bytes, 0, ByteOrder::Lsf, "test").unwrap(),
             0x0807_0605_0403_0201
         );
+        assert_eq!(read_i8(&[0xff], 0, "test").unwrap(), -1);
+        assert_eq!(
+            read_i16(&[0xff, 0xfe], 0, ByteOrder::Msf, "test").unwrap(),
+            -2
+        );
+        assert_eq!(
+            read_i32(&[0xfe, 0xff, 0xff, 0xff], 0, ByteOrder::Lsf, "test").unwrap(),
+            -2
+        );
     }
 
     #[test]
@@ -114,6 +156,10 @@ mod tests {
         assert_eq!(
             checked_mul(usize::MAX, 2, "length"),
             Err(DtaError::ArithmeticOverflow("length"))
+        );
+        assert_eq!(
+            checked_sub(0, 1, "start"),
+            Err(DtaError::ArithmeticOverflow("start"))
         );
     }
 }

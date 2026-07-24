@@ -56,6 +56,14 @@ want portable parsing utilities. Use `@jbearak/dta-parser/node` when you want
 `DtaFile` to open a `.dta` file from disk and read rows or columns with
 filesystem-backed random access.
 
+This repository also contains the native Rust core in `rust/dta-parser`. Its
+current public API reads releases 117–119 from byte slices into
+storage-preserving, column-oriented vectors, with row/column projection,
+extended missing tags, and value-label associations. Rust callers should see
+the [crate README](rust/dta-parser/README.md) for examples and the current
+scope; legacy releases and `strL`/GSO resolution remain implemented only by the
+TypeScript package at this stage.
+
 | Entrypoint | Use For | Notable Exports |
 | --- | --- | --- |
 | `@jbearak/dta-parser` | You already have a full `.dta` `ArrayBuffer` or need low-level parser utilities. | `parse_metadata`, `read_rows_from_buffer`, `parse_value_labels`, `apply_display_format`, `is_missing_value_object` |
@@ -351,4 +359,9 @@ npm install
 npm run build
 npm run typecheck
 npm test
+
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo doc --workspace --no-deps
 ```

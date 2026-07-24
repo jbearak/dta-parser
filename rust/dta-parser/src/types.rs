@@ -159,6 +159,48 @@ mod decimal_u64 {
     }
 }
 
+mod optional_decimal_u64 {
+    use serde::{de, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(value: &Option<u64>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match value {
+            Some(value) => serializer.serialize_some(&value.to_string()),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Option::<String>::deserialize(deserializer)?;
+        value
+            .map(|value| {
+                value.parse().map_err(|_| {
+                    de::Error::custom(format!("invalid optional decimal u64 {value:?}"))
+                })
+            })
+            .transpose()
+    }
+}
+
+/// Options controlling which observations and variables are decoded.
+///
+/// Row ranges are zero-based and are clamped to the available observations.
+/// An explicit column projection preserves the first occurrence of every
+/// requested index and discards later duplicates.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReadOptions {
+    #[serde(with = "decimal_u64")]
+    pub row_start: u64,
+    #[serde(with = "optional_decimal_u64")]
+    pub row_count: Option<u64>,
+    pub column_indices: Option<Vec<u32>>,
+}
+
 /// Metadata describing one variable in source order.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VariableInfo {
@@ -279,6 +321,137 @@ pub struct DtaMetadata {
     pub obs_length: u64,
 }
 
+/// Storage-preserving values for one decoded variable.
+///
+/// Numeric variants retain the Stata storage width. Missing values remain in
+/// `values` exactly as decoded and are additionally classified in the parallel
+/// `missing_tags` vector.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "storage_type", rename_all = "snake_case")]
+pub enum ColumnValues {
+    Byte {
+        values: Vec<i8>,
+        missing_tags: Vec<Option<crate::MissingTag>>,
+    },
+    Int {
+        values: Vec<i16>,
+        missing_tags: Vec<Option<crate::MissingTag>>,
+    },
+    Long {
+        values: Vec<i32>,
+        missing_tags: Vec<Option<crate::MissingTag>>,
+    },
+    Float {
+        values: Vec<f32>,
+        missing_tags: Vec<Option<crate::MissingTag>>,
+    },
+    Double {
+        values: Vec<f64>,
+        missing_tags: Vec<Option<crate::MissingTag>>,
+    },
+    FixedString {
+        values: Vec<String>,
+    },
+}
+
+impl ColumnValues {
+    /// Number of decoded observations in the column.
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Byte { values, .. } => values.len(),
+            Self::Int { values, .. } => values.len(),
+            Self::Long { values, .. } => values.len(),
+            Self::Float { values, .. } => values.len(),
+            Self::Double { values, .. } => values.len(),
+            Self::FixedString { values } => values.len(),
+        }
+    }
+
+    /// Whether the column contains no decoded observations.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+/// One decoded variable, identified by its source metadata index.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Column {
+    pub variable_index: u32,
+    pub values: ColumnValues,
+}
+
+/// One integer-to-text entry in a Stata value-label table.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ValueLabelEntry {
+    pub value: i32,
+    pub missing_tag: Option<crate::MissingTag>,
+    pub label: String,
+}
+
+/// A named Stata value-label table in source order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ValueLabelTable {
+    pub name: String,
+    pub entries: Vec<ValueLabelEntry>,
+}
+
+impl ValueLabelTable {
+    /// Find the first entry with the requested raw integer value.
+    pub fn entry(&self, value: i32) -> Option<&ValueLabelEntry> {
+        self.entries.iter().find(|entry| entry.value == value)
+    }
+}
+
+/// Column-oriented decoded observations plus their metadata and label tables.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DtaData {
+    pub metadata: DtaMetadata,
+    #[serde(with = "decimal_u64")]
+    pub row_start: u64,
+    #[serde(with = "decimal_u64")]
+    pub row_count: u64,
+    pub columns: Vec<Column>,
+    pub value_label_tables: Vec<ValueLabelTable>,
+}
+
+impl DtaData {
+    /// Find a decoded column by its source variable index.
+    pub fn column(&self, variable_index: u32) -> Option<&Column> {
+        self.columns
+            .iter()
+            .find(|column| column.variable_index == variable_index)
+    }
+
+    /// Find a decoded column by its source variable name.
+    pub fn column_by_name(&self, name: &str) -> Option<&Column> {
+        let index = self
+            .metadata
+            .variables
+            .iter()
+            .position(|variable| variable.name == name)?;
+        self.column(u32::try_from(index).ok()?)
+    }
+
+    /// Find a value-label table by its Stata name.
+    pub fn value_label_table(&self, name: &str) -> Option<&ValueLabelTable> {
+        self.value_label_tables
+            .iter()
+            .find(|table| table.name == name)
+    }
+
+    /// Resolve the label table associated with a source variable index.
+    pub fn value_label_table_for_variable(&self, variable_index: u32) -> Option<&ValueLabelTable> {
+        let variable = self
+            .metadata
+            .variables
+            .get(usize::try_from(variable_index).ok()?)?;
+        if variable.value_label_name.is_empty() {
+            return None;
+        }
+        self.value_label_table(&variable.value_label_name)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -316,5 +489,17 @@ mod tests {
 
         let round_trip: DtaMetadata = serde_json::from_value(value).unwrap();
         assert_eq!(round_trip, metadata);
+    }
+
+    #[test]
+    fn read_options_default_to_a_full_read() {
+        assert_eq!(
+            ReadOptions::default(),
+            ReadOptions {
+                row_start: 0,
+                row_count: None,
+                column_indices: None,
+            }
+        );
     }
 }
