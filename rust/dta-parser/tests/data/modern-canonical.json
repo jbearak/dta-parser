@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source": "TypeScript read_rows_from_buffer; values mirror haven-derived shared fixture expectations",
+  "source": "TypeScript read_rows_from_buffer and parse_metadata; format versions come from on-disk headers; values mirror haven-derived shared fixture expectations",
   "fixtures": {
     "all_types.dta": {
       "format_version": 118,

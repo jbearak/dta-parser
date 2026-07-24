@@ -27,6 +27,10 @@ pub(crate) fn checked_sub(
         .ok_or(DtaError::ArithmeticOverflow(context))
 }
 
+pub(crate) fn offset_to_usize(offset: u64, context: &'static str) -> Result<usize, DtaError> {
+    usize::try_from(offset).map_err(|_| DtaError::OffsetOutOfRange { context, offset })
+}
+
 pub(crate) fn slice_at<'a>(
     bytes: &'a [u8],
     offset: usize,
@@ -40,6 +44,37 @@ pub(crate) fn slice_at<'a>(
         needed: length,
         available: bytes.len().saturating_sub(offset),
     })
+}
+
+pub(crate) fn expect_at(
+    bytes: &[u8],
+    offset: usize,
+    tag: &'static [u8],
+    expected: &'static str,
+) -> Result<usize, DtaError> {
+    if slice_at(bytes, offset, tag.len(), expected)? != tag {
+        return Err(DtaError::UnexpectedTag { expected, offset });
+    }
+    checked_add(offset, tag.len(), expected)
+}
+
+pub(crate) fn ensure_map_offset(
+    section: &'static str,
+    expected: usize,
+    actual: u64,
+) -> Result<(), DtaError> {
+    let expected = u64::try_from(expected).map_err(|_| DtaError::OffsetOutOfRange {
+        context: section,
+        offset: u64::MAX,
+    })?;
+    if expected != actual {
+        return Err(DtaError::MapOffsetMismatch {
+            section,
+            expected,
+            actual,
+        });
+    }
+    Ok(())
 }
 
 pub(crate) fn read_u8(bytes: &[u8], offset: usize, context: &'static str) -> Result<u8, DtaError> {

@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use crate::endian::{
-    checked_add, checked_sub, read_i16, read_i32, read_i8, read_u32, read_u64, slice_at,
+    checked_add, checked_sub, ensure_map_offset, expect_at, offset_to_usize, read_i16, read_i32,
+    read_i8, read_u32, read_u64, slice_at,
 };
 use crate::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
@@ -22,37 +23,6 @@ fn checked_add_u64(left: u64, right: u64, context: &'static str) -> Result<u64, 
 fn checked_mul_u64(left: u64, right: u64, context: &'static str) -> Result<u64, DtaError> {
     left.checked_mul(right)
         .ok_or(DtaError::ArithmeticOverflow(context))
-}
-
-fn offset_to_usize(offset: u64, context: &'static str) -> Result<usize, DtaError> {
-    usize::try_from(offset).map_err(|_| DtaError::OffsetOutOfRange { context, offset })
-}
-
-fn expect_at(
-    bytes: &[u8],
-    offset: usize,
-    tag: &'static [u8],
-    expected: &'static str,
-) -> Result<usize, DtaError> {
-    if slice_at(bytes, offset, tag.len(), expected)? != tag {
-        return Err(DtaError::UnexpectedTag { expected, offset });
-    }
-    checked_add(offset, tag.len(), expected)
-}
-
-fn ensure_map_offset(section: &'static str, expected: usize, actual: u64) -> Result<(), DtaError> {
-    let expected = u64::try_from(expected).map_err(|_| DtaError::OffsetOutOfRange {
-        context: section,
-        offset: u64::MAX,
-    })?;
-    if expected != actual {
-        return Err(DtaError::MapOffsetMismatch {
-            section,
-            expected,
-            actual,
-        });
-    }
-    Ok(())
 }
 
 fn validate_data_section(bytes: &[u8], metadata: &DtaMetadata) -> Result<usize, DtaError> {

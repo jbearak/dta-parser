@@ -1,4 +1,6 @@
-use crate::endian::{checked_add, checked_mul, read_i32, slice_at};
+use crate::endian::{
+    checked_add, checked_mul, ensure_map_offset, expect_at, offset_to_usize, read_i32, slice_at,
+};
 use crate::{
     classify_long_missing, DtaError, DtaMetadata, FormatVersion, ValueLabelEntry, ValueLabelTable,
 };
@@ -9,37 +11,6 @@ const LABEL_OPEN: &[u8] = b"<lbl>";
 const LABEL_CLOSE: &[u8] = b"</lbl>";
 const STATA_DATA_CLOSE: &[u8] = b"</stata_dta>";
 const RESERVED_WIDTH: usize = 3;
-
-fn offset_to_usize(offset: u64, context: &'static str) -> Result<usize, DtaError> {
-    usize::try_from(offset).map_err(|_| DtaError::OffsetOutOfRange { context, offset })
-}
-
-fn expect_at(
-    bytes: &[u8],
-    offset: usize,
-    tag: &'static [u8],
-    expected: &'static str,
-) -> Result<usize, DtaError> {
-    if slice_at(bytes, offset, tag.len(), expected)? != tag {
-        return Err(DtaError::UnexpectedTag { expected, offset });
-    }
-    checked_add(offset, tag.len(), expected)
-}
-
-fn ensure_map_offset(section: &'static str, expected: usize, actual: u64) -> Result<(), DtaError> {
-    let expected = u64::try_from(expected).map_err(|_| DtaError::OffsetOutOfRange {
-        context: section,
-        offset: u64::MAX,
-    })?;
-    if expected != actual {
-        return Err(DtaError::MapOffsetMismatch {
-            section,
-            expected,
-            actual,
-        });
-    }
-    Ok(())
-}
 
 fn name_width(version: FormatVersion) -> Result<usize, DtaError> {
     match version {

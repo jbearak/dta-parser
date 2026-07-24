@@ -362,6 +362,17 @@ fn every_supported_projected_cell_matches_the_typescript_haven_oracle() {
 }
 
 #[test]
+fn nominal_auto_v119_filename_does_not_override_its_release_118_header() {
+    let snapshot: CanonicalSnapshot =
+        serde_json::from_str(include_str!("data/modern-canonical.json")).unwrap();
+    let expected = snapshot.fixtures.get("auto_v119.dta").unwrap();
+    let metadata = dta_parser::parse_metadata(&fixture("auto_v119.dta")).unwrap();
+
+    assert_eq!(metadata.format_version, dta_parser::FormatVersion::V118);
+    assert_eq!(expected.format_version, metadata.format_version.as_u16());
+}
+
+#[test]
 fn decodes_big_endian_v119_observations_and_labels() {
     let data = read_dta(&synthetic_big_endian_v119()).unwrap();
     assert_eq!(

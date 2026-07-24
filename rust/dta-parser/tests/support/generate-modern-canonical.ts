@@ -19,6 +19,8 @@ const FIXTURES = [
     'all_types_v118.dta',
     'auto_v117.dta',
     'auto_v118.dta',
+    // This preexisting nominal fixture is release 118 on disk. Genuine v119
+    // observation/value-label coverage lives in the synthetic Rust fixture.
     'auto_v119.dta',
     'empty.dta',
     'empty_v118.dta',
@@ -76,7 +78,7 @@ for (const fixture_name of FIXTURES) {
 
 const output = {
     schema_version: 1,
-    source: 'TypeScript read_rows_from_buffer; values mirror haven-derived shared fixture expectations',
+    source: 'TypeScript read_rows_from_buffer and parse_metadata; format versions come from on-disk headers; values mirror haven-derived shared fixture expectations',
     fixtures,
 };
 const output_path = path.resolve(
