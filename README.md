@@ -352,3 +352,11 @@ npm run build
 npm run typecheck
 npm test
 ```
+
+For cross-language correctness and performance comparisons against R's
+`haven::read_dta()`, see [Benchmarking against haven](docs/benchmarking.md).
+The opt-in reproducibility check covers every checked-in `.dta` fixture:
+
+```sh
+npm run test:reproducibility
+```

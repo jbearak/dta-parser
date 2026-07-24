@@ -48,7 +48,9 @@
     "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs",
     "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.types.json --noEmit",
-    "test": "bun test ./tests"
+    "test": "bun test ./tests",
+    "test:reproducibility": "bun run benchmarks/dta-vs-haven/run.ts --correctness-only",
+    "benchmark": "bun run benchmarks/dta-vs-haven/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
