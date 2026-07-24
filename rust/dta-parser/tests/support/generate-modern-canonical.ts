@@ -83,4 +83,3 @@ const output_path = path.resolve(
     'rust/dta-parser/tests/data/modern-canonical.json'
 );
 writeFileSync(output_path, `${JSON.stringify(output, null, 2)}\n`);
-
