@@ -87,8 +87,21 @@ serialized forms use stable storage/type spellings, and every 64-bit integer is
 encoded as a decimal string so JavaScript can consume it without precision
 loss.
 
-Native R bindings, display/date conversion beyond preserving format metadata,
-formats before 113, fuzzing, and benchmark infrastructure remain separate
-feature slices.
+Native R bindings live in `r-package/dtaparser`; display/date conversion is an
+R-wrapper concern while the core preserves the original format metadata.
+Formats before 113 remain unsupported.
+
+From the repository root, `bun run conformance` checks the immutable fixture
+oracle and exact slice/file parity, including projections, row windows, `strL`,
+value labels, missing tags, legacy layouts, big-endian v119, and representative
+rejection errors. `bun run fuzz:smoke` runs deterministic, bounded,
+fixture-seeded mutations without nightly Rust or network access. Report-only
+metadata/full/projected/bounded-file/wide/`strL`/legacy measurements are
+available with `cargo run --release -p dta-parser --example bench`; see
+`benchmarks/README.md` for environment and correctness-reporting requirements.
+
+The root crate is mirrored into the R source package. Make parser fixes here
+first, add a regression, then mirror the source and run
+`scripts/check-rust-sync.sh`; one-sided edits fail CI.
 
 The crate uses Rust 2021 and has a minimum supported Rust version of 1.74.

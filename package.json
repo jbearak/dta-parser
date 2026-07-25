@@ -48,7 +48,10 @@
     "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs",
     "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.types.json --noEmit",
-    "test": "bun test ./tests"
+    "test": "bun test ./tests",
+    "conformance": "scripts/conformance.sh",
+    "fuzz:smoke": "cargo test -p dta-parser --test fuzz_smoke -- --nocapture",
+    "bench:ts": "bun benchmarks/typescript.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

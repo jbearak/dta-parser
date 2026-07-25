@@ -25,6 +25,11 @@ test_that("all bundled fixtures agree with haven", {
         actual <- read_dta(path)
         expected <- haven::read_dta(path)
         info <- basename(path)
+        metadata <- dtaparser:::.dta_metadata(normalizePath(path))
+        storage <- stats::setNames(
+            attr(metadata, "dta_storage", exact = TRUE),
+            as.character(metadata)
+        )
 
         expect_identical(dim(actual), dim(expected), info = info)
         expect_identical(names(actual), names(expected), info = info)
@@ -34,8 +39,22 @@ test_that("all bundled fixtures agree with haven", {
                     c(113L, 114L, 115L, 117L, 118L, 119L), info = info)
 
         for (name in names(actual)) {
-            expect_equal(actual[[name]], expected[[name]], tolerance = 1e-6,
-                         info = paste(info, name))
+            if (storage[[name]] %in% c("float", "double")) {
+                expect_equal(actual[[name]], expected[[name]], tolerance = 1e-7,
+                             info = paste(info, name))
+            } else {
+                expect_equal(actual[[name]], expected[[name]], tolerance = 0,
+                             info = paste(info, name, "exact"))
+            }
+            expect_identical(is.na(actual[[name]]), is.na(expected[[name]]),
+                             info = paste(info, name, "missing positions"))
+            if (is.numeric(actual[[name]])) {
+                expect_identical(
+                    haven::na_tag(actual[[name]]),
+                    haven::na_tag(expected[[name]]),
+                    info = paste(info, name, "missing tags")
+                )
+            }
         }
     }
 })

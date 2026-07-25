@@ -1080,6 +1080,19 @@ fn read_modern_metadata<R: Read + Seek>(
     scratch: &mut Scratch,
 ) -> Result<DtaMetadata, DtaError> {
     let header = read_modern_header_map(reader, scratch)?;
+    if header.section_offsets.end_of_file > file_length
+        && file_length >= header.section_offsets.stata_data_close
+    {
+        return Err(DtaError::Truncated {
+            context: "</stata_dta>",
+            offset: error_offset(header.section_offsets.stata_data_close),
+            needed: 12,
+            available: usize::try_from(
+                file_length.saturating_sub(header.section_offsets.stata_data_close),
+            )
+            .unwrap_or(usize::MAX),
+        });
+    }
     if header.section_offsets.end_of_file != file_length {
         return Err(DtaError::MapOffsetMismatch {
             section: "file length",

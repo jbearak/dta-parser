@@ -366,8 +366,12 @@ unsafe fn metadata_impl(path: &str) -> Result<Sexp, String> {
         .variables
         .iter()
         .map(|variable| match variable.dta_type {
+            DtaType::Byte => "byte".to_owned(),
+            DtaType::Int => "int".to_owned(),
+            DtaType::Long => "long".to_owned(),
+            DtaType::Float => "float".to_owned(),
+            DtaType::Double => "double".to_owned(),
             DtaType::FixedString(_) | DtaType::StrL => "character".to_owned(),
-            _ => "numeric".to_owned(),
         })
         .collect::<Vec<_>>();
     let storage = string_vector(&storage, &mut guard)?;

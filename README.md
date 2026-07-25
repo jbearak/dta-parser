@@ -311,6 +311,69 @@ const rows = await dta_file.read_rows(
 `read_rows()` observes `AbortSignal` only when an options object with `signal`
 is provided. `read_columns()` accepts the same cancellation options.
 
+## Implementation and parity maintenance
+
+The three public surfaces share one compatibility contract but have distinct
+entrypoints:
+
+| Surface | Entrypoint | I/O model | Supported releases |
+| --- | --- | --- | --- |
+| TypeScript bytes | `@jbearak/dta-parser` | caller-owned `ArrayBuffer` | 113--115, 117--119 |
+| TypeScript Node | `@jbearak/dta-parser/node` | filesystem-backed `DtaFile` | 113--115, 117--119 |
+| Rust | `dta_parser::{read_dta, DtaFile}` | slice or bounded `Read + Seek` | 113--115, 117--119 |
+| R | `dtaparser::read_dta()` | local path through the bounded Rust core | 113--115, 117--119 |
+
+The Rust crate under `rust/dta-parser` is the native source of truth. The R
+package mirrors it under `r-package/dtaparser/src/vendor/dta-parser`; never edit
+only the mirror. `scripts/check-rust-sync.sh` checks source equality, Cargo
+locks, and the normalized offline dependency archive. Run
+`scripts/rebuild-r-vendor.sh` only when the locked dependency archive changes,
+then update its checked SHA-256 intentionally.
+
+## Conformance, fuzzing, and benchmarks
+
+`conformance/cases.json` is the checked 29-case inventory: 22 immutable fixture
+files with exact hashes and seven plainly identified generated/derived cases,
+including synthetic v113, v114, and big-endian v119. The canonical artifact
+records format and byte order; counts, order, storage and offsets; labels,
+formats and value-label associations/tables; `strL` cells and exact missing
+tags. Only nonmissing floating cells permit `1e-7` relative tolerance.
+
+```sh
+bun run conformance
+bun run fuzz:smoke
+scripts/check-rust-sync.sh
+```
+
+The conformance command reports R/haven as `SKIP` when they are unavailable;
+set `DTA_REQUIRE_R_CONFORMANCE=1` to turn that into a failure. CI always
+requires the R package and haven on Linux, macOS, and Windows. The fuzz smoke
+test is deterministic, fixture-seeded, input/work bounded, stable-Rust, and
+offline-friendly. Set `DTA_FUZZ_CASES=64` for a longer local run.
+
+Reproducible, report-only benchmark commands and the raw baseline format live
+in [`benchmarks/README.md`](benchmarks/README.md). Benchmarks never impose flaky
+timing thresholds.
+
+## Contributing and release checklist
+
+Before merging parser or packaging changes:
+
+1. Run the Bun tests, typecheck, build, conformance, Rust fmt/clippy/tests/docs,
+   deterministic fuzz smoke, and source/archive sync check.
+2. If the native core changed, mirror it into the R vendor tree and add a
+   regression at the root first.
+3. Run `R CMD build` and `R CMD check` with haven installed; confirm the GNU
+   Rust target is actually used with Rtools on Windows.
+4. Record benchmark results only after correctness is green; investigate
+   changes without adding timing assertions.
+5. Confirm lockfiles, archive identity, support matrix, limitations, package
+   docs, and changelog/release notes describe the same source.
+
+Issue #8 is complete across the sequential native-core, observation, legacy
+and bounded-file, R bridge, and conformance/CI slices. Publishing releases is a
+separate maintainer action.
+
 ## Supported Files
 
 Supported `.dta` format versions:

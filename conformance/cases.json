@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "canonical_oracle": "rust/dta-parser/tests/data/modern-canonical.json",
+    "canonical_sha256": "0686528061a7f7272c90c2616b6a72ddb9410617be1cd23e46a45d0fcbddf0e2",
+    "fixture_count": 22,
+    "case_count": 29,
+    "fixture_oracle_gate": { "binary": "observations", "test": "every_checked_fixture_matches_the_typescript_haven_oracle" },
+    "float_contract": "Only nonmissing float and double cells permit relative tolerance <= 1e-7; every other field and cell is exact."
+  },
+  "fixture_cases": [
+    { "name": "all_types.dta", "sha256": "566a5b6ea18eb0d755c817e98fef4f8133eea64066a5ab8ade229924c4f263a8" },
+    { "name": "all_types_v115.dta", "sha256": "3949a985fdf6df13ff781348a7f1390e33897afcd651ac7ee1b7a90284522fe7" },
+    { "name": "all_types_v117.dta", "sha256": "2b127a339b6d252003974093c9030e0e18a73a3d8132055295aa42dc2300c3b2" },
+    { "name": "all_types_v118.dta", "sha256": "f11d727b4c92cdd3d7d24ed82ab0a273e9e0ab7042d64df63f2f3ba9b8ea562c" },
+    { "name": "auto_v115.dta", "sha256": "d81a55420f47da969fe17fab742a91391921b836791675e2ffe58fbbe9340693" },
+    { "name": "auto_v117.dta", "sha256": "5a15b24b4eb87f262918d28dab75d84e3ef6e7a008dd763d595d9103a77e6e35" },
+    { "name": "auto_v118.dta", "sha256": "cb1b1668a946288ef312d06f90f62da2ac550b8a7ef8b0e95d7b3ac7ada80a4c" },
+    { "name": "empty.dta", "sha256": "6ecbb795b323388c43f037996b46468016d24c3e253ebf518835aeaf6c88554e" },
+    { "name": "empty_v115.dta", "sha256": "b580498b62d4b4976083b50cedde68fe734e965c1f99e35b54989a41fdf0fb65" },
+    { "name": "empty_v118.dta", "sha256": "a347ecf3dd3ff62368db5a4fb4565deeec35885bb7bfb6e271bc836f0fe14cb5" },
+    { "name": "missing_values.dta", "sha256": "e2e3a16f311744e81932ec158d7eccd431e2ddd62882412eed65a6d32bb5e198" },
+    { "name": "missing_values_v115.dta", "sha256": "c2be16ea95a878fb7a16d22422f7ede452bd780ceafbbfd424beb6d542a94397" },
+    { "name": "missing_values_v118.dta", "sha256": "9a0a6d495e3929205dff7481fd1eddd485c981b629616960e59daf6463ab2f0e" },
+    { "name": "strl_test.dta", "sha256": "144fe82a18e6e4d45fe12c9a75b759087028a6c5c8a323894d7d4237446e1073" },
+    { "name": "strl_test_v118.dta", "sha256": "7c39f6f737a5d6f22ed25d6374be1f582982979c96028d5c375658109fda9412" },
+    { "name": "value_labels.dta", "sha256": "29463f61a4ca710e9e822442c94252d7d766235bbecf25b79c20f67f4961df0a" },
+    { "name": "value_labels_v115.dta", "sha256": "a01d438c92cf7583fe0fab2b76dce3056154d0059bd41bbac7b241a090c6be86" },
+    { "name": "value_labels_v117.dta", "sha256": "6ac78f45b3c5318da9d84216ac15bb78d1ea5322b4b8381c51dd96d82049cc02" },
+    { "name": "value_labels_v118.dta", "sha256": "7d3f32fa5226f096c6b7f64e813b8c399d0621f0d85377b689dfd1ddafeaf4ea" },
+    { "name": "wide.dta", "sha256": "0a7a82027896d0f08e00ba0bd7878e592fb9581ca6a22f191e2dbbd30e4aeb0b" },
+    { "name": "wide_v115.dta", "sha256": "4b3f4569a6a4ee34a21e186084889a086f094aee3fdc2c7dc0e11bd56180d174" },
+    { "name": "wide_v118.dta", "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c" }
+  ],
+  "deterministic_cases": [
+    { "name": "synthetic-v113-layout", "kind": "generated-valid", "coverage": "native-only synthetic", "gate": { "binary": "legacy", "test": "decodes_true_big_endian_v113_and_windows_1252" } },
+    { "name": "synthetic-v114-layout", "kind": "generated-valid", "coverage": "native-only synthetic", "gate": { "binary": "legacy", "test": "reads_every_checked_in_legacy_fixture_and_synthetic_v114" } },
+    { "name": "synthetic-v119-big-endian", "kind": "generated-valid", "coverage": "native-only synthetic", "gate": { "binary": "observations", "test": "decodes_big_endian_v119_observations_and_labels" } },
+    { "name": "projected-row-window", "kind": "derived-valid", "coverage": "fixture-backed TypeScript and Rust; R/haven package tests", "gate": { "binary": "conformance", "test": "every_fixture_has_exact_hash_and_slice_file_projection_parity" } },
+    { "name": "invalid-signature", "kind": "derived-rejection", "coverage": "Rust slice/file exact error parity", "gate": { "binary": "conformance", "test": "invalid_signatures_do_not_disagree_between_slice_and_file" } },
+    { "name": "truncated-observations", "kind": "derived-rejection", "coverage": "Rust slice/file exact error parity", "gate": { "binary": "conformance", "test": "truncated_closing_tag_does_not_disagree_between_slice_and_file" } },
+    { "name": "dangling-strl-pointer", "kind": "derived-rejection", "coverage": "Rust slice parser malformed-strL rejection", "gate": { "binary": "strl", "test": "rejects_partial_dangling_duplicate_and_invalid_gso_records" } }
+  ]
+}
