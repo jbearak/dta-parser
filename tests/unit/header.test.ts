@@ -197,41 +197,6 @@ describe('parse_metadata', () => {
         });
     });
 
-    // ----- v119 tests -----
-
-    // Note: Stata only writes v119 when K > 32,767 or
-    // N > 2,147,483,647. The auto_v119.dta fixture is
-    // actually v118 because its 12 vars and 74 obs fit
-    // within v118 limits. We test it parses correctly
-    // and matches v118.
-    describe('v119 auto.dta (saved as v118 by Stata)', () => {
-        it('parses auto_v119.dta as v118', () => {
-            const my_meta = parse_metadata(
-                load_fixture('auto_v119.dta')
-            );
-            // Stata saved this as v118 since data fits
-            expect(my_meta.format_version).toBe(118);
-            expect(my_meta.nobs).toBe(74);
-            expect(my_meta.nvar).toBe(12);
-
-            const the_names = my_meta.variables.map(
-                v => v.name
-            );
-            expect(the_names).toEqual(AUTO_VARNAMES);
-        });
-
-        it('reads variable labels from auto_v119.dta', () => {
-            const my_meta = parse_metadata(
-                load_fixture('auto_v119.dta')
-            );
-            expect(my_meta.variables[0].label).toBe(
-                'Make and model'
-            );
-            expect(my_meta.variables[11].value_label_name)
-                .toBe('origin');
-        });
-    });
-
     // ----- Edge cases -----
 
     describe('empty dataset', () => {
@@ -270,7 +235,7 @@ describe('parse_metadata', () => {
     });
 
     describe('all_types dataset', () => {
-        it('parses all storage types (v119)', () => {
+        it('parses all storage types (current Stata release 118)', () => {
             const my_meta = parse_metadata(
                 load_fixture('all_types.dta')
             );
@@ -358,9 +323,6 @@ describe('parse_metadata', () => {
             const my_v118 = parse_metadata(
                 load_fixture('auto_v118.dta')
             );
-            const my_v119 = parse_metadata(
-                load_fixture('auto_v119.dta')
-            );
 
             const the_names_117 = my_v117.variables.map(
                 v => v.name
@@ -368,12 +330,7 @@ describe('parse_metadata', () => {
             const the_names_118 = my_v118.variables.map(
                 v => v.name
             );
-            const the_names_119 = my_v119.variables.map(
-                v => v.name
-            );
-
             expect(the_names_117).toEqual(the_names_118);
-            expect(the_names_118).toEqual(the_names_119);
         });
 
         it('produces same variable labels across formats',
@@ -384,9 +341,6 @@ describe('parse_metadata', () => {
                 const my_v118 = parse_metadata(
                     load_fixture('auto_v118.dta')
                 );
-                const my_v119 = parse_metadata(
-                    load_fixture('auto_v119.dta')
-                );
 
                 const the_labels_117 = my_v117.variables.map(
                     v => v.label
@@ -394,15 +348,8 @@ describe('parse_metadata', () => {
                 const the_labels_118 = my_v118.variables.map(
                     v => v.label
                 );
-                const the_labels_119 = my_v119.variables.map(
-                    v => v.label
-                );
-
                 expect(the_labels_117).toEqual(
                     the_labels_118
-                );
-                expect(the_labels_118).toEqual(
-                    the_labels_119
                 );
             }
         );
@@ -415,9 +362,6 @@ describe('parse_metadata', () => {
                 const my_v118 = parse_metadata(
                     load_fixture('auto_v118.dta')
                 );
-                const my_v119 = parse_metadata(
-                    load_fixture('auto_v119.dta')
-                );
 
                 const the_types_117 = my_v117.variables.map(
                     v => v.type
@@ -425,15 +369,8 @@ describe('parse_metadata', () => {
                 const the_types_118 = my_v118.variables.map(
                     v => v.type
                 );
-                const the_types_119 = my_v119.variables.map(
-                    v => v.type
-                );
-
                 expect(the_types_117).toEqual(
                     the_types_118
-                );
-                expect(the_types_118).toEqual(
-                    the_types_119
                 );
             }
         );

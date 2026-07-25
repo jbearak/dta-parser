@@ -40,19 +40,30 @@ pub(crate) fn legacy_type(code: u8, version: FormatVersion) -> Result<(DtaType, 
     Ok(value)
 }
 
-pub(crate) fn legacy_fixed_metadata_end(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct LegacyFixedOffsets {
+    pub variable_types: usize,
+    pub varnames: usize,
+    pub sortlist: usize,
+    pub formats: usize,
+    pub value_label_names: usize,
+    pub variable_labels: usize,
+    pub end: usize,
+}
+
+pub(crate) fn legacy_fixed_offsets(
     nvar: usize,
     version: FormatVersion,
-) -> Result<usize, DtaError> {
-    let mut cursor = HEADER_SIZE;
-    cursor = checked_add(cursor, nvar, "legacy variable types")?;
-    cursor = checked_add(
-        cursor,
+) -> Result<LegacyFixedOffsets, DtaError> {
+    let variable_types = HEADER_SIZE;
+    let varnames = checked_add(variable_types, nvar, "legacy variable types")?;
+    let sortlist = checked_add(
+        varnames,
         checked_mul(nvar, VARNAME_WIDTH, "legacy varnames")?,
         "legacy varnames",
     )?;
-    cursor = checked_add(
-        cursor,
+    let formats = checked_add(
+        sortlist,
         checked_mul(
             checked_add(nvar, 1, "legacy sortlist entries")?,
             SORTLIST_WIDTH,
@@ -60,21 +71,30 @@ pub(crate) fn legacy_fixed_metadata_end(
         )?,
         "legacy sortlist",
     )?;
-    cursor = checked_add(
-        cursor,
+    let value_label_names = checked_add(
+        formats,
         checked_mul(nvar, format_width(version), "legacy formats")?,
         "legacy formats",
     )?;
-    cursor = checked_add(
-        cursor,
+    let variable_labels = checked_add(
+        value_label_names,
         checked_mul(nvar, VALUE_LABEL_NAME_WIDTH, "legacy value-label names")?,
         "legacy value-label names",
     )?;
-    checked_add(
-        cursor,
+    let end = checked_add(
+        variable_labels,
         checked_mul(nvar, VARIABLE_LABEL_WIDTH, "legacy variable labels")?,
         "legacy variable labels",
-    )
+    )?;
+    Ok(LegacyFixedOffsets {
+        variable_types,
+        varnames,
+        sortlist,
+        formats,
+        value_label_names,
+        variable_labels,
+        end,
+    })
 }
 
 fn scan_expansion_fields_ordered(
@@ -142,7 +162,8 @@ pub(crate) fn parse_legacy_metadata(
         .map_err(|_| DtaError::ArithmeticOverflow("legacy observation count"))?;
     let nvar_usize =
         usize::try_from(nvar).map_err(|_| DtaError::ArithmeticOverflow("legacy variable count"))?;
-    let expansion_start = legacy_fixed_metadata_end(nvar_usize, version)?;
+    let fixed = legacy_fixed_offsets(nvar_usize, version)?;
+    let expansion_start = fixed.end;
     slice_at(bytes, 0, expansion_start, "legacy fixed metadata sections")?;
     let data_offset = scan_expansion_fields_ordered(bytes, expansion_start, byte_order)?;
     parse_legacy_metadata_layout(
@@ -168,47 +189,17 @@ pub(crate) fn parse_legacy_metadata_layout(
 ) -> Result<DtaMetadata, DtaError> {
     let nvar_usize =
         usize::try_from(nvar).map_err(|_| DtaError::ArithmeticOverflow("legacy variable count"))?;
-    let expansion_start = legacy_fixed_metadata_end(nvar_usize, version)?;
+    let fixed = legacy_fixed_offsets(nvar_usize, version)?;
+    let expansion_start = fixed.end;
     if data_offset < checked_add(expansion_start, 5, "legacy expansion terminator")? {
         return Err(DtaError::MissingExpansionTerminator);
     }
     slice_at(bytes, 0, expansion_start, "legacy fixed metadata sections")?;
 
     let dataset_label = decode_field(slice_at(bytes, 10, 81, "legacy dataset label")?);
-    let variable_types_offset = HEADER_SIZE;
-    let varnames_offset = checked_add(variable_types_offset, nvar_usize, "legacy varnames")?;
-    let sortlist_offset = checked_add(
-        varnames_offset,
-        checked_mul(nvar_usize, VARNAME_WIDTH, "legacy varnames")?,
-        "legacy sortlist",
-    )?;
-    let formats_offset = checked_add(
-        sortlist_offset,
-        checked_mul(
-            checked_add(nvar_usize, 1, "legacy sortlist entries")?,
-            SORTLIST_WIDTH,
-            "legacy sortlist",
-        )?,
-        "legacy formats",
-    )?;
-    let value_label_names_offset = checked_add(
-        formats_offset,
-        checked_mul(nvar_usize, format_width(version), "legacy formats")?,
-        "legacy value-label names",
-    )?;
-    let variable_labels_offset = checked_add(
-        value_label_names_offset,
-        checked_mul(
-            nvar_usize,
-            VALUE_LABEL_NAME_WIDTH,
-            "legacy value-label names",
-        )?,
-        "legacy variable labels",
-    )?;
-
     let type_codes = slice_at(
         bytes,
-        variable_types_offset,
+        fixed.variable_types,
         nvar_usize,
         "legacy variable types",
     )?;
@@ -216,17 +207,17 @@ pub(crate) fn parse_legacy_metadata_layout(
     let mut byte_offset = 0_u64;
     for (index, &code) in type_codes.iter().enumerate() {
         let name_at = checked_add(
-            varnames_offset,
+            fixed.varnames,
             checked_mul(index, VARNAME_WIDTH, "legacy varname offset")?,
             "legacy varname offset",
         )?;
         let format_at = checked_add(
-            formats_offset,
+            fixed.formats,
             checked_mul(index, format_width(version), "legacy format offset")?,
             "legacy format offset",
         )?;
         let value_label_at = checked_add(
-            value_label_names_offset,
+            fixed.value_label_names,
             checked_mul(
                 index,
                 VALUE_LABEL_NAME_WIDTH,
@@ -235,7 +226,7 @@ pub(crate) fn parse_legacy_metadata_layout(
             "legacy value-label name offset",
         )?;
         let label_at = checked_add(
-            variable_labels_offset,
+            fixed.variable_labels,
             checked_mul(index, VARIABLE_LABEL_WIDTH, "legacy variable-label offset")?,
             "legacy variable-label offset",
         )?;
@@ -305,12 +296,12 @@ pub(crate) fn parse_legacy_metadata_layout(
         section_offsets: SectionOffsets {
             stata_data: 0,
             map: 0,
-            variable_types: to_u64(variable_types_offset, "legacy variable_types offset")?,
-            varnames: to_u64(varnames_offset, "legacy varnames offset")?,
-            sortlist: to_u64(sortlist_offset, "legacy sortlist offset")?,
-            formats: to_u64(formats_offset, "legacy formats offset")?,
-            value_label_names: to_u64(value_label_names_offset, "legacy value_label_names offset")?,
-            variable_labels: to_u64(variable_labels_offset, "legacy variable_labels offset")?,
+            variable_types: to_u64(fixed.variable_types, "legacy variable_types offset")?,
+            varnames: to_u64(fixed.varnames, "legacy varnames offset")?,
+            sortlist: to_u64(fixed.sortlist, "legacy sortlist offset")?,
+            formats: to_u64(fixed.formats, "legacy formats offset")?,
+            value_label_names: to_u64(fixed.value_label_names, "legacy value_label_names offset")?,
+            variable_labels: to_u64(fixed.variable_labels, "legacy variable_labels offset")?,
             characteristics: to_u64(expansion_start, "legacy characteristics offset")?,
             data,
             strls: value_labels,

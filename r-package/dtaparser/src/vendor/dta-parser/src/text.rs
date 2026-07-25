@@ -11,6 +11,10 @@ pub(crate) fn decode_windows_1252(bytes: &[u8]) -> String {
         .into_owned()
 }
 
+pub(crate) fn is_utf8_continuation(byte: u8) -> bool {
+    byte & 0xc0 == 0x80
+}
+
 pub(crate) fn field_bytes(field: &[u8]) -> &[u8] {
     let end = field
         .iter()

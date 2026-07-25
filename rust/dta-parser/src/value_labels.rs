@@ -1,5 +1,5 @@
 use crate::endian::{checked_add, checked_mul, expect_at, offset_to_usize, read_i32, slice_at};
-use crate::text::{decode_utf8, decode_windows_1252, field_bytes};
+use crate::text::{decode_utf8, decode_windows_1252, field_bytes, is_utf8_continuation};
 use crate::{
     classify_long_missing, DtaError, DtaMetadata, FormatVersion, ValueLabelEntry, ValueLabelTable,
 };
@@ -161,6 +161,20 @@ fn parse_table(
                 text_length,
             });
         };
+        if metadata.format_version.is_modern()
+            && is_utf8_continuation(payload[text_start + text_offset_usize])
+        {
+            return Err(DtaError::InvalidValueLabelTextOffset {
+                entry_index,
+                offset: checked_add(
+                    payload_start,
+                    raw_offset_position,
+                    "value-label text offset position",
+                )?,
+                text_offset,
+                text_length,
+            });
+        }
 
         let value_position =
             checked_add(values_start, element_offset, "value-label value position")?;

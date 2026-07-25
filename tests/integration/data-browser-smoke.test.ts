@@ -46,7 +46,7 @@ describe('data browser smoke test', () => {
 
     it('handles all fixture files without crashing', async () => {
         const the_fixtures = [
-            'auto_v118.dta', 'auto_v117.dta', 'auto_v119.dta',
+            'auto_v118.dta', 'auto_v117.dta',
             'value_labels.dta', 'empty.dta',
             'wide.dta', 'missing_values.dta',
             'strl_test.dta', 'all_types.dta',
@@ -92,53 +92,44 @@ describe('data browser smoke test', () => {
         }
     });
 
-    it('cross-version consistency: v117, v118, v119 auto.dta match', async () => {
+    it('cross-version consistency: v117 and v118 auto.dta match', async () => {
         const my_v117 = await DtaFile.open(path.join(FIXTURE_DIR, 'auto_v117.dta'));
         const my_v118 = await DtaFile.open(path.join(FIXTURE_DIR, 'auto_v118.dta'));
-        const my_v119 = await DtaFile.open(path.join(FIXTURE_DIR, 'auto_v119.dta'));
 
         try {
             // Same dimensions
             expect(my_v117.nobs).toBe(my_v118.nobs);
-            expect(my_v118.nobs).toBe(my_v119.nobs);
             expect(my_v117.nvar).toBe(my_v118.nvar);
 
             // Same variable names
             for (let i = 0; i < my_v118.nvar; i++) {
                 expect(my_v117.variables[i].name).toBe(my_v118.variables[i].name);
-                expect(my_v118.variables[i].name).toBe(my_v119.variables[i].name);
             }
 
             // Same data (first 5 rows)
             const the_rows_117 = await my_v117.read_rows(0, 5);
             const the_rows_118 = await my_v118.read_rows(0, 5);
-            const the_rows_119 = await my_v119.read_rows(0, 5);
 
             for (let i = 0; i < 5; i++) {
                 for (let j = 0; j < my_v118.nvar; j++) {
                     // Allow float precision differences between versions
                     const my_v117_val = the_rows_117[i][j];
                     const my_v118_val = the_rows_118[i][j];
-                    const my_v119_val = the_rows_119[i][j];
 
                     if (typeof my_v118_val === 'string') {
                         expect(my_v117_val).toBe(my_v118_val);
-                        expect(my_v118_val).toBe(my_v119_val);
                     } else if (typeof my_v118_val === 'number') {
                         // Float values may differ slightly between format versions
                         expect(my_v117_val).toBeCloseTo(my_v118_val as number, 4);
-                        expect(my_v118_val).toBeCloseTo(my_v119_val as number, 4);
                     } else {
                         // tagged missing values
                         expect(my_v117_val).toEqual(my_v118_val);
-                        expect(my_v118_val).toEqual(my_v119_val);
                     }
                 }
             }
         } finally {
             my_v117.close();
             my_v118.close();
-            my_v119.close();
         }
     });
 

@@ -12,6 +12,7 @@ mod file;
 mod legacy;
 mod metadata;
 mod missing;
+mod selection;
 mod strl;
 mod text;
 mod types;

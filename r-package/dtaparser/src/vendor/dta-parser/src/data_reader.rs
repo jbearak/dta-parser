@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::endian::{
     checked_add, checked_sub, ensure_map_offset, expect_at, offset_to_usize, read_i16, read_i32,
     read_i8, read_u32, read_u64, slice_at,
 };
+use crate::selection::{resolve_columns, row_window};
 use crate::strl::decode_strl_columns;
 use crate::text::{decode_utf8, decode_windows_1252, field_bytes};
 use crate::{
@@ -85,35 +86,6 @@ fn validate_data_section(bytes: &[u8], metadata: &DtaMetadata) -> Result<usize, 
         metadata.section_offsets.value_labels,
     )?;
     Ok(payload_start)
-}
-
-fn resolve_columns(metadata: &DtaMetadata, options: &ReadOptions) -> Result<Vec<u32>, DtaError> {
-    let requested = match &options.column_indices {
-        Some(indices) => indices.clone(),
-        None => (0..metadata.nvar).collect(),
-    };
-    let mut seen = HashSet::with_capacity(requested.len());
-    let mut resolved = Vec::with_capacity(requested.len());
-    for index in requested {
-        if index >= metadata.nvar {
-            return Err(DtaError::InvalidColumnIndex {
-                index,
-                nvar: metadata.nvar,
-            });
-        }
-        if seen.insert(index) {
-            resolved.push(index);
-        }
-    }
-
-    Ok(resolved)
-}
-
-fn row_window(metadata: &DtaMetadata, options: &ReadOptions) -> (u64, u64) {
-    let row_start = options.row_start.min(metadata.nobs);
-    let available = metadata.nobs - row_start;
-    let row_count = options.row_count.unwrap_or(available).min(available);
-    (row_start, row_count)
 }
 
 fn first_cell_offset(
@@ -311,51 +283,6 @@ pub fn read_dta_with_options(bytes: &[u8], options: &ReadOptions) -> Result<DtaD
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn row_windows_are_clamped_without_underflow() {
-        let mut metadata: DtaMetadata = serde_json::from_value(serde_json::json!({
-            "format_version": 118,
-            "byte_order": "LSF",
-            "nvar": 0,
-            "nobs": "10",
-            "dataset_label": "",
-            "variables": [],
-            "section_offsets": {
-                "stata_data": "0", "map": "1", "variable_types": "2", "varnames": "3",
-                "sortlist": "4", "formats": "5", "value_label_names": "6",
-                "variable_labels": "7", "characteristics": "8", "data": "9",
-                "strls": "10", "value_labels": "11", "stata_data_close": "12",
-                "end_of_file": "13"
-            },
-            "obs_length": "0"
-        }))
-        .unwrap();
-        assert_eq!(row_window(&metadata, &ReadOptions::default()), (0, 10));
-        assert_eq!(
-            row_window(
-                &metadata,
-                &ReadOptions {
-                    row_start: 8,
-                    row_count: Some(9),
-                    column_indices: None,
-                }
-            ),
-            (8, 2)
-        );
-        metadata.nobs = 0;
-        assert_eq!(
-            row_window(
-                &metadata,
-                &ReadOptions {
-                    row_start: u64::MAX,
-                    row_count: None,
-                    column_indices: None,
-                }
-            ),
-            (0, 0)
-        );
-    }
 
     #[test]
     fn rejects_a_value_labels_offset_too_small_for_the_strls_close() {

@@ -141,6 +141,10 @@ pub enum DtaError {
     #[error("max_buffer_bytes must be at least 1024 bytes")]
     InvalidBufferSize,
 
+    /// A file-backed raw staging read exceeded the configured scratch limit.
+    #[error("raw staging read requested {requested} bytes, exceeding max_buffer_bytes={limit}")]
+    BufferLimitExceeded { requested: usize, limit: usize },
+
     /// A file-backed consumer requested cooperative interruption.
     #[error("read cancelled")]
     Cancelled,
@@ -171,9 +175,9 @@ pub enum DtaError {
         expected: usize,
     },
 
-    /// A label text offset did not point inside the table's text block.
+    /// A label text offset did not point at a valid encoded-text boundary.
     #[error(
-        "value-label entry {entry_index} at byte offset {offset} has text offset {text_offset}, outside a {text_length}-byte text block"
+        "value-label entry {entry_index} at byte offset {offset} has invalid text offset {text_offset} for a {text_length}-byte text block"
     )]
     InvalidValueLabelTextOffset {
         entry_index: usize,

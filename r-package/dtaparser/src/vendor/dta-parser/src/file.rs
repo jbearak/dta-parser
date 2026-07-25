@@ -7,11 +7,12 @@ use encoding_rs::{CoderResult, Encoding, UTF_8, WINDOWS_1252};
 
 use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
 use crate::legacy::{
-    format_width, legacy_fixed_metadata_end, legacy_type, HEADER_SIZE, SORTLIST_WIDTH,
-    VALUE_LABEL_NAME_WIDTH, VARIABLE_LABEL_WIDTH, VARNAME_WIDTH,
+    format_width, legacy_fixed_offsets, legacy_type, HEADER_SIZE, VALUE_LABEL_NAME_WIDTH,
+    VARIABLE_LABEL_WIDTH, VARNAME_WIDTH,
 };
 use crate::metadata::{field_widths, resolve_type};
-use crate::text::{decode_utf8, decode_windows_1252, field_bytes};
+use crate::selection::{resolve_columns, row_window};
+use crate::text::{decode_utf8, decode_windows_1252, field_bytes, is_utf8_continuation};
 use crate::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
     classify_int_missing, classify_long_missing, ByteOrder, Column, ColumnValues, DtaData,
@@ -21,6 +22,7 @@ use crate::{
 
 const DEFAULT_MAX_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 const MIN_MAX_BUFFER_BYTES: usize = 1024;
+const STRL_CANCEL_CHECK_INTERVAL: usize = 1024;
 const MODERN_SIGNATURE: &[u8] = b"<stata_dta><header><release>";
 
 /// Configuration for seekable file-backed reads.
@@ -64,9 +66,10 @@ impl Scratch {
 
     fn record(&mut self, length: usize) -> Result<(), DtaError> {
         if length > self.limit {
-            return Err(DtaError::ArithmeticOverflow(
-                "file scratch buffer exceeds configured limit",
-            ));
+            return Err(DtaError::BufferLimitExceeded {
+                requested: length,
+                limit: self.limit,
+            });
         }
         self.peak = self.peak.max(length);
         Ok(())
@@ -418,7 +421,6 @@ impl<R: Read + Seek> DtaFile<R> {
                         .checked_mul(obs_length)
                         .ok_or(DtaError::ArithmeticOverflow("staged row offset"))?;
                     for (builder, &index) in builders.iter_mut().zip(&indices) {
-                        check_cancel(&mut should_interrupt)?;
                         let variable = &self.metadata.variables[index as usize];
                         let width = usize::try_from(variable.byte_width)
                             .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
@@ -458,7 +460,6 @@ impl<R: Read + Seek> DtaFile<R> {
                     .checked_mul(self.metadata.obs_length)
                     .ok_or(DtaError::ArithmeticOverflow("row offset"))?;
                 for (builder, &index) in builders.iter_mut().zip(&indices) {
-                    check_cancel(&mut should_interrupt)?;
                     let variable = &self.metadata.variables[index as usize];
                     let cell_offset = payload_start
                         .checked_add(row_offset)
@@ -690,6 +691,129 @@ fn decode_range<R: Read + Seek, F: FnMut() -> bool>(
         if found_nul || completed == length {
             output.shrink_to_fit();
             return Ok((output, found_nul));
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    offset: u64,
+    length: usize,
+    encoding: &'static Encoding,
+    requested_offsets: &[usize],
+    requested_offset_positions: &[usize],
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    context: &'static str,
+) -> Result<(String, Vec<usize>), DtaError> {
+    if requested_offsets.len() != requested_offset_positions.len() {
+        return Err(DtaError::ArithmeticOverflow("value-label offset positions"));
+    }
+    let mut ordered = requested_offsets
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(index, offset)| (offset, index))
+        .collect::<Vec<_>>();
+    // Equal raw offsets retain table-entry order so a malformed shared offset
+    // reports the same first entry as the slice parser.
+    ordered.sort_by_key(|(offset, _)| *offset);
+    let mut mapped = vec![0; requested_offsets.len()];
+    let mut next_mapping = 0;
+    let mut output = String::new();
+    let mut decoder = encoding.new_decoder_without_bom_handling();
+    let mut completed = 0_usize;
+    let mut first_invalid_boundary: Option<(usize, usize)> = None;
+
+    loop {
+        check_cancel(should_interrupt)?;
+        let remaining = length.saturating_sub(completed);
+        let chunk_length = remaining.min(scratch.limit);
+        let bytes = if chunk_length == 0 {
+            Vec::new()
+        } else {
+            let chunk_offset = offset
+                .checked_add(
+                    u64::try_from(completed)
+                        .map_err(|_| DtaError::ArithmeticOverflow("string read offset"))?,
+                )
+                .ok_or(DtaError::ArithmeticOverflow("string read offset"))?;
+            read_exact_at(reader, chunk_offset, chunk_length, scratch, context)?
+        };
+        let chunk_end = completed
+            .checked_add(chunk_length)
+            .ok_or(DtaError::ArithmeticOverflow("string read length"))?;
+        let mut input_start = 0;
+        while next_mapping < ordered.len() && ordered[next_mapping].0 < chunk_end {
+            let boundary = ordered[next_mapping].0;
+            let input_end = boundary.saturating_sub(completed).min(bytes.len());
+            let original_index = ordered[next_mapping].1;
+            if std::ptr::eq(encoding, UTF_8)
+                && is_utf8_continuation(bytes[input_end])
+                && match first_invalid_boundary {
+                    Some((index, _)) => original_index < index,
+                    None => true,
+                }
+            {
+                first_invalid_boundary = Some((original_index, boundary));
+            }
+            decode_into_string(
+                &mut decoder,
+                &bytes[input_start..input_end],
+                true,
+                &mut output,
+            )?;
+            input_start = input_end;
+            while next_mapping < ordered.len() && ordered[next_mapping].0 == boundary {
+                mapped[ordered[next_mapping].1] = output.len();
+                next_mapping += 1;
+            }
+            decoder = encoding.new_decoder_without_bom_handling();
+        }
+        let last = chunk_end == length;
+        decode_into_string(&mut decoder, &bytes[input_start..], last, &mut output)?;
+        completed = chunk_end;
+        if last {
+            if let Some((entry_index, boundary)) = first_invalid_boundary {
+                return Err(DtaError::InvalidValueLabelTextOffset {
+                    entry_index,
+                    offset: requested_offset_positions[entry_index],
+                    text_offset: i32::try_from(boundary).unwrap_or(i32::MAX),
+                    text_length: length,
+                });
+            }
+            output.shrink_to_fit();
+            return Ok((output, mapped));
+        }
+    }
+}
+
+fn decode_into_string(
+    decoder: &mut encoding_rs::Decoder,
+    input: &[u8],
+    last: bool,
+    output: &mut String,
+) -> Result<(), DtaError> {
+    let useful_capacity = input
+        .len()
+        .checked_mul(3)
+        .and_then(|value| value.checked_add(3))
+        .ok_or(DtaError::ArithmeticOverflow("decoded string capacity"))?;
+    output
+        .try_reserve(useful_capacity)
+        .map_err(|_| DtaError::ArithmeticOverflow("decoded string allocation"))?;
+    let mut consumed = 0;
+    loop {
+        let (result, read, _) = decoder.decode_to_string(&input[consumed..], output, last);
+        consumed = consumed
+            .checked_add(read)
+            .ok_or(DtaError::ArithmeticOverflow("decoded string input"))?;
+        match result {
+            CoderResult::InputEmpty => return Ok(()),
+            CoderResult::OutputFull => output
+                .try_reserve(input.len().saturating_mul(3).max(4))
+                .map_err(|_| DtaError::ArithmeticOverflow("decoded string allocation"))?,
         }
     }
 }
@@ -1135,7 +1259,8 @@ fn read_legacy_metadata<R: Read + Seek>(
         .map_err(|_| DtaError::ArithmeticOverflow("legacy observation count"))?;
     let nvar_usize =
         usize::try_from(nvar).map_err(|_| DtaError::ArithmeticOverflow("legacy variable count"))?;
-    let fixed_end = legacy_fixed_metadata_end(nvar_usize, version)?;
+    let fixed = legacy_fixed_offsets(nvar_usize, version)?;
+    let fixed_end = fixed.end;
     let fixed_end_u64 = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy fixed metadata length"))?;
     if fixed_end_u64 > file_length {
@@ -1148,50 +1273,15 @@ fn read_legacy_metadata<R: Read + Seek>(
     }
 
     let format_width = format_width(version);
-    let variable_types = u64::try_from(HEADER_SIZE)
-        .map_err(|_| DtaError::ArithmeticOverflow("legacy variable_types offset"))?;
-    let varnames = checked_add_u64(variable_types, u64::from(nvar), "legacy varnames")?;
-    let sortlist = checked_add_u64(
-        varnames,
-        u64::try_from(
-            nvar_usize
-                .checked_mul(VARNAME_WIDTH)
-                .ok_or(DtaError::ArithmeticOverflow("legacy varnames"))?,
-        )
-        .map_err(|_| DtaError::ArithmeticOverflow("legacy varnames"))?,
-        "legacy sortlist",
-    )?;
-    let formats = checked_add_u64(
-        sortlist,
-        u64::try_from(
-            nvar_usize
-                .checked_add(1)
-                .and_then(|value| value.checked_mul(SORTLIST_WIDTH))
-                .ok_or(DtaError::ArithmeticOverflow("legacy sortlist"))?,
-        )
-        .map_err(|_| DtaError::ArithmeticOverflow("legacy sortlist"))?,
-        "legacy formats",
-    )?;
-    let value_label_names = checked_add_u64(
-        formats,
-        u64::try_from(
-            nvar_usize
-                .checked_mul(format_width)
-                .ok_or(DtaError::ArithmeticOverflow("legacy formats"))?,
-        )
-        .map_err(|_| DtaError::ArithmeticOverflow("legacy formats"))?,
-        "legacy value-label names",
-    )?;
-    let variable_labels = checked_add_u64(
-        value_label_names,
-        u64::try_from(
-            nvar_usize
-                .checked_mul(VALUE_LABEL_NAME_WIDTH)
-                .ok_or(DtaError::ArithmeticOverflow("legacy value-label names"))?,
-        )
-        .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label names"))?,
-        "legacy variable labels",
-    )?;
+    let to_u64 = |offset: usize, context: &'static str| {
+        u64::try_from(offset).map_err(|_| DtaError::ArithmeticOverflow(context))
+    };
+    let variable_types = to_u64(fixed.variable_types, "legacy variable_types offset")?;
+    let varnames = to_u64(fixed.varnames, "legacy varnames offset")?;
+    let sortlist = to_u64(fixed.sortlist, "legacy sortlist offset")?;
+    let formats = to_u64(fixed.formats, "legacy formats offset")?;
+    let value_label_names = to_u64(fixed.value_label_names, "legacy value_label_names offset")?;
+    let variable_labels = to_u64(fixed.variable_labels, "legacy variable_labels offset")?;
 
     let mut never_cancel = || false;
     let dataset_label = decode_range(
@@ -1374,7 +1464,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
-    let name_width = match metadata.format_version {
+    let name_width: u16 = match metadata.format_version {
         FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 | FormatVersion::V117 => 33,
         FormatVersion::V118 | FormatVersion::V119 => 129,
     };
@@ -1392,6 +1482,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
 
     while cursor < section_end {
         check_cancel(should_interrupt)?;
+        let table_start = cursor;
         if modern {
             let marker = read_exact_at(
                 reader,
@@ -1412,7 +1503,6 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             }
             cursor = checked_add_u64(cursor, 5, "value-label table open")?;
         }
-        let table_start = cursor;
         let declared_i32 = read_i32_at(
             reader,
             cursor,
@@ -1434,7 +1524,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         let (name, found_name_nul) = decode_range(
             reader,
             name_start,
-            name_width,
+            usize::from(name_width),
             encoding,
             true,
             scratch,
@@ -1447,12 +1537,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 offset: error_offset(name_start),
             });
         }
-        cursor = checked_add_u64(
-            cursor,
-            u64::try_from(name_width)
-                .map_err(|_| DtaError::ArithmeticOverflow("value-label table name"))?,
-            "value-label table name",
-        )?;
+        cursor = checked_add_u64(cursor, u64::from(name_width), "value-label table name")?;
         read_exact_at(
             reader,
             cursor,
@@ -1555,7 +1640,9 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             "value-label text",
         )?;
         let mut previous_value = None;
-        let mut entries = Vec::with_capacity(entry_count);
+        let mut text_offsets = Vec::with_capacity(entry_count);
+        let mut text_offset_positions = Vec::with_capacity(entry_count);
+        let mut values = Vec::with_capacity(entry_count);
         for entry_index in 0..entry_count {
             check_cancel(should_interrupt)?;
             let relative = u64::try_from(
@@ -1602,28 +1689,51 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 }
             }
             previous_value = Some(value);
+            text_offsets.push(text_offset_usize);
+            text_offset_positions.push(error_offset(offset_position));
+            values.push(value);
+        }
+        let (decoded_text, decoded_offsets) = decode_range_with_offsets(
+            reader,
+            text_start,
+            text_length,
+            encoding,
+            &text_offsets,
+            &text_offset_positions,
+            scratch,
+            should_interrupt,
+            "reading value-label text",
+        )?;
+        let mut entries = Vec::with_capacity(entry_count);
+        for (entry_index, ((value, text_offset), decoded_offset)) in values
+            .into_iter()
+            .zip(text_offsets)
+            .zip(decoded_offsets)
+            .enumerate()
+        {
+            check_cancel(should_interrupt)?;
             let label_start = checked_add_u64(
                 text_start,
-                u64::try_from(text_offset_usize)
+                u64::try_from(text_offset)
                     .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
                 "value-label text offset",
             )?;
-            let (label, found_nul) = decode_range(
-                reader,
-                label_start,
-                text_length - text_offset_usize,
-                encoding,
-                true,
-                scratch,
-                should_interrupt,
-                "reading value-label text",
+            let suffix = decoded_text.get(decoded_offset..).ok_or(
+                DtaError::InvalidValueLabelTextOffset {
+                    entry_index,
+                    offset: error_offset(label_start),
+                    text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
+                    text_length,
+                },
             )?;
-            if !found_nul {
+            let Some(nul) = suffix.find('\0') else {
                 return Err(DtaError::MissingNulTerminator {
                     context: "value-label text",
                     offset: error_offset(label_start),
                 });
-            }
+            };
+            let mut label = suffix[..nul].to_owned();
+            label.shrink_to_fit();
             entries.push(ValueLabelEntry {
                 value,
                 missing_tag: classify_long_missing(value),
@@ -1643,33 +1753,6 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         ensure_absolute("end_of_file", cursor, metadata.section_offsets.end_of_file)?;
     }
     Ok(tables)
-}
-
-fn resolve_columns(metadata: &DtaMetadata, options: &ReadOptions) -> Result<Vec<u32>, DtaError> {
-    let requested = options
-        .column_indices
-        .clone()
-        .unwrap_or_else(|| (0..metadata.nvar).collect());
-    let mut seen = HashSet::with_capacity(requested.len());
-    let mut result = Vec::with_capacity(requested.len());
-    for index in requested {
-        if index >= metadata.nvar {
-            return Err(DtaError::InvalidColumnIndex {
-                index,
-                nvar: metadata.nvar,
-            });
-        }
-        if seen.insert(index) {
-            result.push(index);
-        }
-    }
-    Ok(result)
-}
-
-fn row_window(metadata: &DtaMetadata, options: &ReadOptions) -> (u64, u64) {
-    let start = options.row_start.min(metadata.nobs);
-    let available = metadata.nobs - start;
-    (start, options.row_count.unwrap_or(available).min(available))
 }
 
 fn validate_layout<R: Read + Seek>(
@@ -1757,6 +1840,12 @@ fn parse_pointer(
     offset: u64,
     metadata: &DtaMetadata,
 ) -> Result<Option<FileGsoKey>, DtaError> {
+    let bytes = bytes.get(..8).ok_or(DtaError::Truncated {
+        context: "strL pointer",
+        offset: error_offset(offset),
+        needed: 8,
+        available: bytes.len(),
+    })?;
     let (variable, observation) = if metadata.format_version == FormatVersion::V117 {
         (
             read_u32(bytes, 0, metadata.byte_order, "strL variable pointer")?,
@@ -1927,6 +2016,12 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
     builders: &mut [ColumnBuilder],
     should_interrupt: &mut F,
 ) -> Result<(), DtaError> {
+    if !builders
+        .iter()
+        .any(|builder| matches!(builder, ColumnBuilder::StrL { .. }))
+    {
+        return Ok(());
+    }
     let requested = builders
         .iter()
         .filter_map(|builder| match builder {
@@ -1935,12 +2030,6 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
         })
         .flatten()
         .collect::<HashSet<_>>();
-    if !builders
-        .iter()
-        .any(|builder| matches!(builder, ColumnBuilder::StrL { .. }))
-    {
-        return Ok(());
-    }
 
     let mut entries = HashMap::new();
     let mut seen = HashSet::new();
@@ -1950,13 +2039,13 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
         .value_labels
         .checked_sub(8)
         .ok_or(DtaError::ArithmeticOverflow("GSO section end"))?;
+    let header_length = if metadata.format_version == FormatVersion::V117 {
+        16
+    } else {
+        20
+    };
     while cursor < end {
         check_cancel(should_interrupt)?;
-        let header_length = if metadata.format_version == FormatVersion::V117 {
-            16
-        } else {
-            20
-        };
         let header = read_exact_at(reader, cursor, header_length, scratch, "reading GSO header")?;
         if &header[..3] != b"GSO" {
             return Err(DtaError::InvalidGsoMarker {
@@ -2070,7 +2159,18 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
         });
     }
 
+    materialize_file_strls(reader, scratch, &entries, builders, should_interrupt)
+}
+
+fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    entries: &HashMap<FileGsoKey, FileGsoEntry>,
+    builders: &mut [ColumnBuilder],
+    should_interrupt: &mut F,
+) -> Result<(), DtaError> {
     let mut decoded = HashMap::<FileGsoKey, String>::new();
+    let mut pointer_count = 0_usize;
     for builder in builders {
         let ColumnBuilder::StrL {
             pointers, values, ..
@@ -2079,6 +2179,12 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
             continue;
         };
         for pointer in pointers.iter().copied() {
+            if pointer_count % STRL_CANCEL_CHECK_INTERVAL == 0 {
+                check_cancel(should_interrupt)?;
+            }
+            pointer_count = pointer_count
+                .checked_add(1)
+                .ok_or(DtaError::ArithmeticOverflow("strL pointer count"))?;
             let Some(key) = pointer else {
                 values.push(String::new());
                 continue;
@@ -2113,4 +2219,119 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn short_strl_pointer_cells_return_a_truncation_error() {
+        let metadata = DtaMetadata {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 1,
+            nobs: 1,
+            dataset_label: String::new(),
+            variables: vec![VariableInfo {
+                name: "text".to_owned(),
+                dta_type: DtaType::StrL,
+                type_code: 32_768,
+                format: "%9s".to_owned(),
+                label: String::new(),
+                value_label_name: String::new(),
+                byte_width: 8,
+                byte_offset: 0,
+            }],
+            section_offsets: SectionOffsets::from_array([0; 14]),
+            obs_length: 8,
+        };
+        assert_eq!(
+            parse_pointer(&[0; 7], 42, &metadata),
+            Err(DtaError::Truncated {
+                context: "strL pointer",
+                offset: 42,
+                needed: 8,
+                available: 7,
+            })
+        );
+    }
+
+    #[test]
+    fn scratch_limit_has_a_dedicated_error() {
+        let mut scratch = Scratch::new(1024);
+        assert_eq!(
+            scratch.record(1025),
+            Err(DtaError::BufferLimitExceeded {
+                requested: 1025,
+                limit: 1024,
+            })
+        );
+    }
+
+    #[test]
+    fn strl_materialization_polls_during_long_null_and_cache_hit_runs() {
+        let pointer_count = STRL_CANCEL_CHECK_INTERVAL * 3;
+        let mut null_builders = vec![ColumnBuilder::StrL {
+            index: 0,
+            pointers: vec![None; pointer_count],
+            values: Vec::with_capacity(pointer_count),
+        }];
+        let mut null_checks = 0;
+        assert_eq!(
+            materialize_file_strls(
+                &mut Cursor::new(Vec::<u8>::new()),
+                &mut Scratch::new(1024),
+                &HashMap::new(),
+                &mut null_builders,
+                &mut || {
+                    null_checks += 1;
+                    null_checks >= 2
+                },
+            ),
+            Err(DtaError::Cancelled)
+        );
+        let ColumnBuilder::StrL { values, .. } = &null_builders[0] else {
+            unreachable!()
+        };
+        assert_eq!(values.len(), STRL_CANCEL_CHECK_INTERVAL);
+
+        let key = FileGsoKey {
+            variable: 1,
+            observation: 1,
+        };
+        let entries = HashMap::from([(
+            key,
+            FileGsoEntry {
+                content_offset: 0,
+                content_length: 2,
+                gso_type: 130,
+            },
+        )]);
+        let mut repeated_builders = vec![ColumnBuilder::StrL {
+            index: 0,
+            pointers: vec![Some(key); pointer_count],
+            values: Vec::with_capacity(pointer_count),
+        }];
+        let mut repeated_checks = 0;
+        assert_eq!(
+            materialize_file_strls(
+                &mut Cursor::new(b"x\0".to_vec()),
+                &mut Scratch::new(1024),
+                &entries,
+                &mut repeated_builders,
+                &mut || {
+                    repeated_checks += 1;
+                    repeated_checks >= 4
+                },
+            ),
+            Err(DtaError::Cancelled)
+        );
+        let ColumnBuilder::StrL { values, .. } = &repeated_builders[0] else {
+            unreachable!()
+        };
+        assert_eq!(values.len(), STRL_CANCEL_CHECK_INTERVAL);
+        assert!(values.iter().all(|value| value == "x"));
+    }
 }

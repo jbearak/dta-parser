@@ -11,6 +11,7 @@ RUST_SOURCES = rust/src/lib.rs \
 	vendor/dta-parser/src/lib.rs \
 	vendor/dta-parser/src/metadata.rs \
 	vendor/dta-parser/src/missing.rs \
+	vendor/dta-parser/src/selection.rs \
 	vendor/dta-parser/src/strl.rs \
 	vendor/dta-parser/src/text.rs \
 	vendor/dta-parser/src/types.rs \

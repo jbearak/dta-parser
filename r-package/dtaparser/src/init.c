@@ -102,8 +102,16 @@ static void fail_from_rust(char *message) {
     if (message == NULL) {
         Rf_error("native dtaparser call failed");
     }
-    strncpy(local, message, sizeof(local) - 1);
-    local[sizeof(local) - 1] = '\0';
+    size_t copy_length = strlen(message);
+    if (copy_length >= sizeof(local)) {
+        copy_length = sizeof(local) - 1;
+        while (copy_length > 0 &&
+               (((unsigned char) message[copy_length]) & 0xc0) == 0x80) {
+            copy_length--;
+        }
+    }
+    memcpy(local, message, copy_length);
+    local[copy_length] = '\0';
     dtaparser_free_error(message);
     Rf_error("%s", local);
 }

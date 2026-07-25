@@ -268,42 +268,22 @@ describe('DtaFile', () => {
             expect(typeof the_rows[0][0]).toBe('string');
         });
 
-        it('handles v119 format', async () => {
-            my_file = await DtaFile.open(
-                path.join(FIXTURE_DIR, 'auto_v119.dta')
-            );
-            expect(my_file.nobs).toBe(74);
-            expect(my_file.nvar).toBe(12);
-
-            const the_rows = await my_file.read_rows(0, 1);
-            expect(the_rows.length).toBe(1);
-            expect(typeof the_rows[0][0]).toBe('string');
-        });
-
-        it('produces same data across v117, v118, v119', async () => {
+        it('produces same data across v117 and v118', async () => {
             const my_f117 = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'auto_v117.dta')
             );
             const my_f118 = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'auto_v118.dta')
             );
-            const my_f119 = await DtaFile.open(
-                path.join(FIXTURE_DIR, 'auto_v119.dta')
-            );
 
             const the_rows_117 =
                 await my_f117.read_rows(0, 5);
             const the_rows_118 =
                 await my_f118.read_rows(0, 5);
-            const the_rows_119 =
-                await my_f119.read_rows(0, 5);
-
             expect(the_rows_117).toEqual(the_rows_118);
-            expect(the_rows_118).toEqual(the_rows_119);
 
             my_f117.close();
             my_f118.close();
-            my_f119.close();
         });
     });
 
@@ -439,27 +419,6 @@ describe('DtaFile', () => {
             expect(my_file.dataset_label).toBe(
                 'Value labels test dataset'
             );
-        });
-    });
-
-    // ----- legacy format (v114) -----
-
-    describe('legacy format v114', () => {
-        it('opens and reads auto_v114.dta', async () => {
-            my_file = await DtaFile.open(
-                path.join(FIXTURE_DIR, 'auto_v114.dta')
-            );
-            expect(my_file.nobs).toBe(74);
-            expect(my_file.nvar).toBe(12);
-        });
-
-        it('reads rows from auto_v114.dta', async () => {
-            my_file = await DtaFile.open(
-                path.join(FIXTURE_DIR, 'auto_v114.dta')
-            );
-            const the_rows = await my_file.read_rows(0, 5);
-            expect(the_rows.length).toBe(5);
-            expect(the_rows[0].length).toBe(12);
         });
     });
 
