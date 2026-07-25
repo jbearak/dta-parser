@@ -12,6 +12,12 @@ DTA_BENCH_ITERATIONS=100 bun benchmarks/typescript.ts
 Rscript benchmarks/r-benchmark.R 100
 ```
 
+`DTA_BENCH_ITERATIONS` uses the same grammar in the Rust and TypeScript
+benchmarks: `0` or a non-zero ASCII digit followed by ASCII digits. Leading
+zeros, signs, whitespace, decimal points, exponents, non-decimal prefixes, and
+integers above JavaScript's safe-integer limit are invalid and use the default
+of 25; valid values are clamped to 1 through 10,000.
+
 The Rust report separates filesystem I/O, metadata parsing, full slice decode,
 projected slice decode, and a projected 1 KiB-bounded file read. It includes
 modern all-types, wide, `strL`, and legacy files. The TypeScript report separates

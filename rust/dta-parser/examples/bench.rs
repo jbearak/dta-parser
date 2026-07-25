@@ -10,18 +10,38 @@ use std::time::{Duration, Instant};
 
 use dta_parser::{parse_metadata, read_dta, DtaFile, FileOptions, ReadOptions};
 
+const DEFAULT_ITERATIONS: usize = 25;
+const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
+
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../tests/fixtures/dta")
         .join(name)
 }
 
+fn parse_iterations(value: Option<&str>) -> usize {
+    let Some(value) = value else {
+        return DEFAULT_ITERATIONS;
+    };
+    let canonical_decimal = value == "0"
+        || (!value.is_empty()
+            && value.as_bytes()[0] != b'0'
+            && value.bytes().all(|byte| byte.is_ascii_digit()));
+    if !canonical_decimal {
+        return DEFAULT_ITERATIONS;
+    }
+    let Ok(parsed) = value.parse::<u64>() else {
+        return DEFAULT_ITERATIONS;
+    };
+    if parsed > MAX_SAFE_INTEGER {
+        return DEFAULT_ITERATIONS;
+    }
+    parsed.clamp(1, 10_000) as usize
+}
+
 fn iterations() -> usize {
-    std::env::var("DTA_BENCH_ITERATIONS")
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(25)
-        .clamp(1, 10_000)
+    let value = std::env::var("DTA_BENCH_ITERATIONS").ok();
+    parse_iterations(value.as_deref())
 }
 
 fn measure(mut operation: impl FnMut()) -> Duration {
@@ -110,5 +130,41 @@ fn main() {
                 black_box(file.read_with_options(&options).unwrap());
             }),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_iterations;
+
+    #[test]
+    fn parses_only_canonical_safe_unsigned_decimal_iterations() {
+        for (value, expected) in [
+            (None, 25),
+            (Some("0"), 1),
+            (Some("1"), 1),
+            (Some("10000"), 10_000),
+            (Some("10001"), 10_000),
+            (Some("9007199254740991"), 10_000),
+        ] {
+            assert_eq!(parse_iterations(value), expected, "value: {value:?}");
+        }
+
+        for value in [
+            "",
+            " ",
+            "01",
+            "1e3",
+            "1.0",
+            "0x10",
+            " 1",
+            "1 ",
+            "+1",
+            "-1",
+            "9007199254740992",
+            "18446744073709551616",
+        ] {
+            assert_eq!(parse_iterations(Some(value)), 25, "value: {value:?}");
+        }
     }
 }

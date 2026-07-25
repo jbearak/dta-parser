@@ -3,15 +3,39 @@ import { describe, expect, it } from 'bun:test';
 import { parse_benchmark_iterations } from '../../benchmarks/config';
 
 describe('benchmark iteration configuration', () => {
-    it('accepts finite integers and clamps them to the supported range', () => {
-        expect(parse_benchmark_iterations('1')).toBe(1);
-        expect(parse_benchmark_iterations('200')).toBe(200);
-        expect(parse_benchmark_iterations('0')).toBe(1);
-        expect(parse_benchmark_iterations('10001')).toBe(10_000);
+    it('accepts canonical safe unsigned decimals and clamps valid values', () => {
+        for (const [value, expected] of [
+            ['0', 1],
+            ['1', 1],
+            ['200', 200],
+            ['10000', 10_000],
+            ['10001', 10_000],
+            ['9007199254740991', 10_000],
+        ] as const) {
+            expect(parse_benchmark_iterations(value)).toBe(expected);
+        }
     });
 
-    it('uses the default for absent, fractional, or non-finite values', () => {
-        for (const value of [undefined, '', ' ', '1.5', 'NaN', 'Infinity', 'nope']) {
+    it('uses the default for non-canonical, unsafe, or overflowing values', () => {
+        for (const value of [
+            undefined,
+            '',
+            ' ',
+            '01',
+            '1e3',
+            '1.0',
+            '0x10',
+            ' 1',
+            '1 ',
+            '+1',
+            '-1',
+            '9007199254740992',
+            '18446744073709551616',
+            '999999999999999999999999999999999999999999999999999999',
+            'NaN',
+            'Infinity',
+            'nope',
+        ]) {
             expect(parse_benchmark_iterations(value)).toBe(25);
         }
     });
