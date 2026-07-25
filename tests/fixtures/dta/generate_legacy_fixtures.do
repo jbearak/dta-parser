@@ -2,9 +2,10 @@
 // Run from: tests/fixtures/dta/
 // Requires: Stata 16+
 //
-// Creates fixtures in v115 (saveold, version(12)), and v114
-// (saveold, version(11)). Format 113 (Stata 8) is not supported
-// by saveold on modern Stata, so we skip it here.
+// Creates fixtures in v115 (saveold, version(12)). Checked release-114
+// fixtures are not generated here because the available modern Stata tooling
+// emitted release 115 for version(11); exact release 114 remains covered by
+// byte-level synthetic parser tests. Format 113 is covered synthetically too.
 
 version 16.0
 set more off
@@ -18,10 +19,7 @@ sysuse auto, clear
 // v115 (Stata 12 format)
 saveold "auto_v115.dta", version(12) replace
 
-// v114 (Stata 11 format)
-saveold "auto_v114.dta", version(11) replace
-
-di as txt "Created: auto_v114.dta, auto_v115.dta"
+di as txt "Created: auto_v115.dta"
 
 // ============================================================================
 // 2. value_labels — dataset with value label tables
@@ -49,9 +47,7 @@ label variable region "Census region"
 label data "Value labels test dataset"
 
 saveold "value_labels_v115.dta", version(12) replace
-saveold "value_labels_v114.dta", version(11) replace
-
-di as txt "Created: value_labels_v114.dta, value_labels_v115.dta"
+di as txt "Created: value_labels_v115.dta"
 
 // ============================================================================
 // 3. empty — zero observations with variable definitions
@@ -67,9 +63,7 @@ label variable mpg "Miles per gallon"
 drop if 1
 
 saveold "empty_v115.dta", version(12) replace
-saveold "empty_v114.dta", version(11) replace
-
-di as txt "Created: empty_v114.dta, empty_v115.dta"
+di as txt "Created: empty_v115.dta"
 
 // ============================================================================
 // 4. missing_values — extended missing values (., .a-.z)
@@ -112,9 +106,7 @@ label variable x_long "Long with missing values"
 label variable x_float "Float with missing values"
 
 saveold "missing_values_v115.dta", version(12) replace
-saveold "missing_values_v114.dta", version(11) replace
-
-di as txt "Created: missing_values_v114.dta, missing_values_v115.dta"
+di as txt "Created: missing_values_v115.dta"
 
 // ============================================================================
 // 5. all_types — one variable of each storage type (no strL in legacy)
@@ -140,9 +132,7 @@ label variable v_str20 "Medium string (str20)"
 label data "All Stata storage types (legacy)"
 
 saveold "all_types_v115.dta", version(12) replace
-saveold "all_types_v114.dta", version(11) replace
-
-di as txt "Created: all_types_v114.dta, all_types_v115.dta"
+di as txt "Created: all_types_v115.dta"
 
 // ============================================================================
 // 6. wide — many variables (120)
@@ -156,9 +146,7 @@ forvalues i = 1/120 {
 }
 
 saveold "wide_v115.dta", version(12) replace
-saveold "wide_v114.dta", version(11) replace
-
-di as txt "Created: wide_v114.dta, wide_v115.dta"
+di as txt "Created: wide_v115.dta"
 
 // ============================================================================
 // Summary
@@ -166,8 +154,6 @@ di as txt "Created: wide_v114.dta, wide_v115.dta"
 
 di as txt "{hline 60}"
 di as txt "All legacy fixtures generated successfully."
-di as txt "v114 files: auto_v114, value_labels_v114, empty_v114,"
-di as txt "            missing_values_v114, all_types_v114, wide_v114"
 di as txt "v115 files: auto_v115, value_labels_v115, empty_v115,"
 di as txt "            missing_values_v115, all_types_v115, wide_v115"
 di as txt "{hline 60}"

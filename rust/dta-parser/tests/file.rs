@@ -69,6 +69,16 @@ fn options(row_start: u64, row_count: Option<u64>, columns: Vec<u32>) -> ReadOpt
     }
 }
 
+fn file_and_slice_error(bytes: Vec<u8>) -> DtaError {
+    let slice_error = read_dta(&bytes).unwrap_err();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let file_error = file
+        .read_with_options(&options(0, Some(0), vec![]))
+        .unwrap_err();
+    assert_eq!(file_error, slice_error);
+    slice_error
+}
+
 fn add_v118_map_offset(bytes: &mut [u8], map_start: usize, index: usize, delta: u64) {
     let entry = map_start + b"<map>".len() + index * 8;
     let value = u64::from_le_bytes(bytes[entry..entry + 8].try_into().unwrap());
@@ -229,8 +239,8 @@ fn file_reads_match_slice_for_modern_strl_and_legacy_projections() {
         ("auto_v118.dta", options(5, Some(4), vec![11, 0, 3])),
         ("all_types_v118.dta", options(1, Some(3), vec![7, 0, 6])),
         ("all_types_v117.dta", options(1, Some(3), vec![7, 0, 6])),
-        ("all_types_v114.dta", options(1, Some(3), vec![6, 0, 4])),
-        ("value_labels_v114.dta", options(0, Some(4), vec![2, 0])),
+        ("all_types_v115.dta", options(1, Some(3), vec![6, 0, 4])),
+        ("value_labels_v115.dta", options(0, Some(4), vec![2, 0])),
     ] {
         let bytes = fixture(name);
         let expected = read_dta_with_options(&bytes, &read_options).unwrap();
@@ -378,6 +388,84 @@ fn file_and_slice_report_the_same_beyond_eof_gso_error() {
             ..
         } if needed == u32::MAX as usize
     ));
+}
+
+#[test]
+fn file_and_slice_report_identical_value_label_structure_errors() {
+    let original = fixture("value_labels_v118.dta");
+    let metadata = dta_parser::parse_metadata(&original).unwrap();
+    let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let length_offset = table_start + b"<lbl>".len();
+    let payload_start = length_offset + 4 + 129 + 3;
+
+    let mut wrong_length = original.clone();
+    wrong_length[length_offset..length_offset + 4].copy_from_slice(&70_i32.to_le_bytes());
+    assert_eq!(
+        file_and_slice_error(wrong_length),
+        DtaError::InvalidValueLabelLength {
+            offset: table_start,
+            declared: 70,
+            expected: 69,
+        }
+    );
+
+    let entry_count = u32::from_le_bytes(
+        original[payload_start..payload_start + 4]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let values_start = payload_start + 8 + entry_count * 4;
+    let mut unsorted = original;
+    let first_value = unsorted[values_start..values_start + 4].to_vec();
+    unsorted[values_start + 4..values_start + 8].copy_from_slice(&first_value);
+    assert_eq!(
+        file_and_slice_error(unsorted),
+        DtaError::UnsortedValueLabelValues {
+            table_offset: table_start,
+            entry_index: 1,
+            previous: 1,
+            value: 1,
+        }
+    );
+}
+
+#[test]
+fn file_and_slice_match_for_mid_codepoint_and_malformed_utf8_label_offsets() {
+    let original = fixture("value_labels_v118.dta");
+    let metadata = dta_parser::parse_metadata(&original).unwrap();
+    let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let payload_start = table_start + b"<lbl>".len() + 4 + 129 + 3;
+    let entry_count = u32::from_le_bytes(
+        original[payload_start..payload_start + 4]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let offsets_start = payload_start + 8;
+    let text_start = offsets_start + entry_count * 8;
+
+    let mut mid_codepoint = original.clone();
+    mid_codepoint[text_start..text_start + 3].copy_from_slice(&[0xc3, 0xa9, 0]);
+    for entry_index in [0, 2] {
+        let offset_position = offsets_start + entry_index * 4;
+        mid_codepoint[offset_position..offset_position + 4].copy_from_slice(&1_i32.to_le_bytes());
+    }
+    assert_eq!(
+        file_and_slice_error(mid_codepoint),
+        DtaError::InvalidValueLabelTextOffset {
+            entry_index: 0,
+            offset: offsets_start,
+            text_offset: 1,
+            text_length: 29,
+        }
+    );
+
+    let mut malformed = original;
+    malformed[text_start..text_start + 3].copy_from_slice(&[0xc3, 0xff, 0]);
+    malformed[offsets_start..offsets_start + 4].copy_from_slice(&1_i32.to_le_bytes());
+    let expected = read_dta(&malformed).unwrap();
+    assert_eq!(expected.value_label_tables[0].entries[0].label, "�");
+    let mut file = DtaFile::from_reader(Cursor::new(malformed)).unwrap();
+    assert_eq!(file.read().unwrap(), expected);
 }
 
 #[test]
@@ -555,6 +643,43 @@ fn retained_string_capacity_tracks_useful_text_not_source_ranges() {
     assert!(values.iter().all(String::is_empty));
     assert!(values.iter().map(String::capacity).sum::<usize>() <= values.len() * 8);
     assert!(strings_file.max_scratch_bytes_used() <= 1024);
+}
+
+#[test]
+fn value_label_text_block_is_streamed_once_in_bounded_reads() {
+    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 256);
+    let metadata = dta_parser::parse_metadata(&bytes).unwrap();
+    let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let payload_start = table_start + b"<lbl>".len() + 4 + 129 + 3;
+    let entry_count =
+        u32::from_le_bytes(bytes[payload_start..payload_start + 4].try_into().unwrap()) as usize;
+    let text_length = u32::from_le_bytes(
+        bytes[payload_start + 4..payload_start + 8]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let text_start = (payload_start + 8 + entry_count * 8) as u64;
+    let text_end = text_start + text_length as u64;
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader_with_options(
+        reader,
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    trace.borrow_mut().reads.clear();
+
+    assert_eq!(file.value_label_tables().unwrap()[0].entries.len(), 256);
+    let text_reads = trace
+        .borrow()
+        .reads
+        .iter()
+        .copied()
+        .filter(|(offset, _)| *offset >= text_start && *offset < text_end)
+        .collect::<Vec<_>>();
+    assert_eq!(text_reads, vec![(text_start, text_length)]);
+    assert!(file.max_scratch_bytes_used() <= 1024);
 }
 
 #[test]

@@ -2,15 +2,16 @@
 // Run from: tests/fixtures/dta/
 // Requires: Stata 16+
 //
-// Creates fixtures in v117 (saveold, version(13)), v118 (save on Stata 14-15,
-// or saveold version(14) on 16+), and v119 (save on Stata 15+).
+// Creates fixtures in v117 (saveold, version(13)) and v118 (saveold,
+// version(14)). Small datasets saved by current Stata also use release 118;
+// release 119 requires K > 32,767 or N > 2,147,483,647.
 
 version 16.0
 set more off
 
 // ============================================================================
 // 1. auto.dta — the standard Stata example dataset
-//    We save it in all three formats to test cross-version parsing.
+//    We save it in both fixture formats to test cross-version parsing.
 // ============================================================================
 
 sysuse auto, clear
@@ -21,11 +22,7 @@ saveold "auto_v118.dta", version(14) replace
 // v117 (Stata 13 format)
 saveold "auto_v117.dta", version(13) replace
 
-// v119 (current Stata format — only differs from v118 when K > 32,767 or
-//        N > 2,147,483,647, but the header tag says "119")
-save "auto_v119.dta", replace
-
-di as txt "Created: auto_v117.dta, auto_v118.dta, auto_v119.dta"
+di as txt "Created: auto_v117.dta, auto_v118.dta"
 
 // ============================================================================
 // 2. strL test — dataset with long string variables (strL)
@@ -211,6 +208,6 @@ di as txt "v117 files: auto_v117, value_labels_v117, all_types_v117"
 di as txt "v118 files: auto_v118, strl_test_v118, value_labels_v118,"
 di as txt "            empty_v118, wide_v118, missing_values_v118,"
 di as txt "            all_types_v118"
-di as txt "v119 files: auto_v119, strl_test, value_labels, empty,"
-di as txt "            wide, missing_values, all_types"
+di as txt "Current-Stata small files use release 118: strl_test, value_labels,"
+di as txt "            empty, wide, missing_values, all_types"
 di as txt "{hline 60}"

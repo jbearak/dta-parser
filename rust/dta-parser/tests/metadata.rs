@@ -9,7 +9,6 @@ const MODERN_FIXTURES: &[&str] = &[
     "all_types_v118.dta",
     "auto_v117.dta",
     "auto_v118.dta",
-    "auto_v119.dta",
     "empty.dta",
     "empty_v118.dta",
     "missing_values.dta",
@@ -101,9 +100,7 @@ fn push_field(bytes: &mut Vec<u8>, value: &[u8], width: usize) {
     bytes.resize(bytes.len() + width - value.len(), 0);
 }
 
-/// A deterministic metadata-only v119 fixture. Stata saves the repository's
-/// nominal `auto_v119.dta` as release 118 because it does not need v119's
-/// wider K/N fields.
+/// A deterministic metadata-only v119 input exercising the wider K/N fields.
 fn synthetic_v119_metadata_fixture() -> Vec<u8> {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(b"<stata_dta><header><release>119</release>");

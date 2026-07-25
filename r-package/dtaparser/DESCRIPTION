@@ -1,0 +1,23 @@
+Package: dtaparser
+Title: Native Reader for Stata DTA Files
+Version: 0.1.0
+Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"),
+    email = "jbearak@guttmacher.org")
+Description: Reads Stata DTA files through the repository's native Rust
+    parser. Numeric and character vectors are populated directly by compiled
+    code while retaining dataset labels, variable labels, display formats,
+    value labels, temporal classes, and Stata tagged missing values.
+License: GPL-3
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    rlang,
+    tibble,
+    tidyselect
+Suggests:
+    haven,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+SystemRequirements: Cargo and Rust >= 1.74; on Windows, the
+    x86_64-pc-windows-gnu toolchain matching 64-bit R
+NeedsCompilation: yes

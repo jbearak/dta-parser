@@ -194,32 +194,9 @@ describe('read_rows_from_buffer', () => {
             ).toBeGreaterThan(0);
         });
 
-        it('reads v119 format correctly', () => {
-            const { buffer, metadata } =
-                load_fixture('auto_v119.dta');
-            const the_rows = read_rows_from_buffer(
-                buffer, metadata, 0, 1
-            );
-            expect(the_rows.length).toBe(1);
-            expect(the_rows[0].length).toBe(12);
-
-            // make is a string
-            expect(typeof the_rows[0][0]).toBe('string');
-            expect(
-                (the_rows[0][0] as string).length
-            ).toBeGreaterThan(0);
-
-            // price is numeric
-            expect(typeof the_rows[0][1]).toBe('number');
-            expect(
-                the_rows[0][1] as number
-            ).toBeGreaterThan(0);
-        });
-
-        it('produces same data across v117, v118, v119', () => {
+        it('produces same data across v117 and v118', () => {
             const my_v117 = load_fixture('auto_v117.dta');
             const my_v118 = load_fixture('auto_v118.dta');
-            const my_v119 = load_fixture('auto_v119.dta');
 
             const the_rows_117 = read_rows_from_buffer(
                 my_v117.buffer, my_v117.metadata, 0, 5
@@ -227,12 +204,7 @@ describe('read_rows_from_buffer', () => {
             const the_rows_118 = read_rows_from_buffer(
                 my_v118.buffer, my_v118.metadata, 0, 5
             );
-            const the_rows_119 = read_rows_from_buffer(
-                my_v119.buffer, my_v119.metadata, 0, 5
-            );
-
             expect(the_rows_117).toEqual(the_rows_118);
-            expect(the_rows_118).toEqual(the_rows_119);
         });
     });
 

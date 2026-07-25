@@ -63,25 +63,24 @@ fn synthetic_v113_msf() -> Vec<u8> {
 
 #[test]
 fn decodes_checked_legacy_fixtures_and_value_labels() {
-    for name in ["all_types_v114.dta", "all_types_v115.dta"] {
-        let data = read_dta(&fixture(name)).unwrap_or_else(|error| panic!("{name}: {error}"));
-        assert_eq!(data.metadata.format_version, FormatVersion::V115);
-        assert_eq!(data.metadata.byte_order, ByteOrder::Lsf);
-        assert_eq!(data.row_count, 5);
-        assert_eq!(data.columns.len(), 7);
-        match &data.columns[0].values {
-            ColumnValues::Byte { values, .. } => assert_eq!(values, &[1, 2, 3, 4, 5]),
-            other => panic!("unexpected byte storage: {other:?}"),
+    let name = "all_types_v115.dta";
+    let data = read_dta(&fixture(name)).unwrap_or_else(|error| panic!("{name}: {error}"));
+    assert_eq!(data.metadata.format_version, FormatVersion::V115);
+    assert_eq!(data.metadata.byte_order, ByteOrder::Lsf);
+    assert_eq!(data.row_count, 5);
+    assert_eq!(data.columns.len(), 7);
+    match &data.columns[0].values {
+        ColumnValues::Byte { values, .. } => assert_eq!(values, &[1, 2, 3, 4, 5]),
+        other => panic!("unexpected byte storage: {other:?}"),
+    }
+    match &data.columns[6].values {
+        ColumnValues::FixedString { values } => {
+            assert_eq!(values[0], "longer_string_1")
         }
-        match &data.columns[6].values {
-            ColumnValues::FixedString { values } => {
-                assert_eq!(values[0], "longer_string_1")
-            }
-            other => panic!("unexpected string storage: {other:?}"),
-        }
+        other => panic!("unexpected string storage: {other:?}"),
     }
 
-    let labels = read_dta(&fixture("value_labels_v114.dta")).unwrap();
+    let labels = read_dta(&fixture("value_labels_v115.dta")).unwrap();
     assert_eq!(
         labels
             .value_label_table("foreign_lbl")
@@ -111,19 +110,13 @@ fn decodes_checked_legacy_fixtures_and_value_labels() {
 }
 
 #[test]
-fn reads_every_checked_in_legacy_fixture_and_true_v114() {
+fn reads_every_checked_in_legacy_fixture_and_synthetic_v114() {
     for name in [
-        "all_types_v114.dta",
         "all_types_v115.dta",
-        "auto_v114.dta",
         "auto_v115.dta",
-        "empty_v114.dta",
         "empty_v115.dta",
-        "missing_values_v114.dta",
         "missing_values_v115.dta",
-        "value_labels_v114.dta",
         "value_labels_v115.dta",
-        "wide_v114.dta",
         "wide_v115.dta",
     ] {
         read_dta(&fixture(name)).unwrap_or_else(|error| panic!("{name}: {error}"));

@@ -366,7 +366,32 @@ fn every_checked_fixture_matches_the_typescript_haven_oracle() {
     );
     let snapshot_inventory = snapshot.fixtures.keys().cloned().collect::<BTreeSet<_>>();
     assert_eq!(fixture_inventory, snapshot_inventory);
-    assert_eq!(snapshot.fixtures.len(), 29);
+    assert_eq!(snapshot.fixtures.len(), 22);
+
+    let mut fixture_for_hash = BTreeMap::new();
+    for (fixture_name, expected_fixture) in &snapshot.fixtures {
+        assert!(
+            fixture_for_hash
+                .insert(&expected_fixture.sha256, fixture_name)
+                .is_none(),
+            "duplicate fixture bytes for {fixture_name}"
+        );
+        let expected_release = if fixture_name.ends_with("_v115.dta") {
+            Some(115)
+        } else if fixture_name.ends_with("_v117.dta") {
+            Some(117)
+        } else if fixture_name.ends_with("_v118.dta") {
+            Some(118)
+        } else {
+            None
+        };
+        if let Some(expected_release) = expected_release {
+            assert_eq!(
+                expected_fixture.metadata.format_version, expected_release,
+                "fixture name/header mismatch for {fixture_name}"
+            );
+        }
+    }
 
     for (fixture_name, expected_fixture) in snapshot.fixtures {
         let bytes = fixture(&fixture_name);
@@ -563,20 +588,6 @@ fn every_checked_fixture_matches_the_typescript_haven_oracle() {
             }
         }
     }
-}
-
-#[test]
-fn nominal_auto_v119_filename_does_not_override_its_release_118_header() {
-    let snapshot: CanonicalSnapshot =
-        serde_json::from_str(include_str!("data/modern-canonical.json")).unwrap();
-    let expected = snapshot.fixtures.get("auto_v119.dta").unwrap();
-    let metadata = dta_parser::parse_metadata(&fixture("auto_v119.dta")).unwrap();
-
-    assert_eq!(metadata.format_version, dta_parser::FormatVersion::V118);
-    assert_eq!(
-        expected.metadata.format_version,
-        metadata.format_version.as_u16()
-    );
 }
 
 #[test]
