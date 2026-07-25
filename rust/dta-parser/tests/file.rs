@@ -331,7 +331,7 @@ fn stages_bounded_wide_rows_for_dense_and_sparse_projections() {
 
 #[test]
 fn file_and_slice_reject_invalid_signatures_identically() {
-    for bytes in [b"not a dta".as_slice(), b"<stata_dta>".as_slice()] {
+    for bytes in [b"not a dta".as_slice(), b"<stata_dat>".as_slice()] {
         assert_eq!(
             dta_parser::parse_metadata(bytes),
             Err(DtaError::InvalidSignature)
