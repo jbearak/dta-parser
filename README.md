@@ -64,6 +64,14 @@ associations, cooperative cancellation, and strict `strL`/GSO resolution. Rust
 callers should see the [crate README](rust/dta-parser/README.md) for examples
 and the precise I/O contract.
 
+The native R package lives in [`r-package/dtaparser`](r-package/dtaparser).
+It exports a haven-shaped `read_dta()` interface backed by the bounded Rust
+reader, with tidyselect projection, row windows, labels and formats, tagged
+missings, long strings, and R date/time classes. Its locked dependency archive
+supports offline source installation with Cargo and Rust 1.74 or newer; see the
+[R package README](r-package/dtaparser/README.md) for installation requirements
+and deliberate interface limitations.
+
 | Entrypoint | Use For | Notable Exports |
 | --- | --- | --- |
 | `@jbearak/dta-parser` | You already have a full `.dta` `ArrayBuffer` or need low-level parser utilities. | `parse_metadata`, `read_rows_from_buffer`, `parse_value_labels`, `apply_display_format`, `is_missing_value_object` |

@@ -1,0 +1,27 @@
+RUST_MANIFEST = rust/Cargo.toml
+RUST_TARGET = rust/target
+RUST_LIB = $(RUST_TARGET)/release/libdtaparser_r.a
+RUST_SOURCES = rust/src/lib.rs \
+	vendor/dta-parser/src/data_reader.rs \
+	vendor/dta-parser/src/endian.rs \
+	vendor/dta-parser/src/error.rs \
+	vendor/dta-parser/src/file.rs \
+	vendor/dta-parser/src/legacy.rs \
+	vendor/dta-parser/src/lib.rs \
+	vendor/dta-parser/src/metadata.rs \
+	vendor/dta-parser/src/missing.rs \
+	vendor/dta-parser/src/strl.rs \
+	vendor/dta-parser/src/text.rs \
+	vendor/dta-parser/src/types.rs \
+	vendor/dta-parser/src/value_labels.rs
+
+OBJECTS = init.o
+PKG_LIBS = $(RUST_LIB) @RUST_SYSTEM_LIBS@
+
+$(SHLIB): $(RUST_LIB)
+
+$(RUST_LIB): $(RUST_MANIFEST) rust/Cargo.lock rust/cargo-config.toml rust/vendor.tar.gz $(RUST_SOURCES)
+	CARGO_TARGET_DIR=$(RUST_TARGET) cargo build --manifest-path $(RUST_MANIFEST) --config rust/cargo-config.toml --release --locked --offline
+
+clean:
+	rm -rf $(RUST_TARGET) $(SHLIB) $(OBJECTS)

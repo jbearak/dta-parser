@@ -1,0 +1,2 @@
+useDynLib(dtaparser, .registration = TRUE)
+export(read_dta)

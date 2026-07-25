@@ -1,0 +1,19 @@
+[package]
+name = "dtaparser-r"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+dta-parser = { path = "../vendor/dta-parser" }
+
+[profile.release]
+panic = "unwind"
+strip = "debuginfo"
+
+[workspace]

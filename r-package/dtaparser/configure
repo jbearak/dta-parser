@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+if test ! -d src/rust/v; then
+  tar -xzf src/rust/vendor.tar.gz -C src/rust
+fi
+
+case "$(uname -s)" in
+  Darwin) rust_system_libs="-liconv -framework CoreFoundation -framework Security" ;;
+  *) rust_system_libs="-ldl -lpthread -lm" ;;
+esac
+
+sed "s|@RUST_SYSTEM_LIBS@|$rust_system_libs|g" \
+  src/Makevars.in > src/Makevars

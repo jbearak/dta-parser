@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+rust_target=x86_64-pc-windows-gnu
+rust_host=$(rustc -vV | sed -n 's/^host: //p')
+if test "$rust_host" != "$rust_target"; then
+  echo "dtaparser requires the Rust $rust_target toolchain for 64-bit R on Windows; found $rust_host" >&2
+  exit 1
+fi
+if test ! -d src/rust/v; then
+  tar -xzf src/rust/vendor.tar.gz -C src/rust
+fi
+cp src/Makevars.win.in src/Makevars.win
