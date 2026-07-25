@@ -98,7 +98,9 @@ fn exercise(bytes: &[u8], seed_name: &str) {
         "oversized seed: {seed_name}"
     );
     let outcome = catch_unwind(AssertUnwindSafe(|| {
-        let _ = parse_metadata(bytes);
+        let exact_rejection_contract = parse_metadata(bytes).map_or(true, |metadata| {
+            metadata.section_offsets.end_of_file == bytes.len() as u64
+        });
         let full = read_dta(bytes);
         let options = ReadOptions {
             row_start: 1,
@@ -108,19 +110,37 @@ fn exercise(bytes: &[u8], seed_name: &str) {
         let projected = read_dta_with_options(bytes, &options);
         let file_full =
             DtaFile::from_reader(Cursor::new(bytes.to_vec())).and_then(|mut file| file.read());
-        assert_eq!(
-            normalize(file_full),
-            normalize(full),
-            "{seed_name}: full slice/file outcome mismatch"
-        );
+        let file_full = normalize(file_full);
+        let full = normalize(full);
+        if exact_rejection_contract {
+            assert_eq!(
+                file_full, full,
+                "{seed_name}: full slice/file outcome mismatch"
+            );
+        } else {
+            assert!(
+                matches!(file_full, NormalizedOutcome::Rejected(_))
+                    && matches!(full, NormalizedOutcome::Rejected(_)),
+                "{seed_name}: invalid declared file length was not rejected by both full readers"
+            );
+        }
 
         let file_projected = DtaFile::from_reader(Cursor::new(bytes.to_vec()))
             .and_then(|mut file| file.read_with_options(&options));
-        assert_eq!(
-            normalize(file_projected),
-            normalize(projected),
-            "{seed_name}: projected slice/file outcome mismatch"
-        );
+        let file_projected = normalize(file_projected);
+        let projected = normalize(projected);
+        if exact_rejection_contract {
+            assert_eq!(
+                file_projected, projected,
+                "{seed_name}: projected slice/file outcome mismatch"
+            );
+        } else {
+            assert!(
+                matches!(file_projected, NormalizedOutcome::Rejected(_))
+                    && matches!(projected, NormalizedOutcome::Rejected(_)),
+                "{seed_name}: invalid declared file length was not rejected by both projected readers"
+            );
+        }
     }));
     assert!(outcome.is_ok(), "parser panicked for {seed_name}");
 }
@@ -208,6 +228,28 @@ fn deterministic_fixture_seeded_mutations_never_panic_or_diverge_when_valid() {
             exercise(&bytes, &format!("{name} mutation {mutation}"));
         }
     }
+}
+
+#[test]
+fn oversized_value_label_declaration_preserves_slice_file_error_identity() {
+    let mut bytes = fs::read(fixture_dir().join("auto_v117.dta")).unwrap();
+    let metadata = parse_metadata(&bytes).unwrap();
+    let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let length_offset = table_start + b"<lbl>".len();
+    let declared = 4_653_097_i32;
+    bytes[length_offset..length_offset + 4].copy_from_slice(&declared.to_le_bytes());
+
+    let expected = DtaError::InvalidValueLabelLength {
+        offset: table_start,
+        declared: declared as usize,
+        expected: 41,
+    };
+    assert_eq!(read_dta(&bytes).unwrap_err(), expected);
+
+    let file_error = DtaFile::from_reader(Cursor::new(bytes))
+        .and_then(|mut file| file.read())
+        .unwrap_err();
+    assert_eq!(file_error, expected);
 }
 
 #[test]

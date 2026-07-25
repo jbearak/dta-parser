@@ -105,6 +105,16 @@ test_that("typed predicates and duplicate selections are deterministic", {
     expect_equal(duplicated$first_price, read_dta(path, n_max = 2)$price)
 })
 
+test_that("native materialization survives forced garbage collection", {
+    path <- normalizePath(fixture("auto_v118.dta"))
+    gctorture(TRUE)
+    on.exit(gctorture(FALSE), add = TRUE)
+
+    result <- read_dta(path, col_select = make, n_max = 1)
+    expect_identical(dim(result), c(1L, 1L))
+    expect_identical(result[[1L]][[1L]], "AMC Concord")
+})
+
 test_that("wide materialization uses bounded native protection", {
     skip_if_not_installed("haven")
     path <- tempfile(fileext = ".dta")

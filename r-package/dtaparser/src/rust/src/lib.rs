@@ -21,7 +21,6 @@ const SECONDS_1960_TO_1970: f64 = 315_619_200.0;
 const DAYS_1960_TO_1970: f64 = 3_653.0;
 
 extern "C" {
-    fn Rf_unprotect(count: c_int);
     fn SET_STRING_ELT(vector: Sexp, index: RLen, value: Sexp);
     fn SET_VECTOR_ELT(vector: Sexp, index: RLen, value: Sexp) -> Sexp;
     fn INTEGER(vector: Sexp) -> *mut c_int;
@@ -35,6 +34,7 @@ extern "C" {
 
     fn dtaparser_check_interrupt() -> c_int;
     fn dtaparser_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
+    fn dtaparser_release_object(object: Sexp);
     fn dtaparser_make_char(
         value: *const c_char,
         length: c_int,
@@ -46,28 +46,33 @@ extern "C" {
 }
 
 struct ProtectGuard {
-    count: c_int,
+    objects: Vec<Sexp>,
 }
 
 impl ProtectGuard {
     fn new() -> Self {
-        Self { count: 0 }
+        Self {
+            objects: Vec::new(),
+        }
     }
 
     unsafe fn alloc(&mut self, kind: c_int, length: RLen) -> Result<Sexp, String> {
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| "R could not track a preserved native vector".to_owned())?;
         let mut value = ptr::null_mut();
         if dtaparser_alloc_vector(kind, length, &mut value) == 0 || value.is_null() {
-            return Err("R could not allocate or protect a native vector".to_owned());
+            return Err("R could not allocate or preserve a native vector".to_owned());
         }
-        self.count += 1;
+        self.objects.push(value);
         Ok(value)
     }
 }
 
 impl Drop for ProtectGuard {
     fn drop(&mut self) {
-        if self.count > 0 {
-            unsafe { Rf_unprotect(self.count) };
+        for &object in self.objects.iter().rev() {
+            unsafe { dtaparser_release_object(object) };
         }
     }
 }

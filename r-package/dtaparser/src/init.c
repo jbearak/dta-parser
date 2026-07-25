@@ -20,7 +20,10 @@ typedef struct {
 
 static void alloc_vector_call(void *data) {
     alloc_vector_context *context = (alloc_vector_context *) data;
-    context->result = PROTECT(Rf_allocVector(context->type, context->length));
+    SEXP result = PROTECT(Rf_allocVector(context->type, context->length));
+    R_PreserveObject(result);
+    context->result = result;
+    UNPROTECT(1);
 }
 
 int dtaparser_alloc_vector(int type, R_xlen_t length, SEXP *result) {
@@ -28,6 +31,10 @@ int dtaparser_alloc_vector(int type, R_xlen_t length, SEXP *result) {
     int ok = R_ToplevelExec(alloc_vector_call, &context);
     if (ok && result != NULL) *result = context.result;
     return ok;
+}
+
+void dtaparser_release_object(SEXP object) {
+    if (object != NULL) R_ReleaseObject(object);
 }
 
 typedef struct {

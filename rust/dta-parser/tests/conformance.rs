@@ -92,12 +92,12 @@ fn checked_manifest_has_an_honest_immutable_29_case_inventory() {
 
     let canonical = fs::read(root.join(&manifest.identity.canonical_oracle)).unwrap();
     assert_eq!(
-        format!("{:x}", Sha256::digest(&canonical)),
+        format!("{:x}", Sha256::digest(canonical)),
         manifest.identity.canonical_sha256
     );
 
     let fixtures = root.join("tests/fixtures/dta");
-    let disk = fs::read_dir(&fixtures)
+    let disk = fs::read_dir(fixtures)
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension().is_some_and(|extension| extension == "dta"))
