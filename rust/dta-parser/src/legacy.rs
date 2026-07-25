@@ -5,12 +5,12 @@ use crate::{
 };
 
 pub(crate) const HEADER_SIZE: usize = 109;
-const VARNAME_WIDTH: usize = 33;
-const SORTLIST_WIDTH: usize = 2;
-const VALUE_LABEL_NAME_WIDTH: usize = 33;
-const VARIABLE_LABEL_WIDTH: usize = 81;
+pub(crate) const VARNAME_WIDTH: usize = 33;
+pub(crate) const SORTLIST_WIDTH: usize = 2;
+pub(crate) const VALUE_LABEL_NAME_WIDTH: usize = 33;
+pub(crate) const VARIABLE_LABEL_WIDTH: usize = 81;
 
-fn format_width(version: FormatVersion) -> usize {
+pub(crate) fn format_width(version: FormatVersion) -> usize {
     if version == FormatVersion::V113 {
         12
     } else {

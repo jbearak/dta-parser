@@ -6,8 +6,12 @@ use std::path::Path;
 use encoding_rs::{CoderResult, Encoding, UTF_8, WINDOWS_1252};
 
 use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
-use crate::legacy::{legacy_fixed_metadata_end, legacy_type, HEADER_SIZE};
+use crate::legacy::{
+    format_width, legacy_fixed_metadata_end, legacy_type, HEADER_SIZE, SORTLIST_WIDTH,
+    VALUE_LABEL_NAME_WIDTH, VARIABLE_LABEL_WIDTH, VARNAME_WIDTH,
+};
 use crate::metadata::{field_widths, resolve_type};
+use crate::text::{decode_utf8, decode_windows_1252, field_bytes};
 use crate::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
     classify_int_missing, classify_long_missing, ByteOrder, Column, ColumnValues, DtaData,
@@ -17,6 +21,7 @@ use crate::{
 
 const DEFAULT_MAX_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 const MIN_MAX_BUFFER_BYTES: usize = 1024;
+const MODERN_SIGNATURE: &[u8] = b"<stata_dta><header><release>";
 
 /// Configuration for seekable file-backed reads.
 ///
@@ -277,6 +282,18 @@ impl<R: Read + Seek> DtaFile<R> {
         let metadata = if matches!(first[0], 113..=115) {
             read_legacy_metadata(&mut reader, file_length, &mut scratch)?
         } else {
+            let signature_length = MODERN_SIGNATURE.len();
+            if file_length < signature_length as u64
+                || read_exact_at(
+                    &mut reader,
+                    0,
+                    signature_length,
+                    &mut scratch,
+                    "reading signature",
+                )? != MODERN_SIGNATURE
+            {
+                return Err(DtaError::InvalidSignature);
+            }
             read_modern_metadata(&mut reader, file_length, &mut scratch)?
         };
         if metadata.section_offsets.end_of_file != file_length {
@@ -360,59 +377,132 @@ impl<R: Read + Seek> DtaFile<R> {
             self.metadata.section_offsets.data
         };
 
-        for row in 0..row_count {
-            check_cancel(&mut should_interrupt)?;
-            let source_row = row_start
-                .checked_add(row)
-                .ok_or(DtaError::ArithmeticOverflow("source row"))?;
-            let row_offset = source_row
-                .checked_mul(self.metadata.obs_length)
-                .ok_or(DtaError::ArithmeticOverflow("row offset"))?;
-            for (builder, &index) in builders.iter_mut().zip(&indices) {
+        if !builders.is_empty()
+            && self.metadata.obs_length > 0
+            && self.metadata.obs_length <= self.scratch.limit as u64
+        {
+            let obs_length = usize::try_from(self.metadata.obs_length)
+                .map_err(|_| DtaError::ArithmeticOverflow("observation length"))?;
+            let rows_per_chunk = self.scratch.limit / obs_length;
+            let rows_per_chunk = u64::try_from(rows_per_chunk)
+                .map_err(|_| DtaError::ArithmeticOverflow("rows per chunk"))?;
+            let mut row = 0_u64;
+            while row < row_count {
                 check_cancel(&mut should_interrupt)?;
-                let variable = &self.metadata.variables[index as usize];
-                let cell_offset = payload_start
-                    .checked_add(row_offset)
-                    .and_then(|value| value.checked_add(variable.byte_offset))
-                    .ok_or(DtaError::ArithmeticOverflow("cell offset"))?;
-                let width = usize::try_from(variable.byte_width)
-                    .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
-                if matches!(variable.dta_type, DtaType::FixedString(_)) {
-                    let encoding = if self.metadata.format_version.is_modern() {
-                        UTF_8
-                    } else {
-                        WINDOWS_1252
-                    };
-                    let (value, _) = decode_range(
+                let chunk_rows = (row_count - row).min(rows_per_chunk);
+                let chunk_rows_usize = usize::try_from(chunk_rows)
+                    .map_err(|_| DtaError::ArithmeticOverflow("chunk row count"))?;
+                let chunk_length = obs_length
+                    .checked_mul(chunk_rows_usize)
+                    .ok_or(DtaError::ArithmeticOverflow("observation chunk length"))?;
+                let source_row = row_start
+                    .checked_add(row)
+                    .ok_or(DtaError::ArithmeticOverflow("source row"))?;
+                let chunk_offset = payload_start
+                    .checked_add(
+                        source_row
+                            .checked_mul(self.metadata.obs_length)
+                            .ok_or(DtaError::ArithmeticOverflow("row offset"))?,
+                    )
+                    .ok_or(DtaError::ArithmeticOverflow("observation chunk offset"))?;
+                let staged = read_exact_at(
+                    &mut self.reader,
+                    chunk_offset,
+                    chunk_length,
+                    &mut self.scratch,
+                    "reading observation rows",
+                )?;
+                for local_row in 0..chunk_rows_usize {
+                    check_cancel(&mut should_interrupt)?;
+                    let row_at = local_row
+                        .checked_mul(obs_length)
+                        .ok_or(DtaError::ArithmeticOverflow("staged row offset"))?;
+                    for (builder, &index) in builders.iter_mut().zip(&indices) {
+                        check_cancel(&mut should_interrupt)?;
+                        let variable = &self.metadata.variables[index as usize];
+                        let width = usize::try_from(variable.byte_width)
+                            .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
+                        let variable_at = usize::try_from(variable.byte_offset)
+                            .map_err(|_| DtaError::ArithmeticOverflow("cell offset"))?;
+                        let cell_at = row_at
+                            .checked_add(variable_at)
+                            .ok_or(DtaError::ArithmeticOverflow("staged cell offset"))?;
+                        let cell_end = cell_at
+                            .checked_add(width)
+                            .ok_or(DtaError::ArithmeticOverflow("staged cell end"))?;
+                        let absolute_offset = chunk_offset
+                            .checked_add(u64::try_from(cell_at).map_err(|_| {
+                                DtaError::ArithmeticOverflow("absolute cell offset")
+                            })?)
+                            .ok_or(DtaError::ArithmeticOverflow("absolute cell offset"))?;
+                        let cell = staged.get(cell_at..cell_end).ok_or(DtaError::Truncated {
+                            context: "observation cell",
+                            offset: error_offset(absolute_offset),
+                            needed: width,
+                            available: staged.len().saturating_sub(cell_at),
+                        })?;
+                        push_staged_cell(builder, cell, absolute_offset, &self.metadata, variable)?;
+                    }
+                }
+                row = row
+                    .checked_add(chunk_rows)
+                    .ok_or(DtaError::ArithmeticOverflow("projected row"))?;
+            }
+        } else {
+            for row in 0..row_count {
+                check_cancel(&mut should_interrupt)?;
+                let source_row = row_start
+                    .checked_add(row)
+                    .ok_or(DtaError::ArithmeticOverflow("source row"))?;
+                let row_offset = source_row
+                    .checked_mul(self.metadata.obs_length)
+                    .ok_or(DtaError::ArithmeticOverflow("row offset"))?;
+                for (builder, &index) in builders.iter_mut().zip(&indices) {
+                    check_cancel(&mut should_interrupt)?;
+                    let variable = &self.metadata.variables[index as usize];
+                    let cell_offset = payload_start
+                        .checked_add(row_offset)
+                        .and_then(|value| value.checked_add(variable.byte_offset))
+                        .ok_or(DtaError::ArithmeticOverflow("cell offset"))?;
+                    let width = usize::try_from(variable.byte_width)
+                        .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
+                    if matches!(variable.dta_type, DtaType::FixedString(_)) {
+                        let encoding = if self.metadata.format_version.is_modern() {
+                            UTF_8
+                        } else {
+                            WINDOWS_1252
+                        };
+                        let (value, _) = decode_range(
+                            &mut self.reader,
+                            cell_offset,
+                            width,
+                            encoding,
+                            true,
+                            &mut self.scratch,
+                            &mut should_interrupt,
+                            "reading fixed-string observation",
+                        )?;
+                        let ColumnBuilder::FixedString { values, .. } = builder else {
+                            return Err(DtaError::ArithmeticOverflow("column builder type"));
+                        };
+                        values.push(value);
+                        continue;
+                    }
+                    let cell = read_exact_at(
                         &mut self.reader,
                         cell_offset,
                         width,
-                        encoding,
-                        true,
                         &mut self.scratch,
-                        &mut should_interrupt,
-                        "reading fixed-string observation",
+                        "reading observation cell",
                     )?;
-                    let ColumnBuilder::FixedString { values, .. } = builder else {
-                        return Err(DtaError::ArithmeticOverflow("column builder type"));
-                    };
-                    values.push(value);
-                    continue;
+                    push_cell(
+                        builder,
+                        &cell,
+                        cell_offset,
+                        &self.metadata,
+                        &variable.dta_type,
+                    )?;
                 }
-                let cell = read_exact_at(
-                    &mut self.reader,
-                    cell_offset,
-                    width,
-                    &mut self.scratch,
-                    "reading observation cell",
-                )?;
-                push_cell(
-                    builder,
-                    &cell,
-                    cell_offset,
-                    &self.metadata,
-                    &variable.dta_type,
-                )?;
             }
         }
 
@@ -1057,15 +1147,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         });
     }
 
-    const VARNAME_WIDTH: usize = 33;
-    const SORTLIST_WIDTH: usize = 2;
-    const VALUE_LABEL_NAME_WIDTH: usize = 33;
-    const VARIABLE_LABEL_WIDTH: usize = 81;
-    let format_width = if version == FormatVersion::V113 {
-        12
-    } else {
-        49
-    };
+    let format_width = format_width(version);
     let variable_types = u64::try_from(HEADER_SIZE)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy variable_types offset"))?;
     let varnames = checked_add_u64(variable_types, u64::from(nvar), "legacy varnames")?;
@@ -1749,6 +1831,29 @@ fn validate_gso_key(
     }
 }
 
+fn push_staged_cell(
+    builder: &mut ColumnBuilder,
+    cell: &[u8],
+    absolute_offset: u64,
+    metadata: &DtaMetadata,
+    variable: &VariableInfo,
+) -> Result<(), DtaError> {
+    if matches!(variable.dta_type, DtaType::FixedString(_)) {
+        let mut value = if metadata.format_version.is_modern() {
+            decode_utf8(field_bytes(cell))
+        } else {
+            decode_windows_1252(field_bytes(cell))
+        };
+        value.shrink_to_fit();
+        let ColumnBuilder::FixedString { values, .. } = builder else {
+            return Err(DtaError::ArithmeticOverflow("column builder type"));
+        };
+        values.push(value);
+        return Ok(());
+    }
+    push_cell(builder, cell, absolute_offset, metadata, &variable.dta_type)
+}
+
 fn push_cell(
     builder: &mut ColumnBuilder,
     cell: &[u8],
@@ -1897,11 +2002,23 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
             "GSO content offset",
         )?;
         let next = checked_add_u64(content_offset, u64::from(length), "GSO content end")?;
+        let file_end = metadata.section_offsets.end_of_file;
+        if next > file_end {
+            return Err(DtaError::Truncated {
+                context: "GSO content",
+                offset: error_offset(content_offset),
+                needed: content_length,
+                available: usize::try_from(file_end.saturating_sub(content_offset))
+                    .unwrap_or(usize::MAX),
+            });
+        }
         if next > end {
-            return Err(DtaError::Io {
-                context: "reading GSO content",
-                offset: content_offset,
-                kind: ErrorKind::UnexpectedEof,
+            return Err(DtaError::Truncated {
+                context: "GSO content",
+                offset: error_offset(content_offset),
+                needed: content_length,
+                available: usize::try_from(end.saturating_sub(content_offset))
+                    .unwrap_or(usize::MAX),
             });
         }
         if gso_type == 130 {

@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use dta_parser::{
-    read_dta_with_options, ColumnValues, DtaError, DtaFile, DtaType, FileOptions, ReadOptions,
+    read_dta, read_dta_with_options, ColumnValues, DtaError, DtaFile, DtaType, FileOptions,
+    ReadOptions,
 };
 
 fn fixture_dir() -> PathBuf {
@@ -19,6 +20,7 @@ fn fixture(name: &str) -> Vec<u8> {
 #[derive(Default)]
 struct Trace {
     reads: Vec<(u64, usize)>,
+    seeks: Vec<u64>,
     max_request: usize,
 }
 
@@ -53,7 +55,9 @@ impl Read for TracedReader {
 
 impl Seek for TracedReader {
     fn seek(&mut self, position: SeekFrom) -> IoResult<u64> {
-        self.inner.seek(position)
+        let offset = self.inner.seek(position)?;
+        self.trace.borrow_mut().seeks.push(offset);
+        Ok(offset)
     }
 }
 
@@ -202,6 +206,23 @@ fn wide_empty_fixed_strings(mut bytes: Vec<u8>) -> (Vec<u8>, u32) {
     (bytes, variable_index as u32)
 }
 
+fn overlong_first_gso(mut bytes: Vec<u8>) -> Vec<u8> {
+    let metadata = dta_parser::parse_metadata(&bytes).unwrap();
+    let first_gso = metadata.section_offsets.strls as usize + b"<strls>".len();
+    let content_start = first_gso + 20;
+    let gso_end = metadata.section_offsets.value_labels as usize - b"</strls>".len();
+    let overlong = u32::try_from(gso_end - content_start + 1).unwrap();
+    bytes[first_gso + 16..first_gso + 20].copy_from_slice(&overlong.to_le_bytes());
+    bytes
+}
+
+fn beyond_eof_first_gso(mut bytes: Vec<u8>) -> Vec<u8> {
+    let metadata = dta_parser::parse_metadata(&bytes).unwrap();
+    let first_gso = metadata.section_offsets.strls as usize + b"<strls>".len();
+    bytes[first_gso + 16..first_gso + 20].copy_from_slice(&u32::MAX.to_le_bytes());
+    bytes
+}
+
 #[test]
 fn file_reads_match_slice_for_modern_strl_and_legacy_projections() {
     for (name, read_options) in [
@@ -243,16 +264,120 @@ fn bounds_each_read_and_avoids_unselected_rows_and_gso_payloads() {
 
     let data_payload = metadata.section_offsets.data + 6;
     let selected = data_payload + 2 * metadata.obs_length + metadata.variables[1].byte_offset;
-    assert!(trace
-        .reads
-        .iter()
-        .any(|(offset, length)| *offset == selected && *length == 4));
+    assert!(trace.reads.iter().any(|(offset, length)| {
+        *offset <= selected && offset.saturating_add(*length as u64) >= selected + 4
+    }));
     let gso_payload_start = metadata.section_offsets.strls + 7;
     let gso_payload_end = metadata.section_offsets.value_labels - 8;
     assert!(!trace.reads.iter().any(|(offset, length)| {
         let end = offset.saturating_add(*length as u64);
-        *offset > gso_payload_start && end < gso_payload_end
+        *offset < gso_payload_end && end > gso_payload_start
     }));
+}
+
+#[test]
+fn stages_bounded_wide_rows_for_dense_and_sparse_projections() {
+    let bytes = fixture("wide_v118.dta");
+    let metadata = dta_parser::parse_metadata(&bytes).unwrap();
+    assert!(metadata.obs_length <= 1024);
+    let dense = (0..metadata.nvar).collect::<Vec<_>>();
+    let sparse = vec![metadata.nvar - 1, 0, metadata.nvar / 2];
+    let rows_per_chunk = 1024_u64 / metadata.obs_length;
+    let expected_chunks = metadata.nobs.div_ceil(rows_per_chunk) as usize;
+    let payload_start = metadata.section_offsets.data + b"<data>".len() as u64;
+    let payload_end = payload_start + metadata.nobs * metadata.obs_length;
+
+    for columns in [dense, sparse] {
+        let read_options = options(0, None, columns);
+        let expected = read_dta_with_options(&bytes, &read_options).unwrap();
+        let (reader, trace) = TracedReader::new(bytes.clone());
+        let mut file = DtaFile::from_reader_with_options(
+            reader,
+            FileOptions {
+                max_buffer_bytes: 1024,
+            },
+        )
+        .unwrap();
+        {
+            let mut trace = trace.borrow_mut();
+            trace.reads.clear();
+            trace.seeks.clear();
+            trace.max_request = 0;
+        }
+        let actual = file.read_with_options(&read_options).unwrap();
+        assert_eq!(actual, expected);
+
+        let trace = trace.borrow();
+        let observation_reads = trace
+            .reads
+            .iter()
+            .filter(|(offset, length)| {
+                *offset < payload_end && offset.saturating_add(*length as u64) > payload_start
+            })
+            .collect::<Vec<_>>();
+        let observation_seeks = trace
+            .seeks
+            .iter()
+            .filter(|offset| **offset >= payload_start && **offset < payload_end)
+            .count();
+        assert_eq!(observation_reads.len(), expected_chunks);
+        assert_eq!(observation_seeks, expected_chunks);
+        assert!(observation_reads.iter().all(|(_, length)| *length <= 1024));
+        assert!(trace.max_request <= 1024);
+        drop(trace);
+        assert!(file.max_scratch_bytes_used() <= 1024);
+    }
+}
+
+#[test]
+fn file_and_slice_reject_invalid_signatures_identically() {
+    for bytes in [b"not a dta".as_slice(), b"<stata_dta>".as_slice()] {
+        assert_eq!(
+            dta_parser::parse_metadata(bytes),
+            Err(DtaError::InvalidSignature)
+        );
+        assert!(matches!(
+            DtaFile::from_reader(Cursor::new(bytes.to_vec())),
+            Err(DtaError::InvalidSignature)
+        ));
+    }
+}
+
+#[test]
+fn file_and_slice_report_the_same_overlong_gso_error() {
+    let bytes = overlong_first_gso(fixture("strl_test_v118.dta"));
+    let slice_error = read_dta(&bytes).unwrap_err();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let file_error = file
+        .read_with_options(&options(0, Some(1), vec![0]))
+        .unwrap_err();
+    assert_eq!(file_error, slice_error);
+    assert!(matches!(
+        file_error,
+        DtaError::Truncated {
+            context: "GSO content",
+            ..
+        }
+    ));
+}
+
+#[test]
+fn file_and_slice_report_the_same_beyond_eof_gso_error() {
+    let bytes = beyond_eof_first_gso(fixture("strl_test_v118.dta"));
+    let slice_error = read_dta(&bytes).unwrap_err();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let file_error = file
+        .read_with_options(&options(0, Some(1), vec![0]))
+        .unwrap_err();
+    assert_eq!(file_error, slice_error);
+    assert!(matches!(
+        file_error,
+        DtaError::Truncated {
+            context: "GSO content",
+            needed,
+            ..
+        } if needed == u32::MAX as usize
+    ));
 }
 
 #[test]
@@ -413,6 +538,8 @@ fn retained_string_capacity_tracks_useful_text_not_source_ranges() {
     assert!(labels_file.max_scratch_bytes_used() <= 1024);
 
     let (bytes, variable_index) = wide_empty_fixed_strings(fixture("all_types_v118.dta"));
+    let read_options = options(0, None, vec![variable_index]);
+    let expected = read_dta_with_options(&bytes, &read_options).unwrap();
     let mut strings_file = DtaFile::from_reader_with_options(
         Cursor::new(bytes),
         FileOptions {
@@ -420,9 +547,8 @@ fn retained_string_capacity_tracks_useful_text_not_source_ranges() {
         },
     )
     .unwrap();
-    let data = strings_file
-        .read_with_options(&options(0, None, vec![variable_index]))
-        .unwrap();
+    let data = strings_file.read_with_options(&read_options).unwrap();
+    assert_eq!(data, expected);
     let ColumnValues::FixedString { values } = &data.columns[0].values else {
         panic!("expected a fixed-string column");
     };
