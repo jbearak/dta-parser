@@ -74,7 +74,6 @@ fn parse_table(
     cursor = checked_add(cursor, RESERVED_WIDTH, "value-label reserved bytes")?;
 
     let payload_start = cursor;
-    let payload = slice_at(bytes, payload_start, declared, "value-label table payload")?;
     if declared < 8 {
         return Err(DtaError::InvalidValueLabelLength {
             offset: table_start,
@@ -83,7 +82,16 @@ fn parse_table(
         });
     }
 
-    let entry_count_i32 = read_i32(payload, 0, metadata.byte_order, "value-label entry count")?;
+    // Validate the self-describing payload header before requiring the entire
+    // declared range. This matches the bounded file reader and reports a
+    // corrupt declaration precisely without staging an attacker-sized slice.
+    let payload_header = slice_at(bytes, payload_start, 8, "value-label payload header")?;
+    let entry_count_i32 = read_i32(
+        payload_header,
+        0,
+        metadata.byte_order,
+        "value-label entry count",
+    )?;
     if entry_count_i32 < 0 {
         return Err(DtaError::NegativeValueLabelField {
             field: "entry count",
@@ -91,7 +99,12 @@ fn parse_table(
             offset: payload_start,
         });
     }
-    let text_length_i32 = read_i32(payload, 4, metadata.byte_order, "value-label text length")?;
+    let text_length_i32 = read_i32(
+        payload_header,
+        4,
+        metadata.byte_order,
+        "value-label text length",
+    )?;
     if text_length_i32 < 0 {
         return Err(DtaError::NegativeValueLabelField {
             field: "text length",
@@ -117,6 +130,7 @@ fn parse_table(
             expected,
         });
     }
+    let payload = slice_at(bytes, payload_start, declared, "value-label table payload")?;
 
     let offsets_start = 8;
     let values_start = checked_add(

@@ -44,3 +44,26 @@ source builds do not contact a package registry. A Rust 1.74-or-newer toolchain
 and Cargo are required. Windows builds require 64-bit R and the
 `x86_64-pc-windows-gnu` Rust toolchain; `configure.win` rejects a mismatched
 host before compilation and the Windows Makevars passes the target explicitly.
+
+## Conformance and release checks
+
+The repository conformance gate compares every bundled fixture against the
+checked TypeScript/Rust oracle and, when R plus its test dependencies are
+available, installs the package from the current source and compares it with
+haven. Missing R dependencies produce an explicit `SKIP`; CI sets
+`DTA_REQUIRE_R_CONFORMANCE=1` and checks Linux, macOS, and Windows. Only
+nonmissing floating values permit `1e-7` relative tolerance; missing tags,
+labels, formats, value-label tables, strings, names, dimensions, projections,
+and row windows are otherwise exact.
+
+```sh
+DTA_REQUIRE_R_CONFORMANCE=1 bun run conformance
+R CMD build r-package/dtaparser
+R CMD check --no-manual dtaparser_0.1.0.tar.gz
+```
+
+The native source of truth is `rust/dta-parser`. After a root-first change,
+mirror it here and run `scripts/check-rust-sync.sh`; the check also verifies the
+Cargo locks and deterministic offline `vendor.tar.gz` identity. Windows CI
+installs and selects `stable-x86_64-pc-windows-gnu`, confirms the rustc host,
+then actually builds and checks the package through Rtools.

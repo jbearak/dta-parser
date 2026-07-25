@@ -123,11 +123,12 @@ fn decode_column(
         ($variant:ident, $value_type:ty, $read:expr, $classify:expr) => {{
             let mut values: Vec<$value_type> = Vec::with_capacity(capacity);
             let mut missing_tags = Vec::with_capacity(capacity);
+            let read_value = $read;
             for row in 0..row_count {
                 let row_offset = checked_mul_u64(row, metadata.obs_length, "row offset")?;
                 let cell_offset = checked_add_u64(first_offset, row_offset, "cell offset")?;
                 let cell_offset = offset_to_usize(cell_offset, "cell")?;
-                let value: $value_type = $read(cell_offset)?;
+                let value: $value_type = read_value(cell_offset)?;
                 missing_tags.push($classify(value));
                 values.push(value);
             }

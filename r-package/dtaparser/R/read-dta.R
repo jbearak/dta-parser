@@ -33,7 +33,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
     file <- normalizePath(file, mustWork = TRUE)
     selection <- rlang::enquo(col_select)
-    metadata_names <- .Call(C_dtaparser_metadata, file)
+    metadata_names <- .dta_metadata(file)
 
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
@@ -71,6 +71,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         attr(result, "dta_format_version") <- format_version
     }
     result
+}
+
+.dta_metadata <- function(file) {
+    .Call(C_dtaparser_metadata, file)
 }
 
 .validate_count <- function(value, argument, infinite) {
