@@ -2,6 +2,7 @@ use crate::endian::{
     checked_add, checked_mul, ensure_map_offset, expect_at, offset_to_usize, read_u16, read_u32,
     read_u64, read_u8, slice_at,
 };
+use crate::legacy::parse_legacy_metadata;
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -37,14 +38,14 @@ const VARIABLE_LABELS_CLOSE: &[u8] = b"</variable_labels>";
 const SECTION_MAP_ENTRIES: usize = 14;
 
 #[derive(Clone, Copy)]
-struct FieldWidths {
-    varname: usize,
-    format: usize,
-    value_label_name: usize,
-    variable_label: usize,
+pub(crate) struct FieldWidths {
+    pub(crate) varname: usize,
+    pub(crate) format: usize,
+    pub(crate) value_label_name: usize,
+    pub(crate) variable_label: usize,
 }
 
-fn field_widths(version: FormatVersion) -> FieldWidths {
+pub(crate) fn field_widths(version: FormatVersion) -> FieldWidths {
     match version {
         FormatVersion::V117 => FieldWidths {
             varname: 33,
@@ -65,11 +66,6 @@ fn field_widths(version: FormatVersion) -> FieldWidths {
 }
 
 fn parse_release(bytes: &[u8]) -> Result<(FormatVersion, usize), DtaError> {
-    if matches!(bytes.first(), Some(113..=115)) {
-        let version = FormatVersion::try_from(u16::from(bytes[0]))
-            .expect("the matched legacy release is represented");
-        return Err(DtaError::UnsupportedRelease(version));
-    }
     if !bytes.starts_with(RELEASE_OPEN) {
         return Err(DtaError::InvalidSignature);
     }
@@ -304,7 +300,7 @@ fn validate_sortlist(
     ensure_map_offset("formats", cursor, offsets.formats)
 }
 
-fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {
+pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {
     let numeric = match code {
         65530 => Some((DtaType::Byte, 1)),
         65529 => Some((DtaType::Int, 2)),
@@ -336,13 +332,20 @@ fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), Dta
     Err(DtaError::UnknownTypeCode { code, version })
 }
 
-/// Parse metadata from a Stata 117, 118, or 119 byte slice.
+/// Parse metadata from a Stata 113–115 or 117–119 byte slice.
 ///
-/// The slice may contain the full file or end immediately after the
-/// `variable_labels` section. Section-map offsets for observation data and
-/// later payloads are retained but are not dereferenced by this metadata-only
-/// parser.
+/// Modern input may contain the full file or end immediately after the
+/// `variable_labels` section; later section-map offsets are retained without
+/// dereferencing them. Legacy input must contain the complete file because its
+/// sequential layout requires scanning expansion fields and observation
+/// geometry to establish the value-label and end-of-file offsets.
 pub fn parse_metadata(bytes: &[u8]) -> Result<DtaMetadata, DtaError> {
+    if matches!(bytes.first(), Some(113..=115)) {
+        return parse_legacy_metadata(
+            bytes,
+            u64::try_from(bytes.len()).map_err(|_| DtaError::ArithmeticOverflow("file length"))?,
+        );
+    }
     let (format_version, cursor) = parse_release(bytes)?;
     let (byte_order, cursor) = parse_byte_order(bytes, cursor)?;
     let (nvar, nobs, cursor) = parse_counts(bytes, format_version, byte_order, cursor)?;
@@ -481,11 +484,14 @@ mod tests {
     }
 
     #[test]
-    fn rejects_legacy_and_unknown_signatures_without_panicking() {
-        assert_eq!(
+    fn rejects_truncated_legacy_and_unknown_signatures_without_panicking() {
+        assert!(matches!(
             parse_metadata(&[115]),
-            Err(DtaError::UnsupportedRelease(FormatVersion::V115))
-        );
+            Err(DtaError::Truncated {
+                context: "legacy header",
+                ..
+            })
+        ));
         assert_eq!(
             parse_metadata(b"not a dta"),
             Err(DtaError::InvalidSignature)

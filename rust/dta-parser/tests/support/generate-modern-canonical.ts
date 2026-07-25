@@ -1,62 +1,43 @@
-// Regenerate the Rust observation conformance oracle from the maintained
-// TypeScript decoder. Run from the repository root with:
+// Regenerate the checked Rust/TypeScript compatibility oracle. Run from the
+// repository root with:
 //
 //   bun rust/dta-parser/tests/support/generate-modern-canonical.ts
+//
+// Every checked-in .dta fixture is included. The Node-backed TypeScript path
+// resolves strLs and legacy files exactly as production consumers do.
 
-// The checked-in JSON intentionally contains every supported (non-strL) cell
-// in every modern shared fixture. Rust tests consume it without invoking Bun.
-
-import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 
-import { read_rows_from_buffer } from '../../../../src/data-reader';
 import { parse_metadata } from '../../../../src/header';
+import { parse_legacy_metadata } from '../../../../src/legacy-header';
 import { is_missing_value_object } from '../../../../src/missing-values';
-
-const FIXTURES = [
-    'all_types.dta',
-    'all_types_v117.dta',
-    'all_types_v118.dta',
-    'auto_v117.dta',
-    'auto_v118.dta',
-    // This preexisting nominal fixture is release 118 on disk. Genuine v119
-    // observation/value-label coverage lives in the synthetic Rust fixture.
-    'auto_v119.dta',
-    'empty.dta',
-    'empty_v118.dta',
-    'missing_values.dta',
-    'missing_values_v118.dta',
-    'strl_test.dta',
-    'strl_test_v118.dta',
-    'value_labels.dta',
-    'value_labels_v117.dta',
-    'value_labels_v118.dta',
-    'wide.dta',
-    'wide_v118.dta',
-] as const;
+import { DtaFile } from '../../../../src/node';
+import { is_legacy_format } from '../../../../src/types';
 
 const fixture_dir = path.resolve('tests/fixtures/dta');
+const fixture_names = readdirSync(fixture_dir)
+    .filter(name => name.endsWith('.dta'))
+    .sort();
 const fixtures: Record<string, unknown> = {};
 
-for (const fixture_name of FIXTURES) {
-    const node_buffer = readFileSync(
-        path.join(fixture_dir, fixture_name)
-    );
+for (const fixture_name of fixture_names) {
+    const fixture_path = path.join(fixture_dir, fixture_name);
+    const node_buffer = readFileSync(fixture_path);
     const buffer = node_buffer.buffer.slice(
         node_buffer.byteOffset,
         node_buffer.byteOffset + node_buffer.byteLength
     );
-    const metadata = parse_metadata(buffer);
-    const rows = read_rows_from_buffer(
-        buffer,
-        metadata,
-        0,
-        metadata.nobs
-    );
-    const columns = metadata.variables.flatMap(
-        (variable, variable_index) => {
-            if (variable.type === 'strL') return [];
-            return [{
+    const version = node_buffer[0];
+    const metadata = is_legacy_format(version)
+        ? parse_legacy_metadata(buffer, node_buffer.length)
+        : parse_metadata(buffer);
+    const file = await DtaFile.open(fixture_path);
+    try {
+        const rows = await file.read_rows(0, metadata.nobs);
+        const columns = metadata.variables.map(
+            (variable, variable_index) => ({
                 variable_index,
                 name: variable.name,
                 storage_type: variable.type,
@@ -66,19 +47,43 @@ for (const fixture_name of FIXTURES) {
                         ? { missing: cell.missing_type }
                         : cell;
                 }),
-            }];
-        }
-    );
-    fixtures[fixture_name] = {
-        format_version: metadata.format_version,
-        row_count: metadata.nobs,
-        columns,
-    };
+            })
+        );
+        const value_label_tables = Array.from(
+            file.value_label_tables,
+            ([name, entries]) => ({
+                name,
+                entries: Array.from(
+                    entries,
+                    ([value, label]) => ({ value, label })
+                ),
+            })
+        );
+        fixtures[fixture_name] = {
+            sha256: createHash('sha256')
+                .update(node_buffer)
+                .digest('hex'),
+            metadata: {
+                format_version: metadata.format_version,
+                byte_order: metadata.byte_order,
+                nvar: metadata.nvar,
+                nobs: metadata.nobs,
+                dataset_label: metadata.dataset_label,
+                obs_length: metadata.obs_length,
+                section_offsets: metadata.section_offsets,
+                variables: metadata.variables,
+            },
+            columns,
+            value_label_tables,
+        };
+    } finally {
+        file.close();
+    }
 }
 
 const output = {
-    schema_version: 1,
-    source: 'TypeScript read_rows_from_buffer and parse_metadata; format versions come from on-disk headers; values mirror haven-derived shared fixture expectations',
+    schema_version: 2,
+    source: 'Production TypeScript DtaFile plus parse_metadata/parse_legacy_metadata; fixture values and missing tags retain the shared haven-derived expectations',
     fixtures,
 };
 const output_path = path.resolve(

@@ -1,6 +1,8 @@
+use std::io::ErrorKind;
+
 use crate::{DtaType, FormatVersion};
 
-/// Errors returned while parsing modern `.dta` files.
+/// Errors returned while parsing supported `.dta` files and seekable sources.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DtaError {
     /// The input does not start with a recognized Stata file header.
@@ -8,7 +10,7 @@ pub enum DtaError {
     InvalidSignature,
 
     /// The release exists in the shared model but is outside this parser's
-    /// current 117–119 scope.
+    /// supported 113–115 and 117–119 ranges.
     #[error("Stata release {0} metadata is not supported by this parser")]
     UnsupportedRelease(FormatVersion),
 
@@ -37,6 +39,27 @@ pub enum DtaError {
     /// The release field was syntactically invalid or unknown.
     #[error("invalid Stata release {0:?}")]
     InvalidRelease(String),
+
+    /// A legacy header's file-type marker was not the required data-file
+    /// marker (`0x01`).
+    #[error("invalid legacy file type marker 0x{0:02x}")]
+    InvalidFileType(u8),
+
+    /// A signed legacy observation count was negative.
+    #[error("negative legacy observation count {0}")]
+    NegativeObservationCount(i32),
+
+    /// A legacy expansion field declared a negative payload length.
+    #[error("negative expansion-field length {value} at byte offset {offset}")]
+    NegativeExpansionLength { value: i32, offset: usize },
+
+    /// A legacy expansion-field stream ended without its `(0, 0)` sentinel.
+    #[error("legacy expansion fields have no (0, 0) terminator")]
+    MissingExpansionTerminator,
+
+    /// Expansion-field type zero is reserved for the zero-length sentinel.
+    #[error("invalid expansion-field terminator length {value} at byte offset {offset}")]
+    InvalidExpansionTerminator { value: i32, offset: usize },
 
     /// A map entry did not point to the section it names.
     #[error("section {section} has map offset {actual}, expected {expected}")]
@@ -71,6 +94,64 @@ pub enum DtaError {
     /// Decoding for the selected storage type belongs to a later feature slice.
     #[error("column index {index} has unsupported storage type {dta_type}")]
     UnsupportedColumnType { index: u32, dta_type: DtaType },
+
+    /// A non-null `strL` pointer had only one zero component or referenced an
+    /// invalid variable/observation key.
+    #[error("invalid strL pointer ({variable}, {observation}) at byte offset {offset}")]
+    InvalidStrlPointer {
+        variable: u32,
+        observation: u64,
+        offset: usize,
+    },
+
+    /// Bytes inside `<strls>` did not begin with a GSO marker.
+    #[error("expected GSO marker at byte offset {offset}")]
+    InvalidGsoMarker { offset: usize },
+
+    /// A GSO key did not identify a valid `strL` variable and observation.
+    #[error("invalid GSO key ({variable}, {observation}) at byte offset {offset}")]
+    InvalidGsoKey {
+        variable: u32,
+        observation: u64,
+        offset: usize,
+    },
+
+    /// Two GSO records used the same key. Duplicate payloads are still
+    /// rejected because silently selecting one would hide file corruption.
+    #[error("duplicate GSO key ({variable}, {observation}) at byte offset {offset}")]
+    DuplicateGsoKey {
+        variable: u32,
+        observation: u64,
+        offset: usize,
+    },
+
+    /// A selected non-null pointer had no matching GSO record.
+    #[error("dangling strL pointer ({variable}, {observation})")]
+    DanglingStrlPointer { variable: u32, observation: u64 },
+
+    /// Only Stata GSO types 129 (binary) and 130 (text) are supported.
+    #[error("unsupported GSO type {gso_type} at byte offset {offset}")]
+    InvalidGsoType { gso_type: u8, offset: usize },
+
+    /// Type-130 GSO strings must include a final NUL byte.
+    #[error("type-130 GSO payload at byte offset {offset} is not NUL-terminated")]
+    InvalidGsoText { offset: usize },
+
+    /// File-backed scratch reads require enough space for the fixed map probe.
+    #[error("max_buffer_bytes must be at least 1024 bytes")]
+    InvalidBufferSize,
+
+    /// A file-backed consumer requested cooperative interruption.
+    #[error("read cancelled")]
+    Cancelled,
+
+    /// A seek or read failed while accessing a file-backed source.
+    #[error("I/O error while {context} at byte offset {offset}: {kind:?}")]
+    Io {
+        context: &'static str,
+        offset: u64,
+        kind: ErrorKind,
+    },
 
     /// A signed value-label count or length was negative.
     #[error("negative {field} value {value} in value-label table at byte offset {offset}")]

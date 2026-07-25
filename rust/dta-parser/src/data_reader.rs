@@ -1,9 +1,11 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::endian::{
     checked_add, checked_sub, ensure_map_offset, expect_at, offset_to_usize, read_i16, read_i32,
     read_i8, read_u32, read_u64, slice_at,
 };
+use crate::strl::decode_strl_columns;
+use crate::text::{decode_utf8, decode_windows_1252, field_bytes};
 use crate::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
     classify_int_missing, classify_long_missing, parse_metadata, parse_value_labels, Column,
@@ -27,6 +29,27 @@ fn checked_mul_u64(left: u64, right: u64, context: &'static str) -> Result<u64, 
 
 fn validate_data_section(bytes: &[u8], metadata: &DtaMetadata) -> Result<usize, DtaError> {
     let data_offset = offset_to_usize(metadata.section_offsets.data, "data")?;
+    if !metadata.format_version.is_modern() {
+        let payload_length = checked_mul_u64(
+            metadata.nobs,
+            metadata.obs_length,
+            "legacy observation data length",
+        )?;
+        let payload_length = offset_to_usize(payload_length, "legacy observation data length")?;
+        slice_at(
+            bytes,
+            data_offset,
+            payload_length,
+            "legacy observation data",
+        )?;
+        let after_data = checked_add(data_offset, payload_length, "legacy observation data")?;
+        ensure_map_offset(
+            "value_labels",
+            after_data,
+            metadata.section_offsets.value_labels,
+        )?;
+        return Ok(data_offset);
+    }
     let payload_start = expect_at(bytes, data_offset, DATA_OPEN, "<data>")?;
     let payload_length = checked_mul_u64(
         metadata.nobs,
@@ -83,17 +106,6 @@ fn resolve_columns(metadata: &DtaMetadata, options: &ReadOptions) -> Result<Vec<
         }
     }
 
-    for &index in &resolved {
-        let variable_index =
-            usize::try_from(index).map_err(|_| DtaError::ArithmeticOverflow("column index"))?;
-        let variable = &metadata.variables[variable_index];
-        if variable.dta_type == DtaType::StrL {
-            return Err(DtaError::UnsupportedColumnType {
-                index,
-                dta_type: DtaType::StrL,
-            });
-        }
-    }
     Ok(resolved)
 }
 
@@ -218,11 +230,12 @@ fn decode_column(
                 let cell_offset = checked_add_u64(first_offset, row_offset, "cell offset")?;
                 let cell_offset = offset_to_usize(cell_offset, "cell")?;
                 let field = slice_at(bytes, cell_offset, width, "fixed-string observation")?;
-                let end = field
-                    .iter()
-                    .position(|byte| *byte == 0)
-                    .unwrap_or(field.len());
-                values.push(String::from_utf8_lossy(&field[..end]).into_owned());
+                let value = if metadata.format_version.is_modern() {
+                    decode_utf8(field_bytes(field))
+                } else {
+                    decode_windows_1252(field_bytes(field))
+                };
+                values.push(value);
             }
             ColumnValues::FixedString { values }
         }
@@ -239,32 +252,52 @@ fn decode_column(
     })
 }
 
-/// Parse and decode all observations and variables in a modern Stata file.
-///
-/// A full read returns [`DtaError::UnsupportedColumnType`] when the dataset
-/// contains a `strL`; callers can use [`read_dta_with_options`] to project only
-/// the numeric and fixed-string variables supported by this feature slice.
+/// Parse and decode all observations and variables in a supported Stata file.
 pub fn read_dta(bytes: &[u8]) -> Result<DtaData, DtaError> {
     read_dta_with_options(bytes, &ReadOptions::default())
 }
 
-/// Parse a modern Stata file into a column-oriented, projected result.
+/// Parse a supported Stata file into a column-oriented, projected result.
 pub fn read_dta_with_options(bytes: &[u8], options: &ReadOptions) -> Result<DtaData, DtaError> {
     let metadata = parse_metadata(bytes)?;
     let payload_start = validate_data_section(bytes, &metadata)?;
     let column_indices = resolve_columns(&metadata, options)?;
     let value_label_tables = parse_value_labels(bytes, &metadata)?;
     let (row_start, row_count) = row_window(&metadata, options);
+    let mut strl_indices = Vec::new();
+    for &index in &column_indices {
+        let variable_index =
+            usize::try_from(index).map_err(|_| DtaError::ArithmeticOverflow("column index"))?;
+        if metadata.variables[variable_index].dta_type == DtaType::StrL {
+            strl_indices.push(index);
+        }
+    }
+    let mut strl_columns = decode_strl_columns(
+        bytes,
+        &metadata,
+        payload_start,
+        row_start,
+        row_count,
+        &strl_indices,
+    )?
+    .into_iter()
+    .map(|column| (column.variable_index, column))
+    .collect::<HashMap<_, _>>();
+
     let mut columns = Vec::with_capacity(column_indices.len());
     for variable_index in column_indices {
-        columns.push(decode_column(
-            bytes,
-            &metadata,
-            payload_start,
-            row_start,
-            row_count,
-            variable_index,
-        )?);
+        if let Some(column) = strl_columns.remove(&variable_index) {
+            columns.push(column);
+        } else {
+            columns.push(decode_column(
+                bytes,
+                &metadata,
+                payload_start,
+                row_start,
+                row_count,
+                variable_index,
+            )?);
+        }
     }
     Ok(DtaData {
         metadata,

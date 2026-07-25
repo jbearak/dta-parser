@@ -121,8 +121,8 @@ export declare class DtaFile {
     /**
      * Resolve a single strL pointer at `pointer_offset` within the
      * chunk's data buffer to its string value, reading the GSO payload
-     * from the in-memory strL section. Returns '' for a null pointer
-     * or an unresolvable/absent entry.
+     * from the in-memory strL section. Returns '' only for a null pointer;
+     * a missing non-null key is corrupt input.
      */
     private _resolve_strl_at;
 }

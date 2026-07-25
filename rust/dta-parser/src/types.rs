@@ -66,7 +66,7 @@ impl<'de> Deserialize<'de> for FormatVersion {
     }
 }
 
-/// Byte order marker stored in a modern `.dta` header.
+/// Byte order stored in a `.dta` header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ByteOrder {
     #[serde(rename = "MSF")]
@@ -216,7 +216,8 @@ pub struct VariableInfo {
     pub byte_offset: u64,
 }
 
-/// Absolute file offsets from the 14-entry modern section map.
+/// Absolute file offsets. Legacy files synthesize the modern section names
+/// from their sequential layout.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SectionOffsets {
     #[serde(with = "decimal_u64")]
@@ -352,6 +353,11 @@ pub enum ColumnValues {
     FixedString {
         values: Vec<String>,
     },
+    /// Resolved `strL` values. Null `(0, 0)` pointers are represented by an
+    /// empty string, matching Stata and the TypeScript implementation.
+    StrL {
+        values: Vec<String>,
+    },
 }
 
 impl ColumnValues {
@@ -364,6 +370,7 @@ impl ColumnValues {
             Self::Float { values, .. } => values.len(),
             Self::Double { values, .. } => values.len(),
             Self::FixedString { values } => values.len(),
+            Self::StrL { values } => values.len(),
         }
     }
 
