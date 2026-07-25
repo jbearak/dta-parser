@@ -12,8 +12,8 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
 use dta_parser::{
-    parse_metadata, read_dta, read_dta_with_options, DtaData, DtaError, DtaFile, FileOptions,
-    ReadOptions,
+    parse_metadata, read_dta, read_dta_with_options, ByteOrder, DtaData, DtaError, DtaFile,
+    FileOptions, ReadOptions,
 };
 
 const MAX_INPUT_BYTES: usize = 2 * 1024 * 1024;
@@ -237,7 +237,11 @@ fn oversized_value_label_declaration_preserves_slice_file_error_identity() {
     let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
     let length_offset = table_start + b"<lbl>".len();
     let declared = 4_653_097_i32;
-    bytes[length_offset..length_offset + 4].copy_from_slice(&declared.to_le_bytes());
+    let declared_bytes = match metadata.byte_order {
+        ByteOrder::Lsf => declared.to_le_bytes(),
+        ByteOrder::Msf => declared.to_be_bytes(),
+    };
+    bytes[length_offset..length_offset + 4].copy_from_slice(&declared_bytes);
 
     let expected = DtaError::InvalidValueLabelLength {
         offset: table_start,
