@@ -17,7 +17,8 @@ projected slice decode, and a projected 1 KiB-bounded file read. It includes
 modern all-types, wide, `strL`, and legacy files. The TypeScript report separates
 I/O, metadata, buffer decoding, and Node wrapper-backed projection. The R report
 captures native allocation/population plus wrapper overhead as one public-call
-measurement, and prints a separate haven reference when installed; the C ABI
+measurement, and compares the same first-two-column row window with haven when
+installed; the C ABI
 does not expose stable internal timers, so a finer native R split would require
 instrumenting production code and is deliberately not claimed here.
 

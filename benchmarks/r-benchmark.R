@@ -24,19 +24,23 @@ cat("case\tphase\tinput_bytes\titerations\tmean_ms\n")
 for (case_name in names(cases)) {
     path <- file.path(fixture_dir, cases[[case_name]])
     size <- file.info(path)$size
+    projection_names <- utils::head(names(dtaparser::read_dta(path, n_max = 0)), 2L)
     native <- measure(function() dtaparser::read_dta(path))
     cat(case_name, "native-wrapper-allocation-population", size, iterations,
         sprintf("%.6f", native), sep = "\t")
     cat("\n")
     projected <- measure(function() dtaparser::read_dta(
-        path, col_select = tidyselect::everything(), skip = 1, n_max = 16
+        path, col_select = tidyselect::all_of(projection_names), skip = 1, n_max = 16
     ))
-    cat(case_name, "native-projected-wrapper", size, iterations,
+    cat(case_name, "native-projected-two-columns", size, iterations,
         sprintf("%.6f", projected), sep = "\t")
     cat("\n")
     if (requireNamespace("haven", quietly = TRUE)) {
-        haven <- measure(function() haven::read_dta(path, skip = 1, n_max = 16))
-        cat(case_name, "haven-projected-reference", size, iterations,
+        haven <- measure(function() haven::read_dta(
+            path, col_select = tidyselect::all_of(projection_names),
+            skip = 1, n_max = 16
+        ))
+        cat(case_name, "haven-projected-two-columns", size, iterations,
             sprintf("%.6f", haven), sep = "\t")
         cat("\n")
     } else {

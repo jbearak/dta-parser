@@ -6,12 +6,10 @@ import { read_rows_from_buffer } from '../src/data-reader';
 import { parse_metadata } from '../src/header';
 import { parse_legacy_metadata } from '../src/legacy-header';
 import { DtaFile } from '../src/node';
+import { parse_benchmark_iterations } from './config';
 
 const fixtureDir = path.resolve(import.meta.dir, '../tests/fixtures/dta');
-const iterations = Math.max(
-    1,
-    Math.min(10_000, Number(process.env.DTA_BENCH_ITERATIONS ?? 25))
-);
+const iterations = parse_benchmark_iterations(process.env.DTA_BENCH_ITERATIONS);
 
 async function measure(operation: () => unknown | Promise<unknown>): Promise<number> {
     const start = performance.now();

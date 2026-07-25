@@ -1,4 +1,5 @@
 #!/bin/sh
 set -eu
 
-exec python3 scripts/rebuild-r-vendor.py
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec python3 "$script_dir/rebuild-r-vendor.py"

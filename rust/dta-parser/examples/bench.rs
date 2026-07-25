@@ -101,7 +101,7 @@ fn main() {
             input_bytes,
             measure(|| {
                 let mut file = DtaFile::from_reader_with_options(
-                    std::io::Cursor::new(bytes.clone()),
+                    fs::File::open(&path).unwrap(),
                     FileOptions {
                         max_buffer_bytes: 1024,
                     },

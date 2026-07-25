@@ -135,8 +135,7 @@ fn checked_manifest_has_an_honest_immutable_29_case_inventory() {
     assert_eq!(gates.len(), manifest.deterministic_cases.len());
     assert!(!gates.contains(&format!(
         "{}::{}",
-        manifest.identity.fixture_oracle_gate.binary,
-        manifest.identity.fixture_oracle_gate.test
+        manifest.identity.fixture_oracle_gate.binary, manifest.identity.fixture_oracle_gate.test
     )));
     assert!(manifest.deterministic_cases.iter().all(|case| {
         !case.kind.is_empty()
