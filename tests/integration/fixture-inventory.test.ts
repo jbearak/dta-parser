@@ -8,7 +8,16 @@ import { parse_legacy_metadata } from '../../src/legacy-header';
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures', 'dta');
 
+function isLegacyRelease(release: number): boolean {
+    return release >= 113 && release <= 115;
+}
+
 describe('DTA fixture inventory', () => {
+    it('recognizes the exact legacy release range', () => {
+        expect([113, 114, 115].every(isLegacyRelease)).toBe(true);
+        expect([112, 116, 117, 118, 119].some(isLegacyRelease)).toBe(false);
+    });
+
     it('has distinct bytes and release-accurate names', () => {
         const fixtures = fs.readdirSync(FIXTURE_DIR)
             .filter(name => name.endsWith('.dta'))
@@ -27,7 +36,7 @@ describe('DTA fixture inventory', () => {
                 bytes.byteOffset,
                 bytes.byteOffset + bytes.byteLength
             );
-            const actualRelease = bytes[0] === 115
+            const actualRelease = isLegacyRelease(bytes[0])
                 ? parse_legacy_metadata(arrayBuffer, bytes.length).format_version
                 : parse_metadata(arrayBuffer).format_version;
             const expectedRelease = fixture.endsWith('_v115.dta')

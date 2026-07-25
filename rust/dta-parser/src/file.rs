@@ -750,7 +750,9 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
             let input_end = boundary.saturating_sub(completed).min(bytes.len());
             let original_index = ordered[next_mapping].1;
             if std::ptr::eq(encoding, UTF_8)
-                && is_utf8_continuation(bytes[input_end])
+                && bytes
+                    .get(input_end)
+                    .is_some_and(|byte| is_utf8_continuation(*byte))
                 && match first_invalid_boundary {
                     Some((index, _)) => original_index < index,
                     None => true,
