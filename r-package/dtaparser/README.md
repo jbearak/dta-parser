@@ -26,6 +26,10 @@ decompressed automatically. Source resolution is delegated to
 vectors containing literal text are rejected because haven does not handle
 the resulting `source_string` for DTA input.
 
+URLs are fetched at call time. Applications that pass untrusted values to
+`file` should validate or allowlist acceptable sources before calling
+`read_dta()`; the reader does not impose a network allowlist.
+
 Source resolution remains an R-layer concern. An ordinary uncompressed local
 file is passed straight to the path-based Rust reader without copying its
 contents. Raw bytes and readr-resolved connections, compressed inputs, and

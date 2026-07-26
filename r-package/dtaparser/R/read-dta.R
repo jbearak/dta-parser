@@ -8,7 +8,9 @@
 #' @param file A path, URL, raw vector, or binary connection. Local and remote
 #'   gzip files and local bzip2, xz, and zip files are decompressed
 #'   automatically. Character vectors containing literal data are not handled,
-#'   matching `haven::read_dta()`.
+#'   matching `haven::read_dta()`. URLs are fetched at call time; applications
+#'   accepting untrusted `file` values should validate or allowlist sources
+#'   before calling `read_dta()`.
 #' @param encoding Must be `NULL`. Legacy files are decoded as Windows-1252 and
 #'   modern files as UTF-8 according to their storage format.
 #' @param col_select One or more tidyselect expressions. Predicates see Stata
@@ -94,25 +96,29 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .resolve_dta_source <- function(file) {
     caller_supplied_source <- inherits(file, "source")
+    caller_path <- .caller_dta_source_path(file)
     datasource <- readr::datasource(file)
     source_type <- class(datasource)[[1L]]
 
     if (identical(source_type, "source_file")) {
         path <- normalizePath(datasource[[1L]], winslash = "/", mustWork = TRUE)
-        # readr adds an environment with a finalizer when it copied a
-        # connection, compressed file, or URL into a temporary file. Retain
-        # the datasource for both native passes and eagerly clean the path.
+        # Delete only a direct child of tempdir() that differs from a canonical
+        # caller-owned path. Ownership never depends on datasource internals,
+        # and a caller-supplied source object is always left to its caller.
         temporary_parent <- dirname(path)
         temporary_root <- normalizePath(
             tempdir(), winslash = "/", mustWork = TRUE
         )
+        comparison_path <- path
         if (identical(.Platform$OS.type, "windows")) {
             temporary_parent <- tolower(temporary_parent)
             temporary_root <- tolower(temporary_root)
+            comparison_path <- tolower(comparison_path)
+            if (!is.null(caller_path)) caller_path <- tolower(caller_path)
         }
         temporary <- !caller_supplied_source &&
-            "env" %in% names(datasource) &&
-            identical(temporary_parent, temporary_root)
+            identical(temporary_parent, temporary_root) &&
+            (is.null(caller_path) || !identical(comparison_path, caller_path))
         return(list(
             path = path,
             temporary = temporary,
@@ -130,6 +136,23 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     stop("This kind of input is not handled.", call. = FALSE)
+}
+
+.caller_dta_source_path <- function(file) {
+    path <- NULL
+    if (is.character(file) && length(file) == 1L && !is.na(file) &&
+        file.exists(file)) {
+        path <- file
+    } else if (inherits(file, "connection")) {
+        description <- summary(file)$description
+        if (is.character(description) && length(description) == 1L &&
+            !is.na(description) && file.exists(description)) {
+            path <- description
+        }
+    }
+
+    if (is.null(path)) return(NULL)
+    normalizePath(path, winslash = "/", mustWork = TRUE)
 }
 
 .cleanup_dta_source <- function(source) {

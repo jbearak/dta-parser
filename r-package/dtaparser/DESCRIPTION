@@ -11,7 +11,7 @@ License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports:
-    readr,
+    readr (>= 2.2.0),
     rlang,
     tibble,
     tidyselect

@@ -95,7 +95,7 @@ start_fixture_server <- function(path) {
 }
 
 test_that("plain local paths retain the direct path fast path", {
-    path <- normalizePath(input_fixture())
+    path <- normalizePath(input_fixture(), winslash = "/")
     source <- dtaparser:::.resolve_dta_source(path)
     on.exit(dtaparser:::.cleanup_dta_source(source), add = TRUE)
 
@@ -107,6 +107,11 @@ test_that("caller-supplied datasource paths are never deleted", {
     path <- tempfile(fileext = ".dta")
     file.copy(input_fixture(), path)
     on.exit(unlink(path), add = TRUE)
+    direct_source <- dtaparser:::.resolve_dta_source(path)
+    expect_false(direct_source$temporary)
+    dtaparser:::.cleanup_dta_source(direct_source)
+    expect_true(file.exists(path))
+
     datasource <- readr::datasource(path)
     datasource$env <- new.env(parent = emptyenv())
 
