@@ -8,8 +8,24 @@ output <- normalizePath(args[[2L]], mustWork = FALSE)
 iterations <- if (length(args) >= 3L) as.integer(args[[3L]]) else 21L
 stopifnot(is.finite(iterations), iterations >= 1L)
 
+script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
+script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/")
+checkout_root <- normalizePath(file.path(dirname(script_path), "..", ".."), winslash = "/")
+benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
+if (!nzchar(benchmark_library)) {
+    stop("set DTAPARSER_BENCH_LIB to a library containing dtaparser built from this checkout")
+}
+benchmark_library <- normalizePath(benchmark_library, winslash = "/")
+if (!startsWith(benchmark_library, paste0(checkout_root, "/"))) {
+    stop("DTAPARSER_BENCH_LIB must point to a library inside this checkout")
+}
+.libPaths(c(benchmark_library, .libPaths()))
 if (!requireNamespace("dtaparser", quietly = TRUE)) {
-    stop("dtaparser is required")
+    stop("DTAPARSER_BENCH_LIB does not contain a loadable dtaparser installation")
+}
+loaded_library <- normalizePath(dirname(find.package("dtaparser")), winslash = "/")
+if (!identical(loaded_library, benchmark_library)) {
+    stop("dtaparser was not loaded from DTAPARSER_BENCH_LIB")
 }
 
 read_one <- function(materialization) {

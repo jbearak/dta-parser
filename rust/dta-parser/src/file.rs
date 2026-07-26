@@ -130,6 +130,9 @@ enum ColumnBuilder {
 /// Implementations can retain ordinary Rust vectors, write directly into a
 /// foreign column store, or stream values elsewhere. Calls are monomorphized,
 /// so the shared decoder does not add a dynamic callback boundary per cell.
+/// On a successful read, each selected `(column, row)` pair is written exactly
+/// once, rows ascend within each column, and `StrL` pushes are deferred until
+/// after all other cells.
 pub trait DtaSink: Sized {
     type Output;
 

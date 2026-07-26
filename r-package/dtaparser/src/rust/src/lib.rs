@@ -366,6 +366,9 @@ enum RColumn {
     },
     String {
         vector: Sexp,
+        // Delaying R string allocation until after decoding is measurably
+        // faster than interleaving it with the parser's hot loop. Insertions
+        // still validate the DtaSink row-order contract below.
         values: Vec<String>,
     },
 }
@@ -471,9 +474,20 @@ impl RDataFrameSink {
     }
 
     #[inline(always)]
-    fn push_string_value(&mut self, column: usize, value: String) -> Result<(), DtaError> {
+    fn push_string_value(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: String,
+    ) -> Result<(), DtaError> {
         match self.columns.get_mut(column) {
             Some(RColumn::String { values, .. }) => {
+                if values.len() != row {
+                    return Err(DtaError::Output(format!(
+                        "string output row mismatch: expected {}, got {row}",
+                        values.len()
+                    )));
+                }
                 values.push(value);
                 Ok(())
             }
@@ -544,15 +558,15 @@ impl DtaSink for RDataFrameSink {
     fn push_fixed_string(
         &mut self,
         column: usize,
-        _row: usize,
+        row: usize,
         value: String,
     ) -> Result<(), DtaError> {
-        self.push_string_value(column, value)
+        self.push_string_value(column, row, value)
     }
 
     #[inline(always)]
-    fn push_strl(&mut self, column: usize, _row: usize, value: &str) -> Result<(), DtaError> {
-        self.push_string_value(column, value.to_owned())
+    fn push_strl(&mut self, column: usize, row: usize, value: &str) -> Result<(), DtaError> {
+        self.push_string_value(column, row, value.to_owned())
     }
 
     fn finish(
@@ -562,11 +576,19 @@ impl DtaSink for RDataFrameSink {
         row_count: u64,
         value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError> {
+        let expected_string_rows = usize::try_from(row_count)
+            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         unsafe {
             for column in &mut self.columns {
                 let RColumn::String { vector, values } = column else {
                     continue;
                 };
+                if values.len() != expected_string_rows {
+                    return Err(DtaError::Output(format!(
+                        "string output row count mismatch: expected {expected_string_rows}, got {}",
+                        values.len()
+                    )));
+                }
                 for (row, value) in values.drain(..).enumerate() {
                     poll_interrupt(row).map_err(DtaError::Output)?;
                     SET_STRING_ELT(

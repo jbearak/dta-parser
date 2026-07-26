@@ -64,8 +64,16 @@ every bundled fixture.
 DTA_REQUIRE_R_CONFORMANCE=1 bun run conformance
 R CMD build r-package/dtaparser
 R CMD check --no-manual dtaparser_0.1.0.tar.gz
+mkdir -p "$PWD/target"
+benchmark_lib="$(mktemp -d "$PWD/target/r-benchmark-library.XXXXXX")"
+R CMD INSTALL --library="$benchmark_lib" dtaparser_0.1.0.tar.gz
+export DTAPARSER_BENCH_LIB="$benchmark_lib"
 Rscript benchmarks/r-materialization/run.R input.dta timings.tsv 21
 ```
+
+The materialization benchmark runners require `DTAPARSER_BENCH_LIB` and verify
+that the package is loaded from that freshly populated, checkout-local library
+rather than an unrelated global installation.
 
 The native source of truth is `rust/dta-parser`. After a root-first change,
 mirror it here and run `scripts/check-rust-sync.sh`; the check also verifies the
