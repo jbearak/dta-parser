@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-import { read_rows_from_buffer } from '../src/data-reader';
-import { parse_metadata } from '../src/header';
-import { parse_legacy_metadata } from '../src/legacy-header';
-import { DtaFile } from '../src/node';
+import { read_rows_from_buffer } from '../typescript/dta-parser/src/data-reader';
+import { parse_metadata } from '../typescript/dta-parser/src/header';
+import { parse_legacy_metadata } from '../typescript/dta-parser/src/legacy-header';
+import { DtaFile } from '../typescript/dta-parser/src/node';
 import { parse_benchmark_iterations } from './config';
 
 const fixtureDir = path.resolve(import.meta.dir, '../tests/fixtures/dta');

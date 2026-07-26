@@ -90,7 +90,7 @@ collector to be identical to the retained `DtaData`/Rust-vector collector on
 every bundled fixture.
 
 ```sh
-DTA_REQUIRE_R_CONFORMANCE=1 bun run conformance
+DTA_REQUIRE_R_CONFORMANCE=1 scripts/conformance.sh
 R CMD build r-package/dtaparser
 R CMD check --no-manual dtaparser_0.1.0.tar.gz
 mkdir -p "$PWD/target"

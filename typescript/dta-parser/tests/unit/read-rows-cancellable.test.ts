@@ -12,8 +12,8 @@ import { DtaFile } from '../../src/node';
 // signal it must behave exactly as the single-shot path.
 // -----------------------------------------------------------
 
-const FIXTURE_DIR = path.join(
-    __dirname, '..', 'fixtures', 'dta'
+const FIXTURE_DIR = path.resolve(
+    __dirname, '../../../../tests/fixtures/dta'
 );
 
 let my_file: DtaFile | null = null;

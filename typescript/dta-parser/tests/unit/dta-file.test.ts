@@ -10,8 +10,8 @@ import {
 // DtaFile public API integration tests
 // -----------------------------------------------------------
 
-const FIXTURE_DIR = path.join(
-    __dirname, '..', 'fixtures', 'dta'
+const FIXTURE_DIR = path.resolve(
+    __dirname, '../../../../tests/fixtures/dta'
 );
 
 let my_file: DtaFile | null = null;

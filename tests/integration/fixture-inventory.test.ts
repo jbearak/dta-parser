@@ -3,8 +3,8 @@ import { describe, expect, it } from 'bun:test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { parse_metadata } from '../../src/header';
-import { parse_legacy_metadata } from '../../src/legacy-header';
+import { parse_metadata } from '../../typescript/dta-parser/src/header';
+import { parse_legacy_metadata } from '../../typescript/dta-parser/src/legacy-header';
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures', 'dta');
 

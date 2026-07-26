@@ -8,8 +8,8 @@ import type { DtaMetadata } from '../../src/types';
 // .dta header and metadata parsing
 // -----------------------------------------------------------
 
-const FIXTURE_DIR = path.join(
-    __dirname, '..', 'fixtures', 'dta'
+const FIXTURE_DIR = path.resolve(
+    __dirname, '../../../../tests/fixtures/dta'
 );
 
 function load_fixture(name: string): ArrayBuffer {
