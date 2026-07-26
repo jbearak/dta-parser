@@ -121,9 +121,72 @@ enum ColumnBuilder {
     },
     StrL {
         index: u32,
-        pointers: Vec<Option<FileGsoKey>>,
         values: Vec<String>,
     },
+}
+
+/// Destination for typed cells decoded by [`DtaFile`].
+///
+/// Implementations can retain ordinary Rust vectors, write directly into a
+/// foreign column store, or stream values elsewhere. Calls are monomorphized,
+/// so the shared decoder does not add a dynamic callback boundary per cell.
+pub trait DtaSink: Sized {
+    type Output;
+
+    fn push_byte(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: i8,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_int(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: i16,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_long(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: i32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_float(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: f32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_double(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: f64,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_fixed_string(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: String,
+    ) -> Result<(), DtaError>;
+    fn push_strl(&mut self, column: usize, row: usize, value: &str) -> Result<(), DtaError>;
+
+    fn finish(
+        self,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError>;
+}
+
+struct VecSink {
+    columns: Vec<ColumnBuilder>,
 }
 
 impl ColumnBuilder {
@@ -160,7 +223,6 @@ impl ColumnBuilder {
             },
             DtaType::StrL => Self::StrL {
                 index,
-                pointers: Vec::with_capacity(capacity),
                 values: Vec::with_capacity(capacity),
             },
         }
@@ -227,11 +289,183 @@ impl ColumnBuilder {
                 variable_index: index,
                 values: ColumnValues::FixedString { values },
             },
-            Self::StrL { index, values, .. } => Column {
+            Self::StrL { index, values } => Column {
                 variable_index: index,
                 values: ColumnValues::StrL { values },
             },
         }
+    }
+}
+
+impl VecSink {
+    fn new(metadata: &DtaMetadata, indices: &[u32], capacity: usize) -> Self {
+        let columns = indices
+            .iter()
+            .map(|index| {
+                let variable = &metadata.variables[*index as usize];
+                ColumnBuilder::new(*index, &variable.dta_type, capacity)
+            })
+            .collect();
+        Self { columns }
+    }
+
+    #[inline(always)]
+    fn column(&mut self, index: usize) -> Result<&mut ColumnBuilder, DtaError> {
+        self.columns
+            .get_mut(index)
+            .ok_or(DtaError::ArithmeticOverflow("output column index"))
+    }
+}
+
+impl DtaSink for VecSink {
+    type Output = DtaData;
+
+    #[inline(always)]
+    fn push_byte(
+        &mut self,
+        column: usize,
+        _row: usize,
+        value: i8,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let ColumnBuilder::Byte {
+            values,
+            missing_tags,
+            ..
+        } = self.column(column)?
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn push_int(
+        &mut self,
+        column: usize,
+        _row: usize,
+        value: i16,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let ColumnBuilder::Int {
+            values,
+            missing_tags,
+            ..
+        } = self.column(column)?
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn push_long(
+        &mut self,
+        column: usize,
+        _row: usize,
+        value: i32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let ColumnBuilder::Long {
+            values,
+            missing_tags,
+            ..
+        } = self.column(column)?
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn push_float(
+        &mut self,
+        column: usize,
+        _row: usize,
+        value: f32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let ColumnBuilder::Float {
+            values,
+            missing_tags,
+            ..
+        } = self.column(column)?
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn push_double(
+        &mut self,
+        column: usize,
+        _row: usize,
+        value: f64,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let ColumnBuilder::Double {
+            values,
+            missing_tags,
+            ..
+        } = self.column(column)?
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn push_fixed_string(
+        &mut self,
+        column: usize,
+        _row: usize,
+        value: String,
+    ) -> Result<(), DtaError> {
+        let ColumnBuilder::FixedString { values, .. } = self.column(column)? else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn push_strl(&mut self, column: usize, _row: usize, value: &str) -> Result<(), DtaError> {
+        let ColumnBuilder::StrL { values, .. } = self.column(column)? else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value.to_owned());
+        Ok(())
+    }
+
+    fn finish(
+        self,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError> {
+        Ok(DtaData {
+            metadata,
+            row_start,
+            row_count,
+            columns: self
+                .columns
+                .into_iter()
+                .map(ColumnBuilder::finish)
+                .collect(),
+            value_label_tables,
+        })
     }
 }
 
@@ -351,9 +585,37 @@ impl<R: Read + Seek> DtaFile<R> {
     pub fn read_with_interrupt<F>(
         &mut self,
         options: &ReadOptions,
-        mut should_interrupt: F,
+        should_interrupt: F,
     ) -> Result<DtaData, DtaError>
     where
+        F: FnMut() -> bool,
+    {
+        self.read_with_sink_and_interrupt(
+            options,
+            |metadata, _row_start, row_count, indices| {
+                let capacity = usize::try_from(row_count)
+                    .map_err(|_| DtaError::ArithmeticOverflow("projected row count"))?;
+                Ok(VecSink::new(metadata, indices, capacity))
+            },
+            should_interrupt,
+        )
+    }
+
+    /// Decode through a caller-provided typed output collector.
+    ///
+    /// The collector is constructed after metadata, projection, and row bounds
+    /// are resolved but before observation data are read. Both the built-in
+    /// [`DtaData`] path and foreign-runtime adapters therefore share the same
+    /// validation, I/O, cell decoding, `strL`, and value-label logic.
+    pub fn read_with_sink_and_interrupt<S, B, F>(
+        &mut self,
+        options: &ReadOptions,
+        build_sink: B,
+        mut should_interrupt: F,
+    ) -> Result<S::Output, DtaError>
+    where
+        S: DtaSink,
+        B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
         F: FnMut() -> bool,
     {
         check_cancel(&mut should_interrupt)?;
@@ -367,11 +629,16 @@ impl<R: Read + Seek> DtaFile<R> {
         let (row_start, row_count) = row_window(&self.metadata, options);
         let capacity = usize::try_from(row_count)
             .map_err(|_| DtaError::ArithmeticOverflow("projected row count"))?;
-        let mut builders = indices
+        let mut sink = build_sink(&self.metadata, row_start, row_count, &indices)?;
+        let mut strl_pointers = indices
             .iter()
             .map(|index| {
                 let variable = &self.metadata.variables[*index as usize];
-                ColumnBuilder::new(*index, &variable.dta_type, capacity)
+                if variable.dta_type == DtaType::StrL {
+                    Some(Vec::with_capacity(capacity))
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
         let payload_start = if self.metadata.format_version.is_modern() {
@@ -379,8 +646,13 @@ impl<R: Read + Seek> DtaFile<R> {
         } else {
             self.metadata.section_offsets.data
         };
+        let mut cell_decoder = CellDecoder {
+            sink: &mut sink,
+            strl_pointers: &mut strl_pointers,
+            metadata: &self.metadata,
+        };
 
-        if !builders.is_empty()
+        if !indices.is_empty()
             && self.metadata.obs_length > 0
             && self.metadata.obs_length <= self.scratch.limit as u64
         {
@@ -420,7 +692,11 @@ impl<R: Read + Seek> DtaFile<R> {
                     let row_at = local_row
                         .checked_mul(obs_length)
                         .ok_or(DtaError::ArithmeticOverflow("staged row offset"))?;
-                    for (builder, &index) in builders.iter_mut().zip(&indices) {
+                    let output_row = usize::try_from(row)
+                        .map_err(|_| DtaError::ArithmeticOverflow("output row"))?
+                        .checked_add(local_row)
+                        .ok_or(DtaError::ArithmeticOverflow("output row"))?;
+                    for (output_column, &index) in indices.iter().enumerate() {
                         let variable = &self.metadata.variables[index as usize];
                         let width = usize::try_from(variable.byte_width)
                             .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
@@ -443,7 +719,13 @@ impl<R: Read + Seek> DtaFile<R> {
                             needed: width,
                             available: staged.len().saturating_sub(cell_at),
                         })?;
-                        push_staged_cell(builder, cell, absolute_offset, &self.metadata, variable)?;
+                        cell_decoder.push_staged_cell(
+                            output_column,
+                            output_row,
+                            cell,
+                            absolute_offset,
+                            variable,
+                        )?;
                     }
                 }
                 row = row
@@ -453,13 +735,15 @@ impl<R: Read + Seek> DtaFile<R> {
         } else {
             for row in 0..row_count {
                 check_cancel(&mut should_interrupt)?;
+                let output_row =
+                    usize::try_from(row).map_err(|_| DtaError::ArithmeticOverflow("output row"))?;
                 let source_row = row_start
                     .checked_add(row)
                     .ok_or(DtaError::ArithmeticOverflow("source row"))?;
                 let row_offset = source_row
                     .checked_mul(self.metadata.obs_length)
                     .ok_or(DtaError::ArithmeticOverflow("row offset"))?;
-                for (builder, &index) in builders.iter_mut().zip(&indices) {
+                for (output_column, &index) in indices.iter().enumerate() {
                     let variable = &self.metadata.variables[index as usize];
                     let cell_offset = payload_start
                         .checked_add(row_offset)
@@ -483,10 +767,9 @@ impl<R: Read + Seek> DtaFile<R> {
                             &mut should_interrupt,
                             "reading fixed-string observation",
                         )?;
-                        let ColumnBuilder::FixedString { values, .. } = builder else {
-                            return Err(DtaError::ArithmeticOverflow("column builder type"));
-                        };
-                        values.push(value);
+                        cell_decoder
+                            .sink
+                            .push_fixed_string(output_column, output_row, value)?;
                         continue;
                     }
                     let cell = read_exact_at(
@@ -496,22 +779,22 @@ impl<R: Read + Seek> DtaFile<R> {
                         &mut self.scratch,
                         "reading observation cell",
                     )?;
-                    push_cell(
-                        builder,
+                    cell_decoder.push_cell(
+                        output_column,
+                        output_row,
                         &cell,
                         cell_offset,
-                        &self.metadata,
                         &variable.dta_type,
                     )?;
                 }
             }
         }
-
         resolve_file_strls(
             &mut self.reader,
             &self.metadata,
             &mut self.scratch,
-            &mut builders,
+            &mut strl_pointers,
+            &mut sink,
             &mut should_interrupt,
         )?;
         check_cancel(&mut should_interrupt)?;
@@ -520,14 +803,12 @@ impl<R: Read + Seek> DtaFile<R> {
             .value_label_tables
             .clone()
             .expect("value-label cache was initialized");
-        let columns = builders.into_iter().map(ColumnBuilder::finish).collect();
-        Ok(DtaData {
-            metadata: self.metadata.clone(),
+        sink.finish(
+            self.metadata.clone(),
             row_start,
             row_count,
-            columns,
             value_label_tables,
-        })
+        )
     }
 
     /// Return ownership of the underlying reader.
@@ -1935,115 +2216,128 @@ fn validate_gso_key(
     }
 }
 
-fn push_staged_cell(
-    builder: &mut ColumnBuilder,
-    cell: &[u8],
-    absolute_offset: u64,
-    metadata: &DtaMetadata,
-    variable: &VariableInfo,
-) -> Result<(), DtaError> {
-    if matches!(variable.dta_type, DtaType::FixedString(_)) {
-        let mut value = if metadata.format_version.is_modern() {
-            decode_utf8(field_bytes(cell))
-        } else {
-            decode_windows_1252(field_bytes(cell))
-        };
-        value.shrink_to_fit();
-        let ColumnBuilder::FixedString { values, .. } = builder else {
-            return Err(DtaError::ArithmeticOverflow("column builder type"));
-        };
-        values.push(value);
-        return Ok(());
-    }
-    push_cell(builder, cell, absolute_offset, metadata, &variable.dta_type)
+struct CellDecoder<'a, S> {
+    sink: &'a mut S,
+    strl_pointers: &'a mut [Option<Vec<Option<FileGsoKey>>>],
+    metadata: &'a DtaMetadata,
 }
 
-fn push_cell(
-    builder: &mut ColumnBuilder,
-    cell: &[u8],
-    absolute_offset: u64,
-    metadata: &DtaMetadata,
-    dta_type: &DtaType,
-) -> Result<(), DtaError> {
-    match builder {
-        ColumnBuilder::Byte {
-            values,
-            missing_tags,
-            ..
-        } => {
-            let value = read_i8(cell, 0, "byte observation")?;
-            values.push(value);
-            missing_tags.push(classify_byte_missing(value));
+impl<S: DtaSink> CellDecoder<'_, S> {
+    #[inline(always)]
+    fn push_staged_cell(
+        &mut self,
+        output_column: usize,
+        output_row: usize,
+        cell: &[u8],
+        absolute_offset: u64,
+        variable: &VariableInfo,
+    ) -> Result<(), DtaError> {
+        if matches!(variable.dta_type, DtaType::FixedString(_)) {
+            let mut value = if self.metadata.format_version.is_modern() {
+                decode_utf8(field_bytes(cell))
+            } else {
+                decode_windows_1252(field_bytes(cell))
+            };
+            value.shrink_to_fit();
+            return self
+                .sink
+                .push_fixed_string(output_column, output_row, value);
         }
-        ColumnBuilder::Int {
-            values,
-            missing_tags,
-            ..
-        } => {
-            let value = read_i16(cell, 0, metadata.byte_order, "int observation")?;
-            values.push(value);
-            missing_tags.push(classify_int_missing(value));
-        }
-        ColumnBuilder::Long {
-            values,
-            missing_tags,
-            ..
-        } => {
-            let value = read_i32(cell, 0, metadata.byte_order, "long observation")?;
-            values.push(value);
-            missing_tags.push(classify_long_missing(value));
-        }
-        ColumnBuilder::Float {
-            values,
-            missing_tags,
-            ..
-        } => {
-            let bits = read_u32(cell, 0, metadata.byte_order, "float observation")?;
-            values.push(f32::from_bits(bits));
-            missing_tags.push(classify_float_missing_bits(bits));
-        }
-        ColumnBuilder::Double {
-            values,
-            missing_tags,
-            ..
-        } => {
-            let bits = read_u64(cell, 0, metadata.byte_order, "double observation")?;
-            values.push(f64::from_bits(bits));
-            missing_tags.push(classify_double_missing_bits(bits));
-        }
-        ColumnBuilder::FixedString { .. } => {
-            return Err(DtaError::ArithmeticOverflow("fixed string streaming path"));
-        }
-        ColumnBuilder::StrL { pointers, .. } => {
-            if *dta_type != DtaType::StrL {
-                return Err(DtaError::ArithmeticOverflow("column builder type"));
+        self.push_cell(
+            output_column,
+            output_row,
+            cell,
+            absolute_offset,
+            &variable.dta_type,
+        )
+    }
+
+    #[inline(always)]
+    fn push_cell(
+        &mut self,
+        output_column: usize,
+        output_row: usize,
+        cell: &[u8],
+        absolute_offset: u64,
+        dta_type: &DtaType,
+    ) -> Result<(), DtaError> {
+        match dta_type {
+            DtaType::Byte => {
+                let value = read_i8(cell, 0, "byte observation")?;
+                self.sink.push_byte(
+                    output_column,
+                    output_row,
+                    value,
+                    classify_byte_missing(value),
+                )?;
             }
-            pointers.push(parse_pointer(cell, absolute_offset, metadata)?);
+            DtaType::Int => {
+                let value = read_i16(cell, 0, self.metadata.byte_order, "int observation")?;
+                self.sink.push_int(
+                    output_column,
+                    output_row,
+                    value,
+                    classify_int_missing(value),
+                )?;
+            }
+            DtaType::Long => {
+                let value = read_i32(cell, 0, self.metadata.byte_order, "long observation")?;
+                self.sink.push_long(
+                    output_column,
+                    output_row,
+                    value,
+                    classify_long_missing(value),
+                )?;
+            }
+            DtaType::Float => {
+                let bits = read_u32(cell, 0, self.metadata.byte_order, "float observation")?;
+                self.sink.push_float(
+                    output_column,
+                    output_row,
+                    f32::from_bits(bits),
+                    classify_float_missing_bits(bits),
+                )?;
+            }
+            DtaType::Double => {
+                let bits = read_u64(cell, 0, self.metadata.byte_order, "double observation")?;
+                self.sink.push_double(
+                    output_column,
+                    output_row,
+                    f64::from_bits(bits),
+                    classify_double_missing_bits(bits),
+                )?;
+            }
+            DtaType::FixedString(_) => {
+                return Err(DtaError::ArithmeticOverflow("fixed string streaming path"));
+            }
+            DtaType::StrL => {
+                let pointers = self
+                    .strl_pointers
+                    .get_mut(output_column)
+                    .and_then(Option::as_mut)
+                    .ok_or(DtaError::ArithmeticOverflow("strL output column"))?;
+                pointers.push(parse_pointer(cell, absolute_offset, self.metadata)?);
+            }
         }
+        Ok(())
     }
-    Ok(())
 }
 
-fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
+fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
     reader: &mut R,
     metadata: &DtaMetadata,
     scratch: &mut Scratch,
-    builders: &mut [ColumnBuilder],
+    pointers: &mut [Option<Vec<Option<FileGsoKey>>>],
+    sink: &mut S,
     should_interrupt: &mut F,
 ) -> Result<(), DtaError> {
-    if !builders
-        .iter()
-        .any(|builder| matches!(builder, ColumnBuilder::StrL { .. }))
-    {
+    if !pointers.iter().any(Option::is_some) {
         return Ok(());
     }
-    let requested = builders
+    let requested = pointers
         .iter()
-        .filter_map(|builder| match builder {
-            ColumnBuilder::StrL { pointers, .. } => Some(pointers.iter().flatten().copied()),
-            _ => None,
-        })
-        .flatten()
+        .filter_map(Option::as_ref)
+        .flat_map(|column| column.iter().flatten().copied())
         .collect::<HashSet<_>>();
 
     let mut entries = HashMap::new();
@@ -2174,26 +2468,24 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool>(
         });
     }
 
-    materialize_file_strls(reader, scratch, &entries, builders, should_interrupt)
+    materialize_file_strls(reader, scratch, &entries, pointers, sink, should_interrupt)
 }
 
-fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool>(
+fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
     reader: &mut R,
     scratch: &mut Scratch,
     entries: &HashMap<FileGsoKey, FileGsoEntry>,
-    builders: &mut [ColumnBuilder],
+    pointers: &mut [Option<Vec<Option<FileGsoKey>>>],
+    sink: &mut S,
     should_interrupt: &mut F,
 ) -> Result<(), DtaError> {
     let mut decoded = HashMap::<FileGsoKey, String>::new();
     let mut pointer_count = 0_usize;
-    for builder in builders {
-        let ColumnBuilder::StrL {
-            pointers, values, ..
-        } = builder
-        else {
+    for (column_index, column_pointers) in pointers.iter_mut().enumerate() {
+        let Some(column_pointers) = column_pointers else {
             continue;
         };
-        for pointer in pointers.iter().copied() {
+        for (row_index, pointer) in column_pointers.iter().copied().enumerate() {
             if pointer_count % STRL_CANCEL_CHECK_INTERVAL == 0 {
                 check_cancel(should_interrupt)?;
             }
@@ -2201,11 +2493,11 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool>(
                 .checked_add(1)
                 .ok_or(DtaError::ArithmeticOverflow("strL pointer count"))?;
             let Some(key) = pointer else {
-                values.push(String::new());
+                sink.push_strl(column_index, row_index, "")?;
                 continue;
             };
             if let Some(value) = decoded.get(&key) {
-                values.push(value.clone());
+                sink.push_strl(column_index, row_index, value)?;
                 continue;
             }
             let entry = entries.get(&key).ok_or(DtaError::DanglingStrlPointer {
@@ -2229,8 +2521,8 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool>(
                 "reading selected GSO content",
             )?
             .0;
-            decoded.insert(key, value.clone());
-            values.push(value);
+            sink.push_strl(column_index, row_index, &value)?;
+            decoded.insert(key, value);
         }
     }
     Ok(())
@@ -2288,18 +2580,21 @@ mod tests {
     #[test]
     fn strl_materialization_polls_during_long_null_and_cache_hit_runs() {
         let pointer_count = STRL_CANCEL_CHECK_INTERVAL * 3;
-        let mut null_builders = vec![ColumnBuilder::StrL {
-            index: 0,
-            pointers: vec![None; pointer_count],
-            values: Vec::with_capacity(pointer_count),
-        }];
+        let mut null_pointers = vec![Some(vec![None; pointer_count])];
+        let mut null_sink = VecSink {
+            columns: vec![ColumnBuilder::StrL {
+                index: 0,
+                values: Vec::with_capacity(pointer_count),
+            }],
+        };
         let mut null_checks = 0;
         assert_eq!(
             materialize_file_strls(
                 &mut Cursor::new(Vec::<u8>::new()),
                 &mut Scratch::new(1024),
                 &HashMap::new(),
-                &mut null_builders,
+                &mut null_pointers,
+                &mut null_sink,
                 &mut || {
                     null_checks += 1;
                     null_checks >= 2
@@ -2307,7 +2602,7 @@ mod tests {
             ),
             Err(DtaError::Cancelled)
         );
-        let ColumnBuilder::StrL { values, .. } = &null_builders[0] else {
+        let ColumnBuilder::StrL { values, .. } = &null_sink.columns[0] else {
             unreachable!()
         };
         assert_eq!(values.len(), STRL_CANCEL_CHECK_INTERVAL);
@@ -2324,18 +2619,21 @@ mod tests {
                 gso_type: 130,
             },
         )]);
-        let mut repeated_builders = vec![ColumnBuilder::StrL {
-            index: 0,
-            pointers: vec![Some(key); pointer_count],
-            values: Vec::with_capacity(pointer_count),
-        }];
+        let mut repeated_pointers = vec![Some(vec![Some(key); pointer_count])];
+        let mut repeated_sink = VecSink {
+            columns: vec![ColumnBuilder::StrL {
+                index: 0,
+                values: Vec::with_capacity(pointer_count),
+            }],
+        };
         let mut repeated_checks = 0;
         assert_eq!(
             materialize_file_strls(
                 &mut Cursor::new(b"x\0".to_vec()),
                 &mut Scratch::new(1024),
                 &entries,
-                &mut repeated_builders,
+                &mut repeated_pointers,
+                &mut repeated_sink,
                 &mut || {
                     repeated_checks += 1;
                     repeated_checks >= 4
@@ -2343,7 +2641,7 @@ mod tests {
             ),
             Err(DtaError::Cancelled)
         );
-        let ColumnBuilder::StrL { values, .. } = &repeated_builders[0] else {
+        let ColumnBuilder::StrL { values, .. } = &repeated_sink.columns[0] else {
             unreachable!()
         };
         assert_eq!(values.len(), STRL_CANCEL_CHECK_INTERVAL);

@@ -149,6 +149,12 @@ pub enum DtaError {
     #[error("read cancelled")]
     Cancelled,
 
+    /// A caller-provided output collector could not materialize a decoded
+    /// value. Keeping collector failures in the parser's ordinary error path
+    /// ensures partially built outputs are dropped without being exposed.
+    #[error("output materialization failed: {0}")]
+    Output(String),
+
     /// A seek or read failed while accessing a file-backed source.
     #[error("I/O error while {context} at byte offset {offset}: {kind:?}")]
     Io {

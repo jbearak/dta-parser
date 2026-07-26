@@ -3,7 +3,9 @@
 `dtaparser` is the native R interface to this repository's bounded Rust DTA
 reader. Its exported `read_dta()` function deliberately mirrors the formal
 arguments of `haven::read_dta()`, while observation storage is decoded by Rust
-and copied directly into R vectors.
+and materialized through an R-specific collector. Numeric values are written
+into their final R vectors during decoding; strings are batch-materialized to
+avoid interleaving R allocation with the parser's hot loop.
 
 ```r
 library(dtaparser)
@@ -54,12 +56,15 @@ haven. Missing R dependencies produce an explicit `SKIP`; CI sets
 `DTA_REQUIRE_R_CONFORMANCE=1` and checks Linux, macOS, and Windows. Only
 nonmissing floating values permit `1e-7` relative tolerance; missing tags,
 labels, formats, value-label tables, strings, names, dimensions, projections,
-and row windows are otherwise exact.
+and row windows are otherwise exact. Package tests also require the direct-R
+collector to be identical to the retained `DtaData`/Rust-vector collector on
+every bundled fixture.
 
 ```sh
 DTA_REQUIRE_R_CONFORMANCE=1 bun run conformance
 R CMD build r-package/dtaparser
 R CMD check --no-manual dtaparser_0.1.0.tar.gz
+Rscript benchmarks/r-materialization/run.R input.dta timings.tsv 21
 ```
 
 The native source of truth is `rust/dta-parser`. After a root-first change,

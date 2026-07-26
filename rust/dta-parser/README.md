@@ -77,9 +77,15 @@ capped. Row windows seek directly to selected observations, and only selected
 cells are decoded. GSO headers are scanned without retaining unrequested
 payloads, selected payloads are streamed and cached per read, and value-label
 tables are streamed and cached lazily. The cooperative callback is checked
-between chunks and returns
-`DtaError::Cancelled` without a partial `DtaData` or partially initialized
-label cache.
+between chunks and returns `DtaError::Cancelled` without exposing a partial
+output or partially initialized label cache.
+
+`DtaFile::read_with_sink_and_interrupt` runs the same validation, I/O, typed
+cell decoding, `strL`, and value-label pipeline through a caller-provided
+`DtaSink`. The built-in sink retains the public `DtaData`/`ColumnValues` model;
+foreign-runtime adapters can instead materialize their own column store. The
+generic sink is statically dispatched, avoiding a dynamic callback boundary in
+the per-cell loop.
 
 `DtaMetadata` and its nested types implement `serde::Serialize` and
 `serde::Deserialize`; the observation and value-label models do as well. Their

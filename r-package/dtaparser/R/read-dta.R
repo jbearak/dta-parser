@@ -22,6 +22,25 @@
 #' @export
 read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      n_max = Inf, .name_repair = "unique") {
+    .read_dta_impl(
+        file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
+        materialization = "direct"
+    )
+}
+
+# Internal A/B baseline. This deliberately retains the former two-stage path
+# so direct-to-R materialization can be benchmarked and checked independently.
+.read_dta_rust_vectors <- function(file, encoding = NULL, col_select = NULL,
+                                   skip = 0, n_max = Inf,
+                                   .name_repair = "unique") {
+    .read_dta_impl(
+        file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
+        materialization = "rust-vectors"
+    )
+}
+
+.read_dta_impl <- function(file, encoding, selection, skip, n_max,
+                           .name_repair, materialization) {
     if (!is.character(file) || length(file) != 1L || is.na(file)) {
         stop("`file` must be one non-missing path", call. = FALSE)
     }
@@ -32,7 +51,6 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .validate_count(n_max, "n_max", infinite = TRUE)
 
     file <- normalizePath(file, mustWork = TRUE)
-    selection <- rlang::enquo(col_select)
     metadata_names <- .dta_metadata(file)
 
     if (rlang::quo_is_null(selection)) {
@@ -57,7 +75,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         file,
         column_indices,
         as.double(skip),
-        as.double(n_max)
+        as.double(n_max),
+        identical(materialization, "direct")
     )
     if (!is.null(column_indices)) {
         names(native) <- selected_names
