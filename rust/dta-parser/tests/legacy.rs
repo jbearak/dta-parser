@@ -41,10 +41,14 @@ fn synthetic_v113_msf() -> Vec<u8> {
     bytes[cursor..cursor + 5].copy_from_slice(b"na\xefve");
     bytes[cursor + 81..cursor + 87].copy_from_slice(b"quoted");
 
-    // One nonempty expansion field followed by the exact sentinel.
+    // One dataset note characteristic followed by the exact sentinel.
+    let mut note = vec![0_u8; 2 * 33];
+    note[..4].copy_from_slice(b"_dta");
+    note[33..38].copy_from_slice(b"note1");
+    note.extend_from_slice(b"Caf\xe9\0");
     bytes.push(1);
-    bytes.extend_from_slice(&3_i32.to_be_bytes());
-    bytes.extend_from_slice(b"abc");
+    bytes.extend_from_slice(&(note.len() as i32).to_be_bytes());
+    bytes.extend_from_slice(&note);
     bytes.extend_from_slice(&[0, 0, 0, 0, 0]);
     bytes.extend_from_slice(&321_i16.to_be_bytes());
     bytes.extend_from_slice(&[0x93, b'h', 0x94, 0]);
@@ -139,6 +143,7 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
     assert_eq!(metadata.format_version, FormatVersion::V113);
     assert_eq!(metadata.byte_order, ByteOrder::Msf);
     assert_eq!(metadata.dataset_label, "Café");
+    assert_eq!(metadata.notes, ["Café"]);
     assert_eq!(metadata.variables[0].label, "naïve");
     let data = read_dta(&bytes).unwrap();
     match &data.columns[0].values {
@@ -164,6 +169,7 @@ fn explicit_encoding_overrides_every_legacy_text_surface() {
     let bytes = synthetic_v113_msf();
     let latin1 = read_dta_with_encoding(&bytes, TextEncoding::Iso8859_1).unwrap();
     assert_eq!(latin1.metadata.dataset_label, "Café");
+    assert_eq!(latin1.metadata.notes, ["Café"]);
     assert_eq!(latin1.metadata.variables[0].label, "naïve");
     let ColumnValues::FixedString { values } = &latin1.columns[1].values else {
         panic!("text must be a fixed string");
@@ -181,11 +187,28 @@ fn explicit_encoding_overrides_every_legacy_text_surface() {
 
     let utf8 = read_dta_with_encoding(&bytes, TextEncoding::Utf8).unwrap();
     assert_eq!(utf8.metadata.dataset_label, "Caf\u{fffd}");
+    assert_eq!(utf8.metadata.notes, ["Caf\u{fffd}"]);
     assert_eq!(utf8.metadata.variables[0].label, "na\u{fffd}ve");
 
     let mut file =
         DtaFile::from_reader_with_encoding(Cursor::new(bytes), TextEncoding::Iso8859_1).unwrap();
     assert_eq!(file.read().unwrap(), latin1);
+}
+
+#[test]
+fn omits_empty_legacy_dataset_notes() {
+    let mut bytes = synthetic_v113_msf();
+    let value = bytes
+        .windows(5)
+        .rposition(|window| window == b"Caf\xe9\0")
+        .unwrap();
+    bytes[value] = 0;
+    assert!(parse_metadata(&bytes).unwrap().notes.is_empty());
+    assert!(DtaFile::from_reader(Cursor::new(bytes))
+        .unwrap()
+        .metadata()
+        .notes
+        .is_empty());
 }
 
 #[test]
@@ -210,5 +233,27 @@ fn rejects_malformed_legacy_counts_filetype_and_expansion_fields() {
     assert!(matches!(
         parse_metadata(&invalid_terminator),
         Err(DtaError::InvalidExpansionTerminator { value: 1, .. })
+    ));
+
+    let original = synthetic_v113_msf();
+    let expansion = parse_metadata(&original)
+        .unwrap()
+        .section_offsets
+        .characteristics as usize;
+    let mut oversized = original;
+    oversized[expansion + 1..expansion + 5].copy_from_slice(&i32::MAX.to_be_bytes());
+    assert!(matches!(
+        parse_metadata(&oversized),
+        Err(DtaError::Truncated {
+            context: "legacy expansion-field payload",
+            ..
+        })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(oversized)),
+        Err(DtaError::Io {
+            context: "reading legacy expansion field",
+            ..
+        })
     ));
 }

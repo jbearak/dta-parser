@@ -73,9 +73,8 @@ their execution order, and ran garbage collection outside the timed intervals.
 Relative throughput is the haven median divided by the dtaparser median, so
 higher is faster for dtaparser. Before timing, eight representative columns in
 32-row samples from the start, middle, and end of each file were compared with
-haven after removing dtaparser's additional top-level `dta_format_version`
-attribute. The remaining attributes and values matched, subject to the
-conformance suite's `1e-7` tolerance for nonmissing floating-point values.
+haven. The attributes and values matched, subject to the conformance suite's
+`1e-7` tolerance for nonmissing floating-point values.
 
 These are machine- and workload-specific measurements, not performance
 guarantees or CI thresholds. The haven comparison used the Rust-vector

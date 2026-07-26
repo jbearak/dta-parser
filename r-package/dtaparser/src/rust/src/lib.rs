@@ -309,6 +309,22 @@ unsafe fn build_column(
     Ok(vector)
 }
 
+unsafe fn attach_dataset_attributes(result: Sexp, metadata: &DtaMetadata) -> Result<(), String> {
+    if !metadata.dataset_label.is_empty() {
+        check_interrupt()?;
+        let mut guard = ProtectGuard::new();
+        let label = scalar_string(&metadata.dataset_label, &mut guard)?;
+        set_attr(result, "label", label)?;
+    }
+    if !metadata.notes.is_empty() {
+        check_interrupt()?;
+        let mut guard = ProtectGuard::new();
+        let notes = string_vector(&metadata.notes, &mut guard)?;
+        set_attr(result, "notes", notes)?;
+    }
+    Ok(())
+}
+
 unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
     let mut result_guard = ProtectGuard::new();
     let column_count = RLen::try_from(data.columns.len()).map_err(|_| "too many columns")?;
@@ -341,20 +357,7 @@ unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
         set_class(result, &["data.frame"], &mut attribute_guard)?;
     }
 
-    if !data.metadata.dataset_label.is_empty() {
-        check_interrupt()?;
-        let mut attribute_guard = ProtectGuard::new();
-        let label = scalar_string(&data.metadata.dataset_label, &mut attribute_guard)?;
-        set_attr(result, "label", label)?;
-    }
-    {
-        let mut attribute_guard = ProtectGuard::new();
-        let version = scalar_integer(
-            data.metadata.format_version.as_u16().into(),
-            &mut attribute_guard,
-        )?;
-        set_attr(result, "dta_format_version", version)?;
-    }
+    attach_dataset_attributes(result, &data.metadata)?;
     Ok(result)
 }
 
@@ -636,21 +639,7 @@ impl DtaSink for RDataFrameSink {
                 set_class(self.result, &["data.frame"], &mut attribute_guard)
                     .map_err(DtaError::Output)?;
             }
-            if !metadata.dataset_label.is_empty() {
-                let mut attribute_guard = ProtectGuard::new();
-                let label = scalar_string(&metadata.dataset_label, &mut attribute_guard)
-                    .map_err(DtaError::Output)?;
-                set_attr(self.result, "label", label).map_err(DtaError::Output)?;
-            }
-            {
-                let mut attribute_guard = ProtectGuard::new();
-                let version = scalar_integer(
-                    metadata.format_version.as_u16().into(),
-                    &mut attribute_guard,
-                )
-                .map_err(DtaError::Output)?;
-                set_attr(self.result, "dta_format_version", version).map_err(DtaError::Output)?;
-            }
+            attach_dataset_attributes(self.result, &metadata).map_err(DtaError::Output)?;
         }
         let result = self.result;
         Ok(result)
@@ -658,8 +647,7 @@ impl DtaSink for RDataFrameSink {
 }
 
 unsafe fn metadata_impl(path: &str, encoding: TextEncoding) -> Result<Sexp, String> {
-    let file =
-        DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
+    let file = DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
     let metadata = file.metadata();
     let mut guard = ProtectGuard::new();
     let names = metadata

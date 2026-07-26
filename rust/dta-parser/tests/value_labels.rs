@@ -131,6 +131,7 @@ fn parses_a_strict_big_endian_v119_label_table() {
         nvar: 0,
         nobs: 0,
         dataset_label: String::new(),
+        notes: Vec::new(),
         variables: vec![],
         section_offsets: SectionOffsets {
             stata_data: 0,
