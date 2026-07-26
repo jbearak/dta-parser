@@ -1,8 +1,23 @@
-# `@jbearak/dta-parser`
+# dta-parser
 
-TypeScript parser for Stata `.dta` files.
+This repository contains three libraries for reading Stata `.dta` files,
+built around two independent parser implementations:
 
-This package was first written inside
+| Library | Location | Parser implementation | Primary interface |
+| --- | --- | --- | --- |
+| TypeScript/npm package | Repository root | TypeScript | `@jbearak/dta-parser` and `@jbearak/dta-parser/node` |
+| Rust crate | [`rust/dta-parser`](rust/dta-parser) | Rust | `dta_parser::{read_dta, DtaFile}` |
+| R package | [`r-package/dtaparser`](r-package/dtaparser) | Rust | `dtaparser::read_dta()` |
+
+The TypeScript and Rust parsers are separate implementations checked against
+the same fixtures and compatibility contract. The R package is a language
+binding around the Rust parser, not a third parser. The TypeScript package
+currently occupies the repository root; the Rust crate and R package each
+live in their own subdirectory.
+
+## TypeScript library
+
+The `@jbearak/dta-parser` package was first written inside
 [Sight](https://github.com/jbearak/sight), then extracted so the same parser
 could be used by Sight and
 [manuscript-markdown](https://github.com/jbearak/manuscript-markdown).
@@ -56,7 +71,7 @@ want portable parsing utilities. Use `@jbearak/dta-parser/node` when you want
 `DtaFile` to open a `.dta` file from disk and read rows or columns with
 filesystem-backed random access.
 
-This repository also contains the native Rust core in `rust/dta-parser`. Its
+This repository also contains the Rust parser in `rust/dta-parser`. Its
 public byte-slice and bounded `Read + Seek` APIs read releases 113–115 and
 117–119 into storage-preserving, column-oriented vectors, with row/column
 projection, exact missing tags, Windows-1252 legacy text, value-label
@@ -64,7 +79,7 @@ associations, cooperative cancellation, and strict `strL`/GSO resolution. Rust
 callers should see the [crate README](rust/dta-parser/README.md) for examples
 and the precise I/O contract.
 
-The native R package lives in [`r-package/dtaparser`](r-package/dtaparser).
+The R package lives in [`r-package/dtaparser`](r-package/dtaparser).
 It exports a haven-shaped `read_dta()` interface backed by the bounded Rust
 reader, with tidyselect projection, row windows, labels and formats, tagged
 missings, long strings, and R date/time classes. Its locked dependency archive
@@ -313,7 +328,8 @@ is provided. `read_columns()` accepts the same cancellation options.
 
 ## Implementation and parity maintenance
 
-The three public surfaces share one compatibility contract but have distinct
+The three libraries expose four public surfaces. The two parser
+implementations share one compatibility contract but have distinct
 entrypoints:
 
 | Surface | Entrypoint | I/O model | Supported releases |
@@ -323,10 +339,11 @@ entrypoints:
 | Rust | `dta_parser::{read_dta, DtaFile}` | slice or bounded `Read + Seek` | 113--115, 117--119 |
 | R | `dtaparser::read_dta()` | local path through the bounded Rust core | 113--115, 117--119 |
 
-The Rust crate under `rust/dta-parser` is the native source of truth. The R
-package mirrors it under `r-package/dtaparser/src/vendor/dta-parser`; never edit
-only the mirror. `scripts/check-rust-sync.sh` checks source equality, Cargo
-locks, and the normalized offline dependency archive. Run
+The Rust crate under `rust/dta-parser` is the source of truth for the Rust
+parser and its R binding; it is independent of the TypeScript parser. The R
+package mirrors the crate under `r-package/dtaparser/src/vendor/dta-parser`;
+never edit only the mirror. `scripts/check-rust-sync.sh` checks source equality,
+Cargo locks, and the normalized offline dependency archive. Run
 `scripts/rebuild-r-vendor.sh` only when the locked dependency archive changes,
 then update its checked SHA-256 intentionally.
 
@@ -361,7 +378,7 @@ Before merging parser or packaging changes:
 
 1. Run the Bun tests, typecheck, build, conformance, Rust fmt/clippy/tests/docs,
    deterministic fuzz smoke, and source/archive sync check.
-2. If the native core changed, mirror it into the R vendor tree and add a
+2. If the Rust parser changed, mirror it into the R vendor tree and add a
    regression at the root first.
 3. Run `R CMD build` and `R CMD check` with haven installed; confirm the GNU
    Rust target is actually used with Rtools on Windows.
@@ -370,7 +387,7 @@ Before merging parser or packaging changes:
 5. Confirm lockfiles, archive identity, support matrix, limitations, package
    docs, and changelog/release notes describe the same source.
 
-Issue #8 is complete across the sequential native-core, observation, legacy
+Issue #8 is complete across the sequential Rust-core, observation, legacy
 and bounded-file, R bridge, and conformance/CI slices. Publishing releases is a
 separate maintainer action.
 

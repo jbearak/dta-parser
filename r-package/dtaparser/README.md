@@ -1,6 +1,6 @@
 # dtaparser
 
-`dtaparser` is the native R interface to this repository's bounded Rust DTA
+`dtaparser` is the R interface to this repository's bounded Rust DTA
 reader. Its exported `read_dta()` function deliberately mirrors the formal
 arguments of `haven::read_dta()`, while observation storage is decoded by Rust
 and materialized through an R-specific collector. Numeric values are written
@@ -23,6 +23,35 @@ and variable labels, display formats, value-label tables, `strL` values, and
 system or `.a`--`.z` missing values. `%td` is converted to `Date`; `%tc` and
 `%tC` are converted to UTC `POSIXct`. Other Stata calendar formats remain
 numeric and retain their `format.stata` attribute.
+
+## Performance compared with haven
+
+A warm-cache benchmark on an Apple M4 Max compared full reads by
+`dtaparser::read_dta()` and `haven::read_dta()` on deterministic, mixed-type
+Stata 15 files. Each file contained 40 columns spanning numeric, labelled,
+date/time, and string data. The run warmed each implementation, alternated
+their execution order, and ran garbage collection outside the timed intervals.
+
+| Input | Rows | Iterations | dtaparser median | haven median | Relative throughput |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 100 MB | 222,656 | 101 | 0.236 s | 1.122 s | 4.754x |
+| 1 GB | 2,227,111 | 101 | 2.187 s | 11.045 s | 5.050x |
+
+Relative throughput is the haven median divided by the dtaparser median, so
+higher is faster for dtaparser. Before timing, eight representative columns in
+32-row samples from the start, middle, and end of each file were compared with
+haven after removing dtaparser's additional top-level `dta_format_version`
+attribute. The remaining attributes and values matched, subject to the
+conformance suite's `1e-7` tolerance for nonmissing floating-point values.
+
+These are machine- and workload-specific measurements, not performance
+guarantees or CI thresholds. The haven comparison used the Rust-vector
+materialization path that is now retained as an internal differential-testing
+baseline. The current direct-R collector was benchmarked separately and was
+faster than that retained path, but haven was not measured in the same run, so
+the ratios above are not extrapolated; see the
+[direct-R materialization results](../../benchmarks/r-materialization/results-2026-07-26.md).
+No repeated 10 GB comparison was completed, so no 10 GB result is reported.
 
 ## Scope and limitations
 
@@ -75,7 +104,7 @@ The materialization benchmark runners require `DTAPARSER_BENCH_LIB` and verify
 that the package is loaded from that freshly populated, checkout-local library
 rather than an unrelated global installation.
 
-The native source of truth is `rust/dta-parser`. After a root-first change,
+The Rust source of truth is `rust/dta-parser`. After a root-first change,
 mirror it here and run `scripts/check-rust-sync.sh`; the check also verifies the
 Cargo locks and deterministic offline `vendor.tar.gz` identity. Windows CI
 installs and selects `stable-x86_64-pc-windows-gnu`, confirms the rustc host,
