@@ -11,12 +11,15 @@ License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports:
+    readr (>= 2.2.0),
     rlang,
     tibble,
     tidyselect
 Suggests:
+    callr,
     haven,
-    testthat (>= 3.0.0)
+    httpuv,
+    testthat (>= 3.1.7)
 Config/testthat/edition: 3
 SystemRequirements: Cargo and Rust >= 1.74; on Windows, the
     x86_64-pc-windows-gnu toolchain matching 64-bit R

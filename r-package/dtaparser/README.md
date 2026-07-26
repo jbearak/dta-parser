@@ -18,6 +18,25 @@ cars <- read_dta(
 )
 ```
 
+`file` accepts the same practical input sources as `haven::read_dta()`:
+local paths, raw DTA bytes, binary connections, and URLs. Gzip files are
+decompressed locally or over a URL; local bzip2, xz, and zip files are also
+decompressed automatically. Source resolution is delegated to
+`readr::datasource()`, the same interface used by haven 2.5.5. Character
+vectors containing literal text are rejected because haven does not handle
+the resulting `source_string` for DTA input.
+
+URLs are fetched at call time. Applications that pass untrusted values to
+`file` should validate or allowlist acceptable sources before calling
+`read_dta()`; the reader does not impose a network allowlist.
+
+Source resolution remains an R-layer concern. An ordinary uncompressed local
+file is passed straight to the path-based Rust reader without copying its
+contents. Raw bytes and readr-resolved connections, compressed inputs, and
+URLs use temporary files that are removed when the read succeeds, errors, or
+is interrupted. This keeps network and decompression dependencies out of the
+reusable Rust parser.
+
 The reader supports Stata releases 113--115 and 117--119. It retains dataset
 and variable labels, display formats, value-label tables, `strL` values, and
 system or `.a`--`.z` missing values. `%td` is converted to `Date`; `%tc` and
@@ -55,8 +74,9 @@ No repeated 10 GB comparison was completed, so no 10 GB result is reported.
 
 ## Scope and limitations
 
-- `file` must be a local, uncompressed file path. Connections and URLs are not
-  supported.
+- Remote bzip2, xz, and zip files have the same limitations as
+  `readr::datasource()`; download them locally first when readr cannot expose
+  them as a decompressed source.
 - `encoding` must be `NULL`. Legacy files use Windows-1252 and XML-era files
   use UTF-8 according to the DTA storage format.
 - `col_select` uses tidyselect and is resolved from typed metadata before

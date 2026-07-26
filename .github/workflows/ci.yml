@@ -110,7 +110,7 @@ jobs:
         run: rustup toolchain install stable --profile minimal
       - name: Install R dependencies
         shell: Rscript {0}
-        run: install.packages(c("rlang", "tibble", "tidyselect", "testthat", "haven"))
+        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "haven", "callr", "httpuv"))
       - name: Build package from offline Cargo archive
         if: runner.os != 'Linux'
         shell: bash

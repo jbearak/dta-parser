@@ -6,7 +6,12 @@ read_dta(file, encoding = NULL, col_select = NULL, skip = 0,
   n_max = Inf, .name_repair = "unique")
 }
 \arguments{
-\item{file}{A single path to a DTA file.}
+\item{file}{A path, URL, raw vector, or binary connection. Local and remote
+gzip files and local bzip2, xz, and zip files are decompressed automatically.
+Character vectors containing literal data are not handled, matching
+\code{haven::read_dta()}. URLs are fetched at call time; applications accepting
+untrusted \code{file} values should validate or allowlist sources before calling
+\code{read_dta()}.}
 \item{encoding}{Must be \code{NULL}; decoding follows the file format.}
 \item{col_select}{One or more tidyselect expressions. Predicates treat Stata
 string storage as character and numeric storage as double. If a source
