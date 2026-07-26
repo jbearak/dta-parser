@@ -23,6 +23,7 @@ test_that("all bundled fixtures agree with haven", {
 
     for (path in paths) {
         actual <- read_dta(path)
+        rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
         expected <- haven::read_dta(path)
         info <- basename(path)
         metadata <- dtaparser:::.dta_metadata(normalizePath(path))
@@ -31,6 +32,8 @@ test_that("all bundled fixtures agree with haven", {
             as.character(metadata)
         )
 
+        expect_identical(actual, rust_vectors,
+                         info = paste(info, "direct and Rust-vector collectors"))
         expect_identical(dim(actual), dim(expected), info = info)
         expect_identical(names(actual), names(expected), info = info)
         expect_identical(attr(actual, "label", exact = TRUE),
@@ -68,8 +71,15 @@ test_that("projection, renaming, and row bounds match haven", {
         skip = 5,
         n_max = 4
     )
+    rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        path,
+        col_select = c(origin = foreign, make, price),
+        skip = 5,
+        n_max = 4
+    )
     expected <- haven::read_dta(path, skip = 5, n_max = 4)
 
+    expect_identical(actual, rust_vectors)
     expect_identical(names(actual), c("origin", "make", "price"))
     expect_equal(actual$origin, expected$foreign)
     expect_equal(actual$make, expected$make)
@@ -80,6 +90,10 @@ test_that("projection, renaming, and row bounds match haven", {
 test_that("an empty projection retains the selected row count", {
     path <- fixture("auto_v118.dta")
     result <- read_dta(path, col_select = character(), skip = 2, n_max = 3)
+    rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        path, col_select = character(), skip = 2, n_max = 3
+    )
+    expect_identical(result, rust_vectors)
     expect_identical(dim(result), c(3L, 0L))
 })
 
@@ -165,4 +179,6 @@ test_that("argument and native parse failures are ordinary R errors", {
     on.exit(unlink(corrupt), add = TRUE)
     writeBin(as.raw(1:8), corrupt)
     expect_error(read_dta(corrupt), "header|format|small|read|I/O", ignore.case = TRUE)
+    expect_error(dtaparser:::.read_dta_rust_vectors(corrupt),
+                 "header|format|small|read|I/O", ignore.case = TRUE)
 })

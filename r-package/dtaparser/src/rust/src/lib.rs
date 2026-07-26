@@ -4,7 +4,8 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
 use dta_parser::{
-    ColumnValues, DtaData, DtaFile, DtaType, MissingTag, ReadOptions, ValueLabelTable, VariableInfo,
+    ColumnValues, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, MissingTag,
+    ReadOptions, ValueLabelTable, VariableInfo,
 };
 
 type Sexp = *mut c_void;
@@ -357,6 +358,305 @@ unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
     Ok(result)
 }
 
+enum RColumn {
+    Numeric {
+        vector: Sexp,
+        output: *mut f64,
+        temporal: TemporalKind,
+    },
+    String {
+        vector: Sexp,
+        // Delaying R string allocation until after decoding is measurably
+        // faster than interleaving it with the parser's hot loop. Insertions
+        // still validate the DtaSink row-order contract below.
+        values: Vec<String>,
+    },
+}
+
+struct RDataFrameSink {
+    result: Sexp,
+    columns: Vec<RColumn>,
+    source_indices: Vec<u32>,
+    _guard: ProtectGuard,
+}
+
+impl RDataFrameSink {
+    unsafe fn new(
+        metadata: &DtaMetadata,
+        row_count: u64,
+        source_indices: &[u32],
+    ) -> Result<Self, DtaError> {
+        let capacity = usize::try_from(row_count)
+            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
+        let length = RLen::try_from(row_count)
+            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
+        let column_count = RLen::try_from(source_indices.len())
+            .map_err(|_| DtaError::Output("too many columns".to_owned()))?;
+        let mut guard = ProtectGuard::new();
+        let result = guard
+            .alloc(VECSXP, column_count)
+            .map_err(DtaError::Output)?;
+        let names = guard
+            .alloc(STRSXP, column_count)
+            .map_err(DtaError::Output)?;
+        let mut columns = Vec::new();
+        columns
+            .try_reserve_exact(source_indices.len())
+            .map_err(|_| DtaError::Output("could not track R output columns".to_owned()))?;
+
+        for (output_index, &source_index) in source_indices.iter().enumerate() {
+            let variable = metadata
+                .variables
+                .get(source_index as usize)
+                .ok_or(DtaError::ArithmeticOverflow("output source column"))?;
+            let column = match variable.dta_type {
+                DtaType::FixedString(_) | DtaType::StrL => RColumn::String {
+                    vector: guard.alloc(STRSXP, length).map_err(DtaError::Output)?,
+                    values: Vec::with_capacity(capacity),
+                },
+                _ => {
+                    let vector = guard.alloc(REALSXP, length).map_err(DtaError::Output)?;
+                    RColumn::Numeric {
+                        vector,
+                        output: REAL(vector),
+                        temporal: temporal_kind(&variable.format),
+                    }
+                }
+            };
+            let vector = match &column {
+                RColumn::Numeric { vector, .. } | RColumn::String { vector, .. } => *vector,
+            };
+            SET_VECTOR_ELT(result, output_index as RLen, vector);
+            SET_STRING_ELT(
+                names,
+                output_index as RLen,
+                r_char(&variable.name).map_err(DtaError::Output)?,
+            );
+            columns.push(column);
+        }
+        set_symbol_attr(result, R_NamesSymbol, names).map_err(DtaError::Output)?;
+
+        Ok(Self {
+            result,
+            columns,
+            source_indices: source_indices.to_vec(),
+            _guard: guard,
+        })
+    }
+
+    #[inline(always)]
+    fn numeric_column(&self, column: usize) -> Result<(*mut f64, TemporalKind), DtaError> {
+        match self.columns.get(column) {
+            Some(RColumn::Numeric {
+                output, temporal, ..
+            }) => Ok((*output, *temporal)),
+            _ => Err(DtaError::Output(
+                "numeric output column mismatch".to_owned(),
+            )),
+        }
+    }
+
+    #[inline(always)]
+    fn write_numeric(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: f64,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        let (output, temporal) = self.numeric_column(column)?;
+        unsafe {
+            *output.add(row) = missing
+                .map(r_missing)
+                .unwrap_or_else(|| observed_value(value, temporal));
+        }
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn push_string_value(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: String,
+    ) -> Result<(), DtaError> {
+        match self.columns.get_mut(column) {
+            Some(RColumn::String { values, .. }) => {
+                if values.len() != row {
+                    return Err(DtaError::Output(format!(
+                        "string output row mismatch: expected {}, got {row}",
+                        values.len()
+                    )));
+                }
+                values.push(value);
+                Ok(())
+            }
+            _ => Err(DtaError::Output("string output column mismatch".to_owned())),
+        }
+    }
+}
+
+impl DtaSink for RDataFrameSink {
+    type Output = Sexp;
+
+    #[inline(always)]
+    fn push_byte(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: i8,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric(column, row, f64::from(value), missing)
+    }
+
+    #[inline(always)]
+    fn push_int(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: i16,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric(column, row, f64::from(value), missing)
+    }
+
+    #[inline(always)]
+    fn push_long(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: i32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric(column, row, f64::from(value), missing)
+    }
+
+    #[inline(always)]
+    fn push_float(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: f32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric(column, row, f64::from(value), missing)
+    }
+
+    #[inline(always)]
+    fn push_double(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: f64,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric(column, row, value, missing)
+    }
+
+    #[inline(always)]
+    fn push_fixed_string(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: String,
+    ) -> Result<(), DtaError> {
+        self.push_string_value(column, row, value)
+    }
+
+    #[inline(always)]
+    fn push_strl(&mut self, column: usize, row: usize, value: &str) -> Result<(), DtaError> {
+        self.push_string_value(column, row, value.to_owned())
+    }
+
+    fn finish(
+        mut self,
+        metadata: DtaMetadata,
+        _row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError> {
+        let expected_string_rows = usize::try_from(row_count)
+            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
+        unsafe {
+            for column in &mut self.columns {
+                let RColumn::String { vector, values } = column else {
+                    continue;
+                };
+                if values.len() != expected_string_rows {
+                    return Err(DtaError::Output(format!(
+                        "string output row count mismatch: expected {expected_string_rows}, got {}",
+                        values.len()
+                    )));
+                }
+                for (row, value) in values.drain(..).enumerate() {
+                    poll_interrupt(row).map_err(DtaError::Output)?;
+                    SET_STRING_ELT(
+                        *vector,
+                        row as RLen,
+                        r_char(&value).map_err(DtaError::Output)?,
+                    );
+                }
+            }
+
+            for (output_index, &source_index) in self.source_indices.iter().enumerate() {
+                check_interrupt().map_err(DtaError::Output)?;
+                let variable = metadata
+                    .variables
+                    .get(source_index as usize)
+                    .ok_or(DtaError::ArithmeticOverflow("output source column"))?;
+                let table = if variable.value_label_name.is_empty() {
+                    None
+                } else {
+                    value_label_tables
+                        .iter()
+                        .find(|table| table.name == variable.value_label_name)
+                };
+                let vector = match &self.columns[output_index] {
+                    RColumn::Numeric { vector, .. } | RColumn::String { vector, .. } => *vector,
+                };
+                let mut attribute_guard = ProtectGuard::new();
+                attach_variable_attributes(vector, variable, table, &mut attribute_guard)
+                    .map_err(DtaError::Output)?;
+            }
+
+            let row_count = c_int::try_from(row_count).map_err(|_| {
+                DtaError::Output("R data frames cannot contain more than 2^31-1 rows".to_owned())
+            })?;
+            {
+                let mut attribute_guard = ProtectGuard::new();
+                let row_names = attribute_guard.alloc(INTSXP, 2).map_err(DtaError::Output)?;
+                *INTEGER(row_names) = R_NaInt;
+                *INTEGER(row_names).add(1) = -row_count;
+                set_symbol_attr(self.result, R_RowNamesSymbol, row_names)
+                    .map_err(DtaError::Output)?;
+            }
+            {
+                let mut attribute_guard = ProtectGuard::new();
+                set_class(self.result, &["data.frame"], &mut attribute_guard)
+                    .map_err(DtaError::Output)?;
+            }
+            if !metadata.dataset_label.is_empty() {
+                let mut attribute_guard = ProtectGuard::new();
+                let label = scalar_string(&metadata.dataset_label, &mut attribute_guard)
+                    .map_err(DtaError::Output)?;
+                set_attr(self.result, "label", label).map_err(DtaError::Output)?;
+            }
+            {
+                let mut attribute_guard = ProtectGuard::new();
+                let version = scalar_integer(
+                    metadata.format_version.as_u16().into(),
+                    &mut attribute_guard,
+                )
+                .map_err(DtaError::Output)?;
+                set_attr(self.result, "dta_format_version", version).map_err(DtaError::Output)?;
+            }
+        }
+        let result = self.result;
+        Ok(result)
+    }
+}
+
 unsafe fn metadata_impl(path: &str) -> Result<Sexp, String> {
     let file = DtaFile::open(path).map_err(|error| error.to_string())?;
     let metadata = file.metadata();
@@ -408,6 +708,7 @@ unsafe fn read_impl(
     columns: Option<Vec<u32>>,
     skip: f64,
     n_max: f64,
+    direct_to_r: bool,
 ) -> Result<Sexp, String> {
     if !skip.is_finite() || skip < 0.0 || skip.fract() != 0.0 || skip > (1_u64 << 53) as f64 {
         return Err("invalid skip value".to_owned());
@@ -431,10 +732,21 @@ unsafe fn read_impl(
         row_count,
         column_indices: columns,
     };
-    let data = file
-        .read_with_interrupt(&options, || unsafe { dtaparser_check_interrupt() != 0 })
-        .map_err(|error| error.to_string())?;
-    build_data_frame(&data)
+    if direct_to_r {
+        file.read_with_sink_and_interrupt(
+            &options,
+            |metadata, _row_start, row_count, indices| unsafe {
+                RDataFrameSink::new(metadata, row_count, indices)
+            },
+            || unsafe { dtaparser_check_interrupt() != 0 },
+        )
+        .map_err(|error| error.to_string())
+    } else {
+        let data = file
+            .read_with_interrupt(&options, || unsafe { dtaparser_check_interrupt() != 0 })
+            .map_err(|error| error.to_string())?;
+        build_data_frame(&data)
+    }
 }
 
 fn panic_message(payload: Box<dyn Any + Send>) -> String {
@@ -517,6 +829,7 @@ pub unsafe extern "C" fn dtaparser_read_rust(
     all_columns: c_int,
     skip: f64,
     n_max: f64,
+    direct_to_r: c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, || {
@@ -546,7 +859,7 @@ pub unsafe extern "C" fn dtaparser_read_rust(
                     .collect::<Result<Vec<_>, _>>()?,
             )
         };
-        read_impl(path, projection, skip, n_max)
+        read_impl(path, projection, skip, n_max, direct_to_r != 0)
     })
 }
 

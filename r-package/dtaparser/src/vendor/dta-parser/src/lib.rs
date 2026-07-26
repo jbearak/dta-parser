@@ -20,7 +20,7 @@ mod value_labels;
 
 pub use data_reader::{read_dta, read_dta_with_options};
 pub use error::DtaError;
-pub use file::{DtaFile, FileOptions};
+pub use file::{DtaFile, DtaSink, FileOptions};
 pub use metadata::parse_metadata;
 pub use missing::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,

@@ -8,7 +8,7 @@
 
 extern SEXP dtaparser_metadata_rust(const char *, char **);
 extern SEXP dtaparser_read_rust(
-    const char *, const int *, size_t, int, double, double, char **
+    const char *, const int *, size_t, int, double, double, int, char **
 );
 extern void dtaparser_free_error(char *);
 
@@ -135,7 +135,9 @@ SEXP C_dtaparser_metadata(SEXP path) {
     return result;
 }
 
-SEXP C_dtaparser_read(SEXP path, SEXP columns, SEXP skip, SEXP n_max) {
+SEXP C_dtaparser_read(
+    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r
+) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
     }
@@ -147,6 +149,10 @@ SEXP C_dtaparser_read(SEXP path, SEXP columns, SEXP skip, SEXP n_max) {
         TYPEOF(n_max) != REALSXP || XLENGTH(n_max) != 1) {
         Rf_error("internal row bounds must be numeric scalars");
     }
+    if (TYPEOF(direct_to_r) != LGLSXP || XLENGTH(direct_to_r) != 1 ||
+        LOGICAL(direct_to_r)[0] == NA_LOGICAL) {
+        Rf_error("internal materialization selector must be logical");
+    }
     char *error = NULL;
     SEXP result = dtaparser_read_rust(
         Rf_translateCharUTF8(STRING_ELT(path, 0)),
@@ -155,6 +161,7 @@ SEXP C_dtaparser_read(SEXP path, SEXP columns, SEXP skip, SEXP n_max) {
         all_columns,
         REAL(skip)[0],
         REAL(n_max)[0],
+        LOGICAL(direct_to_r)[0],
         &error
     );
     if (result == NULL) fail_from_rust(error);
@@ -163,7 +170,7 @@ SEXP C_dtaparser_read(SEXP path, SEXP columns, SEXP skip, SEXP n_max) {
 
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 1},
-    {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 4},
+    {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 5},
     {NULL, NULL, 0}
 };
 
