@@ -16,9 +16,10 @@ name: Publish to npm
 #   attached automatically. Nothing to store or rotate.
 #
 # Release flow:
-#   - bump "version" in package.json, commit to main
+#   - bump "version" in typescript/dta-parser/package.json, commit to main
 #   - git tag vX.Y.Z && git push origin vX.Y.Z
-# The tag must match package.json's version or the job fails before publish.
+# The tag must match typescript/dta-parser/package.json's version or the job
+# fails before publish.
 
 on:
   push:
@@ -33,6 +34,9 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript/dta-parser
     # Publishing runs through the "release" environment. Bind the npm
     # trusted publisher to this same environment name, and add protection
     # rules on GitHub (Settings → Environments → release): require a
@@ -53,7 +57,7 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        run: bun test ./tests
+        run: bun run test
 
       - name: Build
         run: bun run build
@@ -69,16 +73,16 @@ jobs:
       - name: Upgrade npm for trusted publishing
         run: npm install -g npm@latest
 
-      # On a tag push, fail fast if the tag doesn't match package.json's
-      # version (prevents publishing a mismatched version). Skipped for
-      # manual workflow_dispatch runs.
+      # On a tag push, fail fast if the tag doesn't match the nested npm
+      # package version (prevents publishing a mismatched version). Skipped
+      # for manual workflow_dispatch runs.
       - name: Verify tag matches package version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           tag_version="${GITHUB_REF_NAME#v}"
           pkg_version="$(node -p "require('./package.json').version")"
           if [ "$tag_version" != "$pkg_version" ]; then
-            echo "Tag $GITHUB_REF_NAME ($tag_version) does not match package.json version ($pkg_version)" >&2
+            echo "Tag $GITHUB_REF_NAME ($tag_version) does not match typescript/dta-parser/package.json version ($pkg_version)" >&2
             exit 1
           fi
 

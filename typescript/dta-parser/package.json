@@ -7,7 +7,8 @@
   "author": "Jonathan Marc Bearak",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jbearak/dta-parser.git"
+    "url": "https://github.com/jbearak/dta-parser.git",
+    "directory": "typescript/dta-parser"
   },
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.js",
@@ -48,10 +49,10 @@
     "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs",
     "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.types.json --noEmit",
-    "test": "bun test ./tests",
-    "conformance": "scripts/conformance.sh",
-    "fuzz:smoke": "cargo test -p dta-parser --locked --test fuzz_smoke -- --nocapture",
-    "bench:ts": "bun benchmarks/typescript.ts"
+    "test": "bun test ./tests ../../tests/integration",
+    "conformance": "cd ../.. && scripts/conformance.sh",
+    "fuzz:smoke": "cd ../.. && cargo test -p dta-parser --locked --test fuzz_smoke -- --nocapture",
+    "bench:ts": "cd ../.. && bun benchmarks/typescript.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

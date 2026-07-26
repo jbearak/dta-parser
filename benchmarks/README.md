@@ -5,7 +5,7 @@ counts. They intentionally have no timing assertions. Run correctness gates
 before collecting results:
 
 ```sh
-bun run conformance
+scripts/conformance.sh
 cargo test --workspace --locked
 DTA_BENCH_ITERATIONS=100 cargo run --release -p dta-parser --example bench
 DTA_BENCH_ITERATIONS=100 bun benchmarks/typescript.ts

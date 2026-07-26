@@ -5,7 +5,7 @@ import * as os from 'os';
 import { apply_display_format } from '../../src';
 import { DtaFile } from '../../src/node';
 
-const FIXTURE_DIR = path.join(__dirname, '../fixtures/dta');
+const FIXTURE_DIR = path.resolve(__dirname, '../../../../tests/fixtures/dta');
 
 describe('data browser smoke test', () => {
     it('full pipeline: open, read metadata, read rows, format cells', async () => {

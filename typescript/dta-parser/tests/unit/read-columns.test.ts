@@ -10,8 +10,8 @@ import * as path from 'path';
 import { DtaFile } from '../../src/node';
 import type { RowCell } from '../../src/types';
 
-const FIXTURE_DIR = path.join(
-    __dirname, '..', 'fixtures', 'dta'
+const FIXTURE_DIR = path.resolve(
+    __dirname, '../../../../tests/fixtures/dta'
 );
 
 let my_file: DtaFile | null = null;

@@ -13,8 +13,8 @@ import type { DtaMetadata } from '../../src/types';
 // strL (GSO) resolution tests
 // -----------------------------------------------------------
 
-const FIXTURE_DIR = path.join(
-    __dirname, '..', 'fixtures', 'dta'
+const FIXTURE_DIR = path.resolve(
+    __dirname, '../../../../tests/fixtures/dta'
 );
 
 function load_fixture(name: string): {

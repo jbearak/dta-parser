@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
-import { parse_metadata } from '../src/header';
-import { parse_legacy_metadata } from '../src/legacy-header';
-import { DtaFile } from '../src/node';
+import { parse_metadata } from '../typescript/dta-parser/src/header';
+import { parse_legacy_metadata } from '../typescript/dta-parser/src/legacy-header';
+import { DtaFile } from '../typescript/dta-parser/src/node';
 
 type FixtureCase = { name: string; sha256: string };
 type Manifest = {

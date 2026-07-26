@@ -10,11 +10,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 
-import { parse_metadata } from '../../../../src/header';
-import { parse_legacy_metadata } from '../../../../src/legacy-header';
-import { is_missing_value_object } from '../../../../src/missing-values';
-import { DtaFile } from '../../../../src/node';
-import { is_legacy_format } from '../../../../src/types';
+import { parse_metadata } from '../../../../typescript/dta-parser/src/header';
+import { parse_legacy_metadata } from '../../../../typescript/dta-parser/src/legacy-header';
+import { is_missing_value_object } from '../../../../typescript/dta-parser/src/missing-values';
+import { DtaFile } from '../../../../typescript/dta-parser/src/node';
+import { is_legacy_format } from '../../../../typescript/dta-parser/src/types';
 
 const fixture_dir = path.resolve('tests/fixtures/dta');
 const fixture_names = readdirSync(fixture_dir)

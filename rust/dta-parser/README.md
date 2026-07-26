@@ -97,11 +97,12 @@ Native R bindings live in `r-package/dtaparser`; display/date conversion is an
 R-wrapper concern while the core preserves the original format metadata.
 Formats before 113 remain unsupported.
 
-From the repository root, `bun run conformance` checks the immutable fixture
+From the repository root, `scripts/conformance.sh` checks the immutable fixture
 oracle and exact slice/file parity, including projections, row windows, `strL`,
 value labels, missing tags, legacy layouts, big-endian v119, and representative
-rejection errors. `bun run fuzz:smoke` runs deterministic, bounded,
-fixture-seeded mutations without nightly Rust or network access. Report-only
+rejection errors. `cargo test -p dta-parser --locked --test fuzz_smoke -- --nocapture`
+runs deterministic, bounded, fixture-seeded mutations without
+nightly Rust or network access. Report-only
 metadata/full/projected/bounded-file/wide/`strL`/legacy measurements are
 available with `cargo run --release -p dta-parser --example bench`; see
 `benchmarks/README.md` for environment and correctness-reporting requirements.
