@@ -6,9 +6,10 @@
 #include <stdint.h>
 #include <string.h>
 
-extern SEXP dtaparser_metadata_rust(const char *, char **);
+extern SEXP dtaparser_metadata_rust(const char *, const char *, char **);
 extern SEXP dtaparser_read_rust(
-    const char *, const int *, size_t, int, double, double, int, char **
+    const char *, const int *, size_t, int, double, double, int, const char *,
+    char **
 );
 extern void dtaparser_free_error(char *);
 
@@ -123,20 +124,31 @@ static void fail_from_rust(char *message) {
     Rf_error("%s", local);
 }
 
-SEXP C_dtaparser_metadata(SEXP path) {
+static const char *optional_encoding(SEXP encoding) {
+    if (Rf_isNull(encoding)) return NULL;
+    if (TYPEOF(encoding) != STRSXP || XLENGTH(encoding) != 1 ||
+        STRING_ELT(encoding, 0) == NA_STRING) {
+        Rf_error("`encoding` must be NULL or one non-missing character string");
+    }
+    return Rf_translateCharUTF8(STRING_ELT(encoding, 0));
+}
+
+SEXP C_dtaparser_metadata(SEXP path, SEXP encoding) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
     }
     char *error = NULL;
     SEXP result = dtaparser_metadata_rust(
-        Rf_translateCharUTF8(STRING_ELT(path, 0)), &error
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), optional_encoding(encoding),
+        &error
     );
     if (result == NULL) fail_from_rust(error);
     return result;
 }
 
 SEXP C_dtaparser_read(
-    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r
+    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
+    SEXP encoding
 ) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
@@ -162,6 +174,7 @@ SEXP C_dtaparser_read(
         REAL(skip)[0],
         REAL(n_max)[0],
         LOGICAL(direct_to_r)[0],
+        optional_encoding(encoding),
         &error
     );
     if (result == NULL) fail_from_rust(error);
@@ -169,8 +182,8 @@ SEXP C_dtaparser_read(
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 1},
-    {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 5},
+    {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 2},
+    {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 6},
     {NULL, NULL, 0}
 };
 

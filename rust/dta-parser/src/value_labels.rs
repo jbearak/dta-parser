@@ -1,5 +1,5 @@
 use crate::endian::{checked_add, checked_mul, expect_at, offset_to_usize, read_i32, slice_at};
-use crate::text::{decode_utf8, decode_windows_1252, field_bytes, is_utf8_continuation};
+use crate::text::{field_bytes, is_utf8_boundary, TextEncoding};
 use crate::{
     classify_long_missing, DtaError, DtaMetadata, FormatVersion, ValueLabelEntry, ValueLabelTable,
 };
@@ -25,6 +25,7 @@ fn parse_table(
     table_start: usize,
     name_width: usize,
     wrapped: bool,
+    encoding: TextEncoding,
 ) -> Result<(ValueLabelTable, usize), DtaError> {
     let mut cursor = if wrapped {
         expect_at(bytes, table_start, LABEL_OPEN, "<lbl>")?
@@ -62,11 +63,7 @@ fn parse_table(
     } else {
         field_bytes(name_field)
     };
-    let name = if metadata.format_version.is_modern() {
-        decode_utf8(name_bytes)
-    } else {
-        decode_windows_1252(name_bytes)
-    };
+    let name = encoding.decode(name_bytes);
     cursor = checked_add(cursor, name_width, "value-label table name")?;
 
     // The format reserves these bytes but does not assign them semantics.
@@ -175,8 +172,8 @@ fn parse_table(
                 text_length,
             });
         };
-        if metadata.format_version.is_modern()
-            && is_utf8_continuation(payload[text_start + text_offset_usize])
+        if encoding.is_utf8()
+            && !is_utf8_boundary(&payload[text_start..text_end], text_offset_usize)
         {
             return Err(DtaError::InvalidValueLabelTextOffset {
                 entry_index,
@@ -222,11 +219,7 @@ fn parse_table(
                     context: "value-label text",
                     offset: checked_add(payload_start, label_start, "value-label text")?,
                 })?;
-        let label = if metadata.format_version.is_modern() {
-            decode_utf8(&remaining[..nul])
-        } else {
-            decode_windows_1252(&remaining[..nul])
-        };
+        let label = encoding.decode(&remaining[..nul]);
         entries.push(ValueLabelEntry {
             value,
             missing_tag: classify_long_missing(value),
@@ -249,7 +242,21 @@ pub fn parse_value_labels(
     bytes: &[u8],
     metadata: &DtaMetadata,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
-    parse_value_labels_section(bytes, metadata, 0)
+    parse_value_labels_with_encoding(bytes, metadata, TextEncoding::Auto)
+}
+
+/// Parse value-label tables with an explicit source-text encoding.
+pub fn parse_value_labels_with_encoding(
+    bytes: &[u8],
+    metadata: &DtaMetadata,
+    encoding: TextEncoding,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    parse_value_labels_section(
+        bytes,
+        metadata,
+        0,
+        encoding.resolve(metadata.format_version),
+    )
 }
 
 fn local_offset(absolute: u64, base_offset: u64, context: &'static str) -> Result<usize, DtaError> {
@@ -286,6 +293,7 @@ pub(crate) fn parse_value_labels_section(
     bytes: &[u8],
     metadata: &DtaMetadata,
     base_offset: u64,
+    encoding: TextEncoding,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     let name_width = name_width(metadata.format_version)?;
     let start = local_offset(
@@ -309,7 +317,7 @@ pub(crate) fn parse_value_labels_section(
         let mut cursor = start;
         let mut tables = Vec::new();
         while cursor < end {
-            let (table, next) = parse_table(bytes, metadata, cursor, name_width, false)?;
+            let (table, next) = parse_table(bytes, metadata, cursor, name_width, false, encoding)?;
             if next <= cursor {
                 return Err(DtaError::ArithmeticOverflow("legacy value-label cursor"));
             }
@@ -336,7 +344,7 @@ pub(crate) fn parse_value_labels_section(
             cursor = expect_at(bytes, cursor, VALUE_LABELS_CLOSE, "</value_labels>")?;
             break;
         }
-        let (table, next) = parse_table(bytes, metadata, cursor, name_width, true)?;
+        let (table, next) = parse_table(bytes, metadata, cursor, name_width, true, encoding)?;
         tables.push(table);
         cursor = next;
     }

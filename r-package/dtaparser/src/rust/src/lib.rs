@@ -5,7 +5,7 @@ use std::ptr;
 
 use dta_parser::{
     ColumnValues, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, MissingTag,
-    ReadOptions, ValueLabelTable, VariableInfo,
+    ReadOptions, TextEncoding, ValueLabelTable, VariableInfo,
 };
 
 type Sexp = *mut c_void;
@@ -657,8 +657,9 @@ impl DtaSink for RDataFrameSink {
     }
 }
 
-unsafe fn metadata_impl(path: &str) -> Result<Sexp, String> {
-    let file = DtaFile::open(path).map_err(|error| error.to_string())?;
+unsafe fn metadata_impl(path: &str, encoding: TextEncoding) -> Result<Sexp, String> {
+    let file =
+        DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
     let metadata = file.metadata();
     let mut guard = ProtectGuard::new();
     let names = metadata
@@ -709,6 +710,7 @@ unsafe fn read_impl(
     skip: f64,
     n_max: f64,
     direct_to_r: bool,
+    encoding: TextEncoding,
 ) -> Result<Sexp, String> {
     if !skip.is_finite() || skip < 0.0 || skip.fract() != 0.0 || skip > (1_u64 << 53) as f64 {
         return Err("invalid skip value".to_owned());
@@ -725,7 +727,8 @@ unsafe fn read_impl(
     } else {
         Some(n_max as u64)
     };
-    let mut file = DtaFile::open(path).map_err(|error| error.to_string())?;
+    let mut file =
+        DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
     validate_r_row_count(file.metadata().nobs, row_start, row_count)?;
     let options = ReadOptions {
         row_start,
@@ -790,16 +793,31 @@ where
     }
 }
 
+unsafe fn text_encoding(encoding: *const c_char) -> Result<TextEncoding, String> {
+    if encoding.is_null() {
+        return Ok(TextEncoding::Auto);
+    }
+    let label = CStr::from_ptr(encoding)
+        .to_str()
+        .map_err(|_| "encoding name is not valid UTF-8".to_owned())?;
+    TextEncoding::from_label(label).map_err(|error| error.to_string())
+}
+
 #[no_mangle]
 /// Return DTA metadata as an R character vector.
 ///
 /// # Safety
 ///
-/// `path` must point to a valid NUL-terminated string. If non-null, `error`
-/// must point to writable storage for one C string pointer. The caller must run
-/// on R's main thread with an initialized R runtime.
+/// `path` must point to a readable NUL-terminated C byte string for the
+/// duration of this call. `encoding` may be null; otherwise it must likewise
+/// point to a readable NUL-terminated C byte string for the duration of this
+/// call. Neither string's bytes need to be valid UTF-8; invalid UTF-8 is
+/// returned as an ordinary error. If non-null, `error` must point to writable
+/// storage for one C string pointer. The caller must run on R's main thread
+/// with an initialized R runtime.
 pub unsafe extern "C" fn dtaparser_metadata_rust(
     path: *const c_char,
+    encoding: *const c_char,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, || {
@@ -809,7 +827,7 @@ pub unsafe extern "C" fn dtaparser_metadata_rust(
         let path = CStr::from_ptr(path)
             .to_str()
             .map_err(|_| "file path is not valid UTF-8".to_owned())?;
-        metadata_impl(path)
+        metadata_impl(path, text_encoding(encoding)?)
     })
 }
 
@@ -818,10 +836,14 @@ pub unsafe extern "C" fn dtaparser_metadata_rust(
 ///
 /// # Safety
 ///
-/// `path` must point to a valid NUL-terminated string. Unless `all_columns` is
-/// nonzero, `columns` must address `column_count` readable integers. If
-/// non-null, `error` must point to writable storage for one C string pointer.
-/// The caller must run on R's main thread with an initialized R runtime.
+/// `path` must point to a readable NUL-terminated C byte string for the
+/// duration of this call. `encoding` may be null; otherwise it must likewise
+/// point to a readable NUL-terminated C byte string for the duration of this
+/// call. Neither string's bytes need to be valid UTF-8; invalid UTF-8 is
+/// returned as an ordinary error. Unless `all_columns` is nonzero, `columns`
+/// must address `column_count` readable integers. If non-null, `error` must
+/// point to writable storage for one C string pointer. The caller must run on
+/// R's main thread with an initialized R runtime.
 pub unsafe extern "C" fn dtaparser_read_rust(
     path: *const c_char,
     columns: *const c_int,
@@ -830,6 +852,7 @@ pub unsafe extern "C" fn dtaparser_read_rust(
     skip: f64,
     n_max: f64,
     direct_to_r: c_int,
+    encoding: *const c_char,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, || {
@@ -859,7 +882,14 @@ pub unsafe extern "C" fn dtaparser_read_rust(
                     .collect::<Result<Vec<_>, _>>()?,
             )
         };
-        read_impl(path, projection, skip, n_max, direct_to_r != 0)
+        read_impl(
+            path,
+            projection,
+            skip,
+            n_max,
+            direct_to_r != 0,
+            text_encoding(encoding)?,
+        )
     })
 }
 

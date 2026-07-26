@@ -43,6 +43,20 @@ system or `.a`--`.z` missing values. `%td` is converted to `Date`; `%tc` and
 `%tC` are converted to UTC `POSIXct`. Other Stata calendar formats remain
 numeric and retain their `format.stata` attribute.
 
+`encoding = NULL` follows the DTA release convention: Windows-1252 for
+releases 113--115 and UTF-8 for releases 117--119. To recover files whose
+source encoding is recorded incorrectly, pass a case-insensitive UTF-8/UTF8,
+Windows-1252/CP1252, or ISO-8859-1/latin1 alias. The override is deterministic
+across platforms and applies to dataset and variable metadata, fixed strings,
+`strL` payloads, and value-label names and text. ISO-8859-1 remains distinct
+from Windows-1252 at bytes 0x80--0x9f. Other encoding names produce an error
+instead of inheriting platform-dependent `iconv` alias or lossy-conversion
+behavior. Haven 2.5.5 does not apply its override to modern `strL` payloads;
+`dtaparser` deliberately applies the requested encoding consistently there.
+With an explicit UTF-8 override, malformed input sequences are replaced
+deterministically with U+FFFD. Haven 2.5.5 may instead omit or empty an affected
+label.
+
 ## Performance compared with haven
 
 A warm-cache benchmark on an Apple M4 Max compared full reads by
@@ -77,8 +91,6 @@ No repeated 10 GB comparison was completed, so no 10 GB result is reported.
 - Remote bzip2, xz, and zip files have the same limitations as
   `readr::datasource()`; download them locally first when readr cannot expose
   them as a decompressed source.
-- `encoding` must be `NULL`. Legacy files use Windows-1252 and XML-era files
-  use UTF-8 according to the DTA storage format.
 - `col_select` uses tidyselect and is resolved from typed metadata before
   observation data are decoded, so predicates such as `where(is.character)`
   work without reading values. If a source column is selected more than once,

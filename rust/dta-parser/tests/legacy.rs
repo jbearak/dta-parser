@@ -2,8 +2,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use dta_parser::{
-    parse_metadata, read_dta, ByteOrder, ColumnValues, DtaError, FormatVersion, MissingTag,
+    parse_metadata, read_dta, read_dta_with_encoding, ByteOrder, ColumnValues, DtaError, DtaFile,
+    FormatVersion, MissingTag, TextEncoding,
 };
+use std::io::Cursor;
 
 fn fixture_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/dta")
@@ -155,6 +157,35 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
             .label,
         "é"
     );
+}
+
+#[test]
+fn explicit_encoding_overrides_every_legacy_text_surface() {
+    let bytes = synthetic_v113_msf();
+    let latin1 = read_dta_with_encoding(&bytes, TextEncoding::Iso8859_1).unwrap();
+    assert_eq!(latin1.metadata.dataset_label, "Café");
+    assert_eq!(latin1.metadata.variables[0].label, "naïve");
+    let ColumnValues::FixedString { values } = &latin1.columns[1].values else {
+        panic!("text must be a fixed string");
+    };
+    assert_eq!(values, &["\u{93}h\u{94}"]);
+    assert_eq!(
+        latin1
+            .value_label_table("num_lbl")
+            .unwrap()
+            .entry(321)
+            .unwrap()
+            .label,
+        "é"
+    );
+
+    let utf8 = read_dta_with_encoding(&bytes, TextEncoding::Utf8).unwrap();
+    assert_eq!(utf8.metadata.dataset_label, "Caf\u{fffd}");
+    assert_eq!(utf8.metadata.variables[0].label, "na\u{fffd}ve");
+
+    let mut file =
+        DtaFile::from_reader_with_encoding(Cursor::new(bytes), TextEncoding::Iso8859_1).unwrap();
+    assert_eq!(file.read().unwrap(), latin1);
 }
 
 #[test]

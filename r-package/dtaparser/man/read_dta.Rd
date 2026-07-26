@@ -12,7 +12,13 @@ Character vectors containing literal data are not handled, matching
 \code{haven::read_dta()}. URLs are fetched at call time; applications accepting
 untrusted \code{file} values should validate or allowlist sources before calling
 \code{read_dta()}.}
-\item{encoding}{Must be \code{NULL}; decoding follows the file format.}
+\item{encoding}{Optional source encoding override. Supported aliases are
+\code{"UTF-8"}/\code{"UTF8"}, \code{"Windows-1252"}/\code{"CP1252"}, and
+\code{"ISO-8859-1"}/\code{"latin1"}, matched case-insensitively. \code{NULL}
+uses Windows-1252 for legacy files and UTF-8 for modern files. The override
+applies to metadata, fixed strings, \code{strL} payloads, and value-label
+names and text. Explicit UTF-8 replaces malformed input sequences
+deterministically with U+FFFD. Haven 2.5.5 may instead omit an affected label.}
 \item{col_select}{One or more tidyselect expressions. Predicates treat Stata
 string storage as character and numeric storage as double. If a source
 variable is selected more than once, the first selection and alias win.}

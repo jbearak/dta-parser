@@ -2,6 +2,17 @@ fixture <- function(name) {
     system.file("extdata", name, package = "dtaparser", mustWork = TRUE)
 }
 
+replace_first_byte <- function(bytes, text, replacement) {
+    needle <- charToRaw(text)
+    starts <- seq_len(length(bytes) - length(needle) + 1L)
+    matches <- vapply(starts, function(start) {
+        identical(bytes[start:(start + length(needle) - 1L)], needle)
+    }, logical(1))
+    stopifnot(any(matches))
+    bytes[starts[which(matches)[[1L]]]] <- as.raw(replacement)
+    bytes
+}
+
 test_that("read_dta has the haven-compatible public signature", {
     expected <- c("file", "encoding", "col_select", "skip", "n_max", ".name_repair")
     expect_identical(names(formals(read_dta)), expected)
@@ -166,9 +177,96 @@ test_that("date and datetime storage become native R temporal vectors", {
     expect_identical(attr(actual$instant, "tzone"), "UTC")
 })
 
+test_that("explicit encodings match haven across ordinary textual surfaces", {
+    skip_if_not_installed("haven")
+    for (version in c(115L, 118L)) {
+        source <- fixture(sprintf("auto_v%d.dta", version))
+        bytes <- readBin(source, "raw", file.info(source)$size)
+        for (text in c(
+            "1978 automobile data", "Make and model", "AMC Concord", "Domestic"
+        )) {
+            bytes <- replace_first_byte(bytes, text, 0x80)
+        }
+        path <- tempfile(fileext = ".dta")
+        on.exit(unlink(path), add = TRUE)
+        writeBin(bytes, path)
+
+        for (encoding in c("Windows-1252", "ISO-8859-1")) {
+            actual <- read_dta(path, encoding = encoding)
+            rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+                path, encoding = encoding
+            )
+            expected <- haven::read_dta(path, encoding = encoding)
+            info <- paste("release", version, encoding)
+
+            expect_identical(actual, rust_vectors,
+                             info = paste(info, "materialization"))
+            expect_identical(actual$make, expected$make,
+                             info = paste(info, "fixed string"))
+            expect_identical(attr(actual, "label"), attr(expected, "label"),
+                             info = paste(info, "dataset label"))
+            expect_identical(attr(actual$make, "label"),
+                             attr(expected$make, "label"),
+                             info = paste(info, "variable label"))
+            expect_identical(attr(actual$foreign, "labels"),
+                             attr(expected$foreign, "labels"),
+                             info = paste(info, "value labels"))
+        }
+    }
+
+    modern <- fixture("auto_v118.dta")
+    expect_identical(read_dta(modern, encoding = "utf_8"),
+                     read_dta(modern, encoding = "UTF8"))
+    expect_identical(read_dta(modern, encoding = "UTF-8")$make,
+                     haven::read_dta(modern, encoding = "UTF-8")$make)
+})
+
+test_that("explicit encodings apply consistently to strL text", {
+    source <- fixture("strl_test_v118.dta")
+    bytes <- readBin(source, "raw", file.info(source)$size)
+    bytes <- replace_first_byte(bytes, "This is observation 1", 0x80)
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    writeBin(bytes, path)
+
+    cp1252 <- read_dta(path, encoding = "CP1252")
+    latin1 <- read_dta(path, encoding = "latin-1")
+    expect_identical(cp1252, dtaparser:::.read_dta_rust_vectors(
+        path, encoding = "windows_1252"
+    ))
+    expect_identical(latin1, dtaparser:::.read_dta_rust_vectors(
+        path, encoding = "ISO 8859 1"
+    ))
+    expect_true(startsWith(cp1252$long_text[[1L]], "\u20ac"))
+    expect_true(startsWith(latin1$long_text[[1L]], "\u0080"))
+})
+
+test_that("explicit UTF-8 replaces malformed sequences in both collectors", {
+    source <- fixture("auto_v118.dta")
+    bytes <- readBin(source, "raw", file.info(source)$size)
+    bytes <- replace_first_byte(bytes, "1978 automobile data", 0xff)
+    bytes <- replace_first_byte(bytes, "AMC Concord", 0xff)
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    writeBin(bytes, path)
+
+    direct <- read_dta(path, encoding = "UTF-8")
+    rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        path, encoding = "UTF8"
+    )
+    expect_identical(direct, rust_vectors)
+    expect_true(startsWith(attr(direct, "label"), "\ufffd"))
+    expect_true(startsWith(direct$make[[1L]], "\ufffd"))
+})
+
 test_that("argument and native parse failures are ordinary R errors", {
     path <- fixture("auto_v118.dta")
-    expect_error(read_dta(path, encoding = "latin1"), "not supported")
+    expect_error(read_dta(path, encoding = "KOI8-R"), "unsupported.*encoding")
+    expect_error(read_dta(path, encoding = NA_character_), "non-missing")
+    expect_error(read_dta(path, encoding = character()), "one non-missing")
+    expect_error(read_dta(path, encoding = c("UTF-8", "latin1")),
+                 "one non-missing")
+    expect_error(read_dta(path, encoding = 1), "one non-missing")
     expect_error(read_dta(path, skip = -1), "non-negative")
     expect_error(read_dta(path, skip = 1.5), "whole number")
     expect_error(read_dta(path, n_max = NA_real_), "non-negative")
