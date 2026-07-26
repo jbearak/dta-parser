@@ -98,13 +98,21 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     source_type <- class(datasource)[[1L]]
 
     if (identical(source_type, "source_file")) {
-        path <- normalizePath(datasource[[1L]], mustWork = TRUE)
+        path <- normalizePath(datasource[[1L]], winslash = "/", mustWork = TRUE)
         # readr adds an environment with a finalizer when it copied a
         # connection, compressed file, or URL into a temporary file. Retain
         # the datasource for both native passes and eagerly clean the path.
+        temporary_parent <- dirname(path)
+        temporary_root <- normalizePath(
+            tempdir(), winslash = "/", mustWork = TRUE
+        )
+        if (identical(.Platform$OS.type, "windows")) {
+            temporary_parent <- tolower(temporary_parent)
+            temporary_root <- tolower(temporary_root)
+        }
         temporary <- !caller_supplied_source &&
             "env" %in% names(datasource) &&
-            identical(dirname(path), normalizePath(tempdir(), mustWork = TRUE))
+            identical(temporary_parent, temporary_root)
         return(list(
             path = path,
             temporary = temporary,
