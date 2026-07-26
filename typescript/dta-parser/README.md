@@ -150,7 +150,7 @@ display formats, value-label tables, and all Stata missing tags.
 | `VariableInfo` | Name, type, storage code, format, label, value-label name, width, and offset |
 | `Row` | A `RowCell[]` representing one observation |
 | `RowCell` | `number`, `string`, or `MissingValue` |
-| `MissingValue` | `{ kind: 'missing', missing_type: '.' | '.a' | ... | '.z' }` |
+| `MissingValue` | `{ kind: 'missing', missing_type: '.' \| '.a' \| ... \| '.z' }` |
 
 Stata missing values remain tagged objects instead of becoming `null` or
 `NaN`, so `.`, `.a`, and the remaining extended missing values stay distinct.
