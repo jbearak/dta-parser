@@ -179,7 +179,7 @@ test_that("date and datetime storage become native R temporal vectors", {
 
 test_that("explicit encodings match haven across ordinary textual surfaces", {
     skip_if_not_installed("haven")
-    for (version in c(115L, 118L)) {
+    for (version in c(115L, 118L)) local({
         source <- fixture(sprintf("auto_v%d.dta", version))
         bytes <- readBin(source, "raw", file.info(source)$size)
         for (text in c(
@@ -212,7 +212,7 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
                              attr(expected$foreign, "labels"),
                              info = paste(info, "value labels"))
         }
-    }
+    })
 
     modern <- fixture("auto_v118.dta")
     expect_identical(read_dta(modern, encoding = "utf_8"),
