@@ -3,6 +3,7 @@ use crate::endian::{
     read_u64, read_u8, slice_at,
 };
 use crate::legacy::parse_legacy_metadata;
+use crate::text::TextEncoding;
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -141,6 +142,7 @@ fn parse_length_prefixed_text(
     version: FormatVersion,
     byte_order: ByteOrder,
     mut cursor: usize,
+    encoding: TextEncoding,
 ) -> Result<(String, usize), DtaError> {
     cursor = expect_at(bytes, cursor, LABEL_OPEN, "<label>")?;
     let (length, length_width) = if version == FormatVersion::V117 {
@@ -155,8 +157,7 @@ fn parse_length_prefixed_text(
         )
     };
     cursor = checked_add(cursor, length_width, "dataset label length")?;
-    let label =
-        String::from_utf8_lossy(slice_at(bytes, cursor, length, "dataset label")?).into_owned();
+    let label = encoding.decode(slice_at(bytes, cursor, length, "dataset label")?);
     cursor = checked_add(cursor, length, "dataset label")?;
     cursor = expect_at(bytes, cursor, LABEL_CLOSE, "</label>")?;
 
@@ -262,6 +263,7 @@ fn parse_fixed_string_section(
     bytes: &[u8],
     nvar: usize,
     section: StringSection,
+    encoding: TextEncoding,
 ) -> Result<Vec<String>, DtaError> {
     let start = offset_to_usize(section.offset, section.open_name)?;
     let mut cursor = expect_at(bytes, start, section.open, section.open_name)?;
@@ -274,7 +276,7 @@ fn parse_fixed_string_section(
             .iter()
             .position(|byte| *byte == 0)
             .unwrap_or(field.len());
-        strings.push(String::from_utf8_lossy(&field[..nul]).into_owned());
+        strings.push(encoding.decode(&field[..nul]));
     }
 
     cursor = checked_add(cursor, payload_length, "string section length")?;
@@ -340,17 +342,28 @@ pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType
 /// sequential layout requires scanning expansion fields and observation
 /// geometry to establish the value-label and end-of-file offsets.
 pub fn parse_metadata(bytes: &[u8]) -> Result<DtaMetadata, DtaError> {
+    parse_metadata_with_encoding(bytes, TextEncoding::Auto)
+}
+
+/// Parse metadata while overriding the source encoding of every textual
+/// field. [`TextEncoding::Auto`] preserves the release-specific default.
+pub fn parse_metadata_with_encoding(
+    bytes: &[u8],
+    encoding: TextEncoding,
+) -> Result<DtaMetadata, DtaError> {
     if matches!(bytes.first(), Some(113..=115)) {
         return parse_legacy_metadata(
             bytes,
             u64::try_from(bytes.len()).map_err(|_| DtaError::ArithmeticOverflow("file length"))?,
+            encoding,
         );
     }
     let (format_version, cursor) = parse_release(bytes)?;
+    let encoding = encoding.resolve(format_version);
     let (byte_order, cursor) = parse_byte_order(bytes, cursor)?;
     let (nvar, nobs, cursor) = parse_counts(bytes, format_version, byte_order, cursor)?;
     let (dataset_label, map_start) =
-        parse_length_prefixed_text(bytes, format_version, byte_order, cursor)?;
+        parse_length_prefixed_text(bytes, format_version, byte_order, cursor, encoding)?;
     let (section_offsets, _) = parse_section_map(bytes, byte_order, map_start)?;
 
     let nvar_usize = usize::try_from(nvar).map_err(|_| DtaError::ArithmeticOverflow("nvar"))?;
@@ -369,6 +382,7 @@ pub fn parse_metadata(bytes: &[u8]) -> Result<DtaMetadata, DtaError> {
             close_name: "</varnames>",
             field_width: widths.varname,
         },
+        encoding,
     )?;
     validate_sortlist(bytes, format_version, &section_offsets, nvar_usize)?;
     let formats = parse_fixed_string_section(
@@ -384,6 +398,7 @@ pub fn parse_metadata(bytes: &[u8]) -> Result<DtaMetadata, DtaError> {
             close_name: "</formats>",
             field_width: widths.format,
         },
+        encoding,
     )?;
     let value_label_names = parse_fixed_string_section(
         bytes,
@@ -398,6 +413,7 @@ pub fn parse_metadata(bytes: &[u8]) -> Result<DtaMetadata, DtaError> {
             close_name: "</value_label_names>",
             field_width: widths.value_label_name,
         },
+        encoding,
     )?;
     let variable_labels = parse_fixed_string_section(
         bytes,
@@ -412,6 +428,7 @@ pub fn parse_metadata(bytes: &[u8]) -> Result<DtaMetadata, DtaError> {
             close_name: "</variable_labels>",
             field_width: widths.variable_label,
         },
+        encoding,
     )?;
 
     let mut byte_offset = 0_u64;

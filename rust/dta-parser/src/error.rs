@@ -40,6 +40,11 @@ pub enum DtaError {
     #[error("invalid Stata release {0:?}")]
     InvalidRelease(String),
 
+    /// A caller requested a text encoding outside the deterministic supported
+    /// set.
+    #[error("unsupported text encoding {0:?}; supported encodings are UTF-8, Windows-1252, and ISO-8859-1")]
+    UnsupportedTextEncoding(String),
+
     /// A legacy header's file-type marker was not the required data-file
     /// marker (`0x01`).
     #[error("invalid legacy file type marker 0x{0:02x}")]

@@ -11,8 +11,12 @@
 #'   matching `haven::read_dta()`. URLs are fetched at call time; applications
 #'   accepting untrusted `file` values should validate or allowlist sources
 #'   before calling `read_dta()`.
-#' @param encoding Must be `NULL`. Legacy files are decoded as Windows-1252 and
-#'   modern files as UTF-8 according to their storage format.
+#' @param encoding Optional source encoding override. Supported aliases are
+#'   `"UTF-8"`/`"UTF8"`, `"Windows-1252"`/`"CP1252"`, and
+#'   `"ISO-8859-1"`/`"latin1"`, matched case-insensitively. `NULL` uses
+#'   Windows-1252 for legacy files and UTF-8 for modern files. Explicit UTF-8
+#'   replaces malformed input sequences deterministically with U+FFFD. Haven
+#'   2.5.5 may instead omit an affected label.
 #' @param col_select One or more tidyselect expressions. Predicates see Stata
 #'   string storage as character and numeric storage as double. If a source
 #'   variable is selected more than once, its first selection and alias win.
@@ -45,15 +49,13 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, materialization) {
-    if (!is.null(encoding)) {
-        stop("`encoding` overrides are not supported; use NULL", call. = FALSE)
-    }
+    encoding <- .validate_dta_encoding(encoding)
     .validate_count(skip, "skip", infinite = FALSE)
     .validate_count(n_max, "n_max", infinite = TRUE)
 
     source <- .resolve_dta_source(file)
     on.exit(.cleanup_dta_source(source), add = TRUE)
-    metadata_names <- .dta_metadata(source$path)
+    metadata_names <- .dta_metadata(source$path, encoding)
 
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
@@ -78,7 +80,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         column_indices,
         as.double(skip),
         as.double(n_max),
-        identical(materialization, "direct")
+        identical(materialization, "direct"),
+        encoding
     )
     if (!is.null(column_indices)) {
         names(native) <- selected_names
@@ -162,8 +165,32 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     invisible(NULL)
 }
 
-.dta_metadata <- function(file) {
-    .Call(C_dtaparser_metadata, file)
+.dta_metadata <- function(file, encoding = NULL) {
+    .Call(C_dtaparser_metadata, file, encoding)
+}
+
+.validate_dta_encoding <- function(encoding) {
+    if (is.null(encoding)) return(NULL)
+    if (!is.character(encoding) || length(encoding) != 1L || is.na(encoding)) {
+        stop("`encoding` must be NULL or one non-missing character string",
+             call. = FALSE)
+    }
+    key <- tolower(gsub("[-_ ]", "", encoding))
+    canonical <- switch(key,
+        utf8 = "UTF-8",
+        windows1252 = "Windows-1252",
+        cp1252 = "Windows-1252",
+        iso88591 = "ISO-8859-1",
+        latin1 = "ISO-8859-1",
+        NULL
+    )
+    if (is.null(canonical)) {
+        stop(sprintf(
+            "unsupported `encoding` %s; use UTF-8, Windows-1252, or ISO-8859-1",
+            encodeString(encoding, quote = "\"")
+        ), call. = FALSE)
+    }
+    canonical
 }
 
 .validate_count <- function(value, argument, infinite) {

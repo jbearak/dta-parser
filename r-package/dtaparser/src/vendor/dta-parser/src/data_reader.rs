@@ -6,11 +6,12 @@ use crate::endian::{
 };
 use crate::selection::{resolve_columns, row_window};
 use crate::strl::decode_strl_columns;
-use crate::text::{decode_utf8, decode_windows_1252, field_bytes};
+use crate::text::{field_bytes, TextEncoding};
 use crate::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
-    classify_int_missing, classify_long_missing, parse_metadata, parse_value_labels, Column,
-    ColumnValues, DtaData, DtaError, DtaMetadata, DtaType, ReadOptions, VariableInfo,
+    classify_int_missing, classify_long_missing, parse_metadata_with_encoding,
+    parse_value_labels_with_encoding, Column, ColumnValues, DtaData, DtaError, DtaMetadata,
+    DtaType, ReadOptions, VariableInfo,
 };
 
 const DATA_OPEN: &[u8] = b"<data>";
@@ -111,6 +112,7 @@ fn decode_column(
     row_start: u64,
     row_count: u64,
     variable_index: u32,
+    encoding: TextEncoding,
 ) -> Result<Column, DtaError> {
     let index = usize::try_from(variable_index)
         .map_err(|_| DtaError::ArithmeticOverflow("column index"))?;
@@ -203,11 +205,7 @@ fn decode_column(
                 let cell_offset = checked_add_u64(first_offset, row_offset, "cell offset")?;
                 let cell_offset = offset_to_usize(cell_offset, "cell")?;
                 let field = slice_at(bytes, cell_offset, width, "fixed-string observation")?;
-                let value = if metadata.format_version.is_modern() {
-                    decode_utf8(field_bytes(field))
-                } else {
-                    decode_windows_1252(field_bytes(field))
-                };
+                let value = encoding.decode(field_bytes(field));
                 values.push(value);
             }
             ColumnValues::FixedString { values }
@@ -230,12 +228,27 @@ pub fn read_dta(bytes: &[u8]) -> Result<DtaData, DtaError> {
     read_dta_with_options(bytes, &ReadOptions::default())
 }
 
+/// Parse and decode all observations with an explicit source-text encoding.
+pub fn read_dta_with_encoding(bytes: &[u8], encoding: TextEncoding) -> Result<DtaData, DtaError> {
+    read_dta_with_options_and_encoding(bytes, &ReadOptions::default(), encoding)
+}
+
 /// Parse a supported Stata file into a column-oriented, projected result.
 pub fn read_dta_with_options(bytes: &[u8], options: &ReadOptions) -> Result<DtaData, DtaError> {
-    let metadata = parse_metadata(bytes)?;
+    read_dta_with_options_and_encoding(bytes, options, TextEncoding::Auto)
+}
+
+/// Parse a supported Stata file with an explicit source-text encoding.
+pub fn read_dta_with_options_and_encoding(
+    bytes: &[u8],
+    options: &ReadOptions,
+    encoding: TextEncoding,
+) -> Result<DtaData, DtaError> {
+    let metadata = parse_metadata_with_encoding(bytes, encoding)?;
+    let encoding = encoding.resolve(metadata.format_version);
     let payload_start = validate_data_section(bytes, &metadata)?;
     let column_indices = resolve_columns(&metadata, options)?;
-    let value_label_tables = parse_value_labels(bytes, &metadata)?;
+    let value_label_tables = parse_value_labels_with_encoding(bytes, &metadata, encoding)?;
     let (row_start, row_count) = row_window(&metadata, options);
     let mut strl_indices = Vec::new();
     for &index in &column_indices {
@@ -252,6 +265,7 @@ pub fn read_dta_with_options(bytes: &[u8], options: &ReadOptions) -> Result<DtaD
         row_start,
         row_count,
         &strl_indices,
+        encoding,
     )?
     .into_iter()
     .map(|column| (column.variable_index, column))
@@ -269,6 +283,7 @@ pub fn read_dta_with_options(bytes: &[u8], options: &ReadOptions) -> Result<DtaD
                 row_start,
                 row_count,
                 variable_index,
+                encoding,
             )?);
         }
     }

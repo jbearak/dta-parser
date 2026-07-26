@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::Path;
 
-use encoding_rs::{CoderResult, Encoding, UTF_8, WINDOWS_1252};
+use encoding_rs::CoderResult;
 
 use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
 use crate::legacy::{
@@ -12,7 +12,7 @@ use crate::legacy::{
 };
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
-use crate::text::{decode_utf8, decode_windows_1252, field_bytes, is_utf8_continuation};
+use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
     classify_int_missing, classify_long_missing, ByteOrder, Column, ColumnValues, DtaData,
@@ -482,28 +482,57 @@ pub struct DtaFile<R: Read + Seek> {
     file_length: u64,
     scratch: Scratch,
     value_label_tables: Option<Vec<ValueLabelTable>>,
+    text_encoding: TextEncoding,
 }
 
 impl DtaFile<File> {
     /// Open a path and retain the file handle for subsequent projected reads.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, DtaError> {
+        Self::open_with_encoding(path, TextEncoding::Auto)
+    }
+
+    /// Open a path with an explicit source-text encoding.
+    pub fn open_with_encoding(
+        path: impl AsRef<Path>,
+        encoding: TextEncoding,
+    ) -> Result<Self, DtaError> {
         let file = File::open(path).map_err(|error| DtaError::Io {
             context: "opening file",
             offset: 0,
             kind: error.kind(),
         })?;
-        Self::from_reader(file)
+        Self::from_reader_with_encoding(file, encoding)
     }
 }
 
 impl<R: Read + Seek> DtaFile<R> {
     /// Construct a file-backed reader with the default 8 MiB scratch bound.
     pub fn from_reader(reader: R) -> Result<Self, DtaError> {
-        Self::from_reader_with_options(reader, FileOptions::default())
+        Self::from_reader_with_options_and_encoding(
+            reader,
+            FileOptions::default(),
+            TextEncoding::Auto,
+        )
+    }
+
+    /// Construct a reader with an explicit source-text encoding and the
+    /// default 8 MiB scratch bound.
+    pub fn from_reader_with_encoding(reader: R, encoding: TextEncoding) -> Result<Self, DtaError> {
+        Self::from_reader_with_options_and_encoding(reader, FileOptions::default(), encoding)
     }
 
     /// Construct a file-backed reader with an explicit scratch-read bound.
-    pub fn from_reader_with_options(mut reader: R, options: FileOptions) -> Result<Self, DtaError> {
+    pub fn from_reader_with_options(reader: R, options: FileOptions) -> Result<Self, DtaError> {
+        Self::from_reader_with_options_and_encoding(reader, options, TextEncoding::Auto)
+    }
+
+    /// Construct a file-backed reader with explicit scratch and source-text
+    /// decoding options.
+    pub fn from_reader_with_options_and_encoding(
+        mut reader: R,
+        options: FileOptions,
+        encoding: TextEncoding,
+    ) -> Result<Self, DtaError> {
         if options.max_buffer_bytes < MIN_MAX_BUFFER_BYTES {
             return Err(DtaError::InvalidBufferSize);
         }
@@ -520,7 +549,7 @@ impl<R: Read + Seek> DtaFile<R> {
         }
         let first = read_exact_at(&mut reader, 0, 1, &mut scratch, "reading signature")?;
         let metadata = if matches!(first[0], 113..=115) {
-            read_legacy_metadata(&mut reader, file_length, &mut scratch)?
+            read_legacy_metadata(&mut reader, file_length, &mut scratch, encoding)?
         } else {
             let signature_length = MODERN_SIGNATURE.len();
             if file_length < signature_length as u64
@@ -534,7 +563,7 @@ impl<R: Read + Seek> DtaFile<R> {
             {
                 return Err(DtaError::InvalidSignature);
             }
-            read_modern_metadata(&mut reader, file_length, &mut scratch)?
+            read_modern_metadata(&mut reader, file_length, &mut scratch, encoding)?
         };
         if metadata.section_offsets.end_of_file != file_length {
             return Err(DtaError::MapOffsetMismatch {
@@ -543,12 +572,14 @@ impl<R: Read + Seek> DtaFile<R> {
                 actual: file_length,
             });
         }
+        let text_encoding = encoding.resolve(metadata.format_version);
         Ok(Self {
             reader,
             metadata,
             file_length,
             scratch,
             value_label_tables: None,
+            text_encoding,
         })
     }
 
@@ -653,6 +684,7 @@ impl<R: Read + Seek> DtaFile<R> {
             sink: &mut sink,
             strl_pointers: &mut strl_pointers,
             metadata: &self.metadata,
+            text_encoding: self.text_encoding,
         };
 
         if !indices.is_empty()
@@ -755,16 +787,11 @@ impl<R: Read + Seek> DtaFile<R> {
                     let width = usize::try_from(variable.byte_width)
                         .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
                     if matches!(variable.dta_type, DtaType::FixedString(_)) {
-                        let encoding = if self.metadata.format_version.is_modern() {
-                            UTF_8
-                        } else {
-                            WINDOWS_1252
-                        };
                         let (value, _) = decode_range(
                             &mut self.reader,
                             cell_offset,
                             width,
-                            encoding,
+                            self.text_encoding,
                             true,
                             &mut self.scratch,
                             &mut should_interrupt,
@@ -799,6 +826,7 @@ impl<R: Read + Seek> DtaFile<R> {
             &mut strl_pointers,
             &mut sink,
             &mut should_interrupt,
+            self.text_encoding,
         )?;
         check_cancel(&mut should_interrupt)?;
         self.ensure_value_labels(&mut should_interrupt)?;
@@ -832,6 +860,7 @@ impl<R: Read + Seek> DtaFile<R> {
             &self.metadata,
             &mut self.scratch,
             should_interrupt,
+            self.text_encoding,
         )?;
         check_cancel(should_interrupt)?;
         self.value_label_tables = Some(tables);
@@ -911,14 +940,14 @@ fn decode_range<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     offset: u64,
     length: usize,
-    encoding: &'static Encoding,
+    encoding: TextEncoding,
     stop_at_nul: bool,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     context: &'static str,
 ) -> Result<(String, bool), DtaError> {
     let mut output = String::new();
-    let mut decoder = encoding.new_decoder_without_bom_handling();
+    let mut decoder = encoding.new_decoder();
     let mut completed = 0_usize;
     let mut found_nul = false;
 
@@ -958,7 +987,7 @@ fn decode_range<R: Read + Seek, F: FnMut() -> bool>(
         let last = found_nul || completed.saturating_add(chunk_length) == length;
         let mut consumed = 0_usize;
         loop {
-            let (result, read, _) = decoder.decode_to_string(&input[consumed..], &mut output, last);
+            let (result, read) = decoder.decode_to_string(&input[consumed..], &mut output, last);
             consumed = consumed
                 .checked_add(read)
                 .ok_or(DtaError::ArithmeticOverflow("decoded string input"))?;
@@ -984,7 +1013,7 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     offset: u64,
     length: usize,
-    encoding: &'static Encoding,
+    encoding: TextEncoding,
     requested_offsets: &[usize],
     requested_offset_positions: &[usize],
     scratch: &mut Scratch,
@@ -1006,7 +1035,7 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
     let mut mapped = vec![0; requested_offsets.len()];
     let mut next_mapping = 0;
     let mut output = String::new();
-    let mut decoder = encoding.new_decoder_without_bom_handling();
+    let mut decoder = encoding.new_decoder();
     let mut completed = 0_usize;
     let mut first_invalid_boundary: Option<(usize, usize)> = None;
 
@@ -1033,10 +1062,9 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
             let boundary = ordered[next_mapping].0;
             let input_end = boundary.saturating_sub(completed).min(bytes.len());
             let original_index = ordered[next_mapping].1;
-            if std::ptr::eq(encoding, UTF_8)
-                && bytes
-                    .get(input_end)
-                    .is_some_and(|byte| is_utf8_continuation(*byte))
+            if encoding.is_utf8()
+                && bytes.get(input_end).is_some_and(|byte| byte & 0xc0 == 0x80)
+                && !utf8_file_boundary(reader, offset, length, boundary, scratch, context)?
                 && match first_invalid_boundary {
                     Some((index, _)) => original_index < index,
                     None => true,
@@ -1055,7 +1083,7 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
                 mapped[ordered[next_mapping].1] = output.len();
                 next_mapping += 1;
             }
-            decoder = encoding.new_decoder_without_bom_handling();
+            decoder = encoding.new_decoder();
         }
         let last = chunk_end == length;
         decode_into_string(&mut decoder, &bytes[input_start..], last, &mut output)?;
@@ -1075,8 +1103,40 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
     }
 }
 
+fn utf8_file_boundary<R: Read + Seek>(
+    reader: &mut R,
+    offset: u64,
+    length: usize,
+    boundary: usize,
+    scratch: &mut Scratch,
+    context: &'static str,
+) -> Result<bool, DtaError> {
+    if boundary == 0 || boundary >= length {
+        return Ok(true);
+    }
+    let probe_start = boundary.saturating_sub(3);
+    let probe_end = boundary
+        .checked_add(4)
+        .ok_or(DtaError::ArithmeticOverflow("UTF-8 boundary probe"))?
+        .min(length);
+    let probe_offset = offset
+        .checked_add(
+            u64::try_from(probe_start)
+                .map_err(|_| DtaError::ArithmeticOverflow("UTF-8 boundary probe"))?,
+        )
+        .ok_or(DtaError::ArithmeticOverflow("UTF-8 boundary probe"))?;
+    let probe = read_exact_at(
+        reader,
+        probe_offset,
+        probe_end - probe_start,
+        scratch,
+        context,
+    )?;
+    Ok(is_utf8_boundary(&probe, boundary - probe_start))
+}
+
 fn decode_into_string(
-    decoder: &mut encoding_rs::Decoder,
+    decoder: &mut TextDecoder,
     input: &[u8],
     last: bool,
     output: &mut String,
@@ -1091,7 +1151,7 @@ fn decode_into_string(
         .map_err(|_| DtaError::ArithmeticOverflow("decoded string allocation"))?;
     let mut consumed = 0;
     loop {
-        let (result, read, _) = decoder.decode_to_string(&input[consumed..], output, last);
+        let (result, read) = decoder.decode_to_string(&input[consumed..], output, last);
         consumed = consumed
             .checked_add(read)
             .ok_or(DtaError::ArithmeticOverflow("decoded string input"))?;
@@ -1199,6 +1259,7 @@ fn validate_modern_sortlist<R: Read + Seek>(
 fn read_modern_header_map<R: Read + Seek>(
     reader: &mut R,
     scratch: &mut Scratch,
+    encoding: TextEncoding,
 ) -> Result<FileModernHeaderMap, DtaError> {
     let mut cursor = expect_file_tag(
         reader,
@@ -1215,6 +1276,7 @@ fn read_modern_header_map<R: Read + Seek>(
         .and_then(|release| FormatVersion::try_from(release).ok())
         .filter(|version| version.is_modern())
         .ok_or(DtaError::InvalidRelease(release_text))?;
+    let encoding = encoding.resolve(format_version);
     cursor = checked_add_u64(cursor, 3, "release number")?;
     cursor = expect_file_tag(reader, cursor, b"</release>", "</release>", scratch)?;
     cursor = expect_file_tag(reader, cursor, b"<byteorder>", "<byteorder>", scratch)?;
@@ -1293,7 +1355,7 @@ fn read_modern_header_map<R: Read + Seek>(
         reader,
         cursor,
         label_length,
-        UTF_8,
+        encoding,
         false,
         scratch,
         &mut never_cancel,
@@ -1362,8 +1424,10 @@ fn read_modern_metadata<R: Read + Seek>(
     reader: &mut R,
     file_length: u64,
     scratch: &mut Scratch,
+    encoding: TextEncoding,
 ) -> Result<DtaMetadata, DtaError> {
-    let header = read_modern_header_map(reader, scratch)?;
+    let header = read_modern_header_map(reader, scratch, encoding)?;
+    let encoding = encoding.resolve(header.format_version);
     if header.section_offsets.end_of_file > file_length
         && file_length >= header.section_offsets.stata_data_close
     {
@@ -1489,7 +1553,7 @@ fn read_modern_metadata<R: Read + Seek>(
                 reader,
                 field_offset(start, width, context)?,
                 width,
-                UTF_8,
+                encoding,
                 true,
                 scratch,
                 &mut never_cancel,
@@ -1537,10 +1601,12 @@ fn read_legacy_metadata<R: Read + Seek>(
     reader: &mut R,
     file_length: u64,
     scratch: &mut Scratch,
+    encoding: TextEncoding,
 ) -> Result<DtaMetadata, DtaError> {
     let header = read_exact_at(reader, 0, HEADER_SIZE, scratch, "reading legacy header")?;
     let version = FormatVersion::try_from(u16::from(header[0]))
         .map_err(|_| DtaError::InvalidRelease(header[0].to_string()))?;
+    let encoding = encoding.resolve(version);
     let byte_order = match header[1] {
         1 => ByteOrder::Msf,
         2 => ByteOrder::Lsf,
@@ -1587,7 +1653,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         reader,
         10,
         81,
-        WINDOWS_1252,
+        encoding,
         true,
         scratch,
         &mut never_cancel,
@@ -1628,7 +1694,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                 reader,
                 field_offset(start, width, context)?,
                 width,
-                WINDOWS_1252,
+                encoding,
                 true,
                 scratch,
                 &mut never_cancel,
@@ -1760,6 +1826,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     metadata: &DtaMetadata,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
+    encoding: TextEncoding,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
@@ -1767,7 +1834,6 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 | FormatVersion::V117 => 33,
         FormatVersion::V118 | FormatVersion::V119 => 129,
     };
-    let encoding = if modern { UTF_8 } else { WINDOWS_1252 };
     let section_end = if modern {
         metadata.section_offsets.stata_data_close
     } else {
@@ -2223,6 +2289,7 @@ struct CellDecoder<'a, S> {
     sink: &'a mut S,
     strl_pointers: &'a mut [Option<Vec<Option<FileGsoKey>>>],
     metadata: &'a DtaMetadata,
+    text_encoding: TextEncoding,
 }
 
 impl<S: DtaSink> CellDecoder<'_, S> {
@@ -2236,11 +2303,7 @@ impl<S: DtaSink> CellDecoder<'_, S> {
         variable: &VariableInfo,
     ) -> Result<(), DtaError> {
         if matches!(variable.dta_type, DtaType::FixedString(_)) {
-            let mut value = if self.metadata.format_version.is_modern() {
-                decode_utf8(field_bytes(cell))
-            } else {
-                decode_windows_1252(field_bytes(cell))
-            };
+            let mut value = self.text_encoding.decode(field_bytes(cell));
             value.shrink_to_fit();
             return self
                 .sink
@@ -2333,6 +2396,7 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
     pointers: &mut [Option<Vec<Option<FileGsoKey>>>],
     sink: &mut S,
     should_interrupt: &mut F,
+    encoding: TextEncoding,
 ) -> Result<(), DtaError> {
     if !pointers.iter().any(Option::is_some) {
         return Ok(());
@@ -2471,7 +2535,15 @@ fn resolve_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
         });
     }
 
-    materialize_file_strls(reader, scratch, &entries, pointers, sink, should_interrupt)
+    materialize_file_strls(
+        reader,
+        scratch,
+        &entries,
+        pointers,
+        sink,
+        should_interrupt,
+        encoding,
+    )
 }
 
 fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
@@ -2481,6 +2553,7 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
     pointers: &mut [Option<Vec<Option<FileGsoKey>>>],
     sink: &mut S,
     should_interrupt: &mut F,
+    encoding: TextEncoding,
 ) -> Result<(), DtaError> {
     let mut decoded = HashMap::<FileGsoKey, String>::new();
     let mut pointer_count = 0_usize;
@@ -2517,7 +2590,7 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
                 reader,
                 entry.content_offset,
                 decoded_length,
-                UTF_8,
+                encoding,
                 false,
                 scratch,
                 should_interrupt,
@@ -2602,6 +2675,7 @@ mod tests {
                     null_checks += 1;
                     null_checks >= 2
                 },
+                TextEncoding::Utf8,
             ),
             Err(DtaError::Cancelled)
         );
@@ -2641,6 +2715,7 @@ mod tests {
                     repeated_checks += 1;
                     repeated_checks >= 4
                 },
+                TextEncoding::Utf8,
             ),
             Err(DtaError::Cancelled)
         );

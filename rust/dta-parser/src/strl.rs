@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::endian::{
     checked_add, checked_sub, expect_at, offset_to_usize, read_u16, read_u32, read_u64, slice_at,
 };
-use crate::text::decode_utf8;
+use crate::text::TextEncoding;
 use crate::{Column, ColumnValues, DtaError, DtaMetadata, DtaType, FormatVersion, VariableInfo};
 
 const STRLS_OPEN: &[u8] = b"<strls>";
@@ -252,6 +252,7 @@ pub(crate) fn decode_strl_columns(
     row_start: u64,
     row_count: u64,
     variable_indices: &[u32],
+    encoding: TextEncoding,
 ) -> Result<Vec<Column>, DtaError> {
     if variable_indices.is_empty() {
         return Ok(Vec::new());
@@ -300,7 +301,7 @@ pub(crate) fn decode_strl_columns(
             } else {
                 content
             };
-            let value = decode_utf8(string_bytes);
+            let value = encoding.decode(string_bytes);
             decoded.insert(key, value.clone());
             values.push(value);
         }

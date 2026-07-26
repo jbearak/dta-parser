@@ -42,6 +42,18 @@ Modern fixed strings and `strL` payloads use UTF-8 replacement for malformed
 sequences. Releases 113–115 use Windows-1252 for textual metadata, fixed
 strings, and value labels. All fixed fields stop at their first NUL byte.
 
+Every byte-slice and seekable-file path also accepts a deterministic
+`TextEncoding` override. `Utf8`, `Windows1252`, and true `Iso8859_1` decoding
+apply to dataset and variable metadata, fixed strings, `strL` payloads, and
+value-label names and text; malformed input uses replacement decoding.
+`TextEncoding::Auto` is the default used by the original APIs. Use
+`read_dta_with_encoding`, `read_dta_with_options_and_encoding`,
+`parse_metadata_with_encoding`, `parse_value_labels_with_encoding`,
+`DtaFile::open_with_encoding`, or the corresponding reader constructors for
+an override. `TextEncoding::from_label` accepts case-insensitive UTF-8/UTF8,
+Windows-1252/CP1252, and ISO-8859-1/latin1 aliases and rejects other names;
+ISO-8859-1 is intentionally distinct from Windows-1252 at bytes 0x80--0x9f.
+
 Value-label tables retain their on-disk order and require strictly ascending
 integer keys. Declared lengths, text offsets, NUL terminators, modern wrapper
 tags, legacy table boundaries, and mapped section boundaries are validated.
@@ -50,7 +62,7 @@ For seekable inputs, `DtaFile<R: Read + Seek>` provides bounded-buffer random
 access without loading observation data at construction:
 
 ```rust,no_run
-use dta_parser::{DtaFile, FileOptions, ReadOptions};
+use dta_parser::{DtaFile, FileOptions, ReadOptions, TextEncoding};
 
 let mut file = DtaFile::open("data.dta")?;
 let page = file.read_with_options(&ReadOptions {
@@ -66,7 +78,8 @@ let result = file.read_with_interrupt(&ReadOptions::default(), || {
 });
 
 let configured = FileOptions { max_buffer_bytes: 64 * 1024 };
-# let _ = (page, result, configured);
+let latin1 = DtaFile::open_with_encoding("legacy.dta", TextEncoding::Iso8859_1)?;
+# let _ = (page, result, configured, latin1);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 

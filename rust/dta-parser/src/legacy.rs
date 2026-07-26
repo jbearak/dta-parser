@@ -1,5 +1,5 @@
 use crate::endian::{checked_add, checked_mul, read_i32, read_u16, slice_at};
-use crate::text::{decode_windows_1252, field_bytes};
+use crate::text::{field_bytes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -18,8 +18,8 @@ pub(crate) fn format_width(version: FormatVersion) -> usize {
     }
 }
 
-fn decode_field(bytes: &[u8]) -> String {
-    decode_windows_1252(field_bytes(bytes))
+fn decode_field(bytes: &[u8], encoding: TextEncoding) -> String {
+    encoding.decode(field_bytes(bytes))
 }
 
 pub(crate) fn legacy_type(code: u8, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {
@@ -138,6 +138,7 @@ fn scan_expansion_fields_ordered(
 pub(crate) fn parse_legacy_metadata(
     bytes: &[u8],
     file_length: u64,
+    encoding: TextEncoding,
 ) -> Result<DtaMetadata, DtaError> {
     slice_at(bytes, 0, HEADER_SIZE, "legacy header")?;
     let version = FormatVersion::try_from(u16::from(bytes[0]))
@@ -174,6 +175,7 @@ pub(crate) fn parse_legacy_metadata(
         byte_order,
         nvar,
         nobs,
+        encoding.resolve(version),
     )
 }
 
@@ -186,6 +188,7 @@ pub(crate) fn parse_legacy_metadata_layout(
     byte_order: ByteOrder,
     nvar: u32,
     nobs: u64,
+    encoding: TextEncoding,
 ) -> Result<DtaMetadata, DtaError> {
     let nvar_usize =
         usize::try_from(nvar).map_err(|_| DtaError::ArithmeticOverflow("legacy variable count"))?;
@@ -196,7 +199,7 @@ pub(crate) fn parse_legacy_metadata_layout(
     }
     slice_at(bytes, 0, expansion_start, "legacy fixed metadata sections")?;
 
-    let dataset_label = decode_field(slice_at(bytes, 10, 81, "legacy dataset label")?);
+    let dataset_label = decode_field(slice_at(bytes, 10, 81, "legacy dataset label")?, encoding);
     let type_codes = slice_at(
         bytes,
         fixed.variable_types,
@@ -232,27 +235,39 @@ pub(crate) fn parse_legacy_metadata_layout(
         )?;
         let (dta_type, byte_width) = legacy_type(code, version)?;
         variables.push(VariableInfo {
-            name: decode_field(slice_at(bytes, name_at, VARNAME_WIDTH, "legacy varname")?),
+            name: decode_field(
+                slice_at(bytes, name_at, VARNAME_WIDTH, "legacy varname")?,
+                encoding,
+            ),
             dta_type,
             type_code: u16::from(code),
-            format: decode_field(slice_at(
-                bytes,
-                format_at,
-                format_width(version),
-                "legacy display format",
-            )?),
-            label: decode_field(slice_at(
-                bytes,
-                label_at,
-                VARIABLE_LABEL_WIDTH,
-                "legacy variable label",
-            )?),
-            value_label_name: decode_field(slice_at(
-                bytes,
-                value_label_at,
-                VALUE_LABEL_NAME_WIDTH,
-                "legacy value-label name",
-            )?),
+            format: decode_field(
+                slice_at(
+                    bytes,
+                    format_at,
+                    format_width(version),
+                    "legacy display format",
+                )?,
+                encoding,
+            ),
+            label: decode_field(
+                slice_at(
+                    bytes,
+                    label_at,
+                    VARIABLE_LABEL_WIDTH,
+                    "legacy variable label",
+                )?,
+                encoding,
+            ),
+            value_label_name: decode_field(
+                slice_at(
+                    bytes,
+                    value_label_at,
+                    VALUE_LABEL_NAME_WIDTH,
+                    "legacy value-label name",
+                )?,
+                encoding,
+            ),
             byte_width,
             byte_offset,
         });
