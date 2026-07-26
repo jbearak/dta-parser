@@ -5,8 +5,10 @@
 #' and variable labels, Stata display formats, value labels, `strL` content,
 #' and Stata system/extended missing values are retained.
 #'
-#' @param file A single path to a `.dta` file. Connections, URLs, and compressed
-#'   paths are not supported.
+#' @param file A path, URL, raw vector, or binary connection. Local and remote
+#'   gzip files and local bzip2, xz, and zip files are decompressed
+#'   automatically. Character vectors containing literal data are not handled,
+#'   matching `haven::read_dta()`.
 #' @param encoding Must be `NULL`. Legacy files are decoded as Windows-1252 and
 #'   modern files as UTF-8 according to their storage format.
 #' @param col_select One or more tidyselect expressions. Predicates see Stata
@@ -41,17 +43,15 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, materialization) {
-    if (!is.character(file) || length(file) != 1L || is.na(file)) {
-        stop("`file` must be one non-missing path", call. = FALSE)
-    }
     if (!is.null(encoding)) {
         stop("`encoding` overrides are not supported; use NULL", call. = FALSE)
     }
     .validate_count(skip, "skip", infinite = FALSE)
     .validate_count(n_max, "n_max", infinite = TRUE)
 
-    file <- normalizePath(file, mustWork = TRUE)
-    metadata_names <- .dta_metadata(file)
+    source <- .resolve_dta_source(file)
+    on.exit(.cleanup_dta_source(source), add = TRUE)
+    metadata_names <- .dta_metadata(source$path)
 
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
@@ -72,7 +72,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
     native <- .Call(
         C_dtaparser_read,
-        file,
+        source$path,
         column_indices,
         as.double(skip),
         as.double(n_max),
@@ -90,6 +90,45 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         attr(result, "dta_format_version") <- format_version
     }
     result
+}
+
+.resolve_dta_source <- function(file) {
+    caller_supplied_source <- inherits(file, "source")
+    datasource <- readr::datasource(file)
+    source_type <- class(datasource)[[1L]]
+
+    if (identical(source_type, "source_file")) {
+        path <- normalizePath(datasource[[1L]], mustWork = TRUE)
+        # readr adds an environment with a finalizer when it copied a
+        # connection, compressed file, or URL into a temporary file. Retain
+        # the datasource for both native passes and eagerly clean the path.
+        temporary <- !caller_supplied_source &&
+            "env" %in% names(datasource) &&
+            identical(dirname(path), normalizePath(tempdir(), mustWork = TRUE))
+        return(list(
+            path = path,
+            temporary = temporary,
+            datasource = datasource
+        ))
+    }
+
+    if (identical(source_type, "source_raw")) {
+        path <- tempfile(pattern = "dtaparser-", fileext = ".dta")
+        complete <- FALSE
+        on.exit(if (!complete) unlink(path), add = TRUE)
+        writeBin(datasource[[1L]], path)
+        complete <- TRUE
+        return(list(path = path, temporary = TRUE, datasource = datasource))
+    }
+
+    stop("This kind of input is not handled.", call. = FALSE)
+}
+
+.cleanup_dta_source <- function(source) {
+    if (isTRUE(source$temporary)) {
+        unlink(source$path)
+    }
+    invisible(NULL)
 }
 
 .dta_metadata <- function(file) {
