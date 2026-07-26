@@ -82,8 +82,9 @@ start_fixture_server <- function(path) {
     while (!file.exists(ready) && process$is_alive() && Sys.time() < deadline) {
         Sys.sleep(0.02)
     }
-    if (!file.exists(ready)) {
-        process$kill()
+    if (!file.exists(ready) || !process$is_alive()) {
+        if (process$is_alive()) process$kill()
+        unlink(ready)
         stop("local HTTP fixture server did not start", call. = FALSE)
     }
 
@@ -179,15 +180,18 @@ test_that("URL sources match haven over a hermetic loopback server", {
 
     for (path in c(input_fixture(), gzip)) {
         server <- start_fixture_server(path)
-        actual <- read_dta(
-            server$url, col_select = c(make, price), skip = 3, n_max = 5
-        )
-        expected <- haven::read_dta(
-            server$url, col_select = c(make, price), skip = 3, n_max = 5
-        )
-        server$process$kill()
-        unlink(server$ready)
-        expect_source_parity(actual, expected)
+        tryCatch({
+            actual <- read_dta(
+                server$url, col_select = c(make, price), skip = 3, n_max = 5
+            )
+            expected <- haven::read_dta(
+                server$url, col_select = c(make, price), skip = 3, n_max = 5
+            )
+            expect_source_parity(actual, expected)
+        }, finally = {
+            if (server$process$is_alive()) server$process$kill()
+            unlink(server$ready)
+        })
     }
 })
 
@@ -271,6 +275,9 @@ test_that("temporary sources are cleaned when an interrupt unwinds the read", {
 test_that("unsupported literal character data matches haven's error", {
     skip_if_not_installed("haven")
     literal <- c("not", "DTA bytes")
-    expect_error(read_dta(literal), "kind of input is not handled")
-    expect_error(haven::read_dta(literal), "kind of input is not handled")
+    actual <- tryCatch(read_dta(literal), error = identity)
+    expected <- tryCatch(haven::read_dta(literal), error = identity)
+    expect_s3_class(actual, "error")
+    expect_s3_class(expected, "error")
+    expect_identical(conditionMessage(actual), conditionMessage(expected))
 })
