@@ -155,7 +155,7 @@ fertility_reader_error_classification <- function(errors) {
 fertility_worker_tile <- function(item, tile, compare_script, package_library,
                                   expected_package_path, framework_id,
                                   timeout_seconds) {
-    source(compare_script, local = environment())
+    source(compare_script, local = environment(fertility_worker_tile))
     fertility_load_readers(package_library, expected_package_path)
     started <- proc.time()[["elapsed"]]
     readers <- c("direct", "rust", "haven")

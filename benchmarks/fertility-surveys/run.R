@@ -94,10 +94,18 @@ execute_tile <- function(item, tile, input) {
                 source(runtime_script, local = environment())
                 invisible(fertility_assert_tempdir(raw_root))
                 source(worker_script, local = environment())
-                fertility_worker_tile(
+                result <- fertility_worker_tile(
                     item, tile, compare_script, package_library,
                     expected_package_path, framework_id, timeout_seconds
                 )
+                comparator_helpers <- c(
+                    "fertility_bind_mismatches", "fertility_compare_available_pairs"
+                )
+                if (any(vapply(comparator_helpers, exists, logical(1),
+                               envir = globalenv(), inherits = FALSE))) {
+                    stop("comparator helpers escaped the isolated callback")
+                }
+                result
             },
             args = list(
                 file.path(snapshot_root, "common.R"),
@@ -145,6 +153,33 @@ execute_tile <- function(item, tile, input) {
     result
 }
 
+# Mandatory post-build regression using the exact immutable callback path above.
+# This fixture is synthetic and remains inside the private target-local TMPDIR.
+worker_smoke_path <- tempfile("worker-smoke-", tmpdir = Sys.getenv("TMPDIR"),
+                              fileext = ".dta")
+haven::write_dta(data.frame(synthetic_number = 1:3), worker_smoke_path,
+                 version = 14)
+on.exit(unlink(worker_smoke_path), add = TRUE)
+worker_smoke_item <- list(
+    id = "FTEST", program = "dhs", level = "women", release = 118L,
+    path = normalizePath(worker_smoke_path, winslash = "/", mustWork = TRUE),
+    expected_sha512 = ""
+)
+worker_smoke <- execute_tile(
+    worker_smoke_item, fertility_metadata_tile(),
+    fertility_capture_input(worker_smoke_item)
+)
+if (!is.list(worker_smoke) || worker_smoke$classification %in%
+        c("timeout", "memory-limit", "crash", "dtaparser-only-error",
+          "haven-only-error", "shared-reader-error", "unresolved") ||
+    !identical(as.integer(worker_smoke$rows), 3L) ||
+    !identical(as.integer(worker_smoke$columns), 1L) ||
+    !identical(as.double(worker_smoke$structural_rows), 3)) {
+    stop("post-build isolated worker regression failed")
+}
+unlink(worker_smoke_path)
+message("post-build isolated worker regression passed")
+
 planning_failure_tile <- function(item, batch, detail) list(
     schema_version = fertility_schema_version, framework_id = framework_id,
     id = item$id, tile_id = paste0("planning-", batch), tile_type = "planning",
@@ -166,13 +201,13 @@ planning_failure_tile <- function(item, batch, detail) list(
     elapsed_seconds = 0
 )
 
-simple_result <- function(item, input, classification) list(
+simple_result <- function(item, input, classification, reason = "") list(
     schema_version = fertility_schema_version, framework_id = framework_id,
     config_id = configuration$config_id, input_id = input$input_id,
     id = item$id, program = item$program, level = item$level,
     release = as.integer(item$release), expected_sha512 = item$expected_sha512,
     timeout_seconds = options$timeout_seconds, classification = classification,
-    secondary_categories = "", mismatch_count = 0L, mismatch_categories = "",
+    secondary_categories = reason, mismatch_count = 0L, mismatch_categories = "",
     mismatch_signatures = "", rows = NA_real_, columns = NA_integer_,
     tiles_expected = 0L, tiles_completed = 0L,
     complete = identical(classification, "expected-unsupported-111"),
@@ -183,6 +218,7 @@ checkpoints <- vector("list", nrow(selected))
 for (index in seq_len(nrow(selected))) {
     item <- as.list(selected[index, , drop = FALSE])
     input <- fertility_capture_input(item)
+    preflight <- fertility_inventory_preflight(item, input)
     file_root <- file.path(checkpoint_root, configuration$config_id, item$id)
     tile_root <- file.path(file_root, "tiles")
     result_path <- file.path(file_root, "result.rds")
@@ -197,11 +233,10 @@ for (index in seq_len(nrow(selected))) {
             c("expected-unsupported-111", "inventory-hash-error")
     if (resumed) {
         result <- existing
-    } else if (identical(input$hash_status, "error")) {
-        result <- simple_result(item, input, "inventory-hash-error")
-    } else if (nzchar(item$expected_sha512) &&
-               !identical(input$actual_sha512, tolower(item$expected_sha512))) {
-        result <- simple_result(item, input, "inventory-hash-error")
+    } else if (!is.null(preflight)) {
+        result <- simple_result(
+            item, input, preflight$classification, preflight$reason
+        )
     } else if (!(item$release %in% fertility_supported_releases)) {
         result <- simple_result(item, input, "expected-unsupported-111")
     } else {
@@ -272,7 +307,9 @@ for (index in seq_len(nrow(selected))) {
         )
         final_input <- fertility_capture_input(item)
         if (!identical(final_input$input_id, input$input_id)) {
-            result <- simple_result(item, final_input, "inventory-hash-error")
+            result <- simple_result(
+                item, final_input, "inventory-hash-error", "input-changed"
+            )
             result$complete <- FALSE
         }
     }

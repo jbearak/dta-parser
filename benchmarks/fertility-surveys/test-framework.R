@@ -76,6 +76,22 @@ expect_error(fertility_parse_arguments("--beyond-end-windows=9"), "must not exce
 expect_error(fertility_filter_inventory(
     inventory, fertility_parse_arguments("--id=F9999")
 ), "unknown --id")
+preflight_item <- list(expected_sha512 = paste(rep("a", 128L), collapse = ""))
+preflight_match <- list(hash_status = "ok", actual_sha512 = preflight_item$expected_sha512)
+preflight_mismatch <- list(hash_status = "ok",
+                           actual_sha512 = paste(rep("b", 128L), collapse = ""))
+preflight_read_error <- list(hash_status = "error", actual_sha512 = NA_character_)
+stopifnot(is.null(fertility_inventory_preflight(preflight_item, preflight_match)),
+          identical(fertility_inventory_preflight(
+              preflight_item, preflight_mismatch
+          )$reason, "signature-mismatch"),
+          identical(fertility_inventory_preflight(
+              preflight_item, preflight_read_error
+          )$reason, "hash-read-error"))
+preflight_item$expected_sha512 <- ""
+stopifnot(is.null(fertility_inventory_preflight(
+    preflight_item, preflight_mismatch
+)))
 
 actual <- tibble::tibble(
     number = c(1, 2 + 5e-8, haven::tagged_na("a")),
@@ -524,6 +540,44 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
                   bounded_worker[c("projection_hashes", "projection_expected_hash")],
                   use.names = FALSE
               )))
+    # The isolated callr worker must install comparator functions in the worker's
+    # lexical environment, not only in the transient fertility_worker_tile frame.
+    isolated_worker <- callr::r(
+        function(common_script, runtime_script, worker_script, compare_script,
+                 item, tile, package_library, expected_package_path, raw_root) {
+            source(common_script, local = environment())
+            source(runtime_script, local = environment())
+            invisible(fertility_assert_tempdir(raw_root))
+            source(worker_script, local = environment())
+            result <- fertility_worker_tile(
+                item, tile, compare_script, package_library,
+                expected_package_path, "framework", 10L
+            )
+            helpers <- c("fertility_bind_mismatches",
+                         "fertility_compare_available_pairs")
+            stopifnot(!any(vapply(helpers, exists, logical(1),
+                                  envir = globalenv(), inherits = FALSE)))
+            result
+        },
+        args = list(
+            file.path(script_dir, "common.R"), file.path(script_dir, "runtime.R"),
+            file.path(script_dir, "worker.R"), file.path(script_dir, "compare.R"),
+            bounded_item, fertility_metadata_tile(), dirname(installed_dtaparser),
+            installed_dtaparser,
+            normalizePath(Sys.getenv("TMPDIR"), winslash = "/", mustWork = TRUE)
+        ),
+        libpath = .libPaths(), timeout = 30, spinner = FALSE, show = FALSE,
+        user_profile = FALSE, system_profile = FALSE,
+        env = c(R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null",
+                R_MAX_VSIZE = "256M")
+    )
+    stopifnot(isolated_worker$classification != "crash",
+              isolated_worker$rows == 5L, isolated_worker$columns == 3L)
+} else {
+    stop(paste(
+        "checkout-local dtaparser installation is required; run a manual",
+        "benchmark.sh smoke first so the isolated worker regression cannot skip"
+    ))
 }
 worker_source <- paste(readLines(file.path(script_dir, "worker.R")), collapse = "\n")
 stopifnot(!grepl("read_dta\\(item\\$path\\)", worker_source))

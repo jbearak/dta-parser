@@ -1,4 +1,4 @@
-fertility_schema_version <- 5L
+fertility_schema_version <- 6L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)

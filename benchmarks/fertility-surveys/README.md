@@ -125,7 +125,11 @@ tile. Available options are:
 - `--retry` (rerun failed tiles only; completed matches and mismatches resume)
 
 The orchestrator builds the current checkout package and installs it beneath
-`target/fertility-surveys/raw/library/`. Build provenance binds the commit,
+`target/fertility-surveys/raw/library/`. Before any corpus item is processed it
+must pass a synthetic metadata regression through the exact production callr
+callback, target-local temporary directory, and immutable framework snapshot; the
+regression also proves comparator helpers remain confined to the callback lexical
+environment. Build provenance binds the commit,
 scoped dirty state, package and framework source digests, source tarball, and the
 installed package. Every runtime dependency is bound by version, canonical
 installed path, canonical loaded-namespace path, and deterministic installed-tree
@@ -175,7 +179,10 @@ ignored `target/fertility-surveys/raw/` directory. Public TSVs contain only
 privacy-safe IDs, program/level/release, shapes, timings, and classifications.
 They never contain source paths, survey names, labels, values, or reader error
 text. Subprocess failures are reduced to fixed classifications for the same
-reason. Before any parent R or callr process starts, the shell creates a private
+reason. `inventory-hash-error` reports only a fixed privacy-safe reason
+(`hash-read-error`, `signature-mismatch`, or `input-changed`); a nonempty recorded
+signature mismatch is never silently treated like an intentionally empty
+historical signature. Before any parent R or callr process starts, the shell creates a private
 per-run `TMPDIR` beneath `raw/tmp/`; parent and child R processes verify their
 canonical `tempdir()` remains beneath the raw root, and abandoned run temp
 directories are safely reclaimed. The shell uses a restrictive umask and the R

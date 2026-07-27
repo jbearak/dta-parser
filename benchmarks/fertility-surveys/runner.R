@@ -147,6 +147,19 @@ fertility_capture_input <- function(item) {
          actual_sha512 = actual, size = size, modified = modified)
 }
 
+fertility_inventory_preflight <- function(item, input) {
+    if (identical(input$hash_status, "error")) {
+        return(list(classification = "inventory-hash-error",
+                    reason = "hash-read-error"))
+    }
+    if (nzchar(item$expected_sha512) &&
+        !identical(input$actual_sha512, tolower(item$expected_sha512))) {
+        return(list(classification = "inventory-hash-error",
+                    reason = "signature-mismatch"))
+    }
+    NULL
+}
+
 fertility_file_stat <- function(path) {
     info <- file.info(path)
     if (!nrow(info) || is.na(info$size[[1L]]) || is.na(info$mtime[[1L]])) return(NULL)
