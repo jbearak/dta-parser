@@ -81,6 +81,10 @@ fn matches_known_shared_fixture_metadata() {
     assert_eq!(metadata.nvar, 12);
     assert_eq!(metadata.nobs, 74);
     assert_eq!(metadata.dataset_label, "1978 automobile data");
+    assert_eq!(
+        metadata.notes,
+        ["From Consumer Reports with permission", "1"]
+    );
     assert_eq!(metadata.variables[0].name, "make");
     assert_eq!(metadata.variables[0].dta_type, DtaType::FixedString(18));
     assert_eq!(metadata.variables[0].label, "Make and model");
@@ -92,6 +96,7 @@ fn matches_known_shared_fixture_metadata() {
     assert_eq!(v117.format_version, FormatVersion::V117);
     assert_eq!(v117.variables[11].type_code, 65_530);
     assert_eq!(v117.variables[11].dta_type, DtaType::Byte);
+    assert_eq!(v117.notes, metadata.notes);
 }
 
 fn push_field(bytes: &mut Vec<u8>, value: &[u8], width: usize) {
@@ -194,7 +199,9 @@ fn accepts_a_valid_metadata_prefix_but_rejects_required_section_truncation() {
     let metadata = parse_metadata(&full).unwrap();
     let prefix_end = metadata.section_offsets.characteristics as usize;
     let prefix = &full[..prefix_end];
-    assert_eq!(parse_metadata(prefix).unwrap(), metadata);
+    let mut prefix_metadata = metadata;
+    prefix_metadata.notes.clear();
+    assert_eq!(parse_metadata(prefix).unwrap(), prefix_metadata);
 
     for length in [0, 1, 40, prefix_end / 2, prefix_end - 1] {
         assert!(
@@ -202,6 +209,40 @@ fn accepts_a_valid_metadata_prefix_but_rejects_required_section_truncation() {
             "length {length}"
         );
     }
+}
+
+#[test]
+fn rejects_truncated_or_malformed_modern_characteristics() {
+    let original = fixture("auto_v118.dta");
+    let metadata = parse_metadata(&original).unwrap();
+    let characteristics = metadata.section_offsets.characteristics as usize;
+    let data = metadata.section_offsets.data as usize;
+
+    assert!(matches!(
+        parse_metadata(&original[..data - 1]),
+        Err(DtaError::Truncated { .. }) | Err(DtaError::UnexpectedTag { .. })
+    ));
+
+    let mut short_names = original;
+    let length = characteristics + b"<characteristics><ch>".len();
+    short_names[length..length + 4].copy_from_slice(&1_u32.to_le_bytes());
+    assert!(matches!(
+        parse_metadata(&short_names),
+        Err(DtaError::Truncated {
+            context: "characteristic names",
+            ..
+        })
+    ));
+
+    let mut crosses_section = short_names;
+    crosses_section[length..length + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+    assert!(matches!(
+        parse_metadata(&crosses_section),
+        Err(DtaError::Truncated {
+            context: "characteristic payload",
+            ..
+        })
+    ));
 }
 
 #[test]

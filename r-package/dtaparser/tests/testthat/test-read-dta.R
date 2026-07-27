@@ -49,7 +49,11 @@ test_that("all bundled fixtures agree with haven", {
         expect_identical(names(actual), names(expected), info = info)
         expect_identical(attr(actual, "label", exact = TRUE),
                          attr(expected, "label", exact = TRUE), info = info)
-        expect_true(attr(actual, "dta_format_version", exact = TRUE) %in%
+        expect_identical(attr(actual, "notes", exact = TRUE),
+                         attr(expected, "notes", exact = TRUE), info = info)
+        expect_null(attr(actual, "dta_format_version", exact = TRUE), info = info)
+        expect_identical(attributes(actual), attributes(expected), info = info)
+        expect_true(attr(metadata, "dta_format_version", exact = TRUE) %in%
                     c(113L, 114L, 115L, 117L, 118L, 119L), info = info)
 
         for (name in names(actual)) {
@@ -70,6 +74,34 @@ test_that("all bundled fixtures agree with haven", {
                 )
             }
         }
+    }
+})
+
+test_that("dataset-note cardinality, ordering, and empty values match haven", {
+    skip_if_not_installed("haven")
+    source <- fixture("auto_v118.dta")
+    multiple <- readBin(source, "raw", file.info(source)$size)
+    one <- replace_first_byte(multiple, "note0", utf8ToInt("x"))
+    empty <- replace_first_byte(
+        multiple, "From Consumer Reports with permission", 0
+    )
+    zero <- replace_first_byte(one, "note1", utf8ToInt("x"))
+
+    for (variant in list(multiple = multiple, one = one, empty = empty,
+                         zero = zero)) {
+        expected <- haven::read_dta(
+            variant, col_select = make, skip = 2, n_max = 3
+        )
+        actual <- read_dta(
+            variant, col_select = make, skip = 2, n_max = 3
+        )
+        rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+            variant, col_select = make, skip = 2, n_max = 3
+        )
+
+        expect_identical(actual, rust_vectors)
+        expect_identical(attr(actual, "notes", exact = TRUE),
+                         attr(expected, "notes", exact = TRUE))
     }
 })
 
@@ -96,6 +128,8 @@ test_that("projection, renaming, and row bounds match haven", {
     expect_equal(actual$make, expected$make)
     expect_equal(actual$price, expected$price)
     expect_identical(attr(actual, "label"), attr(expected, "label"))
+    expect_identical(attr(actual, "notes"), attr(expected, "notes"))
+    expect_null(attr(actual, "dta_format_version", exact = TRUE))
 })
 
 test_that("an empty projection retains the selected row count", {
@@ -219,6 +253,21 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
                      read_dta(modern, encoding = "UTF8"))
     expect_identical(read_dta(modern, encoding = "UTF-8")$make,
                      haven::read_dta(modern, encoding = "UTF-8")$make)
+
+    note_bytes <- readBin(modern, "raw", file.info(modern)$size)
+    note_bytes <- replace_first_byte(
+        note_bytes, "From Consumer Reports with permission", 0x80
+    )
+    cp1252 <- read_dta(note_bytes, encoding = "Windows-1252")
+    latin1 <- read_dta(note_bytes, encoding = "ISO-8859-1")
+    expect_identical(cp1252, dtaparser:::.read_dta_rust_vectors(
+        note_bytes, encoding = "CP1252"
+    ))
+    expect_identical(latin1, dtaparser:::.read_dta_rust_vectors(
+        note_bytes, encoding = "latin1"
+    ))
+    expect_true(startsWith(attr(cp1252, "notes")[[1L]], "\u20ac"))
+    expect_true(startsWith(attr(latin1, "notes")[[1L]], "\u0080"))
 })
 
 test_that("explicit encodings apply consistently to strL text", {

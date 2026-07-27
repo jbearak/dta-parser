@@ -3,7 +3,7 @@ use crate::endian::{
     read_u64, read_u8, slice_at,
 };
 use crate::legacy::parse_legacy_metadata;
-use crate::text::TextEncoding;
+use crate::text::{field_bytes, is_dataset_note, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -35,6 +35,10 @@ const VALUE_LABEL_NAMES_OPEN: &[u8] = b"<value_label_names>";
 const VALUE_LABEL_NAMES_CLOSE: &[u8] = b"</value_label_names>";
 const VARIABLE_LABELS_OPEN: &[u8] = b"<variable_labels>";
 const VARIABLE_LABELS_CLOSE: &[u8] = b"</variable_labels>";
+const CHARACTERISTICS_OPEN: &[u8] = b"<characteristics>";
+const CHARACTERISTICS_CLOSE: &[u8] = b"</characteristics>";
+const CHARACTERISTIC_OPEN: &[u8] = b"<ch>";
+const CHARACTERISTIC_CLOSE: &[u8] = b"</ch>";
 
 const SECTION_MAP_ENTRIES: usize = 14;
 
@@ -302,6 +306,89 @@ fn validate_sortlist(
     ensure_map_offset("formats", cursor, offsets.formats)
 }
 
+fn parse_characteristics(
+    bytes: &[u8],
+    version: FormatVersion,
+    byte_order: ByteOrder,
+    offsets: &SectionOffsets,
+    encoding: TextEncoding,
+) -> Result<Vec<String>, DtaError> {
+    let start = offset_to_usize(offsets.characteristics, "characteristics")?;
+    if bytes.len() == start {
+        return Ok(Vec::new());
+    }
+    let data = offset_to_usize(offsets.data, "data")?;
+    let width = if version == FormatVersion::V117 {
+        33
+    } else {
+        129
+    };
+    let names_length = checked_mul(width, 2, "characteristic names length")?;
+    let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
+    let mut notes = Vec::new();
+
+    loop {
+        if bytes.get(cursor..cursor.saturating_add(CHARACTERISTICS_CLOSE.len()))
+            == Some(CHARACTERISTICS_CLOSE)
+        {
+            cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
+            ensure_map_offset("data", cursor, offsets.data)?;
+            return Ok(notes);
+        }
+
+        cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
+        let payload_length = usize::try_from(read_u32(
+            bytes,
+            cursor,
+            byte_order,
+            "characteristic length",
+        )?)
+        .map_err(|_| DtaError::ArithmeticOverflow("characteristic length"))?;
+        cursor = checked_add(cursor, 4, "characteristic length")?;
+        if payload_length < names_length {
+            return Err(DtaError::Truncated {
+                context: "characteristic names",
+                offset: cursor,
+                needed: names_length,
+                available: payload_length,
+            });
+        }
+        let payload_end = checked_add(cursor, payload_length, "characteristic payload")?;
+        let record_end = checked_add(
+            payload_end,
+            CHARACTERISTIC_CLOSE.len(),
+            "characteristic closing tag",
+        )?;
+        if record_end > data {
+            return Err(DtaError::Truncated {
+                context: "characteristic payload",
+                offset: cursor,
+                needed: payload_length.saturating_add(CHARACTERISTIC_CLOSE.len()),
+                available: data.saturating_sub(cursor),
+            });
+        }
+        let payload = slice_at(bytes, cursor, payload_length, "characteristic payload")?;
+        let (variable, remainder) = payload.split_at(width);
+        let (characteristic, value) = remainder.split_at(width);
+        if is_dataset_note(variable, characteristic) {
+            let note = encoding.decode(field_bytes(value));
+            if !note.is_empty() {
+                notes.push(note);
+            }
+        }
+        cursor = payload_end;
+        cursor = expect_at(bytes, cursor, CHARACTERISTIC_CLOSE, "</ch>")?;
+        if cursor > data {
+            return Err(DtaError::MapOffsetMismatch {
+                section: "data",
+                expected: offsets.data,
+                actual: u64::try_from(cursor)
+                    .map_err(|_| DtaError::ArithmeticOverflow("characteristics end"))?,
+            });
+        }
+    }
+}
+
 pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {
     let numeric = match code {
         65530 => Some((DtaType::Byte, 1)),
@@ -430,6 +517,13 @@ pub fn parse_metadata_with_encoding(
         },
         encoding,
     )?;
+    let notes = parse_characteristics(
+        bytes,
+        format_version,
+        byte_order,
+        &section_offsets,
+        encoding,
+    )?;
 
     let mut byte_offset = 0_u64;
     let mut variables = Vec::with_capacity(nvar_usize);
@@ -457,6 +551,7 @@ pub fn parse_metadata_with_encoding(
         nvar,
         nobs,
         dataset_label,
+        notes,
         variables,
         section_offsets,
         obs_length: byte_offset,

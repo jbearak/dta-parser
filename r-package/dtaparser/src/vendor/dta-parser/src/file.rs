@@ -12,7 +12,7 @@ use crate::legacy::{
 };
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
-use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
+use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::{
     classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
     classify_int_missing, classify_long_missing, ByteOrder, Column, ColumnValues, DtaData,
@@ -1256,6 +1256,118 @@ fn validate_modern_sortlist<R: Read + Seek>(
     ensure_absolute("formats", after_close, header.section_offsets.formats)
 }
 
+fn read_modern_notes<R: Read + Seek>(
+    reader: &mut R,
+    header: &FileModernHeaderMap,
+    encoding: TextEncoding,
+    scratch: &mut Scratch,
+) -> Result<Vec<String>, DtaError> {
+    let width = if header.format_version == FormatVersion::V117 {
+        33_usize
+    } else {
+        129_usize
+    };
+    let names_length = width
+        .checked_mul(2)
+        .ok_or(DtaError::ArithmeticOverflow("characteristic names length"))?;
+    let mut cursor = expect_file_tag(
+        reader,
+        header.section_offsets.characteristics,
+        b"<characteristics>",
+        "<characteristics>",
+        scratch,
+    )?;
+    let mut notes = Vec::new();
+
+    loop {
+        let marker = read_exact_at(reader, cursor, 4, scratch, "reading characteristic tag")?;
+        if marker == b"</ch" {
+            cursor = expect_file_tag(
+                reader,
+                cursor,
+                b"</characteristics>",
+                "</characteristics>",
+                scratch,
+            )?;
+            ensure_absolute("data", cursor, header.section_offsets.data)?;
+            return Ok(notes);
+        }
+        if marker != b"<ch>" {
+            return Err(DtaError::UnexpectedTag {
+                expected: "<ch> or </characteristics>",
+                offset: error_offset(cursor),
+            });
+        }
+        cursor = checked_add_u64(cursor, 4, "characteristic opening tag")?;
+        let length_bytes =
+            read_exact_at(reader, cursor, 4, scratch, "reading characteristic length")?;
+        let payload_length = usize::try_from(read_u32(
+            &length_bytes,
+            0,
+            header.byte_order,
+            "characteristic length",
+        )?)
+        .map_err(|_| DtaError::ArithmeticOverflow("characteristic length"))?;
+        cursor = checked_add_u64(cursor, 4, "characteristic length")?;
+        if payload_length < names_length {
+            return Err(DtaError::Truncated {
+                context: "characteristic names",
+                offset: error_offset(cursor),
+                needed: names_length,
+                available: payload_length,
+            });
+        }
+        let close = checked_add_u64(
+            cursor,
+            u64::try_from(payload_length)
+                .map_err(|_| DtaError::ArithmeticOverflow("characteristic payload length"))?,
+            "characteristic payload",
+        )?;
+        let after_close = checked_add_u64(close, 5, "characteristic closing tag")?;
+        if after_close > header.section_offsets.data {
+            return Err(DtaError::Truncated {
+                context: "characteristic payload",
+                offset: error_offset(cursor),
+                needed: payload_length.saturating_add(5),
+                available: usize::try_from(header.section_offsets.data.saturating_sub(cursor))
+                    .unwrap_or(usize::MAX),
+            });
+        }
+        let names = read_exact_at(
+            reader,
+            cursor,
+            names_length,
+            scratch,
+            "reading characteristic names",
+        )?;
+        if is_dataset_note(&names[..width], &names[width..]) {
+            let value_offset = checked_add_u64(
+                cursor,
+                u64::try_from(names_length)
+                    .map_err(|_| DtaError::ArithmeticOverflow("characteristic value offset"))?,
+                "characteristic value offset",
+            )?;
+            let value_length = payload_length - names_length;
+            let mut never_cancel = || false;
+            let note = decode_range(
+                reader,
+                value_offset,
+                value_length,
+                encoding,
+                true,
+                scratch,
+                &mut never_cancel,
+                "reading characteristic value",
+            )?
+            .0;
+            if !note.is_empty() {
+                notes.push(note);
+            }
+        }
+        cursor = expect_file_tag(reader, close, b"</ch>", "</ch>", scratch)?;
+    }
+}
+
 fn read_modern_header_map<R: Read + Seek>(
     reader: &mut R,
     scratch: &mut Scratch,
@@ -1522,6 +1634,7 @@ fn read_modern_metadata<R: Read + Seek>(
         "variable_labels",
         scratch,
     )?;
+    let notes = read_modern_notes(reader, &header, encoding, scratch)?;
 
     let mut byte_offset = 0_u64;
     let mut variables = Vec::with_capacity(nvar);
@@ -1591,6 +1704,7 @@ fn read_modern_metadata<R: Read + Seek>(
         nvar: header.nvar,
         nobs: header.nobs,
         dataset_label: header.dataset_label,
+        notes,
         variables,
         section_offsets: header.section_offsets,
         obs_length: byte_offset,
@@ -1733,6 +1847,7 @@ fn read_legacy_metadata<R: Read + Seek>(
 
     let mut cursor = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
+    let mut notes = Vec::new();
     loop {
         let expansion =
             read_exact_at(reader, cursor, 5, scratch, "reading legacy expansion field")?;
@@ -1755,19 +1870,57 @@ fn read_legacy_metadata<R: Read + Seek>(
             });
         }
         cursor = checked_add_u64(cursor, 5, "legacy expansion header")?;
-        cursor = checked_add_u64(
+        let payload_length = usize::try_from(length)
+            .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?;
+        let payload_end = checked_add_u64(
             cursor,
-            u64::try_from(length)
+            u64::try_from(payload_length)
                 .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?,
             "legacy expansion payload",
         )?;
-        if cursor > file_length {
-            return Err(DtaError::Io {
-                context: "reading legacy expansion field",
-                offset: cursor,
-                kind: ErrorKind::UnexpectedEof,
+        if payload_end > file_length {
+            return Err(DtaError::Truncated {
+                context: "legacy expansion-field payload",
+                offset: error_offset(cursor),
+                needed: payload_length,
+                available: usize::try_from(file_length.saturating_sub(cursor))
+                    .unwrap_or(usize::MAX),
             });
         }
+        if data_type == 1 && payload_length >= 2 * VARNAME_WIDTH {
+            let names = read_exact_at(
+                reader,
+                cursor,
+                2 * VARNAME_WIDTH,
+                scratch,
+                "reading legacy characteristic names",
+            )?;
+            if is_dataset_note(&names[..VARNAME_WIDTH], &names[VARNAME_WIDTH..]) {
+                let value_offset = checked_add_u64(
+                    cursor,
+                    u64::try_from(2 * VARNAME_WIDTH).map_err(|_| {
+                        DtaError::ArithmeticOverflow("legacy characteristic value offset")
+                    })?,
+                    "legacy characteristic value offset",
+                )?;
+                let value_length = payload_length - 2 * VARNAME_WIDTH;
+                let note = decode_range(
+                    reader,
+                    value_offset,
+                    value_length,
+                    encoding,
+                    true,
+                    scratch,
+                    &mut never_cancel,
+                    "reading legacy characteristic value",
+                )?
+                .0;
+                if !note.is_empty() {
+                    notes.push(note);
+                }
+            }
+        }
+        cursor = payload_end;
     }
     let observation_bytes = nobs
         .checked_mul(byte_offset)
@@ -1789,6 +1942,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         nvar,
         nobs,
         dataset_label,
+        notes,
         variables,
         section_offsets: SectionOffsets {
             stata_data: 0,
@@ -2617,6 +2771,7 @@ mod tests {
             nvar: 1,
             nobs: 1,
             dataset_label: String::new(),
+            notes: Vec::new(),
             variables: vec![VariableInfo {
                 name: "text".to_owned(),
                 dta_type: DtaType::StrL,

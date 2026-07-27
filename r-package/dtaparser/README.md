@@ -38,10 +38,10 @@ is interrupted. This keeps network and decompression dependencies out of the
 reusable Rust parser.
 
 The reader supports Stata releases 113--115 and 117--119. It retains dataset
-and variable labels, display formats, value-label tables, `strL` values, and
-system or `.a`--`.z` missing values. `%td` is converted to `Date`; `%tc` and
-`%tC` are converted to UTC `POSIXct`. Other Stata calendar formats remain
-numeric and retain their `format.stata` attribute.
+and variable labels, dataset notes, display formats, value-label tables,
+`strL` values, and system or `.a`--`.z` missing values. `%td` is converted to
+`Date`; `%tc` and `%tC` are converted to UTC `POSIXct`. Other Stata calendar
+formats remain numeric and retain their `format.stata` attribute.
 
 `encoding = NULL` follows the DTA release convention: Windows-1252 for
 releases 113--115 and UTF-8 for releases 117--119. To recover files whose
@@ -73,9 +73,8 @@ their execution order, and ran garbage collection outside the timed intervals.
 Relative throughput is the haven median divided by the dtaparser median, so
 higher is faster for dtaparser. Before timing, eight representative columns in
 32-row samples from the start, middle, and end of each file were compared with
-haven after removing dtaparser's additional top-level `dta_format_version`
-attribute. The remaining attributes and values matched, subject to the
-conformance suite's `1e-7` tolerance for nonmissing floating-point values.
+haven. The attributes and values matched, subject to the conformance suite's
+`1e-7` tolerance for nonmissing floating-point values.
 
 These are machine- and workload-specific measurements, not performance
 guarantees or CI thresholds. The haven comparison used the Rust-vector

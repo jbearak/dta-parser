@@ -325,6 +325,7 @@ mod tests {
             nvar: 1,
             nobs,
             dataset_label: String::new(),
+            notes: Vec::new(),
             variables: vec![VariableInfo {
                 name: "long".into(),
                 dta_type: DtaType::StrL,

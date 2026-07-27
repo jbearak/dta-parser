@@ -1,5 +1,5 @@
 use crate::endian::{checked_add, checked_mul, read_i32, read_u16, slice_at};
-use crate::text::{field_bytes, TextEncoding};
+use crate::text::{field_bytes, is_dataset_note, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -101,8 +101,10 @@ fn scan_expansion_fields_ordered(
     bytes: &[u8],
     start: usize,
     byte_order: ByteOrder,
-) -> Result<usize, DtaError> {
+    encoding: TextEncoding,
+) -> Result<(usize, Vec<String>), DtaError> {
     let mut cursor = start;
+    let mut notes = Vec::new();
     loop {
         let data_type = slice_at(bytes, cursor, 1, "legacy expansion-field type")?[0];
         let length_offset = checked_add(cursor, 1, "legacy expansion-field length")?;
@@ -113,7 +115,10 @@ fn scan_expansion_fields_ordered(
             "legacy expansion-field length",
         )?;
         if data_type == 0 && value == 0 {
-            return checked_add(cursor, 5, "legacy expansion-field terminator");
+            return Ok((
+                checked_add(cursor, 5, "legacy expansion-field terminator")?,
+                notes,
+            ));
         }
         if value < 0 {
             return Err(DtaError::NegativeExpansionLength {
@@ -130,7 +135,17 @@ fn scan_expansion_fields_ordered(
         let length = usize::try_from(value)
             .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion-field length"))?;
         cursor = checked_add(cursor, 5, "legacy expansion-field header")?;
-        slice_at(bytes, cursor, length, "legacy expansion-field payload")?;
+        let payload = slice_at(bytes, cursor, length, "legacy expansion-field payload")?;
+        if data_type == 1 && payload.len() >= 2 * VARNAME_WIDTH {
+            let (variable, remainder) = payload.split_at(VARNAME_WIDTH);
+            let (characteristic, value) = remainder.split_at(VARNAME_WIDTH);
+            if is_dataset_note(variable, characteristic) {
+                let note = encoding.decode(field_bytes(value));
+                if !note.is_empty() {
+                    notes.push(note);
+                }
+            }
+        }
         cursor = checked_add(cursor, length, "legacy expansion-field payload")?;
     }
 }
@@ -166,7 +181,9 @@ pub(crate) fn parse_legacy_metadata(
     let fixed = legacy_fixed_offsets(nvar_usize, version)?;
     let expansion_start = fixed.end;
     slice_at(bytes, 0, expansion_start, "legacy fixed metadata sections")?;
-    let data_offset = scan_expansion_fields_ordered(bytes, expansion_start, byte_order)?;
+    let resolved_encoding = encoding.resolve(version);
+    let (data_offset, notes) =
+        scan_expansion_fields_ordered(bytes, expansion_start, byte_order, resolved_encoding)?;
     parse_legacy_metadata_layout(
         bytes,
         file_length,
@@ -175,7 +192,8 @@ pub(crate) fn parse_legacy_metadata(
         byte_order,
         nvar,
         nobs,
-        encoding.resolve(version),
+        resolved_encoding,
+        notes,
     )
 }
 
@@ -189,6 +207,7 @@ pub(crate) fn parse_legacy_metadata_layout(
     nvar: u32,
     nobs: u64,
     encoding: TextEncoding,
+    notes: Vec<String>,
 ) -> Result<DtaMetadata, DtaError> {
     let nvar_usize =
         usize::try_from(nvar).map_err(|_| DtaError::ArithmeticOverflow("legacy variable count"))?;
@@ -307,6 +326,7 @@ pub(crate) fn parse_legacy_metadata_layout(
         nvar,
         nobs,
         dataset_label,
+        notes,
         variables,
         section_offsets: SectionOffsets {
             stata_data: 0,

@@ -2,8 +2,8 @@
 #'
 #' Reads releases 113--115 and 117--119 through the native Rust parser.
 #' Numeric and character columns are created directly by native code. Dataset
-#' and variable labels, Stata display formats, value labels, `strL` content,
-#' and Stata system/extended missing values are retained.
+#' and variable labels, dataset notes, Stata display formats, value labels,
+#' `strL` content, and Stata system/extended missing values are retained.
 #'
 #' @param file A path, URL, raw vector, or binary connection. Local and remote
 #'   gzip files and local bzip2, xz, and zip files are decompressed
@@ -88,12 +88,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     dataset_label <- attr(native, "label", exact = TRUE)
-    format_version <- attr(native, "dta_format_version", exact = TRUE)
+    dataset_notes <- attr(native, "notes", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    if (!is.null(format_version)) {
-        attr(result, "dta_format_version") <- format_version
-    }
+    if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
     result
 }
 

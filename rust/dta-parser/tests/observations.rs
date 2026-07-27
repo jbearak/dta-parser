@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 use dta_parser::{
-    read_dta, read_dta_with_options, ColumnValues, DtaError, DtaType, MissingTag, ReadOptions,
+    read_dta, read_dta_with_options, ColumnValues, DtaError, DtaFile, DtaType, MissingTag,
+    ReadOptions,
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -109,7 +111,14 @@ fn synthetic_big_endian_v119() -> Vec<u8> {
     bytes.extend_from_slice(b"</variable_labels>");
 
     offsets[8] = bytes.len() as u64;
-    bytes.extend_from_slice(b"<characteristics></characteristics>");
+    bytes.extend_from_slice(b"<characteristics><ch>");
+    let note = b"big-endian metadata note\0";
+    let characteristic_length = 2 * 129 + note.len();
+    bytes.extend_from_slice(&(characteristic_length as u32).to_be_bytes());
+    push_field(&mut bytes, b"_dta", 129);
+    push_field(&mut bytes, b"note1", 129);
+    bytes.extend_from_slice(note);
+    bytes.extend_from_slice(b"</ch></characteristics>");
 
     offsets[9] = bytes.len() as u64;
     bytes.extend_from_slice(b"<data>");
@@ -592,12 +601,14 @@ fn every_checked_fixture_matches_the_typescript_haven_oracle() {
 
 #[test]
 fn decodes_big_endian_v119_observations_and_labels() {
-    let data = read_dta(&synthetic_big_endian_v119()).unwrap();
+    let bytes = synthetic_big_endian_v119();
+    let data = read_dta(&bytes).unwrap();
     assert_eq!(
         data.metadata.format_version,
         dta_parser::FormatVersion::V119
     );
     assert_eq!(data.metadata.byte_order, dta_parser::ByteOrder::Msf);
+    assert_eq!(data.metadata.notes, ["big-endian metadata note"]);
     assert_eq!(data.metadata.obs_length, 23);
     assert_eq!(data.row_count, 2);
 
@@ -659,6 +670,9 @@ fn decodes_big_endian_v119_observations_and_labels() {
     let table = data.value_label_table_for_variable(0).unwrap();
     assert_eq!(table.entry(-5).unwrap().label, "no");
     assert_eq!(table.entry(101).unwrap().label, "yes");
+
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.read().unwrap(), data);
 }
 
 #[test]

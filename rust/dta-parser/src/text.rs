@@ -115,6 +115,17 @@ pub(crate) fn field_bytes(bytes: &[u8]) -> &[u8] {
     &bytes[..end]
 }
 
+pub(crate) fn is_dataset_note(variable: &[u8], characteristic: &[u8]) -> bool {
+    if field_bytes(variable) != b"_dta" {
+        return false;
+    }
+    let name = field_bytes(characteristic);
+    let Some(index) = name.strip_prefix(b"note") else {
+        return false;
+    };
+    !index.is_empty() && index.iter().all(u8::is_ascii_digit)
+}
+
 pub(crate) fn is_utf8_continuation(byte: u8) -> bool {
     byte & 0xc0 == 0x80
 }

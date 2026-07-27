@@ -247,7 +247,28 @@ fn file_reads_match_slice_for_modern_strl_and_legacy_projections() {
         let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
         let actual = file.read_with_options(&read_options).unwrap();
         assert_eq!(actual, expected, "{name}");
+        if name == "auto_v118.dta" {
+            assert_eq!(
+                actual.metadata.notes,
+                ["From Consumer Reports with permission", "1"]
+            );
+        }
     }
+}
+
+#[test]
+fn modern_characteristic_lengths_cannot_cross_the_data_section() {
+    let mut bytes = fixture("auto_v118.dta");
+    let metadata = dta_parser::parse_metadata(&bytes).unwrap();
+    let length = metadata.section_offsets.characteristics as usize + b"<characteristics><ch>".len();
+    bytes[length..length + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(bytes)),
+        Err(DtaError::Truncated {
+            context: "characteristic payload",
+            ..
+        })
+    ));
 }
 
 #[test]
@@ -484,7 +505,7 @@ fn labels_are_lazy_and_cancellation_never_returns_partial_data() {
         .borrow()
         .reads
         .iter()
-        .any(|(offset, _)| *offset >= metadata.section_offsets.characteristics));
+        .any(|(offset, _)| *offset >= metadata.section_offsets.data));
     assert!(!trace
         .borrow()
         .reads

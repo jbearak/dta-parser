@@ -29,6 +29,6 @@ variable is selected more than once, the first selection and alias win.}
 \value{A tibble containing native numeric and character vectors.}
 \description{
 Reads Stata releases 113--115 and 117--119 through the native Rust parser,
-retaining labels, formats, value labels, long strings, temporal classes, and
-Stata tagged missing values.
+retaining dataset and variable labels, dataset notes, formats, value labels,
+long strings, temporal classes, and Stata tagged missing values.
 }

@@ -316,6 +316,8 @@ pub struct DtaMetadata {
     #[serde(with = "decimal_u64")]
     pub nobs: u64,
     pub dataset_label: String,
+    #[serde(default)]
+    pub notes: Vec<String>,
     pub variables: Vec<VariableInfo>,
     pub section_offsets: SectionOffsets,
     #[serde(with = "decimal_u64")]
@@ -471,6 +473,7 @@ mod tests {
             nvar: 1,
             nobs: 9_007_199_254_740_993,
             dataset_label: "fixture".into(),
+            notes: vec!["first note".into()],
             variables: vec![VariableInfo {
                 name: "x".into(),
                 dta_type: DtaType::FixedString(12),
@@ -489,6 +492,7 @@ mod tests {
         assert_eq!(value["format_version"], 119);
         assert_eq!(value["byte_order"], "MSF");
         assert_eq!(value["nobs"], "9007199254740993");
+        assert_eq!(value["notes"][0], "first note");
         assert_eq!(value["variables"][0]["type"], "str12");
         assert_eq!(value["variables"][0]["byte_offset"], "0");
         assert_eq!(value["section_offsets"]["data"], "0");
