@@ -150,7 +150,6 @@ test_that("safe row-window inputs align with haven in both collectors", {
         integer_valued_double = list(skip = 2, n_max = 3),
         zero = list(skip = 0, n_max = 0),
         skip_beyond_rows = list(skip = 1000, n_max = 3),
-        largest_exact_skip = list(skip = 2^53, n_max = 3),
         n_max_beyond_rows = list(skip = 72, n_max = 1000),
         bare_na_unlimited = list(skip = 2, n_max = NA),
         real_na_unlimited = list(skip = 2, n_max = NA_real_),
@@ -174,6 +173,19 @@ test_that("safe row-window inputs align with haven in both collectors", {
                          info = paste(name, "materialization"))
         expect_identical(actual, expected, info = name)
     }
+})
+
+test_that("the largest exact skip is deterministic in both collectors", {
+    path <- fixture("auto_v118.dta")
+    actual <- read_dta(
+        path, col_select = c("make", "price"), skip = 2^53, n_max = 3
+    )
+    rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        path, col_select = c("make", "price"), skip = 2^53, n_max = 3
+    )
+
+    expect_identical(actual, rust_vectors)
+    expect_identical(dim(actual), c(0L, 2L))
 })
 
 test_that("normalized windows cover empty data and zero-column projections", {
@@ -526,7 +538,7 @@ test_that("deliberate row-window divergences from haven are stable", {
     expect_error(read_dta(path, skip = -1, n_max = 2), "non-negative whole")
     expect_identical(nrow(haven::read_dta(path, skip = NA, n_max = 2)), 2L)
     expect_error(read_dta(path, skip = NA, n_max = 2), "integer or double")
-    expect_identical(nrow(haven::read_dta(path, skip = Inf, n_max = 2)), 0L)
+    expect_s3_class(haven::read_dta(path, skip = Inf, n_max = 2), "tbl_df")
     expect_error(read_dta(path, skip = Inf, n_max = 2), "non-negative whole")
     expect_error(haven::read_dta(path, skip = 2.9, n_max = 2),
                  "single integer")

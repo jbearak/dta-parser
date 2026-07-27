@@ -110,13 +110,17 @@ No repeated 10 GB comparison was completed, so no 10 GB result is reported.
 `skip` and `n_max` are normalized once in R, before either materialization path
 enters native code. Safe scalar integers and integer-valued doubles therefore
 select the same rows as `haven::read_dta()`, including zero and values beyond
-the file's row count. The package also follows haven's documented internal
-`n_max` convention by mapping `NA`, `Inf`, `-Inf`, and negative finite values
-to one unlimited-row sentinel.
+the file's row count when they are representable by haven's native boundary.
+At the extreme `skip = 2^53` boundary, dtaparser deterministically returns an
+empty result while haven's native integer coercion is platform-dependent. The
+package also follows haven's intentional upstream `n_max` normalization by
+mapping `NA`, `Inf`, `-Inf`, and negative finite values to one unlimited-row
+sentinel.
 
 Some haven 2.5.5 edge behavior comes from native integer coercion rather than
-its `n_max` normalization contract. This package deliberately rejects those
-cases before opening the file:
+its `n_max` normalization contract. This package does not inherit those
+coercions: it validates or normalizes these inputs deterministically before
+opening the file:
 
 | Input | dtaparser behavior | haven 2.5.5 behavior |
 | --- | --- | --- |
@@ -125,9 +129,10 @@ cases before opening the file:
 | negative, missing, or infinite `skip` | error | native-coercion-dependent window |
 | fractional `skip` | error | error from the native boundary |
 | non-scalar or non-numeric values | error | error |
+| very large whole `skip` through `2^53` | deterministic row window | platform-dependent native coercion |
 | values greater than `2^53` | error | integer overflow/coercion behavior |
 
-Rejecting these inputs avoids silent truncation and platform-dependent
+These deterministic choices avoid silent truncation and platform-dependent
 overflow while retaining haven parity for meaningful row-window requests.
 
 The package includes a locked Cargo dependency graph and vendored crates so
