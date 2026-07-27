@@ -28,6 +28,13 @@ installed; the C ABI
 does not expose stable internal timers, so a finer native R split would require
 instrumenting production code and is deliberately not claimed here.
 
+The [`large-scale/`](large-scale/) harness separately compares the public
+Direct-R reader, the retained internal Rust-vector collector, and haven on
+deterministic 100 MB and 1 GB files. It runs full and projected-eight-column
+workloads for 101 iterations by default and writes all generated artifacts below
+ignored `target/large-scale/`. See its README for the checkout-local package
+library guard, correctness checks, orchestration command, and output matrix.
+
 Record the exact command, toolchain, host, fixture sizes, iteration count, and
 correctness status in `baseline.md`. Results are evidence for investigation,
 not a release gate.
