@@ -242,18 +242,14 @@ fn rejects_malformed_legacy_counts_filetype_and_expansion_fields() {
         .characteristics as usize;
     let mut oversized = original;
     oversized[expansion + 1..expansion + 5].copy_from_slice(&i32::MAX.to_be_bytes());
+    let slice_error = parse_metadata(&oversized).unwrap_err();
     assert!(matches!(
-        parse_metadata(&oversized),
-        Err(DtaError::Truncated {
+        slice_error,
+        DtaError::Truncated {
             context: "legacy expansion-field payload",
             ..
-        })
+        }
     ));
-    assert!(matches!(
-        DtaFile::from_reader(Cursor::new(oversized)),
-        Err(DtaError::Io {
-            context: "reading legacy expansion field",
-            ..
-        })
-    ));
+    let file_error = DtaFile::from_reader(Cursor::new(oversized)).err().unwrap();
+    assert_eq!(file_error, slice_error);
 }

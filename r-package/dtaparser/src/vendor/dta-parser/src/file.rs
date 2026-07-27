@@ -1879,10 +1879,12 @@ fn read_legacy_metadata<R: Read + Seek>(
             "legacy expansion payload",
         )?;
         if payload_end > file_length {
-            return Err(DtaError::Io {
-                context: "reading legacy expansion field",
-                offset: payload_end,
-                kind: ErrorKind::UnexpectedEof,
+            return Err(DtaError::Truncated {
+                context: "legacy expansion-field payload",
+                offset: error_offset(cursor),
+                needed: payload_length,
+                available: usize::try_from(file_length.saturating_sub(cursor))
+                    .unwrap_or(usize::MAX),
             });
         }
         if data_type == 1 && payload_length >= 2 * VARNAME_WIDTH {

@@ -38,10 +38,10 @@ is interrupted. This keeps network and decompression dependencies out of the
 reusable Rust parser.
 
 The reader supports Stata releases 113--115 and 117--119. It retains dataset
-and variable labels, display formats, value-label tables, `strL` values, and
-system or `.a`--`.z` missing values. `%td` is converted to `Date`; `%tc` and
-`%tC` are converted to UTC `POSIXct`. Other Stata calendar formats remain
-numeric and retain their `format.stata` attribute.
+and variable labels, dataset notes, display formats, value-label tables,
+`strL` values, and system or `.a`--`.z` missing values. `%td` is converted to
+`Date`; `%tc` and `%tC` are converted to UTC `POSIXct`. Other Stata calendar
+formats remain numeric and retain their `format.stata` attribute.
 
 `encoding = NULL` follows the DTA release convention: Windows-1252 for
 releases 113--115 and UTF-8 for releases 117--119. To recover files whose
