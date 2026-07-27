@@ -24,9 +24,10 @@
 #' @param skip Number of observations to skip.
 #' @param n_max Maximum observations to read. `Inf` reads all remaining rows.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
-#' @return A tibble. `%td` columns have class `Date`; `%tc` and `%tC` columns
-#'   have classes `POSIXct` and `POSIXt` in UTC. Other Stata temporal formats
-#'   remain numeric with their `format.stata` attribute.
+#' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
+#'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
+#'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
+#'   `format.stata` attribute.
 #' @export
 read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      n_max = Inf, .name_repair = "unique") {
