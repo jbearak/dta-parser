@@ -60,31 +60,38 @@ label.
 
 ## Performance compared with haven
 
-A warm-cache benchmark on an Apple M4 Max compared full reads by
-`dtaparser::read_dta()` and `haven::read_dta()` on deterministic, mixed-type
-Stata 15 files. Each file contained 40 columns spanning numeric, labelled,
-date/time, and string data. The run warmed each implementation, alternated
-their execution order, and ran garbage collection outside the timed intervals.
+A warm-cache benchmark on an Apple M4 Max compared the public Direct-R
+`dtaparser::read_dta()` path, the retained internal Rust-vector collector, and
+`haven::read_dta()` in the same process and run. The deterministic mixed-type
+Stata 15 files contained 40 columns; the projected workload selected eight
+representative columns. Each cell used 101 measured iterations after warmup,
+alternated implementation order, and ran garbage collection outside timing.
 
-| Input | Rows | Iterations | dtaparser median | haven median | Relative throughput |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 100 MB | 222,656 | 101 | 0.236 s | 1.122 s | 4.754x |
-| 1 GB | 2,227,111 | 101 | 2.187 s | 11.045 s | 5.050x |
+| Input | Rows | Workload | Direct-R median | Rust-vector median | haven median | Direct-R vs haven |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| 100 MB | 222,656 | Full, 40 columns | 0.303 s | 0.247 s | 1.19 s | 3.92739273927393x |
+| 100 MB | 222,656 | Projected, 8 columns | 0.082 s | 0.082 s | 0.306 s | 3.73170731707317x |
+| 1 GB | 2,227,111 | Full, 40 columns | 2.185 s | 2.337 s | 11.795 s | 5.39816933638444x |
+| 1 GB | 2,227,111 | Projected, 8 columns | 0.755 s | 0.744 s | 2.903 s | 3.84503311258278x |
 
-Relative throughput is the haven median divided by the dtaparser median, so
-higher is faster for dtaparser. Before timing, eight representative columns in
-32-row samples from the start, middle, and end of each file were compared with
-haven. The attributes and values matched, subject to the conformance suite's
-`1e-7` tolerance for nonmissing floating-point values.
+Direct-R vs haven is the haven median divided by the Direct-R median, so higher
+means Direct-R was faster. Before timing, Direct-R and Rust-vector results were
+required to be exactly identical. Projected 32-row windows from the start,
+middle, and end were also compared with haven, subject only to the conformance
+suite's `1e-7` tolerance for nonmissing floating-point values.
 
 These are machine- and workload-specific measurements, not performance
-guarantees or CI thresholds. The haven comparison used the Rust-vector
-materialization path that is now retained as an internal differential-testing
-baseline. The current direct-R collector was benchmarked separately and was
-faster than that retained path, but haven was not measured in the same run, so
-the ratios above are not extrapolated; see the
-[direct-R materialization results](../../benchmarks/r-materialization/results-2026-07-26.md).
-No repeated 10 GB comparison was completed, so no 10 GB result is reported.
+guarantees or CI thresholds. The Rust-vector implementation remains an internal
+A/B and differential-testing baseline. Its numbers above are from the same run
+as Direct-R and haven; the earlier
+[direct-R materialization results](../../benchmarks/r-materialization/results-2026-07-26.md)
+remain useful historical evidence about the collector transition but are not
+combined with these ratios. Haven is the compatibility oracle because it is the
+established R reader, not because it is infallible; version-specific bugs,
+encoding behavior, and native coercion edge cases remain possible. See the
+[full reproducible report](../../benchmarks/large-scale/results-2026-07-27.md)
+for p05/p95 values, throughput, provenance, validation, and exact artifacts. No
+10 GB file was generated or measured in this scoped run.
 
 ## Scope and limitations
 
