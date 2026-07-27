@@ -99,8 +99,41 @@ No repeated 10 GB comparison was completed, so no 10 GB result is reported.
 - `.name_repair` is delegated to `tibble::as_tibble()` after selection aliases
   are applied.
 - Reads are synchronous. Long reads cooperatively check for R user interrupts.
-- R data frames are limited to `2^31 - 1` rows; `skip` and finite `n_max` must
-  be exactly representable non-negative whole numbers no larger than `2^53`.
+- R data frames are limited to `2^31 - 1` rows. `skip` must be an exactly
+  representable non-negative whole number no larger than `2^53`. For `n_max`,
+  `NA`, either infinity, and any negative finite value use haven's intentional
+  “all remaining rows” convention; non-negative values have the same whole
+  number and `2^53` limits.
+
+### Row-window compatibility
+
+`skip` and `n_max` are normalized once in R, before either materialization path
+enters native code. Safe scalar integers and integer-valued doubles therefore
+select the same rows as `haven::read_dta()`, including zero and values beyond
+the file's row count when they are representable by haven's native boundary.
+At the extreme `skip = 2^53` boundary, dtaparser deterministically returns an
+empty result while haven's native integer coercion is platform-dependent. The
+package also follows haven's intentional upstream `n_max` normalization by
+mapping `NA`, `Inf`, `-Inf`, and negative finite values to one unlimited-row
+sentinel.
+
+Some haven 2.5.5 edge behavior comes from native integer coercion rather than
+its `n_max` normalization contract. This package does not inherit those
+coercions: it validates or normalizes these inputs deterministically before
+opening the file:
+
+| Input | dtaparser behavior | haven 2.5.5 behavior |
+| --- | --- | --- |
+| fractional non-negative `n_max` | error | truncates |
+| `NaN` `n_max` | error | reads all rows |
+| negative, missing, or infinite `skip` | error | native-coercion-dependent window |
+| fractional `skip` | error | error from the native boundary |
+| non-scalar or non-numeric values | error | error |
+| very large whole `skip` through `2^53` | deterministic row window | platform-dependent native coercion |
+| values greater than `2^53` | error | integer overflow/coercion behavior |
+
+These deterministic choices avoid silent truncation and platform-dependent
+overflow while retaining haven parity for meaningful row-window requests.
 
 The package includes a locked Cargo dependency graph and vendored crates so
 source builds do not contact a package registry. A Rust 1.74-or-newer toolchain

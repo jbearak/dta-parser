@@ -21,8 +21,12 @@
 #'   string storage as character and numeric storage as double. If a source
 #'   variable is selected more than once, its first selection and alias win.
 #'   Selection is resolved from metadata before observation data are read.
-#' @param skip Number of observations to skip.
-#' @param n_max Maximum observations to read. `Inf` reads all remaining rows.
+#' @param skip Number of observations to skip. Must be one non-negative whole
+#'   number no larger than `2^53`.
+#' @param n_max Maximum observations to read. `NA`, either infinity, and
+#'   negative finite values read all remaining rows, following haven's
+#'   unlimited-row convention. Non-negative values must be whole numbers no
+#'   larger than `2^53`.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
 #' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
@@ -51,8 +55,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, materialization) {
     encoding <- .validate_dta_encoding(encoding)
-    .validate_count(skip, "skip", infinite = FALSE)
-    .validate_count(n_max, "n_max", infinite = TRUE)
+    row_window <- .normalize_row_window(skip, n_max)
 
     source <- .resolve_dta_source(file)
     on.exit(.cleanup_dta_source(source), add = TRUE)
@@ -79,8 +82,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         C_dtaparser_read,
         source$path,
         column_indices,
-        as.double(skip),
-        as.double(n_max),
+        row_window$skip,
+        row_window$n_max,
         identical(materialization, "direct"),
         encoding
     )
@@ -192,13 +195,61 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     canonical
 }
 
-.validate_count <- function(value, argument, infinite) {
-    valid_infinite <- infinite && is.numeric(value) && length(value) == 1L &&
-        is.infinite(value) && value > 0
-    valid_finite <- is.numeric(value) && length(value) == 1L && !is.na(value) &&
-        is.finite(value) && value >= 0 && value == floor(value) && value <= 2^53
-    if (!valid_infinite && !valid_finite) {
-        stop(sprintf("`%s` must be one non-negative whole number%s", argument,
-            if (infinite) " or Inf" else ""), call. = FALSE)
+.normalize_row_window <- function(skip, n_max) {
+    list(
+        skip = .normalize_skip(skip),
+        n_max = .normalize_n_max(n_max)
+    )
+}
+
+.normalize_skip <- function(value) {
+    .validate_count_shape(value, "skip")
+    if (is.na(value) || !is.finite(value) || value < 0 ||
+        value > 2^53 || (!is.integer(value) && value != floor(value))) {
+        stop(
+            "`skip` must be one non-negative whole number no larger than 2^53",
+            call. = FALSE
+        )
+    }
+    as.double(value)
+}
+
+.normalize_n_max <- function(value) {
+    if (length(value) != 1L) {
+        stop("`n_max` must have length 1", call. = FALSE)
+    }
+
+    # Bare NA is logical in R, but it is the conventional spelling of haven's
+    # unlimited-row sentinel. Other logical and non-numeric values remain
+    # invalid rather than entering native coercion.
+    if (identical(value, NA)) return(Inf)
+    .validate_count_type(value, "n_max")
+    if (is.na(value)) {
+        if (is.nan(value)) {
+            stop("`n_max` must not be NaN", call. = FALSE)
+        }
+        return(Inf)
+    }
+    if (is.infinite(value) || value < 0) return(Inf)
+    if (value > 2^53 || (!is.integer(value) && value != floor(value))) {
+        stop(paste(
+            "`n_max` must be a whole number no larger than 2^53,",
+            "or an unlimited-row sentinel"
+        ), call. = FALSE)
+    }
+    as.double(value)
+}
+
+.validate_count_shape <- function(value, argument) {
+    if (length(value) != 1L) {
+        stop(sprintf("`%s` must have length 1", argument), call. = FALSE)
+    }
+    .validate_count_type(value, argument)
+}
+
+.validate_count_type <- function(value, argument) {
+    if (is.object(value) || !(typeof(value) %in% c("integer", "double"))) {
+        stop(sprintf("`%s` must be one integer or double", argument),
+             call. = FALSE)
     }
 }

@@ -22,8 +22,12 @@ deterministically with U+FFFD. Haven 2.5.5 may instead omit an affected label.}
 \item{col_select}{One or more tidyselect expressions. Predicates treat Stata
 string storage as character and numeric storage as double. If a source
 variable is selected more than once, the first selection and alias win.}
-\item{skip}{Number of observations to skip.}
-\item{n_max}{Maximum observations to read, or \code{Inf}.}
+\item{skip}{Number of observations to skip. Must be one non-negative whole
+number no larger than \code{2^53}.}
+\item{n_max}{Maximum observations to read. \code{NA}, either infinity, and
+negative finite values read all remaining rows, following haven's unlimited-row
+convention. Non-negative values must be whole numbers no larger than
+\code{2^53}.}
 \item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
 }
 \value{A tibble containing native numeric and character vectors. \code{\%td}

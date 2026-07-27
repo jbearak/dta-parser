@@ -700,6 +700,9 @@ unsafe fn read_impl(
     direct_to_r: bool,
     encoding: TextEncoding,
 ) -> Result<Sexp, String> {
+    // Public semantics are normalized once by the R wrapper. These checks are
+    // only a defensive ABI guard for exact representability and +Inf as the
+    // single unlimited sentinel.
     if !skip.is_finite() || skip < 0.0 || skip.fract() != 0.0 || skip > (1_u64 << 53) as f64 {
         return Err("invalid skip value".to_owned());
     }

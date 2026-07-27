@@ -142,6 +142,91 @@ test_that("an empty projection retains the selected row count", {
     expect_identical(dim(result), c(3L, 0L))
 })
 
+test_that("safe row-window inputs align with haven in both collectors", {
+    skip_if_not_installed("haven")
+    path <- fixture("auto_v118.dta")
+    cases <- list(
+        integer = list(skip = 2L, n_max = 3L),
+        integer_valued_double = list(skip = 2, n_max = 3),
+        zero = list(skip = 0, n_max = 0),
+        skip_beyond_rows = list(skip = 1000, n_max = 3),
+        n_max_beyond_rows = list(skip = 72, n_max = 1000),
+        bare_na_unlimited = list(skip = 2, n_max = NA),
+        real_na_unlimited = list(skip = 2, n_max = NA_real_),
+        positive_infinity_unlimited = list(skip = 2, n_max = Inf),
+        negative_infinity_unlimited = list(skip = 2, n_max = -Inf),
+        negative_integer_unlimited = list(skip = 2, n_max = -1L),
+        negative_double_unlimited = list(skip = 2, n_max = -1.5)
+    )
+
+    for (name in names(cases)) {
+        arguments <- c(
+            list(path, col_select = c("make", "price")), cases[[name]]
+        )
+        actual <- do.call(read_dta, arguments)
+        rust_vectors <- do.call(
+            dtaparser:::.read_dta_rust_vectors, arguments
+        )
+        expected <- do.call(haven::read_dta, arguments)
+
+        expect_identical(actual, rust_vectors,
+                         info = paste(name, "materialization"))
+        expect_identical(actual, expected, info = name)
+    }
+})
+
+test_that("the largest exact skip is deterministic in both collectors", {
+    path <- fixture("auto_v118.dta")
+    actual <- read_dta(
+        path, col_select = c("make", "price"), skip = 2^53, n_max = 3
+    )
+    rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        path, col_select = c("make", "price"), skip = 2^53, n_max = 3
+    )
+
+    expect_identical(actual, rust_vectors)
+    expect_identical(dim(actual), c(0L, 2L))
+})
+
+test_that("normalized windows cover empty data and zero-column projections", {
+    skip_if_not_installed("haven")
+    empty <- tempfile(fileext = ".dta")
+    on.exit(unlink(empty), add = TRUE)
+    haven::write_dta(data.frame(number = double(), text = character()), empty)
+
+    for (n_max in list(0L, NA, Inf, -Inf, -1)) {
+        actual <- read_dta(empty, n_max = n_max)
+        rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+            empty, n_max = n_max
+        )
+        expected <- haven::read_dta(empty, n_max = n_max)
+        expect_identical(actual, rust_vectors)
+        expect_identical(actual, expected)
+    }
+
+    path <- fixture("auto_v118.dta")
+    windows <- list(
+        zero = list(skip = 0, n_max = 0),
+        unlimited = list(skip = 2, n_max = NA),
+        out_of_range = list(skip = 1000, n_max = 10)
+    )
+    for (name in names(windows)) {
+        arguments <- c(
+            list(path, col_select = character()), windows[[name]]
+        )
+        actual <- do.call(read_dta, arguments)
+        rust_vectors <- do.call(
+            dtaparser:::.read_dta_rust_vectors, arguments
+        )
+        expected_rows <- do.call(
+            haven::read_dta, c(list(path), windows[[name]])
+        )
+        expect_identical(actual, rust_vectors, info = name)
+        expect_identical(nrow(actual), nrow(expected_rows), info = name)
+        expect_identical(ncol(actual), 0L, info = name)
+    }
+})
+
 test_that("typed predicates and duplicate selections are deterministic", {
     path <- fixture("auto_v118.dta")
 
@@ -398,10 +483,6 @@ test_that("argument and native parse failures are ordinary R errors", {
     expect_error(read_dta(path, encoding = c("UTF-8", "latin1")),
                  "one non-missing")
     expect_error(read_dta(path, encoding = 1), "one non-missing")
-    expect_error(read_dta(path, skip = -1), "non-negative")
-    expect_error(read_dta(path, skip = 1.5), "whole number")
-    expect_error(read_dta(path, n_max = NA_real_), "non-negative")
-    expect_error(read_dta(path, n_max = 2^53 + 2), "non-negative")
     expect_error(read_dta(path, col_select = absent), "absent")
 
     corrupt <- tempfile(fileext = ".dta")
@@ -410,4 +491,57 @@ test_that("argument and native parse failures are ordinary R errors", {
     expect_error(read_dta(corrupt), "header|format|small|read|I/O", ignore.case = TRUE)
     expect_error(dtaparser:::.read_dta_rust_vectors(corrupt),
                  "header|format|small|read|I/O", ignore.case = TRUE)
+})
+
+test_that("unsafe row-window coercions fail before parsing", {
+    missing_path <- tempfile(fileext = ".dta")
+    invalid <- list(
+        list(arguments = list(skip = -1), error = "non-negative whole"),
+        list(arguments = list(skip = NA_real_), error = "non-negative whole"),
+        list(arguments = list(skip = NaN), error = "non-negative whole"),
+        list(arguments = list(skip = Inf), error = "non-negative whole"),
+        list(arguments = list(skip = -Inf), error = "non-negative whole"),
+        list(arguments = list(skip = 1.5), error = "non-negative whole"),
+        list(arguments = list(skip = 2^53 + 2), error = "no larger than"),
+        list(arguments = list(skip = c(1, 2)), error = "length 1"),
+        list(arguments = list(skip = TRUE), error = "integer or double"),
+        list(arguments = list(skip = "1"), error = "integer or double"),
+        list(arguments = list(n_max = 1.5), error = "whole number"),
+        list(arguments = list(n_max = NaN), error = "must not be NaN"),
+        list(arguments = list(n_max = 2^53 + 2), error = "no larger than"),
+        list(arguments = list(n_max = c(1, 2)), error = "length 1"),
+        list(arguments = list(n_max = TRUE), error = "integer or double"),
+        list(arguments = list(n_max = NA_character_), error = "integer or double")
+    )
+    readers <- list(read_dta, dtaparser:::.read_dta_rust_vectors)
+
+    for (reader in readers) {
+        for (case in invalid) {
+            expect_error(
+                do.call(reader, c(list(missing_path), case$arguments)),
+                case$error
+            )
+        }
+    }
+})
+
+test_that("deliberate row-window divergences from haven are stable", {
+    skip_if_not_installed("haven")
+    path <- fixture("auto_v118.dta")
+
+    expect_identical(nrow(haven::read_dta(path, n_max = 2.9)), 2L)
+    expect_error(read_dta(path, n_max = 2.9), "whole number")
+    expect_identical(nrow(haven::read_dta(path, n_max = NaN)), 74L)
+    expect_error(read_dta(path, n_max = NaN), "must not be NaN")
+
+    expect_identical(nrow(haven::read_dta(path, skip = -1, n_max = 2)), 2L)
+    expect_error(read_dta(path, skip = -1, n_max = 2), "non-negative whole")
+    expect_identical(nrow(haven::read_dta(path, skip = NA, n_max = 2)), 2L)
+    expect_error(read_dta(path, skip = NA, n_max = 2), "integer or double")
+    expect_s3_class(haven::read_dta(path, skip = Inf, n_max = 2), "tbl_df")
+    expect_error(read_dta(path, skip = Inf, n_max = 2), "non-negative whole")
+    expect_error(haven::read_dta(path, skip = 2.9, n_max = 2),
+                 "single integer")
+    expect_error(read_dta(path, skip = 2.9, n_max = 2),
+                 "non-negative whole")
 })
