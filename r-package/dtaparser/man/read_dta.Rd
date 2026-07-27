@@ -26,7 +26,11 @@ variable is selected more than once, the first selection and alias win.}
 \item{n_max}{Maximum observations to read, or \code{Inf}.}
 \item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
 }
-\value{A tibble containing native numeric and character vectors.}
+\value{A tibble containing native numeric and character vectors. \code{\%td}
+columns and legacy or custom formats beginning \code{\%d} have class
+\code{Date}; \code{\%tc} and \code{\%tC} columns have classes \code{POSIXct}
+and \code{POSIXt} in UTC. Other Stata temporal formats remain numeric with
+their \code{format.stata} attribute.}
 \description{
 Reads Stata releases 113--115 and 117--119 through the native Rust parser,
 retaining dataset and variable labels, dataset notes, formats, value labels,

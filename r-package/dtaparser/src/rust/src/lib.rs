@@ -101,10 +101,10 @@ enum TemporalKind {
 }
 
 fn temporal_kind(format: &str) -> TemporalKind {
-    if format.starts_with("%td") {
-        TemporalKind::Date
-    } else if format.starts_with("%tc") || format.starts_with("%tC") {
+    if format.starts_with("%tC") || format.starts_with("%tc") {
         TemporalKind::Datetime
+    } else if format.starts_with("%td") || format.starts_with("%d") {
+        TemporalKind::Date
     } else {
         TemporalKind::None
     }
@@ -896,7 +896,34 @@ pub unsafe extern "C" fn dtaparser_free_error(error: *mut c_char) {
 
 #[cfg(test)]
 mod tests {
-    use super::{selected_row_count, validate_r_row_count, R_DATA_FRAME_MAX_ROWS};
+    use super::{
+        selected_row_count, temporal_kind, validate_r_row_count, TemporalKind,
+        R_DATA_FRAME_MAX_ROWS,
+    };
+
+    #[test]
+    fn temporal_formats_match_haven_prefix_rules() {
+        for format in ["%td", "%tdDD/NN/CCYY", "%d", "%dCY-N-D", "%dollars"] {
+            assert!(
+                matches!(temporal_kind(format), TemporalKind::Date),
+                "{format} should be a daily date"
+            );
+        }
+        for format in ["%tc", "%tcDDmonCCYY_HH:MM:SS", "%tC", "%tCCustom"] {
+            assert!(
+                matches!(temporal_kind(format), TemporalKind::Datetime),
+                "{format} should be a datetime"
+            );
+        }
+        for format in [
+            "%D", "%9d", "%tw", "%tm", "%tq", "%th", "%ty", "%t", "d", "",
+        ] {
+            assert!(
+                matches!(temporal_kind(format), TemporalKind::None),
+                "{format} should remain numeric"
+            );
+        }
+    }
 
     #[test]
     fn selected_row_windows_are_clamped_before_decode() {

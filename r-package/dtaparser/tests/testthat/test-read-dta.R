@@ -211,6 +211,88 @@ test_that("date and datetime storage become native R temporal vectors", {
     expect_identical(attr(actual$instant, "tzone"), "UTC")
 })
 
+test_that("legacy and custom daily-date formats match haven", {
+    skip_if_not_installed("haven")
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+
+    formats <- c(
+        daily_td = "%td",
+        daily_d = "%d",
+        daily_custom = "%dCY-N-D",
+        daily_unusual = "%dollars",
+        daily_other = "%dfoo",
+        datetime_tc = "%tc",
+        datetime_tC = "%tC",
+        near_uppercase_d = "%D",
+        near_width_d = "%9d",
+        weekly = "%tw",
+        monthly = "%tm",
+        quarterly = "%tq",
+        halfyear = "%th",
+        yearly = "%ty",
+        incomplete_temporal = "%t",
+        bare_d = "d"
+    )
+    values <- c(0, 3653, haven::tagged_na("a"), NA_real_)
+    input <- as.data.frame(lapply(formats, function(format) {
+        column <- values
+        attr(column, "format.stata") <- format
+        column
+    }), check.names = FALSE)
+    haven::write_dta(input, path, version = 15)
+
+    actual <- read_dta(path)
+    rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
+    expected <- haven::read_dta(path)
+
+    expect_identical(actual, rust_vectors)
+    for (name in names(formats)) {
+        expect_identical(actual[[name]], expected[[name]], info = name)
+        expect_identical(attr(actual[[name]], "format.stata"), formats[[name]],
+                         info = name)
+        expect_identical(haven::na_tag(actual[[name]]),
+                         haven::na_tag(expected[[name]]), info = name)
+    }
+
+    date_names <- names(formats)[startsWith(formats, "%d") |
+                                 startsWith(formats, "%td")]
+    datetime_names <- names(formats)[startsWith(formats, "%tc") |
+                                     startsWith(formats, "%tC")]
+    numeric_names <- setdiff(names(formats), c(date_names, datetime_names))
+    expect_true(all(vapply(actual[date_names], inherits, logical(1), "Date")))
+    expect_true(all(vapply(actual[datetime_names], inherits, logical(1),
+                           "POSIXct")))
+    expect_true(all(vapply(actual[datetime_names], function(column) {
+        identical(attr(column, "tzone"), "UTC")
+    }, logical(1))))
+    expect_true(all(vapply(actual[numeric_names], function(column) {
+        identical(class(column), "numeric")
+    }, logical(1))))
+
+    selected_names <- c("daily_custom", "datetime_tC", "near_uppercase_d")
+    selected <- read_dta(
+        path,
+        col_select = all_of(selected_names),
+        skip = 1,
+        n_max = 2
+    )
+    selected_rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        path,
+        col_select = all_of(selected_names),
+        skip = 1,
+        n_max = 2
+    )
+    selected_expected <- haven::read_dta(
+        path,
+        col_select = all_of(selected_names),
+        skip = 1,
+        n_max = 2
+    )
+    expect_identical(selected, selected_rust_vectors)
+    expect_identical(selected, selected_expected)
+})
+
 test_that("explicit encodings match haven across ordinary textual surfaces", {
     skip_if_not_installed("haven")
     for (version in c(115L, 118L)) local({
