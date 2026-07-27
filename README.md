@@ -130,8 +130,10 @@ Build and check the R source package from the repository root with its declared
 R dependencies installed:
 
 ```sh
+dtaparser_version="$(sed -n 's/^Version: //p' r-package/dtaparser/DESCRIPTION)"
+dtaparser_tarball="dtaparser_${dtaparser_version}.tar.gz"
 R CMD build r-package/dtaparser
-R CMD check --no-manual dtaparser_0.1.0.tar.gz
+R CMD check --no-manual "$dtaparser_tarball"
 ```
 
 ## License

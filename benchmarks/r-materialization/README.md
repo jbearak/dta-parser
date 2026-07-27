@@ -14,10 +14,12 @@ install it into a fresh benchmark-only library before starting a benchmark
 session:
 
 ```sh
+dtaparser_version="$(sed -n 's/^Version: //p' r-package/dtaparser/DESCRIPTION)"
+dtaparser_tarball="dtaparser_${dtaparser_version}.tar.gz"
 R CMD build r-package/dtaparser
 mkdir -p "$PWD/target"
 benchmark_lib="$(mktemp -d "$PWD/target/r-benchmark-library.XXXXXX")"
-R CMD INSTALL --library="$benchmark_lib" dtaparser_0.1.0.tar.gz
+R CMD INSTALL --library="$benchmark_lib" "$dtaparser_tarball"
 export DTAPARSER_BENCH_LIB="$benchmark_lib"
 Rscript benchmarks/r-materialization/run.R input.dta timings.tsv 21
 ```

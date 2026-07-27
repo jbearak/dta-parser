@@ -156,11 +156,13 @@ every bundled fixture.
 
 ```sh
 DTA_REQUIRE_R_CONFORMANCE=1 scripts/conformance.sh
+dtaparser_version="$(sed -n 's/^Version: //p' r-package/dtaparser/DESCRIPTION)"
+dtaparser_tarball="dtaparser_${dtaparser_version}.tar.gz"
 R CMD build r-package/dtaparser
-R CMD check --no-manual dtaparser_0.1.0.tar.gz
+R CMD check --no-manual "$dtaparser_tarball"
 mkdir -p "$PWD/target"
 benchmark_lib="$(mktemp -d "$PWD/target/r-benchmark-library.XXXXXX")"
-R CMD INSTALL --library="$benchmark_lib" dtaparser_0.1.0.tar.gz
+R CMD INSTALL --library="$benchmark_lib" "$dtaparser_tarball"
 export DTAPARSER_BENCH_LIB="$benchmark_lib"
 Rscript benchmarks/r-materialization/run.R input.dta timings.tsv 21
 ```
@@ -169,8 +171,9 @@ The materialization benchmark runners require `DTAPARSER_BENCH_LIB` and verify
 that the package is loaded from that freshly populated, checkout-local library
 rather than an unrelated global installation.
 
-The Rust source of truth is `rust/dta-parser`. After a root-first change,
-mirror it here and run `scripts/check-rust-sync.sh`; the check also verifies the
-Cargo locks and deterministic offline `vendor.tar.gz` identity. Windows CI
+The Rust source of truth is `rust/dta-parser`. After changing that crate,
+mirror it into `r-package/dtaparser/src/vendor/dta-parser` and run
+`scripts/check-rust-sync.sh`; the check also verifies the Cargo locks and
+deterministic offline `vendor.tar.gz` identity. Windows CI
 installs and selects `stable-x86_64-pc-windows-gnu`, confirms the rustc host,
 then actually builds and checks the package through Rtools.
