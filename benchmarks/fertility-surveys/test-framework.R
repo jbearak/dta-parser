@@ -72,6 +72,7 @@ stopifnot(nrow(selected) == 1L, selected$id[[1L]] == "F0003",
           options$timeout_seconds == 9L, options$retry)
 expect_error(fertility_parse_arguments("--shard-count=2"), "supplied together")
 expect_error(fertility_parse_arguments("--timeout-seconds=0"), "positive integer")
+expect_error(fertility_parse_arguments("--beyond-end-windows=9"), "must not exceed 8")
 expect_error(fertility_filter_inventory(
     inventory, fertility_parse_arguments("--id=F9999")
 ), "unknown --id")
@@ -112,11 +113,282 @@ stopifnot(fertility_compare_haven(actual_missing, expected)$classification ==
 expected <- actual
 attr(expected$text, "label") <- "different"
 stopifnot(fertility_compare_haven(actual, expected)$classification ==
-          "attribute-mismatch")
+          "attribute-label-mismatch")
 changed <- actual
 changed$text[[1L]] <- "different"
 stopifnot(fertility_compare_internal(actual, changed)$classification ==
           "internal-collector-mismatch")
+internal_float <- actual
+internal_float$number[[2L]] <- internal_float$number[[2L]] + 1e-12
+stopifnot(!fertility_compare_internal(actual, internal_float)$ok)
+date_float <- actual
+date_float$day[[1L]] <- structure(
+    unclass(date_float$day[[1L]]) + 1e-8, class = "Date"
+)
+stopifnot("date-mismatch" %in%
+          fertility_compare_haven(actual, date_float)$mismatches$category)
+posix_actual <- tibble::tibble(
+    time = as.POSIXct("1970-01-01 00:00:00", tz = "UTC")
+)
+posix_expected <- posix_actual
+posix_expected$time <- structure(
+    unclass(posix_expected$time) + 1e-8,
+    class = c("POSIXct", "POSIXt"), tzone = "UTC"
+)
+stopifnot("date-mismatch" %in%
+          fertility_compare_haven(posix_actual, posix_expected)$mismatches$category)
+
+# Exhaustive comparison records independent mismatches in early and late columns.
+multi_expected <- actual
+multi_expected$number[[1L]] <- 9
+multi_expected$text[[3L]] <- "different"
+multi <- fertility_compare_haven(actual, multi_expected)$mismatches
+stopifnot(all(c(1L, 2L) %in% multi$component),
+          all(c("value-mismatch", "encoding-mismatch") %in% multi$category))
+paired <- multi[1L, , drop = FALSE]
+paired$pair <- "direct-haven"
+unpaired <- fertility_mismatch_record("metadata-mismatch", "source-name-mismatch")
+stopifnot(nrow(fertility_bind_mismatches(list(paired, unpaired))) == 2L)
+short_actual <- tibble::tibble(value = c(1, 2, 3))
+short_expected <- tibble::tibble(value = c(9, 2))
+short_mismatches <- fertility_compare_haven(short_actual, short_expected)$mismatches
+stopifnot(all(c("row-count-mismatch", "value-mismatch") %in%
+              short_mismatches$detail))
+pair_frames <- list(
+    direct = tibble::tibble(value = c(1, 2)),
+    rust = tibble::tibble(value = c(1, 3)),
+    haven = tibble::tibble(value = c(4, 2))
+)
+pair_result <- fertility_compare_available_pairs(
+    pair_frames, c(direct = FALSE, rust = FALSE, haven = FALSE)
+)
+stopifnot(identical(sort(unique(pair_result$mismatches$pair)),
+                    c("direct-haven", "direct-rust", "rust-haven")))
+private_attribute <- pair_frames$haven
+attr(private_attribute$value, "private_source_attribute") <- "different"
+private_pair_result <- fertility_compare_available_pairs(
+    list(direct = pair_frames$direct, rust = pair_frames$direct,
+         haven = private_attribute),
+    c(direct = FALSE, rust = FALSE, haven = FALSE)
+)
+stopifnot(any(grepl("private_source_attribute",
+                   private_pair_result$mismatches$detail)),
+          !any(grepl("private_source_attribute", private_pair_result$secondary)))
+date_expected <- actual
+date_expected$day[[1L]] <- date_expected$day[[1L]] + 1
+stopifnot("date-mismatch" %in%
+          fertility_compare_haven(actual, date_expected)$mismatches$category)
+tag_expected <- actual
+tag_expected$number[[3L]] <- haven::tagged_na("b")
+stopifnot("tag-mismatch" %in%
+          fertility_compare_haven(actual, tag_expected)$mismatches$category)
+metadata_expected <- actual
+attr(metadata_expected, "notes") <- "different"
+stopifnot("metadata-mismatch" %in%
+          fertility_compare_haven(actual, metadata_expected)$mismatches$category)
+
+# Sizing and batching are deterministic, preserve fixed-string widths, isolate
+# strL columns, and cannot create an unbounded traversal plan.
+tile_options <- fertility_parse_arguments(c(
+    "--chunk-rows=100", "--column-batch=8", "--memory-mib=128",
+    "--cell-budget=300", "--max-tiles-per-batch=3"
+))
+tile_configuration <- fertility_tile_configuration(tile_options)
+stopifnot(identical(fertility_adaptive_rows(8, tile_configuration), 100L),
+          identical(fertility_adaptive_rows(rep(8, 8), tile_configuration), 12L),
+          identical(fertility_adaptive_rows(2045, tile_configuration), 100L),
+          identical(fertility_adaptive_rows(Inf, tile_configuration), 1L),
+          identical(
+              fertility_column_batches(c("a", "wide", "long", "b"), 8L,
+                                        c(8, 2045, Inf, 8)),
+              list(c("a", "wide"), "long", "b")
+          ))
+finite_plan <- fertility_plan_offsets(5, 2L, 3L)
+stopifnot(!finite_plan$ceiling, identical(finite_plan$offsets, c(0, 2, 4)))
+stopifnot(fertility_plan_offsets(7, 2L, 3L)$ceiling,
+          fertility_plan_offsets(Inf, 2L, 3L)$ceiling)
+stopifnot(fertility_memory_error(simpleError("vector memory exhausted")),
+          !fertility_memory_error(simpleError("reader failed")))
+
+# Structural parsing independently binds traversal to the source header and
+# retains both wide fixed-string widths and strL identity.
+wide_path <- file.path(root, "wide.dta")
+haven::write_dta(data.frame(
+    number = 1:3, fixed = rep(strrep("x", 2000), 3),
+    long_string = rep(strrep("y", 3000), 3)
+), wide_path, version = 14)
+wide_structure <- fertility_structural_metadata(wide_path)
+stopifnot(wide_structure$rows == 3, wide_structure$columns == 3L,
+          identical(wide_structure$column_bytes, c(8, 2000, Inf)),
+          identical(wide_structure$strl, c(FALSE, FALSE, TRUE)))
+legacy_path <- file.path(root, "legacy.dta")
+haven::write_dta(data.frame(number = 1:3, fixed = c("a", "bb", "ccc")),
+                 legacy_path, version = 10)
+legacy_structure <- fertility_structural_metadata(legacy_path)
+stopifnot(legacy_structure$rows == 3, legacy_structure$columns == 2L,
+          identical(legacy_structure$column_bytes, c(8, 3)))
+tag_path <- file.path(root, "tag-values.dta")
+haven::write_dta(data.frame(text = c("<N>", "</N>", "<variable_types>")),
+                 tag_path, version = 14)
+tag_structure <- fertility_structural_metadata(tag_path)
+stopifnot(tag_structure$rows == 3, tag_structure$columns == 1L)
+# A reader that keeps returning rows beyond the independent count is classified
+# immediately; the configured window count, rather than reader behavior, bounds
+# the number of probes.
+nonterminating <- replicate(tile_configuration$beyond_end_windows,
+                            c(direct = 1L, rust = 1L, haven = 1L), simplify = FALSE)
+stopifnot(length(nonterminating) == 1L,
+          all(vapply(nonterminating, fertility_row_termination_mismatch,
+                     logical(1))))
+stopifnot(fertility_structural_shape_mismatch(
+              c(direct = 3L, rust = 3L), 4, 2L, 2L
+          ),
+          !fertility_structural_shape_mismatch(
+              c(direct = 3L, rust = 3L), 3, 2L, 2L
+          ))
+if (requireNamespace("callr", quietly = TRUE)) {
+    memory_failure <- tryCatch(callr::r(
+        function() raw(512L * 1024L * 1024L), timeout = 30,
+        env = c(R_MAX_VSIZE = "128M"), spinner = FALSE, show = FALSE,
+        user_profile = FALSE, system_profile = FALSE
+    ), error = identity)
+    stopifnot(inherits(memory_failure, "error"),
+              fertility_memory_error(memory_failure))
+}
+
+# Metadata plus every deterministic value tile is required for completeness. A
+# mismatch in the first tile does not prevent later tiles from being assessed.
+empty_mismatches <- fertility_bind_mismatches(list())
+metadata_result <- list(
+    tile_type = "metadata", classification = "pass", secondary = character(),
+    mismatches = empty_mismatches, rows = 3L, elapsed_seconds = 0
+)
+synthetic_batches <- list("a", "b")
+make_tile_result <- function(batch, skip, rows, classification = "pass",
+                             mismatches = empty_mismatches) {
+    expected_names <- synthetic_batches[[batch]]
+    expected_hash <- fertility_projection_hash(expected_names, "test-framework")
+    list(
+        framework_id = "test-framework", tile_type = "value", batch = batch,
+        skip = as.double(skip), n_max = 2L, rows = rows,
+        classification = classification, secondary = character(),
+        mismatches = mismatches,
+        projection_expected_count = length(expected_names),
+        projection_expected_hash = expected_hash,
+        projection_counts = setNames(rep(length(expected_names), 3L),
+                                     c("direct", "rust", "haven")),
+        projection_hashes = setNames(rep(expected_hash, 3L),
+                                     c("direct", "rust", "haven")),
+        projection_ok = setNames(rep(TRUE, 3L),
+                                 c("direct", "rust", "haven")),
+        elapsed_seconds = 0
+    )
+}
+make_terminal_result <- function(skip = 3, n_max = 1L, batch = 1L) {
+    expected_names <- synthetic_batches[[1L]]
+    expected_hash <- fertility_projection_hash(expected_names, "test-framework")
+    list(
+        framework_id = "test-framework", tile_type = "terminal", batch = batch,
+        skip = as.double(skip), n_max = as.integer(n_max), rows = 0L,
+        reader_rows = setNames(rep(0L, 3L), c("direct", "rust", "haven")),
+        classification = "pass", secondary = character(),
+        mismatches = empty_mismatches,
+        projection_expected_count = length(expected_names),
+        projection_expected_hash = expected_hash,
+        projection_counts = setNames(rep(length(expected_names), 3L),
+                                     c("direct", "rust", "haven")),
+        projection_hashes = setNames(rep(expected_hash, 3L),
+                                     c("direct", "rust", "haven")),
+        projection_ok = setNames(rep(TRUE, 3L), c("direct", "rust", "haven")),
+        elapsed_seconds = 0
+    )
+}
+early_issue <- fertility_mismatch_record("value-mismatch", "value-mismatch", 1L)
+traversed_tiles <- list(
+    metadata_result,
+    make_tile_result(1L, 0, 2L, "value-mismatch", early_issue),
+    make_tile_result(1L, 2, 1L),
+    make_tile_result(2L, 0, 2L),
+    make_tile_result(2L, 2, 1L),
+    make_terminal_result()
+)
+stopifnot(fertility_validate_tile_completeness(
+              traversed_tiles, synthetic_batches, 3, tile_configuration
+          ),
+          fertility_aggregate_classification(traversed_tiles, TRUE) ==
+              "value-mismatch")
+missing_terminal <- traversed_tiles[-length(traversed_tiles)]
+duplicate_terminal <- c(traversed_tiles, list(make_terminal_result()))
+wrong_terminal_skip <- traversed_tiles
+wrong_terminal_skip[[length(wrong_terminal_skip)]]$skip <- 4
+wrong_terminal_n_max <- traversed_tiles
+wrong_terminal_n_max[[length(wrong_terminal_n_max)]]$n_max <- 2L
+wrong_terminal_batch <- traversed_tiles
+wrong_terminal_batch[[length(wrong_terminal_batch)]]$batch <- 2L
+for (invalid in list(missing_terminal, duplicate_terminal, wrong_terminal_skip,
+                     wrong_terminal_n_max, wrong_terminal_batch)) {
+    stopifnot(!fertility_validate_tile_completeness(
+        invalid, synthetic_batches, 3, tile_configuration
+    ))
+}
+two_probe_configuration <- tile_configuration
+two_probe_configuration$beyond_end_windows <- 2L
+two_probe_tiles <- c(traversed_tiles, list(make_terminal_result(skip = 4)))
+stopifnot(fertility_validate_tile_completeness(
+    two_probe_tiles, synthetic_batches, 3, two_probe_configuration
+))
+zero_batches <- fertility_structural_batches(character(), 8L, numeric(), 0L)
+stopifnot(length(zero_batches) == 1L, identical(zero_batches[[1L]], character()))
+retarget_projection <- function(tile, names) {
+    hash <- fertility_projection_hash(names, "test-framework")
+    tile$projection_expected_count <- length(names)
+    tile$projection_expected_hash <- hash
+    tile$projection_counts[] <- length(names)
+    tile$projection_hashes[] <- hash
+    tile
+}
+zero_column_tiles <- list(
+    metadata_result,
+    retarget_projection(make_tile_result(1L, 0, 2L), character()),
+    retarget_projection(make_tile_result(1L, 2, 1L), character()),
+    retarget_projection(make_terminal_result(), character())
+)
+stopifnot(fertility_validate_tile_completeness(
+    zero_column_tiles, zero_batches, 3, tile_configuration
+))
+shared_empty <- fertility_projection_attestation(
+    list(direct = data.frame(), rust = data.frame(), haven = data.frame()),
+    c(direct = FALSE, rust = FALSE, haven = FALSE), "a", "test-framework"
+)
+stopifnot(!any(shared_empty$ok), all(shared_empty$counts == 0L),
+          nchar(shared_empty$expected_hash) == 64L)
+wrong_projection_tiles <- traversed_tiles
+for (i in 2:length(wrong_projection_tiles)) {
+    wrong_projection_tiles[[i]]$projection_counts[] <- 0L
+    wrong_projection_tiles[[i]]$projection_hashes[] <-
+        fertility_projection_hash(character(), "test-framework")
+    wrong_projection_tiles[[i]]$projection_ok[] <- FALSE
+    wrong_projection_tiles[[i]]$classification <- "metadata-mismatch"
+}
+stopifnot(!fertility_validate_tile_completeness(
+              wrong_projection_tiles, synthetic_batches, 3, tile_configuration
+          ),
+          fertility_aggregate_classification(wrong_projection_tiles, FALSE) != "pass")
+public_projection_result <- fertility_result_frame(list(list(
+    framework_id = "framework", id = "F0001", program = "dhs", level = "women",
+    release = 118L, classification = "metadata-mismatch",
+    projection_expected_hash = shared_empty$expected_hash,
+    projection_hashes = shared_empty$hashes
+)))
+stopifnot(!any(grepl("projection", names(public_projection_result))))
+unresolved_tiles <- traversed_tiles
+unresolved_tiles[[2L]]$classification <- "unresolved"
+unresolved_tiles[[2L]]$mismatches <- empty_mismatches
+stopifnot(fertility_aggregate_classification(unresolved_tiles, TRUE) == "unresolved")
+changed_tiles <- traversed_tiles
+changed_tiles[[2L]]$classification <- "input-changed"
+stopifnot(fertility_aggregate_classification(changed_tiles, FALSE) ==
+          "inventory-hash-error")
 
 item <- as.list(inventory[1L, , drop = FALSE])
 item_input <- fertility_capture_input(item)
@@ -141,6 +413,45 @@ stopifnot(!fertility_checkpoint_valid(checkpoint, item, "framework"))
 checkpoint_path <- file.path(root, "checkpoint.rds")
 fertility_atomic_save_rds(checkpoint, checkpoint_path)
 stopifnot(identical(readRDS(checkpoint_path), checkpoint))
+
+# Tile checkpoints resume independently. Resource failures rerun only with
+# --retry, while completed semantic mismatches remain reusable.
+tile_item <- item
+tile_input <- item_input
+tile <- fertility_value_tile(1L, 0, 2L, "x")
+tile_checkpoint <- file.path(root, "tile-checkpoint.rds")
+tile_counter <- new.env(parent = emptyenv())
+tile_counter$n <- 0L
+tile_execute <- function(item, tile, input) {
+    tile_counter$n <- tile_counter$n + 1L
+    list(
+        schema_version = fertility_schema_version, framework_id = "framework",
+        id = item$id, tile_id = tile$tile_id, tile_type = tile$type,
+        batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
+        classification = "timeout", secondary = character(),
+        mismatches = fertility_bind_mismatches(list()), rows = NA_integer_,
+        columns = NA_integer_, column_names = character(), storage = character(),
+        elapsed_seconds = 0
+    )
+}
+tile_config <- fertility_tile_configuration(fertility_parse_arguments(
+    "--timeout-seconds=1"
+))
+first_tile <- fertility_process_tile(
+    tile_item, tile, tile_checkpoint, "framework", tile_config, tile_input,
+    FALSE, tile_execute
+)
+resumed_tile <- fertility_process_tile(
+    tile_item, tile, tile_checkpoint, "framework", tile_config, tile_input,
+    FALSE, tile_execute
+)
+retried_tile <- fertility_process_tile(
+    tile_item, tile, tile_checkpoint, "framework", tile_config, tile_input,
+    TRUE, tile_execute
+)
+stopifnot(!first_tile$resumed, resumed_tile$resumed, !retried_tile$resumed,
+          tile_counter$n == 2L)
+
 supported_item <- as.list(inventory[2L, , drop = FALSE])
 supported_item$path <- normalizePath(primary_second, winslash = "/")
 supported_input <- fertility_capture_input(supported_item)
@@ -160,7 +471,7 @@ unsupported <- fertility_worker(
     unsupported_item, file.path(script_dir, "compare.R"),
     root, root, "framework", 1L, fertility_file_sha512(unsupported_item$path)
 )
-stopifnot(unsupported$classification == "unsupported-release")
+stopifnot(unsupported$classification == "expected-unsupported-111")
 hash_item <- as.list(inventory[2L, , drop = FALSE])
 hash_item$expected_sha512 <- paste(rep("0", 128L), collapse = "")
 hash_failure <- fertility_worker(
@@ -168,6 +479,54 @@ hash_failure <- fertility_worker(
     fertility_file_sha512(hash_item$path)
 )
 stopifnot(hash_failure$classification == "input-signature-mismatch")
+
+# Real metadata discovery uses zero-row frames plus zero-column shape reads; value
+# workers materialize only their explicit row/column window.
+bounded_path <- file.path(root, "bounded.dta")
+bounded_data <- tibble::tibble(
+    number = 1:5,
+    text = c("a", "b", "c", "d", "e"),
+    day = as.Date("2020-01-01") + 0:4
+)
+haven::write_dta(bounded_data, bounded_path)
+bounded_item <- list(
+    id = "F9900", program = "dhs", level = "women", release = 118L,
+    path = normalizePath(bounded_path, winslash = "/"), expected_sha512 = ""
+)
+haven_zero_column <- tryCatch(
+    haven::read_dta(bounded_path, col_select = character()), error = identity
+)
+stopifnot(inherits(haven_zero_column, "error"))
+checkout_library <- file.path(script_dir, "..", "..", "target",
+                              "fertility-surveys", "raw", "library")
+if (dir.exists(file.path(checkout_library, "dtaparser"))) {
+    old_paths <- .libPaths()
+    .libPaths(c(checkout_library, old_paths))
+    on.exit(.libPaths(old_paths), add = TRUE)
+    installed_dtaparser <- normalizePath(find.package("dtaparser"), winslash = "/")
+    metadata_worker <- fertility_worker_tile(
+        bounded_item, fertility_metadata_tile(), file.path(script_dir, "compare.R"),
+        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+    )
+    stopifnot(metadata_worker$rows == 5L, metadata_worker$columns == 3L,
+              identical(metadata_worker$column_names, names(bounded_data)))
+    bounded_tile <- fertility_value_tile(1L, 1L, 2L, c("number", "day"))
+    bounded_worker <- fertility_worker_tile(
+        bounded_item, bounded_tile, file.path(script_dir, "compare.R"),
+        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+    )
+    stopifnot(bounded_worker$rows == 2L, bounded_worker$columns == 2L,
+              all(bounded_worker$projection_ok),
+              all(bounded_worker$projection_counts == 2L),
+              all(bounded_worker$projection_hashes ==
+                  bounded_worker$projection_expected_hash),
+              !any(c("number", "day") %in% unlist(
+                  bounded_worker[c("projection_hashes", "projection_expected_hash")],
+                  use.names = FALSE
+              )))
+}
+worker_source <- paste(readLines(file.path(script_dir, "worker.R")), collapse = "\n")
+stopifnot(!grepl("read_dta\\(item\\$path\\)", worker_source))
 
 # Timeout checkpoints retain the parent hash, publish, resume without retry, and
 # execute again only when retry is requested.

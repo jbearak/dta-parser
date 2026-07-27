@@ -1,4 +1,4 @@
-fertility_schema_version <- 1L
+fertility_schema_version <- 5L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
@@ -97,6 +97,76 @@ fertility_release <- function(path) {
         return(as.integer(release))
     }
     as.integer(bytes[[1L]])
+}
+
+fertility_raw_find <- function(bytes, needle) {
+    needle <- charToRaw(needle)
+    if (length(bytes) < length(needle)) return(integer())
+    starts <- which(bytes == needle[[1L]])
+    starts <- starts[starts + length(needle) - 1L <= length(bytes)]
+    starts[vapply(starts, function(start) {
+        identical(bytes[start:(start + length(needle) - 1L)], needle)
+    }, logical(1))]
+}
+
+fertility_raw_uint <- function(bytes, start, size, byteorder) {
+    selected <- as.double(bytes[start:(start + size - 1L)])
+    if (identical(byteorder, "MSF")) selected <- rev(selected)
+    value <- sum(selected * 256^(seq_along(selected) - 1L))
+    if (!is.finite(value) || value > 2^53) stop("DTA count exceeds exact R range")
+    value
+}
+
+fertility_structural_metadata <- function(path) {
+    connection <- file(path, open = "rb")
+    on.exit(close(connection), add = TRUE)
+    bytes <- readBin(connection, "raw", n = 4L * 1024L * 1024L)
+    release <- fertility_release(path)
+    if (release %in% c(113L, 114L)) {
+        if (length(bytes) < 109L) stop("legacy DTA header is truncated")
+        byteorder <- if (as.integer(bytes[[2L]]) == 1L) "MSF" else "LSF"
+        columns <- fertility_raw_uint(bytes, 5L, 2L, byteorder)
+        rows <- fertility_raw_uint(bytes, 7L, 4L, byteorder)
+        start <- 110L
+        if (start + columns - 1L > length(bytes)) stop("legacy DTA types are truncated")
+        codes <- as.integer(bytes[start:(start + columns - 1L)])
+        column_bytes <- ifelse(codes <= 244L, pmax(codes, 1L), 8L)
+        return(list(rows = rows, columns = as.integer(columns),
+                    column_bytes = as.double(column_bytes), strl = rep(FALSE, columns)))
+    }
+    if (!(release %in% c(117L, 118L))) stop("unsupported structural DTA release")
+    first_after <- function(needle, after = 0L) {
+        found <- fertility_raw_find(bytes, needle)
+        found <- found[found > after]
+        if (!length(found)) stop("modern DTA structural tag is missing")
+        found[[1L]]
+    }
+    byte_start <- first_after("<byteorder>")
+    byte_end <- first_after("</byteorder>", byte_start)
+    order_start <- byte_start + length(charToRaw("<byteorder>"))
+    byteorder <- rawToChar(bytes[order_start:(byte_end - 1L)])
+    read_tag_uint <- function(tag, size) {
+        opening <- first_after(paste0("<", tag, ">"))
+        closing <- first_after(paste0("</", tag, ">"), opening)
+        start <- opening + length(charToRaw(paste0("<", tag, ">")))
+        if (closing - start != size) stop("modern DTA structural field has wrong size")
+        fertility_raw_uint(bytes, start, size, byteorder)
+    }
+    columns <- read_tag_uint("K", 2L)
+    rows <- read_tag_uint("N", if (release == 118L) 8L else 4L)
+    map_end <- first_after("</map>")
+    opening <- first_after("<variable_types>", map_end)
+    closing <- first_after("</variable_types>", opening)
+    start <- opening + length(charToRaw("<variable_types>"))
+    if (closing - start != columns * 2L) stop("modern DTA types have wrong size")
+    codes <- vapply(seq_len(columns), function(i) {
+        fertility_raw_uint(bytes, start + (i - 1L) * 2L, 2L, byteorder)
+    }, numeric(1))
+    strl <- codes == 32768L
+    column_bytes <- ifelse(strl, Inf, ifelse(codes >= 1L & codes <= 2045L,
+                                             codes, 8L))
+    list(rows = rows, columns = as.integer(columns),
+         column_bytes = as.double(column_bytes), strl = strl)
 }
 
 fertility_build_inventory <- function(paths = fertility_required_paths(),

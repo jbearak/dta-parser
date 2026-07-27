@@ -80,69 +80,206 @@ checkpoint_root <- file.path(raw_root, "checkpoints", framework_id)
 dir.create(checkpoint_root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
 Sys.chmod(c(file.path(raw_root, "checkpoints"), checkpoint_root), mode = "0700")
 
-execute_item <- function(item, input) {
+configuration <- fertility_tile_configuration(options)
+
+execute_tile <- function(item, tile, input) {
     started <- proc.time()[["elapsed"]]
-    tryCatch(
+    stat_before <- fertility_file_stat(item$path)
+    result <- tryCatch(
         callr::r(
             function(common_script, runtime_script, worker_script, compare_script,
-                     item, package_library, expected_package_path, framework_id,
-                     timeout_seconds, parent_sha512, raw_root) {
+                     item, tile, package_library, expected_package_path,
+                     framework_id, timeout_seconds, raw_root) {
                 source(common_script, local = environment())
                 source(runtime_script, local = environment())
                 invisible(fertility_assert_tempdir(raw_root))
                 source(worker_script, local = environment())
-                fertility_worker(item, compare_script, package_library,
-                                 expected_package_path, framework_id,
-                                 timeout_seconds, parent_sha512)
+                fertility_worker_tile(
+                    item, tile, compare_script, package_library,
+                    expected_package_path, framework_id, timeout_seconds
+                )
             },
             args = list(
                 file.path(snapshot_root, "common.R"),
                 file.path(snapshot_root, "runtime.R"),
                 file.path(snapshot_root, "worker.R"),
-                file.path(snapshot_root, "compare.R"), item, library,
+                file.path(snapshot_root, "compare.R"), item, tile, library,
                 expected_package_path, framework_id, options$timeout_seconds,
-                input$actual_sha512, raw_root
+                raw_root
             ),
             libpath = .libPaths(), timeout = options$timeout_seconds,
             spinner = FALSE, show = FALSE, user_profile = FALSE,
             system_profile = FALSE,
             env = c(R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null",
-                    TMPDIR = Sys.getenv("TMPDIR"))
+                    TMPDIR = Sys.getenv("TMPDIR"),
+                    R_MAX_VSIZE = paste0(configuration$memory_mib, "M"))
         ),
-        error = function(error) {
-            classification <- if (inherits(error, "callr_timeout_error"))
-                "timeout" else "subprocess-error"
-            fertility_base_result(
-                item, framework_id, options$timeout_seconds, input,
-                classification,
-                unname(proc.time()[["elapsed"]] - started)
-            )
-        }
+        error = function(error) list(
+            schema_version = fertility_schema_version, framework_id = framework_id,
+            id = item$id, tile_id = tile$tile_id, tile_type = tile$type,
+            batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
+            classification = if (inherits(error, "callr_timeout_error"))
+                "timeout" else if (fertility_memory_error(error))
+                "memory-limit" else "crash",
+            secondary = character(), mismatches = data.frame(), rows = NA_integer_,
+            reader_rows = setNames(rep(NA_integer_, 3L),
+                                   c("direct", "rust", "haven")),
+            columns = NA_integer_, column_names = character(), storage = character(),
+            structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
+            projection_expected_count = if (tile$type %in% c("value", "terminal"))
+                length(tile$column_names) else NA_integer_,
+            projection_expected_hash = if (tile$type %in% c("value", "terminal"))
+                fertility_projection_hash(tile$column_names, framework_id) else NA_character_,
+            projection_counts = setNames(rep(NA_integer_, 3L),
+                                         c("direct", "rust", "haven")),
+            projection_hashes = setNames(rep(NA_character_, 3L),
+                                         c("direct", "rust", "haven")),
+            projection_ok = setNames(rep(FALSE, 3L),
+                                     c("direct", "rust", "haven")),
+            elapsed_seconds = unname(proc.time()[["elapsed"]] - started)
+        )
     )
+    stat_after <- fertility_file_stat(item$path)
+    if (is.null(stat_before) || is.null(stat_after) ||
+        !identical(stat_before, stat_after)) result$classification <- "input-changed"
+    result
 }
 
+planning_failure_tile <- function(item, batch, detail) list(
+    schema_version = fertility_schema_version, framework_id = framework_id,
+    id = item$id, tile_id = paste0("planning-", batch), tile_type = "planning",
+    batch = as.integer(batch), skip = 0, n_max = 0L,
+    classification = "unresolved", secondary = detail,
+    mismatches = data.frame(category = "unresolved", detail = detail,
+                            component = NA_integer_, pair = NA_character_,
+                            stringsAsFactors = FALSE),
+    rows = NA_integer_, reader_rows = setNames(rep(NA_integer_, 3L),
+                                                c("direct", "rust", "haven")),
+    columns = NA_integer_, column_names = character(), storage = character(),
+    structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
+    projection_expected_count = NA_integer_, projection_expected_hash = NA_character_,
+    projection_counts = setNames(rep(NA_integer_, 3L),
+                                 c("direct", "rust", "haven")),
+    projection_hashes = setNames(rep(NA_character_, 3L),
+                                 c("direct", "rust", "haven")),
+    projection_ok = setNames(rep(FALSE, 3L), c("direct", "rust", "haven")),
+    elapsed_seconds = 0
+)
+
+simple_result <- function(item, input, classification) list(
+    schema_version = fertility_schema_version, framework_id = framework_id,
+    config_id = configuration$config_id, input_id = input$input_id,
+    id = item$id, program = item$program, level = item$level,
+    release = as.integer(item$release), expected_sha512 = item$expected_sha512,
+    timeout_seconds = options$timeout_seconds, classification = classification,
+    secondary_categories = "", mismatch_count = 0L, mismatch_categories = "",
+    mismatch_signatures = "", rows = NA_real_, columns = NA_integer_,
+    tiles_expected = 0L, tiles_completed = 0L,
+    complete = identical(classification, "expected-unsupported-111"),
+    actual_sha512 = input$actual_sha512, elapsed_seconds = NA_real_
+)
+
+checkpoints <- vector("list", nrow(selected))
 for (index in seq_len(nrow(selected))) {
     item <- as.list(selected[index, , drop = FALSE])
-    checkpoint_path <- file.path(checkpoint_root, paste0(item$id, ".rds"))
-    processed <- fertility_process_item(
-        item, checkpoint_path, framework_id, options$timeout_seconds,
-        options$retry, execute_item
-    )
-    message(item$id, if (processed$resumed) ": resumed " else ": ",
-            processed$result$classification)
-}
-
-checkpoints <- lapply(selected$id, function(id) {
-    checkpoint <- readRDS(file.path(checkpoint_root, paste0(id, ".rds")))
-    item <- as.list(selected[selected$id == id, , drop = FALSE])
-    if (!fertility_checkpoint_valid(
-        checkpoint, item, framework_id, fertility_capture_input(item),
-        options$timeout_seconds
-    )) {
-        stop("checkpoint validation failed")
+    input <- fertility_capture_input(item)
+    file_root <- file.path(checkpoint_root, configuration$config_id, item$id)
+    tile_root <- file.path(file_root, "tiles")
+    result_path <- file.path(file_root, "result.rds")
+    dir.create(tile_root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+    existing <- if (file.exists(result_path)) tryCatch(
+        readRDS(result_path), error = function(error) NULL
+    ) else NULL
+    resumed <- !options$retry &&
+        fertility_file_result_valid(
+            existing, item, framework_id, configuration, input
+        ) && existing$classification %in%
+            c("expected-unsupported-111", "inventory-hash-error")
+    if (resumed) {
+        result <- existing
+    } else if (identical(input$hash_status, "error")) {
+        result <- simple_result(item, input, "inventory-hash-error")
+    } else if (nzchar(item$expected_sha512) &&
+               !identical(input$actual_sha512, tolower(item$expected_sha512))) {
+        result <- simple_result(item, input, "inventory-hash-error")
+    } else if (!(item$release %in% fertility_supported_releases)) {
+        result <- simple_result(item, input, "expected-unsupported-111")
+    } else {
+        metadata_tile <- fertility_metadata_tile()
+        metadata <- fertility_process_tile(
+            item, metadata_tile, file.path(tile_root, "metadata.rds"), framework_id,
+            configuration, input, options$retry, execute_tile
+        )
+        tiles <- list(metadata$result)
+        column_names <- metadata$result$column_names
+        column_bytes <- metadata$result$column_bytes
+        batches <- fertility_structural_batches(
+            column_names, configuration$column_batch, column_bytes,
+            metadata$result$columns
+        )
+        total_rows <- metadata$result$structural_rows
+        structurally_valid <- is.finite(total_rows) && total_rows >= 0 &&
+            identical(as.integer(metadata$result$columns),
+                      as.integer(length(column_names))) &&
+            length(column_bytes) == length(column_names)
+        if (length(batches) && isTRUE(structurally_valid)) {
+            for (batch in seq_along(batches)) {
+                bytes <- fertility_batch_bytes(
+                    batches[[batch]], column_names, column_bytes
+                )
+                rows_per_tile <- fertility_adaptive_rows(bytes, configuration)
+                reserved_probes <- if (batch == 1L)
+                    configuration$beyond_end_windows else 0L
+                plan <- fertility_plan_offsets(
+                    total_rows, rows_per_tile,
+                    configuration$max_tiles_per_batch - reserved_probes
+                )
+                if (plan$ceiling) {
+                    tiles[[length(tiles) + 1L]] <- planning_failure_tile(
+                        item, batch, "tile-ceiling-reached"
+                    )
+                    next
+                }
+                for (offset in plan$offsets) {
+                    tile <- fertility_value_tile(
+                        batch, offset, rows_per_tile, batches[[batch]]
+                    )
+                    processed <- fertility_process_tile(
+                        item, tile, file.path(tile_root, paste0(tile$tile_id, ".rds")),
+                        framework_id, configuration, input, options$retry, execute_tile
+                    )
+                    tiles[[length(tiles) + 1L]] <- processed$result
+                }
+                if (batch == 1L) for (probe in seq_len(configuration$beyond_end_windows)) {
+                    tile <- fertility_value_tile(
+                        batch, total_rows + (probe - 1L),
+                        1L, batches[[batch]], type = "terminal", probe = probe
+                    )
+                    processed <- fertility_process_tile(
+                        item, tile, file.path(tile_root, paste0(tile$tile_id, ".rds")),
+                        framework_id, configuration, input, options$retry, execute_tile
+                    )
+                    tiles[[length(tiles) + 1L]] <- processed$result
+                }
+            }
+        } else if (length(batches)) {
+            tiles[[length(tiles) + 1L]] <- planning_failure_tile(
+                item, 0L, "structural-metadata-unavailable"
+            )
+        }
+        result <- fertility_tiled_result(
+            item, framework_id, configuration, input, tiles, batches, total_rows
+        )
+        final_input <- fertility_capture_input(item)
+        if (!identical(final_input$input_id, input$input_id)) {
+            result <- simple_result(item, final_input, "inventory-hash-error")
+            result$complete <- FALSE
+        }
     }
-    checkpoint
-})
+    if (!resumed) fertility_atomic_save_rds(result, result_path)
+    checkpoints[[index]] <- result
+    message(item$id, if (resumed) ": resumed " else ": ", result$classification)
+}
 # Detect source, dependency, or installed-package changes before publication.
 final_provenance <- fertility_verify_provenance(
     checkout_root, library, provenance_path
@@ -150,6 +287,12 @@ final_provenance <- fertility_verify_provenance(
 if (!identical(final_provenance$provenance_id[[1L]],
                provenance$provenance_id[[1L]])) {
     stop("corpus build provenance changed during the run")
+}
+for (index in seq_len(nrow(selected))) {
+    current_input <- fertility_capture_input(as.list(selected[index, , drop = FALSE]))
+    if (!identical(current_input$input_id, checkpoints[[index]]$input_id)) {
+        stop("corpus input changed before report publication")
+    }
 }
 results <- fertility_result_frame(checkpoints)
 results$build_provenance_id <- provenance$provenance_id[[1L]]
@@ -165,6 +308,7 @@ selection_id <- fertility_stable_id(list(
     shard_count = options$shard_count,
     max_files = as.character(options$max_files),
     timeout_seconds = options$timeout_seconds,
+    config_id = configuration$config_id,
     selected_ids = paste(selected$id, collapse = ",")
 ))
 report_parent <- file.path(raw_root, "reports", selection_id)
@@ -182,11 +326,16 @@ run_provenance <- data.frame(
     schema_version = fertility_schema_version,
     selection_id = selection_id,
     framework_id = framework_id,
+    config_id = configuration$config_id,
     build_provenance_id = provenance$provenance_id[[1L]],
     selected_files = nrow(selected),
     shard_index = options$shard_index,
     shard_count = options$shard_count,
     timeout_seconds = options$timeout_seconds,
+    chunk_rows = options$chunk_rows,
+    column_batch = options$column_batch,
+    memory_mib = options$memory_mib,
+    cell_budget = options$cell_budget,
     retry = options$retry,
     created_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     stringsAsFactors = FALSE, check.names = FALSE

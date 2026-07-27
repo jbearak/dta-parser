@@ -26,15 +26,54 @@ A valid inventory has exactly 1,004 unique files and these release counts:
 
 Every file is SHA-512 hashed; a non-empty recorded signature must match, while
 rows whose historical signature is empty are bound to the hash computed by the
-checkpoint. For each supported file, one isolated R subprocess reads the complete
-file through `dtaparser::read_dta()`, requires exact
-identity with `dtaparser:::.read_dta_rust_vectors()`, then compares the complete
-result with `haven::read_dta()`. Haven comparison checks dimensions, names,
-data-frame and column attributes, storage types, missing positions and kinds,
-tagged missing values, exact non-floating and nonfinite values, and an exhaustive
-elementwise absolute tolerance of `1e-7` for finite floating values. Inputs are
-hashed by the parent before launch, independently in the child, again after the
-child exits, and once more before report publication.
+checkpoint. Supported files are never decoded into whole-file data frames. An
+isolated metadata subprocess compares zero-row direct-R, internal Rust-vector,
+and haven frames, including dataset label/notes and every column's class, label,
+`format.stata`, value labels, and `tzone`. A bounded source-header parser
+independently obtains the declared observation count, column count, fixed-string
+widths (including `str2045`), and `strL` identity without decoding values.
+Direct-R and Rust-vector zero-column shape reads are checked against that count;
+the installed haven rejects an empty projection. Normal traversal is bound to the
+source count. The first column batch then receives only a configured small number
+of deterministic beyond-end windows (default one, hard maximum eight). Any reader
+that still returns rows is classified `row-termination-mismatch`; it never extends
+traversal. A hard per-batch tile ceiling likewise produces `unresolved` rather
+than an open-ended loop. Haven participates in zero-row metadata comparison,
+beyond-end verification, and every value tile.
+
+Columns remain in source order. `--column-batch` bounds their count, while `strL`
+columns are always isolated. Row sizing uses numeric bytes, exact fixed-string
+widths, a conservative per-object overhead, three-reader cell and byte budgets,
+and returns a one-row window for every `strL` batch. Each child also starts with
+`R_MAX_VSIZE` set to `--memory-mib` (minimum 128 MiB), making the memory budget an
+enforced vector-heap limit rather than only a scheduling estimate. Memory-limit
+failures are reduced to a privacy-safe fixed classification. Every metadata/value
+tile runs in its own timeout-isolated subprocess and reads exactly
+that projection/window through `dtaparser::read_dta()`,
+`dtaparser:::.read_dta_rust_vectors()`, and `haven::read_dta()`.
+
+Comparison evaluates every available direct-R/Rust, direct-R/haven, and
+Rust/haven pair and accumulates every mismatch rather than returning at the first
+one. It checks dimensions, the overlapping common row prefix even when dimensions
+differ, names, dataset/column attributes, storage types, missing
+positions and NA/NaN kinds, tagged missing values, Date/POSIXct/tzone semantics,
+exact strings and integers, exact Date/POSIXct unclassed values and nonfinite
+values, and every ordinary finite floating value with absolute tolerance `1e-7`.
+Mismatches do not stop later tiles. Public
+reports contain only fixed categories, counts, and hashed signatures; values,
+labels, names, paths, and reader messages remain private. Each reader also emits
+an ordered, framework-salted projection hash and count for every value and
+terminal tile. The worker compares returned names/order to the requested batch in
+memory, and completeness requires matching attestations from all three readers;
+raw variable names are never stored in these attestations or published. A
+supported file can be classified `pass` only after exact gap-free coverage of
+every expected row and column batch plus exactly the configured terminal probes:
+batch 1, one-row windows at contiguous offsets beginning at the structural row
+count, with zero rows returned and valid three-reader projection attestations.
+Zero-column supported files use a single explicit empty projection batch and the
+same traversal and terminal requirements. Inputs are fully hashed before accepting
+checkpoints and again after
+all tiles; cheap size/mtime fingerprints detect changes around each child.
 
 ## Run manually
 
@@ -66,8 +105,8 @@ The exhaustive run is:
 benchmarks/fertility-surveys/benchmark.sh
 ```
 
-Do not run it casually. The default timeout is 600 seconds per file. Available
-options are:
+Do not run it casually. The default timeout is 600 seconds per metadata/value
+tile. Available options are:
 
 - `--inventory-only`
 - `--program=dhs,mics` (comma-separated)
@@ -76,7 +115,14 @@ options are:
 - `--shard-index=N --shard-count=N` (both required; one-based)
 - `--max-files=N`
 - `--timeout-seconds=N`
-- `--retry` (rerun only prior failures; matches and unsupported releases resume)
+- `--chunk-rows=N` (hard row-window cap; default 10,000)
+- `--column-batch=N` (maximum columns per batch; default 16; `strL` is isolated)
+- `--memory-mib=N` (sizing budget and enforced child vector limit; default 256,
+  minimum 128)
+- `--cell-budget=N` (cells across all three readers; default 1,000,000)
+- `--max-tiles-per-batch=N` (hard traversal ceiling; default 100,000)
+- `--beyond-end-windows=N` (terminal verification windows; default 1, maximum 8)
+- `--retry` (rerun failed tiles only; completed matches and mismatches resume)
 
 The orchestrator builds the current checkout package and installs it beneath
 `target/fertility-surveys/raw/library/`. Build provenance binds the commit,
@@ -99,16 +145,25 @@ mid-run while permitting safe recovery after an owner dies or initialization is
 abandoned. Workers source an immutable provenance-addressed
 script snapshot, and all provenance is recomputed before report publication.
 
-Each file has an atomic RDS checkpoint bound to the checkpoint schema, framework
-and package provenance, `datasigs.csv`, inventory ID, release, expected signature,
-and a parent-captured input identity containing the actual SHA-512 or a stable
-hash-error fingerprint. Checkpoint compatibility also includes the requested
-per-file timeout, so changing `--timeout-seconds` cannot silently reuse a result
-created under a different limit. Current identities are rechecked after each
-child, before resume, and before publication. This makes timeout,
-subprocess-error, and input-hash-error checkpoints publishable and resumable.
-`--retry` reruns those failures; without it they resume like other completed
-checkpoints. Filters and shards do not alter checkpoint identity.
+Each file has private atomic metadata, tile, and aggregate RDS checkpoints bound
+to the checkpoint schema, framework/package provenance, `datasigs.csv`, inventory
+ID/release/signature, full input identity, exact tile projection/window, and a
+stable configuration ID. The configuration includes timeout, row cap, column
+batch, memory budget, cell budget, reader count, object overhead, probe count, and
+tile ceiling, so changing any sizing/resource limit cannot silently reuse foreign
+tiles. Timeout, memory-limit, crash, and reader-error tiles are resumable and are
+rerun only with `--retry`;
+completed semantic mismatches remain valid evidence. Filters and shards do not
+alter tile identity.
+
+File-level classifications include `pass`, `expected-unsupported-111`,
+`inventory-hash-error`, `direct-vs-rust-mismatch`, `dtaparser-only-error`,
+`haven-only-error`, `shared-reader-error`, `metadata-mismatch`, `value-mismatch`,
+`tag-mismatch`, `date-mismatch`, `encoding-mismatch`,
+`row-termination-mismatch`, `known-intentional-divergence`, `timeout`,
+`memory-limit`, `crash`, and `unresolved`. Detailed
+secondary fixed categories and hashed mismatch signatures are retained without
+publishing source metadata or values.
 
 Each filter/shard selection publishes a complete immutable report bundle beneath
 `raw/reports/<selection-id>/` and atomically updates only that selection's
@@ -138,10 +193,13 @@ Rscript --vanilla benchmarks/fertility-surveys/test-framework.R
 ```
 
 They cover exact non-recursive inventory mapping, release parsing, privacy-safe
-inventory projection, argument validation, filtering, sharding, retry/checkpoint
-invalidation, atomic publication, timeout publication/resume/retry, parent input
-identity and timeout compatibility, live-owner lock/temp preservation followed
-by dead-owner recovery, dependency relocation/modification invalidation, nested
-parent-R/callr temporary-directory confinement including live callr control and
-serialization artifacts, semantic mismatch classifications and numeric outliers,
+inventory projection, argument validation, filtering/sharding, deterministic
+width-aware batches and adaptive row sizing, fixed-width and `strL` structural
+metadata, nonterminating-reader and tile-ceiling bounds, enforced memory-limit
+attribution, metadata/zero-column contracts, multi-tile gap-free coverage,
+continued traversal after early mismatches,
+tile-level timeout resume/retry, schema/input/config invalidation, exhaustive
+metadata/value/tag/date/encoding categories and numeric outliers, absence of
+unbounded supported-file reads, atomic publication, parent input identity, live
+owner recovery, dependency provenance, nested parent-R/callr temp confinement,
 release-111 handling, signature refusal, and CI/manual opt-in refusal.
