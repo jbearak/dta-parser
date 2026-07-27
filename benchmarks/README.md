@@ -38,3 +38,7 @@ library guard, correctness checks, orchestration command, and output matrix.
 Record the exact command, toolchain, host, fixture sizes, iteration count, and
 correctness status in `baseline.md`. Results are evidence for investigation,
 not a release gate.
+
+The manual [`fertility-surveys/`](fertility-surveys/) framework separately
+checks the private fertility-survey corpus with explicit opt-in and CI refusal
+safeguards.
