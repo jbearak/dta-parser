@@ -123,10 +123,7 @@ for (index in seq_len(nrow(manifest))) {
         file.path(file_root, "tiles"), pattern = "[.]rds$", full.names = TRUE
     ) else character()
     if (identical(recorded$classification, "inventory-hash-error")) {
-        if (length(tile_files) || isTRUE(recorded$complete) ||
-            recorded$mismatch_count != 0L) {
-            stop("recorded input-validation result is inconsistent")
-        }
+        fertility_validate_recorded_input_result(recorded, length(tile_files))
         result <- recorded
     } else if (identical(as.integer(item$release), 111L)) {
         if (length(tile_files) ||

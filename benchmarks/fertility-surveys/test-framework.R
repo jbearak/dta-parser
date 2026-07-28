@@ -985,26 +985,65 @@ stopifnot(isTRUE(fertility_validate_recorded_input_attestation(hash_read_failure
 input_changed_failure <- attested_result
 input_changed_failure$classification <- "inventory-hash-error"
 input_changed_failure$secondary_categories <- "input-changed"
-stopifnot(isTRUE(fertility_validate_recorded_input_attestation(
-    input_changed_failure
-)))
+stopifnot(
+    isTRUE(fertility_validate_recorded_input_attestation(
+        input_changed_failure
+    )),
+    identical(fertility_changed_input_reason(list(
+        input_id = input_changed_failure$input_id,
+        hash_status = "ok",
+        actual_sha512 = input_changed_failure$actual_sha512
+    )), "input-changed"),
+    identical(fertility_changed_input_reason(list(
+        input_id = input_changed_failure$input_id,
+        hash_status = "error", actual_sha512 = NA_character_
+    )), "hash-read-error")
+)
+expect_error(fertility_changed_input_reason(list(
+    input_id = input_changed_failure$input_id,
+    hash_status = "error", actual_sha512 = input_changed_failure$actual_sha512
+)), "inconsistent")
+for (attestation in list(
+    attested_result, signature_failure, hash_read_failure, input_changed_failure
+)) {
+    fresh_attestation <- attestation
+    fresh_attestation$schema_version <- fertility_schema_version
+    replay_attestation <- attestation
+    replay_attestation$schema_version <- fertility_legacy_corpus_schema_version
+    stopifnot(
+        fertility_recorded_result_valid(
+            fresh_attestation, recorded_item, test_framework_id, tile_configuration
+        ),
+        isTRUE(fertility_validate_recorded_input_attestation(fresh_attestation)),
+        fertility_recorded_result_valid(
+            replay_attestation, recorded_item, test_framework_id, tile_configuration,
+            corpus_schema_version = fertility_legacy_corpus_schema_version
+        ),
+        isTRUE(fertility_validate_recorded_input_attestation(replay_attestation))
+    )
+}
+input_changed_recorded <- input_changed_failure
+input_changed_recorded$complete <- FALSE
+input_changed_recorded$mismatch_count <- 0L
+input_changed_recorded$mismatch_categories <- ""
+input_changed_recorded$mismatch_signatures <- ""
 for (corpus_schema_version in c(
     fertility_schema_version, fertility_legacy_corpus_schema_version
 )) {
-    for (attestation in list(
-        attested_result, signature_failure, hash_read_failure,
-        input_changed_failure
-    )) {
-        attestation$schema_version <- as.integer(corpus_schema_version)
-        stopifnot(
-            fertility_recorded_result_valid(
-                attestation, recorded_item, test_framework_id, tile_configuration,
-                corpus_schema_version = corpus_schema_version
-            ),
-            isTRUE(fertility_validate_recorded_input_attestation(attestation))
-        )
-    }
+    input_changed_recorded$schema_version <- as.integer(corpus_schema_version)
+    stopifnot(isTRUE(fertility_validate_recorded_input_result(
+        input_changed_recorded, 3L
+    )))
 }
+expect_error(fertility_validate_recorded_input_result(
+    signature_failure, 1L
+), "input-validation result is inconsistent")
+expect_error(fertility_validate_recorded_input_result(
+    hash_read_failure, 1L
+), "input-validation result is inconsistent")
+expect_error(fertility_validate_recorded_input_result(
+    input_changed_failure, 1L
+), "input-validation result is inconsistent")
 unsupported_attested <- attested_result
 unsupported_attested$classification <- "expected-unsupported-111"
 stopifnot(isTRUE(fertility_validate_recorded_input_attestation(unsupported_attested)))
@@ -1017,6 +1056,9 @@ invalid_attestations <- list(
     { value <- unsupported_attested; value$actual_sha512 <- paste(rep("b", 128L), collapse = ""); value },
     { value <- attested_result; value$secondary_categories <- "signature-mismatch"; value },
     { value <- hash_read_failure; value$actual_sha512 <- attested_result$actual_sha512; value },
+    { value <- attested_result; value$input_id <- "invalid"; value },
+    { value <- signature_failure; value$input_id <- "invalid"; value },
+    { value <- hash_read_failure; value$input_id <- "invalid"; value },
     { value <- input_changed_failure; value$actual_sha512 <- NA_character_; value },
     { value <- input_changed_failure; value$input_id <- "invalid"; value },
     { value <- input_changed_failure; value$secondary_categories <-
@@ -1032,6 +1074,16 @@ for (corpus_schema_version in c(
             "preflight attestation is inconsistent"
         )
     }
+}
+for (malformed_actual in list(NULL, NA, NA_real_)) {
+    malformed_hash_read <- hash_read_failure
+    malformed_hash_read$actual_sha512 <- malformed_actual
+    stopifnot(!fertility_recorded_result_valid(
+        malformed_hash_read, recorded_item, test_framework_id, tile_configuration
+    ))
+    expect_error(fertility_validate_recorded_input_attestation(
+        malformed_hash_read
+    ), "preflight attestation is inconsistent")
 }
 empty_expected_attestation <- attested_result
 empty_expected_attestation$id <- "F0002"
@@ -1606,9 +1658,61 @@ hash_error <- fertility_process_item(
     hash_error_item, hash_error_checkpoint, test_framework_id, 1L, FALSE, never_execute
 )
 stopifnot(hash_error$result$classification == "inventory-hash-error",
+          hash_error$result$secondary_categories == "hash-read-error",
+          isTRUE(fertility_validate_recorded_input_attestation(hash_error$result)),
           nzchar(hash_error$result$input_id),
           fertility_process_item(hash_error_item, hash_error_checkpoint,
                                  test_framework_id, 1L, FALSE, never_execute)$resumed)
+signature_error_item <- timeout_item
+signature_error_item$id <- "F9003"
+signature_error_item$expected_sha512 <- paste(rep("a", 128L), collapse = "")
+signature_error <- fertility_process_item(
+    signature_error_item, file.path(root, "signature-error-checkpoint.rds"),
+    test_framework_id, 1L, FALSE, never_execute
+)
+stopifnot(
+    signature_error$result$classification == "inventory-hash-error",
+    signature_error$result$secondary_categories == "signature-mismatch",
+    isTRUE(fertility_validate_recorded_input_attestation(signature_error$result))
+)
+changed_input_path <- file.path(root, "changed-input.dta")
+write_release(changed_input_path, 118L)
+changed_input_item <- timeout_item
+changed_input_item$id <- "F9004"
+changed_input_item$path <- normalizePath(changed_input_path, winslash = "/")
+change_during_execute <- function(item, input) {
+    write("changed", file = item$path, append = TRUE)
+    fertility_base_result(item, test_framework_id, 1L, input, "pass")
+}
+changed_input <- fertility_process_item(
+    changed_input_item, file.path(root, "changed-input-checkpoint.rds"),
+    test_framework_id, 1L, FALSE, change_during_execute
+)
+stopifnot(
+    changed_input$result$classification == "inventory-hash-error",
+    changed_input$result$secondary_categories == "input-changed",
+    isTRUE(fertility_validate_recorded_input_attestation(changed_input$result))
+)
+removed_input_path <- file.path(root, "removed-input.dta")
+write_release(removed_input_path, 118L)
+removed_input_item <- timeout_item
+removed_input_item$id <- "F9005"
+removed_input_item$path <- normalizePath(removed_input_path, winslash = "/")
+remove_during_execute <- function(item, input) {
+    unlink(item$path)
+    fertility_base_result(item, test_framework_id, 1L, input, "pass")
+}
+removed_input <- fertility_process_item(
+    removed_input_item, file.path(root, "removed-input-checkpoint.rds"),
+    test_framework_id, 1L, FALSE, remove_during_execute
+)
+stopifnot(
+    removed_input$result$classification == "inventory-hash-error",
+    removed_input$result$secondary_categories == "hash-read-error",
+    is.character(removed_input$result$actual_sha512),
+    is.na(removed_input$result$actual_sha512),
+    isTRUE(fertility_validate_recorded_input_attestation(removed_input$result))
+)
 invisible(fertility_publish_results(
     list(hash_error$result), test_build_id,
     file.path(root, "hash-error-results.tsv")

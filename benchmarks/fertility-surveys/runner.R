@@ -361,14 +361,16 @@ fertility_checkpoint_input_current <- function(checkpoint, item) {
 }
 
 fertility_base_result <- function(item, framework_id, timeout_seconds, input,
-                                  classification, elapsed_seconds = NA_real_) {
+                                  classification, elapsed_seconds = NA_real_,
+                                  secondary_categories = "") {
     list(
         schema_version = fertility_schema_version,
         framework_id = framework_id, input_id = input$input_id,
         id = item$id, program = item$program, level = item$level,
         release = as.integer(item$release), expected_sha512 = item$expected_sha512,
         timeout_seconds = timeout_seconds, classification = classification,
-        component = NA_integer_, secondary_categories = "", mismatch_count = 0L,
+        component = NA_integer_, secondary_categories = secondary_categories,
+        mismatch_count = 0L,
         mismatch_categories = "", mismatch_signatures = "", rows = NA_real_,
         columns = NA_integer_, tiles_expected = 0L, tiles_completed = 0L,
         complete = FALSE, actual_sha512 = input$actual_sha512,
@@ -389,16 +391,12 @@ fertility_process_item <- function(item, checkpoint_path, framework_id,
         (!retry || !fertility_should_retry(checkpoint))) {
         return(list(result = checkpoint, resumed = TRUE))
     }
-    if (identical(input_before$hash_status, "error")) {
-        result <- fertility_base_result(
-            item, framework_id, timeout_seconds, input_before, "inventory-hash-error"
-        )
-    } else if (nzchar(item$expected_sha512) &&
-               !identical(input_before$actual_sha512,
-                          tolower(item$expected_sha512))) {
+    preflight <- fertility_inventory_preflight(item, input_before)
+    if (!is.null(preflight)) {
         result <- fertility_base_result(
             item, framework_id, timeout_seconds, input_before,
-            "inventory-hash-error"
+            preflight$classification,
+            secondary_categories = preflight$reason
         )
     } else {
         result <- execute(item, input_before)
@@ -406,7 +404,8 @@ fertility_process_item <- function(item, checkpoint_path, framework_id,
         if (!identical(input_after$input_id, input_before$input_id)) {
             result <- fertility_base_result(
                 item, framework_id, timeout_seconds, input_after,
-                "input-changed-during-subprocess"
+                "inventory-hash-error",
+                secondary_categories = fertility_changed_input_reason(input_after)
             )
         } else {
             result$input_id <- input_before$input_id
@@ -1234,7 +1233,9 @@ fertility_recorded_result_valid <- function(
         ((is.character(result$actual_sha512) &&
           length(result$actual_sha512) == 1L &&
           grepl("^[0-9a-f]{128}$", result$actual_sha512)) ||
-         (is.na(result$actual_sha512) &&
+         (is.character(result$actual_sha512) &&
+          length(result$actual_sha512) == 1L &&
+          is.na(result$actual_sha512) &&
           identical(result$classification, "inventory-hash-error") &&
           identical(result$secondary_categories, "hash-read-error"))) &&
         identical(as.integer(result$timeout_seconds),
@@ -1250,9 +1251,10 @@ fertility_validate_recorded_input_attestation <- function(result) {
     actual <- result$actual_sha512
     expected_valid <- is.character(expected) && length(expected) == 1L &&
         grepl("^([0-9a-f]{128})?$", expected)
-    actual_missing <- length(actual) != 1L || is.na(actual)
-    actual_valid <- !actual_missing && is.character(actual) &&
-        grepl("^[0-9a-f]{128}$", actual)
+    actual_missing <- is.character(actual) && length(actual) == 1L &&
+        is.na(actual)
+    actual_valid <- is.character(actual) && length(actual) == 1L &&
+        !is.na(actual) && grepl("^[0-9a-f]{128}$", actual)
     input_id_valid <- is.character(result$input_id) && length(result$input_id) == 1L &&
         grepl("^[0-9a-f]{64}$", result$input_id)
     inventory_hash_error <- identical(
@@ -1275,7 +1277,8 @@ fertility_validate_recorded_input_attestation <- function(result) {
         expected_valid && actual_valid &&
             (!nzchar(expected) || identical(actual, expected))
     )
-    if (!identical(inventory_hash_error, nzchar(reason)) || !valid_reason) {
+    if (!input_id_valid ||
+        !identical(inventory_hash_error, nzchar(reason)) || !valid_reason) {
         stop("recorded input preflight attestation is inconsistent")
     }
     invisible(TRUE)
@@ -1284,11 +1287,12 @@ fertility_validate_recorded_input_attestation <- function(result) {
 fertility_validate_recorded_input_result <- function(result, tile_count) {
     fertility_validate_recorded_input_attestation(result)
     if (!identical(result$classification, "inventory-hash-error") ||
-        length(tile_count) != 1L || is.na(tile_count) || tile_count < 0L ||
-        !identical(as.integer(tile_count), tile_count) ||
+        !is.integer(tile_count) || length(tile_count) != 1L ||
+        is.na(tile_count) || tile_count < 0L ||
         (!identical(result$secondary_categories, "input-changed") &&
          tile_count != 0L) ||
-        isTRUE(result$complete) || result$mismatch_count != 0L) {
+        !identical(result$complete, FALSE) ||
+        !identical(result$mismatch_count, 0L)) {
         stop("recorded input-validation result is inconsistent")
     }
     invisible(TRUE)
