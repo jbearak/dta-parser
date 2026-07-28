@@ -13,11 +13,11 @@ fertility_tree_digest <- function(checkout_root, scope) {
     )
     paths <- sort(unique(paths[nzchar(paths)]))
     if (!length(paths)) stop("no provenance inputs found")
-    hashes <- unname(tools::md5sum(file.path(checkout_root, paths)))
+    hashes <- unname(tools::sha256sum(file.path(checkout_root, paths)))
     temporary <- tempfile("fertility-tree-")
     on.exit(unlink(temporary), add = TRUE)
     writeLines(paste(paths, hashes, sep = "\t"), temporary, useBytes = TRUE)
-    unname(tools::md5sum(temporary))
+    unname(tools::sha256sum(temporary))
 }
 
 fertility_directory_digest <- function(directory) {
@@ -27,9 +27,9 @@ fertility_directory_digest <- function(directory) {
     if (!length(paths)) stop("installed package is empty")
     temporary <- tempfile("fertility-installed-")
     on.exit(unlink(temporary), add = TRUE)
-    writeLines(paste(paths, unname(tools::md5sum(file.path(directory, paths))),
+    writeLines(paste(paths, unname(tools::sha256sum(file.path(directory, paths))),
                      sep = "\t"), temporary, useBytes = TRUE)
-    unname(tools::md5sum(temporary))
+    unname(tools::sha256sum(temporary))
 }
 
 fertility_package_path <- function(library) {
@@ -58,7 +58,7 @@ fertility_dependency_provenance <- function(packages) {
             as.character(utils::packageVersion(package))
         record[[paste0(package, "_path")]] <- installed
         record[[paste0(package, "_namespace_path")]] <- namespace
-        record[[paste0(package, "_installed_md5")]] <-
+        record[[paste0(package, "_installed_sha256")]] <-
             fertility_directory_digest(installed)
     }
     as.data.frame(record, stringsAsFactors = FALSE, check.names = FALSE)
@@ -77,11 +77,11 @@ fertility_current_provenance <- function(checkout_root, library) {
         git_commit = fertility_git_lines(checkout_root, c("rev-parse", "HEAD"))[[1L]],
         git_dirty = length(status) > 0L,
         package_version = unname(description[[1L, "Version"]]),
-        package_source_md5 = fertility_tree_digest(checkout_root, "r-package/dtaparser"),
-        framework_source_md5 = fertility_tree_digest(
+        package_source_sha256 = fertility_tree_digest(checkout_root, "r-package/dtaparser"),
+        framework_source_sha256 = fertility_tree_digest(
             checkout_root, "benchmarks/fertility-surveys"
         ),
-        installed_package_md5 = fertility_directory_digest(
+        installed_package_sha256 = fertility_directory_digest(
             fertility_package_path(library)
         ),
         r_version = R.version.string,

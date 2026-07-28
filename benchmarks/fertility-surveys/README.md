@@ -43,12 +43,18 @@ beyond-end verification, and every value tile.
 
 Columns remain in source order. `--column-batch` bounds their count, while `strL`
 columns are always isolated. Row sizing uses numeric bytes, exact fixed-string
-widths, a conservative per-object overhead, three-reader cell and byte budgets,
-and returns a one-row window for every `strL` batch. Each child also starts with
-`R_MAX_VSIZE` set to `--memory-mib` (minimum 128 MiB), making the memory budget an
-enforced vector-heap limit rather than only a scheduling estimate. Memory-limit
-failures are reduced to a privacy-safe fixed classification. Every metadata/value
-tile runs in its own timeout-isolated subprocess and reads exactly
+widths, a conservative per-object overhead, and three-reader cell and byte budgets.
+For each `strL` batch, one isolated sizing child reads a fixed deterministic sample
+of one-row windows, retains only the maximum aggregate payload-byte count, and
+chooses a safety-factored row window bounded by the ordinary row/cell/memory caps.
+If a rare larger payload makes a value child hit its enforced memory limit, that
+range is split deterministically until it succeeds or reaches a one-row leaf;
+failed parents and sizing children also count against the hard subprocess-tile
+ceiling. Each child starts with `R_MAX_VSIZE` set to `--memory-mib` (minimum 128
+MiB), making the memory budget an enforced vector-heap limit rather than only a
+scheduling estimate. Memory-limit failures are reduced to a privacy-safe fixed
+classification. Every metadata/value tile runs in its own timeout-isolated
+subprocess and reads exactly
 that projection/window through `dtaparser::read_dta()`,
 `dtaparser:::.read_dta_rust_vectors()`, and `haven::read_dta()`.
 
@@ -124,30 +130,31 @@ tile. Available options are:
 - `--beyond-end-windows=N` (terminal verification windows; default 1, maximum 8)
 - `--retry` (rerun failed tiles only; completed matches and mismatches resume)
 
-The orchestrator builds the current checkout package and installs it beneath
-`target/fertility-surveys/raw/library/`. Before any corpus item is processed it
-must pass a synthetic metadata regression through the exact production callr
-callback, target-local temporary directory, and immutable framework snapshot; the
-regression also proves comparator helpers remain confined to the callback lexical
-environment. Build provenance binds the commit,
-scoped dirty state, package and framework source digests, source tarball, and the
-installed package. Every runtime dependency is bound by version, canonical
-installed path, canonical loaded-namespace path, and deterministic installed-tree
-digest. A valid existing installation is reused so checkpoints can resume;
-source, dependency, or installation changes force a rebuild and a new framework
-identity. The private run lock and per-run temporary directory publish the
-orchestrating shell's PID, host, and OS-verified process-start generation as their
-authoritative owner. A separate long-lived helper refreshes only a supplemental
-heartbeat while monitoring that exact shell generation. Matching live PID/start
-identity remains authoritative if heartbeat updates are delayed or the helper
-itself dies; confirmed owner death or a live PID with a different start generation
-permits recovery regardless of helper state. Permission-denied or unavailable
+The orchestrator builds the current checkout package into an immutable,
+provenance-addressed generation beneath `target/fertility-surveys/raw/builds/`.
+A short owner-aware build lock covers installation, SHA-256 package/dependency
+provenance, and framework snapshot preparation, then is released before corpus
+execution. Concurrent starters wait for that setup and reuse the same verified
+generation rather than replacing a live shard's library. Before any corpus item is
+processed, exact production callr regressions exercise both metadata and `strL`
+sizing through the target-local temporary directory and immutable snapshot; they
+also prove comparator helpers remain confined to the callback lexical environment.
+
+Each active shard then acquires its own selection lock plus sorted per-case locks.
+Disjoint deterministic shards run concurrently and share atomic per-case
+checkpoints, while any overlapping active selection is rejected. The lock and
+per-run temporary directory publish the orchestrating shell's PID, host, and
+OS-verified process-start generation as their authoritative owner. A separate
+long-lived helper refreshes a supplemental heartbeat while monitoring that exact
+shell generation. Matching local PID/start identity or a fresh matching remote
+heartbeat preserves ownership; confirmed owner death or a live PID with a
+different start generation permits recovery. Permission-denied or unavailable
 process probes are indeterminate rather than dead and use conservative
-heartbeat/stale-age handling, never immediate reclamation. This prevents another
-invocation from replacing the installation
-mid-run while permitting safe recovery after an owner dies or initialization is
-abandoned. Workers source an immutable provenance-addressed
-script snapshot, and all provenance is recomputed before report publication.
+heartbeat/stale-age handling. Build staging lives inside the owner-tracked private
+run directory, so abandoned setup is reclaimed without touching another live
+shard. Workers source the immutable provenance-addressed script snapshot, and all
+source, dependency, installed-package, inventory, and framework provenance is
+recomputed before report publication.
 
 Each file has private atomic metadata, tile, and aggregate RDS checkpoints bound
 to the checkpoint schema, framework/package provenance, `datasigs.csv`, inventory
@@ -172,11 +179,32 @@ publishing source metadata or values.
 Each filter/shard selection publishes a complete immutable report bundle beneath
 `raw/reports/<selection-id>/` and atomically updates only that selection's
 `CURRENT` pointer, so smoke runs and separate shards do not overwrite one another.
-Results carry framework and build provenance IDs.
+Results carry framework, configuration, inventory, family, and build provenance
+IDs. After every shard in a family completes, merge its privacy-safe reports with:
+
+```sh
+benchmarks/fertility-surveys/benchmark.sh --family-id=<family-id>
+```
+
+Prepare publishes a privacy-safe canonical inventory manifest inside the immutable
+framework snapshot. Every shard report carries the complete canonical family
+manifest, including deterministic shard ownership, and binds it by SHA-256-derived
+identity to its family provenance. The merge reconstructs the family from the
+snapshot plus the strictly parsed filter specification and requires exact manifest,
+per-shard, and union membership and ordering. It also requires exactly one report
+for every shard index and identical framework/configuration/build/inventory/report
+schema provenance. An unfiltered family must contain exactly `F0001` through
+`F1004`, preserve release counts 111=130, 113=475, 114=23, 117=150, and 118=226,
+classify all release-111 files as expected unsupported, and account for exactly five
+supported inventory hash errors plus 869 supported executable outcomes. Validation
+finishes before any merged output is staged or published; publication is atomic
+beneath `raw/merged/<family-id>/`.
 
 All generated files, package builds, checkpoints, and reports stay below the
-ignored `target/fertility-surveys/raw/` directory. Public TSVs contain only
-privacy-safe IDs, program/level/release, shapes, timings, and classifications.
+ignored `target/fertility-surveys/raw/` directory. Public result TSVs use one exact,
+versioned schema and reject missing, reordered, or unexpected columns before
+publication. They contain only privacy-safe IDs, program/level/release, shapes,
+timings, fixed categories, and hashed mismatch signatures.
 They never contain source paths, survey names, labels, values, or reader error
 text. Subprocess failures are reduced to fixed classifications for the same
 reason. `inventory-hash-error` reports only a fixed privacy-safe reason
@@ -200,13 +228,16 @@ Rscript --vanilla benchmarks/fertility-surveys/test-framework.R
 ```
 
 They cover exact non-recursive inventory mapping, release parsing, privacy-safe
-inventory projection, argument validation, filtering/sharding, deterministic
-width-aware batches and adaptive row sizing, fixed-width and `strL` structural
-metadata, nonterminating-reader and tile-ceiling bounds, enforced memory-limit
-attribution, metadata/zero-column contracts, multi-tile gap-free coverage,
-continued traversal after early mismatches,
-tile-level timeout resume/retry, schema/input/config invalidation, exhaustive
-metadata/value/tag/date/encoding categories and numeric outliers, absence of
-unbounded supported-file reads, atomic publication, parent input identity, live
-owner recovery, dependency provenance, nested parent-R/callr temp confinement,
-release-111 handling, signature refusal, and CI/manual opt-in refusal.
+inventory projection, argument validation, deterministic disjoint filtering and
+sharding, concurrent selection/case ownership, empty shards, strict merge
+accounting, width-aware batches, fixed-width and `strL` structural metadata,
+bounded deterministic `strL` payload sampling, practical small-payload tile
+counts, rare-large-payload recursive splitting, hard execution ceilings, gap-free
+coverage, and sizing/value checkpoint resume. They also cover nonterminating-reader
+bounds, enforced memory-limit attribution, metadata/zero-column contracts,
+continued traversal after early mismatches, timeout retry, schema/input/config
+invalidation, exhaustive metadata/value/tag/date/encoding categories and numeric
+outliers, absence of unbounded supported-file reads, atomic publication, immutable
+SHA-256 build/dependency provenance, live and remote owner recovery, nested
+parent-R/callr temp confinement, release-111 handling, signature refusal, and
+CI/manual opt-in refusal.

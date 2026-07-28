@@ -113,15 +113,18 @@ fertility_read_owner <- function(directory) {
 
 fertility_owner_alive <- function(owner, heartbeat_grace = 3,
                                     process_probe = fertility_process_observation) {
-    if (is.null(owner) || !identical(owner$host, fertility_host())) return(NA)
-    observation <- process_probe(owner$pid)
-    if (isFALSE(observation$alive)) return(FALSE)
-    if (isTRUE(observation$alive) && !is.na(observation$start)) {
-        return(identical(observation$start, owner$start))
+    if (is.null(owner)) return(NA)
+    if (identical(owner$host, fertility_host())) {
+        observation <- process_probe(owner$pid)
+        if (isFALSE(observation$alive)) return(FALSE)
+        if (isTRUE(observation$alive) && !is.na(observation$start)) {
+            return(identical(observation$start, owner$start))
+        }
     }
 
-    # If OS process-generation metadata is temporarily unavailable, a recent
-    # matching heartbeat can preserve ownership but can never prove staleness.
+    # If the owner is remote or OS process-generation metadata is temporarily
+    # unavailable, a recent matching heartbeat can preserve ownership but can
+    # never prove staleness.
     if (!file.exists(owner$heartbeat)) return(NA)
     identity <- tryCatch(readLines(owner$heartbeat, warn = FALSE, n = 1L),
                          error = function(error) character())
@@ -190,6 +193,18 @@ fertility_acquire_lock <- function(path, owner = NULL, initialization_grace = 5,
     stop("could not acquire fertility corpus run lock")
 }
 
+fertility_acquire_lock_wait <- function(path, owner, timeout = 1800,
+                                        poll_seconds = 0.1) {
+    deadline <- Sys.time() + timeout
+    repeat {
+        result <- tryCatch(fertility_acquire_lock(path, owner), error = identity)
+        if (!inherits(result, "error")) return(result)
+        if (!grepl("another fertility corpus", conditionMessage(result)) ||
+            Sys.time() >= deadline) stop(result)
+        Sys.sleep(poll_seconds)
+    }
+}
+
 fertility_release_lock <- function(path, token) {
     owner <- fertility_read_owner(path)
     if (is.null(owner) || !identical(owner$token, token)) return(FALSE)
@@ -202,6 +217,44 @@ fertility_release_lock <- function(path, token) {
     }
     unlink(released, recursive = TRUE)
     TRUE
+}
+
+fertility_lock_component <- function(value, label = "lock component") {
+    value <- as.character(value)
+    if (length(value) != 1L || is.na(value) ||
+        !grepl("^[A-Za-z0-9._-]+$", value)) {
+        stop(label, " is not safe for a lock path")
+    }
+    value
+}
+
+fertility_acquire_lock_set <- function(paths, owner) {
+    paths <- sort(unique(normalizePath(paths, winslash = "/", mustWork = FALSE)))
+    acquired <- character()
+    tokens <- character()
+    on.exit({
+        if (length(acquired)) {
+            for (index in rev(seq_along(acquired))) {
+                fertility_release_lock(acquired[[index]], tokens[[index]])
+            }
+        }
+    }, add = TRUE)
+    for (path in paths) {
+        token <- fertility_acquire_lock(path, owner)
+        acquired <- c(acquired, path)
+        tokens <- c(tokens, token)
+    }
+    result <- setNames(tokens, acquired)
+    acquired <- character()
+    result
+}
+
+fertility_release_lock_set <- function(tokens) {
+    if (!length(tokens)) return(TRUE)
+    results <- vapply(rev(seq_along(tokens)), function(index) {
+        fertility_release_lock(names(tokens)[[index]], tokens[[index]])
+    }, logical(1))
+    all(results)
 }
 
 fertility_write_temp_owner <- function(path, owner = NULL) {
@@ -283,6 +336,10 @@ if (sys.nframe() == 0L) {
         if (length(arguments) != 3L) stop("acquire-lock requires owner state")
         owner <- fertility_read_owner(arguments[[3L]])
         cat(fertility_acquire_lock(path, owner))
+    } else if (identical(action, "acquire-lock-wait")) {
+        if (length(arguments) != 3L) stop("acquire-lock-wait requires owner state")
+        owner <- fertility_read_owner(arguments[[3L]])
+        cat(fertility_acquire_lock_wait(path, owner))
     } else if (identical(action, "release-lock")) {
         if (length(arguments) != 3L || !fertility_release_lock(path, arguments[[3L]]))
             quit(status = 1L)

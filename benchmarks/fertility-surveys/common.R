@@ -1,8 +1,10 @@
-fertility_schema_version <- 6L
+fertility_schema_version <- 10L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
 fertility_supported_releases <- c(113L, 114L, 117L, 118L)
+fertility_programs <- c("dhs", "mics", "wfs", "nsfg", "enadid")
+fertility_levels <- c("women", "births")
 fertility_opt_in_value <- "I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA"
 
 fertility_script_path <- function() {
@@ -200,8 +202,10 @@ fertility_build_inventory <- function(paths = fertility_required_paths(),
     for (i in seq_len(nrow(rows))) {
         program <- tolower(rows$program[[i]])
         level <- tolower(rows$level[[i]])
-        if (!(program %in% names(path1))) stop("datasigs.csv contains an unknown program")
-        if (!(level %in% c("women", "births"))) stop("datasigs.csv contains an unknown level")
+        if (!(program %in% fertility_programs) || !(program %in% names(path1))) {
+            stop("datasigs.csv contains an unknown program")
+        }
+        if (!(level %in% fertility_levels)) stop("datasigs.csv contains an unknown level")
         folder <- if (identical(program, "wfs")) "" else
             gsub("_", ",", rows$survey[[i]], fixed = TRUE)
         filename <- if (identical(program, "wfs")) {

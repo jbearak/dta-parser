@@ -76,6 +76,311 @@ expect_error(fertility_parse_arguments("--beyond-end-windows=9"), "must not exce
 expect_error(fertility_filter_inventory(
     inventory, fertility_parse_arguments("--id=F9999")
 ), "unknown --id")
+shard_options <- fertility_parse_arguments(c("--shard-index=1", "--shard-count=2"))
+shard_one <- fertility_filter_inventory(inventory, shard_options)
+shard_options$shard_index <- 2L
+shard_two <- fertility_filter_inventory(inventory, shard_options)
+stopifnot(!length(intersect(shard_one$id, shard_two$id)),
+          identical(sort(c(shard_one$id, shard_two$id)), sort(inventory$id)),
+          nrow(fertility_family_selection(inventory, shard_options)) == nrow(inventory))
+family_a <- fertility_parse_arguments(c("--program=dhs,mics", "--shard-index=1",
+                                        "--shard-count=2"))
+family_b <- fertility_parse_arguments(c("--program=mics,dhs", "--shard-index=2",
+                                        "--shard-count=2"))
+stopifnot(identical(
+    fertility_selection_family_id(inventory, family_a, "framework", "config", "build"),
+    fertility_selection_family_id(inventory, family_b, "framework", "config", "build")
+))
+
+test_framework_id <- paste(rep("a", 64L), collapse = "")
+test_build_id <- paste(rep("b", 64L), collapse = "")
+test_config_id <- paste(rep("c", 64L), collapse = "")
+make_public_results <- function(expected, classifications = "pass") {
+    count <- nrow(expected)
+    if (length(classifications) == 1L) classifications <- rep(classifications, count)
+    data.frame(
+        framework_id = rep(test_framework_id, count), id = expected$id,
+        program = expected$program, level = expected$level,
+        release = as.character(expected$release), classification = classifications,
+        secondary_categories = rep("", count), mismatch_count = rep("0", count),
+        mismatch_categories = rep("", count), mismatch_signatures = rep("", count),
+        rows = rep("", count), columns = rep("", count),
+        tiles_expected = rep("0", count), tiles_completed = rep("0", count),
+        complete = rep("TRUE", count), elapsed_seconds = rep("", count),
+        build_provenance_id = rep(test_build_id, count),
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+}
+make_bundle_family <- function(
+    canonical, family_options, classifications = NULL,
+    inventory_id = paste(rep("d", 64L), collapse = "")
+) {
+    manifest <- fertility_family_manifest(canonical, family_options)
+    manifest_id <- fertility_manifest_id(manifest)
+    family_id <- fertility_family_id_from_manifest(
+        manifest, test_framework_id, test_config_id, test_build_id, inventory_id,
+        family_options$shard_count, family_options$max_files
+    )
+    spec <- fertility_filter_spec(family_options)
+    bundles <- lapply(seq_len(family_options$shard_count), function(index) {
+        expected <- manifest[manifest$shard_index == index,
+                             c("id", "program", "level", "release"), drop = FALSE]
+        classes <- if (is.null(classifications)) "pass" else
+            classifications[match(expected$id, manifest$id)]
+        results <- make_public_results(expected, classes)
+        selection_id <- fertility_stable_id(list(
+            family_id = family_id, shard_index = index,
+            selected_ids = paste(expected$id, collapse = ",")
+        ))
+        provenance <- data.frame(
+            schema_version = as.character(fertility_schema_version),
+            selection_id = selection_id, family_id = family_id,
+            family_manifest_id = manifest_id, framework_id = test_framework_id,
+            config_id = test_config_id, build_provenance_id = test_build_id,
+            inventory_id = inventory_id, report_schema_id = fertility_report_schema_id(),
+            selected_files = as.character(nrow(expected)),
+            expected_family_files = as.character(nrow(manifest)),
+            full_default_family = if (fertility_full_default_family(family_options))
+                "TRUE" else "FALSE",
+            program_filter = spec$program_filter, release_filter = spec$release_filter,
+            id_filter = spec$id_filter, max_files = spec$max_files,
+            shard_index = as.character(index),
+            shard_count = as.character(family_options$shard_count),
+            timeout_seconds = "600", chunk_rows = "10000", column_batch = "16",
+            memory_mib = "256", cell_budget = "1000000",
+            max_tiles_per_batch = "100000", beyond_end_windows = "1",
+            retry = "FALSE", created_at_utc = "2026-01-01T00:00:00Z",
+            stringsAsFactors = FALSE, check.names = FALSE
+        )
+        list(provenance = provenance, results = results,
+             family_manifest = manifest)
+    })
+    list(id = family_id, bundles = bundles, manifest = manifest)
+}
+canonical_inventory <- fertility_inventory_manifest(inventory)
+merge_options <- fertility_parse_arguments(c(
+    "--id=F0001,F0002", "--shard-index=1", "--shard-count=2"
+))
+merge_fixture <- make_bundle_family(canonical_inventory, merge_options)
+merge_bundles <- merge_fixture$bundles
+validated_merge <- fertility_validate_shard_bundles(
+    merge_bundles, merge_fixture$id, canonical_inventory
+)
+stopifnot(identical(validated_merge$results$id, c("F0001", "F0002")),
+          validated_merge$shard_count == 2L)
+expect_error(fertility_validate_shard_bundles(
+    merge_bundles[1L], merge_fixture$id, canonical_inventory
+), "every shard index")
+substitution <- merge_bundles
+substitution[[1L]]$results$id <- "F0003"
+expect_error(fertility_validate_shard_bundles(
+    substitution, merge_fixture$id, canonical_inventory
+), "canonical family membership")
+foreign_config <- merge_bundles
+foreign_config[[2L]]$provenance$config_id <- paste(rep("d", 64L), collapse = "")
+expect_error(fertility_validate_shard_bundles(
+    foreign_config, merge_fixture$id, canonical_inventory
+), "identical framework/config/build/inventory")
+wrong_filter <- merge_bundles
+wrong_filter[[2L]]$provenance$id_filter <- "F0001"
+expect_error(fertility_validate_shard_bundles(
+    wrong_filter, merge_fixture$id, canonical_inventory
+), "identical framework/config/build/inventory")
+wrong_release <- merge_bundles
+wrong_release[[2L]]$results$release <- "118"
+expect_error(fertility_validate_shard_bundles(
+    wrong_release, merge_fixture$id, canonical_inventory
+), "canonical family membership")
+wrong_classification <- merge_bundles
+wrong_classification[[1L]]$results$classification <- "private-reader-message"
+expect_error(fertility_validate_shard_bundles(
+    wrong_classification, merge_fixture$id, canonical_inventory
+), "invalid scalar")
+privacy_path <- merge_bundles
+privacy_path[[1L]]$results$path <- "/private/source"
+expect_error(fertility_validate_shard_bundles(
+    privacy_path, merge_fixture$id, canonical_inventory
+), "exact public schema|manifest schema")
+privacy_reader <- merge_bundles
+privacy_reader[[1L]]$results$reader_error <- "private error"
+expect_error(fertility_validate_shard_bundles(
+    privacy_reader, merge_fixture$id, canonical_inventory
+), "exact public schema|manifest schema")
+privacy_allowed_field <- merge_bundles
+privacy_allowed_field[[1L]]$results$secondary_categories <-
+    "reader failed at /private/source"
+expect_error(fertility_validate_shard_bundles(
+    privacy_allowed_field, merge_fixture$id, canonical_inventory
+), "non-public mismatch detail")
+private_program <- merge_bundles
+private_program[[1L]]$results$program <- "private_identifier"
+expect_error(fertility_validate_shard_bundles(
+    private_program, merge_fixture$id, canonical_inventory
+), "invalid scalar")
+inconsistent_mismatch <- merge_bundles
+inconsistent_mismatch[[1L]]$results$mismatch_categories <- "value-mismatch=1"
+expect_error(fertility_validate_shard_bundles(
+    inconsistent_mismatch, merge_fixture$id, canonical_inventory
+), "inconsistent counts")
+duplicate_mismatch <- merge_bundles
+duplicate_mismatch[[1L]]$results$mismatch_count <- "2"
+duplicate_mismatch[[1L]]$results$mismatch_categories <-
+    "value-mismatch=1,value-mismatch=1"
+duplicate_mismatch[[1L]]$results$mismatch_signatures <- paste0(
+    paste(rep("a", 64L), collapse = ""), "=2"
+)
+expect_error(fertility_validate_shard_bundles(
+    duplicate_mismatch, merge_fixture$id, canonical_inventory
+), "inconsistent counts")
+noncanonical_mismatch <- merge_bundles
+noncanonical_mismatch[[1L]]$results$mismatch_count <- "3"
+noncanonical_mismatch[[1L]]$results$mismatch_categories <-
+    "value-mismatch=1,metadata-mismatch=2"
+noncanonical_mismatch[[1L]]$results$mismatch_signatures <- paste0(
+    paste(rep("a", 64L), collapse = ""), "=1,",
+    paste(rep("b", 64L), collapse = ""), "=2"
+)
+expect_error(fertility_validate_shard_bundles(
+    noncanonical_mismatch, merge_fixture$id, canonical_inventory
+), "inconsistent counts")
+privacy_provenance <- merge_bundles
+privacy_provenance[[1L]]$provenance$path <- "/private/source"
+expect_error(fertility_validate_shard_bundles(
+    privacy_provenance, merge_fixture$id, canonical_inventory
+), "provenance schema")
+prior_report_schema_id <- fertility_stable_id(list(
+    schema_version = 9L,
+    fields = paste(fertility_result_fields(), collapse = ","),
+    contract = paste(
+        "hash,id,enum,manifest-release,enum,fixed-categories,count,",
+        "fixed-counts,hashed-counts,optional-number,optional-count,count,",
+        "count,boolean,optional-number,hash", sep = ""
+    )
+))
+stopifnot(!identical(prior_report_schema_id, fertility_report_schema_id()))
+wrong_report_schema <- merge_bundles
+wrong_report_schema[[1L]]$provenance$report_schema_id <- prior_report_schema_id
+expect_error(fertility_validate_shard_bundles(
+    wrong_report_schema, merge_fixture$id, canonical_inventory
+), "identical framework/config/build/inventory|schema identity")
+substituted_manifest <- merge_bundles
+substituted_manifest[[1L]]$family_manifest$id[[1L]] <- "F0003"
+expect_error(fertility_validate_shard_bundles(
+    substituted_manifest, merge_fixture$id, canonical_inventory
+), "family manifest")
+reordered_manifest <- merge_bundles
+reordered_manifest[[1L]]$family_manifest <-
+    reordered_manifest[[1L]]$family_manifest[2:1, , drop = FALSE]
+expect_error(fertility_validate_shard_bundles(
+    reordered_manifest, merge_fixture$id, canonical_inventory
+), "family manifest")
+wrong_manifest_owner <- merge_bundles
+wrong_manifest_owner[[1L]]$family_manifest$shard_index[[1L]] <- 2L
+expect_error(fertility_validate_shard_bundles(
+    wrong_manifest_owner, merge_fixture$id, canonical_inventory
+), "family manifest")
+wrong_manifest_program <- merge_bundles
+wrong_manifest_program[[1L]]$family_manifest$program[[1L]] <- "mics"
+expect_error(fertility_validate_shard_bundles(
+    wrong_manifest_program, merge_fixture$id, canonical_inventory
+), "family manifest")
+wrong_manifest_level <- merge_bundles
+wrong_manifest_level[[1L]]$family_manifest$level[[1L]] <- "births"
+expect_error(fertility_validate_shard_bundles(
+    wrong_manifest_level, merge_fixture$id, canonical_inventory
+), "family manifest")
+wrong_manifest_release <- merge_bundles
+wrong_manifest_release[[1L]]$family_manifest$release[[1L]] <- 118L
+expect_error(fertility_validate_shard_bundles(
+    wrong_manifest_release, merge_fixture$id, canonical_inventory
+), "family manifest")
+empty_options <- fertility_parse_arguments(c(
+    "--id=F0001", "--shard-index=1", "--shard-count=2"
+))
+empty_fixture <- make_bundle_family(canonical_inventory, empty_options)
+stopifnot(nrow(fertility_validate_shard_bundles(
+    empty_fixture$bundles, empty_fixture$id, canonical_inventory
+)$results) == 1L)
+
+full_releases <- rep(as.integer(names(fertility_expected_releases)),
+                     as.integer(fertility_expected_releases))
+full_canonical <- data.frame(
+    id = sprintf("F%04d", seq_len(fertility_expected_rows)),
+    program = "dhs", level = "women", release = full_releases,
+    stringsAsFactors = FALSE
+)
+full_options <- fertility_parse_arguments(character())
+full_classes <- rep("pass", fertility_expected_rows)
+full_classes[full_releases == 111L] <- "expected-unsupported-111"
+supported_positions <- which(full_releases != 111L)
+full_classes[supported_positions[seq_len(5L)]] <- "inventory-hash-error"
+full_fixture <- make_bundle_family(
+    full_canonical, full_options, full_classes,
+    inventory_id = paste(rep("e", 64L), collapse = "")
+)
+full_validated <- fertility_validate_shard_bundles(
+    full_fixture$bundles, full_fixture$id, full_canonical
+)
+stopifnot(nrow(full_validated$results) == 1004L,
+          sum(full_validated$results$classification == "inventory-hash-error") == 5L)
+full_missing <- full_fixture$bundles
+full_missing[[1L]]$results <- full_missing[[1L]]$results[-1004L, , drop = FALSE]
+expect_error(fertility_validate_shard_bundles(
+    full_missing, full_fixture$id, full_canonical
+), "count|accounting")
+full_bad_release <- full_fixture$bundles
+full_bad_release[[1L]]$results$release[[131L]] <- "114"
+expect_error(fertility_validate_shard_bundles(
+    full_bad_release, full_fixture$id, full_canonical
+), "canonical family membership")
+full_bad_unsupported <- full_fixture$bundles
+full_bad_unsupported[[1L]]$results$classification[[1L]] <- "pass"
+expect_error(fertility_validate_shard_bundles(
+    full_bad_unsupported, full_fixture$id, full_canonical
+), "release 111 classifications")
+full_bad_hash_count <- full_fixture$bundles
+full_bad_hash_count[[1L]]$results$classification[[supported_positions[[6L]]]] <-
+    "inventory-hash-error"
+expect_error(fertility_validate_shard_bundles(
+    full_bad_hash_count, full_fixture$id, full_canonical
+), "executable accounting")
+full_too_few_hashes <- full_fixture$bundles
+full_too_few_hashes[[1L]]$results$classification[[supported_positions[[5L]]]] <- "pass"
+expect_error(fertility_validate_shard_bundles(
+    full_too_few_hashes, full_fixture$id, full_canonical
+), "executable accounting")
+full_bad_supported_class <- full_fixture$bundles
+full_bad_supported_class[[1L]]$results$classification[[supported_positions[[6L]]]] <-
+    "expected-unsupported-111"
+expect_error(fertility_validate_shard_bundles(
+    full_bad_supported_class, full_fixture$id, full_canonical
+), "executable accounting")
+stopifnot(nrow(fertility_validate_canonical_inventory(
+    full_canonical, exact = TRUE
+)) == fertility_expected_rows)
+expect_error(fertility_validate_canonical_inventory(
+    full_canonical[-1L, , drop = FALSE], exact = TRUE
+), "exactly F0001 through F1004")
+full_extra <- rbind(full_canonical, transform(
+    full_canonical[1004L, , drop = FALSE], id = "F1005"
+))
+expect_error(fertility_validate_canonical_inventory(
+    full_extra, exact = TRUE
+), "exactly F0001 through F1004")
+full_reordered <- full_canonical[c(2L, 1L, 3:nrow(full_canonical)), , drop = FALSE]
+expect_error(fertility_validate_canonical_inventory(
+    full_reordered, exact = TRUE
+), "exactly F0001 through F1004")
+full_duplicate <- full_canonical
+full_duplicate$id[[2L]] <- full_duplicate$id[[1L]]
+expect_error(fertility_validate_canonical_inventory(
+    full_duplicate, exact = TRUE
+), "manifest is invalid")
+full_canonical_bad_release <- full_canonical
+full_canonical_bad_release$release[[131L]] <- 114L
+expect_error(fertility_validate_canonical_inventory(
+    full_canonical_bad_release, exact = TRUE
+), "release counts")
 preflight_item <- list(expected_sha512 = paste(rep("a", 128L), collapse = ""))
 preflight_match <- list(hash_status = "ok", actual_sha512 = preflight_item$expected_sha512)
 preflight_mismatch <- list(hash_status = "ok",
@@ -180,6 +485,15 @@ pair_result <- fertility_compare_available_pairs(
 )
 stopifnot(identical(sort(unique(pair_result$mismatches$pair)),
                     c("direct-haven", "direct-rust", "rust-haven")))
+equal_count_summary <- fertility_mismatch_summary(list(list(
+    mismatches = pair_result$mismatches
+)))
+equal_count_public <- make_public_results(canonical_inventory[1L, , drop = FALSE])
+equal_count_public$mismatch_count <- as.character(equal_count_summary$count)
+equal_count_public$mismatch_categories <- equal_count_summary$categories
+equal_count_public$mismatch_signatures <- equal_count_summary$signatures
+equal_count_public$secondary_categories <- "value-mismatch"
+stopifnot(isTRUE(fertility_validate_public_results(equal_count_public)))
 private_attribute <- pair_frames$haven
 attr(private_attribute$value, "private_source_attribute") <- "different"
 private_pair_result <- fertility_compare_available_pairs(
@@ -190,6 +504,17 @@ private_pair_result <- fertility_compare_available_pairs(
 stopifnot(any(grepl("private_source_attribute",
                    private_pair_result$mismatches$detail)),
           !any(grepl("private_source_attribute", private_pair_result$secondary)))
+private_summary <- fertility_mismatch_summary(list(list(
+    mismatches = private_pair_result$mismatches
+)))
+renamed_private <- private_pair_result$mismatches
+renamed_private$detail <- sub(
+    "private_source_attribute", "another_private_attribute", renamed_private$detail,
+    fixed = TRUE
+)
+renamed_private$component <- renamed_private$component + 100L
+renamed_summary <- fertility_mismatch_summary(list(list(mismatches = renamed_private)))
+stopifnot(identical(private_summary$signatures, renamed_summary$signatures))
 date_expected <- actual
 date_expected$day[[1L]] <- date_expected$day[[1L]] + 1
 stopifnot("date-mismatch" %in%
@@ -214,6 +539,9 @@ stopifnot(identical(fertility_adaptive_rows(8, tile_configuration), 100L),
           identical(fertility_adaptive_rows(rep(8, 8), tile_configuration), 12L),
           identical(fertility_adaptive_rows(2045, tile_configuration), 100L),
           identical(fertility_adaptive_rows(Inf, tile_configuration), 1L),
+          identical(fertility_strl_sample_offsets(0, 16L), 0),
+          identical(fertility_strl_sample_offsets(5, 3L), c(0, 2, 4)),
+          identical(fertility_strl_rows(12, 1L, tile_configuration), 100L),
           identical(
               fertility_column_batches(c("a", "wide", "long", "b"), 8L,
                                         c(8, 2045, Inf, 8)),
@@ -223,6 +551,64 @@ finite_plan <- fertility_plan_offsets(5, 2L, 3L)
 stopifnot(!finite_plan$ceiling, identical(finite_plan$offsets, c(0, 2, 4)))
 stopifnot(fertility_plan_offsets(7, 2L, 3L)$ceiling,
           fertility_plan_offsets(Inf, 2L, 3L)$ceiling)
+large_strl_configuration <- tile_configuration
+large_strl_configuration$chunk_rows <- 10000L
+large_strl_configuration$cell_budget <- 1000000L
+small_payload_rows <- fertility_strl_rows(24, 1L, large_strl_configuration)
+small_payload_plan <- fertility_plan_offsets(10000000, small_payload_rows, 2000L)
+stopifnot(small_payload_rows == 10000L, !small_payload_plan$ceiling,
+          length(small_payload_plan$offsets) == 1000L)
+
+# A rare large payload missed by sampling is still memory-safe: a memory-limited
+# range is split deterministically until the exceptional row is isolated, with no
+# gaps, overlaps, or skipped rows.
+adaptive_execute <- function(tile) {
+    contains_rare <- tile$skip <= 13 && tile$skip + tile$n_max > 13
+    memory <- contains_rare && tile$n_max > 1L
+    list(
+        tile_type = "value", batch = tile$batch, skip = tile$skip,
+        n_max = tile$n_max, rows = if (memory) NA_integer_ else tile$n_max,
+        classification = if (memory) "memory-limit" else "pass"
+    )
+}
+run_adaptive_fixture <- function() {
+    budget <- new.env(parent = emptyenv())
+    budget$remaining <- 20L
+    fertility_process_adaptive_range(
+        1L, 0, 20L, "long", adaptive_execute, budget
+    )
+}
+adaptive_leaves <- run_adaptive_fixture()
+adaptive_again <- run_adaptive_fixture()
+leaf_skip <- vapply(adaptive_leaves, `[[`, numeric(1), "skip")
+leaf_n <- vapply(adaptive_leaves, `[[`, integer(1), "n_max")
+stopifnot(
+    identical(leaf_skip, vapply(adaptive_again, `[[`, numeric(1), "skip")),
+    identical(leaf_n, vapply(adaptive_again, `[[`, integer(1), "n_max")),
+    all(vapply(adaptive_leaves, `[[`, character(1), "classification") == "pass"),
+    identical(leaf_skip, cumsum(c(0, head(leaf_n, -1L)))),
+    sum(leaf_n) == 20L, any(leaf_skip == 13 & leaf_n == 1L)
+)
+limited_budget <- new.env(parent = emptyenv())
+limited_budget$remaining <- 0L
+limited_leaf <- fertility_process_adaptive_range(
+    1L, 0, 20L, "long", adaptive_execute, limited_budget
+)
+stopifnot(length(limited_leaf) == 1L,
+          limited_leaf[[1L]]$classification == "memory-limit")
+execution_counter <- new.env(parent = emptyenv())
+execution_counter$n <- 0L
+counted_execute <- function(tile) {
+    execution_counter$n <- execution_counter$n + 1L
+    adaptive_execute(tile)
+}
+execution_ceiling <- 7L
+execution_budget <- new.env(parent = emptyenv())
+execution_budget$remaining <- execution_ceiling - 1L
+invisible(fertility_process_adaptive_range(
+    1L, 0, 20L, "long", counted_execute, execution_budget
+))
+stopifnot(execution_counter$n <= execution_ceiling)
 stopifnot(fertility_memory_error(simpleError("vector memory exhausted")),
           !fertility_memory_error(simpleError("reader failed")))
 
@@ -467,6 +853,72 @@ retried_tile <- fertility_process_tile(
 )
 stopifnot(!first_tile$resumed, resumed_tile$resumed, !retried_tile$resumed,
           tile_counter$n == 2L)
+sizing_tile <- fertility_sizing_tile(1L, "long", 10000000,
+                                     tile_config$strl_sample_count)
+sizing_checkpoint <- file.path(root, "sizing-checkpoint.rds")
+sizing_counter <- new.env(parent = emptyenv())
+sizing_counter$n <- 0L
+sizing_execute <- function(item, tile, input) {
+    sizing_counter$n <- sizing_counter$n + 1L
+    list(
+        schema_version = fertility_schema_version, framework_id = "framework",
+        id = item$id, tile_id = tile$tile_id, tile_type = tile$type,
+        batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
+        classification = "pass", secondary = character(),
+        mismatches = fertility_bind_mismatches(list()), rows = 16L,
+        payload_bytes_per_row = 24, chosen_rows = 10000L,
+        elapsed_seconds = 0
+    )
+}
+first_sizing <- fertility_process_tile(
+    tile_item, sizing_tile, sizing_checkpoint, "framework", tile_config,
+    tile_input, FALSE, sizing_execute
+)
+resumed_sizing <- fertility_process_tile(
+    tile_item, sizing_tile, sizing_checkpoint, "framework", tile_config,
+    tile_input, FALSE, sizing_execute
+)
+stopifnot(!first_sizing$resumed, resumed_sizing$resumed,
+          sizing_counter$n == 1L,
+          resumed_sizing$result$chosen_rows == 10000L,
+          identical(resumed_sizing$result$column_hash, sizing_tile$column_hash))
+adaptive_checkpoint_root <- file.path(root, "adaptive-checkpoints")
+dir.create(adaptive_checkpoint_root)
+adaptive_counter <- new.env(parent = emptyenv())
+adaptive_counter$n <- 0L
+adaptive_checkpoint_execute <- function(item, tile, input) {
+    adaptive_counter$n <- adaptive_counter$n + 1L
+    contains_rare <- tile$skip <= 13 && tile$skip + tile$n_max > 13
+    memory <- contains_rare && tile$n_max > 1L
+    list(
+        schema_version = fertility_schema_version, framework_id = "framework",
+        id = item$id, tile_id = tile$tile_id, tile_type = tile$type,
+        batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
+        classification = if (memory) "memory-limit" else "pass",
+        secondary = character(), mismatches = fertility_bind_mismatches(list()),
+        rows = if (memory) NA_integer_ else tile$n_max, elapsed_seconds = 0
+    )
+}
+run_checkpointed_adaptation <- function() {
+    budget <- new.env(parent = emptyenv())
+    budget$remaining <- 20L
+    process <- function(tile) fertility_process_tile(
+        tile_item, tile,
+        file.path(adaptive_checkpoint_root, paste0(tile$tile_id, ".rds")),
+        "framework", tile_config, tile_input, FALSE,
+        adaptive_checkpoint_execute
+    )$result
+    fertility_process_adaptive_range(1L, 0, 20L, "long", process, budget)
+}
+checkpointed_first <- run_checkpointed_adaptation()
+first_execution_count <- adaptive_counter$n
+checkpointed_resumed <- run_checkpointed_adaptation()
+stopifnot(first_execution_count > 1L,
+          adaptive_counter$n == first_execution_count,
+          identical(vapply(checkpointed_first, `[[`, numeric(1), "skip"),
+                    vapply(checkpointed_resumed, `[[`, numeric(1), "skip")),
+          identical(vapply(checkpointed_first, `[[`, integer(1), "n_max"),
+                    vapply(checkpointed_resumed, `[[`, integer(1), "n_max")))
 
 supported_item <- as.list(inventory[2L, , drop = FALSE])
 supported_item$path <- normalizePath(primary_second, winslash = "/")
@@ -505,6 +957,12 @@ bounded_data <- tibble::tibble(
     day = as.Date("2020-01-01") + 0:4
 )
 haven::write_dta(bounded_data, bounded_path)
+rare_strl_path <- file.path(root, "rare-strl.dta")
+haven::write_dta(data.frame(
+    long_string = c(rep("x", 999L), strrep("z", 100000L))
+), rare_strl_path, version = 14)
+rare_structure <- fertility_structural_metadata(rare_strl_path)
+stopifnot(rare_structure$rows == 1000, identical(rare_structure$strl, TRUE))
 bounded_item <- list(
     id = "F9900", program = "dhs", level = "women", release = 118L,
     path = normalizePath(bounded_path, winslash = "/"), expected_sha512 = ""
@@ -513,8 +971,16 @@ haven_zero_column <- tryCatch(
     haven::read_dta(bounded_path, col_select = character()), error = identity
 )
 stopifnot(inherits(haven_zero_column, "error"))
-checkout_library <- file.path(script_dir, "..", "..", "target",
-                              "fertility-surveys", "raw", "library")
+checkout_raw <- file.path(script_dir, "..", "..", "target",
+                          "fertility-surveys", "raw")
+checkout_library <- file.path(checkout_raw, "library")
+build_pointer <- file.path(checkout_raw, "builds", "CURRENT")
+if (file.exists(build_pointer)) {
+    build_id <- readLines(build_pointer, warn = FALSE, n = 1L)
+    if (length(build_id) == 1L && grepl("^[0-9a-f]{64}$", build_id)) {
+        checkout_library <- file.path(checkout_raw, "builds", build_id, "library")
+    }
+}
 if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     old_paths <- .libPaths()
     .libPaths(c(checkout_library, old_paths))
@@ -540,6 +1006,33 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
                   bounded_worker[c("projection_hashes", "projection_expected_hash")],
                   use.names = FALSE
               )))
+    wide_item <- bounded_item
+    wide_item$id <- "F9901"
+    wide_item$path <- normalizePath(wide_path, winslash = "/")
+    sizing_worker <- fertility_worker_tile(
+        wide_item, fertility_sizing_tile(1L, "long_string", 3, 16L),
+        file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
+        installed_dtaparser, "framework", 10L
+    )
+    stopifnot(sizing_worker$classification == "pass",
+              sizing_worker$samples_requested == 3L,
+              sizing_worker$samples_completed == 3L,
+              sizing_worker$payload_bytes_per_row >= 9000,
+              !any(c("long_string", strrep("y", 10)) %in%
+                   unlist(sizing_worker, use.names = FALSE)))
+    rare_item <- wide_item
+    rare_item$id <- "F9902"
+    rare_item$path <- normalizePath(rare_strl_path, winslash = "/")
+    rare_sizing <- fertility_worker_tile(
+        rare_item, fertility_sizing_tile(1L, "long_string", 1000, 16L),
+        file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
+        installed_dtaparser, "framework", 10L
+    )
+    stopifnot(rare_sizing$classification == "pass",
+              rare_sizing$samples_completed == 16L,
+              rare_sizing$payload_bytes_per_row >= 300000,
+              !any(c("long_string", strrep("z", 10)) %in%
+                   unlist(rare_sizing, use.names = FALSE)))
     # The isolated callr worker must install comparator functions in the worker's
     # lexical environment, not only in the transient fertility_worker_tile frame.
     isolated_worker <- callr::r(
@@ -602,30 +1095,32 @@ timeout_execute <- function(item, input) {
     )
     stopifnot(inherits(error, "callr_timeout_error"))
     fertility_base_result(
-        item, "framework", timeout_counter$seconds, input, "timeout"
+        item, test_framework_id, timeout_counter$seconds, input, "timeout"
     )
 }
 first_timeout <- fertility_process_item(
-    timeout_item, timeout_checkpoint, "framework", 1L, FALSE, timeout_execute
+    timeout_item, timeout_checkpoint, test_framework_id, 1L, FALSE, timeout_execute
 )
 stopifnot(!first_timeout$resumed, first_timeout$result$classification == "timeout",
           nzchar(first_timeout$result$input_id), timeout_counter$n == 1L)
 timeout_report <- file.path(root, "timeout-results.tsv")
-invisible(fertility_publish_results(list(first_timeout$result), "build", timeout_report))
+invisible(fertility_publish_results(
+    list(first_timeout$result), test_build_id, timeout_report
+))
 stopifnot(file.exists(timeout_report),
           read.delim(timeout_report)$classification[[1L]] == "timeout")
 resumed_timeout <- fertility_process_item(
-    timeout_item, timeout_checkpoint, "framework", 1L, FALSE, timeout_execute
+    timeout_item, timeout_checkpoint, test_framework_id, 1L, FALSE, timeout_execute
 )
 stopifnot(resumed_timeout$resumed, timeout_counter$n == 1L)
 timeout_counter$seconds <- 2L
 changed_timeout <- fertility_process_item(
-    timeout_item, timeout_checkpoint, "framework", 2L, FALSE, timeout_execute
+    timeout_item, timeout_checkpoint, test_framework_id, 2L, FALSE, timeout_execute
 )
 stopifnot(!changed_timeout$resumed, timeout_counter$n == 2L,
           changed_timeout$result$timeout_seconds == 2L)
 retried_timeout <- fertility_process_item(
-    timeout_item, timeout_checkpoint, "framework", 2L, TRUE, timeout_execute
+    timeout_item, timeout_checkpoint, test_framework_id, 2L, TRUE, timeout_execute
 )
 stopifnot(!retried_timeout$resumed, timeout_counter$n == 3L)
 
@@ -635,15 +1130,25 @@ hash_error_item$path <- file.path(root, "missing-input.dta")
 hash_error_checkpoint <- file.path(root, "hash-error-checkpoint.rds")
 never_execute <- function(item, input) stop("hash errors must not launch a child")
 hash_error <- fertility_process_item(
-    hash_error_item, hash_error_checkpoint, "framework", 1L, FALSE, never_execute
+    hash_error_item, hash_error_checkpoint, test_framework_id, 1L, FALSE, never_execute
 )
-stopifnot(hash_error$result$classification == "input-hash-error",
+stopifnot(hash_error$result$classification == "inventory-hash-error",
           nzchar(hash_error$result$input_id),
           fertility_process_item(hash_error_item, hash_error_checkpoint,
-                                 "framework", 1L, FALSE, never_execute)$resumed)
+                                 test_framework_id, 1L, FALSE, never_execute)$resumed)
 invisible(fertility_publish_results(
-    list(hash_error$result), "build", file.path(root, "hash-error-results.tsv")
+    list(hash_error$result), test_build_id,
+    file.path(root, "hash-error-results.tsv")
 ))
+empty_results_path <- file.path(root, "empty-shard-results.tsv")
+empty_results <- fertility_publish_results(list(), test_build_id, empty_results_path)
+empty_roundtrip <- read.delim(empty_results_path, colClasses = "character",
+                              check.names = FALSE)
+stopifnot(nrow(empty_results) == 0L, nrow(empty_roundtrip) == 0L,
+          "build_provenance_id" %in% names(empty_roundtrip),
+          identical(names(fertility_classification_summary(empty_results)),
+                    c("classification", "files")),
+          nrow(fertility_classification_summary(empty_results)) == 0L)
 
 # Ownership follows a long-lived orchestrator rather than the short-lived R
 # helper that writes metadata. Live owners block reclamation; dead owners do not.
@@ -675,6 +1180,20 @@ unlink(c(stale_heartbeat_lock, stale_heartbeat_temp_root), recursive = TRUE)
 # Permission-denied/unavailable probes are indeterminate, never dead. With no
 # recent heartbeat they follow the conservative stale-age policy rather than
 # permitting immediate lock or temp reclamation.
+remote_owner <- stale_heartbeat_owner
+remote_owner$host <- "synthetic-remote-host"
+fertility_touch_heartbeat(remote_owner$heartbeat, remote_owner$start)
+stopifnot(isTRUE(fertility_owner_alive(remote_owner)))
+remote_lock <- file.path(root, "remote-live.lock")
+dir.create(remote_lock, mode = "0700")
+fertility_write_owner(remote_lock, remote_owner)
+Sys.setFileTime(remote_lock, Sys.time() - 8 * 24 * 3600)
+expect_error(fertility_acquire_lock(
+    remote_lock, initialization_grace = 0, remote_stale_after = 0
+), "another fertility corpus")
+unlink(remote_lock, recursive = TRUE)
+Sys.setFileTime(remote_owner$heartbeat, Sys.time() - 60)
+
 denied_probe <- function(pid) list(alive = NA, start = NA_character_)
 denied_status <- function(owner) fertility_owner_alive(
     owner, process_probe = denied_probe
@@ -728,6 +1247,68 @@ live_owner <- fertility_read_owner(owner_state)
 stopifnot(!is.null(live_owner), identical(live_owner$pid, Sys.getpid()),
           identical(live_owner$start, fertility_process_start(Sys.getpid())),
           isTRUE(fertility_owner_alive(live_owner)))
+
+# Two independent shard processes can hold disjoint deterministic case selections
+# concurrently, while a third overlapping selection is rejected.
+concurrent_root <- file.path(root, "concurrent-shards")
+dir.create(concurrent_root, recursive = TRUE, mode = "0700")
+launch_shard <- function(name, case_id) {
+    ready <- file.path(concurrent_root, paste0(name, ".ready"))
+    release <- file.path(concurrent_root, paste0(name, ".release"))
+    process <- callr::r_bg(
+        function(runtime_script, owner_state, lock_root, name, case_id,
+                 ready, release) {
+            source(runtime_script, local = environment())
+            owner <- fertility_read_owner(owner_state)
+            paths <- c(file.path(lock_root, "selections", name),
+                       file.path(lock_root, "cases", case_id))
+            tokens <- fertility_acquire_lock_set(paths, owner)
+            on.exit(fertility_release_lock_set(tokens), add = TRUE)
+            file.create(ready)
+            deadline <- Sys.time() + 10
+            while (!file.exists(release) && Sys.time() < deadline) Sys.sleep(0.02)
+            if (!file.exists(release)) stop("concurrent shard release timed out")
+            TRUE
+        },
+        args = list(file.path(script_dir, "runtime.R"), owner_state,
+                    concurrent_root, name, case_id, ready, release),
+        user_profile = FALSE, system_profile = FALSE, stdout = "|", stderr = "|"
+    )
+    list(process = process, ready = ready, release = release)
+}
+concurrent_one <- launch_shard("selection-one", "F0001")
+concurrent_two <- launch_shard("selection-two", "F0002")
+on.exit({
+    if (concurrent_one$process$is_alive()) concurrent_one$process$kill_tree()
+    if (concurrent_two$process$is_alive()) concurrent_two$process$kill_tree()
+}, add = TRUE)
+for (attempt in seq_len(500L)) {
+    if (file.exists(concurrent_one$ready) && file.exists(concurrent_two$ready)) break
+    if (!concurrent_one$process$is_alive() || !concurrent_two$process$is_alive()) {
+        stop("concurrent shard process exited before acquiring disjoint locks")
+    }
+    Sys.sleep(0.02)
+}
+stopifnot(file.exists(concurrent_one$ready), file.exists(concurrent_two$ready))
+overlap_error <- tryCatch(callr::r(
+    function(runtime_script, owner_state, path) {
+        source(runtime_script, local = environment())
+        fertility_acquire_lock_set(path, fertility_read_owner(owner_state))
+    },
+    args = list(file.path(script_dir, "runtime.R"), owner_state,
+                file.path(concurrent_root, "cases", "F0001")),
+    user_profile = FALSE, system_profile = FALSE, spinner = FALSE
+), error = identity)
+stopifnot(inherits(overlap_error, "error"),
+          grepl("another fertility corpus", conditionMessage(overlap_error)))
+file.create(concurrent_one$release, concurrent_two$release)
+concurrent_one$process$wait(timeout = 5000)
+concurrent_two$process$wait(timeout = 5000)
+stopifnot(isTRUE(concurrent_one$process$get_result()),
+          isTRUE(concurrent_two$process$get_result()),
+          !file.exists(file.path(concurrent_root, "cases", "F0001")),
+          !file.exists(file.path(concurrent_root, "cases", "F0002")))
+
 live_lock <- file.path(root, "live-owner.lock")
 dir.create(live_lock, mode = "0700")
 fertility_write_owner(live_lock, live_owner)
@@ -845,9 +1426,9 @@ cat("\nsynthetic modification\n", file = file.path(copy_package, "DESCRIPTION"),
     append = TRUE)
 modified_digest <- fertility_directory_digest(copy_package)
 modified <- dependency
-modified$rlang_installed_md5 <- modified_digest
+modified$rlang_installed_sha256 <- modified_digest
 stopifnot(!identical(original_digest, modified_digest),
-          "rlang_installed_md5" %in%
+          "rlang_installed_sha256" %in%
               fertility_provenance_mismatches(dependency, modified))
 
 # Start a real parent R process with TMPDIR configured before startup. That

@@ -152,12 +152,84 @@ fertility_reader_error_classification <- function(errors) {
         if (haven_error) "haven-only-error" else NA_character_
 }
 
+fertility_string_payload_bytes <- function(frame) {
+    values <- vapply(frame, function(column) {
+        if (!is.character(column)) return(0)
+        sum(nchar(column, type = "bytes", allowNA = TRUE), na.rm = TRUE)
+    }, numeric(1))
+    sum(values)
+}
+
+fertility_worker_sizing_tile <- function(item, tile, framework_id,
+                                         timeout_seconds) {
+    readers <- c("direct", "rust", "haven")
+    maximum <- 0
+    completed <- 0L
+    errors <- setNames(rep(FALSE, length(readers)), readers)
+    memory_errors <- errors
+    for (offset in tile$sample_offsets) {
+        payload <- 0
+        complete <- TRUE
+        for (reader in readers) {
+            sample_tile <- tile
+            sample_tile$type <- "value"
+            sample_tile$skip <- as.double(offset)
+            sample_tile$n_max <- 1L
+            value <- tryCatch({
+                frame <- fertility_tile_read(reader, item$path, sample_tile)
+                fertility_string_payload_bytes(frame)
+            }, error = identity)
+            if (inherits(value, "error")) {
+                errors[[reader]] <- TRUE
+                memory_errors[[reader]] <- memory_errors[[reader]] ||
+                    fertility_memory_error(value)
+                complete <- FALSE
+            } else {
+                payload <- payload + value
+            }
+            rm(value)
+            gc(FALSE)
+        }
+        if (complete) {
+            maximum <- max(maximum, payload)
+            completed <- completed + 1L
+        }
+    }
+    classification <- if (any(memory_errors)) "memory-limit" else
+        if (any(errors)) fertility_reader_error_classification(errors) else "pass"
+    c(fertility_worker_base(item, framework_id, timeout_seconds), list(
+        tile_id = tile$tile_id, tile_type = tile$type, batch = tile$batch,
+        skip = tile$skip, n_max = tile$n_max, classification = classification,
+        secondary = paste0(readers[errors], "-reader-error"),
+        mismatches = fertility_bind_mismatches(list()), rows = completed,
+        reader_rows = setNames(rep(NA_integer_, length(readers)), readers),
+        columns = length(tile$column_names), column_names = character(),
+        storage = character(), structural_rows = NA_real_, column_bytes = numeric(),
+        strl = logical(), payload_bytes_per_row = if (completed) maximum else NA_real_,
+        samples_requested = length(tile$sample_offsets),
+        samples_completed = completed,
+        projection_expected_count = NA_integer_,
+        projection_expected_hash = NA_character_,
+        projection_counts = setNames(rep(NA_integer_, length(readers)), readers),
+        projection_hashes = setNames(rep(NA_character_, length(readers)), readers),
+        projection_ok = setNames(rep(NA, length(readers)), readers),
+        elapsed_seconds = 0
+    ))
+}
+
 fertility_worker_tile <- function(item, tile, compare_script, package_library,
                                   expected_package_path, framework_id,
                                   timeout_seconds) {
     source(compare_script, local = environment(fertility_worker_tile))
     fertility_load_readers(package_library, expected_package_path)
     started <- proc.time()[["elapsed"]]
+    if (identical(tile$type, "sizing")) {
+        result <- fertility_worker_sizing_tile(
+            item, tile, framework_id, timeout_seconds
+        )
+        result$elapsed_seconds <- unname(proc.time()[["elapsed"]] - started)
+        return(result)
+    }
     readers <- c("direct", "rust", "haven")
     values <- setNames(lapply(readers, function(reader) {
         tryCatch(fertility_tile_read(reader, item$path, tile), error = identity)

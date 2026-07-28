@@ -31,11 +31,17 @@ fertility_atomic_write_table(release_summary,
                              file.path(raw_root, "inventory-summary.tsv"))
 message("inventory: 1,004 files; selected: ", nrow(selected))
 if (options$inventory_only) quit(save = "no", status = 0L)
-if (!nrow(selected)) stop("filters selected no corpus files")
 
-library <- file.path(raw_root, "library")
-provenance_path <- file.path(raw_root, "build-provenance.tsv")
-if (!file.exists(provenance_path)) stop("run benchmark.sh to create package provenance")
+library_value <- Sys.getenv("DTAPARSER_FERTILITY_LIBRARY")
+provenance_value <- Sys.getenv("DTAPARSER_FERTILITY_PROVENANCE")
+prepared_framework_id <- Sys.getenv("DTAPARSER_FERTILITY_FRAMEWORK_ID")
+owner_state <- Sys.getenv("DTAPARSER_FERTILITY_OWNER_STATE")
+if (!nzchar(library_value) || !nzchar(provenance_value) ||
+    !nzchar(prepared_framework_id) || !nzchar(owner_state)) {
+    stop("run benchmark.sh to create immutable corpus setup")
+}
+library <- normalizePath(library_value, winslash = "/", mustWork = TRUE)
+provenance_path <- normalizePath(provenance_value, winslash = "/", mustWork = TRUE)
 provenance <- fertility_verify_provenance(checkout_root, library, provenance_path)
 expected_package_path <- fertility_package_path(library)
 .libPaths(c(library, .libPaths()))
@@ -44,43 +50,49 @@ for (package in c("dtaparser", "haven", "openssl", "callr")) {
 }
 if (!identical(normalizePath(getNamespaceInfo(asNamespace("dtaparser"), "path"),
                              winslash = "/"), expected_package_path)) {
-    stop("dtaparser was not loaded from the checkout-local corpus library")
+    stop("dtaparser was not loaded from the immutable corpus library")
 }
-datasigs_sha256 <- tolower(as.character(openssl::sha256(file(
-    fertility_required_paths()$datasigs
-))))
-framework_id <- fertility_stable_id(list(
-    schema_version = fertility_schema_version,
-    provenance_id = provenance$provenance_id[[1L]],
-    datasigs_sha256 = datasigs_sha256,
-    comparator_tolerance = "1e-7"
+framework_id <- fertility_framework_id(
+    provenance$provenance_id[[1L]], fertility_required_paths()$datasigs
+)
+if (!identical(framework_id, prepared_framework_id)) {
+    stop("prepared corpus framework identity changed before execution")
+}
+snapshot_root <- fertility_verify_framework_snapshot(script_dir, raw_root, framework_id, inventory)
+configuration <- fertility_tile_configuration(options)
+inventory_id <- fertility_inventory_id(inventory)
+family_selection <- fertility_family_selection(inventory, options)
+family_manifest <- fertility_family_manifest(inventory, options)
+family_manifest_id <- fertility_manifest_id(family_manifest)
+family_id <- fertility_selection_family_id(
+    inventory, options, framework_id, configuration$config_id,
+    provenance$provenance_id[[1L]]
+)
+selection_id <- fertility_stable_id(list(
+    family_id = family_id,
+    shard_index = options$shard_index,
+    selected_ids = paste(selected$id, collapse = ",")
 ))
-snapshot_root <- file.path(raw_root, "framework", framework_id)
-dir.create(snapshot_root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
-Sys.chmod(c(file.path(raw_root, "framework"), snapshot_root), mode = "0700")
-for (name in c("common.R", "worker.R", "compare.R", "runtime.R")) {
-    source_path <- file.path(script_dir, name)
-    snapshot_path <- file.path(snapshot_root, name)
-    if (!file.exists(snapshot_path)) {
-        temporary <- tempfile(paste0(name, "."), tmpdir = snapshot_root)
-        if (!file.copy(source_path, temporary, overwrite = TRUE)) {
-            stop("could not snapshot corpus framework")
-        }
-        Sys.chmod(temporary, mode = "0600")
-        if (!file.rename(temporary, snapshot_path)) {
-            stop("could not publish corpus framework snapshot")
-        }
+owner <- fertility_read_owner(owner_state)
+if (!isTRUE(fertility_owner_alive(owner))) stop("orchestrator owner is not alive")
+lock_root <- file.path(raw_root, ".locks")
+selection_lock <- file.path(
+    lock_root, "selections", fertility_lock_component(selection_id, "selection ID")
+)
+case_locks <- file.path(
+    lock_root, "cases", vapply(selected$id, fertility_lock_component, character(1),
+                                label = "case ID")
+)
+run_locks <- fertility_acquire_lock_set(c(selection_lock, case_locks), owner)
+on.exit({
+    if (!fertility_release_lock_set(run_locks)) {
+        warning("could not release every fertility corpus run lock")
     }
-    if (!identical(unname(tools::md5sum(source_path)),
-                   unname(tools::md5sum(snapshot_path)))) {
-        stop("corpus framework snapshot does not match its provenance")
-    }
-}
+}, add = TRUE)
+
 checkpoint_root <- file.path(raw_root, "checkpoints", framework_id)
 dir.create(checkpoint_root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
 Sys.chmod(c(file.path(raw_root, "checkpoints"), checkpoint_root), mode = "0700")
-
-configuration <- fertility_tile_configuration(options)
 
 execute_tile <- function(item, tile, input) {
     started <- proc.time()[["elapsed"]]
@@ -147,6 +159,17 @@ execute_tile <- function(item, tile, input) {
             elapsed_seconds = unname(proc.time()[["elapsed"]] - started)
         )
     )
+    if (identical(tile$type, "sizing")) {
+        payload <- if (!is.null(result$payload_bytes_per_row))
+            result$payload_bytes_per_row else NA_real_
+        result$chosen_rows <- fertility_strl_rows(
+            payload, length(tile$column_names), configuration
+        )
+        result$sample_offsets_hash <- fertility_stable_id(list(
+            offsets = paste(format(tile$sample_offsets, scientific = FALSE),
+                            collapse = ",")
+        ))
+    }
     stat_after <- fertility_file_stat(item$path)
     if (is.null(stat_before) || is.null(stat_after) ||
         !identical(stat_before, stat_after)) result$classification <- "input-changed"
@@ -157,8 +180,10 @@ execute_tile <- function(item, tile, input) {
 # This fixture is synthetic and remains inside the private target-local TMPDIR.
 worker_smoke_path <- tempfile("worker-smoke-", tmpdir = Sys.getenv("TMPDIR"),
                               fileext = ".dta")
-haven::write_dta(data.frame(synthetic_number = 1:3), worker_smoke_path,
-                 version = 14)
+haven::write_dta(data.frame(
+    synthetic_number = seq_len(100L),
+    synthetic_long = c(rep("x", 99L), strrep("y", 3000L))
+), worker_smoke_path, version = 14)
 on.exit(unlink(worker_smoke_path), add = TRUE)
 worker_smoke_item <- list(
     id = "FTEST", program = "dhs", level = "women", release = 118L,
@@ -172,13 +197,27 @@ worker_smoke <- execute_tile(
 if (!is.list(worker_smoke) || worker_smoke$classification %in%
         c("timeout", "memory-limit", "crash", "dtaparser-only-error",
           "haven-only-error", "shared-reader-error", "unresolved") ||
-    !identical(as.integer(worker_smoke$rows), 3L) ||
-    !identical(as.integer(worker_smoke$columns), 1L) ||
-    !identical(as.double(worker_smoke$structural_rows), 3)) {
+    !identical(as.integer(worker_smoke$rows), 100L) ||
+    !identical(as.integer(worker_smoke$columns), 2L) ||
+    !identical(as.double(worker_smoke$structural_rows), 100)) {
     stop("post-build isolated worker regression failed")
 }
+worker_sizing_smoke <- execute_tile(
+    worker_smoke_item,
+    fertility_sizing_tile(1L, "synthetic_long", 100, configuration$strl_sample_count),
+    fertility_capture_input(worker_smoke_item)
+)
+if (!is.list(worker_sizing_smoke) ||
+    !identical(worker_sizing_smoke$classification, "pass") ||
+    !identical(as.integer(worker_sizing_smoke$samples_completed),
+               as.integer(configuration$strl_sample_count)) ||
+    !is.finite(worker_sizing_smoke$payload_bytes_per_row) ||
+    worker_sizing_smoke$payload_bytes_per_row < 9000 ||
+    !is.finite(worker_sizing_smoke$chosen_rows) || worker_sizing_smoke$chosen_rows <= 1L) {
+    stop("post-build isolated strL sizing regression failed")
+}
 unlink(worker_smoke_path)
-message("post-build isolated worker regression passed")
+message("post-build isolated worker regressions passed")
 
 planning_failure_tile <- function(item, batch, detail) list(
     schema_version = fertility_schema_version, framework_id = framework_id,
@@ -263,11 +302,31 @@ for (index in seq_len(nrow(selected))) {
                     batches[[batch]], column_names, column_bytes
                 )
                 rows_per_tile <- fertility_adaptive_rows(bytes, configuration)
+                is_strl_batch <- any(!is.finite(bytes))
+                if (is_strl_batch) {
+                    sizing_tile <- fertility_sizing_tile(
+                        batch, batches[[batch]], total_rows,
+                        configuration$strl_sample_count
+                    )
+                    sizing <- fertility_process_tile(
+                        item, sizing_tile,
+                        file.path(tile_root, paste0(sizing_tile$tile_id, ".rds")),
+                        framework_id, configuration, input, options$retry, execute_tile
+                    )
+                    rows_per_tile <- as.integer(sizing$result$chosen_rows)
+                }
                 reserved_probes <- if (batch == 1L)
                     configuration$beyond_end_windows else 0L
+                available_tiles <- configuration$max_tiles_per_batch -
+                    reserved_probes - if (is_strl_batch) 1L else 0L
+                if (available_tiles < 1L) {
+                    tiles[[length(tiles) + 1L]] <- planning_failure_tile(
+                        item, batch, "tile-ceiling-reached"
+                    )
+                    next
+                }
                 plan <- fertility_plan_offsets(
-                    total_rows, rows_per_tile,
-                    configuration$max_tiles_per_batch - reserved_probes
+                    total_rows, rows_per_tile, available_tiles
                 )
                 if (plan$ceiling) {
                     tiles[[length(tiles) + 1L]] <- planning_failure_tile(
@@ -275,15 +334,25 @@ for (index in seq_len(nrow(selected))) {
                     )
                     next
                 }
-                for (offset in plan$offsets) {
-                    tile <- fertility_value_tile(
-                        batch, offset, rows_per_tile, batches[[batch]]
-                    )
-                    processed <- fertility_process_tile(
+                split_budget <- new.env(parent = emptyenv())
+                split_budget$remaining <- as.integer(
+                    available_tiles - length(plan$offsets)
+                )
+                process_value_tile <- function(tile) {
+                    fertility_process_tile(
                         item, tile, file.path(tile_root, paste0(tile$tile_id, ".rds")),
                         framework_id, configuration, input, options$retry, execute_tile
+                    )$result
+                }
+                for (offset in plan$offsets) {
+                    requested <- if (total_rows == 0) 1L else as.integer(min(
+                        rows_per_tile, total_rows - offset
+                    ))
+                    leaves <- fertility_process_adaptive_range(
+                        batch, offset, requested, batches[[batch]],
+                        process_value_tile, split_budget
                     )
-                    tiles[[length(tiles) + 1L]] <- processed$result
+                    tiles <- c(tiles, leaves)
                 }
                 if (batch == 1L) for (probe in seq_len(configuration$beyond_end_windows)) {
                     tile <- fertility_value_tile(
@@ -325,6 +394,12 @@ if (!identical(final_provenance$provenance_id[[1L]],
                provenance$provenance_id[[1L]])) {
     stop("corpus build provenance changed during the run")
 }
+invisible(fertility_verify_framework_snapshot(script_dir, raw_root, framework_id, inventory))
+if (!identical(
+    fertility_framework_id(final_provenance$provenance_id[[1L]],
+                           fertility_required_paths()$datasigs),
+    framework_id
+)) stop("corpus framework or inventory provenance changed during the run")
 for (index in seq_len(nrow(selected))) {
     current_input <- fertility_capture_input(as.list(selected[index, , drop = FALSE]))
     if (!identical(current_input$input_id, checkpoints[[index]]$input_id)) {
@@ -332,22 +407,8 @@ for (index in seq_len(nrow(selected))) {
     }
 }
 results <- fertility_result_frame(checkpoints)
-results$build_provenance_id <- provenance$provenance_id[[1L]]
-summary <- as.data.frame(table(classification = results$classification),
-                         stringsAsFactors = FALSE)
-names(summary)[[2L]] <- "files"
-selection_id <- fertility_stable_id(list(
-    framework_id = framework_id,
-    programs = paste(options$programs, collapse = ","),
-    releases = paste(options$releases, collapse = ","),
-    ids = paste(options$ids, collapse = ","),
-    shard_index = options$shard_index,
-    shard_count = options$shard_count,
-    max_files = as.character(options$max_files),
-    timeout_seconds = options$timeout_seconds,
-    config_id = configuration$config_id,
-    selected_ids = paste(selected$id, collapse = ",")
-))
+results$build_provenance_id <- rep(provenance$provenance_id[[1L]], nrow(results))
+summary <- fertility_classification_summary(results)
 report_parent <- file.path(raw_root, "reports", selection_id)
 dir.create(report_parent, recursive = TRUE, showWarnings = FALSE, mode = "0700")
 Sys.chmod(c(file.path(raw_root, "reports"), report_parent), mode = "0700")
@@ -359,13 +420,27 @@ results <- fertility_publish_results(
     file.path(report_stage, "results.tsv")
 )
 fertility_atomic_write_table(summary, file.path(report_stage, "summary.tsv"))
+fertility_atomic_write_table(
+    family_manifest, file.path(report_stage, "family-manifest.tsv")
+)
+filter_spec <- fertility_filter_spec(options)
 run_provenance <- data.frame(
     schema_version = fertility_schema_version,
     selection_id = selection_id,
+    family_id = family_id,
+    family_manifest_id = family_manifest_id,
     framework_id = framework_id,
     config_id = configuration$config_id,
     build_provenance_id = provenance$provenance_id[[1L]],
+    inventory_id = inventory_id,
+    report_schema_id = fertility_report_schema_id(),
     selected_files = nrow(selected),
+    expected_family_files = nrow(family_selection),
+    full_default_family = fertility_full_default_family(options),
+    program_filter = filter_spec$program_filter,
+    release_filter = filter_spec$release_filter,
+    id_filter = filter_spec$id_filter,
+    max_files = filter_spec$max_files,
     shard_index = options$shard_index,
     shard_count = options$shard_count,
     timeout_seconds = options$timeout_seconds,
@@ -373,6 +448,8 @@ run_provenance <- data.frame(
     column_batch = options$column_batch,
     memory_mib = options$memory_mib,
     cell_budget = options$cell_budget,
+    max_tiles_per_batch = options$max_tiles_per_batch,
+    beyond_end_windows = options$beyond_end_windows,
     retry = options$retry,
     created_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     stringsAsFactors = FALSE, check.names = FALSE
