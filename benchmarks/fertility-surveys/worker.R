@@ -315,7 +315,7 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
     source_structure <- if (identical(tile$type, "metadata")) tryCatch(
         fertility_structural_metadata(item$path), error = identity
     ) else NULL
-    if (inherits(structural, "error") || inherits(source_structure, "error")) {
+    if (inherits(structural, "error")) {
         secondary <- c(secondary, "metadata-reader-error")
     }
     if (identical(tile$type, "metadata") && !inherits(structural, "error")) {

@@ -1616,6 +1616,70 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     stopifnot(metadata_worker$rows == 5L,
               metadata_worker$columns == ncol(bounded_data),
               identical(metadata_worker$column_names, names(bounded_data)))
+    structural_failure_message <- "private synthetic structural parser failure"
+    structural_failure_worker <- (function() {
+        worker_environment <- environment(fertility_worker_tile)
+        had_binding <- exists(
+            "fertility_structural_metadata", envir = worker_environment,
+            inherits = FALSE
+        )
+        original <- get(
+            "fertility_structural_metadata", envir = worker_environment,
+            inherits = TRUE
+        )
+        assign(
+            "fertility_structural_metadata",
+            function(path) stop(structural_failure_message),
+            envir = worker_environment
+        )
+        on.exit({
+            if (had_binding) {
+                assign(
+                    "fertility_structural_metadata", original,
+                    envir = worker_environment
+                )
+            } else {
+                rm("fertility_structural_metadata", envir = worker_environment)
+            }
+        }, add = TRUE)
+        fertility_worker_tile(
+            bounded_item, fertility_metadata_tile(),
+            file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
+            installed_dtaparser, "framework", 10L
+        )
+    })()
+    structural_planning_failure <- list(
+        classification = "unresolved",
+        secondary = "structural-metadata-unavailable",
+        mismatches = fertility_mismatch_record(
+            "unresolved", "structural-metadata-unavailable"
+        )
+    )
+    structural_failure_tiles <- list(
+        structural_failure_worker, structural_planning_failure
+    )
+    stopifnot(
+        structural_failure_worker$classification == "pass",
+        all(structural_failure_worker$reader_rows[c("direct", "rust")] ==
+            nrow(bounded_data)),
+        is.na(structural_failure_worker$reader_rows[["haven"]]),
+        !any(grepl("reader-error", structural_failure_worker$secondary, fixed = TRUE)),
+        is.na(structural_failure_worker$structural_rows),
+        !length(structural_failure_worker$column_bytes),
+        !length(structural_failure_worker$strl),
+        fertility_aggregate_classification(
+            structural_failure_tiles, complete = FALSE
+        ) == "unresolved",
+        identical(
+            fertility_tile_secondary(structural_failure_tiles),
+            "structural-metadata-unavailable"
+        ),
+        !any(grepl(
+            structural_failure_message,
+            as.character(unlist(structural_failure_tiles, use.names = FALSE)),
+            fixed = TRUE
+        ))
+    )
     bounded_tile <- fertility_value_tile(1L, 1L, 2L, c("number", "day"))
     bounded_worker <- fertility_worker_tile(
         bounded_item, bounded_tile, file.path(script_dir, "compare.R"),
@@ -1677,13 +1741,33 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
         encoding_item, fertility_metadata_tile(), file.path(script_dir, "compare.R"),
         dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
     )
-    encoding_terminal <- fertility_worker_tile(
-        encoding_item, fertility_value_tile(
-            1L, nrow(bounded_data), 1L,
-            encoding_metadata$column_names[[4L]], type = "terminal", probe = 1L
-        ), file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
-        installed_dtaparser, "framework", 10L
-    )
+    encoding_terminal_probe <- (function() {
+        worker_environment <- environment(fertility_worker_tile)
+        original <- get(
+            "fertility_tile_read", envir = worker_environment, inherits = TRUE
+        )
+        calls <- list()
+        assign("fertility_tile_read", function(reader, path, tile, encoding = NULL) {
+            if (identical(tile$type, "terminal")) {
+                calls[[length(calls) + 1L]] <<- list(
+                    reader = reader, encoding = encoding
+                )
+            }
+            original(reader, path, tile, encoding = encoding)
+        }, envir = worker_environment)
+        on.exit(assign(
+            "fertility_tile_read", original, envir = worker_environment
+        ), add = TRUE)
+        result <- fertility_worker_tile(
+            encoding_item, fertility_value_tile(
+                1L, nrow(bounded_data), 1L,
+                encoding_metadata$column_names[[4L]], type = "terminal", probe = 1L
+            ), file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
+            installed_dtaparser, "framework", 10L
+        )
+        list(result = result, calls = calls)
+    })()
+    encoding_terminal <- encoding_terminal_probe$result
     encoding_sizing <- fertility_worker_tile(
         encoding_item, fertility_sizing_tile(1L, "text", 1, 1L),
         file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
@@ -1702,6 +1786,14 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
         ),
         encoding_terminal$classification == "pass",
         all(encoding_terminal$reader_rows == 0L),
+        identical(
+            vapply(encoding_terminal_probe$calls, `[[`, character(1), "reader"),
+            c("direct", "rust", "haven")
+        ),
+        length(encoding_terminal_probe$calls) == 3L,
+        all(vapply(encoding_terminal_probe$calls, function(call) {
+            identical(call$encoding, encoding_item$encoding_override)
+        }, logical(1))),
         encoding_sizing$classification == "pass",
         encoding_sizing$samples_completed == 1L
     )
