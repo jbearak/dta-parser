@@ -111,6 +111,38 @@ The exhaustive run is:
 benchmarks/fertility-surveys/benchmark.sh
 ```
 
+## Historical schema-10 validation and republication
+
+The complete eight-shard run from framework
+`6f0e40d786d054ec2cb924c74dabb67b66bb0d079f01147294c48187565a6488`
+can be revalidated from its private schema-10 result and tile checkpoints without
+opening any DTA input or launching a reader. Validation-only performs every build,
+framework, configuration, inventory, input-attestation, checkpoint, aggregation,
+privacy, and public-schema check, but does not stage or publish reports:
+
+```sh
+benchmarks/fertility-surveys/benchmark.sh \
+  --republish-framework=6f0e40d786d054ec2cb924c74dabb67b66bb0d079f01147294c48187565a6488 \
+  --validate-only --shard-count=8 --chunk-rows=50000 --column-batch=32 \
+  --memory-mib=1024 --cell-budget=10000000 --max-tiles-per-batch=100000 \
+  --beyond-end-windows=1 --timeout-seconds=600
+```
+
+Remove `--validate-only` to atomically publish all eight replay-derived shard
+bundles. Republication requires exactly eight shards and the exact recorded
+configuration. It records `historical-schema-10-replay` evidence provenance and a
+privacy-safe aggregate input-attestation ID; individual expected or actual hashes
+remain private. Only the exact schema-10 `-reader-error` artifact caused by the
+empty-reader `paste0()` bug is discarded, and only in this historical replay path.
+Current execution and normal checkpoint resume reject that artifact.
+
+All shard bundles are validated and staged before publication. Bundle renames and
+`CURRENT` pointer updates form one rollback-checked transaction: a staging, rename,
+or pointer failure restores every prior pointer and removes every new bundle, while
+a failed rollback is reported rather than treated as success. Historical replay
+validates and republishes historical evidence; it is not a substitute for the
+mandatory final exhaustive fresh run with the corrected worker.
+
 Do not run it casually. The default timeout is 600 seconds per metadata/value
 tile. Available options are:
 

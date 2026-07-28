@@ -377,7 +377,8 @@ for (index in seq_len(nrow(selected))) {
         final_input <- fertility_capture_input(item)
         if (!identical(final_input$input_id, input$input_id)) {
             result <- simple_result(
-                item, final_input, "inventory-hash-error", "input-changed"
+                item, final_input, "inventory-hash-error",
+                fertility_changed_input_reason(final_input)
             )
             result$complete <- FALSE
         }
@@ -424,9 +425,21 @@ fertility_atomic_write_table(
     family_manifest, file.path(report_stage, "family-manifest.tsv")
 )
 filter_spec <- fertility_filter_spec(options)
+evidence_origin <- "fresh-execution"
+input_attestation_id <- fertility_input_attestation_id(checkpoints)
+evidence_selection_id <- fertility_evidence_selection_id(
+    selection_id, input_attestation_id, evidence_origin,
+    fertility_schema_version, fertility_report_schema_id()
+)
 run_provenance <- data.frame(
     schema_version = fertility_schema_version,
+    report_schema_version = fertility_report_schema_version,
+    evidence_origin = evidence_origin,
+    source_corpus_schema_version = fertility_schema_version,
+    replayed_at_utc = "",
     selection_id = selection_id,
+    evidence_selection_id = evidence_selection_id,
+    input_attestation_id = input_attestation_id,
     family_id = family_id,
     family_manifest_id = family_manifest_id,
     framework_id = framework_id,

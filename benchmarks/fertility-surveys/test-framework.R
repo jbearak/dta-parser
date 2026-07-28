@@ -132,9 +132,21 @@ make_bundle_family <- function(
             family_id = family_id, shard_index = index,
             selected_ids = paste(expected$id, collapse = ",")
         ))
+        input_attestation_id <- fertility_stable_id(list(
+            synthetic_shard = index, ids = paste(expected$id, collapse = ",")
+        ))
+        evidence_selection_id <- fertility_evidence_selection_id(
+            selection_id, input_attestation_id, "fresh-execution",
+            fertility_schema_version, fertility_report_schema_id()
+        )
         provenance <- data.frame(
             schema_version = as.character(fertility_schema_version),
-            selection_id = selection_id, family_id = family_id,
+            report_schema_version = as.character(fertility_report_schema_version),
+            evidence_origin = "fresh-execution",
+            source_corpus_schema_version = as.character(fertility_schema_version),
+            replayed_at_utc = "", selection_id = selection_id,
+            evidence_selection_id = evidence_selection_id,
+            input_attestation_id = input_attestation_id, family_id = family_id,
             family_manifest_id = manifest_id, framework_id = test_framework_id,
             config_id = test_config_id, build_provenance_id = test_build_id,
             inventory_id = inventory_id, report_schema_id = fertility_report_schema_id(),
@@ -168,6 +180,60 @@ validated_merge <- fertility_validate_shard_bundles(
 )
 stopifnot(identical(validated_merge$results$id, c("F0001", "F0002")),
           validated_merge$shard_count == 2L)
+false_origin <- merge_bundles
+false_origin[[1L]]$provenance$evidence_origin <- "historical-schema-10-replay"
+expect_error(fertility_validate_shard_bundles(
+    false_origin, merge_fixture$id, canonical_inventory
+), "false claim|identical framework/config/build/inventory")
+historical_non_eight <- merge_bundles
+historical_config <- fertility_tile_configuration(fertility_parse_arguments(c(
+    "--shard-index=1", "--shard-count=8", "--timeout-seconds=600",
+    "--chunk-rows=50000", "--column-batch=32", "--memory-mib=1024",
+    "--cell-budget=10000000", "--max-tiles-per-batch=100000",
+    "--beyond-end-windows=1"
+)))
+historical_family_id <- fertility_family_id_from_manifest(
+    merge_fixture$manifest, test_framework_id, historical_config$config_id,
+    test_build_id, historical_non_eight[[1L]]$provenance$inventory_id[[1L]],
+    2L, Inf, fertility_report_schema_id(), "historical-schema-10-replay",
+    fertility_legacy_corpus_schema_version
+)
+for (index in seq_along(historical_non_eight)) {
+    provenance <- historical_non_eight[[index]]$provenance
+    selected_ids <- historical_non_eight[[index]]$results$id
+    selection_id <- fertility_stable_id(list(
+        family_id = historical_family_id, shard_index = index,
+        selected_ids = paste(selected_ids, collapse = ",")
+    ))
+    provenance$evidence_origin <- "historical-schema-10-replay"
+    provenance$source_corpus_schema_version <-
+        as.character(fertility_legacy_corpus_schema_version)
+    provenance$replayed_at_utc <- "2026-01-01T00:00:00Z"
+    provenance$family_id <- historical_family_id
+    provenance$config_id <- historical_config$config_id
+    provenance$selection_id <- selection_id
+    provenance$evidence_selection_id <- fertility_evidence_selection_id(
+        selection_id, provenance$input_attestation_id[[1L]],
+        provenance$evidence_origin[[1L]],
+        fertility_legacy_corpus_schema_version, fertility_report_schema_id()
+    )
+    provenance$timeout_seconds <- "600"
+    provenance$chunk_rows <- "50000"
+    provenance$column_batch <- "32"
+    provenance$memory_mib <- "1024"
+    provenance$cell_budget <- "10000000"
+    provenance$max_tiles_per_batch <- "100000"
+    provenance$beyond_end_windows <- "1"
+    historical_non_eight[[index]]$provenance <- provenance
+}
+expect_error(fertility_validate_shard_bundles(
+    historical_non_eight, historical_family_id, canonical_inventory
+), "exact eight-shard run")
+false_attestation <- merge_bundles
+false_attestation[[1L]]$provenance$input_attestation_id <- paste(rep("f", 64L), collapse = "")
+expect_error(fertility_validate_shard_bundles(
+    false_attestation, merge_fixture$id, canonical_inventory
+), "evidence selection identity")
 expect_error(fertility_validate_shard_bundles(
     merge_bundles[1L], merge_fixture$id, canonical_inventory
 ), "every shard index")
@@ -248,21 +314,29 @@ privacy_provenance[[1L]]$provenance$path <- "/private/source"
 expect_error(fertility_validate_shard_bundles(
     privacy_provenance, merge_fixture$id, canonical_inventory
 ), "provenance schema")
-prior_report_schema_id <- fertility_stable_id(list(
-    schema_version = 9L,
-    fields = paste(fertility_result_fields(), collapse = ","),
-    contract = paste(
-        "hash,id,enum,manifest-release,enum,fixed-categories,count,",
-        "fixed-counts,hashed-counts,optional-number,optional-count,count,",
-        "count,boolean,optional-number,hash", sep = ""
-    )
-))
-stopifnot(!identical(prior_report_schema_id, fertility_report_schema_id()))
+prior_report_schema_id <- fertility_report_schema_id(
+    fertility_legacy_report_schema_version
+)
+stopifnot(
+    !identical(prior_report_schema_id, fertility_report_schema_id()),
+    fertility_report_schema_version != fertility_schema_version
+)
 wrong_report_schema <- merge_bundles
 wrong_report_schema[[1L]]$provenance$report_schema_id <- prior_report_schema_id
 expect_error(fertility_validate_shard_bundles(
     wrong_report_schema, merge_fixture$id, canonical_inventory
 ), "identical framework/config/build/inventory|schema identity")
+wrong_report_version <- merge_bundles
+wrong_report_version[[1L]]$provenance$report_schema_version <-
+    as.character(fertility_legacy_report_schema_version)
+expect_error(fertility_validate_shard_bundles(
+    wrong_report_version, merge_fixture$id, canonical_inventory
+), "invalid scalar|identical framework/config/build/inventory")
+missing_report_version <- merge_bundles
+missing_report_version[[1L]]$provenance$report_schema_version <- NULL
+expect_error(fertility_validate_shard_bundles(
+    missing_report_version, merge_fixture$id, canonical_inventory
+), "provenance schema")
 substituted_manifest <- merge_bundles
 substituted_manifest[[1L]]$family_manifest$id[[1L]] <- "F0003"
 expect_error(fertility_validate_shard_bundles(
@@ -381,6 +455,107 @@ full_canonical_bad_release$release[[131L]] <- 114L
 expect_error(fertility_validate_canonical_inventory(
     full_canonical_bad_release, exact = TRUE
 ), "release counts")
+legacy_snapshot <- file.path(root, "legacy-framework-snapshot")
+dir.create(legacy_snapshot)
+fertility_atomic_write_table(
+    full_canonical, file.path(legacy_snapshot, "inventory-manifest.tsv")
+)
+legacy_inventory_provenance <- data.frame(
+    schema_version = fertility_schema_version, framework_id = test_framework_id,
+    inventory_id = paste(rep("e", 64L), collapse = ""),
+    inventory_manifest_id = fertility_manifest_id(full_canonical),
+    report_schema_id = fertility_report_schema_id(
+        fertility_legacy_report_schema_version
+    ), files = nrow(full_canonical), stringsAsFactors = FALSE, check.names = FALSE
+)
+fertility_atomic_write_table(
+    legacy_inventory_provenance,
+    file.path(legacy_snapshot, "inventory-manifest-provenance.tsv")
+)
+stopifnot(nrow(fertility_framework_inventory(
+    legacy_snapshot, framework_id = test_framework_id,
+    report_schema_version = fertility_legacy_report_schema_version
+)$manifest) == fertility_expected_rows)
+expect_error(fertility_framework_inventory(
+    legacy_snapshot, framework_id = test_framework_id
+), "provenance is invalid")
+stale_legacy_provenance <- legacy_inventory_provenance
+stale_legacy_provenance$report_schema_id <- fertility_report_schema_id()
+fertility_atomic_write_table(
+    stale_legacy_provenance,
+    file.path(legacy_snapshot, "inventory-manifest-provenance.tsv")
+)
+expect_error(fertility_framework_inventory(
+    legacy_snapshot, framework_id = test_framework_id,
+    report_schema_version = fertility_legacy_report_schema_version
+), "provenance is invalid")
+fertility_atomic_write_table(
+    legacy_inventory_provenance,
+    file.path(legacy_snapshot, "inventory-manifest-provenance.tsv")
+)
+current_snapshot <- file.path(root, "current-framework-snapshot")
+dir.create(current_snapshot)
+fertility_atomic_write_table(
+    full_canonical, file.path(current_snapshot, "inventory-manifest.tsv")
+)
+current_inventory_provenance <- data.frame(
+    schema_version = fertility_schema_version,
+    report_schema_version = fertility_report_schema_version,
+    framework_id = test_framework_id,
+    inventory_id = paste(rep("e", 64L), collapse = ""),
+    inventory_manifest_id = fertility_manifest_id(full_canonical),
+    report_schema_id = fertility_report_schema_id(), files = nrow(full_canonical),
+    stringsAsFactors = FALSE, check.names = FALSE
+)
+fertility_atomic_write_table(
+    current_inventory_provenance,
+    file.path(current_snapshot, "inventory-manifest-provenance.tsv")
+)
+stopifnot(nrow(fertility_framework_inventory(
+    current_snapshot, framework_id = test_framework_id
+)$manifest) == fertility_expected_rows)
+fresh_snapshot_provenance <- data.frame(
+    evidence_origin = "fresh-execution",
+    source_corpus_schema_version = as.character(fertility_schema_version),
+    stringsAsFactors = FALSE
+)
+historical_snapshot_provenance <- data.frame(
+    evidence_origin = "historical-schema-10-replay",
+    source_corpus_schema_version =
+        as.character(fertility_legacy_corpus_schema_version),
+    stringsAsFactors = FALSE
+)
+stopifnot(
+    identical(
+        fertility_snapshot_report_schema_version(fresh_snapshot_provenance),
+        fertility_report_schema_version
+    ),
+    identical(
+        fertility_snapshot_report_schema_version(historical_snapshot_provenance),
+        fertility_legacy_report_schema_version
+    ),
+    nrow(fertility_framework_inventory(
+        legacy_snapshot, framework_id = test_framework_id,
+        report_schema_version = fertility_snapshot_report_schema_version(
+            historical_snapshot_provenance
+        )
+    )$manifest) == fertility_expected_rows,
+    nrow(fertility_framework_inventory(
+        current_snapshot, framework_id = test_framework_id,
+        report_schema_version = fertility_snapshot_report_schema_version(
+            fresh_snapshot_provenance
+        )
+    )$manifest) == fertility_expected_rows
+)
+mixed_snapshot_provenance <- rbind(
+    fresh_snapshot_provenance, historical_snapshot_provenance
+)
+expect_error(fertility_snapshot_report_schema_version(
+    mixed_snapshot_provenance
+), "mixed evidence origins")
+expect_error(fertility_snapshot_report_schema_version(data.frame(
+    source_corpus_schema_version = as.character(fertility_schema_version)
+)), "unavailable")
 preflight_item <- list(expected_sha512 = paste(rep("a", 128L), collapse = ""))
 preflight_match <- list(hash_status = "ok", actual_sha512 = preflight_item$expected_sha512)
 preflight_mismatch <- list(hash_status = "ok",
@@ -494,6 +669,15 @@ equal_count_public$mismatch_categories <- equal_count_summary$categories
 equal_count_public$mismatch_signatures <- equal_count_summary$signatures
 equal_count_public$secondary_categories <- "value-mismatch"
 stopifnot(isTRUE(fertility_validate_public_results(equal_count_public)))
+tied_categories <- fertility_mismatch_summary(list(list(mismatches = data.frame(
+    category = c("value-mismatch", "metadata-mismatch"),
+    detail = c("private-b", "private-a"), component = c(2L, 1L),
+    pair = c("direct-haven", "direct-rust"), stringsAsFactors = FALSE
+))))
+stopifnot(identical(
+    tied_categories$categories,
+    "metadata-mismatch=1,value-mismatch=1"
+))
 private_attribute <- pair_frames$haven
 attr(private_attribute$value, "private_source_attribute") <- "different"
 private_pair_result <- fertility_compare_available_pairs(
@@ -719,6 +903,275 @@ stopifnot(fertility_validate_tile_completeness(
           ),
           fertility_aggregate_classification(traversed_tiles, TRUE) ==
               "value-mismatch")
+reader_flags <- setNames(rep(FALSE, 3L), c("direct", "rust", "haven"))
+stopifnot(!length(fertility_reader_error_categories(reader_flags)))
+reader_flags[["rust"]] <- TRUE
+stopifnot(identical(fertility_reader_error_categories(reader_flags),
+                    "rust-reader-error"))
+legacy_tiles <- traversed_tiles
+legacy_tiles <- lapply(legacy_tiles, function(tile) {
+    tile$secondary <- c(tile$secondary, "-reader-error")
+    tile
+})
+similar_artifact_tiles <- legacy_tiles
+similar_artifact_tiles[[1L]]$secondary <- "-reader-errors"
+expect_error(fertility_tile_secondary(
+    similar_artifact_tiles, allow_legacy_empty_reader_artifact = TRUE
+), "non-canonical reader-error")
+expect_error(fertility_tiled_result(
+    list(id = "F0001", program = "dhs", level = "women", release = 118L,
+         expected_sha512 = ""),
+    test_framework_id, tile_configuration,
+    list(input_id = paste(rep("e", 64L), collapse = ""),
+         actual_sha512 = paste(rep("f", 128L), collapse = "")),
+    legacy_tiles, synthetic_batches, 3
+), "legacy empty-reader artifact")
+legacy_result <- fertility_tiled_result(
+    list(id = "F0001", program = "dhs", level = "women", release = 118L,
+         expected_sha512 = ""),
+    test_framework_id, tile_configuration,
+    list(input_id = paste(rep("e", 64L), collapse = ""),
+         actual_sha512 = paste(rep("f", 128L), collapse = "")),
+    legacy_tiles, synthetic_batches, 3,
+    allow_legacy_empty_reader_artifact = TRUE
+)
+stopifnot(!grepl("-reader-error", legacy_result$secondary_categories, fixed = TRUE))
+legacy_public <- fertility_result_frame(list(legacy_result))
+legacy_public$build_provenance_id <- test_build_id
+stopifnot(isTRUE(fertility_validate_public_results(legacy_public)))
+recorded_item <- list(
+    id = "F0001", program = "dhs", level = "women", release = 118L
+)
+stopifnot(fertility_recorded_result_valid(
+    legacy_result, recorded_item, test_framework_id, tile_configuration
+))
+foreign_schema_result <- legacy_result
+foreign_schema_result$schema_version <- fertility_schema_version + 1L
+stopifnot(
+    !fertility_recorded_result_valid(
+        foreign_schema_result, recorded_item, test_framework_id, tile_configuration
+    ),
+    fertility_recorded_result_valid(
+        foreign_schema_result, recorded_item, test_framework_id, tile_configuration,
+        corpus_schema_version = fertility_schema_version + 1L
+    )
+)
+stale_recorded_result <- legacy_result
+stale_recorded_result$schema_version <- fertility_schema_version - 1L
+stopifnot(!fertility_recorded_result_valid(
+    stale_recorded_result, recorded_item, test_framework_id, tile_configuration
+))
+private_recorded_result <- legacy_result
+private_recorded_result$private_path <- "/private/source"
+stopifnot(!fertility_recorded_result_valid(
+    private_recorded_result, recorded_item, test_framework_id, tile_configuration
+))
+attested_result <- legacy_result
+attested_result$expected_sha512 <- paste(rep("a", 128L), collapse = "")
+attested_result$actual_sha512 <- attested_result$expected_sha512
+attested_result$classification <- "pass"
+attested_result$secondary_categories <- ""
+stopifnot(isTRUE(fertility_validate_recorded_input_attestation(attested_result)))
+signature_failure <- attested_result
+signature_failure$actual_sha512 <- paste(rep("b", 128L), collapse = "")
+signature_failure$classification <- "inventory-hash-error"
+signature_failure$secondary_categories <- "signature-mismatch"
+stopifnot(isTRUE(fertility_validate_recorded_input_attestation(signature_failure)))
+hash_read_failure <- attested_result
+hash_read_failure$actual_sha512 <- NA_character_
+hash_read_failure$classification <- "inventory-hash-error"
+hash_read_failure$secondary_categories <- "hash-read-error"
+stopifnot(isTRUE(fertility_validate_recorded_input_attestation(hash_read_failure)))
+input_changed_failure <- attested_result
+input_changed_failure$classification <- "inventory-hash-error"
+input_changed_failure$secondary_categories <- "input-changed"
+stopifnot(isTRUE(fertility_validate_recorded_input_attestation(
+    input_changed_failure
+)))
+for (corpus_schema_version in c(
+    fertility_schema_version, fertility_legacy_corpus_schema_version
+)) {
+    for (attestation in list(
+        attested_result, signature_failure, hash_read_failure,
+        input_changed_failure
+    )) {
+        attestation$schema_version <- as.integer(corpus_schema_version)
+        stopifnot(
+            fertility_recorded_result_valid(
+                attestation, recorded_item, test_framework_id, tile_configuration,
+                corpus_schema_version = corpus_schema_version
+            ),
+            isTRUE(fertility_validate_recorded_input_attestation(attestation))
+        )
+    }
+}
+unsupported_attested <- attested_result
+unsupported_attested$classification <- "expected-unsupported-111"
+stopifnot(isTRUE(fertility_validate_recorded_input_attestation(unsupported_attested)))
+invalid_attestations <- list(
+    { value <- signature_failure; value$expected_sha512 <- ""; value },
+    { value <- signature_failure; value$actual_sha512 <- value$expected_sha512; value },
+    { value <- attested_result; value$actual_sha512 <- paste(rep("b", 128L), collapse = ""); value },
+    { value <- attested_result; value$actual_sha512 <- NA_character_; value },
+    { value <- attested_result; value$classification <- "inventory-hash-error"; value },
+    { value <- unsupported_attested; value$actual_sha512 <- paste(rep("b", 128L), collapse = ""); value },
+    { value <- attested_result; value$secondary_categories <- "signature-mismatch"; value },
+    { value <- hash_read_failure; value$actual_sha512 <- attested_result$actual_sha512; value },
+    { value <- input_changed_failure; value$actual_sha512 <- NA_character_; value },
+    { value <- input_changed_failure; value$input_id <- "invalid"; value },
+    { value <- input_changed_failure; value$secondary_categories <-
+        "input-changed,signature-mismatch"; value }
+)
+for (corpus_schema_version in c(
+    fertility_schema_version, fertility_legacy_corpus_schema_version
+)) {
+    for (invalid_attestation in invalid_attestations) {
+        invalid_attestation$schema_version <- as.integer(corpus_schema_version)
+        expect_error(
+            fertility_validate_recorded_input_attestation(invalid_attestation),
+            "preflight attestation is inconsistent"
+        )
+    }
+}
+empty_expected_attestation <- attested_result
+empty_expected_attestation$id <- "F0002"
+empty_expected_attestation$expected_sha512 <- ""
+input_attestation_id <- fertility_input_attestation_id(list(
+    attested_result, empty_expected_attestation
+))
+changed_empty_attestation <- empty_expected_attestation
+changed_empty_attestation$actual_sha512 <- paste(rep("c", 128L), collapse = "")
+stopifnot(
+    grepl("^[0-9a-f]{64}$", input_attestation_id),
+    !identical(input_attestation_id, fertility_input_attestation_id(list(
+        attested_result, changed_empty_attestation
+    )))
+)
+expect_error(fertility_input_attestation_id(list(
+    empty_expected_attestation, attested_result
+)), "canonical case order")
+stage_state <- new.env(parent = emptyenv())
+stage_state$paths <- setNames(logical(), character())
+stage_error <- tryCatch(fertility_prepare_report_stages(
+    list(1L, 2L),
+    create_stage = function(item) {
+        path <- paste0("stage", item)
+        stage_state$paths[[path]] <- TRUE
+        list(stage = path)
+    },
+    write_stage = function(stage, item) item != 2L,
+    remove_path = function(path) {
+        stage_state$paths[[path]] <- FALSE
+        TRUE
+    },
+    path_exists = function(path) isTRUE(stage_state$paths[[path]])
+), error = identity)
+stopifnot(inherits(stage_error, "error"),
+          !any(unlist(as.list(stage_state$paths), use.names = FALSE)))
+transaction_stages <- list(
+    list(parent = "p1", stage = "s1", published = "p1/n1", old_current = "old1"),
+    list(parent = "p2", stage = "s2", published = "p2/n2", old_current = NA_character_)
+)
+run_transaction_fixture <- function(fail_rename = 0L, fail_pointer = 0L,
+                                    fail_rollback = FALSE) {
+    state <- new.env(parent = emptyenv())
+    state$paths <- c(s1 = TRUE, s2 = TRUE, `p1/n1` = FALSE, `p2/n2` = FALSE)
+    state$pointers <- c(p1 = "old1", p2 = NA_character_)
+    state$rename_calls <- state$pointer_calls <- 0L
+    rename_path <- function(from, to) {
+        state$rename_calls <- state$rename_calls + 1L
+        if (state$rename_calls == fail_rename) return(FALSE)
+        state$paths[[from]] <- FALSE
+        state$paths[[to]] <- TRUE
+        TRUE
+    }
+    write_pointer <- function(parent, value) {
+        state$pointer_calls <- state$pointer_calls + 1L
+        if (state$pointer_calls == fail_pointer ||
+            (fail_rollback && state$pointer_calls > fail_pointer)) return(FALSE)
+        state$pointers[[parent]] <- value
+        TRUE
+    }
+    remove_path <- function(path) {
+        if (fail_rollback && startsWith(path, "p")) return(FALSE)
+        if (endsWith(path, "CURRENT")) {
+            state$pointers[[dirname(path)]] <- NA_character_
+        } else state$paths[[path]] <- FALSE
+        TRUE
+    }
+    expression <- function() fertility_publish_pointer_transaction(
+        transaction_stages, rename_path, write_pointer, remove_path,
+        pointer_state = function(parent) state$pointers[[parent]],
+        path_exists = function(path) isTRUE(state$paths[[path]])
+    )
+    list(state = state, expression = expression)
+}
+transaction_success <- run_transaction_fixture()
+stopifnot(isTRUE(transaction_success$expression()))
+rename_failure <- run_transaction_fixture(fail_rename = 2L)
+expect_error(rename_failure$expression(), "atomically publish every report bundle")
+stopifnot(!isTRUE(rename_failure$state$paths[["p1/n1"]]))
+pointer_failure <- run_transaction_fixture(fail_pointer = 2L)
+expect_error(pointer_failure$expression(), "republished shard pointer")
+stopifnot(identical(pointer_failure$state$pointers[["p1"]], "old1"),
+          is.na(pointer_failure$state$pointers[["p2"]]),
+          !isTRUE(pointer_failure$state$paths[["p1/n1"]]),
+          !isTRUE(pointer_failure$state$paths[["p2/n2"]]))
+rollback_failure <- run_transaction_fixture(fail_pointer = 2L, fail_rollback = TRUE)
+expect_error(rollback_failure$expression(), "rollback did not restore")
+recorded_tile_spec <- fertility_value_tile(1L, 0, 2L, "a")
+recorded_tile_fixture <- c(make_tile_result(1L, 0, 2L), list(
+    schema_version = fertility_schema_version, config_id = tile_configuration$config_id,
+    input_id = paste(rep("d", 64L), collapse = ""), id = "F0001",
+    tile_id = recorded_tile_spec$tile_id, tile_type = recorded_tile_spec$type,
+    column_hash = recorded_tile_spec$column_hash,
+    timeout_seconds = tile_configuration$timeout_seconds,
+    reader_rows = setNames(rep(2L, 3L), c("direct", "rust", "haven")),
+    columns = 1L, column_names = character(), storage = character(),
+    structural_rows = NA_real_, column_bytes = numeric(), strl = logical()
+))
+recorded_tile_fixture <- recorded_tile_fixture[!duplicated(names(recorded_tile_fixture),
+                                                           fromLast = TRUE)]
+stopifnot(isTRUE(fertility_validate_recorded_tile(recorded_tile_fixture)))
+current_artifact_tile <- recorded_tile_fixture
+current_artifact_tile$secondary <- "-reader-error"
+expect_error(fertility_validate_recorded_tile(current_artifact_tile),
+             "malformed or non-canonical")
+expect_error(fertility_validate_recorded_tile(
+    current_artifact_tile, allow_legacy_empty_reader_artifact = TRUE
+), "malformed or non-canonical")
+legacy_artifact_tile <- current_artifact_tile
+legacy_artifact_tile$schema_version <- fertility_legacy_corpus_schema_version
+expect_error(fertility_validate_recorded_tile(
+    legacy_artifact_tile,
+    corpus_schema_version = fertility_legacy_corpus_schema_version
+), "malformed or non-canonical")
+stopifnot(isTRUE(fertility_validate_recorded_tile(
+    legacy_artifact_tile,
+    corpus_schema_version = fertility_legacy_corpus_schema_version,
+    allow_legacy_empty_reader_artifact = TRUE
+)))
+similar_legacy_artifact_tile <- legacy_artifact_tile
+similar_legacy_artifact_tile$secondary <- "-reader-errors"
+expect_error(fertility_validate_recorded_tile(
+    similar_legacy_artifact_tile,
+    corpus_schema_version = fertility_legacy_corpus_schema_version,
+    allow_legacy_empty_reader_artifact = TRUE
+), "malformed or non-canonical")
+foreign_schema_tile <- recorded_tile_fixture
+foreign_schema_tile$schema_version <- fertility_schema_version + 1L
+expect_error(fertility_validate_recorded_tile(foreign_schema_tile),
+             "schema is invalid")
+stopifnot(isTRUE(fertility_validate_recorded_tile(
+    foreign_schema_tile, corpus_schema_version = fertility_schema_version + 1L
+)))
+private_tile <- recorded_tile_fixture
+private_tile$secondary <- "/private/source"
+expect_error(fertility_validate_recorded_tile(private_tile),
+             "malformed or non-canonical")
+malformed_tile <- recorded_tile_fixture
+malformed_tile$unexpected <- "stale"
+expect_error(fertility_validate_recorded_tile(malformed_tile), "schema is invalid")
 missing_terminal <- traversed_tiles[-length(traversed_tiles)]
 duplicate_terminal <- c(traversed_tiles, list(make_terminal_result()))
 wrong_terminal_skip <- traversed_tiles
@@ -853,6 +1306,19 @@ retried_tile <- fertility_process_tile(
 )
 stopifnot(!first_tile$resumed, resumed_tile$resumed, !retried_tile$resumed,
           tile_counter$n == 2L)
+foreign_tile_checkpoint <- first_tile$result
+foreign_tile_checkpoint$schema_version <- fertility_schema_version + 1L
+stopifnot(
+    !fertility_tile_checkpoint_valid(
+        foreign_tile_checkpoint, tile_item, tile, "framework", tile_config$config_id,
+        tile_input$input_id, tile_config$timeout_seconds
+    ),
+    fertility_tile_checkpoint_valid(
+        foreign_tile_checkpoint, tile_item, tile, "framework", tile_config$config_id,
+        tile_input$input_id, tile_config$timeout_seconds,
+        corpus_schema_version = fertility_schema_version + 1L
+    )
+)
 sizing_tile <- fertility_sizing_tile(1L, "long", 10000000,
                                      tile_config$strl_sample_count)
 sizing_checkpoint <- file.path(root, "sizing-checkpoint.rds")
@@ -1074,6 +1540,13 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
 }
 worker_source <- paste(readLines(file.path(script_dir, "worker.R")), collapse = "\n")
 stopifnot(!grepl("read_dta\\(item\\$path\\)", worker_source))
+republish_source <- paste(readLines(file.path(script_dir, "republish.R")), collapse = "\n")
+stopifnot(
+    !grepl("fertility_capture_input", republish_source, fixed = TRUE),
+    !grepl("read_dta", republish_source, fixed = TRUE),
+    !grepl("item$path", republish_source, fixed = TRUE),
+    grepl("options$shard_count != 8L", republish_source, fixed = TRUE)
+)
 
 # Timeout checkpoints retain the parent hash, publish, resume without retry, and
 # execute again only when retry is requested.

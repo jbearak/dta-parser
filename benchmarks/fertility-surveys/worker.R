@@ -152,6 +152,15 @@ fertility_reader_error_classification <- function(errors) {
         if (haven_error) "haven-only-error" else NA_character_
 }
 
+fertility_reader_error_categories <- function(errors) {
+    readers <- names(errors)
+    if (is.null(readers) || !identical(readers, c("direct", "rust", "haven"))) {
+        stop("reader error flags are not canonical")
+    }
+    if (!any(errors)) return(character())
+    paste0(readers[errors], "-reader-error")
+}
+
 fertility_string_payload_bytes <- function(frame) {
     values <- vapply(frame, function(column) {
         if (!is.character(column)) return(0)
@@ -200,7 +209,7 @@ fertility_worker_sizing_tile <- function(item, tile, framework_id,
     c(fertility_worker_base(item, framework_id, timeout_seconds), list(
         tile_id = tile$tile_id, tile_type = tile$type, batch = tile$batch,
         skip = tile$skip, n_max = tile$n_max, classification = classification,
-        secondary = paste0(readers[errors], "-reader-error"),
+        secondary = fertility_reader_error_categories(errors),
         mismatches = fertility_bind_mismatches(list()), rows = completed,
         reader_rows = setNames(rep(NA_integer_, length(readers)), readers),
         columns = length(tile$column_names), column_names = character(),
@@ -243,7 +252,7 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
         reader_rows[[reader]] <- if (identical(tile$type, "metadata"))
             values[[reader]]$shape_rows else nrow(values[[reader]])
     }
-    secondary <- paste0(readers[errors], "-reader-error")
+    secondary <- fertility_reader_error_categories(errors)
     frames <- values
     if (identical(tile$type, "metadata")) {
         frames[!errors] <- lapply(values[!errors], `[[`, "frame")

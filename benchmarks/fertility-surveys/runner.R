@@ -1,3 +1,7 @@
+fertility_report_schema_version <- 2L
+fertility_legacy_report_schema_version <- 1L
+fertility_legacy_corpus_schema_version <- 10L
+
 fertility_usage <- function() {
     paste(
         "usage: run.R [--inventory-only] [--program=a,b] [--release=113,118]",
@@ -161,13 +165,15 @@ fertility_inventory_id <- function(inventory) {
     ))
 }
 
-fertility_manifest_id <- function(manifest, fields = names(manifest)) {
+fertility_manifest_id <- function(
+    manifest, fields = names(manifest), schema_version = fertility_schema_version
+) {
     if (!identical(names(manifest), fields)) stop("manifest schema is not canonical")
     rows <- if (!nrow(manifest)) character() else apply(
         manifest, 1L, function(row) paste(as.character(row), collapse = "\037")
     )
     fertility_stable_id(list(
-        schema_version = fertility_schema_version,
+        schema_version = as.integer(schema_version),
         fields = paste(fields, collapse = ","),
         rows = paste(rows, collapse = "\036")
     ))
@@ -237,23 +243,32 @@ fertility_options_from_filter_spec <- function(provenance) {
 
 fertility_family_id_from_manifest <- function(
     manifest, framework_id, config_id, build_provenance_id, inventory_id,
-    shard_count, max_files
+    shard_count, max_files, report_schema_id = fertility_report_schema_id(),
+    evidence_origin = "fresh-execution",
+    source_corpus_schema_version = fertility_schema_version
 ) {
     fertility_stable_id(list(
         framework_id = framework_id, config_id = config_id,
         build_provenance_id = build_provenance_id,
-        inventory_id = inventory_id,
+        inventory_id = inventory_id, report_schema_id = report_schema_id,
+        evidence_origin = evidence_origin,
+        source_corpus_schema_version = as.integer(source_corpus_schema_version),
         family_manifest_id = fertility_manifest_id(manifest),
         shard_count = as.integer(shard_count), max_files = as.character(max_files)
     ))
 }
 
-fertility_selection_family_id <- function(inventory, options, framework_id,
-                                          config_id, build_provenance_id) {
+fertility_selection_family_id <- function(
+    inventory, options, framework_id, config_id, build_provenance_id,
+    report_schema_id = fertility_report_schema_id(),
+    evidence_origin = "fresh-execution",
+    source_corpus_schema_version = fertility_schema_version
+) {
     fertility_family_id_from_manifest(
         fertility_family_manifest(inventory, options), framework_id, config_id,
         build_provenance_id, fertility_inventory_id(inventory),
-        options$shard_count, options$max_files
+        options$shard_count, options$max_files, report_schema_id,
+        evidence_origin, source_corpus_schema_version
     )
 }
 
@@ -295,6 +310,23 @@ fertility_inventory_preflight <- function(item, input) {
                     reason = "signature-mismatch"))
     }
     NULL
+}
+
+fertility_changed_input_reason <- function(input) {
+    input_id_valid <- is.character(input$input_id) && length(input$input_id) == 1L &&
+        grepl("^[0-9a-f]{64}$", input$input_id)
+    hash_missing <- length(input$actual_sha512) != 1L ||
+        is.na(input$actual_sha512)
+    if (!input_id_valid) stop("changed input identity is invalid")
+    if (identical(input$hash_status, "error") && hash_missing) {
+        return("hash-read-error")
+    }
+    if (identical(input$hash_status, "ok") && !hash_missing &&
+        is.character(input$actual_sha512) &&
+        grepl("^[0-9a-f]{128}$", input$actual_sha512)) {
+        return("input-changed")
+    }
+    stop("changed input capture is inconsistent")
 }
 
 fertility_file_stat <- function(path) {
@@ -390,14 +422,33 @@ fertility_should_retry <- function(checkpoint) {
 }
 
 fertility_run_provenance_fields <- function() c(
-    "schema_version", "selection_id", "family_id", "family_manifest_id",
-    "framework_id", "config_id", "build_provenance_id", "inventory_id",
-    "report_schema_id", "selected_files", "expected_family_files",
+    "schema_version", "report_schema_version", "evidence_origin",
+    "source_corpus_schema_version", "replayed_at_utc", "selection_id",
+    "evidence_selection_id", "input_attestation_id", "family_id",
+    "family_manifest_id", "framework_id", "config_id", "build_provenance_id",
+    "inventory_id", "report_schema_id", "selected_files", "expected_family_files",
     "full_default_family", "program_filter", "release_filter", "id_filter",
     "max_files", "shard_index", "shard_count", "timeout_seconds",
     "chunk_rows", "column_batch", "memory_mib", "cell_budget",
     "max_tiles_per_batch", "beyond_end_windows", "retry", "created_at_utc"
 )
+
+fertility_snapshot_report_schema_version <- function(provenance) {
+    if (!is.data.frame(provenance) || !all(c(
+        "evidence_origin", "source_corpus_schema_version"
+    ) %in% names(provenance))) stop("shard evidence origin is unavailable")
+    origins <- unique(provenance$evidence_origin)
+    source_schemas <- unique(provenance$source_corpus_schema_version)
+    if (length(origins) != 1L || length(source_schemas) != 1L) {
+        stop("shard reports have mixed evidence origins")
+    }
+    if (identical(origins, "historical-schema-10-replay") &&
+        identical(source_schemas,
+                  as.character(fertility_legacy_corpus_schema_version))) {
+        return(fertility_legacy_report_schema_version)
+    }
+    fertility_report_schema_version
+}
 
 fertility_result_fields <- function(include_build = TRUE) {
     fields <- c(
@@ -409,16 +460,30 @@ fertility_result_fields <- function(include_build = TRUE) {
     if (include_build) c(fields, "build_provenance_id") else fields
 }
 
-fertility_report_schema_id <- function() {
+fertility_report_schema_id <- function(
+    report_schema_version = fertility_report_schema_version
+) {
+    report_schema_version <- as.integer(report_schema_version)
+    contract <- paste(
+        "hash,id,enum,manifest-release,enum,fixed-categories,count,",
+        "fixed-counts,fixed-category-pair-hashed-counts-v2,",
+        "optional-number,optional-count,count,",
+        "count,boolean,optional-number,hash", sep = ""
+    )
+    if (identical(report_schema_version, fertility_legacy_report_schema_version)) {
+        return(fertility_stable_id(list(
+            schema_version = fertility_legacy_corpus_schema_version,
+            fields = paste(fertility_result_fields(), collapse = ","),
+            contract = contract
+        )))
+    }
+    if (!identical(report_schema_version, fertility_report_schema_version)) {
+        stop("unsupported public report schema version")
+    }
     fertility_stable_id(list(
-        schema_version = fertility_schema_version,
+        report_schema_version = report_schema_version,
         fields = paste(fertility_result_fields(), collapse = ","),
-        contract = paste(
-            "hash,id,enum,manifest-release,enum,fixed-categories,count,",
-            "fixed-counts,fixed-category-pair-hashed-counts-v2,",
-            "optional-number,optional-count,count,",
-            "count,boolean,optional-number,hash", sep = ""
-        )
+        contract = contract
     ))
 }
 
@@ -610,10 +675,13 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
     }, logical(1)))) stop("shard report provenance schema is invalid")
     provenance <- do.call(rbind, lapply(bundles, `[[`, "provenance"))
     hash_fields <- c(
-        "selection_id", "family_id", "family_manifest_id", "framework_id",
-        "config_id", "build_provenance_id", "inventory_id", "report_schema_id"
+        "selection_id", "evidence_selection_id", "input_attestation_id",
+        "family_id", "family_manifest_id", "framework_id", "config_id",
+        "build_provenance_id", "inventory_id", "report_schema_id"
     )
     if (any(provenance$schema_version != as.character(fertility_schema_version)) ||
+        any(provenance$report_schema_version !=
+            as.character(fertility_report_schema_version)) ||
         any(vapply(hash_fields, function(field) {
             any(!grepl("^[0-9a-f]{64}$", provenance[[field]]))
         }, logical(1))) || any(!provenance$retry %in% c("TRUE", "FALSE")) ||
@@ -621,9 +689,24 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
                    provenance$created_at_utc))) {
         stop("shard report provenance contains an invalid scalar")
     }
+    origins <- provenance$evidence_origin
+    source_schemas <- provenance$source_corpus_schema_version
+    replayed <- provenance$replayed_at_utc
+    fresh <- origins == "fresh-execution"
+    historical <- origins == "historical-schema-10-replay"
+    timestamp <- "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    if (any(!(fresh | historical)) ||
+        any(fresh & (source_schemas != as.character(fertility_schema_version) |
+                     nzchar(replayed))) ||
+        any(historical & (
+            source_schemas != as.character(fertility_legacy_corpus_schema_version) |
+            !grepl(timestamp, replayed)
+        ))) stop("shard evidence-origin provenance contains a false claim")
     if (any(provenance$family_id != family_id)) stop("shard report family ID disagrees")
     stable_fields <- c(
-        "schema_version", "family_id", "family_manifest_id", "framework_id",
+        "schema_version", "report_schema_version", "evidence_origin",
+        "source_corpus_schema_version", "replayed_at_utc", "family_id",
+        "family_manifest_id", "framework_id",
         "config_id", "build_provenance_id", "inventory_id", "report_schema_id",
         "expected_family_files", "full_default_family", "program_filter",
         "release_filter", "id_filter", "max_files", "shard_count",
@@ -670,6 +753,29 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
     if (!identical(full_default, fertility_full_default_family(options))) {
         stop("full-default provenance disagrees with filter provenance")
     }
+    if (identical(provenance$evidence_origin[[1L]],
+                  "historical-schema-10-replay")) {
+        replay_options <- fertility_parse_arguments(c(
+            "--shard-index=1", "--shard-count=8", "--timeout-seconds=600",
+            "--chunk-rows=50000", "--column-batch=32", "--memory-mib=1024",
+            "--cell-budget=10000000", "--max-tiles-per-batch=100000",
+            "--beyond-end-windows=1"
+        ))
+        exact_replay <- shard_count == 8L && full_default &&
+            identical(provenance$config_id[[1L]],
+                      fertility_tile_configuration(replay_options)$config_id) &&
+            all(provenance$retry == "FALSE") &&
+            identical(provenance$timeout_seconds[[1L]], "600") &&
+            identical(provenance$chunk_rows[[1L]], "50000") &&
+            identical(provenance$column_batch[[1L]], "32") &&
+            identical(provenance$memory_mib[[1L]], "1024") &&
+            identical(provenance$cell_budget[[1L]], "10000000") &&
+            identical(provenance$max_tiles_per_batch[[1L]], "100000") &&
+            identical(provenance$beyond_end_windows[[1L]], "1")
+        if (!isTRUE(exact_replay)) {
+            stop("historical schema-10 replay claim is not the exact eight-shard run")
+        }
+    }
     expected_family <- fertility_family_manifest(canonical, options)
     expected_family <- fertility_manifest_character(
         expected_family, c("id", "program", "level", "release", "shard_index")
@@ -688,7 +794,9 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
     expected_family_id <- fertility_family_id_from_manifest(
         expected_family, provenance$framework_id[[1L]],
         provenance$config_id[[1L]], provenance$build_provenance_id[[1L]],
-        provenance$inventory_id[[1L]], shard_count, provenance$max_files[[1L]]
+        provenance$inventory_id[[1L]], shard_count, provenance$max_files[[1L]],
+        provenance$report_schema_id[[1L]], provenance$evidence_origin[[1L]],
+        as.integer(provenance$source_corpus_schema_version[[1L]])
     )
     if (!identical(family_id, expected_family_id)) {
         stop("family ID is not bound to the canonical manifest")
@@ -726,6 +834,16 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
         ))
         if (!identical(provenance$selection_id[[index]], expected_selection_id)) {
             stop("shard selection identity disagrees with canonical membership")
+        }
+        expected_evidence_selection_id <- fertility_evidence_selection_id(
+            expected_selection_id, provenance$input_attestation_id[[index]],
+            provenance$evidence_origin[[index]],
+            as.integer(provenance$source_corpus_schema_version[[index]]),
+            provenance$report_schema_id[[index]]
+        )
+        if (!identical(provenance$evidence_selection_id[[index]],
+                       expected_evidence_selection_id)) {
+            stop("shard evidence selection identity is invalid")
         }
         bundles[[index]]$results <- results
     }
@@ -801,8 +919,10 @@ fertility_validate_canonical_inventory <- function(manifest, exact = FALSE) {
     values
 }
 
-fertility_framework_inventory <- function(snapshot_root, inventory = NULL,
-                                          framework_id = NULL) {
+fertility_framework_inventory <- function(
+    snapshot_root, inventory = NULL, framework_id = NULL,
+    report_schema_version = fertility_report_schema_version
+) {
     manifest_path <- file.path(snapshot_root, "inventory-manifest.tsv")
     provenance_path <- file.path(snapshot_root, "inventory-manifest-provenance.tsv")
     if (!file.exists(manifest_path) || !file.exists(provenance_path)) {
@@ -813,18 +933,31 @@ fertility_framework_inventory <- function(snapshot_root, inventory = NULL,
     manifest <- fertility_validate_canonical_inventory(manifest, exact = TRUE)
     provenance <- read.delim(provenance_path, colClasses = "character",
                              check.names = FALSE)
-    fields <- c("schema_version", "framework_id", "inventory_id",
-                "inventory_manifest_id", "report_schema_id", "files")
+    report_schema_version <- as.integer(report_schema_version)
+    legacy <- identical(report_schema_version, fertility_legacy_report_schema_version)
+    fields <- c(
+        "schema_version",
+        if (!legacy) "report_schema_version",
+        "framework_id", "inventory_id", "inventory_manifest_id",
+        "report_schema_id", "files"
+    )
+    corpus_schema_version <- if (legacy) fertility_legacy_corpus_schema_version else
+        fertility_schema_version
     if (nrow(provenance) != 1L || !identical(names(provenance), fields) ||
         !identical(provenance$schema_version[[1L]],
-                   as.character(fertility_schema_version)) ||
+                   as.character(corpus_schema_version)) ||
+        (!legacy && !identical(provenance$report_schema_version[[1L]],
+                               as.character(report_schema_version))) ||
         any(!grepl("^[0-9a-f]{64}$", unlist(provenance[c(
             "framework_id", "inventory_id", "inventory_manifest_id",
             "report_schema_id"
         )], use.names = FALSE))) ||
         !identical(provenance$inventory_manifest_id[[1L]],
-                   fertility_manifest_id(manifest)) ||
-        !identical(provenance$report_schema_id[[1L]], fertility_report_schema_id()) ||
+                   fertility_manifest_id(
+                       manifest, schema_version = corpus_schema_version
+                   )) ||
+        !identical(provenance$report_schema_id[[1L]],
+                   fertility_report_schema_id(report_schema_version)) ||
         !identical(provenance$files[[1L]], as.character(nrow(manifest)))) {
         stop("canonical inventory manifest provenance is invalid")
     }
@@ -873,6 +1006,7 @@ fertility_prepare_framework_snapshot <- function(script_dir, raw_root, framework
     manifest <- fertility_inventory_manifest(inventory)
     manifest_provenance <- data.frame(
         schema_version = fertility_schema_version,
+        report_schema_version = fertility_report_schema_version,
         framework_id = framework_id,
         inventory_id = fertility_inventory_id(inventory),
         inventory_manifest_id = fertility_manifest_id(manifest),
@@ -1074,16 +1208,428 @@ fertility_process_adaptive_range <- function(batch, skip, n_max, column_names,
     list(result)
 }
 
+fertility_recorded_result_valid <- function(
+    result, item, framework_id, configuration,
+    corpus_schema_version = fertility_schema_version
+) {
+    required <- c(
+        "schema_version", "framework_id", "config_id", "input_id", "id",
+        "program", "level", "release", "expected_sha512", "timeout_seconds",
+        "classification", "secondary_categories", "mismatch_count",
+        "mismatch_categories", "mismatch_signatures", "rows", "columns",
+        "tiles_expected", "tiles_completed", "complete", "actual_sha512",
+        "elapsed_seconds"
+    )
+    is.list(result) && setequal(names(result), required) &&
+        identical(result$schema_version, as.integer(corpus_schema_version)) &&
+        identical(result$framework_id, framework_id) &&
+        identical(result$config_id, configuration$config_id) &&
+        is.character(result$input_id) && length(result$input_id) == 1L &&
+        grepl("^[0-9a-f]{64}$", result$input_id) &&
+        identical(result$id, item$id) && identical(result$program, item$program) &&
+        identical(result$level, item$level) &&
+        identical(as.integer(result$release), as.integer(item$release)) &&
+        is.character(result$expected_sha512) && length(result$expected_sha512) == 1L &&
+        grepl("^([0-9a-f]{128})?$", result$expected_sha512) &&
+        ((is.character(result$actual_sha512) &&
+          length(result$actual_sha512) == 1L &&
+          grepl("^[0-9a-f]{128}$", result$actual_sha512)) ||
+         (is.na(result$actual_sha512) &&
+          identical(result$classification, "inventory-hash-error") &&
+          identical(result$secondary_categories, "hash-read-error"))) &&
+        identical(as.integer(result$timeout_seconds),
+                  as.integer(configuration$timeout_seconds)) &&
+        is.character(result$classification) && length(result$classification) == 1L &&
+        result$classification %in% fertility_classifications() &&
+        is.logical(result$complete) && length(result$complete) == 1L &&
+        !is.na(result$complete)
+}
+
+fertility_validate_recorded_input_attestation <- function(result) {
+    expected <- result$expected_sha512
+    actual <- result$actual_sha512
+    expected_valid <- is.character(expected) && length(expected) == 1L &&
+        grepl("^([0-9a-f]{128})?$", expected)
+    actual_missing <- length(actual) != 1L || is.na(actual)
+    actual_valid <- !actual_missing && is.character(actual) &&
+        grepl("^[0-9a-f]{128}$", actual)
+    input_id_valid <- is.character(result$input_id) && length(result$input_id) == 1L &&
+        grepl("^[0-9a-f]{64}$", result$input_id)
+    inventory_hash_error <- identical(
+        result$classification, "inventory-hash-error"
+    )
+    reasons <- c(
+        "hash-read-error", "signature-mismatch", "input-changed"
+    )
+    reason <- if (is.character(result$secondary_categories) &&
+                  length(result$secondary_categories) == 1L &&
+                  result$secondary_categories %in% reasons) {
+        result$secondary_categories
+    } else ""
+    valid_reason <- switch(
+        reason,
+        "hash-read-error" = actual_missing,
+        "signature-mismatch" = expected_valid && nzchar(expected) &&
+            actual_valid && !identical(actual, expected),
+        "input-changed" = expected_valid && actual_valid && input_id_valid,
+        expected_valid && actual_valid &&
+            (!nzchar(expected) || identical(actual, expected))
+    )
+    if (!identical(inventory_hash_error, nzchar(reason)) || !valid_reason) {
+        stop("recorded input preflight attestation is inconsistent")
+    }
+    invisible(TRUE)
+}
+
+fertility_validate_recorded_input_result <- function(result, tile_count) {
+    fertility_validate_recorded_input_attestation(result)
+    if (!identical(result$classification, "inventory-hash-error") ||
+        length(tile_count) != 1L || is.na(tile_count) || tile_count < 0L ||
+        !identical(as.integer(tile_count), tile_count) ||
+        (!identical(result$secondary_categories, "input-changed") &&
+         tile_count != 0L) ||
+        isTRUE(result$complete) || result$mismatch_count != 0L) {
+        stop("recorded input-validation result is inconsistent")
+    }
+    invisible(TRUE)
+}
+
+fertility_input_attestation_id <- function(results) {
+    if (!length(results)) return(fertility_stable_id(list(cases = "")))
+    ids <- vapply(results, `[[`, character(1), "id")
+    if (anyDuplicated(ids) || !identical(ids, sort(ids))) {
+        stop("input attestations are not in canonical case order")
+    }
+    commitments <- vapply(results, function(result) {
+        fertility_validate_recorded_input_attestation(result)
+        status <- if (identical(result$classification, "inventory-hash-error")) {
+            result$secondary_categories
+        } else if (nzchar(result$expected_sha512)) {
+            "verified-signature"
+        } else "verified-empty-expected"
+        fertility_stable_id(list(
+            id = result$id, input_id = result$input_id,
+            expected_sha512 = result$expected_sha512,
+            actual_sha512 = if (is.na(result$actual_sha512)) "" else
+                result$actual_sha512,
+            status = status
+        ))
+    }, character(1))
+    fertility_stable_id(list(
+        ids = paste(ids, collapse = ","),
+        commitments = paste(commitments, collapse = ",")
+    ))
+}
+
+fertility_evidence_selection_id <- function(
+    selection_id, input_attestation_id, evidence_origin,
+    source_corpus_schema_version, report_schema_id
+) {
+    fertility_stable_id(list(
+        selection_id = selection_id, input_attestation_id = input_attestation_id,
+        evidence_origin = evidence_origin,
+        source_corpus_schema_version = as.integer(source_corpus_schema_version),
+        report_schema_id = report_schema_id
+    ))
+}
+
+fertility_family_input_attestation_id <- function(provenance) {
+    if (!is.data.frame(provenance) || !all(c(
+        "shard_index", "input_attestation_id", "evidence_selection_id"
+    ) %in% names(provenance))) stop("family input attestation provenance is invalid")
+    indexes <- suppressWarnings(as.integer(provenance$shard_index))
+    ordering <- order(indexes)
+    if (anyNA(indexes) || !identical(indexes[ordering], seq_along(indexes))) {
+        stop("family input attestations are not in canonical shard order")
+    }
+    fertility_stable_id(list(
+        shard_indexes = paste(indexes[ordering], collapse = ","),
+        input_attestation_ids = paste(
+            provenance$input_attestation_id[ordering], collapse = ","
+        ),
+        evidence_selection_ids = paste(
+            provenance$evidence_selection_id[ordering], collapse = ","
+        )
+    ))
+}
+
+fertility_prepare_report_stages <- function(
+    items, create_stage, write_stage, remove_path, path_exists
+) {
+    stages <- list()
+    complete <- FALSE
+    on.exit(if (!complete) {
+        cleanup_ok <- TRUE
+        for (stage in rev(stages)) {
+            removed <- isTRUE(remove_path(stage$stage)) || !path_exists(stage$stage)
+            cleanup_ok <- cleanup_ok && removed
+        }
+        if (!cleanup_ok) warning("report staging cleanup did not remove every stage")
+    }, add = TRUE)
+    for (item in items) {
+        stage <- create_stage(item)
+        if (!is.list(stage) || is.null(stage$stage)) {
+            stop("could not create report stage")
+        }
+        stages[[length(stages) + 1L]] <- stage
+        if (!isTRUE(write_stage(stage, item))) stop("could not write report stage")
+    }
+    complete <- TRUE
+    stages
+}
+
+fertility_publish_pointer_transaction <- function(
+    stages, rename_path, write_pointer, remove_path, pointer_state, path_exists
+) {
+    renamed <- integer()
+    for (index in seq_along(stages)) {
+        if (!isTRUE(rename_path(stages[[index]]$stage, stages[[index]]$published))) {
+            for (rollback in rev(renamed)) remove_path(stages[[rollback]]$published)
+            if (any(vapply(stages[renamed], function(stage) {
+                path_exists(stage$published)
+            }, logical(1)))) stop("report bundle rename rollback failed")
+            stop("could not atomically publish every report bundle")
+        }
+        renamed <- c(renamed, index)
+    }
+    pointed <- integer()
+    pointer_failure <- FALSE
+    for (index in seq_along(stages)) {
+        if (!isTRUE(write_pointer(
+            stages[[index]]$parent, basename(stages[[index]]$published)
+        ))) {
+            pointer_failure <- TRUE
+            break
+        }
+        pointed <- c(pointed, index)
+    }
+    if (!pointer_failure) return(invisible(TRUE))
+    rollback_ok <- TRUE
+    for (index in rev(pointed)) {
+        stage <- stages[[index]]
+        restored <- if (is.na(stage$old_current)) {
+            isTRUE(remove_path(file.path(stage$parent, "CURRENT"))) ||
+                is.na(pointer_state(stage$parent))
+        } else isTRUE(write_pointer(stage$parent, stage$old_current))
+        rollback_ok <- rollback_ok && restored
+    }
+    for (index in rev(renamed)) {
+        removed <- isTRUE(remove_path(stages[[index]]$published)) ||
+            !path_exists(stages[[index]]$published)
+        rollback_ok <- rollback_ok && removed
+    }
+    states_ok <- vapply(stages, function(stage) {
+        identical(pointer_state(stage$parent), stage$old_current) &&
+            !path_exists(stage$published)
+    }, logical(1))
+    if (!rollback_ok || !all(states_ok)) {
+        stop("report publication rollback did not restore every prior state")
+    }
+    stop("could not atomically publish every republished shard pointer")
+}
+
+fertility_evidence_family_id <- function(
+    family_id, family_input_attestation_id, evidence_origin,
+    source_corpus_schema_version, report_schema_id
+) {
+    fertility_stable_id(list(
+        family_id = family_id,
+        family_input_attestation_id = family_input_attestation_id,
+        evidence_origin = evidence_origin,
+        source_corpus_schema_version = as.integer(source_corpus_schema_version),
+        report_schema_id = report_schema_id
+    ))
+}
+
+fertility_validate_recorded_tile <- function(
+    checkpoint, corpus_schema_version = fertility_schema_version,
+    allow_legacy_empty_reader_artifact = FALSE
+) {
+    explicit_corpus_schema <- !missing(corpus_schema_version)
+    common <- c(
+        "schema_version", "framework_id", "config_id", "input_id", "id",
+        "tile_id", "tile_type", "batch", "skip", "n_max", "column_hash",
+        "timeout_seconds", "classification", "secondary", "mismatches", "rows",
+        "reader_rows", "columns", "column_names", "storage", "structural_rows",
+        "column_bytes", "strl", "projection_expected_count",
+        "projection_expected_hash", "projection_counts", "projection_hashes",
+        "projection_ok", "elapsed_seconds"
+    )
+    sizing_extra <- c(
+        "program", "level", "release", "expected_sha512", "samples_requested",
+        "samples_completed", "payload_bytes_per_row", "chosen_rows",
+        "sample_offsets_hash"
+    )
+    if (!is.list(checkpoint) || !checkpoint$tile_type %in%
+        c("metadata", "value", "terminal", "sizing")) {
+        stop("recorded tile checkpoint schema is invalid")
+    }
+    expected <- c(common, if (identical(checkpoint$tile_type, "sizing")) sizing_extra)
+    if (!setequal(names(checkpoint), expected) ||
+        !identical(checkpoint$schema_version, as.integer(corpus_schema_version)) ||
+        !is.character(checkpoint$input_id) || length(checkpoint$input_id) != 1L ||
+        !grepl("^[0-9a-f]{64}$", checkpoint$input_id) ||
+        !is.character(checkpoint$classification) ||
+        length(checkpoint$classification) != 1L ||
+        !checkpoint$classification %in% c(
+            fertility_classifications(), "input-changed"
+        ) || !is.character(checkpoint$secondary) || anyNA(checkpoint$secondary)) {
+        stop("recorded tile checkpoint schema is invalid")
+    }
+    legacy_artifact <- checkpoint$secondary == "-reader-error"
+    legacy_artifact_allowed <- isTRUE(allow_legacy_empty_reader_artifact) &&
+        explicit_corpus_schema &&
+        identical(as.integer(corpus_schema_version),
+                  fertility_legacy_corpus_schema_version)
+    allowed_secondary <- c(
+        fertility_classifications(), fertility_mismatch_categories(),
+        "direct-reader-error", "rust-reader-error", "haven-reader-error",
+        "metadata-reader-error", "row-termination-mismatch"
+    )
+    if ((any(legacy_artifact) && !legacy_artifact_allowed) ||
+        any(!legacy_artifact & !checkpoint$secondary %in% allowed_secondary) ||
+        !is.data.frame(checkpoint$mismatches) ||
+        !identical(names(checkpoint$mismatches),
+                   c("category", "detail", "component", "pair"))) {
+        stop("recorded tile checkpoint contains malformed or non-canonical detail")
+    }
+    mismatches <- checkpoint$mismatches
+    if (nrow(mismatches) && (
+        any(!mismatches$category %in% fertility_mismatch_categories()) ||
+        anyNA(mismatches$detail) || !is.character(mismatches$detail) ||
+        any(!is.na(mismatches$component) &
+            (!is.finite(mismatches$component) | mismatches$component < 1)) ||
+        any(!is.na(mismatches$pair) & !mismatches$pair %in%
+            c("direct-rust", "direct-haven", "rust-haven"))
+    )) stop("recorded tile checkpoint contains malformed or non-canonical detail")
+    invisible(TRUE)
+}
+
+fertility_replay_file_tiles <- function(
+    item, file_root, framework_id, configuration, input,
+    corpus_schema_version = fertility_schema_version,
+    allow_legacy_empty_reader_artifact = FALSE
+) {
+    tile_root <- file.path(file_root, "tiles")
+    load_tile <- function(tile, path) {
+        checkpoint <- tryCatch(readRDS(path), error = function(error) NULL)
+        if (is.null(checkpoint)) stop("recorded tile checkpoint is absent or invalid")
+        fertility_validate_recorded_tile(
+            checkpoint, corpus_schema_version,
+            allow_legacy_empty_reader_artifact
+        )
+        if (!fertility_tile_checkpoint_valid(
+            checkpoint, item, tile, framework_id, configuration$config_id,
+            input$input_id, configuration$timeout_seconds,
+            corpus_schema_version = corpus_schema_version
+        )) stop("recorded tile checkpoint is absent or invalid")
+        checkpoint
+    }
+    metadata_tile <- fertility_metadata_tile()
+    metadata <- load_tile(metadata_tile, file.path(tile_root, "metadata.rds"))
+    tiles <- list(metadata)
+    column_names <- metadata$column_names
+    column_bytes <- metadata$column_bytes
+    batches <- fertility_structural_batches(
+        column_names, configuration$column_batch, column_bytes, metadata$columns
+    )
+    total_rows <- metadata$structural_rows
+    structurally_valid <- is.finite(total_rows) && total_rows >= 0 &&
+        identical(as.integer(metadata$columns), as.integer(length(column_names))) &&
+        length(column_bytes) == length(column_names)
+    planning_failure <- function(batch, detail) list(
+        schema_version = as.integer(corpus_schema_version), framework_id = framework_id,
+        id = item$id, tile_id = paste0("planning-", batch), tile_type = "planning",
+        batch = as.integer(batch), skip = 0, n_max = 0L,
+        classification = "unresolved", secondary = detail,
+        mismatches = data.frame(
+            category = "unresolved", detail = detail, component = NA_integer_,
+            pair = NA_character_, stringsAsFactors = FALSE
+        ), rows = NA_integer_, elapsed_seconds = 0
+    )
+    if (length(batches) && isTRUE(structurally_valid)) {
+        for (batch in seq_along(batches)) {
+            bytes <- fertility_batch_bytes(
+                batches[[batch]], column_names, column_bytes
+            )
+            rows_per_tile <- fertility_adaptive_rows(bytes, configuration)
+            is_strl_batch <- any(!is.finite(bytes))
+            if (is_strl_batch) {
+                sizing_tile <- fertility_sizing_tile(
+                    batch, batches[[batch]], total_rows,
+                    configuration$strl_sample_count
+                )
+                sizing <- load_tile(
+                    sizing_tile, file.path(tile_root, paste0(sizing_tile$tile_id, ".rds"))
+                )
+                expected_rows <- fertility_strl_rows(
+                    sizing$payload_bytes_per_row, length(sizing_tile$column_names),
+                    configuration
+                )
+                if (!identical(as.integer(sizing$chosen_rows), expected_rows)) {
+                    stop("recorded strL sizing checkpoint is inconsistent")
+                }
+                rows_per_tile <- expected_rows
+            }
+            reserved_probes <- if (batch == 1L)
+                configuration$beyond_end_windows else 0L
+            available_tiles <- configuration$max_tiles_per_batch - reserved_probes -
+                if (is_strl_batch) 1L else 0L
+            if (available_tiles < 1L) {
+                tiles[[length(tiles) + 1L]] <- planning_failure(
+                    batch, "tile-ceiling-reached"
+                )
+                next
+            }
+            plan <- fertility_plan_offsets(total_rows, rows_per_tile, available_tiles)
+            if (plan$ceiling) {
+                tiles[[length(tiles) + 1L]] <- planning_failure(
+                    batch, "tile-ceiling-reached"
+                )
+                next
+            }
+            split_budget <- new.env(parent = emptyenv())
+            split_budget$remaining <- as.integer(available_tiles - length(plan$offsets))
+            process <- function(tile) load_tile(
+                tile, file.path(tile_root, paste0(tile$tile_id, ".rds"))
+            )
+            for (offset in plan$offsets) {
+                requested <- if (total_rows == 0) 1L else as.integer(min(
+                    rows_per_tile, total_rows - offset
+                ))
+                tiles <- c(tiles, fertility_process_adaptive_range(
+                    batch, offset, requested, batches[[batch]], process, split_budget
+                ))
+            }
+            if (batch == 1L) for (probe in seq_len(configuration$beyond_end_windows)) {
+                tile <- fertility_value_tile(
+                    batch, total_rows + (probe - 1L), 1L, batches[[batch]],
+                    type = "terminal", probe = probe
+                )
+                tiles[[length(tiles) + 1L]] <- load_tile(
+                    tile, file.path(tile_root, paste0(tile$tile_id, ".rds"))
+                )
+            }
+        }
+    } else if (length(batches)) {
+        tiles[[length(tiles) + 1L]] <- planning_failure(
+            0L, "structural-metadata-unavailable"
+        )
+    }
+    list(tiles = tiles, batches = batches, total_rows = total_rows)
+}
+
 fertility_memory_error <- function(error) {
     grepl("vector memory exhausted|cannot allocate|memory limit|out of memory",
           conditionMessage(error), ignore.case = TRUE)
 }
 
-fertility_tile_checkpoint_valid <- function(checkpoint, item, tile, framework_id,
-                                              config_id, input_id,
-                                              timeout_seconds) {
+fertility_tile_checkpoint_valid <- function(
+    checkpoint, item, tile, framework_id, config_id, input_id, timeout_seconds,
+    corpus_schema_version = fertility_schema_version
+) {
     is.list(checkpoint) &&
-        identical(checkpoint$schema_version, fertility_schema_version) &&
+        identical(checkpoint$schema_version, as.integer(corpus_schema_version)) &&
         identical(checkpoint$framework_id, framework_id) &&
         identical(checkpoint$config_id, config_id) &&
         identical(checkpoint$input_id, input_id) &&
@@ -1145,11 +1691,14 @@ fertility_mismatch_summary <- function(tiles) {
         fertility_stable_id(list(signature = key))
     }, character(1))
     signature_order <- order(-as.integer(counts), signature_hashes)
-    categories <- sort(table(mismatches$category), decreasing = TRUE)
+    category_counts <- table(mismatches$category)
+    category_order <- order(-as.integer(category_counts), names(category_counts))
     list(
         count = as.integer(sum(counts)),
-        categories = paste(names(categories), as.integer(categories), sep = "=",
-                           collapse = ","),
+        categories = paste(
+            names(category_counts)[category_order],
+            as.integer(category_counts)[category_order], sep = "=", collapse = ","
+        ),
         signatures = paste(
             signature_hashes[signature_order], as.integer(counts)[signature_order],
             sep = "=", collapse = ","
@@ -1157,9 +1706,33 @@ fertility_mismatch_summary <- function(tiles) {
     )
 }
 
-fertility_aggregate_classification <- function(tiles, complete) {
+fertility_tile_secondary <- function(
+    tiles, allow_legacy_empty_reader_artifact = FALSE
+) {
+    values <- unlist(lapply(tiles, `[[`, "secondary"), use.names = FALSE)
+    artifact <- values == "-reader-error"
+    canonical_reader_errors <- c(
+        "direct-reader-error", "rust-reader-error", "haven-reader-error",
+        "metadata-reader-error"
+    )
+    malformed_reader_error <- grepl("reader-error", values, fixed = TRUE) &
+        !artifact & !values %in% canonical_reader_errors
+    if (any(malformed_reader_error)) {
+        stop("non-canonical reader-error category is not allowed")
+    }
+    if (any(artifact) && !isTRUE(allow_legacy_empty_reader_artifact)) {
+        stop("legacy empty-reader artifact is not allowed for current evidence")
+    }
+    values[!artifact]
+}
+
+fertility_aggregate_classification <- function(
+    tiles, complete, allow_legacy_empty_reader_artifact = FALSE
+) {
     classes <- vapply(tiles, `[[`, character(1), "classification")
-    secondary <- unique(unlist(lapply(tiles, `[[`, "secondary"), use.names = FALSE))
+    secondary <- unique(fertility_tile_secondary(
+        tiles, allow_legacy_empty_reader_artifact
+    ))
     if (any(classes == "input-changed")) return("inventory-hash-error")
     if (any(classes == "timeout")) return("timeout")
     if (any(classes == "memory-limit")) return("memory-limit")
@@ -1274,14 +1847,16 @@ fertility_file_result_valid <- function(result, item, framework_id,
                   as.integer(configuration$timeout_seconds))
 }
 
-fertility_tiled_result <- function(item, framework_id, configuration, input, tiles,
-                                    batches, total_rows) {
+fertility_tiled_result <- function(
+    item, framework_id, configuration, input, tiles, batches, total_rows,
+    allow_legacy_empty_reader_artifact = FALSE
+) {
     complete <- fertility_validate_tile_completeness(
         tiles, batches, total_rows, configuration
     )
     mismatch <- fertility_mismatch_summary(tiles)
     secondary <- sort(unique(c(
-        unlist(lapply(tiles, `[[`, "secondary"), use.names = FALSE),
+        fertility_tile_secondary(tiles, allow_legacy_empty_reader_artifact),
         unlist(lapply(tiles, function(tile) {
             if (is.data.frame(tile$mismatches)) tile$mismatches$category else character()
         }), use.names = FALSE)
@@ -1292,7 +1867,9 @@ fertility_tiled_result <- function(item, framework_id, configuration, input, til
         id = item$id, program = item$program, level = item$level,
         release = as.integer(item$release), expected_sha512 = item$expected_sha512,
         timeout_seconds = configuration$timeout_seconds,
-        classification = fertility_aggregate_classification(tiles, complete),
+        classification = fertility_aggregate_classification(
+            tiles, complete, allow_legacy_empty_reader_artifact
+        ),
         secondary_categories = paste(secondary, collapse = ","),
         mismatch_count = mismatch$count, mismatch_categories = mismatch$categories,
         mismatch_signatures = mismatch$signatures,

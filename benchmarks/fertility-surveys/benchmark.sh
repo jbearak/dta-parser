@@ -66,6 +66,7 @@ if [ "$owner_ready" != true ]; then
 fi
 Rscript --vanilla "$script_dir/runtime.R" write-temp-owner "$run_tmp" "$owner_state"
 Rscript --vanilla "$script_dir/runtime.R" clean-temp "$raw_root/tmp" "$run_tmp"
+export DTAPARSER_FERTILITY_OWNER_STATE="$owner_state"
 
 case " $* " in
     *' --inventory-only '*)
@@ -74,6 +75,10 @@ case " $* " in
         ;;
     *' --family-id='*)
         Rscript --vanilla "$script_dir/merge.R" "$@"
+        exit $?
+        ;;
+    *' --republish-framework='*)
+        Rscript --vanilla "$script_dir/republish.R" "$@"
         exit $?
         ;;
 esac
@@ -182,5 +187,4 @@ if ! Rscript --vanilla "$script_dir/runtime.R" release-lock "$build_lock" "$buil
 fi
 build_lock_token=
 
-export DTAPARSER_FERTILITY_OWNER_STATE="$owner_state"
 Rscript --vanilla "$script_dir/run.R" "$@"

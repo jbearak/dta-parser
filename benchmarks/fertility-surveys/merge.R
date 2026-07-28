@@ -56,9 +56,14 @@ framework_ids <- unique(vapply(
 if (length(framework_ids) != 1L || !grepl("^[0-9a-f]{64}$", framework_ids)) {
     stop("shard reports have invalid framework provenance")
 }
+candidate_provenance <- do.call(rbind, lapply(bundles, `[[`, "provenance"))
+snapshot_report_schema_version <- fertility_snapshot_report_schema_version(
+    candidate_provenance
+)
 framework_inventory <- fertility_framework_inventory(
     file.path(raw_root, "framework", framework_ids[[1L]]),
-    framework_id = framework_ids[[1L]]
+    framework_id = framework_ids[[1L]],
+    report_schema_version = snapshot_report_schema_version
 )
 inventory_ids <- unique(vapply(
     bundles, function(bundle) bundle$provenance$inventory_id[[1L]], character(1)
@@ -76,9 +81,20 @@ provenance <- validated$provenance
 shard_count <- validated$shard_count
 full_default <- validated$full_default
 summary <- fertility_classification_summary(results)
+family_input_attestation_id <- fertility_family_input_attestation_id(provenance)
+evidence_family_id <- fertility_evidence_family_id(
+    family_id, family_input_attestation_id, provenance$evidence_origin[[1L]],
+    as.integer(provenance$source_corpus_schema_version[[1L]]),
+    provenance$report_schema_id[[1L]]
+)
 merge_provenance <- data.frame(
     schema_version = fertility_schema_version,
-    family_id = family_id,
+    report_schema_version = fertility_report_schema_version,
+    evidence_origin = provenance$evidence_origin[[1L]],
+    source_corpus_schema_version = provenance$source_corpus_schema_version[[1L]],
+    replayed_at_utc = provenance$replayed_at_utc[[1L]],
+    family_id = family_id, evidence_family_id = evidence_family_id,
+    family_input_attestation_id = family_input_attestation_id,
     framework_id = provenance$framework_id[[1L]],
     config_id = provenance$config_id[[1L]],
     build_provenance_id = provenance$build_provenance_id[[1L]],
