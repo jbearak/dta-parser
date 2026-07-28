@@ -89,6 +89,8 @@ From the checkout root:
 export DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
 benchmarks/fertility-surveys/benchmark.sh --inventory-only
 benchmarks/fertility-surveys/benchmark.sh --id=F0001 --timeout-seconds=120
+benchmarks/fertility-surveys/benchmark.sh \
+  --id=F0574 --encoding-override=F0574:ISO-8859-1 --timeout-seconds=120
 ```
 
 Inventory IDs are stable row numbers, not release selectors. To exercise the
@@ -150,6 +152,9 @@ tile. Available options are:
 - `--program=dhs,mics` (comma-separated)
 - `--release=113,118` (comma-separated)
 - `--id=F0001,F0002` (privacy-safe inventory IDs)
+- `--encoding-override=F0001:ENCODING` (repeatable or comma-separated;
+  canonical encodings are `UTF-8`, `Windows-1252`, and `ISO-8859-1`;
+  aliases include `UTF8`, `CP1252`, and `latin1`)
 - `--shard-index=N --shard-count=N` (both required; one-based)
 - `--max-files=N`
 - `--timeout-seconds=N`
@@ -161,6 +166,18 @@ tile. Available options are:
 - `--max-tiles-per-batch=N` (hard traversal ceiling; default 100,000)
 - `--beyond-end-windows=N` (terminal verification windows; default 1, maximum 8)
 - `--retry` (rerun failed tiles only; completed matches and mismatches resume)
+
+Encoding overrides are explicit run configuration, never tracked corpus-specific
+policy. Every override ID must belong to the complete selected family, and every
+shard in that family must receive the same sorted canonical map. The selected
+encoding is passed symmetrically to public direct-R materialization, internal
+Rust-vector materialization, Haven, structural name discovery, value and terminal
+windows, and `strL` sizing samples. The canonical privacy-safe map is recorded in
+run provenance and bound into the configuration and family identities. Changing
+it therefore selects a different checkpoint namespace; omitting it preserves the
+legacy configuration identity and reader defaults. Historical schema-10 replay
+rejects encoding overrides because replay must retain its exact recorded
+configuration.
 
 The orchestrator builds the current checkout package into an immutable,
 provenance-addressed generation beneath `target/fertility-surveys/raw/builds/`.
@@ -249,6 +266,28 @@ directories are safely reclaimed. The shell uses a restrictive umask and the R
 writers enforce private artifact permissions. Do not copy RDS checkpoints
 outside the private target
 directory because they contain input signatures.
+
+## Privacy-safe mismatch adjudication
+
+Raw differential evidence remains immutable and is never normalized, hidden, or
+rewritten to match one reader. Adjudication should be a separate derived process:
+
+1. Group raw results by the existing public mismatch signature and fixed reader-pair
+   identity, retaining the raw file and comparison counts for every cluster.
+2. Select one or more privacy-safe inventory IDs per cluster for an explicitly
+   authorized, target-local attribute-only diagnostic.
+3. Record only fixed categories such as variable label, value-label mapping, class,
+   format, or character-decoding policy; direct-versus-Rust agreement; a fixed owner
+   category; the explicit encoding modes tested; and the source raw signature.
+4. Require a second review before marking a cluster intentional. The derived record
+   may explain or reclassify a confirmed divergence, but it must continue to link to
+   the unchanged raw signature and counts.
+5. Keep diagnostic paths, names, labels, values, error text, and source hashes out of
+   both the derived artifact and public reports. Store any private working material
+   only under the ignored target-local raw directory and remove it after review.
+
+This process can adjudicate the observed public signature clusters incrementally
+without rereading the complete corpus or changing the public result schema.
 
 ## Deterministic tests
 

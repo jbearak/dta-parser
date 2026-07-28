@@ -5,7 +5,8 @@ fertility_legacy_corpus_schema_version <- 10L
 fertility_usage <- function() {
     paste(
         "usage: run.R [--inventory-only] [--program=a,b] [--release=113,118]",
-        "[--id=F0001,F0002] [--shard-index=N --shard-count=N] [--max-files=N]",
+        "[--id=F0001,F0002] [--encoding-override=F0001:ENCODING]",
+        "[--shard-index=N --shard-count=N] [--max-files=N]",
         "[--timeout-seconds=N] [--chunk-rows=N] [--column-batch=N]",
         "[--memory-mib=N] [--cell-budget=N] [--max-tiles-per-batch=N]",
         "[--beyond-end-windows=N] [--retry]"
@@ -19,6 +20,70 @@ fertility_parse_positive_integer <- function(value, option) {
     as.integer(number)
 }
 
+fertility_canonical_encoding <- function(value) {
+    if (!is.character(value) || length(value) != 1L || is.na(value) ||
+        !nzchar(value)) {
+        stop("encoding override must contain one non-empty encoding")
+    }
+    key <- tolower(gsub("[-_ ]", "", value))
+    canonical <- switch(
+        key,
+        utf8 = "UTF-8",
+        windows1252 = "Windows-1252",
+        cp1252 = "Windows-1252",
+        iso88591 = "ISO-8859-1",
+        latin1 = "ISO-8859-1",
+        NULL
+    )
+    if (is.null(canonical)) {
+        stop(paste(
+            "unsupported encoding override; use UTF-8, Windows-1252,",
+            "or ISO-8859-1"
+        ))
+    }
+    canonical
+}
+
+fertility_parse_encoding_overrides <- function(values) {
+    if (!length(values)) return(setNames(character(), character()))
+    if (!is.character(values) || anyNA(values)) {
+        stop("encoding overrides must be character values")
+    }
+    entries <- unlist(strsplit(values, ",", fixed = TRUE), use.names = FALSE)
+    if (!length(entries) || any(!nzchar(entries))) {
+        stop("--encoding-override contains an empty entry")
+    }
+    pieces <- strsplit(entries, ":", fixed = TRUE)
+    if (any(lengths(pieces) != 2L)) {
+        stop("--encoding-override entries must have the form F0001:ENCODING")
+    }
+    ids <- vapply(pieces, `[[`, character(1), 1L)
+    encodings <- vapply(pieces, `[[`, character(1), 2L)
+    if (any(!grepl("^F[0-9]{4}$", ids))) {
+        stop("invalid --encoding-override ID")
+    }
+    if (anyDuplicated(ids)) stop("duplicate --encoding-override ID")
+    encodings <- vapply(encodings, fertility_canonical_encoding, character(1))
+    ordering <- order(ids)
+    setNames(encodings[ordering], ids[ordering])
+}
+
+fertility_encoding_overrides_text <- function(overrides) {
+    if (!length(overrides)) return("")
+    paste(names(overrides), overrides, sep = ":", collapse = ",")
+}
+
+fertility_validate_encoding_overrides <- function(overrides, family) {
+    canonical <- if (length(overrides)) fertility_parse_encoding_overrides(
+        fertility_encoding_overrides_text(overrides)
+    ) else setNames(character(), character())
+    if (!identical(overrides, canonical)) stop("encoding overrides are not canonical")
+    if (length(setdiff(names(overrides), family$id))) {
+        stop("encoding override IDs are outside the complete selected family")
+    }
+    invisible(overrides)
+}
+
 fertility_parse_arguments <- function(arguments) {
     options <- list(
         inventory_only = FALSE, programs = character(), releases = integer(),
@@ -26,9 +91,10 @@ fertility_parse_arguments <- function(arguments) {
         max_files = Inf, timeout_seconds = 600L, chunk_rows = 10000L,
         column_batch = 16L, memory_mib = 256L, cell_budget = 1000000L,
         max_tiles_per_batch = 100000L, beyond_end_windows = 1L,
-        retry = FALSE
+        encoding_overrides = setNames(character(), character()), retry = FALSE
     )
     seen_shard_index <- seen_shard_count <- FALSE
+    encoding_override_values <- character()
     for (argument in arguments) {
         if (identical(argument, "--inventory-only")) options$inventory_only <- TRUE
         else if (identical(argument, "--retry")) options$retry <- TRUE
@@ -43,6 +109,10 @@ fertility_parse_arguments <- function(arguments) {
             options$ids <- unique(strsplit(sub("^[^=]+=", "", argument),
                                            ",", fixed = TRUE)[[1L]])
             if (any(!grepl("^F[0-9]{4}$", options$ids))) stop("invalid --id value")
+        } else if (startsWith(argument, "--encoding-override=")) {
+            encoding_override_values <- c(
+                encoding_override_values, sub("^[^=]+=", "", argument)
+            )
         } else if (startsWith(argument, "--shard-index=")) {
             options$shard_index <- fertility_parse_positive_integer(
                 sub("^[^=]+=", "", argument), "--shard-index"
@@ -87,6 +157,9 @@ fertility_parse_arguments <- function(arguments) {
             )
         } else stop(fertility_usage())
     }
+    options$encoding_overrides <- fertility_parse_encoding_overrides(
+        encoding_override_values
+    )
     if (xor(seen_shard_index, seen_shard_count)) {
         stop("--shard-index and --shard-count must be supplied together")
     }
@@ -235,9 +308,18 @@ fertility_options_from_filter_spec <- function(provenance) {
     if (!grepl("^[1-9][0-9]*$", shard_value)) stop("invalid shard-count provenance")
     shard_count <- suppressWarnings(as.integer(shard_value))
     if (is.na(shard_count)) stop("invalid shard-count provenance")
+    encoding_text <- provenance$encoding_overrides[[1L]]
+    encoding_overrides <- if (nzchar(encoding_text)) {
+        fertility_parse_encoding_overrides(encoding_text)
+    } else setNames(character(), character())
+    if (!identical(fertility_encoding_overrides_text(encoding_overrides),
+                   encoding_text)) {
+        stop("encoding override provenance is not canonical")
+    }
     list(
         programs = programs, releases = releases, ids = ids,
-        shard_index = 1L, shard_count = shard_count, max_files = max_files
+        shard_index = 1L, shard_count = shard_count, max_files = max_files,
+        encoding_overrides = encoding_overrides
     )
 }
 
@@ -427,7 +509,7 @@ fertility_run_provenance_fields <- function() c(
     "family_manifest_id", "framework_id", "config_id", "build_provenance_id",
     "inventory_id", "report_schema_id", "selected_files", "expected_family_files",
     "full_default_family", "program_filter", "release_filter", "id_filter",
-    "max_files", "shard_index", "shard_count", "timeout_seconds",
+    "encoding_overrides", "max_files", "shard_index", "shard_count", "timeout_seconds",
     "chunk_rows", "column_batch", "memory_mib", "cell_budget",
     "max_tiles_per_batch", "beyond_end_windows", "retry", "created_at_utc"
 )
@@ -708,8 +790,8 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
         "family_manifest_id", "framework_id",
         "config_id", "build_provenance_id", "inventory_id", "report_schema_id",
         "expected_family_files", "full_default_family", "program_filter",
-        "release_filter", "id_filter", "max_files", "shard_count",
-        "timeout_seconds", "chunk_rows", "column_batch", "memory_mib",
+        "release_filter", "id_filter", "encoding_overrides", "max_files",
+        "shard_count", "timeout_seconds", "chunk_rows", "column_batch", "memory_mib",
         "cell_budget", "max_tiles_per_batch", "beyond_end_windows"
     )
     for (field in stable_fields) {
@@ -749,6 +831,16 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
     shard_indexes <- shard_indexes[ordering]
     canonical <- fertility_validate_canonical_inventory(canonical_inventory)
     options <- fertility_options_from_filter_spec(provenance[1L, , drop = FALSE])
+    family_selection <- fertility_family_selection(canonical, options)
+    fertility_validate_encoding_overrides(options$encoding_overrides, family_selection)
+    for (field in c(
+        "timeout_seconds", "chunk_rows", "column_batch", "memory_mib",
+        "cell_budget", "max_tiles_per_batch", "beyond_end_windows"
+    )) options[[field]] <- integer_field(field, positive = TRUE)[[1L]]
+    if (!identical(provenance$config_id[[1L]],
+                   fertility_tile_configuration(options)$config_id)) {
+        stop("configuration provenance identity is invalid")
+    }
     if (!identical(full_default, fertility_full_default_family(options))) {
         stop("full-default provenance disagrees with filter provenance")
     }
@@ -1053,7 +1145,17 @@ fertility_tile_configuration <- function(options) {
         readers_per_tile = 3L, strl_sample_count = 16L,
         strl_safety_factor = 8, strl_fallback_rows = 64L
     )
-    c(fields, list(config_id = fertility_stable_id(fields)))
+    encoding_overrides <- fertility_encoding_overrides_text(
+        options$encoding_overrides
+    )
+    identity_fields <- fields
+    if (nzchar(encoding_overrides)) {
+        identity_fields$encoding_overrides <- encoding_overrides
+    }
+    c(fields, list(
+        encoding_overrides = encoding_overrides,
+        config_id = fertility_stable_id(identity_fields)
+    ))
 }
 
 fertility_adaptive_rows <- function(column_bytes, configuration) {

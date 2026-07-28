@@ -22,8 +22,10 @@ if (any(startsWith(arguments, "--shard-index=")) ||
     sum(startsWith(arguments, "--shard-count=")) != 1L) {
     stop("republication requires one --shard-count=N and publishes every shard")
 }
-forbidden <- c("--inventory-only", "--retry", "--program=", "--release=", "--id=",
-               "--max-files=")
+forbidden <- c(
+    "--inventory-only", "--retry", "--program=", "--release=", "--id=",
+    "--encoding-override=", "--max-files="
+)
 if (any(vapply(arguments, function(argument) {
     any(startsWith(argument, forbidden))
 }, logical(1)))) stop("republication is restricted to the complete default family")
@@ -219,6 +221,7 @@ for (shard_index in seq_len(options$shard_count)) {
         selected_files = nrow(selected), expected_family_files = nrow(family_manifest),
         full_default_family = TRUE, program_filter = filter_spec$program_filter,
         release_filter = filter_spec$release_filter, id_filter = filter_spec$id_filter,
+        encoding_overrides = configuration$encoding_overrides,
         max_files = filter_spec$max_files, shard_index = shard_index,
         shard_count = options$shard_count, timeout_seconds = options$timeout_seconds,
         chunk_rows = options$chunk_rows, column_batch = options$column_batch,

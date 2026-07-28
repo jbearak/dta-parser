@@ -73,6 +73,28 @@ stopifnot(nrow(selected) == 1L, selected$id[[1L]] == "F0003",
 expect_error(fertility_parse_arguments("--shard-count=2"), "supplied together")
 expect_error(fertility_parse_arguments("--timeout-seconds=0"), "positive integer")
 expect_error(fertility_parse_arguments("--beyond-end-windows=9"), "must not exceed 8")
+encoding_options <- fertility_parse_arguments(c(
+    "--encoding-override=F0003:latin1,F0001:UTF8",
+    "--encoding-override=F0002:CP1252"
+))
+stopifnot(
+    identical(encoding_options$encoding_overrides, c(
+        F0001 = "UTF-8", F0002 = "Windows-1252", F0003 = "ISO-8859-1"
+    )),
+    identical(
+        fertility_encoding_overrides_text(encoding_options$encoding_overrides),
+        "F0001:UTF-8,F0002:Windows-1252,F0003:ISO-8859-1"
+    )
+)
+expect_error(fertility_parse_arguments(
+    c("--encoding-override=F0001:UTF-8", "--encoding-override=F0001:latin1")
+), "duplicate")
+expect_error(fertility_parse_arguments("--encoding-override=F0001:KOI8-R"),
+             "unsupported encoding")
+expect_error(fertility_parse_arguments("--encoding-override=bad:UTF-8"),
+             "invalid.*ID")
+expect_error(fertility_parse_arguments("--encoding-override=F0001"),
+             "form F0001")
 expect_error(fertility_filter_inventory(
     inventory, fertility_parse_arguments("--id=F9999")
 ), "unknown --id")
@@ -83,6 +105,12 @@ shard_two <- fertility_filter_inventory(inventory, shard_options)
 stopifnot(!length(intersect(shard_one$id, shard_two$id)),
           identical(sort(c(shard_one$id, shard_two$id)), sort(inventory$id)),
           nrow(fertility_family_selection(inventory, shard_options)) == nrow(inventory))
+expect_error(fertility_validate_encoding_overrides(
+    c(F0003 = "UTF-8"),
+    fertility_family_selection(
+        inventory, fertility_parse_arguments("--id=F0001,F0002")
+    )
+), "outside the complete selected family")
 family_a <- fertility_parse_arguments(c("--program=dhs,mics", "--shard-index=1",
                                         "--shard-count=2"))
 family_b <- fertility_parse_arguments(c("--program=mics,dhs", "--shard-index=2",
@@ -117,8 +145,9 @@ make_bundle_family <- function(
 ) {
     manifest <- fertility_family_manifest(canonical, family_options)
     manifest_id <- fertility_manifest_id(manifest)
+    family_config_id <- fertility_tile_configuration(family_options)$config_id
     family_id <- fertility_family_id_from_manifest(
-        manifest, test_framework_id, test_config_id, test_build_id, inventory_id,
+        manifest, test_framework_id, family_config_id, test_build_id, inventory_id,
         family_options$shard_count, family_options$max_files
     )
     spec <- fertility_filter_spec(family_options)
@@ -148,14 +177,18 @@ make_bundle_family <- function(
             evidence_selection_id = evidence_selection_id,
             input_attestation_id = input_attestation_id, family_id = family_id,
             family_manifest_id = manifest_id, framework_id = test_framework_id,
-            config_id = test_config_id, build_provenance_id = test_build_id,
+            config_id = family_config_id, build_provenance_id = test_build_id,
             inventory_id = inventory_id, report_schema_id = fertility_report_schema_id(),
             selected_files = as.character(nrow(expected)),
             expected_family_files = as.character(nrow(manifest)),
             full_default_family = if (fertility_full_default_family(family_options))
                 "TRUE" else "FALSE",
             program_filter = spec$program_filter, release_filter = spec$release_filter,
-            id_filter = spec$id_filter, max_files = spec$max_files,
+            id_filter = spec$id_filter,
+            encoding_overrides = fertility_encoding_overrides_text(
+                family_options$encoding_overrides
+            ),
+            max_files = spec$max_files,
             shard_index = as.character(index),
             shard_count = as.character(family_options$shard_count),
             timeout_seconds = "600", chunk_rows = "10000", column_batch = "16",
@@ -180,6 +213,21 @@ validated_merge <- fertility_validate_shard_bundles(
 )
 stopifnot(identical(validated_merge$results$id, c("F0001", "F0002")),
           validated_merge$shard_count == 2L)
+override_merge_options <- fertility_parse_arguments(c(
+    "--id=F0001,F0002", "--shard-index=1", "--shard-count=2",
+    "--encoding-override=F0001:ISO-8859-1"
+))
+override_merge_fixture <- make_bundle_family(
+    canonical_inventory, override_merge_options
+)
+stopifnot(is.list(fertility_validate_shard_bundles(
+    override_merge_fixture$bundles, override_merge_fixture$id, canonical_inventory
+)))
+foreign_override <- override_merge_fixture$bundles
+foreign_override[[2L]]$provenance$encoding_overrides <- ""
+expect_error(fertility_validate_shard_bundles(
+    foreign_override, override_merge_fixture$id, canonical_inventory
+), "identical framework/config/build/inventory")
 false_origin <- merge_bundles
 false_origin[[1L]]$provenance$evidence_origin <- "historical-schema-10-replay"
 expect_error(fertility_validate_shard_bundles(
@@ -719,6 +767,29 @@ tile_options <- fertility_parse_arguments(c(
     "--cell-budget=300", "--max-tiles-per-batch=3"
 ))
 tile_configuration <- fertility_tile_configuration(tile_options)
+legacy_configuration_fields <- tile_configuration[setdiff(
+    names(tile_configuration), c("encoding_overrides", "config_id")
+)]
+override_configuration <- fertility_tile_configuration(fertility_parse_arguments(c(
+    "--chunk-rows=100", "--column-batch=8", "--memory-mib=128",
+    "--cell-budget=300", "--max-tiles-per-batch=3",
+    "--encoding-override=F0001:latin1"
+)))
+canonical_override_configuration <- fertility_tile_configuration(
+    fertility_parse_arguments(c(
+        "--chunk-rows=100", "--column-batch=8", "--memory-mib=128",
+        "--cell-budget=300", "--max-tiles-per-batch=3",
+        "--encoding-override=F0001:ISO-8859-1"
+    ))
+)
+stopifnot(
+    identical(tile_configuration$encoding_overrides, ""),
+    identical(tile_configuration$config_id,
+              fertility_stable_id(legacy_configuration_fields)),
+    !identical(tile_configuration$config_id, override_configuration$config_id),
+    identical(override_configuration$config_id,
+              canonical_override_configuration$config_id)
+)
 stopifnot(identical(fertility_adaptive_rows(8, tile_configuration), 100L),
           identical(fertility_adaptive_rows(rep(8, 8), tile_configuration), 12L),
           identical(fertility_adaptive_rows(2045, tile_configuration), 100L),
@@ -1369,6 +1440,11 @@ stopifnot(
         foreign_tile_checkpoint, tile_item, tile, "framework", tile_config$config_id,
         tile_input$input_id, tile_config$timeout_seconds,
         corpus_schema_version = fertility_schema_version + 1L
+    ),
+    !fertility_tile_checkpoint_valid(
+        first_tile$result, tile_item, tile, "framework",
+        override_configuration$config_id, tile_input$input_id,
+        tile_config$timeout_seconds
     )
 )
 sizing_tile <- fertility_sizing_tile(1L, "long", 10000000,
@@ -1471,10 +1547,39 @@ stopifnot(hash_failure$classification == "input-signature-mismatch")
 bounded_path <- file.path(root, "bounded.dta")
 bounded_data <- tibble::tibble(
     number = 1:5,
-    text = c("a", "b", "c", "d", "e"),
-    day = as.Date("2020-01-01") + 0:4
+    text = c("encoding_probe_ascii", "b", "c", "d", "e"),
+    day = as.Date("2020-01-01") + 0:4,
+    encoding_name_ascii = 6:10
 )
-haven::write_dta(bounded_data, bounded_path)
+haven::write_dta(bounded_data, bounded_path, version = 14)
+encoding_probe_path <- file.path(root, "encoding-probe.dta")
+encoding_probe_bytes <- readBin(
+    bounded_path, "raw", n = file.info(bounded_path)$size
+)
+encoding_needle <- charToRaw("encoding_probe_ascii")
+encoding_starts <- seq_len(length(encoding_probe_bytes) - length(encoding_needle) + 1L)
+encoding_matches <- encoding_starts[vapply(encoding_starts, function(start) {
+    identical(
+        encoding_probe_bytes[start:(start + length(encoding_needle) - 1L)],
+        encoding_needle
+    )
+}, logical(1))]
+stopifnot(length(encoding_matches) == 1L)
+encoding_probe_bytes[[encoding_matches[[1L]]]] <- as.raw(0x80)
+encoding_name_needle <- charToRaw("encoding_name_ascii")
+encoding_name_starts <- seq_len(
+    length(encoding_probe_bytes) - length(encoding_name_needle) + 1L
+)
+encoding_name_matches <- encoding_name_starts[vapply(
+    encoding_name_starts, function(start) identical(
+        encoding_probe_bytes[start:(start + length(encoding_name_needle) - 1L)],
+        encoding_name_needle
+    ), logical(1)
+)]
+stopifnot(length(encoding_name_matches) == 1L)
+encoding_probe_bytes[[encoding_name_matches[[1L]]]] <- as.raw(0x80)
+writeBin(encoding_probe_bytes, encoding_probe_path)
+stopifnot(fertility_release(encoding_probe_path) == 118L)
 rare_strl_path <- file.path(root, "rare-strl.dta")
 haven::write_dta(data.frame(
     long_string = c(rep("x", 999L), strrep("z", 100000L))
@@ -1508,7 +1613,8 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
         bounded_item, fertility_metadata_tile(), file.path(script_dir, "compare.R"),
         dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
     )
-    stopifnot(metadata_worker$rows == 5L, metadata_worker$columns == 3L,
+    stopifnot(metadata_worker$rows == 5L,
+              metadata_worker$columns == ncol(bounded_data),
               identical(metadata_worker$column_names, names(bounded_data)))
     bounded_tile <- fertility_value_tile(1L, 1L, 2L, c("number", "day"))
     bounded_worker <- fertility_worker_tile(
@@ -1524,6 +1630,81 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
                   bounded_worker[c("projection_hashes", "projection_expected_hash")],
                   use.names = FALSE
               )))
+    default_tile <- fertility_value_tile(1L, 0L, 1L, "text")
+    stopifnot(
+        identical(
+            fertility_tile_read("direct", bounded_path, default_tile),
+            dtaparser::read_dta(
+                bounded_path, col_select = tidyselect::all_of("text"),
+                skip = 0L, n_max = 1L, .name_repair = "minimal"
+            )
+        ),
+        identical(
+            fertility_tile_read("rust", bounded_path, default_tile),
+            dtaparser:::.read_dta_rust_vectors(
+                bounded_path, col_select = tidyselect::all_of("text"),
+                skip = 0L, n_max = 1L, .name_repair = "minimal"
+            )
+        ),
+        identical(
+            fertility_tile_read("haven", bounded_path, default_tile),
+            haven::read_dta(
+                bounded_path, col_select = tidyselect::all_of("text"),
+                skip = 0L, n_max = 1L, .name_repair = "minimal"
+            )
+        )
+    )
+    encoding_item <- bounded_item
+    encoding_item$id <- "F9903"
+    encoding_item$path <- normalizePath(encoding_probe_path, winslash = "/")
+    encoding_item$encoding_override <- "ISO-8859-1"
+    encoding_values <- lapply(c("direct", "rust", "haven"), function(reader) {
+        fertility_tile_read(
+            reader, encoding_item$path, default_tile,
+            encoding = encoding_item$encoding_override
+        )
+    })
+    stopifnot(
+        identical(encoding_values[[1L]], encoding_values[[2L]]),
+        identical(encoding_values[[1L]], encoding_values[[3L]]),
+        startsWith(encoding_values[[1L]]$text[[1L]], intToUtf8(128L))
+    )
+    encoding_worker <- fertility_worker_tile(
+        encoding_item, default_tile, file.path(script_dir, "compare.R"),
+        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+    )
+    encoding_metadata <- fertility_worker_tile(
+        encoding_item, fertility_metadata_tile(), file.path(script_dir, "compare.R"),
+        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+    )
+    encoding_terminal <- fertility_worker_tile(
+        encoding_item, fertility_value_tile(
+            1L, nrow(bounded_data), 1L,
+            encoding_metadata$column_names[[4L]], type = "terminal", probe = 1L
+        ), file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
+        installed_dtaparser, "framework", 10L
+    )
+    encoding_sizing <- fertility_worker_tile(
+        encoding_item, fertility_sizing_tile(1L, "text", 1, 1L),
+        file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
+        installed_dtaparser, "framework", 10L
+    )
+    stopifnot(
+        encoding_worker$classification == "pass",
+        all(encoding_worker$projection_ok),
+        encoding_metadata$classification == "pass",
+        startsWith(encoding_metadata$column_names[[4L]], intToUtf8(128L)),
+        identical(
+            encoding_metadata$column_names,
+            as.character(dtaparser:::.dta_metadata(
+                encoding_item$path, encoding = "ISO-8859-1"
+            ))
+        ),
+        encoding_terminal$classification == "pass",
+        all(encoding_terminal$reader_rows == 0L),
+        encoding_sizing$classification == "pass",
+        encoding_sizing$samples_completed == 1L
+    )
     wide_item <- bounded_item
     wide_item$id <- "F9901"
     wide_item$path <- normalizePath(wide_path, winslash = "/")
@@ -1583,7 +1764,8 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
                 R_MAX_VSIZE = "256M")
     )
     stopifnot(isolated_worker$classification != "crash",
-              isolated_worker$rows == 5L, isolated_worker$columns == 3L)
+              isolated_worker$rows == 5L,
+              isolated_worker$columns == ncol(bounded_data))
 } else {
     stop(paste(
         "checkout-local dtaparser installation is required; run a manual",

@@ -22,25 +22,42 @@ fertility_load_readers <- function(package_library, expected_package_path) {
     invisible(NULL)
 }
 
-fertility_tile_read <- function(reader, path, tile) {
+fertility_worker_encoding <- function(item) {
+    encoding <- item$encoding_override
+    if (is.null(encoding)) return(NULL)
+    allowed <- c("UTF-8", "Windows-1252", "ISO-8859-1")
+    if (!is.character(encoding) || length(encoding) != 1L ||
+        is.na(encoding) || !encoding %in% allowed) {
+        stop("invalid-encoding-override")
+    }
+    encoding
+}
+
+fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
     if (!is.finite(tile$n_max) || tile$n_max < 0L) stop("tile row bound is invalid")
     if (identical(tile$type, "metadata")) {
         frame <- if (identical(reader, "direct")) {
-            dtaparser::read_dta(path, n_max = 0L, .name_repair = "minimal")
+            dtaparser::read_dta(
+                path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
+            )
         } else if (identical(reader, "rust")) {
             dtaparser:::.read_dta_rust_vectors(
-                path, n_max = 0L, .name_repair = "minimal"
+                path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
             )
         } else {
-            haven::read_dta(path, n_max = 0L, .name_repair = "minimal")
+            haven::read_dta(
+                path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
+            )
         }
         shape <- if (identical(reader, "direct")) {
             dtaparser::read_dta(
-                path, col_select = character(), .name_repair = "minimal"
+                path, encoding = encoding, col_select = character(),
+                .name_repair = "minimal"
             )
         } else if (identical(reader, "rust")) {
             dtaparser:::.read_dta_rust_vectors(
-                path, col_select = character(), .name_repair = "minimal"
+                path, encoding = encoding, col_select = character(),
+                .name_repair = "minimal"
             )
         } else {
             NULL
@@ -54,28 +71,35 @@ fertility_tile_read <- function(reader, path, tile) {
     columns <- tile$column_names
     if (!length(columns)) {
         if (identical(reader, "direct")) {
-            return(dtaparser::read_dta(path, skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"))
+            return(dtaparser::read_dta(
+                path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
+                .name_repair = "minimal"
+            ))
         }
         if (identical(reader, "rust")) {
             return(dtaparser:::.read_dta_rust_vectors(
-                path, skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
+                path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
+                .name_repair = "minimal"
             ))
         }
-        return(haven::read_dta(path, skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"))
+        return(haven::read_dta(
+            path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
+            .name_repair = "minimal"
+        ))
     }
     if (identical(reader, "direct")) {
         dtaparser::read_dta(
-            path, col_select = tidyselect::all_of(columns),
+            path, encoding = encoding, col_select = tidyselect::all_of(columns),
             skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
         )
     } else if (identical(reader, "rust")) {
         dtaparser:::.read_dta_rust_vectors(
-            path, col_select = tidyselect::all_of(columns),
+            path, encoding = encoding, col_select = tidyselect::all_of(columns),
             skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
         )
     } else {
         haven::read_dta(
-            path, col_select = tidyselect::all_of(columns),
+            path, encoding = encoding, col_select = tidyselect::all_of(columns),
             skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
         )
     }
@@ -170,7 +194,7 @@ fertility_string_payload_bytes <- function(frame) {
 }
 
 fertility_worker_sizing_tile <- function(item, tile, framework_id,
-                                         timeout_seconds) {
+                                         timeout_seconds, encoding = NULL) {
     readers <- c("direct", "rust", "haven")
     maximum <- 0
     completed <- 0L
@@ -185,7 +209,9 @@ fertility_worker_sizing_tile <- function(item, tile, framework_id,
             sample_tile$skip <- as.double(offset)
             sample_tile$n_max <- 1L
             value <- tryCatch({
-                frame <- fertility_tile_read(reader, item$path, sample_tile)
+                frame <- fertility_tile_read(
+                    reader, item$path, sample_tile, encoding = encoding
+                )
                 fertility_string_payload_bytes(frame)
             }, error = identity)
             if (inherits(value, "error")) {
@@ -231,17 +257,21 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
                                   timeout_seconds) {
     source(compare_script, local = environment(fertility_worker_tile))
     fertility_load_readers(package_library, expected_package_path)
+    encoding <- fertility_worker_encoding(item)
     started <- proc.time()[["elapsed"]]
     if (identical(tile$type, "sizing")) {
         result <- fertility_worker_sizing_tile(
-            item, tile, framework_id, timeout_seconds
+            item, tile, framework_id, timeout_seconds, encoding = encoding
         )
         result$elapsed_seconds <- unname(proc.time()[["elapsed"]] - started)
         return(result)
     }
     readers <- c("direct", "rust", "haven")
     values <- setNames(lapply(readers, function(reader) {
-        tryCatch(fertility_tile_read(reader, item$path, tile), error = identity)
+        tryCatch(
+            fertility_tile_read(reader, item$path, tile, encoding = encoding),
+            error = identity
+        )
     }), readers)
     errors <- vapply(values, inherits, logical(1), what = "error")
     memory_errors <- vapply(values, function(value) {
@@ -280,7 +310,7 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
         secondary <- c(secondary, "metadata-mismatch")
     }
     structural <- if (identical(tile$type, "metadata")) tryCatch(
-        dtaparser:::.dta_metadata(item$path), error = identity
+        dtaparser:::.dta_metadata(item$path, encoding = encoding), error = identity
     ) else NULL
     source_structure <- if (identical(tile$type, "metadata")) tryCatch(
         fertility_structural_metadata(item$path), error = identity

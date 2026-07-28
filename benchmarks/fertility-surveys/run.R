@@ -22,6 +22,8 @@ invisible(fertility_assert_tempdir(raw_root))
 
 inventory <- fertility_build_inventory()
 selected <- fertility_filter_inventory(inventory, options)
+family_selection <- fertility_family_selection(inventory, options)
+fertility_validate_encoding_overrides(options$encoding_overrides, family_selection)
 fertility_atomic_write_table(fertility_public_inventory(inventory),
                              file.path(raw_root, "inventory.tsv"))
 release_summary <- as.data.frame(table(release = inventory$release),
@@ -61,7 +63,6 @@ if (!identical(framework_id, prepared_framework_id)) {
 snapshot_root <- fertility_verify_framework_snapshot(script_dir, raw_root, framework_id, inventory)
 configuration <- fertility_tile_configuration(options)
 inventory_id <- fertility_inventory_id(inventory)
-family_selection <- fertility_family_selection(inventory, options)
 family_manifest <- fertility_family_manifest(inventory, options)
 family_manifest_id <- fertility_manifest_id(family_manifest)
 family_id <- fertility_selection_family_id(
@@ -256,6 +257,9 @@ simple_result <- function(item, input, classification, reason = "") list(
 checkpoints <- vector("list", nrow(selected))
 for (index in seq_len(nrow(selected))) {
     item <- as.list(selected[index, , drop = FALSE])
+    if (item$id %in% names(options$encoding_overrides)) {
+        item$encoding_override <- unname(options$encoding_overrides[[item$id]])
+    }
     input <- fertility_capture_input(item)
     preflight <- fertility_inventory_preflight(item, input)
     file_root <- file.path(checkpoint_root, configuration$config_id, item$id)
@@ -453,6 +457,7 @@ run_provenance <- data.frame(
     program_filter = filter_spec$program_filter,
     release_filter = filter_spec$release_filter,
     id_filter = filter_spec$id_filter,
+    encoding_overrides = configuration$encoding_overrides,
     max_files = filter_spec$max_files,
     shard_index = options$shard_index,
     shard_count = options$shard_count,
