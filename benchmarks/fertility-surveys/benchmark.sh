@@ -19,62 +19,87 @@ if [ "${DTAPARSER_FERTILITY_CORPUS:-}" != 'I_UNDERSTAND_THIS_READS_PROPRIETARY_D
 fi
 
 ensure_direct_directory() {
-    parent=$1
-    child=$2
-    if [ -L "$parent" ] || [ -L "$child" ] || [ ! -d "$parent" ]; then
+    ensure_direct_directory_parent=$1
+    ensure_direct_directory_child=$2
+    if [ -L "$ensure_direct_directory_parent" ] ||
+       [ -L "$ensure_direct_directory_child" ] ||
+       [ ! -d "$ensure_direct_directory_parent" ]; then
         printf '%s\n' 'fertility output paths must not contain symlinks' >&2
         exit 2
     fi
-    if [ ! -d "$child" ]; then
-        mkdir "$child"
+    if [ ! -d "$ensure_direct_directory_child" ]; then
+        mkdir "$ensure_direct_directory_child"
     fi
-    parent_canonical=$(CDPATH= cd -- "$parent" && pwd -P)
-    child_canonical=$(CDPATH= cd -- "$child" && pwd -P)
-    if [ "$child_canonical" != "$parent_canonical/$(basename -- "$child")" ]; then
+    ensure_direct_directory_parent_canonical=$(
+        CDPATH= cd -- "$ensure_direct_directory_parent" && pwd -P
+    )
+    ensure_direct_directory_child_canonical=$(
+        CDPATH= cd -- "$ensure_direct_directory_child" && pwd -P
+    )
+    if [ "$ensure_direct_directory_child_canonical" != \
+         "$ensure_direct_directory_parent_canonical/$(basename -- "$ensure_direct_directory_child")" ]; then
         printf '%s\n' 'fertility outputs must remain in the checkout-local raw root' >&2
         exit 2
     fi
 }
 
 assert_direct_directory() {
-    parent=$1
-    child=$2
-    label=$3
-    if [ -L "$parent" ] || [ -L "$child" ] || [ ! -d "$parent" ] || [ ! -d "$child" ]; then
-        printf '%s\n' "$label must be a direct non-symlink directory" >&2
+    assert_direct_directory_parent=$1
+    assert_direct_directory_child=$2
+    assert_direct_directory_label=$3
+    if [ -L "$assert_direct_directory_parent" ] ||
+       [ -L "$assert_direct_directory_child" ] ||
+       [ ! -d "$assert_direct_directory_parent" ] ||
+       [ ! -d "$assert_direct_directory_child" ]; then
+        printf '%s\n' "$assert_direct_directory_label must be a direct non-symlink directory" >&2
         exit 2
     fi
-    parent_canonical=$(CDPATH= cd -- "$parent" && pwd -P)
-    child_canonical=$(CDPATH= cd -- "$child" && pwd -P)
-    if [ "$parent_canonical" != "$parent" ] ||
-       [ "$child_canonical" != "$parent_canonical/$(basename -- "$child")" ] ||
-       [ "$(dirname -- "$child")" != "$parent" ]; then
-        printf '%s\n' "$label escaped its canonical parent" >&2
+    assert_direct_directory_parent_canonical=$(
+        CDPATH= cd -- "$assert_direct_directory_parent" && pwd -P
+    )
+    assert_direct_directory_child_canonical=$(
+        CDPATH= cd -- "$assert_direct_directory_child" && pwd -P
+    )
+    if [ "$assert_direct_directory_parent_canonical" != \
+         "$assert_direct_directory_parent" ] ||
+       [ "$assert_direct_directory_child_canonical" != \
+         "$assert_direct_directory_parent_canonical/$(basename -- "$assert_direct_directory_child")" ] ||
+       [ "$(dirname -- "$assert_direct_directory_child")" != \
+         "$assert_direct_directory_parent" ]; then
+        printf '%s\n' "$assert_direct_directory_label escaped its canonical parent" >&2
         exit 2
     fi
 }
 
 assert_direct_file() {
-    parent=$1
-    child=$2
-    label=$3
-    assert_direct_directory "$(dirname -- "$parent")" "$parent" "$label parent"
-    if [ -L "$child" ] || [ ! -f "$child" ] || [ -d "$child" ] ||
-       [ "$(dirname -- "$child")" != "$parent" ]; then
-        printf '%s\n' "$label must be a direct non-symlink file" >&2
+    assert_direct_file_parent=$1
+    assert_direct_file_child=$2
+    assert_direct_file_label=$3
+    assert_direct_directory \
+        "$(dirname -- "$assert_direct_file_parent")" \
+        "$assert_direct_file_parent" \
+        "$assert_direct_file_label parent"
+    if [ -L "$assert_direct_file_child" ] ||
+       [ ! -f "$assert_direct_file_child" ] ||
+       [ -d "$assert_direct_file_child" ] ||
+       [ "$(dirname -- "$assert_direct_file_child")" != \
+         "$assert_direct_file_parent" ]; then
+        printf '%s\n' "$assert_direct_file_label must be a direct non-symlink file" >&2
         exit 2
     fi
 }
 
 atomic_move_noreplace() {
-    source_path=$1
-    destination_path=$2
-    label=$3
+    atomic_move_noreplace_source_path=$1
+    atomic_move_noreplace_destination_path=$2
+    atomic_move_noreplace_label=$3
     command -v python3 >/dev/null 2>&1 || {
         printf '%s\n' 'python3 is required for atomic no-replace publication' >&2
         exit 1
     }
-    if python3 - "$source_path" "$destination_path" <<'PY'
+    if python3 - \
+        "$atomic_move_noreplace_source_path" \
+        "$atomic_move_noreplace_destination_path" <<'PY'
 import ctypes
 import errno
 import os
@@ -100,12 +125,13 @@ PY
     then
         return 0
     else
-        move_status=$?
-        if [ "$move_status" -eq 17 ]; then
-            printf '%s\n' "$label destination already exists" >&2
+        atomic_move_noreplace_status=$?
+        if [ "$atomic_move_noreplace_status" -eq 17 ]; then
+            printf '%s\n' "$atomic_move_noreplace_label destination already exists" >&2
             exit 2
         fi
-        printf '%s\n' "atomic no-replace publication failed for $label" >&2
+        printf '%s\n' \
+            "atomic no-replace publication failed for $atomic_move_noreplace_label" >&2
         exit 1
     fi
 }
