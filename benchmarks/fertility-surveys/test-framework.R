@@ -1212,7 +1212,18 @@ supported_bundle <- which(vapply(output_fixture$bundles, function(bundle) {
     "F0131" %in% bundle$results$id
 }, logical(1)))[[1L]]
 supported_row <- match("F0131", output_fixture$bundles[[supported_bundle]]$results$id)
-for (classification in fertility_output_terminal_classifications()) {
+expected_output_terminal_classifications <- c(
+    "pass", "direct-vs-rust-mismatch", "dtaparser-only-error",
+    "haven-only-error", "shared-reader-error", "metadata-mismatch",
+    "value-mismatch", "tag-mismatch", "date-mismatch",
+    "encoding-mismatch", "row-termination-mismatch",
+    "known-intentional-divergence"
+)
+stopifnot(identical(
+    fertility_output_terminal_classifications(),
+    expected_output_terminal_classifications
+))
+for (classification in expected_output_terminal_classifications) {
     output_allowed <- output_fixture$bundles
     output_allowed[[supported_bundle]]$results$classification[[supported_row]] <-
         classification
@@ -2264,9 +2275,21 @@ full_assessment <- fertility_validate_merged_bundle(
 accepted_assessment <- fertility_validate_merged_bundle(
     accepted_merged_bundle, accepted_family_fixture$id, merge_live_inventory
 )
+output_merge_live_inventory <- output_canonical
+output_merge_live_inventory$expected_sha512 <- rep(
+    paste(rep("b", 128L), collapse = ""), nrow(output_merge_live_inventory)
+)
+output_merged_bundle <- make_merged_bundle(
+    output_validated, output_fixture$id, output_merge_live_inventory
+)
+output_assessment <- fertility_validate_merged_bundle(
+    output_merged_bundle, output_fixture$id, output_merge_live_inventory
+)
 stopifnot(
     grepl("^[0-9a-f]{64}$", full_assessment$merge_id),
-    grepl("^[0-9a-f]{64}$", accepted_assessment$merge_id)
+    grepl("^[0-9a-f]{64}$", accepted_assessment$merge_id),
+    grepl("^[0-9a-f]{64}$", output_assessment$merge_id),
+    nrow(output_assessment$results) == fertility_output_expected_files
 )
 production_framework_inventory <- fertility_framework_inventory(
     publication_snapshot, inventory = publication_inventory,

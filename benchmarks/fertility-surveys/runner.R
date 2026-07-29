@@ -1084,7 +1084,9 @@ fertility_validate_merged_bundle <- function(bundle, family_id,
         stop("merged evidence family identity is invalid")
     }
     full_default <- identical(provenance$full_default_family[[1L]], "TRUE")
-    if (full_default && identical(provenance$program_filter[[1L]], "output")) {
+    full_output <- full_default && nrow(results) > 0L &&
+        all(results$program == "output")
+    if (full_output) {
         fertility_validate_full_output_results(results)
     } else if (full_default && !identical(
         results$id, sprintf("F%04d", seq_len(fertility_expected_rows))
