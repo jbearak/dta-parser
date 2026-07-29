@@ -1872,8 +1872,10 @@ fertility_atomic_write_table(data.frame(
     stringsAsFactors = FALSE, check.names = FALSE
 ), file.path(publication_snapshot, "acceptance-provenance.tsv"))
 publication_provenance <- data.frame(
+    schema_version = fertility_schema_version,
+    report_schema_version = fertility_report_schema_version,
     evidence_origin = "fresh-execution",
-    source_corpus_schema_version = as.character(fertility_schema_version),
+    source_corpus_schema_version = fertility_schema_version,
     framework_id = publication_framework_id,
     build_provenance_id = test_build_id,
     inventory_id = publication_inventory_id,
@@ -1889,6 +1891,65 @@ stopifnot(identical(
     )$acceptance$artifact_sha256,
     acceptance_reloaded$artifact_sha256
 ))
+publication_provenance_path <- file.path(
+    root, "accepted-publication-provenance.tsv"
+)
+fertility_atomic_write_table(publication_provenance, publication_provenance_path)
+publication_provenance_tsv <- read.delim(
+    publication_provenance_path, colClasses = "character", check.names = FALSE
+)
+stopifnot(
+    all(vapply(publication_provenance_tsv[c(
+        "schema_version", "report_schema_version",
+        "source_corpus_schema_version"
+    )], is.character, logical(1))),
+    identical(
+        fertility_revalidate_accepted_publication(
+            acceptance_raw, publication_provenance_tsv, publication_inventory,
+            datasigs
+        )$acceptance$artifact_sha256,
+        acceptance_reloaded$artifact_sha256
+    )
+)
+publication_schema_fields <- c(
+    schema_version = fertility_schema_version,
+    report_schema_version = fertility_report_schema_version,
+    source_corpus_schema_version = fertility_schema_version
+)
+for (field in names(publication_schema_fields)) {
+    wrong_publication_schema <- publication_provenance
+    wrong_publication_schema[[field]] <-
+        as.character(publication_schema_fields[[field]] + 1L)
+    expect_error(fertility_revalidate_accepted_publication(
+        acceptance_raw, wrong_publication_schema, publication_inventory, datasigs
+    ), "framework provenance is invalid")
+}
+malformed_publication_schema <- publication_provenance
+malformed_publication_schema$source_corpus_schema_version <-
+    paste0(fertility_schema_version, ".0")
+expect_error(fertility_revalidate_accepted_publication(
+    acceptance_raw, malformed_publication_schema, publication_inventory, datasigs
+), "framework provenance is invalid")
+missing_publication_schema <- publication_provenance
+missing_publication_schema$report_schema_version <- NULL
+expect_error(fertility_revalidate_accepted_publication(
+    acceptance_raw, missing_publication_schema, publication_inventory, datasigs
+), "framework provenance is invalid")
+nonatomic_publication_schema <- publication_provenance
+nonatomic_publication_schema$schema_version <- I(list(fertility_schema_version))
+expect_error(fertility_revalidate_accepted_publication(
+    acceptance_raw, nonatomic_publication_schema, publication_inventory, datasigs
+), "framework provenance is invalid")
+mixed_publication_schema <- rbind(publication_provenance, publication_provenance)
+mixed_publication_schema$source_corpus_schema_version[[2L]] <-
+    fertility_schema_version + 1L
+expect_error(fertility_revalidate_accepted_publication(
+    acceptance_raw, mixed_publication_schema, publication_inventory, datasigs
+), "framework provenance is invalid")
+empty_publication_provenance <- publication_provenance[FALSE, , drop = FALSE]
+expect_error(fertility_revalidate_accepted_publication(
+    acceptance_raw, empty_publication_provenance, publication_inventory, datasigs
+), "framework provenance is invalid")
 foreign_publication_framework <- publication_provenance
 foreign_publication_framework$framework_id <- test_framework_id
 expect_error(fertility_revalidate_accepted_publication(

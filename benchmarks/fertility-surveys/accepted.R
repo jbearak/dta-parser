@@ -95,14 +95,30 @@ fertility_revalidate_recorded_acceptance <- function(raw_root, provenance,
 fertility_revalidate_accepted_publication <- function(
     raw_root, provenance, inventory = NULL, datasigs_path = NULL
 ) {
+    schema_fields <- c(
+        "schema_version", "report_schema_version",
+        "source_corpus_schema_version"
+    )
     required <- c(
-        "evidence_origin", "source_corpus_schema_version", "framework_id",
-        "build_provenance_id", "inventory_id", "report_schema_id"
+        schema_fields, "evidence_origin", "framework_id", "build_provenance_id",
+        "inventory_id", "report_schema_id"
     )
     if (!is.data.frame(provenance) || !all(required %in% names(provenance)) ||
-        any(vapply(required, function(field) {
+        any(vapply(schema_fields, function(field) {
+            !is.atomic(provenance[[field]]) || !is.null(dim(provenance[[field]]))
+        }, logical(1)))) {
+        stop("accepted publication framework provenance is invalid")
+    }
+    provenance[schema_fields] <- lapply(
+        provenance[schema_fields], as.character
+    )
+    if (any(vapply(required, function(field) {
             length(unique(provenance[[field]])) != 1L
         }, logical(1))) ||
+        !identical(provenance$schema_version[[1L]],
+                   as.character(fertility_schema_version)) ||
+        !identical(provenance$report_schema_version[[1L]],
+                   as.character(fertility_report_schema_version)) ||
         !identical(provenance$evidence_origin[[1L]], "fresh-execution") ||
         !identical(provenance$source_corpus_schema_version[[1L]],
                    as.character(fertility_schema_version)) ||
