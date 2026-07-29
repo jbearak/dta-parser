@@ -2295,7 +2295,18 @@ stopifnot(
     !identical(
         fertility_framework_id(test_build_id, datasigs),
         fertility_framework_id(test_build_id, datasigs, acceptance)
+    ),
+    !identical(
+        fertility_framework_id(test_build_id, datasigs),
+        fertility_framework_id(
+            test_build_id, datasigs,
+            schema_version = fertility_legacy_corpus_schema_version
+        )
     )
+)
+expect_error(
+    fertility_framework_id(test_build_id, datasigs, schema_version = 9L),
+    "schema version is invalid"
 )
 accepted_item <- as.list(acceptance_inventory[1L, , drop = FALSE])
 accepted_input <- fertility_capture_input(accepted_item, acceptance)

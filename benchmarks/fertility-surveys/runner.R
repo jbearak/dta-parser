@@ -1632,10 +1632,16 @@ fertility_validate_assessment_families <- function(full, accepted) {
 }
 
 fertility_framework_id <- function(provenance_id, datasigs_path,
-                                   acceptance = NULL) {
+                                   acceptance = NULL,
+                                   schema_version = fertility_schema_version) {
+    if (!is.numeric(schema_version) || length(schema_version) != 1L ||
+        is.na(schema_version) || schema_version != as.integer(schema_version) ||
+        !as.integer(schema_version) %in% c(
+            fertility_schema_version, fertility_legacy_corpus_schema_version
+        )) stop("framework corpus schema version is invalid")
     datasigs_sha256 <- tolower(as.character(openssl::sha256(file(datasigs_path))))
     fields <- list(
-        schema_version = fertility_schema_version,
+        schema_version = as.integer(schema_version),
         provenance_id = provenance_id,
         datasigs_sha256 = datasigs_sha256,
         comparator_tolerance = "1e-7"

@@ -110,7 +110,10 @@ for (entry in build_entries) {
     )
     if (is.null(recorded) ||
         !identical(recorded$provenance_id[[1L]], build_id) ||
-        !identical(fertility_framework_id(build_id, datasigs_path), framework_id)) next
+        !identical(fertility_framework_id(
+            build_id, datasigs_path,
+            schema_version = fertility_legacy_corpus_schema_version
+        ), framework_id)) next
     tryCatch(
         fertility_verify_recorded_framework_snapshot(
             checkout_root, snapshot_root, recorded
