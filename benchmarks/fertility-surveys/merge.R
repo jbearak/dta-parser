@@ -80,9 +80,9 @@ snapshot_report_schema_version <- fertility_snapshot_report_schema_version(
     candidate_provenance
 )
 live_inventory <- fertility_build_inventory()
-fertility_validate_canonical_inventory(
+invisible(fertility_validate_canonical_inventory(
     fertility_inventory_manifest(live_inventory), exact = TRUE
-)
+))
 framework_inventory <- fertility_framework_inventory(
     file.path(raw_root, "framework", framework_ids[[1L]]),
     inventory = live_inventory, framework_id = framework_ids[[1L]],
