@@ -6,8 +6,9 @@ or GitHub Actions variables are present and requires an explicit manual opt-in.
 It does not add Stata release 111 support: release-111 files are inventoried and
 classified as `unsupported-release` without being passed to a reader.
 
-The inventory intentionally reproduces `~/repos/fertility_surveys/check_raw_data.r`
-path construction rather than recursively searching the cache. It reads exactly
+The default Wave 2 inventory intentionally reproduces
+`~/repos/fertility_surveys/check_raw_data.r` path construction rather than
+recursively searching the cache. It reads exactly
 `~/repos/fertility_surveys/datasigs.csv`, maps underscores in non-WFS survey
 folder names to commas, maps women/birth records to `wm.dta`/`bh.dta`, maps WFS
 to `<survey>.dta`, tries the program's primary directory, and only for DHS tries
@@ -80,6 +81,45 @@ Zero-column supported files use a single explicit empty projection batch and the
 same traversal and terminal requirements. Inputs are fully hashed before accepting
 checkpoints and again after
 all tiles; cheap size/mtime fingerprints detect changes around each child.
+
+## Wave 3 generated-output corpus
+
+The same comparator, isolated workers, bounded tiles, checkpoints, sharding,
+provenance, privacy filtering, and publication machinery also supports the
+explicit generated-output root. This mode is enabled only by supplying the
+exact canonical absolute path:
+
+```sh
+benchmarks/fertility-surveys/benchmark.sh \
+  --output-root=/Users/jmb/repos/fertility_surveys/output --inventory-only
+```
+
+It recursively inventories regular files whose extension is `.dta` or `.DTA`,
+including top-level aggregate files and nested survey files, and ignores every
+other entry. Stable `F0001`-style IDs are assigned by bytewise-sorted canonical
+relative path. Relative paths, byte sizes, modification times, SHA-512 values,
+and source-root filesystem identity are frozen only in the ignored private
+`target/fertility-surveys/raw/output-inventory/wave3/inventory.rds` artifact.
+Public manifests expose only the stable ID, `program=output`, the privacy-safe
+`survey`/`aggregate` level, and DTA release.
+
+The run refuses any other output root and asserts the observed baseline exactly:
+1,226 files, 70,748,321,626 bytes, and a largest file of 10,332,252,930 bytes.
+It supports releases 113-115 and 117-118 and preserves release 111 as an
+expected unsupported classification. Source files and the upstream repository
+are read-only; all mutable state remains under the checkout-local ignored
+target. Aggregate files are identified separately because the upstream build
+uses forced Stata append coercion; that provenance explains stored analytical
+types but never excuses a disagreement among Direct-R, Rust-vector, and Haven.
+
+All normal filters, encoding overrides, resource bounds, resume, and shard
+options apply. Merging an output family repeats the explicit root:
+
+```sh
+benchmarks/fertility-surveys/benchmark.sh \
+  --family-id=<family-id> \
+  --output-root=/Users/jmb/repos/fertility_surveys/output
+```
 
 ## Run manually
 
