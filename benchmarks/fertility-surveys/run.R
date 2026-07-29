@@ -334,6 +334,7 @@ for (index in seq_len(nrow(selected))) {
             configuration, input, options$retry, execute_tile
         )
         tiles <- list(metadata$result)
+        tiles_expected <- 1L
         column_names <- metadata$result$column_names
         column_bytes <- metadata$result$column_bytes
         batches <- fertility_structural_batches(
@@ -369,6 +370,7 @@ for (index in seq_len(nrow(selected))) {
                 available_tiles <- configuration$max_tiles_per_batch -
                     reserved_probes - if (is_strl_batch) 1L else 0L
                 if (available_tiles < 1L) {
+                    tiles_expected <- tiles_expected + 1L
                     tiles[[length(tiles) + 1L]] <- planning_failure_tile(
                         item, batch, "tile-ceiling-reached"
                     )
@@ -378,6 +380,7 @@ for (index in seq_len(nrow(selected))) {
                     total_rows, rows_per_tile, available_tiles
                 )
                 if (plan$ceiling) {
+                    tiles_expected <- tiles_expected + 1L
                     tiles[[length(tiles) + 1L]] <- planning_failure_tile(
                         item, batch, "tile-ceiling-reached"
                     )
@@ -401,6 +404,7 @@ for (index in seq_len(nrow(selected))) {
                         batch, offset, requested, batches[[batch]],
                         process_value_tile, split_budget
                     )
+                    tiles_expected <- tiles_expected + length(leaves)
                     tiles <- c(tiles, leaves)
                 }
                 if (batch == 1L) for (probe in seq_len(configuration$beyond_end_windows)) {
@@ -412,16 +416,19 @@ for (index in seq_len(nrow(selected))) {
                         item, tile, file.path(tile_root, paste0(tile$tile_id, ".rds")),
                         framework_id, configuration, input, options$retry, execute_tile
                     )
+                    tiles_expected <- tiles_expected + 1L
                     tiles[[length(tiles) + 1L]] <- processed$result
                 }
             }
         } else if (length(batches)) {
+            tiles_expected <- tiles_expected + 1L
             tiles[[length(tiles) + 1L]] <- planning_failure_tile(
                 item, 0L, "structural-metadata-unavailable"
             )
         }
         result <- fertility_tiled_result(
-            item, framework_id, configuration, input, tiles, batches, total_rows
+            item, framework_id, configuration, input, tiles, batches, total_rows,
+            tiles_expected = tiles_expected
         )
         final_input <- fertility_capture_input(item, acceptance)
         if (!identical(final_input$input_id, input$input_id)) {

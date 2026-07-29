@@ -2724,7 +2724,8 @@ fertility_tile_secondary <- function(
 }
 
 fertility_aggregate_classification <- function(
-    tiles, complete, allow_legacy_empty_reader_artifact = FALSE
+    tiles, complete, execution_complete = complete,
+    allow_legacy_empty_reader_artifact = FALSE
 ) {
     classes <- vapply(tiles, `[[`, character(1), "classification")
     secondary <- unique(fertility_tile_secondary(
@@ -2734,11 +2735,11 @@ fertility_aggregate_classification <- function(
     if (any(classes == "timeout")) return("timeout")
     if (any(classes == "memory-limit")) return("memory-limit")
     if (any(classes == "crash")) return("crash")
+    if (!execution_complete || any(classes == "unresolved")) return("unresolved")
     for (classification in c("shared-reader-error", "dtaparser-only-error",
                              "haven-only-error")) {
         if (classification %in% classes) return(classification)
     }
-    if (any(classes == "unresolved")) return("unresolved")
     if ("row-termination-mismatch" %in% c(classes, secondary)) {
         return("row-termination-mismatch")
     }
@@ -2753,8 +2754,117 @@ fertility_aggregate_classification <- function(
     if (!complete) "unresolved" else "pass"
 }
 
+fertility_validate_tile_execution <- function(
+    tiles, batches, total_rows, configuration, tiles_expected = length(tiles)
+) {
+    scalar_number <- function(value) {
+        length(value) == 1L && is.numeric(value) && !is.na(value) &&
+            is.finite(value)
+    }
+    valid_type <- function(tile) {
+        is.list(tile) && is.character(tile$tile_type) &&
+            length(tile$tile_type) == 1L && !is.na(tile$tile_type) &&
+            tile$tile_type %in% c("metadata", "value", "terminal")
+    }
+    if (!is.list(tiles) || !length(tiles) || !all(vapply(
+            tiles, valid_type, logical(1)
+        )) || !identical(tiles[[1L]]$tile_type, "metadata") ||
+        !scalar_number(tiles_expected) || tiles_expected < 1 ||
+        tiles_expected != as.integer(tiles_expected) ||
+        !identical(as.integer(length(tiles)), as.integer(tiles_expected)) ||
+        !scalar_number(total_rows) || total_rows < 0 ||
+        total_rows != floor(total_rows) || !is.list(batches) ||
+        !length(batches) || !all(vapply(batches, is.character, logical(1))) ||
+        is.null(configuration$beyond_end_windows) ||
+        !scalar_number(configuration$beyond_end_windows) ||
+        configuration$beyond_end_windows < 0 ||
+        configuration$beyond_end_windows !=
+            as.integer(configuration$beyond_end_windows)) return(FALSE)
+    terminal_tiles <- tiles[vapply(
+        tiles, function(tile) identical(tile$tile_type, "terminal"), logical(1)
+    )]
+    expected_probes <- as.integer(configuration$beyond_end_windows)
+    if (length(terminal_tiles) != expected_probes) return(FALSE)
+    if (length(terminal_tiles) && !all(vapply(terminal_tiles, function(tile) {
+        scalar_number(tile$batch) && scalar_number(tile$skip) &&
+            scalar_number(tile$n_max)
+    }, logical(1)))) return(FALSE)
+    terminal_tiles <- terminal_tiles[order(vapply(
+        terminal_tiles, `[[`, numeric(1), "skip"
+    ))]
+    expected_terminal_skips <- as.double(total_rows) +
+        seq.int(0, expected_probes - 1L)
+    for (probe in seq_len(expected_probes)) {
+        tile <- terminal_tiles[[probe]]
+        if (!identical(as.integer(tile$batch), 1L) ||
+            !identical(as.double(tile$skip), expected_terminal_skips[[probe]]) ||
+            !identical(as.integer(tile$n_max), 1L)) return(FALSE)
+    }
+    value_tiles <- tiles[vapply(
+        tiles, function(tile) identical(tile$tile_type, "value"), logical(1)
+    )]
+    if (!length(value_tiles) || !all(vapply(value_tiles, function(tile) {
+        scalar_number(tile$batch) && tile$batch == as.integer(tile$batch) &&
+            tile$batch >= 1L && tile$batch <= length(batches) &&
+            scalar_number(tile$skip) && tile$skip >= 0 &&
+            tile$skip == floor(tile$skip) &&
+            scalar_number(tile$n_max) && tile$n_max >= 1L &&
+            tile$n_max == as.integer(tile$n_max) &&
+            is.character(tile$framework_id) &&
+            length(tile$framework_id) == 1L && !is.na(tile$framework_id) &&
+            is.character(tile$classification) &&
+            length(tile$classification) == 1L && !is.na(tile$classification)
+    }, logical(1)))) return(FALSE)
+    if (!identical(
+        sort(unique(vapply(value_tiles, function(tile) {
+            as.integer(tile$batch)
+        }, integer(1)))), seq_along(batches)
+    )) return(FALSE)
+    reader_errors <- c(
+        "shared-reader-error", "dtaparser-only-error", "haven-only-error"
+    )
+    for (batch in seq_along(batches)) {
+        current <- value_tiles[vapply(
+            value_tiles, function(tile) identical(as.integer(tile$batch), batch),
+            logical(1)
+        )]
+        current <- current[order(vapply(current, `[[`, numeric(1), "skip"))]
+        expected_skip <- 0
+        expected_count <- length(batches[[batch]])
+        for (tile in current) {
+            expected_hash <- fertility_projection_hash(
+                batches[[batch]], tile$framework_id
+            )
+            planned <- identical(as.integer(tile$projection_expected_count),
+                                 as.integer(expected_count)) &&
+                is.character(tile$projection_expected_hash) &&
+                length(tile$projection_expected_hash) == 1L &&
+                !is.na(tile$projection_expected_hash) &&
+                identical(tile$projection_expected_hash, expected_hash) &&
+                identical(as.double(tile$skip), as.double(expected_skip))
+            if (!isTRUE(planned)) return(FALSE)
+            expected_rows <- min(
+                as.integer(tile$n_max), as.double(total_rows) - expected_skip
+            )
+            observed_rows <- suppressWarnings(as.double(tile$rows))
+            observed_valid <- length(observed_rows) == 1L &&
+                !is.na(observed_rows) && is.finite(observed_rows) &&
+                identical(observed_rows, as.double(expected_rows))
+            if (!observed_valid && !tile$classification %in% reader_errors) {
+                return(FALSE)
+            }
+            expected_skip <- expected_skip + expected_rows
+        }
+        if (!identical(as.double(expected_skip), as.double(total_rows))) return(FALSE)
+    }
+    TRUE
+}
+
 fertility_validate_tile_completeness <- function(tiles, batches, total_rows,
                                                  configuration) {
+    if (!fertility_validate_tile_execution(
+        tiles, batches, total_rows, configuration, length(tiles)
+    )) return(FALSE)
     if (!length(tiles) || !identical(tiles[[1L]]$tile_type, "metadata")) return(FALSE)
     if (is.na(total_rows) || !length(batches) ||
         is.null(configuration$beyond_end_windows)) return(FALSE)
@@ -2846,9 +2956,12 @@ fertility_file_result_valid <- function(result, item, framework_id,
 
 fertility_tiled_result <- function(
     item, framework_id, configuration, input, tiles, batches, total_rows,
-    allow_legacy_empty_reader_artifact = FALSE
+    tiles_expected = length(tiles), allow_legacy_empty_reader_artifact = FALSE
 ) {
-    complete <- fertility_validate_tile_completeness(
+    execution_complete <- fertility_validate_tile_execution(
+        tiles, batches, total_rows, configuration, tiles_expected
+    )
+    complete <- execution_complete && fertility_validate_tile_completeness(
         tiles, batches, total_rows, configuration
     )
     mismatch <- fertility_mismatch_summary(tiles)
@@ -2865,14 +2978,16 @@ fertility_tiled_result <- function(
         release = as.integer(item$release), expected_sha512 = item$expected_sha512,
         timeout_seconds = configuration$timeout_seconds,
         classification = fertility_aggregate_classification(
-            tiles, complete, allow_legacy_empty_reader_artifact
+            tiles, complete, execution_complete,
+            allow_legacy_empty_reader_artifact
         ),
         secondary_categories = paste(secondary, collapse = ","),
         mismatch_count = mismatch$count, mismatch_categories = mismatch$categories,
         mismatch_signatures = mismatch$signatures,
         rows = as.double(total_rows), columns = length(unlist(batches)),
-        tiles_expected = length(tiles), tiles_completed = length(tiles),
-        complete = complete, actual_sha512 = input$actual_sha512,
+        tiles_expected = as.integer(tiles_expected),
+        tiles_completed = length(tiles), complete = complete,
+        actual_sha512 = input$actual_sha512,
         elapsed_seconds = sum(vapply(tiles, function(tile) tile$elapsed_seconds,
                                      numeric(1)), na.rm = TRUE)
     ), fertility_result_acceptance_fields(input))

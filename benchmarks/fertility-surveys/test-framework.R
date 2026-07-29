@@ -22,6 +22,93 @@ dir.create(root)
 root <- normalizePath(root, winslash = "/", mustWork = TRUE)
 on.exit(unlink(root, recursive = TRUE), add = TRUE)
 
+# The output walk includes only regular case-insensitive DTA files and fails
+# closed when a potentially relevant entry cannot be safely inventoried.
+local({
+    fixture <- file.path(root, "output-inventory")
+    outside <- file.path(root, "output-inventory-outside")
+    dir.create(file.path(fixture, "nested"), recursive = TRUE)
+    dir.create(outside)
+    writeBin(as.raw(1:3), file.path(fixture, "regular.dta"))
+    writeBin(as.raw(4:6), file.path(fixture, "nested", "upper.DTA"))
+    writeLines("ignored", file.path(fixture, "notes.txt"))
+    writeLines("outside", file.path(outside, "outside.txt"))
+    stopifnot(file.symlink(
+        file.path(outside, "outside.txt"), file.path(fixture, "ignored-link.txt")
+    ))
+    old_root <- fertility_output_root
+    old_hook <- getOption("dtaparser.fertility.output_inventory_test_hook")
+    on.exit({
+        assign("fertility_output_root", old_root, envir = .GlobalEnv)
+        options(dtaparser.fertility.output_inventory_test_hook = old_hook)
+    }, add = TRUE)
+    assign(
+        "fertility_output_root",
+        normalizePath(fixture, winslash = "/", mustWork = TRUE),
+        envir = .GlobalEnv
+    )
+    expected <- sort(c(
+        file.path(fertility_output_root, "regular.dta"),
+        file.path(fertility_output_root, "nested", "upper.DTA")
+    ), method = "radix")
+    stopifnot(identical(fertility_output_entries(fertility_output_root), expected))
+
+    dta_link <- file.path(fixture, "linked.dta")
+    stopifnot(file.symlink(file.path(outside, "outside.txt"), dta_link))
+    expect_error(
+        fertility_output_entries(fertility_output_root), "refuses DTA symlinks"
+    )
+    unlink(dta_link)
+
+    directory_link <- file.path(fixture, "linked-directory")
+    stopifnot(file.symlink(outside, directory_link))
+    expect_error(
+        fertility_output_entries(fertility_output_root), "symlinked directories"
+    )
+    unlink(directory_link)
+
+    unavailable <- file.path(fixture, "unavailable.dta")
+    writeBin(as.raw(7:9), unavailable)
+    options(dtaparser.fertility.output_inventory_test_hook = function(
+        boundary, context
+    ) {
+        if (identical(boundary, "before-entry-info") &&
+            identical(context$entry, unavailable)) unlink(unavailable)
+    })
+    expect_error(
+        fertility_output_entries(fertility_output_root), "metadata is unavailable"
+    )
+    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+
+    raced <- file.path(fixture, "raced.dta")
+    writeBin(as.raw(10:12), raced)
+    options(dtaparser.fertility.output_inventory_test_hook = function(
+        boundary, context
+    ) {
+        if (identical(boundary, "after-entry-info") &&
+            identical(context$entry, raced)) {
+            unlink(raced)
+            stopifnot(file.symlink(file.path(outside, "outside.txt"), raced))
+        }
+    })
+    expect_error(
+        fertility_output_entries(fertility_output_root),
+        "changed to a symlink|must not be a symlink"
+    )
+    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+    unlink(raced)
+
+    mkfifo <- Sys.which("mkfifo")
+    if (nzchar(mkfifo)) {
+        fifo <- file.path(fixture, "nonregular.dta")
+        stopifnot(system2(mkfifo, shQuote(fifo)) == 0L)
+        expect_error(
+            fertility_output_entries(fertility_output_root), "must be a regular file"
+        )
+        unlink(fifo)
+    }
+})
+
 # Output confinement rejects symlinked roots, publication descendants, CURRENT
 # pointers, selected bundles, and consumed files before any private publication.
 confinement_checkout <- file.path(root, "confinement-checkout")
@@ -2967,11 +3054,79 @@ traversed_tiles <- list(
     make_tile_result(2L, 2, 1L),
     make_terminal_result()
 )
-stopifnot(fertility_validate_tile_completeness(
-              traversed_tiles, synthetic_batches, 3, tile_configuration
-          ),
-          fertility_aggregate_classification(traversed_tiles, TRUE) ==
-              "value-mismatch")
+stopifnot(
+    fertility_validate_tile_execution(
+        traversed_tiles, synthetic_batches, 3, tile_configuration,
+        length(traversed_tiles)
+    ),
+    fertility_validate_tile_completeness(
+        traversed_tiles, synthetic_batches, 3, tile_configuration
+    ),
+    fertility_aggregate_classification(traversed_tiles, TRUE) == "value-mismatch"
+)
+reader_error_tiles <- traversed_tiles
+reader_error_tiles[[2L]]$classification <- "haven-only-error"
+reader_error_tiles[[2L]]$projection_ok[["haven"]] <- FALSE
+reader_error_tiles[[2L]]$projection_counts[["haven"]] <- NA_integer_
+reader_error_tiles[[2L]]$projection_hashes[["haven"]] <- NA_character_
+stopifnot(
+    fertility_validate_tile_execution(
+        reader_error_tiles, synthetic_batches, 3, tile_configuration,
+        length(reader_error_tiles)
+    ),
+    !fertility_validate_tile_completeness(
+        reader_error_tiles, synthetic_batches, 3, tile_configuration
+    ),
+    fertility_aggregate_classification(
+        reader_error_tiles, complete = FALSE, execution_complete = TRUE
+    ) == "haven-only-error"
+)
+reader_planning_failure <- c(reader_error_tiles, list(list(
+    tile_type = "planning", classification = "unresolved",
+    secondary = "tile-ceiling-reached", mismatches = empty_mismatches
+)))
+reader_missing_value <- reader_error_tiles[-3L]
+reader_missing_terminal <- reader_error_tiles[-length(reader_error_tiles)]
+for (incomplete_tiles in list(
+    reader_planning_failure, reader_missing_value, reader_missing_terminal
+)) {
+    stopifnot(
+        !fertility_validate_tile_execution(
+            incomplete_tiles, synthetic_batches, 3, tile_configuration,
+            length(incomplete_tiles)
+        ),
+        fertility_aggregate_classification(
+            incomplete_tiles, complete = FALSE, execution_complete = FALSE
+        ) == "unresolved"
+    )
+}
+execution_item <- list(
+    id = "F0001", program = "dhs", level = "women", release = 118L,
+    expected_sha512 = ""
+)
+execution_input <- list(
+    input_id = paste(rep("e", 64L), collapse = ""),
+    actual_sha512 = paste(rep("f", 128L), collapse = "")
+)
+complete_reader_error_result <- fertility_tiled_result(
+    execution_item, test_framework_id, tile_configuration, execution_input,
+    reader_error_tiles, synthetic_batches, 3,
+    tiles_expected = length(reader_error_tiles)
+)
+incomplete_reader_error_result <- fertility_tiled_result(
+    execution_item, test_framework_id, tile_configuration, execution_input,
+    reader_missing_terminal, synthetic_batches, 3,
+    tiles_expected = length(reader_error_tiles)
+)
+stopifnot(
+    complete_reader_error_result$classification == "haven-only-error",
+    !complete_reader_error_result$complete,
+    complete_reader_error_result$tiles_expected ==
+        complete_reader_error_result$tiles_completed,
+    incomplete_reader_error_result$classification == "unresolved",
+    incomplete_reader_error_result$tiles_expected ==
+        incomplete_reader_error_result$tiles_completed + 1L
+)
 reader_flags <- setNames(rep(FALSE, 3L), c("direct", "rust", "haven"))
 stopifnot(!length(fertility_reader_error_categories(reader_flags)))
 reader_flags[["rust"]] <- TRUE
@@ -3353,8 +3508,39 @@ zero_column_tiles <- list(
     retarget_projection(make_tile_result(1L, 2, 1L), character()),
     retarget_projection(make_terminal_result(), character())
 )
-stopifnot(fertility_validate_tile_completeness(
-    zero_column_tiles, zero_batches, 3, tile_configuration
+stopifnot(
+    fertility_validate_tile_execution(
+        zero_column_tiles, zero_batches, 3, tile_configuration,
+        length(zero_column_tiles)
+    ),
+    fertility_validate_tile_completeness(
+        zero_column_tiles, zero_batches, 3, tile_configuration
+    )
+)
+zero_row_tiles <- list(
+    metadata_result,
+    make_tile_result(1L, 0, 0L),
+    make_tile_result(2L, 0, 0L),
+    make_terminal_result(skip = 0)
+)
+stopifnot(
+    fertility_validate_tile_execution(
+        zero_row_tiles, synthetic_batches, 0, tile_configuration,
+        length(zero_row_tiles)
+    ),
+    fertility_validate_tile_completeness(
+        zero_row_tiles, synthetic_batches, 0, tile_configuration
+    ),
+    !fertility_validate_tile_execution(
+        c(zero_row_tiles, list(list())), synthetic_batches, 0,
+        tile_configuration, length(zero_row_tiles) + 1L
+    )
+)
+reader_error_without_observed_rows <- reader_error_tiles
+reader_error_without_observed_rows[[2L]]$rows <- NA_integer_
+stopifnot(fertility_validate_tile_execution(
+    reader_error_without_observed_rows, synthetic_batches, 3,
+    tile_configuration, length(reader_error_without_observed_rows)
 ))
 shared_empty <- fertility_projection_attestation(
     list(direct = data.frame(), rust = data.frame(), haven = data.frame()),

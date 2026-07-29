@@ -238,6 +238,13 @@ fertility_filesystem_identity <- function(path, label) {
     output[[1L]]
 }
 
+fertility_identity_is_regular_file <- function(identity) {
+    fields <- strsplit(identity, ":", fixed = TRUE)[[1L]]
+    length(fields) == 3L && !is.na(mode <- suppressWarnings(
+        as.integer(fields[[3L]])
+    )) && bitwAnd(mode, 61440L) == 32768L
+}
+
 fertility_atomic_rename_noreplace <- function(
     from, to, label, validate_source = NULL
 ) {
@@ -630,29 +637,80 @@ fertility_assert_output_root <- function(path) {
     root
 }
 
+fertility_output_inventory_test_hook <- function(boundary, context) {
+    hook <- getOption("dtaparser.fertility.output_inventory_test_hook")
+    if (is.function(hook)) hook(boundary, context)
+    invisible(NULL)
+}
+
 fertility_output_entries <- function(root) {
     root <- fertility_assert_output_root(root)
     paths <- character()
     walk <- function(parent) {
-        entries <- sort(list.files(
+        parent <- fertility_assert_canonical_components(
+            parent, "fertility output inventory directory"
+        )
+        if (file.access(parent, 4L) != 0L || file.access(parent, 1L) != 0L) {
+            stop("fertility output inventory directory is not traversable")
+        }
+        entries <- tryCatch(sort(list.files(
             parent, all.files = TRUE, no.. = TRUE, full.names = TRUE,
             recursive = FALSE, include.dirs = TRUE
-        ), method = "radix")
+        ), method = "radix"), warning = function(condition) {
+            stop("could not enumerate fertility output inventory directory")
+        }, error = function(condition) {
+            stop("could not enumerate fertility output inventory directory")
+        })
         for (entry in entries) {
-            if (!identical(dirname(entry), parent) || fertility_path_is_symlink(entry)) {
+            is_dta <- grepl("[.]dta$", basename(entry), ignore.case = TRUE)
+            if (!identical(dirname(entry), parent)) {
+                stop("fertility output entry is not a direct descendant")
+            }
+            fertility_output_inventory_test_hook(
+                "before-entry-info", list(parent = parent, entry = entry)
+            )
+            linked <- fertility_path_is_symlink(entry)
+            info <- file.info(entry)
+            if (nrow(info) != 1L || is.na(info$isdir[[1L]])) {
+                stop("fertility output entry metadata is unavailable")
+            }
+            if (linked) {
+                if (isTRUE(info$isdir[[1L]])) {
+                    stop("fertility output inventory refuses symlinked directories")
+                }
+                if (is_dta) {
+                    stop("fertility output inventory refuses DTA symlinks")
+                }
                 next
             }
-            info <- file.info(entry)
-            if (nrow(info) != 1L || is.na(info$isdir[[1L]])) next
-            if (isTRUE(info$isdir[[1L]])) {
-                walk(normalizePath(entry, winslash = "/", mustWork = TRUE))
-            } else if (isTRUE(file_test("-f", entry)) &&
-                       grepl("[.]dta$", basename(entry), ignore.case = TRUE)) {
-                resolved <- normalizePath(entry, winslash = "/", mustWork = TRUE)
-                if (!startsWith(resolved, paste0(root, "/"))) {
+            fertility_output_inventory_test_hook(
+                "after-entry-info", list(parent = parent, entry = entry)
+            )
+            entry <- fertility_assert_direct_child(
+                entry, parent, "fertility output entry"
+            )
+            if (fertility_path_is_symlink(entry)) {
+                stop("fertility output entry changed to a symlink during inventory")
+            }
+            confirmed <- file.info(entry)
+            if (nrow(confirmed) != 1L || is.na(confirmed$isdir[[1L]]) ||
+                !identical(isTRUE(confirmed$isdir[[1L]]),
+                           isTRUE(info$isdir[[1L]]))) {
+                stop("fertility output entry changed during inventory")
+            }
+            if (isTRUE(confirmed$isdir[[1L]])) {
+                walk(entry)
+            } else if (is_dta) {
+                identity <- fertility_filesystem_identity(
+                    entry, "fertility output DTA"
+                )
+                if (!fertility_identity_is_regular_file(identity)) {
+                    stop("fertility output DTA must be a regular file")
+                }
+                if (!startsWith(entry, paste0(root, "/"))) {
                     stop("fertility output DTA escaped its root")
                 }
-                paths <<- c(paths, resolved)
+                paths <<- c(paths, entry)
             }
         }
     }
