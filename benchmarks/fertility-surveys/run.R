@@ -192,8 +192,15 @@ execute_tile <- function(item, tile, input) {
                     TMPDIR = Sys.getenv("TMPDIR"),
                     R_MAX_VSIZE = paste0(configuration$memory_mib, "M"))
         ),
-        error = function(error) list(
-            schema_version = fertility_schema_version, framework_id = framework_id,
+        error = function(error) {
+            if (grepl(
+                "could not materialize descriptor-bound worker input",
+                conditionMessage(error), fixed = TRUE
+            )) {
+                stop("descriptor-bound worker input is unavailable", call. = FALSE)
+            }
+            list(
+                schema_version = fertility_schema_version, framework_id = framework_id,
             id = item$id, tile_id = tile$tile_id, tile_type = tile$type,
             batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
             classification = if (inherits(error, "callr_timeout_error"))
@@ -215,7 +222,8 @@ execute_tile <- function(item, tile, input) {
             projection_ok = setNames(rep(FALSE, 3L),
                                      c("direct", "rust", "haven")),
             elapsed_seconds = unname(proc.time()[["elapsed"]] - started)
-        )
+            )
+        }
     )
     if (identical(tile$type, "sizing")) {
         payload <- if (!is.null(result$payload_bytes_per_row))

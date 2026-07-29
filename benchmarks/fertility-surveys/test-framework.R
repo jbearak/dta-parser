@@ -975,6 +975,14 @@ precedence_inventory <- fertility_build_inventory(
 )
 stopifnot(precedence_inventory$path[[2L]] ==
           normalizePath(primary_second, winslash = "/"))
+drifted_rows <- rows
+drifted_rows$level[[1L]] <- "survey"
+write.csv(drifted_rows, datasigs, row.names = FALSE, quote = FALSE)
+expect_error(fertility_build_inventory(
+    list(cache = cache, datasigs = datasigs), assert_counts = FALSE,
+    enforce_required_paths = FALSE
+), "unknown cache level")
+write.csv(rows, datasigs, row.names = FALSE, quote = FALSE)
 
 options <- fertility_parse_arguments(c(
     "--program=dhs,mics", "--release=113,114", "--shard-index=1",

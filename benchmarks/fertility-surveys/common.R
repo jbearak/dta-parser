@@ -4,7 +4,9 @@ fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
 fertility_supported_releases <- c(113L, 114L, 115L, 117L, 118L)
 fertility_programs <- c("dhs", "mics", "wfs", "nsfg", "enadid", "output")
-fertility_levels <- c("women", "births", "survey", "aggregate")
+fertility_cache_levels <- c("women", "births")
+fertility_output_levels <- c("survey", "aggregate")
+fertility_levels <- c(fertility_cache_levels, fertility_output_levels)
 fertility_opt_in_value <- "I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA"
 fertility_output_root <- "/Users/jmb/repos/fertility_surveys/output"
 fertility_output_expected_files <- 1226L
@@ -1401,7 +1403,9 @@ fertility_build_inventory <- function(paths = fertility_required_paths(),
         if (!(program %in% fertility_programs) || !(program %in% names(path1))) {
             stop("datasigs.csv contains an unknown program")
         }
-        if (!(level %in% fertility_levels)) stop("datasigs.csv contains an unknown level")
+        if (!(level %in% fertility_cache_levels)) {
+            stop("datasigs.csv contains an unknown cache level")
+        }
         folder <- if (identical(program, "wfs")) "" else
             gsub("_", ",", rows$survey[[i]], fixed = TRUE)
         filename <- if (identical(program, "wfs")) {

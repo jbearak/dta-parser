@@ -84,6 +84,8 @@ verified source descriptor open; each isolated tile receives that descriptor and
 creates its private target-local copy-on-write snapshot directly from the descriptor
 before any reader opens a pathname. Source identity and cheap size/mtime fingerprints
 are revalidated around each child, and snapshots are removed when the child exits.
+If the host filesystem cannot create that descriptor-derived copy-on-write snapshot,
+the run aborts before publishing a case result rather than recording a reader crash.
 
 ## Wave 3 generated-output corpus
 
