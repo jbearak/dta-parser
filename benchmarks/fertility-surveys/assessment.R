@@ -30,7 +30,8 @@ raw_root <- fertility_assert_checkout_raw_root(
 )
 invisible(fertility_assert_tempdir(raw_root))
 
-load_family <- function(family_id, inventory) {
+load_family <- function(family_id, inventory, role = c("original", "accepted")) {
+    role <- match.arg(role)
     merged_root <- fertility_assert_direct_child(
         file.path(raw_root, "merged"), raw_root, "merged output directory"
     )
@@ -38,21 +39,41 @@ load_family <- function(family_id, inventory) {
         file.path(merged_root, family_id), merged_root,
         "assessment merged-family parent"
     )
+    common_files <- fertility_assessment_bundle_files("legacy-original")
     current <- fertility_current_bundle_paths(
-        parent,
-        c(
-            provenance = "merge-provenance.tsv", results = "results.tsv",
-            summary = "summary.tsv", family_manifest = "family-manifest.tsv",
-            input_attestation = "input-attestation.tsv"
-        ),
-        "assessment merged-family"
+        parent, common_files, "assessment merged-family"
     )
-    paths <- current$paths
+    entries <- list.files(
+        current$bundle, all.files = TRUE, no.. = TRUE, full.names = TRUE,
+        recursive = FALSE, include.dirs = TRUE
+    )
+    format <- fertility_assessment_bundle_format(basename(entries), role)
+    files <- if (identical(format, "current-merged-report-v2")) {
+        fertility_assessment_bundle_files("current")
+    } else common_files
+    paths <- setNames(file.path(current$bundle, unname(files)), names(files))
+    for (index in seq_along(paths)) {
+        paths[[index]] <- fertility_assert_existing_file(
+            paths[[index]], current$bundle,
+            paste("assessment merged-family", names(paths)[[index]])
+        )
+        if (!file_test("-f", paths[[index]]) || fertility_path_is_symlink(paths[[index]])) {
+            stop("assessment merged-family must contain only regular nonsymlink files")
+        }
+    }
     bundle <- lapply(paths, function(path) read.delim(
         path, colClasses = "character", check.names = FALSE
     ))
-    validated <- fertility_validate_merged_bundle(bundle, family_id, inventory)
-    snapshot_schema <- if (identical(
+    validated <- if (identical(format, "current-merged-report-v2")) {
+        fertility_validate_merged_bundle(bundle, family_id, inventory)
+    } else {
+        fertility_validate_assessment_legacy_original_bundle(
+            bundle, family_id, inventory
+        )
+    }
+    snapshot_schema <- if (identical(format, "legacy-original-merged-report-v2")) {
+        fertility_report_schema_version
+    } else if (identical(
         validated$provenance$evidence_origin[[1L]],
         "historical-schema-10-replay"
     )) fertility_legacy_report_schema_version else fertility_report_schema_version
@@ -63,16 +84,19 @@ load_family <- function(family_id, inventory) {
         report_schema_version = snapshot_schema
     )
     if (!identical(validated$provenance$inventory_id[[1L]],
-                   framework_inventory$provenance$inventory_id[[1L]])) {
+                   framework_inventory$provenance$inventory_id[[1L]]) ||
+        (identical(role, "original") &&
+         !is.null(framework_inventory$acceptance_provenance))) {
         stop("assessment merged-family inventory provenance changed")
     }
+    validated$run_name <- current$run_name
     validated
 }
 
 load_sources <- function() {
     inventory <- fertility_build_inventory()
-    full <- load_family(full_family_id, inventory)
-    accepted <- load_family(accepted_family_id, inventory)
+    full <- load_family(full_family_id, inventory, "original")
+    accepted <- load_family(accepted_family_id, inventory, "accepted")
     gates <- fertility_validate_assessment_families(full, accepted)
     publication <- fertility_revalidate_accepted_publication(
         raw_root, accepted$provenance, inventory
@@ -84,13 +108,22 @@ load_sources <- function() {
 sources <- load_sources()
 full <- sources$full
 accepted <- sources$accepted
+assessment_source_snapshot <- function(source) list(
+    run_name = source$run_name, source_format = source$source_format,
+    source_id = source$source_id, results = source$results,
+    summary = source$summary, family_manifest = source$family_manifest,
+    input_attestation = source$input_attestation, provenance = source$provenance,
+    full_default = source$full_default,
+    evidence_family_id = source$evidence_family_id,
+    family_input_attestation_id = source$family_input_attestation_id,
+    merge_id = source$merge_id
+)
+full_snapshot <- assessment_source_snapshot(full)
+accepted_snapshot <- assessment_source_snapshot(accepted)
 revalidate_assessment_sources <- function() {
     current <- load_sources()
-    if (!identical(current$full$merge_id, full$merge_id) ||
-        !identical(current$full$evidence_family_id, full$evidence_family_id) ||
-        !identical(current$accepted$merge_id, accepted$merge_id) ||
-        !identical(current$accepted$evidence_family_id,
-                   accepted$evidence_family_id) ||
+    if (!identical(assessment_source_snapshot(current$full), full_snapshot) ||
+        !identical(assessment_source_snapshot(current$accepted), accepted_snapshot) ||
         !identical(current$acceptance$artifact_sha256,
                    sources$acceptance$artifact_sha256) ||
         !identical(current$gates, sources$gates)) {
@@ -102,10 +135,16 @@ gates <- sources$gates
 authority <- gates$acceptance_authority
 commitment_id <- gates$acceptance_commitment_id
 assessment_id <- fertility_stable_id(list(
+    assessment_contract = "derived-dual-gate-source-identity-v2",
     original_family_id = full_family_id,
+    original_source_format = full$source_format,
+    original_source_id = full$source_id,
     original_evidence_family_id = full$evidence_family_id,
+    original_family_input_attestation_id = full$family_input_attestation_id,
     original_merge_id = full$merge_id,
     accepted_family_id = accepted_family_id,
+    accepted_source_format = accepted$source_format,
+    accepted_source_id = accepted$source_id,
     accepted_evidence_family_id = accepted$evidence_family_id,
     accepted_merge_id = accepted$merge_id,
     acceptance_authority = authority,
@@ -115,10 +154,16 @@ assessment_id <- fertility_stable_id(list(
 ))
 assessment <- data.frame(
     assessment_id = assessment_id,
+    assessment_contract = "derived-dual-gate-source-identity-v2",
     original_family_id = full_family_id,
+    original_source_format = full$source_format,
+    original_source_id = full$source_id,
     original_evidence_family_id = full$evidence_family_id,
+    original_family_input_attestation_id = full$family_input_attestation_id,
     original_merge_id = full$merge_id,
     accepted_family_id = accepted_family_id,
+    accepted_source_format = accepted$source_format,
+    accepted_source_id = accepted$source_id,
     accepted_evidence_family_id = accepted$evidence_family_id,
     accepted_merge_id = accepted$merge_id,
     acceptance_authority = authority,

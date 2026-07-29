@@ -2210,6 +2210,22 @@ stopifnot(
         merge_source, fixed = TRUE
     )
 )
+assessment_source <- paste(
+    readLines(file.path(script_dir, "assessment.R"), warn = FALSE), collapse = "\n"
+)
+stopifnot(
+    grepl('load_family(full_family_id, inventory, "original")',
+          assessment_source, fixed = TRUE),
+    grepl('load_family(accepted_family_id, inventory, "accepted")',
+          assessment_source, fixed = TRUE),
+    grepl("original_source_id = full$source_id", assessment_source, fixed = TRUE),
+    grepl("assessment_source_snapshot(current$full)",
+          assessment_source, fixed = TRUE),
+    grepl("assessment_source_snapshot(current$accepted)",
+          assessment_source, fixed = TRUE),
+    grepl("assessment-before-bundle-revalidation", assessment_source, fixed = TRUE),
+    grepl("assessment-before-current-revalidation", assessment_source, fixed = TRUE)
+)
 tampered_merged_results <- accepted_merged_bundle
 tampered_merged_results$results$classification[[1L]] <- "timeout"
 expect_error(fertility_validate_merged_bundle(
@@ -2238,6 +2254,181 @@ tampered_merged_manifest$family_manifest$id[[1L]] <- "F0632"
 expect_error(fertility_validate_merged_bundle(
     tampered_merged_manifest, accepted_family_fixture$id, merge_live_inventory
 ), "manifest")
+
+make_legacy_assessment_original <- function() {
+    manifest <- fertility_family_manifest(
+        merge_live_inventory,
+        fertility_parse_arguments(c("--shard-index=1", "--shard-count=8"))
+    )
+    family_id <- fertility_family_id_from_manifest(
+        manifest, test_framework_id, test_config_id, test_build_id,
+        fertility_inventory_id(merge_live_inventory), 8L, Inf
+    )
+    results <- make_public_results(manifest, full_classes)
+    hash_rows <- results$classification == "inventory-hash-error"
+    results$secondary_categories[hash_rows] <- "signature-mismatch"
+    family_input_attestation_id <- fertility_stable_id(list(
+        synthetic_legacy_family = family_id, shards = 8L
+    ))
+    evidence_family_id <- fertility_evidence_family_id(
+        family_id, family_input_attestation_id, "fresh-execution",
+        fertility_schema_version, fertility_report_schema_id()
+    )
+    provenance <- data.frame(
+        schema_version = as.character(fertility_schema_version),
+        report_schema_version = as.character(fertility_report_schema_version),
+        evidence_origin = "fresh-execution",
+        source_corpus_schema_version = as.character(fertility_schema_version),
+        replayed_at_utc = "", family_id = family_id,
+        evidence_family_id = evidence_family_id,
+        family_input_attestation_id = family_input_attestation_id,
+        framework_id = test_framework_id, config_id = test_config_id,
+        build_provenance_id = test_build_id,
+        inventory_id = fertility_inventory_id(merge_live_inventory),
+        family_manifest_id = fertility_manifest_id(manifest),
+        report_schema_id = fertility_report_schema_id(), shard_count = "8",
+        files = as.character(fertility_expected_rows), full_default_family = "TRUE",
+        created_at_utc = "2026-01-01T00:00:00Z",
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    provenance <- provenance[fertility_assessment_legacy_provenance_fields()]
+    list(
+        family_id = family_id,
+        bundle = list(
+            provenance = provenance, results = results,
+            summary = fertility_classification_summary(results),
+            family_manifest = manifest
+        )
+    )
+}
+legacy_original_fixture <- make_legacy_assessment_original()
+legacy_original <- fertility_validate_assessment_legacy_original_bundle(
+    legacy_original_fixture$bundle, legacy_original_fixture$family_id,
+    merge_live_inventory
+)
+stopifnot(
+    identical(legacy_original$source_format,
+              "legacy-original-merged-report-v2"),
+    grepl("^[0-9a-f]{64}$", legacy_original$source_id),
+    identical(legacy_original$merge_id, ""),
+    identical(legacy_original$source_content_ids$results_id,
+              fertility_merged_results_id(legacy_original$results)),
+    identical(
+        fertility_assessment_bundle_format(
+            unname(fertility_assessment_bundle_files("legacy-original")),
+            "original"
+        ),
+        "legacy-original-merged-report-v2"
+    ),
+    identical(
+        fertility_assessment_bundle_format(
+            unname(fertility_assessment_bundle_files("current")), "accepted"
+        ),
+        "current-merged-report-v2"
+    )
+)
+legacy_assessment_gates <- fertility_validate_assessment_families(
+    legacy_original, accepted_assessment
+)
+stopifnot(
+    identical(legacy_assessment_gates$manifest_gate,
+              "blocked-signature-mismatch"),
+    identical(legacy_assessment_gates$explicit_local_evidence_gate, "validated")
+)
+expect_error(fertility_assessment_bundle_format(
+    unname(fertility_assessment_bundle_files("legacy-original")), "accepted"
+), "unsupported exact file set")
+expect_error(fertility_validate_assessment_families(
+    accepted_assessment, legacy_original
+), "assessment family evidence")
+for (entries in list(
+    c(unname(fertility_assessment_bundle_files("legacy-original")), "extra.tsv"),
+    setdiff(unname(fertility_assessment_bundle_files("legacy-original")),
+            "summary.tsv")
+)) expect_error(fertility_assessment_bundle_format(
+    entries, "original"
+), "unsupported exact file set")
+legacy_shape_parent <- file.path(root, "legacy-assessment-shape")
+legacy_shape_run <- file.path(legacy_shape_parent, "bundle")
+dir.create(legacy_shape_run, recursive = TRUE)
+writeLines("bundle", file.path(legacy_shape_parent, "CURRENT"))
+for (name in unname(fertility_assessment_bundle_files("legacy-original"))) {
+    writeLines("synthetic", file.path(legacy_shape_run, name))
+}
+legacy_shape_external <- file.path(root, "legacy-assessment-external.tsv")
+writeLines("external", legacy_shape_external)
+unlink(file.path(legacy_shape_run, "results.tsv"))
+stopifnot(file.symlink(legacy_shape_external, file.path(legacy_shape_run, "results.tsv")))
+expect_error(fertility_current_bundle_paths(
+    legacy_shape_parent, fertility_assessment_bundle_files("legacy-original"),
+    "legacy assessment shape"
+), "symlink")
+
+legacy_mutation <- function(field, value) {
+    changed <- legacy_original_fixture$bundle
+    changed$provenance[[field]] <- value
+    changed
+}
+legacy_reject <- function(bundle, family_id = legacy_original_fixture$family_id,
+                          pattern) expect_error(
+    fertility_validate_assessment_legacy_original_bundle(
+        bundle, family_id, merge_live_inventory
+    ), pattern
+)
+legacy_reject(legacy_original_fixture$bundle,
+              paste(rep("f", 64L), collapse = ""), "provenance")
+for (case in list(
+    list("schema_version", "9", "provenance"),
+    list("report_schema_version", "1", "provenance"),
+    list("evidence_origin", "historical-schema-10-replay", "provenance"),
+    list("shard_count", "7", "provenance"),
+    list("files", "1003", "provenance"),
+    list("full_default_family", "FALSE", "provenance"),
+    list("inventory_id", paste(rep("1", 64L), collapse = ""), "inventory authority"),
+    list("framework_id", paste(rep("2", 64L), collapse = ""), "family identity"),
+    list("report_schema_id", fertility_report_schema_id(
+        fertility_legacy_report_schema_version
+    ), "provenance"),
+    list("evidence_family_id", paste(rep("3", 64L), collapse = ""),
+         "evidence family identity"),
+    list("family_input_attestation_id", "not-a-hash", "provenance")
+)) legacy_reject(legacy_mutation(case[[1L]], case[[2L]]), pattern = case[[3L]])
+legacy_wrong_manifest <- legacy_original_fixture$bundle
+legacy_wrong_manifest$family_manifest$shard_index[[1L]] <- "2"
+legacy_reject(legacy_wrong_manifest, pattern = "family manifest")
+legacy_wrong_results <- legacy_original_fixture$bundle
+legacy_wrong_results$results$classification[[1L]] <- "pass"
+legacy_reject(legacy_wrong_results, pattern = "preserved manifest-gated family")
+legacy_wrong_result_count <- legacy_original_fixture$bundle
+legacy_wrong_result_count$results <- legacy_wrong_result_count$results[-1L, , drop = FALSE]
+legacy_reject(legacy_wrong_result_count, pattern = "results are not bound")
+legacy_wrong_result_schema <- legacy_original_fixture$bundle
+legacy_wrong_result_schema$results$elapsed_seconds <- NULL
+legacy_reject(legacy_wrong_result_schema, pattern = "manifest schema")
+legacy_wrong_summary <- legacy_original_fixture$bundle
+legacy_wrong_summary$summary$files[[1L]] <- "999"
+legacy_reject(legacy_wrong_summary, pattern = "classification summary")
+legacy_extra_table <- legacy_original_fixture$bundle
+legacy_extra_table$input_attestation <- data.frame(value = "forbidden")
+legacy_reject(legacy_extra_table, pattern = "bundle schema")
+legacy_missing_table <- legacy_original_fixture$bundle
+legacy_missing_table$summary <- NULL
+legacy_reject(legacy_missing_table, pattern = "bundle schema")
+legacy_extra_provenance <- legacy_original_fixture$bundle
+legacy_extra_provenance$provenance$merge_id <- paste(rep("4", 64L), collapse = "")
+legacy_reject(legacy_extra_provenance, pattern = "manifest schema")
+legacy_wrong_reason <- legacy_original_fixture$bundle
+legacy_wrong_reason$results$secondary_categories[
+    legacy_wrong_reason$results$id == fertility_accepted_ids()[[1L]]
+] <- "hash-read-error"
+legacy_reject(legacy_wrong_reason, pattern = "preserved manifest-gated family")
+legacy_source_changed <- legacy_original_fixture$bundle
+legacy_source_changed$provenance$created_at_utc <- "2026-01-02T00:00:00Z"
+legacy_source_changed <- fertility_validate_assessment_legacy_original_bundle(
+    legacy_source_changed, legacy_original_fixture$family_id, merge_live_inventory
+)
+stopifnot(!identical(legacy_source_changed$source_id, legacy_original$source_id))
+
 assessment_gates <- fertility_validate_assessment_families(
     full_assessment, accepted_assessment
 )

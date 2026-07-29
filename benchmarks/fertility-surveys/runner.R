@@ -838,6 +838,42 @@ fertility_merge_provenance_fields <- function() c(
     "full_default_family", "created_at_utc"
 )
 
+fertility_assessment_legacy_provenance_fields <- function() c(
+    "schema_version", "report_schema_version", "evidence_origin",
+    "source_corpus_schema_version", "replayed_at_utc", "family_id",
+    "evidence_family_id", "family_input_attestation_id", "framework_id",
+    "config_id", "build_provenance_id", "inventory_id", "family_manifest_id",
+    "report_schema_id", "shard_count", "files", "full_default_family",
+    "created_at_utc"
+)
+
+fertility_assessment_bundle_files <- function(format = c("current", "legacy-original")) {
+    format <- match.arg(format)
+    files <- c(
+        provenance = "merge-provenance.tsv", results = "results.tsv",
+        summary = "summary.tsv", family_manifest = "family-manifest.tsv"
+    )
+    if (identical(format, "current")) {
+        files <- c(files, input_attestation = "input-attestation.tsv")
+    }
+    files
+}
+
+fertility_assessment_bundle_format <- function(entries, role = c("original", "accepted")) {
+    role <- match.arg(role)
+    if (!is.character(entries) || anyNA(entries) || anyDuplicated(entries)) {
+        stop("assessment merged-family bundle shape is invalid")
+    }
+    entries <- sort(entries)
+    current <- sort(unname(fertility_assessment_bundle_files("current")))
+    legacy <- sort(unname(fertility_assessment_bundle_files("legacy-original")))
+    if (identical(entries, current)) return("current-merged-report-v2")
+    if (identical(role, "original") && identical(entries, legacy)) {
+        return("legacy-original-merged-report-v2")
+    }
+    stop("assessment merged-family bundle has an unsupported exact file set")
+}
+
 fertility_validate_merged_bundle <- function(bundle, family_id,
                                               canonical_inventory) {
     required <- c(
@@ -979,7 +1015,9 @@ fertility_validate_merged_bundle <- function(bundle, family_id,
         provenance = provenance, full_default = full_default,
         evidence_family_id = provenance$evidence_family_id[[1L]],
         family_input_attestation_id = provenance$family_input_attestation_id[[1L]],
-        merge_id = provenance$merge_id[[1L]]
+        merge_id = provenance$merge_id[[1L]],
+        source_format = "current-merged-report-v2",
+        source_id = provenance$merge_id[[1L]]
     )
 }
 
@@ -992,6 +1030,163 @@ fertility_manifest_character <- function(manifest, fields) {
     names(result) <- fields
     rownames(result) <- NULL
     result
+}
+
+fertility_validate_original_assessment_results <- function(results) {
+    unsupported <- results$release == "111"
+    supported_hash_errors <- results[
+        !unsupported & results$classification == "inventory-hash-error",
+        c("id", "secondary_categories"), drop = FALSE
+    ]
+    if (nrow(results) != fertility_expected_rows ||
+        !all(results$classification[unsupported] == "expected-unsupported-111") ||
+        any(results$classification[!unsupported] == "expected-unsupported-111") ||
+        any(unsupported & results$classification == "inventory-hash-error") ||
+        nrow(supported_hash_errors) != length(fertility_accepted_ids()) ||
+        !identical(supported_hash_errors$id, fertility_accepted_ids()) ||
+        !identical(supported_hash_errors$secondary_categories,
+                   rep("signature-mismatch", length(fertility_accepted_ids())))) {
+        stop("assessment original full family is not the preserved manifest-gated family")
+    }
+    invisible(TRUE)
+}
+
+fertility_assessment_legacy_source_identity <- function(
+    provenance, results, summary, family_manifest
+) {
+    provenance_fields <- fertility_assessment_legacy_provenance_fields()
+    provenance <- fertility_manifest_character(provenance, provenance_fields)
+    results <- fertility_manifest_character(results, fertility_result_fields())
+    summary <- fertility_manifest_character(summary, c("classification", "files"))
+    family_manifest <- fertility_manifest_character(
+        family_manifest, c("id", "program", "level", "release", "shard_index")
+    )
+    provenance_id <- fertility_manifest_id(
+        provenance, provenance_fields, fertility_schema_version
+    )
+    results_id <- fertility_merged_results_id(results)
+    summary_id <- fertility_manifest_id(
+        summary, c("classification", "files"), fertility_report_schema_version
+    )
+    family_manifest_id <- fertility_manifest_id(family_manifest)
+    source_id <- fertility_stable_id(list(
+        source_contract = "assessment-legacy-original-schema10-report2-four-file-v1",
+        provenance_id = provenance_id, results_id = results_id,
+        summary_id = summary_id, family_manifest_id = family_manifest_id
+    ))
+    list(
+        source_id = source_id, provenance_id = provenance_id,
+        results_id = results_id, summary_id = summary_id,
+        family_manifest_id = family_manifest_id
+    )
+}
+
+fertility_validate_assessment_legacy_original_bundle <- function(
+    bundle, family_id, canonical_inventory
+) {
+    required <- c("provenance", "results", "summary", "family_manifest")
+    if (!is.list(bundle) || !identical(sort(names(bundle)), sort(required)) ||
+        !all(vapply(bundle, is.data.frame, logical(1)))) {
+        stop("legacy assessment original bundle schema is invalid")
+    }
+    provenance <- fertility_manifest_character(
+        bundle$provenance, fertility_assessment_legacy_provenance_fields()
+    )
+    hash_fields <- c(
+        "family_id", "evidence_family_id", "family_input_attestation_id",
+        "framework_id", "config_id", "build_provenance_id", "inventory_id",
+        "family_manifest_id", "report_schema_id"
+    )
+    if (nrow(provenance) != 1L ||
+        !identical(provenance$family_id[[1L]], family_id) ||
+        any(vapply(hash_fields, function(field) {
+            !grepl("^[0-9a-f]{64}$", provenance[[field]][[1L]])
+        }, logical(1))) ||
+        !identical(provenance$schema_version[[1L]],
+                   as.character(fertility_schema_version)) ||
+        !identical(provenance$report_schema_version[[1L]],
+                   as.character(fertility_report_schema_version)) ||
+        !identical(provenance$evidence_origin[[1L]], "fresh-execution") ||
+        !identical(provenance$source_corpus_schema_version[[1L]],
+                   as.character(fertility_schema_version)) ||
+        nzchar(provenance$replayed_at_utc[[1L]]) ||
+        !identical(provenance$report_schema_id[[1L]], fertility_report_schema_id()) ||
+        !identical(provenance$shard_count[[1L]], "8") ||
+        !identical(provenance$files[[1L]],
+                   as.character(fertility_expected_rows)) ||
+        !identical(provenance$full_default_family[[1L]], "TRUE") ||
+        !grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+               provenance$created_at_utc[[1L]])) {
+        stop("legacy assessment original provenance is invalid")
+    }
+    live_inventory_id <- fertility_inventory_id(canonical_inventory)
+    canonical <- fertility_validate_canonical_inventory(
+        fertility_inventory_manifest(canonical_inventory), exact = TRUE
+    )
+    if (!identical(provenance$inventory_id[[1L]], live_inventory_id)) {
+        stop("legacy assessment original does not match canonical inventory authority")
+    }
+    expected_manifest <- canonical
+    expected_manifest$shard_index <- fertility_shard_index(
+        expected_manifest$id, canonical$id, 8L
+    )
+    manifest <- fertility_manifest_character(
+        bundle$family_manifest,
+        c("id", "program", "level", "release", "shard_index")
+    )
+    expected_manifest <- fertility_manifest_character(expected_manifest, names(manifest))
+    if (!identical(manifest, expected_manifest) ||
+        !identical(fertility_manifest_id(manifest),
+                   provenance$family_manifest_id[[1L]])) {
+        stop("legacy assessment original family manifest is not canonical")
+    }
+    expected_family_id <- fertility_family_id_from_manifest(
+        manifest, provenance$framework_id[[1L]], provenance$config_id[[1L]],
+        provenance$build_provenance_id[[1L]], provenance$inventory_id[[1L]],
+        8L, Inf, provenance$report_schema_id[[1L]], "fresh-execution",
+        fertility_schema_version
+    )
+    if (!identical(family_id, expected_family_id)) {
+        stop("legacy assessment original family identity is invalid")
+    }
+    results <- fertility_manifest_character(bundle$results, fertility_result_fields())
+    fertility_validate_public_results(results)
+    if (nrow(results) != fertility_expected_rows ||
+        !identical(results[c("id", "program", "level", "release")],
+                   manifest[c("id", "program", "level", "release")]) ||
+        any(results$framework_id != provenance$framework_id[[1L]]) ||
+        any(results$build_provenance_id != provenance$build_provenance_id[[1L]])) {
+        stop("legacy assessment original results are not bound to family provenance")
+    }
+    fertility_validate_original_assessment_results(results)
+    summary <- fertility_manifest_character(
+        bundle$summary, c("classification", "files")
+    )
+    expected_summary <- fertility_manifest_character(
+        fertility_classification_summary(results), c("classification", "files")
+    )
+    if (!identical(summary, expected_summary)) {
+        stop("legacy assessment original classification summary is invalid")
+    }
+    expected_evidence <- fertility_evidence_family_id(
+        family_id, provenance$family_input_attestation_id[[1L]],
+        "fresh-execution", fertility_schema_version,
+        provenance$report_schema_id[[1L]]
+    )
+    if (!identical(provenance$evidence_family_id[[1L]], expected_evidence)) {
+        stop("legacy assessment original evidence family identity is invalid")
+    }
+    identity <- fertility_assessment_legacy_source_identity(
+        provenance, results, summary, manifest
+    )
+    list(
+        results = results, summary = summary, family_manifest = manifest,
+        input_attestation = NULL, provenance = provenance, full_default = TRUE,
+        evidence_family_id = provenance$evidence_family_id[[1L]],
+        family_input_attestation_id = provenance$family_input_attestation_id[[1L]],
+        merge_id = "", source_format = "legacy-original-merged-report-v2",
+        source_id = identity$source_id, source_content_ids = identity
+    )
 }
 
 fertility_validate_shard_bundles <- function(bundles, family_id,
@@ -1274,33 +1469,41 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
 }
 
 fertility_validate_assessment_families <- function(full, accepted) {
-    required <- c("results", "provenance", "full_default", "evidence_family_id")
+    required <- c(
+        "results", "provenance", "full_default", "evidence_family_id",
+        "source_format", "source_id"
+    )
     if (!is.list(full) || !is.list(accepted) ||
-        !all(required %in% names(full)) || !all(required %in% names(accepted))) {
+        !all(required %in% names(full)) || !all(required %in% names(accepted)) ||
+        !full$source_format %in% c(
+            "current-merged-report-v2", "legacy-original-merged-report-v2"
+        ) || !identical(accepted$source_format, "current-merged-report-v2") ||
+        !grepl("^[0-9a-f]{64}$", full$source_id) ||
+        !grepl("^[0-9a-f]{64}$", accepted$source_id)) {
         stop("assessment family evidence is invalid")
     }
-    supported_hash_error_rows <- full$results[
-        full$results$release != "111" &
-            full$results$classification == "inventory-hash-error",
-        c("id", "secondary_categories"), drop = FALSE
-    ]
-    unsupported <- full$results$release == "111"
-    if (!isTRUE(full$full_default) || nrow(full$results) != fertility_expected_rows ||
-        !all(full$results$classification[unsupported] == "expected-unsupported-111") ||
-        any(full$results$classification[!unsupported] == "expected-unsupported-111") ||
-        any(unsupported & full$results$classification == "inventory-hash-error") ||
-        nrow(supported_hash_error_rows) != length(fertility_accepted_ids()) ||
-        !identical(supported_hash_error_rows$id, fertility_accepted_ids()) ||
-        !identical(supported_hash_error_rows$secondary_categories,
-                   rep("signature-mismatch", length(fertility_accepted_ids()))) ||
-        any(nzchar(full$provenance$acceptance_commitment_id))) {
+    fertility_validate_original_assessment_results(full$results)
+    original_acceptance <- intersect(
+        c("acceptance_authority", "acceptance_commitment_id",
+          "acceptance_artifact_sha256"), names(full$provenance)
+    )
+    if (!isTRUE(full$full_default) ||
+        (length(original_acceptance) && any(nzchar(unlist(
+            full$provenance[original_acceptance], use.names = FALSE
+        ))))) {
         stop("assessment original full family is not the preserved manifest-gated family")
     }
-    if (isTRUE(accepted$full_default) ||
-        !identical(accepted$results$id, fertility_accepted_ids()) ||
+    if (isTRUE(accepted$full_default) || !is.data.frame(accepted$input_attestation) ||
+        !identical(names(accepted$provenance), fertility_merge_provenance_fields()) ||
+        !identical(names(accepted$input_attestation), c(
+            "shard_index", "input_attestation_id", "evidence_selection_id"
+        )) || !identical(accepted$results$id, fertility_accepted_ids()) ||
         any(accepted$results$classification %in% c(
             "inventory-hash-error", "expected-unsupported-111"
-        )) || !all(nzchar(accepted$provenance$acceptance_commitment_id))) {
+        )) || !all(nzchar(accepted$provenance$acceptance_commitment_id)) ||
+        !all(accepted$provenance$acceptance_authority ==
+             fertility_acceptance_authority()) ||
+        !all(accepted$provenance$evidence_origin == "fresh-execution")) {
         stop("assessment accepted family is not valid explicit local evidence")
     }
     if (!identical(unique(full$provenance$inventory_id),

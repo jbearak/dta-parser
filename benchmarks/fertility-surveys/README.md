@@ -174,14 +174,20 @@ benchmarks/fertility-surveys/benchmark.sh \
 ```
 
 The assessment consumes and strictly revalidates each family's merged `CURRENT`
-bundle, including its results, summary, family manifest, aggregate input
-attestation, evidence-family identity, and merge identity. Its own identity binds
-both source merge identities. Immediately before publication it reloads both
-merged bundles, rebuilds the live inventory, and repeats accepted-artifact and
-current-byte validation. It preserves both source identities and classifications,
-requires the original full family to retain `inventory-hash-error` for exactly
-`F0633`-`F0637` with the sole privacy-safe reason `signature-mismatch`, and exposes
-two orthogonal statuses:
+bundle. The accepted family must use the complete current five-file merged schema,
+including its aggregate input attestation and acceptance authority. Only the
+original/base role has a compatibility path for the immutable four-file
+schema-10/report-schema-2 fresh full-family bundle: it requires exactly 8 shards,
+1,004 canonical files, the exact legacy provenance and file schemas, the live
+inventory and current report-schema-2 framework snapshot, and recomputes the
+schema-2 evidence-family identity. It does not synthesize the absent attestation
+table or permit this format for accepted evidence. A privacy-safe identity over
+the exact legacy provenance and public content IDs is bound into the assessment
+identity and revalidated at both publication boundaries. Merge and republication
+remain current-schema-only. The assessment preserves both source identities and
+classifications, requires the original full family to retain
+`inventory-hash-error` for exactly `F0633`-`F0637` with the sole privacy-safe
+reason `signature-mismatch`, and exposes two orthogonal statuses:
 `manifest_gate=blocked-signature-mismatch` and
 `explicit_local_evidence_gate=validated`. It does not replace the manifest gate,
 rewrite either family, or authorize Wave 3.
