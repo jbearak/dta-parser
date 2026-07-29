@@ -1,4 +1,4 @@
-fertility_schema_version <- 10L
+fertility_schema_version <- 11L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
@@ -681,7 +681,7 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         "    if not head: fail()",
         "    if head.startswith(b'<stata_dta>'):",
         "        marker=b'<release>'; start=head.find(marker)",
-        "        if start < 0: fail()",
+        "        if start < 0 or head.find(marker,start+1) >= 0: fail()",
         "        value=head[start+len(marker):start+len(marker)+3]",
         "        if len(value) != 3 or not value.isdigit(): fail()",
         "        return value.decode('ascii')",
@@ -818,7 +818,7 @@ fertility_nofollow_file_capture <- function(path, include_release = FALSE) {
         "        if not head: raise RuntimeError('empty DTA input')",
         "        if head.startswith(b'<stata_dta>'):",
         "            marker=b'<release>'; start=head.find(marker)",
-        "            if start < 0: raise RuntimeError('release missing')",
+        "            if start < 0 or head.find(marker,start+1) >= 0: raise RuntimeError('release missing or ambiguous')",
         "            value=head[start+len(marker):start+len(marker)+3]",
         "            if len(value) != 3 or not value.isdigit(): raise RuntimeError('release invalid')",
         "            fields.append(value.decode('ascii'))",
@@ -955,6 +955,12 @@ fertility_output_metadata_equal <- function(left, right) {
         nrow(left) != nrow(right) ||
         !identical(left$relative_path, right$relative_path) ||
         !identical(left$size, right$size)) return(FALSE)
+    timestamp <- paste0(
+        "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:",
+        "[0-9]{2}[.][0-9]{6}Z$"
+    )
+    if (any(!grepl(timestamp, left$modified)) ||
+        any(!grepl(timestamp, right$modified))) return(FALSE)
     left_time <- suppressWarnings(as.numeric(as.POSIXct(
         sub("Z$", "", left$modified), format = "%Y-%m-%dT%H:%M:%OS", tz = "UTC"
     )))

@@ -159,6 +159,20 @@ local({
         identical(descriptor_capture$sha512,
                   fertility_file_sha512(descriptor_target))
     )
+    ambiguous_release <- file.path(fixture, "ambiguous-release.dta")
+    writeBin(charToRaw(paste0(
+        "<stata_dta><header><release>118</release>",
+        "<release>117</release></header>"
+    )), ambiguous_release)
+    expect_error(
+        fertility_nofollow_file_capture(ambiguous_release, include_release = TRUE),
+        "descriptor-bound file capture failed"
+    )
+    expect_error(
+        fertility_output_descriptor_manifest(fertility_output_root, TRUE),
+        "descriptor-bound regular files"
+    )
+    unlink(ambiguous_release)
     restorer <- NULL
     options(dtaparser.fertility.output_inventory_test_hook = function(
         boundary, context
@@ -1511,9 +1525,12 @@ fertility_atomic_write_table(
     full_canonical, file.path(legacy_snapshot, "inventory-manifest.tsv")
 )
 legacy_inventory_provenance <- data.frame(
-    schema_version = fertility_schema_version, framework_id = test_framework_id,
+    schema_version = fertility_legacy_corpus_schema_version,
+    framework_id = test_framework_id,
     inventory_id = paste(rep("e", 64L), collapse = ""),
-    inventory_manifest_id = fertility_manifest_id(full_canonical),
+    inventory_manifest_id = fertility_manifest_id(
+        full_canonical, schema_version = fertility_legacy_corpus_schema_version
+    ),
     report_schema_id = fertility_report_schema_id(
         fertility_legacy_report_schema_version
     ), files = nrow(full_canonical), stringsAsFactors = FALSE, check.names = FALSE
