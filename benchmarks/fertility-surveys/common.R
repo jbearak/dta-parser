@@ -672,11 +672,11 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
     code <- paste(
         "import hashlib, os, stat, sys",
         "root=os.fsencode(sys.argv[1]); include_content=sys.argv[2] == '1'",
-        "flags=os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_NOFOLLOW', 0)",
-        "def fail():",
-        "    raise RuntimeError('unsafe output inventory entry')",
+        "base_flags=os.O_RDONLY | getattr(os,'O_CLOEXEC',0) | getattr(os,'O_NOFOLLOW',0)",
+        "file_flags=base_flags; dir_flags=base_flags | getattr(os,'O_DIRECTORY',0)",
+        "def fail(): raise RuntimeError('unsafe output inventory entry')",
         "def identity(value):",
-        "    return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns)",
+        "    return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns,value.st_ctime_ns)",
         "def release(head):",
         "    if not head: fail()",
         "    if head.startswith(b'<stata_dta>'):",
@@ -686,16 +686,13 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         "        if len(value) != 3 or not value.isdigit(): fail()",
         "        return value.decode('ascii')",
         "    return str(head[0])",
-        "def attest(path):",
-        "    try:",
-        "        fd=os.open(path,flags)",
-        "    except OSError:",
-        "        fail()",
+        "def attest(parent_fd,name,path,expected):",
+        "    try: fd=os.open(name,file_flags,dir_fd=parent_fd)",
+        "    except OSError: fail()",
         "    try:",
         "        before=os.fstat(fd)",
-        "        if not stat.S_ISREG(before.st_mode): fail()",
-        "        linked=os.lstat(path)",
-        "        if identity(linked) != identity(before): fail()",
+        "        if not stat.S_ISREG(before.st_mode) or identity(before) != identity(expected): fail()",
+        "        if identity(os.stat(name,dir_fd=parent_fd,follow_symlinks=False)) != identity(before): fail()",
         "        digest=hashlib.sha512() if include_content else None; head=b''",
         "        if include_content:",
         "            while True:",
@@ -703,35 +700,47 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         "                if not chunk: break",
         "                if len(head) < 256: head += chunk[:256-len(head)]",
         "                digest.update(chunk)",
-        "        after=os.fstat(fd); current=os.lstat(path)",
+        "        after=os.fstat(fd); current=os.stat(name,dir_fd=parent_fd,follow_symlinks=False)",
         "        if identity(after) != identity(before) or identity(current) != identity(before): fail()",
-        "        fields=[path.hex(),str(before.st_dev),str(before.st_ino),str(before.st_mode),str(before.st_size),str(before.st_mtime_ns),repr(before.st_mtime)]",
+        "        fields=[path.hex(),str(before.st_dev),str(before.st_ino),str(before.st_mode),str(before.st_size),str(before.st_mtime_ns),str(before.st_ctime_ns),repr(before.st_mtime)]",
         "        if include_content: fields += [release(head),digest.hexdigest()]",
         "        print('\\t'.join(fields))",
-        "    finally:",
-        "        os.close(fd)",
-        "def walk(parent):",
-        "    try:",
-        "        with os.scandir(parent) as iterator:",
-        "            entries=sorted(list(iterator),key=lambda value:value.name)",
-        "    except OSError:",
-        "        fail()",
-        "    for entry in entries:",
-        "        is_dta=entry.name.lower().endswith(b'.dta')",
-        "        try:",
-        "            mode=entry.stat(follow_symlinks=False).st_mode",
-        "        except OSError:",
-        "            fail()",
-        "        if stat.S_ISLNK(mode):",
-        "            try: linked_directory=entry.is_dir(follow_symlinks=True)",
+        "    finally: os.close(fd)",
+        "def walk(parent_fd,parent_path):",
+        "    parent_before=os.fstat(parent_fd)",
+        "    try: names=sorted(os.listdir(parent_fd),key=os.fsencode)",
+        "    except OSError: fail()",
+        "    for text in names:",
+        "        name=os.fsencode(text); is_dta=name.lower().endswith(b'.dta')",
+        "        try: before=os.stat(name,dir_fd=parent_fd,follow_symlinks=False)",
+        "        except OSError: fail()",
+        "        if stat.S_ISLNK(before.st_mode):",
+        "            try: linked_directory=stat.S_ISDIR(os.stat(name,dir_fd=parent_fd,follow_symlinks=True).st_mode)",
         "            except OSError: linked_directory=False",
         "            if linked_directory or is_dta: fail()",
         "            continue",
-        "        if stat.S_ISDIR(mode): walk(entry.path)",
+        "        path=os.path.join(parent_path,name)",
+        "        if stat.S_ISDIR(before.st_mode):",
+        "            try: child_fd=os.open(name,dir_flags,dir_fd=parent_fd)",
+        "            except OSError: fail()",
+        "            try:",
+        "                if identity(os.fstat(child_fd)) != identity(before): fail()",
+        "                walk(child_fd,path)",
+        "                current=os.stat(name,dir_fd=parent_fd,follow_symlinks=False)",
+        "                if identity(os.fstat(child_fd)) != identity(before) or identity(current) != identity(before): fail()",
+        "            finally: os.close(child_fd)",
         "        elif is_dta:",
-        "            if not stat.S_ISREG(mode): fail()",
-        "            attest(entry.path)",
-        "walk(root)",
+        "            if not stat.S_ISREG(before.st_mode): fail()",
+        "            attest(parent_fd,name,path,before)",
+        "    if identity(os.fstat(parent_fd)) != identity(parent_before): fail()",
+        "root_expected=os.lstat(root)",
+        "try: root_fd=os.open(root,dir_flags)",
+        "except OSError: fail()",
+        "try:",
+        "    if identity(os.fstat(root_fd)) != identity(root_expected): fail()",
+        "    walk(root_fd,root)",
+        "    if identity(os.fstat(root_fd)) != identity(root_expected) or identity(os.lstat(root)) != identity(root_expected): fail()",
+        "finally: os.close(root_fd)",
         sep = "\n"
     )
     output <- suppressWarnings(system2(
@@ -744,7 +753,7 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         stop("fertility output inventory could not attest descriptor-bound regular files")
     }
     fields <- strsplit(output, "\t", fixed = TRUE)
-    expected_fields <- if (include_content) 9L else 7L
+    expected_fields <- if (include_content) 10L else 8L
     if (any(lengths(fields) != expected_fields)) {
         stop("fertility output descriptor attestation is malformed")
     }
@@ -756,14 +765,15 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         mode = vapply(fields, `[[`, character(1), 4L),
         size = vapply(fields, `[[`, character(1), 5L),
         modified_ns = vapply(fields, `[[`, character(1), 6L),
-        modified_seconds = vapply(fields, `[[`, character(1), 7L),
+        changed_ns = vapply(fields, `[[`, character(1), 7L),
+        modified_seconds = vapply(fields, `[[`, character(1), 8L),
         stringsAsFactors = FALSE, check.names = FALSE
     )
     if (include_content) {
         result$release <- suppressWarnings(as.integer(vapply(
-            fields, `[[`, character(1), 8L
+            fields, `[[`, character(1), 9L
         )))
-        result$sha512 <- vapply(fields, `[[`, character(1), 9L)
+        result$sha512 <- vapply(fields, `[[`, character(1), 10L)
         if (anyNA(result$release) || any(!grepl("^[0-9a-f]{128}$", result$sha512))) {
             stop("fertility output descriptor content attestation is malformed")
         }
@@ -776,6 +786,7 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         any(!grepl("^[0-9]+$", result$mode)) ||
         any(!grepl("^(0|[1-9][0-9]*)$", result$size)) ||
         any(!grepl("^[0-9]+$", result$modified_ns)) ||
+        any(!grepl("^[0-9]+$", result$changed_ns)) ||
         any(!grepl("^[0-9]+([.][0-9]+)?$", result$modified_seconds))) {
         stop("fertility output descriptor attestation is invalid")
     }
@@ -798,22 +809,40 @@ fertility_nofollow_file_capture <- function(path, include_release = FALSE) {
     code <- paste(
         "import hashlib, os, stat, sys",
         "path=os.fsencode(sys.argv[1]); include_release=sys.argv[2] == '1'",
-        "flags=os.O_RDONLY | getattr(os,'O_CLOEXEC',0) | getattr(os,'O_NOFOLLOW',0)",
-        "def identity(value): return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns)",
-        "fd=os.open(path,flags)",
+        "base_flags=os.O_RDONLY | getattr(os,'O_CLOEXEC',0) | getattr(os,'O_NOFOLLOW',0)",
+        "file_flags=base_flags; dir_flags=base_flags | getattr(os,'O_DIRECTORY',0)",
+        "def identity(value):",
+        "    return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns,value.st_ctime_ns)",
+        "parts=[part for part in path.split(b'/') if part]",
+        "if not parts: raise RuntimeError('invalid input path')",
+        "directory_parts=parts[:-1]; name=parts[-1]; chain=[]; descriptors=[]",
+        "root_expected=os.lstat(b'/'); root_fd=os.open(b'/',dir_flags); descriptors.append(root_fd)",
+        "if identity(os.fstat(root_fd)) != identity(root_expected): raise RuntimeError('root changed')",
+        "parent_fd=root_fd",
         "try:",
+        "    for part in directory_parts:",
+        "        expected=os.stat(part,dir_fd=parent_fd,follow_symlinks=False)",
+        "        if not stat.S_ISDIR(expected.st_mode): raise RuntimeError('parent is not directory')",
+        "        child_fd=os.open(part,dir_flags,dir_fd=parent_fd); descriptors.append(child_fd)",
+        "        if identity(os.fstat(child_fd)) != identity(expected): raise RuntimeError('parent changed')",
+        "        chain.append((parent_fd,part,child_fd,expected)); parent_fd=child_fd",
+        "    expected=os.stat(name,dir_fd=parent_fd,follow_symlinks=False)",
+        "    fd=os.open(name,file_flags,dir_fd=parent_fd); descriptors.append(fd)",
         "    before=os.fstat(fd)",
-        "    if not stat.S_ISREG(before.st_mode): raise RuntimeError('not regular')",
-        "    if identity(os.lstat(path)) != identity(before): raise RuntimeError('identity changed')",
+        "    if not stat.S_ISREG(before.st_mode) or identity(before) != identity(expected): raise RuntimeError('not regular')",
         "    digest=hashlib.sha512(); head=b''",
         "    while True:",
         "        chunk=os.read(fd,1024*1024)",
         "        if not chunk: break",
         "        if len(head) < 256: head += chunk[:256-len(head)]",
         "        digest.update(chunk)",
-        "    after=os.fstat(fd)",
-        "    if identity(after) != identity(before) or identity(os.lstat(path)) != identity(before): raise RuntimeError('identity changed')",
-        "    fields=[str(before.st_dev),str(before.st_ino),str(before.st_mode),str(before.st_size),str(before.st_mtime_ns),repr(before.st_mtime),digest.hexdigest()]",
+        "    after=os.fstat(fd); current=os.stat(name,dir_fd=parent_fd,follow_symlinks=False)",
+        "    if identity(after) != identity(before) or identity(current) != identity(before): raise RuntimeError('identity changed')",
+        "    for ancestor_fd,part,child_fd,ancestor_expected in reversed(chain):",
+        "        current=os.stat(part,dir_fd=ancestor_fd,follow_symlinks=False)",
+        "        if identity(os.fstat(child_fd)) != identity(ancestor_expected) or identity(current) != identity(ancestor_expected): raise RuntimeError('parent changed')",
+        "    if identity(os.fstat(root_fd)) != identity(root_expected) or identity(os.lstat(b'/')) != identity(root_expected): raise RuntimeError('root changed')",
+        "    fields=[str(before.st_dev),str(before.st_ino),str(before.st_mode),str(before.st_size),str(before.st_mtime_ns),str(before.st_ctime_ns),repr(before.st_mtime),digest.hexdigest()]",
         "    if include_release:",
         "        if not head: raise RuntimeError('empty DTA input')",
         "        if head.startswith(b'<stata_dta>'):",
@@ -825,7 +854,9 @@ fertility_nofollow_file_capture <- function(path, include_release = FALSE) {
         "        else: fields.append(str(head[0]))",
         "    print('\\t'.join(fields))",
         "finally:",
-        "    os.close(fd)",
+        "    for descriptor in reversed(descriptors):",
+        "        try: os.close(descriptor)",
+        "        except OSError: pass",
         sep = "\n"
     )
     output <- suppressWarnings(system2(
@@ -836,19 +867,20 @@ fertility_nofollow_file_capture <- function(path, include_release = FALSE) {
     status <- attr(output, "status", exact = TRUE)
     fields <- if (length(output) == 1L) strsplit(output, "\t", fixed = TRUE)[[1L]] else
         character()
-    expected_fields <- if (include_release) 8L else 7L
+    expected_fields <- if (include_release) 9L else 8L
     if ((!is.null(status) && status != 0L) ||
         length(fields) != expected_fields ||
-        any(!grepl("^[0-9]+$", fields[seq_len(5L)])) ||
-        !grepl("^[0-9]+([.][0-9]+)?$", fields[[6L]]) ||
-        !grepl("^[0-9a-f]{128}$", fields[[7L]])) {
+        any(!grepl("^[0-9]+$", fields[seq_len(6L)])) ||
+        !grepl("^[0-9]+([.][0-9]+)?$", fields[[7L]]) ||
+        !grepl("^[0-9a-f]{128}$", fields[[8L]])) {
         stop("descriptor-bound file capture failed")
     }
     list(
         device = fields[[1L]], inode = fields[[2L]], mode = fields[[3L]],
         size = fields[[4L]], modified_ns = fields[[5L]],
-        modified_seconds = fields[[6L]], sha512 = fields[[7L]],
-        release = if (include_release) suppressWarnings(as.integer(fields[[8L]])) else
+        changed_ns = fields[[6L]], modified_seconds = fields[[7L]],
+        sha512 = fields[[8L]],
+        release = if (include_release) suppressWarnings(as.integer(fields[[9L]])) else
             NULL
     )
 }
@@ -1011,7 +1043,8 @@ fertility_build_output_inventory <- function(root, raw_root) {
             stringsAsFactors = FALSE, check.names = FALSE
         )
         identity_fields <- c(
-            "path", "device", "inode", "mode", "size", "modified_ns"
+            "path", "device", "inode", "mode", "size", "modified_ns",
+            "changed_ns"
         )
         after <- fertility_output_descriptor_manifest(root, FALSE)
         fertility_validate_output_baseline(content_manifest)

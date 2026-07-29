@@ -203,6 +203,73 @@ local({
         identical(unname(tools::sha256sum(external_dta)), external_before)
     )
     options(dtaparser.fertility.output_inventory_test_hook = NULL)
+
+    root_saved <- paste0(fixture, ".saved")
+    restorer <- NULL
+    options(dtaparser.fertility.output_inventory_test_hook = function(
+        boundary, context
+    ) {
+        if (identical(boundary, "before-descriptor-content-read")) {
+            stopifnot(file.rename(fixture, root_saved), file.symlink(outside, fixture))
+            restorer <<- callr::r_bg(function(path, saved) {
+                Sys.sleep(0.5)
+                unlink(path)
+                if (!file.rename(saved, path)) stop("could not restore output root")
+                TRUE
+            }, args = list(fixture, root_saved), supervise = TRUE,
+            user_profile = FALSE, system_profile = FALSE)
+        }
+    })
+    expect_error(
+        fertility_output_descriptor_manifest(fertility_output_root, TRUE),
+        "descriptor-bound regular files"
+    )
+    stopifnot(!is.null(restorer))
+    restorer$wait(timeout = 5000L)
+    stopifnot(
+        identical(restorer$get_result(), TRUE),
+        !fertility_path_is_symlink(fixture),
+        identical(unname(tools::sha256sum(external_dta)), external_before)
+    )
+
+    capture_parent <- file.path(fixture, "capture-parent")
+    capture_parent_saved <- paste0(capture_parent, ".saved")
+    external_parent <- file.path(outside, "capture-parent")
+    dir.create(capture_parent)
+    dir.create(external_parent)
+    capture_target <- file.path(capture_parent, "target.dta")
+    writeBin(c(as.raw(113L), as.raw(rep(1L, 40L))), capture_target)
+    writeBin(c(as.raw(118L), as.raw(rep(2L, 40L))),
+             file.path(external_parent, "target.dta"))
+    restorer <- NULL
+    options(dtaparser.fertility.output_inventory_test_hook = function(
+        boundary, context
+    ) {
+        if (identical(boundary, "before-descriptor-file-read")) {
+            stopifnot(
+                file.rename(capture_parent, capture_parent_saved),
+                file.symlink(external_parent, capture_parent)
+            )
+            restorer <<- callr::r_bg(function(path, saved) {
+                Sys.sleep(0.5)
+                unlink(path)
+                if (!file.rename(saved, path)) stop("could not restore capture parent")
+                TRUE
+            }, args = list(capture_parent, capture_parent_saved),
+            supervise = TRUE, user_profile = FALSE, system_profile = FALSE)
+        }
+    })
+    expect_error(
+        fertility_nofollow_file_capture(capture_target, include_release = TRUE),
+        "descriptor-bound file capture failed"
+    )
+    stopifnot(!is.null(restorer))
+    restorer$wait(timeout = 5000L)
+    stopifnot(
+        identical(restorer$get_result(), TRUE),
+        !fertility_path_is_symlink(capture_parent)
+    )
+    options(dtaparser.fertility.output_inventory_test_hook = NULL)
 })
 
 # Output confinement rejects symlinked roots, publication descendants, CURRENT

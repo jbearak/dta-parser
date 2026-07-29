@@ -459,7 +459,7 @@ fertility_capture_input <- function(item, acceptance = NULL) {
         error = function(error) NULL
     )
     if (is.null(captured)) {
-        device <- inode <- mode <- ""
+        device <- inode <- mode <- changed_ns <- ""
         size <- NA_character_
         modified <- NA_character_
         actual <- NA_character_
@@ -467,6 +467,7 @@ fertility_capture_input <- function(item, acceptance = NULL) {
         device <- captured$device
         inode <- captured$inode
         mode <- captured$mode
+        changed_ns <- captured$changed_ns
         size <- captured$size
         modified <- fertility_descriptor_timestamp(captured$modified_seconds)
         actual <- captured$sha512
@@ -476,7 +477,7 @@ fertility_capture_input <- function(item, acceptance = NULL) {
         id = item$id, release = as.integer(item$release),
         expected_sha512 = item$expected_sha512, hash_status = hash_status,
         actual_sha512 = if (is.na(actual)) "" else actual,
-        device = device, inode = inode, mode = mode,
+        device = device, inode = inode, mode = mode, changed_ns = changed_ns,
         size = size, modified = modified
     )
     accepted_sha512 <- ""
