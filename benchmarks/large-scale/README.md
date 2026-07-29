@@ -31,9 +31,9 @@ benchmarks/large-scale/benchmark.sh
 ```
 
 The orchestration script builds the current package source, installs it into a
-fresh `target/large-scale/library/`, and sets `DTAPARSER_BENCH_LIB` itself. It
-also writes `library/dtaparser-benchmark-provenance.tsv`, recording the commit,
-dirty state, package version, canonical checkout and library paths, the built
+fresh ignored private library, and sets `DTAPARSER_BENCH_LIB` itself. It also
+writes a private build-provenance record containing the commit, dirty state,
+package version, canonical checkout and library identities, the built
 source tarball SHA-256, and digests of every non-ignored package input,
 large-scale harness input, and installed `library/dtaparser/` file. Package
 source is digested before the build and again after installation; any change
@@ -55,12 +55,11 @@ provenance explicitly and rejects missing, duplicate, non-contiguous, nonfinite,
 or metadata-inconsistent cells rather than summarizing a partial matrix.
 
 Raw timings, summary, runtime provenance, and a copy of build provenance are
-staged together. Only after the runner and strict summarizer both succeed is the
-whole directory renamed beneath `target/large-scale/runs/`; the `CURRENT` text
-pointer is then replaced atomically. Failed reruns leave the prior completed
-bundle current, and replacing the working benchmark library cannot alter the
-build record copied into an older bundle. Preserve the complete pointed-to run
-directory with any dated benchmark report.
+staged together. Only after the runner and strict summarizer both succeed is an
+immutable private bundle published and its private selection updated atomically.
+Failed reruns leave the prior completed bundle selected, and replacing the
+working benchmark library cannot alter the build record copied into an older
+bundle. Preserve the complete content-bound bundle with any dated report.
 
 Pass an iteration count only for local validation. For example, this executes
 the complete two-size matrix once:
@@ -69,11 +68,11 @@ the complete two-size matrix once:
 benchmarks/large-scale/benchmark.sh 1
 ```
 
-All generated inputs and reports are written beneath the ignored
-`target/large-scale/` directory. Dataset files and the manifest are replaced
-atomically, and rerunning the orchestration script recreates the same datasets
-and a duplicate-free manifest. Completed report bundles are immutable and
-selected through `CURRENT`. Python is invoked with bytecode generation disabled.
+All generated inputs and reports are written beneath an ignored checkout-local
+private artifact root. Dataset files and the manifest are replaced atomically,
+and rerunning the orchestration script recreates the same datasets and a
+duplicate-free manifest. Completed report bundles are immutable and privately
+selected. Python is invoked with bytecode generation disabled.
 
 The default raw report has 1,212 rows:
 
