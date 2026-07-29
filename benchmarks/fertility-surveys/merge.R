@@ -9,11 +9,15 @@ source(file.path(script_dir, "runtime.R"))
 
 fertility_assert_manual_run()
 arguments <- commandArgs(trailingOnly = TRUE)
-if (length(arguments) != 1L || !startsWith(arguments, "--family-id=")) {
-    stop("usage: merge.R --family-id=ID")
+family_arguments <- arguments[startsWith(arguments, "--family-id=")]
+output_arguments <- arguments[startsWith(arguments, "--output-root=")]
+if (length(family_arguments) != 1L || length(output_arguments) > 1L ||
+    length(arguments) != length(family_arguments) + length(output_arguments)) {
+    stop("usage: merge.R --family-id=ID [--output-root=/absolute/path]")
 }
-family_id <- sub("^[^=]+=", "", arguments[[1L]])
+family_id <- sub("^[^=]+=", "", family_arguments[[1L]])
 if (!grepl("^[0-9a-f]{64}$", family_id)) stop("invalid family ID")
+output_options <- fertility_parse_arguments(output_arguments)
 checkout_root <- fertility_checkout_root(script_path)
 raw_root <- fertility_assert_checkout_raw_root(
     file.path(checkout_root, "target", "fertility-surveys", "raw"), checkout_root
@@ -79,9 +83,10 @@ candidate_provenance <- do.call(rbind, lapply(bundles, `[[`, "provenance"))
 snapshot_report_schema_version <- fertility_snapshot_report_schema_version(
     candidate_provenance
 )
-live_inventory <- fertility_build_inventory()
+live_inventory <- fertility_build_selected_inventory(output_options, raw_root)
 invisible(fertility_validate_canonical_inventory(
-    fertility_inventory_manifest(live_inventory), exact = TRUE
+    fertility_inventory_manifest(live_inventory),
+    exact = !fertility_output_requested(output_options)
 ))
 framework_inventory <- fertility_framework_inventory(
     file.path(raw_root, "framework", framework_ids[[1L]]),
@@ -174,9 +179,12 @@ revalidate_merge_sources <- function() {
                    merge_provenance$family_manifest_id[[1L]])) {
         stop("source shard bundle identity changed before merged publication")
     }
-    current_live_inventory <- fertility_build_inventory()
+    current_live_inventory <- fertility_build_selected_inventory(
+        output_options, raw_root
+    )
     fertility_validate_canonical_inventory(
-        fertility_inventory_manifest(current_live_inventory), exact = TRUE
+        fertility_inventory_manifest(current_live_inventory),
+        exact = !fertility_output_requested(output_options)
     )
     current_framework <- fertility_framework_inventory(
         file.path(raw_root, "framework", framework_ids[[1L]]),
