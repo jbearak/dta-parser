@@ -400,7 +400,7 @@ fertility_output_terminal_classifications <- function() c(
     "pass", "direct-vs-rust-mismatch", "dtaparser-only-error",
     "haven-only-error", "shared-reader-error", "metadata-mismatch",
     "value-mismatch", "tag-mismatch", "date-mismatch", "encoding-mismatch",
-    "row-termination-mismatch"
+    "row-termination-mismatch", "known-intentional-divergence"
 )
 
 fertility_validate_full_output_results <- function(results) {

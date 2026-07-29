@@ -1208,16 +1208,24 @@ output_validated <- fertility_validate_shard_bundles(
 )
 stopifnot(output_validated$full_default,
           nrow(output_validated$results) == fertility_output_expected_files)
+supported_bundle <- which(vapply(output_fixture$bundles, function(bundle) {
+    "F0131" %in% bundle$results$id
+}, logical(1)))[[1L]]
+supported_row <- match("F0131", output_fixture$bundles[[supported_bundle]]$results$id)
+for (classification in fertility_output_terminal_classifications()) {
+    output_allowed <- output_fixture$bundles
+    output_allowed[[supported_bundle]]$results$classification[[supported_row]] <-
+        classification
+    stopifnot(nrow(fertility_validate_shard_bundles(
+        output_allowed, output_fixture$id, output_canonical
+    )$results) == fertility_output_expected_files)
+}
 output_bad_unsupported <- output_fixture$bundles
 output_bad_unsupported[[1L]]$results$classification[[1L]] <- "pass"
 expect_error(fertility_validate_shard_bundles(
     output_bad_unsupported, output_fixture$id, output_canonical
 ), "unsupported-release classifications")
 output_bad_terminal <- output_fixture$bundles
-supported_bundle <- which(vapply(output_bad_terminal, function(bundle) {
-    "F0131" %in% bundle$results$id
-}, logical(1)))[[1L]]
-supported_row <- match("F0131", output_bad_terminal[[supported_bundle]]$results$id)
 output_bad_terminal[[supported_bundle]]$results$classification[[supported_row]] <-
     "timeout"
 expect_error(fertility_validate_shard_bundles(
