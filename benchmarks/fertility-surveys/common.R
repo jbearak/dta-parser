@@ -12,6 +12,7 @@ fertility_output_root <- "/Users/jmb/repos/fertility_surveys/output"
 fertility_output_expected_files <- 1226L
 fertility_output_expected_bytes <- 70748321626
 fertility_output_expected_largest <- 10332252930
+fertility_output_inventory_schema_version <- 2L
 
 fertility_script_path <- function() {
     argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
@@ -952,7 +953,8 @@ fertility_close_bound_input_connection <- function(connection) {
 
 fertility_bound_input_path <- function() "/dev/fd/3"
 
-fertility_materialize_bound_input <- function(path, input, raw_root) {
+fertility_materialize_bound_input <- function(path, input, raw_root,
+                                              destination = NULL) {
     if (!identical(path, fertility_bound_input_path())) {
         stop("bound worker input path is invalid")
     }
@@ -963,9 +965,20 @@ fertility_materialize_bound_input <- function(path, input, raw_root) {
             !is.character(value) || length(value) != 1L || is.na(value) ||
                 !grepl("^[0-9]+$", value)
         }, logical(1)))) stop("bound worker input identity is invalid")
-    destination <- tempfile(
-        "bound-worker-input-", tmpdir = Sys.getenv("TMPDIR"), fileext = ".dta"
-    )
+    temporary <- normalizePath(Sys.getenv("TMPDIR"), winslash = "/", mustWork = TRUE)
+    if (is.null(destination)) {
+        destination <- tempfile(
+            "bound-worker-input-", tmpdir = temporary, fileext = ".dta"
+        )
+    } else {
+        destination <- path.expand(destination)
+        if (!is.character(destination) || length(destination) != 1L ||
+            is.na(destination) || !identical(dirname(destination), temporary) ||
+            file.exists(destination) || dir.exists(destination) ||
+            fertility_path_is_symlink(destination)) {
+            stop("bound worker snapshot destination is invalid")
+        }
+    }
     on.exit(if (file.exists(destination) || fertility_path_is_symlink(destination)) {
         unlink(destination)
     }, add = TRUE)
@@ -1157,6 +1170,17 @@ fertility_build_output_inventory <- function(root, raw_root) {
     frozen <- if (file.exists(path)) readRDS(fertility_assert_existing_file(
         path, dirname(path), "frozen output inventory"
     )) else NULL
+    if (is.list(frozen) && identical(frozen$schema_version, 1L)) {
+        superseded <- file.path(dirname(path), "inventory-schema1.rds")
+        if (file.exists(superseded) || dir.exists(superseded) ||
+            fertility_path_is_symlink(superseded)) {
+            stop("superseded output inventory destination already exists")
+        }
+        fertility_atomic_rename_noreplace(
+            path, superseded, "superseded output inventory"
+        )
+        frozen <- NULL
+    }
     if (is.null(frozen)) {
         content <- fertility_output_descriptor_manifest(root, TRUE)
         content_manifest <- data.frame(
@@ -1172,12 +1196,12 @@ fertility_build_output_inventory <- function(root, raw_root) {
         )
         after <- fertility_output_descriptor_manifest(root, FALSE)
         fertility_validate_output_baseline(content_manifest)
-        if (!identical(manifest, content_manifest) ||
+        if (!fertility_output_metadata_equal(manifest, content_manifest) ||
             !identical(content[identity_fields], after[identity_fields])) {
             stop("fertility output changed during descriptor-bound inventory")
         }
         frozen <- list(
-            schema_version = 1L,
+            schema_version = fertility_output_inventory_schema_version,
             root_identity = fertility_filesystem_identity(root, "fertility output root"),
             manifest = transform(
                 content_manifest, release = content$release, sha512 = content$sha512
@@ -1190,7 +1214,9 @@ fertility_build_output_inventory <- function(root, raw_root) {
         rownames(frozen$manifest) <- NULL
     }
     expected_names <- c("relative_path", "size", "modified", "release", "sha512")
-    if (!is.list(frozen) || !identical(frozen$schema_version, 1L) ||
+    if (!is.list(frozen) || !identical(
+            frozen$schema_version, fertility_output_inventory_schema_version
+        ) ||
         !identical(names(frozen$manifest), expected_names) ||
         !identical(frozen$root_identity,
                    fertility_filesystem_identity(root, "fertility output root")) ||

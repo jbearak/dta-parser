@@ -150,16 +150,20 @@ execute_tile <- function(item, tile, input) {
     stat_before <- fertility_file_stat(item$path)
     worker_item <- item
     worker_item$path <- fertility_bound_input_path()
+    worker_snapshot <- tempfile(
+        "bound-worker-input-", tmpdir = Sys.getenv("TMPDIR"), fileext = ".dta"
+    )
+    on.exit(unlink(worker_snapshot), add = TRUE)
     result <- tryCatch(
         callr::r(
             function(common_script, runtime_script, worker_script, compare_script,
                      item, tile, input, package_library, expected_package_path,
-                     framework_id, timeout_seconds, raw_root) {
+                     framework_id, timeout_seconds, raw_root, worker_snapshot) {
                 source(common_script, local = environment())
                 source(runtime_script, local = environment())
                 invisible(fertility_assert_tempdir(raw_root))
                 item$path <- fertility_materialize_bound_input(
-                    item$path, input, raw_root
+                    item$path, input, raw_root, worker_snapshot
                 )
                 on.exit(unlink(item$path), add = TRUE)
                 source(worker_script, local = environment())
@@ -182,7 +186,7 @@ execute_tile <- function(item, tile, input) {
                 file.path(snapshot_root, "worker.R"),
                 file.path(snapshot_root, "compare.R"), worker_item, tile, input, library,
                 expected_package_path, framework_id, options$timeout_seconds,
-                raw_root
+                raw_root, worker_snapshot
             ),
             libpath = .libPaths(), timeout = options$timeout_seconds,
             connections = list(bound_input_connection), poll_connection = FALSE,

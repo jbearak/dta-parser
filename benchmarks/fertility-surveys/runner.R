@@ -445,7 +445,11 @@ fertility_validate_full_output_results <- function(results) {
         tiles_completed[supported] == tiles_expected[supported]
     supported_pass_complete <- values$classification[supported] != "pass" |
         values$complete[supported] == "TRUE"
+    unsupported_tiles_zero <- !is.na(tiles_expected[unsupported]) &
+        tiles_expected[unsupported] == 0L & !is.na(tiles_completed[unsupported]) &
+        tiles_completed[unsupported] == 0L
     if (any(values$complete[unsupported] != "TRUE") ||
+        any(!unsupported_tiles_zero) ||
         any(!supported_terminal) || any(!supported_tiles_complete) ||
         any(!supported_pass_complete)) {
         stop("full output family executable accounting is invalid")

@@ -321,6 +321,53 @@ local({
     options(dtaparser.fertility.output_inventory_test_hook = NULL)
 })
 
+# Descriptor hardening versions the persistent output authority and preserves a
+# schema-1 artifact as explicitly superseded before recapturing schema 2.
+local({
+    fixture <- file.path(root, "output-inventory-migration")
+    raw_root <- file.path(root, "output-inventory-migration-raw")
+    dir.create(fixture)
+    dir.create(raw_root)
+    writeBin(c(as.raw(113L), as.raw(rep(0L, 40L))),
+             file.path(fixture, "one.dta"))
+    writeBin(charToRaw("<stata_dta><header><release>118</release></header>"),
+             file.path(fixture, "two.DTA"))
+    old <- list(
+        root = fertility_output_root,
+        files = fertility_output_expected_files,
+        bytes = fertility_output_expected_bytes,
+        largest = fertility_output_expected_largest
+    )
+    on.exit({
+        assign("fertility_output_root", old$root, envir = .GlobalEnv)
+        assign("fertility_output_expected_files", old$files, envir = .GlobalEnv)
+        assign("fertility_output_expected_bytes", old$bytes, envir = .GlobalEnv)
+        assign("fertility_output_expected_largest", old$largest,
+               envir = .GlobalEnv)
+    }, add = TRUE)
+    assign("fertility_output_root", normalizePath(fixture, winslash = "/"),
+           envir = .GlobalEnv)
+    sizes <- file.info(list.files(fixture, full.names = TRUE))$size
+    assign("fertility_output_expected_files", 2L, envir = .GlobalEnv)
+    assign("fertility_output_expected_bytes", sum(sizes), envir = .GlobalEnv)
+    assign("fertility_output_expected_largest", max(sizes), envir = .GlobalEnv)
+    inventory_path <- fertility_output_inventory_path(raw_root)
+    fertility_atomic_save_rds(list(
+        schema_version = 1L, manifest = data.frame()
+    ), inventory_path)
+    migrated <- fertility_build_output_inventory(fertility_output_root, raw_root)
+    frozen <- readRDS(inventory_path)
+    stopifnot(
+        nrow(migrated) == 2L,
+        identical(frozen$schema_version,
+                  fertility_output_inventory_schema_version),
+        file.exists(file.path(dirname(inventory_path), "inventory-schema1.rds")),
+        identical(readRDS(file.path(
+            dirname(inventory_path), "inventory-schema1.rds"
+        ))$schema_version, 1L)
+    )
+})
+
 # A worker connection is accepted only for the captured inode, survives source
 # parent substitution, resets its shared file offset between independent reads,
 # and closes deterministically after both successful and failed workers.
@@ -1610,6 +1657,12 @@ output_bad_unsupported[[1L]]$results$classification[[1L]] <- "pass"
 expect_error(fertility_validate_shard_bundles(
     output_bad_unsupported, output_fixture$id, output_canonical
 ), "unsupported-release classifications")
+output_bad_unsupported_tiles <- output_fixture$bundles
+output_bad_unsupported_tiles[[1L]]$results$tiles_expected[[1L]] <- "1"
+output_bad_unsupported_tiles[[1L]]$results$tiles_completed[[1L]] <- "1"
+expect_error(fertility_validate_shard_bundles(
+    output_bad_unsupported_tiles, output_fixture$id, output_canonical
+), "executable accounting")
 output_bad_terminal <- output_fixture$bundles
 output_bad_terminal[[supported_bundle]]$results$classification[[supported_row]] <-
     "timeout"
