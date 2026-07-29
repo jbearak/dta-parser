@@ -435,9 +435,19 @@ fertility_validate_full_output_results <- function(results) {
         any(values$classification[supported] == "expected-unsupported-111")) {
         stop("full output family unsupported-release classifications are invalid")
     }
-    if (any(values$complete != "TRUE") ||
-        any(!(values$classification[supported] %in%
-              fertility_output_terminal_classifications()))) {
+    tiles_expected <- suppressWarnings(as.integer(values$tiles_expected))
+    tiles_completed <- suppressWarnings(as.integer(values$tiles_completed))
+    supported_terminal <- values$classification[supported] %in%
+        fertility_output_terminal_classifications()
+    supported_tiles_complete <- !is.na(tiles_expected[supported]) &
+        tiles_expected[supported] > 0L &
+        !is.na(tiles_completed[supported]) &
+        tiles_completed[supported] == tiles_expected[supported]
+    supported_pass_complete <- values$classification[supported] != "pass" |
+        values$complete[supported] == "TRUE"
+    if (any(values$complete[unsupported] != "TRUE") ||
+        any(!supported_terminal) || any(!supported_tiles_complete) ||
+        any(!supported_pass_complete)) {
         stop("full output family executable accounting is invalid")
     }
     invisible(TRUE)

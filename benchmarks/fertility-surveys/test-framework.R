@@ -1203,6 +1203,12 @@ output_fixture <- make_bundle_family(
     output_canonical, output_options, output_classes,
     inventory_id = paste(rep("a", 64L), collapse = "")
 )
+output_fixture$bundles <- lapply(output_fixture$bundles, function(bundle) {
+    supported_rows <- bundle$results$release != "111"
+    bundle$results$tiles_expected[supported_rows] <- "1"
+    bundle$results$tiles_completed[supported_rows] <- "1"
+    bundle
+})
 output_validated <- fertility_validate_shard_bundles(
     output_fixture$bundles, output_fixture$id, output_canonical
 )
@@ -1241,6 +1247,20 @@ output_bad_terminal[[supported_bundle]]$results$classification[[supported_row]] 
     "timeout"
 expect_error(fertility_validate_shard_bundles(
     output_bad_terminal, output_fixture$id, output_canonical
+), "executable accounting")
+output_terminal_reader_error <- output_fixture$bundles
+output_terminal_reader_error[[supported_bundle]]$results$classification[[supported_row]] <-
+    "haven-only-error"
+output_terminal_reader_error[[supported_bundle]]$results$complete[[supported_row]] <-
+    "FALSE"
+stopifnot(nrow(fertility_validate_shard_bundles(
+    output_terminal_reader_error, output_fixture$id, output_canonical
+)$results) == fertility_output_expected_files)
+output_bad_tile_accounting <- output_terminal_reader_error
+output_bad_tile_accounting[[supported_bundle]]$results$tiles_completed[[supported_row]] <-
+    "0"
+expect_error(fertility_validate_shard_bundles(
+    output_bad_tile_accounting, output_fixture$id, output_canonical
 ), "executable accounting")
 output_bad_complete <- output_fixture$bundles
 output_bad_complete[[supported_bundle]]$results$complete[[supported_row]] <- "FALSE"

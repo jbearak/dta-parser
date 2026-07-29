@@ -116,9 +116,13 @@ All normal filters, encoding overrides, resource bounds, resume, and shard
 options apply. An unfiltered output run is recorded as a full family. Merge
 validation requires exactly all 1,226 frozen IDs, the frozen release and
 survey/aggregate distributions, release 111 only as expected unsupported,
-and complete terminal outcomes for every supported file; timeout, memory,
-crash, unresolved, inventory-hash, or incomplete outcomes cannot pass that
-full-family gate. Merging an output family repeats the explicit root:
+and terminal outcomes with exact completed-versus-expected tile accounting for
+every supported file. A `pass` must also have `complete=TRUE`; an explicit
+reader-error or divergence terminal may have `complete=FALSE` because that field
+records all-reader projection success rather than whether every planned tile ran.
+Timeout, memory, crash, unresolved, inventory-hash, or partial tile accounting
+cannot pass the full-family gate. Merging an output family repeats the explicit
+root:
 
 ```sh
 benchmarks/fertility-surveys/benchmark.sh \
