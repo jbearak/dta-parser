@@ -39,23 +39,21 @@ for (parent in parents) {
         stop("report CURRENT pointer must not be a symlink")
     }
     if (!file.exists(pointer)) next
-    current <- fertility_current_bundle_paths(
-        parent,
+    current <- fertility_current_bundle_for_family(
+        parent, family_id,
         c(
             provenance = "run-provenance.tsv", results = "results.tsv",
             family_manifest = "family-manifest.tsv"
         ),
         "report shard"
     )
+    if (is.null(current)) next
     provenance_path <- current$paths[["provenance"]]
     results_path <- current$paths[["results"]]
     family_manifest_path <- current$paths[["family_manifest"]]
-    provenance <- tryCatch(read.delim(
+    provenance <- read.delim(
         provenance_path, colClasses = "character", check.names = FALSE
-    ), error = function(error) NULL)
-    if (is.null(provenance) || nrow(provenance) != 1L ||
-        !"family_id" %in% names(provenance) ||
-        !identical(provenance$family_id[[1L]], family_id)) next
+    )
     results <- read.delim(results_path, colClasses = "character", check.names = FALSE)
     family_manifest <- read.delim(
         family_manifest_path, colClasses = "character", check.names = FALSE

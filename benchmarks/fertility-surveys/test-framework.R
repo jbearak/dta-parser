@@ -777,6 +777,118 @@ validated_merge <- fertility_validate_shard_bundles(
 )
 stopifnot(identical(validated_merge$results$id, c("F0001", "F0002")),
           validated_merge$shard_count == 2L)
+current_family_files <- c(
+    provenance = "run-provenance.tsv", results = "results.tsv",
+    family_manifest = "family-manifest.tsv"
+)
+write_current_report <- function(name, bundle, run_name = "bundle") {
+    parent <- file.path(root, name)
+    run <- file.path(parent, run_name)
+    dir.create(run, recursive = TRUE)
+    fertility_atomic_write_table(
+        bundle$provenance, file.path(run, current_family_files[["provenance"]])
+    )
+    fertility_atomic_write_table(
+        bundle$results, file.path(run, current_family_files[["results"]])
+    )
+    fertility_atomic_write_table(
+        bundle$family_manifest,
+        file.path(run, current_family_files[["family_manifest"]])
+    )
+    writeLines(run_name, file.path(parent, "CURRENT"))
+    parent
+}
+load_current_report <- function(parent, family_id) {
+    current <- fertility_current_bundle_for_family(
+        parent, family_id, current_family_files, "synthetic report shard"
+    )
+    if (is.null(current)) return(NULL)
+    lapply(current$paths, function(path) read.delim(
+        path, colClasses = "character", check.names = FALSE
+    ))
+}
+valid_report_parents <- lapply(seq_along(merge_bundles), function(index) {
+    write_current_report(paste0("merge-valid-", index), merge_bundles[[index]])
+})
+loaded_valid_reports <- lapply(
+    valid_report_parents, load_current_report, family_id = merge_fixture$id
+)
+valid_current_merge <- fertility_validate_shard_bundles(
+    loaded_valid_reports, merge_fixture$id, canonical_inventory
+)
+stopifnot(
+    identical(valid_current_merge$results$id, c("F0001", "F0002")),
+    valid_current_merge$shard_count == 2L
+)
+stale_report_parent <- file.path(root, "merge-stale-bundle")
+dir.create(stale_report_parent)
+writeLines("removed-bundle", file.path(stale_report_parent, "CURRENT"))
+stopifnot(is.null(load_current_report(stale_report_parent, merge_fixture$id)))
+unrelated_bundle <- merge_bundles[[1L]]
+unrelated_bundle$provenance$family_id <- paste(rep("0", 64L), collapse = "")
+unrelated_missing_parent <- write_current_report(
+    "merge-unrelated-missing-file", unrelated_bundle
+)
+unlink(file.path(unrelated_missing_parent, "bundle", "results.tsv"))
+stopifnot(is.null(load_current_report(
+    unrelated_missing_parent, merge_fixture$id
+)))
+matching_missing_parent <- write_current_report(
+    "merge-matching-missing-file", merge_bundles[[1L]]
+)
+unlink(file.path(matching_missing_parent, "bundle", "results.tsv"))
+expect_error(load_current_report(
+    matching_missing_parent, merge_fixture$id
+), "No such file|results must be an existing regular file")
+matching_tampered_parent <- write_current_report(
+    "merge-matching-tampered-file", merge_bundles[[1L]]
+)
+tampered_results_path <- file.path(
+    matching_tampered_parent, "bundle", "results.tsv"
+)
+tampered_results <- read.delim(
+    tampered_results_path, colClasses = "character", check.names = FALSE
+)
+tampered_results$id[[1L]] <- "F9999"
+fertility_atomic_write_table(tampered_results, tampered_results_path)
+expect_error(fertility_validate_shard_bundles(
+    list(
+        load_current_report(matching_tampered_parent, merge_fixture$id),
+        loaded_valid_reports[[2L]]
+    ),
+    merge_fixture$id, canonical_inventory
+), "shard results do not match canonical family membership")
+escape_report_parent <- write_current_report(
+    "merge-current-escape", unrelated_bundle
+)
+writeLines("../bundle", file.path(escape_report_parent, "CURRENT"))
+expect_error(load_current_report(
+    escape_report_parent, merge_fixture$id
+), "CURRENT pointer is invalid")
+symlink_report_parent <- file.path(root, "merge-bundle-symlink")
+dir.create(symlink_report_parent)
+writeLines("bundle", file.path(symlink_report_parent, "CURRENT"))
+stopifnot(file.symlink(
+    file.path(valid_report_parents[[1L]], "bundle"),
+    file.path(symlink_report_parent, "bundle")
+))
+expect_error(load_current_report(
+    symlink_report_parent, merge_fixture$id
+), "bundle must not be a symlink")
+provenance_symlink_parent <- write_current_report(
+    "merge-provenance-symlink", unrelated_bundle
+)
+provenance_path <- file.path(
+    provenance_symlink_parent, "bundle", "run-provenance.tsv"
+)
+unlink(provenance_path)
+stopifnot(file.symlink(
+    file.path(valid_report_parents[[1L]], "bundle", "run-provenance.tsv"),
+    provenance_path
+))
+expect_error(load_current_report(
+    provenance_symlink_parent, merge_fixture$id
+), "provenance must not be a symlink")
 legacy_provenance_bundles <- merge_bundles
 for (index in seq_along(legacy_provenance_bundles)) {
     legacy_provenance_bundles[[index]]$provenance[c(

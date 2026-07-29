@@ -499,12 +499,72 @@ fertility_revalidate_current_bundle <- function(
     current
 }
 
+fertility_probe_current_bundle_family <- function(parent, label) {
+    parent <- fertility_assert_canonical_components(parent, paste(label, "parent"))
+    if (!dir.exists(parent)) stop(label, " parent must be an existing directory")
+    pointer <- fertility_assert_existing_file(
+        file.path(parent, "CURRENT"), parent, paste(label, "CURRENT pointer")
+    )
+    if (!file_test("-f", pointer)) {
+        stop(label, " CURRENT pointer must be a regular file")
+    }
+    run_name <- tryCatch(
+        readLines(pointer, warn = FALSE, n = 1L),
+        error = function(error) character()
+    )
+    if (length(run_name) != 1L || !grepl("^[A-Za-z0-9._-]+$", run_name)) {
+        stop(label, " CURRENT pointer is invalid")
+    }
+    bundle <- fertility_assert_direct_child(
+        file.path(parent, run_name), parent, paste(label, "bundle"),
+        must_work = FALSE
+    )
+    if (fertility_path_is_symlink(bundle)) {
+        stop(label, " bundle must not be a symlink")
+    }
+    if (!dir.exists(bundle)) {
+        if (file.exists(bundle)) stop(label, " bundle must be a directory")
+        return(NULL)
+    }
+    bundle <- fertility_assert_existing_directory(
+        bundle, parent, paste(label, "bundle")
+    )
+    provenance_path <- fertility_assert_direct_child(
+        file.path(bundle, "run-provenance.tsv"), bundle,
+        paste(label, "provenance"), must_work = FALSE
+    )
+    if (fertility_path_is_symlink(provenance_path)) {
+        stop(label, " provenance must not be a symlink")
+    }
+    if (!file.exists(provenance_path)) {
+        if (dir.exists(provenance_path)) {
+            stop(label, " provenance must be a regular file")
+        }
+        return(NULL)
+    }
+    provenance_path <- fertility_assert_existing_file(
+        provenance_path, bundle, paste(label, "provenance")
+    )
+    if (!file_test("-f", provenance_path)) {
+        stop(label, " provenance must be a regular file")
+    }
+    provenance <- tryCatch(read.delim(
+        provenance_path, colClasses = "character", check.names = FALSE
+    ), error = function(error) NULL)
+    if (is.null(provenance) || nrow(provenance) != 1L ||
+        !"family_id" %in% names(provenance)) return(NULL)
+    list(run_name = run_name, family_id = provenance$family_id[[1L]])
+}
+
 fertility_current_bundle_paths <- function(parent, files, label) {
     parent <- fertility_assert_canonical_components(parent, paste(label, "parent"))
     if (!dir.exists(parent)) stop(label, " parent must be an existing directory")
     pointer <- fertility_assert_existing_file(
         file.path(parent, "CURRENT"), parent, paste(label, "CURRENT pointer")
     )
+    if (!file_test("-f", pointer)) {
+        stop(label, " CURRENT pointer must be a regular file")
+    }
     run_name <- tryCatch(
         readLines(pointer, warn = FALSE, n = 1L),
         error = function(error) character()
@@ -520,8 +580,21 @@ fertility_current_bundle_paths <- function(parent, files, label) {
         paths[[index]] <- fertility_assert_existing_file(
             paths[[index]], bundle, paste(label, names(paths)[[index]])
         )
+        if (!file_test("-f", paths[[index]])) {
+            stop(label, " ", names(paths)[[index]], " must be a regular file")
+        }
     }
     list(bundle = bundle, paths = paths, run_name = run_name)
+}
+
+fertility_current_bundle_for_family <- function(
+    parent, family_id, files, label
+) {
+    probe <- fertility_probe_current_bundle_family(parent, label)
+    if (is.null(probe) || !identical(probe$family_id, family_id)) return(NULL)
+    fertility_revalidate_current_bundle(
+        parent, probe$run_name, files, label
+    )
 }
 
 fertility_assert_manual_run <- function() {
