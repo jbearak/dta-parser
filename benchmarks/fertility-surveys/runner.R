@@ -380,9 +380,67 @@ fertility_selection_family_id <- function(
     )
 }
 
-fertility_full_default_family <- function(options) {
-    !length(options$programs) && !length(options$releases) &&
+fertility_full_output_family <- function(options) {
+    identical(options$programs, "output") && !length(options$releases) &&
         !length(options$ids) && !is.finite(options$max_files)
+}
+
+fertility_full_default_family <- function(options) {
+    (!length(options$programs) || fertility_full_output_family(options)) &&
+        !length(options$releases) && !length(options$ids) &&
+        !is.finite(options$max_files)
+}
+
+fertility_output_expected_releases <- c(
+    `111` = 130L, `113` = 486L, `114` = 24L, `115` = 5L, `118` = 581L
+)
+fertility_output_expected_levels <- c(survey = 1218L, aggregate = 8L)
+
+fertility_output_terminal_classifications <- function() c(
+    "pass", "direct-vs-rust-mismatch", "dtaparser-only-error",
+    "haven-only-error", "shared-reader-error", "metadata-mismatch",
+    "value-mismatch", "tag-mismatch", "date-mismatch", "encoding-mismatch",
+    "row-termination-mismatch"
+)
+
+fertility_validate_full_output_results <- function(results) {
+    values <- fertility_manifest_character(results, fertility_result_fields())
+    releases <- suppressWarnings(as.integer(values$release))
+    release_counts <- table(factor(
+        releases, levels = as.integer(names(fertility_output_expected_releases))
+    ))
+    level_counts <- table(factor(
+        values$level, levels = names(fertility_output_expected_levels)
+    ))
+    unsupported <- releases == 111L
+    supported <- !unsupported
+    if (nrow(values) != fertility_output_expected_files ||
+        !identical(values$id,
+                   sprintf("F%04d", seq_len(fertility_output_expected_files))) ||
+        any(values$program != "output")) {
+        stop("full output family membership is invalid")
+    }
+    if (anyNA(releases) ||
+        any(!(releases %in% as.integer(names(fertility_output_expected_releases)))) ||
+        !identical(as.integer(release_counts),
+                   as.integer(fertility_output_expected_releases))) {
+        stop("full output family release counts are invalid")
+    }
+    if (any(!(values$level %in% names(fertility_output_expected_levels))) ||
+        !identical(as.integer(level_counts),
+                   as.integer(fertility_output_expected_levels))) {
+        stop("full output family level counts are invalid")
+    }
+    if (!all(values$classification[unsupported] == "expected-unsupported-111") ||
+        any(values$classification[supported] == "expected-unsupported-111")) {
+        stop("full output family unsupported-release classifications are invalid")
+    }
+    if (any(values$complete != "TRUE") ||
+        any(!(values$classification[supported] %in%
+              fertility_output_terminal_classifications()))) {
+        stop("full output family executable accounting is invalid")
+    }
+    invisible(TRUE)
 }
 
 fertility_capture_input <- function(item, acceptance = NULL) {
@@ -811,9 +869,17 @@ fertility_classification_summary <- function(results) {
     summary
 }
 
+fertility_publication_frame <- function(value) {
+    result <- fertility_character_frame(value)
+    for (field in names(result)) result[[field]][is.na(result[[field]])] <- ""
+    result
+}
+
 fertility_publish_results <- function(checkpoints, build_provenance_id, path) {
     results <- fertility_result_frame(checkpoints)
     results$build_provenance_id <- rep(build_provenance_id, nrow(results))
+    fertility_validate_public_results(results)
+    results <- fertility_publication_frame(results)
     fertility_validate_public_results(results)
     fertility_atomic_write_table(results, path)
     results
@@ -1018,8 +1084,11 @@ fertility_validate_merged_bundle <- function(bundle, family_id,
         stop("merged evidence family identity is invalid")
     }
     full_default <- identical(provenance$full_default_family[[1L]], "TRUE")
-    if (full_default && !identical(results$id,
-                                   sprintf("F%04d", seq_len(fertility_expected_rows)))) {
+    if (full_default && identical(provenance$program_filter[[1L]], "output")) {
+        fertility_validate_full_output_results(results)
+    } else if (full_default && !identical(
+        results$id, sprintf("F%04d", seq_len(fertility_expected_rows))
+    )) {
         stop("merged full family membership is invalid")
     }
     if (accepted && (full_default || provenance$shard_count[[1L]] != "1" ||
@@ -1459,7 +1528,9 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
             stop("accepted-current-hash family is not the exact executable five-ID family")
         }
     }
-    if (full_default) {
+    if (full_default && fertility_full_output_family(options)) {
+        fertility_validate_full_output_results(results)
+    } else if (full_default) {
         if (!identical(results$id, sprintf("F%04d", seq_len(fertility_expected_rows)))) {
             stop("full corpus IDs are not exactly F0001 through F1004")
         }

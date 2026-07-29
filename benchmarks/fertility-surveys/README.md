@@ -113,7 +113,12 @@ uses forced Stata append coercion; that provenance explains stored analytical
 types but never excuses a disagreement among Direct-R, Rust-vector, and Haven.
 
 All normal filters, encoding overrides, resource bounds, resume, and shard
-options apply. Merging an output family repeats the explicit root:
+options apply. An unfiltered output run is recorded as a full family. Merge
+validation requires exactly all 1,226 frozen IDs, the frozen release and
+survey/aggregate distributions, release 111 only as expected unsupported,
+and complete terminal outcomes for every supported file; timeout, memory,
+crash, unresolved, inventory-hash, or incomplete outcomes cannot pass that
+full-family gate. Merging an output family repeats the explicit root:
 
 ```sh
 benchmarks/fertility-surveys/benchmark.sh \

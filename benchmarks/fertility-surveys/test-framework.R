@@ -1175,6 +1175,102 @@ full_bad_supported_class[[1L]]$results$classification[[additional_supported]] <-
 expect_error(fertility_validate_shard_bundles(
     full_bad_supported_class, full_fixture$id, full_canonical
 ), "executable accounting")
+
+output_releases <- rep(
+    as.integer(names(fertility_output_expected_releases)),
+    as.integer(fertility_output_expected_releases)
+)
+output_levels <- rep(
+    names(fertility_output_expected_levels),
+    as.integer(fertility_output_expected_levels)
+)
+output_canonical <- data.frame(
+    id = sprintf("F%04d", seq_len(fertility_output_expected_files)),
+    program = "output", level = output_levels, release = output_releases,
+    stringsAsFactors = FALSE
+)
+output_options <- fertility_parse_arguments(c(
+    "--program=output", "--shard-index=1", "--shard-count=8"
+))
+stopifnot(fertility_full_output_family(output_options),
+          fertility_full_default_family(output_options),
+          !fertility_full_default_family(fertility_parse_arguments(c(
+              "--program=output", "--release=118"
+          ))))
+output_classes <- rep("pass", fertility_output_expected_files)
+output_classes[output_releases == 111L] <- "expected-unsupported-111"
+output_fixture <- make_bundle_family(
+    output_canonical, output_options, output_classes,
+    inventory_id = paste(rep("a", 64L), collapse = "")
+)
+output_validated <- fertility_validate_shard_bundles(
+    output_fixture$bundles, output_fixture$id, output_canonical
+)
+stopifnot(output_validated$full_default,
+          nrow(output_validated$results) == fertility_output_expected_files)
+output_bad_unsupported <- output_fixture$bundles
+output_bad_unsupported[[1L]]$results$classification[[1L]] <- "pass"
+expect_error(fertility_validate_shard_bundles(
+    output_bad_unsupported, output_fixture$id, output_canonical
+), "unsupported-release classifications")
+output_bad_terminal <- output_fixture$bundles
+supported_bundle <- which(vapply(output_bad_terminal, function(bundle) {
+    "F0131" %in% bundle$results$id
+}, logical(1)))[[1L]]
+supported_row <- match("F0131", output_bad_terminal[[supported_bundle]]$results$id)
+output_bad_terminal[[supported_bundle]]$results$classification[[supported_row]] <-
+    "timeout"
+expect_error(fertility_validate_shard_bundles(
+    output_bad_terminal, output_fixture$id, output_canonical
+), "executable accounting")
+output_bad_complete <- output_fixture$bundles
+output_bad_complete[[supported_bundle]]$results$complete[[supported_row]] <- "FALSE"
+expect_error(fertility_validate_shard_bundles(
+    output_bad_complete, output_fixture$id, output_canonical
+), "executable accounting")
+output_bad_release_canonical <- output_canonical
+output_bad_release_canonical$release[[131L]] <- 118L
+output_bad_release_fixture <- make_bundle_family(
+    output_bad_release_canonical, output_options, output_classes,
+    inventory_id = paste(rep("b", 64L), collapse = "")
+)
+expect_error(fertility_validate_shard_bundles(
+    output_bad_release_fixture$bundles, output_bad_release_fixture$id,
+    output_bad_release_canonical
+), "release counts")
+output_bad_level_canonical <- output_canonical
+output_bad_level_canonical$level[[9L]] <- "aggregate"
+output_bad_level_fixture <- make_bundle_family(
+    output_bad_level_canonical, output_options, output_classes,
+    inventory_id = paste(rep("c", 64L), collapse = "")
+)
+expect_error(fertility_validate_shard_bundles(
+    output_bad_level_fixture$bundles, output_bad_level_fixture$id,
+    output_bad_level_canonical
+), "level counts")
+
+publication_na <- make_public_results(output_canonical[1L, , drop = FALSE],
+                                      "expected-unsupported-111")
+publication_na$rows <- NA_character_
+publication_na$columns <- NA_character_
+publication_na$elapsed_seconds <- NA_character_
+publication_na <- fertility_publication_frame(publication_na)
+stopifnot(!anyNA(publication_na), publication_na$rows[[1L]] == "",
+          publication_na$columns[[1L]] == "",
+          publication_na$elapsed_seconds[[1L]] == "")
+publication_na_root <- file.path(root, "publication-na")
+dir.create(publication_na_root)
+fertility_atomic_write_table(
+    publication_na, file.path(publication_na_root, "results.tsv")
+)
+stopifnot(identical(
+    fertility_validate_exact_table_bundle(
+        publication_na_root, c(results = "results.tsv"),
+        list(results = publication_na), "NA publication regression"
+    )$results,
+    fertility_character_frame(publication_na)
+))
+
 stopifnot(nrow(fertility_validate_canonical_inventory(
     full_canonical, exact = TRUE
 )) == fertility_expected_rows)
