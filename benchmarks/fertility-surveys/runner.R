@@ -4,8 +4,9 @@ fertility_legacy_corpus_schema_version <- 10L
 
 fertility_usage <- function() {
     paste(
-        "usage: run.R [--inventory-only] [--program=a,b] [--release=113,118]",
-        "[--id=F0001,F0002] [--encoding-override=F0001:ENCODING]",
+        "usage: run.R [--inventory-only] [--output-root=/absolute/path]",
+        "[--program=a,b] [--release=113,118] [--id=F0001,F0002]",
+        "[--encoding-override=F0001:ENCODING]",
         "[--shard-index=N --shard-count=N] [--max-files=N]",
         "[--timeout-seconds=N] [--chunk-rows=N] [--column-batch=N]",
         "[--memory-mib=N] [--cell-budget=N] [--max-tiles-per-batch=N]",
@@ -92,14 +93,22 @@ fertility_parse_arguments <- function(arguments) {
         column_batch = 16L, memory_mib = 256L, cell_budget = 1000000L,
         max_tiles_per_batch = 100000L, beyond_end_windows = 1L,
         encoding_overrides = setNames(character(), character()),
-        accepted_current_hashes = "", retry = FALSE
+        accepted_current_hashes = "", output_root = "", retry = FALSE
     )
     seen_shard_index <- seen_shard_count <- FALSE
+    seen_program <- FALSE
     encoding_override_values <- character()
     for (argument in arguments) {
         if (identical(argument, "--inventory-only")) options$inventory_only <- TRUE
         else if (identical(argument, "--retry")) options$retry <- TRUE
-        else if (startsWith(argument, "--program=")) {
+        else if (startsWith(argument, "--output-root=")) {
+            if (nzchar(options$output_root)) stop("--output-root may be supplied only once")
+            options$output_root <- sub("^[^=]+=", "", argument)
+            if (!startsWith(options$output_root, "/")) {
+                stop("--output-root must be absolute")
+            }
+        } else if (startsWith(argument, "--program=")) {
+            seen_program <- TRUE
             options$programs <- unique(strsplit(tolower(sub("^[^=]+=", "", argument)),
                                                 ",", fixed = TRUE)[[1L]])
         } else if (startsWith(argument, "--release=")) {
@@ -169,6 +178,14 @@ fertility_parse_arguments <- function(arguments) {
     options$encoding_overrides <- fertility_parse_encoding_overrides(
         encoding_override_values
     )
+    if (nzchar(options$output_root)) {
+        fertility_assert_output_root(options$output_root)
+        if (seen_program) stop("--program cannot be combined with --output-root")
+        if (nzchar(options$accepted_current_hashes)) {
+            stop("accepted-current-hash evidence cannot be combined with --output-root")
+        }
+        options$programs <- "output"
+    }
     if (xor(seen_shard_index, seen_shard_count)) {
         stop("--shard-index and --shard-count must be supplied together")
     }
@@ -1582,7 +1599,7 @@ fertility_framework_inventory <- function(
     )
     manifest <- read.delim(manifest_path, colClasses = "character",
                            check.names = FALSE)
-    manifest <- fertility_validate_canonical_inventory(manifest, exact = TRUE)
+    manifest <- fertility_validate_canonical_inventory(manifest, exact = FALSE)
     provenance <- read.delim(provenance_path, colClasses = "character",
                              check.names = FALSE)
     report_schema_version <- as.integer(report_schema_version)

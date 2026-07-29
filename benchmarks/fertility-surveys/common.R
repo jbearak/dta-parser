@@ -2,10 +2,14 @@ fertility_schema_version <- 10L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
-fertility_supported_releases <- c(113L, 114L, 117L, 118L)
-fertility_programs <- c("dhs", "mics", "wfs", "nsfg", "enadid")
-fertility_levels <- c("women", "births")
+fertility_supported_releases <- c(113L, 114L, 115L, 117L, 118L)
+fertility_programs <- c("dhs", "mics", "wfs", "nsfg", "enadid", "output")
+fertility_levels <- c("women", "births", "survey", "aggregate")
 fertility_opt_in_value <- "I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA"
+fertility_output_root <- "/Users/jmb/repos/fertility_surveys/output"
+fertility_output_expected_files <- 1226L
+fertility_output_expected_bytes <- 70748321626
+fertility_output_expected_largest <- 10332252930
 
 fertility_script_path <- function() {
     argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
@@ -611,12 +615,156 @@ fertility_assert_manual_run <- function() {
     }
 }
 
-fertility_required_paths <- function() {
+fertility_output_requested <- function(options) {
+    !is.null(options$output_root) && nzchar(options$output_root)
+}
+
+fertility_assert_output_root <- function(path) {
+    if (!identical(path, fertility_output_root)) {
+        stop("--output-root must be exactly ", fertility_output_root)
+    }
+    root <- fertility_assert_canonical_components(path, "fertility output root")
+    if (!dir.exists(root) || fertility_path_is_symlink(root)) {
+        stop("fertility output root must be a canonical non-symlink directory")
+    }
+    root
+}
+
+fertility_output_entries <- function(root) {
+    root <- fertility_assert_output_root(root)
+    paths <- character()
+    walk <- function(parent) {
+        entries <- sort(list.files(
+            parent, all.files = TRUE, no.. = TRUE, full.names = TRUE,
+            recursive = FALSE, include.dirs = TRUE
+        ), method = "radix")
+        for (entry in entries) {
+            if (!identical(dirname(entry), parent) || fertility_path_is_symlink(entry)) {
+                next
+            }
+            info <- file.info(entry)
+            if (nrow(info) != 1L || is.na(info$isdir[[1L]])) next
+            if (isTRUE(info$isdir[[1L]])) {
+                walk(normalizePath(entry, winslash = "/", mustWork = TRUE))
+            } else if (isTRUE(file_test("-f", entry)) &&
+                       grepl("[.]dta$", basename(entry), ignore.case = TRUE)) {
+                resolved <- normalizePath(entry, winslash = "/", mustWork = TRUE)
+                if (!startsWith(resolved, paste0(root, "/"))) {
+                    stop("fertility output DTA escaped its root")
+                }
+                paths <<- c(paths, resolved)
+            }
+        }
+    }
+    walk(root)
+    sort(paths, method = "radix")
+}
+
+fertility_output_stat_manifest <- function(root) {
+    paths <- fertility_output_entries(root)
+    info <- file.info(paths)
+    relative <- substring(paths, nchar(root) + 2L)
+    if (!length(paths) || anyNA(info$size) || anyDuplicated(relative) ||
+        any(!nzchar(relative))) stop("fertility output inventory is invalid")
+    result <- data.frame(
+        relative_path = relative,
+        size = as.character(info$size),
+        modified = format(info$mtime, "%Y-%m-%dT%H:%M:%OS6Z", tz = "UTC"),
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    rownames(result) <- NULL
+    result
+}
+
+fertility_validate_output_baseline <- function(manifest) {
+    sizes <- suppressWarnings(as.double(manifest$size))
+    if (nrow(manifest) != fertility_output_expected_files || anyNA(sizes) ||
+        sum(sizes) != fertility_output_expected_bytes ||
+        max(sizes) != fertility_output_expected_largest) {
+        stop(sprintf(
+            paste0("fertility output baseline drift: expected %d files, %.0f bytes, ",
+                   "largest %.0f bytes; observed %d files, %.0f bytes, largest %.0f bytes"),
+            fertility_output_expected_files, fertility_output_expected_bytes,
+            fertility_output_expected_largest, nrow(manifest), sum(sizes), max(sizes)
+        ))
+    }
+    invisible(TRUE)
+}
+
+fertility_output_inventory_path <- function(raw_root) {
+    directory <- fertility_assert_output_parent(
+        raw_root, "output-inventory", "wave3", create = TRUE
+    )
+    file.path(directory, "inventory.rds")
+}
+
+fertility_build_output_inventory <- function(root, raw_root) {
+    root <- fertility_assert_output_root(root)
+    manifest <- fertility_output_stat_manifest(root)
+    fertility_validate_output_baseline(manifest)
+    path <- fertility_output_inventory_path(raw_root)
+    frozen <- if (file.exists(path)) readRDS(fertility_assert_existing_file(
+        path, dirname(path), "frozen output inventory"
+    )) else NULL
+    if (is.null(frozen)) {
+        paths <- file.path(root, manifest$relative_path)
+        hashes <- vapply(paths, fertility_file_sha512, character(1))
+        after <- fertility_output_stat_manifest(root)
+        fertility_validate_output_baseline(after)
+        if (!identical(manifest, after)) stop("fertility output changed during inventory")
+        releases <- vapply(paths, fertility_release, integer(1))
+        frozen <- list(
+            schema_version = 1L,
+            root_identity = fertility_filesystem_identity(root, "fertility output root"),
+            manifest = transform(manifest, release = releases, sha512 = hashes),
+            created_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+        )
+        fertility_atomic_save_rds(frozen, path)
+    }
+    if (is.list(frozen) && is.data.frame(frozen$manifest)) {
+        rownames(frozen$manifest) <- NULL
+    }
+    expected_names <- c("relative_path", "size", "modified", "release", "sha512")
+    if (!is.list(frozen) || !identical(frozen$schema_version, 1L) ||
+        !identical(names(frozen$manifest), expected_names) ||
+        !identical(frozen$root_identity,
+                   fertility_filesystem_identity(root, "fertility output root")) ||
+        !identical(frozen$manifest[c("relative_path", "size", "modified")], manifest) ||
+        any(!grepl("^[0-9a-f]{128}$", frozen$manifest$sha512)) ||
+        any(!(frozen$manifest$release %in% c(111L, fertility_supported_releases)))) {
+        stop("frozen fertility output inventory changed or is invalid")
+    }
+    paths <- file.path(root, frozen$manifest$relative_path)
+    level <- ifelse(!grepl("/", frozen$manifest$relative_path, fixed = TRUE),
+                    "aggregate", "survey")
+    inventory <- data.frame(
+        id = sprintf("F%04d", seq_len(nrow(frozen$manifest))),
+        program = "output", level = level,
+        release = as.integer(frozen$manifest$release), path = paths,
+        expected_sha512 = frozen$manifest$sha512,
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    attr(inventory, "authority_path") <- path
+    inventory
+}
+
+fertility_required_paths <- function(options = NULL, raw_root = NULL) {
+    if (!is.null(options) && fertility_output_requested(options)) {
+        if (is.null(raw_root)) stop("raw root is required for output inventory authority")
+        return(list(output = fertility_assert_output_root(options$output_root),
+                    datasigs = fertility_output_inventory_path(raw_root)))
+    }
     home <- normalizePath("~", winslash = "/", mustWork = TRUE)
     list(
         cache = "/opt/aww_cache",
         datasigs = file.path(home, "repos", "fertility_surveys", "datasigs.csv")
     )
+}
+
+fertility_build_selected_inventory <- function(options, raw_root) {
+    if (fertility_output_requested(options)) {
+        fertility_build_output_inventory(options$output_root, raw_root)
+    } else fertility_build_inventory()
 }
 
 fertility_atomic_save_rds <- function(value, path) {
@@ -704,7 +852,7 @@ fertility_structural_metadata <- function(path) {
     on.exit(close(connection), add = TRUE)
     bytes <- readBin(connection, "raw", n = 4L * 1024L * 1024L)
     release <- fertility_release(path)
-    if (release %in% c(113L, 114L)) {
+    if (release %in% c(113L, 114L, 115L)) {
         if (length(bytes) < 109L) stop("legacy DTA header is truncated")
         byteorder <- if (as.integer(bytes[[2L]]) == 1L) "MSF" else "LSF"
         columns <- fertility_raw_uint(bytes, 5L, 2L, byteorder)

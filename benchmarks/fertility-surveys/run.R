@@ -18,7 +18,7 @@ raw_root <- fertility_assert_checkout_raw_root(
 Sys.chmod(raw_root, mode = "0700")
 invisible(fertility_assert_tempdir(raw_root))
 
-inventory <- fertility_build_inventory()
+inventory <- fertility_build_selected_inventory(options, raw_root)
 acceptance <- if (nzchar(options$accepted_current_hashes)) {
     fertility_load_acceptance(raw_root, options$accepted_current_hashes, inventory)
 } else NULL
@@ -34,7 +34,7 @@ release_summary <- as.data.frame(table(release = inventory$release),
 names(release_summary)[[2L]] <- "files"
 fertility_atomic_write_table(release_summary,
                              file.path(raw_root, "inventory-summary.tsv"))
-message("inventory: 1,004 files; selected: ", nrow(selected))
+message("inventory: ", nrow(inventory), " files; selected: ", nrow(selected))
 if (options$inventory_only) quit(save = "no", status = 0L)
 
 library_value <- Sys.getenv("DTAPARSER_FERTILITY_LIBRARY")
@@ -75,7 +75,7 @@ if (!identical(normalizePath(getNamespaceInfo(asNamespace("dtaparser"), "path"),
     stop("dtaparser was not loaded from the immutable corpus library")
 }
 framework_id <- fertility_framework_id(
-    provenance$provenance_id[[1L]], fertility_required_paths()$datasigs, acceptance
+    provenance$provenance_id[[1L]], fertility_required_paths(options, raw_root)$datasigs, acceptance
 )
 if (!identical(framework_id, prepared_framework_id)) {
     stop("prepared corpus framework identity changed before execution")
@@ -442,9 +442,10 @@ for (index in seq_len(nrow(selected))) {
 # Close over every source of publication authority and rerun this immediately
 # before both immutable bundle publication and CURRENT replacement.
 revalidate_run_evidence <- function(publication_provenance = NULL) {
-    live_inventory <- fertility_build_inventory()
+    live_inventory <- fertility_build_selected_inventory(options, raw_root)
     fertility_validate_canonical_inventory(
-        fertility_inventory_manifest(live_inventory), exact = TRUE
+        fertility_inventory_manifest(live_inventory),
+        exact = !fertility_output_requested(options)
     )
     if (!identical(fertility_inventory_id(live_inventory), inventory_id)) {
         stop("canonical inventory changed before report publication")
@@ -477,7 +478,7 @@ revalidate_run_evidence <- function(publication_provenance = NULL) {
     if (!identical(
         fertility_framework_id(
             final_provenance$provenance_id[[1L]],
-            fertility_required_paths()$datasigs, reloaded_acceptance
+            fertility_required_paths(options, raw_root)$datasigs, reloaded_acceptance
         ), framework_id
     )) stop("corpus framework or inventory provenance changed during the run")
     live_selected <- fertility_filter_inventory(live_inventory, options)

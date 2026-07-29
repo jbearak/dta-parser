@@ -31,7 +31,7 @@ provenance <- fertility_verify_provenance(checkout_root, library, provenance_pat
 if (!identical(provenance$provenance_id[[1L]], selected_build_id)) {
     stop("selected build provenance identity is invalid")
 }
-inventory <- fertility_build_inventory()
+inventory <- fertility_build_selected_inventory(options, raw_root)
 acceptance <- if (nzchar(options$accepted_current_hashes)) {
     fertility_load_acceptance(raw_root, options$accepted_current_hashes, inventory)
 } else NULL
@@ -39,7 +39,7 @@ family <- fertility_family_selection(inventory, options)
 fertility_validate_accepted_selection(options, family)
 invisible(fertility_validate_acceptance_current(acceptance, inventory))
 framework_id <- fertility_framework_id(
-    provenance$provenance_id[[1L]], fertility_required_paths()$datasigs, acceptance
+    provenance$provenance_id[[1L]], fertility_required_paths(options, raw_root)$datasigs, acceptance
 )
 invisible(fertility_prepare_framework_snapshot(
     script_dir, raw_root, framework_id, inventory, acceptance
