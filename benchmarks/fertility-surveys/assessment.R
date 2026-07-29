@@ -9,15 +9,26 @@ source(file.path(script_dir, "runtime.R"))
 
 fertility_assert_manual_run()
 arguments <- commandArgs(trailingOnly = TRUE)
-if (length(arguments) != 2L ||
-    sum(startsWith(arguments, "--assessment-family-id=")) != 1L ||
-    sum(startsWith(arguments, "--accepted-family-id=")) != 1L) {
+family_arguments <- arguments[vapply(arguments, function(argument) any(startsWith(
+    argument, c("--assessment-family-id=", "--accepted-family-id=")
+)), logical(1))]
+source_arguments <- arguments[vapply(arguments, function(argument) any(startsWith(
+    argument, c("--cache-root=", "--manifest=")
+)), logical(1))]
+if (length(arguments) != 4L || length(family_arguments) != 2L ||
+    length(source_arguments) != 2L ||
+    sum(startsWith(family_arguments, "--assessment-family-id=")) != 1L ||
+    sum(startsWith(family_arguments, "--accepted-family-id=")) != 1L) {
     stop(paste(
         "usage: assessment.R --assessment-family-id=FULL_ID",
-        "--accepted-family-id=ACCEPTED_ID"
+        "--accepted-family-id=ACCEPTED_ID --cache-root=/absolute/path",
+        "--manifest=/absolute/path"
     ))
 }
-value <- function(prefix) sub("^[^=]+=", "", arguments[startsWith(arguments, prefix)])
+source_options <- fertility_validate_source_arguments(
+    fertility_parse_arguments(source_arguments)
+)
+value <- function(prefix) sub("^[^=]+=", "", family_arguments[startsWith(family_arguments, prefix)])
 full_family_id <- value("--assessment-family-id=")
 accepted_family_id <- value("--accepted-family-id=")
 if (any(!grepl("^[0-9a-f]{64}$", c(full_family_id, accepted_family_id))) ||
@@ -94,12 +105,15 @@ load_family <- function(family_id, inventory, role = c("original", "accepted")) 
 }
 
 load_sources <- function() {
-    inventory <- fertility_build_inventory()
+    inventory <- fertility_build_inventory(
+        fertility_required_paths(source_options)
+    )
     full <- load_family(full_family_id, inventory, "original")
     accepted <- load_family(accepted_family_id, inventory, "accepted")
     gates <- fertility_validate_assessment_families(full, accepted)
     publication <- fertility_revalidate_accepted_publication(
-        raw_root, accepted$provenance, inventory
+        raw_root, accepted$provenance, inventory,
+        fertility_required_paths(source_options)$datasigs
     )
     list(inventory = inventory, full = full, accepted = accepted,
          gates = gates, acceptance = publication$acceptance)

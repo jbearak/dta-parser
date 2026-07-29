@@ -128,14 +128,15 @@ fertility_revalidate_accepted_publication <- function(
         ), drop = FALSE], use.names = FALSE)))) {
         stop("accepted publication framework provenance is invalid")
     }
-    if (is.null(inventory)) inventory <- fertility_build_inventory()
+    if (is.null(inventory) || is.null(datasigs_path)) {
+        stop("accepted publication revalidation requires explicit inventory and manifest")
+    }
     fertility_validate_canonical_inventory(
         fertility_inventory_manifest(inventory), exact = TRUE
     )
     acceptance <- fertility_revalidate_recorded_acceptance(
         raw_root, provenance, inventory
     )
-    if (is.null(datasigs_path)) datasigs_path <- fertility_required_paths()$datasigs
     if (!identical(
         fertility_framework_id(
             provenance$build_provenance_id[[1L]], datasigs_path, acceptance
@@ -433,14 +434,27 @@ if (sys.nframe() == 0L) {
     source(file.path(script_dir, "runner.R"))
     fertility_assert_manual_run()
     arguments <- commandArgs(trailingOnly = TRUE)
-    if (!identical(arguments, "--capture-accepted-current-hashes")) {
-        stop("usage: accepted.R --capture-accepted-current-hashes")
+    capture_arguments <- arguments[arguments == "--capture-accepted-current-hashes"]
+    source_arguments <- arguments[vapply(arguments, function(argument) any(startsWith(
+        argument, c("--cache-root=", "--manifest=")
+    )), logical(1))]
+    if (length(capture_arguments) != 1L || length(source_arguments) != 2L ||
+        length(arguments) != 3L) {
+        stop(paste(
+            "usage: accepted.R --capture-accepted-current-hashes",
+            "--cache-root=/absolute/path --manifest=/absolute/path"
+        ))
     }
+    source_options <- fertility_validate_source_arguments(
+        fertility_parse_arguments(source_arguments)
+    )
     checkout_root <- fertility_checkout_root(script_path)
     raw_root <- fertility_assert_acceptance_raw_root(
         file.path(checkout_root, "target", "fertility-surveys", "raw"),
         checkout_root
     )
-    inventory <- fertility_build_inventory()
+    inventory <- fertility_build_inventory(
+        fertility_required_paths(source_options)
+    )
     cat(fertility_capture_acceptance(inventory, raw_root))
 }

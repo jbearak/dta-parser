@@ -49,6 +49,26 @@ run_assert_direct_file() {
     fi
 }
 
+run_benchmark_rejection() {
+    run_benchmark_rejection_name=$1
+    run_benchmark_rejection_message=$2
+    shift 2
+    set +e
+    CI= GITHUB_ACTIONS= GITHUB_RUN_ID= GITHUB_WORKFLOW= \
+        DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA \
+        /bin/sh "$benchmark_script" "$@" \
+        >"$test_root/$run_benchmark_rejection_name.out" 2>&1
+    run_benchmark_rejection_status=$?
+    set -e
+    if [ "$run_benchmark_rejection_status" -ne 2 ] ||
+       ! grep -q -- "$run_benchmark_rejection_message" \
+           "$test_root/$run_benchmark_rejection_name.out"; then
+        printf '%s\n' "$run_benchmark_rejection_name: unexpected rejection" >&2
+        command cat "$test_root/$run_benchmark_rejection_name.out" >&2
+        exit 1
+    fi
+}
+
 canonical_root="$test_root/canonical"
 canonical_builds="$canonical_root/builds"
 mkdir -p "$canonical_builds"
@@ -87,3 +107,18 @@ printf '%s\n' 'canonical' > "$nondirect_parent_root/builds/CURRENT"
 run_assert_direct_file 2 nondirect-parent \
     "$nondirect_parent_root/direct/../builds" \
     "$nondirect_parent_root/direct/../builds/CURRENT"
+
+run_benchmark_rejection missing-roots 'requires explicit --cache-root and --manifest' \
+    --inventory-only
+run_benchmark_rejection nonabsolute-root 'must be explicit absolute paths' \
+    --cache-root=relative --manifest="$test_root/manifest.csv" --inventory-only
+run_benchmark_rejection noncanonical-root 'must be canonical paths' \
+    --cache-root="$test_root/direct/../cache" \
+    --manifest="$test_root/manifest.csv" --inventory-only
+run_benchmark_rejection duplicate-root 'requires explicit --cache-root and --manifest' \
+    --cache-root="$test_root/cache" --cache-root="$test_root/cache" \
+    --manifest="$test_root/manifest.csv" --inventory-only
+run_benchmark_rejection wrong-output-mode \
+    '--output-root must be supplied once without raw root arguments' \
+    --output-root="$test_root/output" --cache-root="$test_root/cache" \
+    --manifest="$test_root/manifest.csv" --inventory-only

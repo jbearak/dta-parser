@@ -7,6 +7,7 @@ source(file.path(script_dir, "runner.R"))
 source(file.path(script_dir, "worker.R"))
 source(file.path(script_dir, "runtime.R"))
 source(file.path(script_dir, "provenance.R"))
+fertility_output_root <- NULL
 
 expect_error <- function(expression, pattern) {
     error <- tryCatch({ force(expression); NULL }, error = identity)
@@ -845,13 +846,18 @@ stopifnot(file.copy(
     file.path(script_dir, "benchmark.sh"), file.path(shell_script_dir, "benchmark.sh")
 ), file.symlink(confinement_outside, file.path(shell_raw, "tmp")))
 run_shell_confinement <- function(arguments = "--inventory-only") {
+    source_arguments <- c(
+        paste0("--cache-root=", file.path(root, "unused-cache")),
+        paste0("--manifest=", file.path(root, "unused-manifest.csv"))
+    )
     suppressWarnings(system2(
     "/usr/bin/env",
     c(
         "-u", "CI", "-u", "GITHUB_ACTIONS", "-u", "GITHUB_RUN_ID",
         "-u", "GITHUB_WORKFLOW",
         paste0("DTAPARSER_FERTILITY_CORPUS=", fertility_opt_in_value),
-        "sh", file.path(shell_script_dir, "benchmark.sh"), arguments
+        "sh", file.path(shell_script_dir, "benchmark.sh"),
+        source_arguments, arguments
     ),
     stdout = TRUE, stderr = TRUE
     ))
@@ -1002,8 +1008,7 @@ for (i in seq_along(paths)) write_release(paths[[i]], releases[[i]])
 datasigs <- file.path(root, "datasigs.csv")
 write.csv(rows, datasigs, row.names = FALSE, quote = FALSE)
 inventory <- fertility_build_inventory(
-    list(cache = cache, datasigs = datasigs), assert_counts = FALSE,
-    enforce_required_paths = FALSE
+    list(cache = cache, datasigs = datasigs), assert_counts = FALSE
 )
 stopifnot(
     identical(inventory$id, sprintf("F%04d", 1:5)),
@@ -1017,8 +1022,7 @@ stopifnot(
 primary_second <- file.path(cache, "DHS/Original_Data/BB,2001/bh.dta")
 write_release(primary_second, 113L)
 precedence_inventory <- fertility_build_inventory(
-    list(cache = cache, datasigs = datasigs), assert_counts = FALSE,
-    enforce_required_paths = FALSE
+    list(cache = cache, datasigs = datasigs), assert_counts = FALSE
 )
 stopifnot(precedence_inventory$path[[2L]] ==
           normalizePath(primary_second, winslash = "/"))
@@ -1026,10 +1030,74 @@ drifted_rows <- rows
 drifted_rows$level[[1L]] <- "survey"
 write.csv(drifted_rows, datasigs, row.names = FALSE, quote = FALSE)
 expect_error(fertility_build_inventory(
-    list(cache = cache, datasigs = datasigs), assert_counts = FALSE,
-    enforce_required_paths = FALSE
+    list(cache = cache, datasigs = datasigs), assert_counts = FALSE
 ), "unknown cache level")
 write.csv(rows, datasigs, row.names = FALSE, quote = FALSE)
+
+raw_source_arguments <- c(
+    paste0("--cache-root=", normalizePath(cache, winslash = "/")),
+    paste0("--manifest=", normalizePath(datasigs, winslash = "/"))
+)
+raw_source_options <- fertility_validate_source_arguments(
+    fertility_parse_arguments(raw_source_arguments)
+)
+stopifnot(
+    identical(raw_source_options$cache_root, normalizePath(cache, winslash = "/")),
+    identical(raw_source_options$manifest, normalizePath(datasigs, winslash = "/")),
+    identical(
+        fertility_tile_configuration(raw_source_options)$config_id,
+        fertility_tile_configuration(fertility_parse_arguments(character()))$config_id
+    )
+)
+expect_error(fertility_validate_source_arguments(
+    fertility_parse_arguments(character())
+), "requires explicit --cache-root and --manifest")
+expect_error(fertility_validate_source_arguments(
+    fertility_parse_arguments(raw_source_arguments[[1L]])
+), "requires explicit --cache-root and --manifest")
+expect_error(fertility_parse_arguments("--cache-root=relative"), "must be absolute")
+expect_error(fertility_parse_arguments("--manifest=relative"), "must be absolute")
+expect_error(fertility_validate_source_arguments(fertility_parse_arguments(c(
+    paste0("--cache-root=", cache, "/../", basename(cache)),
+    raw_source_arguments[[2L]]
+))), "must be canonical")
+expect_error(fertility_parse_arguments(c(
+    raw_source_arguments, raw_source_arguments[[1L]]
+)), "only once")
+wrong_mode_options <- fertility_parse_arguments(raw_source_arguments)
+wrong_mode_options$output_root <- "/private/generated-output"
+expect_error(fertility_validate_source_arguments(wrong_mode_options),
+             "invalid with --output-root")
+
+missing_root_entry_points <- list(
+    run.R = character(), prepare.R = character(),
+    merge.R = paste0("--family-id=", paste(rep("a", 64L), collapse = "")),
+    assessment.R = c(
+        paste0("--assessment-family-id=", paste(rep("a", 64L), collapse = "")),
+        paste0("--accepted-family-id=", paste(rep("b", 64L), collapse = ""))
+    ),
+    republish.R = c(
+        paste0("--republish-framework=", paste(rep("a", 64L), collapse = "")),
+        "--shard-count=8"
+    ),
+    accepted.R = "--capture-accepted-current-hashes"
+)
+for (entry_name in names(missing_root_entry_points)) {
+    output <- suppressWarnings(system2(
+        file.path(R.home("bin"), "Rscript"),
+        c("--vanilla", file.path(script_dir, entry_name),
+          missing_root_entry_points[[entry_name]]),
+        stdout = TRUE, stderr = TRUE,
+        env = c(
+            "CI=", "GITHUB_ACTIONS=", "GITHUB_RUN_ID=", "GITHUB_WORKFLOW=",
+            paste0("DTAPARSER_FERTILITY_CORPUS=", fertility_opt_in_value)
+        )
+    ))
+    stopifnot(
+        !is.null(attr(output, "status", exact = TRUE)),
+        any(grepl("cache-root|manifest|explicit raw roots", output))
+    )
+}
 
 options <- fertility_parse_arguments(c(
     "--program=dhs,mics", "--release=113,114", "--shard-index=1",

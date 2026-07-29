@@ -9,7 +9,9 @@ source(file.path(script_dir, "runner.R"))
 source(file.path(script_dir, "runtime.R"))
 
 fertility_assert_manual_run()
-options <- fertility_parse_arguments(commandArgs(trailingOnly = TRUE))
+options <- fertility_validate_source_arguments(
+    fertility_parse_arguments(commandArgs(trailingOnly = TRUE))
+)
 checkout_root <- fertility_checkout_root(script_path)
 raw_root <- fertility_assert_checkout_raw_root(
     file.path(checkout_root, "target", "fertility-surveys", "raw"), checkout_root

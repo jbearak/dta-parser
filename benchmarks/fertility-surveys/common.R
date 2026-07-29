@@ -8,7 +8,6 @@ fertility_cache_levels <- c("women", "births")
 fertility_output_levels <- c("survey", "aggregate")
 fertility_levels <- c(fertility_cache_levels, fertility_output_levels)
 fertility_opt_in_value <- "I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA"
-fertility_output_root <- "/Users/jmb/repos/fertility_surveys/output"
 fertility_output_expected_files <- 1226L
 fertility_output_expected_bytes <- 70748321626
 fertility_output_expected_largest <- 10332252930
@@ -623,9 +622,6 @@ fertility_output_requested <- function(options) {
 }
 
 fertility_assert_output_root <- function(path) {
-    if (!identical(path, fertility_output_root)) {
-        stop("--output-root must be exactly ", fertility_output_root)
-    }
     root <- fertility_assert_canonical_components(path, "fertility output root")
     if (!dir.exists(root) || fertility_path_is_symlink(root)) {
         stop("fertility output root must be a canonical non-symlink directory")
@@ -1241,23 +1237,21 @@ fertility_build_output_inventory <- function(root, raw_root) {
     inventory
 }
 
-fertility_required_paths <- function(options = NULL, raw_root = NULL) {
-    if (!is.null(options) && fertility_output_requested(options)) {
+fertility_required_paths <- function(options, raw_root = NULL) {
+    options <- fertility_validate_source_arguments(options)
+    if (fertility_output_requested(options)) {
         if (is.null(raw_root)) stop("raw root is required for output inventory authority")
         return(list(output = fertility_assert_output_root(options$output_root),
                     datasigs = fertility_output_inventory_path(raw_root)))
     }
-    home <- normalizePath("~", winslash = "/", mustWork = TRUE)
-    list(
-        cache = "/opt/aww_cache",
-        datasigs = file.path(home, "repos", "fertility_surveys", "datasigs.csv")
-    )
+    list(cache = options$cache_root, datasigs = options$manifest)
 }
 
 fertility_build_selected_inventory <- function(options, raw_root) {
+    paths <- fertility_required_paths(options, raw_root)
     if (fertility_output_requested(options)) {
-        fertility_build_output_inventory(options$output_root, raw_root)
-    } else fertility_build_inventory()
+        fertility_build_output_inventory(paths$output, raw_root)
+    } else fertility_build_inventory(paths)
 }
 
 fertility_atomic_save_rds <- function(value, path) {
@@ -1395,23 +1389,25 @@ fertility_structural_metadata <- function(path) {
          column_bytes = as.double(column_bytes), strl = strl)
 }
 
-fertility_build_inventory <- function(paths = fertility_required_paths(),
-                                      assert_counts = TRUE,
-                                      enforce_required_paths = TRUE) {
-    expected_cache <- "/opt/aww_cache"
-    expected_datasigs <- file.path(normalizePath("~", winslash = "/", mustWork = TRUE),
-                                   "repos", "fertility_surveys", "datasigs.csv")
-    if (enforce_required_paths &&
-        (!identical(paths$cache, expected_cache) ||
-         !identical(paths$datasigs, expected_datasigs))) {
-        stop("corpus paths are fixed to /opt/aww_cache and ~/repos/fertility_surveys/datasigs.csv")
+fertility_build_inventory <- function(paths, assert_counts = TRUE) {
+    if (!is.list(paths) || !identical(names(paths), c("cache", "datasigs"))) {
+        stop("explicit cache and manifest paths are required")
     }
-    if (!dir.exists(paths$cache)) stop("required /opt/aww_cache directory is missing")
-    cache_root <- normalizePath(paths$cache, winslash = "/", mustWork = TRUE)
-    if (!file.exists(paths$datasigs)) {
-        stop("required ~/repos/fertility_surveys/datasigs.csv file is missing")
+    cache_root <- fertility_assert_canonical_components(
+        paths$cache, "fertility cache root"
+    )
+    if (!dir.exists(cache_root) || fertility_path_is_symlink(cache_root)) {
+        stop("fertility cache root must be a canonical non-symlink directory")
     }
-    rows <- read.csv(paths$datasigs, colClasses = "character", check.names = FALSE,
+    datasigs_path <- fertility_assert_canonical_components(
+        paths$datasigs, "fertility manifest"
+    )
+    if (!file.exists(datasigs_path) || dir.exists(datasigs_path) ||
+        fertility_path_is_symlink(datasigs_path) ||
+        !isTRUE(file_test("-f", datasigs_path))) {
+        stop("fertility manifest must be a canonical non-symlink regular file")
+    }
+    rows <- read.csv(datasigs_path, colClasses = "character", check.names = FALSE,
                      stringsAsFactors = FALSE)
     required <- c("program", "survey", "level", "sha512")
     if (!all(required %in% names(rows))) stop("datasigs.csv is missing required columns")

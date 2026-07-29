@@ -30,7 +30,9 @@ forbidden <- c(
 if (any(vapply(arguments, function(argument) {
     any(startsWith(argument, forbidden))
 }, logical(1)))) stop("republication is restricted to the complete default family")
-options <- fertility_parse_arguments(c(arguments, "--shard-index=1"))
+options <- fertility_validate_source_arguments(
+    fertility_parse_arguments(c(arguments, "--shard-index=1"))
+)
 if (!fertility_full_default_family(options) || options$shard_count != 8L) {
     stop("republication requires the complete default family in exactly eight shards")
 }
@@ -90,7 +92,7 @@ if (file.exists(build_current) || dir.exists(build_current) ||
         build_current, builds_root, "build CURRENT pointer"
     )
 }
-datasigs_path <- fertility_required_paths()$datasigs
+datasigs_path <- fertility_required_paths(options)$datasigs
 build_entries <- list.files(builds_root, all.files = TRUE, no.. = TRUE)
 build_entries <- setdiff(build_entries, "CURRENT")
 candidates <- list()

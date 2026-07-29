@@ -18,6 +18,50 @@ if [ "${DTAPARSER_FERTILITY_CORPUS:-}" != 'I_UNDERSTAND_THIS_READS_PROPRIETARY_D
     exit 2
 fi
 
+cache_root_count=0
+manifest_count=0
+output_root_count=0
+for source_argument in "$@"; do
+    case "$source_argument" in
+        --cache-root=*)
+            cache_root_count=$((cache_root_count + 1))
+            source_path=${source_argument#*=}
+            ;;
+        --manifest=*)
+            manifest_count=$((manifest_count + 1))
+            source_path=${source_argument#*=}
+            ;;
+        --output-root=*)
+            output_root_count=$((output_root_count + 1))
+            source_path=${source_argument#*=}
+            ;;
+        *) continue ;;
+    esac
+    case "$source_path" in
+        /*) ;;
+        *)
+            printf '%s\n' 'fertility source roots must be explicit absolute paths' >&2
+            exit 2
+            ;;
+    esac
+    case "$source_path" in
+        *//*|*/./*|*/../*|*/.|*/..)
+            printf '%s\n' 'fertility source roots must be canonical paths' >&2
+            exit 2
+            ;;
+    esac
+done
+if [ "$output_root_count" -gt 0 ]; then
+    if [ "$output_root_count" -ne 1 ] || [ "$cache_root_count" -ne 0 ] ||
+       [ "$manifest_count" -ne 0 ]; then
+        printf '%s\n' '--output-root must be supplied once without raw root arguments' >&2
+        exit 2
+    fi
+elif [ "$cache_root_count" -ne 1 ] || [ "$manifest_count" -ne 1 ]; then
+    printf '%s\n' 'raw fertility mode requires explicit --cache-root and --manifest' >&2
+    exit 2
+fi
+
 ensure_direct_directory() {
     ensure_direct_directory_parent=$1
     ensure_direct_directory_child=$2
@@ -213,8 +257,8 @@ case " $* " in
         exit $?
         ;;
     *' --capture-accepted-current-hashes '*)
-        [ "$#" -eq 1 ] || {
-            printf '%s\n' 'accepted-current-hash capture takes no other options' >&2
+        [ "$#" -eq 3 ] || {
+            printf '%s\n' 'accepted-current-hash capture requires only explicit raw roots' >&2
             exit 2
         }
         Rscript --vanilla "$script_dir/accepted.R" "$@"

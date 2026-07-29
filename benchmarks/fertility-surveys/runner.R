@@ -4,7 +4,9 @@ fertility_legacy_corpus_schema_version <- 10L
 
 fertility_usage <- function() {
     paste(
-        "usage: run.R [--inventory-only] [--output-root=/absolute/path]",
+        "usage: run.R [--inventory-only]",
+        "(--cache-root=/absolute/path --manifest=/absolute/path |",
+        " --output-root=/absolute/path)",
         "[--program=a,b] [--release=113,118] [--id=F0001,F0002]",
         "[--encoding-override=F0001:ENCODING]",
         "[--shard-index=N --shard-count=N] [--max-files=N]",
@@ -93,15 +95,31 @@ fertility_parse_arguments <- function(arguments) {
         column_batch = 16L, memory_mib = 256L, cell_budget = 1000000L,
         max_tiles_per_batch = 100000L, beyond_end_windows = 1L,
         encoding_overrides = setNames(character(), character()),
-        accepted_current_hashes = "", output_root = "", retry = FALSE
+        accepted_current_hashes = "", cache_root = "", manifest = "",
+        output_root = "", retry = FALSE
     )
     seen_shard_index <- seen_shard_count <- FALSE
     seen_program <- FALSE
+    seen_cache_root <- seen_manifest <- FALSE
     encoding_override_values <- character()
     for (argument in arguments) {
         if (identical(argument, "--inventory-only")) options$inventory_only <- TRUE
         else if (identical(argument, "--retry")) options$retry <- TRUE
-        else if (startsWith(argument, "--output-root=")) {
+        else if (startsWith(argument, "--cache-root=")) {
+            if (seen_cache_root) stop("--cache-root may be supplied only once")
+            options$cache_root <- sub("^[^=]+=", "", argument)
+            seen_cache_root <- TRUE
+            if (!startsWith(options$cache_root, "/")) {
+                stop("--cache-root must be absolute")
+            }
+        } else if (startsWith(argument, "--manifest=")) {
+            if (seen_manifest) stop("--manifest may be supplied only once")
+            options$manifest <- sub("^[^=]+=", "", argument)
+            seen_manifest <- TRUE
+            if (!startsWith(options$manifest, "/")) {
+                stop("--manifest must be absolute")
+            }
+        } else if (startsWith(argument, "--output-root=")) {
             if (nzchar(options$output_root)) stop("--output-root may be supplied only once")
             options$output_root <- sub("^[^=]+=", "", argument)
             if (!startsWith(options$output_root, "/")) {
@@ -198,6 +216,36 @@ fertility_parse_arguments <- function(arguments) {
     if (options$beyond_end_windows > 8L) {
         stop("--beyond-end-windows must not exceed 8")
     }
+    options
+}
+
+fertility_validate_source_arguments <- function(options) {
+    raw_arguments <- c(cache_root = options$cache_root, manifest = options$manifest)
+    supplied_raw <- nzchar(raw_arguments)
+    if (fertility_output_requested(options)) {
+        if (any(supplied_raw)) {
+            stop("--cache-root and --manifest are invalid with --output-root")
+        }
+        return(options)
+    }
+    if (!all(supplied_raw)) {
+        stop("raw fertility mode requires explicit --cache-root and --manifest")
+    }
+    cache_root <- fertility_assert_canonical_components(
+        options$cache_root, "fertility cache root"
+    )
+    if (!dir.exists(cache_root) || fertility_path_is_symlink(cache_root)) {
+        stop("fertility cache root must be a canonical non-symlink directory")
+    }
+    manifest <- fertility_assert_canonical_components(
+        options$manifest, "fertility manifest"
+    )
+    if (!file.exists(manifest) || dir.exists(manifest) ||
+        fertility_path_is_symlink(manifest) || !isTRUE(file_test("-f", manifest))) {
+        stop("fertility manifest must be a canonical non-symlink regular file")
+    }
+    options$cache_root <- cache_root
+    options$manifest <- manifest
     options
 }
 

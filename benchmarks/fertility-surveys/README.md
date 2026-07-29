@@ -6,14 +6,14 @@ or GitHub Actions variables are present and requires an explicit manual opt-in.
 It does not add Stata release 111 support: release-111 files are inventoried and
 classified as `expected-unsupported-111` without being passed to a reader.
 
-The default Wave 2 inventory intentionally reproduces
-`~/repos/fertility_surveys/check_raw_data.r` path construction rather than
-recursively searching the cache. It reads exactly
-`~/repos/fertility_surveys/datasigs.csv`, maps underscores in non-WFS survey
-folder names to commas, maps women/birth records to `wm.dta`/`bh.dta`, maps WFS
-to `<survey>.dta`, tries the program's primary directory, and only for DHS tries
-`DHS/Original_Data_Provenance_Unknown`. The cache root is exactly
-`/opt/aww_cache`; neither path can be overridden by command-line options.
+Every Wave 2 invocation requires caller-supplied `--cache-root` and `--manifest`
+arguments naming existing absolute canonical, non-symlink paths. The inventory
+intentionally reproduces the authorized upstream inventory mapping rather than
+recursively searching the cache. It reads exactly the supplied manifest, maps
+underscores in non-WFS survey folder names to commas, maps women/birth records
+to `wm.dta`/`bh.dta`, maps WFS to `<survey>.dta`, tries each program's primary
+directory, and only for DHS tries `DHS/Original_Data_Provenance_Unknown`.
+Neither source argument is inferred, globbed, or discovered from a checkout.
 
 A valid inventory has exactly 1,004 unique files and these release counts:
 
@@ -92,11 +92,12 @@ the run aborts before publishing a case result rather than recording a reader cr
 The same comparator, isolated workers, bounded tiles, checkpoints, sharding,
 provenance, privacy filtering, and publication machinery also supports the
 explicit generated-output root. This mode is enabled only by supplying the
-exact canonical absolute path:
+exact authorized canonical absolute path. Set `OUTPUT_ROOT` to that private path;
+the public documentation does not publish it:
 
 ```sh
 benchmarks/fertility-surveys/benchmark.sh \
-  --output-root=/Users/jmb/repos/fertility_surveys/output --inventory-only
+  --output-root="$OUTPUT_ROOT" --inventory-only
 ```
 
 It recursively inventories regular files whose extension is `.dta` or `.DTA`,
@@ -105,9 +106,8 @@ other entry. Stable `F0001`-style IDs are assigned by bytewise-sorted canonical
 relative path. The root and every ancestor directory are pinned through retained
 no-follow directory descriptors; each DTA is opened relative to its pinned parent,
 and device, inode, mode, size, modification time, and change time are revalidated
-around descriptor-bound hashing and release reads. Relative paths and private file
-metadata are frozen only in the ignored private
-`target/fertility-surveys/raw/output-inventory/wave3/inventory.rds` artifact.
+around descriptor-bound hashing and release reads. Relative paths and private file metadata are frozen only in a content-bound
+artifact beneath the ignored private artifact root.
 Public inventory manifests expose only the stable ID, `program=output`, the
 privacy-safe `survey`/`aggregate` level, and DTA release. Public family manifests
 add the deterministic `shard_index`.
@@ -145,7 +145,7 @@ root:
 ```sh
 benchmarks/fertility-surveys/benchmark.sh \
   --family-id=<family-id> \
-  --output-root=/Users/jmb/repos/fertility_surveys/output
+  --output-root="$OUTPUT_ROOT"
 ```
 
 ## Run manually
@@ -154,9 +154,15 @@ From the checkout root:
 
 ```sh
 export DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
-benchmarks/fertility-surveys/benchmark.sh --inventory-only
-benchmarks/fertility-surveys/benchmark.sh --id=F0001 --timeout-seconds=120
+export CACHE_ROOT=/absolute/canonical/private-cache-root
+export MANIFEST=/absolute/canonical/private-manifest.csv
 benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" --inventory-only
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
+  --id=F0001 --timeout-seconds=120
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
   --id=F0574 --encoding-override=F0574:ISO-8859-1 --timeout-seconds=120
 ```
 
@@ -164,20 +170,25 @@ Inventory IDs are stable row numbers, not release selectors. To exercise the
 unsupported classification without asking a reader to open a file, use:
 
 ```sh
-benchmarks/fertility-surveys/benchmark.sh --release=111 --max-files=1 --timeout-seconds=120
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
+  --release=111 --max-files=1 --timeout-seconds=120
 ```
 
 A bounded supported-file smoke run can use another release and the same count
 filter:
 
 ```sh
-benchmarks/fertility-surveys/benchmark.sh --release=118 --max-files=1 --timeout-seconds=120
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
+  --release=118 --max-files=1 --timeout-seconds=120
 ```
 
 The exhaustive run is:
 
 ```sh
-benchmarks/fertility-surveys/benchmark.sh
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST"
 ```
 
 ## Explicit accepted-current-hash evidence for F0633-F0637
@@ -185,21 +196,22 @@ benchmarks/fertility-surveys/benchmark.sh
 The historical SHA-512 values in `datasigs.csv` remain the manifest authority and
 are never rewritten. If a separately authorized local review accepts the current
 bytes for exactly `F0633` through `F0637`, capture those bytes into a private,
-immutable commitment below `target/fertility-surveys/raw/`:
+immutable content-addressed commitment beneath the ignored artifact root:
 
 ```sh
 commitment_id=$(
-  benchmarks/fertility-surveys/benchmark.sh --capture-accepted-current-hashes
+  benchmarks/fertility-surveys/benchmark.sh \
+    --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
+    --capture-accepted-current-hashes
 )
 ```
 
 Capture requires the normal proprietary-data opt-in, is refused in CI and GitHub
 Actions, rejects symlinked output ancestors, confines publication to the
-checkout-local canonical `target/fertility-surveys/raw` path, validates exactly
-five canonical 128-hex SHA-512 values, and emits only the privacy-safe commitment
-ID. The private artifact is not tracked and contains no source paths. It does not
-modify `datasigs.csv`, `/opt/aww_cache`, or any
-existing checkpoint or report.
+canonical ignored artifact root, validates exactly five canonical 128-hex
+SHA-512 values, and emits only the privacy-safe commitment ID. The private
+artifact is not tracked and contains no source paths. It does not modify the
+supplied manifest, cache root, or any existing checkpoint or report.
 
 Run the separate accepted family only through the explicit CLI option. There is
 no environment-variable fallback, and accepted execution rejects every selection
@@ -207,6 +219,7 @@ other than the exact unsharded five-ID family:
 
 ```sh
 benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
   --accepted-current-hashes="$commitment_id" \
   --id=F0633,F0634,F0635,F0636,F0637
 ```
@@ -224,7 +237,9 @@ manifest as verified.
 Merge the resulting separate five-ID family normally:
 
 ```sh
-benchmarks/fertility-surveys/benchmark.sh --family-id=<accepted-family-id>
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
+  --family-id=<accepted-family-id>
 ```
 
 Merge validation requires exactly one shard, exactly `F0633`-`F0637`, consistent
@@ -236,12 +251,13 @@ After both families have been merged, publish a separate derived assessment:
 
 ```sh
 benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
   --assessment-family-id=<original-full-family-id> \
   --accepted-family-id=<accepted-five-family-id>
 ```
 
-The assessment consumes and strictly revalidates each family's merged `CURRENT`
-bundle. The accepted family must use the complete current five-file merged schema,
+The assessment consumes and strictly revalidates each family's explicitly
+selected private merged bundle. The accepted family must use the complete current five-file merged schema,
 including its aggregate input attestation and acceptance authority. Only the
 original/base role has a compatibility path for the immutable four-file
 schema-10/report-schema-2 fresh full-family bundle: it requires exactly 8 shards,
@@ -270,6 +286,7 @@ privacy, and public-schema check, but does not stage or publish reports:
 
 ```sh
 benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
   --republish-framework=6f0e40d786d054ec2cb924c74dabb67b66bb0d079f01147294c48187565a6488 \
   --validate-only --shard-count=8 --chunk-rows=50000 --column-batch=32 \
   --memory-mib=1024 --cell-budget=10000000 --max-tiles-per-batch=100000 \
@@ -285,8 +302,8 @@ empty-reader `paste0()` bug is discarded, and only in this historical replay pat
 Current execution and normal checkpoint resume reject that artifact.
 
 All shard bundles are validated and staged before publication. Bundle renames and
-`CURRENT` pointer updates form one rollback-checked transaction: a staging, rename,
-or pointer failure restores every prior pointer and removes every new bundle, while
+private pointer updates form one rollback-checked transaction: a staging, rename,
+or pointer failure restores every prior selection and removes every new bundle, while
 a failed rollback is reported rather than treated as success. Historical replay
 validates and republishes historical evidence; it is not a substitute for the
 mandatory final exhaustive fresh run with the corrected worker.
@@ -294,6 +311,9 @@ mandatory final exhaustive fresh run with the corrected worker.
 Do not run it casually. The default timeout is 600 seconds per metadata/value
 tile. Available options are:
 
+- `--cache-root=/absolute/canonical/path` and
+  `--manifest=/absolute/canonical/file.csv` (both required in raw mode and
+  rejected in generated-output mode)
 - `--inventory-only`
 - `--program=dhs,mics` (comma-separated)
 - `--release=113,118` (comma-separated)
@@ -328,7 +348,7 @@ rejects encoding overrides because replay must retain its exact recorded
 configuration.
 
 The orchestrator builds the current checkout package into an immutable,
-provenance-addressed generation beneath `target/fertility-surveys/raw/builds/`.
+provenance-addressed generation beneath the ignored private artifact root.
 A short owner-aware build lock covers installation, SHA-256 package/dependency
 provenance, and framework snapshot preparation, then is released before corpus
 execution. Concurrent starters wait for that setup and reuse the same verified
@@ -374,14 +394,16 @@ File-level classifications include `pass`, `expected-unsupported-111`,
 secondary fixed categories and hashed mismatch signatures are retained without
 publishing source metadata or values.
 
-Each filter/shard selection publishes a complete immutable report bundle beneath
-`raw/reports/<selection-id>/` and atomically updates only that selection's
-`CURRENT` pointer, so smoke runs and separate shards do not overwrite one another.
+Each filter/shard selection publishes a complete immutable, content-bound private
+report bundle and atomically updates only that selection's private pointer, so
+smoke runs and separate shards do not overwrite one another.
 Results carry framework, configuration, inventory, family, and build provenance
 IDs. After every shard in a family completes, merge its privacy-safe reports with:
 
 ```sh
-benchmarks/fertility-surveys/benchmark.sh --family-id=<family-id>
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" --manifest="$MANIFEST" \
+  --family-id=<family-id>
 ```
 
 Prepare publishes a privacy-safe canonical inventory manifest inside the immutable
@@ -395,11 +417,10 @@ schema provenance. An unfiltered family must contain exactly `F0001` through
 `F1004`, preserve release counts 111=130, 113=475, 114=23, 117=150, and 118=226,
 classify all release-111 files as expected unsupported, and account for exactly five
 supported inventory hash errors plus 869 supported executable outcomes. Validation
-finishes before any merged output is staged or published; publication is atomic
-beneath `raw/merged/<family-id>/`.
+finishes before any merged output is staged or published; publication is atomic within the ignored private artifact root.
 
-All generated files, package builds, checkpoints, and reports stay below the
-ignored `target/fertility-surveys/raw/` directory. Public result TSVs use one exact,
+All generated files, package builds, checkpoints, and reports stay below an
+ignored checkout-local private artifact root. Public result TSVs use one exact,
 versioned schema and reject missing, reordered, or unexpected columns before
 publication. They contain only privacy-safe IDs, program/level/release, shapes,
 timings, fixed categories, and hashed mismatch signatures.
@@ -409,9 +430,9 @@ reason. `inventory-hash-error` reports only a fixed privacy-safe reason
 (`hash-read-error`, `signature-mismatch`, or `input-changed`); a nonempty recorded
 signature mismatch is never silently treated like an intentionally empty
 historical signature. Before any parent R or callr process starts, the shell creates a private
-per-run `TMPDIR` beneath `raw/tmp/`; parent and child R processes verify their
-canonical `tempdir()` remains beneath the raw root, and abandoned run temp
-directories are safely reclaimed. The shell uses a restrictive umask and the R
+per-run temporary directory beneath the ignored artifact root; parent and child
+R processes verify their canonical `tempdir()` remains confined there, and
+abandoned temporary directories are safely reclaimed. The shell uses a restrictive umask and the R
 writers enforce private artifact permissions. Do not copy RDS checkpoints
 outside the private target
 directory because they contain input signatures.
