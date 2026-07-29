@@ -121,10 +121,13 @@ the upstream build uses forced Stata append coercion; that provenance explains
 stored analytical types but never excuses a disagreement among Direct-R,
 Rust-vector, and Haven.
 
-Fresh generated-output execution and publication use corpus schema 12, which
+Fresh generated-output execution and publication use corpus schema 13, which
 binds each isolated worker to the descriptor identity captured during input
-attestation. Corpus schema 10 is retained only as the explicitly documented
-historical Wave 2 replay format; it is not the identity of current Wave 3 evidence.
+attestation. A transient pathname identity change is published with the canonical
+`input-changed` reason and its tile checkpoint is replaceable under `--retry`, so
+restoring the attested input cannot permanently poison resume. Corpus schema 10 is
+retained only as the explicitly documented historical Wave 2 replay format; it is
+not the identity of current Wave 3 evidence.
 
 All normal filters, encoding overrides, resource bounds, resume, and shard
 options apply. An unfiltered output run is recorded as a full family. Merge

@@ -2482,7 +2482,7 @@ fertility_validate_recorded_tile <- function(
         fertility_classifications(), fertility_mismatch_categories(),
         "direct-reader-error", "rust-reader-error", "haven-reader-error",
         "metadata-reader-error", "row-termination-mismatch",
-        "structural-metadata-unavailable"
+        "structural-metadata-unavailable", "input-changed"
     )
     if ((any(legacy_artifact) && !legacy_artifact_allowed) ||
         any(!legacy_artifact & !checkpoint$secondary %in% allowed_secondary) ||
@@ -2492,6 +2492,13 @@ fertility_validate_recorded_tile <- function(
         stop("recorded tile checkpoint contains malformed or non-canonical detail")
     }
     mismatches <- checkpoint$mismatches
+    input_changed <- identical(checkpoint$classification, "input-changed")
+    input_changed_secondary <- any(checkpoint$secondary == "input-changed")
+    if ((input_changed && !identical(checkpoint$secondary, "input-changed")) ||
+        (!input_changed && input_changed_secondary) ||
+        (input_changed && nrow(mismatches))) {
+        stop("recorded tile checkpoint contains malformed or non-canonical detail")
+    }
     if (nrow(mismatches) && (
         any(!mismatches$category %in% fertility_mismatch_categories()) ||
         anyNA(mismatches$detail) || !is.character(mismatches$detail) ||
@@ -2650,10 +2657,19 @@ fertility_tile_checkpoint_valid <- function(
         identical(as.integer(checkpoint$timeout_seconds), as.integer(timeout_seconds))
 }
 
+fertility_mark_tile_input_changed <- function(result) {
+    result$classification <- "input-changed"
+    result$secondary <- "input-changed"
+    if (is.data.frame(result$mismatches)) {
+        result$mismatches <- result$mismatches[0L, , drop = FALSE]
+    }
+    result
+}
+
 fertility_tile_should_retry <- function(checkpoint) {
     checkpoint$classification %in% c(
         "timeout", "crash", "dtaparser-only-error", "haven-only-error",
-        "shared-reader-error", "memory-limit", "unresolved"
+        "shared-reader-error", "memory-limit", "unresolved", "input-changed"
     )
 }
 
@@ -3002,13 +3018,29 @@ fertility_tiled_result <- function(
     complete <- execution_complete && fertility_validate_tile_completeness(
         tiles, batches, total_rows, configuration
     )
-    mismatch <- fertility_mismatch_summary(tiles)
-    secondary <- sort(unique(c(
-        fertility_tile_secondary(tiles, allow_legacy_empty_reader_artifact),
-        unlist(lapply(tiles, function(tile) {
-            if (is.data.frame(tile$mismatches)) tile$mismatches$category else character()
-        }), use.names = FALSE)
-    )))
+    input_changed <- any(vapply(
+        tiles, function(tile) identical(tile$classification, "input-changed"),
+        logical(1)
+    ))
+    mismatch <- if (input_changed) {
+        list(count = 0L, categories = "", signatures = "")
+    } else {
+        fertility_mismatch_summary(tiles)
+    }
+    secondary <- if (input_changed) {
+        "input-changed"
+    } else {
+        sort(unique(c(
+            fertility_tile_secondary(tiles, allow_legacy_empty_reader_artifact),
+            unlist(lapply(tiles, function(tile) {
+                if (is.data.frame(tile$mismatches)) {
+                    tile$mismatches$category
+                } else {
+                    character()
+                }
+            }), use.names = FALSE)
+        )))
+    }
     c(list(
         schema_version = fertility_schema_version, framework_id = framework_id,
         config_id = configuration$config_id, input_id = input$input_id,

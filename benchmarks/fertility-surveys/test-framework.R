@@ -3821,6 +3821,20 @@ recorded_tile_fixture <- c(make_tile_result(1L, 0, 2L), list(
 recorded_tile_fixture <- recorded_tile_fixture[!duplicated(names(recorded_tile_fixture),
                                                            fromLast = TRUE)]
 stopifnot(isTRUE(fertility_validate_recorded_tile(recorded_tile_fixture)))
+recorded_input_changed <- fertility_mark_tile_input_changed(recorded_tile_fixture)
+stopifnot(isTRUE(fertility_validate_recorded_tile(recorded_input_changed)))
+input_changed_wrong_class <- recorded_input_changed
+input_changed_wrong_class$classification <- "pass"
+expect_error(fertility_validate_recorded_tile(input_changed_wrong_class),
+             "malformed or non-canonical")
+input_changed_extra_secondary <- recorded_input_changed
+input_changed_extra_secondary$secondary <- c("input-changed", "value-mismatch")
+expect_error(fertility_validate_recorded_tile(input_changed_extra_secondary),
+             "malformed or non-canonical")
+input_changed_with_mismatch <- recorded_input_changed
+input_changed_with_mismatch$mismatches <- early_issue
+expect_error(fertility_validate_recorded_tile(input_changed_with_mismatch),
+             "malformed or non-canonical")
 current_artifact_tile <- recorded_tile_fixture
 current_artifact_tile$secondary <- "-reader-error"
 expect_error(fertility_validate_recorded_tile(current_artifact_tile),
@@ -3960,9 +3974,20 @@ unresolved_tiles[[2L]]$classification <- "unresolved"
 unresolved_tiles[[2L]]$mismatches <- empty_mismatches
 stopifnot(fertility_aggregate_classification(unresolved_tiles, TRUE) == "unresolved")
 changed_tiles <- traversed_tiles
-changed_tiles[[2L]]$classification <- "input-changed"
-stopifnot(fertility_aggregate_classification(changed_tiles, FALSE) ==
-          "inventory-hash-error")
+changed_tiles[[2L]] <- fertility_mark_tile_input_changed(changed_tiles[[2L]])
+changed_result <- fertility_tiled_result(
+    execution_item, test_framework_id, tile_configuration, execution_input,
+    changed_tiles, synthetic_batches, 3, tiles_expected = length(changed_tiles)
+)
+stopifnot(
+    fertility_aggregate_classification(changed_tiles, FALSE) ==
+        "inventory-hash-error",
+    changed_result$classification == "inventory-hash-error",
+    changed_result$secondary_categories == "input-changed",
+    changed_result$mismatch_count == 0L,
+    identical(changed_result$mismatch_categories, ""),
+    identical(changed_result$mismatch_signatures, "")
+)
 
 item <- as.list(inventory[1L, , drop = FALSE])
 item_input <- fertility_capture_input(item)
@@ -4025,6 +4050,25 @@ retried_tile <- fertility_process_tile(
 )
 stopifnot(!first_tile$resumed, resumed_tile$resumed, !retried_tile$resumed,
           tile_counter$n == 2L)
+changed_tile_checkpoint <- fertility_mark_tile_input_changed(first_tile$result)
+fertility_atomic_save_rds(changed_tile_checkpoint, tile_checkpoint)
+changed_tile_resumed <- fertility_process_tile(
+    tile_item, tile, tile_checkpoint, "framework", tile_config, tile_input,
+    FALSE, tile_execute
+)
+changed_tile_retried <- fertility_process_tile(
+    tile_item, tile, tile_checkpoint, "framework", tile_config, tile_input,
+    TRUE, tile_execute
+)
+stopifnot(
+    changed_tile_resumed$resumed,
+    changed_tile_resumed$result$classification == "input-changed",
+    identical(changed_tile_resumed$result$secondary, "input-changed"),
+    fertility_tile_should_retry(changed_tile_resumed$result),
+    !changed_tile_retried$resumed,
+    changed_tile_retried$result$classification == "timeout",
+    tile_counter$n == 3L
+)
 metadata_retry_checkpoint <- file.path(root, "metadata-retry-checkpoint.rds")
 metadata_retry_counter <- new.env(parent = emptyenv())
 metadata_retry_counter$n <- 0L

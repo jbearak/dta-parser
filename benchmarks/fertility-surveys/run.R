@@ -242,7 +242,9 @@ execute_tile <- function(item, tile, input) {
     }
     stat_after <- fertility_file_stat(item$path)
     if (is.null(stat_before) || is.null(stat_after) ||
-        !identical(stat_before, stat_after)) result$classification <- "input-changed"
+        !identical(stat_before, stat_after)) {
+        result <- fertility_mark_tile_input_changed(result)
+    }
     result
 }
 
