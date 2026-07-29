@@ -3,6 +3,7 @@ script_path <- normalizePath(sub("^--file=", "", grep(
 )[[1L]]), winslash = "/")
 script_dir <- dirname(script_path)
 source(file.path(script_dir, "common.R"))
+source(file.path(script_dir, "accepted.R"))
 source(file.path(script_dir, "provenance.R"))
 source(file.path(script_dir, "runner.R"))
 source(file.path(script_dir, "runtime.R"))
@@ -10,20 +11,22 @@ source(file.path(script_dir, "runtime.R"))
 fertility_assert_manual_run()
 options <- fertility_parse_arguments(commandArgs(trailingOnly = TRUE))
 checkout_root <- fertility_checkout_root(script_path)
-raw_root <- normalizePath(file.path(checkout_root, "target", "fertility-surveys", "raw"),
-                          winslash = "/", mustWork = FALSE)
-dir.create(raw_root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+raw_root <- fertility_assert_checkout_raw_root(
+    file.path(checkout_root, "target", "fertility-surveys", "raw"),
+    checkout_root, create = TRUE
+)
 Sys.chmod(raw_root, mode = "0700")
-if (!identical(normalizePath(raw_root, winslash = "/", mustWork = TRUE),
-               file.path(checkout_root, "target", "fertility-surveys", "raw"))) {
-    stop("outputs must remain under target/fertility-surveys/raw")
-}
 invisible(fertility_assert_tempdir(raw_root))
 
 inventory <- fertility_build_inventory()
+acceptance <- if (nzchar(options$accepted_current_hashes)) {
+    fertility_load_acceptance(raw_root, options$accepted_current_hashes, inventory)
+} else NULL
 selected <- fertility_filter_inventory(inventory, options)
 family_selection <- fertility_family_selection(inventory, options)
+fertility_validate_accepted_selection(options, family_selection)
 fertility_validate_encoding_overrides(options$encoding_overrides, family_selection)
+invisible(fertility_validate_acceptance_current(acceptance, inventory))
 fertility_atomic_write_table(fertility_public_inventory(inventory),
                              file.path(raw_root, "inventory.tsv"))
 release_summary <- as.data.frame(table(release = inventory$release),
@@ -42,11 +45,28 @@ if (!nzchar(library_value) || !nzchar(provenance_value) ||
     !nzchar(prepared_framework_id) || !nzchar(owner_state)) {
     stop("run benchmark.sh to create immutable corpus setup")
 }
-library <- normalizePath(library_value, winslash = "/", mustWork = TRUE)
-provenance_path <- normalizePath(provenance_value, winslash = "/", mustWork = TRUE)
+selected_build_id <- basename(dirname(path.expand(provenance_value)))
+build_bundle <- fertility_resolve_build_bundle(
+    raw_root, selected_build_id, require_current = TRUE
+)
+if (!identical(path.expand(library_value), build_bundle$library) ||
+    !identical(path.expand(provenance_value), build_bundle$provenance)) {
+    stop("immutable corpus build paths escaped the selected build generation")
+}
+library <- build_bundle$library
+provenance_path <- build_bundle$provenance
 provenance <- fertility_verify_provenance(checkout_root, library, provenance_path)
-expected_package_path <- fertility_package_path(library)
+if (!identical(provenance$provenance_id[[1L]], selected_build_id)) {
+    stop("selected build provenance identity is invalid")
+}
+expected_package_path <- build_bundle$package
+package_attestation <- fertility_attest_regular_tree(
+    expected_package_path, "installed dtaparser package"
+)
 .libPaths(c(library, .libPaths()))
+fertility_revalidate_regular_tree(
+    package_attestation, "installed dtaparser package"
+)
 for (package in c("dtaparser", "haven", "openssl", "callr")) {
     if (!requireNamespace(package, quietly = TRUE)) stop(package, " is required")
 }
@@ -55,13 +75,15 @@ if (!identical(normalizePath(getNamespaceInfo(asNamespace("dtaparser"), "path"),
     stop("dtaparser was not loaded from the immutable corpus library")
 }
 framework_id <- fertility_framework_id(
-    provenance$provenance_id[[1L]], fertility_required_paths()$datasigs
+    provenance$provenance_id[[1L]], fertility_required_paths()$datasigs, acceptance
 )
 if (!identical(framework_id, prepared_framework_id)) {
     stop("prepared corpus framework identity changed before execution")
 }
-snapshot_root <- fertility_verify_framework_snapshot(script_dir, raw_root, framework_id, inventory)
-configuration <- fertility_tile_configuration(options)
+snapshot_root <- fertility_verify_framework_snapshot(
+    script_dir, raw_root, framework_id, inventory, acceptance
+)
+configuration <- fertility_tile_configuration(options, acceptance)
 inventory_id <- fertility_inventory_id(inventory)
 family_manifest <- fertility_family_manifest(inventory, options)
 family_manifest_id <- fertility_manifest_id(family_manifest)
@@ -76,13 +98,19 @@ selection_id <- fertility_stable_id(list(
 ))
 owner <- fertility_read_owner(owner_state)
 if (!isTRUE(fertility_owner_alive(owner))) stop("orchestrator owner is not alive")
-lock_root <- file.path(raw_root, ".locks")
+invisible(fertility_assert_checkout_raw_root(raw_root, checkout_root))
+selection_lock_root <- fertility_assert_output_parent(
+    raw_root, ".locks", "selections", create = TRUE
+)
+case_lock_root <- fertility_assert_output_parent(
+    raw_root, ".locks", "cases", create = TRUE
+)
 selection_lock <- file.path(
-    lock_root, "selections", fertility_lock_component(selection_id, "selection ID")
+    selection_lock_root, fertility_lock_component(selection_id, "selection ID")
 )
 case_locks <- file.path(
-    lock_root, "cases", vapply(selected$id, fertility_lock_component, character(1),
-                                label = "case ID")
+    case_lock_root, vapply(selected$id, fertility_lock_component, character(1),
+                           label = "case ID")
 )
 run_locks <- fertility_acquire_lock_set(c(selection_lock, case_locks), owner)
 on.exit({
@@ -91,8 +119,10 @@ on.exit({
     }
 }, add = TRUE)
 
-checkpoint_root <- file.path(raw_root, "checkpoints", framework_id)
-dir.create(checkpoint_root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+invisible(fertility_assert_checkout_raw_root(raw_root, checkout_root))
+checkpoint_root <- fertility_assert_output_parent(
+    raw_root, "checkpoints", framework_id, create = TRUE
+)
 Sys.chmod(c(file.path(raw_root, "checkpoints"), checkpoint_root), mode = "0700")
 
 execute_tile <- function(item, tile, input) {
@@ -241,7 +271,7 @@ planning_failure_tile <- function(item, batch, detail) list(
     elapsed_seconds = 0
 )
 
-simple_result <- function(item, input, classification, reason = "") list(
+simple_result <- function(item, input, classification, reason = "") c(list(
     schema_version = fertility_schema_version, framework_id = framework_id,
     config_id = configuration$config_id, input_id = input$input_id,
     id = item$id, program = item$program, level = item$level,
@@ -252,7 +282,7 @@ simple_result <- function(item, input, classification, reason = "") list(
     tiles_expected = 0L, tiles_completed = 0L,
     complete = identical(classification, "expected-unsupported-111"),
     actual_sha512 = input$actual_sha512, elapsed_seconds = NA_real_
-)
+), fertility_result_acceptance_fields(input))
 
 checkpoints <- vector("list", nrow(selected))
 for (index in seq_len(nrow(selected))) {
@@ -260,14 +290,29 @@ for (index in seq_len(nrow(selected))) {
     if (item$id %in% names(options$encoding_overrides)) {
         item$encoding_override <- unname(options$encoding_overrides[[item$id]])
     }
-    input <- fertility_capture_input(item)
+    input <- fertility_capture_input(item, acceptance)
     preflight <- fertility_inventory_preflight(item, input)
-    file_root <- file.path(checkpoint_root, configuration$config_id, item$id)
+    file_root <- fertility_assert_output_parent(
+        checkpoint_root, configuration$config_id, item$id, create = TRUE
+    )
     tile_root <- file.path(file_root, "tiles")
-    result_path <- file.path(file_root, "result.rds")
-    dir.create(tile_root, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+    invisible(fertility_assert_direct_child(
+        tile_root, file_root, "tile checkpoint directory", must_work = FALSE
+    ))
+    if (!dir.exists(tile_root) &&
+        !dir.create(tile_root, showWarnings = FALSE, mode = "0700")) {
+        stop("could not create tile checkpoint directory")
+    }
+    invisible(fertility_assert_direct_child(
+        tile_root, file_root, "tile checkpoint directory"
+    ))
+    result_path <- fertility_assert_checkpoint_file(
+        file.path(file_root, "result.rds"), "file result checkpoint"
+    )
     existing <- if (file.exists(result_path)) tryCatch(
-        readRDS(result_path), error = function(error) NULL
+        readRDS(fertility_assert_checkpoint_file(
+            result_path, "file result checkpoint", must_exist = TRUE
+        )), error = function(error) NULL
     ) else NULL
     resumed <- !options$retry &&
         fertility_file_result_valid(
@@ -378,7 +423,7 @@ for (index in seq_len(nrow(selected))) {
         result <- fertility_tiled_result(
             item, framework_id, configuration, input, tiles, batches, total_rows
         )
-        final_input <- fertility_capture_input(item)
+        final_input <- fertility_capture_input(item, acceptance)
         if (!identical(final_input$input_id, input$input_id)) {
             result <- simple_result(
                 item, final_input, "inventory-hash-error",
@@ -387,38 +432,90 @@ for (index in seq_len(nrow(selected))) {
             result$complete <- FALSE
         }
     }
-    if (!resumed) fertility_atomic_save_rds(result, result_path)
+    if (!resumed) {
+        fertility_assert_checkpoint_file(result_path, "file result checkpoint")
+        fertility_atomic_save_rds(result, result_path)
+    }
     checkpoints[[index]] <- result
     message(item$id, if (resumed) ": resumed " else ": ", result$classification)
 }
-# Detect source, dependency, or installed-package changes before publication.
-final_provenance <- fertility_verify_provenance(
-    checkout_root, library, provenance_path
-)
-if (!identical(final_provenance$provenance_id[[1L]],
-               provenance$provenance_id[[1L]])) {
-    stop("corpus build provenance changed during the run")
-}
-invisible(fertility_verify_framework_snapshot(script_dir, raw_root, framework_id, inventory))
-if (!identical(
-    fertility_framework_id(final_provenance$provenance_id[[1L]],
-                           fertility_required_paths()$datasigs),
-    framework_id
-)) stop("corpus framework or inventory provenance changed during the run")
-for (index in seq_len(nrow(selected))) {
-    current_input <- fertility_capture_input(as.list(selected[index, , drop = FALSE]))
-    if (!identical(current_input$input_id, checkpoints[[index]]$input_id)) {
-        stop("corpus input changed before report publication")
+# Close over every source of publication authority and rerun this immediately
+# before both immutable bundle publication and CURRENT replacement.
+revalidate_run_evidence <- function(publication_provenance = NULL) {
+    live_inventory <- fertility_build_inventory()
+    fertility_validate_canonical_inventory(
+        fertility_inventory_manifest(live_inventory), exact = TRUE
+    )
+    if (!identical(fertility_inventory_id(live_inventory), inventory_id)) {
+        stop("canonical inventory changed before report publication")
     }
+    current_build <- fertility_resolve_build_bundle(
+        raw_root, provenance$provenance_id[[1L]], require_current = TRUE
+    )
+    final_provenance <- fertility_verify_provenance(
+        checkout_root, current_build$library, current_build$provenance
+    )
+    if (!identical(final_provenance$provenance_id[[1L]],
+                   provenance$provenance_id[[1L]]) ||
+        !identical(current_build$library, library) ||
+        !identical(current_build$package, expected_package_path)) {
+        stop("corpus build provenance changed during the run")
+    }
+    reloaded_acceptance <- if (is.null(acceptance)) NULL else
+        fertility_load_acceptance(
+            raw_root, acceptance$commitment_id, live_inventory
+        )
+    if (!identical(acceptance, reloaded_acceptance)) {
+        stop("accepted-current-hash artifact changed before publication")
+    }
+    invisible(fertility_validate_acceptance_current(
+        reloaded_acceptance, live_inventory
+    ))
+    invisible(fertility_verify_framework_snapshot(
+        script_dir, raw_root, framework_id, live_inventory, reloaded_acceptance
+    ))
+    if (!identical(
+        fertility_framework_id(
+            final_provenance$provenance_id[[1L]],
+            fertility_required_paths()$datasigs, reloaded_acceptance
+        ), framework_id
+    )) stop("corpus framework or inventory provenance changed during the run")
+    live_selected <- fertility_filter_inventory(live_inventory, options)
+    if (!identical(as.character(live_selected$id), as.character(selected$id))) {
+        stop("selected inventory changed before report publication")
+    }
+    for (index in seq_len(nrow(live_selected))) {
+        current_input <- fertility_capture_input(
+            as.list(live_selected[index, , drop = FALSE]), reloaded_acceptance
+        )
+        if (!identical(current_input$input_id, checkpoints[[index]]$input_id)) {
+            stop("corpus input changed before report publication")
+        }
+    }
+    if (!is.null(publication_provenance) && !is.null(reloaded_acceptance)) {
+        fertility_revalidate_accepted_publication(
+            raw_root, publication_provenance, live_inventory
+        )
+    }
+    invisible(list(
+        inventory = live_inventory, acceptance = reloaded_acceptance,
+        build = final_provenance
+    ))
 }
+invisible(revalidate_run_evidence())
 results <- fertility_result_frame(checkpoints)
 results$build_provenance_id <- rep(provenance$provenance_id[[1L]], nrow(results))
 summary <- fertility_classification_summary(results)
-report_parent <- file.path(raw_root, "reports", selection_id)
-dir.create(report_parent, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+invisible(fertility_assert_checkout_raw_root(raw_root, checkout_root))
+report_parent <- fertility_assert_output_parent(
+    raw_root, "reports", selection_id, create = TRUE
+)
 Sys.chmod(c(file.path(raw_root, "reports"), report_parent), mode = "0700")
 report_stage <- tempfile(".report.", tmpdir = report_parent)
 dir.create(report_stage, mode = "0700")
+invisible(fertility_assert_direct_child(
+    report_stage, report_parent, "report staging directory"
+))
 on.exit(unlink(report_stage, recursive = TRUE), add = TRUE)
 results <- fertility_publish_results(
     checkpoints, provenance$provenance_id[[1L]],
@@ -431,9 +528,12 @@ fertility_atomic_write_table(
 filter_spec <- fertility_filter_spec(options)
 evidence_origin <- "fresh-execution"
 input_attestation_id <- fertility_input_attestation_id(checkpoints)
+acceptance_authority <- if (is.null(acceptance)) "" else acceptance$authority
+acceptance_commitment_id <- if (is.null(acceptance)) "" else acceptance$commitment_id
 evidence_selection_id <- fertility_evidence_selection_id(
     selection_id, input_attestation_id, evidence_origin,
-    fertility_schema_version, fertility_report_schema_id()
+    fertility_schema_version, fertility_report_schema_id(),
+    acceptance_authority, acceptance_commitment_id
 )
 run_provenance <- data.frame(
     schema_version = fertility_schema_version,
@@ -441,6 +541,10 @@ run_provenance <- data.frame(
     evidence_origin = evidence_origin,
     source_corpus_schema_version = fertility_schema_version,
     replayed_at_utc = "",
+    acceptance_authority = acceptance_authority,
+    acceptance_commitment_id = acceptance_commitment_id,
+    acceptance_artifact_sha256 = if (is.null(acceptance)) "" else
+        acceptance$artifact_sha256,
     selection_id = selection_id,
     evidence_selection_id = evidence_selection_id,
     input_attestation_id = input_attestation_id,
@@ -474,12 +578,72 @@ run_provenance <- data.frame(
 )
 fertility_atomic_write_table(run_provenance,
                              file.path(report_stage, "run-provenance.tsv"))
+report_bundle_files <- c(
+    results = "results.tsv", summary = "summary.tsv",
+    family_manifest = "family-manifest.tsv",
+    provenance = "run-provenance.tsv"
+)
+report_bundle_expected <- list(
+    results = results, summary = summary,
+    family_manifest = family_manifest, provenance = run_provenance
+)
+validate_report_bundle <- function(path) fertility_validate_exact_table_bundle(
+    path, report_bundle_files, report_bundle_expected, "report bundle"
+)
 run_name <- paste0(format(Sys.time(), "%Y%m%dT%H%M%SZ", tz = "UTC"), "-", Sys.getpid())
 report_dir <- file.path(report_parent, run_name)
-if (!file.rename(report_stage, report_dir)) stop("could not publish report bundle")
+fertility_publication_test_hook(
+    "run-before-bundle-revalidation",
+    list(parent = report_parent, stage = report_stage, destination = report_dir)
+)
+invisible(revalidate_run_evidence(run_provenance))
+invisible(validate_report_bundle(report_stage))
+invisible(fertility_assert_checkout_raw_root(raw_root, checkout_root))
+report_parent <- fertility_assert_output_parent(raw_root, "reports", selection_id)
+invisible(fertility_assert_existing_directory(
+    report_stage, report_parent, "report staging directory"
+))
+report_dir <- fertility_assert_new_destination(
+    report_dir, report_parent, "report publication bundle"
+)
+fertility_atomic_rename_noreplace(
+    report_stage, report_dir, "report publication bundle"
+)
 current <- file.path(report_parent, "CURRENT")
 temporary_current <- tempfile("CURRENT.", tmpdir = report_parent)
 writeLines(run_name, temporary_current, useBytes = TRUE)
 Sys.chmod(temporary_current, mode = "0600")
-if (!file.rename(temporary_current, current)) stop("could not publish report pointer")
+pointer_ready <- tryCatch({
+    fertility_publication_test_hook(
+        "run-before-current-revalidation",
+        list(parent = report_parent, bundle = report_dir, pointer = current)
+    )
+    revalidate_run_evidence(run_provenance)
+    validate_report_bundle(report_dir)
+    fertility_assert_checkout_raw_root(raw_root, checkout_root)
+    report_parent <- fertility_assert_output_parent(
+        raw_root, "reports", selection_id
+    )
+    fertility_assert_existing_directory(
+        report_dir, report_parent, "report publication bundle"
+    )
+    fertility_assert_existing_file(
+        temporary_current, report_parent, "temporary report pointer"
+    )
+    fertility_assert_direct_child(
+        current, report_parent, "report CURRENT pointer", must_work = FALSE
+    )
+    TRUE
+}, error = function(error) {
+    fertility_remove_confirmed_new_path(
+        report_dir, report_parent, "new report publication bundle"
+    )
+    stop(error)
+})
+if (!isTRUE(pointer_ready) || !file.rename(temporary_current, current)) {
+    fertility_remove_confirmed_new_path(
+        report_dir, report_parent, "new report publication bundle"
+    )
+    stop("could not publish report pointer")
+}
 message("completed ", nrow(results), " selected files; report ", selection_id)

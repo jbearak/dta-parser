@@ -2,8 +2,8 @@
 set -eu
 umask 077
 
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-checkout_root=$(CDPATH= cd -- "$script_dir/../.." && pwd)
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+checkout_root=$(CDPATH= cd -- "$script_dir/../.." && pwd -P)
 raw_root="$checkout_root/target/fertility-surveys/raw"
 builds_root="$raw_root/builds"
 export R_ENVIRON_USER=/dev/null
@@ -18,7 +18,120 @@ if [ "${DTAPARSER_FERTILITY_CORPUS:-}" != 'I_UNDERSTAND_THIS_READS_PROPRIETARY_D
     exit 2
 fi
 
-mkdir -p "$raw_root/tmp"
+ensure_direct_directory() {
+    parent=$1
+    child=$2
+    if [ -L "$parent" ] || [ -L "$child" ] || [ ! -d "$parent" ]; then
+        printf '%s\n' 'fertility output paths must not contain symlinks' >&2
+        exit 2
+    fi
+    if [ ! -d "$child" ]; then
+        mkdir "$child"
+    fi
+    parent_canonical=$(CDPATH= cd -- "$parent" && pwd -P)
+    child_canonical=$(CDPATH= cd -- "$child" && pwd -P)
+    if [ "$child_canonical" != "$parent_canonical/$(basename -- "$child")" ]; then
+        printf '%s\n' 'fertility outputs must remain in the checkout-local raw root' >&2
+        exit 2
+    fi
+}
+
+assert_direct_directory() {
+    parent=$1
+    child=$2
+    label=$3
+    if [ -L "$parent" ] || [ -L "$child" ] || [ ! -d "$parent" ] || [ ! -d "$child" ]; then
+        printf '%s\n' "$label must be a direct non-symlink directory" >&2
+        exit 2
+    fi
+    parent_canonical=$(CDPATH= cd -- "$parent" && pwd -P)
+    child_canonical=$(CDPATH= cd -- "$child" && pwd -P)
+    if [ "$parent_canonical" != "$parent" ] ||
+       [ "$child_canonical" != "$parent_canonical/$(basename -- "$child")" ] ||
+       [ "$(dirname -- "$child")" != "$parent" ]; then
+        printf '%s\n' "$label escaped its canonical parent" >&2
+        exit 2
+    fi
+}
+
+assert_direct_file() {
+    parent=$1
+    child=$2
+    label=$3
+    assert_direct_directory "$(dirname -- "$parent")" "$parent" "$label parent"
+    if [ -L "$child" ] || [ ! -f "$child" ] || [ -d "$child" ] ||
+       [ "$(dirname -- "$child")" != "$parent" ]; then
+        printf '%s\n' "$label must be a direct non-symlink file" >&2
+        exit 2
+    fi
+}
+
+atomic_move_noreplace() {
+    source_path=$1
+    destination_path=$2
+    label=$3
+    command -v python3 >/dev/null 2>&1 || {
+        printf '%s\n' 'python3 is required for atomic no-replace publication' >&2
+        exit 1
+    }
+    if python3 - "$source_path" "$destination_path" <<'PY'
+import ctypes
+import errno
+import os
+import sys
+src = os.fsencode(sys.argv[1])
+dst = os.fsencode(sys.argv[2])
+libc = ctypes.CDLL(None, use_errno=True)
+if sys.platform == "darwin":
+    fn = libc.renamex_np
+    fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+    rc = fn(src, dst, 4)
+else:
+    fn = getattr(libc, "renameat2", None)
+    if fn is None:
+        sys.exit(18)
+    fn.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                   ctypes.c_char_p, ctypes.c_uint]
+    rc = fn(-100, src, -100, dst, 1)
+if rc != 0:
+    value = ctypes.get_errno()
+    sys.exit(17 if value in (errno.EEXIST, errno.ENOTEMPTY) else 19)
+PY
+    then
+        return 0
+    else
+        move_status=$?
+        if [ "$move_status" -eq 17 ]; then
+            printf '%s\n' "$label destination already exists" >&2
+            exit 2
+        fi
+        printf '%s\n' "atomic no-replace publication failed for $label" >&2
+        exit 1
+    fi
+}
+
+for output_component in \
+    "$checkout_root" \
+    "$checkout_root/target" \
+    "$checkout_root/target/fertility-surveys" \
+    "$raw_root" \
+    "$raw_root/tmp"
+do
+    if [ -L "$output_component" ]; then
+        printf '%s\n' 'fertility output paths must not contain symlinks' >&2
+        exit 2
+    fi
+done
+ensure_direct_directory "$checkout_root" "$checkout_root/target"
+ensure_direct_directory "$checkout_root/target" "$checkout_root/target/fertility-surveys"
+ensure_direct_directory "$checkout_root/target/fertility-surveys" "$raw_root"
+ensure_direct_directory "$raw_root" "$raw_root/tmp"
+raw_canonical=$(CDPATH= cd -- "$raw_root" && pwd -P)
+tmp_canonical=$(CDPATH= cd -- "$raw_root/tmp" && pwd -P)
+if [ "$raw_canonical" != "$raw_root" ] || [ "$tmp_canonical" != "$raw_root/tmp" ]; then
+    printf '%s\n' 'fertility outputs must remain in the checkout-local raw root' >&2
+    exit 2
+fi
 chmod 700 "$raw_root" "$raw_root/tmp"
 run_tmp=$(mktemp -d "$raw_root/tmp/run.XXXXXX")
 chmod 700 "$run_tmp"
@@ -73,6 +186,18 @@ case " $* " in
         Rscript --vanilla "$script_dir/run.R" "$@"
         exit $?
         ;;
+    *' --capture-accepted-current-hashes '*)
+        [ "$#" -eq 1 ] || {
+            printf '%s\n' 'accepted-current-hash capture takes no other options' >&2
+            exit 2
+        }
+        Rscript --vanilla "$script_dir/accepted.R" "$@"
+        exit $?
+        ;;
+    *' --assessment-family-id='*)
+        Rscript --vanilla "$script_dir/assessment.R" "$@"
+        exit $?
+        ;;
     *' --family-id='*)
         Rscript --vanilla "$script_dir/merge.R" "$@"
         exit $?
@@ -95,11 +220,18 @@ for package in haven openssl callr ps readr rlang tibble tidyselect; do
     }
 done
 
-mkdir -p "$builds_root"
+ensure_direct_directory "$raw_root" "$builds_root"
+assert_direct_directory "$raw_root" "$builds_root" 'builds root'
 chmod 700 "$builds_root"
 current_id=
-if [ -f "$builds_root/CURRENT" ]; then
-    current_id=$(tr -d '\r\n' < "$builds_root/CURRENT")
+current_pointer="$builds_root/CURRENT"
+if [ -L "$current_pointer" ] || [ -d "$current_pointer" ]; then
+    printf '%s\n' 'build CURRENT must be a direct non-symlink file' >&2
+    exit 2
+fi
+if [ -f "$current_pointer" ]; then
+    assert_direct_file "$builds_root" "$current_pointer" 'build CURRENT'
+    current_id=$(tr -d '\r\n' < "$current_pointer")
     case "$current_id" in
         ''|*[!0-9a-f]*) current_id= ;;
     esac
@@ -107,16 +239,20 @@ if [ -f "$builds_root/CURRENT" ]; then
 fi
 valid_install=false
 if [ -n "$current_id" ]; then
-    library="$builds_root/$current_id/library"
-    provenance="$builds_root/$current_id/build-provenance.tsv"
-    if [ -f "$provenance" ] && [ -d "$library/dtaparser" ]; then
-        if Rscript --vanilla -e '
+    generation="$builds_root/$current_id"
+    library="$generation/library"
+    provenance="$generation/build-provenance.tsv"
+    package_dir="$library/dtaparser"
+    assert_direct_directory "$builds_root" "$generation" 'selected build generation'
+    assert_direct_directory "$generation" "$library" 'selected build library'
+    assert_direct_file "$generation" "$provenance" 'selected build provenance'
+    assert_direct_directory "$library" "$package_dir" 'selected dtaparser package'
+    if Rscript --vanilla -e '
             source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]);
             fertility_verify_provenance(commandArgs(TRUE)[[3L]], commandArgs(TRUE)[[4L]], commandArgs(TRUE)[[5L]])
         ' "$script_dir/common.R" "$script_dir/provenance.R" "$checkout_root" "$library" "$provenance" >/dev/null 2>&1; then
             valid_install=true
         fi
-    fi
 fi
 
 if [ "$valid_install" != true ]; then
@@ -161,11 +297,17 @@ if [ "$valid_install" != true ]; then
     ' "$script_dir/common.R" "$script_dir/provenance.R" "$checkout_root" "$staged_library" "$staged_provenance" "$tarball_sha256"
     current_id=$(Rscript --vanilla -e 'x <- read.delim(commandArgs(TRUE)[[1L]], colClasses="character", check.names=FALSE); cat(x$provenance_id[[1L]])' "$staged_provenance")
     generation="$builds_root/$current_id"
-    if [ -e "$generation" ]; then
+    assert_direct_directory "$raw_root" "$builds_root" 'builds root'
+    if [ -e "$generation" ] || [ -L "$generation" ]; then
         printf '%s\n' 'immutable corpus build generation already exists but was not reusable' >&2
         exit 1
     fi
-    mv "$staged_bundle" "$generation"
+    if [ "$(dirname -- "$generation")" != "$builds_root" ]; then
+        printf '%s\n' 'build generation escaped its canonical parent' >&2
+        exit 2
+    fi
+    atomic_move_noreplace "$staged_bundle" "$generation" \
+        'immutable corpus build generation'
     staged_bundle=
     library="$generation/library"
     provenance="$generation/build-provenance.tsv"
@@ -174,12 +316,34 @@ if [ "$valid_install" != true ]; then
     current_tmp="$run_tmp/CURRENT"
     printf '%s\n' "$current_id" > "$current_tmp"
     chmod 600 "$current_tmp"
-    mv -f "$current_tmp" "$builds_root/CURRENT"
+    assert_direct_directory "$raw_root" "$builds_root" 'builds root'
+    assert_direct_directory "$builds_root" "$generation" 'published build generation'
+    assert_direct_directory "$generation" "$library" 'published build library'
+    assert_direct_file "$generation" "$provenance" 'published build provenance'
+    assert_direct_directory "$library" "$library/dtaparser" 'published dtaparser package'
+    if [ -L "$current_pointer" ] || [ -d "$current_pointer" ]; then
+        printf '%s\n' 'build CURRENT must be a direct non-symlink file' >&2
+        exit 2
+    fi
+    [ ! -f "$current_pointer" ] || assert_direct_file "$builds_root" "$current_pointer" 'build CURRENT'
+    mv -f "$current_tmp" "$current_pointer"
+fi
+
+assert_direct_directory "$raw_root" "$builds_root" 'builds root'
+assert_direct_directory "$builds_root" "$generation" 'selected build generation'
+assert_direct_directory "$generation" "$library" 'selected build library'
+assert_direct_file "$generation" "$provenance" 'selected build provenance'
+assert_direct_directory "$library" "$library/dtaparser" 'selected dtaparser package'
+assert_direct_file "$builds_root" "$current_pointer" 'build CURRENT'
+selected_current_id=$(tr -d '\r\n' < "$current_pointer")
+if [ "$selected_current_id" != "$current_id" ]; then
+    printf '%s\n' 'selected build CURRENT changed before framework preparation' >&2
+    exit 2
 fi
 
 export DTAPARSER_FERTILITY_LIBRARY="$library"
 export DTAPARSER_FERTILITY_PROVENANCE="$provenance"
-framework_id=$(Rscript --vanilla "$script_dir/prepare.R")
+framework_id=$(Rscript --vanilla "$script_dir/prepare.R" "$@")
 export DTAPARSER_FERTILITY_FRAMEWORK_ID="$framework_id"
 if ! Rscript --vanilla "$script_dir/runtime.R" release-lock "$build_lock" "$build_lock_token"; then
     printf '%s\n' 'could not release fertility corpus build lock' >&2

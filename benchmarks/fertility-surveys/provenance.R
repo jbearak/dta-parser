@@ -21,21 +21,18 @@ fertility_tree_digest <- function(checkout_root, scope) {
 }
 
 fertility_directory_digest <- function(directory) {
-    directory <- normalizePath(directory, winslash = "/", mustWork = TRUE)
-    paths <- sort(list.files(directory, recursive = TRUE, all.files = TRUE,
-                             full.names = FALSE, include.dirs = FALSE, no.. = TRUE))
-    if (!length(paths)) stop("installed package is empty")
+    attestation <- fertility_attest_regular_tree(directory, "installed package")
     temporary <- tempfile("fertility-installed-")
     on.exit(unlink(temporary), add = TRUE)
-    writeLines(paste(paths, unname(tools::sha256sum(file.path(directory, paths))),
-                     sep = "\t"), temporary, useBytes = TRUE)
+    writeLines(paste(attestation$paths, attestation$sha256, sep = "\t"),
+               temporary, useBytes = TRUE)
     unname(tools::sha256sum(temporary))
 }
 
 fertility_package_path <- function(library) {
     library <- normalizePath(library, winslash = "/", mustWork = TRUE)
     lexical <- file.path(library, "dtaparser")
-    if (nzchar(Sys.readlink(lexical))) stop("installed package must not be a symlink")
+    if (fertility_path_is_symlink(lexical)) stop("installed package must not be a symlink")
     resolved <- normalizePath(lexical, winslash = "/", mustWork = TRUE)
     if (!identical(dirname(resolved), library)) stop("installed package escaped library")
     resolved
@@ -202,9 +199,11 @@ fertility_verify_recorded_framework_snapshot <- function(checkout_root, snapshot
     on.exit(unlink(extracted, recursive = TRUE), add = TRUE)
     for (name in c("common.R", "worker.R", "compare.R", "runtime.R")) {
         expected <- file.path(extracted, "benchmarks", "fertility-surveys", name)
-        actual <- file.path(snapshot_root, name)
-        if (!file.exists(actual) ||
-            !identical(unname(tools::sha256sum(expected)),
+        actual <- fertility_assert_existing_file(
+            file.path(snapshot_root, name), snapshot_root,
+            "recorded framework snapshot file"
+        )
+        if (!identical(unname(tools::sha256sum(expected)),
                        unname(tools::sha256sum(actual)))) {
             stop("recorded framework snapshot is not migration-safe")
         }

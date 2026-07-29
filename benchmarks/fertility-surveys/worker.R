@@ -13,7 +13,13 @@ fertility_worker_base <- function(item, framework_id, timeout_seconds) {
 }
 
 fertility_load_readers <- function(package_library, expected_package_path) {
+    package_attestation <- fertility_attest_regular_tree(
+        expected_package_path, "installed dtaparser package"
+    )
     .libPaths(c(package_library, .libPaths()))
+    fertility_revalidate_regular_tree(
+        package_attestation, "installed dtaparser package"
+    )
     if (!requireNamespace("dtaparser", quietly = TRUE)) stop("dtaparser-load-error")
     loaded <- normalizePath(getNamespaceInfo(asNamespace("dtaparser"), "path"),
                             winslash = "/", mustWork = TRUE)
@@ -373,10 +379,16 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
         ))
         secondary <- c(secondary, "row-termination-mismatch")
     }
+    source_structure_unavailable <- identical(tile$type, "metadata") &&
+        inherits(source_structure, "error")
+    if (source_structure_unavailable) {
+        secondary <- c(secondary, "structural-metadata-unavailable")
+    }
     error_classification <- fertility_reader_error_classification(errors)
     classification <- if (any(memory_errors)) "memory-limit" else if ("metadata-reader-error" %in% secondary)
         "dtaparser-only-error" else if (!is.na(error_classification))
-        error_classification else if ("row-termination-mismatch" %in% secondary)
+        error_classification else if (source_structure_unavailable)
+        "unresolved" else if ("row-termination-mismatch" %in% secondary)
         "row-termination-mismatch" else if ("direct-vs-rust-mismatch" %in% secondary)
         "direct-vs-rust-mismatch" else if (nrow(mismatches))
         mismatches$category[[1L]] else "pass"

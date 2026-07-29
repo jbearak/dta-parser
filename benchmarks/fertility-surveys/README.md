@@ -113,6 +113,79 @@ The exhaustive run is:
 benchmarks/fertility-surveys/benchmark.sh
 ```
 
+## Explicit accepted-current-hash evidence for F0633-F0637
+
+The historical SHA-512 values in `datasigs.csv` remain the manifest authority and
+are never rewritten. If a separately authorized local review accepts the current
+bytes for exactly `F0633` through `F0637`, capture those bytes into a private,
+immutable commitment below `target/fertility-surveys/raw/`:
+
+```sh
+commitment_id=$(
+  benchmarks/fertility-surveys/benchmark.sh --capture-accepted-current-hashes
+)
+```
+
+Capture requires the normal proprietary-data opt-in, is refused in CI and GitHub
+Actions, rejects symlinked output ancestors, confines publication to the
+checkout-local canonical `target/fertility-surveys/raw` path, validates exactly
+five canonical 128-hex SHA-512 values, and emits only the privacy-safe commitment
+ID. The private artifact is not tracked and contains no source paths. It does not
+modify `datasigs.csv`, `/opt/aww_cache`, or any
+existing checkpoint or report.
+
+Run the separate accepted family only through the explicit CLI option. There is
+no environment-variable fallback, and accepted execution rejects every selection
+other than the exact unsharded five-ID family:
+
+```sh
+benchmarks/fertility-surveys/benchmark.sh \
+  --accepted-current-hashes="$commitment_id" \
+  --id=F0633,F0634,F0635,F0636,F0637
+```
+
+The loader revalidates the immutable artifact, its authority and commitment
+identity, the unchanged manifest signatures, and the current file bytes. The
+same validation runs again before publication. The commitment authority, ID, and
+artifact identity are bound into the accepted framework, configuration, input,
+checkpoint, family, selection, evidence, and report-bundle identities. The
+original `expected_sha512` remains unchanged and its status remains
+`signature-mismatch`; accepted execution records a separate
+`accepted-current-sha512-match` local-evidence status and never describes the
+manifest as verified.
+
+Merge the resulting separate five-ID family normally:
+
+```sh
+benchmarks/fertility-surveys/benchmark.sh --family-id=<accepted-family-id>
+```
+
+Merge validation requires exactly one shard, exactly `F0633`-`F0637`, consistent
+acceptance provenance, and executable outcomes for all five. Immediately before
+publication it rebuilds the live canonical inventory, reloads the exact immutable
+artifact, verifies its recorded SHA-256 identity, and revalidates all five current
+files. It cannot merge the accepted evidence into the original 1,004-file family.
+After both families have been merged, publish a separate derived assessment:
+
+```sh
+benchmarks/fertility-surveys/benchmark.sh \
+  --assessment-family-id=<original-full-family-id> \
+  --accepted-family-id=<accepted-five-family-id>
+```
+
+The assessment consumes and strictly revalidates each family's merged `CURRENT`
+bundle, including its results, summary, family manifest, aggregate input
+attestation, evidence-family identity, and merge identity. Its own identity binds
+both source merge identities. Immediately before publication it reloads both
+merged bundles, rebuilds the live inventory, and repeats accepted-artifact and
+current-byte validation. It preserves both source identities and classifications,
+requires the original full family to retain `inventory-hash-error` for exactly
+`F0633`-`F0637` with the sole privacy-safe reason `signature-mismatch`, and exposes
+two orthogonal statuses:
+`manifest_gate=blocked-signature-mismatch` and
+`explicit_local_evidence_gate=validated`. It does not replace the manifest gate,
+rewrite either family, or authorize Wave 3.
+
 ## Historical schema-10 validation and republication
 
 The complete eight-shard run from framework
@@ -165,6 +238,8 @@ tile. Available options are:
 - `--cell-budget=N` (cells across all three readers; default 1,000,000)
 - `--max-tiles-per-batch=N` (hard traversal ceiling; default 100,000)
 - `--beyond-end-windows=N` (terminal verification windows; default 1, maximum 8)
+- `--accepted-current-hashes=ID` (explicit private commitment; valid only with
+  the exact unsharded `F0633`-`F0637` selection)
 - `--retry` (rerun failed tiles only; completed matches and mismatches resume)
 
 Encoding overrides are explicit run configuration, never tracked corpus-specific
@@ -211,8 +286,9 @@ ID/release/signature, full input identity, exact tile projection/window, and a
 stable configuration ID. The configuration includes timeout, row cap, column
 batch, memory budget, cell budget, reader count, object overhead, probe count, and
 tile ceiling, so changing any sizing/resource limit cannot silently reuse foreign
-tiles. Timeout, memory-limit, crash, and reader-error tiles are resumable and are
-rerun only with `--retry`;
+tiles. Timeout, memory-limit, crash, reader-error, and independent
+`structural-metadata-unavailable` tiles are resumable and are rerun only with
+`--retry`;
 completed semantic mismatches remain valid evidence. Filters and shards do not
 alter tile identity.
 
@@ -310,5 +386,7 @@ continued traversal after early mismatches, timeout retry, schema/input/config
 invalidation, exhaustive metadata/value/tag/date/encoding categories and numeric
 outliers, absence of unbounded supported-file reads, atomic publication, immutable
 SHA-256 build/dependency provenance, live and remote owner recovery, nested
-parent-R/callr temp confinement, release-111 handling, signature refusal, and
-CI/manual opt-in refusal.
+parent-R/callr temp confinement, release-111 handling, signature refusal,
+structural-metadata retry, accepted-hash parsing and exact selection, private
+artifact/input invalidation, identity isolation, strict accepted-family merge,
+derived dual-gate assessment, and CI/manual opt-in refusal.

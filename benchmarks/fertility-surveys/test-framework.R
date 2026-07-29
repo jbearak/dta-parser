@@ -1,6 +1,7 @@
 script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
 script_dir <- dirname(normalizePath(sub("^--file=", "", script_argument), winslash = "/"))
 source(file.path(script_dir, "common.R"))
+source(file.path(script_dir, "accepted.R"))
 source(file.path(script_dir, "compare.R"))
 source(file.path(script_dir, "runner.R"))
 source(file.path(script_dir, "worker.R"))
@@ -9,12 +10,564 @@ source(file.path(script_dir, "provenance.R"))
 
 expect_error <- function(expression, pattern) {
     error <- tryCatch({ force(expression); NULL }, error = identity)
-    stopifnot(inherits(error, "error"), grepl(pattern, conditionMessage(error)))
+    if (!inherits(error, "error")) stop("expected error matching: ", pattern)
+    if (!grepl(pattern, conditionMessage(error))) {
+        stop("expected error matching '", pattern, "', got: ", conditionMessage(error))
+    }
+    invisible(error)
 }
 
 root <- tempfile("fertility-framework-")
 dir.create(root)
+root <- normalizePath(root, winslash = "/", mustWork = TRUE)
 on.exit(unlink(root, recursive = TRUE), add = TRUE)
+
+# Output confinement rejects symlinked roots, publication descendants, CURRENT
+# pointers, selected bundles, and consumed files before any private publication.
+confinement_checkout <- file.path(root, "confinement-checkout")
+dir.create(confinement_checkout)
+confinement_raw <- file.path(
+    confinement_checkout, "target", "fertility-surveys", "raw"
+)
+stopifnot(identical(
+    fertility_assert_checkout_raw_root(
+        confinement_raw, confinement_checkout, create = TRUE
+    ),
+    confinement_raw
+))
+confinement_outside <- file.path(root, "confinement-outside")
+dir.create(confinement_outside, mode = "0755")
+outside_mode <- file.info(confinement_outside)$mode[[1L]]
+raw_symlink_checkout <- file.path(root, "raw-symlink-checkout")
+dir.create(file.path(raw_symlink_checkout, "target", "fertility-surveys"),
+           recursive = TRUE)
+stopifnot(file.symlink(
+    confinement_outside,
+    file.path(raw_symlink_checkout, "target", "fertility-surveys", "raw")
+))
+expect_error(fertility_assert_checkout_raw_root(
+    file.path(raw_symlink_checkout, "target", "fertility-surveys", "raw"),
+    raw_symlink_checkout
+), "must not be symlinks")
+for (name in c(
+    "tmp", "reports", "merged", "assessments", "checkpoints", "framework",
+    ".locks", "builds", "accepted-current-hashes"
+)) {
+    path <- file.path(confinement_raw, name)
+    stopifnot(file.symlink(confinement_outside, path))
+    expect_error(fertility_assert_direct_child(
+        path, confinement_raw, paste(name, "test path")
+    ), "symlink")
+    unlink(path)
+}
+destination_parent <- file.path(root, "destination-confinement")
+dir.create(destination_parent)
+for (with_content in c(FALSE, TRUE)) {
+    destination <- file.path(
+        destination_parent, paste0("existing-", as.integer(with_content))
+    )
+    dir.create(destination)
+    sentinel <- file.path(destination, "sentinel")
+    if (with_content) writeLines("untouched", sentinel)
+    before <- list.files(destination, all.files = TRUE, no.. = TRUE)
+    expect_error(fertility_assert_new_destination(
+        destination, destination_parent, "publication destination"
+    ), "already exists")
+    stopifnot(identical(
+        list.files(destination, all.files = TRUE, no.. = TRUE), before
+    ))
+    if (with_content) stopifnot(identical(readLines(sentinel), "untouched"))
+}
+atomic_parent <- file.path(root, "atomic-publication")
+dir.create(atomic_parent)
+atomic_source <- file.path(atomic_parent, "source")
+atomic_destination <- file.path(atomic_parent, "destination")
+dir.create(atomic_source)
+writeLines("source", file.path(atomic_source, "value"))
+fertility_atomic_rename_noreplace(
+    atomic_source, atomic_destination, "synthetic atomic publication"
+)
+stopifnot(
+    !dir.exists(atomic_source),
+    identical(readLines(file.path(atomic_destination, "value")), "source")
+)
+atomic_competitor <- file.path(atomic_parent, "competitor")
+atomic_race_destination <- file.path(atomic_parent, "race-destination")
+dir.create(atomic_competitor)
+writeLines("competitor", file.path(atomic_competitor, "value"))
+old_atomic_hook <- getOption("dtaparser.fertility.publication_test_hook")
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "atomic-noreplace-before-operation")) {
+        dir.create(context$to)
+        writeLines("winner", file.path(context$to, "value"))
+    }
+})
+expect_error(fertility_atomic_rename_noreplace(
+    atomic_competitor, atomic_race_destination,
+    "synthetic atomic race publication"
+), "destination already exists")
+options(dtaparser.fertility.publication_test_hook = old_atomic_hook)
+stopifnot(
+    identical(readLines(file.path(atomic_competitor, "value")), "competitor"),
+    identical(readLines(file.path(atomic_race_destination, "value")), "winner")
+)
+revalidation_fixture <- file.path(root, "publication-revalidation")
+dir.create(revalidation_fixture)
+framework_source_fixture <- file.path(revalidation_fixture, "framework.tsv")
+checkpoint_source_fixture <- file.path(revalidation_fixture, "checkpoint.rds")
+writeLines("framework-v1", framework_source_fixture)
+saveRDS("checkpoint-v1", checkpoint_source_fixture)
+source_attestation <- fertility_attest_existing_files(
+    c(framework_source_fixture, checkpoint_source_fixture),
+    "publication source"
+)
+old_publication_hook <- getOption(
+    "dtaparser.fertility.publication_test_hook"
+)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "synthetic-before-current")) {
+        writeLines("framework-v2", framework_source_fixture)
+    }
+})
+fertility_publication_test_hook("synthetic-before-current")
+expect_error(fertility_revalidate_existing_files(
+    source_attestation, "publication source"
+), "identity changed")
+writeLines("framework-v1", framework_source_fixture)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "synthetic-before-current")) {
+        saveRDS("checkpoint-v2", checkpoint_source_fixture)
+    }
+})
+fertility_publication_test_hook("synthetic-before-current")
+expect_error(fertility_revalidate_existing_files(
+    source_attestation, "publication source"
+), "identity changed")
+saveRDS("checkpoint-v1", checkpoint_source_fixture)
+options(dtaparser.fertility.publication_test_hook = old_publication_hook)
+stopifnot(isTRUE(fertility_revalidate_existing_files(
+    source_attestation, "publication source"
+)))
+for (boundary in c("staged", "renamed")) {
+    exact_bundle <- file.path(root, paste0("exact-report-", boundary))
+    dir.create(exact_bundle)
+    exact_results <- data.frame(
+        id = "F0001", classification = "pass",
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    exact_summary <- data.frame(
+        classification = "pass", files = 1L,
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    fertility_atomic_write_table(
+        exact_results, file.path(exact_bundle, "results.tsv")
+    )
+    fertility_atomic_write_table(
+        exact_summary, file.path(exact_bundle, "summary.tsv")
+    )
+    stopifnot(length(fertility_validate_exact_table_bundle(
+        exact_bundle, c(results = "results.tsv", summary = "summary.tsv"),
+        list(results = exact_results, summary = exact_summary),
+        paste(boundary, "report bundle")
+    )) == 2L)
+    changed_results <- exact_results
+    changed_results$classification <- "metadata-mismatch"
+    fertility_atomic_write_table(
+        changed_results, file.path(exact_bundle, "results.tsv")
+    )
+    expect_error(fertility_validate_exact_table_bundle(
+        exact_bundle, c(results = "results.tsv", summary = "summary.tsv"),
+        list(results = exact_results, summary = exact_summary),
+        paste(boundary, "report bundle")
+    ), "exact contents changed")
+
+    assessment_bundle <- file.path(root, paste0("exact-assessment-", boundary))
+    dir.create(assessment_bundle)
+    expected_assessment <- data.frame(
+        assessment_id = paste(rep("a", 64L), collapse = ""),
+        manifest_gate = TRUE, stringsAsFactors = FALSE, check.names = FALSE
+    )
+    fertility_atomic_write_table(
+        expected_assessment, file.path(assessment_bundle, "assessment.tsv")
+    )
+    changed_assessment <- expected_assessment
+    changed_assessment$manifest_gate <- FALSE
+    fertility_atomic_write_table(
+        changed_assessment, file.path(assessment_bundle, "assessment.tsv")
+    )
+    expect_error(fertility_validate_exact_table_bundle(
+        assessment_bundle, c(assessment = "assessment.tsv"),
+        list(assessment = expected_assessment),
+        paste(boundary, "assessment bundle")
+    ), "exact contents changed")
+}
+for (bundle_kind in c("run", "merge", "assessment")) {
+    for (boundary in c("staged", "renamed")) {
+        for (mutation in c("extra-file", "hidden-file", "nested-directory")) {
+            shape_bundle <- file.path(
+                root, paste("exact-shape", bundle_kind, boundary, mutation, sep = "-")
+            )
+            dir.create(shape_bundle)
+            expected_name <- if (identical(bundle_kind, "assessment")) {
+                "assessment.tsv"
+            } else "results.tsv"
+            expected_table <- data.frame(
+                value = "canonical", stringsAsFactors = FALSE,
+                check.names = FALSE
+            )
+            fertility_atomic_write_table(
+                expected_table, file.path(shape_bundle, expected_name)
+            )
+            if (identical(mutation, "extra-file")) {
+                writeLines("extra", file.path(shape_bundle, "extra.tsv"))
+            } else if (identical(mutation, "hidden-file")) {
+                writeLines("hidden", file.path(shape_bundle, ".hidden"))
+            } else {
+                dir.create(file.path(shape_bundle, "nested"))
+                writeLines("nested", file.path(shape_bundle, "nested", "value"))
+            }
+            expect_error(fertility_validate_exact_table_bundle(
+                shape_bundle, setNames(expected_name, "table"),
+                list(table = expected_table),
+                paste(boundary, bundle_kind, "publication bundle")
+            ), "exact file set changed")
+        }
+    }
+}
+build_id_fixture <- paste(rep("c", 64L), collapse = "")
+builds_fixture <- file.path(confinement_raw, "builds")
+generation_fixture <- file.path(builds_fixture, build_id_fixture)
+library_fixture <- file.path(generation_fixture, "library")
+package_fixture <- file.path(library_fixture, "dtaparser")
+dir.create(package_fixture, recursive = TRUE)
+writeLines("synthetic", file.path(generation_fixture, "build-provenance.tsv"))
+writeLines(build_id_fixture, file.path(builds_fixture, "CURRENT"))
+stopifnot(identical(
+    fertility_resolve_build_bundle(
+        confinement_raw, build_id_fixture, require_current = TRUE
+    )$package,
+    package_fixture
+))
+build_external <- file.path(root, "build-descendant-external")
+dir.create(file.path(build_external, "library", "dtaparser"), recursive = TRUE)
+writeLines("external", file.path(build_external, "CURRENT"))
+writeLines("external", file.path(build_external, "build-provenance.tsv"))
+build_external_before <- as.list(file.info(c(
+    build_external, file.path(build_external, "CURRENT"),
+    file.path(build_external, "build-provenance.tsv")
+))[, c("size", "mode")])
+for (case in list(
+    list(path = file.path(builds_fixture, "CURRENT"),
+         target = file.path(build_external, "CURRENT")),
+    list(path = generation_fixture, target = build_external),
+    list(path = library_fixture, target = file.path(build_external, "library")),
+    list(path = file.path(generation_fixture, "build-provenance.tsv"),
+         target = file.path(build_external, "build-provenance.tsv")),
+    list(path = package_fixture,
+         target = file.path(build_external, "library", "dtaparser"))
+)) {
+    saved <- paste0(case$path, ".saved")
+    stopifnot(file.rename(case$path, saved), file.symlink(case$target, case$path))
+    expect_error(fertility_resolve_build_bundle(
+        confinement_raw, build_id_fixture, require_current = TRUE
+    ), "symlink")
+    unlink(case$path)
+    stopifnot(file.rename(saved, case$path))
+}
+stopifnot(identical(as.list(file.info(c(
+    build_external, file.path(build_external, "CURRENT"),
+    file.path(build_external, "build-provenance.tsv")
+))[, c("size", "mode")]), build_external_before))
+package_nested <- file.path(package_fixture, "R")
+dir.create(package_nested)
+package_file <- file.path(package_nested, "dtaparser")
+writeLines("equal-content", package_file)
+package_attestation <- fertility_attest_regular_tree(
+    package_fixture, "synthetic installed package"
+)
+external_package_file <- file.path(root, "external-package-file")
+writeLines("equal-content", external_package_file)
+stopifnot(file.rename(package_file, paste0(package_file, ".saved")))
+stopifnot(file.symlink(external_package_file, package_file))
+expect_error(fertility_attest_regular_tree(
+    package_fixture, "synthetic installed package"
+), "symlinks")
+unlink(package_file)
+stopifnot(file.rename(paste0(package_file, ".saved"), package_file))
+external_package_directory <- file.path(root, "external-package-directory")
+dir.create(external_package_directory)
+writeLines("equal-content", file.path(external_package_directory, "dtaparser"))
+stopifnot(file.rename(package_nested, paste0(package_nested, ".saved")))
+stopifnot(file.symlink(external_package_directory, package_nested))
+expect_error(fertility_attest_regular_tree(
+    package_fixture, "synthetic installed package"
+), "symlinks")
+unlink(package_nested)
+stopifnot(file.rename(paste0(package_nested, ".saved"), package_nested))
+stopifnot(isTRUE(fertility_revalidate_regular_tree(
+    package_attestation, "synthetic installed package"
+)))
+unlink(builds_fixture, recursive = TRUE)
+checkpoint_framework_id <- paste(rep("e", 64L), collapse = "")
+checkpoint_config_id <- paste(rep("f", 64L), collapse = "")
+checkpoint_case_id <- "F0001"
+checkpoint_case <- file.path(
+    confinement_raw, "checkpoints", checkpoint_framework_id,
+    checkpoint_config_id, checkpoint_case_id
+)
+dir.create(file.path(checkpoint_case, "tiles"), recursive = TRUE)
+saveRDS("result", file.path(checkpoint_case, "result.rds"))
+saveRDS("tile", file.path(checkpoint_case, "tiles", "metadata.rds"))
+checkpoint_paths <- fertility_resolve_checkpoint_case(
+    confinement_raw, checkpoint_framework_id, checkpoint_config_id,
+    checkpoint_case_id
+)
+stopifnot(length(fertility_checkpoint_tile_files(checkpoint_paths)) == 1L)
+checkpoint_external <- file.path(root, "checkpoint-descendant-external")
+dir.create(file.path(checkpoint_external, "tiles"), recursive = TRUE)
+saveRDS("external-result", file.path(checkpoint_external, "result.rds"))
+saveRDS("external-tile", file.path(checkpoint_external, "tiles", "metadata.rds"))
+checkpoint_external_before <- unname(tools::sha256sum(c(
+    file.path(checkpoint_external, "result.rds"),
+    file.path(checkpoint_external, "tiles", "metadata.rds")
+)))
+checkpoint_framework <- file.path(
+    confinement_raw, "checkpoints", checkpoint_framework_id
+)
+checkpoint_configuration <- file.path(
+    checkpoint_framework, checkpoint_config_id
+)
+for (case in list(
+    list(path = checkpoint_framework, target = checkpoint_external),
+    list(path = checkpoint_configuration, target = checkpoint_external),
+    list(path = checkpoint_case, target = checkpoint_external),
+    list(path = file.path(checkpoint_case, "result.rds"),
+         target = file.path(checkpoint_external, "result.rds")),
+    list(path = file.path(checkpoint_case, "tiles"),
+         target = file.path(checkpoint_external, "tiles"))
+)) {
+    saved <- paste0(case$path, ".saved")
+    stopifnot(file.rename(case$path, saved), file.symlink(case$target, case$path))
+    expect_error(fertility_resolve_checkpoint_case(
+        confinement_raw, checkpoint_framework_id, checkpoint_config_id,
+        checkpoint_case_id
+    ), "symlink")
+    unlink(case$path)
+    stopifnot(file.rename(saved, case$path))
+}
+tile_path <- file.path(checkpoint_case, "tiles", "metadata.rds")
+tile_saved <- file.path(root, "checkpoint-metadata.saved")
+stopifnot(file.rename(tile_path, tile_saved), file.symlink(
+    file.path(checkpoint_external, "tiles", "metadata.rds"), tile_path
+))
+expect_error(fertility_checkpoint_tile_files(
+    fertility_resolve_checkpoint_case(
+        confinement_raw, checkpoint_framework_id, checkpoint_config_id,
+        checkpoint_case_id
+    )
+), "symlink")
+unlink(tile_path)
+stopifnot(file.rename(tile_saved, tile_path))
+stopifnot(identical(unname(tools::sha256sum(c(
+    file.path(checkpoint_external, "result.rds"),
+    file.path(checkpoint_external, "tiles", "metadata.rds")
+))), checkpoint_external_before))
+unlink(file.path(confinement_raw, "checkpoints"), recursive = TRUE)
+owner_fixture <- file.path(root, "owner-confinement")
+dir.create(owner_fixture)
+owner_external <- file.path(root, "owner-external.tsv")
+writeLines("external-owner", owner_external)
+stopifnot(file.symlink(owner_external, file.path(owner_fixture, "owner.tsv")))
+expect_error(fertility_read_owner(owner_fixture), "symlink")
+unlink(file.path(owner_fixture, "owner.tsv"))
+heartbeat_external <- file.path(root, "heartbeat-external")
+writeLines("generation", heartbeat_external)
+heartbeat_link <- file.path(owner_fixture, "heartbeat")
+stopifnot(file.symlink(heartbeat_external, heartbeat_link))
+expect_error(fertility_owner_alive(list(
+    token = "token", pid = 1L, host = "foreign-host", start = "generation",
+    heartbeat = heartbeat_link, created = as.numeric(Sys.time())
+)), "symlink")
+stopifnot(identical(readLines(owner_external), "external-owner"),
+          identical(readLines(heartbeat_external), "generation"))
+benchmark_lines <- readLines(file.path(script_dir, "benchmark.sh"), warn = FALSE)
+atomic_function_start <- grep(
+    "^atomic_move_noreplace\\(\\) \\{$", benchmark_lines
+)[[1L]]
+atomic_function_end <- which(
+    seq_along(benchmark_lines) > atomic_function_start & benchmark_lines == "}"
+)[[1L]]
+shell_atomic_root <- file.path(root, "shell-atomic-publication")
+dir.create(shell_atomic_root)
+shell_atomic_source <- file.path(shell_atomic_root, "source")
+shell_atomic_competitor <- file.path(shell_atomic_root, "competitor")
+shell_atomic_destination <- file.path(shell_atomic_root, "destination")
+dir.create(shell_atomic_source)
+dir.create(shell_atomic_competitor)
+writeLines("source", file.path(shell_atomic_source, "value"))
+writeLines("competitor", file.path(shell_atomic_competitor, "value"))
+shell_atomic_script <- file.path(root, "shell-atomic-test.sh")
+writeLines(c(
+    "#!/bin/sh", "set -eu",
+    benchmark_lines[atomic_function_start:atomic_function_end],
+    paste(
+        "atomic_move_noreplace", shQuote(shell_atomic_source),
+        shQuote(shell_atomic_destination), shQuote("synthetic shell publication")
+    ),
+    paste(
+        "atomic_move_noreplace", shQuote(shell_atomic_competitor),
+        shQuote(shell_atomic_destination), shQuote("synthetic shell race")
+    )
+), shell_atomic_script)
+shell_atomic_result <- suppressWarnings(system2(
+    "sh", shell_atomic_script, stdout = TRUE, stderr = TRUE
+))
+stopifnot(
+    identical(attr(shell_atomic_result, "status"), 2L),
+    any(grepl("destination already exists", shell_atomic_result, fixed = TRUE)),
+    !dir.exists(shell_atomic_source),
+    identical(readLines(file.path(shell_atomic_destination, "value")), "source"),
+    identical(readLines(file.path(shell_atomic_competitor, "value")), "competitor")
+)
+shell_checkout <- file.path(root, "shell-confinement-checkout")
+shell_script_dir <- file.path(shell_checkout, "benchmarks", "fertility-surveys")
+shell_raw <- file.path(shell_checkout, "target", "fertility-surveys", "raw")
+dir.create(shell_script_dir, recursive = TRUE)
+dir.create(shell_raw, recursive = TRUE)
+stopifnot(file.copy(
+    file.path(script_dir, "benchmark.sh"), file.path(shell_script_dir, "benchmark.sh")
+), file.symlink(confinement_outside, file.path(shell_raw, "tmp")))
+run_shell_confinement <- function(arguments = "--inventory-only") {
+    suppressWarnings(system2(
+    "/usr/bin/env",
+    c(
+        "-u", "CI", "-u", "GITHUB_ACTIONS", "-u", "GITHUB_RUN_ID",
+        "-u", "GITHUB_WORKFLOW",
+        paste0("DTAPARSER_FERTILITY_CORPUS=", fertility_opt_in_value),
+        "sh", file.path(shell_script_dir, "benchmark.sh"), arguments
+    ),
+    stdout = TRUE, stderr = TRUE
+    ))
+}
+assert_shell_confinement <- function(result) stopifnot(
+    !is.null(attr(result, "status")),
+    any(grepl("symlink", result)),
+    identical(file.info(confinement_outside)$mode[[1L]], outside_mode),
+    !length(list.files(confinement_outside, all.files = TRUE, no.. = TRUE))
+)
+assert_shell_confinement(run_shell_confinement())
+unlink(file.path(shell_raw, "tmp"))
+unlink(shell_raw, recursive = TRUE)
+stopifnot(file.symlink(confinement_outside, shell_raw))
+assert_shell_confinement(run_shell_confinement())
+unlink(shell_raw)
+dir.create(file.path(shell_raw, "tmp"), recursive = TRUE)
+stopifnot(
+    file.copy(file.path(script_dir, "runtime.R"),
+              file.path(shell_script_dir, "runtime.R")),
+    file.symlink(confinement_outside, file.path(shell_raw, "builds"))
+)
+assert_shell_confinement(run_shell_confinement(character()))
+unlink(file.path(shell_raw, "builds"))
+shell_build_id <- paste(rep("d", 64L), collapse = "")
+shell_builds <- file.path(shell_raw, "builds")
+shell_generation <- file.path(shell_builds, shell_build_id)
+shell_library <- file.path(shell_generation, "library")
+shell_package <- file.path(shell_library, "dtaparser")
+dir.create(shell_package, recursive = TRUE)
+writeLines(shell_build_id, file.path(shell_builds, "CURRENT"))
+writeLines("synthetic", file.path(shell_generation, "build-provenance.tsv"))
+shell_external <- file.path(root, "shell-build-external")
+dir.create(file.path(shell_external, "library", "dtaparser"), recursive = TRUE)
+writeLines(shell_build_id, file.path(shell_external, "CURRENT"))
+writeLines("external", file.path(shell_external, "build-provenance.tsv"))
+shell_external_mode <- file.info(shell_external)$mode[[1L]]
+for (case in list(
+    list(path = file.path(shell_builds, "CURRENT"),
+         target = file.path(shell_external, "CURRENT")),
+    list(path = shell_generation, target = shell_external),
+    list(path = shell_library, target = file.path(shell_external, "library")),
+    list(path = file.path(shell_generation, "build-provenance.tsv"),
+         target = file.path(shell_external, "build-provenance.tsv")),
+    list(path = shell_package,
+         target = file.path(shell_external, "library", "dtaparser"))
+)) {
+    saved <- paste0(case$path, ".saved")
+    stopifnot(file.rename(case$path, saved), file.symlink(case$target, case$path))
+    result <- run_shell_confinement(character())
+    stopifnot(
+        !is.null(attr(result, "status")), any(grepl("symlink", result)),
+        identical(file.info(shell_external)$mode[[1L]], shell_external_mode),
+        identical(readLines(file.path(shell_external, "build-provenance.tsv")),
+                  "external")
+    )
+    unlink(case$path)
+    stopifnot(file.rename(saved, case$path))
+}
+reports_root <- file.path(confinement_raw, "reports")
+selection_parent <- file.path(reports_root, "selection")
+bundle_dir <- file.path(selection_parent, "bundle")
+dir.create(bundle_dir, recursive = TRUE)
+for (name in c(
+    "run-provenance.tsv", "results.tsv", "summary.tsv",
+    "family-manifest.tsv", "input-attestation.tsv"
+)) {
+    writeLines("synthetic", file.path(bundle_dir, name))
+}
+writeLines("bundle", file.path(selection_parent, "CURRENT"))
+current_files <- c(
+    provenance = "run-provenance.tsv", results = "results.tsv",
+    summary = "summary.tsv", family_manifest = "family-manifest.tsv",
+    input_attestation = "input-attestation.tsv"
+)
+stopifnot(identical(
+    fertility_current_bundle_paths(
+        selection_parent, current_files, "synthetic report"
+    )$bundle,
+    bundle_dir
+))
+current_path <- file.path(selection_parent, "CURRENT")
+current_saved <- paste0(current_path, ".saved")
+stopifnot(file.rename(current_path, current_saved),
+          file.symlink(current_saved, current_path))
+expect_error(fertility_current_bundle_paths(
+    selection_parent, current_files, "synthetic report"
+), "CURRENT pointer must not be a symlink")
+unlink(current_path)
+stopifnot(file.rename(current_saved, current_path))
+bundle_saved <- paste0(bundle_dir, ".saved")
+stopifnot(file.rename(bundle_dir, bundle_saved),
+          file.symlink(bundle_saved, bundle_dir))
+expect_error(fertility_current_bundle_paths(
+    selection_parent, current_files, "synthetic report"
+), "bundle must not be a symlink")
+unlink(bundle_dir)
+stopifnot(file.rename(bundle_saved, bundle_dir))
+for (field in names(current_files)) {
+    consumed_path <- file.path(bundle_dir, current_files[[field]])
+    consumed_saved <- paste0(consumed_path, ".saved")
+    stopifnot(file.rename(consumed_path, consumed_saved),
+              file.symlink(consumed_saved, consumed_path))
+    expect_error(fertility_current_bundle_paths(
+        selection_parent, current_files, "synthetic report"
+    ), paste0(field, " must not be a symlink"))
+    unlink(consumed_path)
+    stopifnot(file.rename(consumed_saved, consumed_path))
+}
+second_bundle <- file.path(selection_parent, "bundle-two")
+dir.create(second_bundle)
+stopifnot(all(file.copy(
+    file.path(bundle_dir, unname(current_files)), second_bundle
+)))
+writeLines("bundle-two", current_path)
+expect_error(fertility_revalidate_current_bundle(
+    selection_parent, "bundle", current_files, "source report shard"
+), "CURRENT changed")
+writeLines("bundle", current_path)
+stopifnot(identical(fertility_revalidate_current_bundle(
+    selection_parent, "bundle", current_files, "source report shard"
+)$run_name, "bundle"))
+
 cache <- file.path(root, "cache")
 dir.create(cache)
 write_release <- function(path, release) {
@@ -141,11 +694,13 @@ make_public_results <- function(expected, classifications = "pass") {
 }
 make_bundle_family <- function(
     canonical, family_options, classifications = NULL,
-    inventory_id = paste(rep("d", 64L), collapse = "")
+    inventory_id = paste(rep("d", 64L), collapse = ""), acceptance = NULL
 ) {
     manifest <- fertility_family_manifest(canonical, family_options)
     manifest_id <- fertility_manifest_id(manifest)
-    family_config_id <- fertility_tile_configuration(family_options)$config_id
+    family_config_id <- fertility_tile_configuration(
+        family_options, acceptance
+    )$config_id
     family_id <- fertility_family_id_from_manifest(
         manifest, test_framework_id, family_config_id, test_build_id, inventory_id,
         family_options$shard_count, family_options$max_files
@@ -164,16 +719,25 @@ make_bundle_family <- function(
         input_attestation_id <- fertility_stable_id(list(
             synthetic_shard = index, ids = paste(expected$id, collapse = ",")
         ))
+        acceptance_authority <- if (is.null(acceptance)) "" else
+            acceptance$authority
+        acceptance_commitment_id <- if (is.null(acceptance)) "" else
+            acceptance$commitment_id
         evidence_selection_id <- fertility_evidence_selection_id(
             selection_id, input_attestation_id, "fresh-execution",
-            fertility_schema_version, fertility_report_schema_id()
+            fertility_schema_version, fertility_report_schema_id(),
+            acceptance_authority, acceptance_commitment_id
         )
         provenance <- data.frame(
             schema_version = as.character(fertility_schema_version),
             report_schema_version = as.character(fertility_report_schema_version),
             evidence_origin = "fresh-execution",
             source_corpus_schema_version = as.character(fertility_schema_version),
-            replayed_at_utc = "", selection_id = selection_id,
+            replayed_at_utc = "", acceptance_authority = acceptance_authority,
+            acceptance_commitment_id = acceptance_commitment_id,
+            acceptance_artifact_sha256 = if (is.null(acceptance)) "" else
+                acceptance$artifact_sha256,
+            selection_id = selection_id,
             evidence_selection_id = evidence_selection_id,
             input_attestation_id = input_attestation_id, family_id = family_id,
             family_manifest_id = manifest_id, framework_id = test_framework_id,
@@ -213,6 +777,16 @@ validated_merge <- fertility_validate_shard_bundles(
 )
 stopifnot(identical(validated_merge$results$id, c("F0001", "F0002")),
           validated_merge$shard_count == 2L)
+legacy_provenance_bundles <- merge_bundles
+for (index in seq_along(legacy_provenance_bundles)) {
+    legacy_provenance_bundles[[index]]$provenance[c(
+        "acceptance_authority", "acceptance_commitment_id",
+        "acceptance_artifact_sha256"
+    )] <- NULL
+}
+stopifnot(is.list(fertility_validate_shard_bundles(
+    legacy_provenance_bundles, merge_fixture$id, canonical_inventory
+)))
 override_merge_options <- fertility_parse_arguments(c(
     "--id=F0001,F0002", "--shard-index=1", "--shard-count=2",
     "--encoding-override=F0001:ISO-8859-1"
@@ -435,11 +1009,18 @@ full_options <- fertility_parse_arguments(character())
 full_classes <- rep("pass", fertility_expected_rows)
 full_classes[full_releases == 111L] <- "expected-unsupported-111"
 supported_positions <- which(full_releases != 111L)
-full_classes[supported_positions[seq_len(5L)]] <- "inventory-hash-error"
+full_classes[match(fertility_accepted_ids(), full_canonical$id)] <-
+    "inventory-hash-error"
 full_fixture <- make_bundle_family(
     full_canonical, full_options, full_classes,
     inventory_id = paste(rep("e", 64L), collapse = "")
 )
+for (index in seq_along(full_fixture$bundles)) {
+    hash_rows <- full_fixture$bundles[[index]]$results$classification ==
+        "inventory-hash-error"
+    full_fixture$bundles[[index]]$results$secondary_categories[hash_rows] <-
+        "signature-mismatch"
+}
 full_validated <- fertility_validate_shard_bundles(
     full_fixture$bundles, full_fixture$id, full_canonical
 )
@@ -461,18 +1042,23 @@ expect_error(fertility_validate_shard_bundles(
     full_bad_unsupported, full_fixture$id, full_canonical
 ), "release 111 classifications")
 full_bad_hash_count <- full_fixture$bundles
-full_bad_hash_count[[1L]]$results$classification[[supported_positions[[6L]]]] <-
+additional_supported <- supported_positions[
+    !full_canonical$id[supported_positions] %in% fertility_accepted_ids()
+][[1L]]
+full_bad_hash_count[[1L]]$results$classification[[additional_supported]] <-
     "inventory-hash-error"
 expect_error(fertility_validate_shard_bundles(
     full_bad_hash_count, full_fixture$id, full_canonical
 ), "executable accounting")
 full_too_few_hashes <- full_fixture$bundles
-full_too_few_hashes[[1L]]$results$classification[[supported_positions[[5L]]]] <- "pass"
+full_too_few_hashes[[1L]]$results$classification[[
+    match(fertility_accepted_ids()[[1L]], full_canonical$id)
+]] <- "pass"
 expect_error(fertility_validate_shard_bundles(
     full_too_few_hashes, full_fixture$id, full_canonical
 ), "executable accounting")
 full_bad_supported_class <- full_fixture$bundles
-full_bad_supported_class[[1L]]$results$classification[[supported_positions[[6L]]]] <-
+full_bad_supported_class[[1L]]$results$classification[[additional_supported]] <-
     "expected-unsupported-111"
 expect_error(fertility_validate_shard_bundles(
     full_bad_supported_class, full_fixture$id, full_canonical
@@ -562,6 +1148,71 @@ fertility_atomic_write_table(
 stopifnot(nrow(fertility_framework_inventory(
     current_snapshot, framework_id = test_framework_id
 )$manifest) == fertility_expected_rows)
+framework_acceptance_path <- file.path(
+    current_snapshot, "acceptance-provenance.tsv"
+)
+fertility_atomic_write_table(data.frame(
+    authority = fertility_acceptance_authority(),
+    commitment_id = paste(rep("a", 64L), collapse = ""),
+    artifact_sha256 = paste(rep("b", 64L), collapse = ""),
+    stringsAsFactors = FALSE, check.names = FALSE
+), framework_acceptance_path)
+stopifnot(!is.null(fertility_framework_inventory(
+    current_snapshot, framework_id = test_framework_id
+)$acceptance_provenance))
+for (name in c(
+    "inventory-manifest.tsv", "inventory-manifest-provenance.tsv",
+    "acceptance-provenance.tsv"
+)) {
+    path <- file.path(current_snapshot, name)
+    saved <- paste0(path, ".saved")
+    stopifnot(file.rename(path, saved), file.symlink(saved, path))
+    expect_error(fertility_framework_inventory(
+        current_snapshot, framework_id = test_framework_id
+    ), "symlink")
+    unlink(path)
+    stopifnot(file.rename(saved, path))
+}
+current_snapshot_saved <- paste0(current_snapshot, ".saved")
+stopifnot(file.rename(current_snapshot, current_snapshot_saved),
+          file.symlink(current_snapshot_saved, current_snapshot))
+expect_error(fertility_framework_inventory(
+    current_snapshot, framework_id = test_framework_id
+), "symlink")
+unlink(current_snapshot)
+stopifnot(file.rename(current_snapshot_saved, current_snapshot))
+framework_confinement_root <- file.path(confinement_raw, "framework")
+framework_confinement_snapshot <- file.path(
+    framework_confinement_root, test_framework_id
+)
+dir.create(framework_confinement_snapshot, recursive = TRUE)
+for (name in c("common.R", "accepted.R", "worker.R", "compare.R", "runtime.R")) {
+    stopifnot(file.copy(
+        file.path(script_dir, name), file.path(framework_confinement_snapshot, name)
+    ))
+}
+fertility_atomic_write_table(
+    full_canonical,
+    file.path(framework_confinement_snapshot, "inventory-manifest.tsv")
+)
+fertility_atomic_write_table(
+    current_inventory_provenance,
+    file.path(framework_confinement_snapshot,
+              "inventory-manifest-provenance.tsv")
+)
+stopifnot(identical(fertility_verify_framework_snapshot(
+    script_dir, confinement_raw, test_framework_id
+), framework_confinement_snapshot))
+for (name in c("common.R", "accepted.R", "worker.R", "compare.R", "runtime.R")) {
+    path <- file.path(framework_confinement_snapshot, name)
+    saved <- file.path(root, paste0("framework-", name, ".saved"))
+    stopifnot(file.rename(path, saved), file.symlink(saved, path))
+    expect_error(fertility_verify_framework_snapshot(
+        script_dir, confinement_raw, test_framework_id
+    ), "symlink")
+    unlink(path)
+    stopifnot(file.rename(saved, path))
+}
 fresh_snapshot_provenance <- data.frame(
     evidence_origin = "fresh-execution",
     source_corpus_schema_version = as.character(fertility_schema_version),
@@ -620,6 +1271,794 @@ preflight_item$expected_sha512 <- ""
 stopifnot(is.null(fertility_inventory_preflight(
     preflight_item, preflight_mismatch
 )))
+
+# Explicit accepted-current-hash evidence is a private immutable commitment for
+# exactly F0633-F0637. It remains distinct from the unchanged manifest signatures.
+acceptance_checkout <- file.path(root, "acceptance-checkout")
+dir.create(acceptance_checkout)
+acceptance_checkout <- normalizePath(acceptance_checkout, winslash = "/")
+acceptance_checkout_raw <- file.path(
+    acceptance_checkout, "target", "fertility-surveys", "raw"
+)
+stopifnot(identical(
+    fertility_assert_acceptance_raw_root(
+        acceptance_checkout_raw, acceptance_checkout
+    ),
+    acceptance_checkout_raw
+))
+symlink_checkout <- file.path(root, "acceptance-symlink-checkout")
+dir.create(symlink_checkout)
+symlink_checkout <- normalizePath(symlink_checkout, winslash = "/")
+symlink_destination <- file.path(root, "acceptance-symlink-destination")
+dir.create(symlink_destination)
+symlink_destination <- normalizePath(symlink_destination, winslash = "/")
+stopifnot(file.symlink(
+    symlink_destination, file.path(symlink_checkout, "target")
+))
+expect_error(fertility_assert_acceptance_raw_root(
+    file.path(symlink_checkout, "target", "fertility-surveys", "raw"),
+    symlink_checkout
+), "must not be symlinks")
+acceptance_raw <- file.path(root, "acceptance-raw")
+dir.create(acceptance_raw, mode = "0700")
+acceptance_paths <- file.path(root, paste0("accepted-", seq_len(5L), ".dta"))
+for (index in seq_along(acceptance_paths)) {
+    writeBin(as.raw(c(118L, index, 0:15)), acceptance_paths[[index]])
+}
+acceptance_actual <- vapply(acceptance_paths, fertility_file_sha512, character(1))
+acceptance_expected <- vapply(seq_along(acceptance_actual), function(index) {
+    candidate <- paste(rep(sprintf("%x", index - 1L), 128L), collapse = "")
+    if (identical(candidate, acceptance_actual[[index]])) {
+        paste(rep(sprintf("%x", index), 128L), collapse = "")
+    } else candidate
+}, character(1))
+acceptance_inventory <- data.frame(
+    id = fertility_accepted_ids(), program = "dhs", level = "women",
+    release = 118L, path = normalizePath(acceptance_paths, winslash = "/"),
+    expected_sha512 = acceptance_expected,
+    stringsAsFactors = FALSE, check.names = FALSE
+)
+acceptance_id <- fertility_capture_acceptance(
+    acceptance_inventory, acceptance_raw
+)
+acceptance <- fertility_load_acceptance(
+    acceptance_raw, acceptance_id, acceptance_inventory
+)
+sequential_reuse_refuses_changed_early_input <- function() {
+    original_capture_input <- fertility_capture_input
+    capture_count <- 0L
+    on.exit(assign(
+        "fertility_capture_input", original_capture_input, envir = .GlobalEnv
+    ), add = TRUE)
+    on.exit(writeBin(
+        as.raw(c(118L, 1L, 0:15)), acceptance_paths[[1L]]
+    ), add = TRUE)
+    assign("fertility_capture_input", function(...) {
+        capture_count <<- capture_count + 1L
+        if (capture_count == 2L) {
+            writeBin(as.raw(c(118L, 93L, 0:15)), acceptance_paths[[1L]])
+        }
+        original_capture_input(...)
+    }, envir = .GlobalEnv)
+    expect_error(fertility_capture_acceptance(
+        acceptance_inventory, acceptance_raw
+    ), "input changed during capture")
+}
+sequential_reuse_refuses_changed_early_input()
+old_hook <- getOption("dtaparser.fertility.publication_test_hook")
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "acceptance-before-existing-reuse-revalidation")) {
+        writeBin(as.raw(c(118L, 92L, 0:15)), acceptance_paths[[1L]])
+    }
+})
+expect_error(fertility_capture_acceptance(
+    acceptance_inventory, acceptance_raw
+), "input changed during capture")
+options(dtaparser.fertility.publication_test_hook = old_hook)
+writeBin(as.raw(c(118L, 1L, 0:15)), acceptance_paths[[1L]])
+for (with_content in c(FALSE, TRUE)) {
+    refusal_raw <- file.path(
+        root, paste0("acceptance-existing-", as.integer(with_content))
+    )
+    dir.create(file.path(refusal_raw, "accepted-current-hashes", acceptance_id),
+               recursive = TRUE)
+    sentinel <- file.path(
+        refusal_raw, "accepted-current-hashes", acceptance_id, "sentinel"
+    )
+    if (with_content) writeLines("untouched", sentinel)
+    before <- list.files(
+        file.path(refusal_raw, "accepted-current-hashes", acceptance_id),
+        all.files = TRUE, no.. = TRUE
+    )
+    expect_error(fertility_capture_acceptance(
+        acceptance_inventory, refusal_raw
+    ), "accepted-current-hash")
+    stopifnot(identical(list.files(
+        file.path(refusal_raw, "accepted-current-hashes", acceptance_id),
+        all.files = TRUE, no.. = TRUE
+    ), before))
+    if (with_content) stopifnot(identical(readLines(sentinel), "untouched"))
+}
+race_raw <- file.path(root, "acceptance-race")
+dir.create(race_raw)
+race_destination <- file.path(
+    race_raw, "accepted-current-hashes", acceptance_id
+)
+old_hook <- getOption("dtaparser.fertility.publication_test_hook")
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "acceptance-before-destination-publication")) {
+        dir.create(context$destination)
+        writeLines("race-winner", file.path(context$destination, "sentinel"))
+    }
+})
+expect_error(fertility_capture_acceptance(
+    acceptance_inventory, race_raw
+), "accepted-current-hash")
+options(dtaparser.fertility.publication_test_hook = old_hook)
+stopifnot(
+    identical(readLines(file.path(race_destination, "sentinel")), "race-winner"),
+    !file.exists(file.path(race_destination, "commitment.rds"))
+)
+complete_race_raw <- file.path(root, "acceptance-complete-race")
+dir.create(complete_race_raw)
+complete_race_destination <- file.path(
+    complete_race_raw, "accepted-current-hashes", acceptance_id
+)
+source_commitment <- file.path(
+    acceptance_raw, "accepted-current-hashes", acceptance_id, "commitment.rds"
+)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "acceptance-before-destination-publication")) {
+        dir.create(context$destination)
+        stopifnot(file.copy(
+            source_commitment, file.path(context$destination, "commitment.rds")
+        ))
+    }
+})
+stopifnot(identical(
+    fertility_capture_acceptance(acceptance_inventory, complete_race_raw),
+    acceptance_id
+))
+options(dtaparser.fertility.publication_test_hook = old_hook)
+stopifnot(identical(
+    list.files(complete_race_destination, all.files = TRUE, no.. = TRUE),
+    "commitment.rds"
+))
+publication_winner_raw <- file.path(root, "acceptance-publication-winner")
+dir.create(publication_winner_raw)
+publication_winner_destination <- file.path(
+    publication_winner_raw, "accepted-current-hashes", acceptance_id
+)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "atomic-noreplace-before-operation") &&
+        identical(context$label, "accepted-current-hash commitment")) {
+        dir.create(context$to)
+        stopifnot(file.copy(
+            source_commitment, file.path(context$to, "commitment.rds")
+        ))
+    }
+})
+stopifnot(identical(
+    fertility_capture_acceptance(acceptance_inventory, publication_winner_raw),
+    acceptance_id
+))
+options(dtaparser.fertility.publication_test_hook = old_hook)
+stopifnot(identical(
+    list.files(publication_winner_destination, all.files = TRUE, no.. = TRUE),
+    "commitment.rds"
+))
+extra_claim_raw <- file.path(root, "acceptance-extra-claim")
+dir.create(extra_claim_raw)
+extra_claim_destination <- file.path(
+    extra_claim_raw, "accepted-current-hashes", acceptance_id
+)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "acceptance-before-destination-publication")) {
+        writeLines("unexpected", file.path(context$stage, ".extra"))
+    }
+})
+expect_error(fertility_capture_acceptance(
+    acceptance_inventory, extra_claim_raw
+), "exactly commitment.rds")
+options(dtaparser.fertility.publication_test_hook = old_hook)
+stopifnot(!file.exists(extra_claim_destination))
+atomic_mutation_raw <- file.path(root, "acceptance-atomic-source-mutation")
+dir.create(atomic_mutation_raw)
+atomic_mutation_destination <- file.path(
+    atomic_mutation_raw, "accepted-current-hashes", acceptance_id
+)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "atomic-noreplace-before-operation") &&
+        identical(context$label, "accepted-current-hash commitment")) {
+        writeLines("invalid", file.path(context$from, ".invalid"))
+    }
+})
+expect_error(fertility_capture_acceptance(
+    acceptance_inventory, atomic_mutation_raw
+), "exactly commitment.rds")
+options(dtaparser.fertility.publication_test_hook = old_hook)
+stopifnot(
+    !file.exists(atomic_mutation_destination),
+    identical(
+        fertility_capture_acceptance(acceptance_inventory, atomic_mutation_raw),
+        acceptance_id
+    )
+)
+rollback_raw <- file.path(root, "acceptance-post-publication-rollback")
+dir.create(rollback_raw)
+rollback_destination <- file.path(
+    rollback_raw, "accepted-current-hashes", acceptance_id
+)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(
+        boundary, "acceptance-before-new-publication-revalidation"
+    )) writeLines("invalid", file.path(context$destination, ".invalid"))
+})
+expect_error(fertility_capture_acceptance(
+    acceptance_inventory, rollback_raw
+), "exactly commitment.rds")
+options(dtaparser.fertility.publication_test_hook = old_hook)
+stopifnot(
+    !file.exists(rollback_destination),
+    identical(
+        fertility_capture_acceptance(acceptance_inventory, rollback_raw),
+        acceptance_id
+    )
+)
+concurrent_reuse_raw <- file.path(root, "acceptance-concurrent-final-check")
+dir.create(concurrent_reuse_raw)
+concurrent_reuse_destination <- file.path(
+    concurrent_reuse_raw, "accepted-current-hashes", acceptance_id
+)
+concurrent_inventory_path <- file.path(root, "concurrent-inventory.rds")
+saveRDS(acceptance_inventory, concurrent_inventory_path)
+concurrent_reuse_script <- file.path(root, "concurrent-acceptance-reuse.R")
+writeLines(c(
+    paste0("source(", encodeString(file.path(script_dir, "common.R"), quote = "\""), ")"),
+    paste0("source(", encodeString(file.path(script_dir, "runner.R"), quote = "\""), ")"),
+    paste0("source(", encodeString(file.path(script_dir, "accepted.R"), quote = "\""), ")"),
+    paste0("inventory <- readRDS(", encodeString(concurrent_inventory_path, quote = "\""), ")"),
+    paste0(
+        "fertility_capture_acceptance(inventory, ",
+        encodeString(concurrent_reuse_raw, quote = "\""), ")"
+    )
+), concurrent_reuse_script)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(
+        boundary, "acceptance-before-new-publication-revalidation"
+    )) {
+        child_status <- suppressWarnings(system2(
+            file.path(R.home("bin"), "Rscript"),
+            c("--vanilla", shQuote(concurrent_reuse_script)),
+            stdout = FALSE, stderr = FALSE
+        ))
+        stopifnot(identical(child_status, 0L))
+        writeBin(as.raw(c(118L, 94L, 0:15)), acceptance_paths[[2L]])
+    }
+})
+expect_error(fertility_capture_acceptance(
+    acceptance_inventory, concurrent_reuse_raw
+), "input changed during capture")
+options(dtaparser.fertility.publication_test_hook = old_hook)
+writeBin(as.raw(c(118L, 2L, 0:15)), acceptance_paths[[2L]])
+stopifnot(
+    identical(
+        list.files(
+            concurrent_reuse_destination, all.files = TRUE, no.. = TRUE
+        ),
+        "commitment.rds"
+    ),
+    identical(
+        fertility_capture_acceptance(
+            acceptance_inventory, concurrent_reuse_raw
+        ),
+        acceptance_id
+    )
+)
+terminated_raw <- file.path(root, "acceptance-terminated-publication")
+dir.create(terminated_raw)
+terminated_destination <- file.path(
+    terminated_raw, "accepted-current-hashes", acceptance_id
+)
+terminated_inventory_path <- file.path(root, "terminated-inventory.rds")
+saveRDS(acceptance_inventory, terminated_inventory_path)
+terminated_script <- file.path(root, "terminate-acceptance.R")
+writeLines(c(
+    paste0("source(", encodeString(file.path(script_dir, "common.R"), quote = "\""), ")"),
+    paste0("source(", encodeString(file.path(script_dir, "runner.R"), quote = "\""), ")"),
+    paste0("source(", encodeString(file.path(script_dir, "accepted.R"), quote = "\""), ")"),
+    paste0("inventory <- readRDS(", encodeString(terminated_inventory_path, quote = "\""), ")"),
+    "options(dtaparser.fertility.publication_test_hook = function(boundary, context) {",
+    "    if (identical(boundary, 'acceptance-before-destination-publication')) {",
+    "        tools::pskill(Sys.getpid(), 9L)",
+    "    }",
+    "})",
+    paste0(
+        "fertility_capture_acceptance(inventory, ", encodeString(terminated_raw, quote = "\""), ")"
+    )
+), terminated_script)
+terminated_result <- suppressWarnings(system2(
+    file.path(R.home("bin"), "Rscript"), c("--vanilla", shQuote(terminated_script)),
+    stdout = FALSE, stderr = FALSE
+))
+stopifnot(
+    !identical(terminated_result, 0L),
+    !file.exists(terminated_destination),
+    length(list.files(
+        file.path(terminated_raw, "accepted-current-hashes"),
+        pattern = "^\\.acceptance\\.", all.files = TRUE
+    )) == 1L,
+    identical(
+        fertility_capture_acceptance(acceptance_inventory, terminated_raw),
+        acceptance_id
+    )
+)
+unlink(list.files(
+    file.path(terminated_raw, "accepted-current-hashes"),
+    pattern = "^\\.acceptance\\.", all.files = TRUE, full.names = TRUE
+), recursive = TRUE)
+input_race_raw <- file.path(root, "acceptance-input-race")
+dir.create(input_race_raw)
+options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+    if (identical(boundary, "acceptance-before-destination-publication")) {
+        writeBin(as.raw(c(118L, 91L, 0:15)), acceptance_paths[[4L]])
+    }
+})
+expect_error(fertility_capture_acceptance(
+    acceptance_inventory, input_race_raw
+), "input changed during capture")
+options(dtaparser.fertility.publication_test_hook = old_hook)
+writeBin(as.raw(c(118L, 4L, 0:15)), acceptance_paths[[4L]])
+stopifnot(!file.exists(file.path(
+    input_race_raw, "accepted-current-hashes", acceptance_id
+)))
+stopifnot(
+    grepl("^[0-9a-f]{64}$", acceptance_id),
+    identical(acceptance$authority, fertility_acceptance_authority()),
+    identical(acceptance$entries$id, fertility_accepted_ids()),
+    identical(acceptance$entries$expected_sha512, acceptance_expected),
+    identical(acceptance$entries$accepted_sha512, unname(acceptance_actual)),
+    !"path" %in% names(acceptance$entries),
+    isTRUE(fertility_validate_acceptance_current(
+        acceptance, acceptance_inventory
+    ))
+)
+expect_rejected_acceptance_shape <- function(label, populate, pattern) {
+    shape_raw <- file.path(root, paste0("acceptance-shape-", label))
+    shape_destination <- file.path(
+        shape_raw, "accepted-current-hashes", acceptance_id
+    )
+    dir.create(shape_destination, recursive = TRUE)
+    populate(shape_destination)
+    expect_error(fertility_load_acceptance(
+        shape_raw, acceptance_id, acceptance_inventory
+    ), pattern)
+}
+expect_rejected_acceptance_shape("missing", function(destination) NULL,
+                                 "exactly commitment.rds")
+expect_rejected_acceptance_shape("additional", function(destination) {
+    stopifnot(file.copy(
+        source_commitment, file.path(destination, "commitment.rds")
+    ))
+    writeLines("unexpected", file.path(destination, "extra"))
+}, "exactly commitment.rds")
+expect_rejected_acceptance_shape("symlink", function(destination) {
+    stopifnot(file.symlink(
+        source_commitment, file.path(destination, "commitment.rds")
+    ))
+}, "regular nonsymlink")
+expect_rejected_acceptance_shape("nonregular", function(destination) {
+    dir.create(file.path(destination, "commitment.rds"))
+}, "regular nonsymlink")
+expect_error(fertility_validate_acceptance_entries(transform(
+    acceptance$entries, accepted_sha512 = toupper(accepted_sha512)
+)), "invalid")
+expect_error(fertility_validate_acceptance_entries(
+    acceptance$entries[c(2:5, 1), , drop = FALSE]
+), "invalid")
+expect_error(fertility_parse_arguments("--accepted-current-hashes=BAD"),
+             "exact commitment ID")
+accepted_options <- fertility_parse_arguments(c(
+    paste0("--accepted-current-hashes=", acceptance_id),
+    paste0("--id=", paste(fertility_accepted_ids(), collapse = ","))
+))
+fertility_validate_accepted_selection(accepted_options, acceptance_inventory)
+expect_error(fertility_validate_accepted_selection(
+    fertility_parse_arguments(c(
+        paste0("--accepted-current-hashes=", acceptance_id),
+        "--id=F0633,F0634,F0635,F0636"
+    )), acceptance_inventory[1:4, , drop = FALSE]
+), "exactly F0633 through F0637")
+expect_error(fertility_validate_accepted_selection(
+    fertility_parse_arguments(c(
+        paste0("--accepted-current-hashes=", acceptance_id),
+        paste0("--id=", paste(fertility_accepted_ids(), collapse = ",")),
+        "--shard-index=1", "--shard-count=2"
+    )), acceptance_inventory
+), "exactly F0633 through F0637")
+legacy_config_identity <- fertility_tile_configuration(
+    fertility_parse_arguments(character())
+)$config_id
+accepted_config <- fertility_tile_configuration(accepted_options, acceptance)
+stopifnot(
+    !identical(legacy_config_identity, accepted_config$config_id),
+    !identical(
+        fertility_framework_id(test_build_id, datasigs),
+        fertility_framework_id(test_build_id, datasigs, acceptance)
+    )
+)
+accepted_item <- as.list(acceptance_inventory[1L, , drop = FALSE])
+accepted_input <- fertility_capture_input(accepted_item, acceptance)
+stopifnot(
+    identical(accepted_input$manifest_hash_status, "signature-mismatch"),
+    identical(accepted_input$local_evidence_status,
+              "accepted-current-sha512-match"),
+    is.null(fertility_inventory_preflight(accepted_item, accepted_input))
+)
+accepted_result <- fertility_base_result(
+    accepted_item, test_framework_id, accepted_config$timeout_seconds,
+    accepted_input, "pass"
+)
+accepted_result$config_id <- accepted_config$config_id
+accepted_result$component <- NULL
+stopifnot(
+    isTRUE(fertility_validate_recorded_input_attestation(accepted_result)),
+    fertility_recorded_result_valid(
+        accepted_result, accepted_item, test_framework_id, accepted_config
+    ),
+    !identical(
+        fertility_input_attestation_id(list(accepted_result)),
+        fertility_input_attestation_id(list(transform(
+            accepted_result, input_id = paste(rep("9", 64L), collapse = "")
+        )))
+    )
+)
+accepted_public <- fertility_result_frame(list(accepted_result))
+accepted_public$build_provenance_id <- test_build_id
+stopifnot(
+    isTRUE(fertility_validate_public_results(accepted_public)),
+    !any(grepl("accept|sha512|manifest", names(accepted_public))),
+    fertility_file_result_valid(
+        accepted_result, accepted_item, test_framework_id, accepted_config,
+        accepted_input
+    )
+)
+accepted_tile <- fertility_value_tile(1L, 0, 1L, "x")
+accepted_tile_path <- file.path(root, "accepted-tile.rds")
+accepted_tile_execute <- function(item, tile, input) list(
+    schema_version = fertility_schema_version, framework_id = test_framework_id,
+    id = item$id, tile_id = tile$tile_id, tile_type = tile$type,
+    batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
+    classification = "pass", secondary = character(),
+    mismatches = fertility_bind_mismatches(list()), rows = 1L,
+    reader_rows = c(direct = 1L, rust = 1L, haven = 1L),
+    columns = 1L, column_names = character(), storage = character(),
+    structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
+    projection_expected_count = 1L,
+    projection_expected_hash = fertility_projection_hash("x", test_framework_id),
+    projection_counts = c(direct = 1L, rust = 1L, haven = 1L),
+    projection_hashes = setNames(rep(
+        fertility_projection_hash("x", test_framework_id), 3L
+    ), c("direct", "rust", "haven")),
+    projection_ok = c(direct = TRUE, rust = TRUE, haven = TRUE),
+    elapsed_seconds = 0
+)
+accepted_tile_result <- fertility_process_tile(
+    accepted_item, accepted_tile, accepted_tile_path, test_framework_id,
+    accepted_config, accepted_input, FALSE, accepted_tile_execute
+)$result
+stopifnot(
+    identical(accepted_tile_result$acceptance_authority,
+              acceptance$authority),
+    identical(accepted_tile_result$acceptance_commitment_id,
+              acceptance$commitment_id),
+    isTRUE(fertility_validate_recorded_tile(accepted_tile_result))
+)
+changed_acceptance <- acceptance
+changed_acceptance$artifact_sha256 <- paste(rep("8", 64L), collapse = "")
+stopifnot(
+    !identical(
+        fertility_tile_configuration(accepted_options, changed_acceptance)$config_id,
+        accepted_config$config_id
+    ),
+    !identical(
+        fertility_capture_input(accepted_item, changed_acceptance)$input_id,
+        accepted_input$input_id
+    ),
+    !fertility_file_result_valid(
+        accepted_result, accepted_item, test_framework_id,
+        fertility_tile_configuration(accepted_options, changed_acceptance),
+        fertility_capture_input(accepted_item, changed_acceptance)
+    )
+)
+changed_acceptance_inventory <- acceptance_inventory
+writeBin(as.raw(c(118L, 99L, 0:15)), changed_acceptance_inventory$path[[1L]])
+expect_error(fertility_validate_acceptance_current(
+    acceptance, changed_acceptance_inventory
+), "input validation failed")
+writeBin(as.raw(c(118L, 1L, 0:15)), changed_acceptance_inventory$path[[1L]])
+stopifnot(isTRUE(fertility_validate_acceptance_current(
+    acceptance, changed_acceptance_inventory
+)))
+artifact_path <- file.path(
+    acceptance_raw, "accepted-current-hashes", acceptance_id, "commitment.rds"
+)
+artifact <- readRDS(artifact_path)
+artifact$entries$accepted_sha512[[1L]] <- paste(rep("f", 128L), collapse = "")
+fertility_atomic_save_rds(artifact, artifact_path)
+expect_error(fertility_load_acceptance(
+    acceptance_raw, acceptance_id, acceptance_inventory
+), "commitment identity")
+artifact$entries$accepted_sha512[[1L]] <- acceptance_actual[[1L]]
+artifact$created_at_utc <- "2026-01-01T00:00:00Z"
+fertility_atomic_save_rds(artifact, artifact_path)
+acceptance_reloaded <- fertility_load_acceptance(
+    acceptance_raw, acceptance_id, acceptance_inventory
+)
+stopifnot(!identical(acceptance_reloaded$artifact_sha256,
+                    acceptance$artifact_sha256))
+recorded_acceptance <- data.frame(
+    acceptance_authority = acceptance_reloaded$authority,
+    acceptance_commitment_id = acceptance_reloaded$commitment_id,
+    acceptance_artifact_sha256 = acceptance_reloaded$artifact_sha256,
+    inventory_id = fertility_inventory_id(acceptance_inventory),
+    stringsAsFactors = FALSE, check.names = FALSE
+)
+stopifnot(identical(
+    fertility_revalidate_recorded_acceptance(
+        acceptance_raw, recorded_acceptance, acceptance_inventory
+    )$artifact_sha256,
+    acceptance_reloaded$artifact_sha256
+))
+writeBin(as.raw(c(118L, 77L, 0:15)), acceptance_inventory$path[[2L]])
+expect_error(fertility_revalidate_recorded_acceptance(
+    acceptance_raw, recorded_acceptance, acceptance_inventory
+), "input validation failed")
+writeBin(as.raw(c(118L, 2L, 0:15)), acceptance_inventory$path[[2L]])
+artifact_saved <- readRDS(artifact_path)
+artifact_saved$created_at_utc <- "2026-01-02T00:00:00Z"
+fertility_atomic_save_rds(artifact_saved, artifact_path)
+expect_error(fertility_revalidate_recorded_acceptance(
+    acceptance_raw, recorded_acceptance, acceptance_inventory
+), "artifact identity changed")
+artifact_saved$created_at_utc <- "2026-01-01T00:00:00Z"
+fertility_atomic_save_rds(artifact_saved, artifact_path)
+deleted_artifact <- paste0(artifact_path, ".deleted")
+stopifnot(file.rename(artifact_path, deleted_artifact))
+expect_error(fertility_revalidate_recorded_acceptance(
+    acceptance_raw, recorded_acceptance, acceptance_inventory
+), "accepted-current-hash")
+stopifnot(file.rename(deleted_artifact, artifact_path))
+stopifnot(identical(
+    fertility_revalidate_recorded_acceptance(
+        acceptance_raw, recorded_acceptance, acceptance_inventory
+    )$artifact_sha256,
+    acceptance_reloaded$artifact_sha256
+))
+publication_inventory <- full_canonical
+publication_inventory$path <- rep(acceptance_inventory$path[[1L]], nrow(publication_inventory))
+publication_inventory$expected_sha512 <- rep("", nrow(publication_inventory))
+accepted_positions <- match(fertility_accepted_ids(), publication_inventory$id)
+publication_inventory$path[accepted_positions] <- acceptance_inventory$path
+publication_inventory$expected_sha512[accepted_positions] <- acceptance_expected
+publication_framework_id <- fertility_framework_id(
+    test_build_id, datasigs, acceptance_reloaded
+)
+publication_snapshot <- file.path(
+    acceptance_raw, "framework", publication_framework_id
+)
+dir.create(publication_snapshot, recursive = TRUE)
+fertility_atomic_write_table(
+    full_canonical, file.path(publication_snapshot, "inventory-manifest.tsv")
+)
+publication_inventory_id <- fertility_inventory_id(publication_inventory)
+publication_inventory_provenance <- data.frame(
+    schema_version = fertility_schema_version,
+    report_schema_version = fertility_report_schema_version,
+    framework_id = publication_framework_id,
+    inventory_id = publication_inventory_id,
+    inventory_manifest_id = fertility_manifest_id(full_canonical),
+    report_schema_id = fertility_report_schema_id(),
+    files = nrow(full_canonical), stringsAsFactors = FALSE, check.names = FALSE
+)
+fertility_atomic_write_table(
+    publication_inventory_provenance,
+    file.path(publication_snapshot, "inventory-manifest-provenance.tsv")
+)
+fertility_atomic_write_table(data.frame(
+    authority = acceptance_reloaded$authority,
+    commitment_id = acceptance_reloaded$commitment_id,
+    artifact_sha256 = acceptance_reloaded$artifact_sha256,
+    stringsAsFactors = FALSE, check.names = FALSE
+), file.path(publication_snapshot, "acceptance-provenance.tsv"))
+publication_provenance <- data.frame(
+    evidence_origin = "fresh-execution",
+    source_corpus_schema_version = as.character(fertility_schema_version),
+    framework_id = publication_framework_id,
+    build_provenance_id = test_build_id,
+    inventory_id = publication_inventory_id,
+    report_schema_id = fertility_report_schema_id(),
+    acceptance_authority = acceptance_reloaded$authority,
+    acceptance_commitment_id = acceptance_reloaded$commitment_id,
+    acceptance_artifact_sha256 = acceptance_reloaded$artifact_sha256,
+    stringsAsFactors = FALSE, check.names = FALSE
+)
+stopifnot(identical(
+    fertility_revalidate_accepted_publication(
+        acceptance_raw, publication_provenance, publication_inventory, datasigs
+    )$acceptance$artifact_sha256,
+    acceptance_reloaded$artifact_sha256
+))
+foreign_publication_framework <- publication_provenance
+foreign_publication_framework$framework_id <- test_framework_id
+expect_error(fertility_revalidate_accepted_publication(
+    acceptance_raw, foreign_publication_framework, publication_inventory, datasigs
+), "framework provenance changed")
+changed_publication_path <- publication_inventory$path[[accepted_positions[[3L]]]]
+writeBin(as.raw(c(118L, 88L, 0:15)), changed_publication_path)
+expect_error(fertility_revalidate_accepted_publication(
+    acceptance_raw, publication_provenance, publication_inventory, datasigs
+), "input validation failed")
+writeBin(as.raw(c(118L, 3L, 0:15)), changed_publication_path)
+
+accepted_family_fixture <- make_bundle_family(
+    full_canonical, accepted_options, classifications = rep("pass", nrow(full_canonical)),
+    inventory_id = paste(rep("e", 64L), collapse = ""),
+    acceptance = acceptance_reloaded
+)
+accepted_family_validated <- fertility_validate_shard_bundles(
+    accepted_family_fixture$bundles, accepted_family_fixture$id, full_canonical
+)
+stopifnot(
+    identical(accepted_family_validated$results$id, fertility_accepted_ids()),
+    identical(
+        accepted_family_validated$provenance$acceptance_commitment_id[[1L]],
+        acceptance_id
+    )
+)
+accepted_wrong_member <- accepted_family_fixture$bundles
+accepted_wrong_member[[1L]]$results$id[[1L]] <- "F0632"
+expect_error(fertility_validate_shard_bundles(
+    accepted_wrong_member, accepted_family_fixture$id, full_canonical
+), "canonical family membership|exact executable five-ID")
+accepted_foreign_artifact <- accepted_family_fixture$bundles
+accepted_foreign_artifact[[1L]]$provenance$acceptance_artifact_sha256 <-
+    paste(rep("7", 64L), collapse = "")
+expect_error(fertility_validate_shard_bundles(
+    accepted_foreign_artifact, accepted_family_fixture$id, full_canonical
+), "configuration provenance identity")
+merge_live_inventory <- full_canonical
+merge_live_inventory$expected_sha512 <- rep(
+    paste(rep("a", 128L), collapse = ""), nrow(merge_live_inventory)
+)
+make_merged_bundle <- function(validated, family_id) {
+    provenance <- validated$provenance
+    family_input_attestation_id <- fertility_family_input_attestation_id(provenance)
+    evidence_family_id <- fertility_evidence_family_id(
+        family_id, family_input_attestation_id,
+        provenance$evidence_origin[[1L]],
+        as.integer(provenance$source_corpus_schema_version[[1L]]),
+        provenance$report_schema_id[[1L]],
+        provenance$acceptance_authority[[1L]],
+        provenance$acceptance_commitment_id[[1L]]
+    )
+    merge_provenance <- data.frame(
+        schema_version = as.character(fertility_schema_version),
+        report_schema_version = as.character(fertility_report_schema_version),
+        evidence_origin = provenance$evidence_origin[[1L]],
+        source_corpus_schema_version = provenance$source_corpus_schema_version[[1L]],
+        replayed_at_utc = provenance$replayed_at_utc[[1L]],
+        acceptance_authority = provenance$acceptance_authority[[1L]],
+        acceptance_commitment_id = provenance$acceptance_commitment_id[[1L]],
+        acceptance_artifact_sha256 = provenance$acceptance_artifact_sha256[[1L]],
+        family_id = family_id, evidence_family_id = evidence_family_id,
+        family_input_attestation_id = family_input_attestation_id,
+        framework_id = provenance$framework_id[[1L]],
+        config_id = provenance$config_id[[1L]],
+        build_provenance_id = provenance$build_provenance_id[[1L]],
+        inventory_id = fertility_inventory_id(merge_live_inventory),
+        family_manifest_id = provenance$family_manifest_id[[1L]],
+        report_schema_id = provenance$report_schema_id[[1L]],
+        results_id = fertility_merged_results_id(validated$results),
+        merge_id = "", shard_count = as.character(validated$shard_count),
+        files = as.character(nrow(validated$results)),
+        full_default_family = if (validated$full_default) "TRUE" else "FALSE",
+        created_at_utc = "2026-01-01T00:00:00Z",
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    merge_provenance$merge_id <- fertility_merge_identity(merge_provenance)
+    merge_provenance <- merge_provenance[fertility_merge_provenance_fields()]
+    list(
+        provenance = merge_provenance, results = validated$results,
+        summary = fertility_classification_summary(validated$results),
+        family_manifest = validated$family_manifest,
+        input_attestation = fertility_family_input_attestation(provenance)
+    )
+}
+full_merged_bundle <- make_merged_bundle(full_validated, full_fixture$id)
+accepted_merged_bundle <- make_merged_bundle(
+    accepted_family_validated, accepted_family_fixture$id
+)
+full_assessment <- fertility_validate_merged_bundle(
+    full_merged_bundle, full_fixture$id, merge_live_inventory
+)
+accepted_assessment <- fertility_validate_merged_bundle(
+    accepted_merged_bundle, accepted_family_fixture$id, merge_live_inventory
+)
+stopifnot(
+    grepl("^[0-9a-f]{64}$", full_assessment$merge_id),
+    grepl("^[0-9a-f]{64}$", accepted_assessment$merge_id)
+)
+tampered_merged_results <- accepted_merged_bundle
+tampered_merged_results$results$classification[[1L]] <- "timeout"
+expect_error(fertility_validate_merged_bundle(
+    tampered_merged_results, accepted_family_fixture$id, merge_live_inventory
+), "results are not bound")
+tampered_merged_attestation <- accepted_merged_bundle
+tampered_merged_attestation$provenance$family_input_attestation_id <-
+    paste(rep("9", 64L), collapse = "")
+expect_error(fertility_validate_merged_bundle(
+    tampered_merged_attestation, accepted_family_fixture$id, merge_live_inventory
+), "input attestation identity")
+tampered_input_attestation <- accepted_merged_bundle
+tampered_input_attestation$input_attestation$input_attestation_id[[1L]] <-
+    paste(rep("8", 64L), collapse = "")
+expect_error(fertility_validate_merged_bundle(
+    tampered_input_attestation, accepted_family_fixture$id, merge_live_inventory
+), "input attestation identity")
+tampered_merged_evidence <- accepted_merged_bundle
+tampered_merged_evidence$provenance$evidence_family_id <-
+    paste(rep("9", 64L), collapse = "")
+expect_error(fertility_validate_merged_bundle(
+    tampered_merged_evidence, accepted_family_fixture$id, merge_live_inventory
+), "evidence family identity")
+tampered_merged_manifest <- accepted_merged_bundle
+tampered_merged_manifest$family_manifest$id[[1L]] <- "F0632"
+expect_error(fertility_validate_merged_bundle(
+    tampered_merged_manifest, accepted_family_fixture$id, merge_live_inventory
+), "manifest")
+assessment_gates <- fertility_validate_assessment_families(
+    full_assessment, accepted_assessment
+)
+stopifnot(
+    identical(assessment_gates$manifest_gate, "blocked-signature-mismatch"),
+    identical(assessment_gates$explicit_local_evidence_gate, "validated")
+)
+assessment_replaced_full <- full_assessment
+assessment_replaced_full$results$classification[
+    assessment_replaced_full$results$id == "F0633"
+] <- "pass"
+expect_error(fertility_validate_assessment_families(
+    assessment_replaced_full, accepted_assessment
+), "preserved manifest-gated family")
+for (reason in c("hash-read-error", "input-changed")) {
+    assessment_wrong_reason <- full_assessment
+    assessment_wrong_reason$results$secondary_categories[
+        assessment_wrong_reason$results$id == "F0633"
+    ] <- reason
+    expect_error(fertility_validate_assessment_families(
+        assessment_wrong_reason, accepted_assessment
+    ), "preserved manifest-gated family")
+}
+assessment_mixed_reasons <- full_assessment
+assessment_mixed_reasons$results$secondary_categories[
+    assessment_mixed_reasons$results$id == "F0634"
+] <- "hash-read-error"
+expect_error(fertility_validate_assessment_families(
+    assessment_mixed_reasons, accepted_assessment
+), "preserved manifest-gated family")
+assessment_multiple_reasons <- full_assessment
+assessment_multiple_reasons$results$secondary_categories[
+    assessment_multiple_reasons$results$id == "F0635"
+] <- "signature-mismatch,input-changed"
+expect_error(fertility_validate_assessment_families(
+    assessment_multiple_reasons, accepted_assessment
+), "preserved manifest-gated family")
+assessment_bad_accepted <- accepted_assessment
+assessment_bad_accepted$results$classification[[1L]] <- "inventory-hash-error"
+expect_error(fertility_validate_assessment_families(
+    full_assessment, assessment_bad_accepted
+), "explicit local evidence")
 
 actual <- tibble::tibble(
     number = c(1, 2 + 5e-8, haven::tagged_na("a")),
@@ -1196,7 +2635,9 @@ transaction_stages <- list(
     list(parent = "p2", stage = "s2", published = "p2/n2", old_current = NA_character_)
 )
 run_transaction_fixture <- function(fail_rename = 0L, fail_pointer = 0L,
-                                    fail_rollback = FALSE) {
+                                    fail_rollback = FALSE,
+                                    fail_before_rename = 0L,
+                                    fail_before_pointer = 0L) {
     state <- new.env(parent = emptyenv())
     state$paths <- c(s1 = TRUE, s2 = TRUE, `p1/n1` = FALSE, `p2/n2` = FALSE)
     state$pointers <- c(p1 = "old1", p2 = NA_character_)
@@ -1225,7 +2666,9 @@ run_transaction_fixture <- function(fail_rename = 0L, fail_pointer = 0L,
     expression <- function() fertility_publish_pointer_transaction(
         transaction_stages, rename_path, write_pointer, remove_path,
         pointer_state = function(parent) state$pointers[[parent]],
-        path_exists = function(path) isTRUE(state$paths[[path]])
+        path_exists = function(path) isTRUE(state$paths[[path]]),
+        before_rename = function(index, stage) index != fail_before_rename,
+        before_pointer = function(index, stage) index != fail_before_pointer
     )
     list(state = state, expression = expression)
 }
@@ -1240,6 +2683,26 @@ stopifnot(identical(pointer_failure$state$pointers[["p1"]], "old1"),
           is.na(pointer_failure$state$pointers[["p2"]]),
           !isTRUE(pointer_failure$state$paths[["p1/n1"]]),
           !isTRUE(pointer_failure$state$paths[["p2/n2"]]))
+rename_revalidation_failure <- run_transaction_fixture(fail_before_rename = 2L)
+expect_error(rename_revalidation_failure$expression(),
+             "atomically publish every report bundle")
+stopifnot(
+    identical(rename_revalidation_failure$state$pointers[["p1"]], "old1"),
+    is.na(rename_revalidation_failure$state$pointers[["p2"]]),
+    !isTRUE(rename_revalidation_failure$state$paths[["p1/n1"]]),
+    !isTRUE(rename_revalidation_failure$state$paths[["p2/n2"]])
+)
+pointer_revalidation_failure <- run_transaction_fixture(
+    fail_before_pointer = 2L
+)
+expect_error(pointer_revalidation_failure$expression(),
+             "republished shard pointer")
+stopifnot(
+    identical(pointer_revalidation_failure$state$pointers[["p1"]], "old1"),
+    is.na(pointer_revalidation_failure$state$pointers[["p2"]]),
+    !isTRUE(pointer_revalidation_failure$state$paths[["p1/n1"]]),
+    !isTRUE(pointer_revalidation_failure$state$paths[["p2/n2"]])
+)
 rollback_failure <- run_transaction_fixture(fail_pointer = 2L, fail_rollback = TRUE)
 expect_error(rollback_failure$expression(), "rollback did not restore")
 recorded_tile_spec <- fertility_value_tile(1L, 0, 2L, "a")
@@ -1429,6 +2892,53 @@ retried_tile <- fertility_process_tile(
 )
 stopifnot(!first_tile$resumed, resumed_tile$resumed, !retried_tile$resumed,
           tile_counter$n == 2L)
+metadata_retry_checkpoint <- file.path(root, "metadata-retry-checkpoint.rds")
+metadata_retry_counter <- new.env(parent = emptyenv())
+metadata_retry_counter$n <- 0L
+metadata_retry_execute <- function(item, tile, input) {
+    metadata_retry_counter$n <- metadata_retry_counter$n + 1L
+    list(
+        schema_version = fertility_schema_version, framework_id = "framework",
+        id = item$id, tile_id = tile$tile_id, tile_type = tile$type,
+        batch = tile$batch, skip = tile$skip, n_max = tile$n_max,
+        classification = "unresolved",
+        secondary = "structural-metadata-unavailable",
+        mismatches = fertility_bind_mismatches(list()), rows = 3L,
+        reader_rows = c(direct = 3L, rust = 3L, haven = NA_integer_),
+        columns = 1L, column_names = "x", storage = "double",
+        structural_rows = NA_real_, column_bytes = numeric(), strl = logical(),
+        projection_expected_count = NA_integer_,
+        projection_expected_hash = NA_character_,
+        projection_counts = c(direct = NA_integer_, rust = NA_integer_,
+                              haven = NA_integer_),
+        projection_hashes = c(direct = NA_character_, rust = NA_character_,
+                              haven = NA_character_),
+        projection_ok = c(direct = NA, rust = NA, haven = NA),
+        elapsed_seconds = 0
+    )
+}
+metadata_retry_tile <- fertility_metadata_tile()
+metadata_retry_first <- fertility_process_tile(
+    tile_item, metadata_retry_tile, metadata_retry_checkpoint, "framework",
+    tile_config, tile_input, FALSE, metadata_retry_execute
+)
+metadata_retry_resumed <- fertility_process_tile(
+    tile_item, metadata_retry_tile, metadata_retry_checkpoint, "framework",
+    tile_config, tile_input, FALSE, metadata_retry_execute
+)
+metadata_retry_rerun <- fertility_process_tile(
+    tile_item, metadata_retry_tile, metadata_retry_checkpoint, "framework",
+    tile_config, tile_input, TRUE, metadata_retry_execute
+)
+stopifnot(
+    !metadata_retry_first$resumed, metadata_retry_resumed$resumed,
+    !metadata_retry_rerun$resumed, metadata_retry_counter$n == 2L,
+    metadata_retry_rerun$result$classification == "unresolved",
+    identical(
+        metadata_retry_rerun$result$secondary,
+        "structural-metadata-unavailable"
+    )
+)
 foreign_tile_checkpoint <- first_tile$result
 foreign_tile_checkpoint$schema_version <- fertility_schema_version + 1L
 stopifnot(
@@ -1659,10 +3169,14 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
         structural_failure_worker, structural_planning_failure
     )
     stopifnot(
-        structural_failure_worker$classification == "pass",
+        structural_failure_worker$classification == "unresolved",
         all(structural_failure_worker$reader_rows[c("direct", "rust")] ==
             nrow(bounded_data)),
         is.na(structural_failure_worker$reader_rows[["haven"]]),
+        identical(
+            structural_failure_worker$secondary,
+            "structural-metadata-unavailable"
+        ),
         !any(grepl("reader-error", structural_failure_worker$secondary, fixed = TRUE)),
         is.na(structural_failure_worker$structural_rows),
         !length(structural_failure_worker$column_bytes),
@@ -1671,7 +3185,7 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
             structural_failure_tiles, complete = FALSE
         ) == "unresolved",
         identical(
-            fertility_tile_secondary(structural_failure_tiles),
+            unique(fertility_tile_secondary(structural_failure_tiles)),
             "structural-metadata-unavailable"
         ),
         !any(grepl(

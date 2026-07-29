@@ -1,3 +1,45 @@
+fertility_runtime_path_is_symlink <- function(path) {
+    link <- Sys.readlink(path)
+    !is.na(link) & nzchar(link)
+}
+
+fertility_runtime_assert_file <- function(path, parent = dirname(path),
+                                          label = "runtime file") {
+    path <- path.expand(path)
+    parent <- path.expand(parent)
+    if (!identical(dirname(path), parent) || !dir.exists(parent) ||
+        fertility_runtime_path_is_symlink(parent) ||
+        fertility_runtime_path_is_symlink(path) || !file.exists(path) ||
+        dir.exists(path)) stop(label, " must be a direct non-symlink file")
+    if (!identical(normalizePath(parent, winslash = "/", mustWork = TRUE), parent) ||
+        !identical(normalizePath(path, winslash = "/", mustWork = TRUE), path)) {
+        stop(label, " must be canonical")
+    }
+    path
+}
+
+fertility_secure_directory <- function(path, label = "runtime directory") {
+    lexical <- path.expand(path)
+    if (!startsWith(lexical, "/")) stop(label, " must be absolute")
+    pieces <- strsplit(sub("^/", "", lexical), "/", fixed = TRUE)[[1L]]
+    current <- "/"
+    for (piece in pieces[nzchar(pieces)]) {
+        child <- file.path(current, piece)
+        if (fertility_runtime_path_is_symlink(child)) stop(label, " must not traverse symlinks")
+        if (!dir.exists(child) &&
+            !dir.create(child, showWarnings = FALSE, mode = "0700")) {
+            stop("could not create ", label)
+        }
+        if (fertility_runtime_path_is_symlink(current) || fertility_runtime_path_is_symlink(child) ||
+            !identical(
+                dirname(normalizePath(child, winslash = "/", mustWork = TRUE)),
+                normalizePath(current, winslash = "/", mustWork = TRUE)
+            )) stop(label, " escaped its lexical parent")
+        current <- child
+    }
+    lexical
+}
+
 fertility_host <- function() {
     value <- unname(Sys.info()[["nodename"]])
     if (is.null(value) || is.na(value) || !nzchar(value)) "unknown-host" else value
@@ -55,8 +97,14 @@ fertility_random_identity <- function(pid = Sys.getpid()) {
 }
 
 fertility_touch_heartbeat <- function(path, identity) {
-    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE, mode = "0700")
-    temporary <- tempfile("heartbeat.", tmpdir = dirname(path))
+    parent <- fertility_secure_directory(dirname(path), "heartbeat parent")
+    if (fertility_runtime_path_is_symlink(path) || dir.exists(path)) {
+        stop("owner heartbeat must not be a symlink or directory")
+    }
+    if (file.exists(path)) fertility_runtime_assert_file(
+        path, parent, "owner heartbeat"
+    )
+    temporary <- tempfile("heartbeat.", tmpdir = parent)
     on.exit(unlink(temporary), add = TRUE)
     writeLines(identity, temporary, useBytes = TRUE)
     Sys.chmod(temporary, mode = "0600")
@@ -82,7 +130,14 @@ fertility_owner <- function(heartbeat, pid = Sys.getpid(), start = NULL,
 }
 
 fertility_write_owner <- function(directory, owner) {
+    directory <- fertility_secure_directory(directory, "owner directory")
     path <- file.path(directory, "owner.tsv")
+    if (fertility_runtime_path_is_symlink(path) || dir.exists(path)) {
+        stop("ownership record must not be a symlink or directory")
+    }
+    if (file.exists(path)) fertility_runtime_assert_file(
+        path, directory, "ownership record"
+    )
     temporary <- tempfile("owner.", tmpdir = directory)
     on.exit(unlink(temporary), add = TRUE)
     fields <- c("token", "pid", "host", "start", "heartbeat", "created")
@@ -94,8 +149,16 @@ fertility_write_owner <- function(directory, owner) {
 }
 
 fertility_read_owner <- function(directory) {
+    directory <- path.expand(directory)
+    if (fertility_runtime_path_is_symlink(directory)) {
+        stop("owner directory must not be a symlink")
+    }
     path <- file.path(directory, "owner.tsv")
+    if (fertility_runtime_path_is_symlink(path)) {
+        stop("ownership record must not be a symlink")
+    }
     if (!file.exists(path)) return(NULL)
+    path <- fertility_runtime_assert_file(path, directory, "ownership record")
     lines <- tryCatch(readLines(path, warn = FALSE), error = function(error) character())
     pieces <- strsplit(lines, "\t", fixed = TRUE)
     fields <- c("token", "pid", "host", "start", "heartbeat", "created")
@@ -125,11 +188,17 @@ fertility_owner_alive <- function(owner, heartbeat_grace = 3,
     # If the owner is remote or OS process-generation metadata is temporarily
     # unavailable, a recent matching heartbeat can preserve ownership but can
     # never prove staleness.
+    if (fertility_runtime_path_is_symlink(owner$heartbeat)) {
+        stop("owner heartbeat must not be a symlink")
+    }
     if (!file.exists(owner$heartbeat)) return(NA)
-    identity <- tryCatch(readLines(owner$heartbeat, warn = FALSE, n = 1L),
+    heartbeat <- fertility_runtime_assert_file(
+        owner$heartbeat, dirname(owner$heartbeat), "owner heartbeat"
+    )
+    identity <- tryCatch(readLines(heartbeat, warn = FALSE, n = 1L),
                          error = function(error) character())
     if (length(identity) != 1L || !identical(identity[[1L]], owner$start)) return(NA)
-    info <- file.info(owner$heartbeat)
+    info <- file.info(heartbeat)
     if (!nrow(info) || is.na(info$mtime[[1L]])) return(NA)
     age <- as.numeric(difftime(Sys.time(), info$mtime[[1L]], units = "secs"))
     if (is.finite(age) && age <= heartbeat_grace) TRUE else NA
@@ -151,8 +220,8 @@ fertility_local_owner <- function(directory) {
 fertility_acquire_lock <- function(path, owner = NULL, initialization_grace = 5,
                                    remote_stale_after = 7 * 24 * 3600,
                                    owner_status = fertility_owner_alive) {
-    parent <- dirname(path)
-    dir.create(parent, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+    parent <- fertility_secure_directory(dirname(path), "lock parent")
+    if (fertility_runtime_path_is_symlink(path)) stop("lock path must not be a symlink")
     for (attempt in seq_len(3L)) {
         if (dir.create(path, showWarnings = FALSE, mode = "0700")) {
             if (is.null(owner)) owner <- fertility_local_owner(path)
@@ -302,7 +371,7 @@ fertility_hold_owner <- function(state, parent_pid) {
         error = function(error) NA_character_
     )
     if (is.na(parent_start)) stop("could not identify orchestrator process generation")
-    dir.create(state, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+    state <- fertility_secure_directory(state, "owner state directory")
     heartbeat <- file.path(state, "heartbeat")
     owner <- fertility_owner(heartbeat, pid = parent_pid, start = parent_start)
     fertility_touch_heartbeat(heartbeat, owner$start)

@@ -17,6 +17,513 @@ fertility_checkout_root <- function(script_path = fertility_script_path()) {
     normalizePath(file.path(dirname(script_path), "..", ".."), winslash = "/")
 }
 
+fertility_path_is_symlink <- function(path) {
+    link <- Sys.readlink(path)
+    !is.na(link) & nzchar(link)
+}
+
+fertility_assert_canonical_components <- function(path, label,
+                                                   must_exist = TRUE) {
+    lexical <- path.expand(path)
+    if (length(lexical) != 1L || is.na(lexical) || !startsWith(lexical, "/")) {
+        stop(label, " must be an absolute canonical path")
+    }
+    pieces <- strsplit(sub("^/", "", lexical), "/", fixed = TRUE)[[1L]]
+    current <- "/"
+    for (piece in pieces[nzchar(pieces)]) {
+        if (piece %in% c(".", "..")) stop(label, " must be canonical")
+        current <- file.path(current, piece)
+        exists <- file.exists(current) || dir.exists(current) ||
+            fertility_path_is_symlink(current)
+        if (exists && fertility_path_is_symlink(current)) {
+            stop(label, " must not traverse symlinks")
+        }
+        if (!exists) break
+    }
+    if (must_exist) {
+        if (!file.exists(lexical) && !dir.exists(lexical)) {
+            stop(label, " must exist")
+        }
+        resolved <- normalizePath(lexical, winslash = "/", mustWork = TRUE)
+        if (!identical(resolved, lexical)) stop(label, " must be canonical")
+    }
+    lexical
+}
+
+fertility_assert_existing_directory <- function(path, parent, label) {
+    path <- fertility_assert_direct_child(path, parent, label)
+    if (!dir.exists(path)) stop(label, " must be an existing directory")
+    fertility_assert_canonical_components(path, label)
+}
+
+fertility_assert_existing_file <- function(path, parent, label) {
+    path <- fertility_assert_direct_child(path, parent, label)
+    if (!file.exists(path) || dir.exists(path)) {
+        stop(label, " must be an existing regular file")
+    }
+    fertility_assert_canonical_components(path, label)
+}
+
+fertility_assert_checkpoint_file <- function(path, label,
+                                             must_exist = FALSE) {
+    parent <- fertility_assert_canonical_components(
+        dirname(path), paste(label, "parent")
+    )
+    if (!dir.exists(parent)) stop(label, " parent must exist")
+    if (fertility_path_is_symlink(path) || dir.exists(path)) {
+        stop(label, " must not be a symlink or directory")
+    }
+    if (must_exist || file.exists(path)) {
+        return(fertility_assert_existing_file(path, parent, label))
+    }
+    fertility_assert_direct_child(path, parent, label, must_work = FALSE)
+}
+
+fertility_assert_new_destination <- function(path, parent, label) {
+    path <- fertility_assert_direct_child(
+        path, parent, label, must_work = FALSE
+    )
+    if (file.exists(path) || dir.exists(path) || fertility_path_is_symlink(path)) {
+        stop(label, " already exists")
+    }
+    path
+}
+
+fertility_remove_confirmed_new_path <- function(path, parent, label) {
+    path <- fertility_assert_direct_child(path, parent, label)
+    if (fertility_path_is_symlink(path)) {
+        stop("refusing to remove symlinked ", label)
+    }
+    unlink(path, recursive = TRUE)
+    !file.exists(path) && !dir.exists(path) && !fertility_path_is_symlink(path)
+}
+
+fertility_character_frame <- function(value) {
+    if (!is.data.frame(value)) stop("expected table must be a data frame")
+    result <- as.data.frame(
+        lapply(value, as.character), stringsAsFactors = FALSE,
+        check.names = FALSE
+    )
+    rownames(result) <- NULL
+    result
+}
+
+fertility_validate_exact_table_bundle <- function(
+    bundle, files, expected, label
+) {
+    bundle <- fertility_assert_existing_directory(
+        bundle, dirname(bundle), paste(label, "directory")
+    )
+    expected_files <- unname(files)
+    if (!identical(names(files), names(expected)) ||
+        anyDuplicated(expected_files) || !length(files) ||
+        any(!nzchar(expected_files)) ||
+        !identical(basename(expected_files), expected_files)) {
+        stop(label, " specification is invalid")
+    }
+    entries <- sort(list.files(
+        bundle, all.files = TRUE, no.. = TRUE, full.names = TRUE,
+        recursive = FALSE, include.dirs = TRUE
+    ))
+    if (!identical(sort(basename(entries)), sort(expected_files))) {
+        stop(label, " exact file set changed")
+    }
+    loaded <- lapply(seq_along(files), function(index) {
+        path <- fertility_assert_existing_file(
+            file.path(bundle, files[[index]]), bundle,
+            paste(label, names(files)[[index]])
+        )
+        if (!file_test("-f", path) || fertility_path_is_symlink(path)) {
+            stop(label, " must contain only regular nonsymlink files")
+        }
+        read.delim(path, colClasses = "character", check.names = FALSE)
+    })
+    names(loaded) <- names(files)
+    expected <- lapply(expected, fertility_character_frame)
+    if (!identical(loaded, expected)) stop(label, " exact contents changed")
+    loaded
+}
+
+fertility_attest_existing_files <- function(paths, label) {
+    paths <- vapply(paths, function(path) fertility_assert_existing_file(
+        path, dirname(path), label
+    ), character(1))
+    list(paths = paths, sha256 = unname(tools::sha256sum(paths)))
+}
+
+fertility_revalidate_existing_files <- function(attestation, label) {
+    if (!is.list(attestation) || !identical(
+        names(attestation), c("paths", "sha256")
+    )) stop(label, " attestation is invalid")
+    current <- fertility_attest_existing_files(attestation$paths, label)
+    if (!identical(current, attestation)) stop(label, " identity changed")
+    invisible(TRUE)
+}
+
+fertility_attest_regular_tree <- function(directory, label) {
+    directory <- fertility_assert_existing_directory(
+        directory, dirname(directory), paste(label, "root")
+    )
+    files <- character()
+    walk <- function(parent) {
+        entries <- sort(list.files(
+            parent, all.files = TRUE, no.. = TRUE, full.names = TRUE,
+            recursive = FALSE, include.dirs = TRUE
+        ))
+        for (entry in entries) {
+            if (!identical(dirname(entry), parent) || fertility_path_is_symlink(entry)) {
+                stop(label, " must not contain symlinks or escaped entries")
+            }
+            info <- file.info(entry)
+            if (nrow(info) != 1L || is.na(info$isdir[[1L]])) {
+                stop(label, " contains an unavailable entry")
+            }
+            resolved <- normalizePath(entry, winslash = "/", mustWork = TRUE)
+            if (!identical(dirname(resolved), parent) ||
+                !identical(resolved, file.path(parent, basename(entry)))) {
+                stop(label, " entry escaped its canonical direct parent")
+            }
+            if (isTRUE(info$isdir[[1L]])) {
+                walk(resolved)
+            } else if (isTRUE(file_test("-f", resolved))) {
+                files <<- c(files, resolved)
+            } else {
+                stop(label, " contains a non-regular file")
+            }
+        }
+    }
+    walk(directory)
+    files <- sort(files)
+    if (!length(files)) stop(label, " is empty")
+    relative <- substring(files, nchar(directory) + 2L)
+    list(
+        directory = directory, paths = relative,
+        sha256 = unname(tools::sha256sum(files))
+    )
+}
+
+fertility_revalidate_regular_tree <- function(attestation, label) {
+    if (!is.list(attestation) || !identical(
+        names(attestation), c("directory", "paths", "sha256")
+    )) stop(label, " attestation is invalid")
+    current <- fertility_attest_regular_tree(attestation$directory, label)
+    if (!identical(current, attestation)) stop(label, " identity changed")
+    invisible(TRUE)
+}
+
+fertility_filesystem_identity <- function(path, label) {
+    path <- fertility_assert_canonical_components(path, label)
+    if (fertility_path_is_symlink(path)) stop(label, " must not be a symlink")
+    python <- Sys.which("python3")
+    if (!nzchar(python)) stop("python3 is required for filesystem identity")
+    code <- paste(
+        "import os, sys",
+        "value=os.lstat(sys.argv[1])",
+        "print(f'{value.st_dev}:{value.st_ino}:{value.st_mode}')",
+        sep = "\n"
+    )
+    output <- suppressWarnings(system2(
+        python, c("-c", shQuote(code), shQuote(path)),
+        stdout = TRUE, stderr = FALSE
+    ))
+    status <- attr(output, "status", exact = TRUE)
+    if ((!is.null(status) && status != 0L) || length(output) != 1L ||
+        !grepl("^[0-9]+:[0-9]+:[0-9]+$", output[[1L]])) {
+        stop("could not attest filesystem identity for ", label)
+    }
+    output[[1L]]
+}
+
+fertility_atomic_rename_noreplace <- function(
+    from, to, label, validate_source = NULL
+) {
+    from <- path.expand(from)
+    to <- path.expand(to)
+    if (!file.exists(from) && !dir.exists(from)) stop(label, " source is absent")
+    if (fertility_path_is_symlink(from) || fertility_path_is_symlink(to)) {
+        stop(label, " must not use symlinks")
+    }
+    fertility_assert_canonical_components(dirname(from), paste(label, "source parent"))
+    fertility_assert_canonical_components(dirname(to), paste(label, "destination parent"))
+    fertility_publication_test_hook(
+        "atomic-noreplace-before-operation",
+        list(from = from, to = to, label = label)
+    )
+    if (!is.null(validate_source)) {
+        if (!is.function(validate_source)) {
+            stop(label, " source validator must be a function")
+        }
+        validate_source(from, to, label)
+    }
+    python <- Sys.which("python3")
+    if (!nzchar(python)) stop("python3 is required for atomic no-replace publication")
+    code <- paste(
+        "import ctypes, errno, os, sys",
+        "src=os.fsencode(sys.argv[1]); dst=os.fsencode(sys.argv[2])",
+        "libc=ctypes.CDLL(None, use_errno=True)",
+        "if sys.platform == 'darwin':",
+        "    fn=libc.renamex_np; fn.argtypes=[ctypes.c_char_p,ctypes.c_char_p,ctypes.c_uint]",
+        "    rc=fn(src,dst,4)",
+        "else:",
+        "    fn=getattr(libc,'renameat2',None)",
+        "    if fn is None: sys.exit(18)",
+        "    fn.argtypes=[ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]",
+        "    rc=fn(-100,src,-100,dst,1)",
+        "if rc != 0:",
+        "    value=ctypes.get_errno()",
+        "    sys.exit(17 if value in (errno.EEXIST, errno.ENOTEMPTY) else 19)",
+        sep = "\n"
+    )
+    status <- suppressWarnings(system2(
+        python, c("-c", shQuote(code), shQuote(from), shQuote(to)),
+        stdout = FALSE, stderr = FALSE
+    ))
+    if (identical(status, 17L)) stop(label, " destination already exists")
+    if (!identical(status, 0L)) stop("atomic no-replace publication failed for ", label)
+    invisible(TRUE)
+}
+
+fertility_publication_test_hook <- function(boundary, context = list()) {
+    hook <- getOption("dtaparser.fertility.publication_test_hook")
+    if (is.function(hook)) hook(boundary, context)
+    invisible(TRUE)
+}
+
+fertility_assert_checkout_raw_root <- function(raw_root, checkout_root, create = FALSE) {
+    checkout_lexical <- path.expand(checkout_root)
+    checkout <- normalizePath(checkout_lexical, winslash = "/", mustWork = TRUE)
+    if (!identical(checkout_lexical, checkout) || fertility_path_is_symlink(checkout_lexical)) {
+        stop("fertility checkout root must be canonical and non-symlinked")
+    }
+    expected <- file.path(checkout, "target", "fertility-surveys", "raw")
+    if (!identical(path.expand(raw_root), expected)) {
+        stop("fertility outputs must use the checkout-local raw root")
+    }
+    components <- c(
+        checkout, file.path(checkout, "target"),
+        file.path(checkout, "target", "fertility-surveys"), expected
+    )
+    existing <- components[file.exists(components) | dir.exists(components)]
+    if (length(existing) && any(fertility_path_is_symlink(existing))) {
+        stop("fertility output ancestors must not be symlinks")
+    }
+    if (create) {
+        parent <- checkout
+        for (name in c("target", "fertility-surveys", "raw")) {
+            child <- file.path(parent, name)
+            if (fertility_path_is_symlink(child)) {
+                stop("fertility output ancestors must not be symlinks")
+            }
+            if (!dir.exists(child) &&
+                !dir.create(child, showWarnings = FALSE, mode = "0700")) {
+                stop("could not create checkout-local fertility output directory")
+            }
+            if (fertility_path_is_symlink(parent) || fertility_path_is_symlink(child) ||
+                !identical(
+                    dirname(normalizePath(child, winslash = "/", mustWork = TRUE)),
+                    normalizePath(parent, winslash = "/", mustWork = TRUE)
+                )) stop("fertility raw root escaped the checkout")
+            parent <- child
+        }
+    }
+    if (!dir.exists(expected) || any(fertility_path_is_symlink(components)) ||
+        !identical(normalizePath(expected, winslash = "/", mustWork = TRUE),
+                   expected)) {
+        stop("fertility raw root escaped the checkout")
+    }
+    expected
+}
+
+fertility_assert_direct_child <- function(path, parent, label,
+                                          must_work = TRUE) {
+    parent_lexical <- path.expand(parent)
+    path_lexical <- path.expand(path)
+    if (!identical(dirname(path_lexical), parent_lexical)) {
+        stop(label, " must be directly beneath its expected parent")
+    }
+    if (!dir.exists(parent_lexical) || fertility_path_is_symlink(parent_lexical)) {
+        stop(label, " parent must be an existing non-symlink directory")
+    }
+    fertility_assert_canonical_components(
+        parent_lexical, paste(label, "parent")
+    )
+    if ((file.exists(path_lexical) || dir.exists(path_lexical)) &&
+        fertility_path_is_symlink(path_lexical)) {
+        stop(label, " must not be a symlink")
+    }
+    if (must_work) {
+        resolved_parent <- normalizePath(
+            parent_lexical, winslash = "/", mustWork = TRUE
+        )
+        resolved <- normalizePath(path_lexical, winslash = "/", mustWork = TRUE)
+        if (!identical(dirname(resolved), resolved_parent)) {
+            stop(label, " escaped its expected parent")
+        }
+    }
+    path_lexical
+}
+
+fertility_assert_output_parent <- function(raw_root, collection, identity,
+                                           create = FALSE) {
+    collection_path <- file.path(raw_root, collection)
+    fertility_assert_direct_child(
+        collection_path, raw_root, paste(collection, "output directory"),
+        must_work = FALSE
+    )
+    if (create && !dir.exists(collection_path) &&
+        !dir.create(collection_path, showWarnings = FALSE, mode = "0700")) {
+        stop("could not create ", collection, " output directory")
+    }
+    fertility_assert_direct_child(
+        collection_path, raw_root, paste(collection, "output directory")
+    )
+    parent <- file.path(collection_path, identity)
+    fertility_assert_direct_child(
+        parent, collection_path, paste(collection, "publication parent"),
+        must_work = FALSE
+    )
+    if (create && !dir.exists(parent) &&
+        !dir.create(parent, showWarnings = FALSE, mode = "0700")) {
+        stop("could not create ", collection, " publication parent")
+    }
+    fertility_assert_direct_child(
+        parent, collection_path, paste(collection, "publication parent")
+    )
+}
+
+fertility_resolve_checkpoint_case <- function(
+    raw_root, framework_id, config_id, case_id, require_result = TRUE
+) {
+    if (!grepl("^[0-9a-f]{64}$", framework_id) ||
+        !grepl("^[0-9a-f]{64}$", config_id) ||
+        !grepl("^F[0-9]{4}$", case_id)) stop("checkpoint identity is invalid")
+    checkpoints <- fertility_assert_existing_directory(
+        file.path(raw_root, "checkpoints"), raw_root,
+        "checkpoints output directory"
+    )
+    framework <- fertility_assert_existing_directory(
+        file.path(checkpoints, framework_id), checkpoints,
+        "framework checkpoint directory"
+    )
+    configuration <- fertility_assert_existing_directory(
+        file.path(framework, config_id), framework,
+        "configuration checkpoint directory"
+    )
+    case <- fertility_assert_existing_directory(
+        file.path(configuration, case_id), configuration,
+        "checkpoint case directory"
+    )
+    result <- file.path(case, "result.rds")
+    if (require_result) result <- fertility_assert_existing_file(
+        result, case, "checkpoint case result"
+    )
+    tiles <- file.path(case, "tiles")
+    if (file.exists(tiles) || dir.exists(tiles) || fertility_path_is_symlink(tiles)) {
+        tiles <- fertility_assert_existing_directory(
+            tiles, case, "checkpoint tile directory"
+        )
+    } else tiles <- NULL
+    list(
+        checkpoints = checkpoints, framework = framework,
+        configuration = configuration, case = case,
+        result = result, tiles = tiles
+    )
+}
+
+fertility_checkpoint_tile_files <- function(case_paths) {
+    if (!is.list(case_paths) || is.null(case_paths$case)) {
+        stop("checkpoint case paths are invalid")
+    }
+    if (is.null(case_paths$tiles)) return(character())
+    tile_root <- fertility_assert_existing_directory(
+        case_paths$tiles, case_paths$case, "checkpoint tile directory"
+    )
+    entries <- list.files(tile_root, all.files = TRUE, no.. = TRUE)
+    if (any(!grepl("^[A-Za-z0-9._-]+[.]rds$", entries))) {
+        stop("checkpoint tile directory contains an invalid entry")
+    }
+    vapply(entries, function(name) fertility_assert_existing_file(
+        file.path(tile_root, name), tile_root, "checkpoint tile file"
+    ), character(1))
+}
+
+fertility_resolve_build_bundle <- function(raw_root, build_id = NULL,
+                                           require_current = FALSE) {
+    builds_root <- fertility_assert_existing_directory(
+        file.path(raw_root, "builds"), raw_root, "builds output directory"
+    )
+    current_id <- NULL
+    if (require_current) {
+        current_path <- fertility_assert_existing_file(
+            file.path(builds_root, "CURRENT"), builds_root, "build CURRENT pointer"
+        )
+        value <- readLines(current_path, warn = FALSE, n = 1L)
+        if (length(value) != 1L || !grepl("^[0-9a-f]{64}$", value)) {
+            stop("build CURRENT pointer is invalid")
+        }
+        current_id <- value[[1L]]
+        if (!is.null(build_id) && !identical(build_id, current_id)) {
+            stop("selected build CURRENT changed")
+        }
+        build_id <- current_id
+    }
+    if (is.null(build_id) || length(build_id) != 1L ||
+        !grepl("^[0-9a-f]{64}$", build_id)) stop("build identity is invalid")
+    generation <- fertility_assert_existing_directory(
+        file.path(builds_root, build_id), builds_root, "build generation"
+    )
+    library <- fertility_assert_existing_directory(
+        file.path(generation, "library"), generation, "build library"
+    )
+    provenance <- fertility_assert_existing_file(
+        file.path(generation, "build-provenance.tsv"), generation,
+        "build provenance"
+    )
+    package <- fertility_assert_existing_directory(
+        file.path(library, "dtaparser"), library, "installed dtaparser package"
+    )
+    list(
+        builds_root = builds_root, current_id = current_id,
+        generation = generation, library = library,
+        provenance = provenance, package = package
+    )
+}
+
+fertility_revalidate_current_bundle <- function(
+    parent, expected_run_name, files, label
+) {
+    current <- fertility_current_bundle_paths(parent, files, label)
+    if (!identical(current$run_name, expected_run_name)) {
+        stop(label, " CURRENT changed before publication")
+    }
+    current
+}
+
+fertility_current_bundle_paths <- function(parent, files, label) {
+    parent <- fertility_assert_canonical_components(parent, paste(label, "parent"))
+    if (!dir.exists(parent)) stop(label, " parent must be an existing directory")
+    pointer <- fertility_assert_existing_file(
+        file.path(parent, "CURRENT"), parent, paste(label, "CURRENT pointer")
+    )
+    run_name <- tryCatch(
+        readLines(pointer, warn = FALSE, n = 1L),
+        error = function(error) character()
+    )
+    if (length(run_name) != 1L || !grepl("^[A-Za-z0-9._-]+$", run_name)) {
+        stop(label, " CURRENT pointer is invalid")
+    }
+    bundle <- fertility_assert_existing_directory(
+        file.path(parent, run_name), parent, paste(label, "bundle")
+    )
+    paths <- setNames(file.path(bundle, unname(files)), names(files))
+    for (index in seq_along(paths)) {
+        paths[[index]] <- fertility_assert_existing_file(
+            paths[[index]], bundle, paste(label, names(paths)[[index]])
+        )
+    }
+    list(bundle = bundle, paths = paths, run_name = run_name)
+}
+
 fertility_assert_manual_run <- function() {
     ci_variables <- c("CI", "GITHUB_ACTIONS", "GITHUB_RUN_ID", "GITHUB_WORKFLOW")
     active <- ci_variables[nzchar(Sys.getenv(ci_variables, unset = ""))]
