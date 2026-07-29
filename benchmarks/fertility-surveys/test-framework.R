@@ -232,6 +232,55 @@ local({
         identical(unname(tools::sha256sum(external_dta)), external_before)
     )
 
+    # Replacing an ancestor above the configured output root after lexical
+    # validation cannot redirect descriptor traversal into another tree.
+    ancestor_parent <- file.path(root, "output-ancestor")
+    ancestor_saved <- paste0(ancestor_parent, ".saved")
+    ancestor_output <- file.path(ancestor_parent, "output")
+    external_ancestor <- file.path(root, "external-output-ancestor")
+    dir.create(ancestor_output, recursive = TRUE)
+    dir.create(file.path(external_ancestor, "output"), recursive = TRUE)
+    writeBin(c(as.raw(113L), as.raw(rep(3L, 40L))),
+             file.path(ancestor_output, "original.dta"))
+    writeBin(c(as.raw(118L), as.raw(rep(4L, 40L))),
+             file.path(external_ancestor, "output", "replacement.dta"))
+    assign("fertility_output_root", normalizePath(
+        ancestor_output, winslash = "/", mustWork = TRUE
+    ), envir = .GlobalEnv)
+    restorer <- NULL
+    options(dtaparser.fertility.output_inventory_test_hook = function(
+        boundary, context
+    ) {
+        if (identical(boundary, "before-descriptor-content-read")) {
+            stopifnot(
+                file.rename(ancestor_parent, ancestor_saved),
+                file.symlink(external_ancestor, ancestor_parent)
+            )
+            restorer <<- callr::r_bg(function(path, saved) {
+                Sys.sleep(0.5)
+                unlink(path)
+                if (!file.rename(saved, path)) stop("could not restore output ancestor")
+                TRUE
+            }, args = list(ancestor_parent, ancestor_saved), supervise = TRUE,
+            user_profile = FALSE, system_profile = FALSE)
+        }
+    })
+    expect_error(
+        fertility_output_descriptor_manifest(fertility_output_root, TRUE),
+        "descriptor-bound regular files"
+    )
+    stopifnot(!is.null(restorer))
+    restorer$wait(timeout = 5000L)
+    stopifnot(
+        identical(restorer$get_result(), TRUE),
+        !fertility_path_is_symlink(ancestor_parent),
+        file.exists(file.path(ancestor_output, "original.dta"))
+    )
+    assign("fertility_output_root", normalizePath(
+        fixture, winslash = "/", mustWork = TRUE
+    ), envir = .GlobalEnv)
+    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+
     capture_parent <- file.path(fixture, "capture-parent")
     capture_parent_saved <- paste0(capture_parent, ".saved")
     external_parent <- file.path(outside, "capture-parent")
@@ -270,6 +319,67 @@ local({
         !fertility_path_is_symlink(capture_parent)
     )
     options(dtaparser.fertility.output_inventory_test_hook = NULL)
+})
+
+# A worker connection is accepted only for the captured inode, survives source
+# parent substitution, resets its shared file offset between independent reads,
+# and closes deterministically after both successful and failed workers.
+local({
+    bound_parent <- file.path(root, "bound-worker-parent")
+    bound_saved <- paste0(bound_parent, ".saved")
+    dir.create(bound_parent)
+    bound_path <- file.path(bound_parent, "input.dta")
+    original <- as.raw(seq_len(64L))
+    replacement <- as.raw(rep(255L, length(original)))
+    writeBin(original, bound_path)
+    bound_item <- list(
+        id = "FBOUND", release = 113L, expected_sha512 = "",
+        path = normalizePath(bound_path, winslash = "/", mustWork = TRUE)
+    )
+    bound_input <- fertility_capture_input(bound_item)
+    connection <- fertility_open_bound_input_connection(bound_item$path, bound_input)
+    stopifnot(file.rename(bound_parent, bound_saved), dir.create(bound_parent))
+    writeBin(replacement, bound_path)
+    observed <- callr::r(
+        function(common_script) {
+            source(common_script, local = environment())
+            lapply(seq_len(3L), function(index) {
+                fertility_reset_bound_input("/dev/fd/3")
+                readBin("/dev/fd/3", "raw", n = 64L)
+            })
+        },
+        args = list(file.path(script_dir, "common.R")),
+        connections = list(connection), poll_connection = FALSE,
+        user_profile = FALSE, system_profile = FALSE
+    )
+    stopifnot(all(vapply(observed, identical, logical(1), original)))
+    fertility_close_bound_input_connection(connection)
+    stopifnot(identical(processx::conn_get_fileno(connection), -1L))
+    unlink(bound_parent, recursive = TRUE)
+    stopifnot(file.rename(bound_saved, bound_parent))
+
+    # Opening after substitution must reject the stale captured identity.
+    stale_input <- fertility_capture_input(bound_item)
+    stopifnot(file.rename(bound_parent, bound_saved), dir.create(bound_parent))
+    writeBin(replacement, bound_path)
+    expect_error(
+        fertility_open_bound_input_connection(bound_path, stale_input),
+        "does not match captured identity"
+    )
+    unlink(bound_parent, recursive = TRUE)
+    stopifnot(file.rename(bound_saved, bound_parent))
+
+    failure_connection <- fertility_open_bound_input_connection(
+        bound_item$path, fertility_capture_input(bound_item)
+    )
+    failure <- tryCatch(callr::r(
+        function() stop("synthetic worker failure"),
+        connections = list(failure_connection), poll_connection = FALSE,
+        user_profile = FALSE, system_profile = FALSE
+    ), error = identity)
+    stopifnot(inherits(failure, "error"))
+    fertility_close_bound_input_connection(failure_connection)
+    stopifnot(identical(processx::conn_get_fileno(failure_connection), -1L))
 })
 
 # Output confinement rejects symlinked roots, publication descendants, CURRENT
@@ -4182,6 +4292,34 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
                 skip = 0L, n_max = 1L, .name_repair = "minimal"
             )
         )
+    )
+    fd_input <- fertility_capture_input(bounded_item)
+    fd_connection <- fertility_open_bound_input_connection(bounded_path, fd_input)
+    fd_values <- callr::r(
+        function(common_script, runtime_script, worker_script, tile, input) {
+            source(common_script, local = environment())
+            source(runtime_script, local = environment())
+            path <- fertility_materialize_bound_input(
+                "/dev/fd/3", input, dirname(tempdir())
+            )
+            on.exit(unlink(path), add = TRUE)
+            source(worker_script, local = environment())
+            lapply(c("direct", "rust", "haven"), function(reader) {
+                fertility_tile_read(reader, path, tile)
+            })
+        },
+        args = list(file.path(script_dir, "common.R"),
+                    file.path(script_dir, "runtime.R"),
+                    file.path(script_dir, "worker.R"), default_tile, fd_input),
+        libpath = .libPaths(), connections = list(fd_connection),
+        poll_connection = FALSE, user_profile = FALSE, system_profile = FALSE
+    )
+    fertility_close_bound_input_connection(fd_connection)
+    stopifnot(
+        identical(processx::conn_get_fileno(fd_connection), -1L),
+        identical(fd_values[[1L]], fd_values[[2L]]),
+        identical(fd_values[[1L]], fd_values[[3L]]),
+        identical(as.character(fd_values[[1L]]$text), "encoding_probe_ascii")
     )
     encoding_item <- bounded_item
     encoding_item$id <- "F9903"

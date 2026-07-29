@@ -125,17 +125,43 @@ checkpoint_root <- fertility_assert_output_parent(
 )
 Sys.chmod(c(file.path(raw_root, "checkpoints"), checkpoint_root), mode = "0700")
 
+bound_input_connection <- NULL
+bound_input_id <- NULL
+on.exit(fertility_close_bound_input_connection(bound_input_connection), add = TRUE)
+activate_bound_input <- function(item, input) {
+    fertility_close_bound_input_connection(bound_input_connection)
+    bound_input_connection <<- fertility_open_bound_input_connection(item$path, input)
+    bound_input_id <<- input$input_id
+    invisible(NULL)
+}
+deactivate_bound_input <- function() {
+    fertility_close_bound_input_connection(bound_input_connection)
+    bound_input_connection <<- NULL
+    bound_input_id <<- NULL
+    invisible(NULL)
+}
+
 execute_tile <- function(item, tile, input) {
+    if (is.null(bound_input_connection) ||
+        !identical(bound_input_id, input$input_id)) {
+        stop("worker input descriptor is not bound to the captured input")
+    }
     started <- proc.time()[["elapsed"]]
     stat_before <- fertility_file_stat(item$path)
+    worker_item <- item
+    worker_item$path <- fertility_bound_input_path()
     result <- tryCatch(
         callr::r(
             function(common_script, runtime_script, worker_script, compare_script,
-                     item, tile, package_library, expected_package_path,
+                     item, tile, input, package_library, expected_package_path,
                      framework_id, timeout_seconds, raw_root) {
                 source(common_script, local = environment())
                 source(runtime_script, local = environment())
                 invisible(fertility_assert_tempdir(raw_root))
+                item$path <- fertility_materialize_bound_input(
+                    item$path, input, raw_root
+                )
+                on.exit(unlink(item$path), add = TRUE)
                 source(worker_script, local = environment())
                 result <- fertility_worker_tile(
                     item, tile, compare_script, package_library,
@@ -154,11 +180,12 @@ execute_tile <- function(item, tile, input) {
                 file.path(snapshot_root, "common.R"),
                 file.path(snapshot_root, "runtime.R"),
                 file.path(snapshot_root, "worker.R"),
-                file.path(snapshot_root, "compare.R"), item, tile, library,
+                file.path(snapshot_root, "compare.R"), worker_item, tile, input, library,
                 expected_package_path, framework_id, options$timeout_seconds,
                 raw_root
             ),
             libpath = .libPaths(), timeout = options$timeout_seconds,
+            connections = list(bound_input_connection), poll_connection = FALSE,
             spinner = FALSE, show = FALSE, user_profile = FALSE,
             system_profile = FALSE,
             env = c(R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null",
@@ -221,9 +248,10 @@ worker_smoke_item <- list(
     path = normalizePath(worker_smoke_path, winslash = "/", mustWork = TRUE),
     expected_sha512 = ""
 )
+worker_smoke_input <- fertility_capture_input(worker_smoke_item)
+activate_bound_input(worker_smoke_item, worker_smoke_input)
 worker_smoke <- execute_tile(
-    worker_smoke_item, fertility_metadata_tile(),
-    fertility_capture_input(worker_smoke_item)
+    worker_smoke_item, fertility_metadata_tile(), worker_smoke_input
 )
 if (!is.list(worker_smoke) || worker_smoke$classification %in%
         c("timeout", "memory-limit", "crash", "dtaparser-only-error",
@@ -236,7 +264,7 @@ if (!is.list(worker_smoke) || worker_smoke$classification %in%
 worker_sizing_smoke <- execute_tile(
     worker_smoke_item,
     fertility_sizing_tile(1L, "synthetic_long", 100, configuration$strl_sample_count),
-    fertility_capture_input(worker_smoke_item)
+    worker_smoke_input
 )
 if (!is.list(worker_sizing_smoke) ||
     !identical(worker_sizing_smoke$classification, "pass") ||
@@ -247,6 +275,7 @@ if (!is.list(worker_sizing_smoke) ||
     !is.finite(worker_sizing_smoke$chosen_rows) || worker_sizing_smoke$chosen_rows <= 1L) {
     stop("post-build isolated strL sizing regression failed")
 }
+deactivate_bound_input()
 unlink(worker_smoke_path)
 message("post-build isolated worker regressions passed")
 
@@ -286,6 +315,7 @@ simple_result <- function(item, input, classification, reason = "") c(list(
 
 checkpoints <- vector("list", nrow(selected))
 for (index in seq_len(nrow(selected))) {
+    deactivate_bound_input()
     item <- as.list(selected[index, , drop = FALSE])
     if (item$id %in% names(options$encoding_overrides)) {
         item$encoding_override <- unname(options$encoding_overrides[[item$id]])
@@ -328,6 +358,7 @@ for (index in seq_len(nrow(selected))) {
     } else if (!(item$release %in% fertility_supported_releases)) {
         result <- simple_result(item, input, "expected-unsupported-111")
     } else {
+        activate_bound_input(item, input)
         metadata_tile <- fertility_metadata_tile()
         metadata <- fertility_process_tile(
             item, metadata_tile, file.path(tile_root, "metadata.rds"), framework_id,
@@ -431,6 +462,7 @@ for (index in seq_len(nrow(selected))) {
             tiles_expected = tiles_expected
         )
         final_input <- fertility_capture_input(item, acceptance)
+        deactivate_bound_input()
         if (!identical(final_input$input_id, input$input_id)) {
             result <- simple_result(
                 item, final_input, "inventory-hash-error",

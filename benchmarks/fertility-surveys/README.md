@@ -79,8 +79,11 @@ batch 1, one-row windows at contiguous offsets beginning at the structural row
 count, with zero rows returned and valid three-reader projection attestations.
 Zero-column supported files use a single explicit empty projection batch and the
 same traversal and terminal requirements. Inputs are fully hashed before accepting
-checkpoints and again after
-all tiles; cheap size/mtime fingerprints detect changes around each child.
+checkpoints and again after all tiles. For every supported file, the parent keeps a
+verified source descriptor open; each isolated tile receives that descriptor and
+creates its private target-local copy-on-write snapshot directly from the descriptor
+before any reader opens a pathname. Source identity and cheap size/mtime fingerprints
+are revalidated around each child, and snapshots are removed when the child exits.
 
 ## Wave 3 generated-output corpus
 
@@ -97,20 +100,29 @@ benchmarks/fertility-surveys/benchmark.sh \
 It recursively inventories regular files whose extension is `.dta` or `.DTA`,
 including top-level aggregate files and nested survey files, and ignores every
 other entry. Stable `F0001`-style IDs are assigned by bytewise-sorted canonical
-relative path. Relative paths, byte sizes, modification times, SHA-512 values,
-and source-root filesystem identity are frozen only in the ignored private
+relative path. The root and every ancestor directory are pinned through retained
+no-follow directory descriptors; each DTA is opened relative to its pinned parent,
+and device, inode, mode, size, modification time, and change time are revalidated
+around descriptor-bound hashing and release reads. Relative paths and private file
+metadata are frozen only in the ignored private
 `target/fertility-surveys/raw/output-inventory/wave3/inventory.rds` artifact.
 Public manifests expose only the stable ID, `program=output`, the privacy-safe
 `survey`/`aggregate` level, and DTA release.
 
 The run refuses any other output root and asserts the observed baseline exactly:
 1,226 files, 70,748,321,626 bytes, and a largest file of 10,332,252,930 bytes.
-It supports releases 113-115 and 117-118 and preserves release 111 as an
-expected unsupported classification. Source files and the upstream repository
-are read-only; all mutable state remains under the checkout-local ignored
-target. Aggregate files are identified separately because the upstream build
-uses forced Stata append coercion; that provenance explains stored analytical
-types but never excuses a disagreement among Direct-R, Rust-vector, and Haven.
+The observed output family supports releases 113, 114, 115, and 118 and preserves
+release 111 as an expected unsupported classification. Source files and the
+upstream repository are read-only; all mutable state remains under the
+checkout-local ignored target. Aggregate files are identified separately because
+the upstream build uses forced Stata append coercion; that provenance explains
+stored analytical types but never excuses a disagreement among Direct-R,
+Rust-vector, and Haven.
+
+Fresh generated-output execution and publication use corpus schema 12, which
+binds each isolated worker to the descriptor identity captured during input
+attestation. Corpus schema 10 is retained only as the explicitly documented
+historical Wave 2 replay format; it is not the identity of current Wave 3 evidence.
 
 All normal filters, encoding overrides, resource bounds, resume, and shard
 options apply. An unfiltered output run is recorded as a full family. Merge

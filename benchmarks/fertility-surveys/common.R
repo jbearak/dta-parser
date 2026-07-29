@@ -1,4 +1,4 @@
-fertility_schema_version <- 11L
+fertility_schema_version <- 12L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
@@ -733,14 +733,32 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         "            if not stat.S_ISREG(before.st_mode): fail()",
         "            attest(parent_fd,name,path,before)",
         "    if identity(os.fstat(parent_fd)) != identity(parent_before): fail()",
-        "root_expected=os.lstat(root)",
-        "try: root_fd=os.open(root,dir_flags)",
+        "parts=[part for part in root.split(b'/') if part]",
+        "root_chain=[]; descriptors=[]",
+        "filesystem_root_expected=os.lstat(b'/')",
+        "try: filesystem_root_fd=os.open(b'/',dir_flags)",
         "except OSError: fail()",
+        "descriptors.append(filesystem_root_fd)",
+        "if identity(os.fstat(filesystem_root_fd)) != identity(filesystem_root_expected): fail()",
+        "parent_fd=filesystem_root_fd",
         "try:",
-        "    if identity(os.fstat(root_fd)) != identity(root_expected): fail()",
+        "    for part in parts:",
+        "        expected=os.stat(part,dir_fd=parent_fd,follow_symlinks=False)",
+        "        if not stat.S_ISDIR(expected.st_mode): fail()",
+        "        child_fd=os.open(part,dir_flags,dir_fd=parent_fd); descriptors.append(child_fd)",
+        "        if identity(os.fstat(child_fd)) != identity(expected): fail()",
+        "        root_chain.append((parent_fd,part,child_fd,expected)); parent_fd=child_fd",
+        "    root_fd=parent_fd; root_expected=os.fstat(root_fd)",
         "    walk(root_fd,root)",
-        "    if identity(os.fstat(root_fd)) != identity(root_expected) or identity(os.lstat(root)) != identity(root_expected): fail()",
-        "finally: os.close(root_fd)",
+        "    if identity(os.fstat(root_fd)) != identity(root_expected): fail()",
+        "    for ancestor_fd,part,child_fd,ancestor_expected in reversed(root_chain):",
+        "        current=os.stat(part,dir_fd=ancestor_fd,follow_symlinks=False)",
+        "        if identity(os.fstat(child_fd)) != identity(ancestor_expected) or identity(current) != identity(ancestor_expected): fail()",
+        "    if identity(os.fstat(filesystem_root_fd)) != identity(filesystem_root_expected) or identity(os.lstat(b'/')) != identity(filesystem_root_expected): fail()",
+        "finally:",
+        "    for descriptor in reversed(descriptors):",
+        "        try: os.close(descriptor)",
+        "        except OSError: pass",
         sep = "\n"
     )
     output <- suppressWarnings(system2(
@@ -883,6 +901,110 @@ fertility_nofollow_file_capture <- function(path, include_release = FALSE) {
         release = if (include_release) suppressWarnings(as.integer(fields[[9L]])) else
             NULL
     )
+}
+
+fertility_open_bound_input_connection <- function(path, input) {
+    if (!requireNamespace("processx", quietly = TRUE)) stop("processx is required")
+    required <- c("device", "inode", "mode", "size", "modified_ns", "changed_ns")
+    if (!is.list(input) || any(!required %in% names(input)) ||
+        any(vapply(input[required], function(value) {
+            !is.character(value) || length(value) != 1L || is.na(value) ||
+                !grepl("^[0-9]+$", value)
+        }, logical(1)))) stop("bound input identity is invalid")
+    path <- fertility_assert_existing_file(path, dirname(path), "bound worker input")
+    connection <- processx::conn_create_file(path, read = TRUE, write = FALSE)
+    close_connection <- TRUE
+    on.exit(if (close_connection) {
+        try(processx::processx_conn_close(connection), silent = TRUE)
+    }, add = TRUE)
+    python <- Sys.which("python3")
+    if (!nzchar(python)) stop("python3 is required for bound worker input")
+    code <- paste(
+        "import os,sys",
+        "value=os.fstat(3)",
+        "print('\\t'.join(str(part) for part in (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns,value.st_ctime_ns)))",
+        sep = "\n"
+    )
+    observed <- tryCatch(processx::run(
+        python, c("-c", code), stdout = "|", stderr = "|",
+        connections = list(connection), poll_connection = FALSE,
+        error_on_status = FALSE
+    ), error = function(error) NULL)
+    fields <- if (is.list(observed) && identical(observed$status, 0L)) {
+        strsplit(trimws(observed$stdout), "\t", fixed = TRUE)[[1L]]
+    } else character()
+    if (length(fields) != length(required) ||
+        !identical(unname(fields), unname(unlist(input[required], use.names = FALSE)))) {
+        stop("bound worker input does not match captured identity")
+    }
+    close_connection <- FALSE
+    connection
+}
+
+fertility_close_bound_input_connection <- function(connection) {
+    if (!is.null(connection)) {
+        try(processx::processx_conn_close(connection), silent = TRUE)
+    }
+    invisible(NULL)
+}
+
+fertility_bound_input_path <- function() "/dev/fd/3"
+
+fertility_materialize_bound_input <- function(path, input, raw_root) {
+    if (!identical(path, fertility_bound_input_path())) {
+        stop("bound worker input path is invalid")
+    }
+    invisible(fertility_assert_tempdir(raw_root))
+    required <- c("device", "inode", "mode", "size", "modified_ns", "changed_ns")
+    if (!is.list(input) || any(!required %in% names(input)) ||
+        any(vapply(input[required], function(value) {
+            !is.character(value) || length(value) != 1L || is.na(value) ||
+                !grepl("^[0-9]+$", value)
+        }, logical(1)))) stop("bound worker input identity is invalid")
+    destination <- tempfile(
+        "bound-worker-input-", tmpdir = Sys.getenv("TMPDIR"), fileext = ".dta"
+    )
+    on.exit(if (file.exists(destination) || fertility_path_is_symlink(destination)) {
+        unlink(destination)
+    }, add = TRUE)
+    python <- Sys.which("python3")
+    if (!nzchar(python)) stop("python3 is required for bound worker input")
+    code <- paste(
+        "import ctypes,os,stat,sys",
+        "destination=os.fsencode(sys.argv[1]); expected=tuple(int(value) for value in sys.argv[2:])",
+        "def identity(value): return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns,value.st_ctime_ns)",
+        "before=os.fstat(3)",
+        "if identity(before) != expected or not stat.S_ISREG(before.st_mode): sys.exit(17)",
+        "libc=ctypes.CDLL(None,use_errno=True); clone=getattr(libc,'fclonefileat',None)",
+        "if clone is None: sys.exit(18)",
+        "clone.argtypes=[ctypes.c_int,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]",
+        "if clone(3,-2,destination,0) != 0: sys.exit(19)",
+        "after=os.fstat(3); copied=os.lstat(destination)",
+        "if identity(after) != identity(before) or not stat.S_ISREG(copied.st_mode) or copied.st_size != before.st_size: sys.exit(20)",
+        sep = "\n"
+    )
+    status <- suppressWarnings(system2(
+        python, c("-c", shQuote(code), shQuote(destination),
+                  unname(unlist(input[required], use.names = FALSE))),
+        stdout = FALSE, stderr = FALSE
+    ))
+    if (!identical(status, 0L) || !file.exists(destination) ||
+        dir.exists(destination) || fertility_path_is_symlink(destination) ||
+        !isTRUE(file_test("-f", destination))) {
+        stop("could not materialize descriptor-bound worker input")
+    }
+    destination <- normalizePath(destination, winslash = "/", mustWork = TRUE)
+    on.exit(NULL, add = FALSE)
+    destination
+}
+
+fertility_reset_bound_input <- function(path) {
+    if (!is.character(path) || length(path) != 1L || is.na(path) ||
+        !grepl("^/dev/fd/[0-9]+$", path)) return(invisible(FALSE))
+    connection <- file(path, open = "rb")
+    on.exit(close(connection), add = TRUE)
+    seek(connection, where = 0, origin = "start")
+    invisible(TRUE)
 }
 
 fertility_output_entries <- function(root) {
@@ -1135,6 +1257,7 @@ fertility_atomic_write_table <- function(value, path) {
 
 fertility_file_sha512 <- function(path) {
     if (!requireNamespace("openssl", quietly = TRUE)) stop("openssl is required")
+    fertility_reset_bound_input(path)
     unname(unclass(tolower(as.character(openssl::sha512(file(path))))))
 }
 
@@ -1150,6 +1273,7 @@ fertility_stable_id <- function(fields) {
 }
 
 fertility_release <- function(path) {
+    fertility_reset_bound_input(path)
     connection <- file(path, open = "rb")
     on.exit(close(connection), add = TRUE)
     bytes <- readBin(connection, "raw", n = 256L)
@@ -1191,6 +1315,7 @@ fertility_raw_uint <- function(bytes, start, size, byteorder) {
 }
 
 fertility_structural_metadata <- function(path) {
+    fertility_reset_bound_input(path)
     connection <- file(path, open = "rb")
     on.exit(close(connection), add = TRUE)
     bytes <- readBin(connection, "raw", n = 4L * 1024L * 1024L)

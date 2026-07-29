@@ -459,7 +459,7 @@ fertility_capture_input <- function(item, acceptance = NULL) {
         error = function(error) NULL
     )
     if (is.null(captured)) {
-        device <- inode <- mode <- changed_ns <- ""
+        device <- inode <- mode <- modified_ns <- changed_ns <- ""
         size <- NA_character_
         modified <- NA_character_
         actual <- NA_character_
@@ -467,6 +467,7 @@ fertility_capture_input <- function(item, acceptance = NULL) {
         device <- captured$device
         inode <- captured$inode
         mode <- captured$mode
+        modified_ns <- captured$modified_ns
         changed_ns <- captured$changed_ns
         size <- captured$size
         modified <- fertility_descriptor_timestamp(captured$modified_seconds)
@@ -477,8 +478,8 @@ fertility_capture_input <- function(item, acceptance = NULL) {
         id = item$id, release = as.integer(item$release),
         expected_sha512 = item$expected_sha512, hash_status = hash_status,
         actual_sha512 = if (is.na(actual)) "" else actual,
-        device = device, inode = inode, mode = mode, changed_ns = changed_ns,
-        size = size, modified = modified
+        device = device, inode = inode, mode = mode, modified_ns = modified_ns,
+        changed_ns = changed_ns, size = size, modified = modified
     )
     accepted_sha512 <- ""
     manifest_hash_status <- if (identical(hash_status, "error")) "hash-read-error" else
@@ -503,7 +504,9 @@ fertility_capture_input <- function(item, acceptance = NULL) {
     identity <- fertility_stable_id(identity_fields)
     list(
         input_id = identity, hash_status = hash_status, actual_sha512 = actual,
-        size = size, modified = modified, accepted_sha512 = accepted_sha512,
+        device = device, inode = inode, mode = mode, size = size,
+        modified_ns = modified_ns, changed_ns = changed_ns, modified = modified,
+        accepted_sha512 = accepted_sha512,
         manifest_hash_status = manifest_hash_status,
         local_evidence_status = local_evidence_status,
         acceptance_authority = if (is.null(acceptance)) "" else acceptance$authority,

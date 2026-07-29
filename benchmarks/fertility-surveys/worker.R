@@ -41,6 +41,7 @@ fertility_worker_encoding <- function(item) {
 
 fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
     if (!is.finite(tile$n_max) || tile$n_max < 0L) stop("tile row bound is invalid")
+    fertility_reset_bound_input(path)
     if (identical(tile$type, "metadata")) {
         frame <- if (identical(reader, "direct")) {
             dtaparser::read_dta(
@@ -55,6 +56,7 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
                 path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
             )
         }
+        fertility_reset_bound_input(path)
         shape <- if (identical(reader, "direct")) {
             dtaparser::read_dta(
                 path, encoding = encoding, col_select = character(),
@@ -315,6 +317,7 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
         ))
         secondary <- c(secondary, "metadata-mismatch")
     }
+    if (identical(tile$type, "metadata")) fertility_reset_bound_input(item$path)
     structural <- if (identical(tile$type, "metadata")) tryCatch(
         dtaparser:::.dta_metadata(item$path, encoding = encoding), error = identity
     ) else NULL
