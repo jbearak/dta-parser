@@ -79,9 +79,13 @@ candidate_provenance <- do.call(rbind, lapply(bundles, `[[`, "provenance"))
 snapshot_report_schema_version <- fertility_snapshot_report_schema_version(
     candidate_provenance
 )
+live_inventory <- fertility_build_inventory()
+fertility_validate_canonical_inventory(
+    fertility_inventory_manifest(live_inventory), exact = TRUE
+)
 framework_inventory <- fertility_framework_inventory(
     file.path(raw_root, "framework", framework_ids[[1L]]),
-    framework_id = framework_ids[[1L]],
+    inventory = live_inventory, framework_id = framework_ids[[1L]],
     report_schema_version = snapshot_report_schema_version
 )
 inventory_ids <- unique(vapply(
@@ -170,9 +174,13 @@ revalidate_merge_sources <- function() {
                    merge_provenance$family_manifest_id[[1L]])) {
         stop("source shard bundle identity changed before merged publication")
     }
+    current_live_inventory <- fertility_build_inventory()
+    fertility_validate_canonical_inventory(
+        fertility_inventory_manifest(current_live_inventory), exact = TRUE
+    )
     current_framework <- fertility_framework_inventory(
         file.path(raw_root, "framework", framework_ids[[1L]]),
-        framework_id = framework_ids[[1L]],
+        inventory = current_live_inventory, framework_id = framework_ids[[1L]],
         report_schema_version = snapshot_report_schema_version
     )
     if (!identical(current_framework$provenance$inventory_id[[1L]],
@@ -180,12 +188,11 @@ revalidate_merge_sources <- function() {
         stop("merged publication framework inventory changed")
     }
     if (nzchar(provenance$acceptance_commitment_id[[1L]])) {
-        live_inventory <- fertility_build_inventory()
         fertility_revalidate_accepted_publication(
-            raw_root, current_validated$provenance, live_inventory
+            raw_root, current_validated$provenance, current_live_inventory
         )
     }
-    invisible(current_validated)
+    invisible(current_live_inventory)
 }
 
 invisible(fertility_assert_checkout_raw_root(raw_root, checkout_root))
@@ -219,14 +226,12 @@ merged_bundle_expected <- list(
     family_manifest = validated$family_manifest,
     input_attestation = family_input_attestation
 )
-validate_merged_publication_bundle <- function(path) {
+validate_merged_publication_bundle <- function(path, canonical_inventory) {
     loaded <- fertility_validate_exact_table_bundle(
         path, merged_bundle_files, merged_bundle_expected,
         "merged publication bundle"
     )
-    fertility_validate_merged_bundle(
-        loaded, family_id, framework_inventory$manifest
-    )
+    fertility_validate_merged_bundle(loaded, family_id, canonical_inventory)
     invisible(TRUE)
 }
 run_name <- paste0(format(Sys.time(), "%Y%m%dT%H%M%SZ", tz = "UTC"), "-", Sys.getpid())
@@ -235,8 +240,8 @@ fertility_publication_test_hook(
     "merge-before-bundle-revalidation",
     list(parent = merge_parent, stage = stage, destination = merge_dir)
 )
-invisible(revalidate_merge_sources())
-invisible(validate_merged_publication_bundle(stage))
+current_inventory <- revalidate_merge_sources()
+invisible(validate_merged_publication_bundle(stage, current_inventory))
 invisible(fertility_assert_checkout_raw_root(raw_root, checkout_root))
 merge_parent <- fertility_assert_output_parent(raw_root, "merged", family_id)
 invisible(fertility_assert_existing_directory(
@@ -257,8 +262,8 @@ pointer_ready <- tryCatch({
         list(parent = merge_parent, bundle = merge_dir,
              pointer = file.path(merge_parent, "CURRENT"))
     )
-    revalidate_merge_sources()
-    validate_merged_publication_bundle(merge_dir)
+    current_inventory <- revalidate_merge_sources()
+    validate_merged_publication_bundle(merge_dir, current_inventory)
     fertility_assert_checkout_raw_root(raw_root, checkout_root)
     merge_parent <- fertility_assert_output_parent(raw_root, "merged", family_id)
     fertility_assert_existing_directory(

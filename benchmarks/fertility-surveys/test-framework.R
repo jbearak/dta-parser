@@ -2104,7 +2104,9 @@ merge_live_inventory <- full_canonical
 merge_live_inventory$expected_sha512 <- rep(
     paste(rep("a", 128L), collapse = ""), nrow(merge_live_inventory)
 )
-make_merged_bundle <- function(validated, family_id) {
+make_merged_bundle <- function(
+    validated, family_id, canonical_inventory = merge_live_inventory
+) {
     provenance <- validated$provenance
     family_input_attestation_id <- fertility_family_input_attestation_id(provenance)
     evidence_family_id <- fertility_evidence_family_id(
@@ -2129,7 +2131,7 @@ make_merged_bundle <- function(validated, family_id) {
         framework_id = provenance$framework_id[[1L]],
         config_id = provenance$config_id[[1L]],
         build_provenance_id = provenance$build_provenance_id[[1L]],
-        inventory_id = fertility_inventory_id(merge_live_inventory),
+        inventory_id = fertility_inventory_id(canonical_inventory),
         family_manifest_id = provenance$family_manifest_id[[1L]],
         report_schema_id = provenance$report_schema_id[[1L]],
         results_id = fertility_merged_results_id(validated$results),
@@ -2161,6 +2163,52 @@ accepted_assessment <- fertility_validate_merged_bundle(
 stopifnot(
     grepl("^[0-9a-f]{64}$", full_assessment$merge_id),
     grepl("^[0-9a-f]{64}$", accepted_assessment$merge_id)
+)
+production_framework_inventory <- fertility_framework_inventory(
+    publication_snapshot, inventory = publication_inventory,
+    framework_id = publication_framework_id
+)
+stopifnot(
+    !"expected_sha512" %in% names(production_framework_inventory$manifest),
+    identical(
+        production_framework_inventory$provenance$inventory_id[[1L]],
+        fertility_inventory_id(publication_inventory)
+    )
+)
+production_merged_bundle <- make_merged_bundle(
+    accepted_family_validated, accepted_family_fixture$id, publication_inventory
+)
+stopifnot(grepl("^[0-9a-f]{64}$", fertility_validate_merged_bundle(
+    production_merged_bundle, accepted_family_fixture$id, publication_inventory
+)$merge_id))
+wrong_live_signature <- publication_inventory
+wrong_live_signature$expected_sha512[[1L]] <- paste(rep("b", 128L), collapse = "")
+expect_error(fertility_framework_inventory(
+    publication_snapshot, inventory = wrong_live_signature,
+    framework_id = publication_framework_id
+), "does not match the live inventory")
+expect_error(fertility_validate_merged_bundle(
+    production_merged_bundle, accepted_family_fixture$id, wrong_live_signature
+), "does not match canonical inventory authority")
+wrong_live_inventory_id <- production_merged_bundle
+wrong_live_inventory_id$provenance$inventory_id <- paste(rep("b", 64L), collapse = "")
+expect_error(fertility_validate_merged_bundle(
+    wrong_live_inventory_id, accepted_family_fixture$id, publication_inventory
+), "does not match canonical inventory authority")
+merge_source <- paste(
+    readLines(file.path(script_dir, "merge.R"), warn = FALSE), collapse = "\n"
+)
+stopifnot(
+    grepl("inventory = live_inventory", merge_source, fixed = TRUE),
+    grepl("inventory = current_live_inventory", merge_source, fixed = TRUE),
+    grepl(
+        "fertility_validate_merged_bundle(loaded, family_id, canonical_inventory)",
+        merge_source, fixed = TRUE
+    ),
+    !grepl(
+        "fertility_validate_merged_bundle(\n        loaded, family_id, framework_inventory$manifest",
+        merge_source, fixed = TRUE
+    )
 )
 tampered_merged_results <- accepted_merged_bundle
 tampered_merged_results$results$classification[[1L]] <- "timeout"
