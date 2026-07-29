@@ -454,21 +454,29 @@ fertility_validate_full_output_results <- function(results) {
 }
 
 fertility_capture_input <- function(item, acceptance = NULL) {
-    info <- file.info(item$path)
-    if (!nrow(info) || is.na(info$size[[1L]])) {
+    captured <- tryCatch(
+        suppressWarnings(fertility_nofollow_file_capture(item$path)),
+        error = function(error) NULL
+    )
+    if (is.null(captured)) {
+        device <- inode <- mode <- ""
         size <- NA_character_
         modified <- NA_character_
+        actual <- NA_character_
     } else {
-        size <- as.character(info$size[[1L]])
-        modified <- format(info$mtime[[1L]], "%Y-%m-%dT%H:%M:%OS6Z", tz = "UTC")
+        device <- captured$device
+        inode <- captured$inode
+        mode <- captured$mode
+        size <- captured$size
+        modified <- fertility_descriptor_timestamp(captured$modified_seconds)
+        actual <- captured$sha512
     }
-    actual <- tryCatch(suppressWarnings(fertility_file_sha512(item$path)),
-                       error = function(error) NA_character_)
     hash_status <- if (is.na(actual)) "error" else "ok"
     identity_fields <- list(
         id = item$id, release = as.integer(item$release),
         expected_sha512 = item$expected_sha512, hash_status = hash_status,
         actual_sha512 = if (is.na(actual)) "" else actual,
+        device = device, inode = inode, mode = mode,
         size = size, modified = modified
     )
     accepted_sha512 <- ""

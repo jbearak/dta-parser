@@ -636,63 +636,221 @@ fertility_output_inventory_test_hook <- function(boundary, context) {
     invisible(NULL)
 }
 
-fertility_output_regular_entries <- function(root) {
+fertility_decode_hex_path <- function(value) {
+    if (!nzchar(value) || nchar(value) %% 2L != 0L ||
+        !grepl("^[0-9a-f]+$", value)) {
+        stop("fertility output regular-file attestation is malformed")
+    }
+    starts <- seq.int(1L, nchar(value), by = 2L)
+    bytes <- suppressWarnings(strtoi(substring(value, starts, starts + 1L), 16L))
+    if (anyNA(bytes)) stop("fertility output regular-file attestation is malformed")
+    result <- rawToChar(as.raw(bytes))
+    Encoding(result) <- "UTF-8"
+    result
+}
+
+fertility_descriptor_timestamp <- function(seconds_text) {
+    value <- suppressWarnings(as.double(seconds_text))
+    if (length(value) != 1L || is.na(value) || !is.finite(value)) {
+        stop("fertility output descriptor timestamp is invalid")
+    }
+    format(as.POSIXct(value, origin = "1970-01-01", tz = "UTC"),
+           "%Y-%m-%dT%H:%M:%OS6Z", tz = "UTC")
+}
+
+fertility_output_descriptor_manifest <- function(root, include_content = FALSE) {
+    root <- fertility_assert_output_root(root)
+    if (!is.logical(include_content) || length(include_content) != 1L ||
+        is.na(include_content)) stop("invalid output descriptor attestation mode")
+    fertility_output_inventory_test_hook(
+        if (include_content) "before-descriptor-content-read" else
+            "before-descriptor-stat-read",
+        list(root = root)
+    )
     python <- Sys.which("python3")
     if (!nzchar(python)) stop("python3 is required for output inventory")
     code <- paste(
-        "import os, stat, sys",
+        "import hashlib, os, stat, sys",
+        "root=os.fsencode(sys.argv[1]); include_content=sys.argv[2] == '1'",
+        "flags=os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_NOFOLLOW', 0)",
         "def fail():",
         "    raise RuntimeError('unsafe output inventory entry')",
+        "def identity(value):",
+        "    return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns)",
+        "def release(head):",
+        "    if not head: fail()",
+        "    if head.startswith(b'<stata_dta>'):",
+        "        marker=b'<release>'; start=head.find(marker)",
+        "        if start < 0: fail()",
+        "        value=head[start+len(marker):start+len(marker)+3]",
+        "        if len(value) != 3 or not value.isdigit(): fail()",
+        "        return value.decode('ascii')",
+        "    return str(head[0])",
+        "def attest(path):",
+        "    try:",
+        "        fd=os.open(path,flags)",
+        "    except OSError:",
+        "        fail()",
+        "    try:",
+        "        before=os.fstat(fd)",
+        "        if not stat.S_ISREG(before.st_mode): fail()",
+        "        linked=os.lstat(path)",
+        "        if identity(linked) != identity(before): fail()",
+        "        digest=hashlib.sha512() if include_content else None; head=b''",
+        "        if include_content:",
+        "            while True:",
+        "                chunk=os.read(fd,1024*1024)",
+        "                if not chunk: break",
+        "                if len(head) < 256: head += chunk[:256-len(head)]",
+        "                digest.update(chunk)",
+        "        after=os.fstat(fd); current=os.lstat(path)",
+        "        if identity(after) != identity(before) or identity(current) != identity(before): fail()",
+        "        fields=[path.hex(),str(before.st_dev),str(before.st_ino),str(before.st_mode),str(before.st_size),str(before.st_mtime_ns),repr(before.st_mtime)]",
+        "        if include_content: fields += [release(head),digest.hexdigest()]",
+        "        print('\\t'.join(fields))",
+        "    finally:",
+        "        os.close(fd)",
         "def walk(parent):",
         "    try:",
         "        with os.scandir(parent) as iterator:",
-        "            entries = sorted(list(iterator), key=lambda value: os.fsencode(value.name))",
+        "            entries=sorted(list(iterator),key=lambda value:value.name)",
         "    except OSError:",
         "        fail()",
         "    for entry in entries:",
-        "        is_dta = entry.name.lower().endswith('.dta')",
+        "        is_dta=entry.name.lower().endswith(b'.dta')",
         "        try:",
-        "            mode = entry.stat(follow_symlinks=False).st_mode",
+        "            mode=entry.stat(follow_symlinks=False).st_mode",
         "        except OSError:",
         "            fail()",
         "        if stat.S_ISLNK(mode):",
-        "            try:",
-        "                linked_directory = entry.is_dir(follow_symlinks=True)",
-        "            except OSError:",
-        "                linked_directory = False",
-        "            if linked_directory or is_dta:",
-        "                fail()",
+        "            try: linked_directory=entry.is_dir(follow_symlinks=True)",
+        "            except OSError: linked_directory=False",
+        "            if linked_directory or is_dta: fail()",
         "            continue",
-        "        if stat.S_ISDIR(mode):",
-        "            walk(entry.path)",
+        "        if stat.S_ISDIR(mode): walk(entry.path)",
         "        elif is_dta:",
-        "            if not stat.S_ISREG(mode):",
-        "                fail()",
-        "            print(os.fsencode(entry.path).hex())",
-        "walk(sys.argv[1])",
+        "            if not stat.S_ISREG(mode): fail()",
+        "            attest(entry.path)",
+        "walk(root)",
         sep = "\n"
     )
     output <- suppressWarnings(system2(
-        python, c("-c", shQuote(code), shQuote(root)),
+        python, c("-c", shQuote(code), shQuote(root),
+                  if (include_content) "1" else "0"),
         stdout = TRUE, stderr = FALSE
     ))
     status <- attr(output, "status", exact = TRUE)
-    if (!is.null(status) && status != 0L) {
-        stop("fertility output inventory could not attest regular files")
+    if ((!is.null(status) && status != 0L) || !length(output)) {
+        stop("fertility output inventory could not attest descriptor-bound regular files")
     }
-    decode <- function(value) {
-        if (!nzchar(value) || nchar(value) %% 2L != 0L ||
-            !grepl("^[0-9a-f]+$", value)) {
-            stop("fertility output regular-file attestation is malformed")
+    fields <- strsplit(output, "\t", fixed = TRUE)
+    expected_fields <- if (include_content) 9L else 7L
+    if (any(lengths(fields) != expected_fields)) {
+        stop("fertility output descriptor attestation is malformed")
+    }
+    result <- data.frame(
+        path = vapply(fields, function(value) fertility_decode_hex_path(value[[1L]]),
+                      character(1)),
+        device = vapply(fields, `[[`, character(1), 2L),
+        inode = vapply(fields, `[[`, character(1), 3L),
+        mode = vapply(fields, `[[`, character(1), 4L),
+        size = vapply(fields, `[[`, character(1), 5L),
+        modified_ns = vapply(fields, `[[`, character(1), 6L),
+        modified_seconds = vapply(fields, `[[`, character(1), 7L),
+        stringsAsFactors = FALSE, check.names = FALSE
+    )
+    if (include_content) {
+        result$release <- suppressWarnings(as.integer(vapply(
+            fields, `[[`, character(1), 8L
+        )))
+        result$sha512 <- vapply(fields, `[[`, character(1), 9L)
+        if (anyNA(result$release) || any(!grepl("^[0-9a-f]{128}$", result$sha512))) {
+            stop("fertility output descriptor content attestation is malformed")
         }
-        starts <- seq.int(1L, nchar(value), by = 2L)
-        bytes <- suppressWarnings(strtoi(substring(value, starts, starts + 1L), 16L))
-        if (anyNA(bytes)) stop("fertility output regular-file attestation is malformed")
-        result <- rawToChar(as.raw(bytes))
-        Encoding(result) <- "UTF-8"
-        result
     }
-    unname(sort(vapply(output, decode, character(1)), method = "radix"))
+    result <- result[order(result$path, method = "radix"), , drop = FALSE]
+    rownames(result) <- NULL
+    if (anyDuplicated(result$path) || any(!startsWith(result$path, paste0(root, "/"))) ||
+        any(!grepl("^[0-9]+$", result$device)) ||
+        any(!grepl("^[0-9]+$", result$inode)) ||
+        any(!grepl("^[0-9]+$", result$mode)) ||
+        any(!grepl("^(0|[1-9][0-9]*)$", result$size)) ||
+        any(!grepl("^[0-9]+$", result$modified_ns)) ||
+        any(!grepl("^[0-9]+([.][0-9]+)?$", result$modified_seconds))) {
+        stop("fertility output descriptor attestation is invalid")
+    }
+    result
+}
+
+fertility_output_regular_entries <- function(root) {
+    unname(fertility_output_descriptor_manifest(root, FALSE)$path)
+}
+
+fertility_nofollow_file_capture <- function(path, include_release = FALSE) {
+    if (!is.logical(include_release) || length(include_release) != 1L ||
+        is.na(include_release)) stop("invalid descriptor file capture mode")
+    path <- fertility_assert_existing_file(path, dirname(path), "descriptor input")
+    fertility_output_inventory_test_hook(
+        "before-descriptor-file-read", list(path = path)
+    )
+    python <- Sys.which("python3")
+    if (!nzchar(python)) stop("python3 is required for descriptor file capture")
+    code <- paste(
+        "import hashlib, os, stat, sys",
+        "path=os.fsencode(sys.argv[1]); include_release=sys.argv[2] == '1'",
+        "flags=os.O_RDONLY | getattr(os,'O_CLOEXEC',0) | getattr(os,'O_NOFOLLOW',0)",
+        "def identity(value): return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns)",
+        "fd=os.open(path,flags)",
+        "try:",
+        "    before=os.fstat(fd)",
+        "    if not stat.S_ISREG(before.st_mode): raise RuntimeError('not regular')",
+        "    if identity(os.lstat(path)) != identity(before): raise RuntimeError('identity changed')",
+        "    digest=hashlib.sha512(); head=b''",
+        "    while True:",
+        "        chunk=os.read(fd,1024*1024)",
+        "        if not chunk: break",
+        "        if len(head) < 256: head += chunk[:256-len(head)]",
+        "        digest.update(chunk)",
+        "    after=os.fstat(fd)",
+        "    if identity(after) != identity(before) or identity(os.lstat(path)) != identity(before): raise RuntimeError('identity changed')",
+        "    fields=[str(before.st_dev),str(before.st_ino),str(before.st_mode),str(before.st_size),str(before.st_mtime_ns),repr(before.st_mtime),digest.hexdigest()]",
+        "    if include_release:",
+        "        if not head: raise RuntimeError('empty DTA input')",
+        "        if head.startswith(b'<stata_dta>'):",
+        "            marker=b'<release>'; start=head.find(marker)",
+        "            if start < 0: raise RuntimeError('release missing')",
+        "            value=head[start+len(marker):start+len(marker)+3]",
+        "            if len(value) != 3 or not value.isdigit(): raise RuntimeError('release invalid')",
+        "            fields.append(value.decode('ascii'))",
+        "        else: fields.append(str(head[0]))",
+        "    print('\\t'.join(fields))",
+        "finally:",
+        "    os.close(fd)",
+        sep = "\n"
+    )
+    output <- suppressWarnings(system2(
+        python, c("-c", shQuote(code), shQuote(path),
+                  if (include_release) "1" else "0"),
+        stdout = TRUE, stderr = FALSE
+    ))
+    status <- attr(output, "status", exact = TRUE)
+    fields <- if (length(output) == 1L) strsplit(output, "\t", fixed = TRUE)[[1L]] else
+        character()
+    expected_fields <- if (include_release) 8L else 7L
+    if ((!is.null(status) && status != 0L) ||
+        length(fields) != expected_fields ||
+        any(!grepl("^[0-9]+$", fields[seq_len(5L)])) ||
+        !grepl("^[0-9]+([.][0-9]+)?$", fields[[6L]]) ||
+        !grepl("^[0-9a-f]{128}$", fields[[7L]])) {
+        stop("descriptor-bound file capture failed")
+    }
+    list(
+        device = fields[[1L]], inode = fields[[2L]], mode = fields[[3L]],
+        size = fields[[4L]], modified_ns = fields[[5L]],
+        modified_seconds = fields[[6L]], sha512 = fields[[7L]],
+        release = if (include_release) suppressWarnings(as.integer(fields[[8L]])) else
+            NULL
+    )
 }
 
 fertility_output_entries <- function(root) {
@@ -771,18 +929,40 @@ fertility_output_entries <- function(root) {
 
 fertility_output_stat_manifest <- function(root) {
     paths <- fertility_output_entries(root)
-    info <- file.info(paths)
+    attested <- fertility_output_descriptor_manifest(root, FALSE)
+    if (!identical(paths, attested$path)) {
+        stop("fertility output inventory changed during descriptor stat capture")
+    }
     relative <- substring(paths, nchar(root) + 2L)
-    if (!length(paths) || anyNA(info$size) || anyDuplicated(relative) ||
-        any(!nzchar(relative))) stop("fertility output inventory is invalid")
+    if (!length(paths) || anyDuplicated(relative) || any(!nzchar(relative))) {
+        stop("fertility output inventory is invalid")
+    }
     result <- data.frame(
         relative_path = relative,
-        size = as.character(info$size),
-        modified = format(info$mtime, "%Y-%m-%dT%H:%M:%OS6Z", tz = "UTC"),
+        size = attested$size,
+        modified = vapply(attested$modified_seconds, fertility_descriptor_timestamp,
+                          character(1)),
         stringsAsFactors = FALSE, check.names = FALSE
     )
     rownames(result) <- NULL
     result
+}
+
+fertility_output_metadata_equal <- function(left, right) {
+    fields <- c("relative_path", "size", "modified")
+    if (!is.data.frame(left) || !is.data.frame(right) ||
+        !all(fields %in% names(left)) || !all(fields %in% names(right)) ||
+        nrow(left) != nrow(right) ||
+        !identical(left$relative_path, right$relative_path) ||
+        !identical(left$size, right$size)) return(FALSE)
+    left_time <- suppressWarnings(as.numeric(as.POSIXct(
+        sub("Z$", "", left$modified), format = "%Y-%m-%dT%H:%M:%OS", tz = "UTC"
+    )))
+    right_time <- suppressWarnings(as.numeric(as.POSIXct(
+        sub("Z$", "", right$modified), format = "%Y-%m-%dT%H:%M:%OS", tz = "UTC"
+    )))
+    !anyNA(left_time) && !anyNA(right_time) &&
+        all(abs(left_time - right_time) <= 2e-6)
 }
 
 fertility_validate_output_baseline <- function(manifest) {
@@ -816,16 +996,29 @@ fertility_build_output_inventory <- function(root, raw_root) {
         path, dirname(path), "frozen output inventory"
     )) else NULL
     if (is.null(frozen)) {
-        paths <- file.path(root, manifest$relative_path)
-        hashes <- vapply(paths, fertility_file_sha512, character(1))
-        after <- fertility_output_stat_manifest(root)
-        fertility_validate_output_baseline(after)
-        if (!identical(manifest, after)) stop("fertility output changed during inventory")
-        releases <- vapply(paths, fertility_release, integer(1))
+        content <- fertility_output_descriptor_manifest(root, TRUE)
+        content_manifest <- data.frame(
+            relative_path = substring(content$path, nchar(root) + 2L),
+            size = content$size,
+            modified = vapply(content$modified_seconds, fertility_descriptor_timestamp,
+                              character(1)),
+            stringsAsFactors = FALSE, check.names = FALSE
+        )
+        identity_fields <- c(
+            "path", "device", "inode", "mode", "size", "modified_ns"
+        )
+        after <- fertility_output_descriptor_manifest(root, FALSE)
+        fertility_validate_output_baseline(content_manifest)
+        if (!identical(manifest, content_manifest) ||
+            !identical(content[identity_fields], after[identity_fields])) {
+            stop("fertility output changed during descriptor-bound inventory")
+        }
         frozen <- list(
             schema_version = 1L,
             root_identity = fertility_filesystem_identity(root, "fertility output root"),
-            manifest = transform(manifest, release = releases, sha512 = hashes),
+            manifest = transform(
+                content_manifest, release = content$release, sha512 = content$sha512
+            ),
             created_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
         )
         fertility_atomic_save_rds(frozen, path)
@@ -838,7 +1031,9 @@ fertility_build_output_inventory <- function(root, raw_root) {
         !identical(names(frozen$manifest), expected_names) ||
         !identical(frozen$root_identity,
                    fertility_filesystem_identity(root, "fertility output root")) ||
-        !identical(frozen$manifest[c("relative_path", "size", "modified")], manifest) ||
+        !fertility_output_metadata_equal(
+            frozen$manifest[c("relative_path", "size", "modified")], manifest
+        ) ||
         any(!grepl("^[0-9a-f]{128}$", frozen$manifest$sha512)) ||
         any(!(frozen$manifest$release %in% c(111L, fertility_supported_releases)))) {
         stop("frozen fertility output inventory changed or is invalid")

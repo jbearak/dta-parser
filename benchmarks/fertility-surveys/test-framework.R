@@ -29,8 +29,10 @@ local({
     outside <- file.path(root, "output-inventory-outside")
     dir.create(file.path(fixture, "nested"), recursive = TRUE)
     dir.create(outside)
-    writeBin(as.raw(1:3), file.path(fixture, "regular.dta"))
-    writeBin(as.raw(4:6), file.path(fixture, "nested", "upper.DTA"))
+    writeBin(c(as.raw(113L), as.raw(rep(0L, 40L))),
+             file.path(fixture, "regular.dta"))
+    writeBin(charToRaw("<stata_dta><header><release>118</release></header>"),
+             file.path(fixture, "nested", "upper.DTA"))
     writeLines("ignored", file.path(fixture, "notes.txt"))
     writeLines("outside", file.path(outside, "outside.txt"))
     stopifnot(file.symlink(
@@ -103,10 +105,90 @@ local({
         fifo <- file.path(fixture, "nonregular.dta")
         stopifnot(system2(mkfifo, shQuote(fifo)) == 0L)
         expect_error(
-            fertility_output_entries(fertility_output_root), "attest regular files"
+            fertility_output_entries(fertility_output_root), "attest.*regular files"
         )
         unlink(fifo)
     }
+
+    # A DTA swapped to an external symlink immediately before hashing/release
+    # cannot be opened, even when the original path is restored before a later
+    # traversal could observe the substitution.
+    descriptor_target <- file.path(fixture, "regular.dta")
+    descriptor_saved <- file.path(fixture, "regular.dta.saved")
+    external_dta <- file.path(outside, "external.dta")
+    writeBin(c(as.raw(113L), as.raw(rep(255L, 40L))), external_dta)
+    external_before <- unname(tools::sha256sum(external_dta))
+    restorer <- NULL
+    options(dtaparser.fertility.output_inventory_test_hook = function(
+        boundary, context
+    ) {
+        if (identical(boundary, "before-descriptor-content-read")) {
+            stopifnot(
+                file.rename(descriptor_target, descriptor_saved),
+                file.symlink(external_dta, descriptor_target)
+            )
+            restorer <<- callr::r_bg(function(path, saved) {
+                Sys.sleep(0.5)
+                unlink(path)
+                if (!file.rename(saved, path)) stop("could not restore descriptor fixture")
+                TRUE
+            }, args = list(descriptor_target, descriptor_saved),
+            supervise = TRUE, user_profile = FALSE, system_profile = FALSE)
+        }
+    })
+    expect_error(
+        fertility_output_descriptor_manifest(fertility_output_root, TRUE),
+        "descriptor-bound regular files"
+    )
+    stopifnot(!is.null(restorer))
+    restorer$wait(timeout = 5000L)
+    stopifnot(
+        identical(restorer$get_result(), TRUE),
+        !fertility_path_is_symlink(descriptor_target),
+        file.exists(descriptor_target),
+        !file.exists(descriptor_saved),
+        identical(unname(tools::sha256sum(external_dta)), external_before)
+    )
+    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+
+    descriptor_capture <- fertility_nofollow_file_capture(
+        descriptor_target, include_release = TRUE
+    )
+    stopifnot(
+        identical(descriptor_capture$release, 113L),
+        identical(descriptor_capture$sha512,
+                  fertility_file_sha512(descriptor_target))
+    )
+    restorer <- NULL
+    options(dtaparser.fertility.output_inventory_test_hook = function(
+        boundary, context
+    ) {
+        if (identical(boundary, "before-descriptor-file-read")) {
+            stopifnot(
+                file.rename(descriptor_target, descriptor_saved),
+                file.symlink(external_dta, descriptor_target)
+            )
+            restorer <<- callr::r_bg(function(path, saved) {
+                Sys.sleep(0.5)
+                unlink(path)
+                if (!file.rename(saved, path)) stop("could not restore capture fixture")
+                TRUE
+            }, args = list(descriptor_target, descriptor_saved),
+            supervise = TRUE, user_profile = FALSE, system_profile = FALSE)
+        }
+    })
+    expect_error(
+        fertility_nofollow_file_capture(descriptor_target, include_release = TRUE),
+        "descriptor-bound file capture failed"
+    )
+    stopifnot(!is.null(restorer))
+    restorer$wait(timeout = 5000L)
+    stopifnot(
+        identical(restorer$get_result(), TRUE),
+        !fertility_path_is_symlink(descriptor_target),
+        identical(unname(tools::sha256sum(external_dta)), external_before)
+    )
+    options(dtaparser.fertility.output_inventory_test_hook = NULL)
 })
 
 # Output confinement rejects symlinked roots, publication descendants, CURRENT
