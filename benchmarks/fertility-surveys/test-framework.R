@@ -3081,6 +3081,46 @@ stopifnot(
         reader_error_tiles, complete = FALSE, execution_complete = TRUE
     ) == "haven-only-error"
 )
+terminal_reader_error_tiles <- traversed_tiles
+terminal_reader_error <- length(terminal_reader_error_tiles)
+terminal_reader_error_tiles[[terminal_reader_error]]$classification <-
+    "haven-only-error"
+terminal_reader_error_tiles[[terminal_reader_error]]$projection_ok[["haven"]] <- FALSE
+terminal_reader_error_tiles[[terminal_reader_error]]$projection_counts[["haven"]] <-
+    NA_integer_
+terminal_reader_error_tiles[[terminal_reader_error]]$projection_hashes[["haven"]] <-
+    NA_character_
+stopifnot(
+    fertility_validate_tile_execution(
+        terminal_reader_error_tiles, synthetic_batches, 3, tile_configuration,
+        length(terminal_reader_error_tiles)
+    ),
+    !fertility_validate_tile_completeness(
+        terminal_reader_error_tiles, synthetic_batches, 3, tile_configuration
+    ),
+    fertility_aggregate_classification(
+        terminal_reader_error_tiles, complete = FALSE, execution_complete = TRUE
+    ) == "haven-only-error"
+)
+malformed_terminal_plans <- list(
+    { value <- terminal_reader_error_tiles; value[[terminal_reader_error]]$framework_id <- NULL; value },
+    { value <- terminal_reader_error_tiles; value[[terminal_reader_error]]$projection_expected_count <- NULL; value },
+    { value <- terminal_reader_error_tiles; value[[terminal_reader_error]]$projection_expected_count <- 2L; value },
+    { value <- terminal_reader_error_tiles; value[[terminal_reader_error]]$projection_expected_hash <- NULL; value },
+    { value <- terminal_reader_error_tiles; value[[terminal_reader_error]]$projection_expected_hash <- paste(rep("0", 64L), collapse = ""); value }
+)
+for (malformed_terminal_plan in malformed_terminal_plans) {
+    stopifnot(
+        !fertility_validate_tile_execution(
+            malformed_terminal_plan, synthetic_batches, 3, tile_configuration,
+            length(malformed_terminal_plan)
+        ),
+        fertility_aggregate_classification(
+            malformed_terminal_plan, complete = FALSE,
+            execution_complete = FALSE
+        ) == "unresolved"
+    )
+}
 reader_planning_failure <- c(reader_error_tiles, list(list(
     tile_type = "planning", classification = "unresolved",
     secondary = "tile-ceiling-reached", mismatches = empty_mismatches

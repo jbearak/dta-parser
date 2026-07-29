@@ -2794,9 +2794,25 @@ fertility_validate_tile_execution <- function(
     ))]
     expected_terminal_skips <- as.double(total_rows) +
         seq.int(0, expected_probes - 1L)
+    expected_terminal_count <- length(batches[[1L]])
     for (probe in seq_len(expected_probes)) {
         tile <- terminal_tiles[[probe]]
-        if (!identical(as.integer(tile$batch), 1L) ||
+        framework_valid <- is.character(tile$framework_id) &&
+            length(tile$framework_id) == 1L && !is.na(tile$framework_id)
+        expected_hash <- if (framework_valid) {
+            fertility_projection_hash(batches[[1L]], tile$framework_id)
+        } else NA_character_
+        projection_planned <- scalar_number(tile$projection_expected_count) &&
+            tile$projection_expected_count ==
+                as.integer(tile$projection_expected_count) &&
+            identical(as.integer(tile$projection_expected_count),
+                      as.integer(expected_terminal_count)) &&
+            is.character(tile$projection_expected_hash) &&
+            length(tile$projection_expected_hash) == 1L &&
+            !is.na(tile$projection_expected_hash) &&
+            identical(tile$projection_expected_hash, expected_hash)
+        if (!framework_valid || !projection_planned ||
+            !identical(as.integer(tile$batch), 1L) ||
             !identical(as.double(tile$skip), expected_terminal_skips[[probe]]) ||
             !identical(as.integer(tile$n_max), 1L)) return(FALSE)
     }
