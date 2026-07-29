@@ -238,13 +238,6 @@ fertility_filesystem_identity <- function(path, label) {
     output[[1L]]
 }
 
-fertility_identity_is_regular_file <- function(identity) {
-    fields <- strsplit(identity, ":", fixed = TRUE)[[1L]]
-    length(fields) == 3L && !is.na(mode <- suppressWarnings(
-        as.integer(fields[[3L]])
-    )) && bitwAnd(mode, 61440L) == 32768L
-}
-
 fertility_atomic_rename_noreplace <- function(
     from, to, label, validate_source = NULL
 ) {
@@ -643,6 +636,65 @@ fertility_output_inventory_test_hook <- function(boundary, context) {
     invisible(NULL)
 }
 
+fertility_output_regular_entries <- function(root) {
+    python <- Sys.which("python3")
+    if (!nzchar(python)) stop("python3 is required for output inventory")
+    code <- paste(
+        "import os, stat, sys",
+        "def fail():",
+        "    raise RuntimeError('unsafe output inventory entry')",
+        "def walk(parent):",
+        "    try:",
+        "        with os.scandir(parent) as iterator:",
+        "            entries = sorted(list(iterator), key=lambda value: os.fsencode(value.name))",
+        "    except OSError:",
+        "        fail()",
+        "    for entry in entries:",
+        "        is_dta = entry.name.lower().endswith('.dta')",
+        "        try:",
+        "            mode = entry.stat(follow_symlinks=False).st_mode",
+        "        except OSError:",
+        "            fail()",
+        "        if stat.S_ISLNK(mode):",
+        "            try:",
+        "                linked_directory = entry.is_dir(follow_symlinks=True)",
+        "            except OSError:",
+        "                linked_directory = False",
+        "            if linked_directory or is_dta:",
+        "                fail()",
+        "            continue",
+        "        if stat.S_ISDIR(mode):",
+        "            walk(entry.path)",
+        "        elif is_dta:",
+        "            if not stat.S_ISREG(mode):",
+        "                fail()",
+        "            print(os.fsencode(entry.path).hex())",
+        "walk(sys.argv[1])",
+        sep = "\n"
+    )
+    output <- suppressWarnings(system2(
+        python, c("-c", shQuote(code), shQuote(root)),
+        stdout = TRUE, stderr = FALSE
+    ))
+    status <- attr(output, "status", exact = TRUE)
+    if (!is.null(status) && status != 0L) {
+        stop("fertility output inventory could not attest regular files")
+    }
+    decode <- function(value) {
+        if (!nzchar(value) || nchar(value) %% 2L != 0L ||
+            !grepl("^[0-9a-f]+$", value)) {
+            stop("fertility output regular-file attestation is malformed")
+        }
+        starts <- seq.int(1L, nchar(value), by = 2L)
+        bytes <- suppressWarnings(strtoi(substring(value, starts, starts + 1L), 16L))
+        if (anyNA(bytes)) stop("fertility output regular-file attestation is malformed")
+        result <- rawToChar(as.raw(bytes))
+        Encoding(result) <- "UTF-8"
+        result
+    }
+    unname(sort(vapply(output, decode, character(1)), method = "radix"))
+}
+
 fertility_output_entries <- function(root) {
     root <- fertility_assert_output_root(root)
     paths <- character()
@@ -701,12 +753,6 @@ fertility_output_entries <- function(root) {
             if (isTRUE(confirmed$isdir[[1L]])) {
                 walk(entry)
             } else if (is_dta) {
-                identity <- fertility_filesystem_identity(
-                    entry, "fertility output DTA"
-                )
-                if (!fertility_identity_is_regular_file(identity)) {
-                    stop("fertility output DTA must be a regular file")
-                }
                 if (!startsWith(entry, paste0(root, "/"))) {
                     stop("fertility output DTA escaped its root")
                 }
@@ -715,7 +761,12 @@ fertility_output_entries <- function(root) {
         }
     }
     walk(root)
-    sort(paths, method = "radix")
+    paths <- sort(paths, method = "radix")
+    attested <- fertility_output_regular_entries(root)
+    if (!identical(paths, attested)) {
+        stop("fertility output inventory changed during regular-file attestation")
+    }
+    paths
 }
 
 fertility_output_stat_manifest <- function(root) {

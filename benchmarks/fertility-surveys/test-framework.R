@@ -103,7 +103,7 @@ local({
         fifo <- file.path(fixture, "nonregular.dta")
         stopifnot(system2(mkfifo, shQuote(fifo)) == 0L)
         expect_error(
-            fertility_output_entries(fertility_output_root), "must be a regular file"
+            fertility_output_entries(fertility_output_root), "attest regular files"
         )
         unlink(fifo)
     }
