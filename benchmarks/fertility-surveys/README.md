@@ -4,7 +4,7 @@ This is a local, report-only compatibility framework for the private fertility
 survey cache. It is never a CI or release gate. It refuses to run when common CI
 or GitHub Actions variables are present and requires an explicit manual opt-in.
 It does not add Stata release 111 support: release-111 files are inventoried and
-classified as `unsupported-release` without being passed to a reader.
+classified as `expected-unsupported-111` without being passed to a reader.
 
 The default Wave 2 inventory intentionally reproduces
 `~/repos/fertility_surveys/check_raw_data.r` path construction rather than
@@ -108,8 +108,9 @@ and device, inode, mode, size, modification time, and change time are revalidate
 around descriptor-bound hashing and release reads. Relative paths and private file
 metadata are frozen only in the ignored private
 `target/fertility-surveys/raw/output-inventory/wave3/inventory.rds` artifact.
-Public manifests expose only the stable ID, `program=output`, the privacy-safe
-`survey`/`aggregate` level, and DTA release.
+Public inventory manifests expose only the stable ID, `program=output`, the
+privacy-safe `survey`/`aggregate` level, and DTA release. Public family manifests
+add the deterministic `shard_index`.
 
 The run refuses any other output root and asserts the observed baseline exactly:
 1,226 files, 70,748,321,626 bytes, and a largest file of 10,332,252,930 bytes.
