@@ -46,7 +46,17 @@ benchmark_tree_digest <- function(checkout_root, scope) {
     absolute <- file.path(checkout_root, paths)
     hashes <- rep.int("<missing>", length(paths))
     present <- file.exists(absolute)
-    hashes[present] <- unname(tools::md5sum(absolute[present]))
+    present_paths <- absolute[present]
+    if (length(present_paths) &&
+        (any(nzchar(Sys.readlink(present_paths))) ||
+         any(!file_test("-f", present_paths)))) {
+        stop("benchmark source provenance input must be a regular nonsymlink file")
+    }
+    observed_hashes <- unname(tools::md5sum(present_paths))
+    if (anyNA(observed_hashes)) {
+        stop("benchmark source provenance input could not be hashed")
+    }
+    hashes[present] <- observed_hashes
     manifest <- paste(paths, hashes, sep = "\t")
     temporary <- tempfile("dtaparser-provenance-")
     on.exit(unlink(temporary), add = TRUE)
