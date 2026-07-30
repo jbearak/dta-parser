@@ -45,11 +45,12 @@ benchmark_tree_digest <- function(checkout_root, scope) {
 
     absolute <- file.path(checkout_root, paths)
     hashes <- rep.int("<missing>", length(paths))
+    if (any(nzchar(Sys.readlink(absolute)))) {
+        stop("benchmark source provenance input must be a regular nonsymlink file")
+    }
     present <- file.exists(absolute)
     present_paths <- absolute[present]
-    if (length(present_paths) &&
-        (any(nzchar(Sys.readlink(present_paths))) ||
-         any(!file_test("-f", present_paths)))) {
+    if (length(present_paths) && any(!file_test("-f", present_paths))) {
         stop("benchmark source provenance input must be a regular nonsymlink file")
     }
     observed_hashes <- unname(tools::md5sum(present_paths))
@@ -184,6 +185,7 @@ write_benchmark_provenance <- function(checkout_root, benchmark_library, path,
     }
     source_tarball_sha256 <- tolower(as.character(source_tarball_sha256))
     if (length(source_tarball_sha256) != 1L ||
+        is.na(source_tarball_sha256) ||
         !grepl("^[0-9a-f]{64}$", source_tarball_sha256)) {
         stop("source tarball SHA-256 is invalid")
     }
