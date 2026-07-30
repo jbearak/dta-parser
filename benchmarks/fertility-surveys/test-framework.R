@@ -18,6 +18,7 @@ expect_error <- function(expression, pattern) {
     invisible(error)
 }
 
+local({
 root <- tempfile("fertility-framework-")
 dir.create(root)
 root <- normalizePath(root, winslash = "/", mustWork = TRUE)
@@ -1099,13 +1100,13 @@ for (entry_name in names(missing_root_entry_points)) {
     )
 }
 
-options <- fertility_parse_arguments(c(
+filter_options <- fertility_parse_arguments(c(
     "--program=dhs,mics", "--release=113,114", "--shard-index=1",
     "--shard-count=2", "--max-files=1", "--timeout-seconds=9", "--retry"
 ))
-selected <- fertility_filter_inventory(inventory, options)
+selected <- fertility_filter_inventory(inventory, filter_options)
 stopifnot(nrow(selected) == 1L, selected$id[[1L]] == "F0003",
-          options$timeout_seconds == 9L, options$retry)
+          filter_options$timeout_seconds == 9L, filter_options$retry)
 expect_error(fertility_parse_arguments("--shard-count=2"), "supplied together")
 expect_error(fertility_parse_arguments("--timeout-seconds=0"), "positive integer")
 expect_error(fertility_parse_arguments("--beyond-end-windows=9"), "must not exceed 8")
@@ -1175,6 +1176,17 @@ make_public_results <- function(expected, classifications = "pass") {
         stringsAsFactors = FALSE, check.names = FALSE
     )
 }
+mixed_width_manifest <- data.frame(
+    id = c("F0001", "F0002"), shard_index = c(1L, 10L),
+    stringsAsFactors = FALSE, check.names = FALSE
+)
+stopifnot(identical(
+    fertility_manifest_id(mixed_width_manifest),
+    fertility_manifest_id(fertility_manifest_character(
+        mixed_width_manifest, names(mixed_width_manifest)
+    ))
+))
+
 make_bundle_family <- function(
     canonical, family_options, classifications = NULL,
     inventory_id = paste(rep("d", 64L), collapse = ""), acceptance = NULL
@@ -3132,6 +3144,15 @@ attr(actual$number, "label") <- "number"
 expected <- actual
 stopifnot(fertility_compare_internal(actual, actual)$ok)
 stopifnot(fertility_compare_haven(actual, expected)$ok)
+integer_values <- c(1L, NA_integer_, 3L)
+stopifnot(nrow(fertility_compare_column_values(
+    integer_values, integer_values, 1L
+)) == 0L)
+changed_integers <- integer_values
+changed_integers[[3L]] <- 4L
+stopifnot(nrow(fertility_compare_column_values(
+    integer_values, changed_integers, 1L
+)) == 1L)
 expected$number[[2L]] <- expected$number[[2L]] + 4e-8
 stopifnot(fertility_compare_haven(actual, expected)$ok)
 large_actual <- tibble::tibble(value = c(1e15, 2))
@@ -4073,6 +4094,8 @@ stopifnot(fertility_checkpoint_valid(
               checkpoint, item, "framework", item_input, 2L
           ),
           !fertility_should_retry(checkpoint))
+checkpoint$classification <- "expected-unsupported-111"
+stopifnot(!fertility_should_retry(checkpoint))
 checkpoint$classification <- "timeout"
 stopifnot(fertility_should_retry(checkpoint))
 checkpoint$expected_sha512 <- "changed"
@@ -4487,10 +4510,19 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
                 "/dev/fd/3", input, dirname(tempdir())
             )
             on.exit(unlink(path), add = TRUE)
+            copied_path <- fertility_materialize_bound_input(
+                "/dev/fd/3", input, dirname(tempdir()), prefer_clone = FALSE
+            )
+            on.exit(unlink(copied_path), add = TRUE)
             source(worker_script, local = environment())
-            lapply(c("direct", "rust", "haven"), function(reader) {
-                fertility_tile_read(reader, path, tile)
-            })
+            list(
+                preferred = lapply(c("direct", "rust", "haven"), function(reader) {
+                    fertility_tile_read(reader, path, tile)
+                }),
+                copied = lapply(c("direct", "rust", "haven"), function(reader) {
+                    fertility_tile_read(reader, copied_path, tile)
+                })
+            )
         },
         args = list(file.path(script_dir, "common.R"),
                     file.path(script_dir, "runtime.R"),
@@ -4501,9 +4533,11 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     fertility_close_bound_input_connection(fd_connection)
     stopifnot(
         identical(processx::conn_get_fileno(fd_connection), -1L),
-        identical(fd_values[[1L]], fd_values[[2L]]),
-        identical(fd_values[[1L]], fd_values[[3L]]),
-        identical(as.character(fd_values[[1L]]$text), "encoding_probe_ascii")
+        identical(fd_values$preferred[[1L]], fd_values$preferred[[2L]]),
+        identical(fd_values$preferred[[1L]], fd_values$preferred[[3L]]),
+        identical(fd_values$preferred, fd_values$copied),
+        identical(as.character(fd_values$preferred[[1L]]$text),
+                  "encoding_probe_ascii")
     )
     encoding_item <- bounded_item
     encoding_item$id <- "F9903"
@@ -5133,3 +5167,4 @@ Sys.setenv(DTAPARSER_FERTILITY_CORPUS = fertility_opt_in_value)
 stopifnot(is.null(fertility_assert_manual_run()))
 
 message("fertility framework synthetic tests passed")
+})

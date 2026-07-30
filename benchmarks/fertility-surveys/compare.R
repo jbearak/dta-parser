@@ -78,7 +78,8 @@ fertility_compare_column_values <- function(actual, expected, component,
                 "value-mismatch", "missing-kind-mismatch", component
             )
         }
-        if (!identical(haven::na_tag(actual), haven::na_tag(expected))) {
+        if (is.double(actual) && is.double(expected) &&
+            !identical(haven::na_tag(actual), haven::na_tag(expected))) {
             parts[[length(parts) + 1L]] <- fertility_mismatch_record(
                 "tag-mismatch", "tagged-missing-mismatch", component
             )

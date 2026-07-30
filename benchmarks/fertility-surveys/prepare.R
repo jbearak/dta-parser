@@ -19,6 +19,9 @@ raw_root <- fertility_assert_checkout_raw_root(
 invisible(fertility_assert_tempdir(raw_root))
 library_value <- Sys.getenv("DTAPARSER_FERTILITY_LIBRARY")
 provenance_value <- Sys.getenv("DTAPARSER_FERTILITY_PROVENANCE")
+if (!nzchar(library_value) || !nzchar(provenance_value)) {
+    stop("immutable corpus build library and provenance are required")
+}
 selected_build_id <- basename(dirname(path.expand(provenance_value)))
 build_bundle <- fertility_resolve_build_bundle(
     raw_root, selected_build_id, require_current = TRUE

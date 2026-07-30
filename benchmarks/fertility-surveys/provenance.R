@@ -1,8 +1,15 @@
 fertility_git_lines <- function(checkout_root, arguments) {
+    diagnostics_path <- tempfile("fertility-git-stderr-")
+    on.exit(unlink(diagnostics_path), add = TRUE)
     output <- system2("git", c("-C", shQuote(checkout_root), arguments),
-                      stdout = TRUE, stderr = TRUE)
+                      stdout = TRUE, stderr = diagnostics_path)
     status <- attr(output, "status", exact = TRUE)
-    if (!is.null(status) && status != 0L) stop("git command failed")
+    if (!is.null(status) && status != 0L) {
+        diagnostics <- if (file.exists(diagnostics_path)) {
+            readLines(diagnostics_path, warn = FALSE)
+        } else character()
+        stop("git command failed: ", paste(c(output, diagnostics), collapse = "\n"))
+    }
     output
 }
 

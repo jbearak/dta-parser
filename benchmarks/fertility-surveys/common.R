@@ -950,7 +950,8 @@ fertility_close_bound_input_connection <- function(connection) {
 fertility_bound_input_path <- function() "/dev/fd/3"
 
 fertility_materialize_bound_input <- function(path, input, raw_root,
-                                              destination = NULL) {
+                                              destination = NULL,
+                                              prefer_clone = TRUE) {
     if (!identical(path, fertility_bound_input_path())) {
         stop("bound worker input path is invalid")
     }
@@ -975,6 +976,8 @@ fertility_materialize_bound_input <- function(path, input, raw_root,
             stop("bound worker snapshot destination is invalid")
         }
     }
+    if (!is.logical(prefer_clone) || length(prefer_clone) != 1L ||
+        is.na(prefer_clone)) stop("bound worker clone preference is invalid")
     on.exit(if (file.exists(destination) || fertility_path_is_symlink(destination)) {
         unlink(destination)
     }, add = TRUE)
@@ -982,21 +985,41 @@ fertility_materialize_bound_input <- function(path, input, raw_root,
     if (!nzchar(python)) stop("python3 is required for bound worker input")
     code <- paste(
         "import ctypes,os,stat,sys",
-        "destination=os.fsencode(sys.argv[1]); expected=tuple(int(value) for value in sys.argv[2:])",
+        "destination=os.fsencode(sys.argv[1]); expected=tuple(int(value) for value in sys.argv[2:8]); prefer_clone=sys.argv[8]=='1'",
         "def identity(value): return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns,value.st_ctime_ns)",
         "before=os.fstat(3)",
         "if identity(before) != expected or not stat.S_ISREG(before.st_mode): sys.exit(17)",
-        "libc=ctypes.CDLL(None,use_errno=True); clone=getattr(libc,'fclonefileat',None)",
-        "if clone is None: sys.exit(18)",
-        "clone.argtypes=[ctypes.c_int,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]",
-        "if clone(3,-2,destination,0) != 0: sys.exit(19)",
+        "cloned=False",
+        "if prefer_clone:",
+        "    libc=ctypes.CDLL(None,use_errno=True); clone=getattr(libc,'fclonefileat',None)",
+        "    if clone is not None:",
+        "        clone.argtypes=[ctypes.c_int,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]",
+        "        cloned=clone(3,-2,destination,0)==0",
+        "if not cloned:",
+        "    flags=os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_CLOEXEC',0)",
+        "    output=os.open(destination,flags,0o600)",
+        "    try:",
+        "        offset=0",
+        "        while offset < before.st_size:",
+        "            data=os.pread(3,min(1048576,before.st_size-offset),offset)",
+        "            if not data: sys.exit(18)",
+        "            view=memoryview(data)",
+        "            while view:",
+        "                written=os.write(output,view)",
+        "                if written <= 0: sys.exit(19)",
+        "                view=view[written:]",
+        "            offset+=len(data)",
+        "        os.fsync(output)",
+        "    finally:",
+        "        os.close(output)",
         "after=os.fstat(3); copied=os.lstat(destination)",
         "if identity(after) != identity(before) or not stat.S_ISREG(copied.st_mode) or copied.st_size != before.st_size: sys.exit(20)",
         sep = "\n"
     )
     status <- suppressWarnings(system2(
         python, c("-c", shQuote(code), shQuote(destination),
-                  unname(unlist(input[required], use.names = FALSE))),
+                  unname(unlist(input[required], use.names = FALSE)),
+                  if (prefer_clone) "1" else "0"),
         stdout = FALSE, stderr = FALSE
     ))
     if (!identical(status, 0L) || !file.exists(destination) ||

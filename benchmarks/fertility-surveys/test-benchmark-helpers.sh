@@ -69,6 +69,28 @@ run_benchmark_rejection() {
     fi
 }
 
+run_environment_rejection() {
+    run_environment_rejection_name=$1
+    run_environment_rejection_message=$2
+    run_environment_rejection_ci=$3
+    run_environment_rejection_opt_in=$4
+    set +e
+    CI=$run_environment_rejection_ci \
+        GITHUB_ACTIONS= GITHUB_RUN_ID= GITHUB_WORKFLOW= \
+        DTAPARSER_FERTILITY_CORPUS=$run_environment_rejection_opt_in \
+        /bin/sh "$benchmark_script" --inventory-only \
+        >"$test_root/$run_environment_rejection_name.out" 2>&1
+    run_environment_rejection_status=$?
+    set -e
+    if [ "$run_environment_rejection_status" -ne 2 ] ||
+       ! grep -q -- "$run_environment_rejection_message" \
+           "$test_root/$run_environment_rejection_name.out"; then
+        printf '%s\n' "$run_environment_rejection_name: unexpected rejection" >&2
+        command cat "$test_root/$run_environment_rejection_name.out" >&2
+        exit 1
+    fi
+}
+
 canonical_root="$test_root/canonical"
 canonical_builds="$canonical_root/builds"
 mkdir -p "$canonical_builds"
@@ -107,6 +129,10 @@ printf '%s\n' 'canonical' > "$nondirect_parent_root/builds/CURRENT"
 run_assert_direct_file 2 nondirect-parent \
     "$nondirect_parent_root/direct/../builds" \
     "$nondirect_parent_root/direct/../builds/CURRENT"
+
+run_environment_rejection ci-refusal 'refused in CI' \
+    true I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
+run_environment_rejection opt-in-refusal 'manual opt-in required' '' ''
 
 run_benchmark_rejection missing-roots 'requires explicit --cache-root and --manifest' \
     --inventory-only

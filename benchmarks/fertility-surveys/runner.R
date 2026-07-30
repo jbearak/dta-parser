@@ -316,8 +316,12 @@ fertility_manifest_id <- function(
     manifest, fields = names(manifest), schema_version = fertility_schema_version
 ) {
     if (!identical(names(manifest), fields)) stop("manifest schema is not canonical")
-    rows <- if (!nrow(manifest)) character() else apply(
-        manifest, 1L, function(row) paste(as.character(row), collapse = "\037")
+    text <- lapply(manifest, as.character)
+    rows <- if (!nrow(manifest)) character() else vapply(
+        seq_len(nrow(manifest)), function(index) {
+            paste(vapply(text, function(column) column[[index]], character(1L)),
+                  collapse = "\037")
+        }, character(1L)
     )
     fertility_stable_id(list(
         schema_version = as.integer(schema_version),
@@ -716,7 +720,7 @@ fertility_process_item <- function(item, checkpoint_path, framework_id,
 }
 
 fertility_should_retry <- function(checkpoint) {
-    !(checkpoint$classification %in% c("match", "unsupported-release"))
+    !(checkpoint$classification %in% c("match", "expected-unsupported-111"))
 }
 
 fertility_run_provenance_fields <- function() c(

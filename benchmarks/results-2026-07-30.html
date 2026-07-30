@@ -118,7 +118,7 @@
         <div class="metric"><strong>24,500 / 24,500</strong><span>Wave 3 planned tiles verified; Wave 2 covered 874 supported files</span></div>
         <div class="metric"><strong>0 defects</strong><span>Confirmed dtaparser parser or materialization defects</span></div>
       </div>
-      <div class="callout good"><strong>Result:</strong> the public Direct-R collector and retained Rust-vector collector remained identical throughout the supported corpus. Observed differences were attributable to unsupported release 111, external manifest drift, malformed upstream textual metadata, or Haven encoding behavior—not to a confirmed dtaparser defect.</div>
+      <div class="callout good"><strong>Result:</strong> the public Direct-R collector and retained Rust-vector collector remained identical throughout the supported corpus. Stata/SE 7 format 111 is outside dtaparser's current supported range; supported-file differences were attributable to malformed upstream textual metadata or Haven encoding behavior—not to a confirmed dtaparser defect.</div>
       <p>The work added two report-only systems: a reproducible same-run R performance benchmark and a manual, bounded, resumable differential corpus framework. Neither adds timing assertions or private-corpus checks to CI.</p>
     </section>
 
@@ -131,7 +131,7 @@
         <li><strong>Explicit source authorization.</strong> Raw runs now require canonical <code>--cache-root</code> and <code>--manifest</code>; generated-output runs require <code>--output-root</code>. The framework refuses CI and symlinked or ambiguous roots. <em>Why:</em> private inputs must never be inferred, recursively discovered, or accidentally read on an unauthorized machine.</li>
         <li><strong>Exact comparison semantics.</strong> Replaced broad equality shortcuts with element- and attribute-level checks for dimensions, names, metadata, classes, labels, missing masks, tagged missings, dates, datetimes, strings, integers, nonfinite values, and finite floating values with absolute tolerance <code>1e-7</code>. <em>Why:</em> a corpus pass should prove compatibility rather than hide meaningful differences behind permissive coercion.</li>
         <li><strong>Crash and race hardening.</strong> Added per-tile subprocesses, process-generation locks, heartbeats, descriptor-bound input snapshots, no-follow directory traversal, input revalidation, atomic no-replace publication, and exact bundle membership validation. <em>Why:</em> very long runs must survive interruption without accepting stale, mixed, partially published, or path-substituted evidence.</li>
-        <li><strong>Manifest mismatch preservation.</strong> Kept the five external Wave 2 SHA-512 mismatches as an authoritative blocked result and recorded separately authorized target-local supplemental evidence. <em>Why:</em> local acceptance must not silently rewrite the upstream manifest or erase an auditable integrity discrepancy.</li>
+        <li><strong>External input-identity separation.</strong> Preserved five disagreements between caller-supplied manifest hashes and current bytes while recording separately authorized target-local evidence. <em>Why:</em> maintaining the external hash records is outside this repository's responsibility, but the harness must not silently treat different bytes as manifest-verified.</li>
         <li><strong>Generated-output support.</strong> Reused the Wave 2 machinery for 1,226 derived files, including very large top-level aggregates and upstream <code>append, force</code> output. <em>Why:</em> reader parity must be distinguished from analytical coercion already stored in the generated Stata files.</li>
         <li><strong>Privacy-safe documentation.</strong> Added dated Markdown reports and this consolidated HTML report while removing local absolute paths, source hashes, survey values, labels, variable names, and private reader diagnostics. <em>Why:</em> methodology and aggregate conclusions should be reviewable without disclosing proprietary corpus details.</li>
       </ol>
@@ -165,7 +165,7 @@
           <caption>Wave 2 original raw classifications</caption>
           <thead><tr><th>Original raw classification</th><th class="num">Files</th></tr></thead>
           <tbody>
-            <tr><td>Expected unsupported release 111</td><td class="num">130</td></tr>
+            <tr><td>Stata/SE 7 format 111 (outside dtaparser's current supported range)</td><td class="num">130</td></tr>
             <tr><td>Pass</td><td class="num">459</td></tr>
             <tr><td>Metadata mismatch</td><td class="num">409</td></tr>
             <tr><td>Haven-only error</td><td class="num">1</td></tr>
@@ -174,14 +174,14 @@
           </tbody>
         </table>
       </div>
-      <p>The five hash mismatches remain unchanged in the authoritative manifest result. Under separately authorized, immutable local acceptance, all five completed exhaustive supplemental runs and passed. This yields complete executable evidence for all 874 supported files: 464 pass, 409 metadata mismatch, and one Haven-only error.</p>
+      <p>Five caller-supplied manifest hashes did not identify the current local bytes. Reconciling those external records is outside this repository's responsibility. Under separately authorized, immutable local input identities, all five files completed exhaustive supplemental runs and passed. This yields complete executable evidence for all 874 supported files: 464 pass, 409 metadata mismatch, and one Haven-only error.</p>
       <ul>
         <li>Direct-R/Rust-vector mismatch records: <strong>0</strong>.</li>
         <li>Confirmed dtaparser defects: <strong>0</strong>.</li>
         <li>Unresolved supported collector differences after adjudication: <strong>0</strong>.</li>
         <li>The default Haven-only case passed all 100 tiles with a symmetric <code>ISO-8859-1</code> override.</li>
       </ul>
-      <div class="callout warn"><strong>Integrity distinction:</strong> the manifest gate remains blocked for the five external SHA-512 discrepancies. Supplemental local evidence satisfies coverage and compatibility, but does not alter or claim verification of the external manifest.</div>
+      <div class="callout warn"><strong>Scope distinction:</strong> the external hash records are not maintained or warranted by this repository. The harness preserves their recorded disagreement only to keep input identities unambiguous; parser coverage and compatibility were established separately for the current local bytes.</div>
     </section>
 
     <section id="wave3">
@@ -197,7 +197,7 @@
           <caption>Wave 3 generated-output classifications</caption>
           <thead><tr><th>Classification</th><th class="num">Files</th></tr></thead>
           <tbody>
-            <tr><td>Expected unsupported release 111</td><td class="num">130</td></tr>
+            <tr><td>Stata/SE 7 format 111 (outside dtaparser's current supported range)</td><td class="num">130</td></tr>
             <tr><td>Pass</td><td class="num">691</td></tr>
             <tr><td>Metadata mismatch</td><td class="num">404</td></tr>
             <tr><td>Haven-only error</td><td class="num">1</td></tr>

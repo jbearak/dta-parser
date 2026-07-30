@@ -3,8 +3,9 @@
 This is a local, report-only compatibility framework for the private fertility
 survey cache. It is never a CI or release gate. It refuses to run when common CI
 or GitHub Actions variables are present and requires an explicit manual opt-in.
-It does not add Stata release 111 support: release-111 files are inventoried and
-classified as `expected-unsupported-111` without being passed to a reader.
+It does not add Stata/SE 7 format-111 support: those files are inventoried,
+classified as `expected-unsupported-111`, and identified as outside dtaparser's
+current supported format range without being passed to a reader.
 
 Every Wave 2 invocation requires caller-supplied `--cache-root` and `--manifest`
 arguments naming existing absolute canonical, non-symlink paths. The inventory
@@ -19,7 +20,7 @@ A valid inventory has exactly 1,004 unique files and these release counts:
 
 | Release | Files | Differential status |
 |---:|---:|---|
-| 111 | 130 | inventoried, unsupported |
+| 111 | 130 | inventoried; outside dtaparser's current format range |
 | 113 | 475 | compared |
 | 114 | 23 | compared |
 | 117 | 150 | compared |
@@ -27,7 +28,9 @@ A valid inventory has exactly 1,004 unique files and these release counts:
 
 Every file is SHA-512 hashed; a non-empty recorded signature must match, while
 rows whose historical signature is empty are bound to the hash computed by the
-checkpoint. Supported files are never decoded into whole-file data frames. An
+checkpoint. The supplied manifest and its recorded hashes are external provenance
+assertions: this repository binds inputs to them fail-closed but does not maintain,
+warrant, or repair those external values. Supported files are never decoded into whole-file data frames. An
 isolated metadata subprocess compares zero-row direct-R, internal Rust-vector,
 and haven frames, including dataset label/notes and every column's class, label,
 `format.stata`, value labels, and `tzone`. A bounded source-header parser
@@ -81,11 +84,13 @@ Zero-column supported files use a single explicit empty projection batch and the
 same traversal and terminal requirements. Inputs are fully hashed before accepting
 checkpoints and again after all tiles. For every supported file, the parent keeps a
 verified source descriptor open; each isolated tile receives that descriptor and
-creates its private target-local copy-on-write snapshot directly from the descriptor
-before any reader opens a pathname. Source identity and cheap size/mtime fingerprints
-are revalidated around each child, and snapshots are removed when the child exits.
-If the host filesystem cannot create that descriptor-derived copy-on-write snapshot,
-the run aborts before publishing a case result rather than recording a reader crash.
+first attempts a private target-local copy-on-write clone directly from it. If the
+platform or filesystem cannot clone, the worker falls back to a private bounded-chunk
+byte-for-byte copy from the already-open descriptor before any reader opens a pathname.
+Source identity and cheap size/mtime fingerprints are revalidated around each child,
+and snapshots are removed when the child exits. If neither descriptor-derived
+materialization method succeeds, the run aborts before publishing a case result rather
+than recording a reader crash.
 
 ## Wave 3 generated-output corpus
 
@@ -193,8 +198,10 @@ benchmarks/fertility-surveys/benchmark.sh \
 
 ## Explicit accepted-current-hash evidence for F0633-F0637
 
-The historical SHA-512 values in `datasigs.csv` remain the manifest authority and
-are never rewritten. If a separately authorized local review accepts the current
+The historical SHA-512 values in `datasigs.csv` are caller-supplied external
+provenance and are never rewritten. Reconciling or maintaining them is outside
+this repository's parser-compatibility responsibility. If a separately authorized
+local review accepts the current
 bytes for exactly `F0633` through `F0637`, capture those bytes into a private,
 immutable content-addressed commitment beneath the ignored artifact root:
 
@@ -270,10 +277,12 @@ identity and revalidated at both publication boundaries. Merge and republication
 remain current-schema-only. The assessment preserves both source identities and
 classifications, requires the original full family to retain
 `inventory-hash-error` for exactly `F0633`-`F0637` with the sole privacy-safe
-reason `signature-mismatch`, and exposes two orthogonal statuses:
-`manifest_gate=blocked-signature-mismatch` and
-`explicit_local_evidence_gate=validated`. It does not replace the manifest gate,
-rewrite either family, or authorize Wave 3.
+reason `signature-mismatch`, and exposes two historically named orthogonal status
+fields: `manifest_gate=blocked-signature-mismatch` and
+`explicit_local_evidence_gate=validated`. The first records only the unresolved
+caller-supplied external provenance assertion; it is not a dtaparser parser gate
+or repository responsibility. The assessment does not rewrite either family or
+authorize Wave 3.
 
 ## Historical schema-10 validation and republication
 
@@ -314,7 +323,16 @@ tile. Available options are:
 - `--cache-root=/absolute/canonical/path` and
   `--manifest=/absolute/canonical/file.csv` (both required in raw mode and
   rejected in generated-output mode)
+- `--output-root=/absolute/canonical/path` (required in generated-output mode
+  and rejected with raw root arguments)
 - `--inventory-only`
+- `--capture-accepted-current-hashes` (publish the separately authorized private
+  five-file commitment described above)
+- `--family-id=ID` (merge a completed shard family)
+- `--assessment-family-id=ID --accepted-family-id=ID` (publish the Wave 2
+  raw-plus-supplemental assessment; both are required together)
+- `--republish-framework=ID` (historical validation/republication mode)
+- `--validate-only` (validate historical evidence without publishing it)
 - `--program=dhs,mics` (comma-separated)
 - `--release=113,118` (comma-separated)
 - `--id=F0001,F0002` (privacy-safe inventory IDs)
