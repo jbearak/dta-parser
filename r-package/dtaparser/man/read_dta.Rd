@@ -36,7 +36,7 @@ columns and legacy or custom formats beginning \code{\%d} have class
 and \code{POSIXt} in UTC. Other Stata temporal formats remain numeric with
 their \code{format.stata} attribute.}
 \description{
-Reads Stata releases 113--115 and 117--119 through the native Rust parser,
+Reads Stata releases 111, 113--115, and 117--119 through the native Rust parser,
 retaining dataset and variable labels, dataset notes, formats, value labels,
 long strings, temporal classes, and Stata tagged missing values.
 }

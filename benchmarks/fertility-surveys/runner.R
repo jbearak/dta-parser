@@ -464,7 +464,7 @@ fertility_validate_full_output_results <- function(results) {
     level_counts <- table(factor(
         values$level, levels = names(fertility_output_expected_levels)
     ))
-    unsupported <- releases == 111L
+    unsupported <- !(releases %in% fertility_supported_releases)
     supported <- !unsupported
     if (nrow(values) != fertility_output_expected_files ||
         !identical(values$id,
@@ -1624,13 +1624,13 @@ fertility_validate_shard_bundles <- function(bundles, family_id,
                        as.integer(fertility_expected_releases))) {
             stop("full corpus release counts are invalid")
         }
-        unsupported <- results$release == "111"
+        unsupported <- !(as.integer(results$release) %in% fertility_supported_releases)
         if (!all(results$classification[unsupported] == "expected-unsupported-111")) {
-            stop("release 111 classifications are invalid")
+            stop("unsupported release classifications are invalid")
         }
         supported <- !unsupported
         hash_errors <- results$classification[supported] == "inventory-hash-error"
-        if (sum(hash_errors) != 5L || sum(!hash_errors) != 869L ||
+        if (sum(hash_errors) != 5L || sum(!hash_errors) != nrow(results) - 5L ||
             any(results$classification[supported] == "expected-unsupported-111")) {
             stop("supported corpus executable accounting is invalid")
         }

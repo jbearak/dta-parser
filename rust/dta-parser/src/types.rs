@@ -6,6 +6,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum FormatVersion {
+    V111 = 111,
     V113 = 113,
     V114 = 114,
     V115 = 115,
@@ -35,6 +36,7 @@ impl TryFrom<u16> for FormatVersion {
 
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
+            111 => Ok(Self::V111),
             113 => Ok(Self::V113),
             114 => Ok(Self::V114),
             115 => Ok(Self::V115),

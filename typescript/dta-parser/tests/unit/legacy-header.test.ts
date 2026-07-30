@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'bun:test';
 import { parse_legacy_metadata } from '../../src/legacy-header';
+import { read_rows_from_buffer } from '../../src/data-reader';
+import { make_missing_value } from '../../src/missing-values';
 
 // -----------------------------------------------------------
-// Legacy header parser unit tests (formats 113-115)
+// Legacy header parser unit tests (formats 111, 113-115)
 // -----------------------------------------------------------
 
 /**
@@ -11,7 +13,7 @@ import { parse_legacy_metadata } from '../../src/legacy-header';
  * immediately after the expansion fields terminator.
  */
 function build_legacy_buffer(opts: {
-    version: 113 | 114 | 115;
+    version: 111 | 113 | 114 | 115;
     byte_order?: 'LSF' | 'MSF';
     nvar: number;
     nobs: number;
@@ -30,7 +32,7 @@ function build_legacy_buffer(opts: {
     } = opts;
 
     const little_endian = byte_order === 'LSF';
-    const fmt_width = version === 113 ? 12 : 49;
+    const fmt_width = version === 111 || version === 113 ? 12 : 49;
 
     // Compute obs_length from type codes
     let obs_length = 0;
@@ -136,6 +138,54 @@ function build_legacy_buffer(opts: {
 }
 
 describe('parse_legacy_metadata', () => {
+
+    it('parses release 111 with Stata/SE 7 field widths', () => {
+        const { buffer, file_size } = build_legacy_buffer({
+            version: 111,
+            byte_order: 'MSF',
+            nvar: 4,
+            nobs: 2,
+            label: 'Stata/SE 7',
+            type_codes: [253, 254, 255, 6],
+            varnames: ['long', 'float', 'double', 'text'],
+        });
+
+        const my_meta = parse_legacy_metadata(buffer, file_size);
+        expect(my_meta.format_version).toBe(111);
+        expect(my_meta.byte_order).toBe('MSF');
+        expect(my_meta.dataset_label).toBe('Stata/SE 7');
+        expect(my_meta.variables[0].format).toBe('%9.0g');
+        expect(my_meta.variables[3].type).toBe('str6');
+
+        const my_view = new DataView(buffer);
+        const my_bytes = new Uint8Array(buffer);
+        const data = my_meta.section_offsets.data;
+        my_view.setInt32(data, 2147483647, false);
+        my_view.setUint32(data + 4, 0x7F000001, false);
+        my_view.setUint32(data + 8, 0x7FE00000, false);
+        my_view.setUint32(data + 12, 1, false);
+        my_bytes.set([0x43, 0x61, 0x66, 0xE9], data + 16);
+
+        const second = data + my_meta.obs_length;
+        my_view.setInt32(second, 2147483646, false);
+        my_view.setUint32(second + 4, 0x7EFFFFFF, false);
+        my_view.setUint32(second + 8, 0x7FDFFFFF, false);
+        my_view.setUint32(second + 12, 0xFFFFFFFF, false);
+        my_bytes.set([0x6F, 0x6B], second + 16);
+
+        const rows = read_rows_from_buffer(buffer, my_meta, 0, 2);
+        expect(rows[0]).toEqual([
+            make_missing_value('.'),
+            make_missing_value('.'),
+            make_missing_value('.'),
+            'Café',
+        ]);
+        expect(rows[1][0]).toBe(2147483646);
+        expect(typeof rows[1][1]).toBe('number');
+        expect(typeof rows[1][2]).toBe('number');
+        expect(Number.isFinite(rows[1][2] as number)).toBe(true);
+        expect(rows[1][3]).toBe('ok');
+    });
 
     it('parses format 115 header', () => {
         const { buffer, file_size } = build_legacy_buffer({
@@ -289,5 +339,69 @@ describe('parse_legacy_metadata', () => {
                 256
             );
         }).toThrow('Not a legacy .dta file');
+    });
+
+    it('rejects an invalid release-111 file type', () => {
+        const valid = build_legacy_buffer({
+            version: 111,
+            nvar: 1,
+            nobs: 0,
+            type_codes: [251],
+            varnames: ['x'],
+        });
+        const malformed = Buffer.from(valid.buffer);
+        malformed[2] = 2;
+
+        expect(() => parse_legacy_metadata(
+            malformed.buffer.slice(
+                malformed.byteOffset,
+                malformed.byteOffset + malformed.byteLength
+            ),
+            malformed.byteLength
+        )).toThrow('Invalid legacy file type');
+    });
+
+    it('rejects truncated and negative release-111 expansion fields', () => {
+        const valid = build_legacy_buffer({
+            version: 111,
+            nvar: 1,
+            nobs: 0,
+            type_codes: [251],
+            varnames: ['x'],
+        });
+        const metadata = parse_legacy_metadata(valid.buffer, valid.file_size);
+
+        expect(() => parse_legacy_metadata(
+            valid.buffer.slice(0, metadata.section_offsets.characteristics),
+            metadata.section_offsets.characteristics
+        )).toThrow('Missing legacy expansion-field terminator');
+
+        const negative = Buffer.from(valid.buffer);
+        const view = new DataView(
+            negative.buffer, negative.byteOffset, negative.byteLength
+        );
+        negative[metadata.section_offsets.characteristics] = 1;
+        view.setInt32(metadata.section_offsets.characteristics + 1, -1, true);
+        expect(() => parse_legacy_metadata(
+            negative.buffer.slice(
+                negative.byteOffset,
+                negative.byteOffset + negative.byteLength
+            ),
+            negative.byteLength
+        )).toThrow('Invalid legacy expansion field');
+    });
+
+    it('rejects release-111 observation geometry beyond the file size', () => {
+        const valid = build_legacy_buffer({
+            version: 111,
+            nvar: 1,
+            nobs: 1,
+            type_codes: [255],
+            varnames: ['x'],
+        });
+        const truncated = valid.buffer.slice(0, valid.file_size - 1);
+        expect(() => parse_legacy_metadata(
+            truncated, valid.file_size - 1
+        )).toThrow('Truncated legacy observation data');
     });
 });

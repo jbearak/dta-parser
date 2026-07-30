@@ -143,7 +143,7 @@ describe('data browser smoke test', () => {
         );
 
         try {
-            // Format 112 (Stata 7) — unsupported
+            // Format 112 is not one of the supported Stata releases.
             const my_ancient_header = Buffer.alloc(128);
             my_ancient_header[0] = 0x70; // 112
             my_ancient_header[1] = 0x02;
@@ -157,7 +157,7 @@ describe('data browser smoke test', () => {
                 DtaFile.open(my_ancient_path)
             ).rejects.toThrow(
                 'Unsupported .dta format: only ' +
-                'Stata 8+ files (formats 113-115 ' +
+                'Stata/SE 7+ files (formats 111, 113-115 ' +
                 'and 117-119) are supported'
             );
         } finally {

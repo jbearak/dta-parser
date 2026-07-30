@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::FormatVersion;
+
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 const BYTE_MISSING_DOT: i8 = 101;
@@ -184,6 +186,58 @@ pub fn classify_double_missing_bits(bits: u64) -> Option<MissingTag> {
         return None;
     }
     MissingTag::from_offset(u8::try_from(delta / DOUBLE_MISSING_STEP_BITS).ok()?)
+}
+
+pub(crate) fn classify_byte_missing_for_version(
+    value: i8,
+    version: FormatVersion,
+) -> Option<MissingTag> {
+    if version == FormatVersion::V111 {
+        return (value == BYTE_MISSING_Z).then_some(MissingTag::System);
+    }
+    classify_byte_missing(value)
+}
+
+pub(crate) fn classify_int_missing_for_version(
+    value: i16,
+    version: FormatVersion,
+) -> Option<MissingTag> {
+    if version == FormatVersion::V111 {
+        return (value == INT_MISSING_Z).then_some(MissingTag::System);
+    }
+    classify_int_missing(value)
+}
+
+pub(crate) fn classify_long_missing_for_version(
+    value: i32,
+    version: FormatVersion,
+) -> Option<MissingTag> {
+    if version == FormatVersion::V111 {
+        return (value == LONG_MISSING_Z).then_some(MissingTag::System);
+    }
+    classify_long_missing(value)
+}
+
+pub(crate) fn classify_float_missing_bits_for_version(
+    bits: u32,
+    version: FormatVersion,
+) -> Option<MissingTag> {
+    if version == FormatVersion::V111 {
+        return ((FLOAT_MISSING_DOT_BITS..0x8000_0000).contains(&bits))
+            .then_some(MissingTag::System);
+    }
+    classify_float_missing_bits(bits)
+}
+
+pub(crate) fn classify_double_missing_bits_for_version(
+    bits: u64,
+    version: FormatVersion,
+) -> Option<MissingTag> {
+    if version == FormatVersion::V111 {
+        return ((DOUBLE_MISSING_DOT_BITS..0x8000_0000_0000_0000).contains(&bits))
+            .then_some(MissingTag::System);
+    }
+    classify_double_missing_bits(bits)
 }
 
 #[cfg(test)]

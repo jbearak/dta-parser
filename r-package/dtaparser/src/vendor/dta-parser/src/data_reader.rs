@@ -8,10 +8,13 @@ use crate::selection::{resolve_columns, row_window};
 use crate::strl::decode_strl_columns;
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
-    classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
-    classify_int_missing, classify_long_missing, parse_metadata_with_encoding,
-    parse_value_labels_with_encoding, Column, ColumnValues, DtaData, DtaError, DtaMetadata,
-    DtaType, ReadOptions, VariableInfo,
+    missing::{
+        classify_byte_missing_for_version, classify_double_missing_bits_for_version,
+        classify_float_missing_bits_for_version, classify_int_missing_for_version,
+        classify_long_missing_for_version,
+    },
+    parse_metadata_with_encoding, parse_value_labels_with_encoding, Column, ColumnValues, DtaData,
+    DtaError, DtaMetadata, DtaType, ReadOptions, VariableInfo,
 };
 
 const DATA_OPEN: &[u8] = b"<data>";
@@ -146,19 +149,19 @@ fn decode_column(
             Byte,
             i8,
             |offset| read_i8(bytes, offset, "byte observation"),
-            classify_byte_missing
+            |value| classify_byte_missing_for_version(value, metadata.format_version)
         ),
         DtaType::Int => decode_numeric!(
             Int,
             i16,
             |offset| read_i16(bytes, offset, metadata.byte_order, "int observation"),
-            classify_int_missing
+            |value| classify_int_missing_for_version(value, metadata.format_version)
         ),
         DtaType::Long => decode_numeric!(
             Long,
             i32,
             |offset| read_i32(bytes, offset, metadata.byte_order, "long observation"),
-            classify_long_missing
+            |value| classify_long_missing_for_version(value, metadata.format_version)
         ),
         DtaType::Float => {
             let mut values = Vec::with_capacity(capacity);
@@ -168,7 +171,10 @@ fn decode_column(
                 let cell_offset = checked_add_u64(first_offset, row_offset, "cell offset")?;
                 let cell_offset = offset_to_usize(cell_offset, "cell")?;
                 let bits = read_u32(bytes, cell_offset, metadata.byte_order, "float observation")?;
-                missing_tags.push(classify_float_missing_bits(bits));
+                missing_tags.push(classify_float_missing_bits_for_version(
+                    bits,
+                    metadata.format_version,
+                ));
                 values.push(f32::from_bits(bits));
             }
             ColumnValues::Float {
@@ -189,7 +195,10 @@ fn decode_column(
                     metadata.byte_order,
                     "double observation",
                 )?;
-                missing_tags.push(classify_double_missing_bits(bits));
+                missing_tags.push(classify_double_missing_bits_for_version(
+                    bits,
+                    metadata.format_version,
+                ));
                 values.push(f64::from_bits(bits));
             }
             ColumnValues::Double {

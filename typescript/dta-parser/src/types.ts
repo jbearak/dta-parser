@@ -10,12 +10,12 @@ export const FORMAT_SIGNATURES = {
 } as const;
 
 export type FormatVersion =
-    | 113 | 114 | 115
+    | 111 | 113 | 114 | 115
     | 117 | 118 | 119;
 
-export type LegacyFormatVersion = 113 | 114 | 115;
+export type LegacyFormatVersion = 111 | 113 | 114 | 115;
 
-const LEGACY_FORMAT_SET = new Set<number>([113, 114, 115]);
+const LEGACY_FORMAT_SET = new Set<number>([111, 113, 114, 115]);
 
 export function is_legacy_format(
     version: FormatVersion
@@ -125,7 +125,7 @@ export function type_code_to_dta_type(
 }
 
 // -----------------------------------------------------------
-// Legacy format type codes (113/114/115)
+// Legacy format type codes (111/113/114/115)
 //
 // Legacy formats use 1-byte type codes. Numeric codes match
 // the v117 set. Fixed strings are 1-244. No strL type.
@@ -223,6 +223,8 @@ export interface DtaMetadata {
     nvar: number;
     nobs: number;
     dataset_label: string;
+    /** Legacy dataset note characteristics, when parsed. */
+    notes?: string[];
     variables: VariableInfo[];
     section_offsets: SectionOffsets;
     obs_length: number;

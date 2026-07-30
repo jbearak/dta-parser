@@ -1,7 +1,8 @@
 use crate::endian::{checked_add, checked_mul, expect_at, offset_to_usize, read_i32, slice_at};
 use crate::text::{field_bytes, is_utf8_boundary, TextEncoding};
 use crate::{
-    classify_long_missing, DtaError, DtaMetadata, FormatVersion, ValueLabelEntry, ValueLabelTable,
+    missing::classify_long_missing_for_version, DtaError, DtaMetadata, FormatVersion,
+    ValueLabelEntry, ValueLabelTable,
 };
 
 const VALUE_LABELS_OPEN: &[u8] = b"<value_labels>";
@@ -13,7 +14,9 @@ const RESERVED_WIDTH: usize = 3;
 
 fn name_width(version: FormatVersion) -> Result<usize, DtaError> {
     match version {
-        FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 => Ok(33),
+        FormatVersion::V111 | FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 => {
+            Ok(33)
+        }
         FormatVersion::V117 => Ok(33),
         FormatVersion::V118 | FormatVersion::V119 => Ok(129),
     }
@@ -222,7 +225,7 @@ fn parse_table(
         let label = encoding.decode(&remaining[..nul]);
         entries.push(ValueLabelEntry {
             value,
-            missing_tag: classify_long_missing(value),
+            missing_tag: classify_long_missing_for_version(value, metadata.format_version),
             label,
         });
     }

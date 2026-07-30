@@ -1,13 +1,13 @@
 // -----------------------------------------------------------
-// Legacy .dta header and metadata parsing (formats 113-115)
+// Legacy .dta header and metadata parsing (formats 111, 113-115)
 //
-// Parses the fixed-offset binary header used by Stata 8-12.
+// Parses the fixed-offset binary header used by Stata/SE 7 and Stata 8-12.
 // Produces the same DtaMetadata shape as the modern parser,
 // with section offsets computed from nvar rather than read
 // from a section map.
 //
 // Layout (all offsets are byte positions):
-//   0:       format version (uint8: 113/114/115)
+//   0:       format version (uint8: 111/113/114/115)
 //   1:       byte order (uint8: 0x01=MSF, 0x02=LSF)
 //   2:       filetype (always 0x01)
 //   3:       unused
@@ -77,7 +77,15 @@ export function legacy_metadata_buffer_size(
     nvar: number,
     format_version: LegacyFormatVersion
 ): number {
-    const my_fmt_width = format_version === 113
+    return legacy_metadata_fixed_size(nvar, format_version) + 65536;
+}
+
+/** Compute the byte offset where legacy expansion fields begin. */
+export function legacy_metadata_fixed_size(
+    nvar: number,
+    format_version: LegacyFormatVersion
+): number {
+    const my_fmt_width = format_version === 111 || format_version === 113
         ? FORMAT_WIDTH_113
         : FORMAT_WIDTH_114_115;
 
@@ -89,9 +97,7 @@ export function legacy_metadata_buffer_size(
         + nvar * VALUE_LABEL_NAME_WIDTH   // value_label_names
         + nvar * VARIABLE_LABEL_WIDTH;    // variable_labels
 
-    // Add a generous allowance for expansion fields
-    // (typically just the 5-byte terminator)
-    return HEADER_FIXED_SIZE + my_sections_size + 65536;
+    return HEADER_FIXED_SIZE + my_sections_size;
 }
 
 // -----------------------------------------------------------
@@ -114,8 +120,9 @@ function scan_expansion_fields(
     little_endian: boolean,
     start: number,
     buffer_length: number
-): number {
+): { data_offset: number; notes: string[] } {
     let pos = start;
+    const the_notes: string[] = [];
 
     while (pos + 5 <= buffer_length) {
         const my_data_type = view.getUint8(pos);
@@ -124,15 +131,39 @@ function scan_expansion_fields(
         pos += 5;
 
         if (my_data_type === 0 && my_len === 0) {
-            return pos;
+            return { data_offset: pos, notes: the_notes };
+        }
+
+        if (my_data_type === 0 || my_len < 0) {
+            throw new Error('Invalid legacy expansion field');
+        }
+        if (pos + my_len > buffer_length) {
+            throw new Error('Truncated legacy expansion field');
+        }
+
+        if (my_data_type === 1 && my_len >= 2 * VARNAME_WIDTH) {
+            const my_variable = read_fixed_string(bytes_from_view(view), pos, VARNAME_WIDTH);
+            const my_characteristic = read_fixed_string(
+                bytes_from_view(view), pos + VARNAME_WIDTH, VARNAME_WIDTH
+            );
+            if (my_variable === '_dta' && /^note[0-9]+$/.test(my_characteristic)) {
+                const my_note = read_fixed_string(
+                    bytes_from_view(view),
+                    pos + 2 * VARNAME_WIDTH,
+                    my_len - 2 * VARNAME_WIDTH
+                );
+                if (my_note.length > 0) the_notes.push(my_note);
+            }
         }
 
         pos += my_len;
     }
 
-    // If we run out of buffer, return current position
-    // (the caller will detect EOF issues downstream)
-    return pos;
+    throw new Error('Missing legacy expansion-field terminator');
+}
+
+function bytes_from_view(view: DataView): Uint8Array {
+    return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
 }
 
 // -----------------------------------------------------------
@@ -159,7 +190,8 @@ export function parse_legacy_metadata(
     // 1. Format version
     const my_version_byte = bytes[0];
     if (
-        my_version_byte !== 113
+        my_version_byte !== 111
+        && my_version_byte !== 113
         && my_version_byte !== 114
         && my_version_byte !== 115
     ) {
@@ -182,6 +214,10 @@ export function parse_legacy_metadata(
         my_byte_order_code === 1 ? 'MSF' : 'LSF';
     const little_endian = byte_order === 'LSF';
 
+    if (bytes[2] !== 1) {
+        throw new Error(`Invalid legacy file type: ${bytes[2]}`);
+    }
+
     // 3. nvar (uint16 at bytes 4-5)
     const nvar = view.getUint16(4, little_endian);
 
@@ -199,7 +235,7 @@ export function parse_legacy_metadata(
     // 6. Skip timestamp (18 bytes at 91-108)
 
     // 7. Compute section offsets from nvar
-    const my_fmt_width = format_version === 113
+    const my_fmt_width = format_version === 111 || format_version === 113
         ? FORMAT_WIDTH_113
         : FORMAT_WIDTH_114_115;
 
@@ -275,7 +311,7 @@ export function parse_legacy_metadata(
 
     // -- expansion fields --
     const my_expansion_offset = pos;
-    const my_data_offset = scan_expansion_fields(
+    const { data_offset: my_data_offset, notes } = scan_expansion_fields(
         view, little_endian, pos, buffer.byteLength
     );
 
@@ -306,6 +342,12 @@ export function parse_legacy_metadata(
         BigInt(my_data_offset)
         + BigInt(nobs) * BigInt(obs_length)
     );
+    if (
+        !Number.isSafeInteger(my_value_labels_offset)
+        || my_value_labels_offset > file_size
+    ) {
+        throw new Error('Truncated legacy observation data');
+    }
 
     // 10. Synthesize SectionOffsets
     const section_offsets: SectionOffsets = {
@@ -331,6 +373,7 @@ export function parse_legacy_metadata(
         nvar,
         nobs,
         dataset_label,
+        notes,
         variables: the_variables,
         section_offsets,
         obs_length,

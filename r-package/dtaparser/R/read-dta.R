@@ -1,6 +1,6 @@
 #' Read a Stata DTA file
 #'
-#' Reads releases 113--115 and 117--119 through the native Rust parser.
+#' Reads releases 111, 113--115, and 117--119 through the native Rust parser.
 #' Numeric and character columns are created directly by native code. Dataset
 #' and variable labels, dataset notes, Stata display formats, value labels,
 #' `strL` content, and Stata system/extended missing values are retained.

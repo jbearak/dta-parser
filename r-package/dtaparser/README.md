@@ -37,15 +37,16 @@ URLs use temporary files that are removed when the read succeeds, errors, or
 is interrupted. This keeps network and decompression dependencies out of the
 reusable Rust parser.
 
-The reader supports Stata releases 113--115 and 117--119. It retains dataset
+The reader supports Stata releases 111, 113--115, and 117--119. It retains dataset
 and variable labels, dataset notes, display formats, value-label tables,
-`strL` values, and system or `.a`--`.z` missing values. `%td` and legacy or
+`strL` values, and system missing values plus `.a`--`.z` tags where the release
+supports them. `%td` and legacy or
 custom daily-date formats beginning `%d` are converted to `Date`; `%tc` and
 `%tC` are converted to UTC `POSIXct`. Other Stata calendar formats remain
 numeric and retain their `format.stata` attribute.
 
 `encoding = NULL` follows the DTA release convention: Windows-1252 for
-releases 113--115 and UTF-8 for releases 117--119. To recover files whose
+releases 111 and 113--115 and UTF-8 for releases 117--119. To recover files whose
 source encoding is recorded incorrectly, pass a case-insensitive UTF-8/UTF8,
 Windows-1252/CP1252, or ISO-8859-1/latin1 alias. The override is deterministic
 across platforms and applies to dataset and variable metadata, fixed strings,

@@ -5,7 +5,7 @@
 // tables, each wrapped in <lbl>...</lbl> tags. Each table
 // maps integer values to string labels.
 //
-// Supports format versions 113-115 (legacy) and 117-119.
+// Supports format versions 111 and 113-115 (legacy) and 117-119.
 // -----------------------------------------------------------
 
 import type { DtaMetadata } from './types';
@@ -23,6 +23,7 @@ const LBL_CLOSE_TAG_LENGTH = 6; // "</lbl>"
 
 // Label name field widths by format version
 const LABEL_NAME_WIDTH: Record<number, number> = {
+    111: 33,
     113: 33,
     114: 33,
     115: 33,
@@ -34,6 +35,7 @@ const LABEL_NAME_WIDTH: Record<number, number> = {
 const PADDING_BYTES = 3;
 
 const UTF8_DECODER = new TextDecoder('utf-8');
+const LEGACY_DECODER = new TextDecoder('windows-1252');
 
 // -----------------------------------------------------------
 // Shared label entry parser
@@ -52,7 +54,8 @@ function parse_label_entry_payload(
     view: DataView,
     little_endian: boolean,
     pos: number,
-    entry_end: number
+    entry_end: number,
+    decoder: TextDecoder
 ): { label_map: Map<number, string>; next_pos: number } {
     // n (int32): number of entries
     if (pos + 8 > entry_end) {
@@ -122,7 +125,7 @@ function parse_label_entry_payload(
             my_str_end++;
         }
 
-        const my_label = UTF8_DECODER.decode(
+        const my_label = decoder.decode(
             bytes.subarray(my_str_start, my_str_end)
         );
         my_label_map.set(the_values[i], my_label);
@@ -140,14 +143,15 @@ function parse_label_entry_payload(
 function read_label_name(
     bytes: Uint8Array,
     pos: number,
-    name_width: number
+    name_width: number,
+    decoder: TextDecoder
 ): string {
     let my_end = pos;
     const my_limit = pos + name_width;
     while (my_end < my_limit && bytes[my_end] !== 0) {
         my_end++;
     }
-    return UTF8_DECODER.decode(
+    return decoder.decode(
         bytes.subarray(pos, my_end)
     );
 }
@@ -185,7 +189,7 @@ function parse_modern_entries(
 
         // label_name
         const my_label_name = read_label_name(
-            bytes, pos, name_width
+            bytes, pos, name_width, UTF8_DECODER
         );
         pos += name_width;
 
@@ -196,7 +200,7 @@ function parse_modern_entries(
         const { label_map, next_pos } =
             parse_label_entry_payload(
                 bytes, view, little_endian, pos,
-                section_end
+                section_end, UTF8_DECODER
             );
         my_result.set(my_label_name, label_map);
 
@@ -208,7 +212,7 @@ function parse_modern_entries(
 }
 
 // -----------------------------------------------------------
-// Legacy format (113-115): no XML wrapper
+// Legacy formats (111 and 113-115): no XML wrapper
 // -----------------------------------------------------------
 
 function parse_legacy_entries(
@@ -232,7 +236,7 @@ function parse_legacy_entries(
 
         // label_name
         const my_label_name = read_label_name(
-            bytes, pos, name_width
+            bytes, pos, name_width, LEGACY_DECODER
         );
         pos += name_width;
 
@@ -243,7 +247,7 @@ function parse_legacy_entries(
         const { label_map, next_pos } =
             parse_label_entry_payload(
                 bytes, view, little_endian, pos,
-                section_end
+                section_end, LEGACY_DECODER
             );
         my_result.set(my_label_name, label_map);
         pos = next_pos;

@@ -54,7 +54,7 @@ test_that("all bundled fixtures agree with haven", {
         expect_null(attr(actual, "dta_format_version", exact = TRUE), info = info)
         expect_identical(attributes(actual), attributes(expected), info = info)
         expect_true(attr(metadata, "dta_format_version", exact = TRUE) %in%
-                    c(113L, 114L, 115L, 117L, 118L, 119L), info = info)
+                    c(111L, 113L, 114L, 115L, 117L, 118L, 119L), info = info)
 
         for (name in names(actual)) {
             if (storage[[name]] %in% c("float", "double")) {

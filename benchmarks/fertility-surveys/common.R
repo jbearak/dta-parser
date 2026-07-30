@@ -2,7 +2,7 @@ fertility_schema_version <- 13L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
-fertility_supported_releases <- c(113L, 114L, 115L, 117L, 118L)
+fertility_supported_releases <- c(111L, 113L, 114L, 115L, 117L, 118L)
 fertility_programs <- c("dhs", "mics", "wfs", "nsfg", "enadid", "output")
 fertility_cache_levels <- c("women", "births")
 fertility_output_levels <- c("survey", "aggregate")

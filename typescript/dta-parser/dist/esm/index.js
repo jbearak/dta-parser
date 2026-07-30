@@ -4,7 +4,7 @@ var FORMAT_SIGNATURES = {
   118: "<stata_dta><header><release>118</release>",
   119: "<stata_dta><header><release>119</release>"
 };
-var LEGACY_FORMAT_SET = /* @__PURE__ */ new Set([113, 114, 115]);
+var LEGACY_FORMAT_SET = /* @__PURE__ */ new Set([111, 113, 114, 115]);
 function is_legacy_format(version) {
   return LEGACY_FORMAT_SET.has(version);
 }
@@ -540,28 +540,57 @@ function read_fixed_string2(bytes, offset, field_width) {
   );
 }
 function legacy_metadata_buffer_size(nvar, format_version) {
-  const my_fmt_width = format_version === 113 ? FORMAT_WIDTH_113 : FORMAT_WIDTH_114_115;
+  return legacy_metadata_fixed_size(nvar, format_version) + 65536;
+}
+function legacy_metadata_fixed_size(nvar, format_version) {
+  const my_fmt_width = format_version === 111 || format_version === 113 ? FORMAT_WIDTH_113 : FORMAT_WIDTH_114_115;
   const my_sections_size = nvar * 1 + nvar * VARNAME_WIDTH + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * my_fmt_width + nvar * VALUE_LABEL_NAME_WIDTH + nvar * VARIABLE_LABEL_WIDTH;
-  return HEADER_FIXED_SIZE + my_sections_size + 65536;
+  return HEADER_FIXED_SIZE + my_sections_size;
 }
 function scan_expansion_fields(view, little_endian, start, buffer_length) {
   let pos = start;
+  const the_notes = [];
   while (pos + 5 <= buffer_length) {
     const my_data_type = view.getUint8(pos);
     const my_len = view.getInt32(pos + 1, little_endian);
     pos += 5;
     if (my_data_type === 0 && my_len === 0) {
-      return pos;
+      return { data_offset: pos, notes: the_notes };
+    }
+    if (my_data_type === 0 || my_len < 0) {
+      throw new Error("Invalid legacy expansion field");
+    }
+    if (pos + my_len > buffer_length) {
+      throw new Error("Truncated legacy expansion field");
+    }
+    if (my_data_type === 1 && my_len >= 2 * VARNAME_WIDTH) {
+      const my_variable = read_fixed_string2(bytes_from_view(view), pos, VARNAME_WIDTH);
+      const my_characteristic = read_fixed_string2(
+        bytes_from_view(view),
+        pos + VARNAME_WIDTH,
+        VARNAME_WIDTH
+      );
+      if (my_variable === "_dta" && /^note[0-9]+$/.test(my_characteristic)) {
+        const my_note = read_fixed_string2(
+          bytes_from_view(view),
+          pos + 2 * VARNAME_WIDTH,
+          my_len - 2 * VARNAME_WIDTH
+        );
+        if (my_note.length > 0) the_notes.push(my_note);
+      }
     }
     pos += my_len;
   }
-  return pos;
+  throw new Error("Missing legacy expansion-field terminator");
+}
+function bytes_from_view(view) {
+  return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
 }
 function parse_legacy_metadata(buffer, file_size) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const my_version_byte = bytes[0];
-  if (my_version_byte !== 113 && my_version_byte !== 114 && my_version_byte !== 115) {
+  if (my_version_byte !== 111 && my_version_byte !== 113 && my_version_byte !== 114 && my_version_byte !== 115) {
     throw new Error(
       `Not a legacy .dta file: version byte ${my_version_byte}`
     );
@@ -575,6 +604,9 @@ function parse_legacy_metadata(buffer, file_size) {
   }
   const byte_order = my_byte_order_code === 1 ? "MSF" : "LSF";
   const little_endian = byte_order === "LSF";
+  if (bytes[2] !== 1) {
+    throw new Error(`Invalid legacy file type: ${bytes[2]}`);
+  }
   const nvar = view.getUint16(4, little_endian);
   const nobs = view.getInt32(6, little_endian);
   if (nobs < 0) {
@@ -583,7 +615,7 @@ function parse_legacy_metadata(buffer, file_size) {
     );
   }
   const dataset_label = read_fixed_string2(bytes, 10, 81);
-  const my_fmt_width = format_version === 113 ? FORMAT_WIDTH_113 : FORMAT_WIDTH_114_115;
+  const my_fmt_width = format_version === 111 || format_version === 113 ? FORMAT_WIDTH_113 : FORMAT_WIDTH_114_115;
   let pos = HEADER_FIXED_SIZE;
   const my_variable_types_offset = pos;
   const the_type_codes = [];
@@ -642,7 +674,7 @@ function parse_legacy_metadata(buffer, file_size) {
   }
   pos += nvar * VARIABLE_LABEL_WIDTH;
   const my_expansion_offset = pos;
-  const my_data_offset = scan_expansion_fields(
+  const { data_offset: my_data_offset, notes } = scan_expansion_fields(
     view,
     little_endian,
     pos,
@@ -669,6 +701,9 @@ function parse_legacy_metadata(buffer, file_size) {
   const my_value_labels_offset = Number(
     BigInt(my_data_offset) + BigInt(nobs) * BigInt(obs_length)
   );
+  if (!Number.isSafeInteger(my_value_labels_offset) || my_value_labels_offset > file_size) {
+    throw new Error("Truncated legacy observation data");
+  }
   const section_offsets = {
     stata_data: 0,
     map: 0,
@@ -691,6 +726,7 @@ function parse_legacy_metadata(buffer, file_size) {
     nvar,
     nobs,
     dataset_label,
+    notes,
     variables: the_variables,
     section_offsets,
     obs_length
@@ -844,24 +880,22 @@ function classify_missing_value(value, type) {
 var DATA_TAG = "<data>";
 var DATA_TAG_LENGTH = DATA_TAG.length;
 var UTF8_DECODER = new TextDecoder("utf-8");
-function read_fixed_string3(bytes, offset, width) {
+var LEGACY_DECODER = new TextDecoder("windows-1252");
+function read_fixed_string3(bytes, offset, width, decoder) {
   let my_end = offset;
   const my_limit = offset + width;
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return UTF8_DECODER.decode(
+  return decoder.decode(
     bytes.subarray(offset, my_end)
   );
 }
-function read_cell(view, bytes, offset, type, width, little_endian) {
+function read_cell(view, bytes, offset, type, width, little_endian, decoder, format_version) {
   switch (type) {
     case "byte": {
       const my_val = view.getInt8(offset);
-      const my_missing_type = classify_missing_value(
-        my_val,
-        "byte"
-      );
+      const my_missing_type = format_version === 111 ? my_val === 127 ? "." : null : classify_missing_value(my_val, "byte");
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -872,10 +906,7 @@ function read_cell(view, bytes, offset, type, width, little_endian) {
         offset,
         little_endian
       );
-      const my_missing_type = classify_missing_value(
-        my_val,
-        "int"
-      );
+      const my_missing_type = format_version === 111 ? my_val === 32767 ? "." : null : classify_missing_value(my_val, "int");
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -886,10 +917,7 @@ function read_cell(view, bytes, offset, type, width, little_endian) {
         offset,
         little_endian
       );
-      const my_missing_type = classify_missing_value(
-        my_val,
-        "long"
-      );
+      const my_missing_type = format_version === 111 ? my_val === 2147483647 ? "." : null : classify_missing_value(my_val, "long");
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -900,7 +928,7 @@ function read_cell(view, bytes, offset, type, width, little_endian) {
         offset,
         little_endian
       );
-      const my_missing_type = classify_raw_float_missing(my_raw);
+      const my_missing_type = format_version === 111 ? my_raw >= 2130706432 && my_raw < 2147483648 ? "." : null : classify_raw_float_missing(my_raw);
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -910,7 +938,8 @@ function read_cell(view, bytes, offset, type, width, little_endian) {
       );
     }
     case "double": {
-      const my_missing_type = classify_raw_double_missing_at(
+      const my_high_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
+      const my_missing_type = format_version === 111 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
         view,
         offset,
         little_endian
@@ -930,7 +959,8 @@ function read_cell(view, bytes, offset, type, width, little_endian) {
       return read_fixed_string3(
         bytes,
         offset,
-        width
+        width,
+        decoder
       );
     }
   }
@@ -953,6 +983,7 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
     return [];
   }
   const little_endian = metadata.byte_order === "LSF";
+  const my_decoder = is_legacy_format(metadata.format_version) ? LEGACY_DECODER : UTF8_DECODER;
   const the_rows = [];
   for (let i = 0; i < my_actual_count; i++) {
     const my_row_offset = row_base_offset + i * metadata.obs_length;
@@ -967,7 +998,9 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
           my_cell_offset,
           my_var.type,
           my_var.byte_width,
-          little_endian
+          little_endian,
+          my_decoder,
+          metadata.format_version
         )
       );
     }
@@ -1197,6 +1230,7 @@ var LBL_OPEN_TAG = "<lbl>";
 var LBL_OPEN_TAG_LENGTH = LBL_OPEN_TAG.length;
 var LBL_CLOSE_TAG_LENGTH = 6;
 var LABEL_NAME_WIDTH = {
+  111: 33,
   113: 33,
   114: 33,
   115: 33,
@@ -1206,7 +1240,8 @@ var LABEL_NAME_WIDTH = {
 };
 var PADDING_BYTES = 3;
 var UTF8_DECODER3 = new TextDecoder("utf-8");
-function parse_label_entry_payload(bytes, view, little_endian, pos, entry_end) {
+var LEGACY_DECODER2 = new TextDecoder("windows-1252");
+function parse_label_entry_payload(bytes, view, little_endian, pos, entry_end, decoder) {
   if (pos + 8 > entry_end) {
     throw new Error(
       "Corrupt value label table: truncated header"
@@ -1252,7 +1287,7 @@ function parse_label_entry_payload(bytes, view, little_endian, pos, entry_end) {
     while (my_str_end < my_str_limit && bytes[my_str_end] !== 0) {
       my_str_end++;
     }
-    const my_label = UTF8_DECODER3.decode(
+    const my_label = decoder.decode(
       bytes.subarray(my_str_start, my_str_end)
     );
     my_label_map.set(the_values[i], my_label);
@@ -1262,13 +1297,13 @@ function parse_label_entry_payload(bytes, view, little_endian, pos, entry_end) {
     next_pos: my_text_start + my_txt_len
   };
 }
-function read_label_name(bytes, pos, name_width) {
+function read_label_name(bytes, pos, name_width, decoder) {
   let my_end = pos;
   const my_limit = pos + name_width;
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return UTF8_DECODER3.decode(
+  return decoder.decode(
     bytes.subarray(pos, my_end)
   );
 }
@@ -1284,7 +1319,8 @@ function parse_modern_entries(bytes, view, little_endian, name_width, start_pos,
     const my_label_name = read_label_name(
       bytes,
       pos,
-      name_width
+      name_width,
+      UTF8_DECODER3
     );
     pos += name_width;
     pos += PADDING_BYTES;
@@ -1293,7 +1329,8 @@ function parse_modern_entries(bytes, view, little_endian, name_width, start_pos,
       view,
       little_endian,
       pos,
-      section_end
+      section_end,
+      UTF8_DECODER3
     );
     my_result.set(my_label_name, label_map);
     pos = next_pos + LBL_CLOSE_TAG_LENGTH;
@@ -1313,7 +1350,8 @@ function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos,
     const my_label_name = read_label_name(
       bytes,
       pos,
-      name_width
+      name_width,
+      LEGACY_DECODER2
     );
     pos += name_width;
     pos += PADDING_BYTES;
@@ -1322,7 +1360,8 @@ function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos,
       view,
       little_endian,
       pos,
-      section_end
+      section_end,
+      LEGACY_DECODER2
     );
     my_result.set(my_label_name, label_map);
     pos = next_pos;

@@ -58,7 +58,7 @@ invariant(
         === manifest.identity.case_count,
     'total case count does not match manifest identity'
 );
-invariant(manifest.identity.case_count === 29, 'case inventory must remain 29');
+invariant(manifest.identity.case_count === 30, 'case inventory must remain 30');
 invariant(
     manifest.identity.fixture_oracle_gate.binary.length > 0
         && manifest.identity.fixture_oracle_gate.test.length > 0,
@@ -107,7 +107,7 @@ for (const item of manifest.fixture_cases) {
         bytes.byteOffset,
         bytes.byteOffset + bytes.byteLength
     );
-    const metadata = bytes[0] >= 113 && bytes[0] <= 115
+    const metadata = bytes[0] === 111 || (bytes[0] >= 113 && bytes[0] <= 115)
         ? parse_legacy_metadata(arrayBuffer, bytes.length)
         : parse_metadata(arrayBuffer);
     const file = await DtaFile.open(path.join(fixtureDir, item.name));
@@ -139,6 +139,6 @@ for (const item of manifest.fixture_cases) {
 
 process.stdout.write(
     `TypeScript fixture conformance: PASS (${manifest.fixture_cases.length} `
-        + 'immutable fixtures); 7 deterministic native gate identities validated '
+        + 'immutable fixtures); 8 deterministic native gate identities validated '
         + '(execution follows in scripts/conformance.sh)\n'
 );

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use dta_parser::{
     parse_metadata, read_dta, read_dta_with_encoding, ByteOrder, ColumnValues, DtaError, DtaFile,
-    FormatVersion, MissingTag, TextEncoding,
+    FormatVersion, MissingTag, ReadOptions, TextEncoding,
 };
 use std::io::Cursor;
 
@@ -15,11 +15,15 @@ fn fixture(name: &str) -> Vec<u8> {
     fs::read(fixture_dir().join(name)).unwrap()
 }
 
-fn synthetic_v113_msf() -> Vec<u8> {
+fn v111_fixture() -> Vec<u8> {
+    fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/synthetic-v111.dta")).unwrap()
+}
+
+fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
     let nvar = 2_usize;
     let fixed_end = 109 + nvar + nvar * 33 + (nvar + 1) * 2 + nvar * 12 + nvar * 33 + nvar * 81;
     let mut bytes = vec![0_u8; fixed_end];
-    bytes[0] = 113;
+    bytes[0] = version;
     bytes[1] = 1;
     bytes[2] = 1;
     bytes[4..6].copy_from_slice(&(nvar as u16).to_be_bytes());
@@ -65,6 +69,10 @@ fn synthetic_v113_msf() -> Vec<u8> {
     bytes.extend_from_slice(&321_i32.to_be_bytes());
     bytes.extend_from_slice(&[0xe9, 0]);
     bytes
+}
+
+fn synthetic_v113_msf() -> Vec<u8> {
+    synthetic_legacy_msf(113)
 }
 
 #[test]
@@ -116,6 +124,102 @@ fn decodes_checked_legacy_fixtures_and_value_labels() {
 }
 
 #[test]
+fn decodes_release_111_metadata_observations_labels_and_missing_tags() {
+    let bytes = v111_fixture();
+    let data = read_dta(&bytes).unwrap();
+    assert_eq!(data.metadata.format_version, FormatVersion::V111);
+    assert_eq!(data.metadata.byte_order, ByteOrder::Lsf);
+    assert_eq!(data.metadata.dataset_label, "Stata/SE 7 Café fixture");
+    assert_eq!(data.metadata.notes, ["Release 111 note"]);
+    assert_eq!(data.metadata.nvar, 6);
+    assert_eq!(data.metadata.nobs, 4);
+    assert_eq!(data.metadata.variables[5].name, "text");
+    assert_eq!(data.metadata.variables[5].label, "CP1252 text");
+
+    for column in &data.columns[..3] {
+        let missing_tags = match &column.values {
+            ColumnValues::Byte { missing_tags, .. }
+            | ColumnValues::Int { missing_tags, .. }
+            | ColumnValues::Long { missing_tags, .. }
+            | ColumnValues::Float { missing_tags, .. }
+            | ColumnValues::Double { missing_tags, .. } => missing_tags,
+            other => panic!("unexpected numeric storage: {other:?}"),
+        };
+        assert_eq!(missing_tags, &[None, None, None, Some(MissingTag::System)]);
+    }
+    for column in &data.columns[3..5] {
+        let missing_tags = match &column.values {
+            ColumnValues::Float { missing_tags, .. }
+            | ColumnValues::Double { missing_tags, .. } => missing_tags,
+            other => panic!("unexpected floating-point storage: {other:?}"),
+        };
+        assert_eq!(
+            missing_tags,
+            &[
+                None,
+                Some(MissingTag::System),
+                Some(MissingTag::System),
+                Some(MissingTag::System)
+            ]
+        );
+    }
+    let ColumnValues::FixedString { values } = &data.columns[5].values else {
+        panic!("text must be a fixed string");
+    };
+    assert_eq!(values, &["alpha", "", "Café", "omega"]);
+    assert_eq!(
+        data.value_label_table("b_labels")
+            .unwrap()
+            .entry(1)
+            .unwrap()
+            .label,
+        "One"
+    );
+    let old_max = data
+        .value_label_table("b_labels")
+        .unwrap()
+        .entry(2_147_483_621)
+        .unwrap();
+    assert_eq!(old_max.label, "Old max");
+    assert_eq!(old_max.missing_tag, None);
+}
+
+#[test]
+fn release_111_slice_and_file_projection_windows_are_identical() {
+    let bytes = v111_fixture();
+    let options = ReadOptions {
+        row_start: 1,
+        row_count: Some(2),
+        column_indices: Some(vec![5, 0, 5]),
+    };
+    let expected = dta_parser::read_dta_with_options(&bytes, &options).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.read_with_options(&options).unwrap(), expected);
+    assert_eq!(expected.row_count, 2);
+    assert_eq!(expected.columns.len(), 2);
+}
+
+#[test]
+fn release_111_truncation_and_malformed_expansions_fail_without_panicking() {
+    let bytes = v111_fixture();
+    let metadata = parse_metadata(&bytes).unwrap();
+    let expansion = metadata.section_offsets.characteristics as usize;
+
+    let truncated = bytes[..expansion].to_vec();
+    let slice_error = parse_metadata(&truncated).unwrap_err();
+    let file_error = DtaFile::from_reader(Cursor::new(truncated)).err().unwrap();
+    assert!(matches!(slice_error, DtaError::Truncated { .. }));
+    assert!(matches!(file_error, DtaError::Io { .. }));
+
+    let mut oversized = bytes;
+    oversized[expansion + 1..expansion + 5].copy_from_slice(&i32::MAX.to_le_bytes());
+    let slice_error = parse_metadata(&oversized).unwrap_err();
+    assert!(matches!(slice_error, DtaError::Truncated { .. }));
+    let file_error = DtaFile::from_reader(Cursor::new(oversized)).err().unwrap();
+    assert_eq!(file_error, slice_error);
+}
+
+#[test]
 fn reads_every_checked_in_legacy_fixture_and_synthetic_v114() {
     for name in [
         "all_types_v115.dta",
@@ -154,6 +258,38 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
         ColumnValues::FixedString { values } => assert_eq!(values, &["“h”"]),
         other => panic!("unexpected fixed string storage: {other:?}"),
     }
+    assert_eq!(
+        data.value_label_table("num_lbl")
+            .unwrap()
+            .entry(321)
+            .unwrap()
+            .label,
+        "é"
+    );
+}
+
+#[test]
+fn decodes_big_endian_release_111_observations_notes_and_labels() {
+    let mut bytes = synthetic_legacy_msf(111);
+    let data_offset = parse_metadata(&bytes).unwrap().section_offsets.data as usize;
+    bytes[data_offset..data_offset + 2].copy_from_slice(&i16::MAX.to_be_bytes());
+    let data = read_dta(&bytes).unwrap();
+    assert_eq!(data.metadata.format_version, FormatVersion::V111);
+    assert_eq!(data.metadata.byte_order, ByteOrder::Msf);
+    assert_eq!(data.metadata.notes, ["Café"]);
+    let ColumnValues::Int {
+        values,
+        missing_tags,
+    } = &data.columns[0].values
+    else {
+        panic!("num must be an int");
+    };
+    assert_eq!(values, &[i16::MAX]);
+    assert_eq!(missing_tags, &[Some(MissingTag::System)]);
+    let ColumnValues::FixedString { values } = &data.columns[1].values else {
+        panic!("text must be a fixed string");
+    };
+    assert_eq!(values, &["“h”"]);
     assert_eq!(
         data.value_label_table("num_lbl")
             .unwrap()

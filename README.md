@@ -48,10 +48,11 @@ benchmark results.
 
 ## Compatibility
 
-All three libraries read Stata releases 113--115 and 117--119:
+All three libraries read Stata releases 111, 113--115, and 117--119:
 
 | Release | Stata generation |
 | ---: | --- |
+| 111 | Stata/SE 7 |
 | 113 | Stata 8 |
 | 114 | Stata 10 |
 | 115 | Stata 12 |
@@ -59,8 +60,16 @@ All three libraries read Stata releases 113--115 and 117--119:
 | 118 | Stata 14--19 |
 | 119 | Stata 15--19 files with more than 32,767 variables |
 
-Older formats are rejected. Each library preserves Stata's system missing and
-`.a`--`.z` missing values rather than collapsing them into a single sentinel.
+Release 111 uses the fixed legacy header shared with release 113: 33-byte
+variable names, 12-byte display formats, 33-byte value-label names, 81-byte
+variable labels, one-byte storage codes, and 32-bit expansion-field lengths.
+Unlike later releases, it has one system-missing value per numeric storage
+type and does not encode `.a`--`.z` tags; integer system missing is the storage
+maximum. Releases 114--115 widen display-format fields to 49 bytes.
+
+Other formats are rejected. Each library preserves Stata's system missing and
+`.a`--`.z` missing values where the on-disk release supports them rather than
+collapsing distinct tags into a single sentinel.
 See the language-specific README for differences in result shape, I/O, date
 conversion, and public API.
 
