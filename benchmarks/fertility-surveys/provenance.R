@@ -92,7 +92,8 @@ fertility_current_provenance <- function(checkout_root, library) {
         stringsAsFactors = FALSE, check.names = FALSE
     )
     runtime_packages <- c(
-        "haven", "openssl", "callr", "ps", "readr", "rlang", "tibble", "tidyselect"
+        "haven", "openssl", "callr", "processx", "ps", "readr", "rlang",
+        "tibble", "tidyselect"
     )
     cbind(provenance, fertility_dependency_provenance(runtime_packages))
 }

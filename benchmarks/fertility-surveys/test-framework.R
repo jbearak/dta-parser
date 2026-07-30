@@ -4085,7 +4085,7 @@ checkpoint <- list(
     input_id = item_input$input_id,
     id = inventory$id[[1L]], expected_sha512 = inventory$expected_sha512[[1L]],
     release = inventory$release[[1L]], timeout_seconds = 1L,
-    classification = "match"
+    classification = "pass"
 )
 stopifnot(fertility_checkpoint_valid(
               checkpoint, item, "framework", item_input, 1L
@@ -4094,6 +4094,8 @@ stopifnot(fertility_checkpoint_valid(
               checkpoint, item, "framework", item_input, 2L
           ),
           !fertility_should_retry(checkpoint))
+checkpoint$classification <- "metadata-mismatch"
+stopifnot(!fertility_should_retry(checkpoint))
 checkpoint$classification <- "expected-unsupported-111"
 stopifnot(!fertility_should_retry(checkpoint))
 checkpoint$classification <- "timeout"

@@ -720,7 +720,10 @@ fertility_process_item <- function(item, checkpoint_path, framework_id,
 }
 
 fertility_should_retry <- function(checkpoint) {
-    !(checkpoint$classification %in% c("match", "expected-unsupported-111"))
+    checkpoint$classification %in% c(
+        "timeout", "crash", "dtaparser-only-error", "haven-only-error",
+        "shared-reader-error", "memory-limit", "unresolved"
+    )
 }
 
 fertility_run_provenance_fields <- function() c(

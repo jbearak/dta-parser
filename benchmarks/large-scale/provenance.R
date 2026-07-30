@@ -1,3 +1,21 @@
+benchmark_assert_plain_text <- function(values, label) {
+    values <- as.character(values)
+    if (anyNA(values) || any(grepl("[\t\r\n]", values, perl = TRUE))) {
+        stop(label, " must not contain tabs, newlines, or missing values")
+    }
+    invisible(values)
+}
+
+benchmark_assert_provenance_fields <- function(provenance) {
+    stopifnot(is.data.frame(provenance), nrow(provenance) == 1L)
+    for (field in names(provenance)) {
+        benchmark_assert_plain_text(provenance[[field]], paste0(
+            "benchmark provenance field ", field
+        ))
+    }
+    invisible(provenance)
+}
+
 benchmark_git_lines <- function(checkout_root, arguments) {
     diagnostics_path <- tempfile("benchmark-git-stderr-")
     on.exit(unlink(diagnostics_path), add = TRUE)
@@ -23,6 +41,7 @@ benchmark_tree_digest <- function(checkout_root, scope) {
     )
     paths <- sort(unique(paths[nzchar(paths)]))
     if (!length(paths)) stop("no provenance inputs found under ", scope)
+    benchmark_assert_plain_text(paths, "benchmark source path")
 
     absolute <- file.path(checkout_root, paths)
     hashes <- rep.int("<missing>", length(paths))
@@ -39,6 +58,7 @@ benchmark_installed_package_path <- function(benchmark_library) {
     benchmark_library <- normalizePath(
         benchmark_library, winslash = "/", mustWork = TRUE
     )
+    benchmark_assert_plain_text(benchmark_library, "benchmark library path")
     lexical_path <- file.path(benchmark_library, "dtaparser")
     link_target <- Sys.readlink(lexical_path)
     if (nzchar(link_target)) {
@@ -55,13 +75,36 @@ benchmark_installed_package_path <- function(benchmark_library) {
 
 benchmark_directory_digest <- function(directory) {
     directory <- normalizePath(directory, winslash = "/", mustWork = TRUE)
-    paths <- list.files(
+    benchmark_assert_plain_text(directory, "installed package path")
+    entries <- list.files(
         directory, recursive = TRUE, all.files = TRUE,
-        full.names = FALSE, include.dirs = FALSE, no.. = TRUE
+        full.names = FALSE, include.dirs = TRUE, no.. = TRUE
     )
-    paths <- sort(paths)
-    if (!length(paths)) stop("no installed provenance inputs found under ", directory)
-    hashes <- unname(tools::md5sum(file.path(directory, paths)))
+    entries <- sort(entries)
+    if (!length(entries)) {
+        stop("no installed provenance inputs found under ", directory)
+    }
+    benchmark_assert_plain_text(entries, "installed package entry")
+    absolute <- file.path(directory, entries)
+    if (any(nzchar(Sys.readlink(absolute)))) {
+        stop("installed dtaparser package tree must not contain symbolic links")
+    }
+    resolved <- normalizePath(absolute, winslash = "/", mustWork = TRUE)
+    prefix <- paste0(directory, "/")
+    if (any(!startsWith(resolved, prefix))) {
+        stop("installed dtaparser package entry resolves outside its package tree")
+    }
+    info <- file.info(absolute)
+    if (anyNA(info$isdir)) {
+        stop("installed dtaparser package tree contains an unreadable entry")
+    }
+    files <- !info$isdir
+    if (!any(files) || any(!file_test("-f", absolute[files]))) {
+        stop("installed dtaparser package tree contains a non-regular file")
+    }
+    paths <- entries[files]
+    hashes <- unname(tools::md5sum(absolute[files]))
+    if (anyNA(hashes)) stop("installed dtaparser package file could not be hashed")
     manifest <- paste(paths, hashes, sep = "\t")
     temporary <- tempfile("dtaparser-installed-provenance-")
     on.exit(unlink(temporary), add = TRUE)
@@ -74,6 +117,9 @@ benchmark_current_provenance <- function(checkout_root, benchmark_library) {
     benchmark_library <- normalizePath(
         benchmark_library, winslash = "/", mustWork = TRUE
     )
+    benchmark_assert_plain_text(
+        c(checkout_root, benchmark_library), "benchmark provenance root"
+    )
     commit <- benchmark_git_lines(checkout_root, c("rev-parse", "HEAD"))
     stopifnot(length(commit) == 1L)
     status <- benchmark_git_lines(
@@ -84,7 +130,7 @@ benchmark_current_provenance <- function(checkout_root, benchmark_library) {
     description <- read.dcf(
         file.path(checkout_root, "r-package", "dtaparser", "DESCRIPTION")
     )
-    data.frame(
+    provenance <- data.frame(
         schema_version = 1L,
         checkout_root = checkout_root,
         git_commit = commit,
@@ -103,10 +149,12 @@ benchmark_current_provenance <- function(checkout_root, benchmark_library) {
         stringsAsFactors = FALSE,
         check.names = FALSE
     )
+    benchmark_assert_provenance_fields(provenance)
+    provenance
 }
 
 benchmark_provenance_id <- function(provenance) {
-    stopifnot(is.data.frame(provenance), nrow(provenance) == 1L)
+    benchmark_assert_provenance_fields(provenance)
     fields <- sort(names(provenance))
     values <- vapply(fields, function(field) {
         paste0(field, "=", as.character(provenance[[field]][[1L]]))
@@ -134,6 +182,7 @@ write_benchmark_provenance <- function(checkout_root, benchmark_library, path,
     provenance$created_at_utc <- format(
         Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"
     )
+    benchmark_assert_provenance_fields(provenance)
     temporary <- tempfile(
         pattern = paste0(basename(path), "."), tmpdir = dirname(path)
     )
@@ -156,6 +205,7 @@ verify_benchmark_provenance <- function(checkout_root, benchmark_library, path) 
         colClasses = "character"
     )
     if (nrow(recorded) != 1L) stop("benchmark provenance record must have one row")
+    benchmark_assert_provenance_fields(recorded)
     current <- benchmark_current_provenance(checkout_root, benchmark_library)
     fields <- names(current)
     if (!all(c(fields, "source_tarball_sha256", "provenance_id",
