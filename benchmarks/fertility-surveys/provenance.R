@@ -98,10 +98,21 @@ fertility_current_provenance <- function(checkout_root, library) {
     cbind(provenance, fertility_dependency_provenance(runtime_packages))
 }
 
+fertility_source_tarball_sha256 <- function(value) {
+    value <- tolower(as.character(value))
+    if (length(value) != 1L || is.na(value) ||
+        !grepl("^[0-9a-f]{64}$", value)) {
+        stop("source tarball SHA-256 is invalid")
+    }
+    value
+}
+
 fertility_write_provenance <- function(checkout_root, library, path,
                                        source_tarball_sha256) {
     provenance <- fertility_current_provenance(checkout_root, library)
-    provenance$source_tarball_sha256 <- tolower(source_tarball_sha256)
+    provenance$source_tarball_sha256 <- fertility_source_tarball_sha256(
+        source_tarball_sha256
+    )
     provenance$provenance_id <- fertility_stable_id(provenance)
     provenance$created_at_utc <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
     fertility_atomic_write_table(provenance, path)
@@ -119,6 +130,12 @@ fertility_provenance_mismatches <- function(current, recorded) {
 fertility_verify_provenance <- function(checkout_root, library, path) {
     recorded <- read.delim(path, colClasses = "character", check.names = FALSE)
     if (nrow(recorded) != 1L) stop("build provenance must contain exactly one row")
+    if (!"source_tarball_sha256" %in% names(recorded)) {
+        stop("build provenance source tarball SHA-256 is missing")
+    }
+    recorded$source_tarball_sha256 <- fertility_source_tarball_sha256(
+        recorded$source_tarball_sha256
+    )
     current <- fertility_current_provenance(checkout_root, library)
     mismatched <- fertility_provenance_mismatches(current, recorded)
     if (length(mismatched)) stop("stale or foreign corpus package installation")

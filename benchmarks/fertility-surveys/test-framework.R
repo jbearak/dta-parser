@@ -5085,7 +5085,14 @@ fertility_write_owner(stale_temp, list(
 fertility_clean_stale_tempdirs(temp_root, current_temp)
 stopifnot(dir.exists(current_temp), !file.exists(stale_temp))
 
-# Runtime dependencies are bound to canonical paths and installed trees.
+# Runtime dependencies and source artifacts are bound to canonical identities.
+valid_source_sha256 <- paste(rep("a", 64L), collapse = "")
+stopifnot(identical(
+    fertility_source_tarball_sha256(toupper(valid_source_sha256)),
+    valid_source_sha256
+))
+expect_error(fertility_source_tarball_sha256(NA_character_), "SHA-256 is invalid")
+expect_error(fertility_source_tarball_sha256("invalid"), "SHA-256 is invalid")
 dependency <- fertility_dependency_provenance("rlang")
 moved <- dependency
 moved$rlang_path <- paste0(moved$rlang_path, "-moved")

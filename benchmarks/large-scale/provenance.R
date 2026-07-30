@@ -34,11 +34,39 @@ benchmark_git_lines <- function(checkout_root, arguments) {
     output
 }
 
-benchmark_tree_digest <- function(checkout_root, scope) {
-    paths <- benchmark_git_lines(
-        checkout_root,
-        c("ls-files", "--cached", "--others", "--exclude-standard", "--", scope)
+benchmark_git_paths <- function(checkout_root, scope) {
+    output_path <- tempfile("benchmark-git-paths-")
+    diagnostics_path <- tempfile("benchmark-git-stderr-")
+    on.exit(unlink(c(output_path, diagnostics_path)), add = TRUE)
+    status <- system2(
+        "git",
+        c("-C", shQuote(checkout_root), "ls-files", "-z", "--cached",
+          "--others", "--exclude-standard", "--", scope),
+        stdout = output_path, stderr = diagnostics_path
     )
+    if (!identical(status, 0L)) {
+        diagnostics <- if (file.exists(diagnostics_path)) {
+            readLines(diagnostics_path, warn = FALSE)
+        } else character()
+        stop("git command failed: ", paste(diagnostics, collapse = "\n"))
+    }
+    size <- file.info(output_path)$size[[1L]]
+    bytes <- readBin(output_path, "raw", n = size)
+    if (!length(bytes)) return(character())
+    nul <- which(bytes == as.raw(0L))
+    if (!length(nul) || tail(nul, 1L) != length(bytes)) {
+        stop("git path output is not NUL terminated")
+    }
+    starts <- c(1L, head(nul, -1L) + 1L)
+    ends <- nul - 1L
+    vapply(seq_along(starts), function(index) {
+        if (ends[[index]] < starts[[index]]) return("")
+        rawToChar(bytes[starts[[index]]:ends[[index]]])
+    }, character(1L))
+}
+
+benchmark_tree_digest <- function(checkout_root, scope) {
+    paths <- benchmark_git_paths(checkout_root, scope)
     paths <- sort(unique(paths[nzchar(paths)]))
     if (!length(paths)) stop("no provenance inputs found under ", scope)
     benchmark_assert_plain_text(paths, "benchmark source path")
@@ -84,37 +112,62 @@ benchmark_installed_package_path <- function(benchmark_library) {
     resolved_path
 }
 
+benchmark_directory_files <- function(directory) {
+    prefix <- paste0(directory, "/")
+    files <- character()
+    walk <- function(current, relative) {
+        if (file.access(current, 4L) != 0L ||
+            (.Platform$OS.type == "unix" && file.access(current, 1L) != 0L)) {
+            stop("installed dtaparser package tree contains an unreadable directory")
+        }
+        entries <- tryCatch(
+            list.files(
+                current, recursive = FALSE, all.files = TRUE,
+                full.names = FALSE, no.. = TRUE
+            ),
+            warning = function(condition) stop(condition),
+            error = function(condition) stop(condition)
+        )
+        entries <- sort(entries)
+        benchmark_assert_plain_text(entries, "installed package entry")
+        for (entry in entries) {
+            entry_relative <- if (nzchar(relative)) {
+                file.path(relative, entry)
+            } else entry
+            absolute <- file.path(current, entry)
+            if (nzchar(Sys.readlink(absolute))) {
+                stop("installed dtaparser package tree must not contain symbolic links")
+            }
+            info <- file.info(absolute)
+            if (is.na(info$isdir[[1L]])) {
+                stop("installed dtaparser package tree contains an unreadable entry")
+            }
+            resolved <- normalizePath(absolute, winslash = "/", mustWork = TRUE)
+            if (!startsWith(resolved, prefix)) {
+                stop("installed dtaparser package entry resolves outside its package tree")
+            }
+            if (isTRUE(info$isdir[[1L]])) {
+                walk(absolute, entry_relative)
+            } else {
+                if (!file_test("-f", absolute)) {
+                    stop("installed dtaparser package tree contains a non-regular file")
+                }
+                files <<- c(files, entry_relative)
+            }
+        }
+    }
+    walk(directory, "")
+    sort(files)
+}
+
 benchmark_directory_digest <- function(directory) {
     directory <- normalizePath(directory, winslash = "/", mustWork = TRUE)
     benchmark_assert_plain_text(directory, "installed package path")
-    entries <- list.files(
-        directory, recursive = TRUE, all.files = TRUE,
-        full.names = FALSE, include.dirs = TRUE, no.. = TRUE
-    )
-    entries <- sort(entries)
-    if (!length(entries)) {
+    paths <- benchmark_directory_files(directory)
+    if (!length(paths)) {
         stop("no installed provenance inputs found under ", directory)
     }
-    benchmark_assert_plain_text(entries, "installed package entry")
-    absolute <- file.path(directory, entries)
-    if (any(nzchar(Sys.readlink(absolute)))) {
-        stop("installed dtaparser package tree must not contain symbolic links")
-    }
-    resolved <- normalizePath(absolute, winslash = "/", mustWork = TRUE)
-    prefix <- paste0(directory, "/")
-    if (any(!startsWith(resolved, prefix))) {
-        stop("installed dtaparser package entry resolves outside its package tree")
-    }
-    info <- file.info(absolute)
-    if (anyNA(info$isdir)) {
-        stop("installed dtaparser package tree contains an unreadable entry")
-    }
-    files <- !info$isdir
-    if (!any(files) || any(!file_test("-f", absolute[files]))) {
-        stop("installed dtaparser package tree contains a non-regular file")
-    }
-    paths <- entries[files]
-    hashes <- unname(tools::md5sum(absolute[files]))
+    hashes <- unname(tools::md5sum(file.path(directory, paths)))
     if (anyNA(hashes)) stop("installed dtaparser package file could not be hashed")
     manifest <- paste(paths, hashes, sep = "\t")
     temporary <- tempfile("dtaparser-installed-provenance-")
