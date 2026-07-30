@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dtaparser benchmark and fertility-corpus report</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #5b6578;
+      --line: #d8dde7;
+      --accent: #2952cc;
+      --accent-soft: #e9efff;
+      --good: #147a4b;
+      --good-soft: #e8f7ef;
+      --warn: #8a5a00;
+      --warn-soft: #fff4d6;
+      --code: #eef1f5;
+      --shadow: 0 10px 30px rgba(23, 32, 51, 0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11151d;
+        --panel: #1a202b;
+        --text: #edf1f7;
+        --muted: #aab3c2;
+        --line: #354052;
+        --accent: #8da8ff;
+        --accent-soft: #26365f;
+        --good: #68d5a2;
+        --good-soft: #173b2c;
+        --warn: #f2c76e;
+        --warn-soft: #4a3817;
+        --code: #252d3a;
+        --shadow: none;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main, header { width: min(1120px, calc(100% - 32px)); margin-inline: auto; }
+    header { padding: 64px 0 28px; }
+    h1 { margin: 0 0 12px; font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1.06; letter-spacing: -0.04em; }
+    h2 { margin: 0 0 18px; font-size: 1.7rem; line-height: 1.2; }
+    h3 { margin: 28px 0 10px; font-size: 1.15rem; }
+    p { margin: 10px 0; }
+    a { color: var(--accent); }
+    .lede { max-width: 850px; color: var(--muted); font-size: 1.15rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .pill { border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; background: var(--panel); font-size: 0.88rem; }
+    nav { margin: 0 0 26px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    nav a { margin-right: 18px; white-space: nowrap; }
+    section { margin: 0 0 24px; padding: 28px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 18px 0; }
+    .metric { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
+    .metric strong { display: block; font-size: 1.55rem; line-height: 1.2; }
+    .metric span { color: var(--muted); font-size: 0.92rem; }
+    .callout { margin: 18px 0; padding: 16px 18px; border-left: 4px solid var(--accent); border-radius: 8px; background: var(--accent-soft); }
+    .callout.good { border-color: var(--good); background: var(--good-soft); }
+    .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+    .table-wrap { overflow-x: auto; margin: 18px 0; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    td.num, th.num { text-align: right; }
+    code { padding: 0.12em 0.35em; border-radius: 5px; background: var(--code); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    pre { overflow-x: auto; padding: 16px; border-radius: 12px; background: var(--code); line-height: 1.45; }
+    pre code { padding: 0; background: transparent; }
+    ul { padding-left: 1.3rem; }
+    li + li { margin-top: 6px; }
+    .reason-list > li { margin-bottom: 16px; }
+    .reason-list strong { color: var(--accent); }
+    footer { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 12px 0 48px; color: var(--muted); font-size: 0.9rem; }
+    @media print {
+      :root { color-scheme: light; }
+      body { background: white; }
+      section, nav { box-shadow: none; break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>dtaparser benchmark and fertility-corpus report</h1>
+    <p class="lede">A consolidated explanation of what changed, why it changed, how the R reader performed against Haven, and what exhaustive testing found across the private raw and generated fertility-survey corpora.</p>
+    <div class="meta">
+      <span class="pill">Branch: <code>benchmark-fertility-integration</code></span>
+      <span class="pill">Report date: 2026-07-30</span>
+      <span class="pill">Tracked branch HEAD before report: <code>e29c5ef</code></span>
+      <span class="pill">No proprietary data included</span>
+    </div>
+  </header>
+
+  <main>
+    <nav aria-label="Report sections">
+      <a href="#summary">Summary</a>
+      <a href="#changes">What changed and why</a>
+      <a href="#performance">Performance</a>
+      <a href="#wave2">Raw corpus</a>
+      <a href="#wave3">Output corpus</a>
+      <a href="#validation">Validation</a>
+      <a href="#reproduce">Reproduce</a>
+    </nav>
+
+    <section id="summary">
+      <h2>Executive summary</h2>
+      <div class="grid">
+        <div class="metric"><strong>3.73×–5.40×</strong><span>Direct-R median speedup over Haven</span></div>
+        <div class="metric"><strong>2,230 files</strong><span>Raw and generated corpus files accounted for</span></div>
+        <div class="metric"><strong>24,500 / 24,500</strong><span>Wave 3 planned tiles verified; Wave 2 covered 874 supported files</span></div>
+        <div class="metric"><strong>0 defects</strong><span>Confirmed dtaparser parser or materialization defects</span></div>
+      </div>
+      <div class="callout good"><strong>Result:</strong> the public Direct-R collector and retained Rust-vector collector remained identical throughout the supported corpus. Stata/SE 7 format 111 is outside dtaparser's current supported range; supported-file differences were attributable to malformed upstream textual metadata or Haven encoding behavior—not to a confirmed dtaparser defect.</div>
+      <p>The work added two report-only systems: a reproducible same-run R performance benchmark and a manual, bounded, resumable differential corpus framework. Neither adds timing assertions or private-corpus checks to CI.</p>
+    </section>
+
+    <section id="changes">
+      <h2>What changed and why</h2>
+      <ol class="reason-list">
+        <li><strong>Reproducible R benchmark harness.</strong> Added deterministic 100 MB and 1 GB release-118 inputs, checkout-local package installation, strict build and run provenance, atomic publication, and a strict summarizer. <em>Why:</em> performance comparisons are only useful when the measured checkout, input identities, matrix shape, and methodology are auditable.</li>
+        <li><strong>Three-reader same-run comparison.</strong> Benchmarked public Direct-R, retained Rust vectors, and Haven in one run, with warmups, alternating order, and garbage collection outside timing. <em>Why:</em> this separates parser/materialization changes from machine or run-to-run effects and connects current public behavior to the historical Rust-vector baseline.</li>
+        <li><strong>Manual fertility-corpus framework.</strong> Added deterministic inventory, exact metadata/value comparison, isolated workers, bounded row/column tiling, timeouts, memory limits, resumable checkpoints, sharding, strict merges, and privacy-safe reports. <em>Why:</em> tens of gigabytes of proprietary survey files provide practical robustness coverage that small public fixtures cannot, but must remain machine-local and nonautomatic.</li>
+        <li><strong>Explicit source authorization.</strong> Raw runs now require canonical <code>--cache-root</code> and <code>--manifest</code>; generated-output runs require <code>--output-root</code>. The framework refuses CI and symlinked or ambiguous roots. <em>Why:</em> private inputs must never be inferred, recursively discovered, or accidentally read on an unauthorized machine.</li>
+        <li><strong>Exact comparison semantics.</strong> Replaced broad equality shortcuts with element- and attribute-level checks for dimensions, names, metadata, classes, labels, missing masks, tagged missings, dates, datetimes, strings, integers, nonfinite values, and finite floating values with absolute tolerance <code>1e-7</code>. <em>Why:</em> a corpus pass should prove compatibility rather than hide meaningful differences behind permissive coercion.</li>
+        <li><strong>Crash and race hardening.</strong> Added per-tile subprocesses, process-generation locks, heartbeats, descriptor-bound input snapshots, no-follow directory traversal, input revalidation, atomic no-replace publication, and exact bundle membership validation. <em>Why:</em> very long runs must survive interruption without accepting stale, mixed, partially published, or path-substituted evidence.</li>
+        <li><strong>External input-identity separation.</strong> Preserved five disagreements between caller-supplied manifest hashes and current bytes while recording separately authorized target-local evidence. <em>Why:</em> maintaining the external hash records is outside this repository's responsibility, but the harness must not silently treat different bytes as manifest-verified.</li>
+        <li><strong>Generated-output support.</strong> Reused the Wave 2 machinery for 1,226 derived files, including very large top-level aggregates and upstream <code>append, force</code> output. <em>Why:</em> reader parity must be distinguished from analytical coercion already stored in the generated Stata files.</li>
+        <li><strong>Privacy-safe documentation.</strong> Added dated Markdown reports and this consolidated HTML report while removing local absolute paths, source hashes, survey values, labels, variable names, and private reader diagnostics. <em>Why:</em> methodology and aggregate conclusions should be reviewable without disclosing proprietary corpus details.</li>
+      </ol>
+      <p>The branch contains 44 incremental branch commits before this report: 2 for Wave 1, 19 for Wave 2, 21 for Wave 3, and 2 final policy corrections. These include implementation, hardening, evidence, and documentation commits. Commits were not amended or squashed during development.</p>
+    </section>
+
+    <section id="performance">
+      <h2>Wave 1: R performance</h2>
+      <p>Each cell used 101 measured iterations. Before timing, the harness required exact Direct-R/Rust-vector identity and compared representative start, middle, and end windows with Haven.</p>
+      <div class="table-wrap">
+        <table>
+          <caption>Wave 1 median benchmark results</caption>
+          <thead><tr><th>Input</th><th>Workload</th><th class="num">Direct-R</th><th class="num">Rust vectors</th><th class="num">Haven</th><th class="num">Direct-R vs Haven</th></tr></thead>
+          <tbody>
+            <tr><td>100 MB</td><td>Full, 40 columns</td><td class="num">0.303 s</td><td class="num">0.247 s</td><td class="num">1.190 s</td><td class="num">3.93×</td></tr>
+            <tr><td>100 MB</td><td>Projected, 8 columns</td><td class="num">0.082 s</td><td class="num">0.082 s</td><td class="num">0.306 s</td><td class="num">3.73×</td></tr>
+            <tr><td>1 GB</td><td>Full, 40 columns</td><td class="num">2.185 s</td><td class="num">2.337 s</td><td class="num">11.795 s</td><td class="num">5.40×</td></tr>
+            <tr><td>1 GB</td><td>Projected, 8 columns</td><td class="num">0.755 s</td><td class="num">0.744 s</td><td class="num">2.903 s</td><td class="num">3.85×</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Why Haven is used as an oracle</h3>
+      <p>Haven is the established R Stata reader and <code>dtaparser::read_dta()</code> deliberately targets its public R API and object semantics. Agreement is strong compatibility evidence, but not proof of universal correctness. Every disagreement is also checked against Direct-R/Rust-vector identity, Stata storage semantics, structural validation, checked fixtures, and targeted synthetic reproductions. Haven can itself differ around malformed UTF-8, undeclared legacy encodings, modern <code>strL</code> overrides, or native coercion boundaries.</p>
+      <p><strong>Caveat:</strong> these are warm-cache, machine- and workload-specific measurements, not API promises or release thresholds.</p>
+    </section>
+
+    <section id="wave2">
+      <h2>Wave 2: raw fertility-survey corpus</h2>
+      <div class="table-wrap">
+        <table>
+          <caption>Wave 2 original raw classifications</caption>
+          <thead><tr><th>Original raw classification</th><th class="num">Files</th></tr></thead>
+          <tbody>
+            <tr><td>Stata/SE 7 format 111 (outside dtaparser's current supported range)</td><td class="num">130</td></tr>
+            <tr><td>Pass</td><td class="num">459</td></tr>
+            <tr><td>Metadata mismatch</td><td class="num">409</td></tr>
+            <tr><td>Haven-only error</td><td class="num">1</td></tr>
+            <tr><td>Inventory hash error (<code>signature-mismatch</code>; external manifest/file SHA-512 discrepancy)</td><td class="num">5</td></tr>
+            <tr><td><strong>Total</strong></td><td class="num"><strong>1,004</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Five caller-supplied manifest hashes did not identify the current local bytes. Reconciling those external records is outside this repository's responsibility. Under separately authorized, immutable local input identities, all five files completed exhaustive supplemental runs and passed. This yields complete executable evidence for all 874 supported files: 464 pass, 409 metadata mismatch, and one Haven-only error.</p>
+      <ul>
+        <li>Direct-R/Rust-vector mismatch records: <strong>0</strong>.</li>
+        <li>Confirmed dtaparser defects: <strong>0</strong>.</li>
+        <li>Unresolved supported collector differences after adjudication: <strong>0</strong>.</li>
+        <li>The default Haven-only case passed all 100 tiles with a symmetric <code>ISO-8859-1</code> override.</li>
+      </ul>
+      <div class="callout warn"><strong>Scope distinction:</strong> the external hash records are not maintained or warranted by this repository. The harness preserves their recorded disagreement only to keep input identities unambiguous; parser coverage and compatibility were established separately for the current local bytes.</div>
+    </section>
+
+    <section id="wave3">
+      <h2>Wave 3: generated-output corpus</h2>
+      <div class="grid">
+        <div class="metric"><strong>1,226 files</strong><span>70,748,321,626 total bytes</span></div>
+        <div class="metric"><strong>1,096 supported</strong><span>Every supported file reached a terminal outcome</span></div>
+        <div class="metric"><strong>24,500 / 24,500</strong><span>Planned tiles verified</span></div>
+        <div class="metric"><strong>10.33 GB</strong><span>Largest aggregate qualified</span></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <caption>Wave 3 generated-output classifications</caption>
+          <thead><tr><th>Classification</th><th class="num">Files</th></tr></thead>
+          <tbody>
+            <tr><td>Stata/SE 7 format 111 (outside dtaparser's current supported range)</td><td class="num">130</td></tr>
+            <tr><td>Pass</td><td class="num">691</td></tr>
+            <tr><td>Metadata mismatch</td><td class="num">404</td></tr>
+            <tr><td>Haven-only error</td><td class="num">1</td></tr>
+            <tr><td><strong>Total</strong></td><td class="num"><strong>1,226</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The 404 metadata-classified files produced 11,820 pairwise records: 5,910 Direct-R/Haven and 5,910 Rust-vector/Haven, with zero Direct-R/Rust-vector records. Private inspection plus a legal synthetic fixture demonstrated malformed upstream textual metadata and Haven decoding behavior; replacement decoding restored parity.</p>
+      <p>The sole Haven-only case completed 51/51 raw tiles and passed 51/51 tiles under a symmetric <code>ISO-8859-1</code> qualification. There were no timeout, memory, crash, unresolved, inventory-hash, value, tag, date, row-termination, or dtaparser-only outcomes.</p>
+    </section>
+
+    <section id="validation">
+      <h2>Final validation</h2>
+      <p>The final current-HEAD gate completed successfully:</p>
+      <ul>
+        <li>Rust source/vendor synchronization.</li>
+        <li><code>cargo fmt --check</code>.</li>
+        <li>Warning-denied Clippy across the workspace and all targets.</li>
+        <li>Complete Rust workspace test suite.</li>
+        <li>Warning-denied Rust documentation.</li>
+        <li>Selected Bun integration suite: 6 passed, 0 failed.</li>
+        <li>Required TypeScript, native, R, and Haven conformance.</li>
+        <li>R package build and check: <strong>Status OK</strong>.</li>
+        <li>Deterministic R vendor rebuild with no tracked archive difference.</li>
+        <li>Complete synthetic fertility framework, POSIX shell helpers, syntax, parsing, privacy checks, and independent review.</li>
+      </ul>
+      <p>The fertility framework remains manual-only, requires explicit opt-in and canonical source roots, refuses CI/GitHub Actions, stores mutable artifacts under ignored <code>target/</code>, and does not add release-111 support.</p>
+    </section>
+
+    <section id="reproduce">
+      <h2>Reproduction commands</h2>
+      <h3>Performance benchmark</h3>
+      <pre><code>benchmarks/large-scale/benchmark.sh</code></pre>
+      <h3>Raw corpus</h3>
+      <pre><code>export DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
+export CACHE_ROOT=/absolute/canonical/private-cache-root
+export MANIFEST=/absolute/canonical/private-manifest.csv
+
+benchmarks/fertility-surveys/benchmark.sh \
+  --cache-root="$CACHE_ROOT" \
+  --manifest="$MANIFEST"</code></pre>
+      <h3>Generated-output corpus</h3>
+      <pre><code>export DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
+export OUTPUT_ROOT=/absolute/canonical/private-output-root
+
+benchmarks/fertility-surveys/benchmark.sh \
+  --output-root="$OUTPUT_ROOT"</code></pre>
+      <p>Detailed methodology and evidence are in <code>benchmarks/large-scale/results-2026-07-27.md</code>, <code>benchmarks/fertility-surveys/results-2026-07-28.md</code>, and <code>benchmarks/fertility-surveys/results-2026-07-29.md</code>.</p>
+    </section>
+  </main>
+
+  <footer>
+    This report intentionally contains aggregate, privacy-safe evidence only. It excludes private source paths, survey values, variable names, labels, source hashes, reader messages, and target-local artifact locations.
+  </footer>
+</body>
+</html>
