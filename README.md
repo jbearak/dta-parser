@@ -93,7 +93,7 @@ normalized offline dependency archive.
 
 ## Conformance and benchmarks
 
-`conformance/cases.json` identifies 22 immutable fixture files and seven
+`conformance/cases.json` identifies 22 immutable fixture files and eight
 generated or derived cases. The shared contract covers format and byte order,
 metadata, rows and columns, storage types, labels, formats, value-label tables,
 `strL` cells, exact missing tags, projections, row windows, and representative

@@ -108,7 +108,8 @@ loss.
 
 Native R bindings live in `r-package/dtaparser`; display/date conversion is an
 R-wrapper concern while the core preserves the original format metadata.
-Other legacy formats before 113 remain unsupported.
+Release 111 is the only supported pre-113 format; other legacy formats remain
+unsupported.
 
 From the repository root, `scripts/conformance.sh` checks the immutable fixture
 oracle and exact slice/file parity, including projections, row windows, `strL`,

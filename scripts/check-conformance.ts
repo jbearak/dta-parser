@@ -77,7 +77,7 @@ for (const item of manifest.deterministic_cases) {
 const fixtureOracleIdentity = `${manifest.identity.fixture_oracle_gate.binary}::${manifest.identity.fixture_oracle_gate.test}`;
 invariant(
     !declaredGates.has(fixtureOracleIdentity),
-    'fixture canonical-oracle gate must be separate from the seven deterministic cases'
+    `fixture canonical-oracle gate must be separate from the ${manifest.deterministic_cases.length} deterministic cases`
 );
 
 const diskNames = readdirSync(fixtureDir)
