@@ -352,7 +352,7 @@ def check_vendor_archive(
     with tempfile.TemporaryDirectory() as temporary:
         destination = Path(temporary)
         with tarfile.open(archive, mode="r:gz") as source:
-            source.extractall(destination)
+            source.extractall(destination, filter="data")
         for name, (locked_version, locked_checksum) in locked_packages.items():
             package_root = destination / "v" / name
             checksum_path = package_root / ".cargo-checksum.json"

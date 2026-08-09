@@ -126,6 +126,7 @@ checksum = "1111111111111111111111111111111111111111111111111111111111111111"
         with tarfile.open(self.archive, mode="w:gz") as archive:
             root = tarfile.TarInfo("v")
             root.type = tarfile.DIRTYPE
+            root.mode = 0o755
             archive.addfile(root)
             for package, checksum_value in (
                 ("encoding_rs", "0" * 64),
@@ -133,12 +134,14 @@ checksum = "1111111111111111111111111111111111111111111111111111111111111111"
             ):
                 directory = tarfile.TarInfo(f"v/{package}")
                 directory.type = tarfile.DIRTYPE
+                directory.mode = 0o755
                 archive.addfile(directory)
 
                 checksum_contents = json.dumps(
                     {"files": {}, "package": checksum_value}, separators=(",", ":")
                 ).encode("utf-8")
                 checksum = tarfile.TarInfo(f"v/{package}/.cargo-checksum.json")
+                checksum.mode = 0o644
                 checksum.size = len(checksum_contents)
                 archive.addfile(checksum, io.BytesIO(checksum_contents))
 
@@ -146,6 +149,7 @@ checksum = "1111111111111111111111111111111111111111111111111111111111111111"
                     f'[package]\nname = "{package}"\nversion = "1.0.0"\n'
                 ).encode("utf-8")
                 manifest = tarfile.TarInfo(f"v/{package}/Cargo.toml")
+                manifest.mode = 0o644
                 manifest.size = len(manifest_contents)
                 archive.addfile(manifest, io.BytesIO(manifest_contents))
         self.refresh_integrity()
