@@ -15,7 +15,8 @@ untrusted \code{file} values should validate or allowlist sources before calling
 \item{encoding}{Optional source encoding override. Supported aliases are
 \code{"UTF-8"}/\code{"UTF8"}, \code{"Windows-1252"}/\code{"CP1252"}, and
 \code{"ISO-8859-1"}/\code{"latin1"}, matched case-insensitively. \code{NULL}
-uses Windows-1252 for legacy files and UTF-8 for modern files. The override
+uses Windows-1252 for releases 111, 113--115, and 117 and UTF-8 for releases
+118--119. The override
 applies to metadata, fixed strings, \code{strL} payloads, and value-label
 names and text. Explicit UTF-8 replaces malformed input sequences
 deterministically with U+FFFD. Haven 2.5.5 may instead omit an affected label.}

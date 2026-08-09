@@ -4,9 +4,9 @@ use crate::{DtaError, FormatVersion};
 
 /// Source encoding used for textual fields in a Stata file.
 ///
-/// [`TextEncoding::Auto`] follows the DTA release: UTF-8 for releases 117--119
-/// and Windows-1252 for releases 111 and 113--115. Explicit modes override that
-/// convention for every textual field decoded by the parser.
+/// [`TextEncoding::Auto`] follows the DTA release: UTF-8 for releases 118--119
+/// and Windows-1252 for releases 111, 113--115, and 117. Explicit modes override
+/// that convention for every textual field decoded by the parser.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TextEncoding {
     #[default]
@@ -38,7 +38,7 @@ impl TextEncoding {
 
     pub(crate) fn resolve(self, version: FormatVersion) -> Self {
         match self {
-            Self::Auto if version.is_modern() => Self::Utf8,
+            Self::Auto if version.uses_utf8_text() => Self::Utf8,
             Self::Auto => Self::Windows1252,
             explicit => explicit,
         }

@@ -38,9 +38,9 @@ Numeric `ColumnValues` variants preserve the source storage width (`i8`,
 `i16`, `i32`, `f32`, or `f64`) and carry a parallel
 `Vec<Option<MissingTag>>`. Raw Stata missing values remain in the values vector,
 so consumers retain both exact storage and the classified `.`, `.a`–`.z` tag.
-Modern fixed strings and `strL` payloads use UTF-8 replacement for malformed
-sequences. Releases 111 and 113–115 use Windows-1252 for textual metadata, fixed
-strings, and value labels. All fixed fields stop at their first NUL byte.
+Releases 118–119 use UTF-8 replacement for malformed text sequences. Releases
+111, 113–115, and 117 use Windows-1252 for textual metadata, fixed strings, and
+value labels. All fixed fields stop at their first NUL byte.
 
 Every byte-slice and seekable-file path also accepts a deterministic
 `TextEncoding` override. `Utf8`, `Windows1252`, and true `Iso8859_1` decoding
