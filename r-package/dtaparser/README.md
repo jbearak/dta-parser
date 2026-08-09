@@ -46,7 +46,7 @@ custom daily-date formats beginning `%d` are converted to `Date`; `%tc` and
 numeric and retain their `format.stata` attribute.
 
 `encoding = NULL` follows the DTA release convention: Windows-1252 for
-releases 111 and 113--115 and UTF-8 for releases 117--119. To recover files whose
+releases 111, 113--115, and 117 and UTF-8 for releases 118--119. To recover files whose
 source encoding is recorded incorrectly, pass a case-insensitive UTF-8/UTF8,
 Windows-1252/CP1252, or ISO-8859-1/latin1 alias. The override is deterministic
 across platforms and applies to dataset and variable metadata, fixed strings,

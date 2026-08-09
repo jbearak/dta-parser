@@ -14,7 +14,8 @@
 #' @param encoding Optional source encoding override. Supported aliases are
 #'   `"UTF-8"`/`"UTF8"`, `"Windows-1252"`/`"CP1252"`, and
 #'   `"ISO-8859-1"`/`"latin1"`, matched case-insensitively. `NULL` uses
-#'   Windows-1252 for legacy files and UTF-8 for modern files. Explicit UTF-8
+#'   Windows-1252 for releases 111, 113--115, and 117 and UTF-8 for releases
+#'   118--119. Explicit UTF-8
 #'   replaces malformed input sequences deterministically with U+FFFD. Haven
 #'   2.5.5 may instead omit an affected label.
 #' @param col_select One or more tidyselect expressions. Predicates see Stata
