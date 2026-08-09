@@ -1,5 +1,8 @@
 RUST_MANIFEST = rust/Cargo.toml
-RUST_TARGET = rust/target
+DTA_PARSER_PIN = vendor/dta-parser.tree.sha256
+DTA_PARSER_NAMESPACE = @DTA_PARSER_NAMESPACE@
+RUST_TARGET_ROOT = rust/target
+RUST_TARGET = $(RUST_TARGET_ROOT)/dta-parser-$(DTA_PARSER_NAMESPACE)
 RUST_LIB = $(RUST_TARGET)/release/libdtaparser_r.a
 RUST_SOURCES = rust/src/lib.rs \
 	vendor/dta-parser/src/data_reader.rs \
@@ -15,14 +18,18 @@ RUST_SOURCES = rust/src/lib.rs \
 	vendor/dta-parser/src/text.rs \
 	vendor/dta-parser/src/types.rs \
 	vendor/dta-parser/src/value_labels.rs
+RUST_INPUTS = vendor/dta-parser/Cargo.toml \
+	vendor/dta-parser/Cargo.lock \
+	$(DTA_PARSER_PIN) \
+	$(RUST_SOURCES)
 
 OBJECTS = init.o
 PKG_LIBS = $(RUST_LIB) @RUST_SYSTEM_LIBS@
 
 $(SHLIB): $(RUST_LIB)
 
-$(RUST_LIB): $(RUST_MANIFEST) rust/Cargo.lock rust/cargo-config.toml rust/vendor.tar.gz $(RUST_SOURCES)
+$(RUST_LIB): $(RUST_MANIFEST) rust/Cargo.lock rust/cargo-config.toml rust/vendor.tar.gz $(RUST_INPUTS)
 	CARGO_TARGET_DIR=$(RUST_TARGET) cargo build --manifest-path $(RUST_MANIFEST) --config rust/cargo-config.toml --release --locked --offline
 
 clean:
-	rm -rf $(RUST_TARGET) $(SHLIB) $(OBJECTS)
+	rm -rf $(RUST_TARGET_ROOT) $(SHLIB) $(OBJECTS)

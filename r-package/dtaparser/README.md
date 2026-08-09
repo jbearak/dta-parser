@@ -180,8 +180,16 @@ that the package is loaded from that freshly populated, checkout-local library
 rather than an unrelated global installation.
 
 The Rust source of truth is `rust/dta-parser`. After changing that crate,
-mirror it into `r-package/dtaparser/src/vendor/dta-parser` and run
-`scripts/check-rust-sync.sh`; the check also verifies the Cargo locks and
-deterministic offline `vendor.tar.gz` identity. Windows CI
-installs and selects `stable-x86_64-pc-windows-gnu`, confirms the rustc host,
-then actually builds and checks the package through Rtools.
+mirror its runtime tree into `r-package/dtaparser/src/vendor/dta-parser`, then
+run `scripts/check-rust-sync.sh --update-pins` and
+`scripts/check-rust-sync.sh`. Matching `dta-parser.tree.sha256` files pin the
+normalized parser manifest, recursive `src` contents, and an optional
+`build.rs` script; pin updates are refused unless both trees agree. The check
+also verifies the Cargo locks and
+deterministic offline `vendor.tar.gz` identity. The pin namespaces Cargo build
+outputs, while configure always refreshes the extracted dependencies, so
+repeated source-tree builds cannot silently reuse older inputs. Python 3.11 or
+newer is only required for repository maintenance and CI, not R package
+installation.
+Windows CI installs and selects `stable-x86_64-pc-windows-gnu`, confirms the
+rustc host, then actually builds and checks the package through Rtools.
