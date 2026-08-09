@@ -119,7 +119,7 @@ privacy-safe `survey`/`aggregate` level, and DTA release. Public family manifest
 add the deterministic `shard_index`.
 
 The run refuses any other output root and asserts the observed baseline exactly:
-1,226 files, 70,748,321,626 bytes, and a largest file of 10,332,252,930 bytes.
+1,226 files, 70,873,334,682 bytes, and a largest file of 10,332,252,930 bytes.
 The observed output family supports releases 111, 113, 114, 115, and 118. Source files and the
 upstream repository are read-only; all mutable state remains under the
 checkout-local ignored target. Aggregate files are identified separately because
