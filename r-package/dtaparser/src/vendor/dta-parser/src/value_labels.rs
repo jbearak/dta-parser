@@ -146,7 +146,6 @@ fn parse_table(
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
 
     let mut entries = Vec::with_capacity(entry_count);
-    let mut previous_value = None;
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
         let raw_offset_position = checked_add(
@@ -198,17 +197,6 @@ fn parse_table(
             metadata.byte_order,
             "value-label value",
         )?;
-        if let Some(previous) = previous_value {
-            if value <= previous {
-                return Err(DtaError::UnsortedValueLabelValues {
-                    table_offset: table_start,
-                    entry_index,
-                    previous,
-                    value,
-                });
-            }
-        }
-        previous_value = Some(value);
 
         let label_start = checked_add(text_start, text_offset_usize, "value-label text")?;
         let remaining = payload

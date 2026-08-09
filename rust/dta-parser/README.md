@@ -54,8 +54,9 @@ an override. `TextEncoding::from_label` accepts case-insensitive UTF-8/UTF8,
 Windows-1252/CP1252, and ISO-8859-1/latin1 aliases and rejects other names;
 ISO-8859-1 is intentionally distinct from Windows-1252 at bytes 0x80--0x9f.
 
-Value-label tables retain their on-disk order and require strictly ascending
-integer keys. Declared lengths, text offsets, NUL terminators, modern wrapper
+Value-label tables retain their on-disk order, including nonascending or
+duplicate integer keys found in real-world files. Lookups return the first
+matching entry. Declared lengths, text offsets, NUL terminators, modern wrapper
 tags, legacy table boundaries, and mapped section boundaries are validated.
 
 For seekable inputs, `DtaFile<R: Read + Seek>` provides bounded-buffer random

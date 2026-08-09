@@ -439,15 +439,11 @@ fn file_and_slice_report_identical_value_label_structure_errors() {
     let mut unsorted = original;
     let first_value = unsorted[values_start..values_start + 4].to_vec();
     unsorted[values_start + 4..values_start + 8].copy_from_slice(&first_value);
-    assert_eq!(
-        file_and_slice_error(unsorted),
-        DtaError::UnsortedValueLabelValues {
-            table_offset: table_start,
-            entry_index: 1,
-            previous: 1,
-            value: 1,
-        }
-    );
+    let slice = read_dta(&unsorted).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(unsorted)).unwrap();
+    assert_eq!(file.value_label_tables().unwrap(), slice.value_label_tables);
+    assert_eq!(slice.value_label_tables[0].entries[0].value, 1);
+    assert_eq!(slice.value_label_tables[0].entries[1].value, 1);
 }
 
 #[test]

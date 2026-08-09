@@ -2165,7 +2165,6 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             .map_err(|_| DtaError::ArithmeticOverflow("value-label values length"))?,
             "value-label text",
         )?;
-        let mut previous_value = None;
         let mut text_offsets = Vec::with_capacity(entry_count);
         let mut text_offset_positions = Vec::with_capacity(entry_count);
         let mut values = Vec::with_capacity(entry_count);
@@ -2204,17 +2203,6 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 scratch,
                 "reading value-label value",
             )?;
-            if let Some(previous) = previous_value {
-                if value <= previous {
-                    return Err(DtaError::UnsortedValueLabelValues {
-                        table_offset: error_offset(table_start),
-                        entry_index,
-                        previous,
-                        value,
-                    });
-                }
-            }
-            previous_value = Some(value);
             text_offsets.push(text_offset_usize);
             text_offset_positions.push(error_offset(offset_position));
             values.push(value);

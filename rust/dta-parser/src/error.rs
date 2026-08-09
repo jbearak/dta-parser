@@ -197,7 +197,8 @@ pub enum DtaError {
         text_length: usize,
     },
 
-    /// Value-label keys must be strictly increasing in modern table payloads.
+    /// Retained for API compatibility; tolerant readers no longer reject
+    /// nonascending or duplicate value-label keys.
     #[error(
         "value-label table at byte offset {table_offset} is not strictly ascending at entry {entry_index}: {value} follows {previous}"
     )]
