@@ -1,4 +1,6 @@
 node_modules
 target
+__pycache__/
+*.pyc
 /dtaparser.Rcheck/
 /dtaparser_*.tar.gz

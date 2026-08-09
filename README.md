@@ -86,10 +86,16 @@ conversion, and public API.
 | [`benchmarks`](benchmarks) | Report-only TypeScript, Rust, and R benchmarks |
 
 The Rust crate is the source of truth for the Rust parser and its R binding.
-The R package mirrors it under
+The R package mirrors its runtime tree under
 `r-package/dtaparser/src/vendor/dta-parser`; do not edit only the mirror.
-`scripts/check-rust-sync.sh` checks source equality, Cargo locks, and the
-normalized offline dependency archive.
+Matching `dta-parser.tree.sha256` files pin the normalized parser manifest,
+recursive `src` contents, and an optional `build.rs` script.
+`scripts/check-rust-sync.sh` verifies both trees and
+pins, Cargo locks, and the normalized offline dependency archive. After
+mirroring a parser change, run `scripts/check-rust-sync.sh --update-pins`; it
+refuses to update the pins unless the canonical and R runtime trees agree.
+The repository synchronization checker requires Python 3.11 or newer; R
+package installation does not require Python.
 
 ## Conformance and benchmarks
 
