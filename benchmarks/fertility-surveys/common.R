@@ -2,16 +2,16 @@ fertility_schema_version <- 13L
 fertility_expected_rows <- 1004L
 fertility_expected_releases <- c(`111` = 130L, `113` = 475L, `114` = 23L,
                                   `117` = 150L, `118` = 226L)
-fertility_supported_releases <- c(113L, 114L, 115L, 117L, 118L)
+fertility_supported_releases <- c(111L, 113L, 114L, 115L, 117L, 118L)
 fertility_programs <- c("dhs", "mics", "wfs", "nsfg", "enadid", "output")
 fertility_cache_levels <- c("women", "births")
 fertility_output_levels <- c("survey", "aggregate")
 fertility_levels <- c(fertility_cache_levels, fertility_output_levels)
 fertility_opt_in_value <- "I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA"
 fertility_output_expected_files <- 1226L
-fertility_output_expected_bytes <- 70748321626
+fertility_output_expected_bytes <- 70873334682
 fertility_output_expected_largest <- 10332252930
-fertility_output_inventory_schema_version <- 2L
+fertility_output_inventory_schema_version <- 3L
 
 fertility_script_path <- function() {
     argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
@@ -676,6 +676,7 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         "def fail(): raise RuntimeError('unsafe output inventory entry')",
         "def identity(value):",
         "    return (value.st_dev,value.st_ino,value.st_mode,value.st_size,value.st_mtime_ns,value.st_ctime_ns)",
+        "def path_identity(value): return (value.st_dev,value.st_ino,value.st_mode)",
         "def release(head):",
         "    if not head: fail()",
         "    if head.startswith(b'<stata_dta>'):",
@@ -738,22 +739,22 @@ fertility_output_descriptor_manifest <- function(root, include_content = FALSE) 
         "try: filesystem_root_fd=os.open(b'/',dir_flags)",
         "except OSError: fail()",
         "descriptors.append(filesystem_root_fd)",
-        "if identity(os.fstat(filesystem_root_fd)) != identity(filesystem_root_expected): fail()",
+        "if path_identity(os.fstat(filesystem_root_fd)) != path_identity(filesystem_root_expected): fail()",
         "parent_fd=filesystem_root_fd",
         "try:",
         "    for part in parts:",
         "        expected=os.stat(part,dir_fd=parent_fd,follow_symlinks=False)",
         "        if not stat.S_ISDIR(expected.st_mode): fail()",
         "        child_fd=os.open(part,dir_flags,dir_fd=parent_fd); descriptors.append(child_fd)",
-        "        if identity(os.fstat(child_fd)) != identity(expected): fail()",
+        "        if path_identity(os.fstat(child_fd)) != path_identity(expected): fail()",
         "        root_chain.append((parent_fd,part,child_fd,expected)); parent_fd=child_fd",
         "    root_fd=parent_fd; root_expected=os.fstat(root_fd)",
         "    walk(root_fd,root)",
         "    if identity(os.fstat(root_fd)) != identity(root_expected): fail()",
         "    for ancestor_fd,part,child_fd,ancestor_expected in reversed(root_chain):",
         "        current=os.stat(part,dir_fd=ancestor_fd,follow_symlinks=False)",
-        "        if identity(os.fstat(child_fd)) != identity(ancestor_expected) or identity(current) != identity(ancestor_expected): fail()",
-        "    if identity(os.fstat(filesystem_root_fd)) != identity(filesystem_root_expected) or identity(os.lstat(b'/')) != identity(filesystem_root_expected): fail()",
+        "        if path_identity(os.fstat(child_fd)) != path_identity(ancestor_expected) or path_identity(current) != path_identity(ancestor_expected): fail()",
+        "    if path_identity(os.fstat(filesystem_root_fd)) != path_identity(filesystem_root_expected) or path_identity(os.lstat(b'/')) != path_identity(filesystem_root_expected): fail()",
         "finally:",
         "    for descriptor in reversed(descriptors):",
         "        try: os.close(descriptor)",
@@ -1189,8 +1190,15 @@ fertility_build_output_inventory <- function(root, raw_root) {
     frozen <- if (file.exists(path)) readRDS(fertility_assert_existing_file(
         path, dirname(path), "frozen output inventory"
     )) else NULL
-    if (is.list(frozen) && identical(frozen$schema_version, 1L)) {
-        superseded <- file.path(dirname(path), "inventory-schema1.rds")
+    if (is.list(frozen) && length(frozen$schema_version) == 1L &&
+        is.numeric(frozen$schema_version) && !is.na(frozen$schema_version) &&
+        is.finite(frozen$schema_version) &&
+        frozen$schema_version %in%
+            seq_len(fertility_output_inventory_schema_version - 1L)) {
+        old_schema <- as.integer(frozen$schema_version)
+        superseded <- file.path(
+            dirname(path), sprintf("inventory-schema%d.rds", old_schema)
+        )
         if (file.exists(superseded) || dir.exists(superseded) ||
             fertility_path_is_symlink(superseded)) {
             stop("superseded output inventory destination already exists")
@@ -1365,15 +1373,25 @@ fertility_structural_metadata <- function(path) {
     on.exit(close(connection), add = TRUE)
     bytes <- readBin(connection, "raw", n = 4L * 1024L * 1024L)
     release <- fertility_release(path)
-    if (release %in% c(113L, 114L, 115L)) {
+    if (release %in% c(111L, 113L, 114L, 115L)) {
         if (length(bytes) < 109L) stop("legacy DTA header is truncated")
-        byteorder <- if (as.integer(bytes[[2L]]) == 1L) "MSF" else "LSF"
+        byteorder_code <- as.integer(bytes[[2L]])
+        if (!byteorder_code %in% c(1L, 2L)) stop("legacy DTA byte order is invalid")
+        if (as.integer(bytes[[3L]]) != 1L) stop("legacy DTA file type is invalid")
+        byteorder <- if (byteorder_code == 1L) "MSF" else "LSF"
         columns <- fertility_raw_uint(bytes, 5L, 2L, byteorder)
         rows <- fertility_raw_uint(bytes, 7L, 4L, byteorder)
+        if (rows > .Machine$integer.max) stop("legacy DTA row count is negative")
         start <- 110L
         if (start + columns - 1L > length(bytes)) stop("legacy DTA types are truncated")
         codes <- as.integer(bytes[start:(start + columns - 1L)])
-        column_bytes <- ifelse(codes <= 244L, pmax(codes, 1L), 8L)
+        if (any(!codes %in% c(1L:244L, 251L:255L))) {
+            stop("legacy DTA type code is unsupported")
+        }
+        numeric_bytes <- c(`251` = 1, `252` = 2, `253` = 4, `254` = 4, `255` = 8)
+        column_bytes <- ifelse(
+            codes <= 244L, codes, unname(numeric_bytes[as.character(codes)])
+        )
         return(list(rows = rows, columns = as.integer(columns),
                     column_bytes = as.double(column_bytes), strl = rep(FALSE, columns)))
     }

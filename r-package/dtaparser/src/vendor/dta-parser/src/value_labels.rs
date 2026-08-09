@@ -1,7 +1,8 @@
 use crate::endian::{checked_add, checked_mul, expect_at, offset_to_usize, read_i32, slice_at};
 use crate::text::{field_bytes, is_utf8_boundary, TextEncoding};
 use crate::{
-    classify_long_missing, DtaError, DtaMetadata, FormatVersion, ValueLabelEntry, ValueLabelTable,
+    missing::classify_long_missing_for_version, DtaError, DtaMetadata, FormatVersion,
+    ValueLabelEntry, ValueLabelTable,
 };
 
 const VALUE_LABELS_OPEN: &[u8] = b"<value_labels>";
@@ -13,7 +14,9 @@ const RESERVED_WIDTH: usize = 3;
 
 fn name_width(version: FormatVersion) -> Result<usize, DtaError> {
     match version {
-        FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 => Ok(33),
+        FormatVersion::V111 | FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 => {
+            Ok(33)
+        }
         FormatVersion::V117 => Ok(33),
         FormatVersion::V118 | FormatVersion::V119 => Ok(129),
     }
@@ -143,7 +146,6 @@ fn parse_table(
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
 
     let mut entries = Vec::with_capacity(entry_count);
-    let mut previous_value = None;
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
         let raw_offset_position = checked_add(
@@ -195,17 +197,6 @@ fn parse_table(
             metadata.byte_order,
             "value-label value",
         )?;
-        if let Some(previous) = previous_value {
-            if value <= previous {
-                return Err(DtaError::UnsortedValueLabelValues {
-                    table_offset: table_start,
-                    entry_index,
-                    previous,
-                    value,
-                });
-            }
-        }
-        previous_value = Some(value);
 
         let label_start = checked_add(text_start, text_offset_usize, "value-label text")?;
         let remaining = payload
@@ -222,7 +213,7 @@ fn parse_table(
         let label = encoding.decode(&remaining[..nul]);
         entries.push(ValueLabelEntry {
             value,
-            missing_tag: classify_long_missing(value),
+            missing_tag: classify_long_missing_for_version(value, metadata.format_version),
             label,
         });
     }

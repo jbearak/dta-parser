@@ -1,4 +1,4 @@
-import type { VariableInfo, Row, RowCell } from './types';
+import type { FormatVersion, VariableInfo, Row, RowCell } from './types';
 /** Options for {@link DtaFile.read_rows}. */
 export interface ReadRowsOptions {
     /**
@@ -41,6 +41,8 @@ export declare class DtaFile {
      * into memory; observation rows are read on demand.
      */
     static open(file_path: string): Promise<DtaFile>;
+    /** Stata on-disk format release. */
+    get format_version(): FormatVersion;
     /** Number of observations (rows). */
     get nobs(): number;
     /** Number of variables (columns). */

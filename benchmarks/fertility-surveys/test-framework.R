@@ -323,8 +323,8 @@ local({
     options(dtaparser.fertility.output_inventory_test_hook = NULL)
 })
 
-# Descriptor hardening versions the persistent output authority and preserves a
-# schema-1 artifact as explicitly superseded before recapturing schema 2.
+# Inventory versioning preserves the prior persistent authority as explicitly
+# superseded before recapturing the current schema.
 local({
     fixture <- file.path(root, "output-inventory-migration")
     raw_root <- file.path(root, "output-inventory-migration-raw")
@@ -355,7 +355,18 @@ local({
     assign("fertility_output_expected_largest", max(sizes), envir = .GlobalEnv)
     inventory_path <- fertility_output_inventory_path(raw_root)
     fertility_atomic_save_rds(list(
-        schema_version = 1L, manifest = data.frame()
+        schema_version = fertility_output_inventory_schema_version - 0.5,
+        manifest = data.frame()
+    ), inventory_path)
+    expect_error(
+        fertility_build_output_inventory(fertility_output_root, raw_root),
+        "frozen.*output inventory"
+    )
+    stopifnot(identical(readRDS(inventory_path)$schema_version,
+                        fertility_output_inventory_schema_version - 0.5))
+    fertility_atomic_save_rds(list(
+        schema_version = fertility_output_inventory_schema_version - 1L,
+        manifest = data.frame()
     ), inventory_path)
     migrated <- fertility_build_output_inventory(fertility_output_root, raw_root)
     frozen <- readRDS(inventory_path)
@@ -363,10 +374,10 @@ local({
         nrow(migrated) == 2L,
         identical(frozen$schema_version,
                   fertility_output_inventory_schema_version),
-        file.exists(file.path(dirname(inventory_path), "inventory-schema1.rds")),
+        file.exists(file.path(dirname(inventory_path), "inventory-schema2.rds")),
         identical(readRDS(file.path(
-            dirname(inventory_path), "inventory-schema1.rds"
-        ))$schema_version, 1L)
+            dirname(inventory_path), "inventory-schema2.rds"
+        ))$schema_version, 2L)
     )
 })
 
@@ -1614,8 +1625,7 @@ full_canonical <- data.frame(
 )
 full_options <- fertility_parse_arguments(character())
 full_classes <- rep("pass", fertility_expected_rows)
-full_classes[full_releases == 111L] <- "expected-unsupported-111"
-supported_positions <- which(full_releases != 111L)
+supported_positions <- seq_along(full_releases)
 full_classes[match(fertility_accepted_ids(), full_canonical$id)] <-
     "inventory-hash-error"
 full_fixture <- make_bundle_family(
@@ -1644,10 +1654,11 @@ expect_error(fertility_validate_shard_bundles(
     full_bad_release, full_fixture$id, full_canonical
 ), "canonical family membership")
 full_bad_unsupported <- full_fixture$bundles
-full_bad_unsupported[[1L]]$results$classification[[1L]] <- "pass"
+full_bad_unsupported[[1L]]$results$classification[[1L]] <-
+    "expected-unsupported-111"
 expect_error(fertility_validate_shard_bundles(
     full_bad_unsupported, full_fixture$id, full_canonical
-), "release 111 classifications")
+), "supported corpus executable accounting")
 full_bad_hash_count <- full_fixture$bundles
 additional_supported <- supported_positions[
     !full_canonical$id[supported_positions] %in% fertility_accepted_ids()
@@ -1693,13 +1704,12 @@ stopifnot(fertility_full_output_family(output_options),
               "--program=output", "--release=118"
           ))))
 output_classes <- rep("pass", fertility_output_expected_files)
-output_classes[output_releases == 111L] <- "expected-unsupported-111"
 output_fixture <- make_bundle_family(
     output_canonical, output_options, output_classes,
     inventory_id = paste(rep("a", 64L), collapse = "")
 )
 output_fixture$bundles <- lapply(output_fixture$bundles, function(bundle) {
-    supported_rows <- bundle$results$release != "111"
+    supported_rows <- bundle$results$release %in% as.character(fertility_supported_releases)
     bundle$results$tiles_expected[supported_rows] <- "1"
     bundle$results$tiles_completed[supported_rows] <- "1"
     bundle
@@ -1733,16 +1743,11 @@ for (classification in expected_output_terminal_classifications) {
     )$results) == fertility_output_expected_files)
 }
 output_bad_unsupported <- output_fixture$bundles
-output_bad_unsupported[[1L]]$results$classification[[1L]] <- "pass"
+output_bad_unsupported[[supported_bundle]]$results$classification[[supported_row]] <-
+    "expected-unsupported-111"
 expect_error(fertility_validate_shard_bundles(
     output_bad_unsupported, output_fixture$id, output_canonical
 ), "unsupported-release classifications")
-output_bad_unsupported_tiles <- output_fixture$bundles
-output_bad_unsupported_tiles[[1L]]$results$tiles_expected[[1L]] <- "1"
-output_bad_unsupported_tiles[[1L]]$results$tiles_completed[[1L]] <- "1"
-expect_error(fertility_validate_shard_bundles(
-    output_bad_unsupported_tiles, output_fixture$id, output_canonical
-), "executable accounting")
 output_bad_terminal <- output_fixture$bundles
 output_bad_terminal[[supported_bundle]]$results$classification[[supported_row]] <-
     "timeout"
@@ -2800,7 +2805,15 @@ make_merged_bundle <- function(
         input_attestation = fertility_family_input_attestation(provenance)
     )
 }
-full_merged_bundle <- make_merged_bundle(full_validated, full_fixture$id)
+historical_full_validated <- full_validated
+historical_unsupported <- historical_full_validated$results$release == "111"
+historical_full_validated$results$classification[historical_unsupported] <-
+    "expected-unsupported-111"
+historical_full_validated$results$tiles_expected[historical_unsupported] <- "0"
+historical_full_validated$results$tiles_completed[historical_unsupported] <- "0"
+full_merged_bundle <- make_merged_bundle(
+    historical_full_validated, full_fixture$id
+)
 accepted_merged_bundle <- make_merged_bundle(
     accepted_family_validated, accepted_family_fixture$id
 )
@@ -2927,6 +2940,8 @@ make_legacy_assessment_original <- function() {
         fertility_inventory_id(merge_live_inventory), 8L, Inf
     )
     results <- make_public_results(manifest, full_classes)
+    results$classification[results$release == "111"] <-
+        "expected-unsupported-111"
     hash_rows <- results$classification == "inventory-hash-error"
     results$secondary_categories[hash_rows] <- "signature-mismatch"
     family_input_attestation_id <- fertility_stable_id(list(
@@ -3405,7 +3420,54 @@ haven::write_dta(data.frame(number = 1:3, fixed = c("a", "bb", "ccc")),
                  legacy_path, version = 10)
 legacy_structure <- fertility_structural_metadata(legacy_path)
 stopifnot(legacy_structure$rows == 3, legacy_structure$columns == 2L,
-          identical(legacy_structure$column_bytes, c(8, 3)))
+          identical(legacy_structure$column_bytes, c(4, 3)))
+stata7_path <- normalizePath(file.path(
+    script_dir, "..", "..", "rust", "dta-parser", "tests", "data",
+    "synthetic-v111.dta"
+), winslash = "/", mustWork = TRUE)
+stata7_structure <- fertility_structural_metadata(stata7_path)
+stopifnot(stata7_structure$rows == 4, stata7_structure$columns == 6L,
+          identical(stata7_structure$column_bytes, c(1, 2, 4, 4, 8, 6)),
+          identical(stata7_structure$strl, rep(FALSE, 6L)))
+write_stata7_structure <- function(path, byteorder) {
+    endian <- if (identical(byteorder, 1L)) "big" else "little"
+    bytes <- raw(115L)
+    bytes[1:4] <- as.raw(c(111L, byteorder, 1L, 0L))
+    bytes[5:6] <- writeBin(6L, raw(), size = 2L, endian = endian)
+    bytes[7:10] <- writeBin(66051L, raw(), size = 4L, endian = endian)
+    bytes[110:115] <- as.raw(c(251L, 252L, 253L, 254L, 255L, 17L))
+    writeBin(bytes, path)
+}
+for (byteorder in c(1L, 2L)) {
+    path <- file.path(root, paste0("stata7-structure-", byteorder, ".dta"))
+    write_stata7_structure(path, byteorder)
+    structure <- fertility_structural_metadata(path)
+    stopifnot(structure$rows == 66051, structure$columns == 6L,
+              identical(structure$column_bytes, c(1, 2, 4, 4, 8, 17)))
+}
+malformed_stata7 <- function(name, mutate) {
+    path <- file.path(root, paste0("stata7-malformed-", name, ".dta"))
+    write_stata7_structure(path, 2L)
+    bytes <- readBin(path, "raw", n = file.info(path)$size)
+    bytes <- mutate(bytes)
+    writeBin(bytes, path)
+    path
+}
+expect_error(fertility_structural_metadata(malformed_stata7(
+    "byteorder", function(bytes) { bytes[[2L]] <- as.raw(3L); bytes }
+)), "byte order")
+expect_error(fertility_structural_metadata(malformed_stata7(
+    "filetype", function(bytes) { bytes[[3L]] <- as.raw(2L); bytes }
+)), "file type")
+expect_error(fertility_structural_metadata(malformed_stata7(
+    "rows", function(bytes) {
+        bytes[7:10] <- writeBin(-1L, raw(), size = 4L, endian = "little")
+        bytes
+    }
+)), "row count")
+expect_error(fertility_structural_metadata(malformed_stata7(
+    "type", function(bytes) { bytes[[110L]] <- as.raw(0L); bytes }
+)), "type code")
 tag_path <- file.path(root, "tag-values.dta")
 haven::write_dta(data.frame(text = c("<N>", "</N>", "<variable_types>")),
                  tag_path, version = 14)
@@ -4309,6 +4371,7 @@ writeBin(as.raw(1L), supported_item$path, useBytes = TRUE)
 stopifnot(!fertility_checkpoint_input_current(supported_checkpoint, supported_item))
 
 unsupported_item <- as.list(inventory[1L, , drop = FALSE])
+unsupported_item$release <- 112L
 unsupported <- fertility_worker(
     unsupported_item, file.path(script_dir, "compare.R"),
     root, root, "framework", 1L, fertility_file_sha512(unsupported_item$path)

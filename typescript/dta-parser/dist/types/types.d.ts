@@ -3,8 +3,8 @@ export declare const FORMAT_SIGNATURES: {
     readonly 118: "<stata_dta><header><release>118</release>";
     readonly 119: "<stata_dta><header><release>119</release>";
 };
-export type FormatVersion = 113 | 114 | 115 | 117 | 118 | 119;
-export type LegacyFormatVersion = 113 | 114 | 115;
+export type FormatVersion = 111 | 113 | 114 | 115 | 117 | 118 | 119;
+export type LegacyFormatVersion = 111 | 113 | 114 | 115;
 export declare function is_legacy_format(version: FormatVersion): version is LegacyFormatVersion;
 export type DtaType = 'byte' | 'int' | 'long' | 'float' | 'double' | 'strL' | `str${number}`;
 /**
@@ -64,6 +64,8 @@ export interface DtaMetadata {
     nvar: number;
     nobs: number;
     dataset_label: string;
+    /** Legacy dataset note characteristics, when parsed. */
+    notes?: string[];
     variables: VariableInfo[];
     section_offsets: SectionOffsets;
     obs_length: number;

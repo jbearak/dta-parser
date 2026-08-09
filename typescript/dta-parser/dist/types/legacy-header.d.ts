@@ -7,6 +7,8 @@ import type { DtaMetadata, LegacyFormatVersion } from './types';
  * expansion fields since they're typically tiny).
  */
 export declare function legacy_metadata_buffer_size(nvar: number, format_version: LegacyFormatVersion): number;
+/** Compute the byte offset where legacy expansion fields begin. */
+export declare function legacy_metadata_fixed_size(nvar: number, format_version: LegacyFormatVersion): number;
 /**
  * Parse legacy .dta metadata from a buffer containing at
  * least the header and all variable metadata sections.

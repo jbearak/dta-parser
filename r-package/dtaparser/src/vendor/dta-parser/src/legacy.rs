@@ -11,7 +11,7 @@ pub(crate) const VALUE_LABEL_NAME_WIDTH: usize = 33;
 pub(crate) const VARIABLE_LABEL_WIDTH: usize = 81;
 
 pub(crate) fn format_width(version: FormatVersion) -> usize {
-    if version == FormatVersion::V113 {
+    if matches!(version, FormatVersion::V111 | FormatVersion::V113) {
         12
     } else {
         49

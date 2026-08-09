@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import { parse_metadata } from './header';
 import {
     parse_legacy_metadata,
-    legacy_metadata_buffer_size,
+    legacy_metadata_fixed_size,
 } from './legacy-header';
 import {
     read_rows_from_data_buffer,
@@ -30,6 +30,7 @@ import {
 import { parse_value_labels } from './value-labels';
 import type {
     DtaMetadata,
+    FormatVersion,
     LegacyFormatVersion,
     VariableInfo,
     Row,
@@ -41,6 +42,7 @@ import { is_legacy_format } from './types';
 // Constants
 // -----------------------------------------------------------
 const INITIAL_METADATA_READ_SIZE = 64 * 1024;
+const MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 const MAX_READ_RETRIES = 2;
 const DATA_TAG_LENGTH = '<data>'.length;
 
@@ -219,6 +221,11 @@ export class DtaFile {
     // -------------------------------------------------------
     // Public accessors
     // -------------------------------------------------------
+
+    /** Stata on-disk format release. */
+    get format_version(): FormatVersion {
+        return this._metadata.format_version;
+    }
 
     /** Number of observations (rows). */
     get nobs(): number {
@@ -678,7 +685,7 @@ export class DtaFile {
 // -----------------------------------------------------------
 
 // Legacy format version bytes
-const LEGACY_VERSION_BYTES = new Set([113, 114, 115]);
+const LEGACY_VERSION_BYTES = new Set([111, 113, 114, 115]);
 
 // Minimum .dta file must have at least the version byte
 const MIN_LEGACY_HEADER = 109;
@@ -722,19 +729,54 @@ function read_legacy_metadata(
     const my_version =
         my_header_bytes[0] as LegacyFormatVersion;
     const my_byte_order_code = my_header_bytes[1];
+    if (my_byte_order_code !== 1 && my_byte_order_code !== 2) {
+        throw new Error(`Invalid byte order code: ${my_byte_order_code}`);
+    }
+    if (my_header_bytes[2] !== 1) {
+        throw new Error(`Invalid legacy file type: ${my_header_bytes[2]}`);
+    }
     const my_little_endian = my_byte_order_code === 2;
     const my_header_view = new DataView(my_header);
     const my_nvar = my_header_view.getUint16(
         4, my_little_endian
     );
 
-    // Compute exact buffer size needed for all metadata
-    const my_needed = legacy_metadata_buffer_size(
+    const my_expansion_start = legacy_metadata_fixed_size(
         my_nvar, my_version
     );
-    const my_read_size = Math.min(file_size, my_needed);
-    const my_buffer = read_range(fd, 0, my_read_size);
 
+    if (my_expansion_start > file_size) {
+        throw new Error('Truncated legacy metadata');
+    }
+
+    // Expansion payloads can exceed the initial metadata window. Scan their
+    // fixed-size headers directly from the file so malformed inputs cannot
+    // make us repeatedly allocate progressively larger file prefixes.
+    let my_position = my_expansion_start;
+    while (true) {
+        if (my_position + 5 > file_size) {
+            throw new Error('Missing legacy expansion-field terminator');
+        }
+        const my_field_header = read_range(fd, my_position, 5);
+        const my_field_view = new DataView(my_field_header);
+        const my_data_type = my_field_view.getUint8(0);
+        const my_length = my_field_view.getInt32(1, my_little_endian);
+        my_position += 5;
+
+        if (my_data_type === 0 && my_length === 0) break;
+        if (my_data_type === 0 || my_length < 0) {
+            throw new Error('Invalid legacy expansion field');
+        }
+        if (my_length > file_size - my_position) {
+            throw new Error('Truncated legacy expansion field');
+        }
+        my_position += my_length;
+        if (my_position > MAX_LEGACY_METADATA_SIZE) {
+            throw new Error('Legacy metadata exceeds 64 MiB safety limit');
+        }
+    }
+
+    const my_buffer = read_range(fd, 0, my_position);
     return parse_legacy_metadata(my_buffer, file_size);
 }
 
@@ -767,7 +809,7 @@ function read_modern_metadata(
             ) {
                 throw new Error(
                     'Unsupported .dta format: only ' +
-                    'Stata 8+ files (formats 113-115 ' +
+                    'Stata/SE 7+ files (formats 111, 113-115 ' +
                     'and 117-119) are supported'
                 );
             }

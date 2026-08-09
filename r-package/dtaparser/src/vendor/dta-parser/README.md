@@ -1,7 +1,7 @@
 # dta-parser (Rust)
 
 This crate is the native Rust core for `dta-parser`. It parses Stata releases
-113–115 and 117–119 into a storage-preserving, column-oriented model. Metadata,
+111, 113–115, and 117–119 into a storage-preserving, column-oriented model. Metadata,
 numeric and fixed-string observations, resolved `strL` values, exact missing
 tags, and value-label tables are retained.
 
@@ -39,7 +39,7 @@ Numeric `ColumnValues` variants preserve the source storage width (`i8`,
 `Vec<Option<MissingTag>>`. Raw Stata missing values remain in the values vector,
 so consumers retain both exact storage and the classified `.`, `.a`–`.z` tag.
 Modern fixed strings and `strL` payloads use UTF-8 replacement for malformed
-sequences. Releases 113–115 use Windows-1252 for textual metadata, fixed
+sequences. Releases 111 and 113–115 use Windows-1252 for textual metadata, fixed
 strings, and value labels. All fixed fields stop at their first NUL byte.
 
 Every byte-slice and seekable-file path also accepts a deterministic
@@ -54,8 +54,9 @@ an override. `TextEncoding::from_label` accepts case-insensitive UTF-8/UTF8,
 Windows-1252/CP1252, and ISO-8859-1/latin1 aliases and rejects other names;
 ISO-8859-1 is intentionally distinct from Windows-1252 at bytes 0x80--0x9f.
 
-Value-label tables retain their on-disk order and require strictly ascending
-integer keys. Declared lengths, text offsets, NUL terminators, modern wrapper
+Value-label tables retain their on-disk order, including nonascending or
+duplicate integer keys found in real-world files. Lookups return the first
+matching entry. Declared lengths, text offsets, NUL terminators, modern wrapper
 tags, legacy table boundaries, and mapped section boundaries are validated.
 
 For seekable inputs, `DtaFile<R: Read + Seek>` provides bounded-buffer random
@@ -108,7 +109,8 @@ loss.
 
 Native R bindings live in `r-package/dtaparser`; display/date conversion is an
 R-wrapper concern while the core preserves the original format metadata.
-Formats before 113 remain unsupported.
+Release 111 is the only supported pre-113 format; other legacy formats remain
+unsupported.
 
 From the repository root, `scripts/conformance.sh` checks the immutable fixture
 oracle and exact slice/file parity, including projections, row windows, `strL`,

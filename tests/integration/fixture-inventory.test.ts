@@ -9,12 +9,12 @@ import { parse_legacy_metadata } from '../../typescript/dta-parser/src/legacy-he
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures', 'dta');
 
 function isLegacyRelease(release: number): boolean {
-    return release >= 113 && release <= 115;
+    return release === 111 || (release >= 113 && release <= 115);
 }
 
 describe('DTA fixture inventory', () => {
     it('recognizes the exact legacy release range', () => {
-        expect([113, 114, 115].every(isLegacyRelease)).toBe(true);
+        expect([111, 113, 114, 115].every(isLegacyRelease)).toBe(true);
         expect([112, 116, 117, 118, 119].some(isLegacyRelease)).toBe(false);
     });
 

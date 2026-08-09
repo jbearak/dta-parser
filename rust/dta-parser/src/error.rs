@@ -10,7 +10,7 @@ pub enum DtaError {
     InvalidSignature,
 
     /// The release exists in the shared model but is outside this parser's
-    /// supported 113–115 and 117–119 ranges.
+    /// supported 111, 113–115, and 117–119 releases.
     #[error("Stata release {0} metadata is not supported by this parser")]
     UnsupportedRelease(FormatVersion),
 
@@ -197,7 +197,8 @@ pub enum DtaError {
         text_length: usize,
     },
 
-    /// Value-label keys must be strictly increasing in modern table payloads.
+    /// Retained for API compatibility; tolerant readers no longer reject
+    /// nonascending or duplicate value-label keys.
     #[error(
         "value-label table at byte offset {table_offset} is not strictly ascending at entry {entry_index}: {value} follows {previous}"
     )]

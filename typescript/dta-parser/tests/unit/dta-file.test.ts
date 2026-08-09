@@ -1,10 +1,12 @@
 import { describe, it, expect, afterEach } from 'bun:test';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import {
     DtaFile,
     make_missing_value,
 } from '../../src/node';
+import { parse_legacy_metadata } from '../../src/legacy-header';
 
 // -----------------------------------------------------------
 // DtaFile public API integration tests
@@ -12,6 +14,9 @@ import {
 
 const FIXTURE_DIR = path.resolve(
     __dirname, '../../../../tests/fixtures/dta'
+);
+const V111_FIXTURE = path.resolve(
+    __dirname, '../../../../rust/dta-parser/tests/data/synthetic-v111.dta'
 );
 
 let my_file: DtaFile | null = null;
@@ -288,6 +293,128 @@ describe('DtaFile', () => {
     });
 
     // ----- legacy format (v115) -----
+
+    describe('legacy format v111', () => {
+        it('reads metadata, rows, missing tags, labels, and projections', async () => {
+            my_file = await DtaFile.open(V111_FIXTURE);
+            expect(my_file.format_version).toBe(111);
+            expect(my_file.dataset_label).toBe('Stata/SE 7 Café fixture');
+            expect(my_file.nvar).toBe(6);
+            expect(my_file.nobs).toBe(4);
+            expect(my_file.variables.map(variable => variable.name)).toEqual([
+                'b', 'i', 'l', 'f', 'd', 'text',
+            ]);
+            expect(my_file.value_label_tables.get('b_labels')?.get(1)).toBe('One');
+
+            const the_rows = await my_file.read_rows(0, 4);
+            expect(the_rows[0]).toEqual([1, 321, -123456, 1.5, -2.25, 'alpha']);
+            for (let column = 0; column < 3; column++) {
+                expect(the_rows[1][column]).not.toEqual(make_missing_value('.'));
+                expect(the_rows[2][column]).not.toEqual(make_missing_value('.'));
+                expect(the_rows[3][column]).toEqual(make_missing_value('.'));
+            }
+            for (let column = 3; column < 5; column++) {
+                expect(the_rows[1][column]).toEqual(make_missing_value('.'));
+                expect(the_rows[2][column]).toEqual(make_missing_value('.'));
+                expect(the_rows[3][column]).toEqual(make_missing_value('.'));
+            }
+            expect(the_rows.map(row => row[5])).toEqual(['alpha', '', 'Café', 'omega']);
+
+            const the_columns = await my_file.read_columns([5, 0]);
+            expect(the_columns.get(5)?.slice(1, 3)).toEqual(['', 'Café']);
+            expect(the_columns.get(0)?.slice(1, 3)).toEqual([
+                101, 102,
+            ]);
+        });
+
+        it('scans characteristics beyond the initial 64 KiB metadata window', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            expect(metadata.notes).toEqual(['Release 111 note']);
+            const expansion = metadata.section_offsets.characteristics;
+            const oldLength = original.readInt32LE(expansion + 1);
+            const names = original.subarray(expansion + 5, expansion + 5 + 66);
+            const payload = Buffer.concat([
+                names,
+                Buffer.alloc(70_000, 0x78),
+                Buffer.from([0]),
+            ]);
+            const header = Buffer.alloc(5);
+            header[0] = 1;
+            header.writeInt32LE(payload.length, 1);
+            const enlarged = Buffer.concat([
+                original.subarray(0, expansion),
+                header,
+                payload,
+                original.subarray(expansion + 5 + oldLength),
+            ]);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'large-note.dta');
+            try {
+                fs.writeFileSync(filePath, enlarged);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.nobs).toBe(4);
+                expect((await my_file.read_rows(0, 1))[0][0]).toBe(1);
+            } finally {
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('bounds oversized release-111 metadata before reading its payload', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const expansion = metadata.section_offsets.characteristics;
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'oversized-note.dta');
+            const fieldLength = 64 * 1024 * 1024;
+            const header = Buffer.alloc(5);
+            header[0] = 1;
+            header.writeInt32LE(fieldLength, 1);
+            let fileDescriptor: number | null = null;
+            try {
+                fileDescriptor = fs.openSync(filePath, 'w');
+                fs.writeSync(fileDescriptor, original.subarray(0, expansion));
+                fs.writeSync(fileDescriptor, header);
+                fs.ftruncateSync(fileDescriptor, expansion + 5 + fieldLength);
+                fs.closeSync(fileDescriptor);
+                fileDescriptor = null;
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Legacy metadata exceeds 64 MiB safety limit'
+                );
+            } finally {
+                if (fileDescriptor !== null) fs.closeSync(fileDescriptor);
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('rejects truncated release-111 observations during open', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const truncated = original.subarray(0, metadata.section_offsets.value_labels - 1);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'truncated.dta');
+            try {
+                fs.writeFileSync(filePath, truncated);
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Truncated legacy observation data'
+                );
+            } finally {
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+    });
 
     describe('legacy format v115', () => {
         it('opens and reads metadata from auto_v115.dta', async () => {

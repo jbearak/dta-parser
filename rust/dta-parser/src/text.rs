@@ -5,7 +5,7 @@ use crate::{DtaError, FormatVersion};
 /// Source encoding used for textual fields in a Stata file.
 ///
 /// [`TextEncoding::Auto`] follows the DTA release: UTF-8 for releases 117--119
-/// and Windows-1252 for releases 113--115. Explicit modes override that
+/// and Windows-1252 for releases 111 and 113--115. Explicit modes override that
 /// convention for every textual field decoded by the parser.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TextEncoding {

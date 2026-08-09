@@ -3,9 +3,10 @@
 This is a local, report-only compatibility framework for the private fertility
 survey cache. It is never a CI or release gate. It refuses to run when common CI
 or GitHub Actions variables are present and requires an explicit manual opt-in.
-It does not add Stata/SE 7 format-111 support: those files are inventoried,
-classified as `expected-unsupported-111`, and identified as outside dtaparser's
-current supported format range without being passed to a reader.
+Release-111 files are passed through the same bounded differential readers as
+the later supported releases. Historical published results retain their
+`expected-unsupported-111` classifications as immutable evidence of the parser
+support that existed when those runs were recorded.
 
 Every Wave 2 invocation requires caller-supplied `--cache-root` and `--manifest`
 arguments naming existing absolute canonical, non-symlink paths. The inventory
@@ -20,7 +21,7 @@ A valid inventory has exactly 1,004 unique files and these release counts:
 
 | Release | Files | Differential status |
 |---:|---:|---|
-| 111 | 130 | inventoried; outside dtaparser's current format range |
+| 111 | 130 | supported Stata/SE 7 inputs |
 | 113 | 475 | compared |
 | 114 | 23 | compared |
 | 117 | 150 | compared |
@@ -118,9 +119,8 @@ privacy-safe `survey`/`aggregate` level, and DTA release. Public family manifest
 add the deterministic `shard_index`.
 
 The run refuses any other output root and asserts the observed baseline exactly:
-1,226 files, 70,748,321,626 bytes, and a largest file of 10,332,252,930 bytes.
-The observed output family supports releases 113, 114, 115, and 118 and preserves
-release 111 as an expected unsupported classification. Source files and the
+1,226 files, 70,873,334,682 bytes, and a largest file of 10,332,252,930 bytes.
+The observed output family supports releases 111, 113, 114, 115, and 118. Source files and the
 upstream repository are read-only; all mutable state remains under the
 checkout-local ignored target. Aggregate files are identified separately because
 the upstream build uses forced Stata append coercion; that provenance explains
@@ -138,9 +138,9 @@ not the identity of current Wave 3 evidence.
 All normal filters, encoding overrides, resource bounds, resume, and shard
 options apply. An unfiltered output run is recorded as a full family. Merge
 validation requires exactly all 1,226 frozen IDs, the frozen release and
-survey/aggregate distributions, release 111 only as expected unsupported,
-and terminal outcomes with exact completed-versus-expected tile accounting for
-every supported file. A `pass` must also have `complete=TRUE`; an explicit
+survey/aggregate distributions, and terminal outcomes with exact
+completed-versus-expected tile accounting for every supported file. A `pass`
+must also have `complete=TRUE`; an explicit
 reader-error or divergence terminal may have `complete=FALSE` because that field
 records all-reader projection success rather than whether every planned tile ran.
 Timeout, memory, crash, unresolved, inventory-hash, or partial tile accounting
@@ -433,8 +433,8 @@ per-shard, and union membership and ordering. It also requires exactly one repor
 for every shard index and identical framework/configuration/build/inventory/report
 schema provenance. An unfiltered family must contain exactly `F0001` through
 `F1004`, preserve release counts 111=130, 113=475, 114=23, 117=150, and 118=226,
-classify all release-111 files as expected unsupported, and account for exactly five
-supported inventory hash errors plus 869 supported executable outcomes. Validation
+account for exactly five inventory hash errors plus 999 supported executable
+outcomes. Validation
 finishes before any merged output is staged or published; publication is atomic within the ignored private artifact root.
 
 All generated files, package builds, checkpoints, and reports stay below an

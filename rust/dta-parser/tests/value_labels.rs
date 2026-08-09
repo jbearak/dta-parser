@@ -231,7 +231,7 @@ fn rejects_negative_lengths_bad_offsets_and_missing_nuls() {
 }
 
 #[test]
-fn rejects_duplicate_and_descending_value_label_keys() {
+fn preserves_duplicate_and_descending_value_label_keys_in_source_order() {
     let original = fixture("value_labels_v118.dta");
     let metadata = parse_metadata(&original).unwrap();
     let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
@@ -240,27 +240,20 @@ fn rejects_duplicate_and_descending_value_label_keys() {
 
     let mut duplicate = original.clone();
     duplicate[values_start + 4..values_start + 8].copy_from_slice(&1_i32.to_le_bytes());
-    assert!(matches!(
-        parse_value_labels(&duplicate, &metadata),
-        Err(DtaError::UnsortedValueLabelValues {
-            entry_index: 1,
-            previous: 1,
-            value: 1,
-            ..
-        })
-    ));
+    let duplicate_tables = parse_value_labels(&duplicate, &metadata).unwrap();
+    assert_eq!(duplicate_tables[0].entries[0].value, 1);
+    assert_eq!(duplicate_tables[0].entries[0].label, "Northeast");
+    assert_eq!(duplicate_tables[0].entries[1].value, 1);
+    assert_eq!(duplicate_tables[0].entries[1].label, "Midwest");
+    assert_eq!(duplicate_tables[0].entry(1).unwrap().label, "Northeast");
 
     let mut descending = original;
     descending[values_start + 4..values_start + 8].copy_from_slice(&0_i32.to_le_bytes());
-    assert!(matches!(
-        parse_value_labels(&descending, &metadata),
-        Err(DtaError::UnsortedValueLabelValues {
-            entry_index: 1,
-            previous: 1,
-            value: 0,
-            ..
-        })
-    ));
+    let descending_tables = parse_value_labels(&descending, &metadata).unwrap();
+    assert_eq!(descending_tables[0].entries[0].value, 1);
+    assert_eq!(descending_tables[0].entries[0].label, "Northeast");
+    assert_eq!(descending_tables[0].entries[1].value, 0);
+    assert_eq!(descending_tables[0].entries[1].label, "Midwest");
 }
 
 #[test]

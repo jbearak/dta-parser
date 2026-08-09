@@ -16,6 +16,7 @@ import {
 } from './missing-values';
 import type {
     DtaMetadata,
+    FormatVersion,
     MissingValue,
     Row,
     RowCell,
@@ -27,6 +28,7 @@ const DATA_TAG = '<data>';
 const DATA_TAG_LENGTH = DATA_TAG.length; // 6 bytes
 
 const UTF8_DECODER = new TextDecoder('utf-8');
+const LEGACY_DECODER = new TextDecoder('windows-1252');
 
 /**
  * Read a fixed-width string field, stopping at the first
@@ -35,14 +37,15 @@ const UTF8_DECODER = new TextDecoder('utf-8');
 function read_fixed_string(
     bytes: Uint8Array,
     offset: number,
-    width: number
+    width: number,
+    decoder: TextDecoder
 ): string {
     let my_end = offset;
     const my_limit = offset + width;
     while (my_end < my_limit && bytes[my_end] !== 0) {
         my_end++;
     }
-    return UTF8_DECODER.decode(
+    return decoder.decode(
         bytes.subarray(offset, my_end)
     );
 }
@@ -59,15 +62,16 @@ function read_cell(
     offset: number,
     type: string,
     width: number,
-    little_endian: boolean
+    little_endian: boolean,
+    decoder: TextDecoder,
+    format_version: FormatVersion
 ): RowCell {
     switch (type) {
         case 'byte': {
             const my_val = view.getInt8(offset);
-            const my_missing_type = classify_missing_value(
-                my_val,
-                'byte'
-            );
+            const my_missing_type = format_version === 111
+                ? (my_val === 127 ? '.' : null)
+                : classify_missing_value(my_val, 'byte');
             if (my_missing_type) {
                 return make_missing_value(my_missing_type);
             }
@@ -77,10 +81,9 @@ function read_cell(
             const my_val = view.getInt16(
                 offset, little_endian
             );
-            const my_missing_type = classify_missing_value(
-                my_val,
-                'int'
-            );
+            const my_missing_type = format_version === 111
+                ? (my_val === 32767 ? '.' : null)
+                : classify_missing_value(my_val, 'int');
             if (my_missing_type) {
                 return make_missing_value(my_missing_type);
             }
@@ -90,10 +93,9 @@ function read_cell(
             const my_val = view.getInt32(
                 offset, little_endian
             );
-            const my_missing_type = classify_missing_value(
-                my_val,
-                'long'
-            );
+            const my_missing_type = format_version === 111
+                ? (my_val === 2147483647 ? '.' : null)
+                : classify_missing_value(my_val, 'long');
             if (my_missing_type) {
                 return make_missing_value(my_missing_type);
             }
@@ -103,8 +105,13 @@ function read_cell(
             const my_raw = view.getUint32(
                 offset, little_endian
             );
-            const my_missing_type =
-                classify_raw_float_missing(my_raw);
+            const my_missing_type = format_version === 111
+                ? (
+                    my_raw >= 0x7F000000 && my_raw < 0x80000000
+                        ? '.'
+                        : null
+                )
+                : classify_raw_float_missing(my_raw);
             if (my_missing_type) {
                 return make_missing_value(my_missing_type);
             }
@@ -113,10 +120,19 @@ function read_cell(
             );
         }
         case 'double': {
-            const my_missing_type =
-                classify_raw_double_missing_at(
-                view, offset, little_endian
-            );
+            const my_high_word = little_endian
+                ? view.getUint32(offset + 4, true)
+                : view.getUint32(offset, false);
+            const my_missing_type = format_version === 111
+                ? (
+                    my_high_word >= 0x7FE00000
+                    && my_high_word < 0x80000000
+                        ? '.'
+                        : null
+                )
+                : classify_raw_double_missing_at(
+                    view, offset, little_endian
+                );
             if (my_missing_type) {
                 return make_missing_value(my_missing_type);
             }
@@ -132,7 +148,7 @@ function read_cell(
         default: {
             // Fixed-length string: str1 through str2045
             return read_fixed_string(
-                bytes, offset, width
+                bytes, offset, width, decoder
             );
         }
     }
@@ -173,6 +189,9 @@ function read_rows_from_view(
         return [];
     }
     const little_endian = metadata.byte_order === 'LSF';
+    const my_decoder = is_legacy_format(metadata.format_version)
+        ? LEGACY_DECODER
+        : UTF8_DECODER;
     const the_rows: Row[] = [];
 
     for (let i = 0; i < my_actual_count; i++) {
@@ -196,7 +215,9 @@ function read_rows_from_view(
                     my_cell_offset,
                     my_var.type,
                     my_var.byte_width,
-                    little_endian
+                    little_endian,
+                    my_decoder,
+                    metadata.format_version
                 )
             );
         }
@@ -229,7 +250,7 @@ export function read_rows_from_buffer(
     const view = new DataView(buffer);
     const bytes = new Uint8Array(buffer);
 
-    // Legacy formats (113–115) report section_offsets.data at the
+    // Legacy formats (111 and 113–115) report section_offsets.data at the
     // first observation byte; modern formats include a <data> tag.
     const my_tag_length = is_legacy_format(
         metadata.format_version
@@ -302,6 +323,9 @@ export function read_columns_from_data_buffer(
     const view = new DataView(buffer);
     const bytes = new Uint8Array(buffer);
     const little_endian = metadata.byte_order === 'LSF';
+    const my_decoder = is_legacy_format(metadata.format_version)
+        ? LEGACY_DECODER
+        : UTF8_DECODER;
 
     const my_vars = col_indices.map(
         my_col => metadata.variables[my_col]
@@ -321,7 +345,9 @@ export function read_columns_from_data_buffer(
                     my_row_offset + my_var.byte_offset,
                     my_var.type,
                     my_var.byte_width,
-                    little_endian
+                    little_endian,
+                    my_decoder,
+                    metadata.format_version
                 )
             );
         }

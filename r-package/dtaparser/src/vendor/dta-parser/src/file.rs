@@ -14,10 +14,13 @@ use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::{
-    classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
-    classify_int_missing, classify_long_missing, ByteOrder, Column, ColumnValues, DtaData,
-    DtaError, DtaMetadata, DtaType, FormatVersion, ReadOptions, SectionOffsets, ValueLabelEntry,
-    ValueLabelTable, VariableInfo,
+    missing::{
+        classify_byte_missing_for_version, classify_double_missing_bits_for_version,
+        classify_float_missing_bits_for_version, classify_int_missing_for_version,
+        classify_long_missing_for_version,
+    },
+    ByteOrder, Column, ColumnValues, DtaData, DtaError, DtaMetadata, DtaType, FormatVersion,
+    ReadOptions, SectionOffsets, ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
 
 const DEFAULT_MAX_BUFFER_BYTES: usize = 8 * 1024 * 1024;
@@ -548,7 +551,7 @@ impl<R: Read + Seek> DtaFile<R> {
             return Err(DtaError::InvalidSignature);
         }
         let first = read_exact_at(&mut reader, 0, 1, &mut scratch, "reading signature")?;
-        let metadata = if matches!(first[0], 113..=115) {
+        let metadata = if matches!(first[0], 111 | 113..=115) {
             read_legacy_metadata(&mut reader, file_length, &mut scratch, encoding)?
         } else {
             let signature_length = MODERN_SIGNATURE.len();
@@ -1985,7 +1988,11 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
     let name_width: u16 = match metadata.format_version {
-        FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 | FormatVersion::V117 => 33,
+        FormatVersion::V111
+        | FormatVersion::V113
+        | FormatVersion::V114
+        | FormatVersion::V115
+        | FormatVersion::V117 => 33,
         FormatVersion::V118 | FormatVersion::V119 => 129,
     };
     let section_end = if modern {
@@ -2158,7 +2165,6 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             .map_err(|_| DtaError::ArithmeticOverflow("value-label values length"))?,
             "value-label text",
         )?;
-        let mut previous_value = None;
         let mut text_offsets = Vec::with_capacity(entry_count);
         let mut text_offset_positions = Vec::with_capacity(entry_count);
         let mut values = Vec::with_capacity(entry_count);
@@ -2197,17 +2203,6 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 scratch,
                 "reading value-label value",
             )?;
-            if let Some(previous) = previous_value {
-                if value <= previous {
-                    return Err(DtaError::UnsortedValueLabelValues {
-                        table_offset: error_offset(table_start),
-                        entry_index,
-                        previous,
-                        value,
-                    });
-                }
-            }
-            previous_value = Some(value);
             text_offsets.push(text_offset_usize);
             text_offset_positions.push(error_offset(offset_position));
             values.push(value);
@@ -2255,7 +2250,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             label.shrink_to_fit();
             entries.push(ValueLabelEntry {
                 value,
-                missing_tag: classify_long_missing(value),
+                missing_tag: classify_long_missing_for_version(value, metadata.format_version),
                 label,
             });
         }
@@ -2488,7 +2483,7 @@ impl<S: DtaSink> CellDecoder<'_, S> {
                     output_column,
                     output_row,
                     value,
-                    classify_byte_missing(value),
+                    classify_byte_missing_for_version(value, self.metadata.format_version),
                 )?;
             }
             DtaType::Int => {
@@ -2497,7 +2492,7 @@ impl<S: DtaSink> CellDecoder<'_, S> {
                     output_column,
                     output_row,
                     value,
-                    classify_int_missing(value),
+                    classify_int_missing_for_version(value, self.metadata.format_version),
                 )?;
             }
             DtaType::Long => {
@@ -2506,7 +2501,7 @@ impl<S: DtaSink> CellDecoder<'_, S> {
                     output_column,
                     output_row,
                     value,
-                    classify_long_missing(value),
+                    classify_long_missing_for_version(value, self.metadata.format_version),
                 )?;
             }
             DtaType::Float => {
@@ -2515,7 +2510,7 @@ impl<S: DtaSink> CellDecoder<'_, S> {
                     output_column,
                     output_row,
                     f32::from_bits(bits),
-                    classify_float_missing_bits(bits),
+                    classify_float_missing_bits_for_version(bits, self.metadata.format_version),
                 )?;
             }
             DtaType::Double => {
@@ -2524,7 +2519,7 @@ impl<S: DtaSink> CellDecoder<'_, S> {
                     output_column,
                     output_row,
                     f64::from_bits(bits),
-                    classify_double_missing_bits(bits),
+                    classify_double_missing_bits_for_version(bits, self.metadata.format_version),
                 )?;
             }
             DtaType::FixedString(_) => {

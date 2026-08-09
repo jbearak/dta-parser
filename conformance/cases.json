@@ -4,7 +4,7 @@
     "canonical_oracle": "rust/dta-parser/tests/data/modern-canonical.json",
     "canonical_sha256": "0686528061a7f7272c90c2616b6a72ddb9410617be1cd23e46a45d0fcbddf0e2",
     "fixture_count": 22,
-    "case_count": 29,
+    "case_count": 30,
     "fixture_oracle_gate": { "binary": "observations", "test": "every_checked_fixture_matches_the_typescript_haven_oracle" },
     "float_contract": "Only nonmissing float and double cells permit relative tolerance <= 1e-7; every other field and cell is exact."
   },
@@ -33,6 +33,7 @@
     { "name": "wide_v118.dta", "sha256": "455f1e82da80d1edb0d8fb399028a1f0f576e45787819562e4ca5bc07181581c" }
   ],
   "deterministic_cases": [
+    { "name": "synthetic-v111-layout", "kind": "generated-valid", "coverage": "shared synthetic Rust and TypeScript fixture; R/haven package parity", "gate": { "binary": "legacy", "test": "decodes_release_111_metadata_observations_labels_and_missing_tags" } },
     { "name": "synthetic-v113-layout", "kind": "generated-valid", "coverage": "native-only synthetic", "gate": { "binary": "legacy", "test": "decodes_true_big_endian_v113_and_windows_1252" } },
     { "name": "synthetic-v114-layout", "kind": "generated-valid", "coverage": "native-only synthetic", "gate": { "binary": "legacy", "test": "reads_every_checked_in_legacy_fixture_and_synthetic_v114" } },
     { "name": "synthetic-v119-big-endian", "kind": "generated-valid", "coverage": "native-only synthetic", "gate": { "binary": "observations", "test": "decodes_big_endian_v119_observations_and_labels" } },
