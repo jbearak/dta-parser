@@ -171,6 +171,22 @@ fn synthetic_pre111_msf(version: u8) -> Vec<u8> {
     bytes
 }
 
+fn with_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
+    let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+    bytes.truncate(value_labels);
+    bytes.extend_from_slice(&20_i32.to_be_bytes());
+    let table_name = bytes.len();
+    bytes.resize(table_name + 33, 0);
+    bytes[table_name..table_name + 5].copy_from_slice(b"codes");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&1_i32.to_be_bytes());
+    bytes.extend_from_slice(&4_i32.to_be_bytes());
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&127_i32.to_be_bytes());
+    bytes.extend_from_slice(b"NA\0\0");
+    bytes
+}
+
 #[test]
 fn generated_pre111_fixtures_decode_expected_semantics() {
     for (release, expected_version) in [
@@ -266,6 +282,44 @@ fn decodes_pre111_layouts_types_expansions_missing_and_value_labels_with_file_pa
             .unwrap();
         assert_eq!(entry.label, "NA");
         assert_eq!(entry.missing_tag, None);
+    }
+}
+
+#[test]
+fn accepts_alternate_release_105_and_108_offset_label_tables() {
+    for release in [105, 108] {
+        let bytes = with_offset_value_labels(synthetic_pre111_msf(release));
+        let slice = read_dta(&bytes).unwrap();
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        assert_eq!(file.read().unwrap(), slice);
+        assert_eq!(
+            slice
+                .value_label_table("codes")
+                .unwrap()
+                .entry(127)
+                .unwrap()
+                .label,
+            "NA"
+        );
+    }
+}
+
+#[test]
+fn rejects_negative_two_byte_expansion_lengths_with_file_parity() {
+    for release in [105, 108] {
+        let mut bytes = synthetic_pre111_msf(release);
+        let expansion = parse_metadata(&bytes)
+            .unwrap()
+            .section_offsets
+            .characteristics as usize;
+        bytes[expansion + 1..expansion + 3].copy_from_slice(&(-1_i16).to_be_bytes());
+        let slice_error = parse_metadata(&bytes).unwrap_err();
+        assert!(matches!(
+            slice_error,
+            DtaError::NegativeExpansionLength { value: -1, .. }
+        ));
+        let file_error = DtaFile::from_reader(Cursor::new(bytes)).err().unwrap();
+        assert_eq!(file_error, slice_error);
     }
 }
 

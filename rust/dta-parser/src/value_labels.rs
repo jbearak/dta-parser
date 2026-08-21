@@ -313,6 +313,46 @@ fn parse_table(
     Ok((ValueLabelTable { name, entries }, cursor))
 }
 
+fn parse_legacy_tables(
+    bytes: &[u8],
+    metadata: &DtaMetadata,
+    start: usize,
+    end: usize,
+    encoding: TextEncoding,
+    layout: LegacyValueLabelLayout,
+    name_width: usize,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    let mut cursor = start;
+    let mut tables = Vec::new();
+    while cursor < end {
+        if bytes[cursor..end].iter().all(|byte| *byte == 0) {
+            cursor = end;
+            break;
+        }
+        let (table, next) = match layout {
+            LegacyValueLabelLayout::Fixed8 => {
+                parse_fixed8_table(bytes, metadata, cursor, encoding)?
+            }
+            LegacyValueLabelLayout::OffsetTable => {
+                parse_table(bytes, metadata, cursor, name_width, false, encoding)?
+            }
+        };
+        if next <= cursor {
+            return Err(DtaError::ArithmeticOverflow("legacy value-label cursor"));
+        }
+        tables.push(table);
+        cursor = next;
+    }
+    if cursor != end {
+        return Err(DtaError::MapOffsetMismatch {
+            section: "end_of_file",
+            expected: end as u64,
+            actual: cursor as u64,
+        });
+    }
+    Ok(tables)
+}
+
 /// Parse the modern Stata value-label section in on-disk table and entry order.
 ///
 /// This validates every declared table boundary, text offset, NUL terminator,
@@ -394,35 +434,51 @@ pub(crate) fn parse_value_labels_section(
             });
         }
         let layout = LegacyLayout::for_version(metadata.format_version);
-        let mut cursor = start;
-        let mut tables = Vec::new();
-        while cursor < end {
-            if bytes[cursor..end].iter().all(|byte| *byte == 0) {
-                cursor = end;
-                break;
-            }
-            let (table, next) = match layout.value_label_layout {
-                LegacyValueLabelLayout::Fixed8 => {
-                    parse_fixed8_table(bytes, metadata, cursor, encoding)?
-                }
-                LegacyValueLabelLayout::OffsetTable => {
-                    parse_table(bytes, metadata, cursor, name_width, false, encoding)?
-                }
-            };
-            if next <= cursor {
-                return Err(DtaError::ArithmeticOverflow("legacy value-label cursor"));
-            }
-            tables.push(table);
-            cursor = next;
-        }
-        if cursor != end {
-            return Err(DtaError::MapOffsetMismatch {
-                section: "end_of_file",
-                expected: end as u64,
-                actual: cursor as u64,
+        if metadata.format_version == FormatVersion::V105 {
+            return parse_legacy_tables(
+                bytes,
+                metadata,
+                start,
+                end,
+                encoding,
+                LegacyValueLabelLayout::OffsetTable,
+                33,
+            )
+            .or_else(|_| {
+                parse_legacy_tables(
+                    bytes,
+                    metadata,
+                    start,
+                    end,
+                    encoding,
+                    LegacyValueLabelLayout::Fixed8,
+                    9,
+                )
             });
         }
-        return Ok(tables);
+        let primary = parse_legacy_tables(
+            bytes,
+            metadata,
+            start,
+            end,
+            encoding,
+            layout.value_label_layout,
+            layout.value_label_table_name_width,
+        );
+        return match metadata.format_version {
+            FormatVersion::V108 => primary.or_else(|_| {
+                parse_legacy_tables(
+                    bytes,
+                    metadata,
+                    start,
+                    end,
+                    encoding,
+                    LegacyValueLabelLayout::OffsetTable,
+                    33,
+                )
+            }),
+            _ => primary,
+        };
     }
     let mut cursor = expect_at(bytes, start, VALUE_LABELS_OPEN, "<value_labels>")?;
     let mut tables = Vec::new();

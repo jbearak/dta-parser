@@ -1,4 +1,4 @@
-use crate::endian::{checked_add, checked_mul, read_i32, read_u16, slice_at};
+use crate::endian::{checked_add, checked_mul, read_i16, read_i32, read_u16, slice_at};
 use crate::text::{field_bytes, is_dataset_note, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
@@ -114,7 +114,7 @@ pub(crate) fn legacy_type(code: u8, version: FormatVersion) -> Result<(DtaType, 
             b'l' => (DtaType::Long, 4),
             b'f' => (DtaType::Float, 4),
             b'd' => (DtaType::Double, 8),
-            0x80..=0xf4 => {
+            0x80..=0xff => {
                 let width = u16::from(code - 0x7f);
                 (DtaType::FixedString(width), u32::from(width))
             }
@@ -219,7 +219,7 @@ fn scan_expansion_fields_ordered(
         let data_type = slice_at(bytes, cursor, 1, "legacy expansion-field type")?[0];
         let length_offset = checked_add(cursor, 1, "legacy expansion-field length")?;
         let value = if layout.expansion_length_width == 2 {
-            i32::from(read_u16(
+            i32::from(read_i16(
                 bytes,
                 length_offset,
                 byte_order,
@@ -501,4 +501,25 @@ pub(crate) fn parse_legacy_metadata_layout(
         },
         obs_length: byte_offset,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pre111_string_codes_cover_widths_one_through_128() {
+        assert_eq!(
+            legacy_type(0x80, FormatVersion::V105).unwrap(),
+            (DtaType::FixedString(1), 1)
+        );
+        assert_eq!(
+            legacy_type(0xff, FormatVersion::V110).unwrap(),
+            (DtaType::FixedString(128), 128)
+        );
+        assert!(matches!(
+            legacy_type(0x7f, FormatVersion::V108),
+            Err(DtaError::UnknownTypeCode { code: 0x7f, .. })
+        ));
+    }
 }

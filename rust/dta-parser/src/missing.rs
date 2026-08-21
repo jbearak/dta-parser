@@ -24,6 +24,7 @@ pub const DOUBLE_MISSING_DOT_BITS: u64 = 0x7fe0_0000_0000_0000;
 pub const DOUBLE_MISSING_STEP_BITS: u64 = 0x0000_0100_0000_0000;
 /// Raw IEEE-754 bits for Stata's `.z` double value.
 pub const DOUBLE_MISSING_Z_BITS: u64 = DOUBLE_MISSING_DOT_BITS + 26 * DOUBLE_MISSING_STEP_BITS;
+const V105_DOUBLE_MISSING_BITS: u64 = 0x54c0_0000_0000_0000;
 
 /// Stata's system missing (`.`) or one of its 26 extended tags (`.a`–`.z`).
 #[repr(u8)]
@@ -245,9 +246,12 @@ pub(crate) fn classify_double_missing_bits_for_version(
     bits: u64,
     version: FormatVersion,
 ) -> Option<MissingTag> {
+    if version == FormatVersion::V105 {
+        return (bits == V105_DOUBLE_MISSING_BITS).then_some(MissingTag::System);
+    }
     if matches!(
         version,
-        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+        FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
     ) {
         return ((DOUBLE_MISSING_DOT_BITS..0x8000_0000_0000_0000).contains(&bits))
             .then_some(MissingTag::System);
@@ -312,6 +316,22 @@ mod tests {
         );
         assert_eq!(
             classify_double_missing_bits(DOUBLE_MISSING_Z_BITS + 1),
+            None
+        );
+    }
+
+    #[test]
+    fn release_105_uses_its_historical_double_missing_sentinel() {
+        assert_eq!(
+            classify_double_missing_bits_for_version(V105_DOUBLE_MISSING_BITS, FormatVersion::V105),
+            Some(MissingTag::System)
+        );
+        assert_eq!(
+            classify_double_missing_bits_for_version(DOUBLE_MISSING_DOT_BITS, FormatVersion::V105),
+            None
+        );
+        assert_eq!(
+            classify_double_missing_bits_for_version(V105_DOUBLE_MISSING_BITS, FormatVersion::V108),
             None
         );
     }

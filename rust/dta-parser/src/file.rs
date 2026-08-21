@@ -1869,7 +1869,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         )?;
         let data_type = expansion[0];
         let length = if layout.expansion_length_width == 2 {
-            i32::from(read_u16(
+            i32::from(read_i16(
                 &expansion,
                 1,
                 byte_order,
@@ -2158,27 +2158,16 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     Ok(tables)
 }
 
-fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
+fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     metadata: &DtaMetadata,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     encoding: TextEncoding,
+    legacy_name_width: usize,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
-    if !modern
-        && LegacyLayout::for_version(metadata.format_version).value_label_layout
-            == LegacyValueLabelLayout::Fixed8
-    {
-        return read_fixed8_value_labels_streaming(
-            reader,
-            metadata,
-            scratch,
-            should_interrupt,
-            encoding,
-        );
-    }
     let name_width = if modern {
         match metadata.format_version {
             FormatVersion::V117 => 33_u16,
@@ -2186,10 +2175,8 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             _ => unreachable!("modern release expected"),
         }
     } else {
-        u16::try_from(
-            LegacyLayout::for_version(metadata.format_version).value_label_table_name_width,
-        )
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
+        u16::try_from(legacy_name_width)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
     };
     let section_end = if modern {
         metadata.section_offsets.stata_data_close
@@ -2463,6 +2450,75 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         ensure_absolute("end_of_file", cursor, metadata.section_offsets.end_of_file)?;
     }
     Ok(tables)
+}
+
+fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    metadata: &DtaMetadata,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    encoding: TextEncoding,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    if metadata.format_version.is_modern() {
+        return read_offset_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+            0,
+        );
+    }
+    let layout = LegacyLayout::for_version(metadata.format_version);
+    if metadata.format_version == FormatVersion::V105 {
+        return read_offset_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+            33,
+        )
+        .or_else(|_| {
+            read_fixed8_value_labels_streaming(
+                reader,
+                metadata,
+                scratch,
+                should_interrupt,
+                encoding,
+            )
+        });
+    }
+    let primary = match layout.value_label_layout {
+        LegacyValueLabelLayout::Fixed8 => read_fixed8_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+        ),
+        LegacyValueLabelLayout::OffsetTable => read_offset_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+            layout.value_label_table_name_width,
+        ),
+    };
+    match metadata.format_version {
+        FormatVersion::V108 => primary.or_else(|_| {
+            read_offset_value_labels_streaming(
+                reader,
+                metadata,
+                scratch,
+                should_interrupt,
+                encoding,
+                33,
+            )
+        }),
+        _ => primary,
+    }
 }
 
 fn validate_layout<R: Read + Seek>(
