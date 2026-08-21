@@ -72,18 +72,18 @@ var LEGACY_TYPE_CODES = {
   254: { type: "float", width: 4 },
   255: { type: "double", width: 8 }
 };
+var PRE111_TYPE_CODES = {
+  98: { type: "byte", width: 1 },
+  105: { type: "int", width: 2 },
+  108: { type: "long", width: 4 },
+  102: { type: "float", width: 4 },
+  100: { type: "double", width: 8 }
+};
 var MAX_STR_WIDTH_LEGACY = 244;
 function byte_width_for_legacy_type_code(code, format_version) {
   if (format_version < 111) {
-    const my_old_types = {
-      98: 1,
-      105: 2,
-      108: 4,
-      102: 4,
-      100: 8
-    };
-    const my_width = my_old_types[code];
-    if (my_width) return my_width;
+    const my_entry = PRE111_TYPE_CODES[code];
+    if (my_entry) return my_entry.width;
     if (code >= 128 && code <= 255) return code - 127;
   } else {
     const my_entry = LEGACY_TYPE_CODES[code];
@@ -96,15 +96,8 @@ function byte_width_for_legacy_type_code(code, format_version) {
 }
 function legacy_type_code_to_dta_type(code, format_version) {
   if (format_version < 111) {
-    const my_old_types = {
-      98: "byte",
-      105: "int",
-      108: "long",
-      102: "float",
-      100: "double"
-    };
-    const my_type = my_old_types[code];
-    if (my_type) return my_type;
+    const my_entry = PRE111_TYPE_CODES[code];
+    if (my_entry) return my_entry.type;
     if (code >= 128 && code <= 255) {
       return `str${code - 127}`;
     }
@@ -879,6 +872,24 @@ function classify_raw_double_missing_at(view, offset, little_endian) {
     my_lo_word
   );
 }
+function classify_double_missing_for_version(view, offset, little_endian, format_version) {
+  if (format_version >= 113) {
+    return classify_raw_double_missing_at(
+      view,
+      offset,
+      little_endian
+    );
+  }
+  const my_hi_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
+  const my_lo_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
+  if (my_hi_word >= 2145386496 && my_hi_word < 2147483648) {
+    return ".";
+  }
+  if (format_version === 105 && my_hi_word === 1421869056 && my_lo_word === 0) {
+    return ".";
+  }
+  return null;
+}
 function is_missing_value(value, type) {
   return classify_missing_value(value, type) !== null;
 }
@@ -983,12 +994,11 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
       );
     }
     case "double": {
-      const my_high_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
-      const my_low_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
-      const my_missing_type = format_version === 105 ? my_high_word === 1421869056 && my_low_word === 0 || my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : format_version < 113 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
+      const my_missing_type = classify_double_missing_for_version(
         view,
         offset,
-        little_endian
+        little_endian,
+        format_version
       );
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
@@ -1447,25 +1457,21 @@ function parse_old_105_entries(bytes, view, little_endian, start_pos, section_en
   const my_result = /* @__PURE__ */ new Map();
   let pos = start_pos;
   let my_known_nonzero = -1;
-  while (pos + 12 <= section_end) {
-    let my_header_has_nonzero = false;
-    for (let i = pos; i < pos + 12; i++) {
-      if (bytes[i] !== 0) {
-        my_header_has_nonzero = true;
-        break;
-      }
-    }
-    if (!my_header_has_nonzero) {
-      if (my_known_nonzero < pos) {
-        my_known_nonzero = -1;
-        for (let i = pos + 12; i < section_end; i++) {
-          if (bytes[i] !== 0) {
-            my_known_nonzero = i;
-            break;
-          }
+  while (pos < section_end) {
+    if (my_known_nonzero < pos) {
+      my_known_nonzero = -1;
+      for (let i = pos; i < section_end; i++) {
+        if (bytes[i] !== 0) {
+          my_known_nonzero = i;
+          break;
         }
       }
-      if (my_known_nonzero < pos) break;
+    }
+    if (my_known_nonzero < pos) break;
+    if (pos + 12 > section_end) {
+      throw new Error(
+        "Corrupt value label table: trailing bytes"
+      );
     }
     const my_n = view.getUint16(pos, little_endian);
     pos += 2;

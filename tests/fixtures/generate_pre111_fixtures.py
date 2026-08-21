@@ -16,15 +16,16 @@ class Layout:
     header_size: int
     dataset_label_width: int
     varname_width: int
+    value_label_name_width: int
     variable_label_width: int
     characteristic_width: int
     expansion_length_width: int
 
 
 LAYOUTS = (
-    Layout(105, 60, 32, 9, 32, 9, 2),
-    Layout(108, 109, 81, 9, 81, 9, 2),
-    Layout(110, 109, 81, 33, 81, 33, 4),
+    Layout(105, 60, 32, 9, 9, 32, 9, 2),
+    Layout(108, 109, 81, 9, 9, 81, 9, 2),
+    Layout(110, 109, 81, 33, 33, 81, 33, 4),
 )
 
 
@@ -82,7 +83,9 @@ def build(layout: Layout) -> bytes:
     descriptors.extend(bytes((len(names) + 1) * 2))
     descriptors.extend(b"".join(fixed(value, 12) for value in formats))
     descriptors.extend(
-        b"".join(fixed(value, layout.varname_width) for value in value_labels)
+        b"".join(
+            fixed(value, layout.value_label_name_width) for value in value_labels
+        )
     )
     descriptors.extend(
         b"".join(fixed(value, layout.variable_label_width) for value in variable_labels)

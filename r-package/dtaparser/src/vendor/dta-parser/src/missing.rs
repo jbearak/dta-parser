@@ -24,6 +24,8 @@ pub const DOUBLE_MISSING_DOT_BITS: u64 = 0x7fe0_0000_0000_0000;
 pub const DOUBLE_MISSING_STEP_BITS: u64 = 0x0000_0100_0000_0000;
 /// Raw IEEE-754 bits for Stata's `.z` double value.
 pub const DOUBLE_MISSING_Z_BITS: u64 = DOUBLE_MISSING_DOT_BITS + 26 * DOUBLE_MISSING_STEP_BITS;
+// Release 105 used this finite bit pattern for system-missing doubles;
+// later releases use the high-exponent sentinel range above.
 const V105_DOUBLE_MISSING_BITS: u64 = 0x54c0_0000_0000_0000;
 
 /// Stata's system missing (`.`) or one of its 26 extended tags (`.a`–`.z`).

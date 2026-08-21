@@ -1,4 +1,4 @@
-import type { MissingType, MissingValue } from './types';
+import type { FormatVersion, MissingType, MissingValue } from './types';
 type NumericDtaType = 'byte' | 'int' | 'long' | 'float' | 'double';
 export declare const FLOAT_MISSING_DOT_RAW = 2130706432;
 export declare const FLOAT_MISSING_STEP_RAW = 2048;
@@ -15,6 +15,7 @@ export declare function make_missing_value(missing_type: MissingType): MissingVa
 export declare function is_missing_value_object(value: unknown): value is MissingValue;
 export declare function classify_raw_float_missing(raw_value: number): MissingType | null;
 export declare function classify_raw_double_missing_at(view: DataView, offset: number, little_endian: boolean): MissingType | null;
+export declare function classify_double_missing_for_version(view: DataView, offset: number, little_endian: boolean, format_version: FormatVersion): MissingType | null;
 /**
  * Returns true if `value` is a Stata missing value for the
  * given type. When no type is provided, uses the double

@@ -688,7 +688,8 @@ export class DtaFile {
 // Legacy format version bytes
 const LEGACY_VERSION_BYTES = new Set([105, 108, 110, 111, 113, 114, 115]);
 
-// Minimum .dta file must have at least the version byte
+// Minimum legacy prefix: version, byte order, file type,
+// unused byte, nvar, and nobs.
 const MIN_LEGACY_HEADER = 10;
 
 function detect_and_parse_metadata(

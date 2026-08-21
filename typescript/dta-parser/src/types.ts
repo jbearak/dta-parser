@@ -133,13 +133,24 @@ export function type_code_to_dta_type(
 
 const LEGACY_TYPE_CODES: Record<
     number,
-    { type: string; width: number }
+    { type: DtaType; width: number }
 > = {
     251: { type: 'byte',   width: 1 },
     252: { type: 'int',    width: 2 },
     253: { type: 'long',   width: 4 },
     254: { type: 'float',  width: 4 },
     255: { type: 'double', width: 8 },
+};
+
+const PRE111_TYPE_CODES: Record<
+    number,
+    { type: DtaType; width: number }
+> = {
+    98: { type: 'byte', width: 1 },
+    105: { type: 'int', width: 2 },
+    108: { type: 'long', width: 4 },
+    102: { type: 'float', width: 4 },
+    100: { type: 'double', width: 8 },
 };
 
 const MAX_STR_WIDTH_LEGACY = 244;
@@ -149,11 +160,8 @@ export function byte_width_for_legacy_type_code(
     format_version: LegacyFormatVersion
 ): number {
     if (format_version < 111) {
-        const my_old_types: Record<number, number> = {
-            98: 1, 105: 2, 108: 4, 102: 4, 100: 8,
-        };
-        const my_width = my_old_types[code];
-        if (my_width) return my_width;
+        const my_entry = PRE111_TYPE_CODES[code];
+        if (my_entry) return my_entry.width;
         if (code >= 128 && code <= 255) return code - 127;
     } else {
         const my_entry = LEGACY_TYPE_CODES[code];
@@ -170,12 +178,8 @@ export function legacy_type_code_to_dta_type(
     format_version: LegacyFormatVersion
 ): DtaType {
     if (format_version < 111) {
-        const my_old_types: Record<number, DtaType> = {
-            98: 'byte', 105: 'int', 108: 'long',
-            102: 'float', 100: 'double',
-        };
-        const my_type = my_old_types[code];
-        if (my_type) return my_type;
+        const my_entry = PRE111_TYPE_CODES[code];
+        if (my_entry) return my_entry.type;
         if (code >= 128 && code <= 255) {
             return `str${code - 127}` as DtaType;
         }

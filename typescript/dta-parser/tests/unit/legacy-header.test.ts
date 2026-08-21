@@ -546,6 +546,30 @@ describe('parse_legacy_metadata', () => {
         expect(parse_value_labels(buffer, meta)).toEqual(new Map());
     });
 
+    it('rejects short nonzero release 105 value-label tails', () => {
+        const built = build_legacy_buffer({
+            version: 105, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        for (let length = 1; length < 12; length++) {
+            const complete = Buffer.concat([
+                Buffer.from(built.buffer),
+                Buffer.from([1]),
+                Buffer.alloc(length - 1),
+            ]);
+            const buffer = complete.buffer.slice(
+                complete.byteOffset,
+                complete.byteOffset + complete.byteLength
+            );
+            const meta = parse_legacy_metadata(
+                buffer, complete.byteLength
+            );
+            expect(() => parse_value_labels(buffer, meta)).toThrow(
+                'trailing bytes'
+            );
+        }
+    });
+
     it('does not misclassify release 105 fixed tables with empty labels', () => {
         const built = build_legacy_buffer({
             version: 105, nvar: 1, nobs: 0,
@@ -606,7 +630,7 @@ describe('parse_legacy_metadata', () => {
             view.setInt32(pos + 8, 0, true);
             view.setInt32(pos + 12, 6, true);
             view.setInt32(pos + 16, 1, true);
-            view.setInt32(pos + 20, 1, true);
+            view.setInt32(pos + 20, 2, true);
             text.copy(table, pos + 24);
             const complete = Buffer.concat([prefix, table]);
             const buffer = complete.buffer.slice(
@@ -616,10 +640,9 @@ describe('parse_legacy_metadata', () => {
             const meta = parse_legacy_metadata(
                 buffer, complete.byteLength
             );
-            expect(
-                parse_value_labels(buffer, meta)
-                    .get('table1')?.get(1)
-            ).toBe('first');
+            const labels = parse_value_labels(buffer, meta).get('table1');
+            expect(labels?.get(1)).toBe('first');
+            expect(labels?.get(2)).toBe('second');
         });
     }
 

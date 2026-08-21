@@ -299,25 +299,21 @@ function parse_old_105_entries(
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
     let my_known_nonzero = -1;
-    while (pos + 12 <= section_end) {
-        let my_header_has_nonzero = false;
-        for (let i = pos; i < pos + 12; i++) {
-            if (bytes[i] !== 0) {
-                my_header_has_nonzero = true;
-                break;
-            }
-        }
-        if (!my_header_has_nonzero) {
-            if (my_known_nonzero < pos) {
-                my_known_nonzero = -1;
-                for (let i = pos + 12; i < section_end; i++) {
-                    if (bytes[i] !== 0) {
-                        my_known_nonzero = i;
-                        break;
-                    }
+    while (pos < section_end) {
+        if (my_known_nonzero < pos) {
+            my_known_nonzero = -1;
+            for (let i = pos; i < section_end; i++) {
+                if (bytes[i] !== 0) {
+                    my_known_nonzero = i;
+                    break;
                 }
             }
-            if (my_known_nonzero < pos) break;
+        }
+        if (my_known_nonzero < pos) break;
+        if (pos + 12 > section_end) {
+            throw new Error(
+                'Corrupt value label table: trailing bytes'
+            );
         }
 
         const my_n = view.getUint16(pos, little_endian);

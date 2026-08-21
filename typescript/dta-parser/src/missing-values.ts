@@ -8,6 +8,7 @@
 // -----------------------------------------------------------
 
 import type {
+    FormatVersion,
     MissingType,
     MissingValue,
 } from './types';
@@ -190,6 +191,39 @@ export function classify_raw_double_missing_at(
         my_hi_word,
         my_lo_word
     );
+}
+
+export function classify_double_missing_for_version(
+    view: DataView,
+    offset: number,
+    little_endian: boolean,
+    format_version: FormatVersion
+): MissingType | null {
+    if (format_version >= 113) {
+        return classify_raw_double_missing_at(
+            view, offset, little_endian
+        );
+    }
+    const my_hi_word = little_endian
+        ? view.getUint32(offset + 4, true)
+        : view.getUint32(offset, false);
+    const my_lo_word = little_endian
+        ? view.getUint32(offset, true)
+        : view.getUint32(offset + 4, false);
+    if (
+        my_hi_word >= 0x7FE00000
+        && my_hi_word < 0x80000000
+    ) {
+        return '.';
+    }
+    if (
+        format_version === 105
+        && my_hi_word === 0x54C00000
+        && my_lo_word === 0
+    ) {
+        return '.';
+    }
+    return null;
 }
 
 /**

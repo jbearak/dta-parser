@@ -287,11 +287,11 @@ pub(crate) fn parse_legacy_metadata(
         .expect("one-byte release slice");
     let version = FormatVersion::try_from(u16::from(release))
         .map_err(|_| DtaError::InvalidRelease(release.to_string()))?;
-    let layout = LegacyLayout::for_version(version);
-    slice_at(bytes, 0, layout.header_size, "legacy header")?;
     if version.is_modern() {
         return Err(DtaError::InvalidSignature);
     }
+    let layout = LegacyLayout::for_version(version);
+    slice_at(bytes, 0, layout.header_size, "legacy header")?;
     let byte_order = match bytes[1] {
         1 => ByteOrder::Msf,
         2 => ByteOrder::Lsf,

@@ -227,12 +227,12 @@ export function parse_legacy_metadata(
         );
     }
 
-    // 5. Dataset label (81 bytes at 10-90)
+    // 5. Dataset label (release-specific width at offset 10)
     const dataset_label = read_fixed_string(
         bytes, 10, layout.dataset_label_width
     );
 
-    // 6. Skip timestamp (18 bytes at 91-108)
+    // 6. Skip the 18-byte timestamp that ends the header
 
     // 7. Compute section offsets from nvar
     const my_fmt_width = layout.format_width;
@@ -247,7 +247,7 @@ export function parse_legacy_metadata(
     }
     pos += nvar;
 
-    // -- varnames: nvar × 33 bytes --
+    // -- varnames: nvar × release-specific name width --
     const my_varnames_offset = pos;
     const the_varnames: string[] = [];
     for (let i = 0; i < nvar; i++) {
@@ -279,7 +279,7 @@ export function parse_legacy_metadata(
     }
     pos += nvar * my_fmt_width;
 
-    // -- value_label_names: nvar × 33 bytes --
+    // -- value-label names: nvar × release-specific name width --
     const my_value_label_names_offset = pos;
     const the_value_label_names: string[] = [];
     for (let i = 0; i < nvar; i++) {
@@ -293,7 +293,7 @@ export function parse_legacy_metadata(
     }
     pos += nvar * layout.value_label_name_width;
 
-    // -- variable_labels: nvar × 81 bytes --
+    // -- variable labels: nvar × release-specific label width --
     const my_variable_labels_offset = pos;
     const the_variable_labels: string[] = [];
     for (let i = 0; i < nvar; i++) {

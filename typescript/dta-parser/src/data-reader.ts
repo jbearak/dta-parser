@@ -9,7 +9,7 @@
 // -----------------------------------------------------------
 
 import {
-    classify_raw_double_missing_at,
+    classify_double_missing_for_version,
     classify_raw_float_missing,
     classify_missing_value,
     make_missing_value,
@@ -17,7 +17,6 @@ import {
 import type {
     DtaMetadata,
     FormatVersion,
-    MissingValue,
     Row,
     RowCell,
 } from './types';
@@ -120,31 +119,10 @@ function read_cell(
             );
         }
         case 'double': {
-            const my_high_word = little_endian
-                ? view.getUint32(offset + 4, true)
-                : view.getUint32(offset, false);
-            const my_low_word = little_endian
-                ? view.getUint32(offset, true)
-                : view.getUint32(offset + 4, false);
-            const my_missing_type = format_version === 105
-                ? (
-                    (my_high_word === 0x54C00000
-                    && my_low_word === 0)
-                    || (my_high_word >= 0x7FE00000
-                    && my_high_word < 0x80000000)
-                        ? '.'
-                        : null
-                )
-                : format_version < 113
-                    ? (
-                        my_high_word >= 0x7FE00000
-                        && my_high_word < 0x80000000
-                            ? '.'
-                            : null
-                    )
-                    : classify_raw_double_missing_at(
-                        view, offset, little_endian
-                    );
+            const my_missing_type =
+                classify_double_missing_for_version(
+                    view, offset, little_endian, format_version
+                );
             if (my_missing_type) {
                 return make_missing_value(my_missing_type);
             }
