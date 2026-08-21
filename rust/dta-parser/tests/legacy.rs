@@ -75,6 +75,134 @@ fn synthetic_v113_msf() -> Vec<u8> {
     synthetic_legacy_msf(113)
 }
 
+fn synthetic_pre111_msf(version: u8) -> Vec<u8> {
+    let (
+        header_size,
+        label_width,
+        name_width,
+        value_label_name_width,
+        variable_label_width,
+        expansion_width,
+    ) = match version {
+        105 => (60, 32, 9, 9, 32, 2),
+        108 => (109, 81, 9, 9, 81, 2),
+        110 => (109, 81, 33, 33, 81, 4),
+        _ => panic!("unsupported synthetic release {version}"),
+    };
+    let nvar = 3_usize;
+    let fixed_end = header_size
+        + nvar
+        + nvar * name_width
+        + (nvar + 1) * 2
+        + nvar * 12
+        + nvar * value_label_name_width
+        + nvar * variable_label_width;
+    let mut bytes = vec![0_u8; fixed_end];
+    bytes[0] = version;
+    bytes[1] = 1;
+    bytes[2] = 1;
+    bytes[4..6].copy_from_slice(&(nvar as u16).to_be_bytes());
+    bytes[6..10].copy_from_slice(&1_i32.to_be_bytes());
+    bytes[10..16].copy_from_slice(b"legacy");
+    assert!(10 + label_width <= header_size - 18);
+
+    let types = header_size;
+    bytes[types..types + nvar].copy_from_slice(&[b'b', b'i', 0x82]);
+    let varnames = types + nvar;
+    bytes[varnames..varnames + 1].copy_from_slice(b"b");
+    bytes[varnames + name_width..varnames + name_width + 1].copy_from_slice(b"i");
+    bytes[varnames + 2 * name_width..varnames + 2 * name_width + 2].copy_from_slice(b"s3");
+    let formats = varnames + nvar * name_width + (nvar + 1) * 2;
+    bytes[formats..formats + 5].copy_from_slice(b"%8.0g");
+    bytes[formats + 12..formats + 17].copy_from_slice(b"%8.0g");
+    bytes[formats + 24..formats + 27].copy_from_slice(b"%3s");
+    let value_label_names = formats + nvar * 12;
+    bytes[value_label_names..value_label_names + 5].copy_from_slice(b"codes");
+    let variable_labels = value_label_names + nvar * value_label_name_width;
+    bytes[variable_labels..variable_labels + 6].copy_from_slice(b"status");
+
+    let mut note = vec![0_u8; 2 * name_width];
+    note[..4].copy_from_slice(b"_dta");
+    note[name_width..name_width + 5].copy_from_slice(b"note1");
+    note.extend_from_slice(b"old note\0");
+    bytes.push(1);
+    if expansion_width == 2 {
+        bytes.extend_from_slice(&(note.len() as u16).to_be_bytes());
+    } else {
+        bytes.extend_from_slice(&(note.len() as i32).to_be_bytes());
+    }
+    bytes.extend_from_slice(&note);
+    bytes.push(0);
+    bytes.extend(std::iter::repeat_n(0, expansion_width));
+
+    bytes.push(127);
+    bytes.extend_from_slice(&321_i16.to_be_bytes());
+    bytes.extend_from_slice(b"abc");
+
+    bytes.extend_from_slice(&20_i32.to_be_bytes());
+    let table_name = bytes.len();
+    bytes.resize(table_name + 33, 0);
+    bytes[table_name..table_name + 5].copy_from_slice(b"codes");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&1_i32.to_be_bytes());
+    bytes.extend_from_slice(&4_i32.to_be_bytes());
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&127_i32.to_be_bytes());
+    bytes.extend_from_slice(b"NA\0\0");
+    bytes
+}
+
+#[test]
+fn decodes_pre111_layouts_types_expansions_missing_and_value_labels_with_file_parity() {
+    for (release, expected_version, expected_data_offset) in [
+        (105, FormatVersion::V105, 290_u64),
+        (108, FormatVersion::V108, 486_u64),
+        (110, FormatVersion::V110, 682_u64),
+    ] {
+        let bytes = synthetic_pre111_msf(release);
+        let slice = read_dta(&bytes).unwrap_or_else(|error| panic!("release {release}: {error}"));
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        let file_data = file.read().unwrap();
+        assert_eq!(file_data, slice);
+
+        assert_eq!(slice.metadata.format_version, expected_version);
+        assert_eq!(slice.metadata.section_offsets.data, expected_data_offset);
+        assert_eq!(slice.metadata.dataset_label, "legacy");
+        assert_eq!(slice.metadata.notes, ["old note"]);
+        assert_eq!(
+            slice.metadata.variables[0].dta_type,
+            dta_parser::DtaType::Byte
+        );
+        assert_eq!(slice.metadata.variables[0].type_code, u16::from(b'b'));
+        assert_eq!(
+            slice.metadata.variables[2].dta_type,
+            dta_parser::DtaType::FixedString(3)
+        );
+        assert_eq!(slice.metadata.variables[2].type_code, 0x82);
+
+        let ColumnValues::Byte {
+            values,
+            missing_tags,
+        } = &slice.columns[0].values
+        else {
+            panic!("byte column expected");
+        };
+        assert_eq!(values, &[127]);
+        assert_eq!(missing_tags, &[Some(MissingTag::System)]);
+        let ColumnValues::FixedString { values } = &slice.columns[2].values else {
+            panic!("string column expected");
+        };
+        assert_eq!(values, &["abc"]);
+        let entry = slice
+            .value_label_table("codes")
+            .unwrap()
+            .entry(127)
+            .unwrap();
+        assert_eq!(entry.label, "NA");
+        assert_eq!(entry.missing_tag, None);
+    }
+}
+
 #[test]
 fn decodes_checked_legacy_fixtures_and_value_labels() {
     let name = "all_types_v115.dta";

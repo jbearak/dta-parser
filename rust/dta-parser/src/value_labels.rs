@@ -1,4 +1,5 @@
 use crate::endian::{checked_add, checked_mul, expect_at, offset_to_usize, read_i32, slice_at};
+use crate::legacy::LegacyLayout;
 use crate::text::{field_bytes, is_utf8_boundary, TextEncoding};
 use crate::{
     missing::classify_long_missing_for_version, DtaError, DtaMetadata, FormatVersion,
@@ -13,13 +14,14 @@ const STATA_DATA_CLOSE: &[u8] = b"</stata_dta>";
 const RESERVED_WIDTH: usize = 3;
 
 fn name_width(version: FormatVersion) -> Result<usize, DtaError> {
-    match version {
-        FormatVersion::V111 | FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 => {
-            Ok(33)
-        }
-        FormatVersion::V117 => Ok(33),
-        FormatVersion::V118 | FormatVersion::V119 => Ok(129),
+    if version.is_modern() {
+        return match version {
+            FormatVersion::V117 => Ok(33),
+            FormatVersion::V118 | FormatVersion::V119 => Ok(129),
+            _ => unreachable!("modern release expected"),
+        };
     }
+    Ok(LegacyLayout::for_version(version).value_label_table_name_width)
 }
 
 fn parse_table(
