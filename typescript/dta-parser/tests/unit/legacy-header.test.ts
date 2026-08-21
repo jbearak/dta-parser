@@ -451,43 +451,52 @@ describe('parse_legacy_metadata', () => {
         });
     }
 
-    it('parses release 105 fixed-width value labels', () => {
+    it('parses release 105 fixed-width value-label tables', () => {
         const built = build_legacy_buffer({
             version: 105, nvar: 1, nobs: 0,
             type_codes: [105], varnames: ['answer'],
         });
         const prefix = Buffer.from(built.buffer);
         const table = Buffer.alloc(12 + 2 + 8);
-        const view = new DataView(table.buffer, table.byteOffset, table.byteLength);
+        const view = new DataView(
+            table.buffer, table.byteOffset, table.byteLength
+        );
         view.setUint16(0, 1, true);
         table.write('yesno', 2, 'latin1');
         view.setInt16(12, 1, true);
         table.write('yes', 14, 'latin1');
         const complete = Buffer.concat([prefix, table]);
         const buffer = complete.buffer.slice(
-            complete.byteOffset, complete.byteOffset + complete.byteLength
+            complete.byteOffset,
+            complete.byteOffset + complete.byteLength
         );
-        const meta = parse_legacy_metadata(buffer, complete.byteLength);
-        expect(parse_value_labels(buffer, meta).get('yesno')?.get(1)).toBe('yes');
+        const meta = parse_legacy_metadata(
+            buffer, complete.byteLength
+        );
+        expect(
+            parse_value_labels(buffer, meta).get('yesno')?.get(1)
+        ).toBe('yes');
     });
 
-    for (const version of [108, 110] as const) {
+    for (const version of [105, 108, 110] as const) {
+        const table_name_width = version === 108 ? 9 : 33;
         it(`parses release ${version} variable-length value labels`, () => {
             const built = build_legacy_buffer({
                 version, nvar: 1, nobs: 0,
                 type_codes: [105], varnames: ['answer'],
             });
             const prefix = Buffer.from(built.buffer);
-            const name_width = version === 108 ? 9 : 33;
             const text = Buffer.from('yes\0', 'latin1');
             const payload_size = 8 + 4 + 4 + text.length;
-            const table = Buffer.alloc(4 + name_width + 3 + payload_size);
+            const table = Buffer.alloc(
+                4 + table_name_width + 3 + payload_size
+            );
             const view = new DataView(
                 table.buffer, table.byteOffset, table.byteLength
             );
-            view.setInt32(0, table.byteLength - 4, true);
-            table.write('yesno', 4, 'latin1');
-            let pos = 4 + name_width + 3;
+            view.setInt32(0, payload_size, true);
+            table.write('table1', 4, 'latin1');
+            const pos = 4 + table_name_width + 3;
             view.setInt32(pos, 1, true);
             view.setInt32(pos + 4, text.length, true);
             view.setInt32(pos + 8, 0, true);
@@ -502,7 +511,8 @@ describe('parse_legacy_metadata', () => {
                 buffer, complete.byteLength
             );
             expect(
-                parse_value_labels(buffer, meta).get('yesno')?.get(1)
+                parse_value_labels(buffer, meta)
+                    .get('table1')?.get(1)
             ).toBe('yes');
         });
     }

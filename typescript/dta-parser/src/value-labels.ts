@@ -23,7 +23,7 @@ const LBL_CLOSE_TAG_LENGTH = 6; // "</lbl>"
 
 // Label name field widths by format version
 const LABEL_NAME_WIDTH: Record<number, number> = {
-    105: 9,
+    105: 33,
     108: 9,
     110: 33,
     111: 33,
@@ -276,7 +276,9 @@ function parse_old_105_entries(
         );
         pos += 10; // name plus one padding byte
         if (pos + my_n * 10 > section_end) {
-            throw new Error('Corrupt value label table: truncated entry');
+            throw new Error(
+                'Corrupt value label table: truncated entry'
+            );
         }
         const the_codes: number[] = [];
         for (let i = 0; i < my_n; i++) {
@@ -293,6 +295,27 @@ function parse_old_105_entries(
         my_result.set(my_name, my_labels);
     }
     return my_result;
+}
+
+function release_105_uses_variable_labels(
+    view: DataView,
+    little_endian: boolean,
+    start_pos: number,
+    section_end: number
+): boolean {
+    const my_payload_start = start_pos + 4 + 33 + 3;
+    if (my_payload_start + 8 > section_end) return false;
+    const my_table_len = view.getInt32(start_pos, little_endian);
+    const my_n = view.getInt32(my_payload_start, little_endian);
+    const my_text_len = view.getInt32(
+        my_payload_start + 4, little_endian
+    );
+    if (my_table_len <= 0 || my_n < 0 || my_text_len < 0) {
+        return false;
+    }
+    const my_payload_len = 8 + my_n * 8 + my_text_len;
+    return my_payload_len <= my_table_len
+        && my_payload_start + my_payload_len <= section_end;
 }
 
 // -----------------------------------------------------------
@@ -336,7 +359,10 @@ export function parse_value_labels(
         metadata.section_offsets.stata_data_close
         - base_offset;
 
-    if (metadata.format_version === 105) {
+    if (metadata.format_version === 105
+        && !release_105_uses_variable_labels(
+            view, little_endian, my_start_pos, my_section_end
+        )) {
         return parse_old_105_entries(
             bytes, view, little_endian,
             my_start_pos, my_section_end
