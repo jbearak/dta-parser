@@ -135,10 +135,14 @@ function build_legacy_buffer(opts: {
     }
     pos += nvar;
 
-    // Varnames (33 bytes each)
+    // Varnames (release-specific width)
     for (let i = 0; i < nvar; i++) {
         const my_name = varnames[i] || `v${i}`;
-        for (let j = 0; j < my_name.length; j++) {
+        for (
+            let j = 0;
+            j < my_name.length && j < varname_width - 1;
+            j++
+        ) {
             my_buf[pos + i * varname_width + j] =
                 my_name.charCodeAt(j);
         }
@@ -158,13 +162,13 @@ function build_legacy_buffer(opts: {
     }
     pos += nvar * fmt_width;
 
-    // Value label names (33 bytes each) — empty
+    // Value label names (release-specific width) — empty
     pos += nvar * value_label_name_width;
 
-    // Variable labels (81 bytes each) — empty
+    // Variable labels (release-specific width) — empty
     pos += nvar * variable_label_width;
 
-    // Expansion fields terminator (5 zero bytes)
+    // Expansion-fields terminator (release-specific width)
     pos += expansion_header_size;
 
     // Data section — fill with zeros (no observation data)
@@ -280,6 +284,23 @@ describe('parse_legacy_metadata', () => {
         expect(metadata.dataset_label).toBe('x'.repeat(31));
         expect(metadata.variables[0].type).toBe('int');
         expect(metadata.variables[0].name).toBe('answer');
+    });
+
+    it('bounds release 105 variable names to their descriptor field', () => {
+        const { buffer, file_size } = build_legacy_buffer({
+            version: 105,
+            nvar: 1,
+            nobs: 0,
+            type_codes: [105],
+            varnames: ['answer-is-much-too-long'],
+        });
+
+        const metadata = parse_legacy_metadata(buffer, file_size);
+        expect(metadata.variables[0].name).toBe('answer-i');
+        const bytes = new Uint8Array(buffer);
+        const sortlist_start = 60 + 1 + 9;
+        expect(bytes.slice(sortlist_start, sortlist_start + 4))
+            .toEqual(new Uint8Array(4));
     });
 
     it('parses format 114 header', () => {
