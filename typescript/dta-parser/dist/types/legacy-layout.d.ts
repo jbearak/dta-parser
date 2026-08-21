@@ -7,8 +7,6 @@ export interface LegacyLayout {
     value_label_name_width: number;
     variable_label_width: number;
     expansion_length_width: 2 | 4;
-    modern_type_codes: boolean;
-    modern_value_labels: boolean;
 }
 export declare function legacy_layout_for_version(version: LegacyFormatVersion): LegacyLayout;
 export declare function legacy_expansion_header_size(layout: LegacyLayout): number;

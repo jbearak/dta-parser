@@ -48,7 +48,11 @@ def build(layout: Layout) -> bytes:
     # are encoded as 0x7f plus their byte width.
     types = bytes((ord("b"), ord("i"), ord("l"), ord("f"), ord("d"), 0x7F + 6))
     formats = (b"%8.0g", b"%8.0g", b"%12.0g", b"%9.0g", b"%10.0g", b"%6s")
-    value_labels = (b"b_labels", b"", b"", b"", b"", b"")
+    value_labels = (
+        (b"b_labels", b"", b"", b"", b"", b"")
+        if layout.release == 110
+        else (b"", b"", b"", b"", b"", b"")
+    )
     variable_labels = (
         b"Byte value",
         b"Integer value",
@@ -105,15 +109,15 @@ def build(layout: Layout) -> bytes:
     data.extend(struct.pack("<Q", 0x7FE0000000000000))
     data.extend(fixed(b"", 6))
 
-    text = b"One\0"
-    payload = struct.pack("<ii", 1, len(text))
-    payload += struct.pack("<i", 0)
-    payload += struct.pack("<i", 1)
-    payload += text
-    table = struct.pack("<i", len(payload))
-    # Legacy value-label table names remain 33 bytes even when descriptor names
-    # are 9 bytes in releases 105 and 108.
-    table += fixed(b"b_labels", 33) + bytes(3) + payload
+    table = b""
+    if layout.release == 110:
+        text = b"One\0"
+        payload = struct.pack("<ii", 1, len(text))
+        payload += struct.pack("<i", 0)
+        payload += struct.pack("<i", 1)
+        payload += text
+        table = struct.pack("<i", len(payload))
+        table += fixed(b"b_labels", 33) + bytes(3) + payload
 
     return bytes(header + descriptors + characteristics + data + table)
 

@@ -1,5 +1,7 @@
-use crate::endian::{checked_add, checked_mul, expect_at, offset_to_usize, read_i32, slice_at};
-use crate::legacy::LegacyLayout;
+use crate::endian::{
+    checked_add, checked_mul, expect_at, offset_to_usize, read_i16, read_i32, read_u16, slice_at,
+};
+use crate::legacy::{LegacyLayout, LegacyValueLabelLayout};
 use crate::text::{field_bytes, is_utf8_boundary, TextEncoding};
 use crate::{
     missing::classify_long_missing_for_version, DtaError, DtaMetadata, FormatVersion,
@@ -22,6 +24,90 @@ fn name_width(version: FormatVersion) -> Result<usize, DtaError> {
         };
     }
     Ok(LegacyLayout::for_version(version).value_label_table_name_width)
+}
+
+fn parse_fixed8_table(
+    bytes: &[u8],
+    metadata: &DtaMetadata,
+    table_start: usize,
+    encoding: TextEncoding,
+) -> Result<(ValueLabelTable, usize), DtaError> {
+    const NAME_WIDTH: usize = 9;
+    const PADDING_WIDTH: usize = 1;
+    const LABEL_WIDTH: usize = 8;
+
+    let entry_count = usize::from(read_u16(
+        bytes,
+        table_start,
+        metadata.byte_order,
+        "legacy value-label entry count",
+    )?);
+    let name_start = checked_add(table_start, 2, "legacy value-label table name")?;
+    let name = encoding.decode(field_bytes(slice_at(
+        bytes,
+        name_start,
+        NAME_WIDTH,
+        "legacy value-label table name",
+    )?));
+    let values_start = checked_add(
+        checked_add(name_start, NAME_WIDTH, "legacy value-label table name")?,
+        PADDING_WIDTH,
+        "legacy value-label padding",
+    )?;
+    slice_at(
+        bytes,
+        values_start - PADDING_WIDTH,
+        PADDING_WIDTH,
+        "legacy value-label padding",
+    )?;
+    let labels_start = checked_add(
+        values_start,
+        checked_mul(entry_count, 2, "legacy value-label values")?,
+        "legacy value-label labels",
+    )?;
+    let table_end = checked_add(
+        labels_start,
+        checked_mul(entry_count, LABEL_WIDTH, "legacy value-label labels")?,
+        "legacy value-label table",
+    )?;
+    slice_at(
+        bytes,
+        table_start,
+        table_end - table_start,
+        "legacy value-label table",
+    )?;
+
+    let mut entries = Vec::with_capacity(entry_count);
+    for entry_index in 0..entry_count {
+        let value_at = checked_add(
+            values_start,
+            checked_mul(entry_index, 2, "legacy value-label value")?,
+            "legacy value-label value",
+        )?;
+        let label_at = checked_add(
+            labels_start,
+            checked_mul(entry_index, LABEL_WIDTH, "legacy value-label text")?,
+            "legacy value-label text",
+        )?;
+        let value = i32::from(read_i16(
+            bytes,
+            value_at,
+            metadata.byte_order,
+            "legacy value-label value",
+        )?);
+        let label = encoding.decode(field_bytes(slice_at(
+            bytes,
+            label_at,
+            LABEL_WIDTH,
+            "legacy value-label text",
+        )?));
+        entries.push(ValueLabelEntry {
+            value,
+            missing_tag: classify_long_missing_for_version(value, metadata.format_version),
+            label,
+        });
+    }
+    Ok((ValueLabelTable { name, entries }, table_end))
 }
 
 fn parse_table(
@@ -307,10 +393,22 @@ pub(crate) fn parse_value_labels_section(
                 actual: bytes.len() as u64,
             });
         }
+        let layout = LegacyLayout::for_version(metadata.format_version);
         let mut cursor = start;
         let mut tables = Vec::new();
         while cursor < end {
-            let (table, next) = parse_table(bytes, metadata, cursor, name_width, false, encoding)?;
+            if bytes[cursor..end].iter().all(|byte| *byte == 0) {
+                cursor = end;
+                break;
+            }
+            let (table, next) = match layout.value_label_layout {
+                LegacyValueLabelLayout::Fixed8 => {
+                    parse_fixed8_table(bytes, metadata, cursor, encoding)?
+                }
+                LegacyValueLabelLayout::OffsetTable => {
+                    parse_table(bytes, metadata, cursor, name_width, false, encoding)?
+                }
+            };
             if next <= cursor {
                 return Err(DtaError::ArithmeticOverflow("legacy value-label cursor"));
             }

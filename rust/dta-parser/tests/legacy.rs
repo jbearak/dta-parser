@@ -188,14 +188,18 @@ fn generated_pre111_fixtures_decode_expected_semantics() {
         assert_eq!(data.metadata.notes, [format!("Release {release} note")]);
         assert_eq!(data.row_count, 2);
         assert_eq!(data.columns.len(), 6);
-        assert_eq!(
-            data.value_label_table("b_labels")
-                .unwrap()
-                .entry(1)
-                .unwrap()
-                .label,
-            "One"
-        );
+        if release == 110 {
+            assert_eq!(
+                data.value_label_table("b_labels")
+                    .unwrap()
+                    .entry(1)
+                    .unwrap()
+                    .label,
+                "One"
+            );
+        } else {
+            assert!(data.value_label_tables.is_empty());
+        }
         let ColumnValues::FixedString { values } = &data.columns[5].values else {
             panic!("release {release}: text must be a fixed string");
         };

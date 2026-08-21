@@ -157,7 +157,7 @@ describe('data browser smoke test', () => {
                 DtaFile.open(my_ancient_path)
             ).rejects.toThrow(
                 'Unsupported .dta format: only ' +
-                'Stata 4+ files (formats 105, 108, 110-111, ' +
+                'Stata 5+ files (formats 105, 108, 110-111, ' +
                 '113-115 and 117-119) are supported'
             );
         } finally {
