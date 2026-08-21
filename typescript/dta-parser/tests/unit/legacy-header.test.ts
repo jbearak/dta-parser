@@ -459,7 +459,7 @@ describe('parse_legacy_metadata', () => {
         });
     }
 
-    it('uses the release 105 double missing sentinel only', () => {
+    it('accepts both release 105 double missing encodings', () => {
         const built = build_legacy_buffer({
             version: 105, nvar: 1, nobs: 2,
             type_codes: [100], varnames: ['value'],
@@ -477,8 +477,7 @@ describe('parse_legacy_metadata', () => {
             built.buffer, meta, 0, 2
         );
         expect(rows[0][0]).toEqual(make_missing_value('.'));
-        expect(typeof rows[1][0]).toBe('number');
-        expect(Number.isFinite(rows[1][0] as number)).toBe(true);
+        expect(rows[1][0]).toEqual(make_missing_value('.'));
     });
 
     it('parses release 105 fixed-width value-label tables', () => {

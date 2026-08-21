@@ -128,8 +128,10 @@ function read_cell(
                 : view.getUint32(offset + 4, false);
             const my_missing_type = format_version === 105
                 ? (
-                    my_high_word === 0x54C00000
-                    && my_low_word === 0
+                    (my_high_word === 0x54C00000
+                    && my_low_word === 0)
+                    || (my_high_word >= 0x7FE00000
+                    && my_high_word < 0x80000000)
                         ? '.'
                         : null
                 )

@@ -247,7 +247,9 @@ pub(crate) fn classify_double_missing_bits_for_version(
     version: FormatVersion,
 ) -> Option<MissingTag> {
     if version == FormatVersion::V105 {
-        return (bits == V105_DOUBLE_MISSING_BITS).then_some(MissingTag::System);
+        return (bits == V105_DOUBLE_MISSING_BITS
+            || (DOUBLE_MISSING_DOT_BITS..0x8000_0000_0000_0000).contains(&bits))
+        .then_some(MissingTag::System);
     }
     if matches!(
         version,
@@ -321,14 +323,14 @@ mod tests {
     }
 
     #[test]
-    fn release_105_uses_its_historical_double_missing_sentinel() {
+    fn release_105_accepts_both_double_missing_encodings() {
         assert_eq!(
             classify_double_missing_bits_for_version(V105_DOUBLE_MISSING_BITS, FormatVersion::V105),
             Some(MissingTag::System)
         );
         assert_eq!(
             classify_double_missing_bits_for_version(DOUBLE_MISSING_DOT_BITS, FormatVersion::V105),
-            None
+            Some(MissingTag::System)
         );
         assert_eq!(
             classify_double_missing_bits_for_version(V105_DOUBLE_MISSING_BITS, FormatVersion::V108),

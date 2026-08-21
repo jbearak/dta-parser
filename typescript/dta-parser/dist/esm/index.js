@@ -985,7 +985,7 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
     case "double": {
       const my_high_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
       const my_low_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
-      const my_missing_type = format_version === 105 ? my_high_word === 1421869056 && my_low_word === 0 ? "." : null : format_version < 113 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
+      const my_missing_type = format_version === 105 ? my_high_word === 1421869056 && my_low_word === 0 || my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : format_version < 113 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
         view,
         offset,
         little_endian

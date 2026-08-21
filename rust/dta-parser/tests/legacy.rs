@@ -310,6 +310,23 @@ fn accepts_alternate_release_105_and_108_offset_label_tables() {
 }
 
 #[test]
+fn legacy_value_label_zero_padding_has_slice_file_parity() {
+    for release in [105, 108, 110, 111] {
+        let mut bytes = if matches!(release, 105 | 108) {
+            with_offset_value_labels(synthetic_pre111_msf(release))
+        } else if release == 110 {
+            synthetic_pre111_msf(release)
+        } else {
+            v111_fixture()
+        };
+        bytes.extend_from_slice(&[0; 3]);
+        let slice = read_dta(&bytes).unwrap();
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        assert_eq!(file.read().unwrap(), slice);
+    }
+}
+
+#[test]
 fn alternate_value_label_layouts_do_not_fallback_after_selection() {
     for release in [105, 108] {
         let mut bytes = with_offset_value_labels(synthetic_pre111_msf(release));

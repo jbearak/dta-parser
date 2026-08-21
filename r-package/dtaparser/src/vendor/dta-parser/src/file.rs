@@ -2012,6 +2012,39 @@ fn read_i32_at<R: Read + Seek>(
     read_i32(&bytes, 0, byte_order, context)
 }
 
+fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    start: u64,
+    end: u64,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+) -> Result<bool, DtaError> {
+    let mut cursor = start;
+    while cursor < end {
+        check_cancel(should_interrupt)?;
+        let remaining = end - cursor;
+        let length = usize::try_from(remaining.min(scratch.limit as u64))
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?;
+        let bytes = read_exact_at(
+            reader,
+            cursor,
+            length,
+            scratch,
+            "reading value-label trailing bytes",
+        )?;
+        if bytes.iter().any(|byte| *byte != 0) {
+            return Ok(false);
+        }
+        cursor = checked_add_u64(
+            cursor,
+            u64::try_from(length)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?,
+            "value-label trailing bytes",
+        )?;
+    }
+    Ok(true)
+}
+
 fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     metadata: &DtaMetadata,
@@ -2028,20 +2061,9 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     let mut tables = Vec::new();
     while cursor < section_end {
         check_cancel(should_interrupt)?;
-        let remaining = section_end - cursor;
-        if remaining < 2 {
-            let trailing = read_exact_at(
-                reader,
-                cursor,
-                usize::try_from(remaining)
-                    .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?,
-                scratch,
-                "reading value-label trailing bytes",
-            )?;
-            if trailing.iter().all(|byte| *byte == 0) {
-                cursor = section_end;
-                break;
-            }
+        if remaining_is_zero_padding(reader, cursor, section_end, scratch, should_interrupt)? {
+            cursor = section_end;
+            break;
         }
         let count_bytes = read_exact_at(
             reader,
@@ -2192,6 +2214,12 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
 
     while cursor < section_end {
         check_cancel(should_interrupt)?;
+        if !modern
+            && remaining_is_zero_padding(reader, cursor, section_end, scratch, should_interrupt)?
+        {
+            cursor = section_end;
+            break;
+        }
         let table_start = cursor;
         if modern {
             let marker = read_exact_at(
