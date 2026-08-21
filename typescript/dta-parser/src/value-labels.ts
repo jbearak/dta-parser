@@ -237,13 +237,34 @@ function parse_legacy_entries(
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
+    let my_known_nonzero = -1;
 
-    while (pos + 4 <= section_end) {
+    while (pos < section_end) {
+        if (my_known_nonzero < pos) {
+            my_known_nonzero = -1;
+            for (let i = pos; i < section_end; i++) {
+                if (bytes[i] !== 0) {
+                    my_known_nonzero = i;
+                    break;
+                }
+            }
+        }
+        if (my_known_nonzero < pos) break;
+        if (pos + 4 > section_end) {
+            throw new Error(
+                'Corrupt value label table: trailing bytes'
+            );
+        }
+
         // table_length (int32)
         const my_table_len = view.getInt32(
             pos, little_endian
         );
-        if (my_table_len <= 0) break;
+        if (my_table_len <= 0) {
+            throw new Error(
+                'Corrupt value label table: invalid table length'
+            );
+        }
         pos += 4;
 
         // label_name

@@ -1438,12 +1438,32 @@ function parse_modern_entries(bytes, view, little_endian, name_width, start_pos,
 function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos, section_end) {
   const my_result = /* @__PURE__ */ new Map();
   let pos = start_pos;
-  while (pos + 4 <= section_end) {
+  let my_known_nonzero = -1;
+  while (pos < section_end) {
+    if (my_known_nonzero < pos) {
+      my_known_nonzero = -1;
+      for (let i = pos; i < section_end; i++) {
+        if (bytes[i] !== 0) {
+          my_known_nonzero = i;
+          break;
+        }
+      }
+    }
+    if (my_known_nonzero < pos) break;
+    if (pos + 4 > section_end) {
+      throw new Error(
+        "Corrupt value label table: trailing bytes"
+      );
+    }
     const my_table_len = view.getInt32(
       pos,
       little_endian
     );
-    if (my_table_len <= 0) break;
+    if (my_table_len <= 0) {
+      throw new Error(
+        "Corrupt value label table: invalid table length"
+      );
+    }
     pos += 4;
     const my_label_name = read_label_name(
       bytes,

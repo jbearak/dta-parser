@@ -2525,6 +2525,15 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             should_interrupt,
             "reading value-label text",
         )?;
+        let mut nul_positions = Vec::new();
+        for (offset, byte) in decoded_text.as_bytes().iter().enumerate() {
+            if offset % 65_536 == 0 {
+                check_cancel(should_interrupt)?;
+            }
+            if *byte == 0 {
+                nul_positions.push(offset);
+            }
+        }
         let mut entries = Vec::with_capacity(entry_count);
         for (entry_index, ((value, text_offset), decoded_offset)) in values
             .into_iter()
@@ -2539,21 +2548,22 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                     .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
                 "value-label text offset",
             )?;
-            let suffix = decoded_text.get(decoded_offset..).ok_or(
-                DtaError::InvalidValueLabelTextOffset {
-                    entry_index,
-                    offset: error_offset(label_start),
-                    text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
-                    text_length,
-                },
-            )?;
-            let Some(nul) = suffix.find('\0') else {
+            let nul_index = nul_positions.partition_point(|offset| *offset < decoded_offset);
+            let Some(&nul) = nul_positions.get(nul_index) else {
                 return Err(DtaError::MissingNulTerminator {
                     context: "value-label text",
                     offset: error_offset(label_start),
                 });
             };
-            let mut label = suffix[..nul].to_owned();
+            let mut label = decoded_text
+                .get(decoded_offset..nul)
+                .ok_or(DtaError::InvalidValueLabelTextOffset {
+                    entry_index,
+                    offset: error_offset(label_start),
+                    text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
+                    text_length,
+                })?
+                .to_owned();
             label.shrink_to_fit();
             entries.push(ValueLabelEntry {
                 value,

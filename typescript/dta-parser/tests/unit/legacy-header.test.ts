@@ -741,6 +741,61 @@ describe('parse_legacy_metadata', () => {
         }
     });
 
+    it('rejects nonzero bytes after release 108 zero padding', async () => {
+        const built = build_legacy_buffer({
+            version: 108, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        const text = Buffer.from('one\0', 'latin1');
+        const payload_size = 8 + 4 + 4 + text.length;
+        const table = Buffer.alloc(4 + 9 + 3 + payload_size);
+        const table_view = new DataView(
+            table.buffer, table.byteOffset, table.byteLength
+        );
+        table_view.setInt32(0, payload_size, true);
+        table.write('codes', 4, 'latin1');
+        const pos = 4 + 9 + 3;
+        table_view.setInt32(pos, 1, true);
+        table_view.setInt32(pos + 4, text.length, true);
+        table_view.setInt32(pos + 8, 0, true);
+        table_view.setInt32(pos + 12, 1, true);
+        text.copy(table, pos + 16);
+
+        const cases = [
+            Buffer.concat([table, Buffer.alloc(8), Buffer.from([1])]),
+            Buffer.concat([Buffer.alloc(8), Buffer.from([1])]),
+            Buffer.concat([table, Buffer.from([1, 2, 3])]),
+        ];
+        for (const [index, suffix] of cases.entries()) {
+            const complete = Buffer.concat([
+                Buffer.from(built.buffer), suffix,
+            ]);
+            const buffer = complete.buffer.slice(
+                complete.byteOffset,
+                complete.byteOffset + complete.byteLength
+            );
+            const meta = parse_legacy_metadata(
+                buffer, complete.byteLength
+            );
+            expect(() => parse_value_labels(buffer, meta)).toThrow(
+                'Corrupt value label table'
+            );
+
+            const dir = mkdtempSync(
+                join(tmpdir(), `dta-trailing-labels-${index}-`)
+            );
+            const path = join(dir, 'labels.dta');
+            try {
+                writeFileSync(path, complete);
+                await expect(DtaFile.open(path)).rejects.toThrow(
+                    'Corrupt value label table'
+                );
+            } finally {
+                rmSync(dir, { recursive: true, force: true });
+            }
+        }
+    });
+
     it('keeps in-memory and Node file-backed readers in parity for release 108', async () => {
         const built = build_legacy_buffer({
             version: 108, nvar: 2, nobs: 1,

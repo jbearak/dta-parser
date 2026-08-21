@@ -339,6 +339,12 @@ fn parse_table(
         "value-label text offset",
     )?;
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
+    let text = &payload[text_start..text_end];
+    let nul_positions: Vec<usize> = text
+        .iter()
+        .enumerate()
+        .filter_map(|(offset, byte)| (*byte == 0).then_some(offset))
+        .collect();
 
     let mut entries = Vec::with_capacity(entry_count);
     for entry_index in 0..entry_count {
@@ -393,19 +399,18 @@ fn parse_table(
             "value-label value",
         )?;
 
-        let label_start = checked_add(text_start, text_offset_usize, "value-label text")?;
-        let remaining = payload
-            .get(label_start..text_end)
-            .ok_or(DtaError::ArithmeticOverflow("value-label text bounds"))?;
-        let nul =
-            remaining
-                .iter()
-                .position(|byte| *byte == 0)
-                .ok_or(DtaError::MissingNulTerminator {
-                    context: "value-label text",
-                    offset: checked_add(payload_start, label_start, "value-label text")?,
-                })?;
-        let label = encoding.decode(&remaining[..nul]);
+        let nul_index = nul_positions.partition_point(|offset| *offset < text_offset_usize);
+        let Some(&nul) = nul_positions.get(nul_index) else {
+            return Err(DtaError::MissingNulTerminator {
+                context: "value-label text",
+                offset: checked_add(
+                    payload_start,
+                    checked_add(text_start, text_offset_usize, "value-label text")?,
+                    "value-label text",
+                )?,
+            });
+        };
+        let label = encoding.decode(&text[text_offset_usize..nul]);
         entries.push(ValueLabelEntry {
             value,
             missing_tag: classify_long_missing_for_version(value, metadata.format_version),
