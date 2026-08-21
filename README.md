@@ -104,7 +104,7 @@ package installation does not require Python.
 
 ## Conformance and benchmarks
 
-`conformance/cases.json` identifies 22 immutable fixture files and eight
+`conformance/cases.json` identifies 22 immutable fixture files and nine
 generated or derived cases. The shared contract covers format and byte order,
 metadata, rows and columns, storage types, labels, formats, value-label tables,
 `strL` cells, exact missing tags, projections, row windows, and representative
