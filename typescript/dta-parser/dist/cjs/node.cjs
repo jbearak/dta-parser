@@ -1027,7 +1027,8 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
     }
     case "double": {
       const my_high_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
-      const my_missing_type = format_version < 113 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
+      const my_low_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
+      const my_missing_type = format_version === 105 ? my_high_word === 1421869056 && my_low_word === 0 ? "." : null : format_version < 113 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
         view,
         offset,
         little_endian
@@ -1493,8 +1494,8 @@ function parse_old_105_entries(bytes, view, little_endian, start_pos, section_en
   }
   return my_result;
 }
-function release_105_uses_variable_labels(view, little_endian, start_pos, section_end) {
-  const my_payload_start = start_pos + 4 + 33 + 3;
+function has_variable_label_table_framing(view, little_endian, start_pos, section_end, name_width) {
+  const my_payload_start = start_pos + 4 + name_width + 3;
   if (my_payload_start + 8 > section_end) return false;
   const my_table_len = view.getInt32(start_pos, little_endian);
   const my_n = view.getInt32(my_payload_start, little_endian);
@@ -1506,24 +1507,25 @@ function release_105_uses_variable_labels(view, little_endian, start_pos, sectio
     return false;
   }
   const my_payload_len = 8 + my_n * 8 + my_text_len;
-  return my_payload_len <= my_table_len && my_payload_start + my_payload_len <= section_end;
+  return my_payload_len === my_table_len && my_payload_start + my_payload_len <= section_end;
 }
 function parse_value_labels(buffer, metadata, base_offset = 0) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const little_endian = metadata.byte_order === "LSF";
-  const my_name_width = LABEL_NAME_WIDTH[metadata.format_version];
+  let my_name_width = LABEL_NAME_WIDTH[metadata.format_version];
   const my_legacy = is_legacy_format(
     metadata.format_version
   );
   const my_tag_skip = my_legacy ? 0 : VALUE_LABELS_TAG_LENGTH;
   const my_start_pos = metadata.section_offsets.value_labels - base_offset + my_tag_skip;
   const my_section_end = metadata.section_offsets.stata_data_close - base_offset;
-  if (metadata.format_version === 105 && !release_105_uses_variable_labels(
+  if (metadata.format_version === 105 && !has_variable_label_table_framing(
     view,
     little_endian,
     my_start_pos,
-    my_section_end
+    my_section_end,
+    33
   )) {
     return parse_old_105_entries(
       bytes,
@@ -1532,6 +1534,21 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
       my_start_pos,
       my_section_end
     );
+  }
+  if (metadata.format_version === 108 && !has_variable_label_table_framing(
+    view,
+    little_endian,
+    my_start_pos,
+    my_section_end,
+    9
+  ) && has_variable_label_table_framing(
+    view,
+    little_endian,
+    my_start_pos,
+    my_section_end,
+    33
+  )) {
+    my_name_width = 33;
   }
   if (my_legacy) {
     return parse_legacy_entries(
