@@ -297,13 +297,14 @@ function parse_old_105_entries(
     return my_result;
 }
 
-function release_105_uses_variable_labels(
+function has_variable_label_table_framing(
     view: DataView,
     little_endian: boolean,
     start_pos: number,
-    section_end: number
+    section_end: number,
+    name_width: number
 ): boolean {
-    const my_payload_start = start_pos + 4 + 33 + 3;
+    const my_payload_start = start_pos + 4 + name_width + 3;
     if (my_payload_start + 8 > section_end) return false;
     const my_table_len = view.getInt32(start_pos, little_endian);
     const my_n = view.getInt32(my_payload_start, little_endian);
@@ -314,7 +315,7 @@ function release_105_uses_variable_labels(
         return false;
     }
     const my_payload_len = 8 + my_n * 8 + my_text_len;
-    return my_payload_len <= my_table_len
+    return my_payload_len === my_table_len
         && my_payload_start + my_payload_len <= section_end;
 }
 
@@ -338,7 +339,7 @@ export function parse_value_labels(
     const view = new DataView(buffer);
     const little_endian = metadata.byte_order === 'LSF';
 
-    const my_name_width =
+    let my_name_width =
         LABEL_NAME_WIDTH[metadata.format_version];
 
     const my_legacy = is_legacy_format(
@@ -360,13 +361,26 @@ export function parse_value_labels(
         - base_offset;
 
     if (metadata.format_version === 105
-        && !release_105_uses_variable_labels(
-            view, little_endian, my_start_pos, my_section_end
+        && !has_variable_label_table_framing(
+            view, little_endian,
+            my_start_pos, my_section_end, 33
         )) {
         return parse_old_105_entries(
             bytes, view, little_endian,
             my_start_pos, my_section_end
         );
+    }
+
+    if (metadata.format_version === 108
+        && !has_variable_label_table_framing(
+            view, little_endian,
+            my_start_pos, my_section_end, 9
+        )
+        && has_variable_label_table_framing(
+            view, little_endian,
+            my_start_pos, my_section_end, 33
+        )) {
+        my_name_width = 33;
     }
 
     if (my_legacy) {

@@ -441,7 +441,11 @@ describe('parse_legacy_metadata', () => {
             view.setInt32(data + 3, 2147483647, true);
             view.setUint32(data + 7, 0x7f000000, true);
             view.setUint32(data + 11, 0, true);
-            view.setUint32(data + 15, 0x7fe00000, true);
+            view.setUint32(
+                data + 15,
+                version === 105 ? 0x54c00000 : 0x7fe00000,
+                true
+            );
             new Uint8Array(buffer).set([0x6f, 0x6c, 0x64], data + 19);
             expect(read_rows_from_buffer(buffer, meta, 0, 1)[0]).toEqual([
                 make_missing_value('.'), make_missing_value('.'),
@@ -450,6 +454,28 @@ describe('parse_legacy_metadata', () => {
             ]);
         });
     }
+
+    it('uses the release 105 double missing sentinel only', () => {
+        const built = build_legacy_buffer({
+            version: 105, nvar: 1, nobs: 2,
+            type_codes: [100], varnames: ['value'],
+        });
+        const meta = parse_legacy_metadata(
+            built.buffer, built.file_size
+        );
+        const view = new DataView(built.buffer);
+        const data = meta.section_offsets.data;
+        view.setUint32(data, 0, true);
+        view.setUint32(data + 4, 0x54c00000, true);
+        view.setUint32(data + 8, 0, true);
+        view.setUint32(data + 12, 0x7fe00000, true);
+        const rows = read_rows_from_buffer(
+            built.buffer, meta, 0, 2
+        );
+        expect(rows[0][0]).toEqual(make_missing_value('.'));
+        expect(typeof rows[1][0]).toBe('number');
+        expect(Number.isFinite(rows[1][0] as number)).toBe(true);
+    });
 
     it('parses release 105 fixed-width value-label tables', () => {
         const built = build_legacy_buffer({
@@ -478,9 +504,43 @@ describe('parse_legacy_metadata', () => {
         ).toBe('yes');
     });
 
-    for (const version of [105, 108, 110] as const) {
-        const table_name_width = version === 108 ? 9 : 33;
-        it(`parses release ${version} variable-length value labels`, () => {
+    it('does not misclassify release 105 fixed tables with empty labels', () => {
+        const built = build_legacy_buffer({
+            version: 105, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        const prefix = Buffer.from(built.buffer);
+        const table = Buffer.alloc(12 + 4 * 2 + 4 * 8);
+        const view = new DataView(
+            table.buffer, table.byteOffset, table.byteLength
+        );
+        view.setUint16(0, 4, true);
+        table.write('empty', 2, 'latin1');
+        for (let i = 0; i < 4; i++) {
+            view.setInt16(12 + i * 2, i, true);
+        }
+        const complete = Buffer.concat([prefix, table]);
+        const buffer = complete.buffer.slice(
+            complete.byteOffset,
+            complete.byteOffset + complete.byteLength
+        );
+        const meta = parse_legacy_metadata(
+            buffer, complete.byteLength
+        );
+        expect(
+            parse_value_labels(buffer, meta).get('empty')
+        ).toEqual(new Map([
+            [0, ''], [1, ''], [2, ''], [3, ''],
+        ]));
+    });
+
+    for (const { version, table_name_width } of [
+        { version: 105 as const, table_name_width: 33 },
+        { version: 108 as const, table_name_width: 9 },
+        { version: 108 as const, table_name_width: 33 },
+        { version: 110 as const, table_name_width: 33 },
+    ]) {
+        it(`parses release ${version} variable-length value labels with ${table_name_width}-byte names`, () => {
             const built = build_legacy_buffer({
                 version, nvar: 1, nobs: 0,
                 type_codes: [105], varnames: ['answer'],
