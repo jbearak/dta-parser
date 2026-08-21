@@ -6,13 +6,11 @@ use std::path::Path;
 use encoding_rs::CoderResult;
 
 use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
-use crate::legacy::{
-    format_width, legacy_fixed_offsets, legacy_type, HEADER_SIZE, VALUE_LABEL_NAME_WIDTH,
-    VARIABLE_LABEL_WIDTH, VARNAME_WIDTH,
-};
+use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
+use crate::value_labels::has_legacy_offset_table_framing;
 use crate::{
     missing::{
         classify_byte_missing_for_version, classify_double_missing_bits_for_version,
@@ -551,7 +549,7 @@ impl<R: Read + Seek> DtaFile<R> {
             return Err(DtaError::InvalidSignature);
         }
         let first = read_exact_at(&mut reader, 0, 1, &mut scratch, "reading signature")?;
-        let metadata = if matches!(first[0], 111 | 113..=115) {
+        let metadata = if matches!(first[0], 105 | 108 | 110 | 111 | 113..=115) {
             read_legacy_metadata(&mut reader, file_length, &mut scratch, encoding)?
         } else {
             let signature_length = MODERN_SIGNATURE.len();
@@ -1720,9 +1718,17 @@ fn read_legacy_metadata<R: Read + Seek>(
     scratch: &mut Scratch,
     encoding: TextEncoding,
 ) -> Result<DtaMetadata, DtaError> {
-    let header = read_exact_at(reader, 0, HEADER_SIZE, scratch, "reading legacy header")?;
-    let version = FormatVersion::try_from(u16::from(header[0]))
-        .map_err(|_| DtaError::InvalidRelease(header[0].to_string()))?;
+    let release = read_exact_at(reader, 0, 1, scratch, "reading legacy release")?[0];
+    let version = FormatVersion::try_from(u16::from(release))
+        .map_err(|_| DtaError::InvalidRelease(release.to_string()))?;
+    let layout = LegacyLayout::for_version(version);
+    let header = read_exact_at(
+        reader,
+        0,
+        layout.header_size,
+        scratch,
+        "reading legacy header",
+    )?;
     let encoding = encoding.resolve(version);
     let byte_order = match header[1] {
         1 => ByteOrder::Msf,
@@ -1754,7 +1760,6 @@ fn read_legacy_metadata<R: Read + Seek>(
         });
     }
 
-    let format_width = format_width(version);
     let to_u64 = |offset: usize, context: &'static str| {
         u64::try_from(offset).map_err(|_| DtaError::ArithmeticOverflow(context))
     };
@@ -1769,7 +1774,7 @@ fn read_legacy_metadata<R: Read + Seek>(
     let dataset_label = decode_range(
         reader,
         10,
-        81,
+        layout.dataset_label_width,
         encoding,
         true,
         scratch,
@@ -1819,16 +1824,20 @@ fn read_legacy_metadata<R: Read + Seek>(
             )
             .map(|value| value.0)
         };
-        let name = decode_field(varnames, VARNAME_WIDTH, "reading legacy varname")?;
-        let format = decode_field(formats, format_width, "reading legacy display format")?;
+        let name = decode_field(varnames, layout.varname_width, "reading legacy varname")?;
+        let format = decode_field(
+            formats,
+            layout.format_width,
+            "reading legacy display format",
+        )?;
         let value_label_name = decode_field(
             value_label_names,
-            VALUE_LABEL_NAME_WIDTH,
+            layout.value_label_name_width,
             "reading legacy value-label name",
         )?;
         let label = decode_field(
             variable_labels,
-            VARIABLE_LABEL_WIDTH,
+            layout.variable_label_width,
             "reading legacy variable label",
         )?;
         variables.push(VariableInfo {
@@ -1852,12 +1861,30 @@ fn read_legacy_metadata<R: Read + Seek>(
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
     let mut notes = Vec::new();
     loop {
-        let expansion =
-            read_exact_at(reader, cursor, 5, scratch, "reading legacy expansion field")?;
+        let expansion = read_exact_at(
+            reader,
+            cursor,
+            layout.expansion_header_width(),
+            scratch,
+            "reading legacy expansion field",
+        )?;
         let data_type = expansion[0];
-        let length = read_i32(&expansion, 1, byte_order, "legacy expansion-field length")?;
+        let length = if layout.expansion_length_width == 2 {
+            i32::from(read_i16(
+                &expansion,
+                1,
+                byte_order,
+                "legacy expansion-field length",
+            )?)
+        } else {
+            read_i32(&expansion, 1, byte_order, "legacy expansion-field length")?
+        };
         if data_type == 0 && length == 0 {
-            cursor = checked_add_u64(cursor, 5, "legacy expansion terminator")?;
+            cursor = checked_add_u64(
+                cursor,
+                layout.expansion_header_width() as u64,
+                "legacy expansion terminator",
+            )?;
             break;
         }
         if length < 0 {
@@ -1872,7 +1899,11 @@ fn read_legacy_metadata<R: Read + Seek>(
                 offset: error_offset(cursor),
             });
         }
-        cursor = checked_add_u64(cursor, 5, "legacy expansion header")?;
+        cursor = checked_add_u64(
+            cursor,
+            layout.expansion_header_width() as u64,
+            "legacy expansion header",
+        )?;
         let payload_length = usize::try_from(length)
             .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?;
         let payload_end = checked_add_u64(
@@ -1890,23 +1921,26 @@ fn read_legacy_metadata<R: Read + Seek>(
                     .unwrap_or(usize::MAX),
             });
         }
-        if data_type == 1 && payload_length >= 2 * VARNAME_WIDTH {
+        if data_type == 1 && payload_length >= 2 * layout.varname_width {
             let names = read_exact_at(
                 reader,
                 cursor,
-                2 * VARNAME_WIDTH,
+                2 * layout.varname_width,
                 scratch,
                 "reading legacy characteristic names",
             )?;
-            if is_dataset_note(&names[..VARNAME_WIDTH], &names[VARNAME_WIDTH..]) {
+            if is_dataset_note(
+                &names[..layout.varname_width],
+                &names[layout.varname_width..],
+            ) {
                 let value_offset = checked_add_u64(
                     cursor,
-                    u64::try_from(2 * VARNAME_WIDTH).map_err(|_| {
+                    u64::try_from(2 * layout.varname_width).map_err(|_| {
                         DtaError::ArithmeticOverflow("legacy characteristic value offset")
                     })?,
                     "legacy characteristic value offset",
                 )?;
-                let value_length = payload_length - 2 * VARNAME_WIDTH;
+                let value_length = payload_length - 2 * layout.varname_width;
                 let note = decode_range(
                     reader,
                     value_offset,
@@ -1978,22 +2012,281 @@ fn read_i32_at<R: Read + Seek>(
     read_i32(&bytes, 0, byte_order, context)
 }
 
-fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
+fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    start: u64,
+    end: u64,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    known_nonzero: &mut Option<u64>,
+) -> Result<bool, DtaError> {
+    const HEADER_PROBE_WIDTH: u64 = 12;
+
+    if known_nonzero.is_some_and(|offset| (start..end).contains(&offset)) {
+        return Ok(false);
+    }
+    let mut cursor = start;
+    while cursor < end {
+        check_cancel(should_interrupt)?;
+        let remaining = end - cursor;
+        let length = usize::try_from(remaining.min(if cursor == start {
+            HEADER_PROBE_WIDTH
+        } else {
+            scratch.limit as u64
+        }))
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?;
+        let bytes = read_exact_at(
+            reader,
+            cursor,
+            length,
+            scratch,
+            "reading value-label trailing bytes",
+        )?;
+        if let Some(index) = bytes.iter().position(|byte| *byte != 0) {
+            *known_nonzero = Some(checked_add_u64(
+                cursor,
+                u64::try_from(index)
+                    .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?,
+                "value-label trailing bytes",
+            )?);
+            return Ok(false);
+        }
+        cursor = checked_add_u64(
+            cursor,
+            u64::try_from(length)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?,
+            "value-label trailing bytes",
+        )?;
+    }
+    Ok(true)
+}
+
+fn has_legacy_offset_section_framing_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    start: u64,
+    end: u64,
+    byte_order: ByteOrder,
+    name_width: usize,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+) -> Result<bool, DtaError> {
+    let prefix_width = 4_usize
+        .checked_add(name_width)
+        .and_then(|value| value.checked_add(3))
+        .ok_or(DtaError::ArithmeticOverflow("value-label table header"))?;
+    let header_width = prefix_width
+        .checked_add(8)
+        .ok_or(DtaError::ArithmeticOverflow("value-label table header"))?;
+    let mut cursor = start;
+    let mut known_nonzero = None;
+    while cursor < end {
+        check_cancel(should_interrupt)?;
+        let remaining = end - cursor;
+        let probe_length = usize::try_from(remaining.min(header_width as u64))
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label section length"))?;
+        let probe = read_exact_at(
+            reader,
+            cursor,
+            probe_length,
+            scratch,
+            "probing legacy value-label section",
+        )?;
+        if probe.iter().all(|byte| *byte == 0) {
+            return remaining_is_zero_padding(
+                reader,
+                cursor,
+                end,
+                scratch,
+                should_interrupt,
+                &mut known_nonzero,
+            );
+        }
+        let section_length = usize::try_from(remaining)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label section length"))?;
+        if !has_legacy_offset_table_framing(&probe, byte_order, section_length, name_width) {
+            return Ok(false);
+        }
+        let declared = read_i32(&probe, 0, byte_order, "value-label table length")?;
+        let declared = u64::try_from(declared)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label table length"))?;
+        let next = checked_add_u64(
+            cursor,
+            u64::try_from(prefix_width)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label table header"))?,
+            "value-label table header",
+        )?;
+        let next = checked_add_u64(next, declared, "value-label table")?;
+        if next <= cursor || next > end {
+            return Ok(false);
+        }
+        cursor = next;
+    }
+    Ok(true)
+}
+
+fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     metadata: &DtaMetadata,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     encoding: TextEncoding,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
+    const NAME_WIDTH: usize = 9;
+    const PADDING_WIDTH: usize = 1;
+    const LABEL_WIDTH: usize = 8;
+
+    let section_end = metadata.section_offsets.end_of_file;
+    let mut cursor = metadata.section_offsets.value_labels;
+    let mut tables = Vec::new();
+    let mut known_nonzero = None;
+    while cursor < section_end {
+        check_cancel(should_interrupt)?;
+        if remaining_is_zero_padding(
+            reader,
+            cursor,
+            section_end,
+            scratch,
+            should_interrupt,
+            &mut known_nonzero,
+        )? {
+            cursor = section_end;
+            break;
+        }
+        let count_bytes = read_exact_at(
+            reader,
+            cursor,
+            2,
+            scratch,
+            "reading legacy value-label entry count",
+        )?;
+        let entry_count = usize::from(read_u16(
+            &count_bytes,
+            0,
+            metadata.byte_order,
+            "legacy value-label entry count",
+        )?);
+        cursor = checked_add_u64(cursor, 2, "legacy value-label entry count")?;
+        let (name, _) = decode_range(
+            reader,
+            cursor,
+            NAME_WIDTH,
+            encoding,
+            true,
+            scratch,
+            should_interrupt,
+            "reading legacy value-label table name",
+        )?;
+        cursor = checked_add_u64(cursor, NAME_WIDTH as u64, "legacy value-label table name")?;
+        read_exact_at(
+            reader,
+            cursor,
+            PADDING_WIDTH,
+            scratch,
+            "reading legacy value-label padding",
+        )?;
+        cursor = checked_add_u64(cursor, PADDING_WIDTH as u64, "legacy value-label padding")?;
+        let values_start = cursor;
+        let labels_start = checked_add_u64(
+            values_start,
+            u64::try_from(
+                entry_count
+                    .checked_mul(2)
+                    .ok_or(DtaError::ArithmeticOverflow("legacy value-label values"))?,
+            )
+            .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label values"))?,
+            "legacy value-label labels",
+        )?;
+        let table_end = checked_add_u64(
+            labels_start,
+            u64::try_from(
+                entry_count
+                    .checked_mul(LABEL_WIDTH)
+                    .ok_or(DtaError::ArithmeticOverflow("legacy value-label labels"))?,
+            )
+            .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label labels"))?,
+            "legacy value-label table",
+        )?;
+        if table_end > section_end {
+            return Err(DtaError::Io {
+                context: "reading legacy value-label table",
+                offset: values_start,
+                kind: ErrorKind::UnexpectedEof,
+            });
+        }
+        let mut entries = Vec::with_capacity(entry_count);
+        for entry_index in 0..entry_count {
+            check_cancel(should_interrupt)?;
+            let relative = u64::try_from(
+                entry_index
+                    .checked_mul(2)
+                    .ok_or(DtaError::ArithmeticOverflow("legacy value-label value"))?,
+            )
+            .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label value"))?;
+            let value_bytes = read_exact_at(
+                reader,
+                checked_add_u64(values_start, relative, "legacy value-label value")?,
+                2,
+                scratch,
+                "reading legacy value-label value",
+            )?;
+            let value = i32::from(read_i16(
+                &value_bytes,
+                0,
+                metadata.byte_order,
+                "legacy value-label value",
+            )?);
+            let label_offset = checked_add_u64(
+                labels_start,
+                u64::try_from(
+                    entry_index
+                        .checked_mul(LABEL_WIDTH)
+                        .ok_or(DtaError::ArithmeticOverflow("legacy value-label text"))?,
+                )
+                .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label text"))?,
+                "legacy value-label text",
+            )?;
+            let (label, _) = decode_range(
+                reader,
+                label_offset,
+                LABEL_WIDTH,
+                encoding,
+                true,
+                scratch,
+                should_interrupt,
+                "reading legacy value-label text",
+            )?;
+            entries.push(ValueLabelEntry {
+                value,
+                missing_tag: classify_long_missing_for_version(value, metadata.format_version),
+                label,
+            });
+        }
+        tables.push(ValueLabelTable { name, entries });
+        cursor = table_end;
+    }
+    ensure_absolute("end_of_file", cursor, section_end)?;
+    Ok(tables)
+}
+
+fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    metadata: &DtaMetadata,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    encoding: TextEncoding,
+    legacy_name_width: usize,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
-    let name_width: u16 = match metadata.format_version {
-        FormatVersion::V111
-        | FormatVersion::V113
-        | FormatVersion::V114
-        | FormatVersion::V115
-        | FormatVersion::V117 => 33,
-        FormatVersion::V118 | FormatVersion::V119 => 129,
+    let name_width = if modern {
+        match metadata.format_version {
+            FormatVersion::V117 => 33_u16,
+            FormatVersion::V118 | FormatVersion::V119 => 129_u16,
+            _ => unreachable!("modern release expected"),
+        }
+    } else {
+        u16::try_from(legacy_name_width)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
     };
     let section_end = if modern {
         metadata.section_offsets.stata_data_close
@@ -2005,9 +2298,23 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         cursor = expect_file_tag(reader, cursor, b"<value_labels>", "<value_labels>", scratch)?;
     }
     let mut tables = Vec::new();
+    let mut known_nonzero = None;
 
     while cursor < section_end {
         check_cancel(should_interrupt)?;
+        if !modern
+            && remaining_is_zero_padding(
+                reader,
+                cursor,
+                section_end,
+                scratch,
+                should_interrupt,
+                &mut known_nonzero,
+            )?
+        {
+            cursor = section_end;
+            break;
+        }
         let table_start = cursor;
         if modern {
             let marker = read_exact_at(
@@ -2218,6 +2525,15 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             should_interrupt,
             "reading value-label text",
         )?;
+        let mut nul_positions = Vec::new();
+        for (offset, byte) in decoded_text.as_bytes().iter().enumerate() {
+            if offset % 65_536 == 0 {
+                check_cancel(should_interrupt)?;
+            }
+            if *byte == 0 {
+                nul_positions.push(offset);
+            }
+        }
         let mut entries = Vec::with_capacity(entry_count);
         for (entry_index, ((value, text_offset), decoded_offset)) in values
             .into_iter()
@@ -2232,21 +2548,22 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                     .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
                 "value-label text offset",
             )?;
-            let suffix = decoded_text.get(decoded_offset..).ok_or(
-                DtaError::InvalidValueLabelTextOffset {
-                    entry_index,
-                    offset: error_offset(label_start),
-                    text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
-                    text_length,
-                },
-            )?;
-            let Some(nul) = suffix.find('\0') else {
+            let nul_index = nul_positions.partition_point(|offset| *offset < decoded_offset);
+            let Some(&nul) = nul_positions.get(nul_index) else {
                 return Err(DtaError::MissingNulTerminator {
                     context: "value-label text",
                     offset: error_offset(label_start),
                 });
             };
-            let mut label = suffix[..nul].to_owned();
+            let mut label = decoded_text
+                .get(decoded_offset..nul)
+                .ok_or(DtaError::InvalidValueLabelTextOffset {
+                    entry_index,
+                    offset: error_offset(label_start),
+                    text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
+                    text_length,
+                })?
+                .to_owned();
             label.shrink_to_fit();
             entries.push(ValueLabelEntry {
                 value,
@@ -2267,6 +2584,95 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         ensure_absolute("end_of_file", cursor, metadata.section_offsets.end_of_file)?;
     }
     Ok(tables)
+}
+
+fn select_legacy_value_label_layout<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    metadata: &DtaMetadata,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+) -> Result<(LegacyValueLabelLayout, usize), DtaError> {
+    let layout = LegacyLayout::for_version(metadata.format_version);
+    if !matches!(
+        metadata.format_version,
+        FormatVersion::V105 | FormatVersion::V108
+    ) {
+        return Ok((
+            layout.value_label_layout,
+            layout.value_label_table_name_width,
+        ));
+    }
+    let start = metadata.section_offsets.value_labels;
+    let end = metadata.section_offsets.end_of_file;
+    if metadata.format_version == FormatVersion::V108
+        && has_legacy_offset_section_framing_streaming(
+            reader,
+            start,
+            end,
+            metadata.byte_order,
+            9,
+            scratch,
+            should_interrupt,
+        )?
+    {
+        return Ok((LegacyValueLabelLayout::OffsetTable, 9));
+    }
+    let long_framing = has_legacy_offset_section_framing_streaming(
+        reader,
+        start,
+        end,
+        metadata.byte_order,
+        33,
+        scratch,
+        should_interrupt,
+    )?;
+    Ok(match metadata.format_version {
+        FormatVersion::V105 if long_framing => (LegacyValueLabelLayout::OffsetTable, 33),
+        FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
+        FormatVersion::V108 if long_framing => (LegacyValueLabelLayout::OffsetTable, 33),
+        _ => (
+            layout.value_label_layout,
+            layout.value_label_table_name_width,
+        ),
+    })
+}
+
+fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    metadata: &DtaMetadata,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    encoding: TextEncoding,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    if metadata.format_version.is_modern() {
+        return read_offset_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+            0,
+        );
+    }
+    let (value_label_layout, table_name_width) =
+        select_legacy_value_label_layout(reader, metadata, scratch, should_interrupt)?;
+    match value_label_layout {
+        LegacyValueLabelLayout::Fixed8 => read_fixed8_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+        ),
+        LegacyValueLabelLayout::OffsetTable => read_offset_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+            table_name_width,
+        ),
+    }
 }
 
 fn validate_layout<R: Read + Seek>(

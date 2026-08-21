@@ -15,7 +15,7 @@ untrusted \code{file} values should validate or allowlist sources before calling
 \item{encoding}{Optional source encoding override. Supported aliases are
 \code{"UTF-8"}/\code{"UTF8"}, \code{"Windows-1252"}/\code{"CP1252"}, and
 \code{"ISO-8859-1"}/\code{"latin1"}, matched case-insensitively. \code{NULL}
-uses Windows-1252 for releases 111, 113--115, and 117 and UTF-8 for releases
+uses Windows-1252 for releases 105, 108, 110--111, 113--115, and 117 and UTF-8 for releases
 118--119. The override
 applies to metadata, fixed strings, \code{strL} payloads, and value-label
 names and text. Explicit UTF-8 replaces malformed input sequences
@@ -37,7 +37,7 @@ columns and legacy or custom formats beginning \code{\%d} have class
 and \code{POSIXt} in UTC. Other Stata temporal formats remain numeric with
 their \code{format.stata} attribute.}
 \description{
-Reads Stata releases 111, 113--115, and 117--119 through the native Rust parser,
+Reads Stata releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser,
 retaining dataset and variable labels, dataset notes, formats, value labels,
 long strings, temporal classes, and Stata tagged missing values.
 }

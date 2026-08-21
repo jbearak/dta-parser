@@ -1,6 +1,8 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'bun:test';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 
 import { parse_metadata } from '../../typescript/dta-parser/src/header';
@@ -9,13 +11,14 @@ import { parse_legacy_metadata } from '../../typescript/dta-parser/src/legacy-he
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures', 'dta');
 
 function isLegacyRelease(release: number): boolean {
-    return release === 111 || (release >= 113 && release <= 115);
+    return [105, 108, 110, 111, 113, 114, 115].includes(release);
 }
 
 describe('DTA fixture inventory', () => {
     it('recognizes the exact legacy release range', () => {
-        expect([111, 113, 114, 115].every(isLegacyRelease)).toBe(true);
-        expect([112, 116, 117, 118, 119].some(isLegacyRelease)).toBe(false);
+        expect([105, 108, 110, 111, 113, 114, 115].every(isLegacyRelease)).toBe(true);
+        expect([104, 106, 107, 109, 112, 116, 117, 118, 119]
+            .some(isLegacyRelease)).toBe(false);
     });
 
     it('has distinct bytes and release-accurate names', () => {
@@ -45,6 +48,34 @@ describe('DTA fixture inventory', () => {
                     ? 117
                     : 118;
             expect(actualRelease).toBe(expectedRelease);
+        }
+    });
+
+    it('reproduces every checked-in pre-111 fixture byte for byte', () => {
+        const root = path.resolve(__dirname, '..', '..');
+        const generated = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-pre111-'));
+        try {
+            execFileSync('python3', [
+                path.join(root, 'tests', 'fixtures', 'generate_pre111_fixtures.py'),
+                '--output-dir', generated,
+            ]);
+            for (const release of [105, 108, 110]) {
+                const expected = fs.readFileSync(
+                    path.join(generated, `synthetic-v${release}.dta`)
+                );
+                const rust = fs.readFileSync(path.join(
+                    root, 'rust', 'dta-parser', 'tests', 'data',
+                    `synthetic-v${release}.dta`
+                ));
+                const r = fs.readFileSync(path.join(
+                    root, 'r-package', 'dtaparser', 'inst', 'extdata',
+                    `synthetic_v${release}.dta`
+                ));
+                expect(rust.equals(expected)).toBe(true);
+                expect(r.equals(expected)).toBe(true);
+            }
+        } finally {
+            fs.rmSync(generated, { recursive: true, force: true });
         }
     });
 });

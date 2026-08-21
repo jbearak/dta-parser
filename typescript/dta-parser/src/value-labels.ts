@@ -23,6 +23,9 @@ const LBL_CLOSE_TAG_LENGTH = 6; // "</lbl>"
 
 // Label name field widths by format version
 const LABEL_NAME_WIDTH: Record<number, number> = {
+    105: 33,
+    108: 9,
+    110: 33,
     111: 33,
     113: 33,
     114: 33,
@@ -110,7 +113,9 @@ function parse_label_entry_payload(
     for (let i = 0; i < my_n; i++) {
         if (the_offsets[i] < 0
             || the_offsets[i] >= my_txt_len) {
-            continue;
+            throw new Error(
+                'Corrupt value label table: invalid text offset'
+            );
         }
         const my_str_start =
             my_text_start + the_offsets[i];
@@ -125,10 +130,17 @@ function parse_label_entry_payload(
             my_str_end++;
         }
 
+        if (my_str_end === my_str_limit) {
+            throw new Error(
+                'Corrupt value label table: missing text terminator'
+            );
+        }
         const my_label = decoder.decode(
             bytes.subarray(my_str_start, my_str_end)
         );
-        my_label_map.set(the_values[i], my_label);
+        if (!my_label_map.has(the_values[i])) {
+            my_label_map.set(the_values[i], my_label);
+        }
     }
 
     return {
@@ -225,13 +237,34 @@ function parse_legacy_entries(
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
+    let my_known_nonzero = -1;
 
-    while (pos + 4 <= section_end) {
+    while (pos < section_end) {
+        if (my_known_nonzero < pos) {
+            my_known_nonzero = -1;
+            for (let i = pos; i < section_end; i++) {
+                if (bytes[i] !== 0) {
+                    my_known_nonzero = i;
+                    break;
+                }
+            }
+        }
+        if (my_known_nonzero < pos) break;
+        if (pos + 4 > section_end) {
+            throw new Error(
+                'Corrupt value label table: trailing bytes'
+            );
+        }
+
         // table_length (int32)
         const my_table_len = view.getInt32(
             pos, little_endian
         );
-        if (my_table_len <= 0) break;
+        if (my_table_len <= 0) {
+            throw new Error(
+                'Corrupt value label table: invalid table length'
+            );
+        }
         pos += 4;
 
         // label_name
@@ -256,6 +289,133 @@ function parse_legacy_entries(
     return my_result;
 }
 
+function parse_old_105_entries(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    start_pos: number,
+    section_end: number
+): Map<string, Map<number, string>> {
+    const my_result = new Map<string, Map<number, string>>();
+    let pos = start_pos;
+    let my_known_nonzero = -1;
+    while (pos < section_end) {
+        if (my_known_nonzero < pos) {
+            my_known_nonzero = -1;
+            for (let i = pos; i < section_end; i++) {
+                if (bytes[i] !== 0) {
+                    my_known_nonzero = i;
+                    break;
+                }
+            }
+        }
+        if (my_known_nonzero < pos) break;
+        if (pos + 12 > section_end) {
+            throw new Error(
+                'Corrupt value label table: trailing bytes'
+            );
+        }
+
+        const my_n = view.getUint16(pos, little_endian);
+        pos += 2;
+        const my_name = read_label_name(
+            bytes, pos, 9, LEGACY_DECODER
+        );
+        pos += 10; // name plus one padding byte
+        if (pos + my_n * 10 > section_end) {
+            throw new Error(
+                'Corrupt value label table: truncated entry'
+            );
+        }
+        const the_codes: number[] = [];
+        for (let i = 0; i < my_n; i++) {
+            the_codes.push(view.getInt16(pos, little_endian));
+            pos += 2;
+        }
+        const my_labels = new Map<number, string>();
+        for (let i = 0; i < my_n; i++) {
+            const my_label = read_label_name(
+                bytes, pos, 8, LEGACY_DECODER
+            );
+            if (!my_labels.has(the_codes[i])) {
+                my_labels.set(the_codes[i], my_label);
+            }
+            pos += 8;
+        }
+        my_result.set(my_name, my_labels);
+    }
+    return my_result;
+}
+
+function has_variable_label_table_framing(
+    view: DataView,
+    little_endian: boolean,
+    start_pos: number,
+    section_end: number,
+    name_width: number
+): boolean {
+    const my_payload_start = start_pos + 4 + name_width + 3;
+    if (my_payload_start + 8 > section_end) return false;
+    const my_table_len = view.getInt32(start_pos, little_endian);
+    const my_n = view.getInt32(my_payload_start, little_endian);
+    const my_text_len = view.getInt32(
+        my_payload_start + 4, little_endian
+    );
+    if (my_table_len <= 0 || my_n < 0 || my_text_len < 0) {
+        return false;
+    }
+    const my_payload_len = 8 + my_n * 8 + my_text_len;
+    return my_payload_len === my_table_len
+        && my_payload_start + my_payload_len <= section_end;
+}
+
+function has_variable_label_section_framing(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    start_pos: number,
+    section_end: number,
+    name_width: number
+): boolean {
+    const my_prefix_width = 4 + name_width + PADDING_BYTES;
+    let pos = start_pos;
+    let my_known_nonzero = -1;
+    while (pos < section_end) {
+        const my_header_end = Math.min(
+            section_end, pos + my_prefix_width + 8
+        );
+        let my_header_has_nonzero = false;
+        for (let i = pos; i < my_header_end; i++) {
+            if (bytes[i] !== 0) {
+                my_header_has_nonzero = true;
+                break;
+            }
+        }
+        if (!my_header_has_nonzero) {
+            if (my_known_nonzero < pos) {
+                my_known_nonzero = -1;
+                for (let i = my_header_end; i < section_end; i++) {
+                    if (bytes[i] !== 0) {
+                        my_known_nonzero = i;
+                        break;
+                    }
+                }
+            }
+            if (my_known_nonzero < pos) return true;
+        }
+        if (!has_variable_label_table_framing(
+            view, little_endian, pos, section_end, name_width
+        )) {
+            return false;
+        }
+        const my_table_len = view.getInt32(pos, little_endian);
+        const my_next = pos + my_prefix_width + my_table_len;
+        if (my_next <= pos || my_next > section_end) return false;
+        pos = my_next;
+    }
+    return true;
+}
+
 // -----------------------------------------------------------
 // Public API
 // -----------------------------------------------------------
@@ -276,7 +436,7 @@ export function parse_value_labels(
     const view = new DataView(buffer);
     const little_endian = metadata.byte_order === 'LSF';
 
-    const my_name_width =
+    let my_name_width =
         LABEL_NAME_WIDTH[metadata.format_version];
 
     const my_legacy = is_legacy_format(
@@ -296,6 +456,29 @@ export function parse_value_labels(
     const my_section_end =
         metadata.section_offsets.stata_data_close
         - base_offset;
+
+    if (metadata.format_version === 105
+        && !has_variable_label_section_framing(
+            bytes, view, little_endian,
+            my_start_pos, my_section_end, 33
+        )) {
+        return parse_old_105_entries(
+            bytes, view, little_endian,
+            my_start_pos, my_section_end
+        );
+    }
+
+    if (metadata.format_version === 108
+        && !has_variable_label_section_framing(
+            bytes, view, little_endian,
+            my_start_pos, my_section_end, 9
+        )
+        && has_variable_label_section_framing(
+            bytes, view, little_endian,
+            my_start_pos, my_section_end, 33
+        )) {
+        my_name_width = 33;
+    }
 
     if (my_legacy) {
         return parse_legacy_entries(

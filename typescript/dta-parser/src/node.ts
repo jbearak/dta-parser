@@ -17,6 +17,7 @@ import {
     parse_legacy_metadata,
     legacy_metadata_fixed_size,
 } from './legacy-header';
+import { legacy_layout_for_version, legacy_expansion_header_size } from './legacy-layout';
 import {
     read_rows_from_data_buffer,
     read_columns_from_data_buffer,
@@ -685,10 +686,11 @@ export class DtaFile {
 // -----------------------------------------------------------
 
 // Legacy format version bytes
-const LEGACY_VERSION_BYTES = new Set([111, 113, 114, 115]);
+const LEGACY_VERSION_BYTES = new Set([105, 108, 110, 111, 113, 114, 115]);
 
-// Minimum .dta file must have at least the version byte
-const MIN_LEGACY_HEADER = 109;
+// Minimum legacy prefix: version, byte order, file type,
+// unused byte, nvar, and nobs.
+const MIN_LEGACY_HEADER = 10;
 
 function detect_and_parse_metadata(
     fd: number,
@@ -741,9 +743,11 @@ function read_legacy_metadata(
         4, my_little_endian
     );
 
+    const layout = legacy_layout_for_version(my_version);
     const my_expansion_start = legacy_metadata_fixed_size(
         my_nvar, my_version
     );
+    const my_field_header_size = legacy_expansion_header_size(layout);
 
     if (my_expansion_start > file_size) {
         throw new Error('Truncated legacy metadata');
@@ -754,14 +758,16 @@ function read_legacy_metadata(
     // make us repeatedly allocate progressively larger file prefixes.
     let my_position = my_expansion_start;
     while (true) {
-        if (my_position + 5 > file_size) {
+        if (my_position + my_field_header_size > file_size) {
             throw new Error('Missing legacy expansion-field terminator');
         }
-        const my_field_header = read_range(fd, my_position, 5);
+        const my_field_header = read_range(fd, my_position, my_field_header_size);
         const my_field_view = new DataView(my_field_header);
         const my_data_type = my_field_view.getUint8(0);
-        const my_length = my_field_view.getInt32(1, my_little_endian);
-        my_position += 5;
+        const my_length = layout.expansion_length_width === 2
+            ? my_field_view.getInt16(1, my_little_endian)
+            : my_field_view.getInt32(1, my_little_endian);
+        my_position += my_field_header_size;
 
         if (my_data_type === 0 && my_length === 0) break;
         if (my_data_type === 0 || my_length < 0) {
@@ -809,7 +815,7 @@ function read_modern_metadata(
             ) {
                 throw new Error(
                     'Unsupported .dta format: only ' +
-                    'Stata/SE 7+ files (formats 111, 113-115 ' +
+                    'Stata 5+ files (formats 105, 108, 110-111, 113-115 ' +
                     'and 117-119) are supported'
                 );
             }

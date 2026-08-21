@@ -58,7 +58,7 @@ invariant(
         === manifest.identity.case_count,
     'total case count does not match manifest identity'
 );
-invariant(manifest.identity.case_count === 30, 'case inventory must remain 30');
+invariant(manifest.identity.case_count === 31, 'case inventory must remain 31');
 invariant(
     manifest.identity.fixture_oracle_gate.binary.length > 0
         && manifest.identity.fixture_oracle_gate.test.length > 0,
@@ -139,6 +139,7 @@ for (const item of manifest.fixture_cases) {
 
 process.stdout.write(
     `TypeScript fixture conformance: PASS (${manifest.fixture_cases.length} `
-        + 'immutable fixtures); 8 deterministic native gate identities validated '
+        + `immutable fixtures); ${manifest.deterministic_cases.length} `
+        + 'deterministic native gate identities validated '
         + '(execution follows in scripts/conformance.sh)\n'
 );

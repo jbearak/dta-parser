@@ -10,7 +10,7 @@ pub enum DtaError {
     InvalidSignature,
 
     /// The release exists in the shared model but is outside this parser's
-    /// supported 111, 113–115, and 117–119 releases.
+    /// supported 105, 108, 110–111, 113–115, and 117–119 releases.
     #[error("Stata release {0} metadata is not supported by this parser")]
     UnsupportedRelease(FormatVersion),
 

@@ -1,6 +1,6 @@
 //! Native parsing primitives for Stata `.dta` files.
 //!
-//! The crate parses releases 111, 113–115, and 117–119 into column-oriented data,
+//! The crate parses releases 105, 108, 110–111, 113–115, and 117–119 into column-oriented data,
 //! including numeric and fixed-string observations, resolved `strL` payloads,
 //! exact missing tags, metadata, and value-label tables. Byte-slice APIs are
 //! complemented by bounded, projected [`DtaFile`] reads over `Read + Seek`.

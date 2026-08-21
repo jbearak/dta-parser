@@ -139,8 +139,8 @@ only contiguous observation bytes can use `read_rows_from_data_buffer()`.
 
 ## Supported files and data model
 
-The parser supports releases 111, 113--115, and 117--119, covering Stata/SE 7 and Stata 8 through
-current Stata files using these format releases. Other formats are rejected.
+The parser supports releases 105, 108, 110--111, 113--115, and 117--119,
+covering Stata 5 onward for files using these format releases. Other formats are rejected.
 It reads numeric and fixed-string values, `strL` long strings, labels,
 display formats, value-label tables, and the missing values supported by each
 release.

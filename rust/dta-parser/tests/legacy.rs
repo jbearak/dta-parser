@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use dta_parser::{
     parse_metadata, read_dta, read_dta_with_encoding, ByteOrder, ColumnValues, DtaError, DtaFile,
-    FormatVersion, MissingTag, ReadOptions, TextEncoding,
+    FileOptions, FormatVersion, MissingTag, ReadOptions, TextEncoding,
 };
 use std::io::Cursor;
 
@@ -15,8 +15,15 @@ fn fixture(name: &str) -> Vec<u8> {
     fs::read(fixture_dir().join(name)).unwrap()
 }
 
+fn synthetic_fixture(version: u16) -> Vec<u8> {
+    fs::read(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("tests/data/synthetic-v{version}.dta")),
+    )
+    .unwrap()
+}
+
 fn v111_fixture() -> Vec<u8> {
-    fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/synthetic-v111.dta")).unwrap()
+    synthetic_fixture(111)
 }
 
 fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
@@ -73,6 +80,382 @@ fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
 
 fn synthetic_v113_msf() -> Vec<u8> {
     synthetic_legacy_msf(113)
+}
+
+fn synthetic_pre111_msf(version: u8) -> Vec<u8> {
+    let (
+        header_size,
+        label_width,
+        name_width,
+        value_label_name_width,
+        variable_label_width,
+        expansion_width,
+    ) = match version {
+        105 => (60, 32, 9, 9, 32, 2),
+        108 => (109, 81, 9, 9, 81, 2),
+        110 => (109, 81, 33, 33, 81, 4),
+        _ => panic!("unsupported synthetic release {version}"),
+    };
+    let nvar = 3_usize;
+    let fixed_end = header_size
+        + nvar
+        + nvar * name_width
+        + (nvar + 1) * 2
+        + nvar * 12
+        + nvar * value_label_name_width
+        + nvar * variable_label_width;
+    let mut bytes = vec![0_u8; fixed_end];
+    bytes[0] = version;
+    bytes[1] = 1;
+    bytes[2] = 1;
+    bytes[4..6].copy_from_slice(&(nvar as u16).to_be_bytes());
+    bytes[6..10].copy_from_slice(&1_i32.to_be_bytes());
+    bytes[10..16].copy_from_slice(b"legacy");
+    assert!(10 + label_width <= header_size - 18);
+
+    let types = header_size;
+    bytes[types..types + nvar].copy_from_slice(&[b'b', b'i', 0x82]);
+    let varnames = types + nvar;
+    bytes[varnames..varnames + 1].copy_from_slice(b"b");
+    bytes[varnames + name_width..varnames + name_width + 1].copy_from_slice(b"i");
+    bytes[varnames + 2 * name_width..varnames + 2 * name_width + 2].copy_from_slice(b"s3");
+    let formats = varnames + nvar * name_width + (nvar + 1) * 2;
+    bytes[formats..formats + 5].copy_from_slice(b"%8.0g");
+    bytes[formats + 12..formats + 17].copy_from_slice(b"%8.0g");
+    bytes[formats + 24..formats + 27].copy_from_slice(b"%3s");
+    let value_label_names = formats + nvar * 12;
+    bytes[value_label_names..value_label_names + 5].copy_from_slice(b"codes");
+    let variable_labels = value_label_names + nvar * value_label_name_width;
+    bytes[variable_labels..variable_labels + 6].copy_from_slice(b"status");
+
+    let mut note = vec![0_u8; 2 * name_width];
+    note[..4].copy_from_slice(b"_dta");
+    note[name_width..name_width + 5].copy_from_slice(b"note1");
+    note.extend_from_slice(b"old note\0");
+    bytes.push(1);
+    if expansion_width == 2 {
+        bytes.extend_from_slice(&(note.len() as u16).to_be_bytes());
+    } else {
+        bytes.extend_from_slice(&(note.len() as i32).to_be_bytes());
+    }
+    bytes.extend_from_slice(&note);
+    bytes.push(0);
+    bytes.extend(std::iter::repeat(0).take(expansion_width));
+
+    bytes.push(127);
+    bytes.extend_from_slice(&321_i16.to_be_bytes());
+    bytes.extend_from_slice(b"abc");
+
+    if version == 105 {
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        let table_name = bytes.len();
+        bytes.resize(table_name + 9, 0);
+        bytes[table_name..table_name + 5].copy_from_slice(b"codes");
+        bytes.push(0);
+        bytes.extend_from_slice(&127_i16.to_be_bytes());
+        bytes.extend_from_slice(b"NA\0\0\0\0\0\0");
+        bytes.push(0);
+    } else {
+        bytes.extend_from_slice(&20_i32.to_be_bytes());
+        let table_name_width = if version == 108 { 9 } else { 33 };
+        let table_name = bytes.len();
+        bytes.resize(table_name + table_name_width, 0);
+        bytes[table_name..table_name + 5].copy_from_slice(b"codes");
+        bytes.extend_from_slice(&[0; 3]);
+        bytes.extend_from_slice(&1_i32.to_be_bytes());
+        bytes.extend_from_slice(&4_i32.to_be_bytes());
+        bytes.extend_from_slice(&0_i32.to_be_bytes());
+        bytes.extend_from_slice(&127_i32.to_be_bytes());
+        bytes.extend_from_slice(b"NA\0\0");
+    }
+    bytes
+}
+
+fn with_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
+    let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+    bytes.truncate(value_labels);
+    bytes.extend_from_slice(&20_i32.to_be_bytes());
+    let table_name = bytes.len();
+    bytes.resize(table_name + 33, 0);
+    bytes[table_name..table_name + 5].copy_from_slice(b"codes");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&1_i32.to_be_bytes());
+    bytes.extend_from_slice(&4_i32.to_be_bytes());
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&127_i32.to_be_bytes());
+    bytes.extend_from_slice(b"NA\0\0");
+    bytes
+}
+
+fn with_ambiguous_short_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
+    let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+    bytes.truncate(value_labels);
+    bytes.extend_from_slice(&38_i32.to_be_bytes());
+    let name = bytes.len();
+    bytes.resize(name + 9, 0);
+    bytes[name..name + 5].copy_from_slice(b"short");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&3_i32.to_be_bytes());
+    bytes.extend_from_slice(&6_i32.to_be_bytes());
+    for offset in [0_i32, 2, 4] {
+        bytes.extend_from_slice(&offset.to_be_bytes());
+    }
+    for value in [0_i32, 1, 22] {
+        bytes.extend_from_slice(&value.to_be_bytes());
+    }
+    bytes.extend_from_slice(b"a\0b\0c\0");
+    bytes
+}
+
+fn with_empty_then_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
+    let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+    bytes.truncate(value_labels);
+    bytes.extend_from_slice(&8_i32.to_be_bytes());
+    let empty_name = bytes.len();
+    bytes.resize(empty_name + 33, 0);
+    bytes[empty_name..empty_name + 5].copy_from_slice(b"empty");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&20_i32.to_be_bytes());
+    let codes_name = bytes.len();
+    bytes.resize(codes_name + 33, 0);
+    bytes[codes_name..codes_name + 5].copy_from_slice(b"codes");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&1_i32.to_be_bytes());
+    bytes.extend_from_slice(&4_i32.to_be_bytes());
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&127_i32.to_be_bytes());
+    bytes.extend_from_slice(b"NA\0\0");
+    bytes
+}
+
+#[test]
+fn generated_pre111_fixtures_decode_expected_semantics() {
+    for (release, expected_version) in [
+        (105, FormatVersion::V105),
+        (108, FormatVersion::V108),
+        (110, FormatVersion::V110),
+    ] {
+        let bytes = synthetic_fixture(release);
+        let data = read_dta(&bytes).unwrap_or_else(|error| panic!("release {release}: {error}"));
+        assert_eq!(data.metadata.format_version, expected_version);
+        assert_eq!(
+            data.metadata.dataset_label,
+            format!("Release {release} Café fixture")
+        );
+        assert_eq!(data.metadata.notes, [format!("Release {release} note")]);
+        assert_eq!(data.row_count, 2);
+        assert_eq!(data.columns.len(), 6);
+        if release == 110 {
+            assert_eq!(
+                data.value_label_table("b_labels")
+                    .unwrap()
+                    .entry(1)
+                    .unwrap()
+                    .label,
+                "One"
+            );
+        } else {
+            assert!(data.value_label_tables.is_empty());
+        }
+        let ColumnValues::FixedString { values } = &data.columns[5].values else {
+            panic!("release {release}: text must be a fixed string");
+        };
+        assert_eq!(values, &["Café", ""]);
+        for (index, column) in data.columns[..5].iter().enumerate() {
+            let missing_tags = match &column.values {
+                ColumnValues::Byte { missing_tags, .. }
+                | ColumnValues::Int { missing_tags, .. }
+                | ColumnValues::Long { missing_tags, .. }
+                | ColumnValues::Float { missing_tags, .. }
+                | ColumnValues::Double { missing_tags, .. } => missing_tags,
+                other => panic!("release {release}: unexpected numeric storage {other:?}"),
+            };
+            let expected = if release == 105 && index == 4 {
+                &[None, None][..]
+            } else {
+                &[None, Some(MissingTag::System)][..]
+            };
+            assert_eq!(missing_tags, expected);
+        }
+    }
+}
+
+#[test]
+fn decodes_pre111_layouts_types_expansions_missing_and_value_labels_with_file_parity() {
+    for (release, expected_version, expected_data_offset) in [
+        (105, FormatVersion::V105, 290_u64),
+        (108, FormatVersion::V108, 486_u64),
+        (110, FormatVersion::V110, 682_u64),
+    ] {
+        let bytes = synthetic_pre111_msf(release);
+        let slice = read_dta(&bytes).unwrap_or_else(|error| panic!("release {release}: {error}"));
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        let file_data = file.read().unwrap();
+        assert_eq!(file_data, slice);
+
+        assert_eq!(slice.metadata.format_version, expected_version);
+        assert_eq!(slice.metadata.section_offsets.data, expected_data_offset);
+        assert_eq!(slice.metadata.dataset_label, "legacy");
+        assert_eq!(slice.metadata.notes, ["old note"]);
+        assert_eq!(
+            slice.metadata.variables[0].dta_type,
+            dta_parser::DtaType::Byte
+        );
+        assert_eq!(slice.metadata.variables[0].type_code, u16::from(b'b'));
+        assert_eq!(
+            slice.metadata.variables[2].dta_type,
+            dta_parser::DtaType::FixedString(3)
+        );
+        assert_eq!(slice.metadata.variables[2].type_code, 0x82);
+
+        let ColumnValues::Byte {
+            values,
+            missing_tags,
+        } = &slice.columns[0].values
+        else {
+            panic!("byte column expected");
+        };
+        assert_eq!(values, &[127]);
+        assert_eq!(missing_tags, &[Some(MissingTag::System)]);
+        let ColumnValues::FixedString { values } = &slice.columns[2].values else {
+            panic!("string column expected");
+        };
+        assert_eq!(values, &["abc"]);
+        let entry = slice
+            .value_label_table("codes")
+            .unwrap()
+            .entry(127)
+            .unwrap();
+        assert_eq!(entry.label, "NA");
+        assert_eq!(entry.missing_tag, None);
+    }
+}
+
+#[test]
+fn accepts_alternate_release_105_and_108_offset_label_tables() {
+    for release in [105, 108] {
+        let bytes = with_offset_value_labels(synthetic_pre111_msf(release));
+        let slice = read_dta(&bytes).unwrap();
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        assert_eq!(file.read().unwrap(), slice);
+        assert_eq!(
+            slice
+                .value_label_table("codes")
+                .unwrap()
+                .entry(127)
+                .unwrap()
+                .label,
+            "NA"
+        );
+    }
+}
+
+#[test]
+fn legacy_layout_probe_is_interruptible_during_large_zero_padding() {
+    let mut bytes = with_offset_value_labels(synthetic_pre111_msf(108));
+    bytes.resize(bytes.len() + 8 * 1024, 0);
+    let mut file = DtaFile::from_reader_with_options(
+        Cursor::new(bytes),
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    let mut polls = 0;
+    let error = file
+        .read_with_interrupt(&ReadOptions::default(), || {
+            polls += 1;
+            polls >= 3
+        })
+        .unwrap_err();
+    assert_eq!(error, DtaError::Cancelled);
+}
+
+#[test]
+fn release_108_prefers_complete_short_name_framing() {
+    let bytes = with_ambiguous_short_offset_value_labels(synthetic_pre111_msf(108));
+    let slice = read_dta(&bytes).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.read().unwrap(), slice);
+    let table = slice.value_label_table("short").unwrap();
+    assert_eq!(table.entry(0).unwrap().label, "a");
+    assert_eq!(table.entry(1).unwrap().label, "b");
+    assert_eq!(table.entry(22).unwrap().label, "c");
+}
+
+#[test]
+fn release_108_prefers_long_names_for_empty_first_offset_table() {
+    let bytes = with_empty_then_offset_value_labels(synthetic_pre111_msf(108));
+    let slice = read_dta(&bytes).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.read().unwrap(), slice);
+    assert!(slice.value_label_table("empty").unwrap().entries.is_empty());
+    assert_eq!(
+        slice
+            .value_label_table("codes")
+            .unwrap()
+            .entry(127)
+            .unwrap()
+            .label,
+        "NA"
+    );
+}
+
+#[test]
+fn legacy_value_label_zero_padding_has_slice_file_parity() {
+    for release in [105, 108, 110, 111] {
+        let mut bytes = if matches!(release, 105 | 108) {
+            with_offset_value_labels(synthetic_pre111_msf(release))
+        } else if release == 110 {
+            synthetic_pre111_msf(release)
+        } else {
+            v111_fixture()
+        };
+        bytes.extend_from_slice(&[0; 3]);
+        let slice = read_dta(&bytes).unwrap();
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        assert_eq!(file.read().unwrap(), slice);
+    }
+}
+
+#[test]
+fn alternate_value_label_layouts_do_not_fallback_after_selection() {
+    for release in [105, 108] {
+        let mut bytes = with_offset_value_labels(synthetic_pre111_msf(release));
+        let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+        let first_text_offset = value_labels + 4 + 33 + 3 + 8;
+        bytes[first_text_offset..first_text_offset + 4].copy_from_slice(&(-1_i32).to_be_bytes());
+
+        let slice_error = read_dta(&bytes).unwrap_err();
+        assert!(matches!(
+            slice_error,
+            DtaError::InvalidValueLabelTextOffset { .. }
+        ));
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        let file_error = file.read().unwrap_err();
+        assert_eq!(file_error, slice_error);
+    }
+}
+
+#[test]
+fn rejects_negative_two_byte_expansion_lengths_with_file_parity() {
+    for release in [105, 108] {
+        let mut bytes = synthetic_pre111_msf(release);
+        let expansion = parse_metadata(&bytes)
+            .unwrap()
+            .section_offsets
+            .characteristics as usize;
+        bytes[expansion + 1..expansion + 3].copy_from_slice(&(-1_i16).to_be_bytes());
+        let slice_error = parse_metadata(&bytes).unwrap_err();
+        assert!(matches!(
+            slice_error,
+            DtaError::NegativeExpansionLength { value: -1, .. }
+        ));
+        let file_error = DtaFile::from_reader(Cursor::new(bytes)).err().unwrap();
+        assert_eq!(file_error, slice_error);
+    }
 }
 
 #[test]

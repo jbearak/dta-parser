@@ -1,6 +1,6 @@
 #' Read a Stata DTA file
 #'
-#' Reads releases 111, 113--115, and 117--119 through the native Rust parser.
+#' Reads releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser.
 #' Numeric and character columns are created directly by native code. Dataset
 #' and variable labels, dataset notes, Stata display formats, value labels,
 #' `strL` content, and Stata system/extended missing values are retained.
@@ -14,7 +14,7 @@
 #' @param encoding Optional source encoding override. Supported aliases are
 #'   `"UTF-8"`/`"UTF8"`, `"Windows-1252"`/`"CP1252"`, and
 #'   `"ISO-8859-1"`/`"latin1"`, matched case-insensitively. `NULL` uses
-#'   Windows-1252 for releases 111, 113--115, and 117 and UTF-8 for releases
+#'   Windows-1252 for releases 105, 108, 110--111, 113--115, and 117 and UTF-8 for releases
 #'   118--119. Explicit UTF-8
 #'   replaces malformed input sequences deterministically with U+FFFD. Haven
 #'   2.5.5 may instead omit an affected label.

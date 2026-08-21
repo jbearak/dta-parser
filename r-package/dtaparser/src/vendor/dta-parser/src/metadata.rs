@@ -64,7 +64,13 @@ pub(crate) fn field_widths(version: FormatVersion) -> FieldWidths {
             value_label_name: 129,
             variable_label: 321,
         },
-        FormatVersion::V111 | FormatVersion::V113 | FormatVersion::V114 | FormatVersion::V115 => {
+        FormatVersion::V105
+        | FormatVersion::V108
+        | FormatVersion::V110
+        | FormatVersion::V111
+        | FormatVersion::V113
+        | FormatVersion::V114
+        | FormatVersion::V115 => {
             unreachable!("legacy releases are rejected before widths are selected")
         }
     }
@@ -421,7 +427,7 @@ pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType
     Err(DtaError::UnknownTypeCode { code, version })
 }
 
-/// Parse metadata from a Stata 111, 113–115, or 117–119 byte slice.
+/// Parse metadata from a Stata 105, 108, 110–111, 113–115, or 117–119 byte slice.
 ///
 /// Modern input may contain the full file or end immediately after the
 /// `variable_labels` section; later section-map offsets are retained without
@@ -438,7 +444,7 @@ pub fn parse_metadata_with_encoding(
     bytes: &[u8],
     encoding: TextEncoding,
 ) -> Result<DtaMetadata, DtaError> {
-    if matches!(bytes.first(), Some(111 | 113..=115)) {
+    if matches!(bytes.first(), Some(105 | 108 | 110 | 111 | 113..=115)) {
         return parse_legacy_metadata(
             bytes,
             u64::try_from(bytes.len()).map_err(|_| DtaError::ArithmeticOverflow("file length"))?,
@@ -605,7 +611,7 @@ mod tests {
             })
         ));
         assert_eq!(
-            parse_metadata(b"not a dta"),
+            parse_metadata(b"xot a dta"),
             Err(DtaError::InvalidSignature)
         );
     }
