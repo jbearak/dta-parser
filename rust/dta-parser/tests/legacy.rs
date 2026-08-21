@@ -140,7 +140,7 @@ fn synthetic_pre111_msf(version: u8) -> Vec<u8> {
     }
     bytes.extend_from_slice(&note);
     bytes.push(0);
-    bytes.extend(std::iter::repeat_n(0, expansion_width));
+    bytes.extend(std::iter::repeat(0).take(expansion_width));
 
     bytes.push(127);
     bytes.extend_from_slice(&321_i16.to_be_bytes());

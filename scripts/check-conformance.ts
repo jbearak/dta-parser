@@ -139,6 +139,6 @@ for (const item of manifest.fixture_cases) {
 
 process.stdout.write(
     `TypeScript fixture conformance: PASS (${manifest.fixture_cases.length} `
-        + 'immutable fixtures); 8 deterministic native gate identities validated '
+        + 'immutable fixtures); 9 deterministic native gate identities validated '
         + '(execution follows in scripts/conformance.sh)\n'
 );
