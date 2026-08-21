@@ -10,6 +10,7 @@ use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValue
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
+use crate::value_labels::has_legacy_offset_table_framing;
 use crate::{
     missing::{
         classify_byte_missing_for_version, classify_double_missing_bits_for_version,
@@ -1869,7 +1870,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         )?;
         let data_type = expansion[0];
         let length = if layout.expansion_length_width == 2 {
-            i32::from(read_u16(
+            i32::from(read_i16(
                 &expansion,
                 1,
                 byte_order,
@@ -2158,27 +2159,16 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     Ok(tables)
 }
 
-fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
+fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     metadata: &DtaMetadata,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     encoding: TextEncoding,
+    legacy_name_width: usize,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
-    if !modern
-        && LegacyLayout::for_version(metadata.format_version).value_label_layout
-            == LegacyValueLabelLayout::Fixed8
-    {
-        return read_fixed8_value_labels_streaming(
-            reader,
-            metadata,
-            scratch,
-            should_interrupt,
-            encoding,
-        );
-    }
     let name_width = if modern {
         match metadata.format_version {
             FormatVersion::V117 => 33_u16,
@@ -2186,10 +2176,8 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             _ => unreachable!("modern release expected"),
         }
     } else {
-        u16::try_from(
-            LegacyLayout::for_version(metadata.format_version).value_label_table_name_width,
-        )
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
+        u16::try_from(legacy_name_width)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
     };
     let section_end = if modern {
         metadata.section_offsets.stata_data_close
@@ -2463,6 +2451,91 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         ensure_absolute("end_of_file", cursor, metadata.section_offsets.end_of_file)?;
     }
     Ok(tables)
+}
+
+fn select_legacy_value_label_layout<R: Read + Seek>(
+    reader: &mut R,
+    metadata: &DtaMetadata,
+    scratch: &mut Scratch,
+) -> Result<(LegacyValueLabelLayout, usize), DtaError> {
+    let layout = LegacyLayout::for_version(metadata.format_version);
+    if !matches!(
+        metadata.format_version,
+        FormatVersion::V105 | FormatVersion::V108
+    ) {
+        return Ok((
+            layout.value_label_layout,
+            layout.value_label_table_name_width,
+        ));
+    }
+    let section_length = metadata
+        .section_offsets
+        .end_of_file
+        .checked_sub(metadata.section_offsets.value_labels)
+        .ok_or(DtaError::ArithmeticOverflow("value-label section length"))?;
+    let section_length = usize::try_from(section_length)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label section length"))?;
+    let probe_length = section_length.min(4 + 33 + 3 + 8);
+    let probe = read_exact_at(
+        reader,
+        metadata.section_offsets.value_labels,
+        probe_length,
+        scratch,
+        "probing legacy value-label layout",
+    )?;
+    let short_framing =
+        has_legacy_offset_table_framing(&probe, metadata.byte_order, section_length, 9);
+    let long_framing =
+        has_legacy_offset_table_framing(&probe, metadata.byte_order, section_length, 33);
+    Ok(match metadata.format_version {
+        FormatVersion::V105 if long_framing => (LegacyValueLabelLayout::OffsetTable, 33),
+        FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
+        FormatVersion::V108 if !short_framing && long_framing => {
+            (LegacyValueLabelLayout::OffsetTable, 33)
+        }
+        _ => (
+            layout.value_label_layout,
+            layout.value_label_table_name_width,
+        ),
+    })
+}
+
+fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    metadata: &DtaMetadata,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    encoding: TextEncoding,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    if metadata.format_version.is_modern() {
+        return read_offset_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+            0,
+        );
+    }
+    let (value_label_layout, table_name_width) =
+        select_legacy_value_label_layout(reader, metadata, scratch)?;
+    match value_label_layout {
+        LegacyValueLabelLayout::Fixed8 => read_fixed8_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+        ),
+        LegacyValueLabelLayout::OffsetTable => read_offset_value_labels_streaming(
+            reader,
+            metadata,
+            scratch,
+            should_interrupt,
+            encoding,
+            table_name_width,
+        ),
+    }
 }
 
 fn validate_layout<R: Read + Seek>(

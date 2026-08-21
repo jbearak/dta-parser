@@ -10,6 +10,7 @@ use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValue
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
+use crate::value_labels::has_legacy_offset_table_framing;
 use crate::{
     missing::{
         classify_byte_missing_for_version, classify_double_missing_bits_for_version,
@@ -2452,6 +2453,53 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     Ok(tables)
 }
 
+fn select_legacy_value_label_layout<R: Read + Seek>(
+    reader: &mut R,
+    metadata: &DtaMetadata,
+    scratch: &mut Scratch,
+) -> Result<(LegacyValueLabelLayout, usize), DtaError> {
+    let layout = LegacyLayout::for_version(metadata.format_version);
+    if !matches!(
+        metadata.format_version,
+        FormatVersion::V105 | FormatVersion::V108
+    ) {
+        return Ok((
+            layout.value_label_layout,
+            layout.value_label_table_name_width,
+        ));
+    }
+    let section_length = metadata
+        .section_offsets
+        .end_of_file
+        .checked_sub(metadata.section_offsets.value_labels)
+        .ok_or(DtaError::ArithmeticOverflow("value-label section length"))?;
+    let section_length = usize::try_from(section_length)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label section length"))?;
+    let probe_length = section_length.min(4 + 33 + 3 + 8);
+    let probe = read_exact_at(
+        reader,
+        metadata.section_offsets.value_labels,
+        probe_length,
+        scratch,
+        "probing legacy value-label layout",
+    )?;
+    let short_framing =
+        has_legacy_offset_table_framing(&probe, metadata.byte_order, section_length, 9);
+    let long_framing =
+        has_legacy_offset_table_framing(&probe, metadata.byte_order, section_length, 33);
+    Ok(match metadata.format_version {
+        FormatVersion::V105 if long_framing => (LegacyValueLabelLayout::OffsetTable, 33),
+        FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
+        FormatVersion::V108 if !short_framing && long_framing => {
+            (LegacyValueLabelLayout::OffsetTable, 33)
+        }
+        _ => (
+            layout.value_label_layout,
+            layout.value_label_table_name_width,
+        ),
+    })
+}
+
 fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     metadata: &DtaMetadata,
@@ -2469,27 +2517,9 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             0,
         );
     }
-    let layout = LegacyLayout::for_version(metadata.format_version);
-    if metadata.format_version == FormatVersion::V105 {
-        return read_offset_value_labels_streaming(
-            reader,
-            metadata,
-            scratch,
-            should_interrupt,
-            encoding,
-            33,
-        )
-        .or_else(|_| {
-            read_fixed8_value_labels_streaming(
-                reader,
-                metadata,
-                scratch,
-                should_interrupt,
-                encoding,
-            )
-        });
-    }
-    let primary = match layout.value_label_layout {
+    let (value_label_layout, table_name_width) =
+        select_legacy_value_label_layout(reader, metadata, scratch)?;
+    match value_label_layout {
         LegacyValueLabelLayout::Fixed8 => read_fixed8_value_labels_streaming(
             reader,
             metadata,
@@ -2503,21 +2533,8 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             scratch,
             should_interrupt,
             encoding,
-            layout.value_label_table_name_width,
+            table_name_width,
         ),
-    };
-    match metadata.format_version {
-        FormatVersion::V108 => primary.or_else(|_| {
-            read_offset_value_labels_streaming(
-                reader,
-                metadata,
-                scratch,
-                should_interrupt,
-                encoding,
-                33,
-            )
-        }),
-        _ => primary,
     }
 }
 

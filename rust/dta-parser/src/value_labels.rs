@@ -15,6 +15,64 @@ const LABEL_CLOSE: &[u8] = b"</lbl>";
 const STATA_DATA_CLOSE: &[u8] = b"</stata_dta>";
 const RESERVED_WIDTH: usize = 3;
 
+pub(crate) fn has_legacy_offset_table_framing(
+    bytes: &[u8],
+    byte_order: crate::ByteOrder,
+    section_length: usize,
+    name_width: usize,
+) -> bool {
+    let Some(payload_start) = 4_usize
+        .checked_add(name_width)
+        .and_then(|value| value.checked_add(RESERVED_WIDTH))
+    else {
+        return false;
+    };
+    let Some(header_end) = payload_start.checked_add(8) else {
+        return false;
+    };
+    if header_end > bytes.len() || header_end > section_length {
+        return false;
+    }
+    let Ok(table_length) = read_i32(bytes, 0, byte_order, "value-label table length") else {
+        return false;
+    };
+    let Ok(entry_count) = read_i32(bytes, payload_start, byte_order, "value-label entry count")
+    else {
+        return false;
+    };
+    let Ok(text_length) = read_i32(
+        bytes,
+        payload_start + 4,
+        byte_order,
+        "value-label text length",
+    ) else {
+        return false;
+    };
+    if table_length <= 0 || entry_count < 0 || text_length < 0 {
+        return false;
+    }
+    let Ok(entry_count) = usize::try_from(entry_count) else {
+        return false;
+    };
+    let Ok(text_length) = usize::try_from(text_length) else {
+        return false;
+    };
+    let Ok(table_length) = usize::try_from(table_length) else {
+        return false;
+    };
+    let Some(payload_length) = entry_count
+        .checked_mul(8)
+        .and_then(|length| length.checked_add(8))
+        .and_then(|length| length.checked_add(text_length))
+    else {
+        return false;
+    };
+    payload_length == table_length
+        && payload_start
+            .checked_add(payload_length)
+            .is_some_and(|table_end| table_end <= section_length)
+}
+
 fn name_width(version: FormatVersion) -> Result<usize, DtaError> {
     if version.is_modern() {
         return match version {
@@ -434,51 +492,53 @@ pub(crate) fn parse_value_labels_section(
             });
         }
         let layout = LegacyLayout::for_version(metadata.format_version);
-        if metadata.format_version == FormatVersion::V105 {
-            return parse_legacy_tables(
-                bytes,
-                metadata,
-                start,
-                end,
-                encoding,
-                LegacyValueLabelLayout::OffsetTable,
-                33,
-            )
-            .or_else(|_| {
-                parse_legacy_tables(
-                    bytes,
-                    metadata,
-                    start,
-                    end,
-                    encoding,
-                    LegacyValueLabelLayout::Fixed8,
+        let section = bytes.get(start..end).ok_or(DtaError::Truncated {
+            context: "value-label section",
+            offset: start,
+            needed: end.saturating_sub(start),
+            available: bytes.len().saturating_sub(start),
+        })?;
+        let (value_label_layout, table_name_width) = match metadata.format_version {
+            FormatVersion::V105
+                if has_legacy_offset_table_framing(
+                    section,
+                    metadata.byte_order,
+                    section.len(),
+                    33,
+                ) =>
+            {
+                (LegacyValueLabelLayout::OffsetTable, 33)
+            }
+            FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
+            FormatVersion::V108
+                if !has_legacy_offset_table_framing(
+                    section,
+                    metadata.byte_order,
+                    section.len(),
                     9,
-                )
-            });
-        }
-        let primary = parse_legacy_tables(
+                ) && has_legacy_offset_table_framing(
+                    section,
+                    metadata.byte_order,
+                    section.len(),
+                    33,
+                ) =>
+            {
+                (LegacyValueLabelLayout::OffsetTable, 33)
+            }
+            _ => (
+                layout.value_label_layout,
+                layout.value_label_table_name_width,
+            ),
+        };
+        return parse_legacy_tables(
             bytes,
             metadata,
             start,
             end,
             encoding,
-            layout.value_label_layout,
-            layout.value_label_table_name_width,
+            value_label_layout,
+            table_name_width,
         );
-        return match metadata.format_version {
-            FormatVersion::V108 => primary.or_else(|_| {
-                parse_legacy_tables(
-                    bytes,
-                    metadata,
-                    start,
-                    end,
-                    encoding,
-                    LegacyValueLabelLayout::OffsetTable,
-                    33,
-                )
-            }),
-            _ => primary,
-        };
     }
     let mut cursor = expect_at(bytes, start, VALUE_LABELS_OPEN, "<value_labels>")?;
     let mut tables = Vec::new();

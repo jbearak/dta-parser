@@ -220,7 +220,7 @@ fn generated_pre111_fixtures_decode_expected_semantics() {
             panic!("release {release}: text must be a fixed string");
         };
         assert_eq!(values, &["Café", ""]);
-        for column in &data.columns[..5] {
+        for (index, column) in data.columns[..5].iter().enumerate() {
             let missing_tags = match &column.values {
                 ColumnValues::Byte { missing_tags, .. }
                 | ColumnValues::Int { missing_tags, .. }
@@ -229,7 +229,12 @@ fn generated_pre111_fixtures_decode_expected_semantics() {
                 | ColumnValues::Double { missing_tags, .. } => missing_tags,
                 other => panic!("release {release}: unexpected numeric storage {other:?}"),
             };
-            assert_eq!(missing_tags, &[None, Some(MissingTag::System)]);
+            let expected = if release == 105 && index == 4 {
+                &[None, None][..]
+            } else {
+                &[None, Some(MissingTag::System)][..]
+            };
+            assert_eq!(missing_tags, expected);
         }
     }
 }
@@ -301,6 +306,25 @@ fn accepts_alternate_release_105_and_108_offset_label_tables() {
                 .label,
             "NA"
         );
+    }
+}
+
+#[test]
+fn alternate_value_label_layouts_do_not_fallback_after_selection() {
+    for release in [105, 108] {
+        let mut bytes = with_offset_value_labels(synthetic_pre111_msf(release));
+        let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+        let first_text_offset = value_labels + 4 + 33 + 3 + 8;
+        bytes[first_text_offset..first_text_offset + 4].copy_from_slice(&(-1_i32).to_be_bytes());
+
+        let slice_error = read_dta(&bytes).unwrap_err();
+        assert!(matches!(
+            slice_error,
+            DtaError::InvalidValueLabelTextOffset { .. }
+        ));
+        let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        let file_error = file.read().unwrap_err();
+        assert_eq!(file_error, slice_error);
     }
 }
 

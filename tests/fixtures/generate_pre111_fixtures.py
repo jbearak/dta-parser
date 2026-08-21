@@ -106,7 +106,13 @@ def build(layout: Layout) -> bytes:
     data.extend(fixed(b"Caf\xe9", 6))
     data.extend(struct.pack("<bhi", 127, 32767, 2147483647))
     data.extend(struct.pack("<I", 0x7F000000))
-    data.extend(struct.pack("<Q", 0x7FE0000000000000))
+    if layout.release == 105:
+        # haven does not classify Stata 5's historical double sentinel as missing,
+        # so keep the shared R differential fixture comparable. Parser-specific
+        # tests cover the exact 0x54c0000000000000 sentinel independently.
+        data.extend(struct.pack("<d", 3.25))
+    else:
+        data.extend(struct.pack("<Q", 0x7FE0000000000000))
     data.extend(fixed(b"", 6))
 
     table = b""
