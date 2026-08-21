@@ -511,12 +511,7 @@ pub(crate) fn parse_value_labels_section(
             }
             FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
             FormatVersion::V108
-                if !has_legacy_offset_table_framing(
-                    section,
-                    metadata.byte_order,
-                    section.len(),
-                    9,
-                ) && has_legacy_offset_table_framing(
+                if has_legacy_offset_table_framing(
                     section,
                     metadata.byte_order,
                     section.len(),

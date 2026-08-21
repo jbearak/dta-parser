@@ -187,6 +187,29 @@ fn with_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes
 }
 
+fn with_empty_then_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
+    let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+    bytes.truncate(value_labels);
+    bytes.extend_from_slice(&8_i32.to_be_bytes());
+    let empty_name = bytes.len();
+    bytes.resize(empty_name + 33, 0);
+    bytes[empty_name..empty_name + 5].copy_from_slice(b"empty");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&20_i32.to_be_bytes());
+    let codes_name = bytes.len();
+    bytes.resize(codes_name + 33, 0);
+    bytes[codes_name..codes_name + 5].copy_from_slice(b"codes");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&1_i32.to_be_bytes());
+    bytes.extend_from_slice(&4_i32.to_be_bytes());
+    bytes.extend_from_slice(&0_i32.to_be_bytes());
+    bytes.extend_from_slice(&127_i32.to_be_bytes());
+    bytes.extend_from_slice(b"NA\0\0");
+    bytes
+}
+
 #[test]
 fn generated_pre111_fixtures_decode_expected_semantics() {
     for (release, expected_version) in [
@@ -307,6 +330,24 @@ fn accepts_alternate_release_105_and_108_offset_label_tables() {
             "NA"
         );
     }
+}
+
+#[test]
+fn release_108_prefers_long_names_for_empty_first_offset_table() {
+    let bytes = with_empty_then_offset_value_labels(synthetic_pre111_msf(108));
+    let slice = read_dta(&bytes).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.read().unwrap(), slice);
+    assert!(slice.value_label_table("empty").unwrap().entries.is_empty());
+    assert_eq!(
+        slice
+            .value_label_table("codes")
+            .unwrap()
+            .entry(127)
+            .unwrap()
+            .label,
+        "NA"
+    );
 }
 
 #[test]

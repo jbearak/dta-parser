@@ -2517,16 +2517,12 @@ fn select_legacy_value_label_layout<R: Read + Seek>(
         scratch,
         "probing legacy value-label layout",
     )?;
-    let short_framing =
-        has_legacy_offset_table_framing(&probe, metadata.byte_order, section_length, 9);
     let long_framing =
         has_legacy_offset_table_framing(&probe, metadata.byte_order, section_length, 33);
     Ok(match metadata.format_version {
         FormatVersion::V105 if long_framing => (LegacyValueLabelLayout::OffsetTable, 33),
         FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
-        FormatVersion::V108 if !short_framing && long_framing => {
-            (LegacyValueLabelLayout::OffsetTable, 33)
-        }
+        FormatVersion::V108 if long_framing => (LegacyValueLabelLayout::OffsetTable, 33),
         _ => (
             layout.value_label_layout,
             layout.value_label_table_name_width,

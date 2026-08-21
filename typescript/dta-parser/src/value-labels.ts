@@ -395,10 +395,6 @@ export function parse_value_labels(
     }
 
     if (metadata.format_version === 108
-        && !has_variable_label_table_framing(
-            view, little_endian,
-            my_start_pos, my_section_end, 9
-        )
         && has_variable_label_table_framing(
             view, little_endian,
             my_start_pos, my_section_end, 33

@@ -604,6 +604,46 @@ describe('parse_legacy_metadata', () => {
         });
     }
 
+    it('uses 33-byte names when the first release 108 table is empty', () => {
+        const built = build_legacy_buffer({
+            version: 108, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        const empty = Buffer.alloc(4 + 33 + 3 + 8);
+        const empty_view = new DataView(
+            empty.buffer, empty.byteOffset, empty.byteLength
+        );
+        empty_view.setInt32(0, 8, true);
+        empty.write('empty', 4, 'latin1');
+
+        const text = Buffer.from('one\0', 'latin1');
+        const payload_size = 8 + 4 + 4 + text.length;
+        const populated = Buffer.alloc(4 + 33 + 3 + payload_size);
+        const populated_view = new DataView(
+            populated.buffer, populated.byteOffset, populated.byteLength
+        );
+        populated_view.setInt32(0, payload_size, true);
+        populated.write('codes', 4, 'latin1');
+        const pos = 4 + 33 + 3;
+        populated_view.setInt32(pos, 1, true);
+        populated_view.setInt32(pos + 4, text.length, true);
+        populated_view.setInt32(pos + 8, 0, true);
+        populated_view.setInt32(pos + 12, 1, true);
+        text.copy(populated, pos + 16);
+
+        const complete = Buffer.concat([
+            Buffer.from(built.buffer), empty, populated,
+        ]);
+        const buffer = complete.buffer.slice(
+            complete.byteOffset,
+            complete.byteOffset + complete.byteLength
+        );
+        const meta = parse_legacy_metadata(buffer, complete.byteLength);
+        const labels = parse_value_labels(buffer, meta);
+        expect(labels.get('empty')).toEqual(new Map());
+        expect(labels.get('codes')?.get(1)).toBe('one');
+    });
+
     it('keeps in-memory and Node file-backed readers in parity for release 108', async () => {
         const built = build_legacy_buffer({
             version: 108, nvar: 2, nobs: 1,
