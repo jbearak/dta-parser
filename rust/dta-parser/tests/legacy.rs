@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use dta_parser::{
     parse_metadata, read_dta, read_dta_with_encoding, ByteOrder, ColumnValues, DtaError, DtaFile,
-    FormatVersion, MissingTag, ReadOptions, TextEncoding,
+    FileOptions, FormatVersion, MissingTag, ReadOptions, TextEncoding,
 };
 use std::io::Cursor;
 
@@ -187,6 +187,26 @@ fn with_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
     bytes
 }
 
+fn with_ambiguous_short_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
+    let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
+    bytes.truncate(value_labels);
+    bytes.extend_from_slice(&38_i32.to_be_bytes());
+    let name = bytes.len();
+    bytes.resize(name + 9, 0);
+    bytes[name..name + 5].copy_from_slice(b"short");
+    bytes.extend_from_slice(&[0; 3]);
+    bytes.extend_from_slice(&3_i32.to_be_bytes());
+    bytes.extend_from_slice(&6_i32.to_be_bytes());
+    for offset in [0_i32, 2, 4] {
+        bytes.extend_from_slice(&offset.to_be_bytes());
+    }
+    for value in [0_i32, 1, 22] {
+        bytes.extend_from_slice(&value.to_be_bytes());
+    }
+    bytes.extend_from_slice(b"a\0b\0c\0");
+    bytes
+}
+
 fn with_empty_then_offset_value_labels(mut bytes: Vec<u8>) -> Vec<u8> {
     let value_labels = parse_metadata(&bytes).unwrap().section_offsets.value_labels as usize;
     bytes.truncate(value_labels);
@@ -330,6 +350,39 @@ fn accepts_alternate_release_105_and_108_offset_label_tables() {
             "NA"
         );
     }
+}
+
+#[test]
+fn legacy_layout_probe_is_interruptible_during_large_zero_padding() {
+    let mut bytes = with_offset_value_labels(synthetic_pre111_msf(108));
+    bytes.resize(bytes.len() + 8 * 1024, 0);
+    let mut file = DtaFile::from_reader_with_options(
+        Cursor::new(bytes),
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    let mut polls = 0;
+    let error = file
+        .read_with_interrupt(&ReadOptions::default(), || {
+            polls += 1;
+            polls >= 3
+        })
+        .unwrap_err();
+    assert_eq!(error, DtaError::Cancelled);
+}
+
+#[test]
+fn release_108_prefers_complete_short_name_framing() {
+    let bytes = with_ambiguous_short_offset_value_labels(synthetic_pre111_msf(108));
+    let slice = read_dta(&bytes).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.read().unwrap(), slice);
+    let table = slice.value_label_table("short").unwrap();
+    assert_eq!(table.entry(0).unwrap().label, "a");
+    assert_eq!(table.entry(1).unwrap().label, "b");
+    assert_eq!(table.entry(22).unwrap().label, "c");
 }
 
 #[test]

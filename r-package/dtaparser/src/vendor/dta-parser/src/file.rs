@@ -2018,9 +2018,13 @@ fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
     end: u64,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
+    known_nonzero: &mut Option<u64>,
 ) -> Result<bool, DtaError> {
     const HEADER_PROBE_WIDTH: u64 = 12;
 
+    if known_nonzero.is_some_and(|offset| (start..end).contains(&offset)) {
+        return Ok(false);
+    }
     let mut cursor = start;
     while cursor < end {
         check_cancel(should_interrupt)?;
@@ -2038,7 +2042,13 @@ fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
             scratch,
             "reading value-label trailing bytes",
         )?;
-        if bytes.iter().any(|byte| *byte != 0) {
+        if let Some(index) = bytes.iter().position(|byte| *byte != 0) {
+            *known_nonzero = Some(checked_add_u64(
+                cursor,
+                u64::try_from(index)
+                    .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?,
+                "value-label trailing bytes",
+            )?);
             return Ok(false);
         }
         cursor = checked_add_u64(
@@ -2047,6 +2057,69 @@ fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
                 .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?,
             "value-label trailing bytes",
         )?;
+    }
+    Ok(true)
+}
+
+fn has_legacy_offset_section_framing_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    start: u64,
+    end: u64,
+    byte_order: ByteOrder,
+    name_width: usize,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+) -> Result<bool, DtaError> {
+    let prefix_width = 4_usize
+        .checked_add(name_width)
+        .and_then(|value| value.checked_add(3))
+        .ok_or(DtaError::ArithmeticOverflow("value-label table header"))?;
+    let header_width = prefix_width
+        .checked_add(8)
+        .ok_or(DtaError::ArithmeticOverflow("value-label table header"))?;
+    let mut cursor = start;
+    let mut known_nonzero = None;
+    while cursor < end {
+        check_cancel(should_interrupt)?;
+        let remaining = end - cursor;
+        let probe_length = usize::try_from(remaining.min(header_width as u64))
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label section length"))?;
+        let probe = read_exact_at(
+            reader,
+            cursor,
+            probe_length,
+            scratch,
+            "probing legacy value-label section",
+        )?;
+        if probe.iter().all(|byte| *byte == 0) {
+            return remaining_is_zero_padding(
+                reader,
+                cursor,
+                end,
+                scratch,
+                should_interrupt,
+                &mut known_nonzero,
+            );
+        }
+        let section_length = usize::try_from(remaining)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label section length"))?;
+        if !has_legacy_offset_table_framing(&probe, byte_order, section_length, name_width) {
+            return Ok(false);
+        }
+        let declared = read_i32(&probe, 0, byte_order, "value-label table length")?;
+        let declared = u64::try_from(declared)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label table length"))?;
+        let next = checked_add_u64(
+            cursor,
+            u64::try_from(prefix_width)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label table header"))?,
+            "value-label table header",
+        )?;
+        let next = checked_add_u64(next, declared, "value-label table")?;
+        if next <= cursor || next > end {
+            return Ok(false);
+        }
+        cursor = next;
     }
     Ok(true)
 }
@@ -2065,9 +2138,17 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     let section_end = metadata.section_offsets.end_of_file;
     let mut cursor = metadata.section_offsets.value_labels;
     let mut tables = Vec::new();
+    let mut known_nonzero = None;
     while cursor < section_end {
         check_cancel(should_interrupt)?;
-        if remaining_is_zero_padding(reader, cursor, section_end, scratch, should_interrupt)? {
+        if remaining_is_zero_padding(
+            reader,
+            cursor,
+            section_end,
+            scratch,
+            should_interrupt,
+            &mut known_nonzero,
+        )? {
             cursor = section_end;
             break;
         }
@@ -2217,11 +2298,19 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         cursor = expect_file_tag(reader, cursor, b"<value_labels>", "<value_labels>", scratch)?;
     }
     let mut tables = Vec::new();
+    let mut known_nonzero = None;
 
     while cursor < section_end {
         check_cancel(should_interrupt)?;
         if !modern
-            && remaining_is_zero_padding(reader, cursor, section_end, scratch, should_interrupt)?
+            && remaining_is_zero_padding(
+                reader,
+                cursor,
+                section_end,
+                scratch,
+                should_interrupt,
+                &mut known_nonzero,
+            )?
         {
             cursor = section_end;
             break;
@@ -2487,10 +2576,11 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     Ok(tables)
 }
 
-fn select_legacy_value_label_layout<R: Read + Seek>(
+fn select_legacy_value_label_layout<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     metadata: &DtaMetadata,
     scratch: &mut Scratch,
+    should_interrupt: &mut F,
 ) -> Result<(LegacyValueLabelLayout, usize), DtaError> {
     let layout = LegacyLayout::for_version(metadata.format_version);
     if !matches!(
@@ -2502,23 +2592,30 @@ fn select_legacy_value_label_layout<R: Read + Seek>(
             layout.value_label_table_name_width,
         ));
     }
-    let section_length = metadata
-        .section_offsets
-        .end_of_file
-        .checked_sub(metadata.section_offsets.value_labels)
-        .ok_or(DtaError::ArithmeticOverflow("value-label section length"))?;
-    let section_length = usize::try_from(section_length)
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label section length"))?;
-    let probe_length = section_length.min(4 + 33 + 3 + 8);
-    let probe = read_exact_at(
+    let start = metadata.section_offsets.value_labels;
+    let end = metadata.section_offsets.end_of_file;
+    if metadata.format_version == FormatVersion::V108
+        && has_legacy_offset_section_framing_streaming(
+            reader,
+            start,
+            end,
+            metadata.byte_order,
+            9,
+            scratch,
+            should_interrupt,
+        )?
+    {
+        return Ok((LegacyValueLabelLayout::OffsetTable, 9));
+    }
+    let long_framing = has_legacy_offset_section_framing_streaming(
         reader,
-        metadata.section_offsets.value_labels,
-        probe_length,
+        start,
+        end,
+        metadata.byte_order,
+        33,
         scratch,
-        "probing legacy value-label layout",
+        should_interrupt,
     )?;
-    let long_framing =
-        has_legacy_offset_table_framing(&probe, metadata.byte_order, section_length, 33);
     Ok(match metadata.format_version {
         FormatVersion::V105 if long_framing => (LegacyValueLabelLayout::OffsetTable, 33),
         FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
@@ -2548,7 +2645,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         );
     }
     let (value_label_layout, table_name_width) =
-        select_legacy_value_label_layout(reader, metadata, scratch)?;
+        select_legacy_value_label_layout(reader, metadata, scratch, should_interrupt)?;
     match value_label_layout {
         LegacyValueLabelLayout::Fixed8 => read_fixed8_value_labels_streaming(
             reader,

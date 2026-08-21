@@ -73,6 +73,55 @@ pub(crate) fn has_legacy_offset_table_framing(
             .is_some_and(|table_end| table_end <= section_length)
 }
 
+pub(crate) fn has_legacy_offset_section_framing(
+    bytes: &[u8],
+    byte_order: crate::ByteOrder,
+    name_width: usize,
+) -> bool {
+    let Some(prefix_width) = 4_usize
+        .checked_add(name_width)
+        .and_then(|value| value.checked_add(RESERVED_WIDTH))
+    else {
+        return false;
+    };
+    let mut cursor = 0;
+    let mut known_nonzero = None;
+    while cursor < bytes.len() {
+        let remaining = &bytes[cursor..];
+        if !known_nonzero.is_some_and(|offset| offset >= cursor) {
+            if let Some(relative) = remaining.iter().position(|byte| *byte != 0) {
+                let Some(offset) = cursor.checked_add(relative) else {
+                    return false;
+                };
+                known_nonzero = Some(offset);
+            } else {
+                return true;
+            }
+        }
+        if !has_legacy_offset_table_framing(remaining, byte_order, remaining.len(), name_width) {
+            return false;
+        }
+        let Ok(table_length) = read_i32(remaining, 0, byte_order, "value-label table length")
+        else {
+            return false;
+        };
+        let Ok(table_length) = usize::try_from(table_length) else {
+            return false;
+        };
+        let Some(next) = cursor
+            .checked_add(prefix_width)
+            .and_then(|value| value.checked_add(table_length))
+        else {
+            return false;
+        };
+        if next <= cursor || next > bytes.len() {
+            return false;
+        }
+        cursor = next;
+    }
+    true
+}
+
 fn name_width(version: FormatVersion) -> Result<usize, DtaError> {
     if version.is_modern() {
         return match version {
@@ -382,8 +431,17 @@ fn parse_legacy_tables(
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     let mut cursor = start;
     let mut tables = Vec::new();
+    let mut known_nonzero = None;
     while cursor < end {
-        if bytes[cursor..end].iter().all(|byte| *byte == 0) {
+        let suffix_is_zero = if known_nonzero.is_some_and(|offset| offset >= cursor) {
+            false
+        } else if let Some(relative) = bytes[cursor..end].iter().position(|byte| *byte != 0) {
+            known_nonzero = Some(checked_add(cursor, relative, "value-label trailing bytes")?);
+            false
+        } else {
+            true
+        };
+        if suffix_is_zero {
             cursor = end;
             break;
         }
@@ -500,23 +558,14 @@ pub(crate) fn parse_value_labels_section(
         })?;
         let (value_label_layout, table_name_width) = match metadata.format_version {
             FormatVersion::V105
-                if has_legacy_offset_table_framing(
-                    section,
-                    metadata.byte_order,
-                    section.len(),
-                    33,
-                ) =>
+                if has_legacy_offset_section_framing(section, metadata.byte_order, 33) =>
             {
                 (LegacyValueLabelLayout::OffsetTable, 33)
             }
             FormatVersion::V105 => (LegacyValueLabelLayout::Fixed8, 9),
             FormatVersion::V108
-                if has_legacy_offset_table_framing(
-                    section,
-                    metadata.byte_order,
-                    section.len(),
-                    33,
-                ) =>
+                if !has_legacy_offset_section_framing(section, metadata.byte_order, 9)
+                    && has_legacy_offset_section_framing(section, metadata.byte_order, 33) =>
             {
                 (LegacyValueLabelLayout::OffsetTable, 33)
             }

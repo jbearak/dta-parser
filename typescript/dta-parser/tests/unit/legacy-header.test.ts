@@ -8,6 +8,25 @@ import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+async function expect_node_label_parity(
+    buffer: ArrayBuffer,
+    expected: Map<string, Map<number, string>>
+): Promise<void> {
+    const dir = mkdtempSync(join(tmpdir(), 'dta-labels-'));
+    const path = join(dir, 'labels.dta');
+    try {
+        writeFileSync(path, Buffer.from(buffer));
+        const file = await DtaFile.open(path);
+        try {
+            expect(file.value_label_tables).toEqual(expected);
+        } finally {
+            file.close();
+        }
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+}
+
 // -----------------------------------------------------------
 // Legacy header parser unit tests (formats 111, 113-115)
 // -----------------------------------------------------------
@@ -604,7 +623,43 @@ describe('parse_legacy_metadata', () => {
         });
     }
 
-    it('uses 33-byte names when the first release 108 table is empty', () => {
+    it('prefers complete 9-byte framing for release 108', async () => {
+        const built = build_legacy_buffer({
+            version: 108, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        const text = Buffer.from('a\0b\0c\0', 'latin1');
+        const payload_size = 8 + 3 * 4 + 3 * 4 + text.length;
+        const table = Buffer.alloc(4 + 9 + 3 + payload_size);
+        const view = new DataView(
+            table.buffer, table.byteOffset, table.byteLength
+        );
+        view.setInt32(0, payload_size, true);
+        table.write('short', 4, 'latin1');
+        const pos = 4 + 9 + 3;
+        view.setInt32(pos, 3, true);
+        view.setInt32(pos + 4, text.length, true);
+        for (const [index, offset] of [0, 2, 4].entries()) {
+            view.setInt32(pos + 8 + index * 4, offset, true);
+        }
+        for (const [index, value] of [0, 1, 22].entries()) {
+            view.setInt32(pos + 20 + index * 4, value, true);
+        }
+        text.copy(table, pos + 32);
+        const complete = Buffer.concat([Buffer.from(built.buffer), table]);
+        const buffer = complete.buffer.slice(
+            complete.byteOffset,
+            complete.byteOffset + complete.byteLength
+        );
+        const meta = parse_legacy_metadata(buffer, complete.byteLength);
+        const labels = parse_value_labels(buffer, meta);
+        expect(labels.get('short')).toEqual(
+            new Map([[0, 'a'], [1, 'b'], [22, 'c']])
+        );
+        await expect_node_label_parity(buffer, labels);
+    });
+
+    it('uses 33-byte names when the first release 108 table is empty', async () => {
         const built = build_legacy_buffer({
             version: 108, nvar: 1, nobs: 0,
             type_codes: [105], varnames: ['answer'],
@@ -642,6 +697,48 @@ describe('parse_legacy_metadata', () => {
         const labels = parse_value_labels(buffer, meta);
         expect(labels.get('empty')).toEqual(new Map());
         expect(labels.get('codes')?.get(1)).toBe('one');
+        await expect_node_label_parity(buffer, labels);
+    });
+
+    it('does not fall back after selecting release 108 long framing', async () => {
+        const built = build_legacy_buffer({
+            version: 108, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        const text = Buffer.from('one\0', 'latin1');
+        const payload_size = 8 + 4 + 4 + text.length;
+        const table = Buffer.alloc(4 + 33 + 3 + payload_size);
+        const view = new DataView(
+            table.buffer, table.byteOffset, table.byteLength
+        );
+        view.setInt32(0, payload_size, true);
+        table.write('codes', 4, 'latin1');
+        const pos = 4 + 33 + 3;
+        view.setInt32(pos, 1, true);
+        view.setInt32(pos + 4, text.length, true);
+        view.setInt32(pos + 8, -1, true);
+        view.setInt32(pos + 12, 1, true);
+        text.copy(table, pos + 16);
+        const complete = Buffer.concat([Buffer.from(built.buffer), table]);
+        const buffer = complete.buffer.slice(
+            complete.byteOffset,
+            complete.byteOffset + complete.byteLength
+        );
+        const meta = parse_legacy_metadata(buffer, complete.byteLength);
+        expect(() => parse_value_labels(buffer, meta)).toThrow(
+            'invalid text offset'
+        );
+
+        const dir = mkdtempSync(join(tmpdir(), 'dta-corrupt-labels-'));
+        const path = join(dir, 'labels.dta');
+        try {
+            writeFileSync(path, complete);
+            await expect(DtaFile.open(path)).rejects.toThrow(
+                'invalid text offset'
+            );
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
     });
 
     it('keeps in-memory and Node file-backed readers in parity for release 108', async () => {

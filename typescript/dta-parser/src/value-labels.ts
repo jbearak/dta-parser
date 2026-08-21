@@ -113,7 +113,9 @@ function parse_label_entry_payload(
     for (let i = 0; i < my_n; i++) {
         if (the_offsets[i] < 0
             || the_offsets[i] >= my_txt_len) {
-            continue;
+            throw new Error(
+                'Corrupt value label table: invalid text offset'
+            );
         }
         const my_str_start =
             my_text_start + the_offsets[i];
@@ -128,6 +130,11 @@ function parse_label_entry_payload(
             my_str_end++;
         }
 
+        if (my_str_end === my_str_limit) {
+            throw new Error(
+                'Corrupt value label table: missing text terminator'
+            );
+        }
         const my_label = decoder.decode(
             bytes.subarray(my_str_start, my_str_end)
         );
@@ -270,6 +277,7 @@ function parse_old_105_entries(
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
+    let my_known_nonzero = -1;
     while (pos + 12 <= section_end) {
         let my_header_has_nonzero = false;
         for (let i = pos; i < pos + 12; i++) {
@@ -279,14 +287,16 @@ function parse_old_105_entries(
             }
         }
         if (!my_header_has_nonzero) {
-            let my_suffix_has_nonzero = false;
-            for (let i = pos + 12; i < section_end; i++) {
-                if (bytes[i] !== 0) {
-                    my_suffix_has_nonzero = true;
-                    break;
+            if (my_known_nonzero < pos) {
+                my_known_nonzero = -1;
+                for (let i = pos + 12; i < section_end; i++) {
+                    if (bytes[i] !== 0) {
+                        my_known_nonzero = i;
+                        break;
+                    }
                 }
             }
-            if (!my_suffix_has_nonzero) break;
+            if (my_known_nonzero < pos) break;
         }
 
         const my_n = view.getUint16(pos, little_endian);
@@ -342,6 +352,53 @@ function has_variable_label_table_framing(
         && my_payload_start + my_payload_len <= section_end;
 }
 
+function has_variable_label_section_framing(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    start_pos: number,
+    section_end: number,
+    name_width: number
+): boolean {
+    const my_prefix_width = 4 + name_width + PADDING_BYTES;
+    let pos = start_pos;
+    let my_known_nonzero = -1;
+    while (pos < section_end) {
+        const my_header_end = Math.min(
+            section_end, pos + my_prefix_width + 8
+        );
+        let my_header_has_nonzero = false;
+        for (let i = pos; i < my_header_end; i++) {
+            if (bytes[i] !== 0) {
+                my_header_has_nonzero = true;
+                break;
+            }
+        }
+        if (!my_header_has_nonzero) {
+            if (my_known_nonzero < pos) {
+                my_known_nonzero = -1;
+                for (let i = my_header_end; i < section_end; i++) {
+                    if (bytes[i] !== 0) {
+                        my_known_nonzero = i;
+                        break;
+                    }
+                }
+            }
+            if (my_known_nonzero < pos) return true;
+        }
+        if (!has_variable_label_table_framing(
+            view, little_endian, pos, section_end, name_width
+        )) {
+            return false;
+        }
+        const my_table_len = view.getInt32(pos, little_endian);
+        const my_next = pos + my_prefix_width + my_table_len;
+        if (my_next <= pos || my_next > section_end) return false;
+        pos = my_next;
+    }
+    return true;
+}
+
 // -----------------------------------------------------------
 // Public API
 // -----------------------------------------------------------
@@ -384,8 +441,8 @@ export function parse_value_labels(
         - base_offset;
 
     if (metadata.format_version === 105
-        && !has_variable_label_table_framing(
-            view, little_endian,
+        && !has_variable_label_section_framing(
+            bytes, view, little_endian,
             my_start_pos, my_section_end, 33
         )) {
         return parse_old_105_entries(
@@ -395,8 +452,12 @@ export function parse_value_labels(
     }
 
     if (metadata.format_version === 108
-        && has_variable_label_table_framing(
-            view, little_endian,
+        && !has_variable_label_section_framing(
+            bytes, view, little_endian,
+            my_start_pos, my_section_end, 9
+        )
+        && has_variable_label_section_framing(
+            bytes, view, little_endian,
             my_start_pos, my_section_end, 33
         )) {
         my_name_width = 33;
