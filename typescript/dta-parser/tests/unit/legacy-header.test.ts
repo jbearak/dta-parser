@@ -47,15 +47,16 @@ function build_legacy_buffer(opts: {
     // Compute obs_length from type codes
     let obs_length = 0;
     for (const my_code of type_codes) {
-        if (version < 111 && my_code >= 128) {
-            obs_length += my_code - 127;
+        if (version < 111) {
+            if (my_code === 98) obs_length += 1;
+            else if (my_code === 105) obs_length += 2;
+            else if (my_code === 108) obs_length += 4;
+            else if (my_code === 102) obs_length += 4;
+            else if (my_code === 100) obs_length += 8;
+            else if (my_code >= 128) obs_length += my_code - 127;
         } else if (my_code >= 1 && my_code <= 244) {
             obs_length += my_code;
-        } else if (my_code === 98 || my_code === 251) obs_length += 1;
-        else if (my_code === 105) obs_length += 2;
-        else if (my_code === 108) obs_length += 4;
-        else if (my_code === 102) obs_length += 4;
-        else if (my_code === 100) obs_length += 8;
+        } else if (my_code === 251) obs_length += 1;
         else if (my_code === 252) obs_length += 2;
         else if (my_code === 253) obs_length += 4;
         else if (my_code === 254) obs_length += 4;
@@ -434,6 +435,9 @@ describe('parse_legacy_metadata', () => {
             expect(meta.variables.map(v => v.type)).toEqual([
                 'byte', 'int', 'long', 'float', 'double', 'str5',
             ]);
+            expect(file_size - meta.section_offsets.data).toBe(
+                meta.obs_length
+            );
             const view = new DataView(buffer);
             const data = meta.section_offsets.data;
             view.setInt8(data, 127);
@@ -483,14 +487,16 @@ describe('parse_legacy_metadata', () => {
             type_codes: [105], varnames: ['answer'],
         });
         const prefix = Buffer.from(built.buffer);
-        const table = Buffer.alloc(12 + 2 + 8);
+        const table = Buffer.alloc(12 + 2 * 2 + 2 * 8);
         const view = new DataView(
             table.buffer, table.byteOffset, table.byteLength
         );
-        view.setUint16(0, 1, true);
+        view.setUint16(0, 2, true);
         table.write('yesno', 2, 'latin1');
         view.setInt16(12, 1, true);
-        table.write('yes', 14, 'latin1');
+        view.setInt16(14, 1, true);
+        table.write('first', 16, 'latin1');
+        table.write('second', 24, 'latin1');
         const complete = Buffer.concat([prefix, table]);
         const buffer = complete.buffer.slice(
             complete.byteOffset,
@@ -501,7 +507,7 @@ describe('parse_legacy_metadata', () => {
         );
         expect(
             parse_value_labels(buffer, meta).get('yesno')?.get(1)
-        ).toBe('yes');
+        ).toBe('first');
     });
 
     it('does not misclassify release 105 fixed tables with empty labels', () => {
@@ -546,8 +552,10 @@ describe('parse_legacy_metadata', () => {
                 type_codes: [105], varnames: ['answer'],
             });
             const prefix = Buffer.from(built.buffer);
-            const text = Buffer.from('yes\0', 'latin1');
-            const payload_size = 8 + 4 + 4 + text.length;
+            const text = Buffer.from(
+                'first\0second\0', 'latin1'
+            );
+            const payload_size = 8 + 2 * 4 + 2 * 4 + text.length;
             const table = Buffer.alloc(
                 4 + table_name_width + 3 + payload_size
             );
@@ -557,11 +565,13 @@ describe('parse_legacy_metadata', () => {
             view.setInt32(0, payload_size, true);
             table.write('table1', 4, 'latin1');
             const pos = 4 + table_name_width + 3;
-            view.setInt32(pos, 1, true);
+            view.setInt32(pos, 2, true);
             view.setInt32(pos + 4, text.length, true);
             view.setInt32(pos + 8, 0, true);
-            view.setInt32(pos + 12, 1, true);
-            text.copy(table, pos + 16);
+            view.setInt32(pos + 12, 6, true);
+            view.setInt32(pos + 16, 1, true);
+            view.setInt32(pos + 20, 1, true);
+            text.copy(table, pos + 24);
             const complete = Buffer.concat([prefix, table]);
             const buffer = complete.buffer.slice(
                 complete.byteOffset,
@@ -573,7 +583,7 @@ describe('parse_legacy_metadata', () => {
             expect(
                 parse_value_labels(buffer, meta)
                     .get('table1')?.get(1)
-            ).toBe('yes');
+            ).toBe('first');
         });
     }
 

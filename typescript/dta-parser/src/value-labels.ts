@@ -131,7 +131,9 @@ function parse_label_entry_payload(
         const my_label = decoder.decode(
             bytes.subarray(my_str_start, my_str_end)
         );
-        my_label_map.set(the_values[i], my_label);
+        if (!my_label_map.has(the_values[i])) {
+            my_label_map.set(the_values[i], my_label);
+        }
     }
 
     return {
@@ -287,9 +289,12 @@ function parse_old_105_entries(
         }
         const my_labels = new Map<number, string>();
         for (let i = 0; i < my_n; i++) {
-            my_labels.set(the_codes[i], read_label_name(
+            const my_label = read_label_name(
                 bytes, pos, 8, LEGACY_DECODER
-            ));
+            );
+            if (!my_labels.has(the_codes[i])) {
+                my_labels.set(the_codes[i], my_label);
+            }
             pos += 8;
         }
         my_result.set(my_name, my_labels);
