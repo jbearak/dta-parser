@@ -146,16 +146,28 @@ fn synthetic_pre111_msf(version: u8) -> Vec<u8> {
     bytes.extend_from_slice(&321_i16.to_be_bytes());
     bytes.extend_from_slice(b"abc");
 
-    bytes.extend_from_slice(&20_i32.to_be_bytes());
-    let table_name = bytes.len();
-    bytes.resize(table_name + 33, 0);
-    bytes[table_name..table_name + 5].copy_from_slice(b"codes");
-    bytes.extend_from_slice(&[0; 3]);
-    bytes.extend_from_slice(&1_i32.to_be_bytes());
-    bytes.extend_from_slice(&4_i32.to_be_bytes());
-    bytes.extend_from_slice(&0_i32.to_be_bytes());
-    bytes.extend_from_slice(&127_i32.to_be_bytes());
-    bytes.extend_from_slice(b"NA\0\0");
+    if version == 105 {
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        let table_name = bytes.len();
+        bytes.resize(table_name + 9, 0);
+        bytes[table_name..table_name + 5].copy_from_slice(b"codes");
+        bytes.push(0);
+        bytes.extend_from_slice(&127_i16.to_be_bytes());
+        bytes.extend_from_slice(b"NA\0\0\0\0\0\0");
+        bytes.push(0);
+    } else {
+        bytes.extend_from_slice(&20_i32.to_be_bytes());
+        let table_name_width = if version == 108 { 9 } else { 33 };
+        let table_name = bytes.len();
+        bytes.resize(table_name + table_name_width, 0);
+        bytes[table_name..table_name + 5].copy_from_slice(b"codes");
+        bytes.extend_from_slice(&[0; 3]);
+        bytes.extend_from_slice(&1_i32.to_be_bytes());
+        bytes.extend_from_slice(&4_i32.to_be_bytes());
+        bytes.extend_from_slice(&0_i32.to_be_bytes());
+        bytes.extend_from_slice(&127_i32.to_be_bytes());
+        bytes.extend_from_slice(b"NA\0\0");
+    }
     bytes
 }
 

@@ -6,6 +6,12 @@ use crate::{
 
 pub(crate) const SORTLIST_WIDTH: usize = 2;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LegacyValueLabelLayout {
+    Fixed8,
+    OffsetTable,
+}
+
 /// Release-specific widths for the sequential (pre-117) file layout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct LegacyLayout {
@@ -17,6 +23,7 @@ pub(crate) struct LegacyLayout {
     pub variable_label_width: usize,
     pub expansion_length_width: usize,
     pub value_label_table_name_width: usize,
+    pub value_label_layout: LegacyValueLabelLayout,
     pub uses_old_type_codes: bool,
 }
 
@@ -31,7 +38,8 @@ impl LegacyLayout {
                 value_label_name_width: 9,
                 variable_label_width: 32,
                 expansion_length_width: 2,
-                value_label_table_name_width: 33,
+                value_label_table_name_width: 9,
+                value_label_layout: LegacyValueLabelLayout::Fixed8,
                 uses_old_type_codes: true,
             },
             FormatVersion::V108 => Self {
@@ -42,7 +50,8 @@ impl LegacyLayout {
                 value_label_name_width: 9,
                 variable_label_width: 81,
                 expansion_length_width: 2,
-                value_label_table_name_width: 33,
+                value_label_table_name_width: 9,
+                value_label_layout: LegacyValueLabelLayout::OffsetTable,
                 uses_old_type_codes: true,
             },
             FormatVersion::V110 => Self {
@@ -54,6 +63,7 @@ impl LegacyLayout {
                 variable_label_width: 81,
                 expansion_length_width: 4,
                 value_label_table_name_width: 33,
+                value_label_layout: LegacyValueLabelLayout::OffsetTable,
                 uses_old_type_codes: true,
             },
             FormatVersion::V111 | FormatVersion::V113 => Self {
@@ -65,6 +75,7 @@ impl LegacyLayout {
                 variable_label_width: 81,
                 expansion_length_width: 4,
                 value_label_table_name_width: 33,
+                value_label_layout: LegacyValueLabelLayout::OffsetTable,
                 uses_old_type_codes: false,
             },
             FormatVersion::V114 | FormatVersion::V115 => Self {
@@ -76,6 +87,7 @@ impl LegacyLayout {
                 variable_label_width: 81,
                 expansion_length_width: 4,
                 value_label_table_name_width: 33,
+                value_label_layout: LegacyValueLabelLayout::OffsetTable,
                 uses_old_type_codes: false,
             },
             FormatVersion::V117 | FormatVersion::V118 | FormatVersion::V119 => {
