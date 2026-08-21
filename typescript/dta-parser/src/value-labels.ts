@@ -23,6 +23,9 @@ const LBL_CLOSE_TAG_LENGTH = 6; // "</lbl>"
 
 // Label name field widths by format version
 const LABEL_NAME_WIDTH: Record<number, number> = {
+    105: 9,
+    108: 9,
+    110: 33,
     111: 33,
     113: 33,
     114: 33,
@@ -256,6 +259,42 @@ function parse_legacy_entries(
     return my_result;
 }
 
+function parse_old_105_entries(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    start_pos: number,
+    section_end: number
+): Map<string, Map<number, string>> {
+    const my_result = new Map<string, Map<number, string>>();
+    let pos = start_pos;
+    while (pos + 12 <= section_end) {
+        const my_n = view.getUint16(pos, little_endian);
+        pos += 2;
+        const my_name = read_label_name(
+            bytes, pos, 9, LEGACY_DECODER
+        );
+        pos += 10; // name plus one padding byte
+        if (pos + my_n * 10 > section_end) {
+            throw new Error('Corrupt value label table: truncated entry');
+        }
+        const the_codes: number[] = [];
+        for (let i = 0; i < my_n; i++) {
+            the_codes.push(view.getInt16(pos, little_endian));
+            pos += 2;
+        }
+        const my_labels = new Map<number, string>();
+        for (let i = 0; i < my_n; i++) {
+            my_labels.set(the_codes[i], read_label_name(
+                bytes, pos, 8, LEGACY_DECODER
+            ));
+            pos += 8;
+        }
+        my_result.set(my_name, my_labels);
+    }
+    return my_result;
+}
+
 // -----------------------------------------------------------
 // Public API
 // -----------------------------------------------------------
@@ -296,6 +335,13 @@ export function parse_value_labels(
     const my_section_end =
         metadata.section_offsets.stata_data_close
         - base_offset;
+
+    if (metadata.format_version === 105) {
+        return parse_old_105_entries(
+            bytes, view, little_endian,
+            my_start_pos, my_section_end
+        );
+    }
 
     if (my_legacy) {
         return parse_legacy_entries(

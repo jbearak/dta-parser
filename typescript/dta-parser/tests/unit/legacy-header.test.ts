@@ -2,6 +2,11 @@ import { describe, it, expect } from 'bun:test';
 import { parse_legacy_metadata } from '../../src/legacy-header';
 import { read_rows_from_buffer } from '../../src/data-reader';
 import { make_missing_value } from '../../src/missing-values';
+import { parse_value_labels } from '../../src/value-labels';
+import { DtaFile } from '../../src/node';
+import { mkdtempSync, writeFileSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 // -----------------------------------------------------------
 // Legacy header parser unit tests (formats 111, 113-115)
@@ -13,7 +18,7 @@ import { make_missing_value } from '../../src/missing-values';
  * immediately after the expansion fields terminator.
  */
 function build_legacy_buffer(opts: {
-    version: 111 | 113 | 114 | 115;
+    version: 105 | 108 | 110 | 111 | 113 | 114 | 115;
     byte_order?: 'LSF' | 'MSF';
     nvar: number;
     nobs: number;
@@ -32,28 +37,39 @@ function build_legacy_buffer(opts: {
     } = opts;
 
     const little_endian = byte_order === 'LSF';
-    const fmt_width = version === 111 || version === 113 ? 12 : 49;
+    const fmt_width = version <= 113 ? 12 : 49;
+    const header_size = version === 105 ? 60 : 109;
+    const varname_width = version <= 108 ? 9 : 33;
+    const value_label_name_width = version <= 108 ? 9 : 33;
+    const variable_label_width = version === 105 ? 32 : 81;
+    const expansion_header_size = version <= 108 ? 3 : 5;
 
     // Compute obs_length from type codes
     let obs_length = 0;
     for (const my_code of type_codes) {
-        if (my_code >= 1 && my_code <= 244) {
+        if (version < 111 && my_code >= 128) {
+            obs_length += my_code - 127;
+        } else if (my_code >= 1 && my_code <= 244) {
             obs_length += my_code;
-        } else if (my_code === 251) obs_length += 1;
+        } else if (my_code === 98 || my_code === 251) obs_length += 1;
+        else if (my_code === 105) obs_length += 2;
+        else if (my_code === 108) obs_length += 4;
+        else if (my_code === 102) obs_length += 4;
+        else if (my_code === 100) obs_length += 8;
         else if (my_code === 252) obs_length += 2;
         else if (my_code === 253) obs_length += 4;
         else if (my_code === 254) obs_length += 4;
         else if (my_code === 255) obs_length += 8;
     }
 
-    const my_header_size = 109;
+    const my_header_size = header_size;
     const my_types_size = nvar;
-    const my_varnames_size = nvar * 33;
+    const my_varnames_size = nvar * varname_width;
     const my_sortlist_size = (nvar + 1) * 2;
     const my_formats_size = nvar * fmt_width;
-    const my_vlabel_names_size = nvar * 33;
-    const my_var_labels_size = nvar * 81;
-    const my_expansion_size = 5; // terminator only
+    const my_vlabel_names_size = nvar * value_label_name_width;
+    const my_var_labels_size = nvar * variable_label_width;
+    const my_expansion_size = expansion_header_size; // terminator only
     const my_data_size = nobs * obs_length;
 
     const my_total = my_header_size
@@ -98,11 +114,11 @@ function build_legacy_buffer(opts: {
     for (let i = 0; i < nvar; i++) {
         const my_name = varnames[i] || `v${i}`;
         for (let j = 0; j < my_name.length; j++) {
-            my_buf[pos + i * 33 + j] =
+            my_buf[pos + i * varname_width + j] =
                 my_name.charCodeAt(j);
         }
     }
-    pos += nvar * 33;
+    pos += nvar * varname_width;
 
     // Sortlist
     pos += (nvar + 1) * 2;
@@ -118,13 +134,13 @@ function build_legacy_buffer(opts: {
     pos += nvar * fmt_width;
 
     // Value label names (33 bytes each) — empty
-    pos += nvar * 33;
+    pos += nvar * value_label_name_width;
 
     // Variable labels (81 bytes each) — empty
-    pos += nvar * 81;
+    pos += nvar * variable_label_width;
 
     // Expansion fields terminator (5 zero bytes)
-    pos += 5;
+    pos += expansion_header_size;
 
     // Data section — fill with zeros (no observation data)
 
@@ -404,4 +420,120 @@ describe('parse_legacy_metadata', () => {
             truncated, valid.file_size - 1
         )).toThrow('Truncated legacy observation data');
     });
+
+    for (const version of [105, 108, 110] as const) {
+        it(`parses release ${version} layout, old type codes, and system missing`, () => {
+            const { buffer, file_size } = build_legacy_buffer({
+                version, nvar: 6, nobs: 1,
+                type_codes: [98, 105, 108, 102, 100, 132],
+                varnames: ['b', 'i', 'l', 'f', 'd', 'text'],
+                label: `release ${version}`,
+            });
+            const meta = parse_legacy_metadata(buffer, file_size);
+            expect(meta.format_version).toBe(version);
+            expect(meta.variables.map(v => v.type)).toEqual([
+                'byte', 'int', 'long', 'float', 'double', 'str5',
+            ]);
+            const view = new DataView(buffer);
+            const data = meta.section_offsets.data;
+            view.setInt8(data, 127);
+            view.setInt16(data + 1, 32767, true);
+            view.setInt32(data + 3, 2147483647, true);
+            view.setUint32(data + 7, 0x7f000000, true);
+            view.setUint32(data + 11, 0, true);
+            view.setUint32(data + 15, 0x7fe00000, true);
+            new Uint8Array(buffer).set([0x6f, 0x6c, 0x64], data + 19);
+            expect(read_rows_from_buffer(buffer, meta, 0, 1)[0]).toEqual([
+                make_missing_value('.'), make_missing_value('.'),
+                make_missing_value('.'), make_missing_value('.'),
+                make_missing_value('.'), 'old',
+            ]);
+        });
+    }
+
+    it('parses release 105 fixed-width value labels', () => {
+        const built = build_legacy_buffer({
+            version: 105, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        const prefix = Buffer.from(built.buffer);
+        const table = Buffer.alloc(12 + 2 + 8);
+        const view = new DataView(table.buffer, table.byteOffset, table.byteLength);
+        view.setUint16(0, 1, true);
+        table.write('yesno', 2, 'latin1');
+        view.setInt16(12, 1, true);
+        table.write('yes', 14, 'latin1');
+        const complete = Buffer.concat([prefix, table]);
+        const buffer = complete.buffer.slice(
+            complete.byteOffset, complete.byteOffset + complete.byteLength
+        );
+        const meta = parse_legacy_metadata(buffer, complete.byteLength);
+        expect(parse_value_labels(buffer, meta).get('yesno')?.get(1)).toBe('yes');
+    });
+
+    for (const version of [108, 110] as const) {
+        it(`parses release ${version} variable-length value labels`, () => {
+            const built = build_legacy_buffer({
+                version, nvar: 1, nobs: 0,
+                type_codes: [105], varnames: ['answer'],
+            });
+            const prefix = Buffer.from(built.buffer);
+            const name_width = version === 108 ? 9 : 33;
+            const text = Buffer.from('yes\0', 'latin1');
+            const payload_size = 8 + 4 + 4 + text.length;
+            const table = Buffer.alloc(4 + name_width + 3 + payload_size);
+            const view = new DataView(
+                table.buffer, table.byteOffset, table.byteLength
+            );
+            view.setInt32(0, table.byteLength - 4, true);
+            table.write('yesno', 4, 'latin1');
+            let pos = 4 + name_width + 3;
+            view.setInt32(pos, 1, true);
+            view.setInt32(pos + 4, text.length, true);
+            view.setInt32(pos + 8, 0, true);
+            view.setInt32(pos + 12, 1, true);
+            text.copy(table, pos + 16);
+            const complete = Buffer.concat([prefix, table]);
+            const buffer = complete.buffer.slice(
+                complete.byteOffset,
+                complete.byteOffset + complete.byteLength
+            );
+            const meta = parse_legacy_metadata(
+                buffer, complete.byteLength
+            );
+            expect(
+                parse_value_labels(buffer, meta).get('yesno')?.get(1)
+            ).toBe('yes');
+        });
+    }
+
+    it('keeps in-memory and Node file-backed readers in parity for release 108', async () => {
+        const built = build_legacy_buffer({
+            version: 108, nvar: 2, nobs: 1,
+            type_codes: [108, 131], varnames: ['number', 'text'],
+        });
+        const meta = parse_legacy_metadata(built.buffer, built.file_size);
+        const view = new DataView(built.buffer);
+        view.setInt32(meta.section_offsets.data, 42, true);
+        new Uint8Array(built.buffer).set([0x63, 0x61, 0x66, 0xe9], meta.section_offsets.data + 4);
+        const memory_rows = read_rows_from_buffer(built.buffer, meta, 0, 1);
+        const dir = mkdtempSync(join(tmpdir(), 'dta-early-'));
+        const path = join(dir, 'release108.dta');
+        try {
+            writeFileSync(path, Buffer.from(built.buffer));
+            const file = await DtaFile.open(path);
+            try {
+                expect(file.format_version).toBe(108);
+                expect(await file.read_rows(0, 1)).toEqual(memory_rows);
+                expect(await file.read_columns([0, 1])).toEqual(new Map([
+                    [0, [42]], [1, ['café']],
+                ]));
+            } finally {
+                file.close();
+            }
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
 });

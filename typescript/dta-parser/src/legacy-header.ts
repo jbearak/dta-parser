@@ -25,6 +25,10 @@ import type {
     SectionOffsets,
 } from './types';
 import {
+    legacy_layout_for_version,
+    legacy_expansion_header_size,
+} from './legacy-layout';
+import {
     byte_width_for_legacy_type_code,
     legacy_type_code_to_dta_type,
 } from './types';
@@ -33,17 +37,7 @@ import {
 // Constants
 // -----------------------------------------------------------
 
-const HEADER_FIXED_SIZE = 109;
-
-// Field widths shared by all legacy formats
-const VARNAME_WIDTH = 33;
-const VALUE_LABEL_NAME_WIDTH = 33;
-const VARIABLE_LABEL_WIDTH = 81;
 const SORTLIST_ENTRY_WIDTH = 2;
-
-// Display format width differs for format 113
-const FORMAT_WIDTH_113 = 12;
-const FORMAT_WIDTH_114_115 = 49;
 
 const TEXT_DECODER = new TextDecoder('windows-1252');
 
@@ -85,19 +79,14 @@ export function legacy_metadata_fixed_size(
     nvar: number,
     format_version: LegacyFormatVersion
 ): number {
-    const my_fmt_width = format_version === 111 || format_version === 113
-        ? FORMAT_WIDTH_113
-        : FORMAT_WIDTH_114_115;
-
+    const layout = legacy_layout_for_version(format_version);
     const my_sections_size =
-        nvar * 1                          // variable_types
-        + nvar * VARNAME_WIDTH            // varnames
-        + (nvar + 1) * SORTLIST_ENTRY_WIDTH // sortlist
-        + nvar * my_fmt_width             // formats
-        + nvar * VALUE_LABEL_NAME_WIDTH   // value_label_names
-        + nvar * VARIABLE_LABEL_WIDTH;    // variable_labels
-
-    return HEADER_FIXED_SIZE + my_sections_size;
+        nvar + nvar * layout.varname_width
+        + (nvar + 1) * SORTLIST_ENTRY_WIDTH
+        + nvar * layout.format_width
+        + nvar * layout.value_label_name_width
+        + nvar * layout.variable_label_width;
+    return layout.header_size + my_sections_size;
 }
 
 // -----------------------------------------------------------
@@ -119,16 +108,21 @@ function scan_expansion_fields(
     view: DataView,
     little_endian: boolean,
     start: number,
-    buffer_length: number
+    buffer_length: number,
+    format_version: LegacyFormatVersion
 ): { data_offset: number; notes: string[] } {
     let pos = start;
+    const layout = legacy_layout_for_version(format_version);
+    const my_header_size = legacy_expansion_header_size(layout);
     const the_notes: string[] = [];
 
-    while (pos + 5 <= buffer_length) {
+    while (pos + my_header_size <= buffer_length) {
         const my_data_type = view.getUint8(pos);
-        const my_len = view.getInt32(pos + 1, little_endian);
+        const my_len = layout.expansion_length_width === 2
+            ? view.getInt16(pos + 1, little_endian)
+            : view.getInt32(pos + 1, little_endian);
 
-        pos += 5;
+        pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
             return { data_offset: pos, notes: the_notes };
@@ -141,16 +135,16 @@ function scan_expansion_fields(
             throw new Error('Truncated legacy expansion field');
         }
 
-        if (my_data_type === 1 && my_len >= 2 * VARNAME_WIDTH) {
-            const my_variable = read_fixed_string(bytes_from_view(view), pos, VARNAME_WIDTH);
+        if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
+            const my_variable = read_fixed_string(bytes_from_view(view), pos, layout.varname_width);
             const my_characteristic = read_fixed_string(
-                bytes_from_view(view), pos + VARNAME_WIDTH, VARNAME_WIDTH
+                bytes_from_view(view), pos + layout.varname_width, layout.varname_width
             );
             if (my_variable === '_dta' && /^note[0-9]+$/.test(my_characteristic)) {
                 const my_note = read_fixed_string(
                     bytes_from_view(view),
-                    pos + 2 * VARNAME_WIDTH,
-                    my_len - 2 * VARNAME_WIDTH
+                    pos + 2 * layout.varname_width,
+                    my_len - 2 * layout.varname_width
                 );
                 if (my_note.length > 0) the_notes.push(my_note);
             }
@@ -190,7 +184,10 @@ export function parse_legacy_metadata(
     // 1. Format version
     const my_version_byte = bytes[0];
     if (
-        my_version_byte !== 111
+        my_version_byte !== 105
+        && my_version_byte !== 108
+        && my_version_byte !== 110
+        && my_version_byte !== 111
         && my_version_byte !== 113
         && my_version_byte !== 114
         && my_version_byte !== 115
@@ -202,6 +199,7 @@ export function parse_legacy_metadata(
     }
     const format_version =
         my_version_byte as LegacyFormatVersion;
+    const layout = legacy_layout_for_version(format_version);
 
     // 2. Byte order
     const my_byte_order_code = bytes[1];
@@ -230,16 +228,16 @@ export function parse_legacy_metadata(
     }
 
     // 5. Dataset label (81 bytes at 10-90)
-    const dataset_label = read_fixed_string(bytes, 10, 81);
+    const dataset_label = read_fixed_string(
+        bytes, 10, layout.dataset_label_width
+    );
 
     // 6. Skip timestamp (18 bytes at 91-108)
 
     // 7. Compute section offsets from nvar
-    const my_fmt_width = format_version === 111 || format_version === 113
-        ? FORMAT_WIDTH_113
-        : FORMAT_WIDTH_114_115;
+    const my_fmt_width = layout.format_width;
 
-    let pos = HEADER_FIXED_SIZE;
+    let pos = layout.header_size;
 
     // -- variable types: nvar × 1 byte --
     const my_variable_types_offset = pos;
@@ -256,12 +254,12 @@ export function parse_legacy_metadata(
         the_varnames.push(
             read_fixed_string(
                 bytes,
-                pos + i * VARNAME_WIDTH,
-                VARNAME_WIDTH
+                pos + i * layout.varname_width,
+                layout.varname_width
             )
         );
     }
-    pos += nvar * VARNAME_WIDTH;
+    pos += nvar * layout.varname_width;
 
     // -- sortlist: (nvar+1) × 2 bytes --
     const my_sortlist_offset = pos;
@@ -288,12 +286,12 @@ export function parse_legacy_metadata(
         the_value_label_names.push(
             read_fixed_string(
                 bytes,
-                pos + i * VALUE_LABEL_NAME_WIDTH,
-                VALUE_LABEL_NAME_WIDTH
+                pos + i * layout.value_label_name_width,
+                layout.value_label_name_width
             )
         );
     }
-    pos += nvar * VALUE_LABEL_NAME_WIDTH;
+    pos += nvar * layout.value_label_name_width;
 
     // -- variable_labels: nvar × 81 bytes --
     const my_variable_labels_offset = pos;
@@ -302,17 +300,17 @@ export function parse_legacy_metadata(
         the_variable_labels.push(
             read_fixed_string(
                 bytes,
-                pos + i * VARIABLE_LABEL_WIDTH,
-                VARIABLE_LABEL_WIDTH
+                pos + i * layout.variable_label_width,
+                layout.variable_label_width
             )
         );
     }
-    pos += nvar * VARIABLE_LABEL_WIDTH;
+    pos += nvar * layout.variable_label_width;
 
     // -- expansion fields --
     const my_expansion_offset = pos;
     const { data_offset: my_data_offset, notes } = scan_expansion_fields(
-        view, little_endian, pos, buffer.byteLength
+        view, little_endian, pos, buffer.byteLength, format_version
     );
 
     // 8. Build VariableInfo with byte widths and offsets
@@ -321,10 +319,10 @@ export function parse_legacy_metadata(
     for (let i = 0; i < nvar; i++) {
         const my_code = the_type_codes[i];
         const my_width =
-            byte_width_for_legacy_type_code(my_code);
+            byte_width_for_legacy_type_code(my_code, format_version);
         the_variables.push({
             name: the_varnames[i],
-            type: legacy_type_code_to_dta_type(my_code),
+            type: legacy_type_code_to_dta_type(my_code, format_version),
             type_code: my_code,
             format: the_formats[i],
             label: the_variable_labels[i],

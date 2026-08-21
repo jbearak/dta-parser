@@ -10,12 +10,12 @@ export const FORMAT_SIGNATURES = {
 } as const;
 
 export type FormatVersion =
-    | 111 | 113 | 114 | 115
+    | 105 | 108 | 110 | 111 | 113 | 114 | 115
     | 117 | 118 | 119;
 
-export type LegacyFormatVersion = 111 | 113 | 114 | 115;
+export type LegacyFormatVersion = 105 | 108 | 110 | 111 | 113 | 114 | 115;
 
-const LEGACY_FORMAT_SET = new Set<number>([111, 113, 114, 115]);
+const LEGACY_FORMAT_SET = new Set<number>([105, 108, 110, 111, 113, 114, 115]);
 
 export function is_legacy_format(
     version: FormatVersion
@@ -145,12 +145,20 @@ const LEGACY_TYPE_CODES: Record<
 const MAX_STR_WIDTH_LEGACY = 244;
 
 export function byte_width_for_legacy_type_code(
-    code: number
+    code: number,
+    format_version: LegacyFormatVersion
 ): number {
-    const my_entry = LEGACY_TYPE_CODES[code];
-    if (my_entry) return my_entry.width;
-    if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) {
-        return code;
+    if (format_version < 111) {
+        const my_old_types: Record<number, number> = {
+            98: 1, 105: 2, 108: 4, 102: 4, 100: 8,
+        };
+        const my_width = my_old_types[code];
+        if (my_width) return my_width;
+        if (code >= 128 && code <= 255) return code - 127;
+    } else {
+        const my_entry = LEGACY_TYPE_CODES[code];
+        if (my_entry) return my_entry.width;
+        if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) return code;
     }
     throw new Error(
         `Unknown legacy type code ${code}`
@@ -158,12 +166,25 @@ export function byte_width_for_legacy_type_code(
 }
 
 export function legacy_type_code_to_dta_type(
-    code: number
+    code: number,
+    format_version: LegacyFormatVersion
 ): DtaType {
-    const my_entry = LEGACY_TYPE_CODES[code];
-    if (my_entry) return my_entry.type as DtaType;
-    if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) {
-        return `str${code}` as DtaType;
+    if (format_version < 111) {
+        const my_old_types: Record<number, DtaType> = {
+            98: 'byte', 105: 'int', 108: 'long',
+            102: 'float', 100: 'double',
+        };
+        const my_type = my_old_types[code];
+        if (my_type) return my_type;
+        if (code >= 128 && code <= 255) {
+            return `str${code - 127}` as DtaType;
+        }
+    } else {
+        const my_entry = LEGACY_TYPE_CODES[code];
+        if (my_entry) return my_entry.type as DtaType;
+        if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) {
+            return `str${code}` as DtaType;
+        }
     }
     throw new Error(
         `Unknown legacy type code ${code}`

@@ -69,7 +69,7 @@ function read_cell(
     switch (type) {
         case 'byte': {
             const my_val = view.getInt8(offset);
-            const my_missing_type = format_version === 111
+            const my_missing_type = format_version < 113
                 ? (my_val === 127 ? '.' : null)
                 : classify_missing_value(my_val, 'byte');
             if (my_missing_type) {
@@ -81,7 +81,7 @@ function read_cell(
             const my_val = view.getInt16(
                 offset, little_endian
             );
-            const my_missing_type = format_version === 111
+            const my_missing_type = format_version < 113
                 ? (my_val === 32767 ? '.' : null)
                 : classify_missing_value(my_val, 'int');
             if (my_missing_type) {
@@ -93,7 +93,7 @@ function read_cell(
             const my_val = view.getInt32(
                 offset, little_endian
             );
-            const my_missing_type = format_version === 111
+            const my_missing_type = format_version < 113
                 ? (my_val === 2147483647 ? '.' : null)
                 : classify_missing_value(my_val, 'long');
             if (my_missing_type) {
@@ -105,7 +105,7 @@ function read_cell(
             const my_raw = view.getUint32(
                 offset, little_endian
             );
-            const my_missing_type = format_version === 111
+            const my_missing_type = format_version < 113
                 ? (
                     my_raw >= 0x7F000000 && my_raw < 0x80000000
                         ? '.'
@@ -123,7 +123,7 @@ function read_cell(
             const my_high_word = little_endian
                 ? view.getUint32(offset + 4, true)
                 : view.getUint32(offset, false);
-            const my_missing_type = format_version === 111
+            const my_missing_type = format_version < 113
                 ? (
                     my_high_word >= 0x7FE00000
                     && my_high_word < 0x80000000
