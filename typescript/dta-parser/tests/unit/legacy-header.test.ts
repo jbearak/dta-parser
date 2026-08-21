@@ -509,6 +509,24 @@ describe('parse_legacy_metadata', () => {
         ).toBe('first');
     });
 
+    it('ignores release 105 trailing zero padding', () => {
+        const built = build_legacy_buffer({
+            version: 105, nvar: 1, nobs: 0,
+            type_codes: [105], varnames: ['answer'],
+        });
+        const complete = Buffer.concat([
+            Buffer.from(built.buffer), Buffer.alloc(24),
+        ]);
+        const buffer = complete.buffer.slice(
+            complete.byteOffset,
+            complete.byteOffset + complete.byteLength
+        );
+        const meta = parse_legacy_metadata(
+            buffer, complete.byteLength
+        );
+        expect(parse_value_labels(buffer, meta)).toEqual(new Map());
+    });
+
     it('does not misclassify release 105 fixed tables with empty labels', () => {
         const built = build_legacy_buffer({
             version: 105, nvar: 1, nobs: 0,

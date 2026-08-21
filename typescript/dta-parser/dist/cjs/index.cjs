@@ -1467,6 +1467,23 @@ function parse_old_105_entries(bytes, view, little_endian, start_pos, section_en
   const my_result = /* @__PURE__ */ new Map();
   let pos = start_pos;
   while (pos + 12 <= section_end) {
+    let my_header_has_nonzero = false;
+    for (let i = pos; i < pos + 12; i++) {
+      if (bytes[i] !== 0) {
+        my_header_has_nonzero = true;
+        break;
+      }
+    }
+    if (!my_header_has_nonzero) {
+      let my_suffix_has_nonzero = false;
+      for (let i = pos + 12; i < section_end; i++) {
+        if (bytes[i] !== 0) {
+          my_suffix_has_nonzero = true;
+          break;
+        }
+      }
+      if (!my_suffix_has_nonzero) break;
+    }
     const my_n = view.getUint16(pos, little_endian);
     pos += 2;
     const my_name = read_label_name(

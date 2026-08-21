@@ -2019,12 +2019,18 @@ fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
     scratch: &mut Scratch,
     should_interrupt: &mut F,
 ) -> Result<bool, DtaError> {
+    const HEADER_PROBE_WIDTH: u64 = 12;
+
     let mut cursor = start;
     while cursor < end {
         check_cancel(should_interrupt)?;
         let remaining = end - cursor;
-        let length = usize::try_from(remaining.min(scratch.limit as u64))
-            .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?;
+        let length = usize::try_from(remaining.min(if cursor == start {
+            HEADER_PROBE_WIDTH
+        } else {
+            scratch.limit as u64
+        }))
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label trailing bytes"))?;
         let bytes = read_exact_at(
             reader,
             cursor,
