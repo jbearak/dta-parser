@@ -58,6 +58,7 @@ function build_legacy_buffer(opts: {
     const little_endian = byte_order === 'LSF';
     const fmt_width = version <= 113 ? 12 : 49;
     const header_size = version === 105 ? 60 : 109;
+    const dataset_label_width = version === 105 ? 32 : 81;
     const varname_width = version <= 108 ? 9 : 33;
     const value_label_name_width = version <= 108 ? 9 : 33;
     const variable_label_width = version === 105 ? 32 : 81;
@@ -117,8 +118,12 @@ function build_legacy_buffer(opts: {
     my_view.setUint16(4, nvar, little_endian);
     my_view.setUint32(6, nobs, little_endian);
 
-    // Dataset label (81 bytes at offset 10)
-    for (let i = 0; i < label.length && i < 80; i++) {
+    // Dataset label, leaving the final field byte as a terminator.
+    for (
+        let i = 0;
+        i < label.length && i < dataset_label_width - 1;
+        i++
+    ) {
         my_buf[10 + i] = label.charCodeAt(i);
     }
 
@@ -259,6 +264,22 @@ describe('parse_legacy_metadata', () => {
 
         // Obs length
         expect(my_meta.obs_length).toBe(8 + 2 + 5);
+    });
+
+    it('bounds release 105 dataset labels to their header field', () => {
+        const { buffer, file_size } = build_legacy_buffer({
+            version: 105,
+            nvar: 1,
+            nobs: 0,
+            label: 'x'.repeat(80),
+            type_codes: [105],
+            varnames: ['answer'],
+        });
+
+        const metadata = parse_legacy_metadata(buffer, file_size);
+        expect(metadata.dataset_label).toBe('x'.repeat(31));
+        expect(metadata.variables[0].type).toBe('int');
+        expect(metadata.variables[0].name).toBe('answer');
     });
 
     it('parses format 114 header', () => {
