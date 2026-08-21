@@ -10,7 +10,7 @@ publish = false
 crate-type = ["staticlib"]
 
 [dependencies]
-dta-parser = { path = "../vendor/dta-parser" }
+dta-parser = { path = "../dta-parser" }
 
 [profile.release]
 panic = "unwind"

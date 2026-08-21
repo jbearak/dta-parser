@@ -1,25 +1,16 @@
 #!/bin/sh
 set -eu
 rust_target=x86_64-pc-windows-gnu
-rust_host=$(rustc -vV | sed -n 's/^host: //p')
+rust_version=$(rustc -vV)
+printf '%s\n' "$rust_version"
+rust_host=$(printf '%s\n' "$rust_version" | sed -n 's/^host: //p')
 if test "$rust_host" != "$rust_target"; then
   echo "dtaparser requires the Rust $rust_target toolchain for 64-bit R on Windows; found $rust_host" >&2
   exit 1
 fi
-rm -rf src/rust/v
-tar -xzf src/rust/vendor.tar.gz -C src/rust
-test -d src/rust/v
+. tools/configure-rust.sh
 
-dta_parser_pin=src/vendor/dta-parser.tree.sha256
-dta_parser_digest=$(awk '$2 == "dta-parser-runtime-tree-v1" && NF == 2 { print $1 }' "$dta_parser_pin")
-case "$dta_parser_digest" in
-  *[!0-9a-f]*) dta_parser_digest= ;;
-esac
-if test "${#dta_parser_digest}" -ne 64; then
-  echo "dtaparser parser-tree pin is malformed" >&2
-  exit 1
-fi
-dta_parser_namespace=$(printf '%.16s' "$dta_parser_digest")
-
-sed "s|@DTA_PARSER_NAMESPACE@|$dta_parser_namespace|g" \
+sed \
+  -e "s|@RUST_WINDOWS_TARGET@|$rust_target|g" \
+  -e "s|@RUST_NAMESPACE@|$rust_namespace|g" \
   src/Makevars.win.in > src/Makevars.win

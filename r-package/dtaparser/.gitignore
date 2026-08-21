@@ -2,5 +2,6 @@ src/Makevars
 src/Makevars.win
 src/*.o
 src/*.so
+src/dta-parser/target/
 src/rust/target/
 src/rust/v/

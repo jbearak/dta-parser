@@ -3422,7 +3422,8 @@ legacy_structure <- fertility_structural_metadata(legacy_path)
 stopifnot(legacy_structure$rows == 3, legacy_structure$columns == 2L,
           identical(legacy_structure$column_bytes, c(4, 3)))
 stata7_path <- normalizePath(file.path(
-    script_dir, "..", "..", "rust", "dta-parser", "tests", "data",
+    script_dir, "..", "..", "r-package", "dtaparser", "src",
+    "dta-parser", "tests", "data",
     "synthetic-v111.dta"
 ), winslash = "/", mustWork = TRUE)
 stata7_structure <- fertility_structural_metadata(stata7_path)

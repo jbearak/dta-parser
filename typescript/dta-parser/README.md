@@ -9,7 +9,7 @@ This parser was first written inside
 used by [manuscript-markdown](https://github.com/jbearak/manuscript-markdown).
 It is one of the libraries in the
 [dta-parser multi-language repository](../../README.md); the repository also
-contains an independent [Rust parser](../../rust/dta-parser) and an
+contains an independent [Rust parser](../../r-package/dtaparser/src/dta-parser) and an
 [R binding around that Rust parser](../../r-package/dtaparser).
 
 ## Installation

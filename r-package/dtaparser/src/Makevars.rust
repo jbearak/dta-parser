@@ -1,0 +1,11 @@
+RUST_MANIFEST = rust/Cargo.toml
+
+OBJECTS = init.o
+
+$(SHLIB): $(RUST_LIB)
+
+$(RUST_LIB):
+	CARGO_TARGET_DIR=$(RUST_TARGET_DIR) cargo build --manifest-path $(RUST_MANIFEST) --config rust/cargo-config.toml $(RUST_BUILD_TARGET) --release --locked --offline
+
+clean:
+	rm -rf $(RUST_TARGET_DIR) $(SHLIB) $(OBJECTS)
