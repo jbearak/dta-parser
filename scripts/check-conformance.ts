@@ -58,7 +58,7 @@ invariant(
         === manifest.identity.case_count,
     'total case count does not match manifest identity'
 );
-invariant(manifest.identity.case_count === 30, 'case inventory must remain 30');
+invariant(manifest.identity.case_count === 31, 'case inventory must remain 31');
 invariant(
     manifest.identity.fixture_oracle_gate.binary.length > 0
         && manifest.identity.fixture_oracle_gate.test.length > 0,

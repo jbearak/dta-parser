@@ -1,7 +1,8 @@
 # dta-parser (Rust)
 
 This crate is the native Rust core for `dta-parser`. It parses Stata releases
-111, 113–115, and 117–119 into a storage-preserving, column-oriented model. Metadata,
+105, 108, 110–111, 113–115, and 117–119 into a storage-preserving,
+column-oriented model. Metadata,
 numeric and fixed-string observations, resolved `strL` values, exact missing
 tags, and value-label tables are retained.
 
@@ -39,7 +40,7 @@ Numeric `ColumnValues` variants preserve the source storage width (`i8`,
 `Vec<Option<MissingTag>>`. Raw Stata missing values remain in the values vector,
 so consumers retain both exact storage and the classified `.`, `.a`–`.z` tag.
 Releases 118–119 use UTF-8 replacement for malformed text sequences. Releases
-111, 113–115, and 117 use Windows-1252 for textual metadata, fixed strings, and
+105, 108, 110–111, 113–115, and 117 use Windows-1252 for textual metadata, fixed strings, and
 value labels. All fixed fields stop at their first NUL byte.
 
 Every byte-slice and seekable-file path also accepts a deterministic
@@ -109,8 +110,8 @@ loss.
 
 Native R bindings live in `r-package/dtaparser`; display/date conversion is an
 R-wrapper concern while the core preserves the original format metadata.
-Release 111 is the only supported pre-113 format; other legacy formats remain
-unsupported.
+Releases 105, 108, 110, and 111 use the historical system-missing-only
+semantics; releases 105, 108, and 110 also use the pre-111 storage-code family.
 
 From the repository root, `scripts/conformance.sh` checks the immutable fixture
 oracle and exact slice/file parity, including projections, row windows, `strL`,

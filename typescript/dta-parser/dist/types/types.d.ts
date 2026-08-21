@@ -3,8 +3,8 @@ export declare const FORMAT_SIGNATURES: {
     readonly 118: "<stata_dta><header><release>118</release>";
     readonly 119: "<stata_dta><header><release>119</release>";
 };
-export type FormatVersion = 111 | 113 | 114 | 115 | 117 | 118 | 119;
-export type LegacyFormatVersion = 111 | 113 | 114 | 115;
+export type FormatVersion = 105 | 108 | 110 | 111 | 113 | 114 | 115 | 117 | 118 | 119;
+export type LegacyFormatVersion = 105 | 108 | 110 | 111 | 113 | 114 | 115;
 export declare function is_legacy_format(version: FormatVersion): version is LegacyFormatVersion;
 export type DtaType = 'byte' | 'int' | 'long' | 'float' | 'double' | 'strL' | `str${number}`;
 /**
@@ -23,8 +23,8 @@ export declare function byte_width_for_type_code(code: number, format_version: F
  * in saveold v117 files, so v117 accepts both code sets.
  */
 export declare function type_code_to_dta_type(code: number, format_version: FormatVersion): DtaType;
-export declare function byte_width_for_legacy_type_code(code: number): number;
-export declare function legacy_type_code_to_dta_type(code: number): DtaType;
+export declare function byte_width_for_legacy_type_code(code: number, format_version: LegacyFormatVersion): number;
+export declare function legacy_type_code_to_dta_type(code: number, format_version: LegacyFormatVersion): DtaType;
 export interface VariableInfo {
     name: string;
     type: DtaType;

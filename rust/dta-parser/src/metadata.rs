@@ -427,7 +427,7 @@ pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType
     Err(DtaError::UnknownTypeCode { code, version })
 }
 
-/// Parse metadata from a Stata 111, 113–115, or 117–119 byte slice.
+/// Parse metadata from a Stata 105, 108, 110–111, 113–115, or 117–119 byte slice.
 ///
 /// Modern input may contain the full file or end immediately after the
 /// `variable_labels` section; later section-map offsets are retained without

@@ -6,10 +6,7 @@ use std::path::Path;
 use encoding_rs::CoderResult;
 
 use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
-use crate::legacy::{
-    format_width, legacy_fixed_offsets, legacy_type, HEADER_SIZE, VALUE_LABEL_NAME_WIDTH,
-    VARIABLE_LABEL_WIDTH, VARNAME_WIDTH,
-};
+use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
@@ -551,7 +548,7 @@ impl<R: Read + Seek> DtaFile<R> {
             return Err(DtaError::InvalidSignature);
         }
         let first = read_exact_at(&mut reader, 0, 1, &mut scratch, "reading signature")?;
-        let metadata = if matches!(first[0], 111 | 113..=115) {
+        let metadata = if matches!(first[0], 105 | 108 | 110 | 111 | 113..=115) {
             read_legacy_metadata(&mut reader, file_length, &mut scratch, encoding)?
         } else {
             let signature_length = MODERN_SIGNATURE.len();
@@ -1720,9 +1717,17 @@ fn read_legacy_metadata<R: Read + Seek>(
     scratch: &mut Scratch,
     encoding: TextEncoding,
 ) -> Result<DtaMetadata, DtaError> {
-    let header = read_exact_at(reader, 0, HEADER_SIZE, scratch, "reading legacy header")?;
-    let version = FormatVersion::try_from(u16::from(header[0]))
-        .map_err(|_| DtaError::InvalidRelease(header[0].to_string()))?;
+    let release = read_exact_at(reader, 0, 1, scratch, "reading legacy release")?[0];
+    let version = FormatVersion::try_from(u16::from(release))
+        .map_err(|_| DtaError::InvalidRelease(release.to_string()))?;
+    let layout = LegacyLayout::for_version(version);
+    let header = read_exact_at(
+        reader,
+        0,
+        layout.header_size,
+        scratch,
+        "reading legacy header",
+    )?;
     let encoding = encoding.resolve(version);
     let byte_order = match header[1] {
         1 => ByteOrder::Msf,
@@ -1754,7 +1759,6 @@ fn read_legacy_metadata<R: Read + Seek>(
         });
     }
 
-    let format_width = format_width(version);
     let to_u64 = |offset: usize, context: &'static str| {
         u64::try_from(offset).map_err(|_| DtaError::ArithmeticOverflow(context))
     };
@@ -1769,7 +1773,7 @@ fn read_legacy_metadata<R: Read + Seek>(
     let dataset_label = decode_range(
         reader,
         10,
-        81,
+        layout.dataset_label_width,
         encoding,
         true,
         scratch,
@@ -1819,16 +1823,20 @@ fn read_legacy_metadata<R: Read + Seek>(
             )
             .map(|value| value.0)
         };
-        let name = decode_field(varnames, VARNAME_WIDTH, "reading legacy varname")?;
-        let format = decode_field(formats, format_width, "reading legacy display format")?;
+        let name = decode_field(varnames, layout.varname_width, "reading legacy varname")?;
+        let format = decode_field(
+            formats,
+            layout.format_width,
+            "reading legacy display format",
+        )?;
         let value_label_name = decode_field(
             value_label_names,
-            VALUE_LABEL_NAME_WIDTH,
+            layout.value_label_name_width,
             "reading legacy value-label name",
         )?;
         let label = decode_field(
             variable_labels,
-            VARIABLE_LABEL_WIDTH,
+            layout.variable_label_width,
             "reading legacy variable label",
         )?;
         variables.push(VariableInfo {
@@ -1852,12 +1860,30 @@ fn read_legacy_metadata<R: Read + Seek>(
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
     let mut notes = Vec::new();
     loop {
-        let expansion =
-            read_exact_at(reader, cursor, 5, scratch, "reading legacy expansion field")?;
+        let expansion = read_exact_at(
+            reader,
+            cursor,
+            layout.expansion_header_width(),
+            scratch,
+            "reading legacy expansion field",
+        )?;
         let data_type = expansion[0];
-        let length = read_i32(&expansion, 1, byte_order, "legacy expansion-field length")?;
+        let length = if layout.expansion_length_width == 2 {
+            i32::from(read_u16(
+                &expansion,
+                1,
+                byte_order,
+                "legacy expansion-field length",
+            )?)
+        } else {
+            read_i32(&expansion, 1, byte_order, "legacy expansion-field length")?
+        };
         if data_type == 0 && length == 0 {
-            cursor = checked_add_u64(cursor, 5, "legacy expansion terminator")?;
+            cursor = checked_add_u64(
+                cursor,
+                layout.expansion_header_width() as u64,
+                "legacy expansion terminator",
+            )?;
             break;
         }
         if length < 0 {
@@ -1872,7 +1898,11 @@ fn read_legacy_metadata<R: Read + Seek>(
                 offset: error_offset(cursor),
             });
         }
-        cursor = checked_add_u64(cursor, 5, "legacy expansion header")?;
+        cursor = checked_add_u64(
+            cursor,
+            layout.expansion_header_width() as u64,
+            "legacy expansion header",
+        )?;
         let payload_length = usize::try_from(length)
             .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?;
         let payload_end = checked_add_u64(
@@ -1890,23 +1920,26 @@ fn read_legacy_metadata<R: Read + Seek>(
                     .unwrap_or(usize::MAX),
             });
         }
-        if data_type == 1 && payload_length >= 2 * VARNAME_WIDTH {
+        if data_type == 1 && payload_length >= 2 * layout.varname_width {
             let names = read_exact_at(
                 reader,
                 cursor,
-                2 * VARNAME_WIDTH,
+                2 * layout.varname_width,
                 scratch,
                 "reading legacy characteristic names",
             )?;
-            if is_dataset_note(&names[..VARNAME_WIDTH], &names[VARNAME_WIDTH..]) {
+            if is_dataset_note(
+                &names[..layout.varname_width],
+                &names[layout.varname_width..],
+            ) {
                 let value_offset = checked_add_u64(
                     cursor,
-                    u64::try_from(2 * VARNAME_WIDTH).map_err(|_| {
+                    u64::try_from(2 * layout.varname_width).map_err(|_| {
                         DtaError::ArithmeticOverflow("legacy characteristic value offset")
                     })?,
                     "legacy characteristic value offset",
                 )?;
-                let value_length = payload_length - 2 * VARNAME_WIDTH;
+                let value_length = payload_length - 2 * layout.varname_width;
                 let note = decode_range(
                     reader,
                     value_offset,
@@ -1987,13 +2020,17 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
-    let name_width: u16 = match metadata.format_version {
-        FormatVersion::V111
-        | FormatVersion::V113
-        | FormatVersion::V114
-        | FormatVersion::V115
-        | FormatVersion::V117 => 33,
-        FormatVersion::V118 | FormatVersion::V119 => 129,
+    let name_width = if modern {
+        match metadata.format_version {
+            FormatVersion::V117 => 33_u16,
+            FormatVersion::V118 | FormatVersion::V119 => 129_u16,
+            _ => unreachable!("modern release expected"),
+        }
+    } else {
+        u16::try_from(
+            LegacyLayout::for_version(metadata.format_version).value_label_table_name_width,
+        )
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
     };
     let section_end = if modern {
         metadata.section_offsets.stata_data_close

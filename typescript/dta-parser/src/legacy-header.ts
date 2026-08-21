@@ -1,5 +1,5 @@
 // -----------------------------------------------------------
-// Legacy .dta header and metadata parsing (formats 111, 113-115)
+// Legacy .dta header and metadata parsing (formats 105, 108, 110-111, 113-115)
 //
 // Parses the fixed-offset binary header used by Stata/SE 7 and Stata 8-12.
 // Produces the same DtaMetadata shape as the modern parser,

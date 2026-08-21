@@ -15,8 +15,15 @@ fn fixture(name: &str) -> Vec<u8> {
     fs::read(fixture_dir().join(name)).unwrap()
 }
 
+fn synthetic_fixture(version: u16) -> Vec<u8> {
+    fs::read(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("tests/data/synthetic-v{version}.dta")),
+    )
+    .unwrap()
+}
+
 fn v111_fixture() -> Vec<u8> {
-    fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/synthetic-v111.dta")).unwrap()
+    synthetic_fixture(111)
 }
 
 fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
@@ -150,6 +157,49 @@ fn synthetic_pre111_msf(version: u8) -> Vec<u8> {
     bytes.extend_from_slice(&127_i32.to_be_bytes());
     bytes.extend_from_slice(b"NA\0\0");
     bytes
+}
+
+#[test]
+fn generated_pre111_fixtures_decode_expected_semantics() {
+    for (release, expected_version) in [
+        (105, FormatVersion::V105),
+        (108, FormatVersion::V108),
+        (110, FormatVersion::V110),
+    ] {
+        let bytes = synthetic_fixture(release);
+        let data = read_dta(&bytes).unwrap_or_else(|error| panic!("release {release}: {error}"));
+        assert_eq!(data.metadata.format_version, expected_version);
+        assert_eq!(
+            data.metadata.dataset_label,
+            format!("Release {release} Café fixture")
+        );
+        assert_eq!(data.metadata.notes, [format!("Release {release} note")]);
+        assert_eq!(data.row_count, 2);
+        assert_eq!(data.columns.len(), 6);
+        assert_eq!(
+            data.value_label_table("b_labels")
+                .unwrap()
+                .entry(1)
+                .unwrap()
+                .label,
+            "One"
+        );
+        let ColumnValues::FixedString { values } = &data.columns[5].values else {
+            panic!("release {release}: text must be a fixed string");
+        };
+        assert_eq!(values, &["Café", ""]);
+        for column in &data.columns[..5] {
+            let missing_tags = match &column.values {
+                ColumnValues::Byte { missing_tags, .. }
+                | ColumnValues::Int { missing_tags, .. }
+                | ColumnValues::Long { missing_tags, .. }
+                | ColumnValues::Float { missing_tags, .. }
+                | ColumnValues::Double { missing_tags, .. } => missing_tags,
+                other => panic!("release {release}: unexpected numeric storage {other:?}"),
+            };
+            assert_eq!(missing_tags, &[None, Some(MissingTag::System)]);
+        }
+    }
 }
 
 #[test]

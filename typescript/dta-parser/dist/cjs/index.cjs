@@ -48,7 +48,7 @@ var FORMAT_SIGNATURES = {
   118: "<stata_dta><header><release>118</release>",
   119: "<stata_dta><header><release>119</release>"
 };
-var LEGACY_FORMAT_SET = /* @__PURE__ */ new Set([111, 113, 114, 115]);
+var LEGACY_FORMAT_SET = /* @__PURE__ */ new Set([105, 108, 110, 111, 113, 114, 115]);
 function is_legacy_format(version) {
   return LEGACY_FORMAT_SET.has(version);
 }
@@ -114,21 +114,47 @@ var LEGACY_TYPE_CODES = {
   255: { type: "double", width: 8 }
 };
 var MAX_STR_WIDTH_LEGACY = 244;
-function byte_width_for_legacy_type_code(code) {
-  const my_entry = LEGACY_TYPE_CODES[code];
-  if (my_entry) return my_entry.width;
-  if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) {
-    return code;
+function byte_width_for_legacy_type_code(code, format_version) {
+  if (format_version < 111) {
+    const my_old_types = {
+      98: 1,
+      105: 2,
+      108: 4,
+      102: 4,
+      100: 8
+    };
+    const my_width = my_old_types[code];
+    if (my_width) return my_width;
+    if (code >= 128 && code <= 255) return code - 127;
+  } else {
+    const my_entry = LEGACY_TYPE_CODES[code];
+    if (my_entry) return my_entry.width;
+    if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) return code;
   }
   throw new Error(
     `Unknown legacy type code ${code}`
   );
 }
-function legacy_type_code_to_dta_type(code) {
-  const my_entry = LEGACY_TYPE_CODES[code];
-  if (my_entry) return my_entry.type;
-  if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) {
-    return `str${code}`;
+function legacy_type_code_to_dta_type(code, format_version) {
+  if (format_version < 111) {
+    const my_old_types = {
+      98: "byte",
+      105: "int",
+      108: "long",
+      102: "float",
+      100: "double"
+    };
+    const my_type = my_old_types[code];
+    if (my_type) return my_type;
+    if (code >= 128 && code <= 255) {
+      return `str${code - 127}`;
+    }
+  } else {
+    const my_entry = LEGACY_TYPE_CODES[code];
+    if (my_entry) return my_entry.type;
+    if (code >= 1 && code <= MAX_STR_WIDTH_LEGACY) {
+      return `str${code}`;
+    }
   }
   throw new Error(
     `Unknown legacy type code ${code}`
@@ -564,14 +590,25 @@ function parse_metadata(buffer) {
   };
 }
 
+// src/legacy-layout.ts
+var LAYOUTS = {
+  105: { header_size: 60, dataset_label_width: 32, varname_width: 9, format_width: 12, value_label_name_width: 9, variable_label_width: 32, expansion_length_width: 2, modern_type_codes: false, modern_value_labels: false },
+  108: { header_size: 109, dataset_label_width: 81, varname_width: 9, format_width: 12, value_label_name_width: 9, variable_label_width: 81, expansion_length_width: 2, modern_type_codes: false, modern_value_labels: true },
+  110: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 12, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4, modern_type_codes: false, modern_value_labels: true },
+  111: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 12, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4, modern_type_codes: true, modern_value_labels: true },
+  113: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 12, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4, modern_type_codes: true, modern_value_labels: true },
+  114: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 49, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4, modern_type_codes: true, modern_value_labels: true },
+  115: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 49, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4, modern_type_codes: true, modern_value_labels: true }
+};
+function legacy_layout_for_version(version) {
+  return LAYOUTS[version];
+}
+function legacy_expansion_header_size(layout) {
+  return 1 + layout.expansion_length_width;
+}
+
 // src/legacy-header.ts
-var HEADER_FIXED_SIZE = 109;
-var VARNAME_WIDTH = 33;
-var VALUE_LABEL_NAME_WIDTH = 33;
-var VARIABLE_LABEL_WIDTH = 81;
 var SORTLIST_ENTRY_WIDTH = 2;
-var FORMAT_WIDTH_113 = 12;
-var FORMAT_WIDTH_114_115 = 49;
 var TEXT_DECODER2 = new TextDecoder("windows-1252");
 function read_fixed_string2(bytes, offset, field_width) {
   let my_end = offset;
@@ -587,17 +624,19 @@ function legacy_metadata_buffer_size(nvar, format_version) {
   return legacy_metadata_fixed_size(nvar, format_version) + 65536;
 }
 function legacy_metadata_fixed_size(nvar, format_version) {
-  const my_fmt_width = format_version === 111 || format_version === 113 ? FORMAT_WIDTH_113 : FORMAT_WIDTH_114_115;
-  const my_sections_size = nvar * 1 + nvar * VARNAME_WIDTH + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * my_fmt_width + nvar * VALUE_LABEL_NAME_WIDTH + nvar * VARIABLE_LABEL_WIDTH;
-  return HEADER_FIXED_SIZE + my_sections_size;
+  const layout = legacy_layout_for_version(format_version);
+  const my_sections_size = nvar + nvar * layout.varname_width + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * layout.format_width + nvar * layout.value_label_name_width + nvar * layout.variable_label_width;
+  return layout.header_size + my_sections_size;
 }
-function scan_expansion_fields(view, little_endian, start, buffer_length) {
+function scan_expansion_fields(view, little_endian, start, buffer_length, format_version) {
   let pos = start;
+  const layout = legacy_layout_for_version(format_version);
+  const my_header_size = legacy_expansion_header_size(layout);
   const the_notes = [];
-  while (pos + 5 <= buffer_length) {
+  while (pos + my_header_size <= buffer_length) {
     const my_data_type = view.getUint8(pos);
-    const my_len = view.getInt32(pos + 1, little_endian);
-    pos += 5;
+    const my_len = layout.expansion_length_width === 2 ? view.getInt16(pos + 1, little_endian) : view.getInt32(pos + 1, little_endian);
+    pos += my_header_size;
     if (my_data_type === 0 && my_len === 0) {
       return { data_offset: pos, notes: the_notes };
     }
@@ -607,18 +646,18 @@ function scan_expansion_fields(view, little_endian, start, buffer_length) {
     if (pos + my_len > buffer_length) {
       throw new Error("Truncated legacy expansion field");
     }
-    if (my_data_type === 1 && my_len >= 2 * VARNAME_WIDTH) {
-      const my_variable = read_fixed_string2(bytes_from_view(view), pos, VARNAME_WIDTH);
+    if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
+      const my_variable = read_fixed_string2(bytes_from_view(view), pos, layout.varname_width);
       const my_characteristic = read_fixed_string2(
         bytes_from_view(view),
-        pos + VARNAME_WIDTH,
-        VARNAME_WIDTH
+        pos + layout.varname_width,
+        layout.varname_width
       );
       if (my_variable === "_dta" && /^note[0-9]+$/.test(my_characteristic)) {
         const my_note = read_fixed_string2(
           bytes_from_view(view),
-          pos + 2 * VARNAME_WIDTH,
-          my_len - 2 * VARNAME_WIDTH
+          pos + 2 * layout.varname_width,
+          my_len - 2 * layout.varname_width
         );
         if (my_note.length > 0) the_notes.push(my_note);
       }
@@ -634,12 +673,13 @@ function parse_legacy_metadata(buffer, file_size) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const my_version_byte = bytes[0];
-  if (my_version_byte !== 111 && my_version_byte !== 113 && my_version_byte !== 114 && my_version_byte !== 115) {
+  if (my_version_byte !== 105 && my_version_byte !== 108 && my_version_byte !== 110 && my_version_byte !== 111 && my_version_byte !== 113 && my_version_byte !== 114 && my_version_byte !== 115) {
     throw new Error(
       `Not a legacy .dta file: version byte ${my_version_byte}`
     );
   }
   const format_version = my_version_byte;
+  const layout = legacy_layout_for_version(format_version);
   const my_byte_order_code = bytes[1];
   if (my_byte_order_code !== 1 && my_byte_order_code !== 2) {
     throw new Error(
@@ -658,9 +698,13 @@ function parse_legacy_metadata(buffer, file_size) {
       `Invalid observation count: ${nobs}`
     );
   }
-  const dataset_label = read_fixed_string2(bytes, 10, 81);
-  const my_fmt_width = format_version === 111 || format_version === 113 ? FORMAT_WIDTH_113 : FORMAT_WIDTH_114_115;
-  let pos = HEADER_FIXED_SIZE;
+  const dataset_label = read_fixed_string2(
+    bytes,
+    10,
+    layout.dataset_label_width
+  );
+  const my_fmt_width = layout.format_width;
+  let pos = layout.header_size;
   const my_variable_types_offset = pos;
   const the_type_codes = [];
   for (let i = 0; i < nvar; i++) {
@@ -673,12 +717,12 @@ function parse_legacy_metadata(buffer, file_size) {
     the_varnames.push(
       read_fixed_string2(
         bytes,
-        pos + i * VARNAME_WIDTH,
-        VARNAME_WIDTH
+        pos + i * layout.varname_width,
+        layout.varname_width
       )
     );
   }
-  pos += nvar * VARNAME_WIDTH;
+  pos += nvar * layout.varname_width;
   const my_sortlist_offset = pos;
   pos += (nvar + 1) * SORTLIST_ENTRY_WIDTH;
   const my_formats_offset = pos;
@@ -699,39 +743,40 @@ function parse_legacy_metadata(buffer, file_size) {
     the_value_label_names.push(
       read_fixed_string2(
         bytes,
-        pos + i * VALUE_LABEL_NAME_WIDTH,
-        VALUE_LABEL_NAME_WIDTH
+        pos + i * layout.value_label_name_width,
+        layout.value_label_name_width
       )
     );
   }
-  pos += nvar * VALUE_LABEL_NAME_WIDTH;
+  pos += nvar * layout.value_label_name_width;
   const my_variable_labels_offset = pos;
   const the_variable_labels = [];
   for (let i = 0; i < nvar; i++) {
     the_variable_labels.push(
       read_fixed_string2(
         bytes,
-        pos + i * VARIABLE_LABEL_WIDTH,
-        VARIABLE_LABEL_WIDTH
+        pos + i * layout.variable_label_width,
+        layout.variable_label_width
       )
     );
   }
-  pos += nvar * VARIABLE_LABEL_WIDTH;
+  pos += nvar * layout.variable_label_width;
   const my_expansion_offset = pos;
   const { data_offset: my_data_offset, notes } = scan_expansion_fields(
     view,
     little_endian,
     pos,
-    buffer.byteLength
+    buffer.byteLength,
+    format_version
   );
   let my_running_offset = 0;
   const the_variables = [];
   for (let i = 0; i < nvar; i++) {
     const my_code = the_type_codes[i];
-    const my_width = byte_width_for_legacy_type_code(my_code);
+    const my_width = byte_width_for_legacy_type_code(my_code, format_version);
     the_variables.push({
       name: the_varnames[i],
-      type: legacy_type_code_to_dta_type(my_code),
+      type: legacy_type_code_to_dta_type(my_code, format_version),
       type_code: my_code,
       format: the_formats[i],
       label: the_variable_labels[i],
@@ -939,7 +984,7 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
   switch (type) {
     case "byte": {
       const my_val = view.getInt8(offset);
-      const my_missing_type = format_version === 111 ? my_val === 127 ? "." : null : classify_missing_value(my_val, "byte");
+      const my_missing_type = format_version < 113 ? my_val === 127 ? "." : null : classify_missing_value(my_val, "byte");
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -950,7 +995,7 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
         offset,
         little_endian
       );
-      const my_missing_type = format_version === 111 ? my_val === 32767 ? "." : null : classify_missing_value(my_val, "int");
+      const my_missing_type = format_version < 113 ? my_val === 32767 ? "." : null : classify_missing_value(my_val, "int");
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -961,7 +1006,7 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
         offset,
         little_endian
       );
-      const my_missing_type = format_version === 111 ? my_val === 2147483647 ? "." : null : classify_missing_value(my_val, "long");
+      const my_missing_type = format_version < 113 ? my_val === 2147483647 ? "." : null : classify_missing_value(my_val, "long");
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -972,7 +1017,7 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
         offset,
         little_endian
       );
-      const my_missing_type = format_version === 111 ? my_raw >= 2130706432 && my_raw < 2147483648 ? "." : null : classify_raw_float_missing(my_raw);
+      const my_missing_type = format_version < 113 ? my_raw >= 2130706432 && my_raw < 2147483648 ? "." : null : classify_raw_float_missing(my_raw);
       if (my_missing_type) {
         return make_missing_value(my_missing_type);
       }
@@ -983,7 +1028,7 @@ function read_cell(view, bytes, offset, type, width, little_endian, decoder, for
     }
     case "double": {
       const my_high_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
-      const my_missing_type = format_version === 111 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
+      const my_missing_type = format_version < 113 ? my_high_word >= 2145386496 && my_high_word < 2147483648 ? "." : null : classify_raw_double_missing_at(
         view,
         offset,
         little_endian
@@ -1274,6 +1319,9 @@ var LBL_OPEN_TAG = "<lbl>";
 var LBL_OPEN_TAG_LENGTH = LBL_OPEN_TAG.length;
 var LBL_CLOSE_TAG_LENGTH = 6;
 var LABEL_NAME_WIDTH = {
+  105: 9,
+  108: 9,
+  110: 33,
   111: 33,
   113: 33,
   114: 33,
@@ -1412,6 +1460,41 @@ function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos,
   }
   return my_result;
 }
+function parse_old_105_entries(bytes, view, little_endian, start_pos, section_end) {
+  const my_result = /* @__PURE__ */ new Map();
+  let pos = start_pos;
+  while (pos + 12 <= section_end) {
+    const my_n = view.getUint16(pos, little_endian);
+    pos += 2;
+    const my_name = read_label_name(
+      bytes,
+      pos,
+      9,
+      LEGACY_DECODER2
+    );
+    pos += 10;
+    if (pos + my_n * 10 > section_end) {
+      throw new Error("Corrupt value label table: truncated entry");
+    }
+    const the_codes = [];
+    for (let i = 0; i < my_n; i++) {
+      the_codes.push(view.getInt16(pos, little_endian));
+      pos += 2;
+    }
+    const my_labels = /* @__PURE__ */ new Map();
+    for (let i = 0; i < my_n; i++) {
+      my_labels.set(the_codes[i], read_label_name(
+        bytes,
+        pos,
+        8,
+        LEGACY_DECODER2
+      ));
+      pos += 8;
+    }
+    my_result.set(my_name, my_labels);
+  }
+  return my_result;
+}
 function parse_value_labels(buffer, metadata, base_offset = 0) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
@@ -1423,6 +1506,15 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
   const my_tag_skip = my_legacy ? 0 : VALUE_LABELS_TAG_LENGTH;
   const my_start_pos = metadata.section_offsets.value_labels - base_offset + my_tag_skip;
   const my_section_end = metadata.section_offsets.stata_data_close - base_offset;
+  if (metadata.format_version === 105) {
+    return parse_old_105_entries(
+      bytes,
+      view,
+      little_endian,
+      my_start_pos,
+      my_section_end
+    );
+  }
   if (my_legacy) {
     return parse_legacy_entries(
       bytes,

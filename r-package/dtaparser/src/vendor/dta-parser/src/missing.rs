@@ -192,7 +192,10 @@ pub(crate) fn classify_byte_missing_for_version(
     value: i8,
     version: FormatVersion,
 ) -> Option<MissingTag> {
-    if version == FormatVersion::V111 {
+    if matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    ) {
         return (value == BYTE_MISSING_Z).then_some(MissingTag::System);
     }
     classify_byte_missing(value)
@@ -202,7 +205,10 @@ pub(crate) fn classify_int_missing_for_version(
     value: i16,
     version: FormatVersion,
 ) -> Option<MissingTag> {
-    if version == FormatVersion::V111 {
+    if matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    ) {
         return (value == INT_MISSING_Z).then_some(MissingTag::System);
     }
     classify_int_missing(value)
@@ -212,7 +218,10 @@ pub(crate) fn classify_long_missing_for_version(
     value: i32,
     version: FormatVersion,
 ) -> Option<MissingTag> {
-    if version == FormatVersion::V111 {
+    if matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    ) {
         return (value == LONG_MISSING_Z).then_some(MissingTag::System);
     }
     classify_long_missing(value)
@@ -222,7 +231,10 @@ pub(crate) fn classify_float_missing_bits_for_version(
     bits: u32,
     version: FormatVersion,
 ) -> Option<MissingTag> {
-    if version == FormatVersion::V111 {
+    if matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    ) {
         return ((FLOAT_MISSING_DOT_BITS..0x8000_0000).contains(&bits))
             .then_some(MissingTag::System);
     }
@@ -233,7 +245,10 @@ pub(crate) fn classify_double_missing_bits_for_version(
     bits: u64,
     version: FormatVersion,
 ) -> Option<MissingTag> {
-    if version == FormatVersion::V111 {
+    if matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    ) {
         return ((DOUBLE_MISSING_DOT_BITS..0x8000_0000_0000_0000).contains(&bits))
             .then_some(MissingTag::System);
     }

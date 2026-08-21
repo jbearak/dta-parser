@@ -48,10 +48,13 @@ benchmark results.
 
 ## Compatibility
 
-All three libraries read Stata releases 111, 113--115, and 117--119:
+All three libraries read Stata releases 105, 108, 110--111, 113--115, and 117--119:
 
 | Release | Stata generation |
 | ---: | --- |
+| 105 | Stata 5 |
+| 108 | Stata 6 |
+| 110 | Stata 7 |
 | 111 | Stata/SE 7 |
 | 113 | Stata 8 |
 | 114 | Stata 10 |
@@ -60,12 +63,14 @@ All three libraries read Stata releases 111, 113--115, and 117--119:
 | 118 | Stata 14--19 |
 | 119 | Stata 15--19 files with more than 32,767 variables |
 
-Release 111 uses the fixed legacy header shared with release 113: 33-byte
-variable names, 12-byte display formats, 33-byte value-label names, 81-byte
-variable labels, one-byte storage codes, and 32-bit expansion-field lengths.
-Unlike later releases, it has one system-missing value per numeric storage
-type and does not encode `.a`--`.z` tags; integer system missing is the storage
-maximum. Releases 114--115 widen display-format fields to 49 bytes.
+Releases 105, 108, and 110 use pre-111 storage codes. Release 105 has a compact
+60-byte header, 32-byte labels, 9-byte names, and 16-bit expansion lengths;
+release 108 uses 81-byte labels while retaining 9-byte names and 16-bit
+expansion lengths; release 110 widens names to 33 bytes and expansion lengths
+to 32 bits. Releases 105--111 have one system-missing value per numeric storage
+type and do not encode `.a`--`.z` tags. Releases 111 and 113 share the later
+33-byte-name layout, while releases 114--115 widen display-format fields from
+12 to 49 bytes.
 
 Other formats are rejected. Each library preserves Stata's system missing and
 `.a`--`.z` missing values where the on-disk release supports them rather than
