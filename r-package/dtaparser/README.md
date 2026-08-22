@@ -179,17 +179,12 @@ The materialization benchmark runners require `DTAPARSER_BENCH_LIB` and verify
 that the package is loaded from that freshly populated, checkout-local library
 rather than an unrelated global installation.
 
-The Rust source of truth is `rust/dta-parser`. After changing that crate,
-mirror its runtime tree into `r-package/dtaparser/src/vendor/dta-parser`, then
-run `scripts/check-rust-sync.sh --update-pins` and
-`scripts/check-rust-sync.sh`. Matching `dta-parser.tree.sha256` files pin the
-normalized parser manifest, recursive `src` contents, and an optional
-`build.rs` script; pin updates are refused unless both trees agree. The check
-also verifies the Cargo locks and
-deterministic offline `vendor.tar.gz` identity. The pin namespaces Cargo build
-outputs, while configure always refreshes the extracted dependencies, so
-repeated source-tree builds cannot silently reuse older inputs. Python 3.11 or
-newer is only required for repository maintenance and CI, not R package
-installation.
+The canonical Rust parser lives directly in `src/dta-parser`; there is no
+first-party mirror or copy step. The separate `src/rust` crate provides the R
+bridge and builds with `--locked --offline`. Its `vendor.tar.gz` contains only
+third-party Cargo dependencies, and `scripts/check-r-cargo-vendor.sh` verifies
+the archive against `vendor.sha256` and the bridge lock. Configure always
+refreshes the extracted dependencies before building. Python 3.11 or newer is
+only required for repository maintenance and CI, not R package installation.
 Windows CI installs and selects `stable-x86_64-pc-windows-gnu`, confirms the
 rustc host, then actually builds and checks the package through Rtools.

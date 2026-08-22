@@ -6,7 +6,7 @@ built around two independent parser implementations:
 | Library | Location | Parser implementation | Primary interface |
 | --- | --- | --- | --- |
 | TypeScript/npm package | [`typescript/dta-parser`](typescript/dta-parser) | TypeScript | `@jbearak/dta-parser` and `@jbearak/dta-parser/node` |
-| Rust crate | [`rust/dta-parser`](rust/dta-parser) | Rust | `dta_parser::{read_dta, DtaFile}` |
+| Rust crate | [`r-package/dtaparser/src/dta-parser`](r-package/dtaparser/src/dta-parser) | Rust | `dta_parser::{read_dta, DtaFile}` |
 | R package | [`r-package/dtaparser`](r-package/dtaparser) | Rust | `dtaparser::read_dta()` |
 
 The TypeScript and Rust parsers are separate implementations checked against
@@ -27,12 +27,12 @@ installation, entrypoints, examples, supported formats, and the API reference.
 
 ### Rust
 
-[`dta-parser`](rust/dta-parser) reads byte slices or bounded `Read + Seek`
+[`dta-parser`](r-package/dtaparser/src/dta-parser) reads byte slices or bounded `Read + Seek`
 sources into storage-preserving, column-oriented vectors. It supports row and
 column projection, exact missing tags, value labels, long strings, cooperative
 cancellation, and strict format validation.
 
-See the [Rust crate README](rust/dta-parser/README.md) for examples and its I/O
+See the [Rust crate README](r-package/dtaparser/src/dta-parser/README.md) for examples and its I/O
 and memory contracts.
 
 ### R
@@ -83,24 +83,20 @@ conversion, and public API.
 | Path | Purpose |
 | --- | --- |
 | [`typescript/dta-parser`](typescript/dta-parser) | TypeScript source, tests, built distribution, and npm metadata |
-| [`rust/dta-parser`](rust/dta-parser) | Rust parser crate and Rust tests |
-| [`r-package/dtaparser`](r-package/dtaparser) | R package and its vendored copy of the Rust parser |
+| [`r-package/dtaparser/src/dta-parser`](r-package/dtaparser/src/dta-parser) | Rust parser crate and Rust tests |
+| [`r-package/dtaparser`](r-package/dtaparser) | R package, canonical Rust parser, and R bridge |
 | [`tests/fixtures/dta`](tests/fixtures/dta) | Shared immutable `.dta` fixtures |
 | [`conformance`](conformance) | Cross-implementation compatibility inventory |
-| [`scripts`](scripts) | Conformance and Rust/R source-synchronization checks |
+| [`scripts`](scripts) | Conformance and offline Cargo dependency checks |
 | [`benchmarks`](benchmarks) | Report-only TypeScript, Rust, and R benchmarks |
 
-The Rust crate is the source of truth for the Rust parser and its R binding.
-The R package mirrors its runtime tree under
-`r-package/dtaparser/src/vendor/dta-parser`; do not edit only the mirror.
-Matching `dta-parser.tree.sha256` files pin the normalized parser manifest,
-recursive `src` contents, and an optional `build.rs` script.
-`scripts/check-rust-sync.sh` verifies both trees and
-pins, Cargo locks, and the normalized offline dependency archive. After
-mirroring a parser change, run `scripts/check-rust-sync.sh --update-pins`; it
-refuses to update the pins unless the canonical and R runtime trees agree.
-The repository synchronization checker requires Python 3.11 or newer; R
-package installation does not require Python.
+The canonical Rust parser lives directly inside the R package at
+`r-package/dtaparser/src/dta-parser`; parser changes are made in one place.
+The separate `src/rust` crate provides the R bridge and carries a locked,
+offline `vendor.tar.gz` containing only third-party Cargo dependencies.
+`scripts/check-r-cargo-vendor.sh` verifies that archive against its integrity
+file and the bridge lock. The repository archive checker requires Python 3.11
+or newer; R package installation does not require Python.
 
 ## Conformance and benchmarks
 
@@ -114,7 +110,7 @@ From the repository root:
 
 ```sh
 scripts/conformance.sh
-scripts/check-rust-sync.sh
+scripts/check-r-cargo-vendor.sh
 ```
 
 The conformance command reports R/haven as `SKIP` when R or its test
@@ -143,7 +139,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --all-targets --locked
 cargo doc --workspace --locked --no-deps
 scripts/conformance.sh
-scripts/check-rust-sync.sh
+scripts/check-r-cargo-vendor.sh
 ```
 
 Build and check the R source package from the repository root with its declared

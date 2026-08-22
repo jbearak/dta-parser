@@ -1,20 +1,8 @@
 #!/bin/sh
 set -eu
 
-rm -rf src/rust/v
-tar -xzf src/rust/vendor.tar.gz -C src/rust
-test -d src/rust/v
-
-dta_parser_pin=src/vendor/dta-parser.tree.sha256
-dta_parser_digest=$(awk '$2 == "dta-parser-runtime-tree-v1" && NF == 2 { print $1 }' "$dta_parser_pin")
-case "$dta_parser_digest" in
-  *[!0-9a-f]*) dta_parser_digest= ;;
-esac
-if test "${#dta_parser_digest}" -ne 64; then
-  echo "dtaparser parser-tree pin is malformed" >&2
-  exit 1
-fi
-dta_parser_namespace=$(printf '%.16s' "$dta_parser_digest")
+rustc --version
+. tools/configure-rust.sh
 
 case "$(uname -s)" in
   Darwin) rust_system_libs="-liconv -framework CoreFoundation -framework Security" ;;
@@ -22,6 +10,6 @@ case "$(uname -s)" in
 esac
 
 sed \
-  -e "s|@DTA_PARSER_NAMESPACE@|$dta_parser_namespace|g" \
   -e "s|@RUST_SYSTEM_LIBS@|$rust_system_libs|g" \
+  -e "s|@RUST_NAMESPACE@|$rust_namespace|g" \
   src/Makevars.in > src/Makevars

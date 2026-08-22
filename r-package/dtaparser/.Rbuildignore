@@ -1,6 +1,6 @@
+^src/dta-parser/(examples|target|tests)$
 ^src/rust/target$
 ^src/rust/v$
-^src/vendor/dta-parser/target$
 ^src/Makevars$
 ^src/Makevars\.win$
 ^\.DS_Store$

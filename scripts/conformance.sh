@@ -26,6 +26,9 @@ fi
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 cp -R r-package/dtaparser "$temporary/dtaparser"
+version=$(sed -n 's/^Version: //p' "$temporary/dtaparser/DESCRIPTION")
+tarball="dtaparser_${version}.tar.gz"
 (cd "$temporary" && R CMD build dtaparser)
-(cd "$temporary" && R CMD check --no-manual dtaparser_0.1.0.tar.gz)
+scripts/check-r-package-archive.sh "$temporary/$tarball"
+(cd "$temporary" && R CMD check --no-manual "$tarball")
 echo "R/haven conformance: PASS (current source built and checked with offline Cargo archive)"
