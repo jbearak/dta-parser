@@ -50,6 +50,7 @@ checksum = "1111111111111111111111111111111111111111111111111111111111111111"
     def write_archive(
         self,
         packages: tuple[tuple[str, str, str, str], ...] | None = None,
+        checksum_contents: bytes | None = None,
     ) -> None:
         if packages is None:
             packages = (
@@ -65,14 +66,18 @@ checksum = "1111111111111111111111111111111111111111111111111111111111111111"
                 directory.type = tarfile.DIRTYPE
                 archive.addfile(directory)
 
-                checksum_contents = json.dumps(
-                    {"files": {}, "package": checksum_value}, separators=(",", ":")
-                ).encode("utf-8")
+                package_checksum = (
+                    checksum_contents
+                    if checksum_contents is not None
+                    else json.dumps(
+                        {"files": {}, "package": checksum_value}, separators=(",", ":")
+                    ).encode("utf-8")
+                )
                 checksum = tarfile.TarInfo(
                     f"v/{directory_name}/.cargo-checksum.json"
                 )
-                checksum.size = len(checksum_contents)
-                archive.addfile(checksum, io.BytesIO(checksum_contents))
+                checksum.size = len(package_checksum)
+                archive.addfile(checksum, io.BytesIO(package_checksum))
 
                 manifest_contents = (
                     f'[package]\nname = "{package_name}"\nversion = "{version}"\n'
@@ -140,6 +145,15 @@ checksum = "2222222222222222222222222222222222222222222222222222222222222222"
             destination.write(f"{first}\n")
         with self.assertRaisesRegex(vendor.VendorError, "exactly one entry"):
             self.check()
+
+    def test_malformed_checksum_metadata_fails_clearly(self) -> None:
+        for contents in (b"{", b"\xff"):
+            with self.subTest(contents=contents):
+                self.fixture.write_archive(checksum_contents=contents)
+                with self.assertRaisesRegex(
+                    vendor.VendorError, "invalid vendored checksum metadata"
+                ):
+                    self.check()
 
     def test_archive_inventory_must_match_the_bridge_lock(self) -> None:
         with self.fixture.lock.open("a", encoding="utf-8") as lock:

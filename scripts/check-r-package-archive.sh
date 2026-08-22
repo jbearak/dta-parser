@@ -6,7 +6,12 @@ if test "$#" -ne 1; then
   exit 2
 fi
 
-tar -tzf "$1" | awk '
+listing=$(mktemp)
+trap 'rm -f "$listing"' EXIT HUP INT TERM
+
+tar -tzf "$1" > "$listing"
+
+awk '
 BEGIN {
   required["dtaparser/src/dta-parser/Cargo.toml"]
   required["dtaparser/src/dta-parser/src/lib.rs"]
@@ -38,6 +43,6 @@ END {
     exit 1
   }
 }
-'
+' "$listing"
 
 echo "R package archive: PASS"

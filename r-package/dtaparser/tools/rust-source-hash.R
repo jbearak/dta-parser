@@ -1,4 +1,8 @@
 source_roots <- c("src/dta-parser/src", "src/rust/src")
+if (any(!dir.exists(source_roots))) {
+  stop("Rust source hash input is missing")
+}
+
 paths <- c(
   "src/dta-parser/Cargo.toml",
   "src/rust/Cargo.toml",

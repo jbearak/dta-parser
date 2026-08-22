@@ -133,7 +133,10 @@ def check_vendor_archive(archive: Path, integrity_path: Path, lock_path: Path) -
                     f"offline vendor archive is missing regular file {required}"
                 )
 
-        checksum = json.loads(metadata[checksum_path].decode("utf-8"))
+        try:
+            checksum = json.loads(metadata[checksum_path].decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise VendorError(f"invalid vendored checksum metadata: {directory}") from error
         if not isinstance(checksum, dict) or not isinstance(checksum.get("package"), str):
             raise VendorError(f"vendored checksum lacks package digest: {directory}")
 
