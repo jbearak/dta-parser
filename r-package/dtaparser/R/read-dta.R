@@ -168,8 +168,22 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     invisible(NULL)
 }
 
-.dta_metadata <- function(file, encoding = NULL) {
-    .Call(C_dtaparser_metadata, file, encoding)
+.dta_metadata <- function(file, encoding = NULL, column_start = 1L,
+                          column_count = Inf) {
+    validate <- function(value, name, unlimited = FALSE) {
+        if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+            is.nan(value) || value < 0 || value != floor(value) ||
+            (!is.finite(value) && !unlimited) ||
+            (is.finite(value) && value > .Machine$integer.max)) {
+            stop(sprintf("`%s` must be one non-negative whole number%s", name,
+                         if (unlimited) " or Inf" else ""), call. = FALSE)
+        }
+        if (is.infinite(value)) .Machine$integer.max else as.integer(value)
+    }
+    start <- validate(column_start, "column_start")
+    if (start < 1L) stop("`column_start` must be at least 1", call. = FALSE)
+    count <- validate(column_count, "column_count", unlimited = TRUE)
+    .Call(C_dtaparser_metadata, file, encoding, start - 1L, count)
 }
 
 .validate_dta_encoding <- function(encoding) {

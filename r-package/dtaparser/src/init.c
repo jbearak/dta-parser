@@ -6,7 +6,9 @@
 #include <stdint.h>
 #include <string.h>
 
-extern SEXP dtaparser_metadata_rust(const char *, const char *, char **);
+extern SEXP dtaparser_metadata_rust(
+    const char *, uint32_t, uint32_t, const char *, char **
+);
 extern SEXP dtaparser_read_rust(
     const char *, const int *, size_t, int, double, double, int, const char *,
     char **
@@ -133,14 +135,23 @@ static const char *optional_encoding(SEXP encoding) {
     return Rf_translateCharUTF8(STRING_ELT(encoding, 0));
 }
 
-SEXP C_dtaparser_metadata(SEXP path, SEXP encoding) {
+SEXP C_dtaparser_metadata(
+    SEXP path, SEXP encoding, SEXP column_start, SEXP column_count
+) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
     }
+    if (TYPEOF(column_start) != INTSXP || XLENGTH(column_start) != 1 ||
+        INTEGER(column_start)[0] < 0 || TYPEOF(column_count) != INTSXP ||
+        XLENGTH(column_count) != 1 || INTEGER(column_count)[0] < 0) {
+        Rf_error("internal metadata column bounds must be non-negative integers");
+    }
     char *error = NULL;
     SEXP result = dtaparser_metadata_rust(
-        Rf_translateCharUTF8(STRING_ELT(path, 0)), optional_encoding(encoding),
-        &error
+        Rf_translateCharUTF8(STRING_ELT(path, 0)),
+        (uint32_t) INTEGER(column_start)[0],
+        (uint32_t) INTEGER(column_count)[0],
+        optional_encoding(encoding), &error
     );
     if (result == NULL) fail_from_rust(error);
     return result;
@@ -182,7 +193,7 @@ SEXP C_dtaparser_read(
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 2},
+    {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 4},
     {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 6},
     {NULL, NULL, 0}
 };
