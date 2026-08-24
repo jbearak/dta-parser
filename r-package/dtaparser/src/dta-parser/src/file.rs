@@ -1449,97 +1449,120 @@ impl<R: Read + Seek> DtaFile<R> {
                         }));
                     }
 
-                    let mut row = 0_u64;
-                    let mut inflight_block: Option<Arc<ObservationBlock>> = None;
-                    while row < row_count {
-                        let ready = (|| -> Result<(u64, usize), DtaError> {
-                            check_cancel(&mut should_interrupt)?;
-                            let block_rows = (row_count - row).min(rows_per_block);
-                            let block_row_count = usize::try_from(block_rows).map_err(|_| {
-                                DtaError::ArithmeticOverflow("parallel block row count")
-                            })?;
-                            let block_length = plan
-                                .row_width
-                                .checked_mul(block_row_count)
-                                .ok_or(DtaError::ArithmeticOverflow("parallel block length"))?;
-                            let source_row = row_start
-                                .checked_add(row)
-                                .ok_or(DtaError::ArithmeticOverflow("parallel source row"))?;
-                            let block_offset = payload_start
-                                .checked_add(
-                                    source_row.checked_mul(self.metadata.obs_length).ok_or(
-                                        DtaError::ArithmeticOverflow("parallel row offset"),
-                                    )?,
-                                )
-                                .ok_or(DtaError::ArithmeticOverflow("parallel block offset"))?;
-                            read_exact_at_into(
-                                &mut self.reader,
-                                block_offset,
-                                block_length,
-                                &mut self.scratch,
-                                &mut observation_buffer,
-                                "reading observation rows",
-                            )?;
-                            Ok((block_rows, block_row_count))
-                        })();
-
-                        // The read above overlaps worker decoding of the
-                        // preceding block. Once those workers finish, recycle
-                        // its allocation as the buffer for the following read.
-                        let reusable_buffer = if let Some(block) = inflight_block.take() {
-                            receive_worker_acks(&ack_receivers)?;
-                            Arc::try_unwrap(block)
-                                .map_err(|_| {
-                                    DtaError::Output(
-                                        "parallel input block remained borrowed".to_owned(),
+                    let execution = (|| -> Result<(), DtaError> {
+                        let mut row = 0_u64;
+                        let mut inflight_block: Option<Arc<ObservationBlock>> = None;
+                        while row < row_count {
+                            let ready = (|| -> Result<(u64, usize), DtaError> {
+                                check_cancel(&mut should_interrupt)?;
+                                let block_rows = (row_count - row).min(rows_per_block);
+                                let block_row_count =
+                                    usize::try_from(block_rows).map_err(|_| {
+                                        DtaError::ArithmeticOverflow("parallel block row count")
+                                    })?;
+                                let block_length = plan
+                                    .row_width
+                                    .checked_mul(block_row_count)
+                                    .ok_or(DtaError::ArithmeticOverflow("parallel block length"))?;
+                                let source_row = row_start
+                                    .checked_add(row)
+                                    .ok_or(DtaError::ArithmeticOverflow("parallel source row"))?;
+                                let block_offset = payload_start
+                                    .checked_add(
+                                        source_row.checked_mul(self.metadata.obs_length).ok_or(
+                                            DtaError::ArithmeticOverflow("parallel row offset"),
+                                        )?,
                                     )
-                                })?
-                                .bytes
-                        } else {
-                            Vec::new()
-                        };
-                        // An error from the earlier block takes precedence
-                        // over a later read or cancellation error, matching
-                        // the non-pipelined executor's ordering.
-                        let (block_rows, block_row_count) = ready?;
-                        let ready_buffer =
-                            std::mem::replace(&mut observation_buffer, reusable_buffer);
-                        let block = Arc::new(ObservationBlock {
-                            bytes: ready_buffer,
-                            output_row_start: usize::try_from(row)
-                                .map_err(|_| DtaError::ArithmeticOverflow("parallel output row"))?,
-                            row_count: block_row_count,
-                        });
-                        for sender in &senders {
-                            sender
-                                .send(WorkerMessage::Block(Arc::clone(&block)))
-                                .map_err(|_| {
-                                    DtaError::Output("parallel decoder worker stopped".to_owned())
-                                })?;
-                        }
-                        inflight_block = Some(block);
-                        row = row
-                            .checked_add(block_rows)
-                            .ok_or(DtaError::ArithmeticOverflow("parallel projected row"))?;
-                    }
+                                    .ok_or(DtaError::ArithmeticOverflow("parallel block offset"))?;
+                                read_exact_at_into(
+                                    &mut self.reader,
+                                    block_offset,
+                                    block_length,
+                                    &mut self.scratch,
+                                    &mut observation_buffer,
+                                    "reading observation rows",
+                                )?;
+                                Ok((block_rows, block_row_count))
+                            })();
 
-                    if let Some(block) = inflight_block {
-                        receive_worker_acks(&ack_receivers)?;
-                        Arc::try_unwrap(block).map_err(|_| {
-                            DtaError::Output("parallel input block remained borrowed".to_owned())
-                        })?;
-                    }
-                    for sender in &senders {
-                        let _ = sender.send(WorkerMessage::Finish);
+                            // The read above overlaps worker decoding of the
+                            // preceding block. Once those workers finish,
+                            // recycle its allocation for the following read.
+                            let reusable_buffer = if let Some(block) = inflight_block.take() {
+                                receive_worker_acks(&ack_receivers)?;
+                                Arc::try_unwrap(block)
+                                    .map_err(|_| {
+                                        DtaError::Output(
+                                            "parallel input block remained borrowed".to_owned(),
+                                        )
+                                    })?
+                                    .bytes
+                            } else {
+                                Vec::new()
+                            };
+                            // An error from the earlier block takes precedence
+                            // over a later read or cancellation error, matching
+                            // the non-pipelined executor's ordering.
+                            let (block_rows, block_row_count) = ready?;
+                            // An interrupt can arrive while the speculative
+                            // read overlaps the earlier decode. Do not dispatch
+                            // that newly read block after such an interrupt.
+                            check_cancel(&mut should_interrupt)?;
+                            let ready_buffer =
+                                std::mem::replace(&mut observation_buffer, reusable_buffer);
+                            let block = Arc::new(ObservationBlock {
+                                bytes: ready_buffer,
+                                output_row_start: usize::try_from(row).map_err(|_| {
+                                    DtaError::ArithmeticOverflow("parallel output row")
+                                })?,
+                                row_count: block_row_count,
+                            });
+                            for sender in &senders {
+                                sender
+                                    .send(WorkerMessage::Block(Arc::clone(&block)))
+                                    .map_err(|_| {
+                                        DtaError::Output(
+                                            "parallel decoder worker stopped".to_owned(),
+                                        )
+                                    })?;
+                            }
+                            inflight_block = Some(block);
+                            row = row
+                                .checked_add(block_rows)
+                                .ok_or(DtaError::ArithmeticOverflow("parallel projected row"))?;
+                        }
+
+                        if let Some(block) = inflight_block {
+                            receive_worker_acks(&ack_receivers)?;
+                            Arc::try_unwrap(block).map_err(|_| {
+                                DtaError::Output(
+                                    "parallel input block remained borrowed".to_owned(),
+                                )
+                            })?;
+                        }
+                        Ok(())
+                    })();
+
+                    if execution.is_ok() {
+                        for sender in &senders {
+                            let _ = sender.send(WorkerMessage::Finish);
+                        }
                     }
                     drop(senders);
                     let mut completed = Vec::with_capacity(plan.columns.len());
+                    let mut worker_panicked = false;
                     for handle in handles {
-                        let shard = handle.join().map_err(|_| {
-                            DtaError::Output("parallel decoder worker panicked".to_owned())
-                        })?;
-                        completed.extend(shard);
+                        match handle.join() {
+                            Ok(shard) => completed.extend(shard),
+                            Err(_) => worker_panicked = true,
+                        }
                     }
+                    if worker_panicked {
+                        return Err(DtaError::Output(
+                            "parallel decoder worker panicked".to_owned(),
+                        ));
+                    }
+                    execution?;
                     Ok(completed)
                 },
             )?

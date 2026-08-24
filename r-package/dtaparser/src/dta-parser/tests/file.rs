@@ -4,11 +4,15 @@ use std::cell::RefCell;
 use std::fs;
 use std::io::{Cursor, Read, Result as IoResult, Seek, SeekFrom};
 use std::rc::Rc;
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc,
+};
 use support::{fixture, parser_data_dir};
 
 use dta_parser::{
-    read_dta, read_dta_with_options, ColumnValues, DtaError, DtaFile, DtaType, FileOptions,
-    ReadOptions,
+    read_dta, read_dta_with_options, ColumnValues, DtaColumnSink, DtaError, DtaFile, DtaMetadata,
+    DtaType, FileOptions, MissingTag, ParallelDtaSink, ReadOptions, ValueLabelTable,
 };
 
 #[derive(Default)]
@@ -61,6 +65,128 @@ fn options(row_start: u64, row_count: Option<u64>, columns: Vec<u32>) -> ReadOpt
         row_count,
         column_indices: Some(columns),
     }
+}
+
+struct ProbeColumn {
+    panic_on_push: bool,
+    started: Arc<AtomicBool>,
+    pushes: Arc<AtomicUsize>,
+}
+
+impl ProbeColumn {
+    fn push(&self) -> Result<(), DtaError> {
+        if self.panic_on_push {
+            panic!("intentional column-sink panic");
+        }
+        self.pushes.fetch_add(1, Ordering::SeqCst);
+        self.started.store(true, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
+impl DtaColumnSink for ProbeColumn {
+    fn push_byte(
+        &mut self,
+        _row: usize,
+        _value: i8,
+        _missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.push()
+    }
+
+    fn push_int(
+        &mut self,
+        _row: usize,
+        _value: i16,
+        _missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.push()
+    }
+
+    fn push_long(
+        &mut self,
+        _row: usize,
+        _value: i32,
+        _missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.push()
+    }
+
+    fn push_float(
+        &mut self,
+        _row: usize,
+        _value: f32,
+        _missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.push()
+    }
+
+    fn push_double(
+        &mut self,
+        _row: usize,
+        _value: f64,
+        _missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.push()
+    }
+
+    fn push_fixed_string(&mut self, _row: usize, _value: &str) -> Result<(), DtaError> {
+        self.push()
+    }
+}
+
+struct ProbeSink {
+    columns: Vec<ProbeColumn>,
+}
+
+impl ProbeSink {
+    fn new(
+        column_count: usize,
+        panic_on_push: bool,
+        started: Arc<AtomicBool>,
+        pushes: Arc<AtomicUsize>,
+    ) -> Self {
+        let columns = (0..column_count)
+            .map(|_| ProbeColumn {
+                panic_on_push,
+                started: Arc::clone(&started),
+                pushes: Arc::clone(&pushes),
+            })
+            .collect();
+        Self { columns }
+    }
+}
+
+impl ParallelDtaSink for ProbeSink {
+    type Output = ();
+    type Column = ProbeColumn;
+    type State = ();
+
+    fn split(self) -> (Self::State, Vec<Self::Column>) {
+        ((), self.columns)
+    }
+
+    fn finish_parallel(
+        _state: Self::State,
+        _columns: Vec<Self::Column>,
+        _metadata: DtaMetadata,
+        _row_start: u64,
+        _row_count: u64,
+        _value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError> {
+        Ok(())
+    }
+}
+
+fn first_non_strl_columns(file: &DtaFile<Cursor<Vec<u8>>>, count: usize) -> Vec<u32> {
+    file.metadata()
+        .variables
+        .iter()
+        .enumerate()
+        .filter(|(_, variable)| variable.dta_type != DtaType::StrL)
+        .take(count)
+        .map(|(index, _)| u32::try_from(index).unwrap())
+        .collect()
 }
 
 fn file_and_slice_error(bytes: Vec<u8>) -> DtaError {
@@ -428,6 +554,84 @@ fn parallel_vectors_match_serial_across_supported_releases_and_gate_strls() {
     assert!(!strl_file
         .supports_columnar_sink(&ReadOptions::default())
         .unwrap());
+}
+
+#[test]
+fn parallel_sink_panics_are_returned_as_errors() {
+    let mut file = DtaFile::from_reader(Cursor::new(fixture("auto_v118.dta"))).unwrap();
+    let columns = first_non_strl_columns(&file, 2);
+    assert_eq!(columns.len(), 2);
+    let started = Arc::new(AtomicBool::new(false));
+    let pushes = Arc::new(AtomicUsize::new(0));
+
+    let result = file.read_with_parallel_sink_and_interrupt(
+        &options(0, None, columns),
+        2,
+        {
+            let started = Arc::clone(&started);
+            let pushes = Arc::clone(&pushes);
+            move |_metadata, _row_start, _row_count, indices| {
+                Ok(ProbeSink::new(
+                    indices.len(),
+                    true,
+                    Arc::clone(&started),
+                    Arc::clone(&pushes),
+                ))
+            }
+        },
+        || false,
+    );
+
+    assert_eq!(
+        result,
+        Err(DtaError::Output(
+            "parallel decoder worker panicked".to_owned()
+        ))
+    );
+}
+
+#[test]
+fn pipelined_cancellation_does_not_dispatch_the_ready_block() {
+    let buffer_limit = 1024;
+    let mut file = DtaFile::from_reader_with_options(
+        Cursor::new(fixture("auto_v118.dta")),
+        FileOptions {
+            max_buffer_bytes: buffer_limit,
+        },
+    )
+    .unwrap();
+    let columns = first_non_strl_columns(&file, 2);
+    assert_eq!(columns.len(), 2);
+    let rows_per_block =
+        buffer_limit / usize::try_from(file.metadata().obs_length).expect("row width fits usize");
+    assert!(rows_per_block > 0);
+    assert!(usize::try_from(file.metadata().nobs).unwrap() > rows_per_block);
+    let started = Arc::new(AtomicBool::new(false));
+    let pushes = Arc::new(AtomicUsize::new(0));
+
+    let result = file.read_with_parallel_sink_and_interrupt(
+        &options(0, None, columns),
+        2,
+        {
+            let started = Arc::clone(&started);
+            let pushes = Arc::clone(&pushes);
+            move |_metadata, _row_start, _row_count, indices| {
+                Ok(ProbeSink::new(
+                    indices.len(),
+                    false,
+                    Arc::clone(&started),
+                    Arc::clone(&pushes),
+                ))
+            }
+        },
+        {
+            let started = Arc::clone(&started);
+            move || started.load(Ordering::SeqCst)
+        },
+    );
+
+    assert_eq!(result, Err(DtaError::Cancelled));
+    assert_eq!(pushes.load(Ordering::SeqCst), rows_per_block * 2);
 }
 
 #[test]
