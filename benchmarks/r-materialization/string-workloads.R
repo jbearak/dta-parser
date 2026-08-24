@@ -31,7 +31,11 @@ if (!identical(loaded_library, benchmark_library)) {
 reference <- dtaparser:::.read_dta_rust_vectors(path)
 character_columns <- names(reference)[vapply(reference, is.character, logical(1))]
 numeric_columns <- names(reference)[vapply(reference, is.numeric, logical(1))]
-subset_rows <- unique(as.integer(round(seq(1, nrow(reference), length.out = 1024L))))
+subset_rows <- if (nrow(reference) == 0L) {
+    integer()
+} else {
+    unique(as.integer(round(seq(1, nrow(reference), length.out = 1024L))))
+}
 expected_dim <- dim(reference)
 
 consume <- function(result, workload) {

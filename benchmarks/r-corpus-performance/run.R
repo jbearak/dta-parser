@@ -151,6 +151,7 @@ measure_r <- function(item, reader, order_index) {
 
 measure_stata <- function(item, order_index) {
     work_dir <- file.path(output_dir, "stata-work", item$id)
+    unlink(work_dir, recursive = TRUE, force = TRUE)
     dir.create(work_dir, recursive = TRUE, showWarnings = FALSE)
     input_link <- file.path(work_dir, "input.dta")
     if (file.exists(input_link) || nzchar(Sys.readlink(input_link))) unlink(input_link)

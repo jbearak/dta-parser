@@ -91,8 +91,8 @@ indices. Timed reads therefore measure dataset loading and tibble construction;
 the dimension check does not allocate the full row-level string-pointer vector. The exact
 dta-parser/Rust-vector comparison and the haven window comparisons before timing
 do access character values, so laziness cannot hide correctness differences.
-Use the separate `r-materialization/string-workloads.R` and
-`r-materialization/memory-worker.R` harnesses for matched string-access and
+Use the separate `benchmarks/r-materialization/string-workloads.R` and
+`benchmarks/r-materialization/memory-worker.R` harnesses for matched string-access and
 fresh-process peak-memory measurements, including workloads that force the
 complete returned object.
 

@@ -49,8 +49,10 @@ row-level string-pointer vectors, or replace `full` with
 `string-workloads.R` times the complete load plus five matched consumers:
 dimensions only, a distributed 1,024-row subset of every character column, a
 numeric-column scan, an all-character scan, and `object.size()`. It validates
-dimensions and workload checksums against the eager Rust-vector collector, and
-writes every measured observation to TSV:
+dimensions for every workload and validates non-`object.size()` checksums
+against the eager Rust-vector collector. Object size is intentionally allowed
+to differ between representations. The runner writes every measured
+observation to TSV:
 
 ```sh
 Rscript benchmarks/r-materialization/string-workloads.R input.dta string-workloads.tsv 21
