@@ -155,6 +155,21 @@ R CMD build r-package/dtaparser
 R CMD check --no-manual "$dtaparser_tarball"
 ```
 
+## Releasing
+
+Start from a clean `main` branch with `gh` authenticated, then run:
+
+```sh
+scripts/bump-version.sh patch
+```
+
+Use `minor`, `major`, or an explicit `X.Y.Z` version instead. The script keeps
+the npm, R, and Rust versions and lockfiles synchronized; runs the local
+release checks; commits and tags the bump; pushes it; and publishes the GitHub
+Release. The tag triggers npm publishing, while publishing the GitHub Release
+triggers the cross-platform R builds and attaches their binaries as release
+assets.
+
 ## License
 
 GPL-3.0. See [LICENSE](LICENSE).
