@@ -42,7 +42,10 @@ import type {
     ResolvedTextEncoding,
     TextEncodingOptions,
 } from './text-encoding';
-import { resolve_text_encoding } from './text-encoding';
+import {
+    resolve_text_encoding,
+    validate_text_encoding,
+} from './text-encoding';
 
 // -----------------------------------------------------------
 // Constants
@@ -209,6 +212,10 @@ export class DtaFile {
         const my_fd = fs.openSync(file_path, 'r');
 
         try {
+            // Invalid options cannot become valid after reading more bytes.
+            // Reject them before metadata parsing starts its bounded-prefix
+            // retry loop for modern files.
+            validate_text_encoding(options.encoding);
             const my_file_size =
                 fs.fstatSync(my_fd).size;
             const my_metadata = detect_and_parse_metadata(

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, spyOn } from 'bun:test';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -200,6 +200,19 @@ describe('text encoding policy', () => {
         expect(() => resolve_text_encoding(
             117, 'koi8-r'
         )).toThrow('Unsupported text encoding');
+    });
+
+    it('rejects unsupported Node encodings before reading the file', async () => {
+        const my_read_spy = spyOn(fs, 'readSync');
+        try {
+            await expect(DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta'),
+                { encoding: 'koi8-r' }
+            )).rejects.toThrow('Unsupported text encoding');
+            expect(my_read_spy).not.toHaveBeenCalled();
+        } finally {
+            my_read_spy.mockRestore();
+        }
     });
 
     it('normalizes the documented aliases', () => {

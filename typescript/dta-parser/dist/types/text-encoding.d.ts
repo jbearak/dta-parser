@@ -16,6 +16,8 @@ export interface TextEncodingOptions {
 export interface DtaTextDecoder {
     decode(input: Uint8Array): string;
 }
+/** Validate an encoding label without requiring a file release. */
+export declare function validate_text_encoding(encoding?: TextEncodingLabel): void;
 /** Resolve the release-specific default or validate an explicit encoding. */
 export declare function resolve_text_encoding(format_version: FormatVersion, encoding?: TextEncodingLabel): ResolvedTextEncoding;
 /** Return the deterministic decoder for an already resolved encoding. */

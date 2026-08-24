@@ -176,17 +176,16 @@ var ISO_8859_1_DECODER = {
     return my_result;
   }
 };
-function resolve_text_encoding(format_version, encoding = "auto") {
+function normalize_text_encoding(encoding = "auto") {
   if (typeof encoding !== "string") {
     throw new Error(
       `Unsupported text encoding ${JSON.stringify(encoding)}; use auto, utf-8, windows-1252, or iso-8859-1`
     );
   }
   const my_key = encoding.toLowerCase().replaceAll(/[-_ ]/g, "");
-  if (my_key === "auto") {
-    return format_version >= 118 ? "utf-8" : "windows-1252";
-  }
   switch (my_key) {
+    case "auto":
+      return "auto";
     case "utf8":
       return "utf-8";
     case "windows1252":
@@ -199,6 +198,13 @@ function resolve_text_encoding(format_version, encoding = "auto") {
   throw new Error(
     `Unsupported text encoding ${JSON.stringify(encoding)}; use auto, utf-8, windows-1252, or iso-8859-1`
   );
+}
+function resolve_text_encoding(format_version, encoding = "auto") {
+  const my_encoding = normalize_text_encoding(encoding);
+  if (my_encoding === "auto") {
+    return format_version >= 118 ? "utf-8" : "windows-1252";
+  }
+  return my_encoding;
 }
 function text_decoder(encoding) {
   switch (encoding) {

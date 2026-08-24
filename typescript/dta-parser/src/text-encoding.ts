@@ -61,11 +61,9 @@ const ISO_8859_1_DECODER: DtaTextDecoder = {
     },
 };
 
-/** Resolve the release-specific default or validate an explicit encoding. */
-export function resolve_text_encoding(
-    format_version: FormatVersion,
+function normalize_text_encoding(
     encoding: TextEncodingLabel = 'auto'
-): ResolvedTextEncoding {
+): TextEncoding {
     if (typeof encoding !== 'string') {
         throw new Error(
             `Unsupported text encoding ${JSON.stringify(encoding)}; `
@@ -73,12 +71,9 @@ export function resolve_text_encoding(
         );
     }
     const my_key = encoding.toLowerCase().replaceAll(/[-_ ]/g, '');
-    if (my_key === 'auto') {
-        return format_version >= 118
-            ? 'utf-8'
-            : 'windows-1252';
-    }
     switch (my_key) {
+        case 'auto':
+            return 'auto';
         case 'utf8':
             return 'utf-8';
         case 'windows1252':
@@ -92,6 +87,27 @@ export function resolve_text_encoding(
         `Unsupported text encoding ${JSON.stringify(encoding)}; `
         + 'use auto, utf-8, windows-1252, or iso-8859-1'
     );
+}
+
+/** Validate an encoding label without requiring a file release. */
+export function validate_text_encoding(
+    encoding: TextEncodingLabel = 'auto'
+): void {
+    normalize_text_encoding(encoding);
+}
+
+/** Resolve the release-specific default or validate an explicit encoding. */
+export function resolve_text_encoding(
+    format_version: FormatVersion,
+    encoding: TextEncodingLabel = 'auto'
+): ResolvedTextEncoding {
+    const my_encoding = normalize_text_encoding(encoding);
+    if (my_encoding === 'auto') {
+        return format_version >= 118
+            ? 'utf-8'
+            : 'windows-1252';
+    }
+    return my_encoding;
 }
 
 /** Return the deterministic decoder for an already resolved encoding. */
