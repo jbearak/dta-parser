@@ -1,6 +1,6 @@
 [package]
 name = "dta-parser"
-version = "0.4.0"
+version = "0.5.0"
 description = "Column-oriented parser for Stata .dta files"
 edition = "2021"
 license = "GPL-3.0-only"
