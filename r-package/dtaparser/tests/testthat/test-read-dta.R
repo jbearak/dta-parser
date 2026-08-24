@@ -23,6 +23,30 @@ test_that("read_dta has the haven-compatible public signature", {
     expect_identical(formals(read_dta)$.name_repair, "unique")
 })
 
+test_that("internal metadata projection is bounded and preserves attributes", {
+    path <- fixture("all_types_v118.dta")
+    full <- dtaparser:::.dta_metadata(path)
+    middle <- dtaparser:::.dta_metadata(path, column_start = 3L, column_count = 2L)
+    suffix <- dtaparser:::.dta_metadata(path, column_start = 7L)
+    empty <- dtaparser:::.dta_metadata(path, column_start = 2L, column_count = 0L)
+    past <- dtaparser:::.dta_metadata(path, column_start = 100L, column_count = 2L)
+
+    expect_identical(as.character(middle), as.character(full[3:4]))
+    expect_identical(attr(middle, "dta_storage"), attr(full, "dta_storage")[3:4])
+    expect_identical(attr(middle, "dta_format_version"),
+                     attr(full, "dta_format_version"))
+    expect_identical(as.character(suffix), as.character(full[7:8]))
+    expect_length(empty, 0L)
+    expect_length(attr(empty, "dta_storage"), 0L)
+    expect_length(past, 0L)
+
+    invalid <- list(-1, 1.5, NA_real_, NaN, c(1, 2), "1")
+    for (value in invalid) {
+        expect_error(dtaparser:::.dta_metadata(path, column_start = value))
+        expect_error(dtaparser:::.dta_metadata(path, column_count = value))
+    }
+})
+
 test_that("all bundled fixtures agree with haven", {
     skip_if_not_installed("haven")
     paths <- list.files(

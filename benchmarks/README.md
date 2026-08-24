@@ -42,3 +42,12 @@ not a release gate.
 The manual [`fertility-surveys/`](fertility-surveys/) framework separately
 checks the private fertility-survey corpus with explicit opt-in and CI refusal
 safeguards.
+
+The independent [`aww-cache-differential/`](aww-cache-differential/) workflow
+recursively compares every regular DTA file beneath `/opt/aww_cache` through the
+public dtaparser and haven readers. It uses bounded resumable tiles and invokes
+Stata only to adjudicate actual disagreements:
+
+```sh
+benchmarks/aww-cache-differential/benchmark.sh
+```

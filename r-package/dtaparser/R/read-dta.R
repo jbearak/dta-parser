@@ -14,10 +14,12 @@
 #' @param encoding Optional source encoding override. Supported aliases are
 #'   `"UTF-8"`/`"UTF8"`, `"Windows-1252"`/`"CP1252"`, and
 #'   `"ISO-8859-1"`/`"latin1"`, matched case-insensitively. `NULL` uses
-#'   Windows-1252 for releases 105, 108, 110--111, 113--115, and 117 and UTF-8 for releases
-#'   118--119. Explicit UTF-8
-#'   replaces malformed input sequences deterministically with U+FFFD. Haven
-#'   2.5.5 may instead omit an affected label.
+#'   Windows-1252 for pre-Unicode releases 105, 108, 110--111, 113--115, and
+#'   117, and UTF-8 for releases 118--119. Older DTA files do not record their
+#'   code page, so Windows-1252 is a pragmatic guess that commonly recovers the
+#'   intended text. Use `encoding = "UTF-8"` for strict Stata 18 behavior;
+#'   malformed input sequences are then replaced deterministically with
+#'   U+FFFD. Haven 2.5.5 may instead omit an affected label.
 #' @param col_select One or more tidyselect expressions. Predicates see Stata
 #'   string storage as character and numeric storage as double. If a source
 #'   variable is selected more than once, its first selection and alias win.
@@ -168,8 +170,22 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     invisible(NULL)
 }
 
-.dta_metadata <- function(file, encoding = NULL) {
-    .Call(C_dtaparser_metadata, file, encoding)
+.dta_metadata <- function(file, encoding = NULL, column_start = 1L,
+                          column_count = Inf) {
+    validate <- function(value, name, unlimited = FALSE) {
+        if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+            is.nan(value) || value < 0 || value != floor(value) ||
+            (!is.finite(value) && !unlimited) ||
+            (is.finite(value) && value > .Machine$integer.max)) {
+            stop(sprintf("`%s` must be one non-negative whole number%s", name,
+                         if (unlimited) " or Inf" else ""), call. = FALSE)
+        }
+        if (is.infinite(value)) .Machine$integer.max else as.integer(value)
+    }
+    start <- validate(column_start, "column_start")
+    if (start < 1L) stop("`column_start` must be at least 1", call. = FALSE)
+    count <- validate(column_count, "column_count", unlimited = TRUE)
+    .Call(C_dtaparser_metadata, file, encoding, start - 1L, count)
 }
 
 .validate_dta_encoding <- function(encoding) {

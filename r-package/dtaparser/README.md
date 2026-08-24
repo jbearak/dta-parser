@@ -45,9 +45,12 @@ custom daily-date formats beginning `%d` are converted to `Date`; `%tc` and
 `%tC` are converted to UTC `POSIXct`. Other Stata calendar formats remain
 numeric and retain their `format.stata` attribute.
 
-`encoding = NULL` follows the DTA release convention: Windows-1252 for
-releases 105, 108, 110--111, 113--115, and 117 and UTF-8 for releases 118--119. To recover files whose
-source encoding is recorded incorrectly, pass a case-insensitive UTF-8/UTF8,
+`encoding = NULL` uses Windows-1252 for pre-Unicode releases 105, 108,
+110--111, 113--115, and 117, and UTF-8 for releases 118--119. Pre-Unicode DTA
+files do not record a code page, so Windows-1252 is a pragmatic guess that
+commonly recovers the intended text rather than a fact encoded in the file.
+Use `encoding = "UTF-8"` for strict Stata 18 behavior. A known source encoding
+can instead be selected with a case-insensitive UTF-8/UTF8,
 Windows-1252/CP1252, or ISO-8859-1/latin1 alias. The override is deterministic
 across platforms and applies to dataset and variable metadata, fixed strings,
 `strL` payloads, and value-label names and text. ISO-8859-1 remains distinct

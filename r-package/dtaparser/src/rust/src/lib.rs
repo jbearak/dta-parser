@@ -646,18 +646,28 @@ impl DtaSink for RDataFrameSink {
     }
 }
 
-unsafe fn metadata_impl(path: &str, encoding: TextEncoding) -> Result<Sexp, String> {
+unsafe fn metadata_impl(
+    path: &str,
+    encoding: TextEncoding,
+    column_start: u32,
+    column_count: u32,
+) -> Result<Sexp, String> {
     let file = DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
     let metadata = file.metadata();
+    let start = usize::try_from(column_start)
+        .map_err(|_| "metadata column start is out of range".to_owned())?
+        .min(metadata.variables.len());
+    let count = usize::try_from(column_count)
+        .map_err(|_| "metadata column count is out of range".to_owned())?;
+    let end = start.saturating_add(count).min(metadata.variables.len());
+    let variables = &metadata.variables[start..end];
     let mut guard = ProtectGuard::new();
-    let names = metadata
-        .variables
+    let names = variables
         .iter()
         .map(|variable| variable.name.clone())
         .collect::<Vec<_>>();
     let result = string_vector(&names, &mut guard)?;
-    let storage = metadata
-        .variables
+    let storage = variables
         .iter()
         .map(|variable| match variable.dta_type {
             DtaType::Byte => "byte".to_owned(),
@@ -808,6 +818,8 @@ unsafe fn text_encoding(encoding: *const c_char) -> Result<TextEncoding, String>
 /// with an initialized R runtime.
 pub unsafe extern "C" fn dtaparser_metadata_rust(
     path: *const c_char,
+    column_start: u32,
+    column_count: u32,
     encoding: *const c_char,
     error: *mut *mut c_char,
 ) -> Sexp {
@@ -818,7 +830,7 @@ pub unsafe extern "C" fn dtaparser_metadata_rust(
         let path = CStr::from_ptr(path)
             .to_str()
             .map_err(|_| "file path is not valid UTF-8".to_owned())?;
-        metadata_impl(path, text_encoding(encoding)?)
+        metadata_impl(path, text_encoding(encoding)?, column_start, column_count)
     })
 }
 

@@ -18,6 +18,20 @@ fn replace_first(bytes: &mut [u8], needle: &[u8], replacement: u8) {
     bytes[offset] = replacement;
 }
 
+fn replace_first_sequence(bytes: &mut [u8], needle: &[u8], replacement: &[u8]) {
+    assert_eq!(needle.len(), replacement.len());
+    let offset = bytes
+        .windows(needle.len())
+        .position(|window| window == needle)
+        .unwrap_or_else(|| {
+            panic!(
+                "fixture does not contain {:?}",
+                String::from_utf8_lossy(needle)
+            )
+        });
+    bytes[offset..offset + replacement.len()].copy_from_slice(replacement);
+}
+
 #[test]
 fn auto_uses_windows_1252_for_pre_unicode_release_117() {
     let mut bytes = fixture("auto_v117.dta");
@@ -37,8 +51,37 @@ fn auto_uses_windows_1252_for_pre_unicode_release_117() {
         .label
         .starts_with('\u{20ac}'));
 
-    let utf8 = read_dta_with_encoding(&bytes, TextEncoding::Utf8).unwrap();
-    assert!(utf8.metadata.dataset_label.starts_with('\u{fffd}'));
+    let strict = read_dta_with_encoding(&bytes, TextEncoding::Utf8).unwrap();
+    assert!(strict.metadata.dataset_label.starts_with('\u{fffd}'));
+    assert!(strict.metadata.variables[0].label.starts_with('\u{fffd}'));
+    let ColumnValues::FixedString { values } = &strict.columns[0].values else {
+        panic!("make must be a fixed string");
+    };
+    assert!(values[0].starts_with('\u{fffd}'));
+    assert!(strict.value_label_table("origin").unwrap().entries[0]
+        .label
+        .starts_with('\u{fffd}'));
+}
+
+#[test]
+fn auto_uses_utf8_for_unicode_release_118() {
+    let mut bytes = fixture("auto_v118.dta");
+    let euro = "\u{20ac}".as_bytes();
+    replace_first_sequence(&mut bytes, b"197", euro);
+    replace_first_sequence(&mut bytes, b"Mak", euro);
+    replace_first_sequence(&mut bytes, b"AMC", euro);
+    replace_first_sequence(&mut bytes, b"Dom", euro);
+
+    let auto = dta_parser::read_dta(&bytes).unwrap();
+    assert!(auto.metadata.dataset_label.starts_with('\u{20ac}'));
+    assert!(auto.metadata.variables[0].label.starts_with('\u{20ac}'));
+    let ColumnValues::FixedString { values } = &auto.columns[0].values else {
+        panic!("make must be a fixed string");
+    };
+    assert!(values[0].starts_with('\u{20ac}'));
+    assert!(auto.value_label_table("origin").unwrap().entries[0]
+        .label
+        .starts_with('\u{20ac}'));
 }
 
 #[test]
