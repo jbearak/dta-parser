@@ -73,6 +73,7 @@ response_map <- function(item, result) {
     )
     for (batch_index in seq_along(batches)) {
         response <- saved$result$responses[[batch_index]]
+        if (is.null(response) || !nrow(response)) next
         indices <- batches[[batch_index]]
         for (local_index in seq_along(indices)) {
             mapped[[indices[[local_index]]]] <- response[

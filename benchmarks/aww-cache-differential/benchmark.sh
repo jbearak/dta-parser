@@ -52,11 +52,14 @@ library="$build/library"
 package="$library/dtaparser"
 if ! test -d "$package"; then
     stage="$TMPDIR/build"
-    mkdir -p "$stage" "$library"
+    staged_library="$TMPDIR/library"
+    mkdir -p "$stage" "$staged_library"
     cp -R "$checkout/r-package/dtaparser" "$stage/dtaparser"
     version=$(sed -n 's/^Version: //p' "$stage/dtaparser/DESCRIPTION")
     (cd "$stage" && R CMD build dtaparser >/dev/null)
-    R CMD INSTALL --library="$library" "$stage/dtaparser_${version}.tar.gz"
+    R CMD INSTALL --library="$staged_library" "$stage/dtaparser_${version}.tar.gz"
+    mkdir -p "$build"
+    mv "$staged_library" "$library"
     chmod -R u=rwX,go= "$build"
 fi
 

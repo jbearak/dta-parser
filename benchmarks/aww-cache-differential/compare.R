@@ -186,10 +186,17 @@ aww_compare_values <- function(left, right, column_offset, row_offset,
         )
     }
     if (!identical(names(left), names(right))) {
-        parts[[length(parts) + 1L]] <- aww_dispute(
-            "metadata", "name", attribute = "projection",
-            dtaparser = names(left), haven = names(right)
-        )
+        width <- max(ncol(left), ncol(right))
+        for (local_column in seq_len(width)) {
+            actual <- if (local_column <= ncol(left)) names(left)[[local_column]] else NULL
+            expected <- if (local_column <= ncol(right)) names(right)[[local_column]] else NULL
+            if (!identical(actual, expected)) {
+                parts[[length(parts) + 1L]] <- aww_dispute(
+                    "metadata", "name", column = column_offset + local_column,
+                    attribute = "projection", dtaparser = actual, haven = expected
+                )
+            }
+        }
     }
     count <- min(ncol(left), ncol(right))
     rows <- min(nrow(left), nrow(right))

@@ -121,7 +121,7 @@ aww_release <- function(path) {
 
 aww_inventory <- function(root) {
     paths <- aww_walk(root, root)
-    relative <- substring(paths, nchar(root, type = "bytes") + 2L)
+    relative <- substring(paths, nchar(root, type = "chars") + 2L)
     order_index <- order(relative, method = "radix")
     paths <- paths[order_index]
     relative <- relative[order_index]

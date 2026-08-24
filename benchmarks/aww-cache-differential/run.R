@@ -35,7 +35,7 @@ aww_run_worker <- function(item, tile, options, package_library, package_path) {
         spinner = FALSE
     ), error = function(error) {
         message <- conditionMessage(error)
-        classification <- if (grepl("timed out|timeout", message, ignore.case = TRUE)) "timeout" else
+        classification <- if (inherits(error, "callr_timeout_error")) "timeout" else
             if (grepl("vector memory exhausted|cannot allocate|memory limit|out of memory|bad_alloc", message, ignore.case = TRUE)) "memory-limit" else
             "worker-crash"
         list(

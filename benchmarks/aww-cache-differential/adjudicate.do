@@ -72,6 +72,13 @@ program define aww_meta
         }
         exit
     }
+    if "`kind'" == "names" {
+        forvalues index = 1/$AWW_K {
+            local value : word `index' of $AWW_VARLIST
+            mata: aww_string_index(`id', "names", `index', "`value'")
+        }
+        exit
+    }
     local name : word `column' of $AWW_VARLIST
     if "`kind'" == "name" {
         mata: aww_string(`id', "name", "`name'")

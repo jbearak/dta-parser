@@ -7,7 +7,7 @@ source(file.path(dir, "compare.R"))
 source(file.path(dir, "stata.R"))
 source(file.path(dir, "worker.R"))
 
-root <- tempfile("aww-inventory-")
+root <- paste0(tempfile("aww-inventory-"), "-", intToUtf8(233L))
 dir.create(file.path(root, "nested"), recursive = TRUE)
 fixture <- normalizePath(file.path(dir, "..", "..", "r-package", "dtaparser", "inst", "extdata", "all_types_v118.dta"))
 invisible(file.copy(fixture, file.path(root, "nested", "included.DTA")))
@@ -160,6 +160,17 @@ stopifnot(aww_matches_stata(10, 100, dimension_dispute,
 stopifnot(!aww_matches_stata(9, 100, dimension_dispute,
                              list(formats = character(), storage = character())))
 
+name_vector_dispute <- aww_dispute(
+    "metadata", "name", attribute = "projection",
+    dtaparser = c("first", "second"), haven = c("wrong", "names")
+)
+stopifnot(identical(aww_stata_kind(name_vector_dispute), "names"))
+name_response <- data.frame(
+    id = c(1L, 1L), status = c("ok", "ok"), kind = c("names", "names"),
+    index = c(1L, 2L), value = c("6669727374", "7365636f6e64")
+)
+stopifnot(identical(aww_stata_value(name_response), c("first", "second")))
+
 empty_label_class <- aww_dispute(
     "metadata", "class", column = 1L, attribute = "class",
     dtaparser = c("haven_labelled", "vctrs_vctr", "double"), haven = NULL
@@ -235,6 +246,14 @@ if (!is.na(stata)) {
         aww_dispute(
             "metadata", "label", attribute = "notes:2",
             dtaparser = "hello", haven = "wrong"
+        ),
+        aww_dispute(
+            "metadata", "name", attribute = "projection",
+            dtaparser = c(
+                "make", "price", "mpg", "rep78", "headroom", "trunk",
+                "weight", "length", "turn", "displacement", "gear_ratio", "foreign"
+            ),
+            haven = "wrong"
         )
     ))
     stata_options <- list(
@@ -256,7 +275,22 @@ if (!is.na(stata)) {
         disputes, stata_metadata, stata_item, stata_options, work, dir, stata_info
     )
     stopifnot(identical(result$state, "complete"))
-    stopifnot(identical(result$ownership, rep("haven-wrong", 3L)))
+    stopifnot(identical(result$ownership, rep("haven-wrong", 4L)))
+
+    zero_make <- file.path(work, "make-zero.do")
+    writeLines(c(
+        "version 18", "set more off", "sysuse auto, clear", "keep make",
+        "drop in 1/l", "save zero.dta, replace", "exit, clear"
+    ), zero_make)
+    processx::run(stata, c("-q", "-b", "do", "make-zero.do"), wd = work,
+                  timeout = 120000, error_on_status = TRUE)
+    zero_path <- file.path(work, "zero.dta")
+    zero_item <- list(
+        id = "Dzero", path = zero_path, sha256 = aww_file_sha256(zero_path)
+    )
+    stopifnot(identical(
+        aww_stata_open(zero_item, stata_options, work, dir, stata_info), "open"
+    ))
 
     malformed_source <- file.path(work, "malformed.dta")
     malformed <- readBin(fixture, "raw", file.info(fixture)$size)

@@ -136,7 +136,7 @@ aww_stata_value <- function(response) {
     if (!nrow(response)) return(NULL)
     kind <- response$kind[[1L]]
     if (kind %in% c("name", "names", "storage", "format", "variable_label", "dataset_label")) {
-        values <- vapply(response$value, aww_hex_decode, character(1))
+        values <- unname(vapply(response$value, aww_hex_decode, character(1)))
         return(if (length(values) == 1L) values[[1L]] else values)
     }
     if (kind == "note_absent") return(list(present = FALSE))
