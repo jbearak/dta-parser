@@ -828,6 +828,33 @@ enum WorkerMessage {
     Finish,
 }
 
+fn receive_worker_acks(
+    receivers: &[std::sync::mpsc::Receiver<Result<(), DtaError>>],
+) -> Result<(), DtaError> {
+    let mut stopped = None;
+    let mut errors = Vec::new();
+    for (worker, receiver) in receivers.iter().enumerate() {
+        match receiver.recv() {
+            Ok(Err(error)) => errors.push((worker, error)),
+            Ok(Ok(())) => {}
+            Err(_) if stopped.is_none() => {
+                stopped = Some(DtaError::Output(format!(
+                    "parallel decoder worker {worker} stopped"
+                )));
+            }
+            Err(_) => {}
+        }
+    }
+    if let Some(error) = stopped {
+        return Err(error);
+    }
+    errors.sort_by_key(|(worker, _)| *worker);
+    errors
+        .into_iter()
+        .next()
+        .map_or(Ok(()), |(_, error)| Err(error))
+}
+
 #[inline(always)]
 unsafe fn read_unaligned_u16(bytes: &[u8], offset: usize, byte_order: ByteOrder) -> u16 {
     let raw = unsafe { std::ptr::read_unaligned(bytes.as_ptr().add(offset).cast::<u16>()) };
@@ -1389,8 +1416,12 @@ impl<R: Read + Seek> DtaFile<R> {
                     let mut ack_receivers = Vec::with_capacity(worker_count);
                     let mut handles = Vec::with_capacity(worker_count);
                     for mut shard in shards {
-                        let (sender, receiver) = sync_channel::<WorkerMessage>(0);
-                        let (worker_ack, ack_receiver) = sync_channel::<Result<(), DtaError>>(0);
+                        // One buffered acknowledgement lets the coordinator
+                        // finish the next read while workers complete the
+                        // current block. It also lets workers unwind if that
+                        // read fails before acknowledgements are collected.
+                        let (sender, receiver) = sync_channel::<WorkerMessage>(1);
+                        let (worker_ack, ack_receiver) = sync_channel::<Result<(), DtaError>>(1);
                         senders.push(sender);
                         ack_receivers.push(ack_receiver);
                         handles.push(scope.spawn(move || {
@@ -1419,37 +1450,62 @@ impl<R: Read + Seek> DtaFile<R> {
                     }
 
                     let mut row = 0_u64;
-                    let mut execution_error = None;
+                    let mut inflight_block: Option<Arc<ObservationBlock>> = None;
                     while row < row_count {
-                        check_cancel(&mut should_interrupt)?;
-                        let block_rows = (row_count - row).min(rows_per_block);
-                        let block_row_count = usize::try_from(block_rows).map_err(|_| {
-                            DtaError::ArithmeticOverflow("parallel block row count")
-                        })?;
-                        let block_length = plan
-                            .row_width
-                            .checked_mul(block_row_count)
-                            .ok_or(DtaError::ArithmeticOverflow("parallel block length"))?;
-                        let source_row = row_start
-                            .checked_add(row)
-                            .ok_or(DtaError::ArithmeticOverflow("parallel source row"))?;
-                        let block_offset = payload_start
-                            .checked_add(
-                                source_row
-                                    .checked_mul(self.metadata.obs_length)
-                                    .ok_or(DtaError::ArithmeticOverflow("parallel row offset"))?,
-                            )
-                            .ok_or(DtaError::ArithmeticOverflow("parallel block offset"))?;
-                        read_exact_at_into(
-                            &mut self.reader,
-                            block_offset,
-                            block_length,
-                            &mut self.scratch,
-                            &mut observation_buffer,
-                            "reading observation rows",
-                        )?;
+                        let ready = (|| -> Result<(u64, usize), DtaError> {
+                            check_cancel(&mut should_interrupt)?;
+                            let block_rows = (row_count - row).min(rows_per_block);
+                            let block_row_count = usize::try_from(block_rows).map_err(|_| {
+                                DtaError::ArithmeticOverflow("parallel block row count")
+                            })?;
+                            let block_length = plan
+                                .row_width
+                                .checked_mul(block_row_count)
+                                .ok_or(DtaError::ArithmeticOverflow("parallel block length"))?;
+                            let source_row = row_start
+                                .checked_add(row)
+                                .ok_or(DtaError::ArithmeticOverflow("parallel source row"))?;
+                            let block_offset = payload_start
+                                .checked_add(
+                                    source_row.checked_mul(self.metadata.obs_length).ok_or(
+                                        DtaError::ArithmeticOverflow("parallel row offset"),
+                                    )?,
+                                )
+                                .ok_or(DtaError::ArithmeticOverflow("parallel block offset"))?;
+                            read_exact_at_into(
+                                &mut self.reader,
+                                block_offset,
+                                block_length,
+                                &mut self.scratch,
+                                &mut observation_buffer,
+                                "reading observation rows",
+                            )?;
+                            Ok((block_rows, block_row_count))
+                        })();
+
+                        // The read above overlaps worker decoding of the
+                        // preceding block. Once those workers finish, recycle
+                        // its allocation as the buffer for the following read.
+                        let reusable_buffer = if let Some(block) = inflight_block.take() {
+                            receive_worker_acks(&ack_receivers)?;
+                            Arc::try_unwrap(block)
+                                .map_err(|_| {
+                                    DtaError::Output(
+                                        "parallel input block remained borrowed".to_owned(),
+                                    )
+                                })?
+                                .bytes
+                        } else {
+                            Vec::new()
+                        };
+                        // An error from the earlier block takes precedence
+                        // over a later read or cancellation error, matching
+                        // the non-pipelined executor's ordering.
+                        let (block_rows, block_row_count) = ready?;
+                        let ready_buffer =
+                            std::mem::replace(&mut observation_buffer, reusable_buffer);
                         let block = Arc::new(ObservationBlock {
-                            bytes: std::mem::take(&mut observation_buffer),
+                            bytes: ready_buffer,
                             output_row_start: usize::try_from(row)
                                 .map_err(|_| DtaError::ArithmeticOverflow("parallel output row"))?,
                             row_count: block_row_count,
@@ -1461,44 +1517,20 @@ impl<R: Read + Seek> DtaFile<R> {
                                     DtaError::Output("parallel decoder worker stopped".to_owned())
                                 })?;
                         }
-                        let mut errors = Vec::new();
-                        for (worker, receiver) in ack_receivers.iter().enumerate() {
-                            match receiver.recv() {
-                                Ok(Err(error)) => errors.push((worker, error)),
-                                Ok(Ok(())) => {}
-                                Err(_) => {
-                                    if execution_error.is_none() {
-                                        execution_error = Some(DtaError::Output(format!(
-                                            "parallel decoder worker {worker} stopped"
-                                        )));
-                                    }
-                                }
-                            }
-                        }
-                        if execution_error.is_some() {
-                            break;
-                        }
-                        if !errors.is_empty() {
-                            errors.sort_by_key(|(worker, _)| *worker);
-                            execution_error = errors.into_iter().next().map(|(_, error)| error);
-                            break;
-                        }
-                        observation_buffer = Arc::try_unwrap(block)
-                            .map_err(|_| {
-                                DtaError::Output(
-                                    "parallel input block remained borrowed".to_owned(),
-                                )
-                            })?
-                            .bytes;
+                        inflight_block = Some(block);
                         row = row
                             .checked_add(block_rows)
                             .ok_or(DtaError::ArithmeticOverflow("parallel projected row"))?;
                     }
 
-                    if execution_error.is_none() {
-                        for sender in &senders {
-                            let _ = sender.send(WorkerMessage::Finish);
-                        }
+                    if let Some(block) = inflight_block {
+                        receive_worker_acks(&ack_receivers)?;
+                        Arc::try_unwrap(block).map_err(|_| {
+                            DtaError::Output("parallel input block remained borrowed".to_owned())
+                        })?;
+                    }
+                    for sender in &senders {
+                        let _ = sender.send(WorkerMessage::Finish);
                     }
                     drop(senders);
                     let mut completed = Vec::with_capacity(plan.columns.len());
@@ -1507,9 +1539,6 @@ impl<R: Read + Seek> DtaFile<R> {
                             DtaError::Output("parallel decoder worker panicked".to_owned())
                         })?;
                         completed.extend(shard);
-                    }
-                    if let Some(error) = execution_error {
-                        return Err(error);
                     }
                     Ok(completed)
                 },
