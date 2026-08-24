@@ -102,7 +102,10 @@ deterministic mixed-type Stata 15 datasets with 40 columns; their time cells are
 seven-run warm-cache medians. The DHS, MICS, and NSFG suite visited all 1,823
 regular DTA files under the local corpus cache in fresh processes. Its time
 cells are sums and its memory cells are the largest per-file peak RSS on the
-common set that all three readers loaded with identical dimensions.
+common set that all three readers loaded with identical dimensions. Corpus
+rows are disaggregated by the release stored in each DTA signature; the `all
+releases` rows retain the original corpus subtotals. The release rows
+reaggregate the same archived raw timings rather than a separate benchmark run.
 
 | Dataset/workload | Common files | Input | dta-parser time | haven time | Stata time | dta-parser vs haven | dta-parser vs Stata | dta-parser peak RSS | haven peak RSS | Stata peak RSS |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -110,9 +113,24 @@ common set that all three readers loaded with identical dimensions.
 | Synthetic 100 MB, projected 8 columns | 1 | 0.100 GB | 0.051 s | 0.271 s | 0.014 s | 5.31x | 0.275x | 0.198 GB | 0.168 GB | 0.058 GB |
 | Synthetic 1 GB, full 40 columns | 1 | 1.000 GB | 0.911 s | 10.958 s | 0.101 s | 12.03x | 0.111x | 0.834 GB | 0.888 GB | 1.133 GB |
 | Synthetic 1 GB, projected 8 columns | 1 | 1.000 GB | 0.333 s | 3.120 s | 0.140 s | 9.37x | 0.420x | 0.299 GB | 0.292 GB | 0.365 GB |
-| DHS | 641 | 46.903 GB | 297.810 s | 2,727.051 s | 68.806 s | 9.16x | 0.231x | 35.183 GB | 35.103 GB | 5.256 GB |
-| MICS | 949 | 3.690 GB | 31.815 s | 216.732 s | 1.155 s | 6.81x | 0.036x | 0.649 GB | 0.669 GB | 0.100 GB |
-| NSFG | 222 | 5.772 GB | 34.634 s | 234.588 s | 0.885 s | 6.77x | 0.026x | 2.458 GB | 2.470 GB | 0.435 GB |
+| DHS — release 111 | 129 | 8.320 GB | 49.235 s | 435.302 s | 63.506 s | 8.84x | 1.290x | 4.523 GB | 4.526 GB | 0.725 GB |
+| DHS — release 113 | 484 | 37.343 GB | 240.452 s | 2,226.568 s | 5.124 s | 9.26x | 0.021x | 35.183 GB | 35.103 GB | 5.256 GB |
+| DHS — release 114 | 24 | 1.162 GB | 7.574 s | 61.036 s | 0.163 s | 8.06x | 0.022x | 0.897 GB | 0.914 GB | 0.149 GB |
+| DHS — release 117 | 1 | 0.028 GB | 0.219 s | 1.505 s | 0.004 s | 6.87x | 0.018x | 0.321 GB | 0.344 GB | 0.056 GB |
+| DHS — release 118 | 3 | 0.050 GB | 0.330 s | 2.640 s | 0.009 s | 8.00x | 0.027x | 0.411 GB | 0.430 GB | 0.077 GB |
+| DHS — all releases | 641 | 46.903 GB | 297.810 s | 2,727.051 s | 68.806 s | 9.16x | 0.231x | 35.183 GB | 35.103 GB | 5.256 GB |
+| MICS — release 117 | 494 | 1.634 GB | 15.099 s | 98.402 s | 0.567 s | 6.52x | 0.038x | 0.306 GB | 0.367 GB | 0.073 GB |
+| MICS — release 118 | 455 | 2.056 GB | 16.716 s | 118.330 s | 0.588 s | 7.08x | 0.035x | 0.649 GB | 0.669 GB | 0.100 GB |
+| MICS — all releases | 949 | 3.690 GB | 31.815 s | 216.732 s | 1.155 s | 6.81x | 0.036x | 0.649 GB | 0.669 GB | 0.100 GB |
+| NSFG — release 105 | 4 | 0.005 GB | 0.078 s | 0.196 s | 0.028 s | 2.51x | 0.359x | 0.125 GB | 0.121 GB | 0.054 GB |
+| NSFG — release 108 | 4 | 0.001 GB | 0.068 s | 0.097 s | 0.006 s | 1.43x | 0.088x | 0.106 GB | 0.104 GB | 0.030 GB |
+| NSFG — release 110 | 7 | 0.015 GB | 0.149 s | 0.497 s | 0.106 s | 3.34x | 0.711x | 0.128 GB | 0.123 GB | 0.041 GB |
+| NSFG — release 113 | 28 | 0.673 GB | 1.464 s | 7.389 s | 0.079 s | 5.05x | 0.054x | 0.524 GB | 0.543 GB | 0.435 GB |
+| NSFG — release 114 | 44 | 1.171 GB | 7.761 s | 47.892 s | 0.156 s | 6.17x | 0.020x | 0.751 GB | 0.765 GB | 0.208 GB |
+| NSFG — release 115 | 9 | 0.100 GB | 0.614 s | 3.512 s | 0.015 s | 5.72x | 0.024x | 0.391 GB | 0.414 GB | 0.068 GB |
+| NSFG — release 117 | 69 | 2.180 GB | 14.856 s | 107.544 s | 0.288 s | 7.24x | 0.019x | 1.315 GB | 1.330 GB | 0.201 GB |
+| NSFG — release 118 | 57 | 1.626 GB | 9.644 s | 67.461 s | 0.207 s | 7.00x | 0.021x | 2.458 GB | 2.470 GB | 0.375 GB |
+| NSFG — all releases | 222 | 5.772 GB | 34.634 s | 234.588 s | 0.885 s | 6.77x | 0.026x | 2.458 GB | 2.470 GB | 0.435 GB |
 
 Both ratio columns are comparator time divided by dta-parser time. Values above
 1x mean dta-parser was faster; values below 1x mean the comparator was faster.
@@ -132,13 +150,17 @@ Matching Stata while returning ordinary R-compatible objects is therefore a
 different engineering target, but the Stata time is still a valid eager-load
 reference rather than an unattainable lazy-open measurement.
 
-For the synthetic loads, dta-parser was 5.31--12.03 times as fast as haven. On
-the real corpora it was 6.77--9.16 times as fast, with peak RSS 3.0% lower on
-MICS, 0.5% lower on NSFG, and 0.2% higher on the largest DHS file. Stata was
-faster than dta-parser: 4.33 times on DHS, 27.55 times on MICS, and 39.13 times
-on NSFG. Stata also used 82.3--85.1% less peak RSS on those corpus maxima. On
-the 1 GB full synthetic load, however, dta-parser used 26.4% less peak RSS than
-Stata. These are workload- and machine-specific observations, not guarantees.
+For the synthetic loads, dta-parser was 5.31--12.03 times as fast as haven. The
+stored-release strata make the corpus spread explicit: dta-parser was
+1.43--9.26 times as fast as haven, while the all-release corpus subtotals were
+6.77--9.16 times as fast. Dta-parser was 1.29 times as fast as Stata on the DHS
+release-111 stratum; Stata was 1.41--54.75 times as fast on every other
+stratum. At corpus level Stata was 4.33, 27.55, and 39.13 times as fast as
+dta-parser on DHS, MICS, and NSFG. Dta-parser peak RSS was 3.0% lower on MICS,
+0.5% lower on NSFG, and 0.2% higher on the largest DHS file; Stata used
+82.3--85.1% less peak RSS on those corpus maxima. On the 1 GB full synthetic
+load, however, dta-parser used 26.4% less peak RSS than Stata. These are
+workload- and machine-specific observations, not guarantees.
 
 The corpus comparison is deliberately paired. Two MICS files were rejected by
 all three readers. Nine additional files (two DHS and seven NSFG) were read with

@@ -145,6 +145,10 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: scripts/test-rust-source-hash.sh
+      - name: Test corpus benchmark aggregation
+        if: runner.os == 'Linux'
+        shell: bash
+        run: Rscript --vanilla benchmarks/r-corpus-performance/test-framework.R
       - name: Build and check package from offline Cargo archive
         if: runner.os != 'Linux'
         shell: bash

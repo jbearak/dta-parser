@@ -11,11 +11,14 @@ so its application startup is excluded from timing but included in peak RSS.
 
 The published aggregate uses only files that all three readers load with identical
 dimensions. Empty, corrupt, unsupported, and one-reader-only inputs remain in
-the private raw results but are excluded symmetrically. The summary reports the
-common-readable file count and exclusion count for each corpus, total elapsed
-time over that common file set, dta-parser's speedup against each comparator,
-and the maximum per-file peak RSS observed for each reader. It never publishes
-private paths or data values.
+the private raw results but are excluded symmetrically. The inventory reads
+only the DTA signature to record the on-disk release. The summary reports one
+row per corpus and release plus an `all` subtotal for each corpus. Every row
+contains the common-readable file count and exclusion count, total elapsed time
+over that common file set, dta-parser's speedup against each comparator, and
+the maximum per-file peak RSS observed for each reader. Unrecognized or
+unreadable signatures remain accounted for as `unknown` inventory groups. The
+report never publishes private paths or data values.
 
 See the [2026-08-24 aggregate report](results-2026-08-24.md) for the complete
 1,823-file run used in the R package README.
@@ -24,6 +27,12 @@ On macOS, run the complete suite from the checkout root:
 
 ```sh
 benchmarks/r-corpus-performance/benchmark.sh
+```
+
+The release detector and aggregation contract have a public, corpus-free test:
+
+```sh
+Rscript --vanilla benchmarks/r-corpus-performance/test-framework.R
 ```
 
 `AWW_CACHE_ROOT` may name another absolute cache root with `DHS`, `MICS`, and

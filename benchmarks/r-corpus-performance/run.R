@@ -6,6 +6,11 @@ if (!requireNamespace("processx", quietly = TRUE)) {
     stop("the processx package is required")
 }
 
+script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
+script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/")
+script_dir <- dirname(script_path)
+source(file.path(script_dir, "common.R"), local = TRUE)
+
 cache_root <- normalizePath(args[[1L]], winslash = "/", mustWork = TRUE)
 output_dir <- normalizePath(args[[2L]], winslash = "/", mustWork = FALSE)
 max_files <- if (length(args) == 3L) as.integer(args[[3L]]) else Inf
@@ -16,10 +21,8 @@ benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
 if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
 benchmark_library <- normalizePath(benchmark_library, winslash = "/", mustWork = TRUE)
 
-script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
-script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/")
-worker_path <- file.path(dirname(script_path), "worker.R")
-stata_worker_path <- file.path(dirname(script_path), "stata-worker.do")
+worker_path <- file.path(script_dir, "worker.R")
+stata_worker_path <- file.path(script_dir, "stata-worker.do")
 rscript <- Sys.which("Rscript")
 time_command <- "/usr/bin/time"
 if (!nzchar(rscript) || !file.exists(time_command)) {
@@ -72,6 +75,7 @@ inventory_rows <- lapply(names(corpus_roots), function(corpus) {
         id = sprintf("%s-%04d", corpus, seq_along(paths)),
         relative_path = relative_paths,
         path = paths,
+        release = vapply(paths, corpus_dta_release, integer(1)),
         bytes = as.double(info$size),
         mtime = as.numeric(info$mtime),
         stringsAsFactors = FALSE
@@ -92,7 +96,7 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 raw_path <- file.path(output_dir, "raw.tsv")
 inventory_path <- file.path(output_dir, "inventory.tsv")
 write.table(
-    inventory[c("corpus", "id", "relative_path", "bytes", "mtime")],
+    inventory[c("corpus", "id", "relative_path", "release", "bytes", "mtime")],
     inventory_path, sep = "\t", row.names = FALSE, quote = TRUE
 )
 
@@ -235,59 +239,8 @@ for (index in seq_len(nrow(inventory))) {
 }
 
 raw <- read.delim(raw_path, check.names = FALSE, stringsAsFactors = FALSE)
-direct <- raw[raw$reader == "dtaparser", ]
-haven <- raw[raw$reader == "haven", ]
-stata_results <- raw[raw$reader == "stata", ]
-paired <- merge(
-    direct, haven, by = c("corpus", "id"), suffixes = c("_dtaparser", "_haven")
-)
-paired <- merge(
-    paired, stata_results, by = c("corpus", "id"), suffixes = c("", "_stata")
-)
-names(paired)[names(paired) %in% c(
-    "reader", "reader_order", "status", "elapsed_seconds", "rows", "columns",
-    "rss_bytes", "footprint_bytes"
-)] <- paste0(names(paired)[names(paired) %in% c(
-    "reader", "reader_order", "status", "elapsed_seconds", "rows", "columns",
-    "rss_bytes", "footprint_bytes"
-)], "_stata")
-paired <- paired[
-    paired$status_dtaparser == "ok" & paired$status_haven == "ok" &
-        paired$status_stata == "ok" &
-        paired$rows_dtaparser == paired$rows_haven &
-        paired$columns_dtaparser == paired$columns_haven &
-        paired$rows_dtaparser == paired$rows_stata &
-        paired$columns_dtaparser == paired$columns_stata,
-]
-paired <- merge(paired, inventory[c("corpus", "id", "bytes")], by = c("corpus", "id"))
-
-summary_rows <- lapply(names(corpus_roots), function(corpus) {
-    all_files <- inventory[inventory$corpus == corpus, ]
-    common <- paired[paired$corpus == corpus, ]
-    direct_seconds <- sum(common$elapsed_seconds_dtaparser)
-    haven_seconds <- sum(common$elapsed_seconds_haven)
-    stata_seconds <- sum(common$elapsed_seconds_stata)
-    direct_rss <- max(common$rss_bytes_dtaparser)
-    haven_rss <- max(common$rss_bytes_haven)
-    stata_rss <- max(common$rss_bytes_stata)
-    data.frame(
-        corpus = corpus,
-        files = nrow(common),
-        excluded_files = nrow(all_files) - nrow(common),
-        input_gb = sum(common$bytes) / 1e9,
-        dtaparser_seconds = direct_seconds,
-        haven_seconds = haven_seconds,
-        stata_seconds = stata_seconds,
-        vs_haven_speedup = haven_seconds / direct_seconds,
-        vs_stata_speedup = stata_seconds / direct_seconds,
-        dtaparser_peak_rss_gb = direct_rss / 1e9,
-        haven_peak_rss_gb = haven_rss / 1e9,
-        stata_peak_rss_gb = stata_rss / 1e9,
-        vs_haven_rss_reduction = 1 - direct_rss / haven_rss,
-        vs_stata_rss_reduction = 1 - direct_rss / stata_rss
-    )
-})
-summary <- do.call(rbind, summary_rows)
+paired <- corpus_pair_results(raw, inventory)
+summary <- corpus_performance_summary(inventory, paired, names(corpus_roots))
 write.table(
     summary, file.path(output_dir, "summary.tsv"),
     sep = "\t", row.names = FALSE, quote = FALSE
