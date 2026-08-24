@@ -38,7 +38,8 @@ library guard, correctness checks, orchestration command, and output matrix.
 The manual [`r-corpus-performance/`](r-corpus-performance/) suite loads every
 common-readable DHS, MICS, and NSFG DTA file beneath `/opt/aww_cache` through
 dta-parser, haven, and Stata in fresh processes. It aggregates elapsed time and
-maximum per-file peak RSS by corpus while keeping paths and raw results private.
+maximum per-file peak RSS by corpus and stored DTA release while keeping paths
+and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
 aggregate results used in the R package README.
 

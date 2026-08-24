@@ -5,8 +5,8 @@ use std::ptr;
 
 use ahash::AHashMap;
 use dta_parser::{
-    ColumnValues, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, MissingTag,
-    ReadOptions, TextEncoding, ValueLabelTable, VariableInfo,
+    ColumnValues, DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType,
+    MissingTag, ParallelDtaSink, ReadOptions, TextEncoding, ValueLabelTable, VariableInfo,
 };
 
 type Sexp = *mut c_void;
@@ -178,6 +178,19 @@ fn poll_interrupt(index: usize) -> Result<(), String> {
     Ok(())
 }
 
+fn coarse_interrupt() -> bool {
+    unsafe { dtaparser_check_interrupt() != 0 }
+}
+
+fn frequent_interrupt_poller() -> impl FnMut() -> bool {
+    let mut calls = 0_usize;
+    move || {
+        let poll = calls.is_multiple_of(INTERRUPT_STRIDE);
+        calls = calls.wrapping_add(1);
+        poll && unsafe { dtaparser_check_interrupt() != 0 }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum TemporalKind {
     None,
@@ -203,12 +216,16 @@ fn observed_value(value: f64, temporal: TemporalKind) -> f64 {
     }
 }
 
-fn r_missing(tag: MissingTag) -> f64 {
+fn r_missing_with_system(tag: MissingTag, system_missing: f64) -> f64 {
     if tag == MissingTag::System {
-        return unsafe { R_NaReal };
+        return system_missing;
     }
     let letter = u64::from(b'a' + tag.offset() - 1);
     f64::from_bits(0x7ff0_0000_0000_07a2_u64 | (letter << 32))
+}
+
+fn r_missing(tag: MissingTag) -> f64 {
+    r_missing_with_system(tag, unsafe { R_NaReal })
 }
 
 unsafe fn r_char(value: &str) -> Result<Sexp, String> {
@@ -532,6 +549,31 @@ impl RStringData {
         }
         self.push_id(id)
     }
+
+    fn push_utf8_bytes(&mut self, row: usize, value: &[u8]) -> Result<(), DtaError> {
+        if self.value_ids.len() != row {
+            return Err(DtaError::Output(format!(
+                "string output row mismatch: expected {}, got {row}",
+                self.value_ids.len()
+            )));
+        }
+        if let Some(period) = self.cycle_period {
+            let id = self.value_ids[row % period];
+            let Some(&(cached, length)) = self.value_views.get(id as usize) else {
+                return Err(DtaError::Output("invalid R string index".to_owned()));
+            };
+            // Valid UTF-8 is stored byte-for-byte in the canonical dictionary.
+            // Checking it before UTF-8 validation makes repeated modern string
+            // cycles a raw-byte operation. Malformed input falls through to
+            // the ordinary replacement decoder, preserving exact semantics.
+            let cached = unsafe { std::slice::from_raw_parts(cached, length) };
+            if cached == value {
+                return self.push_id(id);
+            }
+        }
+        let decoded = String::from_utf8_lossy(value);
+        self.push(row, &decoded)
+    }
 }
 
 enum RColumn {
@@ -539,12 +581,18 @@ enum RColumn {
         vector: Sexp,
         output: *mut f64,
         temporal: TemporalKind,
+        system_missing: f64,
     },
     String {
         vector: Sexp,
         data: RStringData,
     },
 }
+
+// Parallel workers receive disjoint columns. Numeric workers only write to
+// non-overlapping memory obtained before the threads start; string workers
+// mutate Rust-owned dictionaries. They never invoke the R API.
+unsafe impl Send for RColumn {}
 
 struct RDataFrameSink {
     result: Sexp,
@@ -594,6 +642,7 @@ impl RDataFrameSink {
                         vector,
                         output: REAL(vector),
                         temporal: temporal_kind(&variable.format),
+                        system_missing: R_NaReal,
                     }
                 }
             };
@@ -621,11 +670,17 @@ impl RDataFrameSink {
     }
 
     #[inline(always)]
-    fn numeric_column(&self, column: usize) -> Result<(*mut f64, TemporalKind), DtaError> {
+    fn numeric_column(
+        &self,
+        column: usize,
+    ) -> Result<(*mut f64, TemporalKind, f64), DtaError> {
         match self.columns.get(column) {
             Some(RColumn::Numeric {
-                output, temporal, ..
-            }) => Ok((*output, *temporal)),
+                output,
+                temporal,
+                system_missing,
+                ..
+            }) => Ok((*output, *temporal, *system_missing)),
             _ => Err(DtaError::Output(
                 "numeric output column mismatch".to_owned(),
             )),
@@ -640,10 +695,10 @@ impl RDataFrameSink {
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        let (output, temporal) = self.numeric_column(column)?;
+        let (output, temporal, system_missing) = self.numeric_column(column)?;
         unsafe {
             *output.add(row) = missing
-                .map(r_missing)
+                .map(|tag| r_missing_with_system(tag, system_missing))
                 .unwrap_or_else(|| observed_value(value, temporal));
         }
         Ok(())
@@ -660,6 +715,104 @@ impl RDataFrameSink {
             Some(RColumn::String { data, .. }) => data.push(row, value),
             _ => Err(DtaError::Output("string output column mismatch".to_owned())),
         }
+    }
+}
+
+impl RColumn {
+    #[inline(always)]
+    fn write_numeric_value(
+        &mut self,
+        row: usize,
+        value: f64,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        let Self::Numeric {
+            output,
+            temporal,
+            system_missing,
+            ..
+        } = self
+        else {
+            return Err(DtaError::Output(
+                "numeric output column mismatch".to_owned(),
+            ));
+        };
+        unsafe {
+            *output.add(row) = missing
+                .map(|tag| r_missing_with_system(tag, *system_missing))
+                .unwrap_or_else(|| observed_value(value, *temporal));
+        }
+        Ok(())
+    }
+}
+
+impl DtaColumnSink for RColumn {
+    fn push_byte(
+        &mut self,
+        row: usize,
+        value: i8,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric_value(row, f64::from(value), missing)
+    }
+
+    fn push_int(
+        &mut self,
+        row: usize,
+        value: i16,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric_value(row, f64::from(value), missing)
+    }
+
+    fn push_long(
+        &mut self,
+        row: usize,
+        value: i32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric_value(row, f64::from(value), missing)
+    }
+
+    fn push_float(
+        &mut self,
+        row: usize,
+        value: f32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric_value(row, f64::from(value), missing)
+    }
+
+    fn push_double(
+        &mut self,
+        row: usize,
+        value: f64,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_numeric_value(row, value, missing)
+    }
+
+    fn push_fixed_string(&mut self, row: usize, value: &str) -> Result<(), DtaError> {
+        let Self::String { data, .. } = self else {
+            return Err(DtaError::Output("string output column mismatch".to_owned()));
+        };
+        data.push(row, value)
+    }
+
+    fn try_push_fixed_string_bytes(
+        &mut self,
+        row: usize,
+        value: &[u8],
+        encoding: TextEncoding,
+    ) -> Result<bool, DtaError> {
+        if encoding != TextEncoding::Utf8 {
+            return Ok(false);
+        }
+        let Self::String { data, .. } = self else {
+            return Err(DtaError::Output("string output column mismatch".to_owned()));
+        };
+        data.push_utf8_bytes(row, value)?;
+        Ok(true)
     }
 }
 
@@ -729,6 +882,25 @@ impl DtaSink for RDataFrameSink {
         value: &str,
     ) -> Result<(), DtaError> {
         self.push_string_value(column, row, value)
+    }
+
+    fn try_push_fixed_string_bytes(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: &[u8],
+        encoding: TextEncoding,
+    ) -> Result<bool, DtaError> {
+        if encoding != TextEncoding::Utf8 {
+            return Ok(false);
+        }
+        match self.columns.get_mut(column) {
+            Some(RColumn::String { data, .. }) => {
+                data.push_utf8_bytes(row, value)?;
+                Ok(true)
+            }
+            _ => Err(DtaError::Output("string output column mismatch".to_owned())),
+        }
     }
 
     #[inline(always)]
@@ -809,6 +981,51 @@ impl DtaSink for RDataFrameSink {
     }
 }
 
+struct RParallelState {
+    result: Sexp,
+    source_indices: Vec<u32>,
+    guard: ProtectGuard,
+}
+
+impl ParallelDtaSink for RDataFrameSink {
+    type Output = Sexp;
+    type Column = RColumn;
+    type State = RParallelState;
+
+    fn split(self) -> (Self::State, Vec<Self::Column>) {
+        (
+            RParallelState {
+                result: self.result,
+                source_indices: self.source_indices,
+                guard: self._guard,
+            },
+            self.columns,
+        )
+    }
+
+    fn finish_parallel(
+        state: Self::State,
+        columns: Vec<Self::Column>,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError> {
+        DtaSink::finish(
+            RDataFrameSink {
+                result: state.result,
+                columns,
+                source_indices: state.source_indices,
+                _guard: state.guard,
+            },
+            metadata,
+            row_start,
+            row_count,
+            value_label_tables,
+        )
+    }
+}
+
 unsafe fn metadata_impl(
     path: &str,
     encoding: TextEncoding,
@@ -872,6 +1089,7 @@ unsafe fn read_impl(
     n_max: f64,
     direct_to_r: bool,
     encoding: TextEncoding,
+    requested_threads: usize,
 ) -> Result<Sexp, String> {
     // Public semantics are normalized once by the R wrapper. These checks are
     // only a defensive ABI guard for exact representability and +Inf as the
@@ -900,17 +1118,37 @@ unsafe fn read_impl(
         column_indices: columns,
     };
     if direct_to_r {
-        file.read_with_sink_and_interrupt(
-            &options,
-            |metadata, _row_start, row_count, indices| unsafe {
-                RDataFrameSink::new(metadata, row_count, indices)
-            },
-            || unsafe { dtaparser_check_interrupt() != 0 },
-        )
-        .map_err(|error| error.to_string())
+        let threads = file
+            .parallel_thread_count(&options, requested_threads)
+            .map_err(|error| error.to_string())?;
+        if threads > 1 {
+            file.read_with_parallel_sink_and_interrupt(
+                &options,
+                threads,
+                |metadata, _row_start, row_count, indices| unsafe {
+                    RDataFrameSink::new(metadata, row_count, indices)
+                },
+                coarse_interrupt,
+            )
+            .map_err(|error| error.to_string())
+        } else {
+            file.read_with_sink_and_interrupts(
+                &options,
+                |metadata, _row_start, row_count, indices| unsafe {
+                    RDataFrameSink::new(metadata, row_count, indices)
+                },
+                coarse_interrupt,
+                frequent_interrupt_poller(),
+            )
+            .map_err(|error| error.to_string())
+        }
     } else {
         let data = file
-            .read_with_interrupt(&options, || unsafe { dtaparser_check_interrupt() != 0 })
+            .read_with_interrupts(
+                &options,
+                coarse_interrupt,
+                frequent_interrupt_poller(),
+            )
             .map_err(|error| error.to_string())?;
         build_data_frame(&data)
     }
@@ -1018,6 +1256,7 @@ pub unsafe extern "C" fn dtaparser_read_rust(
     skip: f64,
     n_max: f64,
     direct_to_r: c_int,
+    requested_threads: c_int,
     encoding: *const c_char,
     error: *mut *mut c_char,
 ) -> Sexp {
@@ -1028,6 +1267,8 @@ pub unsafe extern "C" fn dtaparser_read_rust(
         let path = CStr::from_ptr(path)
             .to_str()
             .map_err(|_| "file path is not valid UTF-8".to_owned())?;
+        let requested_threads = usize::try_from(requested_threads)
+            .map_err(|_| "thread count must be non-negative".to_owned())?;
         let projection = if all_columns != 0 {
             None
         } else {
@@ -1055,6 +1296,7 @@ pub unsafe extern "C" fn dtaparser_read_rust(
             n_max,
             direct_to_r != 0,
             text_encoding(encoding)?,
+            requested_threads,
         )
     })
 }

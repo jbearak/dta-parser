@@ -3,7 +3,8 @@
 \title{Read a Stata DTA file}
 \usage{
 read_dta(file, encoding = NULL, col_select = NULL, skip = 0,
-  n_max = Inf, .name_repair = "unique")
+  n_max = Inf, .name_repair = "unique",
+  threads = getOption("dtaparser.threads", 0L))
 }
 \arguments{
 \item{file}{A path, URL, raw vector, or binary connection. Local and remote
@@ -30,6 +31,9 @@ negative finite values read all remaining rows, following haven's unlimited-row
 convention. Non-negative values must be whole numbers no larger than
 \code{2^53}.}
 \item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
+\item{threads}{Number of decoder threads. Zero selects an automatic count for
+sufficiently large Stata 118--119 files. One always uses the serial decoder.
+Earlier formats and \code{strL} projections currently remain serial.}
 }
 \value{A tibble containing native numeric and character vectors. \code{\%td}
 columns and legacy or custom formats beginning \code{\%d} have class

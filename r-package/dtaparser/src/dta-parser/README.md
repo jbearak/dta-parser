@@ -102,6 +102,18 @@ foreign-runtime adapters can instead materialize their own column store. The
 generic sink is statically dispatched, avoiding a dynamic callback boundary in
 the per-cell loop.
 
+The file reader builds one format-neutral observation plan for every release
+before decoding. `DtaFile::parallel_thread_count` gates the current multicore
+executor to sufficiently large release 118--119 projections whose selected
+columns do not include `strL`; unsupported or small workloads return one and
+continue through the serial executor. `DtaFile::read_with_parallel_interrupt`
+materializes the built-in Rust model, while
+`read_with_parallel_sink_and_interrupt` accepts a `ParallelDtaSink` that splits
+independently owned `DtaColumnSink` values across persistent workers. Workers
+share immutable bounded input blocks and retain the ordinary scalar decoding
+rules. Earlier formats already use the same observation plan and block reader,
+but remain serial until their parallel conformance gates are enabled.
+
 `DtaMetadata` and its nested types implement `serde::Serialize` and
 `serde::Deserialize`; the observation and value-label models do as well. Their
 serialized forms use stable storage/type spellings, and every 64-bit integer is

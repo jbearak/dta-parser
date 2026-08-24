@@ -354,6 +354,43 @@ fn stages_bounded_wide_rows_for_dense_and_sparse_projections() {
 }
 
 #[test]
+fn modern_parallel_vectors_match_serial_and_gate_unsupported_layouts() {
+    let bytes = fixture("auto_v118.dta");
+    let read_options = options(3, Some(41), vec![11, 0, 7, 2]);
+    let mut serial_file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
+    let serial = serial_file.read_with_options(&read_options).unwrap();
+
+    let mut parallel_file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let threads = parallel_file
+        .parallel_thread_count(&read_options, 4)
+        .unwrap();
+    if threads > 1 {
+        let parallel = parallel_file
+            .read_with_parallel_interrupt(&read_options, threads, || false)
+            .unwrap();
+        assert_eq!(parallel, serial);
+    }
+
+    let legacy = fixture("auto_v117.dta");
+    let legacy_file = DtaFile::from_reader(Cursor::new(legacy)).unwrap();
+    assert_eq!(
+        legacy_file
+            .parallel_thread_count(&ReadOptions::default(), 4)
+            .unwrap(),
+        1
+    );
+
+    let strl = fixture("strl_test_v118.dta");
+    let strl_file = DtaFile::from_reader(Cursor::new(strl)).unwrap();
+    assert_eq!(
+        strl_file
+            .parallel_thread_count(&ReadOptions::default(), 4)
+            .unwrap(),
+        1
+    );
+}
+
+#[test]
 fn file_and_slice_reject_invalid_signatures_identically() {
     for bytes in [b"xot a dta".as_slice(), b"<stata_dat>".as_slice()] {
         assert_eq!(
@@ -518,6 +555,27 @@ fn labels_are_lazy_and_cancellation_never_returns_partial_data() {
 }
 
 #[test]
+fn split_interrupt_callbacks_keep_row_polling_separate() {
+    let mut file = DtaFile::from_reader(Cursor::new(fixture("auto_v118.dta"))).unwrap();
+    let mut coarse_checks = 0_usize;
+    let mut frequent_checks = 0_usize;
+    let result = file.read_with_interrupts(
+        &ReadOptions::default(),
+        || {
+            coarse_checks += 1;
+            false
+        },
+        || {
+            frequent_checks += 1;
+            true
+        },
+    );
+    assert_eq!(result, Err(DtaError::Cancelled));
+    assert!(coarse_checks >= 2);
+    assert_eq!(frequent_checks, 1);
+}
+
+#[test]
 fn cancels_between_large_gso_chunks_without_returning_partial_data() {
     let (bytes, content_start) = large_first_gso(fixture("strl_test_v118.dta"), 4096);
     let (reader, trace) = TracedReader::new(bytes);
@@ -529,13 +587,17 @@ fn cancels_between_large_gso_chunks_without_returning_partial_data() {
     )
     .unwrap();
     trace.borrow_mut().reads.clear();
-    let result = file.read_with_interrupt(&options(0, Some(1), vec![0]), || {
-        trace
-            .borrow()
-            .reads
-            .iter()
-            .any(|(offset, length)| *offset == content_start && *length == 1024)
-    });
+    let result = file.read_with_interrupts(
+        &options(0, Some(1), vec![0]),
+        || {
+            trace
+                .borrow()
+                .reads
+                .iter()
+                .any(|(offset, length)| *offset == content_start && *length == 1024)
+        },
+        || false,
+    );
     assert_eq!(result, Err(DtaError::Cancelled));
     assert!(!trace
         .borrow()
@@ -557,13 +619,17 @@ fn cancels_between_large_label_chunks_and_leaves_cache_uninitialized() {
     )
     .unwrap();
     trace.borrow_mut().reads.clear();
-    let result = file.read_with_interrupt(&options(0, Some(0), vec![]), || {
-        trace
-            .borrow()
-            .reads
-            .iter()
-            .any(|(offset, length)| *offset == label_start && *length == 1024)
-    });
+    let result = file.read_with_interrupts(
+        &options(0, Some(0), vec![]),
+        || {
+            trace
+                .borrow()
+                .reads
+                .iter()
+                .any(|(offset, length)| *offset == label_start && *length == 1024)
+        },
+        || false,
+    );
     assert_eq!(result, Err(DtaError::Cancelled));
     assert!(!trace
         .borrow()
