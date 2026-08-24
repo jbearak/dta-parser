@@ -10,6 +10,11 @@
 // -----------------------------------------------------------
 
 import type { DtaMetadata } from './types';
+import type { ResolvedTextEncoding } from './text-encoding';
+import {
+    resolve_text_encoding,
+    text_decoder,
+} from './text-encoding';
 
 // -----------------------------------------------------------
 // Public interfaces
@@ -34,7 +39,7 @@ const GSO_MARKER = [0x47, 0x53, 0x4F]; // "GSO"
 const STRLS_TAG = '<strls>';
 const STRLS_TAG_LENGTH = STRLS_TAG.length; // 7
 
-const UTF8_DECODER = new TextDecoder('utf-8');
+const ASCII_DECODER = new TextDecoder('utf-8');
 
 // -----------------------------------------------------------
 // Implementation
@@ -68,7 +73,7 @@ export function build_gso_index(
     if (
         my_section_start < 0
         || my_section_start + STRLS_TAG_LENGTH > bytes.length
-        || UTF8_DECODER.decode(bytes.subarray(
+        || ASCII_DECODER.decode(bytes.subarray(
             my_section_start,
             my_section_start + STRLS_TAG_LENGTH
         )) !== STRLS_TAG
@@ -85,7 +90,7 @@ export function build_gso_index(
     if (
         my_close_start < pos
         || my_section_end > bytes.length
-        || UTF8_DECODER.decode(bytes.subarray(
+        || ASCII_DECODER.decode(bytes.subarray(
             my_close_start, my_section_end
         )) !== '</strls>'
     ) {
@@ -215,7 +220,13 @@ export function resolve_strl(
         throw new Error(`Dangling strL pointer ${my_key}`);
     }
 
-    return decode_gso_entry(bytes, my_entry);
+    return decode_gso_entry(
+        bytes,
+        my_entry,
+        resolve_text_encoding(
+            metadata.format_version, metadata.text_encoding
+        )
+    );
 }
 
 export function read_strl_pointer(
@@ -281,7 +292,8 @@ export function read_strl_pointer(
 
 export function decode_gso_entry(
     bytes: Uint8Array,
-    entry: GsoEntry
+    entry: GsoEntry,
+    encoding: ResolvedTextEncoding = 'utf-8'
 ): string {
     if (entry.type !== 129 && entry.type !== 130) {
         throw new Error(`Unsupported GSO type ${entry.type}`);
@@ -307,7 +319,7 @@ export function decode_gso_entry(
             );
         }
         const my_str_len = entry.content_length - 1;
-        return UTF8_DECODER.decode(
+        return text_decoder(encoding).decode(
             bytes.subarray(
                 entry.content_offset,
                 entry.content_offset + my_str_len
@@ -316,7 +328,7 @@ export function decode_gso_entry(
     }
 
     // Binary (type 129): return raw bytes as string
-    return UTF8_DECODER.decode(
+    return text_decoder(encoding).decode(
         bytes.subarray(
             entry.content_offset,
             entry.content_offset + entry.content_length

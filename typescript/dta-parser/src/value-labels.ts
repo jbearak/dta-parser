@@ -17,6 +17,11 @@ import {
 import type {
     LegacyValueLabelLayout,
 } from './legacy-layout';
+import type { DtaTextDecoder } from './text-encoding';
+import {
+    resolve_text_encoding,
+    text_decoder,
+} from './text-encoding';
 
 // -----------------------------------------------------------
 // Constants
@@ -37,9 +42,6 @@ const MODERN_LABEL_NAME_WIDTH: Record<number, number> = {
 
 const PADDING_BYTES = 3;
 
-const UTF8_DECODER = new TextDecoder('utf-8');
-const LEGACY_DECODER = new TextDecoder('windows-1252');
-
 // -----------------------------------------------------------
 // Shared label entry parser
 // -----------------------------------------------------------
@@ -58,7 +60,7 @@ function parse_label_entry_payload(
     little_endian: boolean,
     pos: number,
     entry_end: number,
-    decoder: TextDecoder
+    decoder: DtaTextDecoder
 ): { label_map: Map<number, string>; next_pos: number } {
     // n (int32): number of entries
     if (pos + 8 > entry_end) {
@@ -156,7 +158,7 @@ function read_label_name(
     bytes: Uint8Array,
     pos: number,
     name_width: number,
-    decoder: TextDecoder
+    decoder: DtaTextDecoder
 ): string {
     let my_end = pos;
     const my_limit = pos + name_width;
@@ -178,7 +180,8 @@ function parse_modern_entries(
     little_endian: boolean,
     name_width: number,
     start_pos: number,
-    section_end: number
+    section_end: number,
+    decoder: DtaTextDecoder
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
@@ -201,7 +204,7 @@ function parse_modern_entries(
 
         // label_name
         const my_label_name = read_label_name(
-            bytes, pos, name_width, UTF8_DECODER
+            bytes, pos, name_width, decoder
         );
         pos += name_width;
 
@@ -212,7 +215,7 @@ function parse_modern_entries(
         const { label_map, next_pos } =
             parse_label_entry_payload(
                 bytes, view, little_endian, pos,
-                section_end, UTF8_DECODER
+                section_end, decoder
             );
         my_result.set(my_label_name, label_map);
 
@@ -233,7 +236,8 @@ function parse_legacy_entries(
     little_endian: boolean,
     name_width: number,
     start_pos: number,
-    section_end: number
+    section_end: number,
+    decoder: DtaTextDecoder
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
@@ -269,7 +273,7 @@ function parse_legacy_entries(
 
         // label_name
         const my_label_name = read_label_name(
-            bytes, pos, name_width, LEGACY_DECODER
+            bytes, pos, name_width, decoder
         );
         pos += name_width;
 
@@ -280,7 +284,7 @@ function parse_legacy_entries(
         const { label_map, next_pos } =
             parse_label_entry_payload(
                 bytes, view, little_endian, pos,
-                section_end, LEGACY_DECODER
+                section_end, decoder
             );
         my_result.set(my_label_name, label_map);
         pos = next_pos;
@@ -295,7 +299,8 @@ function parse_fixed8_entries(
     little_endian: boolean,
     name_width: number,
     start_pos: number,
-    section_end: number
+    section_end: number,
+    decoder: DtaTextDecoder
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
@@ -321,7 +326,7 @@ function parse_fixed8_entries(
         const my_n = view.getUint16(pos, little_endian);
         pos += 2;
         const my_name = read_label_name(
-            bytes, pos, name_width, LEGACY_DECODER
+            bytes, pos, name_width, decoder
         );
         pos += name_width + 1;
         if (pos + my_n * 10 > section_end) {
@@ -337,7 +342,7 @@ function parse_fixed8_entries(
         const my_labels = new Map<number, string>();
         for (let i = 0; i < my_n; i++) {
             const my_label = read_label_name(
-                bytes, pos, 8, LEGACY_DECODER
+                bytes, pos, 8, decoder
             );
             if (!my_labels.has(the_codes[i])) {
                 my_labels.set(the_codes[i], my_label);
@@ -441,6 +446,9 @@ export function parse_value_labels(
     const my_legacy = is_legacy_format(
         metadata.format_version
     );
+    const my_decoder = text_decoder(resolve_text_encoding(
+        metadata.format_version, metadata.text_encoding
+    ));
 
     // Start position: skip XML tag for modern formats
     const my_tag_skip = my_legacy
@@ -487,19 +495,21 @@ export function parse_value_labels(
         if (my_value_label_layout === 'fixed8') {
             return parse_fixed8_entries(
                 bytes, view, little_endian,
-                my_name_width, my_start_pos, my_section_end
+                my_name_width, my_start_pos, my_section_end,
+                my_decoder
             );
         }
 
         return parse_legacy_entries(
             bytes, view, little_endian,
-            my_name_width, my_start_pos, my_section_end
+            my_name_width, my_start_pos, my_section_end,
+            my_decoder
         );
     }
 
     return parse_modern_entries(
         bytes, view, little_endian,
         MODERN_LABEL_NAME_WIDTH[metadata.format_version],
-        my_start_pos, my_section_end
+        my_start_pos, my_section_end, my_decoder
     );
 }

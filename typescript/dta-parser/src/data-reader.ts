@@ -21,23 +21,25 @@ import type {
     RowCell,
 } from './types';
 import { is_legacy_format } from './types';
+import type { DtaTextDecoder } from './text-encoding';
+import {
+    resolve_text_encoding,
+    text_decoder,
+} from './text-encoding';
 
 // The <data> tag that precedes observation bytes
 const DATA_TAG = '<data>';
 const DATA_TAG_LENGTH = DATA_TAG.length; // 6 bytes
 
-const UTF8_DECODER = new TextDecoder('utf-8');
-const LEGACY_DECODER = new TextDecoder('windows-1252');
-
 /**
  * Read a fixed-width string field, stopping at the first
- * null byte. Returns the decoded UTF-8 string.
+ * null byte. Returns the decoded string.
  */
 function read_fixed_string(
     bytes: Uint8Array,
     offset: number,
     width: number,
-    decoder: TextDecoder
+    decoder: DtaTextDecoder
 ): string {
     let my_end = offset;
     const my_limit = offset + width;
@@ -62,7 +64,7 @@ function read_cell(
     type: string,
     width: number,
     little_endian: boolean,
-    decoder: TextDecoder,
+    decoder: DtaTextDecoder,
     format_version: FormatVersion
 ): RowCell {
     switch (type) {
@@ -179,9 +181,9 @@ function read_rows_from_view(
         return [];
     }
     const little_endian = metadata.byte_order === 'LSF';
-    const my_decoder = is_legacy_format(metadata.format_version)
-        ? LEGACY_DECODER
-        : UTF8_DECODER;
+    const my_decoder = text_decoder(resolve_text_encoding(
+        metadata.format_version, metadata.text_encoding
+    ));
     const the_rows: Row[] = [];
 
     for (let i = 0; i < my_actual_count; i++) {
@@ -313,9 +315,9 @@ export function read_columns_from_data_buffer(
     const view = new DataView(buffer);
     const bytes = new Uint8Array(buffer);
     const little_endian = metadata.byte_order === 'LSF';
-    const my_decoder = is_legacy_format(metadata.format_version)
-        ? LEGACY_DECODER
-        : UTF8_DECODER;
+    const my_decoder = text_decoder(resolve_text_encoding(
+        metadata.format_version, metadata.text_encoding
+    ));
 
     const my_vars = col_indices.map(
         my_col => metadata.variables[my_col]

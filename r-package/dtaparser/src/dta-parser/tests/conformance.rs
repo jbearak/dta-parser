@@ -68,7 +68,7 @@ fn projected_options(nvar: u32, nobs: u64) -> ReadOptions {
 }
 
 #[test]
-fn checked_manifest_has_an_honest_immutable_31_case_inventory() {
+fn checked_manifest_has_an_honest_immutable_32_case_inventory() {
     let root = support::repository_root();
     let manifest = manifest();
     assert_eq!(manifest.schema_version, 1);
@@ -81,7 +81,7 @@ fn checked_manifest_has_an_honest_immutable_31_case_inventory() {
         manifest.identity.case_count
     );
     assert_eq!(manifest.identity.fixture_count, 22);
-    assert_eq!(manifest.identity.case_count, 31);
+    assert_eq!(manifest.identity.case_count, 32);
     assert!(manifest.identity.float_contract.contains("1e-7"));
     assert_eq!(manifest.identity.fixture_oracle_gate.binary, "observations");
     assert_eq!(
@@ -122,6 +122,7 @@ fn checked_manifest_has_an_honest_immutable_31_case_inventory() {
             "synthetic-v113-layout",
             "synthetic-v114-layout",
             "synthetic-v119-big-endian",
+            "release-117-text-encoding",
             "projected-row-window",
             "invalid-signature",
             "truncated-observations",

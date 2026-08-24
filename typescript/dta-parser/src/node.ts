@@ -38,6 +38,14 @@ import type {
     RowCell,
 } from './types';
 import { is_legacy_format } from './types';
+import type {
+    ResolvedTextEncoding,
+    TextEncodingOptions,
+} from './text-encoding';
+import {
+    resolve_text_encoding,
+    validate_text_encoding,
+} from './text-encoding';
 
 // -----------------------------------------------------------
 // Constants
@@ -64,6 +72,9 @@ export interface ReadRowsOptions {
     /** Rows per chunk on the cancellable path (default 65536). */
     chunk_rows?: number;
 }
+
+/** Options for {@link DtaFile.open}. */
+export type DtaFileOpenOptions = TextEncodingOptions;
 
 /** Options for {@link DtaFile.read_columns}. */
 export interface ReadColumnsOptions {
@@ -194,14 +205,21 @@ export class DtaFile {
      * access. Only metadata and sidecar sections are loaded
      * into memory; observation rows are read on demand.
      */
-    static async open(file_path: string): Promise<DtaFile> {
+    static async open(
+        file_path: string,
+        options: DtaFileOpenOptions = {}
+    ): Promise<DtaFile> {
         const my_fd = fs.openSync(file_path, 'r');
 
         try {
+            // Invalid options cannot become valid after reading more bytes.
+            // Reject them before metadata parsing starts its bounded-prefix
+            // retry loop for modern files.
+            validate_text_encoding(options.encoding);
             const my_file_size =
                 fs.fstatSync(my_fd).size;
             const my_metadata = detect_and_parse_metadata(
-                my_fd, my_file_size
+                my_fd, my_file_size, options
             );
 
             const my_labels = read_value_labels(
@@ -226,6 +244,14 @@ export class DtaFile {
     /** Stata on-disk format release. */
     get format_version(): FormatVersion {
         return this._metadata.format_version;
+    }
+
+    /** Resolved source encoding used for textual fields. */
+    get text_encoding(): ResolvedTextEncoding {
+        return resolve_text_encoding(
+            this._metadata.format_version,
+            this._metadata.text_encoding
+        );
     }
 
     /** Number of observations (rows). */
@@ -673,11 +699,15 @@ export class DtaFile {
             );
         }
 
-        return decode_gso_entry(this._gso_section, {
-            ...my_entry,
-            content_offset:
-                my_entry.content_offset - this._gso_base,
-        });
+        return decode_gso_entry(
+            this._gso_section,
+            {
+                ...my_entry,
+                content_offset:
+                    my_entry.content_offset - this._gso_base,
+            },
+            this.text_encoding
+        );
     }
 }
 
@@ -694,7 +724,8 @@ const MIN_LEGACY_HEADER = 10;
 
 function detect_and_parse_metadata(
     fd: number,
-    file_size: number
+    file_size: number,
+    options: TextEncodingOptions
 ): DtaMetadata {
     // Peek at the first byte to determine format family
     if (file_size < 1) {
@@ -706,15 +737,16 @@ function detect_and_parse_metadata(
     const my_first_byte = new Uint8Array(my_probe)[0];
 
     if (LEGACY_VERSION_BYTES.has(my_first_byte)) {
-        return read_legacy_metadata(fd, file_size);
+        return read_legacy_metadata(fd, file_size, options);
     }
 
-    return read_modern_metadata(fd, file_size);
+    return read_modern_metadata(fd, file_size, options);
 }
 
 function read_legacy_metadata(
     fd: number,
-    file_size: number
+    file_size: number,
+    options: TextEncodingOptions
 ): DtaMetadata {
     if (file_size < MIN_LEGACY_HEADER) {
         throw new Error(
@@ -783,12 +815,13 @@ function read_legacy_metadata(
     }
 
     const my_buffer = read_range(fd, 0, my_position);
-    return parse_legacy_metadata(my_buffer, file_size);
+    return parse_legacy_metadata(my_buffer, file_size, options);
 }
 
 function read_modern_metadata(
     fd: number,
-    file_size: number
+    file_size: number,
+    options: TextEncodingOptions
 ): DtaMetadata {
     let my_read_size = Math.min(
         file_size,
@@ -804,7 +837,7 @@ function read_modern_metadata(
         );
 
         try {
-            return parse_metadata(my_buffer);
+            return parse_metadata(my_buffer, options);
         } catch (my_err) {
             my_last_error = my_err;
             if (
@@ -929,6 +962,12 @@ export type {
     LegacyFormatVersion,
     SectionOffsets,
 } from './types';
+export type {
+    TextEncoding,
+    TextEncodingLabel,
+    ResolvedTextEncoding,
+    TextEncodingOptions,
+} from './text-encoding';
 export { is_legacy_format } from './types';
 export { apply_display_format } from './display-format';
 export {

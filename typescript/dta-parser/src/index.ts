@@ -28,6 +28,13 @@ export type {
     LegacyFormatVersion,
     SectionOffsets,
 } from './types';
+export type {
+    TextEncoding,
+    TextEncodingLabel,
+    ResolvedTextEncoding,
+    TextEncodingOptions,
+} from './text-encoding';
+export { resolve_text_encoding } from './text-encoding';
 export { is_legacy_format } from './types';
 export {
     classify_missing_value,

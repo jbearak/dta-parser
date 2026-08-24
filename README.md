@@ -75,6 +75,9 @@ type and do not encode `.a`--`.z` tags. Releases 111 and 113 share the later
 Other formats are rejected. Each library preserves Stata's system missing and
 `.a`--`.z` missing values where the on-disk release supports them rather than
 collapsing distinct tags into a single sentinel.
+All three libraries default textual fields to Windows-1252 through release 117
+and UTF-8 for releases 118--119, with explicit UTF-8, Windows-1252, and
+ISO-8859-1 overrides available in each public API.
 See the language-specific README for differences in result shape, I/O, date
 conversion, and public API.
 
@@ -100,7 +103,7 @@ or newer; R package installation does not require Python.
 
 ## Conformance and benchmarks
 
-`conformance/cases.json` identifies 22 immutable fixture files and nine
+`conformance/cases.json` identifies 22 immutable fixture files and ten
 generated or derived cases. The shared contract covers format and byte order,
 metadata, rows and columns, storage types, labels, formats, value-label tables,
 `strL` cells, exact missing tags, projections, row windows, and representative

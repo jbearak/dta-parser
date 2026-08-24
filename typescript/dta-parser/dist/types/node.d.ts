@@ -1,4 +1,5 @@
 import type { FormatVersion, VariableInfo, Row, RowCell } from './types';
+import type { ResolvedTextEncoding, TextEncodingOptions } from './text-encoding';
 /** Options for {@link DtaFile.read_rows}. */
 export interface ReadRowsOptions {
     /**
@@ -11,6 +12,8 @@ export interface ReadRowsOptions {
     /** Rows per chunk on the cancellable path (default 65536). */
     chunk_rows?: number;
 }
+/** Options for {@link DtaFile.open}. */
+export type DtaFileOpenOptions = TextEncodingOptions;
 /** Options for {@link DtaFile.read_columns}. */
 export interface ReadColumnsOptions {
     /**
@@ -40,9 +43,11 @@ export declare class DtaFile {
      * access. Only metadata and sidecar sections are loaded
      * into memory; observation rows are read on demand.
      */
-    static open(file_path: string): Promise<DtaFile>;
+    static open(file_path: string, options?: DtaFileOpenOptions): Promise<DtaFile>;
     /** Stata on-disk format release. */
     get format_version(): FormatVersion;
+    /** Resolved source encoding used for textual fields. */
+    get text_encoding(): ResolvedTextEncoding;
     /** Number of observations (rows). */
     get nobs(): number;
     /** Number of variables (columns). */
@@ -129,6 +134,7 @@ export declare class DtaFile {
     private _resolve_strl_at;
 }
 export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, } from './types';
+export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
 export { is_legacy_format } from './types';
 export { apply_display_format } from './display-format';
 export { classify_missing_value, classify_raw_float_missing, classify_raw_double_missing_at, is_missing_value, is_missing_value_object, make_missing_value, missing_type_to_label_key, STATA_MISSING_B, } from './missing-values';
