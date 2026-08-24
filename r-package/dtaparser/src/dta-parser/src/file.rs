@@ -26,6 +26,7 @@ use crate::{
 const DEFAULT_MAX_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 const MIN_MAX_BUFFER_BYTES: usize = 1024;
 const STRL_CANCEL_CHECK_INTERVAL: usize = 1024;
+const COLUMNAR_CANCEL_CHECK_INTERVAL: usize = 16_384;
 const MIN_PARALLEL_DATA_BYTES: u64 = 16 * 1024 * 1024;
 const MIN_PARALLEL_CELLS: u64 = 1_000_000;
 const MAX_AUTOMATIC_THREADS: usize = 8;
@@ -860,8 +861,9 @@ fn decode_worker_block<C: DtaColumnSink>(
     row_width: usize,
     metadata: &DtaMetadata,
     encoding: TextEncoding,
+    mut should_interrupt: Option<&mut dyn FnMut() -> bool>,
 ) -> Result<(), DtaError> {
-    for column in columns {
+    for (column_index, column) in columns.iter_mut().enumerate() {
         if block.row_count == 0 {
             continue;
         }
@@ -893,7 +895,15 @@ fn decode_worker_block<C: DtaColumnSink>(
         let mut output_row = block.output_row_start;
         macro_rules! decode_numeric_rows {
             ($body:expr) => {{
-                for _ in 0..block.row_count {
+                for local_row in 0..block.row_count {
+                    if column_index == 0 && local_row.is_multiple_of(COLUMNAR_CANCEL_CHECK_INTERVAL)
+                    {
+                        if let Some(callback) = should_interrupt.as_deref_mut() {
+                            if callback() {
+                                return Err(DtaError::Cancelled);
+                            }
+                        }
+                    }
                     $body(input_at, output_row)?;
                     input_at += row_width;
                     output_row += 1;
@@ -949,7 +959,15 @@ fn decode_worker_block<C: DtaColumnSink>(
                 )
             }),
             ObservationKind::FixedString => {
-                for _ in 0..block.row_count {
+                for local_row in 0..block.row_count {
+                    if column_index == 0 && local_row.is_multiple_of(COLUMNAR_CANCEL_CHECK_INTERVAL)
+                    {
+                        if let Some(callback) = should_interrupt.as_deref_mut() {
+                            if callback() {
+                                return Err(DtaError::Cancelled);
+                            }
+                        }
+                    }
                     // SAFETY: the complete strided column range was checked above.
                     let cell = unsafe {
                         std::slice::from_raw_parts(
@@ -1350,7 +1368,14 @@ impl<R: Read + Seek> DtaFile<R> {
                         .map_err(|_| DtaError::ArithmeticOverflow("columnar output row"))?,
                     row_count: block_row_count,
                 };
-                decode_worker_block(&mut shard, &block, plan.row_width, metadata, encoding)?;
+                decode_worker_block(
+                    &mut shard,
+                    &block,
+                    plan.row_width,
+                    metadata,
+                    encoding,
+                    Some(&mut should_interrupt),
+                )?;
                 observation_buffer = block.bytes;
                 row = row
                     .checked_add(block_rows)
@@ -1378,6 +1403,7 @@ impl<R: Read + Seek> DtaFile<R> {
                                             plan.row_width,
                                             metadata,
                                             encoding,
+                                            None,
                                         );
                                         drop(block);
                                         let failed = result.is_err();
@@ -4259,6 +4285,185 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    fn kernel_metadata(byte_order: ByteOrder) -> DtaMetadata {
+        DtaMetadata {
+            format_version: FormatVersion::V119,
+            byte_order,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: String::new(),
+            notes: Vec::new(),
+            variables: Vec::new(),
+            section_offsets: SectionOffsets::from_array([0; 14]),
+            obs_length: 0,
+        }
+    }
+
+    fn kernel_column(
+        kind: ObservationKind,
+        byte_offset: usize,
+        byte_width: usize,
+    ) -> ParallelColumn<ColumnBuilder> {
+        let sink = match kind {
+            ObservationKind::Byte => ColumnBuilder::Byte {
+                index: 0,
+                values: Vec::new(),
+                missing_tags: Vec::new(),
+            },
+            ObservationKind::Int => ColumnBuilder::Int {
+                index: 0,
+                values: Vec::new(),
+                missing_tags: Vec::new(),
+            },
+            ObservationKind::Long => ColumnBuilder::Long {
+                index: 0,
+                values: Vec::new(),
+                missing_tags: Vec::new(),
+            },
+            ObservationKind::Float => ColumnBuilder::Float {
+                index: 0,
+                values: Vec::new(),
+                missing_tags: Vec::new(),
+            },
+            ObservationKind::Double => ColumnBuilder::Double {
+                index: 0,
+                values: Vec::new(),
+                missing_tags: Vec::new(),
+            },
+            ObservationKind::FixedString => ColumnBuilder::FixedString {
+                index: 0,
+                values: Vec::new(),
+            },
+            ObservationKind::StrL => ColumnBuilder::StrL {
+                index: 0,
+                values: Vec::new(),
+            },
+        };
+        ParallelColumn {
+            plan: ObservationColumnPlan {
+                output_index: 0,
+                source_index: 0,
+                byte_offset,
+                byte_width,
+                kind,
+            },
+            sink,
+        }
+    }
+
+    #[test]
+    fn column_kernels_decode_big_endian_wide_numeric_values() {
+        let mut bytes = Vec::new();
+        for (long, float, double) in [(-2_i32, 1.5_f32, -3.25_f64), (42, -0.5, 9.75)] {
+            bytes.extend_from_slice(&long.to_be_bytes());
+            bytes.extend_from_slice(&float.to_bits().to_be_bytes());
+            bytes.extend_from_slice(&double.to_bits().to_be_bytes());
+        }
+        let mut columns = vec![
+            kernel_column(ObservationKind::Long, 0, 4),
+            kernel_column(ObservationKind::Float, 4, 4),
+            kernel_column(ObservationKind::Double, 8, 8),
+        ];
+        let block = ObservationBlock {
+            bytes,
+            output_row_start: 0,
+            row_count: 2,
+        };
+        decode_worker_block(
+            &mut columns,
+            &block,
+            16,
+            &kernel_metadata(ByteOrder::Msf),
+            TextEncoding::Utf8,
+            None,
+        )
+        .unwrap();
+
+        let ColumnBuilder::Long { values, .. } = &columns[0].sink else {
+            unreachable!()
+        };
+        assert_eq!(values, &[-2, 42]);
+        let ColumnBuilder::Float { values, .. } = &columns[1].sink else {
+            unreachable!()
+        };
+        assert_eq!(values, &[1.5, -0.5]);
+        let ColumnBuilder::Double { values, .. } = &columns[2].sink else {
+            unreachable!()
+        };
+        assert_eq!(values, &[-3.25, 9.75]);
+    }
+
+    #[test]
+    fn column_kernel_range_proof_rejects_truncation_and_output_overflow() {
+        let metadata = kernel_metadata(ByteOrder::Lsf);
+        let mut truncated = vec![kernel_column(ObservationKind::Double, 1, 8)];
+        let block = ObservationBlock {
+            bytes: vec![0; 17],
+            output_row_start: 0,
+            row_count: 2,
+        };
+        assert!(matches!(
+            decode_worker_block(
+                &mut truncated,
+                &block,
+                9,
+                &metadata,
+                TextEncoding::Utf8,
+                None,
+            ),
+            Err(DtaError::Truncated { .. })
+        ));
+
+        let mut overflowing = vec![kernel_column(ObservationKind::Byte, 0, 1)];
+        let block = ObservationBlock {
+            bytes: vec![0; 2],
+            output_row_start: usize::MAX,
+            row_count: 2,
+        };
+        assert_eq!(
+            decode_worker_block(
+                &mut overflowing,
+                &block,
+                1,
+                &metadata,
+                TextEncoding::Utf8,
+                None,
+            ),
+            Err(DtaError::ArithmeticOverflow("parallel output row"))
+        );
+    }
+
+    #[test]
+    fn synchronous_column_kernel_polls_between_long_row_runs() {
+        let row_count = COLUMNAR_CANCEL_CHECK_INTERVAL * 3;
+        let mut columns = vec![kernel_column(ObservationKind::Byte, 0, 1)];
+        let block = ObservationBlock {
+            bytes: vec![1; row_count],
+            output_row_start: 0,
+            row_count,
+        };
+        let mut checks = 0;
+        let mut interrupt = || {
+            checks += 1;
+            checks >= 2
+        };
+        assert_eq!(
+            decode_worker_block(
+                &mut columns,
+                &block,
+                1,
+                &kernel_metadata(ByteOrder::Lsf),
+                TextEncoding::Utf8,
+                Some(&mut interrupt),
+            ),
+            Err(DtaError::Cancelled)
+        );
+        let ColumnBuilder::Byte { values, .. } = &columns[0].sink else {
+            unreachable!()
+        };
+        assert_eq!(values.len(), COLUMNAR_CANCEL_CHECK_INTERVAL);
+    }
 
     #[test]
     fn automatic_parallelism_accepts_large_byte_or_cell_workloads() {
