@@ -23,9 +23,6 @@ jobs:
           - os: windows-latest
             platform: windows-x86_64
             rust_toolchain: 1.97.1-x86_64-pc-windows-gnu
-          - os: windows-11-arm
-            platform: windows-arm64
-            rust_toolchain: 1.97.1-aarch64-pc-windows-gnullvm
     steps:
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,15 +36,6 @@ jobs:
           r-version: release
           use-public-rspm: true
 
-      # setup-r currently exports the x64 Rtools home on native Windows ARM.
-      # Point R 4.6 at the ARM64 toolchain installed by the action instead.
-      - name: Select ARM64 Rtools
-        if: matrix.platform == 'windows-arm64'
-        shell: pwsh
-        run: |
-          "RTOOLS45_HOME=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "RTOOLS45_AARCH64_HOME=C:\rtools45-aarch64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
       - name: Verify R architecture
         shell: bash
         env:
@@ -55,7 +43,7 @@ jobs:
         run: |
           r_platform="$(Rscript --vanilla -e "cat(R.version[['platform']])")"
           case "$ASSET_PLATFORM:$r_platform" in
-            linux-x86_64:x86_64-*|macos-arm64:aarch64-*|macos-arm64:arm64-*|windows-x86_64:x86_64-*|windows-arm64:aarch64-*) ;;
+            linux-x86_64:x86_64-*|macos-arm64:aarch64-*|macos-arm64:arm64-*|windows-x86_64:x86_64-*) ;;
             *)
               echo "R platform $r_platform does not match release asset $ASSET_PLATFORM" >&2
               exit 1
@@ -84,10 +72,6 @@ jobs:
           if [ "$rust_version-$rust_host" != "$RUST_TOOLCHAIN" ]; then
             echo "Rust $rust_version host $rust_host does not match $RUST_TOOLCHAIN" >&2
             exit 1
-          fi
-          if [ "$rust_host" = "aarch64-pc-windows-gnullvm" ]; then
-            rustup component add rust-mingw --toolchain "$RUST_TOOLCHAIN"
-            echo "CARGO_TARGET_AARCH64_PC_WINDOWS_GNULLVM_LINKER=rust-lld" >> "$GITHUB_ENV"
           fi
 
       - name: Install R dependencies

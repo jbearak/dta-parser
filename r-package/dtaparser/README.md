@@ -10,9 +10,10 @@ avoid interleaving R allocation with the parser's hot loop.
 ## Installation
 
 Published GitHub Releases include compiled packages for R release on Linux
-x86_64, macOS ARM64, and Windows x86_64 and ARM64. The R version, platform, and
-architecture are part of each asset name. A matching asset URL can be installed
-with its required dependencies by `pak` without compiling `dtaparser` locally:
+x86_64, macOS ARM64, and Windows x86_64. Windows ARM64 users must build the
+package from source. The R version, platform, and architecture are part of each
+asset name. A matching asset URL can be installed with its required dependencies
+by `pak` without compiling `dtaparser` locally:
 
 ```r
 pak::pkg_install("url::https://github.com/jbearak/dta-parser/releases/download/vX.Y.Z/<matching-asset>")
@@ -209,6 +210,5 @@ the archive against `vendor.sha256` and the bridge lock. Configure always
 refreshes the extracted dependencies before building. Python 3.11 or newer is
 only required for repository maintenance and CI, not R package installation.
 Windows CI installs and selects Rust 1.97.1 with the
-`x86_64-pc-windows-gnu` or `aarch64-pc-windows-gnullvm` host matching R,
-confirms the exact version and host, then builds and checks the package through
-Rtools.
+`x86_64-pc-windows-gnu` host matching R, confirms the exact version and host,
+then builds and checks the package through Rtools.
