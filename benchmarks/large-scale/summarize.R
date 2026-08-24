@@ -176,13 +176,13 @@ rows <- lapply(groups, function(group) {
         haven_p05_s = statistics[["haven"]][["p05_s"]],
         haven_p95_s = statistics[["haven"]][["p95_s"]],
         haven_median_gb_s = statistics[["haven"]][["median_gb_s"]],
-        direct_r_vs_rust_vectors_speedup =
-            statistics[["rust-vectors"]][["median_s"]] /
-            statistics[["direct-r"]][["median_s"]],
-        direct_r_vs_haven_speedup = statistics[["haven"]][["median_s"]] /
-            statistics[["direct-r"]][["median_s"]],
-        rust_vectors_vs_haven_speedup = statistics[["haven"]][["median_s"]] /
+        direct_r_to_rust_vectors_time_ratio =
+            statistics[["direct-r"]][["median_s"]] /
             statistics[["rust-vectors"]][["median_s"]],
+        direct_r_to_haven_time_ratio = statistics[["direct-r"]][["median_s"]] /
+            statistics[["haven"]][["median_s"]],
+        rust_vectors_to_haven_time_ratio = statistics[["rust-vectors"]][["median_s"]] /
+            statistics[["haven"]][["median_s"]],
         check.names = FALSE
     )
 })

@@ -30,7 +30,7 @@ test_that("read_dta extends the haven-compatible public signature", {
     )
 })
 
-test_that("modern parallel decoding is identical and older formats fall back", {
+test_that("parallel decoding is identical across supported releases", {
     modern <- fixture("auto_v118.dta")
     serial <- read_dta(modern, threads = 1L)
     parallel <- read_dta(modern, threads = 4L)
@@ -49,10 +49,13 @@ test_that("modern parallel decoding is identical and older formats fall back", {
         )
     )
 
-    expect_identical(
-        read_dta(fixture("all_types_v117.dta"), threads = 4L),
-        read_dta(fixture("all_types_v117.dta"), threads = 1L)
-    )
+    for (name in c("all_types_v115.dta", "all_types_v117.dta")) {
+        expect_identical(
+            read_dta(fixture(name), threads = 4L),
+            read_dta(fixture(name), threads = 1L),
+            info = name
+        )
+    }
     expect_identical(
         read_dta(fixture("strl_test_v118.dta"), threads = 4L),
         read_dta(fixture("strl_test_v118.dta"), threads = 1L)

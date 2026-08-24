@@ -63,8 +63,14 @@ stopifnot(
     identical(summary$files, c(1L, 1L, 0L, 2L, 0L)),
     identical(summary$excluded_files, c(0L, 1L, 1L, 2L, 0L)),
     isTRUE(all.equal(summary$input_gb, c(1, 2, 0, 3, 0))),
-    isTRUE(all.equal(summary$vs_haven_speedup[c(1:2, 4)], c(4, 6, 14 / 3))),
-    isTRUE(all.equal(summary$vs_stata_speedup[c(1:2, 4)], c(0.5, 0.25, 1.25 / 3))),
+    isTRUE(all.equal(
+        summary$dtaparser_to_haven_time_ratio[c(1:2, 4)],
+        c(0.25, 1 / 6, 3 / 14)
+    )),
+    isTRUE(all.equal(
+        summary$dtaparser_to_stata_time_ratio[c(1:2, 4)],
+        c(2, 4, 3 / 1.25)
+    )),
     all(is.na(summary$dtaparser_seconds[c(3, 5)])),
     all(is.na(summary$dtaparser_peak_rss_gb[c(3, 5)]))
 )

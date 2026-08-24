@@ -615,6 +615,21 @@ fn reads_every_checked_in_legacy_fixture_and_synthetic_v114() {
 }
 
 #[test]
+fn parallel_decoder_matches_serial_for_releases_113_and_114() {
+    let mut v114 = fixture("all_types_v115.dta");
+    v114[0] = 114;
+    for (release, bytes) in [(113, synthetic_v113_msf()), (114, v114)] {
+        let mut serial_file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
+        let serial = serial_file.read().unwrap();
+        let mut parallel_file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        let parallel = parallel_file
+            .read_with_parallel_interrupt(&ReadOptions::default(), 2, || false)
+            .unwrap();
+        assert_eq!(parallel, serial, "release {release}");
+    }
+}
+
+#[test]
 fn decodes_true_big_endian_v113_and_windows_1252() {
     let bytes = synthetic_v113_msf();
     let metadata = parse_metadata(&bytes).unwrap();
