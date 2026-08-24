@@ -1,0 +1,178 @@
+name: Attach compiled R packages
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: R binary / ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            rust_toolchain: 1.97.1
+          - os: macos-latest
+            platform: macos-arm64
+            rust_toolchain: 1.97.1
+          - os: windows-latest
+            platform: windows-x86_64
+            rust_toolchain: 1.97.1-x86_64-pc-windows-gnu
+          - os: windows-11-arm
+            platform: windows-arm64
+            rust_toolchain: 1.97.1-aarch64-pc-windows-gnullvm
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      - name: Set up R release
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      # setup-r currently exports the x64 Rtools home on native Windows ARM.
+      # Point R 4.6 at the ARM64 toolchain installed by the action instead.
+      - name: Select ARM64 Rtools
+        if: matrix.platform == 'windows-arm64'
+        shell: pwsh
+        run: |
+          "RTOOLS45_HOME=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RTOOLS45_AARCH64_HOME=C:\rtools45-aarch64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify R architecture
+        shell: bash
+        env:
+          ASSET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          r_platform="$(Rscript --vanilla -e "cat(R.version[['platform']])")"
+          case "$ASSET_PLATFORM:$r_platform" in
+            linux-x86_64:x86_64-*|macos-arm64:aarch64-*|macos-arm64:arm64-*|windows-x86_64:x86_64-*|windows-arm64:aarch64-*) ;;
+            *)
+              echo "R platform $r_platform does not match release asset $ASSET_PLATFORM" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Install Rust
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          rustup default "$RUST_TOOLCHAIN"
+
+      - name: Install Rust for Rtools
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          rustup default "$RUST_TOOLCHAIN"
+          rust_version="$(rustc --version | awk '{print $2}')"
+          rust_host="$(rustc -vV | sed -n 's/^host: //p')"
+          if [ "$rust_version-$rust_host" != "$RUST_TOOLCHAIN" ]; then
+            echo "Rust $rust_version host $rust_host does not match $RUST_TOOLCHAIN" >&2
+            exit 1
+          fi
+          if [ "$rust_host" = "aarch64-pc-windows-gnullvm" ]; then
+            rustup component add rust-mingw --toolchain "$RUST_TOOLCHAIN"
+            echo "CARGO_TARGET_AARCH64_PC_WINDOWS_GNULLVM_LINKER=rust-lld" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install R dependencies
+        shell: Rscript {0}
+        run: |
+          install.packages(
+            c("readr", "rlang", "tibble", "tidyselect"),
+            repos = "https://cloud.r-project.org",
+            Ncpus = 2L
+          )
+
+      - name: Build binary package
+        id: package
+        shell: bash
+        env:
+          ASSET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          workspace="$PWD"
+          package_version="$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtaparser/DESCRIPTION", fields = "Version"))')"
+          r_version="$(Rscript --vanilla -e 'cat(as.character(getRversion()))')"
+          r_platform="$(Rscript --vanilla -e "cat(R.version[['platform']])")"
+          source_dir="$workspace/release-build/source"
+          binary_dir="$workspace/release-build/binary"
+          library_dir="$workspace/release-build/library"
+          mkdir -p "$source_dir" "$binary_dir" "$library_dir"
+
+          (
+            cd "$source_dir"
+            R CMD build "$workspace/r-package/dtaparser"
+          )
+          source_archive="$source_dir/dtaparser_${package_version}.tar.gz"
+          "$workspace/scripts/check-r-package-archive.sh" "$source_archive"
+
+          (
+            cd "$binary_dir"
+            R CMD INSTALL --build --clean --library="$library_dir" "$source_archive"
+          )
+
+          case "$ASSET_PLATFORM" in
+            windows-*) generated="$binary_dir/dtaparser_${package_version}.zip"; extension=zip ;;
+            macos-*) generated="$binary_dir/dtaparser_${package_version}.tgz"; extension=tgz ;;
+            linux-*) generated="$binary_dir/dtaparser_${package_version}_R_${r_platform}.tar.gz"; extension=tar.gz ;;
+          esac
+          if [ ! -f "$generated" ]; then
+            echo "R CMD INSTALL did not create the expected binary: $generated" >&2
+            find "$binary_dir" -maxdepth 1 -type f -print >&2
+            exit 1
+          fi
+
+          asset="$binary_dir/dtaparser_${package_version}_R-${r_version}_${ASSET_PLATFORM}.${extension}"
+          mv "$generated" "$asset"
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=r-package-$ASSET_PLATFORM" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test installed package
+        shell: Rscript {0}
+        run: |
+          .libPaths(c(file.path(getwd(), "release-build", "library"), .libPaths()))
+          library(dtaparser)
+          stopifnot(is.function(read_dta))
+
+      - name: Stage binary for release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: ${{ steps.package.outputs.asset }}
+          if-no-files-found: error
+          retention-days: 1
+
+  attach:
+    name: Attach R binaries to release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download compiled packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: r-package-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Attach compiled packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" release-assets/* --clobber --repo "$GITHUB_REPOSITORY"
