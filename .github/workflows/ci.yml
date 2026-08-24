@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [stable, "1.74.0"]
+        toolchain: [stable, "1.98.0"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,9 +59,9 @@ jobs:
         env:
           CARGO_TARGET_DIR: ../../../target
         run: |
-          rustup toolchain install 1.97.1 --profile minimal
+          rustup toolchain install 1.98.0 --profile minimal
           tar -xzf rust/vendor.tar.gz -C rust
-          cargo +1.97.1 check --manifest-path rust/Cargo.toml --config rust/cargo-config.toml --locked --offline
+          cargo +1.98.0 check --manifest-path rust/Cargo.toml --config rust/cargo-config.toml --locked --offline
 
   fuzz-smoke:
     name: Deterministic fuzz smoke
@@ -100,14 +100,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            rust_toolchain: 1.97.1
+            rust_toolchain: 1.98.0
           - os: macos-latest
-            rust_toolchain: 1.97.1
+            rust_toolchain: 1.98.0
           - os: windows-latest
-            rust_toolchain: 1.97.1-x86_64-pc-windows-gnu
+            rust_toolchain: 1.98.0-x86_64-pc-windows-gnu
     env:
       _R_CHECK_FORCE_SUGGESTS_: "true"
       NOT_CRAN: "true"
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -122,25 +123,21 @@ jobs:
       - name: Install GNU Rust for Rtools
         if: runner.os == 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
           rust_version="$(rustc --version | awk '{print $2}')"
           rust_host="$(rustc -vV | sed -n 's/^host: //p')"
-          if [ "$rust_version-$rust_host" != "$RUST_TOOLCHAIN" ]; then
-            echo "Rust $rust_version host $rust_host does not match $RUST_TOOLCHAIN" >&2
+          if [ "$rust_version-$rust_host" != "$RUSTUP_TOOLCHAIN" ]; then
+            echo "Rust $rust_version host $rust_host does not match $RUSTUP_TOOLCHAIN" >&2
             exit 1
           fi
       - name: Install Rust
         if: runner.os != 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
       - name: Install R dependencies
         shell: Rscript {0}
         run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "haven", "callr", "httpuv"))

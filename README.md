@@ -44,7 +44,8 @@ classes.
 
 See the [R package README](r-package/dtaparser/README.md) for installation,
 documented interface limitations, conformance with `haven::read_dta()`, and
-benchmark results.
+[dta-parser, haven, and Stata time and peak-RSS benchmarks](r-package/dtaparser/README.md#performance-compared-with-haven-and-stata),
+including the synthetic, DHS, MICS, and NSFG results.
 
 ## Compatibility
 

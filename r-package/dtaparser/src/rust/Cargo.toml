@@ -2,7 +2,7 @@
 name = "dtaparser-r"
 version = "0.5.0"
 edition = "2021"
-rust-version = "1.97.1"
+rust-version = "1.98.0"
 license = "GPL-3.0-only"
 publish = false
 
@@ -10,6 +10,7 @@ publish = false
 crate-type = ["staticlib"]
 
 [dependencies]
+ahash = { version = "0.8", default-features = false, features = ["std"] }
 dta-parser = { path = "../dta-parser" }
 
 [profile.release]

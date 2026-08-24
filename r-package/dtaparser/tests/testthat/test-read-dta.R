@@ -284,6 +284,44 @@ test_that("native materialization survives forced garbage collection", {
     expect_identical(result[[1L]][[1L]], "AMC Concord")
 })
 
+test_that("native strings serialize and preserve copy-on-modify semantics", {
+    path <- normalizePath(fixture("auto_v118.dta"))
+    reference <- dtaparser:::.read_dta_rust_vectors(path)
+
+    encoded <- serialize(read_dta(path), NULL)
+    invisible(gc())
+    expect_identical(unserialize(encoded), reference)
+
+    original <- read_dta(path)
+    modified <- original
+    modified$make[[1L]] <- "replacement"
+    expect_identical(original$make[[1L]], reference$make[[1L]])
+    expect_identical(modified$make[[1L]], "replacement")
+
+    with_missing <- read_dta(path)$make
+    expect_false(anyNA(with_missing))
+    with_missing[[1L]] <- NA_character_
+    expect_true(anyNA(with_missing))
+    expect_identical(with_missing[[1L]], NA_character_)
+
+    retained <- read_dta(path)$make
+    invisible(gc())
+    expect_identical(retained[[2L]], reference$make[[2L]])
+})
+
+test_that("repeated string patterns can diverge without changing values", {
+    skip_if_not_installed("haven")
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    values <- c("alpha", "beta", "alpha", "beta", "alpha", "gamma",
+                "alpha", "beta", rep(c("delta", "epsilon", "zeta"), 8L))
+    haven::write_dta(data.frame(value = values), path, version = 15)
+
+    actual <- read_dta(path)
+    expect_identical(as.vector(actual$value), values)
+    expect_identical(actual, dtaparser:::.read_dta_rust_vectors(path))
+})
+
 test_that("wide materialization uses bounded native protection", {
     skip_if_not_installed("haven")
     path <- tempfile(fileext = ".dta")

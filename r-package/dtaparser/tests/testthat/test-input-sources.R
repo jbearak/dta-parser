@@ -255,7 +255,9 @@ test_that("temporary sources are cleaned when an interrupt unwinds the read", {
             )
             interrupted <- tryCatch(
                 {
-                    dtaparser::read_dta(bytes)
+                    dtaparser::read_dta(
+                        bytes, col_select = tidyselect::everything()
+                    )
                     FALSE
                 },
                 interrupt = function(condition) TRUE

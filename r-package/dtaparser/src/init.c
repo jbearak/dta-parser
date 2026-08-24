@@ -1,6 +1,8 @@
 #include <R.h>
+#include <Rversion.h>
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
+#include <R_ext/Altrep.h>
 #include <R_ext/Utils.h>
 #include <R_ext/Visibility.h>
 #include <stdint.h>
@@ -14,6 +16,169 @@ extern SEXP dtaparser_read_rust(
     char **
 );
 extern void dtaparser_free_error(char *);
+extern void dtaparser_dictstring_free(void *);
+
+typedef struct {
+    uint32_t *value_ids;
+    size_t length;
+} dictstring_data;
+
+static R_altrep_class_t dtaparser_dictstring_class;
+
+static void dictstring_finalize(SEXP external) {
+    void *data = R_ExternalPtrAddr(external);
+    if (data != NULL) {
+        R_ClearExternalPtr(external);
+        dtaparser_dictstring_free(data);
+    }
+    R_SetExternalPtrProtected(external, R_NilValue);
+}
+
+static dictstring_data *dictstring_storage(SEXP value) {
+    SEXP external = R_altrep_data1(value);
+    dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(external);
+    if (data == NULL) Rf_error("dtaparser string indices are no longer available");
+    return data;
+}
+
+static SEXP dictstring_dictionary(SEXP value) {
+    SEXP dictionary = R_ExternalPtrProtected(R_altrep_data1(value));
+    if (TYPEOF(dictionary) != STRSXP) {
+        Rf_error("dtaparser string dictionary is no longer available");
+    }
+    return dictionary;
+}
+
+static R_xlen_t dictstring_length(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized != R_NilValue) return XLENGTH(materialized);
+    size_t length = dictstring_storage(value)->length;
+    if (length > (size_t) R_XLEN_T_MAX) {
+        Rf_error("dtaparser string vector is too long");
+    }
+    return (R_xlen_t) length;
+}
+
+static SEXP dictstring_value(SEXP value, R_xlen_t index) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized != R_NilValue) return STRING_ELT(materialized, index);
+    dictstring_data *data = dictstring_storage(value);
+    if (index < 0 || (size_t) index >= data->length) {
+        Rf_error("invalid dtaparser string-vector index");
+    }
+    SEXP dictionary = dictstring_dictionary(value);
+    uint32_t id = data->value_ids[index];
+    if ((R_xlen_t) id >= XLENGTH(dictionary)) {
+        Rf_error("invalid dtaparser string-dictionary index");
+    }
+    return STRING_ELT(dictionary, (R_xlen_t) id);
+}
+
+static SEXP dictstring_materialize(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized != R_NilValue) return materialized;
+
+    dictstring_data *data = dictstring_storage(value);
+    SEXP dictionary = dictstring_dictionary(value);
+    R_xlen_t dictionary_length = XLENGTH(dictionary);
+    const SEXP *dictionary_values = STRING_PTR_RO(dictionary);
+    materialized = PROTECT(Rf_allocVector(STRSXP, (R_xlen_t) data->length));
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        uint32_t id = data->value_ids[index];
+        if ((R_xlen_t) id >= dictionary_length) {
+            Rf_error("invalid dtaparser string-dictionary index");
+        }
+        SET_STRING_ELT(
+            materialized, (R_xlen_t) index,
+            dictionary_values[id]
+        );
+    }
+    R_set_altrep_data2(value, materialized);
+    dictstring_finalize(R_altrep_data1(value));
+    UNPROTECT(1);
+    return materialized;
+}
+
+static void *dictstring_dataptr(SEXP value, Rboolean writeable) {
+    (void) writeable;
+    SEXP materialized = dictstring_materialize(value);
+#if R_VERSION >= R_Version(4, 6, 0)
+    return DATAPTR_RW(materialized);
+#else
+    return DATAPTR(materialized);
+#endif
+}
+
+static const void *dictstring_dataptr_or_null(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
+}
+
+static void dictstring_set_elt(SEXP value, R_xlen_t index, SEXP replacement) {
+    SET_STRING_ELT(dictstring_materialize(value), index, replacement);
+}
+
+static int dictstring_no_na(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized == R_NilValue) return 1;
+    R_xlen_t length = XLENGTH(materialized);
+    for (R_xlen_t index = 0; index < length; index++) {
+        if (STRING_ELT(materialized, index) == NA_STRING) return 0;
+    }
+    return 1;
+}
+
+typedef struct {
+    void *data;
+    const char *const *values;
+    const int *value_lengths;
+    size_t value_count;
+    int transferred;
+    SEXP result;
+} make_dictstring_context;
+
+static void make_dictstring_call(void *payload) {
+    make_dictstring_context *context = (make_dictstring_context *) payload;
+    SEXP dictionary = PROTECT(Rf_allocVector(
+        STRSXP, (R_xlen_t) context->value_count
+    ));
+    for (size_t index = 0; index < context->value_count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        SET_STRING_ELT(dictionary, (R_xlen_t) index, Rf_mkCharLenCE(
+            context->values[index], context->value_lengths[index], CE_UTF8
+        ));
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(
+        context->data, R_NilValue, dictionary
+    ));
+    R_RegisterCFinalizerEx(external, dictstring_finalize, TRUE);
+    context->transferred = 1;
+    SEXP result = PROTECT(R_new_altrep(
+        dtaparser_dictstring_class, external, R_NilValue
+    ));
+    R_PreserveObject(result);
+    context->result = result;
+    UNPROTECT(3);
+}
+
+int dtaparser_make_dictstring(
+    void *data, const char *const *values, const int *value_lengths,
+    size_t value_count, int *transferred, SEXP *result
+) {
+    if (data == NULL || transferred == NULL || result == NULL ||
+        (value_count > 0 && (values == NULL || value_lengths == NULL)) ||
+        value_count > (size_t) R_XLEN_T_MAX) {
+        return 0;
+    }
+    make_dictstring_context context = {
+        data, values, value_lengths, value_count, 0, NULL
+    };
+    int ok = R_ToplevelExec(make_dictstring_call, &context);
+    *transferred = context.transferred;
+    if (ok) *result = context.result;
+    return ok;
+}
 
 typedef struct {
     int type;
@@ -199,6 +364,17 @@ static const R_CallMethodDef CallEntries[] = {
 };
 
 void attribute_visible R_init_dtaparser(DllInfo *dll) {
+    dtaparser_dictstring_class = R_make_altstring_class(
+        "dtaparser_dictstring", "dtaparser", dll
+    );
+    R_set_altrep_Length_method(dtaparser_dictstring_class, dictstring_length);
+    R_set_altvec_Dataptr_method(dtaparser_dictstring_class, dictstring_dataptr);
+    R_set_altvec_Dataptr_or_null_method(
+        dtaparser_dictstring_class, dictstring_dataptr_or_null
+    );
+    R_set_altstring_Elt_method(dtaparser_dictstring_class, dictstring_value);
+    R_set_altstring_Set_elt_method(dtaparser_dictstring_class, dictstring_set_elt);
+    R_set_altstring_No_NA_method(dtaparser_dictstring_class, dictstring_no_na);
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
     R_forceSymbols(dll, TRUE);

@@ -3,6 +3,7 @@ use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
+use ahash::AHashMap;
 use dta_parser::{
     ColumnValues, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, MissingTag,
     ReadOptions, TextEncoding, ValueLabelTable, VariableInfo,
@@ -42,8 +43,47 @@ extern "C" {
         encoding: c_int,
         result: *mut Sexp,
     ) -> c_int;
+    fn dtaparser_make_dictstring(
+        data: *mut c_void,
+        values: *const *const c_char,
+        value_lengths: *const c_int,
+        value_count: usize,
+        transferred: *mut c_int,
+        result: *mut Sexp,
+    ) -> c_int;
     fn dtaparser_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtaparser_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
+}
+
+#[repr(C)]
+struct DictStringData {
+    value_ids: *mut u32,
+    length: usize,
+}
+
+impl DictStringData {
+    fn new(value_ids: Vec<u32>) -> Self {
+        let values = value_ids.into_boxed_slice();
+        let length = values.len();
+        let value_ids = Box::into_raw(values).cast::<u32>();
+        Self { value_ids, length }
+    }
+}
+
+#[no_mangle]
+/// Release dictionary indices previously transferred to an R ALTREP vector.
+///
+/// # Safety
+///
+/// `data` must be null or a live pointer created by `ProtectGuard::dictstring`,
+/// and it must not have been freed previously.
+pub unsafe extern "C" fn dtaparser_dictstring_free(data: *mut c_void) {
+    if data.is_null() {
+        return;
+    }
+    let data = Box::from_raw(data.cast::<DictStringData>());
+    let values = ptr::slice_from_raw_parts_mut(data.value_ids, data.length);
+    drop(Box::from_raw(values));
 }
 
 struct ProtectGuard {
@@ -68,6 +108,51 @@ impl ProtectGuard {
         self.objects.push(value);
         Ok(value)
     }
+
+    unsafe fn dictstring(&mut self, mut data: RStringData) -> Result<Sexp, String> {
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| "R could not track a preserved native vector".to_owned())?;
+        let mut value_pointers = Vec::new();
+        value_pointers
+            .try_reserve_exact(data.values.len())
+            .map_err(|_| "could not prepare R string pointers".to_owned())?;
+        value_pointers.resize(data.values.len(), ptr::null());
+        let mut value_lengths = Vec::new();
+        value_lengths
+            .try_reserve_exact(data.values.len())
+            .map_err(|_| "could not prepare R string lengths".to_owned())?;
+        value_lengths.resize(data.values.len(), 0);
+        for (value, &id) in &data.values {
+            let index = usize::try_from(id).map_err(|_| "invalid R string index".to_owned())?;
+            value_pointers[index] = value.as_ptr().cast::<c_char>();
+            value_lengths[index] =
+                c_int::try_from(value.len()).map_err(|_| "R string is too long".to_owned())?;
+        }
+
+        let storage = Box::into_raw(Box::new(DictStringData::new(std::mem::take(
+            &mut data.value_ids,
+        ))))
+        .cast::<c_void>();
+        let mut transferred = 0;
+        let mut result = ptr::null_mut();
+        let ok = dtaparser_make_dictstring(
+            storage,
+            value_pointers.as_ptr(),
+            value_lengths.as_ptr(),
+            value_pointers.len(),
+            &mut transferred,
+            &mut result,
+        );
+        if ok == 0 || result.is_null() {
+            if transferred == 0 {
+                dtaparser_dictstring_free(storage);
+            }
+            return Err("R could not allocate a dictionary string vector".to_owned());
+        }
+        self.objects.push(result);
+        Ok(result)
+    }
 }
 
 impl Drop for ProtectGuard {
@@ -87,7 +172,7 @@ fn check_interrupt() -> Result<(), String> {
 }
 
 fn poll_interrupt(index: usize) -> Result<(), String> {
-    if index % INTERRUPT_STRIDE == 0 {
+    if index.is_multiple_of(INTERRUPT_STRIDE) {
         check_interrupt()?;
     }
     Ok(())
@@ -354,11 +439,99 @@ unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
     }
     {
         let mut attribute_guard = ProtectGuard::new();
-        set_class(result, &["data.frame"], &mut attribute_guard)?;
+        set_class(
+            result,
+            &["tbl_df", "tbl", "data.frame"],
+            &mut attribute_guard,
+        )?;
     }
 
     attach_dataset_attributes(result, &data.metadata)?;
     Ok(result)
+}
+
+struct RStringData {
+    value_ids: Vec<u32>,
+    values: AHashMap<String, u32>,
+    value_views: Vec<(*const u8, usize)>,
+    cycle_period: Option<usize>,
+    cycle_rejected: bool,
+}
+
+impl RStringData {
+    fn new(expected_rows: usize) -> Result<Self, DtaError> {
+        let mut value_ids = Vec::new();
+        value_ids
+            .try_reserve_exact(expected_rows)
+            .map_err(|_| DtaError::Output("could not allocate R string indices".to_owned()))?;
+        Ok(Self {
+            value_ids,
+            values: AHashMap::new(),
+            value_views: Vec::new(),
+            cycle_period: None,
+            cycle_rejected: false,
+        })
+    }
+
+    fn push_id(&mut self, id: u32) -> Result<(), DtaError> {
+        self.value_ids
+            .try_reserve(1)
+            .map_err(|_| DtaError::Output("could not grow R string indices".to_owned()))?;
+        self.value_ids.push(id);
+        Ok(())
+    }
+
+    fn value_matches(&self, id: u32, value: &str) -> bool {
+        let Some(&(bytes, length)) = self.value_views.get(id as usize) else {
+            return false;
+        };
+        // The views point into immutable String keys owned by `values`. Moving
+        // a String during a hash-table resize does not move its heap buffer.
+        let cached = unsafe { std::slice::from_raw_parts(bytes, length) };
+        cached == value.as_bytes()
+    }
+
+    fn push(&mut self, row: usize, value: &str) -> Result<(), DtaError> {
+        if self.value_ids.len() != row {
+            return Err(DtaError::Output(format!(
+                "string output row mismatch: expected {}, got {row}",
+                self.value_ids.len()
+            )));
+        }
+        if let Some(period) = self.cycle_period {
+            let id = self.value_ids[row % period];
+            if self.value_matches(id, value) {
+                return self.push_id(id);
+            }
+            self.cycle_period = None;
+            self.cycle_rejected = true;
+        }
+        let id = if let Some(&id) = self.values.get(value) {
+            id
+        } else {
+            let id = u32::try_from(self.values.len())
+                .map_err(|_| DtaError::Output("too many distinct R strings".to_owned()))?;
+            self.values
+                .try_reserve(1)
+                .map_err(|_| DtaError::Output("could not grow the R string cache".to_owned()))?;
+            let mut owned = String::new();
+            owned
+                .try_reserve_exact(value.len())
+                .map_err(|_| DtaError::Output("could not cache an R string".to_owned()))?;
+            owned.push_str(value);
+            self.value_views
+                .try_reserve(1)
+                .map_err(|_| DtaError::Output("could not grow R string views".to_owned()))?;
+            let view = (owned.as_ptr(), owned.len());
+            self.values.insert(owned, id);
+            self.value_views.push(view);
+            id
+        };
+        if !self.cycle_rejected && row > 0 && id == self.value_ids[0] {
+            self.cycle_period = Some(row);
+        }
+        self.push_id(id)
+    }
 }
 
 enum RColumn {
@@ -369,10 +542,7 @@ enum RColumn {
     },
     String {
         vector: Sexp,
-        // Delaying R string allocation until after decoding is measurably
-        // faster than interleaving it with the parser's hot loop. Insertions
-        // still validate the DtaSink row-order contract below.
-        values: Vec<String>,
+        data: RStringData,
     },
 }
 
@@ -389,8 +559,6 @@ impl RDataFrameSink {
         row_count: u64,
         source_indices: &[u32],
     ) -> Result<Self, DtaError> {
-        let capacity = usize::try_from(row_count)
-            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let length = RLen::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let column_count = RLen::try_from(source_indices.len())
@@ -414,8 +582,11 @@ impl RDataFrameSink {
                 .ok_or(DtaError::ArithmeticOverflow("output source column"))?;
             let column = match variable.dta_type {
                 DtaType::FixedString(_) | DtaType::StrL => RColumn::String {
-                    vector: guard.alloc(STRSXP, length).map_err(DtaError::Output)?,
-                    values: Vec::with_capacity(capacity),
+                    vector: ptr::null_mut(),
+                    data: RStringData::new(
+                        usize::try_from(row_count)
+                            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?,
+                    )?,
                 },
                 _ => {
                     let vector = guard.alloc(REALSXP, length).map_err(DtaError::Output)?;
@@ -429,7 +600,9 @@ impl RDataFrameSink {
             let vector = match &column {
                 RColumn::Numeric { vector, .. } | RColumn::String { vector, .. } => *vector,
             };
-            SET_VECTOR_ELT(result, output_index as RLen, vector);
+            if !vector.is_null() {
+                SET_VECTOR_ELT(result, output_index as RLen, vector);
+            }
             SET_STRING_ELT(
                 names,
                 output_index as RLen,
@@ -481,19 +654,10 @@ impl RDataFrameSink {
         &mut self,
         column: usize,
         row: usize,
-        value: String,
+        value: &str,
     ) -> Result<(), DtaError> {
         match self.columns.get_mut(column) {
-            Some(RColumn::String { values, .. }) => {
-                if values.len() != row {
-                    return Err(DtaError::Output(format!(
-                        "string output row mismatch: expected {}, got {row}",
-                        values.len()
-                    )));
-                }
-                values.push(value);
-                Ok(())
-            }
+            Some(RColumn::String { data, .. }) => data.push(row, value),
             _ => Err(DtaError::Output("string output column mismatch".to_owned())),
         }
     }
@@ -562,14 +726,14 @@ impl DtaSink for RDataFrameSink {
         &mut self,
         column: usize,
         row: usize,
-        value: String,
+        value: &str,
     ) -> Result<(), DtaError> {
         self.push_string_value(column, row, value)
     }
 
     #[inline(always)]
     fn push_strl(&mut self, column: usize, row: usize, value: &str) -> Result<(), DtaError> {
-        self.push_string_value(column, row, value.to_owned())
+        self.push_string_value(column, row, value)
     }
 
     fn finish(
@@ -582,24 +746,19 @@ impl DtaSink for RDataFrameSink {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         unsafe {
-            for column in &mut self.columns {
-                let RColumn::String { vector, values } = column else {
+            for (output_index, column) in self.columns.iter_mut().enumerate() {
+                let RColumn::String { vector, data } = column else {
                     continue;
                 };
-                if values.len() != expected_string_rows {
+                if data.value_ids.len() != expected_string_rows {
                     return Err(DtaError::Output(format!(
                         "string output row count mismatch: expected {expected_string_rows}, got {}",
-                        values.len()
+                        data.value_ids.len()
                     )));
                 }
-                for (row, value) in values.drain(..).enumerate() {
-                    poll_interrupt(row).map_err(DtaError::Output)?;
-                    SET_STRING_ELT(
-                        *vector,
-                        row as RLen,
-                        r_char(&value).map_err(DtaError::Output)?,
-                    );
-                }
+                let data = std::mem::replace(data, RStringData::new(0)?);
+                *vector = self._guard.dictstring(data).map_err(DtaError::Output)?;
+                SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
             }
 
             for (output_index, &source_index) in self.source_indices.iter().enumerate() {
@@ -636,8 +795,12 @@ impl DtaSink for RDataFrameSink {
             }
             {
                 let mut attribute_guard = ProtectGuard::new();
-                set_class(self.result, &["data.frame"], &mut attribute_guard)
-                    .map_err(DtaError::Output)?;
+                set_class(
+                    self.result,
+                    &["tbl_df", "tbl", "data.frame"],
+                    &mut attribute_guard,
+                )
+                .map_err(DtaError::Output)?;
             }
             attach_dataset_attributes(self.result, &metadata).map_err(DtaError::Output)?;
         }

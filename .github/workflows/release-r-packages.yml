@@ -16,19 +16,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             platform: linux-x86_64
-            rust_toolchain: 1.97.1
+            rust_toolchain: 1.98.0
           - os: macos-latest
             platform: macos-arm64
-            rust_toolchain: 1.97.1
+            rust_toolchain: 1.98.0
           - os: windows-latest
             platform: windows-x86_64
-            rust_toolchain: 1.97.1-x86_64-pc-windows-gnu
+            rust_toolchain: 1.98.0-x86_64-pc-windows-gnu
     steps:
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,24 +61,20 @@ jobs:
       - name: Install Rust
         if: runner.os != 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
 
       - name: Install Rust for Rtools
         if: runner.os == 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
           rust_version="$(rustc --version | awk '{print $2}')"
           rust_host="$(rustc -vV | sed -n 's/^host: //p')"
-          if [ "$rust_version-$rust_host" != "$RUST_TOOLCHAIN" ]; then
-            echo "Rust $rust_version host $rust_host does not match $RUST_TOOLCHAIN" >&2
+          if [ "$rust_version-$rust_host" != "$RUSTUP_TOOLCHAIN" ]; then
+            echo "Rust $rust_version host $rust_host does not match $RUSTUP_TOOLCHAIN" >&2
             exit 1
           fi
 

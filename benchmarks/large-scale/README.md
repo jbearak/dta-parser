@@ -2,7 +2,8 @@
 
 This report-only benchmark compares three readers in the same R process:
 
-- `direct-r`: the public `dtaparser::read_dta()` path;
+- `dta-parser`: the public `dtaparser::read_dta()` path (recorded as `direct-r`
+  in raw machine-readable output);
 - `rust-vectors`: the retained internal `dtaparser:::.read_dta_rust_vectors()` baseline;
 - `haven`: `haven::read_dta()`.
 
@@ -12,11 +13,11 @@ iterations per implementation, workload, and size. Each path is warmed first,
 execution order reverses on alternating iterations, and garbage collection runs
 outside timed regions. There are no timing assertions or CI gates.
 
-Before timing, the runner requires exact identity between the direct-R and
+Before timing, the runner requires exact identity between the dta-parser and
 Rust-vector collectors for both workloads. It also compares 32-row projected
 windows at the beginning, middle, and end of each file with haven, allowing only
 `1e-7` numeric tolerance. The obsolete parser-only `dta_format_version`
-attribute is normalized uniformly for the haven comparison; direct-R versus
+attribute is normalized uniformly for the haven comparison; dta-parser versus
 Rust-vector identity is checked before that normalization. The manifest binds
 each canonical dataset path to its exact byte size, row width, row count,
 fixed-file overhead, and SHA-256. Those invariants and hashes are verified both
@@ -83,3 +84,28 @@ The default raw report has 1,212 rows:
 `summary.tsv` has four rows, one per size/workload combination, with median,
 5th percentile, 95th percentile, and median input throughput for all three
 implementations plus pairwise median speedups.
+
+The public reader interns each distinct character value once per column and
+returns a dictionary-backed ALTREP vector with compact row-to-dictionary
+indices. Timed reads therefore measure dataset loading and tibble construction;
+the dimension check does not allocate the full row-level string-pointer vector. The exact
+dta-parser/Rust-vector comparison and the haven window comparisons before timing
+do access character values, so laziness cannot hide correctness differences.
+Use the separate `benchmarks/r-materialization/string-workloads.R` and
+`benchmarks/r-materialization/memory-worker.R` harnesses for matched string-access and
+fresh-process peak-memory measurements, including workloads that force the
+complete returned object.
+
+Stata 18 can be measured on the same generated input with internal `use`
+timing and fresh-process peak RSS. `STATA_BIN` may override executable
+discovery:
+
+```sh
+Rscript benchmarks/large-scale/stata.R \
+  target/large-scale/synthetic-1gb.dta \
+  target/large-scale/stata-1gb-full.tsv 7 full
+
+Rscript benchmarks/large-scale/stata.R \
+  target/large-scale/synthetic-1gb.dta \
+  target/large-scale/stata-1gb-projected.tsv 7 projected-eight-columns
+```

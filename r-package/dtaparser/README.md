@@ -4,8 +4,11 @@
 reader. Its exported `read_dta()` function deliberately mirrors the formal
 arguments of `haven::read_dta()`, while observation storage is decoded by Rust
 and materialized through an R-specific collector. Numeric values are written
-into their final R vectors during decoding; strings are batch-materialized to
-avoid interleaving R allocation with the parser's hot loop.
+into their final R vectors during decoding. Each character column interns its
+distinct normalized UTF-8 values once and keeps compact row-to-dictionary
+indices behind an ordinary R character vector through ALTREP. Element access
+resolves the dictionary immediately; allocation of the complete row-level
+string-pointer vector is deferred, without retaining the source file.
 
 ## Installation
 
@@ -79,40 +82,79 @@ With an explicit UTF-8 override, malformed input sequences are replaced
 deterministically with U+FFFD. Haven 2.5.5 may instead omit or empty an affected
 label.
 
-## Performance compared with haven
+## Performance compared with haven and Stata
 
-A warm-cache benchmark on an Apple M4 Max compared the public Direct-R
-`dtaparser::read_dta()` path, the retained internal Rust-vector collector, and
-`haven::read_dta()` in the same process and run. The deterministic mixed-type
-Stata 15 files contained 40 columns; the projected workload selected eight
-representative columns. Each cell used 101 measured iterations after warmup,
-alternated implementation order, and ran garbage collection outside timing.
+On an Apple M4 Max with 128 GB RAM, the new dictionary-backed implementation
+was benchmarked against haven 2.5.5 and Stata/MP 18. The synthetic files are
+deterministic mixed-type Stata 15 datasets with 40 columns; their time cells are
+seven-run warm-cache medians. The DHS, MICS, and NSFG suite visited all 1,823
+regular DTA files under the local corpus cache in fresh processes. Its time
+cells are sums and its memory cells are the largest per-file peak RSS on the
+common set that all three readers loaded with identical dimensions.
 
-| Input | Rows | Workload | Direct-R median | Rust-vector median | haven median | Direct-R vs haven |
-| --- | ---: | --- | ---: | ---: | ---: | ---: |
-| 100 MB | 222,656 | Full, 40 columns | 0.303 s | 0.247 s | 1.19 s | 3.92739273927393x |
-| 100 MB | 222,656 | Projected, 8 columns | 0.082 s | 0.082 s | 0.306 s | 3.73170731707317x |
-| 1 GB | 2,227,111 | Full, 40 columns | 2.185 s | 2.337 s | 11.795 s | 5.39816933638444x |
-| 1 GB | 2,227,111 | Projected, 8 columns | 0.755 s | 0.744 s | 2.903 s | 3.84503311258278x |
+| Dataset/workload | Common files | Input | dta-parser time | haven time | Stata time | dta-parser vs haven | dta-parser vs Stata | dta-parser peak RSS | haven peak RSS | Stata peak RSS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Synthetic 100 MB, full 40 columns | 1 | 0.100 GB | 0.139 s | 1.053 s | 0.011 s | 7.58x | 0.079x | 0.273 GB | 0.253 GB | 0.143 GB |
+| Synthetic 100 MB, projected 8 columns | 1 | 0.100 GB | 0.051 s | 0.271 s | 0.014 s | 5.31x | 0.275x | 0.198 GB | 0.168 GB | 0.058 GB |
+| Synthetic 1 GB, full 40 columns | 1 | 1.000 GB | 0.911 s | 10.958 s | 0.101 s | 12.03x | 0.111x | 0.834 GB | 0.888 GB | 1.133 GB |
+| Synthetic 1 GB, projected 8 columns | 1 | 1.000 GB | 0.333 s | 3.120 s | 0.140 s | 9.37x | 0.420x | 0.299 GB | 0.292 GB | 0.365 GB |
+| DHS | 641 | 46.903 GB | 297.810 s | 2,727.051 s | 68.806 s | 9.16x | 0.231x | 35.183 GB | 35.103 GB | 5.256 GB |
+| MICS | 949 | 3.690 GB | 31.815 s | 216.732 s | 1.155 s | 6.81x | 0.036x | 0.649 GB | 0.669 GB | 0.100 GB |
+| NSFG | 222 | 5.772 GB | 34.634 s | 234.588 s | 0.885 s | 6.77x | 0.026x | 2.458 GB | 2.470 GB | 0.435 GB |
 
-Direct-R vs haven is the haven median divided by the Direct-R median, so higher
-means Direct-R was faster. Before timing, Direct-R and Rust-vector results were
-required to be exactly identical. Projected 32-row windows from the start,
-middle, and end were also compared with haven, subject only to the conformance
-suite's `1e-7` tolerance for nonmissing floating-point values.
+Both ratio columns are comparator time divided by dta-parser time. Values above
+1x mean dta-parser was faster; values below 1x mean the comparator was faster.
 
-These are machine- and workload-specific measurements, not performance
-guarantees or CI thresholds. The Rust-vector implementation remains an internal
-A/B and differential-testing baseline. Its numbers above are from the same run
-as Direct-R and haven; the earlier
-[direct-R materialization results](../../benchmarks/r-materialization/results-2026-07-26.md)
-remain useful historical evidence about the collector transition but are not
-combined with these ratios. Haven is the compatibility oracle because it is the
-established R reader, not because it is infallible; version-specific bugs,
-encoding behavior, and native coercion edge cases remain possible. See the
-[full reproducible report](../../benchmarks/large-scale/results-2026-07-27.md)
-for p05/p95 values, throughput, provenance, validation, and exact artifacts. No
-10 GB file was generated or measured in this scoped run.
+Stata's result is not a metadata-only or lazy `use`. The official
+[`use` manual](https://www.stata.com/manuals/duse.pdf) says that `use` loads a
+Stata-format dataset into memory, and the
+[User's Guide](https://www.stata.com/manuals/u.pdf) says Stata works with a copy
+of the data loaded into memory and stores data in memory. The measured RSS also
+supports a real load: the 1 GB full synthetic file produced a 1.133 GB Stata
+process, and the largest DHS read produced 5.256 GB. Stata's exact loader is
+closed source, but its advantage plausibly comes from reading its native format
+into compact native storage widths, plus mature implementation work and the
+warm operating-system page cache. Dta-parser must additionally construct R
+objects; in particular, its numeric result vectors use R's eight-byte doubles.
+Matching Stata while returning ordinary R-compatible objects is therefore a
+different engineering target, but the Stata time is still a valid eager-load
+reference rather than an unattainable lazy-open measurement.
+
+For the synthetic loads, dta-parser was 5.31--12.03 times as fast as haven. On
+the real corpora it was 6.77--9.16 times as fast, with peak RSS 3.0% lower on
+MICS, 0.5% lower on NSFG, and 0.2% higher on the largest DHS file. Stata was
+faster than dta-parser: 4.33 times on DHS, 27.55 times on MICS, and 39.13 times
+on NSFG. Stata also used 82.3--85.1% less peak RSS on those corpus maxima. On
+the 1 GB full synthetic load, however, dta-parser used 26.4% less peak RSS than
+Stata. These are workload- and machine-specific observations, not guarantees.
+
+The corpus comparison is deliberately paired. Two MICS files were rejected by
+all three readers. Nine additional files (two DHS and seven NSFG) were read with
+matching dimensions by dta-parser and Stata but did not yield a comparable
+haven result, so they are excluded from every aggregate rather than giving one
+reader a different input set. Private paths and values are not published.
+
+R elapsed time covers the reader call, while Stata elapsed time covers its
+`use` command; application startup is excluded from both. Peak RSS comes from a
+fresh process and includes the complete runtime. The synthetic R timings
+alternate reader order after warmup; Stata's full and projected reads use the
+same generated files. Exact dta-parser collector identity and sampled haven
+parity are checked before synthetic timing. The corpus suite rotates reader
+order between files and retains only successful, dimension-identical triples.
+
+Compared with the old eager collector rebuilt under Rust 1.98.0, the new 1 GB
+full-load median fell from 2.354 s to 0.911 s (61.3%) and dimensions-only peak
+RSS fell from 2.184 GB to 0.834 GB (61.8%). Forcing every character vector with
+`object.size()` still completes in 1.722 s versus 2.256 s for the eager
+collector and uses 0.975 GB peak RSS versus haven's 1.313 GB. Thus the deferred
+dictionary representation keeps its partial-access benefit without imposing
+the earlier raw-deferral prototype's forcing cliff.
+
+See the [synthetic benchmark report](../../benchmarks/large-scale/results-2026-08-24.md)
+and [DHS/MICS/NSFG report](../../benchmarks/r-corpus-performance/results-2026-08-24.md)
+for exact methodology, provenance, validation, and reproduction commands. The
+benchmark harnesses and raw private outputs are report-only evidence, not CI
+performance thresholds.
 
 ## Scope and limitations
 
@@ -127,6 +169,10 @@ for p05/p95 values, throughput, provenance, validation, and exact artifacts. No
 - `.name_repair` is delegated to `tibble::as_tibble()` after selection aliases
   are applied.
 - Reads are synchronous. Long reads cooperatively check for R user interrupts.
+- Character columns use dictionary-backed ALTREP vectors. Loading does not
+  depend on the source path after `read_dta()` returns. Distinct R strings are
+  created once during the load; operations that request a contiguous pointer
+  to every row defer only that pointer-vector allocation until it is needed.
 - R data frames are limited to `2^31 - 1` rows. `skip` must be an exactly
   representable non-negative whole number no larger than `2^53`. For `n_max`,
   `NA`, either infinity, and any negative finite value use haven's intentional
@@ -164,7 +210,7 @@ These deterministic choices avoid silent truncation and platform-dependent
 overflow while retaining haven parity for meaningful row-window requests.
 
 The package includes a locked Cargo dependency graph and vendored crates so
-source builds do not contact a package registry. A Rust 1.97.1-or-newer toolchain
+source builds do not contact a package registry. A Rust 1.98.0-or-newer toolchain
 and Cargo are required for the R bridge on every platform. The Rust target
 architecture must match R. On Windows, Rtools additionally requires a
 MinGW-compatible Rust host: `x86_64-pc-windows-gnu` for x86_64 R or
@@ -180,7 +226,7 @@ haven. Missing R dependencies produce an explicit `SKIP`; CI sets
 `DTA_REQUIRE_R_CONFORMANCE=1` and checks Linux, macOS, and Windows. Only
 nonmissing floating values permit `1e-7` relative tolerance; missing tags,
 labels, formats, value-label tables, strings, names, dimensions, projections,
-and row windows are otherwise exact. Package tests also require the direct-R
+and row windows are otherwise exact. Package tests also require the dta-parser
 collector to be identical to the retained `DtaData`/Rust-vector collector on
 every bundled fixture.
 
@@ -208,6 +254,6 @@ third-party Cargo dependencies, and `scripts/check-r-cargo-vendor.sh` verifies
 the archive against `vendor.sha256` and the bridge lock. Configure always
 refreshes the extracted dependencies before building. Python 3.11 or newer is
 only required for repository maintenance and CI, not R package installation.
-Windows CI installs and selects Rust 1.97.1 with the
+Windows CI installs and selects Rust 1.98.0 with the
 `x86_64-pc-windows-gnu` host matching R, confirms the exact version and host,
 then builds and checks the package through Rtools.
