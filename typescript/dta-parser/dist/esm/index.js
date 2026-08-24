@@ -541,13 +541,83 @@ function parse_metadata(buffer) {
 
 // src/legacy-layout.ts
 var LAYOUTS = {
-  105: { header_size: 60, dataset_label_width: 32, varname_width: 9, format_width: 12, value_label_name_width: 9, variable_label_width: 32, expansion_length_width: 2 },
-  108: { header_size: 109, dataset_label_width: 81, varname_width: 9, format_width: 12, value_label_name_width: 9, variable_label_width: 81, expansion_length_width: 2 },
-  110: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 12, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4 },
-  111: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 12, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4 },
-  113: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 12, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4 },
-  114: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 49, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4 },
-  115: { header_size: 109, dataset_label_width: 81, varname_width: 33, format_width: 49, value_label_name_width: 33, variable_label_width: 81, expansion_length_width: 4 }
+  105: {
+    header_size: 60,
+    dataset_label_width: 32,
+    varname_width: 9,
+    format_width: 12,
+    value_label_name_width: 9,
+    variable_label_width: 32,
+    expansion_length_width: 2,
+    value_label_table_name_width: 9,
+    value_label_layout: "fixed8"
+  },
+  108: {
+    header_size: 109,
+    dataset_label_width: 81,
+    varname_width: 9,
+    format_width: 12,
+    value_label_name_width: 9,
+    variable_label_width: 81,
+    expansion_length_width: 2,
+    value_label_table_name_width: 9,
+    value_label_layout: "offset_table"
+  },
+  110: {
+    header_size: 109,
+    dataset_label_width: 81,
+    varname_width: 33,
+    format_width: 12,
+    value_label_name_width: 33,
+    variable_label_width: 81,
+    expansion_length_width: 4,
+    value_label_table_name_width: 33,
+    value_label_layout: "offset_table"
+  },
+  111: {
+    header_size: 109,
+    dataset_label_width: 81,
+    varname_width: 33,
+    format_width: 12,
+    value_label_name_width: 33,
+    variable_label_width: 81,
+    expansion_length_width: 4,
+    value_label_table_name_width: 33,
+    value_label_layout: "offset_table"
+  },
+  113: {
+    header_size: 109,
+    dataset_label_width: 81,
+    varname_width: 33,
+    format_width: 12,
+    value_label_name_width: 33,
+    variable_label_width: 81,
+    expansion_length_width: 4,
+    value_label_table_name_width: 33,
+    value_label_layout: "offset_table"
+  },
+  114: {
+    header_size: 109,
+    dataset_label_width: 81,
+    varname_width: 33,
+    format_width: 49,
+    value_label_name_width: 33,
+    variable_label_width: 81,
+    expansion_length_width: 4,
+    value_label_table_name_width: 33,
+    value_label_layout: "offset_table"
+  },
+  115: {
+    header_size: 109,
+    dataset_label_width: 81,
+    varname_width: 33,
+    format_width: 49,
+    value_label_name_width: 33,
+    variable_label_width: 81,
+    expansion_length_width: 4,
+    value_label_table_name_width: 33,
+    value_label_layout: "offset_table"
+  }
 };
 function legacy_layout_for_version(version) {
   return LAYOUTS[version];
@@ -1285,14 +1355,7 @@ var VALUE_LABELS_TAG_LENGTH = VALUE_LABELS_TAG.length;
 var LBL_OPEN_TAG = "<lbl>";
 var LBL_OPEN_TAG_LENGTH = LBL_OPEN_TAG.length;
 var LBL_CLOSE_TAG_LENGTH = 6;
-var LABEL_NAME_WIDTH = {
-  105: 33,
-  108: 9,
-  110: 33,
-  111: 33,
-  113: 33,
-  114: 33,
-  115: 33,
+var MODERN_LABEL_NAME_WIDTH = {
   117: 33,
   118: 129,
   119: 129
@@ -1456,7 +1519,7 @@ function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos,
   }
   return my_result;
 }
-function parse_old_105_entries(bytes, view, little_endian, start_pos, section_end) {
+function parse_fixed8_entries(bytes, view, little_endian, name_width, start_pos, section_end) {
   const my_result = /* @__PURE__ */ new Map();
   let pos = start_pos;
   let my_known_nonzero = -1;
@@ -1471,7 +1534,8 @@ function parse_old_105_entries(bytes, view, little_endian, start_pos, section_en
       }
     }
     if (my_known_nonzero < pos) break;
-    if (pos + 12 > section_end) {
+    const my_header_width = 2 + name_width + 1;
+    if (pos + my_header_width > section_end) {
       throw new Error(
         "Corrupt value label table: trailing bytes"
       );
@@ -1481,10 +1545,10 @@ function parse_old_105_entries(bytes, view, little_endian, start_pos, section_en
     const my_name = read_label_name(
       bytes,
       pos,
-      9,
+      name_width,
       LEGACY_DECODER2
     );
-    pos += 10;
+    pos += name_width + 1;
     if (pos + my_n * 10 > section_end) {
       throw new Error(
         "Corrupt value label table: truncated entry"
@@ -1575,47 +1639,55 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const little_endian = metadata.byte_order === "LSF";
-  let my_name_width = LABEL_NAME_WIDTH[metadata.format_version];
   const my_legacy = is_legacy_format(
     metadata.format_version
   );
   const my_tag_skip = my_legacy ? 0 : VALUE_LABELS_TAG_LENGTH;
   const my_start_pos = metadata.section_offsets.value_labels - base_offset + my_tag_skip;
   const my_section_end = metadata.section_offsets.stata_data_close - base_offset;
-  if (metadata.format_version === 105 && !has_variable_label_section_framing(
-    bytes,
-    view,
-    little_endian,
-    my_start_pos,
-    my_section_end,
-    33
-  )) {
-    return parse_old_105_entries(
+  if (is_legacy_format(metadata.format_version)) {
+    const my_layout = legacy_layout_for_version(
+      metadata.format_version
+    );
+    let my_value_label_layout = my_layout.value_label_layout;
+    let my_name_width = my_layout.value_label_table_name_width;
+    if (metadata.format_version === 105 && has_variable_label_section_framing(
       bytes,
       view,
       little_endian,
       my_start_pos,
-      my_section_end
-    );
-  }
-  if (metadata.format_version === 108 && !has_variable_label_section_framing(
-    bytes,
-    view,
-    little_endian,
-    my_start_pos,
-    my_section_end,
-    9
-  ) && has_variable_label_section_framing(
-    bytes,
-    view,
-    little_endian,
-    my_start_pos,
-    my_section_end,
-    33
-  )) {
-    my_name_width = 33;
-  }
-  if (my_legacy) {
+      my_section_end,
+      33
+    )) {
+      my_value_label_layout = "offset_table";
+      my_name_width = 33;
+    } else if (metadata.format_version === 108 && !has_variable_label_section_framing(
+      bytes,
+      view,
+      little_endian,
+      my_start_pos,
+      my_section_end,
+      9
+    ) && has_variable_label_section_framing(
+      bytes,
+      view,
+      little_endian,
+      my_start_pos,
+      my_section_end,
+      33
+    )) {
+      my_name_width = 33;
+    }
+    if (my_value_label_layout === "fixed8") {
+      return parse_fixed8_entries(
+        bytes,
+        view,
+        little_endian,
+        my_name_width,
+        my_start_pos,
+        my_section_end
+      );
+    }
     return parse_legacy_entries(
       bytes,
       view,
@@ -1629,7 +1701,7 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
     bytes,
     view,
     little_endian,
-    my_name_width,
+    MODERN_LABEL_NAME_WIDTH[metadata.format_version],
     my_start_pos,
     my_section_end
   );
