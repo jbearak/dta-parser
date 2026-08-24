@@ -105,8 +105,8 @@ the per-cell loop.
 The file reader builds one format-neutral observation plan for every release
 before decoding. `DtaFile::parallel_thread_count` gates the current multicore
 executor to sufficiently large projections in every supported release;
-oversized rows or small workloads return one and use the synchronous
-column-oriented executor.
+small eligible workloads use the synchronous column-oriented executor, while
+rows wider than the staging limit use the ordinary serial fallback.
 `DtaFile::read_with_parallel_interrupt` materializes the built-in Rust model,
 while `read_with_parallel_sink_and_interrupt` accepts a `ParallelDtaSink` that
 splits independently owned `DtaColumnSink` values across persistent workers.
