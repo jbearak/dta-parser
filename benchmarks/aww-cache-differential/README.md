@@ -5,6 +5,9 @@ name ends in `.dta` in any letter case beneath `/opt/aww_cache`. It does not
 follow file or directory symlinks. For every supported file it compares the
 public `dtaparser::read_dta()` and `haven::read_dta()` readers across bounded
 column batches and row windows until both readers attest the end of the file.
+Both readers use their public default encoding behavior. The workflow does not
+set Stata's encoding; Stata 18 opens disputed source files with an ordinary
+`use` command and applies its own text semantics.
 Each reader's column count is established independently with single-column
 public-reader probes. Metadata comparison outputs, including projected source
 names and storage types, are checkpointed in the same bounded column batches.

@@ -19,7 +19,7 @@ fn replace_first(bytes: &mut [u8], needle: &[u8], replacement: u8) {
 }
 
 #[test]
-fn auto_matches_stata_18_utf8_decoding_for_pre_unicode_release_117() {
+fn auto_uses_windows_1252_for_pre_unicode_release_117() {
     let mut bytes = fixture("auto_v117.dta");
     replace_first(&mut bytes, b"1978 automobile data", 0x80);
     replace_first(&mut bytes, b"Make and model", 0x80);
@@ -27,18 +27,26 @@ fn auto_matches_stata_18_utf8_decoding_for_pre_unicode_release_117() {
     replace_first(&mut bytes, b"Domestic", 0x80);
 
     let auto = dta_parser::read_dta(&bytes).unwrap();
-    assert!(auto.metadata.dataset_label.starts_with('\u{fffd}'));
-    assert!(auto.metadata.variables[0].label.starts_with('\u{fffd}'));
+    assert!(auto.metadata.dataset_label.starts_with('\u{20ac}'));
+    assert!(auto.metadata.variables[0].label.starts_with('\u{20ac}'));
     let ColumnValues::FixedString { values } = &auto.columns[0].values else {
         panic!("make must be a fixed string");
     };
-    assert!(values[0].starts_with('\u{fffd}'));
+    assert!(values[0].starts_with('\u{20ac}'));
     assert!(auto.value_label_table("origin").unwrap().entries[0]
         .label
-        .starts_with('\u{fffd}'));
+        .starts_with('\u{20ac}'));
 
-    let cp1252 = read_dta_with_encoding(&bytes, TextEncoding::Windows1252).unwrap();
-    assert!(cp1252.metadata.dataset_label.starts_with('\u{20ac}'));
+    let strict = read_dta_with_encoding(&bytes, TextEncoding::Utf8).unwrap();
+    assert!(strict.metadata.dataset_label.starts_with('\u{fffd}'));
+    assert!(strict.metadata.variables[0].label.starts_with('\u{fffd}'));
+    let ColumnValues::FixedString { values } = &strict.columns[0].values else {
+        panic!("make must be a fixed string");
+    };
+    assert!(values[0].starts_with('\u{fffd}'));
+    assert!(strict.value_label_table("origin").unwrap().entries[0]
+        .label
+        .starts_with('\u{fffd}'));
 }
 
 #[test]

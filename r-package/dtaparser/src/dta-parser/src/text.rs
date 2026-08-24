@@ -4,9 +4,10 @@ use crate::{DtaError, FormatVersion};
 
 /// Source encoding used for textual fields in a Stata file.
 ///
-/// [`TextEncoding::Auto`] follows Stata 18 and decodes every supported release
-/// as UTF-8. Pre-Unicode DTA releases do not record a code page; callers that
-/// know the legacy encoding can override it explicitly.
+/// [`TextEncoding::Auto`] uses Windows-1252 for pre-Unicode releases and UTF-8
+/// for releases 118--119. Pre-Unicode DTA releases do not record a code page,
+/// so callers can override this pragmatic default when the source encoding is
+/// known or strict compatibility with current Stata is required.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum TextEncoding {
     #[default]
@@ -36,9 +37,10 @@ impl TextEncoding {
         }
     }
 
-    pub(crate) fn resolve(self, _version: FormatVersion) -> Self {
+    pub(crate) fn resolve(self, version: FormatVersion) -> Self {
         match self {
-            Self::Auto => Self::Utf8,
+            Self::Auto if version.uses_utf8_text() => Self::Utf8,
+            Self::Auto => Self::Windows1252,
             explicit => explicit,
         }
     }

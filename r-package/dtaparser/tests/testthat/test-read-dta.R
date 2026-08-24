@@ -61,18 +61,6 @@ test_that("all bundled fixtures agree with haven", {
         rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
         expected <- haven::read_dta(path)
         info <- basename(path)
-        if (grepl("^synthetic_v(105|108|110|111)[.]dta$", info)) {
-            # Pre-Unicode releases do not record a code page. Stata 18 reads
-            # this fixture's isolated CP1252 byte with UTF-8 replacement;
-            # haven's locale-based default instead decodes it as e-acute.
-            release <- sub("^synthetic_v([0-9]+)[.]dta$", "\\1", info)
-            attr(expected, "label") <- if (identical(release, "111")) {
-                "Stata/SE 7 Caf\ufffd fixture"
-            } else {
-                sprintf("Release %s Caf\ufffd fixture", release)
-            }
-            expected$text[expected$text == "Caf\u00e9"] <- "Caf\ufffd"
-        }
         metadata <- dtaparser:::.dta_metadata(normalizePath(path))
         storage <- stats::setNames(
             attr(metadata, "dta_storage", exact = TRUE),
