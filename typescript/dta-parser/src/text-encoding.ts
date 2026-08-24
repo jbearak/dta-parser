@@ -36,6 +36,8 @@ export interface DtaTextDecoder {
     decode(input: Uint8Array): string;
 }
 
+// DTA fields are independently bounded values, not BOM-signaled documents.
+// Preserve a leading U+FEFF to match Rust's decoder_without_bom_handling.
 const UTF8_DECODER = new TextDecoder(
     'utf-8', { ignoreBOM: true }
 );

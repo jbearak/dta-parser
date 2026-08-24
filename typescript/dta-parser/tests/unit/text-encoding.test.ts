@@ -11,6 +11,7 @@ import {
     resolve_text_encoding,
 } from '../../src/index';
 import { DtaFile } from '../../src/node';
+import { text_decoder } from '../../src/text-encoding';
 
 const FIXTURE_DIR = path.resolve(
     __dirname, '../../../../tests/fixtures/dta'
@@ -205,5 +206,11 @@ describe('text encoding policy', () => {
         expect(resolve_text_encoding(117, 'UTF8')).toBe('utf-8');
         expect(resolve_text_encoding(118, 'CP1252')).toBe('windows-1252');
         expect(resolve_text_encoding(118, 'latin1')).toBe('iso-8859-1');
+    });
+
+    it('preserves a leading UTF-8 BOM as field data like Rust', () => {
+        expect(text_decoder('utf-8').decode(Uint8Array.of(
+            0xEF, 0xBB, 0xBF, 0x78
+        ))).toBe('\uFEFFx');
     });
 });
