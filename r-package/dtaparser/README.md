@@ -9,11 +9,10 @@ avoid interleaving R allocation with the parser's hot loop.
 
 ## Installation
 
-Published GitHub Releases include compiled packages for R release on Linux
-x86_64, macOS ARM64, and Windows x86_64. Windows ARM64 users must build the
-package from source. The R version, platform, and architecture are part of each
-asset name. A matching asset URL can be installed with its required dependencies
-by `pak` without compiling `dtaparser` locally:
+Published GitHub Releases include compiled R packages for Windows x86_64,
+Linux x86_64, and macOS ARM64. The R version, platform, and architecture are
+part of each asset name. A matching asset URL can be installed with its required
+dependencies by `pak` without compiling `dtaparser` locally:
 
 ```r
 pak::pkg_install("url::https://github.com/jbearak/dta-parser/releases/download/vX.Y.Z/<matching-asset>")
