@@ -21,6 +21,14 @@ import {
     byte_width_for_type_code,
     type_code_to_dta_type,
 } from './types';
+import type {
+    DtaTextDecoder,
+    TextEncodingOptions,
+} from './text-encoding';
+import {
+    resolve_text_encoding,
+    text_decoder,
+} from './text-encoding';
 
 // -----------------------------------------------------------
 // Constants
@@ -50,7 +58,7 @@ const FIELD_WIDTHS = {
 
 const SECTION_MAP_ENTRIES = 14;
 
-const TEXT_DECODER = new TextDecoder('utf-8');
+const ASCII_DECODER = new TextDecoder('utf-8');
 
 // Tag byte sequences (pre-encoded for scanning)
 const TAG_BYTEORDER_OPEN = encode_tag('<byteorder>');
@@ -118,14 +126,15 @@ function find_bytes(
 function read_fixed_string(
     bytes: Uint8Array,
     offset: number,
-    field_width: number
+    field_width: number,
+    decoder: DtaTextDecoder
 ): string {
     let my_end = offset;
     const my_limit = offset + field_width;
     while (my_end < my_limit && bytes[my_end] !== 0) {
         my_end++;
     }
-    return TEXT_DECODER.decode(
+    return decoder.decode(
         bytes.subarray(offset, my_end)
     );
 }
@@ -178,7 +187,7 @@ function parse_byte_order(
     if (my_close === -1) {
         throw new Error('Missing </byteorder> tag');
     }
-    const my_str = TEXT_DECODER.decode(
+    const my_str = ASCII_DECODER.decode(
         bytes.subarray(my_data_start, my_close)
     );
     if (my_str !== 'MSF' && my_str !== 'LSF') {
@@ -272,7 +281,8 @@ function parse_dataset_label(
     view: DataView,
     little_endian: boolean,
     format_version: FormatVersion,
-    start: number
+    start: number,
+    decoder: DtaTextDecoder
 ): { dataset_label: string; end: number } {
     const my_open = find_bytes(
         bytes, TAG_LABEL_OPEN, start
@@ -295,7 +305,7 @@ function parse_dataset_label(
         my_str_start = my_data_start + 2;
     }
 
-    const my_label = TEXT_DECODER.decode(
+    const my_label = decoder.decode(
         bytes.subarray(my_str_start, my_str_start + my_str_len)
     );
 
@@ -404,7 +414,8 @@ function parse_fixed_string_section(
     tag: Uint8Array,
     search_start: number,
     nvar: number,
-    field_width: number
+    field_width: number,
+    decoder: DtaTextDecoder
 ): string[] {
     const my_tag_pos = find_bytes(
         bytes, tag, search_start
@@ -429,7 +440,8 @@ function parse_fixed_string_section(
             read_fixed_string(
                 bytes,
                 my_data_start + i * field_width,
-                field_width
+                field_width,
+                decoder
             )
         );
     }
@@ -441,7 +453,8 @@ function parse_fixed_string_section(
 // -----------------------------------------------------------
 
 export function parse_metadata(
-    buffer: ArrayBuffer
+    buffer: ArrayBuffer,
+    options: TextEncodingOptions = {}
 ): DtaMetadata {
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer);
@@ -450,6 +463,10 @@ export function parse_metadata(
     //    (always 117, 118, or 119 — legacy is handled
     //    by legacy-header.ts)
     const format_version = detect_format_version(bytes);
+    const text_encoding = resolve_text_encoding(
+        format_version, options.encoding
+    );
+    const my_decoder = text_decoder(text_encoding);
     const my_widths = FIELD_WIDTHS[
         format_version as 117 | 118 | 119
     ];
@@ -475,7 +492,7 @@ export function parse_metadata(
     const { dataset_label, end: my_after_label } =
         parse_dataset_label(
             bytes, view, little_endian,
-            format_version, my_after_n
+            format_version, my_after_n, my_decoder
         );
 
     // 6. Skip timestamp — find </timestamp> to locate
@@ -501,14 +518,14 @@ export function parse_metadata(
     const the_varnames = parse_fixed_string_section(
         bytes, TAG_VARNAMES_OPEN,
         section_offsets.varnames,
-        nvar, my_widths.varname
+        nvar, my_widths.varname, my_decoder
     );
 
     // 10. Parse display formats
     const the_formats = parse_fixed_string_section(
         bytes, TAG_FORMATS_OPEN,
         section_offsets.formats,
-        nvar, my_widths.format
+        nvar, my_widths.format, my_decoder
     );
 
     // 11. Parse value label names
@@ -516,7 +533,7 @@ export function parse_metadata(
         parse_fixed_string_section(
             bytes, TAG_VALUE_LABEL_NAMES_OPEN,
             section_offsets.value_label_names,
-            nvar, my_widths.value_label_name
+            nvar, my_widths.value_label_name, my_decoder
         );
 
     // 12. Parse variable labels
@@ -524,7 +541,7 @@ export function parse_metadata(
         parse_fixed_string_section(
             bytes, TAG_VARIABLE_LABELS_OPEN,
             section_offsets.variable_labels,
-            nvar, my_widths.variable_label
+            nvar, my_widths.variable_label, my_decoder
         );
 
     // 13. Build VariableInfo array with byte widths and
@@ -553,6 +570,7 @@ export function parse_metadata(
 
     return {
         format_version,
+        text_encoding,
         byte_order,
         nvar,
         nobs,

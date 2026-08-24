@@ -110,6 +110,62 @@ function legacy_type_code_to_dta_type(code, format_version) {
   );
 }
 
+// src/text-encoding.ts
+var UTF8_DECODER = new TextDecoder(
+  "utf-8",
+  { ignoreBOM: true }
+);
+var WINDOWS_1252_DECODER = new TextDecoder(
+  "windows-1252",
+  { ignoreBOM: true }
+);
+var ISO_8859_1_DECODER = {
+  decode(input) {
+    const my_chunk_size = 8192;
+    let my_result = "";
+    for (let i = 0; i < input.length; i += my_chunk_size) {
+      my_result += String.fromCharCode(
+        ...input.subarray(i, i + my_chunk_size)
+      );
+    }
+    return my_result;
+  }
+};
+function resolve_text_encoding(format_version, encoding = "auto") {
+  if (typeof encoding !== "string") {
+    throw new Error(
+      `Unsupported text encoding ${JSON.stringify(encoding)}; use auto, utf-8, windows-1252, or iso-8859-1`
+    );
+  }
+  const my_key = encoding.toLowerCase().replaceAll(/[-_ ]/g, "");
+  if (my_key === "auto") {
+    return format_version >= 118 ? "utf-8" : "windows-1252";
+  }
+  switch (my_key) {
+    case "utf8":
+      return "utf-8";
+    case "windows1252":
+    case "cp1252":
+      return "windows-1252";
+    case "iso88591":
+    case "latin1":
+      return "iso-8859-1";
+  }
+  throw new Error(
+    `Unsupported text encoding ${JSON.stringify(encoding)}; use auto, utf-8, windows-1252, or iso-8859-1`
+  );
+}
+function text_decoder(encoding) {
+  switch (encoding) {
+    case "utf-8":
+      return UTF8_DECODER;
+    case "windows-1252":
+      return WINDOWS_1252_DECODER;
+    case "iso-8859-1":
+      return ISO_8859_1_DECODER;
+  }
+}
+
 // src/header.ts
 var FIELD_WIDTHS = {
   117: {
@@ -132,7 +188,7 @@ var FIELD_WIDTHS = {
   }
 };
 var SECTION_MAP_ENTRIES = 14;
-var TEXT_DECODER = new TextDecoder("utf-8");
+var ASCII_DECODER = new TextDecoder("utf-8");
 var TAG_BYTEORDER_OPEN = encode_tag("<byteorder>");
 var TAG_BYTEORDER_CLOSE = encode_tag("</byteorder>");
 var TAG_K_OPEN = encode_tag("<K>");
@@ -175,13 +231,13 @@ function find_bytes(haystack, needle, start) {
     }
   return -1;
 }
-function read_fixed_string(bytes, offset, field_width) {
+function read_fixed_string(bytes, offset, field_width, decoder) {
   let my_end = offset;
   const my_limit = offset + field_width;
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return TEXT_DECODER.decode(
+  return decoder.decode(
     bytes.subarray(offset, my_end)
   );
 }
@@ -223,7 +279,7 @@ function parse_byte_order(bytes, start) {
   if (my_close === -1) {
     throw new Error("Missing </byteorder> tag");
   }
-  const my_str = TEXT_DECODER.decode(
+  const my_str = ASCII_DECODER.decode(
     bytes.subarray(my_data_start, my_close)
   );
   if (my_str !== "MSF" && my_str !== "LSF") {
@@ -296,7 +352,7 @@ function parse_nobs(bytes, view, little_endian, format_version, start) {
   }
   return { nobs: my_nobs, end: my_data_end };
 }
-function parse_dataset_label(bytes, view, little_endian, format_version, start) {
+function parse_dataset_label(bytes, view, little_endian, format_version, start, decoder) {
   const my_open = find_bytes(
     bytes,
     TAG_LABEL_OPEN,
@@ -318,7 +374,7 @@ function parse_dataset_label(bytes, view, little_endian, format_version, start) 
     );
     my_str_start = my_data_start + 2;
   }
-  const my_label = TEXT_DECODER.decode(
+  const my_label = decoder.decode(
     bytes.subarray(my_str_start, my_str_start + my_str_len)
   );
   const my_close = find_bytes(
@@ -397,7 +453,7 @@ function parse_variable_types(bytes, view, little_endian, offsets, nvar) {
   }
   return the_type_codes;
 }
-function parse_fixed_string_section(bytes, tag, search_start, nvar, field_width) {
+function parse_fixed_string_section(bytes, tag, search_start, nvar, field_width, decoder) {
   const my_tag_pos = find_bytes(
     bytes,
     tag,
@@ -421,16 +477,22 @@ function parse_fixed_string_section(bytes, tag, search_start, nvar, field_width)
       read_fixed_string(
         bytes,
         my_data_start + i * field_width,
-        field_width
+        field_width,
+        decoder
       )
     );
   }
   return the_strings;
 }
-function parse_metadata(buffer) {
+function parse_metadata(buffer, options = {}) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const format_version = detect_format_version(bytes);
+  const text_encoding = resolve_text_encoding(
+    format_version,
+    options.encoding
+  );
+  const my_decoder = text_decoder(text_encoding);
   const my_widths = FIELD_WIDTHS[format_version];
   const { byte_order, end: my_after_byteorder } = parse_byte_order(bytes, 0);
   const little_endian = byte_order === "LSF";
@@ -453,7 +515,8 @@ function parse_metadata(buffer) {
     view,
     little_endian,
     format_version,
-    my_after_n
+    my_after_n,
+    my_decoder
   );
   const my_ts_close = find_bytes(
     bytes,
@@ -481,28 +544,32 @@ function parse_metadata(buffer) {
     TAG_VARNAMES_OPEN,
     section_offsets.varnames,
     nvar,
-    my_widths.varname
+    my_widths.varname,
+    my_decoder
   );
   const the_formats = parse_fixed_string_section(
     bytes,
     TAG_FORMATS_OPEN,
     section_offsets.formats,
     nvar,
-    my_widths.format
+    my_widths.format,
+    my_decoder
   );
   const the_value_label_names = parse_fixed_string_section(
     bytes,
     TAG_VALUE_LABEL_NAMES_OPEN,
     section_offsets.value_label_names,
     nvar,
-    my_widths.value_label_name
+    my_widths.value_label_name,
+    my_decoder
   );
   const the_variable_labels = parse_fixed_string_section(
     bytes,
     TAG_VARIABLE_LABELS_OPEN,
     section_offsets.variable_labels,
     nvar,
-    my_widths.variable_label
+    my_widths.variable_label,
+    my_decoder
   );
   let my_running_offset = 0;
   const the_variables = [];
@@ -529,6 +596,7 @@ function parse_metadata(buffer) {
   }
   return {
     format_version,
+    text_encoding,
     byte_order,
     nvar,
     nobs,
@@ -628,14 +696,13 @@ function legacy_expansion_header_size(layout) {
 
 // src/legacy-header.ts
 var SORTLIST_ENTRY_WIDTH = 2;
-var TEXT_DECODER2 = new TextDecoder("windows-1252");
-function read_fixed_string2(bytes, offset, field_width) {
+function read_fixed_string2(bytes, offset, field_width, decoder) {
   let my_end = offset;
   const my_limit = offset + field_width;
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return TEXT_DECODER2.decode(
+  return decoder.decode(
     bytes.subarray(offset, my_end)
   );
 }
@@ -647,7 +714,7 @@ function legacy_metadata_fixed_size(nvar, format_version) {
   const my_sections_size = nvar + nvar * layout.varname_width + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * layout.format_width + nvar * layout.value_label_name_width + nvar * layout.variable_label_width;
   return layout.header_size + my_sections_size;
 }
-function scan_expansion_fields(view, little_endian, start, buffer_length, format_version) {
+function scan_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder) {
   let pos = start;
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
@@ -666,17 +733,24 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
       throw new Error("Truncated legacy expansion field");
     }
     if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
-      const my_variable = read_fixed_string2(bytes_from_view(view), pos, layout.varname_width);
+      const my_variable = read_fixed_string2(
+        bytes_from_view(view),
+        pos,
+        layout.varname_width,
+        decoder
+      );
       const my_characteristic = read_fixed_string2(
         bytes_from_view(view),
         pos + layout.varname_width,
-        layout.varname_width
+        layout.varname_width,
+        decoder
       );
       if (my_variable === "_dta" && /^note[0-9]+$/.test(my_characteristic)) {
         const my_note = read_fixed_string2(
           bytes_from_view(view),
           pos + 2 * layout.varname_width,
-          my_len - 2 * layout.varname_width
+          my_len - 2 * layout.varname_width,
+          decoder
         );
         if (my_note.length > 0) the_notes.push(my_note);
       }
@@ -688,7 +762,7 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
 function bytes_from_view(view) {
   return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
 }
-function parse_legacy_metadata(buffer, file_size) {
+function parse_legacy_metadata(buffer, file_size, options = {}) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const my_version_byte = bytes[0];
@@ -698,6 +772,11 @@ function parse_legacy_metadata(buffer, file_size) {
     );
   }
   const format_version = my_version_byte;
+  const text_encoding = resolve_text_encoding(
+    format_version,
+    options.encoding
+  );
+  const my_decoder = text_decoder(text_encoding);
   const layout = legacy_layout_for_version(format_version);
   const my_byte_order_code = bytes[1];
   if (my_byte_order_code !== 1 && my_byte_order_code !== 2) {
@@ -720,7 +799,8 @@ function parse_legacy_metadata(buffer, file_size) {
   const dataset_label = read_fixed_string2(
     bytes,
     10,
-    layout.dataset_label_width
+    layout.dataset_label_width,
+    my_decoder
   );
   const my_fmt_width = layout.format_width;
   let pos = layout.header_size;
@@ -737,7 +817,8 @@ function parse_legacy_metadata(buffer, file_size) {
       read_fixed_string2(
         bytes,
         pos + i * layout.varname_width,
-        layout.varname_width
+        layout.varname_width,
+        my_decoder
       )
     );
   }
@@ -751,7 +832,8 @@ function parse_legacy_metadata(buffer, file_size) {
       read_fixed_string2(
         bytes,
         pos + i * my_fmt_width,
-        my_fmt_width
+        my_fmt_width,
+        my_decoder
       )
     );
   }
@@ -763,7 +845,8 @@ function parse_legacy_metadata(buffer, file_size) {
       read_fixed_string2(
         bytes,
         pos + i * layout.value_label_name_width,
-        layout.value_label_name_width
+        layout.value_label_name_width,
+        my_decoder
       )
     );
   }
@@ -775,7 +858,8 @@ function parse_legacy_metadata(buffer, file_size) {
       read_fixed_string2(
         bytes,
         pos + i * layout.variable_label_width,
-        layout.variable_label_width
+        layout.variable_label_width,
+        my_decoder
       )
     );
   }
@@ -786,7 +870,8 @@ function parse_legacy_metadata(buffer, file_size) {
     little_endian,
     pos,
     buffer.byteLength,
-    format_version
+    format_version,
+    my_decoder
   );
   let my_running_offset = 0;
   const the_variables = [];
@@ -830,6 +915,7 @@ function parse_legacy_metadata(buffer, file_size) {
   };
   return {
     format_version,
+    text_encoding,
     byte_order,
     nvar,
     nobs,
@@ -1005,8 +1091,6 @@ function classify_missing_value(value, type) {
 // src/data-reader.ts
 var DATA_TAG = "<data>";
 var DATA_TAG_LENGTH = DATA_TAG.length;
-var UTF8_DECODER = new TextDecoder("utf-8");
-var LEGACY_DECODER = new TextDecoder("windows-1252");
 function read_fixed_string3(bytes, offset, width, decoder) {
   let my_end = offset;
   const my_limit = offset + width;
@@ -1109,7 +1193,10 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
     return [];
   }
   const little_endian = metadata.byte_order === "LSF";
-  const my_decoder = is_legacy_format(metadata.format_version) ? LEGACY_DECODER : UTF8_DECODER;
+  const my_decoder = text_decoder(resolve_text_encoding(
+    metadata.format_version,
+    metadata.text_encoding
+  ));
   const the_rows = [];
   for (let i = 0; i < my_actual_count; i++) {
     const my_row_offset = row_base_offset + i * metadata.obs_length;
@@ -1171,7 +1258,7 @@ function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, c
 var GSO_MARKER = [71, 83, 79];
 var STRLS_TAG = "<strls>";
 var STRLS_TAG_LENGTH = STRLS_TAG.length;
-var UTF8_DECODER2 = new TextDecoder("utf-8");
+var ASCII_DECODER2 = new TextDecoder("utf-8");
 function build_gso_index(buffer, metadata, base_offset = 0) {
   const my_index = /* @__PURE__ */ new Map();
   const my_has_strl = metadata.variables.some(
@@ -1182,7 +1269,7 @@ function build_gso_index(buffer, metadata, base_offset = 0) {
   const view = new DataView(buffer);
   const little_endian = metadata.byte_order === "LSF";
   const my_section_start = metadata.section_offsets.strls - base_offset;
-  if (my_section_start < 0 || my_section_start + STRLS_TAG_LENGTH > bytes.length || UTF8_DECODER2.decode(bytes.subarray(
+  if (my_section_start < 0 || my_section_start + STRLS_TAG_LENGTH > bytes.length || ASCII_DECODER2.decode(bytes.subarray(
     my_section_start,
     my_section_start + STRLS_TAG_LENGTH
   )) !== STRLS_TAG) {
@@ -1191,7 +1278,7 @@ function build_gso_index(buffer, metadata, base_offset = 0) {
   let pos = my_section_start + STRLS_TAG_LENGTH;
   const my_section_end = metadata.section_offsets.value_labels - base_offset;
   const my_close_start = my_section_end - 8;
-  if (my_close_start < pos || my_section_end > bytes.length || UTF8_DECODER2.decode(bytes.subarray(
+  if (my_close_start < pos || my_section_end > bytes.length || ASCII_DECODER2.decode(bytes.subarray(
     my_close_start,
     my_section_end
   )) !== "</strls>") {
@@ -1272,7 +1359,14 @@ function resolve_strl(buffer, metadata, gso_index, pointer_offset) {
   if (!my_entry) {
     throw new Error(`Dangling strL pointer ${my_key}`);
   }
-  return decode_gso_entry(bytes, my_entry);
+  return decode_gso_entry(
+    bytes,
+    my_entry,
+    resolve_text_encoding(
+      metadata.format_version,
+      metadata.text_encoding
+    )
+  );
 }
 function read_strl_pointer(view, metadata, pointer_offset) {
   const little_endian = metadata.byte_order === "LSF";
@@ -1319,7 +1413,7 @@ function read_strl_pointer(view, metadata, pointer_offset) {
   }
   return { v: my_v, o: my_o };
 }
-function decode_gso_entry(bytes, entry) {
+function decode_gso_entry(bytes, entry, encoding = "utf-8") {
   if (entry.type !== 129 && entry.type !== 130) {
     throw new Error(`Unsupported GSO type ${entry.type}`);
   }
@@ -1334,14 +1428,14 @@ function decode_gso_entry(bytes, entry) {
       );
     }
     const my_str_len = entry.content_length - 1;
-    return UTF8_DECODER2.decode(
+    return text_decoder(encoding).decode(
       bytes.subarray(
         entry.content_offset,
         entry.content_offset + my_str_len
       )
     );
   }
-  return UTF8_DECODER2.decode(
+  return text_decoder(encoding).decode(
     bytes.subarray(
       entry.content_offset,
       entry.content_offset + entry.content_length
@@ -1361,8 +1455,6 @@ var MODERN_LABEL_NAME_WIDTH = {
   119: 129
 };
 var PADDING_BYTES = 3;
-var UTF8_DECODER3 = new TextDecoder("utf-8");
-var LEGACY_DECODER2 = new TextDecoder("windows-1252");
 function parse_label_entry_payload(bytes, view, little_endian, pos, entry_end, decoder) {
   if (pos + 8 > entry_end) {
     throw new Error(
@@ -1438,7 +1530,7 @@ function read_label_name(bytes, pos, name_width, decoder) {
     bytes.subarray(pos, my_end)
   );
 }
-function parse_modern_entries(bytes, view, little_endian, name_width, start_pos, section_end) {
+function parse_modern_entries(bytes, view, little_endian, name_width, start_pos, section_end, decoder) {
   const my_result = /* @__PURE__ */ new Map();
   let pos = start_pos;
   while (pos + LBL_OPEN_TAG_LENGTH <= section_end) {
@@ -1451,7 +1543,7 @@ function parse_modern_entries(bytes, view, little_endian, name_width, start_pos,
       bytes,
       pos,
       name_width,
-      UTF8_DECODER3
+      decoder
     );
     pos += name_width;
     pos += PADDING_BYTES;
@@ -1461,14 +1553,14 @@ function parse_modern_entries(bytes, view, little_endian, name_width, start_pos,
       little_endian,
       pos,
       section_end,
-      UTF8_DECODER3
+      decoder
     );
     my_result.set(my_label_name, label_map);
     pos = next_pos + LBL_CLOSE_TAG_LENGTH;
   }
   return my_result;
 }
-function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos, section_end) {
+function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos, section_end, decoder) {
   const my_result = /* @__PURE__ */ new Map();
   let pos = start_pos;
   let my_known_nonzero = -1;
@@ -1502,7 +1594,7 @@ function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos,
       bytes,
       pos,
       name_width,
-      LEGACY_DECODER2
+      decoder
     );
     pos += name_width;
     pos += PADDING_BYTES;
@@ -1512,14 +1604,14 @@ function parse_legacy_entries(bytes, view, little_endian, name_width, start_pos,
       little_endian,
       pos,
       section_end,
-      LEGACY_DECODER2
+      decoder
     );
     my_result.set(my_label_name, label_map);
     pos = next_pos;
   }
   return my_result;
 }
-function parse_fixed8_entries(bytes, view, little_endian, name_width, start_pos, section_end) {
+function parse_fixed8_entries(bytes, view, little_endian, name_width, start_pos, section_end, decoder) {
   const my_result = /* @__PURE__ */ new Map();
   let pos = start_pos;
   let my_known_nonzero = -1;
@@ -1546,7 +1638,7 @@ function parse_fixed8_entries(bytes, view, little_endian, name_width, start_pos,
       bytes,
       pos,
       name_width,
-      LEGACY_DECODER2
+      decoder
     );
     pos += name_width + 1;
     if (pos + my_n * 10 > section_end) {
@@ -1565,7 +1657,7 @@ function parse_fixed8_entries(bytes, view, little_endian, name_width, start_pos,
         bytes,
         pos,
         8,
-        LEGACY_DECODER2
+        decoder
       );
       if (!my_labels.has(the_codes[i])) {
         my_labels.set(the_codes[i], my_label);
@@ -1642,6 +1734,10 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
   const my_legacy = is_legacy_format(
     metadata.format_version
   );
+  const my_decoder = text_decoder(resolve_text_encoding(
+    metadata.format_version,
+    metadata.text_encoding
+  ));
   const my_tag_skip = my_legacy ? 0 : VALUE_LABELS_TAG_LENGTH;
   const my_start_pos = metadata.section_offsets.value_labels - base_offset + my_tag_skip;
   const my_section_end = metadata.section_offsets.stata_data_close - base_offset;
@@ -1685,7 +1781,8 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
         little_endian,
         my_name_width,
         my_start_pos,
-        my_section_end
+        my_section_end,
+        my_decoder
       );
     }
     return parse_legacy_entries(
@@ -1694,7 +1791,8 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
       little_endian,
       my_name_width,
       my_start_pos,
-      my_section_end
+      my_section_end,
+      my_decoder
     );
   }
   return parse_modern_entries(
@@ -1703,7 +1801,8 @@ function parse_value_labels(buffer, metadata, base_offset = 0) {
     little_endian,
     MODERN_LABEL_NAME_WIDTH[metadata.format_version],
     my_start_pos,
-    my_section_end
+    my_section_end,
+    my_decoder
   );
 }
 
@@ -1885,5 +1984,6 @@ export {
   read_rows_from_buffer,
   read_rows_from_data_buffer,
   read_strl_pointer,
-  resolve_strl
+  resolve_strl,
+  resolve_text_encoding
 };

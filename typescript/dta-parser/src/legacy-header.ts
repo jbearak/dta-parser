@@ -32,14 +32,20 @@ import {
     byte_width_for_legacy_type_code,
     legacy_type_code_to_dta_type,
 } from './types';
+import type {
+    DtaTextDecoder,
+    TextEncodingOptions,
+} from './text-encoding';
+import {
+    resolve_text_encoding,
+    text_decoder,
+} from './text-encoding';
 
 // -----------------------------------------------------------
 // Constants
 // -----------------------------------------------------------
 
 const SORTLIST_ENTRY_WIDTH = 2;
-
-const TEXT_DECODER = new TextDecoder('windows-1252');
 
 // -----------------------------------------------------------
 // Helpers
@@ -48,14 +54,15 @@ const TEXT_DECODER = new TextDecoder('windows-1252');
 function read_fixed_string(
     bytes: Uint8Array,
     offset: number,
-    field_width: number
+    field_width: number,
+    decoder: DtaTextDecoder
 ): string {
     let my_end = offset;
     const my_limit = offset + field_width;
     while (my_end < my_limit && bytes[my_end] !== 0) {
         my_end++;
     }
-    return TEXT_DECODER.decode(
+    return decoder.decode(
         bytes.subarray(offset, my_end)
     );
 }
@@ -109,7 +116,8 @@ function scan_expansion_fields(
     little_endian: boolean,
     start: number,
     buffer_length: number,
-    format_version: LegacyFormatVersion
+    format_version: LegacyFormatVersion,
+    decoder: DtaTextDecoder
 ): { data_offset: number; notes: string[] } {
     let pos = start;
     const layout = legacy_layout_for_version(format_version);
@@ -136,15 +144,19 @@ function scan_expansion_fields(
         }
 
         if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
-            const my_variable = read_fixed_string(bytes_from_view(view), pos, layout.varname_width);
+            const my_variable = read_fixed_string(
+                bytes_from_view(view), pos, layout.varname_width, decoder
+            );
             const my_characteristic = read_fixed_string(
-                bytes_from_view(view), pos + layout.varname_width, layout.varname_width
+                bytes_from_view(view), pos + layout.varname_width,
+                layout.varname_width, decoder
             );
             if (my_variable === '_dta' && /^note[0-9]+$/.test(my_characteristic)) {
                 const my_note = read_fixed_string(
                     bytes_from_view(view),
                     pos + 2 * layout.varname_width,
-                    my_len - 2 * layout.varname_width
+                    my_len - 2 * layout.varname_width,
+                    decoder
                 );
                 if (my_note.length > 0) the_notes.push(my_note);
             }
@@ -176,7 +188,8 @@ function bytes_from_view(view: DataView): Uint8Array {
  */
 export function parse_legacy_metadata(
     buffer: ArrayBuffer,
-    file_size: number
+    file_size: number,
+    options: TextEncodingOptions = {}
 ): DtaMetadata {
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer);
@@ -199,6 +212,10 @@ export function parse_legacy_metadata(
     }
     const format_version =
         my_version_byte as LegacyFormatVersion;
+    const text_encoding = resolve_text_encoding(
+        format_version, options.encoding
+    );
+    const my_decoder = text_decoder(text_encoding);
     const layout = legacy_layout_for_version(format_version);
 
     // 2. Byte order
@@ -229,7 +246,7 @@ export function parse_legacy_metadata(
 
     // 5. Dataset label (release-specific width at offset 10)
     const dataset_label = read_fixed_string(
-        bytes, 10, layout.dataset_label_width
+        bytes, 10, layout.dataset_label_width, my_decoder
     );
 
     // 6. Skip the 18-byte timestamp that ends the header
@@ -255,7 +272,8 @@ export function parse_legacy_metadata(
             read_fixed_string(
                 bytes,
                 pos + i * layout.varname_width,
-                layout.varname_width
+                layout.varname_width,
+                my_decoder
             )
         );
     }
@@ -273,7 +291,8 @@ export function parse_legacy_metadata(
             read_fixed_string(
                 bytes,
                 pos + i * my_fmt_width,
-                my_fmt_width
+                my_fmt_width,
+                my_decoder
             )
         );
     }
@@ -287,7 +306,8 @@ export function parse_legacy_metadata(
             read_fixed_string(
                 bytes,
                 pos + i * layout.value_label_name_width,
-                layout.value_label_name_width
+                layout.value_label_name_width,
+                my_decoder
             )
         );
     }
@@ -301,7 +321,8 @@ export function parse_legacy_metadata(
             read_fixed_string(
                 bytes,
                 pos + i * layout.variable_label_width,
-                layout.variable_label_width
+                layout.variable_label_width,
+                my_decoder
             )
         );
     }
@@ -310,7 +331,8 @@ export function parse_legacy_metadata(
     // -- expansion fields --
     const my_expansion_offset = pos;
     const { data_offset: my_data_offset, notes } = scan_expansion_fields(
-        view, little_endian, pos, buffer.byteLength, format_version
+        view, little_endian, pos, buffer.byteLength,
+        format_version, my_decoder
     );
 
     // 8. Build VariableInfo with byte widths and offsets
@@ -367,6 +389,7 @@ export function parse_legacy_metadata(
 
     return {
         format_version,
+        text_encoding,
         byte_order,
         nvar,
         nobs,

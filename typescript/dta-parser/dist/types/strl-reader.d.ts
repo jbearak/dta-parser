@@ -1,4 +1,5 @@
 import type { DtaMetadata } from './types';
+import type { ResolvedTextEncoding } from './text-encoding';
 export interface GsoEntry {
     content_offset: number;
     content_length: number;
@@ -26,5 +27,5 @@ export declare function build_gso_index(buffer: ArrayBuffer, metadata: DtaMetada
  */
 export declare function resolve_strl(buffer: ArrayBuffer, metadata: DtaMetadata, gso_index: Map<string, GsoEntry>, pointer_offset: number): string;
 export declare function read_strl_pointer(view: DataView, metadata: DtaMetadata, pointer_offset: number): StrlPointer | null;
-export declare function decode_gso_entry(bytes: Uint8Array, entry: GsoEntry): string;
+export declare function decode_gso_entry(bytes: Uint8Array, entry: GsoEntry, encoding?: ResolvedTextEncoding): string;
 //# sourceMappingURL=strl-reader.d.ts.map

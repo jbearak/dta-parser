@@ -137,6 +137,39 @@ console.log(rows[0]);
 `read_rows_from_buffer()` expects the full file. Callers that already hold
 only contiguous observation bytes can use `read_rows_from_data_buffer()`.
 
+## Text encoding
+
+By default, the parser uses Windows-1252 for releases 105, 108, 110--111,
+113--115, and 117, and UTF-8 for releases 118--119. Files through release 117
+do not record a code page, so Windows-1252 is a pragmatic guess that commonly
+recovers the intended text. Select UTF-8 explicitly for strict current-Stata
+behavior:
+
+```ts
+const strict_file = await DtaFile.open(
+    'data/legacy.dta',
+    { encoding: 'utf-8' }
+);
+
+const metadata = parse_metadata(buffer, {
+    encoding: 'windows-1252',
+});
+const rows = read_rows_from_buffer(buffer, metadata, 0, 25);
+```
+
+Supported values are `auto`, `utf-8`, `windows-1252`, and `iso-8859-1`.
+The common `UTF8`, `CP1252`, and `latin1` aliases are also accepted
+case-insensitively, with hyphens, underscores, and spaces ignored.
+An explicit choice applies consistently to metadata, fixed strings,
+value-label table names and values, dataset notes, and `strL` text.
+`iso-8859-1` remains intentionally distinct from Windows-1252 at bytes
+0x80--0x9f rather than following the Web Encoding Standard alias.
+
+The resolved choice is available as `metadata.text_encoding` and
+`dta_file.text_encoding`. Buffer helpers inherit it from the metadata object,
+so callers select the encoding once when calling `parse_metadata()` or
+`parse_legacy_metadata()`.
+
 ## Supported files and data model
 
 The parser supports releases 105, 108, 110--111, 113--115, and 117--119,
@@ -193,24 +226,25 @@ Root entrypoint exports:
 
 | Export | Purpose |
 | --- | --- |
-| `parse_metadata()` | Parse modern file metadata from a full buffer |
-| `parse_legacy_metadata()` | Parse supported legacy metadata |
+| `parse_metadata(buffer, options?)` | Parse modern file metadata and select its text encoding |
+| `parse_legacy_metadata(buffer, file_size, options?)` | Parse supported legacy metadata and select its text encoding |
 | `read_rows_from_buffer()` | Decode rows from a full file buffer |
 | `read_rows_from_data_buffer()` | Decode rows from observation bytes |
 | `parse_value_labels()` | Parse value-label tables |
 | `apply_display_format()` | Apply supported Stata display formats |
 | `build_gso_index()`, `decode_gso_entry()`, `read_strl_pointer()`, `resolve_strl()` | Resolve `strL` values |
 | Missing-value helpers | Classify, construct, inspect, and map Stata missing tags |
-| Shared types | `DtaMetadata`, `VariableInfo`, `Row`, `RowCell`, `MissingValue`, `DtaType`, and `FormatVersion` |
+| Shared types | `DtaMetadata`, `VariableInfo`, `Row`, `RowCell`, `MissingValue`, `DtaType`, `FormatVersion`, and text-encoding option types |
 
 Node entrypoint exports:
 
 | Export | Purpose |
 | --- | --- |
-| `DtaFile.open(file_path)` | Open a `.dta` file and parse metadata and labels |
+| `DtaFile.open(file_path, options?)` | Open a `.dta` file with an optional source encoding |
 | `read_rows()` | Read a row window and optional contiguous column range |
 | `read_columns()` | Read selected columns into a keyed `Map` |
 | `close()` | Close the descriptor and clear cached sections |
+| `DtaFileOpenOptions` | Source text-encoding option |
 | `ReadRowsOptions`, `ReadColumnsOptions` | Cancellation and chunk-size options |
 | Shared root exports | Types, formatting, and missing-value helpers |
 

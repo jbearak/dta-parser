@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { parse_metadata } from '../typescript/dta-parser/src/header';
 import { parse_legacy_metadata } from '../typescript/dta-parser/src/legacy-header';
+import { read_rows_from_buffer } from '../typescript/dta-parser/src/data-reader';
+import { parse_value_labels } from '../typescript/dta-parser/src/value-labels';
 import { DtaFile } from '../typescript/dta-parser/src/node';
 
 type FixtureCase = { name: string; sha256: string };
@@ -58,7 +60,7 @@ invariant(
         === manifest.identity.case_count,
     'total case count does not match manifest identity'
 );
-invariant(manifest.identity.case_count === 31, 'case inventory must remain 31');
+invariant(manifest.identity.case_count === 32, 'case inventory must remain 32');
 invariant(
     manifest.identity.fixture_oracle_gate.binary.length > 0
         && manifest.identity.fixture_oracle_gate.test.length > 0,
@@ -136,6 +138,75 @@ for (const item of manifest.fixture_cases) {
         file.close();
     }
 }
+
+function replaceFirstByte(
+    bytes: Uint8Array,
+    needle: string,
+    replacement: number
+): void {
+    const encoded = new TextEncoder().encode(needle);
+    for (let i = 0; i <= bytes.length - encoded.length; i++) {
+        let matches = true;
+        for (let j = 0; j < encoded.length; j++) {
+            if (bytes[i + j] !== encoded[j]) {
+                matches = false;
+                break;
+            }
+        }
+        if (matches) {
+            bytes[i] = replacement;
+            return;
+        }
+    }
+    throw new Error(`conformance: fixture does not contain ${needle}`);
+}
+
+function encodingSurfaces(
+    bytes: Uint8Array,
+    encoding?: 'utf-8' | 'windows-1252' | 'iso-8859-1'
+): string[] {
+    const buffer = bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength
+    ) as ArrayBuffer;
+    const metadata = parse_metadata(
+        buffer, encoding === undefined ? {} : { encoding }
+    );
+    const rows = read_rows_from_buffer(buffer, metadata, 0, 1);
+    const labels = parse_value_labels(buffer, metadata);
+    return [
+        metadata.dataset_label,
+        metadata.variables[0].label,
+        rows[0][0] as string,
+        labels.get('origin')?.get(0) ?? '',
+    ];
+}
+
+const encodingFixture = new Uint8Array(readFileSync(
+    path.join(fixtureDir, 'auto_v117.dta')
+));
+replaceFirstByte(encodingFixture, '1978 automobile data', 0x80);
+replaceFirstByte(encodingFixture, 'Make and model', 0x80);
+replaceFirstByte(encodingFixture, 'AMC Concord', 0x80);
+replaceFirstByte(encodingFixture, 'Domestic', 0x80);
+invariant(
+    encodingSurfaces(encodingFixture).every(
+        value => value.startsWith('\u20ac')
+    ),
+    'release 117 automatic text encoding differs from Rust Windows-1252 policy'
+);
+invariant(
+    encodingSurfaces(encodingFixture, 'utf-8').every(
+        value => value.startsWith('\ufffd')
+    ),
+    'release 117 explicit UTF-8 differs from Rust replacement policy'
+);
+invariant(
+    encodingSurfaces(encodingFixture, 'iso-8859-1').every(
+        value => value.startsWith('\u0080')
+    ),
+    'explicit ISO-8859-1 must remain distinct from Windows-1252'
+);
 
 process.stdout.write(
     `TypeScript fixture conformance: PASS (${manifest.fixture_cases.length} `

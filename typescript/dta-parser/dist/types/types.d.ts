@@ -60,6 +60,11 @@ export interface SectionOffsets {
 }
 export interface DtaMetadata {
     format_version: FormatVersion;
+    /**
+     * Resolved source encoding used for every textual field. Present on
+     * parser-produced metadata; omitted caller-built metadata uses `auto`.
+     */
+    text_encoding?: import('./text-encoding').ResolvedTextEncoding;
     byte_order: 'MSF' | 'LSF';
     nvar: number;
     nobs: number;

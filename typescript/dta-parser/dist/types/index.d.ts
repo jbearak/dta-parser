@@ -5,6 +5,8 @@ export { build_gso_index, decode_gso_entry, read_strl_pointer, resolve_strl, typ
 export { parse_value_labels } from './value-labels';
 export { apply_display_format } from './display-format';
 export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, } from './types';
+export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
+export { resolve_text_encoding } from './text-encoding';
 export { is_legacy_format } from './types';
 export { classify_missing_value, classify_raw_float_missing, classify_raw_double_missing_at, is_missing_value, is_missing_value_object, make_missing_value, missing_type_to_label_key, STATA_MISSING_B, } from './missing-values';
 //# sourceMappingURL=index.d.ts.map
