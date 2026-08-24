@@ -127,9 +127,10 @@ jobs:
             exit 1
           fi
 
-          asset="$binary_dir/dtaparser_${package_version}_R-${r_version}_${ASSET_PLATFORM}.${extension}"
+          asset_name="dtaparser_${package_version}_R-${r_version}_${ASSET_PLATFORM}.${extension}"
+          asset="$binary_dir/$asset_name"
           mv "$generated" "$asset"
-          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "asset=release-build/binary/$asset_name" >> "$GITHUB_OUTPUT"
           echo "artifact_name=r-package-$ASSET_PLATFORM" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test installed package
