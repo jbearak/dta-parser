@@ -165,11 +165,11 @@ overflow while retaining haven parity for meaningful row-window requests.
 
 The package includes a locked Cargo dependency graph and vendored crates so
 source builds do not contact a package registry. A Rust 1.97.1-or-newer toolchain
-and Cargo are required for the R bridge on every platform. Windows builds
-require a Rust host matching R:
-`x86_64-pc-windows-gnu` for x86_64 R or `aarch64-pc-windows-gnullvm` for
-aarch64 R. `configure.win` rejects a mismatched host before compilation and the
-Windows Makevars passes the target explicitly.
+and Cargo are required for the R bridge on every platform. The Rust target
+architecture must match R. On Windows, Rtools additionally requires a
+MinGW-compatible Rust host: `x86_64-pc-windows-gnu` for x86_64 R or
+`aarch64-pc-windows-gnullvm` for aarch64 R. `configure.win` rejects a mismatched
+host before compilation and the Windows Makevars passes the target explicitly.
 
 ## Conformance and release checks
 
