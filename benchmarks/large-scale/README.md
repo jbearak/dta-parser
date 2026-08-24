@@ -83,3 +83,11 @@ The default raw report has 1,212 rows:
 `summary.tsv` has four rows, one per size/workload combination, with median,
 5th percentile, 95th percentile, and median input throughput for all three
 implementations plus pairwise median speedups.
+
+The public reader returns character columns through an owned ALTREP backing
+store. Timed reads therefore measure dataset loading and tibble construction;
+the dimension check does not force every R string object. The exact
+Direct-R/Rust-vector comparison and the haven window comparisons before timing
+do access character values, so laziness cannot hide correctness differences.
+Use the separate `r-materialization/memory-worker.R` harness when deliberately
+measuring a workload that forces the complete returned object.

@@ -62,12 +62,11 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
     source <- .resolve_dta_source(file)
     on.exit(.cleanup_dta_source(source), add = TRUE)
-    metadata_names <- .dta_metadata(source$path, encoding)
 
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
-        selected_names <- metadata_names
     } else {
+        metadata_names <- .dta_metadata(source$path, encoding)
         storage <- attr(metadata_names, "dta_storage", exact = TRUE)
         selection_proxy <- stats::setNames(
             lapply(storage, function(type) {

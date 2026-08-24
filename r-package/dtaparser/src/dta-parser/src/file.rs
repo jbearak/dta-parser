@@ -172,12 +172,8 @@ pub trait DtaSink: Sized {
         value: f64,
         missing: Option<crate::MissingTag>,
     ) -> Result<(), DtaError>;
-    fn push_fixed_string(
-        &mut self,
-        column: usize,
-        row: usize,
-        value: String,
-    ) -> Result<(), DtaError>;
+    fn push_fixed_string(&mut self, column: usize, row: usize, value: &str)
+        -> Result<(), DtaError>;
     fn push_strl(&mut self, column: usize, row: usize, value: &str) -> Result<(), DtaError>;
 
     fn finish(
@@ -434,12 +430,12 @@ impl DtaSink for VecSink {
         &mut self,
         column: usize,
         _row: usize,
-        value: String,
+        value: &str,
     ) -> Result<(), DtaError> {
         let ColumnBuilder::FixedString { values, .. } = self.column(column)? else {
             return Err(DtaError::ArithmeticOverflow("output column type"));
         };
-        values.push(value);
+        values.push(value.to_owned());
         Ok(())
     }
 
@@ -800,7 +796,7 @@ impl<R: Read + Seek> DtaFile<R> {
                         )?;
                         cell_decoder
                             .sink
-                            .push_fixed_string(output_column, output_row, value)?;
+                            .push_fixed_string(output_column, output_row, &value)?;
                         continue;
                     }
                     let cell = read_exact_at(
@@ -2858,11 +2854,10 @@ impl<S: DtaSink> CellDecoder<'_, S> {
         variable: &VariableInfo,
     ) -> Result<(), DtaError> {
         if matches!(variable.dta_type, DtaType::FixedString(_)) {
-            let mut value = self.text_encoding.decode(field_bytes(cell));
-            value.shrink_to_fit();
+            let value = self.text_encoding.decode_cow(field_bytes(cell));
             return self
                 .sink
-                .push_fixed_string(output_column, output_row, value);
+                .push_fixed_string(output_column, output_row, &value);
         }
         self.push_cell(
             output_column,
@@ -3117,7 +3112,7 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
             continue;
         };
         for (row_index, pointer) in column_pointers.iter().copied().enumerate() {
-            if pointer_count % STRL_CANCEL_CHECK_INTERVAL == 0 {
+            if pointer_count.is_multiple_of(STRL_CANCEL_CHECK_INTERVAL) {
                 check_cancel(should_interrupt)?;
             }
             pointer_count = pointer_count

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use encoding_rs::{CoderResult, Decoder, UTF_8, WINDOWS_1252};
 
 use crate::{DtaError, FormatVersion};
@@ -46,13 +48,14 @@ impl TextEncoding {
     }
 
     pub(crate) fn decode(self, bytes: &[u8]) -> String {
+        self.decode_cow(bytes).into_owned()
+    }
+
+    pub(crate) fn decode_cow(self, bytes: &[u8]) -> Cow<'_, str> {
         match self {
-            Self::Utf8 => String::from_utf8_lossy(bytes).into_owned(),
-            Self::Windows1252 => WINDOWS_1252
-                .decode_without_bom_handling(bytes)
-                .0
-                .into_owned(),
-            Self::Iso8859_1 => decode_iso_8859_1(bytes),
+            Self::Utf8 => String::from_utf8_lossy(bytes),
+            Self::Windows1252 => WINDOWS_1252.decode_without_bom_handling(bytes).0,
+            Self::Iso8859_1 => Cow::Owned(decode_iso_8859_1(bytes)),
             Self::Auto => unreachable!("text encoding must be resolved before decoding"),
         }
     }

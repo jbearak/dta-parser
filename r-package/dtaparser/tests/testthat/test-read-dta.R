@@ -284,6 +284,25 @@ test_that("native materialization survives forced garbage collection", {
     expect_identical(result[[1L]][[1L]], "AMC Concord")
 })
 
+test_that("lazy native strings serialize and preserve copy-on-modify semantics", {
+    path <- normalizePath(fixture("auto_v118.dta"))
+    reference <- dtaparser:::.read_dta_rust_vectors(path)
+
+    encoded <- serialize(read_dta(path), NULL)
+    invisible(gc())
+    expect_identical(unserialize(encoded), reference)
+
+    original <- read_dta(path)
+    modified <- original
+    modified$make[[1L]] <- "replacement"
+    expect_identical(original$make[[1L]], reference$make[[1L]])
+    expect_identical(modified$make[[1L]], "replacement")
+
+    retained <- read_dta(path)$make
+    invisible(gc())
+    expect_identical(retained[[2L]], reference$make[[2L]])
+})
+
 test_that("wide materialization uses bounded native protection", {
     skip_if_not_installed("haven")
     path <- tempfile(fileext = ".dta")

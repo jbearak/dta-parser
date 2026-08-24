@@ -4,8 +4,10 @@
 reader. Its exported `read_dta()` function deliberately mirrors the formal
 arguments of `haven::read_dta()`, while observation storage is decoded by Rust
 and materialized through an R-specific collector. Numeric values are written
-into their final R vectors during decoding; strings are batch-materialized to
-avoid interleaving R allocation with the parser's hot loop.
+into their final R vectors during decoding. Character columns retain normalized
+UTF-8 in compact Rust buffers exposed as ordinary R character vectors through
+ALTREP; individual R strings are created on demand, without retaining the source
+file.
 
 ## Installation
 
@@ -81,19 +83,22 @@ label.
 
 ## Performance compared with haven
 
-A warm-cache benchmark on an Apple M4 Max compared the public Direct-R
+A warm-cache load benchmark on an Apple M4 Max compared the public Direct-R
 `dtaparser::read_dta()` path, the retained internal Rust-vector collector, and
 `haven::read_dta()` in the same process and run. The deterministic mixed-type
 Stata 15 files contained 40 columns; the projected workload selected eight
-representative columns. Each cell used 101 measured iterations after warmup,
+representative columns. Each cell used seven measured iterations after warmup,
 alternated implementation order, and ran garbage collection outside timing.
+The timed region constructs the returned tibble and checks its dimensions; it
+does not force every lazy character column. Exact collector and haven checks
+run before timing and do inspect the values.
 
 | Input | Rows | Workload | Direct-R median | Rust-vector median | haven median | Direct-R vs haven |
 | --- | ---: | --- | ---: | ---: | ---: | ---: |
-| 100 MB | 222,656 | Full, 40 columns | 0.303 s | 0.247 s | 1.19 s | 3.92739273927393x |
-| 100 MB | 222,656 | Projected, 8 columns | 0.082 s | 0.082 s | 0.306 s | 3.73170731707317x |
-| 1 GB | 2,227,111 | Full, 40 columns | 2.185 s | 2.337 s | 11.795 s | 5.39816933638444x |
-| 1 GB | 2,227,111 | Projected, 8 columns | 0.755 s | 0.744 s | 2.903 s | 3.84503311258278x |
+| 100 MB | 222,656 | Full, 40 columns | 0.091 s | 0.353 s | 1.220 s | 13.41x |
+| 100 MB | 222,656 | Projected, 8 columns | 0.034 s | 0.086 s | 0.323 s | 9.50x |
+| 1 GB | 2,227,111 | Full, 40 columns | 0.905 s | 2.526 s | 11.801 s | 13.04x |
+| 1 GB | 2,227,111 | Projected, 8 columns | 0.326 s | 0.798 s | 3.203 s | 9.83x |
 
 Direct-R vs haven is the haven median divided by the Direct-R median, so higher
 means Direct-R was faster. Before timing, Direct-R and Rust-vector results were
@@ -110,7 +115,7 @@ remain useful historical evidence about the collector transition but are not
 combined with these ratios. Haven is the compatibility oracle because it is the
 established R reader, not because it is infallible; version-specific bugs,
 encoding behavior, and native coercion edge cases remain possible. See the
-[full reproducible report](../../benchmarks/large-scale/results-2026-07-27.md)
+[full reproducible report](../../benchmarks/large-scale/results-2026-08-24.md)
 for p05/p95 values, throughput, provenance, validation, and exact artifacts. No
 10 GB file was generated or measured in this scoped run.
 
@@ -127,6 +132,11 @@ for p05/p95 values, throughput, provenance, validation, and exact artifacts. No
 - `.name_repair` is delegated to `tibble::as_tibble()` after selection aliases
   are applied.
 - Reads are synchronous. Long reads cooperatively check for R user interrupts.
+- Character columns use ALTREP-backed owned UTF-8 buffers. Loading does not
+  depend on the source path after `read_dta()` returns. Accessing values is
+  transparent, while operations that request a contiguous pointer to every
+  string defer the corresponding R string allocation and its time and memory
+  cost until that operation.
 - R data frames are limited to `2^31 - 1` rows. `skip` must be an exactly
   representable non-negative whole number no larger than `2^53`. For `n_max`,
   `NA`, either infinity, and any negative finite value use haven's intentional
@@ -164,7 +174,7 @@ These deterministic choices avoid silent truncation and platform-dependent
 overflow while retaining haven parity for meaningful row-window requests.
 
 The package includes a locked Cargo dependency graph and vendored crates so
-source builds do not contact a package registry. A Rust 1.97.1-or-newer toolchain
+source builds do not contact a package registry. A Rust 1.98.0-or-newer toolchain
 and Cargo are required for the R bridge on every platform. The Rust target
 architecture must match R. On Windows, Rtools additionally requires a
 MinGW-compatible Rust host: `x86_64-pc-windows-gnu` for x86_64 R or
@@ -208,6 +218,6 @@ third-party Cargo dependencies, and `scripts/check-r-cargo-vendor.sh` verifies
 the archive against `vendor.sha256` and the bridge lock. Configure always
 refreshes the extracted dependencies before building. Python 3.11 or newer is
 only required for repository maintenance and CI, not R package installation.
-Windows CI installs and selects Rust 1.97.1 with the
+Windows CI installs and selects Rust 1.98.0 with the
 `x86_64-pc-windows-gnu` host matching R, confirms the exact version and host,
 then builds and checks the package through Rtools.

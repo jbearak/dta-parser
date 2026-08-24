@@ -44,6 +44,214 @@ extern "C" {
     ) -> c_int;
     fn dtaparser_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtaparser_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
+    fn dtaparser_make_altstring(data: *mut c_void, result: *mut Sexp) -> c_int;
+}
+
+// Character columns retain normalized UTF-8 in one contiguous allocation and
+// expose it through R's ALTREP interface. This avoids constructing a CHARSXP
+// for every cell during load; R materializes those objects only if a caller
+// requests a contiguous string-vector data pointer.
+struct AltStringData {
+    bytes: Vec<u8>,
+    ends: StringEnds,
+    expected_rows: usize,
+}
+
+enum StringEnds {
+    U32(Vec<u32>),
+    U64(Vec<u64>),
+}
+
+impl StringEnds {
+    fn with_capacity(capacity: usize) -> Result<Self, DtaError> {
+        let mut ends = Vec::new();
+        ends
+            .try_reserve_exact(capacity)
+            .map_err(|_| DtaError::Output("could not allocate string offsets".to_owned()))?;
+        Ok(Self::U32(ends))
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Self::U32(ends) => ends.len(),
+            Self::U64(ends) => ends.len(),
+        }
+    }
+
+    fn get(&self, index: usize) -> Option<u64> {
+        match self {
+            Self::U32(ends) => ends.get(index).copied().map(u64::from),
+            Self::U64(ends) => ends.get(index).copied(),
+        }
+    }
+
+    fn push(&mut self, end: usize) -> Result<(), DtaError> {
+        if let Ok(end) = u32::try_from(end) {
+            match self {
+                Self::U32(ends) => {
+                    ends.push(end);
+                    return Ok(());
+                }
+                Self::U64(ends) => {
+                    ends.push(u64::from(end));
+                    return Ok(());
+                }
+            }
+        }
+
+        if matches!(self, Self::U32(_)) {
+            let Self::U32(compact) = std::mem::replace(self, Self::U64(Vec::new())) else {
+                unreachable!("string offsets were checked as compact")
+            };
+            let mut wide = Vec::new();
+            wide.try_reserve_exact(compact.capacity()).map_err(|_| {
+                DtaError::Output("could not widen string offsets".to_owned())
+            })?;
+            wide.extend(compact.into_iter().map(u64::from));
+            *self = Self::U64(wide);
+        }
+        let end = u64::try_from(end)
+            .map_err(|_| DtaError::Output("string data are too long".to_owned()))?;
+        let Self::U64(ends) = self else {
+            unreachable!("string offsets were widened")
+        };
+        ends.push(end);
+        Ok(())
+    }
+}
+
+impl AltStringData {
+    fn new(expected_rows: usize) -> Result<Self, DtaError> {
+        Ok(Self {
+            bytes: Vec::new(),
+            ends: StringEnds::with_capacity(expected_rows)?,
+            expected_rows,
+        })
+    }
+
+    fn push(&mut self, value: &str) -> Result<(), DtaError> {
+        const CAPACITY_SAMPLE_ROWS: usize = 8_192;
+        if self.ends.len() == CAPACITY_SAMPLE_ROWS && self.expected_rows > CAPACITY_SAMPLE_ROWS {
+            let projected = self
+                .bytes
+                .len()
+                .checked_mul(self.expected_rows)
+                .and_then(|bytes| bytes.checked_div(CAPACITY_SAMPLE_ROWS))
+                .ok_or(DtaError::ArithmeticOverflow("projected string bytes"))?;
+            self.bytes
+                .try_reserve_exact(projected.saturating_sub(self.bytes.len()))
+                .map_err(|_| DtaError::Output("could not allocate string data".to_owned()))?;
+        }
+        self.bytes
+            .try_reserve(value.len())
+            .map_err(|_| DtaError::Output("could not allocate string data".to_owned()))?;
+        self.bytes.extend_from_slice(value.as_bytes());
+        self.ends.push(self.bytes.len())
+    }
+
+    fn value(&self, index: usize) -> Option<&str> {
+        let end = usize::try_from(self.ends.get(index)?).ok()?;
+        let start = if index == 0 {
+            0
+        } else {
+            usize::try_from(self.ends.get(index - 1)?).ok()?
+        };
+        std::str::from_utf8(self.bytes.get(start..end)?).ok()
+    }
+}
+
+#[no_mangle]
+/// Release an ALTREP string store previously transferred to R.
+///
+/// # Safety
+///
+/// `data` must be null or a live pointer returned to `dtaparser_make_altstring`
+/// by this library, and it must not have been freed previously.
+pub unsafe extern "C" fn dtaparser_altstring_free(data: *mut c_void) {
+    if !data.is_null() {
+        drop(Box::from_raw(data.cast::<AltStringData>()));
+    }
+}
+
+#[no_mangle]
+/// Return the number of strings in an ALTREP backing store.
+///
+/// # Safety
+///
+/// `data` must point to a live `AltStringData` owned by an R external pointer.
+pub unsafe extern "C" fn dtaparser_altstring_length(data: *const c_void) -> usize {
+    data.cast::<AltStringData>()
+        .as_ref()
+        .map_or(0, |data| data.ends.len())
+}
+
+#[no_mangle]
+/// Borrow one UTF-8 string from an ALTREP backing store.
+///
+/// # Safety
+///
+/// `data` must point to a live `AltStringData`; `value` and `length` must be
+/// writable. The returned bytes remain valid only while `data` remains live.
+pub unsafe extern "C" fn dtaparser_altstring_value(
+    data: *const c_void,
+    index: usize,
+    value: *mut *const c_char,
+    length: *mut c_int,
+) -> c_int {
+    if data.is_null() || value.is_null() || length.is_null() {
+        return 0;
+    }
+    let Some(text) = (*data.cast::<AltStringData>()).value(index) else {
+        return 0;
+    };
+    let Ok(text_length) = c_int::try_from(text.len()) else {
+        return 0;
+    };
+    *value = text.as_ptr().cast::<c_char>();
+    *length = text_length;
+    1
+}
+
+#[no_mangle]
+/// Borrow the contiguous UTF-8 bytes and compact end-offset array.
+///
+/// # Safety
+///
+/// `data` must point to a live `AltStringData`, and all four output pointers
+/// must be writable. Returned pointers remain valid only while `data` is live.
+pub unsafe extern "C" fn dtaparser_altstring_view(
+    data: *const c_void,
+    bytes: *mut *const u8,
+    ends: *mut *const c_void,
+    end_width: *mut c_int,
+    length: *mut usize,
+) -> c_int {
+    if data.is_null()
+        || bytes.is_null()
+        || ends.is_null()
+        || end_width.is_null()
+        || length.is_null()
+    {
+        return 0;
+    }
+    let data = &*data.cast::<AltStringData>();
+    *bytes = if data.bytes.is_empty() {
+        c"".as_ptr().cast::<u8>()
+    } else {
+        data.bytes.as_ptr()
+    };
+    *length = data.ends.len();
+    match &data.ends {
+        StringEnds::U32(offsets) => {
+            *ends = offsets.as_ptr().cast::<c_void>();
+            *end_width = 4;
+        }
+        StringEnds::U64(offsets) => {
+            *ends = offsets.as_ptr().cast::<c_void>();
+            *end_width = 8;
+        }
+    }
+    1
 }
 
 struct ProtectGuard {
@@ -68,6 +276,20 @@ impl ProtectGuard {
         self.objects.push(value);
         Ok(value)
     }
+
+    unsafe fn altstring(&mut self, data: AltStringData) -> Result<Sexp, String> {
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| "R could not track a preserved native vector".to_owned())?;
+        let data = Box::into_raw(Box::new(data)).cast::<c_void>();
+        let mut value = ptr::null_mut();
+        if dtaparser_make_altstring(data, &mut value) == 0 || value.is_null() {
+            drop(Box::from_raw(data.cast::<AltStringData>()));
+            return Err("R could not allocate or preserve a lazy string vector".to_owned());
+        }
+        self.objects.push(value);
+        Ok(value)
+    }
 }
 
 impl Drop for ProtectGuard {
@@ -87,7 +309,7 @@ fn check_interrupt() -> Result<(), String> {
 }
 
 fn poll_interrupt(index: usize) -> Result<(), String> {
-    if index % INTERRUPT_STRIDE == 0 {
+    if index.is_multiple_of(INTERRUPT_STRIDE) {
         check_interrupt()?;
     }
     Ok(())
@@ -354,7 +576,7 @@ unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
     }
     {
         let mut attribute_guard = ProtectGuard::new();
-        set_class(result, &["data.frame"], &mut attribute_guard)?;
+        set_class(result, &["tbl_df", "tbl", "data.frame"], &mut attribute_guard)?;
     }
 
     attach_dataset_attributes(result, &data.metadata)?;
@@ -369,10 +591,7 @@ enum RColumn {
     },
     String {
         vector: Sexp,
-        // Delaying R string allocation until after decoding is measurably
-        // faster than interleaving it with the parser's hot loop. Insertions
-        // still validate the DtaSink row-order contract below.
-        values: Vec<String>,
+        data: Option<AltStringData>,
     },
 }
 
@@ -389,8 +608,6 @@ impl RDataFrameSink {
         row_count: u64,
         source_indices: &[u32],
     ) -> Result<Self, DtaError> {
-        let capacity = usize::try_from(row_count)
-            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let length = RLen::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let column_count = RLen::try_from(source_indices.len())
@@ -414,8 +631,10 @@ impl RDataFrameSink {
                 .ok_or(DtaError::ArithmeticOverflow("output source column"))?;
             let column = match variable.dta_type {
                 DtaType::FixedString(_) | DtaType::StrL => RColumn::String {
-                    vector: guard.alloc(STRSXP, length).map_err(DtaError::Output)?,
-                    values: Vec::with_capacity(capacity),
+                    vector: ptr::null_mut(),
+                    data: Some(AltStringData::new(usize::try_from(row_count).map_err(
+                        |_| DtaError::Output("R vector is too long".to_owned()),
+                    )?)?),
                 },
                 _ => {
                     let vector = guard.alloc(REALSXP, length).map_err(DtaError::Output)?;
@@ -429,7 +648,9 @@ impl RDataFrameSink {
             let vector = match &column {
                 RColumn::Numeric { vector, .. } | RColumn::String { vector, .. } => *vector,
             };
-            SET_VECTOR_ELT(result, output_index as RLen, vector);
+            if !vector.is_null() {
+                SET_VECTOR_ELT(result, output_index as RLen, vector);
+            }
             SET_STRING_ELT(
                 names,
                 output_index as RLen,
@@ -481,18 +702,20 @@ impl RDataFrameSink {
         &mut self,
         column: usize,
         row: usize,
-        value: String,
+        value: &str,
     ) -> Result<(), DtaError> {
         match self.columns.get_mut(column) {
-            Some(RColumn::String { values, .. }) => {
-                if values.len() != row {
+            Some(RColumn::String { data, .. }) => {
+                let data = data.as_mut().ok_or_else(|| {
+                    DtaError::Output("string output was already finalized".to_owned())
+                })?;
+                if data.ends.len() != row {
                     return Err(DtaError::Output(format!(
                         "string output row mismatch: expected {}, got {row}",
-                        values.len()
+                        data.ends.len()
                     )));
                 }
-                values.push(value);
-                Ok(())
+                data.push(value)
             }
             _ => Err(DtaError::Output("string output column mismatch".to_owned())),
         }
@@ -562,14 +785,14 @@ impl DtaSink for RDataFrameSink {
         &mut self,
         column: usize,
         row: usize,
-        value: String,
+        value: &str,
     ) -> Result<(), DtaError> {
         self.push_string_value(column, row, value)
     }
 
     #[inline(always)]
     fn push_strl(&mut self, column: usize, row: usize, value: &str) -> Result<(), DtaError> {
-        self.push_string_value(column, row, value.to_owned())
+        self.push_string_value(column, row, value)
     }
 
     fn finish(
@@ -582,24 +805,25 @@ impl DtaSink for RDataFrameSink {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         unsafe {
-            for column in &mut self.columns {
-                let RColumn::String { vector, values } = column else {
+            for (output_index, column) in self.columns.iter_mut().enumerate() {
+                let RColumn::String { vector, data } = column else {
                     continue;
                 };
-                if values.len() != expected_string_rows {
+                let actual_rows = data.as_ref().map_or(0, |data| data.ends.len());
+                if actual_rows != expected_string_rows {
                     return Err(DtaError::Output(format!(
                         "string output row count mismatch: expected {expected_string_rows}, got {}",
-                        values.len()
+                        actual_rows
                     )));
                 }
-                for (row, value) in values.drain(..).enumerate() {
-                    poll_interrupt(row).map_err(DtaError::Output)?;
-                    SET_STRING_ELT(
-                        *vector,
-                        row as RLen,
-                        r_char(&value).map_err(DtaError::Output)?,
-                    );
-                }
+                let string_data = data.take().ok_or_else(|| {
+                    DtaError::Output("string output was already finalized".to_owned())
+                })?;
+                *vector = self
+                    ._guard
+                    .altstring(string_data)
+                    .map_err(DtaError::Output)?;
+                SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
             }
 
             for (output_index, &source_index) in self.source_indices.iter().enumerate() {
@@ -636,8 +860,12 @@ impl DtaSink for RDataFrameSink {
             }
             {
                 let mut attribute_guard = ProtectGuard::new();
-                set_class(self.result, &["data.frame"], &mut attribute_guard)
-                    .map_err(DtaError::Output)?;
+                set_class(
+                    self.result,
+                    &["tbl_df", "tbl", "data.frame"],
+                    &mut attribute_guard,
+                )
+                .map_err(DtaError::Output)?;
             }
             attach_dataset_attributes(self.result, &metadata).map_err(DtaError::Output)?;
         }

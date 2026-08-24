@@ -16,13 +16,13 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux-x86_64
-            rust_toolchain: 1.97.1
+            rust_toolchain: 1.98.0
           - os: macos-latest
             platform: macos-arm64
-            rust_toolchain: 1.97.1
+            rust_toolchain: 1.98.0
           - os: windows-latest
             platform: windows-x86_64
-            rust_toolchain: 1.97.1-x86_64-pc-windows-gnu
+            rust_toolchain: 1.98.0-x86_64-pc-windows-gnu
     steps:
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
