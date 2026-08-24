@@ -334,8 +334,9 @@ pub trait DtaSink: Sized {
 /// One independently owned output column used by the block executor.
 ///
 /// Implementations must not call a foreign runtime from these methods when
-/// they are used by the parallel executor. Each value is written by exactly
-/// one worker and rows ascend within a column.
+/// they are used by the parallel executor. Numeric and fixed-string values are
+/// written by exactly one worker; deferred `strL` values are written by the
+/// coordinator after workers join. Rows ascend within every column.
 pub trait DtaColumnSink: Send {
     fn push_byte(
         &mut self,
