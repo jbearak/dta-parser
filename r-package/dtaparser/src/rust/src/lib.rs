@@ -841,6 +841,13 @@ impl DtaColumnSink for RColumn {
         data.push_utf8_bytes(row, value)?;
         Ok(true)
     }
+
+    fn push_strl(&mut self, row: usize, value: &str) -> Result<(), DtaError> {
+        let Self::String { data, .. } = self else {
+            return Err(DtaError::Output("string output column mismatch".to_owned()));
+        };
+        data.push(row, value)
+    }
 }
 
 impl DtaSink for RDataFrameSink {

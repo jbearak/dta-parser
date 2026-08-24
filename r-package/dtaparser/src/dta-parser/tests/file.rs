@@ -133,6 +133,10 @@ impl DtaColumnSink for ProbeColumn {
     fn push_fixed_string(&mut self, _row: usize, _value: &str) -> Result<(), DtaError> {
         self.push()
     }
+
+    fn push_strl(&mut self, _row: usize, _value: &str) -> Result<(), DtaError> {
+        self.push()
+    }
 }
 
 struct ProbeSink {
@@ -481,7 +485,7 @@ fn stages_bounded_wide_rows_for_dense_and_sparse_projections() {
 }
 
 #[test]
-fn parallel_vectors_match_serial_across_supported_releases_and_gate_strls() {
+fn parallel_vectors_match_serial_across_supported_releases_and_strls() {
     for name in [
         "synthetic-v105.dta",
         "synthetic-v108.dta",
@@ -544,14 +548,25 @@ fn parallel_vectors_match_serial_across_supported_releases_and_gate_strls() {
     }
 
     let strl = fixture("strl_test_v118.dta");
-    let strl_file = DtaFile::from_reader(Cursor::new(strl)).unwrap();
+    let mut serial_file = DtaFile::from_reader(Cursor::new(strl.clone())).unwrap();
+    let serial = serial_file.read().unwrap();
+    let mut strl_file = DtaFile::from_reader(Cursor::new(strl)).unwrap();
+    let parallel = strl_file
+        .read_with_parallel_interrupt(&ReadOptions::default(), 4, || false)
+        .unwrap();
+    assert_eq!(parallel, serial);
+    let expected_threads = std::thread::available_parallelism()
+        .map_or(1, usize::from)
+        .min(4)
+        .min(strl_file.metadata().variables.len())
+        .max(1);
     assert_eq!(
         strl_file
             .parallel_thread_count(&ReadOptions::default(), 4)
             .unwrap(),
-        1
+        expected_threads
     );
-    assert!(!strl_file
+    assert!(strl_file
         .supports_columnar_sink(&ReadOptions::default())
         .unwrap());
 }
@@ -652,11 +667,16 @@ fn file_and_slice_reject_invalid_signatures_identically() {
 fn file_and_slice_report_the_same_overlong_gso_error() {
     let bytes = overlong_first_gso(fixture("strl_test_v118.dta"));
     let slice_error = read_dta(&bytes).unwrap_err();
-    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
     let file_error = file
         .read_with_options(&options(0, Some(1), vec![0]))
         .unwrap_err();
     assert_eq!(file_error, slice_error);
+    let mut parallel_file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let parallel_error = parallel_file
+        .read_with_parallel_interrupt(&options(0, Some(1), vec![0]), 1, || false)
+        .unwrap_err();
+    assert_eq!(parallel_error, slice_error);
     assert!(matches!(
         file_error,
         DtaError::Truncated {
@@ -670,11 +690,16 @@ fn file_and_slice_report_the_same_overlong_gso_error() {
 fn file_and_slice_report_the_same_beyond_eof_gso_error() {
     let bytes = beyond_eof_first_gso(fixture("strl_test_v118.dta"));
     let slice_error = read_dta(&bytes).unwrap_err();
-    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
     let file_error = file
         .read_with_options(&options(0, Some(1), vec![0]))
         .unwrap_err();
     assert_eq!(file_error, slice_error);
+    let mut parallel_file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let parallel_error = parallel_file
+        .read_with_parallel_interrupt(&options(0, Some(1), vec![0]), 1, || false)
+        .unwrap_err();
+    assert_eq!(parallel_error, slice_error);
     assert!(matches!(
         file_error,
         DtaError::Truncated {
