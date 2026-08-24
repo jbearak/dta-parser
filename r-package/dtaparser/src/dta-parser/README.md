@@ -104,14 +104,16 @@ the per-cell loop.
 
 The file reader builds one format-neutral observation plan for every release
 before decoding. `DtaFile::parallel_thread_count` gates the current multicore
-executor to sufficiently large projections in every supported release whose
-selected columns do not include `strL`; unsupported or small workloads return
-one and continue through the serial executor.
+executor to sufficiently large projections in every supported release;
+oversized rows or small workloads return one and use the synchronous
+column-oriented executor.
 `DtaFile::read_with_parallel_interrupt` materializes the built-in Rust model,
 while `read_with_parallel_sink_and_interrupt` accepts a `ParallelDtaSink` that
 splits independently owned `DtaColumnSink` values across persistent workers.
 Workers share immutable bounded input blocks and retain the ordinary scalar
-decoding rules.
+decoding rules. For `strL` columns, workers collect observation pointers and
+the coordinator validates the GSO index, streams selected payloads, and writes
+the resolved strings after the workers join.
 
 `DtaMetadata` and its nested types implement `serde::Serialize` and
 `serde::Deserialize`; the observation and value-label models do as well. Their

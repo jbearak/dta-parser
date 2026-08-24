@@ -547,28 +547,34 @@ fn parallel_vectors_match_serial_across_supported_releases_and_strls() {
         );
     }
 
-    let strl = fixture("strl_test_v118.dta");
-    let mut serial_file = DtaFile::from_reader(Cursor::new(strl.clone())).unwrap();
-    let serial = serial_file.read().unwrap();
-    let mut strl_file = DtaFile::from_reader(Cursor::new(strl)).unwrap();
-    let parallel = strl_file
-        .read_with_parallel_interrupt(&ReadOptions::default(), 4, || false)
-        .unwrap();
-    assert_eq!(parallel, serial);
-    let expected_threads = std::thread::available_parallelism()
-        .map_or(1, usize::from)
-        .min(4)
-        .min(strl_file.metadata().variables.len())
-        .max(1);
-    assert_eq!(
-        strl_file
-            .parallel_thread_count(&ReadOptions::default(), 4)
-            .unwrap(),
-        expected_threads
-    );
-    assert!(strl_file
-        .supports_columnar_sink(&ReadOptions::default())
-        .unwrap());
+    for name in ["all_types_v117.dta", "strl_test_v118.dta"] {
+        let strl = fixture(name);
+        let mut serial_file = DtaFile::from_reader(Cursor::new(strl.clone())).unwrap();
+        let serial = serial_file.read().unwrap();
+        let mut strl_file = DtaFile::from_reader(Cursor::new(strl)).unwrap();
+        let parallel = strl_file
+            .read_with_parallel_interrupt(&ReadOptions::default(), 4, || false)
+            .unwrap();
+        assert_eq!(parallel, serial, "{name}");
+        let expected_threads = std::thread::available_parallelism()
+            .map_or(1, usize::from)
+            .min(4)
+            .min(strl_file.metadata().variables.len())
+            .max(1);
+        assert_eq!(
+            strl_file
+                .parallel_thread_count(&ReadOptions::default(), 4)
+                .unwrap(),
+            expected_threads,
+            "{name}"
+        );
+        assert!(
+            strl_file
+                .supports_columnar_sink(&ReadOptions::default())
+                .unwrap(),
+            "{name}"
+        );
+    }
 }
 
 #[test]

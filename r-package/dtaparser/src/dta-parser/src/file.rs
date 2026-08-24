@@ -4591,6 +4591,52 @@ mod tests {
     }
 
     #[test]
+    fn column_kernel_collects_big_endian_modern_strl_pointers() {
+        let mut metadata = kernel_metadata(ByteOrder::Msf);
+        metadata.format_version = FormatVersion::V119;
+        metadata.nvar = 1;
+        metadata.nobs = 42;
+        metadata.obs_length = 8;
+        metadata.variables = vec![VariableInfo {
+            name: "text".to_owned(),
+            dta_type: DtaType::StrL,
+            type_code: 32_768,
+            format: "%9s".to_owned(),
+            label: String::new(),
+            value_label_name: String::new(),
+            byte_width: 8,
+            byte_offset: 0,
+        }];
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&1_u16.to_be_bytes());
+        bytes.extend_from_slice(&42_u64.to_be_bytes()[2..]);
+        bytes.extend_from_slice(&[0; 8]);
+        let mut columns = vec![kernel_column(ObservationKind::StrL, 0, 8)];
+        let block = ObservationBlock {
+            bytes,
+            source_offset: 512,
+            output_row_start: 0,
+            row_count: 2,
+        };
+
+        decode_worker_block(&mut columns, &block, 8, &metadata, TextEncoding::Utf8, None).unwrap();
+
+        assert_eq!(
+            columns[0].strl_pointers.as_deref(),
+            Some(
+                [
+                    Some(FileGsoKey {
+                        variable: 1,
+                        observation: 42,
+                    }),
+                    None,
+                ]
+                .as_slice()
+            )
+        );
+    }
+
+    #[test]
     fn column_kernel_range_proof_rejects_truncation_and_output_overflow() {
         let metadata = kernel_metadata(ByteOrder::Lsf);
         let mut truncated = vec![kernel_column(ObservationKind::Double, 1, 8)];
