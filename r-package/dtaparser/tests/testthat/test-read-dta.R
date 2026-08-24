@@ -13,14 +13,50 @@ replace_first_byte <- function(bytes, text, replacement) {
     bytes
 }
 
-test_that("read_dta has the haven-compatible public signature", {
-    expected <- c("file", "encoding", "col_select", "skip", "n_max", ".name_repair")
+test_that("read_dta extends the haven-compatible public signature", {
+    expected <- c(
+        "file", "encoding", "col_select", "skip", "n_max", ".name_repair",
+        "threads"
+    )
     expect_identical(names(formals(read_dta)), expected)
     expect_null(formals(read_dta)$encoding)
     expect_null(formals(read_dta)$col_select)
     expect_identical(formals(read_dta)$skip, 0)
     expect_identical(formals(read_dta)$n_max, Inf)
     expect_identical(formals(read_dta)$.name_repair, "unique")
+    expect_identical(
+        formals(read_dta)$threads,
+        quote(getOption("dtaparser.threads", 0L))
+    )
+})
+
+test_that("modern parallel decoding is identical and older formats fall back", {
+    modern <- fixture("auto_v118.dta")
+    serial <- read_dta(modern, threads = 1L)
+    parallel <- read_dta(modern, threads = 4L)
+    projected <- read_dta(
+        modern,
+        col_select = c(text = make, number = price),
+        threads = 4L
+    )
+    expect_identical(parallel, serial)
+    expect_identical(
+        projected,
+        read_dta(
+            modern,
+            col_select = c(text = make, number = price),
+            threads = 1L
+        )
+    )
+
+    expect_identical(
+        read_dta(fixture("all_types_v117.dta"), threads = 4L),
+        read_dta(fixture("all_types_v117.dta"), threads = 1L)
+    )
+    expect_identical(
+        read_dta(fixture("strl_test_v118.dta"), threads = 4L),
+        read_dta(fixture("strl_test_v118.dta"), threads = 1L)
+    )
 })
 
 test_that("internal metadata projection is bounded and preserves attributes", {
@@ -546,6 +582,9 @@ test_that("argument and native parse failures are ordinary R errors", {
     expect_error(read_dta(path, encoding = c("UTF-8", "latin1")),
                  "one non-missing")
     expect_error(read_dta(path, encoding = 1), "one non-missing")
+    for (threads in list(-1, 1.5, NA_real_, Inf, c(1, 2), "2")) {
+        expect_error(read_dta(path, threads = threads), "threads.*non-negative")
+    }
     expect_error(read_dta(path, col_select = absent), "absent")
 
     corrupt <- tempfile(fileext = ".dta")

@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::Path;
+use std::sync::{mpsc::sync_channel, Arc};
+use std::thread;
 
 use encoding_rs::CoderResult;
 
@@ -24,6 +26,9 @@ use crate::{
 const DEFAULT_MAX_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 const MIN_MAX_BUFFER_BYTES: usize = 1024;
 const STRL_CANCEL_CHECK_INTERVAL: usize = 1024;
+const MIN_PARALLEL_DATA_BYTES: u64 = 16 * 1024 * 1024;
+const MIN_PARALLEL_CELLS: u64 = 1_000_000;
+const MAX_AUTOMATIC_THREADS: usize = 8;
 const MODERN_SIGNATURE: &[u8] = b"<stata_dta><header><release>";
 
 /// Configuration for seekable file-backed reads.
@@ -88,6 +93,86 @@ struct FileGsoEntry {
     content_offset: u64,
     content_length: usize,
     gso_type: u8,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ObservationKind {
+    Byte,
+    Int,
+    Long,
+    Float,
+    Double,
+    FixedString,
+    StrL,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ObservationColumnPlan {
+    output_index: usize,
+    source_index: u32,
+    byte_offset: usize,
+    byte_width: usize,
+    kind: ObservationKind,
+}
+
+#[derive(Debug)]
+struct ObservationPlan {
+    row_width: usize,
+    columns: Vec<ObservationColumnPlan>,
+}
+
+impl ObservationPlan {
+    fn new(metadata: &DtaMetadata, indices: &[u32]) -> Result<Self, DtaError> {
+        let row_width = usize::try_from(metadata.obs_length)
+            .map_err(|_| DtaError::ArithmeticOverflow("observation length"))?;
+        let mut columns = Vec::new();
+        columns
+            .try_reserve_exact(indices.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("observation plan columns"))?;
+        for (output_index, &source_index) in indices.iter().enumerate() {
+            let variable = metadata.variables.get(source_index as usize).ok_or(
+                DtaError::ArithmeticOverflow("observation plan source column"),
+            )?;
+            let byte_offset = usize::try_from(variable.byte_offset)
+                .map_err(|_| DtaError::ArithmeticOverflow("cell offset"))?;
+            let byte_width = usize::try_from(variable.byte_width)
+                .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
+            let cell_end = byte_offset
+                .checked_add(byte_width)
+                .ok_or(DtaError::ArithmeticOverflow("cell end"))?;
+            if cell_end > row_width {
+                return Err(DtaError::Truncated {
+                    context: "observation cell",
+                    offset: byte_offset,
+                    needed: byte_width,
+                    available: row_width.saturating_sub(byte_offset),
+                });
+            }
+            let kind = match variable.dta_type {
+                DtaType::Byte => ObservationKind::Byte,
+                DtaType::Int => ObservationKind::Int,
+                DtaType::Long => ObservationKind::Long,
+                DtaType::Float => ObservationKind::Float,
+                DtaType::Double => ObservationKind::Double,
+                DtaType::FixedString(_) => ObservationKind::FixedString,
+                DtaType::StrL => ObservationKind::StrL,
+            };
+            columns.push(ObservationColumnPlan {
+                output_index,
+                source_index,
+                byte_offset,
+                byte_width,
+                kind,
+            });
+        }
+        Ok(Self { row_width, columns })
+    }
+
+    fn has_strls(&self) -> bool {
+        self.columns
+            .iter()
+            .any(|column| matches!(column.kind, ObservationKind::StrL))
+    }
 }
 
 enum ColumnBuilder {
@@ -174,10 +259,90 @@ pub trait DtaSink: Sized {
     ) -> Result<(), DtaError>;
     fn push_fixed_string(&mut self, column: usize, row: usize, value: &str)
         -> Result<(), DtaError>;
+
+    /// Consume an undecoded fixed-string field when the destination has a
+    /// representation-aware fast path. Returning `false` asks the shared
+    /// decoder to perform the normal text conversion and call
+    /// [`DtaSink::push_fixed_string`].
+    fn try_push_fixed_string_bytes(
+        &mut self,
+        _column: usize,
+        _row: usize,
+        _value: &[u8],
+        _encoding: TextEncoding,
+    ) -> Result<bool, DtaError> {
+        Ok(false)
+    }
+
     fn push_strl(&mut self, column: usize, row: usize, value: &str) -> Result<(), DtaError>;
 
     fn finish(
         self,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError>;
+}
+
+/// One independently owned output column used by the block executor.
+///
+/// Implementations must not call a foreign runtime from these methods when
+/// they are used by the parallel executor. Each value is written by exactly
+/// one worker and rows ascend within a column.
+pub trait DtaColumnSink: Send {
+    fn push_byte(
+        &mut self,
+        row: usize,
+        value: i8,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_int(
+        &mut self,
+        row: usize,
+        value: i16,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_long(
+        &mut self,
+        row: usize,
+        value: i32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_float(
+        &mut self,
+        row: usize,
+        value: f32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_double(
+        &mut self,
+        row: usize,
+        value: f64,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError>;
+    fn push_fixed_string(&mut self, row: usize, value: &str) -> Result<(), DtaError>;
+    fn try_push_fixed_string_bytes(
+        &mut self,
+        _row: usize,
+        _value: &[u8],
+        _encoding: TextEncoding,
+    ) -> Result<bool, DtaError> {
+        Ok(false)
+    }
+}
+
+/// Destination that can transfer independent columns to worker threads.
+pub trait ParallelDtaSink: Sized {
+    type Output;
+    type Column: DtaColumnSink;
+    type State;
+
+    fn split(self) -> (Self::State, Vec<Self::Column>);
+
+    fn finish_parallel(
+        state: Self::State,
+        columns: Vec<Self::Column>,
         metadata: DtaMetadata,
         row_start: u64,
         row_count: u64,
@@ -294,6 +459,111 @@ impl ColumnBuilder {
                 values: ColumnValues::StrL { values },
             },
         }
+    }
+}
+
+impl DtaColumnSink for ColumnBuilder {
+    fn push_byte(
+        &mut self,
+        _row: usize,
+        value: i8,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let Self::Byte {
+            values,
+            missing_tags,
+            ..
+        } = self
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    fn push_int(
+        &mut self,
+        _row: usize,
+        value: i16,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let Self::Int {
+            values,
+            missing_tags,
+            ..
+        } = self
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    fn push_long(
+        &mut self,
+        _row: usize,
+        value: i32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let Self::Long {
+            values,
+            missing_tags,
+            ..
+        } = self
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    fn push_float(
+        &mut self,
+        _row: usize,
+        value: f32,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let Self::Float {
+            values,
+            missing_tags,
+            ..
+        } = self
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    fn push_double(
+        &mut self,
+        _row: usize,
+        value: f64,
+        missing: Option<crate::MissingTag>,
+    ) -> Result<(), DtaError> {
+        let Self::Double {
+            values,
+            missing_tags,
+            ..
+        } = self
+        else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value);
+        missing_tags.push(missing);
+        Ok(())
+    }
+
+    fn push_fixed_string(&mut self, _row: usize, value: &str) -> Result<(), DtaError> {
+        let Self::FixedString { values, .. } = self else {
+            return Err(DtaError::ArithmeticOverflow("output column type"));
+        };
+        values.push(value.to_owned());
+        Ok(())
     }
 }
 
@@ -469,6 +739,150 @@ impl DtaSink for VecSink {
     }
 }
 
+impl ParallelDtaSink for VecSink {
+    type Output = DtaData;
+    type Column = ColumnBuilder;
+    type State = ();
+
+    fn split(self) -> (Self::State, Vec<Self::Column>) {
+        ((), self.columns)
+    }
+
+    fn finish_parallel(
+        _state: Self::State,
+        columns: Vec<Self::Column>,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError> {
+        DtaSink::finish(
+            VecSink { columns },
+            metadata,
+            row_start,
+            row_count,
+            value_label_tables,
+        )
+    }
+}
+
+struct ParallelColumn<C> {
+    plan: ObservationColumnPlan,
+    sink: C,
+}
+
+struct ObservationBlock {
+    bytes: Vec<u8>,
+    output_row_start: usize,
+    row_count: usize,
+}
+
+enum WorkerMessage {
+    Block(Arc<ObservationBlock>),
+    Finish,
+}
+
+fn decode_parallel_cell<C: DtaColumnSink>(
+    column: &mut ParallelColumn<C>,
+    row: usize,
+    cell: &[u8],
+    metadata: &DtaMetadata,
+    encoding: TextEncoding,
+) -> Result<(), DtaError> {
+    match column.plan.kind {
+        ObservationKind::Byte => {
+            let value = read_i8(cell, 0, "byte observation")?;
+            column.sink.push_byte(
+                row,
+                value,
+                classify_byte_missing_for_version(value, metadata.format_version),
+            )
+        }
+        ObservationKind::Int => {
+            let value = read_i16(cell, 0, metadata.byte_order, "int observation")?;
+            column.sink.push_int(
+                row,
+                value,
+                classify_int_missing_for_version(value, metadata.format_version),
+            )
+        }
+        ObservationKind::Long => {
+            let value = read_i32(cell, 0, metadata.byte_order, "long observation")?;
+            column.sink.push_long(
+                row,
+                value,
+                classify_long_missing_for_version(value, metadata.format_version),
+            )
+        }
+        ObservationKind::Float => {
+            let bits = read_u32(cell, 0, metadata.byte_order, "float observation")?;
+            column.sink.push_float(
+                row,
+                f32::from_bits(bits),
+                classify_float_missing_bits_for_version(bits, metadata.format_version),
+            )
+        }
+        ObservationKind::Double => {
+            let bits = read_u64(cell, 0, metadata.byte_order, "double observation")?;
+            column.sink.push_double(
+                row,
+                f64::from_bits(bits),
+                classify_double_missing_bits_for_version(bits, metadata.format_version),
+            )
+        }
+        ObservationKind::FixedString => {
+            let field = field_bytes(cell);
+            if column
+                .sink
+                .try_push_fixed_string_bytes(row, field, encoding)?
+            {
+                Ok(())
+            } else {
+                let value = encoding.decode_cow(field);
+                column.sink.push_fixed_string(row, &value)
+            }
+        }
+        ObservationKind::StrL => Err(DtaError::Output(
+            "parallel strL decoding is not enabled".to_owned(),
+        )),
+    }
+}
+
+fn decode_worker_block<C: DtaColumnSink>(
+    columns: &mut [ParallelColumn<C>],
+    block: &ObservationBlock,
+    row_width: usize,
+    metadata: &DtaMetadata,
+    encoding: TextEncoding,
+) -> Result<(), DtaError> {
+    for column in columns {
+        for local_row in 0..block.row_count {
+            let row_at = local_row
+                .checked_mul(row_width)
+                .and_then(|value| value.checked_add(column.plan.byte_offset))
+                .ok_or(DtaError::ArithmeticOverflow("parallel cell offset"))?;
+            let cell_end = row_at
+                .checked_add(column.plan.byte_width)
+                .ok_or(DtaError::ArithmeticOverflow("parallel cell end"))?;
+            let cell = block
+                .bytes
+                .get(row_at..cell_end)
+                .ok_or(DtaError::Truncated {
+                    context: "observation cell",
+                    offset: row_at,
+                    needed: column.plan.byte_width,
+                    available: block.bytes.len().saturating_sub(row_at),
+                })?;
+            let output_row = block
+                .output_row_start
+                .checked_add(local_row)
+                .ok_or(DtaError::ArithmeticOverflow("parallel output row"))?;
+            decode_parallel_cell(column, output_row, cell, metadata, encoding)?;
+        }
+    }
+    Ok(())
+}
+
 /// A synchronous, bounded-buffer `.dta` reader over any seekable source.
 ///
 /// Construction reads only metadata. Observation data, GSO payloads, and
@@ -632,6 +1046,308 @@ impl<R: Read + Seek> DtaFile<R> {
         )
     }
 
+    /// Resolve the worker count for the validated modern parallel path.
+    ///
+    /// A requested value of zero selects an automatic count. Unsupported
+    /// formats, `strL` projections, oversized rows, and small automatic
+    /// workloads deliberately return one so callers can use the serial path.
+    pub fn parallel_thread_count(
+        &self,
+        options: &ReadOptions,
+        requested: usize,
+    ) -> Result<usize, DtaError> {
+        if requested == 1
+            || !matches!(
+                self.metadata.format_version,
+                FormatVersion::V118 | FormatVersion::V119
+            )
+        {
+            return Ok(1);
+        }
+        let indices = resolve_columns(&self.metadata, options)?;
+        let plan = ObservationPlan::new(&self.metadata, &indices)?;
+        let (_, row_count) = row_window(&self.metadata, options);
+        if plan.columns.len() < 2
+            || plan.row_width == 0
+            || plan.row_width > self.scratch.limit
+            || plan.has_strls()
+        {
+            return Ok(1);
+        }
+        let data_bytes = row_count.saturating_mul(self.metadata.obs_length);
+        let cells = row_count.saturating_mul(plan.columns.len() as u64);
+        if requested == 0 && (data_bytes < MIN_PARALLEL_DATA_BYTES || cells < MIN_PARALLEL_CELLS) {
+            return Ok(1);
+        }
+        let available = thread::available_parallelism().map_or(1, usize::from);
+        let threads = if requested == 0 {
+            available.min(MAX_AUTOMATIC_THREADS)
+        } else {
+            requested.min(available)
+        };
+        Ok(threads.min(plan.columns.len()).max(1))
+    }
+
+    /// Decode a modern projection into ordinary Rust vectors with the shared
+    /// parallel block executor.
+    pub fn read_with_parallel_interrupt<F>(
+        &mut self,
+        options: &ReadOptions,
+        thread_count: usize,
+        should_interrupt: F,
+    ) -> Result<DtaData, DtaError>
+    where
+        F: FnMut() -> bool,
+    {
+        self.read_with_parallel_sink_and_interrupt(
+            options,
+            thread_count,
+            |metadata, _row_start, row_count, indices| {
+                let capacity = usize::try_from(row_count)
+                    .map_err(|_| DtaError::ArithmeticOverflow("projected row count"))?;
+                Ok(VecSink::new(metadata, indices, capacity))
+            },
+            should_interrupt,
+        )
+    }
+
+    /// Decode a Stata 118/119 projection through independently owned columns.
+    ///
+    /// The shared scalar cell decoder is retained; workers only partition
+    /// columns and never call a foreign runtime. Use
+    /// [`DtaFile::parallel_thread_count`] before this method and fall back to
+    /// [`DtaFile::read_with_sink_and_interrupt`] when it returns one.
+    pub fn read_with_parallel_sink_and_interrupt<S, B, F>(
+        &mut self,
+        options: &ReadOptions,
+        thread_count: usize,
+        build_sink: B,
+        mut should_interrupt: F,
+    ) -> Result<S::Output, DtaError>
+    where
+        S: ParallelDtaSink,
+        B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
+        F: FnMut() -> bool,
+    {
+        check_cancel(&mut should_interrupt)?;
+        validate_layout(
+            &mut self.reader,
+            &self.metadata,
+            self.file_length,
+            &mut self.scratch,
+        )?;
+        let indices = resolve_columns(&self.metadata, options)?;
+        let (row_start, row_count) = row_window(&self.metadata, options);
+        let plan = ObservationPlan::new(&self.metadata, &indices)?;
+        if thread_count < 2
+            || !matches!(
+                self.metadata.format_version,
+                FormatVersion::V118 | FormatVersion::V119
+            )
+            || plan.columns.len() < 2
+            || plan.row_width == 0
+            || plan.row_width > self.scratch.limit
+            || plan.has_strls()
+        {
+            return Err(DtaError::Output(
+                "parallel decoder eligibility was not satisfied".to_owned(),
+            ));
+        }
+        let worker_count = thread_count.min(plan.columns.len());
+        let sink = build_sink(&self.metadata, row_start, row_count, &indices)?;
+        let (state, columns) = sink.split();
+        if columns.len() != plan.columns.len() {
+            return Err(DtaError::Output(
+                "parallel output column count mismatch".to_owned(),
+            ));
+        }
+
+        let mut shards = (0..worker_count)
+            .map(|_| Vec::<ParallelColumn<S::Column>>::new())
+            .collect::<Vec<_>>();
+        let mut shard_weights = vec![0_usize; worker_count];
+        for (column_plan, column_sink) in plan.columns.iter().copied().zip(columns) {
+            let worker = shard_weights
+                .iter()
+                .enumerate()
+                .min_by_key(|&(index, weight)| (*weight, index))
+                .map(|(index, _)| index)
+                .unwrap_or(0);
+            shard_weights[worker] =
+                shard_weights[worker].saturating_add(column_plan.byte_width.max(8));
+            shards[worker].push(ParallelColumn {
+                plan: column_plan,
+                sink: column_sink,
+            });
+        }
+
+        let payload_start =
+            checked_add_u64(self.metadata.section_offsets.data, 6, "data payload offset")?;
+        let rows_per_block = self.scratch.limit / plan.row_width;
+        let rows_per_block = u64::try_from(rows_per_block)
+            .map_err(|_| DtaError::ArithmeticOverflow("parallel rows per block"))?;
+        let metadata = &self.metadata;
+        let encoding = self.text_encoding;
+        let mut observation_buffer = Vec::new();
+
+        let decoded_columns = thread::scope(
+            |scope| -> Result<Vec<ParallelColumn<S::Column>>, DtaError> {
+                let mut senders = Vec::with_capacity(worker_count);
+                let mut ack_receivers = Vec::with_capacity(worker_count);
+                let mut handles = Vec::with_capacity(worker_count);
+                for mut shard in shards {
+                    let (sender, receiver) = sync_channel::<WorkerMessage>(0);
+                    let (worker_ack, ack_receiver) = sync_channel::<Result<(), DtaError>>(0);
+                    senders.push(sender);
+                    ack_receivers.push(ack_receiver);
+                    handles.push(scope.spawn(move || {
+                        while let Ok(message) = receiver.recv() {
+                            match message {
+                                WorkerMessage::Block(block) => {
+                                    let result = decode_worker_block(
+                                        &mut shard,
+                                        &block,
+                                        plan.row_width,
+                                        metadata,
+                                        encoding,
+                                    );
+                                    drop(block);
+                                    let failed = result.is_err();
+                                    if worker_ack.send(result).is_err() || failed {
+                                        break;
+                                    }
+                                }
+                                WorkerMessage::Finish => break,
+                            }
+                        }
+                        shard
+                    }));
+                }
+
+                let mut row = 0_u64;
+                let mut execution_error = None;
+                while row < row_count {
+                    check_cancel(&mut should_interrupt)?;
+                    let block_rows = (row_count - row).min(rows_per_block);
+                    let block_row_count = usize::try_from(block_rows)
+                        .map_err(|_| DtaError::ArithmeticOverflow("parallel block row count"))?;
+                    let block_length = plan
+                        .row_width
+                        .checked_mul(block_row_count)
+                        .ok_or(DtaError::ArithmeticOverflow("parallel block length"))?;
+                    let source_row = row_start
+                        .checked_add(row)
+                        .ok_or(DtaError::ArithmeticOverflow("parallel source row"))?;
+                    let block_offset = payload_start
+                        .checked_add(
+                            source_row
+                                .checked_mul(self.metadata.obs_length)
+                                .ok_or(DtaError::ArithmeticOverflow("parallel row offset"))?,
+                        )
+                        .ok_or(DtaError::ArithmeticOverflow("parallel block offset"))?;
+                    read_exact_at_into(
+                        &mut self.reader,
+                        block_offset,
+                        block_length,
+                        &mut self.scratch,
+                        &mut observation_buffer,
+                        "reading observation rows",
+                    )?;
+                    let block = Arc::new(ObservationBlock {
+                        bytes: std::mem::take(&mut observation_buffer),
+                        output_row_start: usize::try_from(row)
+                            .map_err(|_| DtaError::ArithmeticOverflow("parallel output row"))?,
+                        row_count: block_row_count,
+                    });
+                    for sender in &senders {
+                        sender
+                            .send(WorkerMessage::Block(Arc::clone(&block)))
+                            .map_err(|_| {
+                                DtaError::Output("parallel decoder worker stopped".to_owned())
+                            })?;
+                    }
+                    let mut errors = Vec::new();
+                    for (worker, receiver) in ack_receivers.iter().enumerate() {
+                        match receiver.recv() {
+                            Ok(Err(error)) => errors.push((worker, error)),
+                            Ok(Ok(())) => {}
+                            Err(_) => {
+                                execution_error = Some(DtaError::Output(format!(
+                                    "parallel decoder worker {worker} stopped"
+                                )));
+                                break;
+                            }
+                        }
+                    }
+                    if execution_error.is_some() {
+                        break;
+                    }
+                    if !errors.is_empty() {
+                        errors.sort_by_key(|(worker, _)| *worker);
+                        execution_error = errors.into_iter().next().map(|(_, error)| error);
+                        break;
+                    }
+                    observation_buffer = Arc::try_unwrap(block)
+                        .map_err(|_| {
+                            DtaError::Output("parallel input block remained borrowed".to_owned())
+                        })?
+                        .bytes;
+                    row = row
+                        .checked_add(block_rows)
+                        .ok_or(DtaError::ArithmeticOverflow("parallel projected row"))?;
+                }
+
+                if execution_error.is_none() {
+                    for sender in &senders {
+                        let _ = sender.send(WorkerMessage::Finish);
+                    }
+                }
+                drop(senders);
+                let mut completed = Vec::with_capacity(plan.columns.len());
+                for handle in handles {
+                    let shard = handle.join().map_err(|_| {
+                        DtaError::Output("parallel decoder worker panicked".to_owned())
+                    })?;
+                    completed.extend(shard);
+                }
+                if let Some(error) = execution_error {
+                    return Err(error);
+                }
+                Ok(completed)
+            },
+        )?;
+
+        let mut ordered = (0..plan.columns.len())
+            .map(|_| None)
+            .collect::<Vec<Option<S::Column>>>();
+        for column in decoded_columns {
+            ordered[column.plan.output_index] = Some(column.sink);
+        }
+        let columns = ordered
+            .into_iter()
+            .map(|column| {
+                column.ok_or_else(|| {
+                    DtaError::Output("parallel output column was not returned".to_owned())
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        check_cancel(&mut should_interrupt)?;
+        self.ensure_value_labels(&mut should_interrupt)?;
+        let value_label_tables = self
+            .value_label_tables
+            .clone()
+            .expect("value-label cache was initialized");
+        S::finish_parallel(
+            state,
+            columns,
+            self.metadata.clone(),
+            row_start,
+            row_count,
+            value_label_tables,
+        )
+    }
+
     /// Decode through a caller-provided typed output collector.
     ///
     /// The collector is constructed after metadata, projection, and row bounds
@@ -658,6 +1374,7 @@ impl<R: Read + Seek> DtaFile<R> {
         )?;
         let indices = resolve_columns(&self.metadata, options)?;
         let (row_start, row_count) = row_window(&self.metadata, options);
+        let plan = ObservationPlan::new(&self.metadata, &indices)?;
         let capacity = usize::try_from(row_count)
             .map_err(|_| DtaError::ArithmeticOverflow("projected row count"))?;
         let mut sink = build_sink(&self.metadata, row_start, row_count, &indices)?;
@@ -684,16 +1401,13 @@ impl<R: Read + Seek> DtaFile<R> {
             text_encoding: self.text_encoding,
         };
 
-        if !indices.is_empty()
-            && self.metadata.obs_length > 0
-            && self.metadata.obs_length <= self.scratch.limit as u64
-        {
-            let obs_length = usize::try_from(self.metadata.obs_length)
-                .map_err(|_| DtaError::ArithmeticOverflow("observation length"))?;
+        if !plan.columns.is_empty() && plan.row_width > 0 && plan.row_width <= self.scratch.limit {
+            let obs_length = plan.row_width;
             let rows_per_chunk = self.scratch.limit / obs_length;
             let rows_per_chunk = u64::try_from(rows_per_chunk)
                 .map_err(|_| DtaError::ArithmeticOverflow("rows per chunk"))?;
             let mut row = 0_u64;
+            let mut observation_buffer = Vec::new();
             while row < row_count {
                 check_cancel(&mut should_interrupt)?;
                 let chunk_rows = (row_count - row).min(rows_per_chunk);
@@ -712,13 +1426,15 @@ impl<R: Read + Seek> DtaFile<R> {
                             .ok_or(DtaError::ArithmeticOverflow("row offset"))?,
                     )
                     .ok_or(DtaError::ArithmeticOverflow("observation chunk offset"))?;
-                let staged = read_exact_at(
+                read_exact_at_into(
                     &mut self.reader,
                     chunk_offset,
                     chunk_length,
                     &mut self.scratch,
+                    &mut observation_buffer,
                     "reading observation rows",
                 )?;
+                let staged = &observation_buffer;
                 for local_row in 0..chunk_rows_usize {
                     check_cancel(&mut should_interrupt)?;
                     let row_at = local_row
@@ -728,12 +1444,10 @@ impl<R: Read + Seek> DtaFile<R> {
                         .map_err(|_| DtaError::ArithmeticOverflow("output row"))?
                         .checked_add(local_row)
                         .ok_or(DtaError::ArithmeticOverflow("output row"))?;
-                    for (output_column, &index) in indices.iter().enumerate() {
-                        let variable = &self.metadata.variables[index as usize];
-                        let width = usize::try_from(variable.byte_width)
-                            .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
-                        let variable_at = usize::try_from(variable.byte_offset)
-                            .map_err(|_| DtaError::ArithmeticOverflow("cell offset"))?;
+                    for column in &plan.columns {
+                        let variable = &self.metadata.variables[column.source_index as usize];
+                        let width = column.byte_width;
+                        let variable_at = column.byte_offset;
                         let cell_at = row_at
                             .checked_add(variable_at)
                             .ok_or(DtaError::ArithmeticOverflow("staged cell offset"))?;
@@ -752,7 +1466,7 @@ impl<R: Read + Seek> DtaFile<R> {
                             available: staged.len().saturating_sub(cell_at),
                         })?;
                         cell_decoder.push_staged_cell(
-                            output_column,
+                            column.output_index,
                             output_row,
                             cell,
                             absolute_offset,
@@ -764,7 +1478,7 @@ impl<R: Read + Seek> DtaFile<R> {
                     .checked_add(chunk_rows)
                     .ok_or(DtaError::ArithmeticOverflow("projected row"))?;
             }
-        } else {
+        } else if !plan.columns.is_empty() {
             for row in 0..row_count {
                 check_cancel(&mut should_interrupt)?;
                 let output_row =
@@ -775,14 +1489,13 @@ impl<R: Read + Seek> DtaFile<R> {
                 let row_offset = source_row
                     .checked_mul(self.metadata.obs_length)
                     .ok_or(DtaError::ArithmeticOverflow("row offset"))?;
-                for (output_column, &index) in indices.iter().enumerate() {
-                    let variable = &self.metadata.variables[index as usize];
+                for column in &plan.columns {
+                    let variable = &self.metadata.variables[column.source_index as usize];
                     let cell_offset = payload_start
                         .checked_add(row_offset)
                         .and_then(|value| value.checked_add(variable.byte_offset))
                         .ok_or(DtaError::ArithmeticOverflow("cell offset"))?;
-                    let width = usize::try_from(variable.byte_width)
-                        .map_err(|_| DtaError::ArithmeticOverflow("cell width"))?;
+                    let width = column.byte_width;
                     if matches!(variable.dta_type, DtaType::FixedString(_)) {
                         let (value, _) = decode_range(
                             &mut self.reader,
@@ -794,9 +1507,11 @@ impl<R: Read + Seek> DtaFile<R> {
                             &mut should_interrupt,
                             "reading fixed-string observation",
                         )?;
-                        cell_decoder
-                            .sink
-                            .push_fixed_string(output_column, output_row, &value)?;
+                        cell_decoder.sink.push_fixed_string(
+                            column.output_index,
+                            output_row,
+                            &value,
+                        )?;
                         continue;
                     }
                     let cell = read_exact_at(
@@ -807,7 +1522,7 @@ impl<R: Read + Seek> DtaFile<R> {
                         "reading observation cell",
                     )?;
                     cell_decoder.push_cell(
-                        output_column,
+                        column.output_index,
                         output_row,
                         &cell,
                         cell_offset,
@@ -930,6 +1645,59 @@ fn read_exact_at<R: Read + Seek>(
             .ok_or(DtaError::ArithmeticOverflow("file read length"))?;
     }
     Ok(bytes)
+}
+
+fn read_exact_at_into<R: Read + Seek>(
+    reader: &mut R,
+    offset: u64,
+    length: usize,
+    scratch: &mut Scratch,
+    bytes: &mut Vec<u8>,
+    context: &'static str,
+) -> Result<(), DtaError> {
+    scratch.record(length)?;
+    reader
+        .seek(SeekFrom::Start(offset))
+        .map_err(|error| DtaError::Io {
+            context,
+            offset,
+            kind: error.kind(),
+        })?;
+    if bytes.len() < length {
+        bytes
+            .try_reserve_exact(length - bytes.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("file read allocation"))?;
+        bytes.resize(length, 0);
+    } else {
+        bytes.truncate(length);
+    }
+    let mut completed = 0_usize;
+    while completed < length {
+        let read_offset = offset
+            .checked_add(
+                u64::try_from(completed)
+                    .map_err(|_| DtaError::ArithmeticOverflow("file read offset"))?,
+            )
+            .ok_or(DtaError::ArithmeticOverflow("file read offset"))?;
+        let count = reader
+            .read(&mut bytes[completed..length])
+            .map_err(|error| DtaError::Io {
+                context,
+                offset: read_offset,
+                kind: error.kind(),
+            })?;
+        if count == 0 {
+            return Err(DtaError::Io {
+                context,
+                offset: read_offset,
+                kind: ErrorKind::UnexpectedEof,
+            });
+        }
+        completed = completed
+            .checked_add(count)
+            .ok_or(DtaError::ArithmeticOverflow("file read length"))?;
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1219,6 +1987,87 @@ fn modern_string_payload<R: Read + Seek>(
     let after_close = expect_file_tag(reader, close_offset, close, section_name, scratch)?;
     ensure_absolute(section_name, after_close, next_offset)?;
     Ok(payload)
+}
+
+fn read_fixed_text_fields<R: Read + Seek>(
+    reader: &mut R,
+    payload: u64,
+    count: usize,
+    width: usize,
+    encoding: TextEncoding,
+    scratch: &mut Scratch,
+    context: &'static str,
+) -> Result<Vec<String>, DtaError> {
+    let fields_per_chunk = (scratch.limit / width).max(1);
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| DtaError::ArithmeticOverflow("metadata text fields"))?;
+    let mut first = 0_usize;
+    while first < count {
+        let field_count = (count - first).min(fields_per_chunk);
+        let length = field_count
+            .checked_mul(width)
+            .ok_or(DtaError::ArithmeticOverflow("metadata text block"))?;
+        let offset = payload
+            .checked_add(
+                u64::try_from(
+                    first
+                        .checked_mul(width)
+                        .ok_or(DtaError::ArithmeticOverflow("metadata text offset"))?,
+                )
+                .map_err(|_| DtaError::ArithmeticOverflow("metadata text offset"))?,
+            )
+            .ok_or(DtaError::ArithmeticOverflow("metadata text offset"))?;
+        let bytes = read_exact_at(reader, offset, length, scratch, context)?;
+        for field in bytes.chunks_exact(width) {
+            values.push(encoding.decode_cow(field_bytes(field)).into_owned());
+        }
+        first = first
+            .checked_add(field_count)
+            .ok_or(DtaError::ArithmeticOverflow("metadata field index"))?;
+    }
+    Ok(values)
+}
+
+fn read_modern_type_codes<R: Read + Seek>(
+    reader: &mut R,
+    payload: u64,
+    count: usize,
+    byte_order: ByteOrder,
+    scratch: &mut Scratch,
+) -> Result<Vec<u16>, DtaError> {
+    let type_width = 2_usize;
+    let fields_per_chunk = (scratch.limit / type_width).max(1);
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| DtaError::ArithmeticOverflow("variable type codes"))?;
+    let mut first = 0_usize;
+    while first < count {
+        let field_count = (count - first).min(fields_per_chunk);
+        let length = field_count
+            .checked_mul(type_width)
+            .ok_or(DtaError::ArithmeticOverflow("variable type block"))?;
+        let offset = payload
+            .checked_add(
+                u64::try_from(
+                    first
+                        .checked_mul(type_width)
+                        .ok_or(DtaError::ArithmeticOverflow("variable type offset"))?,
+                )
+                .map_err(|_| DtaError::ArithmeticOverflow("variable type offset"))?,
+            )
+            .ok_or(DtaError::ArithmeticOverflow("variable type offset"))?;
+        let bytes = read_exact_at(reader, offset, length, scratch, "reading variable types")?;
+        for field in bytes.chunks_exact(type_width) {
+            values.push(read_u16(field, 0, byte_order, "variable type")?);
+        }
+        first = first
+            .checked_add(field_count)
+            .ok_or(DtaError::ArithmeticOverflow("variable type index"))?;
+    }
+    Ok(values)
 }
 
 fn validate_modern_sortlist<R: Read + Seek>(
@@ -1633,63 +2482,56 @@ fn read_modern_metadata<R: Read + Seek>(
     )?;
     let notes = read_modern_notes(reader, &header, encoding, scratch)?;
 
+    let type_codes = read_modern_type_codes(reader, types_start, nvar, header.byte_order, scratch)?;
+    let names = read_fixed_text_fields(
+        reader,
+        varnames,
+        nvar,
+        widths.varname,
+        encoding,
+        scratch,
+        "reading variable names",
+    )?;
+    let formats = read_fixed_text_fields(
+        reader,
+        formats,
+        nvar,
+        widths.format,
+        encoding,
+        scratch,
+        "reading variable formats",
+    )?;
+    let value_label_names = read_fixed_text_fields(
+        reader,
+        value_label_names,
+        nvar,
+        widths.value_label_name,
+        encoding,
+        scratch,
+        "reading variable value-label names",
+    )?;
+    let variable_labels = read_fixed_text_fields(
+        reader,
+        variable_labels,
+        nvar,
+        widths.variable_label,
+        encoding,
+        scratch,
+        "reading variable labels",
+    )?;
+
     let mut byte_offset = 0_u64;
     let mut variables = Vec::with_capacity(nvar);
-    let mut never_cancel = || false;
     for index in 0..nvar {
-        let field_offset = |start: u64, width: usize, context: &'static str| {
-            checked_add_u64(
-                start,
-                u64::try_from(
-                    index
-                        .checked_mul(width)
-                        .ok_or(DtaError::ArithmeticOverflow(context))?,
-                )
-                .map_err(|_| DtaError::ArithmeticOverflow(context))?,
-                context,
-            )
-        };
-        let type_bytes = read_exact_at(
-            reader,
-            field_offset(types_start, 2, "variable type offset")?,
-            2,
-            scratch,
-            "reading variable type",
-        )?;
-        let type_code = read_u16(&type_bytes, 0, header.byte_order, "variable type")?;
+        let type_code = type_codes[index];
         let (dta_type, byte_width) = resolve_type(type_code, header.format_version)?;
-        let mut decode_field = |start, width, context| {
-            decode_range(
-                reader,
-                field_offset(start, width, context)?,
-                width,
-                encoding,
-                true,
-                scratch,
-                &mut never_cancel,
-                context,
-            )
-            .map(|value| value.0)
-        };
-        let name = decode_field(varnames, widths.varname, "reading variable name")?;
-        let format = decode_field(formats, widths.format, "reading variable format")?;
-        let value_label_name = decode_field(
-            value_label_names,
-            widths.value_label_name,
-            "reading variable value-label name",
-        )?;
-        let label = decode_field(
-            variable_labels,
-            widths.variable_label,
-            "reading variable label",
-        )?;
         variables.push(VariableInfo {
-            name,
+            name: names[index].clone(),
             dta_type,
             type_code,
-            format,
-            label,
-            value_label_name,
+            format: formats[index].clone(),
+            label: variable_labels[index].clone(),
+            value_label_name: value_label_names[index].clone(),
             byte_width,
             byte_offset,
         });
@@ -2854,7 +3696,16 @@ impl<S: DtaSink> CellDecoder<'_, S> {
         variable: &VariableInfo,
     ) -> Result<(), DtaError> {
         if matches!(variable.dta_type, DtaType::FixedString(_)) {
-            let value = self.text_encoding.decode_cow(field_bytes(cell));
+            let field = field_bytes(cell);
+            if self.sink.try_push_fixed_string_bytes(
+                output_column,
+                output_row,
+                field,
+                self.text_encoding,
+            )? {
+                return Ok(());
+            }
+            let value = self.text_encoding.decode_cow(field);
             return self
                 .sink
                 .push_fixed_string(output_column, output_row, &value);

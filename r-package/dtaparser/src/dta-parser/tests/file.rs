@@ -354,6 +354,43 @@ fn stages_bounded_wide_rows_for_dense_and_sparse_projections() {
 }
 
 #[test]
+fn modern_parallel_vectors_match_serial_and_gate_unsupported_layouts() {
+    let bytes = fixture("auto_v118.dta");
+    let read_options = options(3, Some(41), vec![11, 0, 7, 2]);
+    let mut serial_file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
+    let serial = serial_file.read_with_options(&read_options).unwrap();
+
+    let mut parallel_file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let threads = parallel_file
+        .parallel_thread_count(&read_options, 4)
+        .unwrap();
+    if threads > 1 {
+        let parallel = parallel_file
+            .read_with_parallel_interrupt(&read_options, threads, || false)
+            .unwrap();
+        assert_eq!(parallel, serial);
+    }
+
+    let legacy = fixture("auto_v117.dta");
+    let legacy_file = DtaFile::from_reader(Cursor::new(legacy)).unwrap();
+    assert_eq!(
+        legacy_file
+            .parallel_thread_count(&ReadOptions::default(), 4)
+            .unwrap(),
+        1
+    );
+
+    let strl = fixture("strl_test_v118.dta");
+    let strl_file = DtaFile::from_reader(Cursor::new(strl)).unwrap();
+    assert_eq!(
+        strl_file
+            .parallel_thread_count(&ReadOptions::default(), 4)
+            .unwrap(),
+        1
+    );
+}
+
+#[test]
 fn file_and_slice_reject_invalid_signatures_identically() {
     for bytes in [b"xot a dta".as_slice(), b"<stata_dat>".as_slice()] {
         assert_eq!(

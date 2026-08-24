@@ -30,6 +30,9 @@
 #'   negative finite values read all remaining rows, following haven's
 #'   unlimited-row convention. Non-negative values must be whole numbers no
 #'   larger than `2^53`.
+#' @param threads Number of decoder threads. Zero selects an automatic count
+#'   for sufficiently large Stata 118--119 files. One always uses the serial
+#'   decoder. Earlier formats and `strL` projections currently remain serial.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
 #' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
@@ -37,10 +40,11 @@
 #'   `format.stata` attribute.
 #' @export
 read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
-                     n_max = Inf, .name_repair = "unique") {
+                     n_max = Inf, .name_repair = "unique",
+                     threads = getOption("dtaparser.threads", 0L)) {
     .read_dta_impl(
         file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
-        materialization = "direct"
+        materialization = "direct", threads = threads
     )
 }
 
@@ -51,14 +55,15 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                                    .name_repair = "unique") {
     .read_dta_impl(
         file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
-        materialization = "rust-vectors"
+        materialization = "rust-vectors", threads = 1L
     )
 }
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
-                           .name_repair, materialization) {
+                           .name_repair, materialization, threads) {
     encoding <- .validate_dta_encoding(encoding)
     row_window <- .normalize_row_window(skip, n_max)
+    threads <- .normalize_threads(threads)
 
     source <- .resolve_dta_source(file)
     on.exit(.cleanup_dta_source(source), add = TRUE)
@@ -87,6 +92,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         row_window$skip,
         row_window$n_max,
         identical(materialization, "direct"),
+        threads,
         encoding
     )
     if (!is.null(column_indices)) {
@@ -99,6 +105,15 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
     result
+}
+
+.normalize_threads <- function(value) {
+    if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+        !is.finite(value) || value < 0 || value != floor(value) ||
+        value > .Machine$integer.max) {
+        stop("`threads` must be one non-negative whole number", call. = FALSE)
+    }
+    as.integer(value)
 }
 
 .resolve_dta_source <- function(file) {

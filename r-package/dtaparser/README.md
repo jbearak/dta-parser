@@ -1,14 +1,21 @@
 # dtaparser
 
 `dtaparser` is the R interface to this repository's bounded Rust DTA
-reader. Its exported `read_dta()` function deliberately mirrors the formal
-arguments of `haven::read_dta()`, while observation storage is decoded by Rust
+reader. Its exported `read_dta()` function follows `haven::read_dta()` and adds
+an optional `threads` execution control, while observation storage is decoded by Rust
 and materialized through an R-specific collector. Numeric values are written
 into their final R vectors during decoding. Each character column interns its
 distinct normalized UTF-8 values once and keeps compact row-to-dictionary
 indices behind an ordinary R character vector through ALTREP. Element access
 resolves the dictionary immediately; allocation of the complete row-level
 string-pointer vector is deferred, without retaining the source file.
+
+Large Stata 118--119 reads use a shared block decoder across multiple cores by
+default. `threads = 0` selects an automatic count, `threads = 1` forces the
+serial executor, and a positive larger value requests an explicit count capped
+by available parallelism and selected columns. Small inputs, earlier formats,
+and projections containing `strL` currently remain serial. Both executors use
+the same validated observation plan and scalar value-decoding semantics.
 
 ## Installation
 
@@ -83,6 +90,11 @@ deterministically with U+FFFD. Haven 2.5.5 may instead omit or empty an affected
 label.
 
 ## Performance compared with haven and Stata
+
+The published table below predates the multicore executor and records the
+single-thread dictionary implementation. It remains the reproducible baseline;
+the parallel implementation must pass the same provenance and matched-consumer
+gates before replacement results are published.
 
 On an Apple M4 Max with 128 GB RAM, the new dictionary-backed implementation
 was benchmarked against haven 2.5.5 and Stata/MP 18. The synthetic files are
@@ -169,6 +181,9 @@ performance thresholds.
 - `.name_repair` is delegated to `tibble::as_tibble()` after selection aliases
   are applied.
 - Reads are synchronous. Long reads cooperatively check for R user interrupts.
+- `threads = 0` automatically parallelizes sufficiently large release 118--119
+  reads without selected `strL` columns. Use `threads = 1` for deterministic
+  single-thread benchmarking. Option `dtaparser.threads` controls the default.
 - Character columns use dictionary-backed ALTREP vectors. Loading does not
   depend on the source path after `read_dta()` returns. Distinct R strings are
   created once during the load; operations that request a contiguous pointer
