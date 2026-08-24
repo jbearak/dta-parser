@@ -45,8 +45,6 @@ extern "C" {
     ) -> c_int;
     fn dtaparser_make_dictstring(
         data: *mut c_void,
-        values: *const *const c_char,
-        value_lengths: *const c_int,
         value_count: usize,
         transferred: *mut c_int,
         result: *mut Sexp,
@@ -59,15 +57,55 @@ extern "C" {
 struct DictStringData {
     value_ids: *mut u32,
     length: usize,
+    _values: AHashMap<String, u32>,
+    value_views: Vec<(*const u8, usize)>,
 }
 
 impl DictStringData {
-    fn new(value_ids: Vec<u32>) -> Self {
-        let values = value_ids.into_boxed_slice();
-        let length = values.len();
-        let value_ids = Box::into_raw(values).cast::<u32>();
-        Self { value_ids, length }
+    fn new(
+        value_ids: Vec<u32>,
+        values: AHashMap<String, u32>,
+        value_views: Vec<(*const u8, usize)>,
+    ) -> Self {
+        let ids = value_ids.into_boxed_slice();
+        let length = ids.len();
+        let value_ids = Box::into_raw(ids).cast::<u32>();
+        Self {
+            value_ids,
+            length,
+            _values: values,
+            value_views,
+        }
     }
+}
+
+#[no_mangle]
+/// Borrow UTF-8 bytes from a live dictionary-string ALTREP payload.
+///
+/// # Safety
+///
+/// `data` must point to a live `DictStringData`. `value` and `length` must
+/// point to writable output storage. The returned byte pointer remains valid
+/// until `data` is released.
+pub unsafe extern "C" fn dtaparser_dictstring_bytes(
+    data: *mut c_void,
+    id: u32,
+    value: *mut *const c_char,
+    length: *mut c_int,
+) -> c_int {
+    if data.is_null() || value.is_null() || length.is_null() {
+        return 0;
+    }
+    let data = &*data.cast::<DictStringData>();
+    let Some(&(bytes, byte_length)) = data.value_views.get(id as usize) else {
+        return 0;
+    };
+    let Ok(byte_length) = c_int::try_from(byte_length) else {
+        return 0;
+    };
+    *value = bytes.cast::<c_char>();
+    *length = byte_length;
+    1
 }
 
 #[no_mangle]
@@ -84,6 +122,7 @@ pub unsafe extern "C" fn dtaparser_dictstring_free(data: *mut c_void) {
     let data = Box::from_raw(data.cast::<DictStringData>());
     let values = ptr::slice_from_raw_parts_mut(data.value_ids, data.length);
     drop(Box::from_raw(values));
+    drop(data);
 }
 
 struct ProtectGuard {
@@ -113,34 +152,22 @@ impl ProtectGuard {
         self.objects
             .try_reserve(1)
             .map_err(|_| "R could not track a preserved native vector".to_owned())?;
-        let mut value_pointers = Vec::new();
-        value_pointers
-            .try_reserve_exact(data.values.len())
-            .map_err(|_| "could not prepare R string pointers".to_owned())?;
-        value_pointers.resize(data.values.len(), ptr::null());
-        let mut value_lengths = Vec::new();
-        value_lengths
-            .try_reserve_exact(data.values.len())
-            .map_err(|_| "could not prepare R string lengths".to_owned())?;
-        value_lengths.resize(data.values.len(), 0);
-        for (value, &id) in &data.values {
-            let index = usize::try_from(id).map_err(|_| "invalid R string index".to_owned())?;
-            value_pointers[index] = value.as_ptr().cast::<c_char>();
-            value_lengths[index] =
-                c_int::try_from(value.len()).map_err(|_| "R string is too long".to_owned())?;
+        for &(_, length) in &data.value_views {
+            c_int::try_from(length).map_err(|_| "R string is too long".to_owned())?;
         }
 
-        let storage = Box::into_raw(Box::new(DictStringData::new(std::mem::take(
-            &mut data.value_ids,
-        ))))
+        let value_count = data.values.len();
+        let storage = Box::into_raw(Box::new(DictStringData::new(
+            std::mem::take(&mut data.value_ids),
+            std::mem::replace(&mut data.values, AHashMap::new()),
+            std::mem::take(&mut data.value_views),
+        )))
         .cast::<c_void>();
         let mut transferred = 0;
         let mut result = ptr::null_mut();
         let ok = dtaparser_make_dictstring(
             storage,
-            value_pointers.as_ptr(),
-            value_lengths.as_ptr(),
-            value_pointers.len(),
+            value_count,
             &mut transferred,
             &mut result,
         );
