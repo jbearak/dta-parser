@@ -1332,10 +1332,11 @@ impl<R: Read + Seek> DtaFile<R> {
                             Ok(Err(error)) => errors.push((worker, error)),
                             Ok(Ok(())) => {}
                             Err(_) => {
-                                execution_error = Some(DtaError::Output(format!(
-                                    "parallel decoder worker {worker} stopped"
-                                )));
-                                break;
+                                if execution_error.is_none() {
+                                    execution_error = Some(DtaError::Output(format!(
+                                        "parallel decoder worker {worker} stopped"
+                                    )));
+                                }
                             }
                         }
                     }
