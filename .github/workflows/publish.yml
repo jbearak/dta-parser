@@ -65,13 +65,13 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
-      # Trusted Publishing (OIDC) requires npm >= 11.5.1; the npm bundled
-      # with Node 20 is older, so upgrade before publishing.
+      # Trusted Publishing (OIDC) requires npm >= 11.5.1. Pin the npm major so
+      # a future npm release cannot unexpectedly raise its Node requirement.
       - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
+        run: npm install -g npm@11
 
       # On a tag push, fail fast if the tag doesn't match the nested npm
       # package version (prevents publishing a mismatched version). Skipped
