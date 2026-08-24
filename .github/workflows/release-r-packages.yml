@@ -10,6 +10,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,24 +55,20 @@ jobs:
       - name: Install Rust
         if: runner.os != 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
 
       - name: Install Rust for Rtools
         if: runner.os == 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
           rust_version="$(rustc --version | awk '{print $2}')"
           rust_host="$(rustc -vV | sed -n 's/^host: //p')"
-          if [ "$rust_version-$rust_host" != "$RUST_TOOLCHAIN" ]; then
-            echo "Rust $rust_version host $rust_host does not match $RUST_TOOLCHAIN" >&2
+          if [ "$rust_version-$rust_host" != "$RUSTUP_TOOLCHAIN" ]; then
+            echo "Rust $rust_version host $rust_host does not match $RUSTUP_TOOLCHAIN" >&2
             exit 1
           fi
 

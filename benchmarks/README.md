@@ -29,11 +29,18 @@ does not expose stable internal timers, so a finer native R split would require
 instrumenting production code and is deliberately not claimed here.
 
 The [`large-scale/`](large-scale/) harness separately compares the public
-Direct-R reader, the retained internal Rust-vector collector, and haven on
+dta-parser reader, the retained internal Rust-vector collector, and haven on
 deterministic 100 MB and 1 GB files. It runs full and projected-eight-column
 workloads for 101 iterations by default and writes all generated artifacts below
 ignored `target/large-scale/`. See its README for the checkout-local package
 library guard, correctness checks, orchestration command, and output matrix.
+
+The manual [`r-corpus-performance/`](r-corpus-performance/) suite loads every
+common-readable DHS, MICS, and NSFG DTA file beneath `/opt/aww_cache` through
+dta-parser, haven, and Stata in fresh processes. It aggregates elapsed time and
+maximum per-file peak RSS by corpus while keeping paths and raw results private.
+Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
+aggregate results used in the R package README.
 
 Record the exact command, toolchain, host, fixture sizes, iteration count, and
 correctness status in `baseline.md`. Results are evidence for investigation,

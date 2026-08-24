@@ -108,6 +108,7 @@ jobs:
     env:
       _R_CHECK_FORCE_SUGGESTS_: "true"
       NOT_CRAN: "true"
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -122,25 +123,21 @@ jobs:
       - name: Install GNU Rust for Rtools
         if: runner.os == 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
           rust_version="$(rustc --version | awk '{print $2}')"
           rust_host="$(rustc -vV | sed -n 's/^host: //p')"
-          if [ "$rust_version-$rust_host" != "$RUST_TOOLCHAIN" ]; then
-            echo "Rust $rust_version host $rust_host does not match $RUST_TOOLCHAIN" >&2
+          if [ "$rust_version-$rust_host" != "$RUSTUP_TOOLCHAIN" ]; then
+            echo "Rust $rust_version host $rust_host does not match $RUSTUP_TOOLCHAIN" >&2
             exit 1
           fi
       - name: Install Rust
         if: runner.os != 'Windows'
         shell: bash
-        env:
-          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
-          rustup default "$RUST_TOOLCHAIN"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+          rustup default "$RUSTUP_TOOLCHAIN"
       - name: Install R dependencies
         shell: Rscript {0}
         run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "haven", "callr", "httpuv"))
