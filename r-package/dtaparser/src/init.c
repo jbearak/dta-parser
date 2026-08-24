@@ -101,11 +101,15 @@ static SEXP dictstring_materialize(SEXP value) {
     dictstring_data *data = dictstring_storage(value);
     SEXP cache = dictstring_cache(value);
     R_xlen_t dictionary_length = XLENGTH(cache);
+    SEXP *dictionary_values = (SEXP *) R_alloc(
+        (R_SIZE_T) dictionary_length, (int) sizeof(SEXP)
+    );
     for (R_xlen_t id = 0; id < dictionary_length; id++) {
         if ((id & 16383) == 0) R_CheckUserInterrupt();
-        (void) dictstring_cached_value(data, cache, (uint32_t) id);
+        dictionary_values[id] = dictstring_cached_value(
+            data, cache, (uint32_t) id
+        );
     }
-    const SEXP *dictionary_values = VECTOR_PTR_RO(cache);
     materialized = PROTECT(Rf_allocVector(STRSXP, (R_xlen_t) data->length));
     for (size_t index = 0; index < data->length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
