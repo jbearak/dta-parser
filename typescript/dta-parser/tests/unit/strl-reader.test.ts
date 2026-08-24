@@ -5,6 +5,7 @@ import { parse_metadata } from '../../src/header';
 import {
     build_gso_index,
     decode_gso_entry,
+    read_strl_pointer,
     resolve_strl,
 } from '../../src/strl-reader';
 import type { DtaMetadata } from '../../src/types';
@@ -149,6 +150,24 @@ describe('build_gso_index', () => {
 
             expect(typeof my_val).toBe('string');
             expect(my_val!.length).toBeGreaterThan(0);
+        });
+
+        it('reads all six little-endian observation bytes', () => {
+            const { metadata } = load_fixture('strl_test_v118.dta');
+            const my_buffer = new ArrayBuffer(8);
+            const my_view = new DataView(my_buffer);
+
+            my_view.setUint16(0, 1, true);
+            my_view.setUint32(2, 1, true);
+            my_view.setUint16(6, 1, true);
+
+            expect(read_strl_pointer(my_view, {
+                ...metadata,
+                nobs: 0x100000001,
+            }, 0)).toEqual({
+                v: 1,
+                o: 0x100000001,
+            });
         });
     });
 
