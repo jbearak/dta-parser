@@ -555,6 +555,27 @@ fn labels_are_lazy_and_cancellation_never_returns_partial_data() {
 }
 
 #[test]
+fn split_interrupt_callbacks_keep_row_polling_separate() {
+    let mut file = DtaFile::from_reader(Cursor::new(fixture("auto_v118.dta"))).unwrap();
+    let mut coarse_checks = 0_usize;
+    let mut frequent_checks = 0_usize;
+    let result = file.read_with_interrupts(
+        &ReadOptions::default(),
+        || {
+            coarse_checks += 1;
+            false
+        },
+        || {
+            frequent_checks += 1;
+            true
+        },
+    );
+    assert_eq!(result, Err(DtaError::Cancelled));
+    assert!(coarse_checks >= 2);
+    assert_eq!(frequent_checks, 1);
+}
+
+#[test]
 fn cancels_between_large_gso_chunks_without_returning_partial_data() {
     let (bytes, content_start) = large_first_gso(fixture("strl_test_v118.dta"), 4096);
     let (reader, trace) = TracedReader::new(bytes);
@@ -566,13 +587,17 @@ fn cancels_between_large_gso_chunks_without_returning_partial_data() {
     )
     .unwrap();
     trace.borrow_mut().reads.clear();
-    let result = file.read_with_interrupt(&options(0, Some(1), vec![0]), || {
-        trace
-            .borrow()
-            .reads
-            .iter()
-            .any(|(offset, length)| *offset == content_start && *length == 1024)
-    });
+    let result = file.read_with_interrupts(
+        &options(0, Some(1), vec![0]),
+        || {
+            trace
+                .borrow()
+                .reads
+                .iter()
+                .any(|(offset, length)| *offset == content_start && *length == 1024)
+        },
+        || false,
+    );
     assert_eq!(result, Err(DtaError::Cancelled));
     assert!(!trace
         .borrow()
@@ -594,13 +619,17 @@ fn cancels_between_large_label_chunks_and_leaves_cache_uninitialized() {
     )
     .unwrap();
     trace.borrow_mut().reads.clear();
-    let result = file.read_with_interrupt(&options(0, Some(0), vec![]), || {
-        trace
-            .borrow()
-            .reads
-            .iter()
-            .any(|(offset, length)| *offset == label_start && *length == 1024)
-    });
+    let result = file.read_with_interrupts(
+        &options(0, Some(0), vec![]),
+        || {
+            trace
+                .borrow()
+                .reads
+                .iter()
+                .any(|(offset, length)| *offset == label_start && *length == 1024)
+        },
+        || false,
+    );
     assert_eq!(result, Err(DtaError::Cancelled));
     assert!(!trace
         .borrow()

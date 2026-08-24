@@ -178,7 +178,11 @@ fn poll_interrupt(index: usize) -> Result<(), String> {
     Ok(())
 }
 
-fn interrupt_poller() -> impl FnMut() -> bool {
+fn coarse_interrupt() -> bool {
+    unsafe { dtaparser_check_interrupt() != 0 }
+}
+
+fn frequent_interrupt_poller() -> impl FnMut() -> bool {
     let mut calls = 0_usize;
     move || {
         let poll = calls.is_multiple_of(INTERRUPT_STRIDE);
@@ -1124,22 +1128,27 @@ unsafe fn read_impl(
                 |metadata, _row_start, row_count, indices| unsafe {
                     RDataFrameSink::new(metadata, row_count, indices)
                 },
-                || unsafe { dtaparser_check_interrupt() != 0 },
+                coarse_interrupt,
             )
             .map_err(|error| error.to_string())
         } else {
-            file.read_with_sink_and_interrupt(
+            file.read_with_sink_and_interrupts(
                 &options,
                 |metadata, _row_start, row_count, indices| unsafe {
                     RDataFrameSink::new(metadata, row_count, indices)
                 },
-                interrupt_poller(),
+                coarse_interrupt,
+                frequent_interrupt_poller(),
             )
             .map_err(|error| error.to_string())
         }
     } else {
         let data = file
-            .read_with_interrupt(&options, interrupt_poller())
+            .read_with_interrupts(
+                &options,
+                coarse_interrupt,
+                frequent_interrupt_poller(),
+            )
             .map_err(|error| error.to_string())?;
         build_data_frame(&data)
     }

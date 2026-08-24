@@ -121,6 +121,40 @@ struct ObservationPlan {
     columns: Vec<ObservationColumnPlan>,
 }
 
+trait InterruptChecks {
+    fn coarse(&mut self) -> bool;
+    fn frequent(&mut self) -> bool;
+}
+
+struct SharedInterrupt<F> {
+    callback: F,
+}
+
+impl<F: FnMut() -> bool> InterruptChecks for SharedInterrupt<F> {
+    fn coarse(&mut self) -> bool {
+        (self.callback)()
+    }
+
+    fn frequent(&mut self) -> bool {
+        (self.callback)()
+    }
+}
+
+struct SplitInterrupt<C, F> {
+    coarse: C,
+    frequent: F,
+}
+
+impl<C: FnMut() -> bool, F: FnMut() -> bool> InterruptChecks for SplitInterrupt<C, F> {
+    fn coarse(&mut self) -> bool {
+        (self.coarse)()
+    }
+
+    fn frequent(&mut self) -> bool {
+        (self.frequent)()
+    }
+}
+
 impl ObservationPlan {
     fn new(metadata: &DtaMetadata, indices: &[u32]) -> Result<Self, DtaError> {
         let row_width = usize::try_from(metadata.obs_length)
@@ -1046,6 +1080,32 @@ impl<R: Read + Seek> DtaFile<R> {
         )
     }
 
+    /// Read with separate callbacks for bounded work and high-frequency row
+    /// polling. This lets foreign-runtime adapters throttle only the latter;
+    /// the coarse callback remains responsive during large strings, `strL`
+    /// values, and value-label sections.
+    pub fn read_with_interrupts<C, F>(
+        &mut self,
+        options: &ReadOptions,
+        coarse_interrupt: C,
+        frequent_interrupt: F,
+    ) -> Result<DtaData, DtaError>
+    where
+        C: FnMut() -> bool,
+        F: FnMut() -> bool,
+    {
+        self.read_with_sink_and_interrupts(
+            options,
+            |metadata, _row_start, row_count, indices| {
+                let capacity = usize::try_from(row_count)
+                    .map_err(|_| DtaError::ArithmeticOverflow("projected row count"))?;
+                Ok(VecSink::new(metadata, indices, capacity))
+            },
+            coarse_interrupt,
+            frequent_interrupt,
+        )
+    }
+
     /// Resolve the worker count for the validated modern parallel path.
     ///
     /// A requested value of zero selects an automatic count. Unsupported
@@ -1358,14 +1418,59 @@ impl<R: Read + Seek> DtaFile<R> {
         &mut self,
         options: &ReadOptions,
         build_sink: B,
-        mut should_interrupt: F,
+        should_interrupt: F,
     ) -> Result<S::Output, DtaError>
     where
         S: DtaSink,
         B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
         F: FnMut() -> bool,
     {
-        check_cancel(&mut should_interrupt)?;
+        self.read_with_sink_and_interrupt_controller(
+            options,
+            build_sink,
+            SharedInterrupt {
+                callback: should_interrupt,
+            },
+        )
+    }
+
+    /// Decode through a typed output collector with separate coarse and
+    /// high-frequency interrupt callbacks.
+    pub fn read_with_sink_and_interrupts<S, B, C, F>(
+        &mut self,
+        options: &ReadOptions,
+        build_sink: B,
+        coarse_interrupt: C,
+        frequent_interrupt: F,
+    ) -> Result<S::Output, DtaError>
+    where
+        S: DtaSink,
+        B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
+        C: FnMut() -> bool,
+        F: FnMut() -> bool,
+    {
+        self.read_with_sink_and_interrupt_controller(
+            options,
+            build_sink,
+            SplitInterrupt {
+                coarse: coarse_interrupt,
+                frequent: frequent_interrupt,
+            },
+        )
+    }
+
+    fn read_with_sink_and_interrupt_controller<S, B, I>(
+        &mut self,
+        options: &ReadOptions,
+        build_sink: B,
+        mut interrupts: I,
+    ) -> Result<S::Output, DtaError>
+    where
+        S: DtaSink,
+        B: FnOnce(&DtaMetadata, u64, u64, &[u32]) -> Result<S, DtaError>,
+        I: InterruptChecks,
+    {
+        check_coarse_cancel(&mut interrupts)?;
         validate_layout(
             &mut self.reader,
             &self.metadata,
@@ -1409,7 +1514,7 @@ impl<R: Read + Seek> DtaFile<R> {
             let mut row = 0_u64;
             let mut observation_buffer = Vec::new();
             while row < row_count {
-                check_cancel(&mut should_interrupt)?;
+                check_coarse_cancel(&mut interrupts)?;
                 let chunk_rows = (row_count - row).min(rows_per_chunk);
                 let chunk_rows_usize = usize::try_from(chunk_rows)
                     .map_err(|_| DtaError::ArithmeticOverflow("chunk row count"))?;
@@ -1436,7 +1541,7 @@ impl<R: Read + Seek> DtaFile<R> {
                 )?;
                 let staged = &observation_buffer;
                 for local_row in 0..chunk_rows_usize {
-                    check_cancel(&mut should_interrupt)?;
+                    check_frequent_cancel(&mut interrupts)?;
                     let row_at = local_row
                         .checked_mul(obs_length)
                         .ok_or(DtaError::ArithmeticOverflow("staged row offset"))?;
@@ -1480,7 +1585,7 @@ impl<R: Read + Seek> DtaFile<R> {
             }
         } else if !plan.columns.is_empty() {
             for row in 0..row_count {
-                check_cancel(&mut should_interrupt)?;
+                check_frequent_cancel(&mut interrupts)?;
                 let output_row =
                     usize::try_from(row).map_err(|_| DtaError::ArithmeticOverflow("output row"))?;
                 let source_row = row_start
@@ -1497,6 +1602,7 @@ impl<R: Read + Seek> DtaFile<R> {
                         .ok_or(DtaError::ArithmeticOverflow("cell offset"))?;
                     let width = column.byte_width;
                     if matches!(variable.dta_type, DtaType::FixedString(_)) {
+                        let mut coarse_interrupt = || interrupts.coarse();
                         let (value, _) = decode_range(
                             &mut self.reader,
                             cell_offset,
@@ -1504,7 +1610,7 @@ impl<R: Read + Seek> DtaFile<R> {
                             self.text_encoding,
                             true,
                             &mut self.scratch,
-                            &mut should_interrupt,
+                            &mut coarse_interrupt,
                             "reading fixed-string observation",
                         )?;
                         cell_decoder.sink.push_fixed_string(
@@ -1531,17 +1637,23 @@ impl<R: Read + Seek> DtaFile<R> {
                 }
             }
         }
-        resolve_file_strls(
-            &mut self.reader,
-            &self.metadata,
-            &mut self.scratch,
-            &mut strl_pointers,
-            &mut sink,
-            &mut should_interrupt,
-            self.text_encoding,
-        )?;
-        check_cancel(&mut should_interrupt)?;
-        self.ensure_value_labels(&mut should_interrupt)?;
+        {
+            let mut coarse_interrupt = || interrupts.coarse();
+            resolve_file_strls(
+                &mut self.reader,
+                &self.metadata,
+                &mut self.scratch,
+                &mut strl_pointers,
+                &mut sink,
+                &mut coarse_interrupt,
+                self.text_encoding,
+            )?;
+        }
+        check_coarse_cancel(&mut interrupts)?;
+        {
+            let mut coarse_interrupt = || interrupts.coarse();
+            self.ensure_value_labels(&mut coarse_interrupt)?;
+        }
         let value_label_tables = self
             .value_label_tables
             .clone()
@@ -1582,6 +1694,22 @@ impl<R: Read + Seek> DtaFile<R> {
 
 fn check_cancel<F: FnMut() -> bool>(should_interrupt: &mut F) -> Result<(), DtaError> {
     if should_interrupt() {
+        Err(DtaError::Cancelled)
+    } else {
+        Ok(())
+    }
+}
+
+fn check_coarse_cancel<I: InterruptChecks>(interrupts: &mut I) -> Result<(), DtaError> {
+    if interrupts.coarse() {
+        Err(DtaError::Cancelled)
+    } else {
+        Ok(())
+    }
+}
+
+fn check_frequent_cancel<I: InterruptChecks>(interrupts: &mut I) -> Result<(), DtaError> {
+    if interrupts.frequent() {
         Err(DtaError::Cancelled)
     } else {
         Ok(())
@@ -2522,16 +2650,21 @@ fn read_modern_metadata<R: Read + Seek>(
 
     let mut byte_offset = 0_u64;
     let mut variables = Vec::with_capacity(nvar);
-    for index in 0..nvar {
-        let type_code = type_codes[index];
+    for ((((type_code, name), format), value_label_name), label) in type_codes
+        .into_iter()
+        .zip(names)
+        .zip(formats)
+        .zip(value_label_names)
+        .zip(variable_labels)
+    {
         let (dta_type, byte_width) = resolve_type(type_code, header.format_version)?;
         variables.push(VariableInfo {
-            name: names[index].clone(),
+            name,
             dta_type,
             type_code,
-            format: formats[index].clone(),
-            label: variable_labels[index].clone(),
-            value_label_name: value_label_names[index].clone(),
+            format,
+            label,
+            value_label_name,
             byte_width,
             byte_offset,
         });
