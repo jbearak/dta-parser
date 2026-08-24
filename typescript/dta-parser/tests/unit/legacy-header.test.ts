@@ -459,7 +459,9 @@ describe('parse_legacy_metadata', () => {
             negative.buffer, negative.byteOffset, negative.byteLength
         );
         negative[metadata.section_offsets.characteristics] = 1;
-        view.setInt32(metadata.section_offsets.characteristics + 1, -1, true);
+        // A length of -5 exactly cancels the five-byte field header. Without
+        // rejecting negative lengths, the scanner never advances.
+        view.setInt32(metadata.section_offsets.characteristics + 1, -5, true);
         expect(() => parse_legacy_metadata(
             negative.buffer.slice(
                 negative.byteOffset,
