@@ -166,6 +166,9 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
                 "shared-reader-error" = "both-wrong"
             )
             base$status <- base$ownership
+        } else if (identical(probe, "stata-source-error")) {
+            base$ownership <- "source-corrupt"
+            base$status <- "empty-or-corrupt"
         } else {
             base$ownership <- "unresolved"
             base$status <- "unresolved"
@@ -384,6 +387,9 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
                     "shared-reader-error" = "both-wrong"
                 )
                 base$status <- base$ownership
+            } else if (identical(probe, "stata-source-error")) {
+                base$ownership <- "source-corrupt"
+                base$status <- "empty-or-corrupt"
             } else {
                 base$ownership <- "unresolved"
                 base$status <- "unresolved"
@@ -405,14 +411,7 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
     if (is.null(stata_info)) {
         stata_info <- aww_stata_info(options, run_dir, aww_script_dir)
     }
-    dispute_id <- aww_sha256_raw(paste(
-        item$sha256, nrow(base$disputes), paste(base$disputes$kind, base$disputes$category,
-                                               base$disputes$reader,
-                                               base$disputes$column, base$disputes$row,
-                                               base$disputes$skip, base$disputes$n_max,
-                                               base$disputes$attribute, collapse = "|"),
-        sep = "\037"
-    ))
+    dispute_id <- aww_dispute_id(item$sha256, base$disputes)
     adjudication_path <- file.path(run_dir, "checkpoints", item$id, paste0("stata-", dispute_id, ".rds"))
     cached <- aww_read_result(adjudication_path)
     valid_cache <- !is.null(cached) && identical(cached$schema_version, aww_schema_version) &&
@@ -525,6 +524,10 @@ main <- function() {
     config_id <- aww_config_id(options, build_id, haven_version)
     run_dir <- file.path(options$state, "runs", config_id)
     dir.create(run_dir, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+    aww_atomic_save_rds(list(
+        schema_version = aww_schema_version, config_id = config_id,
+        options = options, build_id = build_id, haven_version = haven_version
+    ), file.path(run_dir, "config.rds"))
     inventory <- aww_inventory(options$root)
     aww_atomic_save_rds(inventory, file.path(run_dir, "inventory.rds"))
     if (options$inventory_only) {
@@ -545,6 +548,10 @@ main <- function() {
         item <- as.list(selected[index, , drop = FALSE])
         message(sprintf("[%d/%d] %s", index, nrow(selected), item$relative_path))
         results[[index]] <- aww_file(item, options, package_library, package_path, run_dir, config_id)
+        aww_atomic_save_rds(list(
+            schema_version = aww_schema_version, config_id = config_id,
+            file_sha256 = item$sha256, result = results[[index]]
+        ), file.path(run_dir, "checkpoints", item$id, "file-result.rds"))
     }
     frame <- aww_write_results(results, file.path(run_dir, "results.tsv"))
     report <- aww_report(frame, inventory, options, config_id, build_id, haven_version, run_dir)
@@ -558,11 +565,13 @@ main <- function() {
     invisible(if (incomplete) 1L else 0L)
 }
 
-status <- tryCatch(main(), aww_error = function(error) {
-    message(error$message)
-    error$status
-}, error = function(error) {
-    message(conditionMessage(error))
-    3L
-})
-quit(status = status)
+if (!identical(Sys.getenv("AWW_SOURCE_ONLY", unset = ""), "1")) {
+    status <- tryCatch(main(), aww_error = function(error) {
+        message(error$message)
+        error$status
+    }, error = function(error) {
+        message(conditionMessage(error))
+        3L
+    })
+    quit(status = status)
+}

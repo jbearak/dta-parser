@@ -188,6 +188,16 @@ aww_checkpoint <- function(run_dir, file_id, tile_id) {
     file.path(run_dir, "checkpoints", file_id, paste0(tile_id, ".rds"))
 }
 
+aww_dispute_id <- function(file_sha256, disputes) {
+    aww_sha256_raw(paste(
+        file_sha256, nrow(disputes),
+        paste(disputes$kind, disputes$category, disputes$reader,
+              disputes$column, disputes$row, disputes$skip, disputes$n_max,
+              disputes$attribute, collapse = "|"),
+        sep = "\037"
+    ))
+}
+
 aww_tile_id <- function(kind, batch, skip, n_max, column_start = 0L,
                         column_count = 0L) {
     paste(

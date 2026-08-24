@@ -81,5 +81,16 @@ file is never reported as a completed comparison. The report includes local
 relative paths but never raw values, labels, notes, or reader exception text.
 Exact disputes remain in private RDS checkpoints.
 
+To materialize that evidence as an exact list-column RDS plus a readable TSV
+view, run:
+
+```sh
+Rscript --vanilla benchmarks/aww-cache-differential/triage.R \
+  --run=target/aww-cache-differential/runs/RUN_ID
+```
+
+New runs persist their final per-file results directly. The extractor also
+reconstructs older runs from their tile and Stata checkpoints.
+
 The workflow refuses common CI environments. It does not modify or source the
 historical `fertility-surveys` framework.

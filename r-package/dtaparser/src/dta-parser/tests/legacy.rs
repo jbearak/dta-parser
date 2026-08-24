@@ -4,8 +4,9 @@ use std::fs;
 use support::fixture;
 
 use dta_parser::{
-    parse_metadata, read_dta, read_dta_with_encoding, ByteOrder, ColumnValues, DtaError, DtaFile,
-    FileOptions, FormatVersion, MissingTag, ReadOptions, TextEncoding,
+    parse_metadata, parse_metadata_with_encoding, read_dta, read_dta_with_encoding, ByteOrder,
+    ColumnValues, DtaError, DtaFile, FileOptions, FormatVersion, MissingTag, ReadOptions,
+    TextEncoding,
 };
 use std::io::Cursor;
 
@@ -229,7 +230,8 @@ fn generated_pre111_fixtures_decode_expected_semantics() {
         (110, FormatVersion::V110),
     ] {
         let bytes = synthetic_fixture(release);
-        let data = read_dta(&bytes).unwrap_or_else(|error| panic!("release {release}: {error}"));
+        let data = read_dta_with_encoding(&bytes, TextEncoding::Windows1252)
+            .unwrap_or_else(|error| panic!("release {release}: {error}"));
         assert_eq!(data.metadata.format_version, expected_version);
         assert_eq!(
             data.metadata.dataset_label,
@@ -500,7 +502,7 @@ fn decodes_checked_legacy_fixtures_and_value_labels() {
 #[test]
 fn decodes_release_111_metadata_observations_labels_and_missing_tags() {
     let bytes = v111_fixture();
-    let data = read_dta(&bytes).unwrap();
+    let data = read_dta_with_encoding(&bytes, TextEncoding::Windows1252).unwrap();
     assert_eq!(data.metadata.format_version, FormatVersion::V111);
     assert_eq!(data.metadata.byte_order, ByteOrder::Lsf);
     assert_eq!(data.metadata.dataset_label, "Stata/SE 7 Café fixture");
@@ -617,13 +619,13 @@ fn reads_every_checked_in_legacy_fixture_and_synthetic_v114() {
 #[test]
 fn decodes_true_big_endian_v113_and_windows_1252() {
     let bytes = synthetic_v113_msf();
-    let metadata = parse_metadata(&bytes).unwrap();
+    let metadata = parse_metadata_with_encoding(&bytes, TextEncoding::Windows1252).unwrap();
     assert_eq!(metadata.format_version, FormatVersion::V113);
     assert_eq!(metadata.byte_order, ByteOrder::Msf);
     assert_eq!(metadata.dataset_label, "Café");
     assert_eq!(metadata.notes, ["Café"]);
     assert_eq!(metadata.variables[0].label, "naïve");
-    let data = read_dta(&bytes).unwrap();
+    let data = read_dta_with_encoding(&bytes, TextEncoding::Windows1252).unwrap();
     match &data.columns[0].values {
         ColumnValues::Int { values, .. } => assert_eq!(values, &[321]),
         other => panic!("unexpected int storage: {other:?}"),
@@ -647,7 +649,7 @@ fn decodes_big_endian_release_111_observations_notes_and_labels() {
     let mut bytes = synthetic_legacy_msf(111);
     let data_offset = parse_metadata(&bytes).unwrap().section_offsets.data as usize;
     bytes[data_offset..data_offset + 2].copy_from_slice(&i16::MAX.to_be_bytes());
-    let data = read_dta(&bytes).unwrap();
+    let data = read_dta_with_encoding(&bytes, TextEncoding::Windows1252).unwrap();
     assert_eq!(data.metadata.format_version, FormatVersion::V111);
     assert_eq!(data.metadata.byte_order, ByteOrder::Msf);
     assert_eq!(data.metadata.notes, ["Café"]);

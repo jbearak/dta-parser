@@ -160,6 +160,20 @@ stopifnot(aww_matches_stata(10, 100, dimension_dispute,
 stopifnot(!aww_matches_stata(9, 100, dimension_dispute,
                              list(formats = character(), storage = character())))
 
+empty_label_class <- aww_dispute(
+    "metadata", "class", column = 1L, attribute = "class",
+    dtaparser = c("haven_labelled", "vctrs_vctr", "double"), haven = NULL
+)
+stopifnot(identical(aww_stata_kind(empty_label_class), "value_label_name"))
+stopifnot(aww_matches_stata(
+    empty_label_class$dtaparser[[1L]], "labels111", empty_label_class,
+    list(formats = "%6.3f", storage = "float")
+))
+stopifnot(!aww_matches_stata(
+    empty_label_class$haven[[1L]], "labels111", empty_label_class,
+    list(formats = "%6.3f", storage = "float")
+))
+
 changed_item <- list(path = fixture, sha256 = paste(rep("0", 64L), collapse = ""))
 changed <- aww_adjudicate(
     aww_dispute("metadata", "dimension", attribute = "ncol", dtaparser = 1, haven = 2),
@@ -180,6 +194,19 @@ fake_info <- aww_stata_info(
     list(stata = fake_stata, timeout = 10L), fake_run, dir
 )
 stopifnot(identical(fake_info$state, "stata-unsupported-version"))
+
+probe_item <- list(id = "Dprobe", path = fixture, sha256 = aww_file_sha256(fixture))
+probe_options <- list(timeout = 10L)
+probe_info <- list(state = "available", path = fake_stata)
+stopifnot(identical(
+    aww_stata_open(probe_item, probe_options, fake_run, dir, probe_info),
+    "stata-source-error"
+))
+writeLines(c("#!/bin/sh", "printf 'ok\\n' > open-ok.txt", "exit 0"), fake_stata)
+Sys.chmod(fake_stata, "0700")
+stopifnot(identical(
+    aww_stata_open(probe_item, probe_options, fake_run, dir, probe_info), "open"
+))
 
 stata_setting <- Sys.getenv("DTAPARSER_TEST_STATA", unset = "")
 stata <- if (nzchar(stata_setting)) aww_resolve_stata(stata_setting) else NA_character_
@@ -230,6 +257,33 @@ if (!is.na(stata)) {
     )
     stopifnot(identical(result$state, "complete"))
     stopifnot(identical(result$ownership, rep("haven-wrong", 3L)))
+
+    malformed_source <- file.path(work, "malformed.dta")
+    malformed <- readBin(fixture, "raw", file.info(fixture)$size)
+    source_label <- "All Stata storage types"
+    needle <- charToRaw(source_label)
+    starts <- which(vapply(seq_len(length(malformed) - length(needle) + 1L), function(index) {
+        identical(malformed[index:(index + length(needle) - 1L)], needle)
+    }, logical(1)))
+    stopifnot(length(starts) >= 1L)
+    malformed[[starts[[1L]]]] <- as.raw(0xff)
+    writeBin(malformed, malformed_source)
+    malformed_dispute <- aww_dispute(
+        "metadata", "label", attribute = "label",
+        dtaparser = paste0("\ufffd", substring(source_label, 2L)),
+        haven = "wrong"
+    )
+    malformed_item <- list(
+        id = "Dmalformed", path = malformed_source,
+        sha256 = aww_file_sha256(malformed_source)
+    )
+    malformed_result <- aww_adjudicate(
+        malformed_dispute,
+        list(columns = 8L, formats = rep("%8.0g", 8L), storage = rep("long", 8L)),
+        malformed_item, stata_options, work, dir, stata_info
+    )
+    stopifnot(identical(malformed_result$state, "complete"))
+    stopifnot(identical(malformed_result$ownership, "haven-wrong"))
 }
 
 unlink(root, recursive = TRUE)

@@ -27,9 +27,6 @@ impl FormatVersion {
         matches!(self, Self::V117 | Self::V118 | Self::V119)
     }
 
-    pub(crate) const fn uses_utf8_text(self) -> bool {
-        matches!(self, Self::V118 | Self::V119)
-    }
 }
 
 impl fmt::Display for FormatVersion {

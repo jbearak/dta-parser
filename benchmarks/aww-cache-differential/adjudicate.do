@@ -88,6 +88,10 @@ program define aww_meta
         local value : variable label `name'
         mata: aww_string(`id', "variable_label", st_local("value"))
     }
+    else if "`kind'" == "value_label_name" {
+        local value : value label `name'
+        mata: aww_string(`id', "value_label_name", st_local("value"))
+    }
     else if "`kind'" == "value_label_entry" {
         local value : value label `name'
         mata: aww_value_label_entry(`id', st_local("value"), `index')
@@ -107,7 +111,9 @@ string scalar aww_hex(string scalar value) {
     real rowvector bytes
     string scalar result
     real scalar index
-    bytes = ascii(value)
+    // Convert through Stata's Unicode semantics before emitting UTF-8.  A
+    // direct ascii(value) leaks malformed source bytes instead of U+FFFD.
+    bytes = ascii(ustrto(value, "utf-8", 1))
     result = ""
     for (index = 1; index <= cols(bytes); index++) {
         result = result + substr("0123456789abcdef", floor(bytes[index] / 16) + 1, 1) +

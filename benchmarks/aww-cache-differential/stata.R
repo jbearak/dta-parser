@@ -61,7 +61,14 @@ aww_stata_kind <- function(dispute) {
     if (identical(dispute$category, "name")) return(if (is.na(dispute$column)) "names" else "name")
     if (identical(dispute$category, "storage")) return("storage")
     if (identical(dispute$category, "format")) return("format")
-    if (identical(dispute$category, "class")) return("format")
+    if (identical(dispute$category, "class")) {
+        labelled <- any(vapply(c(dispute$dtaparser, dispute$haven), function(value) {
+            is.character(value) && "haven_labelled" %in% value
+        }, logical(1)))
+        return(if (identical(attribute, "class") && labelled) {
+            "value_label_name"
+        } else "format")
+    }
     if (identical(attribute, "label")) return(if (is.na(dispute$column)) "dataset_label" else "variable_label")
     if (startsWith(attribute, "notes:")) return("note_entry")
     if (startsWith(attribute, "labels:")) return("value_label_entry")
@@ -187,7 +194,11 @@ aww_matches_stata <- function(private, source, dispute, metadata) {
                as.double(private) == expected)
     }
     if (identical(dispute$category, "class")) {
-        expected <- if (identical(dispute$attribute, "tzone")) {
+        expected <- if (kind == "value_label_name") {
+            if (is.character(source) && length(source) == 1L && nzchar(source)) {
+                c("haven_labelled", "vctrs_vctr", "double")
+            } else NULL
+        } else if (identical(dispute$attribute, "tzone")) {
             class <- aww_expected_class(source)
             if (!is.null(class) && "POSIXct" %in% class) "UTC" else NULL
         } else aww_expected_class(source)
@@ -224,6 +235,8 @@ aww_stata_open <- function(item, options, run_dir, script_dir, stata_info = NULL
     if (!identical(stata_info$state, "available")) return(stata_info$state)
     work_dir <- file.path(run_dir, "stata", paste0(item$id, "-open"))
     dir.create(work_dir, recursive = TRUE, showWarnings = FALSE, mode = "0700")
+    marker <- file.path(work_dir, "open-ok.txt")
+    unlink(marker)
     input <- file.path(work_dir, "input.dta")
     unlink(input)
     if (!file.symlink(item$path, input)) return("input-alias-error")
@@ -234,7 +247,9 @@ aww_stata_open <- function(item, options, run_dir, script_dir, stata_info = NULL
         echo = FALSE, windows_verbatim_args = TRUE
     ), error = identity)
     if (!aww_source_unchanged(item)) return("input-changed")
-    if (inherits(process, "error") || process$status != 0L) "stata-source-error" else "open"
+    if (inherits(process, "error") || process$status != 0L || !file.exists(marker)) {
+        "stata-source-error"
+    } else "open"
 }
 
 aww_adjudicate_batch <- function(disputes, metadata, item, options, run_dir,
