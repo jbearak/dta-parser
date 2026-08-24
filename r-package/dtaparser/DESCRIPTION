@@ -21,6 +21,7 @@ Suggests:
     httpuv,
     testthat (>= 3.1.7)
 Config/testthat/edition: 3
-SystemRequirements: Cargo and Rust >= 1.74; on Windows, the
-    x86_64-pc-windows-gnu toolchain matching 64-bit R
+SystemRequirements: Cargo and Rust >= 1.97.1; on Windows, the Rust target matching
+    R (x86_64-pc-windows-gnu for x86_64 R or
+    aarch64-pc-windows-gnullvm for aarch64 R)
 NeedsCompilation: yes

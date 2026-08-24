@@ -1,11 +1,21 @@
 #!/bin/sh
 set -eu
-rust_target=x86_64-pc-windows-gnu
+
+r_platform=$("$R_HOME/bin/Rscript" --vanilla -e 'cat(R.version$platform)')
+case "$r_platform" in
+  x86_64-w64-mingw32) rust_target=x86_64-pc-windows-gnu ;;
+  aarch64-w64-mingw32) rust_target=aarch64-pc-windows-gnullvm ;;
+  *)
+    echo "dtaparser does not support the R platform $r_platform on Windows" >&2
+    exit 1
+    ;;
+esac
+
 rust_version=$(rustc -vV)
 printf '%s\n' "$rust_version"
 rust_host=$(printf '%s\n' "$rust_version" | sed -n 's/^host: //p')
 if test "$rust_host" != "$rust_target"; then
-  echo "dtaparser requires the Rust $rust_target toolchain for 64-bit R on Windows; found $rust_host" >&2
+  echo "dtaparser requires the Rust $rust_target toolchain for $r_platform R; found $rust_host" >&2
   exit 1
 fi
 . tools/configure-rust.sh

@@ -7,6 +7,23 @@ and materialized through an R-specific collector. Numeric values are written
 into their final R vectors during decoding; strings are batch-materialized to
 avoid interleaving R allocation with the parser's hot loop.
 
+## Installation
+
+Published GitHub Releases include compiled R packages for Windows x86_64,
+Linux x86_64, and macOS ARM64. The R version, platform, and architecture are
+part of each asset name. A matching asset URL can be installed with its required
+dependencies by `pak` without compiling `dtaparser` locally:
+
+```r
+pak::pkg_install("url::https://github.com/jbearak/dta-parser/releases/download/vX.Y.Z/<matching-asset>")
+```
+
+Base R can also install one matching URL with
+`install.packages(url, repos = NULL)` after the package's Imports are installed;
+the archive extension lets R detect the binary format. GitHub does not select
+an asset for the current platform, so callers must use the URL whose R version,
+operating system, and architecture match their R installation.
+
 ```r
 library(dtaparser)
 
@@ -147,9 +164,11 @@ These deterministic choices avoid silent truncation and platform-dependent
 overflow while retaining haven parity for meaningful row-window requests.
 
 The package includes a locked Cargo dependency graph and vendored crates so
-source builds do not contact a package registry. A Rust 1.74-or-newer toolchain
-and Cargo are required. Windows builds require 64-bit R and the
-`x86_64-pc-windows-gnu` Rust toolchain; `configure.win` rejects a mismatched
+source builds do not contact a package registry. A Rust 1.97.1-or-newer toolchain
+and Cargo are required for the R bridge on every platform. The Rust target
+architecture must match R. On Windows, Rtools additionally requires a
+MinGW-compatible Rust host: `x86_64-pc-windows-gnu` for x86_64 R or
+`aarch64-pc-windows-gnullvm` for aarch64 R. `configure.win` rejects a mismatched
 host before compilation and the Windows Makevars passes the target explicitly.
 
 ## Conformance and release checks
@@ -189,5 +208,6 @@ third-party Cargo dependencies, and `scripts/check-r-cargo-vendor.sh` verifies
 the archive against `vendor.sha256` and the bridge lock. Configure always
 refreshes the extracted dependencies before building. Python 3.11 or newer is
 only required for repository maintenance and CI, not R package installation.
-Windows CI installs and selects `stable-x86_64-pc-windows-gnu`, confirms the
-rustc host, then actually builds and checks the package through Rtools.
+Windows CI installs and selects Rust 1.97.1 with the
+`x86_64-pc-windows-gnu` host matching R, confirms the exact version and host,
+then builds and checks the package through Rtools.

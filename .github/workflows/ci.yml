@@ -52,15 +52,16 @@ jobs:
       - run: cargo +${{ matrix.toolchain }} test --workspace --all-targets --locked
       - run: RUSTDOCFLAGS="-D warnings" cargo +${{ matrix.toolchain }} doc --workspace --locked --no-deps
       - run: cargo +${{ matrix.toolchain }} package -p dta-parser --locked
-      - name: Check isolated R bridge offline at MSRV
-        if: matrix.toolchain == '1.74.0'
+      - name: Check isolated R bridge offline
+        if: matrix.toolchain == 'stable'
         working-directory: r-package/dtaparser/src
         shell: bash
         env:
           CARGO_TARGET_DIR: ../../../target
         run: |
+          rustup toolchain install 1.97.1 --profile minimal
           tar -xzf rust/vendor.tar.gz -C rust
-          cargo +${{ matrix.toolchain }} check --manifest-path rust/Cargo.toml --config rust/cargo-config.toml --locked --offline
+          cargo +1.97.1 check --manifest-path rust/Cargo.toml --config rust/cargo-config.toml --locked --offline
 
   fuzz-smoke:
     name: Deterministic fuzz smoke
@@ -97,7 +98,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            rust_toolchain: 1.97.1
+          - os: macos-latest
+            rust_toolchain: 1.97.1
+          - os: windows-latest
+            rust_toolchain: 1.97.1-x86_64-pc-windows-gnu
     env:
       _R_CHECK_FORCE_SUGGESTS_: "true"
       NOT_CRAN: "true"
@@ -105,7 +112,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - uses: r-lib/actions/setup-r@bd49c52ffe281809afa6f0fecbf37483c5dd0b93 # v2.11.3
+      - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           use-public-rspm: true
       - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
@@ -115,15 +122,25 @@ jobs:
       - name: Install GNU Rust for Rtools
         if: runner.os == 'Windows'
         shell: bash
+        env:
+          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal
-          rustup default stable-x86_64-pc-windows-gnu
-          rustup target add x86_64-pc-windows-gnu --toolchain stable-x86_64-pc-windows-gnu
-          rustc -vV | grep 'host: x86_64-pc-windows-gnu'
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          rustup default "$RUST_TOOLCHAIN"
+          rust_version="$(rustc --version | awk '{print $2}')"
+          rust_host="$(rustc -vV | sed -n 's/^host: //p')"
+          if [ "$rust_version-$rust_host" != "$RUST_TOOLCHAIN" ]; then
+            echo "Rust $rust_version host $rust_host does not match $RUST_TOOLCHAIN" >&2
+            exit 1
+          fi
       - name: Install Rust
         if: runner.os != 'Windows'
         shell: bash
-        run: rustup toolchain install stable --profile minimal
+        env:
+          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          rustup default "$RUST_TOOLCHAIN"
       - name: Install R dependencies
         shell: Rscript {0}
         run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "haven", "callr", "httpuv"))
