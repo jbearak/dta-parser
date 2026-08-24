@@ -32,8 +32,8 @@ convention. Non-negative values must be whole numbers no larger than
 \code{2^53}.}
 \item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
 \item{threads}{Number of decoder threads. Zero selects an automatic count for
-sufficiently large Stata 118--119 files. One always uses the serial decoder.
-Earlier formats and \code{strL} projections currently remain serial.}
+sufficiently large files in any supported Stata release. One always uses the
+serial decoder. Projections containing \code{strL} remain serial.}
 }
 \value{A tibble containing native numeric and character vectors. \code{\%td}
 columns and legacy or custom formats beginning \code{\%d} have class

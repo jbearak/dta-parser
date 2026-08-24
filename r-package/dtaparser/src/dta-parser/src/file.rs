@@ -1106,22 +1106,17 @@ impl<R: Read + Seek> DtaFile<R> {
         )
     }
 
-    /// Resolve the worker count for the validated modern parallel path.
+    /// Resolve the worker count for the validated parallel path.
     ///
     /// A requested value of zero selects an automatic count. Unsupported
-    /// formats, `strL` projections, oversized rows, and small automatic
-    /// workloads deliberately return one so callers can use the serial path.
+    /// `strL` projections, oversized rows, and small automatic workloads
+    /// deliberately return one so callers can use the serial path.
     pub fn parallel_thread_count(
         &self,
         options: &ReadOptions,
         requested: usize,
     ) -> Result<usize, DtaError> {
-        if requested == 1
-            || !matches!(
-                self.metadata.format_version,
-                FormatVersion::V118 | FormatVersion::V119
-            )
-        {
+        if requested == 1 {
             return Ok(1);
         }
         let indices = resolve_columns(&self.metadata, options)?;
@@ -1148,8 +1143,8 @@ impl<R: Read + Seek> DtaFile<R> {
         Ok(threads.min(plan.columns.len()).max(1))
     }
 
-    /// Decode a modern projection into ordinary Rust vectors with the shared
-    /// parallel block executor.
+    /// Decode a projection into ordinary Rust vectors with the shared parallel
+    /// block executor.
     pub fn read_with_parallel_interrupt<F>(
         &mut self,
         options: &ReadOptions,
@@ -1171,7 +1166,7 @@ impl<R: Read + Seek> DtaFile<R> {
         )
     }
 
-    /// Decode a Stata 118/119 projection through independently owned columns.
+    /// Decode a projection through independently owned columns.
     ///
     /// The shared scalar cell decoder is retained; workers only partition
     /// columns and never call a foreign runtime. Use
@@ -1200,10 +1195,6 @@ impl<R: Read + Seek> DtaFile<R> {
         let (row_start, row_count) = row_window(&self.metadata, options);
         let plan = ObservationPlan::new(&self.metadata, &indices)?;
         if thread_count < 2
-            || !matches!(
-                self.metadata.format_version,
-                FormatVersion::V118 | FormatVersion::V119
-            )
             || plan.columns.len() < 2
             || plan.row_width == 0
             || plan.row_width > self.scratch.limit
@@ -1241,8 +1232,7 @@ impl<R: Read + Seek> DtaFile<R> {
             });
         }
 
-        let payload_start =
-            checked_add_u64(self.metadata.section_offsets.data, 6, "data payload offset")?;
+        let payload_start = observation_payload_start(&self.metadata)?;
         let rows_per_block = self.scratch.limit / plan.row_width;
         let rows_per_block = u64::try_from(rows_per_block)
             .map_err(|_| DtaError::ArithmeticOverflow("parallel rows per block"))?;
@@ -1495,11 +1485,7 @@ impl<R: Read + Seek> DtaFile<R> {
                 }
             })
             .collect::<Vec<_>>();
-        let payload_start = if self.metadata.format_version.is_modern() {
-            checked_add_u64(self.metadata.section_offsets.data, 6, "data payload offset")?
-        } else {
-            self.metadata.section_offsets.data
-        };
+        let payload_start = observation_payload_start(&self.metadata)?;
         let mut cell_decoder = CellDecoder {
             sink: &mut sink,
             strl_pointers: &mut strl_pointers,
@@ -1720,6 +1706,14 @@ fn check_frequent_cancel<I: InterruptChecks>(interrupts: &mut I) -> Result<(), D
 fn checked_add_u64(left: u64, right: u64, context: &'static str) -> Result<u64, DtaError> {
     left.checked_add(right)
         .ok_or(DtaError::ArithmeticOverflow(context))
+}
+
+fn observation_payload_start(metadata: &DtaMetadata) -> Result<u64, DtaError> {
+    if metadata.format_version.is_modern() {
+        checked_add_u64(metadata.section_offsets.data, 6, "data payload offset")
+    } else {
+        Ok(metadata.section_offsets.data)
+    }
 }
 
 fn error_offset(offset: u64) -> usize {

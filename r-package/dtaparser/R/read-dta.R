@@ -31,8 +31,8 @@
 #'   unlimited-row convention. Non-negative values must be whole numbers no
 #'   larger than `2^53`.
 #' @param threads Number of decoder threads. Zero selects an automatic count
-#'   for sufficiently large Stata 118--119 files. One always uses the serial
-#'   decoder. Earlier formats and `strL` projections currently remain serial.
+#'   for sufficiently large files in any supported Stata release. One always
+#'   uses the serial decoder. Projections containing `strL` remain serial.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
 #' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and

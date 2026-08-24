@@ -10,12 +10,12 @@ indices behind an ordinary R character vector through ALTREP. Element access
 resolves the dictionary immediately; allocation of the complete row-level
 string-pointer vector is deferred, without retaining the source file.
 
-Large Stata 118--119 reads use a shared block decoder across multiple cores by
-default. `threads = 0` selects an automatic count, `threads = 1` forces the
-serial executor, and a positive larger value requests an explicit count capped
-by available parallelism and selected columns. Small inputs, earlier formats,
-and projections containing `strL` currently remain serial. Both executors use
-the same validated observation plan and scalar value-decoding semantics.
+Large reads from every supported Stata release use a shared block decoder
+across multiple cores by default. `threads = 0` selects an automatic count,
+`threads = 1` forces the serial executor, and a positive larger value requests
+an explicit count capped by available parallelism and selected columns. Small
+inputs and projections containing `strL` remain serial. Both executors use the
+same validated observation plan and scalar value-decoding semantics.
 
 ## Installation
 
@@ -209,9 +209,10 @@ performance thresholds.
 - `.name_repair` is delegated to `tibble::as_tibble()` after selection aliases
   are applied.
 - Reads are synchronous. Long reads cooperatively check for R user interrupts.
-- `threads = 0` automatically parallelizes sufficiently large release 118--119
-  reads without selected `strL` columns. Use `threads = 1` for deterministic
-  single-thread benchmarking. Option `dtaparser.threads` controls the default.
+- `threads = 0` automatically parallelizes sufficiently large reads from any
+  supported release without selected `strL` columns. Use `threads = 1` for
+  deterministic single-thread benchmarking. Option `dtaparser.threads`
+  controls the default.
 - Character columns use dictionary-backed ALTREP vectors. Loading does not
   depend on the source path after `read_dta()` returns. Distinct R strings are
   created once during the load; operations that request a contiguous pointer
