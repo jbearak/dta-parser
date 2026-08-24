@@ -15,8 +15,8 @@ the private raw results but are excluded symmetrically. The inventory reads
 only the DTA signature to record the on-disk release. The summary reports one
 row per corpus and release plus an `all` subtotal for each corpus. Every row
 contains the common-readable file count and exclusion count, total elapsed time
-over that common file set, dta-parser's speedup against each comparator, and
-the maximum per-file peak RSS observed for each reader. Unrecognized or
+over that common file set, dta-parser/comparator time ratios, and the maximum
+per-file peak RSS observed for each reader. Unrecognized or
 unreadable signatures remain accounted for as `unknown` inventory groups. The
 report never publishes private paths or data values.
 

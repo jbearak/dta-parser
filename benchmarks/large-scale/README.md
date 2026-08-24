@@ -83,7 +83,8 @@ The default raw report has 1,212 rows:
 
 `summary.tsv` has four rows, one per size/workload combination, with median,
 5th percentile, 95th percentile, and median input throughput for all three
-implementations plus pairwise median speedups.
+implementations plus pairwise median time ratios, with the named implementation
+in the numerator.
 
 The public reader interns each distinct character value once per column and
 returns a dictionary-backed ALTREP vector with compact row-to-dictionary
