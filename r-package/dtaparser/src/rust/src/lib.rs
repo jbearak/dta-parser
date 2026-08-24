@@ -6,7 +6,8 @@ use std::ptr;
 use ahash::AHashMap;
 use dta_parser::{
     ColumnValues, DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType,
-    MissingTag, ParallelDtaSink, ReadOptions, TextEncoding, ValueLabelTable, VariableInfo,
+    FormatVersion, MissingTag, ParallelDtaSink, ReadOptions, TextEncoding, ValueLabelTable,
+    VariableInfo,
 };
 
 type Sexp = *mut c_void;
@@ -16,6 +17,7 @@ const INTSXP: c_int = 13;
 const REALSXP: c_int = 14;
 const STRSXP: c_int = 16;
 const VECSXP: c_int = 19;
+const RAWSXP: c_int = 24;
 const CE_UTF8: c_int = 1;
 const INTERRUPT_STRIDE: usize = 16_384;
 const R_DATA_FRAME_MAX_ROWS: u64 = c_int::MAX as u64;
@@ -27,6 +29,7 @@ extern "C" {
     fn SET_VECTOR_ELT(vector: Sexp, index: RLen, value: Sexp) -> Sexp;
     fn INTEGER(vector: Sexp) -> *mut c_int;
     fn REAL(vector: Sexp) -> *mut f64;
+    fn RAW(vector: Sexp) -> *mut u8;
 
     static mut R_NamesSymbol: Sexp;
     static mut R_ClassSymbol: Sexp;
@@ -49,8 +52,71 @@ extern "C" {
         transferred: *mut c_int,
         result: *mut Sexp,
     ) -> c_int;
+    fn dtaparser_make_numeric(
+        data: *mut c_void,
+        backing: Sexp,
+        transferred: *mut c_int,
+        result: *mut Sexp,
+    ) -> c_int;
     fn dtaparser_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtaparser_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
+}
+
+#[repr(C)]
+struct NumericData {
+    values: *mut c_void,
+    length: usize,
+    kind: c_int,
+    temporal: c_int,
+    format_version: c_int,
+    no_na: c_int,
+}
+
+impl NumericData {
+    fn new(data: RNumericData) -> Self {
+        Self {
+            values: data.values.cast::<c_void>(),
+            length: data.length,
+            kind: data.kind as c_int,
+            temporal: data.temporal as c_int,
+            format_version: c_int::from(data.format_version.as_u16()),
+            no_na: c_int::from(data.no_na),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(i32)]
+enum NumericKind {
+    Byte = 0,
+    Int = 1,
+    Long = 2,
+    Float = 3,
+    Double = 4,
+}
+
+struct RNumericData {
+    backing: Sexp,
+    values: *mut u8,
+    length: usize,
+    kind: NumericKind,
+    temporal: TemporalKind,
+    format_version: FormatVersion,
+    no_na: bool,
+}
+
+#[no_mangle]
+/// Release numeric storage previously transferred to an R ALTREP vector.
+///
+/// # Safety
+///
+/// `data` must be null or a live pointer created by `ProtectGuard::numeric`,
+/// and it must not have been freed previously.
+pub unsafe extern "C" fn dtaparser_numeric_free(data: *mut c_void) {
+    if data.is_null() {
+        return;
+    }
+    drop(Box::from_raw(data.cast::<NumericData>()));
 }
 
 #[repr(C)]
@@ -167,17 +233,31 @@ impl ProtectGuard {
         .cast::<c_void>();
         let mut transferred = 0;
         let mut result = ptr::null_mut();
-        let ok = dtaparser_make_dictstring(
-            storage,
-            value_count,
-            &mut transferred,
-            &mut result,
-        );
+        let ok = dtaparser_make_dictstring(storage, value_count, &mut transferred, &mut result);
         if ok == 0 || result.is_null() {
             if transferred == 0 {
                 dtaparser_dictstring_free(storage);
             }
             return Err("R could not allocate a dictionary string vector".to_owned());
+        }
+        self.objects.push(result);
+        Ok(result)
+    }
+
+    unsafe fn numeric(&mut self, data: RNumericData) -> Result<Sexp, String> {
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| "R could not track a preserved native vector".to_owned())?;
+        let backing = data.backing;
+        let storage = Box::into_raw(Box::new(NumericData::new(data))).cast::<c_void>();
+        let mut transferred = 0;
+        let mut result = ptr::null_mut();
+        let ok = dtaparser_make_numeric(storage, backing, &mut transferred, &mut result);
+        if ok == 0 || result.is_null() {
+            if transferred == 0 {
+                dtaparser_numeric_free(storage);
+            }
+            return Err("R could not allocate a numeric ALTREP vector".to_owned());
         }
         self.objects.push(result);
         Ok(result)
@@ -221,10 +301,11 @@ fn frequent_interrupt_poller() -> impl FnMut() -> bool {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(i32)]
 enum TemporalKind {
-    None,
-    Date,
-    Datetime,
+    None = 0,
+    Date = 1,
+    Datetime = 2,
 }
 
 fn temporal_kind(format: &str) -> TemporalKind {
@@ -606,22 +687,50 @@ impl RStringData {
 }
 
 enum RColumn {
-    Numeric {
-        vector: Sexp,
-        output: *mut f64,
-        temporal: TemporalKind,
-        system_missing: f64,
-    },
-    String {
-        vector: Sexp,
-        data: RStringData,
-    },
+    Numeric { vector: Sexp, data: RNumericData },
+    String { vector: Sexp, data: RStringData },
 }
 
-// Parallel workers receive disjoint columns. Numeric workers only write to
-// non-overlapping memory obtained before the threads start; string workers
-// mutate Rust-owned dictionaries. They never invoke the R API.
+// Parallel workers receive disjoint columns. Numeric workers write to compact
+// R-owned raw vectors allocated before threads start, while string workers
+// mutate Rust-owned dictionaries. Workers never invoke the R API.
 unsafe impl Send for RColumn {}
+
+unsafe fn numeric_storage(
+    dta_type: DtaType,
+    length: usize,
+    temporal: TemporalKind,
+    format_version: FormatVersion,
+    guard: &mut ProtectGuard,
+) -> Result<RNumericData, DtaError> {
+    let (kind, width) = match dta_type {
+        DtaType::Byte => (NumericKind::Byte, std::mem::size_of::<i8>()),
+        DtaType::Int => (NumericKind::Int, std::mem::size_of::<i16>()),
+        DtaType::Long => (NumericKind::Long, std::mem::size_of::<i32>()),
+        DtaType::Float => (NumericKind::Float, std::mem::size_of::<f32>()),
+        DtaType::Double => (NumericKind::Double, std::mem::size_of::<f64>()),
+        DtaType::FixedString(_) | DtaType::StrL => {
+            return Err(DtaError::Output(
+                "string type used for numeric output".to_owned(),
+            ));
+        }
+    };
+    let byte_length = length
+        .checked_mul(width)
+        .ok_or(DtaError::ArithmeticOverflow("numeric output bytes"))?;
+    let byte_length = RLen::try_from(byte_length)
+        .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
+    let backing = guard.alloc(RAWSXP, byte_length).map_err(DtaError::Output)?;
+    Ok(RNumericData {
+        backing,
+        values: RAW(backing),
+        length,
+        kind,
+        temporal,
+        format_version,
+        no_na: true,
+    })
+}
 
 struct RDataFrameSink {
     result: Sexp,
@@ -637,6 +746,8 @@ impl RDataFrameSink {
         source_indices: &[u32],
     ) -> Result<Self, DtaError> {
         let length = RLen::try_from(row_count)
+            .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
+        let native_length = usize::try_from(length)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let column_count = RLen::try_from(source_indices.len())
             .map_err(|_| DtaError::Output("too many columns".to_owned()))?;
@@ -665,15 +776,16 @@ impl RDataFrameSink {
                             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?,
                     )?,
                 },
-                _ => {
-                    let vector = guard.alloc(REALSXP, length).map_err(DtaError::Output)?;
-                    RColumn::Numeric {
-                        vector,
-                        output: REAL(vector),
-                        temporal: temporal_kind(&variable.format),
-                        system_missing: R_NaReal,
-                    }
-                }
+                _ => RColumn::Numeric {
+                    vector: ptr::null_mut(),
+                    data: numeric_storage(
+                        variable.dta_type.clone(),
+                        native_length,
+                        temporal_kind(&variable.format),
+                        metadata.format_version,
+                        &mut guard,
+                    )?,
+                },
             };
             let vector = match &column {
                 RColumn::Numeric { vector, .. } | RColumn::String { vector, .. } => *vector,
@@ -699,38 +811,13 @@ impl RDataFrameSink {
     }
 
     #[inline(always)]
-    fn numeric_column(
-        &self,
-        column: usize,
-    ) -> Result<(*mut f64, TemporalKind, f64), DtaError> {
-        match self.columns.get(column) {
-            Some(RColumn::Numeric {
-                output,
-                temporal,
-                system_missing,
-                ..
-            }) => Ok((*output, *temporal, *system_missing)),
+    fn numeric_column_mut(&mut self, column: usize) -> Result<&mut RNumericData, DtaError> {
+        match self.columns.get_mut(column) {
+            Some(RColumn::Numeric { data, .. }) => Ok(data),
             _ => Err(DtaError::Output(
                 "numeric output column mismatch".to_owned(),
             )),
         }
-    }
-
-    #[inline(always)]
-    fn write_numeric(
-        &mut self,
-        column: usize,
-        row: usize,
-        value: f64,
-        missing: Option<MissingTag>,
-    ) -> Result<(), DtaError> {
-        let (output, temporal, system_missing) = self.numeric_column(column)?;
-        unsafe {
-            *output.add(row) = missing
-                .map(|tag| r_missing_with_system(tag, system_missing))
-                .unwrap_or_else(|| observed_value(value, temporal));
-        }
-        Ok(())
     }
 
     #[inline(always)]
@@ -747,31 +834,121 @@ impl RDataFrameSink {
     }
 }
 
-impl RColumn {
+impl RNumericData {
+    fn take(&mut self) -> Self {
+        let replacement = Self {
+            backing: ptr::null_mut(),
+            values: ptr::null_mut(),
+            length: 0,
+            kind: self.kind,
+            temporal: self.temporal,
+            format_version: self.format_version,
+            no_na: true,
+        };
+        std::mem::replace(self, replacement)
+    }
+
     #[inline(always)]
-    fn write_numeric_value(
+    fn write_value<T: Copy>(
+        &mut self,
+        row: usize,
+        value: T,
+        kind: NumericKind,
+        no_na: bool,
+    ) -> Result<(), DtaError> {
+        if self.kind != kind {
+            return Err(DtaError::Output(
+                "value used for another numeric storage type".to_owned(),
+            ));
+        }
+        if row >= self.length {
+            return Err(Self::row_error(row, self.length));
+        }
+        self.no_na &= no_na;
+        unsafe {
+            self.values
+                .add(row * std::mem::size_of::<T>())
+                .cast::<T>()
+                .write_unaligned(value);
+        }
+        Ok(())
+    }
+
+    fn row_error(row: usize, length: usize) -> DtaError {
+        DtaError::Output(format!(
+            "numeric output row {row} is out of bounds for length {length}"
+        ))
+    }
+
+    #[inline(always)]
+    fn write_byte(
+        &mut self,
+        row: usize,
+        value: i8,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_value(row, value, NumericKind::Byte, missing.is_none())
+    }
+
+    #[inline(always)]
+    fn write_int(
+        &mut self,
+        row: usize,
+        value: i16,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_value(row, value, NumericKind::Int, missing.is_none())
+    }
+
+    #[inline(always)]
+    fn write_long(
+        &mut self,
+        row: usize,
+        value: i32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_value(row, value, NumericKind::Long, missing.is_none())
+    }
+
+    #[inline(always)]
+    fn write_float(
+        &mut self,
+        row: usize,
+        value: f32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_value(
+            row,
+            value,
+            NumericKind::Float,
+            missing.is_none() && !value.is_nan(),
+        )
+    }
+
+    #[inline(always)]
+    fn write_double(
         &mut self,
         row: usize,
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        let Self::Numeric {
-            output,
-            temporal,
-            system_missing,
-            ..
-        } = self
-        else {
+        self.write_value(
+            row,
+            value,
+            NumericKind::Double,
+            missing.is_none() && !value.is_nan(),
+        )
+    }
+}
+
+impl RColumn {
+    fn numeric_mut(&mut self) -> Result<&mut RNumericData, DtaError> {
+        let Self::Numeric { data, .. } = self else {
             return Err(DtaError::Output(
                 "numeric output column mismatch".to_owned(),
             ));
         };
-        unsafe {
-            *output.add(row) = missing
-                .map(|tag| r_missing_with_system(tag, *system_missing))
-                .unwrap_or_else(|| observed_value(value, *temporal));
-        }
-        Ok(())
+        Ok(data)
     }
 }
 
@@ -782,7 +959,7 @@ impl DtaColumnSink for RColumn {
         value: i8,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric_value(row, f64::from(value), missing)
+        self.numeric_mut()?.write_byte(row, value, missing)
     }
 
     fn push_int(
@@ -791,7 +968,7 @@ impl DtaColumnSink for RColumn {
         value: i16,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric_value(row, f64::from(value), missing)
+        self.numeric_mut()?.write_int(row, value, missing)
     }
 
     fn push_long(
@@ -800,7 +977,7 @@ impl DtaColumnSink for RColumn {
         value: i32,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric_value(row, f64::from(value), missing)
+        self.numeric_mut()?.write_long(row, value, missing)
     }
 
     fn push_float(
@@ -809,7 +986,7 @@ impl DtaColumnSink for RColumn {
         value: f32,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric_value(row, f64::from(value), missing)
+        self.numeric_mut()?.write_float(row, value, missing)
     }
 
     fn push_double(
@@ -818,7 +995,7 @@ impl DtaColumnSink for RColumn {
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric_value(row, value, missing)
+        self.numeric_mut()?.write_double(row, value, missing)
     }
 
     fn push_fixed_string(&mut self, row: usize, value: &str) -> Result<(), DtaError> {
@@ -863,7 +1040,8 @@ impl DtaSink for RDataFrameSink {
         value: i8,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric(column, row, f64::from(value), missing)
+        self.numeric_column_mut(column)?
+            .write_byte(row, value, missing)
     }
 
     #[inline(always)]
@@ -874,7 +1052,8 @@ impl DtaSink for RDataFrameSink {
         value: i16,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric(column, row, f64::from(value), missing)
+        self.numeric_column_mut(column)?
+            .write_int(row, value, missing)
     }
 
     #[inline(always)]
@@ -885,7 +1064,8 @@ impl DtaSink for RDataFrameSink {
         value: i32,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric(column, row, f64::from(value), missing)
+        self.numeric_column_mut(column)?
+            .write_long(row, value, missing)
     }
 
     #[inline(always)]
@@ -896,7 +1076,8 @@ impl DtaSink for RDataFrameSink {
         value: f32,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric(column, row, f64::from(value), missing)
+        self.numeric_column_mut(column)?
+            .write_float(row, value, missing)
     }
 
     #[inline(always)]
@@ -907,7 +1088,8 @@ impl DtaSink for RDataFrameSink {
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_numeric(column, row, value, missing)
+        self.numeric_column_mut(column)?
+            .write_double(row, value, missing)
     }
 
     #[inline(always)]
@@ -955,18 +1137,24 @@ impl DtaSink for RDataFrameSink {
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         unsafe {
             for (output_index, column) in self.columns.iter_mut().enumerate() {
-                let RColumn::String { vector, data } = column else {
-                    continue;
-                };
-                if data.value_ids.len() != expected_string_rows {
-                    return Err(DtaError::Output(format!(
-                        "string output row count mismatch: expected {expected_string_rows}, got {}",
-                        data.value_ids.len()
-                    )));
+                match column {
+                    RColumn::Numeric { vector, data } => {
+                        let data = data.take();
+                        *vector = self._guard.numeric(data).map_err(DtaError::Output)?;
+                        SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
+                    }
+                    RColumn::String { vector, data } => {
+                        if data.value_ids.len() != expected_string_rows {
+                            return Err(DtaError::Output(format!(
+                                "string output row count mismatch: expected {expected_string_rows}, got {}",
+                                data.value_ids.len()
+                            )));
+                        }
+                        let data = std::mem::replace(data, RStringData::new(0)?);
+                        *vector = self._guard.dictstring(data).map_err(DtaError::Output)?;
+                        SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
+                    }
                 }
-                let data = std::mem::replace(data, RStringData::new(0)?);
-                *vector = self._guard.dictstring(data).map_err(DtaError::Output)?;
-                SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
             }
 
             for (output_index, &source_index) in self.source_indices.iter().enumerate() {
@@ -1183,11 +1371,7 @@ unsafe fn read_impl(
         }
     } else {
         let data = file
-            .read_with_interrupts(
-                &options,
-                coarse_interrupt,
-                frequent_interrupt_poller(),
-            )
+            .read_with_interrupts(&options, coarse_interrupt, frequent_interrupt_poller())
             .map_err(|error| error.to_string())?;
         build_data_frame(&data)
     }

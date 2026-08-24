@@ -318,9 +318,11 @@ test_that("native materialization survives forced garbage collection", {
     gctorture(TRUE)
     on.exit(gctorture(FALSE), add = TRUE)
 
-    result <- read_dta(path, col_select = make, n_max = 1)
-    expect_identical(dim(result), c(1L, 1L))
-    expect_identical(result[[1L]][[1L]], "AMC Concord")
+    result <- read_dta(path, col_select = c(make, price), n_max = 1)
+    expect_identical(dim(result), c(1L, 2L))
+    expect_identical(result$make[[1L]], "AMC Concord")
+    expect_true(dtaparser:::.is_numeric_altrep(result$price))
+    expect_identical(result$price[[1L]], 4099)
 })
 
 test_that("native strings serialize and preserve copy-on-modify semantics", {
@@ -346,6 +348,59 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
     retained <- read_dta(path)$make
     invisible(gc())
     expect_identical(retained[[2L]], reference$make[[2L]])
+})
+
+test_that("native numerics use ALTREP with ordinary R value semantics", {
+    path <- normalizePath(fixture("auto_v118.dta"))
+    reference <- dtaparser:::.read_dta_rust_vectors(path)
+    actual <- read_dta(path)
+
+    numeric_columns <- vapply(reference, is.numeric, logical(1))
+    expect_true(all(vapply(
+        actual[numeric_columns], dtaparser:::.is_numeric_altrep, logical(1)
+    )))
+    expect_false(dtaparser:::.is_numeric_altrep(actual$make))
+
+    encoded <- serialize(actual$price, NULL)
+    invisible(gc())
+    expect_identical(unserialize(encoded), reference$price)
+
+    original <- actual$price
+    modified <- original
+    modified[[1L]] <- NA_real_
+    expect_identical(original[[1L]], reference$price[[1L]])
+    expect_false(anyNA(original))
+    expect_true(anyNA(modified))
+    expect_identical(modified[[1L]], NA_real_)
+
+    retained <- read_dta(path)$price
+    invisible(gc())
+    expect_identical(retained[[2L]], reference$price[[2L]])
+
+    empty <- read_dta(path, col_select = price, n_max = 0)$price
+    expect_true(dtaparser:::.is_numeric_altrep(empty))
+    expect_length(empty, 0L)
+    expect_false(anyNA(empty))
+
+    for (name in c("all_types_v115.dta", "all_types_v118.dta")) {
+        path <- normalizePath(fixture(name))
+        actual <- read_dta(path)
+        reference <- dtaparser:::.read_dta_rust_vectors(path)
+        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+        numeric_indices <- which(storage != "character")
+        expect_true(all(vapply(
+            actual[numeric_indices],
+            dtaparser:::.is_numeric_altrep,
+            logical(1)
+        )), info = name)
+        for (index in numeric_indices) {
+            expect_identical(actual[[index]][], reference[[index]][],
+                             info = paste(name, storage[[index]]))
+            expect_identical(anyNA(actual[[index]]),
+                             anyNA(reference[[index]]),
+                             info = paste(name, storage[[index]], "missing"))
+        }
+    }
 })
 
 test_that("repeated string patterns can diverge without changing values", {
