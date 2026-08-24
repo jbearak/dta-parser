@@ -31,6 +31,10 @@ const MIN_PARALLEL_CELLS: u64 = 1_000_000;
 const MAX_AUTOMATIC_THREADS: usize = 8;
 const MODERN_SIGNATURE: &[u8] = b"<stata_dta><header><release>";
 
+fn automatic_parallel_workload(data_bytes: u64, cells: u64) -> bool {
+    data_bytes >= MIN_PARALLEL_DATA_BYTES || cells >= MIN_PARALLEL_CELLS
+}
+
 /// Configuration for seekable file-backed reads.
 ///
 /// `max_buffer_bytes` bounds each temporary raw-byte staging allocation and
@@ -1131,7 +1135,7 @@ impl<R: Read + Seek> DtaFile<R> {
         }
         let data_bytes = row_count.saturating_mul(self.metadata.obs_length);
         let cells = row_count.saturating_mul(plan.columns.len() as u64);
-        if requested == 0 && (data_bytes < MIN_PARALLEL_DATA_BYTES || cells < MIN_PARALLEL_CELLS) {
+        if requested == 0 && !automatic_parallel_workload(data_bytes, cells) {
             return Ok(1);
         }
         let available = thread::available_parallelism().map_or(1, usize::from);
@@ -4137,6 +4141,22 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn automatic_parallelism_accepts_large_byte_or_cell_workloads() {
+        assert!(!automatic_parallel_workload(
+            MIN_PARALLEL_DATA_BYTES - 1,
+            MIN_PARALLEL_CELLS - 1,
+        ));
+        assert!(automatic_parallel_workload(
+            MIN_PARALLEL_DATA_BYTES,
+            MIN_PARALLEL_CELLS - 1,
+        ));
+        assert!(automatic_parallel_workload(
+            MIN_PARALLEL_DATA_BYTES - 1,
+            MIN_PARALLEL_CELLS,
+        ));
+    }
 
     #[test]
     fn short_strl_pointer_cells_return_a_truncation_error() {
