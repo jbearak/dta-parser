@@ -1121,7 +1121,10 @@ unsafe fn read_impl(
         let threads = file
             .parallel_thread_count(&options, requested_threads)
             .map_err(|error| error.to_string())?;
-        if threads > 1 {
+        let columnar = file
+            .supports_columnar_sink(&options)
+            .map_err(|error| error.to_string())?;
+        if threads > 1 || columnar {
             file.read_with_parallel_sink_and_interrupt(
                 &options,
                 threads,

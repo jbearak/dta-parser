@@ -827,69 +827,30 @@ enum WorkerMessage {
     Finish,
 }
 
-fn decode_parallel_cell<C: DtaColumnSink>(
-    column: &mut ParallelColumn<C>,
-    row: usize,
-    cell: &[u8],
-    metadata: &DtaMetadata,
-    encoding: TextEncoding,
-) -> Result<(), DtaError> {
-    match column.plan.kind {
-        ObservationKind::Byte => {
-            let value = read_i8(cell, 0, "byte observation")?;
-            column.sink.push_byte(
-                row,
-                value,
-                classify_byte_missing_for_version(value, metadata.format_version),
-            )
-        }
-        ObservationKind::Int => {
-            let value = read_i16(cell, 0, metadata.byte_order, "int observation")?;
-            column.sink.push_int(
-                row,
-                value,
-                classify_int_missing_for_version(value, metadata.format_version),
-            )
-        }
-        ObservationKind::Long => {
-            let value = read_i32(cell, 0, metadata.byte_order, "long observation")?;
-            column.sink.push_long(
-                row,
-                value,
-                classify_long_missing_for_version(value, metadata.format_version),
-            )
-        }
-        ObservationKind::Float => {
-            let bits = read_u32(cell, 0, metadata.byte_order, "float observation")?;
-            column.sink.push_float(
-                row,
-                f32::from_bits(bits),
-                classify_float_missing_bits_for_version(bits, metadata.format_version),
-            )
-        }
-        ObservationKind::Double => {
-            let bits = read_u64(cell, 0, metadata.byte_order, "double observation")?;
-            column.sink.push_double(
-                row,
-                f64::from_bits(bits),
-                classify_double_missing_bits_for_version(bits, metadata.format_version),
-            )
-        }
-        ObservationKind::FixedString => {
-            let field = field_bytes(cell);
-            if column
-                .sink
-                .try_push_fixed_string_bytes(row, field, encoding)?
-            {
-                Ok(())
-            } else {
-                let value = encoding.decode_cow(field);
-                column.sink.push_fixed_string(row, &value)
-            }
-        }
-        ObservationKind::StrL => Err(DtaError::Output(
-            "parallel strL decoding is not enabled".to_owned(),
-        )),
+#[inline(always)]
+unsafe fn read_unaligned_u16(bytes: &[u8], offset: usize, byte_order: ByteOrder) -> u16 {
+    let raw = unsafe { std::ptr::read_unaligned(bytes.as_ptr().add(offset).cast::<u16>()) };
+    match byte_order {
+        ByteOrder::Lsf => u16::from_le(raw),
+        ByteOrder::Msf => u16::from_be(raw),
+    }
+}
+
+#[inline(always)]
+unsafe fn read_unaligned_u32(bytes: &[u8], offset: usize, byte_order: ByteOrder) -> u32 {
+    let raw = unsafe { std::ptr::read_unaligned(bytes.as_ptr().add(offset).cast::<u32>()) };
+    match byte_order {
+        ByteOrder::Lsf => u32::from_le(raw),
+        ByteOrder::Msf => u32::from_be(raw),
+    }
+}
+
+#[inline(always)]
+unsafe fn read_unaligned_u64(bytes: &[u8], offset: usize, byte_order: ByteOrder) -> u64 {
+    let raw = unsafe { std::ptr::read_unaligned(bytes.as_ptr().add(offset).cast::<u64>()) };
+    match byte_order {
+        ByteOrder::Lsf => u64::from_le(raw),
+        ByteOrder::Msf => u64::from_be(raw),
     }
 }
 
@@ -901,28 +862,118 @@ fn decode_worker_block<C: DtaColumnSink>(
     encoding: TextEncoding,
 ) -> Result<(), DtaError> {
     for column in columns {
-        for local_row in 0..block.row_count {
-            let row_at = local_row
-                .checked_mul(row_width)
-                .and_then(|value| value.checked_add(column.plan.byte_offset))
-                .ok_or(DtaError::ArithmeticOverflow("parallel cell offset"))?;
-            let cell_end = row_at
-                .checked_add(column.plan.byte_width)
-                .ok_or(DtaError::ArithmeticOverflow("parallel cell end"))?;
-            let cell = block
-                .bytes
-                .get(row_at..cell_end)
-                .ok_or(DtaError::Truncated {
-                    context: "observation cell",
-                    offset: row_at,
-                    needed: column.plan.byte_width,
-                    available: block.bytes.len().saturating_sub(row_at),
-                })?;
-            let output_row = block
-                .output_row_start
-                .checked_add(local_row)
-                .ok_or(DtaError::ArithmeticOverflow("parallel output row"))?;
-            decode_parallel_cell(column, output_row, cell, metadata, encoding)?;
+        if block.row_count == 0 {
+            continue;
+        }
+        let last_row = block
+            .row_count
+            .checked_sub(1)
+            .and_then(|row| row.checked_mul(row_width))
+            .ok_or(DtaError::ArithmeticOverflow("parallel cell offset"))?;
+        let last_cell = last_row
+            .checked_add(column.plan.byte_offset)
+            .ok_or(DtaError::ArithmeticOverflow("parallel cell offset"))?;
+        let input_end = last_cell
+            .checked_add(column.plan.byte_width)
+            .ok_or(DtaError::ArithmeticOverflow("parallel cell end"))?;
+        if input_end > block.bytes.len() {
+            return Err(DtaError::Truncated {
+                context: "observation cell",
+                offset: last_cell,
+                needed: column.plan.byte_width,
+                available: block.bytes.len().saturating_sub(last_cell),
+            });
+        }
+        block
+            .output_row_start
+            .checked_add(block.row_count)
+            .ok_or(DtaError::ArithmeticOverflow("parallel output row"))?;
+
+        let mut input_at = column.plan.byte_offset;
+        let mut output_row = block.output_row_start;
+        macro_rules! decode_numeric_rows {
+            ($body:expr) => {{
+                for _ in 0..block.row_count {
+                    $body(input_at, output_row)?;
+                    input_at += row_width;
+                    output_row += 1;
+                }
+            }};
+        }
+        match column.plan.kind {
+            ObservationKind::Byte => decode_numeric_rows!(|offset, row| {
+                // SAFETY: the complete strided column range was checked above.
+                let value = unsafe { *block.bytes.get_unchecked(offset) } as i8;
+                column.sink.push_byte(
+                    row,
+                    value,
+                    classify_byte_missing_for_version(value, metadata.format_version),
+                )
+            }),
+            ObservationKind::Int => decode_numeric_rows!(|offset, row| {
+                // SAFETY: the complete strided column range was checked above.
+                let value =
+                    unsafe { read_unaligned_u16(&block.bytes, offset, metadata.byte_order) } as i16;
+                column.sink.push_int(
+                    row,
+                    value,
+                    classify_int_missing_for_version(value, metadata.format_version),
+                )
+            }),
+            ObservationKind::Long => decode_numeric_rows!(|offset, row| {
+                // SAFETY: the complete strided column range was checked above.
+                let value =
+                    unsafe { read_unaligned_u32(&block.bytes, offset, metadata.byte_order) } as i32;
+                column.sink.push_long(
+                    row,
+                    value,
+                    classify_long_missing_for_version(value, metadata.format_version),
+                )
+            }),
+            ObservationKind::Float => decode_numeric_rows!(|offset, row| {
+                // SAFETY: the complete strided column range was checked above.
+                let bits = unsafe { read_unaligned_u32(&block.bytes, offset, metadata.byte_order) };
+                column.sink.push_float(
+                    row,
+                    f32::from_bits(bits),
+                    classify_float_missing_bits_for_version(bits, metadata.format_version),
+                )
+            }),
+            ObservationKind::Double => decode_numeric_rows!(|offset, row| {
+                // SAFETY: the complete strided column range was checked above.
+                let bits = unsafe { read_unaligned_u64(&block.bytes, offset, metadata.byte_order) };
+                column.sink.push_double(
+                    row,
+                    f64::from_bits(bits),
+                    classify_double_missing_bits_for_version(bits, metadata.format_version),
+                )
+            }),
+            ObservationKind::FixedString => {
+                for _ in 0..block.row_count {
+                    // SAFETY: the complete strided column range was checked above.
+                    let cell = unsafe {
+                        std::slice::from_raw_parts(
+                            block.bytes.as_ptr().add(input_at),
+                            column.plan.byte_width,
+                        )
+                    };
+                    let field = field_bytes(cell);
+                    if !column
+                        .sink
+                        .try_push_fixed_string_bytes(output_row, field, encoding)?
+                    {
+                        let value = encoding.decode_cow(field);
+                        column.sink.push_fixed_string(output_row, &value)?;
+                    }
+                    input_at += row_width;
+                    output_row += 1;
+                }
+            }
+            ObservationKind::StrL => {
+                return Err(DtaError::Output(
+                    "parallel strL decoding is not enabled".to_owned(),
+                ));
+            }
         }
     }
     Ok(())
@@ -1154,6 +1205,17 @@ impl<R: Read + Seek> DtaFile<R> {
         Ok(threads.min(plan.columns.len()).max(1))
     }
 
+    /// Return whether the selected observations can use the column-oriented
+    /// block decoder, including its single-worker path.
+    pub fn supports_columnar_sink(&self, options: &ReadOptions) -> Result<bool, DtaError> {
+        let indices = resolve_columns(&self.metadata, options)?;
+        let plan = ObservationPlan::new(&self.metadata, &indices)?;
+        Ok(!plan.columns.is_empty()
+            && plan.row_width > 0
+            && plan.row_width <= self.scratch.limit
+            && !plan.has_strls())
+    }
+
     /// Decode a projection into ordinary Rust vectors with the shared parallel
     /// block executor.
     pub fn read_with_parallel_interrupt<F>(
@@ -1179,10 +1241,9 @@ impl<R: Read + Seek> DtaFile<R> {
 
     /// Decode a projection through independently owned columns.
     ///
-    /// The shared scalar cell decoder is retained; workers only partition
-    /// columns and never call a foreign runtime. Use
-    /// [`DtaFile::parallel_thread_count`] before this method and fall back to
-    /// [`DtaFile::read_with_sink_and_interrupt`] when it returns one.
+    /// Each block is validated once before its type-specialized column kernels
+    /// run. Workers only partition columns and never call a foreign runtime.
+    /// A thread count of one executes the same kernels synchronously.
     pub fn read_with_parallel_sink_and_interrupt<S, B, F>(
         &mut self,
         options: &ReadOptions,
@@ -1205,8 +1266,8 @@ impl<R: Read + Seek> DtaFile<R> {
         let indices = resolve_columns(&self.metadata, options)?;
         let (row_start, row_count) = row_window(&self.metadata, options);
         let plan = ObservationPlan::new(&self.metadata, &indices)?;
-        if thread_count < 2
-            || plan.columns.len() < 2
+        if thread_count == 0
+            || plan.columns.is_empty()
             || plan.row_width == 0
             || plan.row_width > self.scratch.limit
             || plan.has_strls()
@@ -1251,133 +1312,183 @@ impl<R: Read + Seek> DtaFile<R> {
         let encoding = self.text_encoding;
         let mut observation_buffer = Vec::new();
 
-        let decoded_columns = thread::scope(
-            |scope| -> Result<Vec<ParallelColumn<S::Column>>, DtaError> {
-                let mut senders = Vec::with_capacity(worker_count);
-                let mut ack_receivers = Vec::with_capacity(worker_count);
-                let mut handles = Vec::with_capacity(worker_count);
-                for mut shard in shards {
-                    let (sender, receiver) = sync_channel::<WorkerMessage>(0);
-                    let (worker_ack, ack_receiver) = sync_channel::<Result<(), DtaError>>(0);
-                    senders.push(sender);
-                    ack_receivers.push(ack_receiver);
-                    handles.push(scope.spawn(move || {
-                        while let Ok(message) = receiver.recv() {
-                            match message {
-                                WorkerMessage::Block(block) => {
-                                    let result = decode_worker_block(
-                                        &mut shard,
-                                        &block,
-                                        plan.row_width,
-                                        metadata,
-                                        encoding,
-                                    );
-                                    drop(block);
-                                    let failed = result.is_err();
-                                    if worker_ack.send(result).is_err() || failed {
-                                        break;
+        let decoded_columns = if worker_count == 1 {
+            let mut shard = shards
+                .pop()
+                .expect("one worker has exactly one column shard");
+            let mut row = 0_u64;
+            while row < row_count {
+                check_cancel(&mut should_interrupt)?;
+                let block_rows = (row_count - row).min(rows_per_block);
+                let block_row_count = usize::try_from(block_rows)
+                    .map_err(|_| DtaError::ArithmeticOverflow("columnar block row count"))?;
+                let block_length = plan
+                    .row_width
+                    .checked_mul(block_row_count)
+                    .ok_or(DtaError::ArithmeticOverflow("columnar block length"))?;
+                let source_row = row_start
+                    .checked_add(row)
+                    .ok_or(DtaError::ArithmeticOverflow("columnar source row"))?;
+                let block_offset = payload_start
+                    .checked_add(
+                        source_row
+                            .checked_mul(self.metadata.obs_length)
+                            .ok_or(DtaError::ArithmeticOverflow("columnar row offset"))?,
+                    )
+                    .ok_or(DtaError::ArithmeticOverflow("columnar block offset"))?;
+                read_exact_at_into(
+                    &mut self.reader,
+                    block_offset,
+                    block_length,
+                    &mut self.scratch,
+                    &mut observation_buffer,
+                    "reading observation rows",
+                )?;
+                let block = ObservationBlock {
+                    bytes: std::mem::take(&mut observation_buffer),
+                    output_row_start: usize::try_from(row)
+                        .map_err(|_| DtaError::ArithmeticOverflow("columnar output row"))?,
+                    row_count: block_row_count,
+                };
+                decode_worker_block(&mut shard, &block, plan.row_width, metadata, encoding)?;
+                observation_buffer = block.bytes;
+                row = row
+                    .checked_add(block_rows)
+                    .ok_or(DtaError::ArithmeticOverflow("columnar projected row"))?;
+            }
+            shard
+        } else {
+            thread::scope(
+                |scope| -> Result<Vec<ParallelColumn<S::Column>>, DtaError> {
+                    let mut senders = Vec::with_capacity(worker_count);
+                    let mut ack_receivers = Vec::with_capacity(worker_count);
+                    let mut handles = Vec::with_capacity(worker_count);
+                    for mut shard in shards {
+                        let (sender, receiver) = sync_channel::<WorkerMessage>(0);
+                        let (worker_ack, ack_receiver) = sync_channel::<Result<(), DtaError>>(0);
+                        senders.push(sender);
+                        ack_receivers.push(ack_receiver);
+                        handles.push(scope.spawn(move || {
+                            while let Ok(message) = receiver.recv() {
+                                match message {
+                                    WorkerMessage::Block(block) => {
+                                        let result = decode_worker_block(
+                                            &mut shard,
+                                            &block,
+                                            plan.row_width,
+                                            metadata,
+                                            encoding,
+                                        );
+                                        drop(block);
+                                        let failed = result.is_err();
+                                        if worker_ack.send(result).is_err() || failed {
+                                            break;
+                                        }
+                                    }
+                                    WorkerMessage::Finish => break,
+                                }
+                            }
+                            shard
+                        }));
+                    }
+
+                    let mut row = 0_u64;
+                    let mut execution_error = None;
+                    while row < row_count {
+                        check_cancel(&mut should_interrupt)?;
+                        let block_rows = (row_count - row).min(rows_per_block);
+                        let block_row_count = usize::try_from(block_rows).map_err(|_| {
+                            DtaError::ArithmeticOverflow("parallel block row count")
+                        })?;
+                        let block_length = plan
+                            .row_width
+                            .checked_mul(block_row_count)
+                            .ok_or(DtaError::ArithmeticOverflow("parallel block length"))?;
+                        let source_row = row_start
+                            .checked_add(row)
+                            .ok_or(DtaError::ArithmeticOverflow("parallel source row"))?;
+                        let block_offset = payload_start
+                            .checked_add(
+                                source_row
+                                    .checked_mul(self.metadata.obs_length)
+                                    .ok_or(DtaError::ArithmeticOverflow("parallel row offset"))?,
+                            )
+                            .ok_or(DtaError::ArithmeticOverflow("parallel block offset"))?;
+                        read_exact_at_into(
+                            &mut self.reader,
+                            block_offset,
+                            block_length,
+                            &mut self.scratch,
+                            &mut observation_buffer,
+                            "reading observation rows",
+                        )?;
+                        let block = Arc::new(ObservationBlock {
+                            bytes: std::mem::take(&mut observation_buffer),
+                            output_row_start: usize::try_from(row)
+                                .map_err(|_| DtaError::ArithmeticOverflow("parallel output row"))?,
+                            row_count: block_row_count,
+                        });
+                        for sender in &senders {
+                            sender
+                                .send(WorkerMessage::Block(Arc::clone(&block)))
+                                .map_err(|_| {
+                                    DtaError::Output("parallel decoder worker stopped".to_owned())
+                                })?;
+                        }
+                        let mut errors = Vec::new();
+                        for (worker, receiver) in ack_receivers.iter().enumerate() {
+                            match receiver.recv() {
+                                Ok(Err(error)) => errors.push((worker, error)),
+                                Ok(Ok(())) => {}
+                                Err(_) => {
+                                    if execution_error.is_none() {
+                                        execution_error = Some(DtaError::Output(format!(
+                                            "parallel decoder worker {worker} stopped"
+                                        )));
                                     }
                                 }
-                                WorkerMessage::Finish => break,
                             }
                         }
-                        shard
-                    }));
-                }
-
-                let mut row = 0_u64;
-                let mut execution_error = None;
-                while row < row_count {
-                    check_cancel(&mut should_interrupt)?;
-                    let block_rows = (row_count - row).min(rows_per_block);
-                    let block_row_count = usize::try_from(block_rows)
-                        .map_err(|_| DtaError::ArithmeticOverflow("parallel block row count"))?;
-                    let block_length = plan
-                        .row_width
-                        .checked_mul(block_row_count)
-                        .ok_or(DtaError::ArithmeticOverflow("parallel block length"))?;
-                    let source_row = row_start
-                        .checked_add(row)
-                        .ok_or(DtaError::ArithmeticOverflow("parallel source row"))?;
-                    let block_offset = payload_start
-                        .checked_add(
-                            source_row
-                                .checked_mul(self.metadata.obs_length)
-                                .ok_or(DtaError::ArithmeticOverflow("parallel row offset"))?,
-                        )
-                        .ok_or(DtaError::ArithmeticOverflow("parallel block offset"))?;
-                    read_exact_at_into(
-                        &mut self.reader,
-                        block_offset,
-                        block_length,
-                        &mut self.scratch,
-                        &mut observation_buffer,
-                        "reading observation rows",
-                    )?;
-                    let block = Arc::new(ObservationBlock {
-                        bytes: std::mem::take(&mut observation_buffer),
-                        output_row_start: usize::try_from(row)
-                            .map_err(|_| DtaError::ArithmeticOverflow("parallel output row"))?,
-                        row_count: block_row_count,
-                    });
-                    for sender in &senders {
-                        sender
-                            .send(WorkerMessage::Block(Arc::clone(&block)))
+                        if execution_error.is_some() {
+                            break;
+                        }
+                        if !errors.is_empty() {
+                            errors.sort_by_key(|(worker, _)| *worker);
+                            execution_error = errors.into_iter().next().map(|(_, error)| error);
+                            break;
+                        }
+                        observation_buffer = Arc::try_unwrap(block)
                             .map_err(|_| {
-                                DtaError::Output("parallel decoder worker stopped".to_owned())
-                            })?;
+                                DtaError::Output(
+                                    "parallel input block remained borrowed".to_owned(),
+                                )
+                            })?
+                            .bytes;
+                        row = row
+                            .checked_add(block_rows)
+                            .ok_or(DtaError::ArithmeticOverflow("parallel projected row"))?;
                     }
-                    let mut errors = Vec::new();
-                    for (worker, receiver) in ack_receivers.iter().enumerate() {
-                        match receiver.recv() {
-                            Ok(Err(error)) => errors.push((worker, error)),
-                            Ok(Ok(())) => {}
-                            Err(_) => {
-                                if execution_error.is_none() {
-                                    execution_error = Some(DtaError::Output(format!(
-                                        "parallel decoder worker {worker} stopped"
-                                    )));
-                                }
-                            }
+
+                    if execution_error.is_none() {
+                        for sender in &senders {
+                            let _ = sender.send(WorkerMessage::Finish);
                         }
                     }
-                    if execution_error.is_some() {
-                        break;
+                    drop(senders);
+                    let mut completed = Vec::with_capacity(plan.columns.len());
+                    for handle in handles {
+                        let shard = handle.join().map_err(|_| {
+                            DtaError::Output("parallel decoder worker panicked".to_owned())
+                        })?;
+                        completed.extend(shard);
                     }
-                    if !errors.is_empty() {
-                        errors.sort_by_key(|(worker, _)| *worker);
-                        execution_error = errors.into_iter().next().map(|(_, error)| error);
-                        break;
+                    if let Some(error) = execution_error {
+                        return Err(error);
                     }
-                    observation_buffer = Arc::try_unwrap(block)
-                        .map_err(|_| {
-                            DtaError::Output("parallel input block remained borrowed".to_owned())
-                        })?
-                        .bytes;
-                    row = row
-                        .checked_add(block_rows)
-                        .ok_or(DtaError::ArithmeticOverflow("parallel projected row"))?;
-                }
-
-                if execution_error.is_none() {
-                    for sender in &senders {
-                        let _ = sender.send(WorkerMessage::Finish);
-                    }
-                }
-                drop(senders);
-                let mut completed = Vec::with_capacity(plan.columns.len());
-                for handle in handles {
-                    let shard = handle.join().map_err(|_| {
-                        DtaError::Output("parallel decoder worker panicked".to_owned())
-                    })?;
-                    completed.extend(shard);
-                }
-                if let Some(error) = execution_error {
-                    return Err(error);
-                }
-                Ok(completed)
-            },
-        )?;
+                    Ok(completed)
+                },
+            )?
+        };
 
         let mut ordered = (0..plan.columns.len())
             .map(|_| None)

@@ -379,15 +379,29 @@ fn parallel_vectors_match_serial_across_supported_releases_and_gate_strls() {
             .map(|(index, _)| u32::try_from(index).unwrap())
             .collect::<Vec<_>>();
         assert!(columns.len() >= 2, "{name}");
-        let read_options = options(0, None, columns);
+        let read_options = options(0, None, columns.clone());
 
         let mut serial_file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
         let serial = serial_file.read_with_options(&read_options).unwrap();
-        let mut parallel_file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        let mut parallel_file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
         let parallel = parallel_file
             .read_with_parallel_interrupt(&read_options, 2, || false)
             .unwrap();
         assert_eq!(parallel, serial, "{name}");
+
+        let single_options = options(0, None, vec![columns[0]]);
+        let mut single_serial_file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
+        let single_serial = single_serial_file
+            .read_with_options(&single_options)
+            .unwrap();
+        let mut single_column_file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+        assert!(single_column_file
+            .supports_columnar_sink(&single_options)
+            .unwrap());
+        let single_column = single_column_file
+            .read_with_parallel_interrupt(&single_options, 1, || false)
+            .unwrap();
+        assert_eq!(single_column, single_serial, "single column: {name}");
 
         let expected_threads = std::thread::available_parallelism()
             .map_or(1, usize::from)
@@ -411,6 +425,9 @@ fn parallel_vectors_match_serial_across_supported_releases_and_gate_strls() {
             .unwrap(),
         1
     );
+    assert!(!strl_file
+        .supports_columnar_sink(&ReadOptions::default())
+        .unwrap());
 }
 
 #[test]
