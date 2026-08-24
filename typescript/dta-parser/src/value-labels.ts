@@ -5,11 +5,18 @@
 // tables, each wrapped in <lbl>...</lbl> tags. Each table
 // maps integer values to string labels.
 //
-// Supports format versions 111 and 113-115 (legacy) and 117-119.
+// Supports format versions 105, 108, 110-111, 113-115
+// (legacy) and 117-119.
 // -----------------------------------------------------------
 
 import type { DtaMetadata } from './types';
 import { is_legacy_format } from './types';
+import {
+    legacy_layout_for_version,
+} from './legacy-layout';
+import type {
+    LegacyValueLabelLayout,
+} from './legacy-layout';
 
 // -----------------------------------------------------------
 // Constants
@@ -21,15 +28,8 @@ const LBL_OPEN_TAG = '<lbl>';
 const LBL_OPEN_TAG_LENGTH = LBL_OPEN_TAG.length; // 5
 const LBL_CLOSE_TAG_LENGTH = 6; // "</lbl>"
 
-// Label name field widths by format version
-const LABEL_NAME_WIDTH: Record<number, number> = {
-    105: 33,
-    108: 9,
-    110: 33,
-    111: 33,
-    113: 33,
-    114: 33,
-    115: 33,
+// Label name field widths for XML-wrapped formats
+const MODERN_LABEL_NAME_WIDTH: Record<number, number> = {
     117: 33,
     118: 129,
     119: 129,
@@ -224,7 +224,7 @@ function parse_modern_entries(
 }
 
 // -----------------------------------------------------------
-// Legacy formats (111 and 113-115): no XML wrapper
+// Legacy offset-table formats: no XML wrapper
 // -----------------------------------------------------------
 
 function parse_legacy_entries(
@@ -289,10 +289,11 @@ function parse_legacy_entries(
     return my_result;
 }
 
-function parse_old_105_entries(
+function parse_fixed8_entries(
     bytes: Uint8Array,
     view: DataView,
     little_endian: boolean,
+    name_width: number,
     start_pos: number,
     section_end: number
 ): Map<string, Map<number, string>> {
@@ -310,7 +311,8 @@ function parse_old_105_entries(
             }
         }
         if (my_known_nonzero < pos) break;
-        if (pos + 12 > section_end) {
+        const my_header_width = 2 + name_width + 1;
+        if (pos + my_header_width > section_end) {
             throw new Error(
                 'Corrupt value label table: trailing bytes'
             );
@@ -319,9 +321,9 @@ function parse_old_105_entries(
         const my_n = view.getUint16(pos, little_endian);
         pos += 2;
         const my_name = read_label_name(
-            bytes, pos, 9, LEGACY_DECODER
+            bytes, pos, name_width, LEGACY_DECODER
         );
-        pos += 10; // name plus one padding byte
+        pos += name_width + 1;
         if (pos + my_n * 10 > section_end) {
             throw new Error(
                 'Corrupt value label table: truncated entry'
@@ -436,9 +438,6 @@ export function parse_value_labels(
     const view = new DataView(buffer);
     const little_endian = metadata.byte_order === 'LSF';
 
-    let my_name_width =
-        LABEL_NAME_WIDTH[metadata.format_version];
-
     const my_legacy = is_legacy_format(
         metadata.format_version
     );
@@ -457,30 +456,41 @@ export function parse_value_labels(
         metadata.section_offsets.stata_data_close
         - base_offset;
 
-    if (metadata.format_version === 105
-        && !has_variable_label_section_framing(
-            bytes, view, little_endian,
-            my_start_pos, my_section_end, 33
-        )) {
-        return parse_old_105_entries(
-            bytes, view, little_endian,
-            my_start_pos, my_section_end
+    if (is_legacy_format(metadata.format_version)) {
+        const my_layout = legacy_layout_for_version(
+            metadata.format_version
         );
-    }
+        let my_value_label_layout: LegacyValueLabelLayout =
+            my_layout.value_label_layout;
+        let my_name_width =
+            my_layout.value_label_table_name_width;
 
-    if (metadata.format_version === 108
-        && !has_variable_label_section_framing(
-            bytes, view, little_endian,
-            my_start_pos, my_section_end, 9
-        )
-        && has_variable_label_section_framing(
-            bytes, view, little_endian,
-            my_start_pos, my_section_end, 33
-        )) {
-        my_name_width = 33;
-    }
+        if (metadata.format_version === 105
+            && has_variable_label_section_framing(
+                bytes, view, little_endian,
+                my_start_pos, my_section_end, 33
+            )) {
+            my_value_label_layout = 'offset_table';
+            my_name_width = 33;
+        } else if (metadata.format_version === 108
+            && !has_variable_label_section_framing(
+                bytes, view, little_endian,
+                my_start_pos, my_section_end, 9
+            )
+            && has_variable_label_section_framing(
+                bytes, view, little_endian,
+                my_start_pos, my_section_end, 33
+            )) {
+            my_name_width = 33;
+        }
 
-    if (my_legacy) {
+        if (my_value_label_layout === 'fixed8') {
+            return parse_fixed8_entries(
+                bytes, view, little_endian,
+                my_name_width, my_start_pos, my_section_end
+            );
+        }
+
         return parse_legacy_entries(
             bytes, view, little_endian,
             my_name_width, my_start_pos, my_section_end
@@ -489,6 +499,7 @@ export function parse_value_labels(
 
     return parse_modern_entries(
         bytes, view, little_endian,
-        my_name_width, my_start_pos, my_section_end
+        MODERN_LABEL_NAME_WIDTH[metadata.format_version],
+        my_start_pos, my_section_end
     );
 }
