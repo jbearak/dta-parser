@@ -31,8 +31,8 @@ const MIN_PARALLEL_CELLS: u64 = 1_000_000;
 const MAX_AUTOMATIC_THREADS: usize = 8;
 const MODERN_SIGNATURE: &[u8] = b"<stata_dta><header><release>";
 
-fn automatic_parallel_workload(data_bytes: u64, cells: u64) -> bool {
-    data_bytes >= MIN_PARALLEL_DATA_BYTES || cells >= MIN_PARALLEL_CELLS
+fn automatic_parallel_workload(selected_bytes: u64, cells: u64) -> bool {
+    selected_bytes >= MIN_PARALLEL_DATA_BYTES || cells >= MIN_PARALLEL_CELLS
 }
 
 /// Configuration for seekable file-backed reads.
@@ -210,6 +210,13 @@ impl ObservationPlan {
         self.columns
             .iter()
             .any(|column| matches!(column.kind, ObservationKind::StrL))
+    }
+
+    fn selected_data_bytes(&self, row_count: u64) -> u64 {
+        let row_bytes = self.columns.iter().fold(0_u64, |total, column| {
+            total.saturating_add(column.byte_width as u64)
+        });
+        row_count.saturating_mul(row_bytes)
     }
 }
 
@@ -1133,7 +1140,7 @@ impl<R: Read + Seek> DtaFile<R> {
         {
             return Ok(1);
         }
-        let data_bytes = row_count.saturating_mul(self.metadata.obs_length);
+        let data_bytes = plan.selected_data_bytes(row_count);
         let cells = row_count.saturating_mul(plan.columns.len() as u64);
         if requested == 0 && !automatic_parallel_workload(data_bytes, cells) {
             return Ok(1);
@@ -4156,6 +4163,30 @@ mod tests {
             MIN_PARALLEL_DATA_BYTES - 1,
             MIN_PARALLEL_CELLS,
         ));
+
+        let narrow_projection = ObservationPlan {
+            row_width: 4096,
+            columns: vec![
+                ObservationColumnPlan {
+                    output_index: 0,
+                    source_index: 0,
+                    byte_offset: 0,
+                    byte_width: 8,
+                    kind: ObservationKind::Double,
+                },
+                ObservationColumnPlan {
+                    output_index: 1,
+                    source_index: 1,
+                    byte_offset: 4088,
+                    byte_width: 8,
+                    kind: ObservationKind::Double,
+                },
+            ],
+        };
+        let rows = 100_000;
+        let selected_bytes = narrow_projection.selected_data_bytes(rows);
+        assert_eq!(selected_bytes, 1_600_000);
+        assert!(!automatic_parallel_workload(selected_bytes, rows * 2));
     }
 
     #[test]
