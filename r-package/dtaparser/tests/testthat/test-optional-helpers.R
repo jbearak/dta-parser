@@ -18,9 +18,15 @@ test_that("haven helpers manipulate tagged missings read by dtaparser", {
     expect_true(is.na(values[[28L]]))
 })
 
-test_that("labelled getters and setters work with dtaparser metadata", {
+test_that("labelled helpers preserve dtaparser metadata and recode dispatch", {
     skip_if_not_installed("haven")
     skip_if_not_installed("labelled")
+    dtaparser_recode_method <- get(
+        "recode.haven_labelled",
+        envir = asNamespace("dtaparser"),
+        inherits = FALSE
+    )
+
     data <- read_dta(fixture("value_labels_v118.dta"))
     values <- data$foreign
     original_data <- vctrs::vec_data(values)
@@ -34,6 +40,21 @@ test_that("labelled getters and setters work with dtaparser metadata", {
         as.character(haven::as_factor(values)),
         rep(c("Foreign", "Domestic"), 5L)
     )
+
+    recoded <- dplyr::recode(values, `0` = 10)
+    expect_identical(
+        attr(recoded, "label", exact = TRUE),
+        attr(values, "label", exact = TRUE)
+    )
+    expect_identical(
+        attr(recoded, "labels", exact = TRUE),
+        attr(values, "labels", exact = TRUE)
+    )
+    expect_identical(
+        attr(recoded, "format.stata", exact = TRUE),
+        attr(values, "format.stata", exact = TRUE)
+    )
+    expect_identical(vctrs::vec_data(recoded), rep(c(1, 10), 5L))
 
     labelled::var_label(values) <- "Vehicle origin"
     labelled::val_labels(values) <- c(Domestic = 0, Imported = 1)
@@ -63,5 +84,15 @@ test_that("labelled getters and setters work with dtaparser metadata", {
     expect_identical(
         labelled::val_labels(updated$foreign),
         c(Domestic = 0, Imported = 1)
+    )
+
+    methods_table <- environment(dplyr::recode)[[".__S3MethodsTable__."]]
+    expect_identical(
+        get(
+            "recode.haven_labelled",
+            envir = methods_table,
+            inherits = FALSE
+        ),
+        dtaparser_recode_method
     )
 })
