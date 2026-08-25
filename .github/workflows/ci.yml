@@ -140,7 +140,7 @@ jobs:
           rustup default "$RUSTUP_TOOLCHAIN"
       - name: Install R dependencies
         shell: Rscript {0}
-        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "haven", "dplyr", "callr", "httpuv"))
+        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "haven", "labelled", "dplyr", "callr", "httpuv"))
       - name: Test Rust source hash validation
         if: runner.os == 'Linux'
         shell: bash

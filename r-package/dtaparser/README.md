@@ -277,6 +277,58 @@ attr(cars$foreign, "format.stata")
 attr(cars$foreign, "labels")     # named numeric vector: text -> code
 ```
 
+### Optional helpers for labels and missing codes
+
+Reading with `dtaparser` does not require haven or labelled. Install these
+optional packages when an analysis needs to create or inspect tagged missing
+values, convert labelled vectors, or manipulate label metadata:
+
+```r
+install.packages(c("haven", "labelled"))
+```
+
+Installing the tidyverse also installs haven, but `library(tidyverse)` does not
+attach it; labelled is a separate package. Using explicit `haven::` and
+`labelled::` prefixes works without attaching either package.
+
+Haven's helpers inspect, select, and create the missing codes returned by
+`dtaparser`. Its `as_factor()` conversion displays value labels as factor
+levels:
+
+```r
+haven::na_tag(cars$foreign)
+haven::is_tagged_na(cars$foreign)
+haven::is_tagged_na(cars$foreign, "a")
+cars$foreign[1] <- haven::tagged_na("a")
+haven::as_factor(cars$foreign)
+```
+
+The labelled package provides getters and setters for variable labels and
+value-label tables on individual vectors or whole data frames:
+
+```r
+labelled::var_label(cars$foreign)
+labelled::var_label(cars$foreign) <- "Vehicle origin"
+
+labelled::val_labels(cars$foreign)
+labelled::val_labels(cars$foreign) <- c(Domestic = 0, Foreign = 1)
+
+cars <- labelled::set_variable_labels(
+  cars,
+  price = "Price in 1978 dollars",
+  foreign = "Vehicle origin"
+)
+cars <- labelled::set_value_labels(
+  cars,
+  foreign = c(Domestic = 0, Foreign = 1)
+)
+```
+
+Variable-label setters retain the vector's other attributes. Value-label
+setters may reconstruct a vector and drop other attributes such as
+`format.stata`; save and restore any such metadata that an analysis needs to
+retain.
+
 A non-temporal numeric column with a Stata value-label table has classes
 `haven_labelled`, `vctrs_vctr`, and `double`. Its `labels` attribute is a named
 numeric vector whose names are display text and whose values are the associated
