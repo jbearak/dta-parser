@@ -120,6 +120,65 @@ test_that("numeric ALTREP can be disabled explicitly or by option", {
     )))
 })
 
+test_that("R and haven recognize every Stata numeric missing code", {
+    skip_if_not_installed("haven")
+    expected_tags <- c(NA_character_, letters)
+    expected_tagged <- c(FALSE, rep(TRUE, 26L))
+    expected_system <- c(TRUE, rep(FALSE, 26L))
+
+    for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
+        path <- fixture_with_all_numeric_missing_codes(name)
+        on.exit(unlink(path), add = TRUE)
+        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+        numeric_indices <- which(storage != "character")
+
+        for (use_numeric_altrep in c(TRUE, FALSE)) {
+            actual <- read_dta(
+                path,
+                n_max = 27,
+                use_numeric_altrep = use_numeric_altrep
+            )
+            mode <- if (use_numeric_altrep) "default" else "eager"
+            for (index in numeric_indices) {
+                values <- unclass(actual[[index]])
+                info <- paste(name, storage[[index]], mode)
+
+                expect_identical(
+                    dtaparser:::.is_numeric_altrep(values),
+                    use_numeric_altrep && storage[[index]] != "double",
+                    info = paste(info, "representation")
+                )
+                expect_true(all(is.na(values)), info = paste(info, "is.na"))
+                expect_identical(
+                    haven::na_tag(values),
+                    expected_tags,
+                    info = paste(info, "na_tag")
+                )
+                expect_identical(
+                    haven::is_tagged_na(values),
+                    expected_tagged,
+                    info = paste(info, "is_tagged_na")
+                )
+                expect_identical(
+                    is.na(values) & !is.nan(values) &
+                        !haven::is_tagged_na(values),
+                    expected_system,
+                    info = paste(info, "system missing")
+                )
+                for (tag in letters) {
+                    expected_match <- seq_along(expected_tags) ==
+                        match(tag, letters) + 1L
+                    expect_identical(
+                        haven::is_tagged_na(values, tag),
+                        expected_match,
+                        info = paste(info, "tag", tag)
+                    )
+                }
+            }
+        }
+    }
+})
+
 test_that("parallel decoding is identical across supported releases", {
     modern <- fixture("auto_v118.dta")
     serial <- read_dta(modern, threads = 1L)

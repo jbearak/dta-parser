@@ -90,6 +90,84 @@ With an explicit UTF-8 override, malformed input sequences are replaced
 deterministically with U+FFFD. Haven 2.5.5 may instead omit or empty an affected
 label.
 
+## Stata missing values and labels
+
+In releases that support extended missings (113 and newer), Stata reserves 27
+numeric codes for missing values: system missing `.`, followed by `.a` through
+`.z`. They occupy the top of each supported numeric storage range. For example,
+byte storage uses 101 through 127, int uses 32,741 through 32,767, and long uses
+2,147,483,621 through 2,147,483,647. Float and double storage use corresponding
+reserved high-value bit patterns. In Stata, every missing code compares greater
+than every observed number, with `. < .a < ... < .z`. Earlier supported
+releases 105 through 111 encode only system missing.
+
+`dtaparser` preserves which code was stored, including all 27 where the source
+release supports them, but returns normal R-compatible numeric vectors. System
+missing `.` becomes `NA_real_`; `.a` through `.z` become the tagged-NA payloads
+used by haven. Base R therefore recognizes every Stata missing code without a
+package-specific method:
+
+```r
+x <- c(1, NA_real_, haven::tagged_na(c("a", "f", "z")))
+haven::print_tagged_na(x)        # "1", "NA", "NA(a)", "NA(f)", "NA(z)"
+is.na(x)                         # TRUE for ., .a, ..., .z
+anyNA(x)
+```
+
+The haven package exposes the tag when that distinction matters:
+
+```r
+tags <- haven::na_tag(x)         # "a" ... "z"; NA for system/non-missing
+haven::is_tagged_na(x)           # elementwise TRUE for .a-.z
+haven::is_tagged_na(x, "a")      # .a only
+tags %in% c("a", "f")           # several selected tags
+
+system_missing <- is.na(x) & !is.nan(x) &
+  !haven::is_tagged_na(x)
+```
+
+Use ordinary `NA_real_` to create Stata system missing and
+`haven::tagged_na()` for an extended missing value. Assignment to a compact
+numeric ALTREP column materializes that column as an ordinary R double vector,
+as any writable mutation must.
+
+```r
+x[1] <- NA_real_                 # Stata .
+x[2] <- haven::tagged_na("a")    # Stata .a
+x[3:4] <- haven::tagged_na(c("f", "z"))
+haven::print_tagged_na(x)        # displays NA, NA(a), NA(f), ...
+```
+
+Do not use `haven::tagged_na(".")` for system missing; canonical system missing
+is `NA_real_`. R comparisons deliberately follow R missing-value semantics, so
+`x > 100` returns `NA` at every missing position rather than reproducing
+Stata's high-value comparison ordering. Use `haven::na_tag()` and an explicit
+factor/order when the order among missing tags matters.
+
+Missing tags are encoded in the numeric values themselves, not in the value
+label attribute. Stata metadata are exposed separately:
+
+```r
+attr(cars, "label")              # dataset label
+attr(cars, "notes")              # dataset notes
+attr(cars$foreign, "label")      # variable label
+attr(cars$foreign, "format.stata")
+attr(cars$foreign, "labels")     # named numeric vector: text -> code
+```
+
+A non-temporal numeric column with a Stata value-label table has classes
+`haven_labelled`, `vctrs_vctr`, and `double`. Its `labels` attribute is a named
+numeric vector whose names are display text and whose values are the associated
+codes. If Stata labels a missing code, that attribute value uses the same
+tagged-NA representation and can also be inspected with `haven::na_tag()`.
+
+Narrow numeric ALTREP columns keep the original Stata sentinels in compact
+backing storage until values are requested. Conversion to R system/tagged NAs
+happens during element or region access, summary kernels, or materialization.
+Source doubles, and all numeric columns read with
+`use_numeric_altrep = FALSE`, are converted during decoding instead. Both paths
+have identical R missing-value semantics.
+
 ## Performance compared with haven and Stata
 
 The dta-parser cells for synthetic release-119 inputs and every recognized

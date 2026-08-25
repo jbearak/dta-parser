@@ -53,3 +53,14 @@ Reads Stata releases 105, 108, 110--111, 113--115, and 117--119 through the nati
 retaining dataset and variable labels, dataset notes, formats, value labels,
 long strings, temporal classes, and Stata tagged missing values.
 }
+\section{Stata missing values}{
+Stata system missing (\code{.}) is returned as \code{NA_real_}; in releases
+supporting extended missings (113 and newer), \code{.a} through \code{.z} use
+haven-compatible tagged-NA payloads. Base \code{is.na()} therefore identifies
+every code present. Use \code{haven::na_tag()} to recover their letters,
+\code{haven::is_tagged_na()} to select tagged values, and
+\code{haven::tagged_na()} to create them. Use ordinary \code{NA_real_}, rather
+than a tagged value, to create Stata system missing. Missing tags are part of
+the numeric values and are distinct from Stata value labels stored in a
+column's \code{labels} attribute.
+}

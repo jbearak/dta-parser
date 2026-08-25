@@ -7,6 +7,16 @@
 #' Dataset and variable labels, dataset notes, Stata display formats, value
 #' labels, `strL` content, and Stata system/extended missing values are retained.
 #'
+#' @section Stata missing values:
+#' Stata system missing (`.`) is returned as `NA_real_`; in releases supporting
+#' extended missings (113 and newer), `.a` through `.z` use haven-compatible
+#' tagged-NA payloads. Base [is.na()] therefore identifies every code present.
+#' Use `haven::na_tag()` to recover their letters,
+#' `haven::is_tagged_na()` to select tagged values, and `haven::tagged_na()` to
+#' create them. Use ordinary `NA_real_`, rather than a tagged value, to create
+#' Stata system missing. Missing tags are part of the numeric values and are
+#' distinct from Stata value labels stored in a column's `labels` attribute.
+#'
 #' @param file A path, URL, raw vector, or binary connection. Local and remote
 #'   gzip files and local bzip2, xz, and zip files are decompressed
 #'   automatically. Character vectors containing literal data are not handled,
