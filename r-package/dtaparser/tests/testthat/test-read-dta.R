@@ -179,6 +179,414 @@ test_that("R and haven recognize every Stata numeric missing code", {
     }
 })
 
+test_that("base R recoding preserves tags with complete predicates", {
+    skip_if_not_installed("haven")
+    expected_tags <- c(NA_character_, letters)
+
+    for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
+        path <- fixture_with_all_numeric_missing_codes(name)
+        on.exit(unlink(path), add = TRUE)
+        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+
+        for (use_numeric_altrep in c(TRUE, FALSE)) {
+            actual <- read_dta(
+                path,
+                n_max = 30,
+                use_numeric_altrep = use_numeric_altrep
+            )
+            mode <- if (use_numeric_altrep) "default" else "eager"
+
+            for (index in seq_along(actual)) {
+                original <- actual[[index]]
+                selected <- !is.na(original) & original == original[[28L]]
+                info <- paste(name, storage[[index]], mode)
+                expect_false(anyNA(selected), info = paste(info, "predicate"))
+
+                assigned <- original
+                assigned[selected] <- -1
+                expect_identical(
+                    haven::na_tag(assigned[seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "subassignment tags")
+                )
+                expect_identical(
+                    attributes(assigned),
+                    attributes(original),
+                    info = paste(info, "subassignment attributes")
+                )
+
+                replaced <- replace(original, selected, -1)
+                expect_identical(
+                    haven::na_tag(replaced[seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "replace tags")
+                )
+                expect_identical(
+                    attributes(replaced),
+                    attributes(original),
+                    info = paste(info, "replace attributes")
+                )
+
+                tag_assigned <- original
+                tag_assigned[haven::is_tagged_na(tag_assigned, "a")] <- -2
+                remaining_tags <- expected_tags
+                remaining_tags[[2L]] <- NA_character_
+                expect_identical(
+                    haven::na_tag(tag_assigned[seq_len(27L)]),
+                    remaining_tags,
+                    info = paste(info, "tag-specific assignment")
+                )
+
+                safe_ifelse <- ifelse(selected, -1, original)
+                expect_identical(
+                    haven::na_tag(safe_ifelse[seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "complete ifelse predicate")
+                )
+                expect_null(
+                    attributes(safe_ifelse),
+                    info = paste(info, "ifelse attributes")
+                )
+
+                unsafe_ifelse <- ifelse(
+                    original == original[[28L]], -1, original
+                )
+                expect_identical(
+                    haven::na_tag(unsafe_ifelse[seq_len(27L)]),
+                    rep(NA_character_, 27L),
+                    info = paste(info, "incomplete ifelse predicate")
+                )
+            }
+        }
+    }
+})
+
+test_that("dplyr recoding preserves unselected Stata missing codes", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("haven")
+    expected_tags <- c(NA_character_, letters)
+    recoded_tags <- expected_tags
+    recoded_tags[c(2L, 7L)] <- NA_character_
+    recoded_missing <- rep(TRUE, 27L)
+    recoded_missing[c(2L, 7L)] <- FALSE
+
+    recode_tags <- function(data) {
+        dplyr::mutate(
+            data,
+            dplyr::across(
+                dplyr::everything(),
+                function(values) {
+                    dplyr::case_when(
+                        haven::is_tagged_na(values, "a") ~ -1,
+                        haven::is_tagged_na(values, "f") ~ -6,
+                        .default = values
+                    )
+                }
+            )
+        )
+    }
+    recode_observed <- function(data) {
+        dplyr::mutate(
+            data,
+            dplyr::across(
+                dplyr::everything(),
+                function(values) {
+                    dplyr::if_else(is.na(values), values, values + 1)
+                }
+            )
+        )
+    }
+
+    for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
+        path <- fixture_with_all_numeric_missing_codes(name)
+        on.exit(unlink(path), add = TRUE)
+        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+        reference_tags <- recode_tags(haven::read_dta(path, n_max = 27))
+        reference_observed <- recode_observed(
+            haven::read_dta(path, n_max = 30)
+        )
+
+        for (use_numeric_altrep in c(TRUE, FALSE)) {
+            tagged <- recode_tags(read_dta(
+                path,
+                n_max = 27,
+                use_numeric_altrep = use_numeric_altrep
+            ))
+            source <- read_dta(
+                path,
+                n_max = 30,
+                use_numeric_altrep = use_numeric_altrep
+            )
+            observed <- recode_observed(source)
+            mode <- if (use_numeric_altrep) "default" else "eager"
+
+            for (index in seq_along(tagged)) {
+                info <- paste(name, storage[[index]], mode)
+                expect_identical(
+                    tagged[[index]],
+                    reference_tags[[index]],
+                    info = paste(info, "selective recode matches haven")
+                )
+                expect_identical(
+                    haven::na_tag(tagged[[index]]),
+                    recoded_tags,
+                    info = paste(info, "unselected tags")
+                )
+                expect_identical(
+                    is.na(tagged[[index]]),
+                    recoded_missing,
+                    info = paste(info, "missing positions")
+                )
+                expect_identical(
+                    unname(tagged[[index]][c(2L, 7L)]),
+                    c(-1, -6),
+                    info = paste(info, "selected replacements")
+                )
+                expect_identical(
+                    observed[[index]],
+                    reference_observed[[index]],
+                    info = paste(info, "observed recode matches haven")
+                )
+                expect_identical(
+                    haven::na_tag(observed[[index]][seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "observed recode tags")
+                )
+
+                condition <- source[[index]] == source[[index]][[28L]]
+                unsafe_if_else <- dplyr::if_else(
+                    condition, -1, source[[index]]
+                )
+                expect_identical(
+                    haven::na_tag(unsafe_if_else[seq_len(27L)]),
+                    rep(NA_character_, 27L),
+                    info = paste(info, "if_else missing condition")
+                )
+                safe_if_else <- dplyr::if_else(
+                    condition, -1, source[[index]], missing = source[[index]]
+                )
+                expect_identical(
+                    haven::na_tag(safe_if_else[seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "if_else missing branch")
+                )
+
+                legacy_recode <- rlang::exec(
+                    dplyr::recode,
+                    source[[index]],
+                    !!!stats::setNames(
+                        list(-1), as.character(source[[index]][[28L]])
+                    )
+                )
+                expect_identical(
+                    haven::na_tag(legacy_recode[seq_len(27L)]),
+                    rep(NA_character_, 27L),
+                    info = paste(info, "legacy recode")
+                )
+            }
+        }
+    }
+})
+
+test_that("dplyr manipulation matches haven for every storage type", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("haven")
+
+    manipulate <- function(data) {
+        dplyr::mutate(
+            data,
+            dplyr::across(
+                dplyr::everything(),
+                function(values) {
+                    if (is.character(values)) {
+                        dplyr::if_else(
+                            is.na(values), values, paste0(values, "-recoded")
+                        )
+                    } else {
+                        dplyr::if_else(is.na(values), values, values + 1)
+                    }
+                }
+            )
+        )
+    }
+
+    for (name in c("all_types_v115.dta", "all_types_v118.dta")) {
+        path <- fixture(name)
+        expected <- manipulate(haven::read_dta(path))
+        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+
+        for (use_numeric_altrep in c(TRUE, FALSE)) {
+            actual <- manipulate(read_dta(
+                path,
+                use_numeric_altrep = use_numeric_altrep
+            ))
+            mode <- if (use_numeric_altrep) "default" else "eager"
+            expect_identical(names(actual), names(expected))
+            for (index in seq_along(actual)) {
+                expect_identical(
+                    actual[[index]],
+                    expected[[index]],
+                    info = paste(name, storage[[index]], mode)
+                )
+            }
+        }
+    }
+})
+
+test_that("dplyr manipulation matches haven for labelled and temporal data", {
+    skip_if_not_installed("dplyr")
+    skip_if_not_installed("haven")
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+
+    tagged_date <- structure(
+        c(0, unclass(haven::tagged_na("a")), NA_real_),
+        class = "Date"
+    )
+    tagged_instant <- structure(
+        c(0, unclass(haven::tagged_na("b")), NA_real_),
+        class = c("POSIXct", "POSIXt"),
+        tzone = "UTC"
+    )
+    input <- tibble::tibble(
+        labelled = haven::labelled(
+            c(1, haven::tagged_na("c"), NA_real_),
+            labels = c(one = 1)
+        ),
+        date = tagged_date,
+        instant = tagged_instant,
+        text = c("alpha", "", "omega")
+    )
+    haven::write_dta(input, path, version = 15)
+
+    manipulate <- function(data) {
+        dplyr::mutate(
+            data,
+            labelled = dplyr::case_when(
+                labelled == 1 ~ 2,
+                .default = labelled
+            ),
+            date = dplyr::if_else(is.na(date), date, date + 1),
+            instant = dplyr::if_else(
+                is.na(instant), instant, instant + 1
+            ),
+            text = dplyr::if_else(text == "alpha", "recoded", text)
+        )
+    }
+    expected <- manipulate(haven::read_dta(path))
+    unmanipulated <- read_dta(path)
+
+    expect_error(
+        dplyr::recode(unmanipulated$labelled, `1` = 2),
+        "no applicable method"
+    )
+    expect_error(
+        dplyr::recode(unmanipulated$date, `0` = 1),
+        "no applicable method"
+    )
+    expect_error(
+        dplyr::recode(unmanipulated$instant, `0` = 1),
+        "no applicable method"
+    )
+
+    for (use_numeric_altrep in c(TRUE, FALSE)) {
+        actual <- manipulate(read_dta(
+            path,
+            use_numeric_altrep = use_numeric_altrep
+        ))
+        mode <- if (use_numeric_altrep) "default" else "eager"
+        expect_identical(actual, expected, info = mode)
+        expect_s3_class(actual$labelled, "haven_labelled")
+        expect_s3_class(actual$date, "Date")
+        expect_s3_class(actual$instant, "POSIXct")
+        expect_identical(
+            haven::na_tag(unclass(actual$labelled)),
+            c(NA_character_, "c", NA_character_),
+            info = paste(mode, "labelled tag")
+        )
+        expect_identical(
+            haven::na_tag(unclass(actual$date)),
+            c(NA_character_, "a", NA_character_),
+            info = paste(mode, "Date tag")
+        )
+        expect_identical(
+            haven::na_tag(unclass(actual$instant)),
+            c(NA_character_, "b", NA_character_),
+            info = paste(mode, "POSIXct tag")
+        )
+    }
+
+    source <- fixture("auto_v118.dta")
+    bytes <- readBin(source, "raw", n = file.info(source)[["size"]])
+    data_tag <- charToRaw("<data>")
+    data_start <- grepRaw(data_tag, bytes, fixed = TRUE)[[1L]] +
+        length(data_tag)
+    closing_start <- grepRaw(
+        charToRaw("</data>"), bytes, fixed = TRUE
+    )[[1L]]
+    row_width <- as.integer((closing_start - data_start) / 74L)
+    expect_identical(row_width, 43L)
+
+    # `foreign` is the final one-byte field; make its first value `.a` while
+    # retaining its value-label table and haven_labelled class.
+    bytes[[data_start + row_width - 1L]] <- as.raw(102L)
+
+    # `price` follows the 18-byte `make` field and is a two-byte int. Change
+    # its first value to `.a` and its display format to `%td`, making it an
+    # integer-backed Date. The second format match is `price`; the first occurs
+    # outside its fixed-width format entry in this fixture.
+    bytes[data_start + 18L + 0:1] <- writeBin(
+        as.integer(32742L), raw(), size = 2L, endian = "little"
+    )
+    old_format <- charToRaw("%8.0gc")
+    format_matches <- grepRaw(old_format, bytes, fixed = TRUE, all = TRUE)
+    expect_gte(length(format_matches), 2L)
+    price_format <- format_matches[[2L]]
+    bytes[price_format + seq_along(old_format) - 1L] <- c(
+        charToRaw("%td"), raw(length(old_format) - 3L)
+    )
+
+    narrow_path <- tempfile(fileext = ".dta")
+    on.exit(unlink(narrow_path), add = TRUE)
+    writeBin(bytes, narrow_path)
+    narrow <- read_dta(narrow_path)
+    narrow_reference <- haven::read_dta(narrow_path)
+    expect_true(dtaparser:::.is_numeric_altrep(narrow$foreign))
+    expect_true(dtaparser:::.is_numeric_altrep(narrow$price))
+    expect_s3_class(narrow$foreign, "haven_labelled")
+    expect_s3_class(narrow$price, "Date")
+    expect_identical(haven::na_tag(unclass(narrow$foreign))[[1L]], "a")
+    expect_identical(haven::na_tag(unclass(narrow$price))[[1L]], "a")
+
+    manipulate_narrow <- function(data) {
+        dplyr::mutate(
+            data,
+            foreign = dplyr::case_when(
+                foreign == 0 ~ 2,
+                .default = foreign
+            ),
+            price = dplyr::if_else(is.na(price), price, price + 1)
+        )
+    }
+    narrow_input <- read_dta(narrow_path)
+    expect_true(dtaparser:::.is_numeric_altrep(narrow_input$foreign))
+    expect_true(dtaparser:::.is_numeric_altrep(narrow_input$price))
+    narrow_transformed <- manipulate_narrow(narrow_input)
+    narrow_expected <- manipulate_narrow(narrow_reference)
+    expect_identical(
+        narrow_transformed,
+        narrow_expected
+    )
+    expect_identical(
+        haven::na_tag(unclass(narrow_transformed$foreign))[[1L]],
+        "a"
+    )
+    expect_identical(
+        haven::na_tag(unclass(narrow_transformed$price))[[1L]],
+        "a"
+    )
+})
+
 test_that("parallel decoding is identical across supported releases", {
     modern <- fixture("auto_v118.dta")
     serial <- read_dta(modern, threads = 1L)

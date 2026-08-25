@@ -16,6 +16,37 @@
 #' create them. Use ordinary `NA_real_`, rather than a tagged value, to create
 #' Stata system missing. Missing tags are part of the numeric values and are
 #' distinct from Stata value labels stored in a column's `labels` attribute.
+#' For example:
+#' ```
+#' x <- c(1, NA_real_, haven::tagged_na("a"), haven::tagged_na("z"))
+#' is.na(x)
+#' haven::na_tag(x)
+#' haven::is_tagged_na(x)
+#' haven::is_tagged_na(x, "a")
+#' haven::na_tag(x) %in% c("a", "f")
+#'
+#' x[1] <- NA_real_                 # Stata .
+#' x[2] <- haven::tagged_na("a")    # Stata .a
+#' x[3] <- haven::tagged_na("f")    # Stata .f
+#' ```
+#' `haven::is_tagged_na()` accepts only one specific tag at a time; extract
+#' tags with `haven::na_tag()` and use `%in%` to match several tags.
+#'
+#' Base subassignment and [replace()] retain unselected tags when their index
+#' contains no missing values; use `!is.na(x) & x == value` when recoding an
+#' observed value. Avoid `ifelse(x == value, replacement, x)`, whose missing
+#' condition entries become ordinary `NA` and lose their tags.
+#'
+#' When recoding, `dplyr::case_when()` preserves values returned by its default
+#' branch. `dplyr::if_else()` preserves unselected tags when its condition is
+#' complete; if the condition can be `NA`, also supply `missing = x`. On bare
+#' numeric columns, legacy `dplyr::recode()` normalizes unmatched tagged
+#' missings to ordinary `NA`; it does not support classed `haven_labelled`,
+#' `Date`, or `POSIXct` columns. Missing-value replacement helpers match all 27
+#' codes; select a particular code with
+#' `haven::is_tagged_na(x, tag)` instead. A transformation may materialize an
+#' ALTREP column and may drop Stata metadata attributes when it constructs a
+#' new vector, following the same behavior as haven-compatible vectors.
 #'
 #' @param file A path, URL, raw vector, or binary connection. Local and remote
 #'   gzip files and local bzip2, xz, and zip files are decompressed

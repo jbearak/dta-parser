@@ -63,4 +63,35 @@ every code present. Use \code{haven::na_tag()} to recover their letters,
 than a tagged value, to create Stata system missing. Missing tags are part of
 the numeric values and are distinct from Stata value labels stored in a
 column's \code{labels} attribute.
+For example:
+\preformatted{x <- c(1, NA_real_, haven::tagged_na("a"), haven::tagged_na("z"))
+is.na(x)
+haven::na_tag(x)
+haven::is_tagged_na(x)
+haven::is_tagged_na(x, "a")
+haven::na_tag(x) \%in\% c("a", "f")
+
+x[1] <- NA_real_                 # Stata .
+x[2] <- haven::tagged_na("a")    # Stata .a
+x[3] <- haven::tagged_na("f")    # Stata .f
+}
+\code{haven::is_tagged_na()} accepts only one specific tag at a time; extract
+tags with \code{haven::na_tag()} and use \code{\%in\%} to match several tags.
+
+Base subassignment and \code{replace()} retain unselected tags when their index
+contains no missing values; use \code{!is.na(x) & x == value} when recoding an
+observed value. Avoid \code{ifelse(x == value, replacement, x)}, whose missing
+condition entries become ordinary \code{NA} and lose their tags.
+
+When recoding, \code{dplyr::case_when()} preserves values returned by its
+default branch. \code{dplyr::if_else()} preserves unselected tags when its
+condition is complete; if the condition can be \code{NA}, also supply
+\code{missing = x}. On bare numeric columns, legacy \code{dplyr::recode()}
+normalizes unmatched tagged missings to ordinary \code{NA}; it does not support
+classed \code{haven_labelled}, \code{Date}, or \code{POSIXct} columns.
+Missing-value replacement helpers match all 27 codes; select a particular code
+with \code{haven::is_tagged_na(x, tag)} instead. A transformation may
+materialize an ALTREP column and may drop Stata metadata attributes when it
+constructs a new vector, following the same behavior as haven-compatible
+vectors.
 }

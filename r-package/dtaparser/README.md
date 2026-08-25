@@ -105,23 +105,43 @@ releases 105 through 111 encode only system missing.
 release supports them, but returns normal R-compatible numeric vectors. System
 missing `.` becomes `NA_real_`; `.a` through `.z` become the tagged-NA payloads
 used by haven. Base R therefore recognizes every Stata missing code without a
-package-specific method:
+package-specific method.
+
+### Using missing values in R
 
 ```r
-x <- c(1, NA_real_, haven::tagged_na(c("a", "f", "z")))
-haven::print_tagged_na(x)        # "1", "NA", "NA(a)", "NA(f)", "NA(z)"
-is.na(x)                         # TRUE for ., .a, ..., .z
-anyNA(x)
+x <- c(
+  1,
+  NA_real_,                   # Stata .
+  haven::tagged_na("a"),      # Stata .a
+  haven::tagged_na("z")       # Stata .z
+)
+
+is.na(x)
+#> [1] FALSE  TRUE  TRUE  TRUE
+
+haven::na_tag(x)
+#> [1] NA  NA  "a" "z"
+
+haven::is_tagged_na(x)
+#> [1] FALSE FALSE  TRUE  TRUE
+
+haven::is_tagged_na(x, "a")
+#> [1] FALSE FALSE  TRUE FALSE
+
+haven::na_tag(x) %in% c("a", "f")
+#> [1] FALSE FALSE  TRUE FALSE
 ```
 
-The haven package exposes the tag when that distinction matters:
+`haven::is_tagged_na()` accepts only one specific tag at a time, so use
+`haven::na_tag(x) %in% tags` to match several tags. These functions are
+exported by haven; the explicit `haven::` prefix means haven does not need to
+be attached with `library(haven)`.
+
+To identify system missing specifically, while excluding tagged missings and
+ordinary `NaN`, use:
 
 ```r
-tags <- haven::na_tag(x)         # "a" ... "z"; NA for system/non-missing
-haven::is_tagged_na(x)           # elementwise TRUE for .a-.z
-haven::is_tagged_na(x, "a")      # .a only
-tags %in% c("a", "f")           # several selected tags
-
 system_missing <- is.na(x) & !is.nan(x) &
   !haven::is_tagged_na(x)
 ```
@@ -134,9 +154,64 @@ as any writable mutation must.
 ```r
 x[1] <- NA_real_                 # Stata .
 x[2] <- haven::tagged_na("a")    # Stata .a
-x[3:4] <- haven::tagged_na(c("f", "z"))
-haven::print_tagged_na(x)        # displays NA, NA(a), NA(f), ...
+x[3] <- haven::tagged_na("f")    # Stata .f
 ```
+
+### Recoding without losing missing tags
+
+With base R, direct assignment and `replace()` preserve every unselected tag.
+Make an observed-value predicate non-missing before using it as an assignment
+index:
+
+```r
+x <- c(1, NA_real_, haven::tagged_na(c("a", "f", "z")))
+selected <- !is.na(x) & x == 1
+x[selected] <- 10
+x <- replace(x, selected, 10)
+
+x[haven::is_tagged_na(x, "a")] <- -1
+```
+
+Avoid `ifelse(x == 1, 10, x)`: `x == 1` is `NA` at every missing position, so
+`ifelse()` writes ordinary `NA` there and loses extended tags. Adding
+`!is.na(x) &` makes the test complete and preserves the payloads, but
+`ifelse()` still drops attributes. Direct assignment is therefore the safer
+base-R pattern for an existing column. `transform()` and `within()` inherit the
+behavior of the expression used on their right-hand side.
+
+Tidyverse operations similarly preserve tagged missings when the recoding
+expression carries unmatched values forward from the original column. For
+example, this replaces only `.a` and leaves `.`, `.b` through `.z`, and
+observed values unchanged:
+
+```r
+data <- dplyr::mutate(
+  data,
+  status = dplyr::case_when(
+    haven::is_tagged_na(status, "a") ~ -1,
+    .default = status
+  )
+)
+```
+
+`dplyr::if_else()` preserves tags when its condition contains no `NA` and its
+unselected branch returns the original values. If its condition can be `NA`,
+also pass `missing = x`; otherwise those positions become ordinary `NA`. In
+contrast, legacy `dplyr::recode()` rebuilds unmatched missing values in bare
+numeric columns as ordinary `NA` and therefore loses their tags, even when
+recoding only an observed number. It does not support classed
+`haven_labelled`, `Date`, or `POSIXct` columns. Prefer `case_when()` or a
+correctly specified `if_else()` for tagged columns. Operations intended to
+replace missing values, such as
+`dplyr::coalesce()`, `tidyr::replace_na()`, or a branch selected by `is.na()`,
+match all 27 codes by design; use `haven::is_tagged_na(x, tag)` when only one
+extended code should change.
+
+These transformations may materialize a compact ALTREP column. Operations
+that construct a new vector can also drop Stata metadata attributes such as
+`label`, `format.stata`, or `labels`, just as they can for a vector read by
+haven. Missing tags are numeric payloads rather than metadata attributes, so
+the two concerns are separate.
 
 Do not use `haven::tagged_na(".")` for system missing; canonical system missing
 is `NA_real_`. R comparisons deliberately follow R missing-value semantics, so
