@@ -51,8 +51,8 @@
 #' @export
 recode <- function(.x, ..., .default = NULL, .missing = NULL) {
     if (is.factor(.x)) {
-        return(.call_dplyr_recode_method(
-            "factor", .x, ..., .default = .default, .missing = .missing
+        return(dplyr::recode(
+            .x, ..., .default = .default, .missing = .missing
         ))
     }
 
@@ -63,8 +63,8 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
     }
 
     if (is.character(.x)) {
-        return(.call_dplyr_recode_method(
-            "character", .x, ..., .default = .default, .missing = .missing
+        return(dplyr::recode(
+            .x, ..., .default = .default, .missing = .missing
         ))
     }
 
@@ -80,13 +80,9 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         .recode_data(.default, source = .x),
         .recode_data(.missing, source = .x)
     )
-    method <- get(
-        "recode.numeric", envir = asNamespace("dplyr"), inherits = FALSE
-    )
-    result <- rlang::exec(
-        method,
+    result <- .recode_numeric_legacy(
         prepared$source,
-        !!!prepared$replacements,
+        prepared$replacements,
         .default = prepared$default,
         .missing = prepared$missing
     )
@@ -200,31 +196,110 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
     value
 }
 
-.call_dplyr_recode_method <- function(class, .x, ..., .default, .missing) {
-    method <- get(
-        paste0("recode.", class),
-        envir = asNamespace("dplyr"),
-        inherits = FALSE
-    )
-    rlang::exec(
-        method,
-        .x,
-        !!!rlang::list2(...),
-        .default = .default,
-        .missing = .missing
-    )
-}
-
 recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {
     # Tagged missings are special NA payloads in otherwise ordinary R doubles.
     # Keep dplyr's exact legacy behavior for vectors without any tags, and take
     # the preserving path only when one of those payloads is present.
     if (!.has_tagged_na(.x)) {
-        return(.call_dplyr_recode_method(
-            "numeric", .x, ..., .default = .default, .missing = .missing
+        return(.recode_numeric_legacy(
+            .x, rlang::list2(...), .default = .default, .missing = .missing
         ))
     }
     recode(.x, ..., .default = .default, .missing = .missing)
+}
+
+# Package-owned implementation of the legacy dplyr numeric contract. Calling
+# dplyr's generic from recode.numeric() would dispatch straight back here, and
+# its original numeric method is deliberately not part of dplyr's public API.
+.recode_numeric_legacy <- function(
+    .x, replacements, .default = NULL, .missing = NULL
+) {
+    named <- rlang::have_name(replacements)
+    if (all(named)) {
+        replaced_values <- as.double(names(replacements))
+    } else if (all(!named)) {
+        replaced_values <- seq_along(replacements)
+    } else {
+        stop(
+            "Either all values must be named, or none must be named.",
+            call. = FALSE
+        )
+    }
+
+    candidates <- Filter(
+        Negate(is.null), c(replacements, .default, .missing)
+    )
+    if (length(candidates) == 0L) {
+        stop("No replacements provided.", call. = FALSE)
+    }
+
+    size <- length(.x)
+    output <- candidates[[1L]][rep(NA_integer_, size)]
+    replaced <- rep(FALSE, size)
+    for (index in seq_along(replacements)) {
+        matches <- .x == replaced_values[[index]]
+        output <- .recode_replace_with(
+            output,
+            matches,
+            replacements[[index]],
+            paste0("Vector ", index)
+        )
+        replaced[matches] <- TRUE
+    }
+
+    if (is.null(.default) && identical(typeof(.x), typeof(output))) {
+        .default <- .x
+    }
+    observed <- !is.na(.x)
+    if (is.null(.default) && sum(replaced & observed) < sum(observed)) {
+        warning(
+            "Unreplaced values treated as NA as `.x` is not compatible.\n",
+            "Please specify replacements exhaustively or supply `.default`.",
+            call. = FALSE
+        )
+    }
+
+    output <- .recode_replace_with(
+        output, !replaced & observed, .default, "`.default`"
+    )
+    .recode_replace_with(output, !observed, .missing, "`.missing`")
+}
+
+.recode_replace_with <- function(output, locations, value, name) {
+    if (is.null(value)) {
+        return(output)
+    }
+
+    output_size <- length(output)
+    if (!(length(value) %in% c(1L, output_size))) {
+        stop(
+            name, " must be length ", output_size,
+            " or one, not ", length(value), ".",
+            call. = FALSE
+        )
+    }
+    if (!identical(typeof(value), typeof(output))) {
+        stop(
+            name, " must have type ", typeof(output),
+            ", not ", typeof(value), ".",
+            call. = FALSE
+        )
+    }
+    if (is.object(value) && !identical(class(value), class(output))) {
+        stop(
+            name, " must have class `", paste(class(output), collapse = "/"),
+            "`, not class `", paste(class(value), collapse = "/"), "`.",
+            call. = FALSE
+        )
+    }
+
+    locations[is.na(locations)] <- FALSE
+    if (length(value) == 1L) {
+        output[locations] <- value
+    } else {
+        output[locations] <- value[locations]
+    }
+    output
 }
 
 .has_tagged_na <- function(value) {

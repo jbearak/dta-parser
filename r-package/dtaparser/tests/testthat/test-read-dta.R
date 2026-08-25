@@ -407,55 +407,62 @@ test_that("both recode interfaces preserve every Stata missing code", {
 })
 
 test_that("dplyr recode keeps its ordinary numeric behavior", {
-    dplyr_numeric <- get(
-        "recode.numeric", envir = asNamespace("dplyr"), inherits = FALSE
-    )
     cases <- list(
         list(
             source = c(1, 2, 3), replacements = list(10, 20),
-            default = NULL, missing = NULL
+            default = NULL, missing = NULL,
+            expected = c(10, 20, 3)
         ),
         list(
             source = c(1, 2, 3),
             replacements = stats::setNames(list(10), "1"),
-            default = -1, missing = NULL
+            default = -1, missing = NULL,
+            expected = c(10, -1, -1)
         ),
         list(
             source = c(1, NA_real_, 2),
             replacements = stats::setNames(list(10), "1"),
-            default = NULL, missing = -99
+            default = NULL, missing = -99,
+            expected = c(10, -99, 2)
         ),
         list(
             source = c(1L, 2L, NA_integer_),
             replacements = stats::setNames(list(10L), "1"),
-            default = NULL, missing = NULL
+            default = NULL, missing = NULL,
+            expected = c(10L, 2L, NA_integer_)
         ),
         list(
             source = c(1L, 2L, NA_integer_),
             replacements = stats::setNames(list(10), "1"),
-            default = NULL, missing = NULL
+            default = NULL, missing = NULL,
+            expected = c(10, NA_real_, NA_real_),
+            expected_warning = "Unreplaced values treated as NA"
         ),
         list(
             source = c(1, 2),
             replacements = stats::setNames(
                 list("one", "two"), c("1", "2")
             ),
-            default = "other", missing = "missing"
+            default = "other", missing = "missing",
+            expected = c("one", "two")
         ),
         list(
             source = c(1, NA_real_),
             replacements = stats::setNames(list("one"), "1"),
-            default = "other", missing = NULL
+            default = "other", missing = NULL,
+            expected = c("one", NA_character_)
         ),
         list(
             source = c(1, NaN, 2),
             replacements = stats::setNames(list(10), "1"),
-            default = NULL, missing = NULL
+            default = NULL, missing = NULL,
+            expected = c(10, NA_real_, 2)
         ),
         list(
             source = structure(c(1, 2), label = "ordinary numeric"),
             replacements = stats::setNames(list(10), "1"),
-            default = NULL, missing = NULL
+            default = NULL, missing = NULL,
+            expected = c(10, 2)
         )
     )
 
@@ -469,22 +476,18 @@ test_that("dplyr recode keeps its ordinary numeric behavior", {
         )
     }
     for (index in seq_along(cases)) {
-        if (index == 5L) {
+        expected_warning <- cases[[index]]$expected_warning
+        if (!is.null(expected_warning)) {
             expect_warning(
                 actual <- call_recode(dplyr::recode, cases[[index]]),
-                "Unreplaced values treated as NA"
-            )
-            expect_warning(
-                expected <- call_recode(dplyr_numeric, cases[[index]]),
-                "Unreplaced values treated as NA"
+                expected_warning
             )
         } else {
             actual <- call_recode(dplyr::recode, cases[[index]])
-            expected <- call_recode(dplyr_numeric, cases[[index]])
         }
         expect_identical(
             actual,
-            expected,
+            cases[[index]]$expected,
             info = paste("ordinary numeric case", index)
         )
     }
