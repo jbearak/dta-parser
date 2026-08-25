@@ -17,6 +17,9 @@ extern SEXP dtaparser_read_rust(
 );
 extern void dtaparser_free_error(char *);
 extern void dtaparser_dictstring_free(void *);
+extern int dtaparser_dictstring_bytes(
+    void *, uint32_t, const char **, int *
+);
 
 typedef struct {
     uint32_t *value_ids;
@@ -41,12 +44,32 @@ static dictstring_data *dictstring_storage(SEXP value) {
     return data;
 }
 
-static SEXP dictstring_dictionary(SEXP value) {
-    SEXP dictionary = R_ExternalPtrProtected(R_altrep_data1(value));
-    if (TYPEOF(dictionary) != STRSXP) {
-        Rf_error("dtaparser string dictionary is no longer available");
+static SEXP dictstring_cache(SEXP value) {
+    SEXP cache = R_ExternalPtrProtected(R_altrep_data1(value));
+    if (TYPEOF(cache) != VECSXP) {
+        Rf_error("dtaparser string cache is no longer available");
     }
-    return dictionary;
+    return cache;
+}
+
+static SEXP dictstring_cached_value(
+    dictstring_data *data, SEXP cache, uint32_t id
+) {
+    if ((R_xlen_t) id >= XLENGTH(cache)) {
+        Rf_error("invalid dtaparser string-dictionary index");
+    }
+    SEXP cached = VECTOR_ELT(cache, (R_xlen_t) id);
+    if (cached != R_NilValue) return cached;
+
+    const char *bytes = NULL;
+    int length = 0;
+    if (!dtaparser_dictstring_bytes(data, id, &bytes, &length) ||
+        bytes == NULL || length < 0) {
+        Rf_error("invalid dtaparser string-dictionary value");
+    }
+    cached = Rf_mkCharLenCE(bytes, length, CE_UTF8);
+    SET_VECTOR_ELT(cache, (R_xlen_t) id, cached);
+    return cached;
 }
 
 static R_xlen_t dictstring_length(SEXP value) {
@@ -66,12 +89,9 @@ static SEXP dictstring_value(SEXP value, R_xlen_t index) {
     if (index < 0 || (size_t) index >= data->length) {
         Rf_error("invalid dtaparser string-vector index");
     }
-    SEXP dictionary = dictstring_dictionary(value);
+    SEXP cache = dictstring_cache(value);
     uint32_t id = data->value_ids[index];
-    if ((R_xlen_t) id >= XLENGTH(dictionary)) {
-        Rf_error("invalid dtaparser string-dictionary index");
-    }
-    return STRING_ELT(dictionary, (R_xlen_t) id);
+    return dictstring_cached_value(data, cache, id);
 }
 
 static SEXP dictstring_materialize(SEXP value) {
@@ -79,9 +99,17 @@ static SEXP dictstring_materialize(SEXP value) {
     if (materialized != R_NilValue) return materialized;
 
     dictstring_data *data = dictstring_storage(value);
-    SEXP dictionary = dictstring_dictionary(value);
-    R_xlen_t dictionary_length = XLENGTH(dictionary);
-    const SEXP *dictionary_values = STRING_PTR_RO(dictionary);
+    SEXP cache = dictstring_cache(value);
+    R_xlen_t dictionary_length = XLENGTH(cache);
+    SEXP *dictionary_values = (SEXP *) R_alloc(
+        (R_SIZE_T) dictionary_length, (int) sizeof(SEXP)
+    );
+    for (R_xlen_t id = 0; id < dictionary_length; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        dictionary_values[id] = dictstring_cached_value(
+            data, cache, (uint32_t) id
+        );
+    }
     materialized = PROTECT(Rf_allocVector(STRSXP, (R_xlen_t) data->length));
     for (size_t index = 0; index < data->length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -131,8 +159,6 @@ static int dictstring_no_na(SEXP value) {
 
 typedef struct {
     void *data;
-    const char *const *values;
-    const int *value_lengths;
     size_t value_count;
     int transferred;
     SEXP result;
@@ -140,17 +166,11 @@ typedef struct {
 
 static void make_dictstring_call(void *payload) {
     make_dictstring_context *context = (make_dictstring_context *) payload;
-    SEXP dictionary = PROTECT(Rf_allocVector(
-        STRSXP, (R_xlen_t) context->value_count
+    SEXP cache = PROTECT(Rf_allocVector(
+        VECSXP, (R_xlen_t) context->value_count
     ));
-    for (size_t index = 0; index < context->value_count; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        SET_STRING_ELT(dictionary, (R_xlen_t) index, Rf_mkCharLenCE(
-            context->values[index], context->value_lengths[index], CE_UTF8
-        ));
-    }
     SEXP external = PROTECT(R_MakeExternalPtr(
-        context->data, R_NilValue, dictionary
+        context->data, R_NilValue, cache
     ));
     R_RegisterCFinalizerEx(external, dictstring_finalize, TRUE);
     context->transferred = 1;
@@ -163,16 +183,14 @@ static void make_dictstring_call(void *payload) {
 }
 
 int dtaparser_make_dictstring(
-    void *data, const char *const *values, const int *value_lengths,
-    size_t value_count, int *transferred, SEXP *result
+    void *data, size_t value_count, int *transferred, SEXP *result
 ) {
     if (data == NULL || transferred == NULL || result == NULL ||
-        (value_count > 0 && (values == NULL || value_lengths == NULL)) ||
         value_count > (size_t) R_XLEN_T_MAX) {
         return 0;
     }
     make_dictstring_context context = {
-        data, values, value_lengths, value_count, 0, NULL
+        data, value_count, 0, NULL
     };
     int ok = R_ToplevelExec(make_dictstring_call, &context);
     *transferred = context.transferred;

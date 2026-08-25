@@ -14,6 +14,7 @@ ahash = { version = "0.8", default-features = false, features = ["std"] }
 dta-parser = { path = "../dta-parser" }
 
 [profile.release]
+lto = "thin"
 panic = "unwind"
 strip = "debuginfo"
 
