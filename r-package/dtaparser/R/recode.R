@@ -1,0 +1,224 @@
+#' Recode values while preserving Stata missing tags
+#'
+#' Provides the familiar `dplyr::recode()` interface while retaining the exact
+#' payload of every unmatched Stata system or extended missing value. It also
+#' supports the numeric classes returned by [read_dta()], including
+#' `haven_labelled`, `Date`, and `POSIXct`.
+#'
+#' @param .x A numeric, character, or factor vector. Numeric storage may carry
+#'   Stata missing tags and Stata metadata attributes.
+#' @param ... Replacements in the legacy `dplyr::recode()` form. Numeric
+#'   replacements may be named by source value or supplied positionally;
+#'   character and factor replacements must be named.
+#' @param .default Optional replacement for unmatched non-missing values. The
+#'   default `NULL` retains compatible source values.
+#' @param .missing Optional replacement for missing values. The default `NULL`
+#'   preserves the exact system, extended, or `NaN` payload from `.x`. A
+#'   supplied value intentionally replaces every missing kind. Following
+#'   dplyr, factor inputs do not support a non-`NULL` `.missing`.
+#'
+#' @details
+#' Recoding materializes a numeric ALTREP vector because it creates a writable
+#' result. When the result remains numeric, the original class and Stata
+#' metadata attributes are restored. Value-label definitions are not rewritten
+#' when their associated numeric codes change.
+#'
+#' A recode from numeric to a non-numeric type cannot retain tagged-NA
+#' payloads. If `.x` contains missing values and the result is non-numeric,
+#' supply `.missing` explicitly to choose their new representation. Numeric
+#' widening from integer to double preserves missing values automatically.
+#' Class-changing numeric replacements, such as using `Date` or factor values
+#' to recode a bare numeric vector, are rejected rather than silently dropping
+#' the replacement class. Apply the desired class after recoding instead.
+#'
+#' When dtaparser is loaded, `dplyr::recode()` dispatches here for
+#' `haven_labelled`, `Date`, and `POSIXct` vectors. Bare numeric vectors do not
+#' have a Stata-specific R class, so use `dtaparser::recode()` explicitly to
+#' guarantee tag preservation regardless of package attachment order.
+#'
+#' @return A recoded vector. Unmatched numeric missing values retain their exact
+#'   payload unless `.missing` is supplied.
+#' @examples
+#' if (requireNamespace("haven", quietly = TRUE)) {
+#'     x <- c(1, 2, NA_real_, haven::tagged_na(c("a", "z")))
+#'     y <- recode(x, `1` = 10)
+#'     haven::na_tag(y)
+#'
+#'     recode(x, `1` = 10, .missing = -99)
+#' }
+#' @export
+recode <- function(.x, ..., .default = NULL, .missing = NULL) {
+    if (is.factor(.x)) {
+        return(.call_dplyr_recode_method(
+            "factor", .x, ..., .default = .default, .missing = .missing
+        ))
+    }
+
+    if (typeof(.x) %in% c("double", "integer")) {
+        return(.recode_numeric_like(
+            .x, ..., .default = .default, .missing = .missing
+        ))
+    }
+
+    if (is.character(.x)) {
+        return(.call_dplyr_recode_method(
+            "character", .x, ..., .default = .default, .missing = .missing
+        ))
+    }
+
+    dplyr::recode(
+        .x, ..., .default = .default, .missing = .missing
+    )
+}
+
+.recode_numeric_like <- function(.x, ..., .default = NULL, .missing = NULL) {
+    prepared <- .prepare_numeric_recode(
+        .x,
+        lapply(rlang::list2(...), .recode_data, source = .x),
+        .recode_data(.default, source = .x),
+        .recode_data(.missing, source = .x)
+    )
+    method <- utils::getS3method(
+        "recode", "numeric", envir = asNamespace("dplyr")
+    )
+    result <- rlang::exec(
+        method,
+        prepared$source,
+        !!!prepared$replacements,
+        .default = prepared$default,
+        .missing = prepared$missing
+    )
+
+    missing_positions <- is.na(prepared$source)
+    if (is.null(.missing) && any(missing_positions)) {
+        if (typeof(result) != typeof(prepared$source)) {
+            stop(
+                "A non-numeric recode cannot preserve numeric missing ",
+                "payloads; supply `.missing` explicitly.",
+                call. = FALSE
+            )
+        }
+        result[missing_positions] <- prepared$source[missing_positions]
+    }
+
+    if (typeof(result) == typeof(prepared$source)) {
+        result <- vctrs::vec_restore(result, prepared$restore_to)
+    }
+    result
+}
+
+.prepare_numeric_recode <- function(.x, replacements, default, missing) {
+    source <- vctrs::vec_data(.x)
+    values <- c(replacements, list(default, missing))
+    numeric_values <- Filter(
+        function(value) {
+            !is.null(value) && typeof(value) %in% c("double", "integer")
+        },
+        values
+    )
+
+    if (is.double(source)) {
+        cast <- as.double
+        restore_to <- .x
+    } else {
+        lossless_integer <- all(vapply(
+            numeric_values,
+            function(value) {
+                if (is.double(value) && any(is.na(value))) {
+                    return(FALSE)
+                }
+                tryCatch(
+                    {
+                        vctrs::vec_cast(value, integer())
+                        TRUE
+                    },
+                    error = function(condition) FALSE
+                )
+            },
+            logical(1)
+        ))
+        if (lossless_integer) {
+            cast <- as.integer
+            restore_to <- .x
+        } else {
+            cast <- as.double
+            source <- as.double(source)
+            restore_to <- .promote_integer_restore_target(.x)
+        }
+    }
+
+    cast_numeric <- function(value) {
+        if (!is.null(value) &&
+            typeof(value) %in% c("double", "integer")) {
+            return(cast(value))
+        }
+        value
+    }
+
+    list(
+        source = source,
+        replacements = lapply(replacements, cast_numeric),
+        default = cast_numeric(default),
+        missing = cast_numeric(missing),
+        restore_to = restore_to
+    )
+}
+
+.promote_integer_restore_target <- function(value) {
+    target <- as.double(vctrs::vec_data(value))
+    target_attributes <- attributes(value)
+    classes <- target_attributes$class
+    if (length(classes) > 0L &&
+        classes[[length(classes)]] == "integer") {
+        classes[[length(classes)]] <- "double"
+        target_attributes$class <- classes
+    }
+    labels <- target_attributes$labels
+    if (!is.null(labels) && is.integer(labels)) {
+        double_labels <- as.double(labels)
+        names(double_labels) <- names(labels)
+        target_attributes$labels <- double_labels
+    }
+    attributes(target) <- target_attributes
+    target
+}
+
+.recode_data <- function(value, source) {
+    if (!is.null(value) && typeof(value) %in% c("double", "integer")) {
+        if (is.object(value) &&
+            (!is.object(source) || !identical(class(value), class(source)))) {
+            stop(
+                "Class-changing numeric replacements are not supported; ",
+                "apply the desired class after recoding.",
+                call. = FALSE
+            )
+        }
+        return(vctrs::vec_data(value))
+    }
+    value
+}
+
+.call_dplyr_recode_method <- function(class, .x, ..., .default, .missing) {
+    method <- utils::getS3method(
+        "recode", class, envir = asNamespace("dplyr")
+    )
+    rlang::exec(
+        method,
+        .x,
+        !!!rlang::list2(...),
+        .default = .default,
+        .missing = .missing
+    )
+}
+
+recode.haven_labelled <- function(.x, ..., .default = NULL, .missing = NULL) {
+    recode(.x, ..., .default = .default, .missing = .missing)
+}
+
+recode.Date <- function(.x, ..., .default = NULL, .missing = NULL) {
+    recode(.x, ..., .default = .default, .missing = .missing)
+}
+
+recode.POSIXct <- function(.x, ..., .default = NULL, .missing = NULL) {
+    recode(.x, ..., .default = .default, .missing = .missing)
+}

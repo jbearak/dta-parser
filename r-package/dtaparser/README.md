@@ -199,10 +199,27 @@ unselected branch returns the original values. If its condition can be `NA`,
 also pass `missing = x`; otherwise those positions become ordinary `NA`. In
 contrast, legacy `dplyr::recode()` rebuilds unmatched missing values in bare
 numeric columns as ordinary `NA` and therefore loses their tags, even when
-recoding only an observed number. It does not support classed
-`haven_labelled`, `Date`, or `POSIXct` columns. Prefer `case_when()` or a
-correctly specified `if_else()` for tagged columns. Operations intended to
-replace missing values, such as
+recoding only an observed number.
+
+Use `dtaparser::recode()` for the familiar legacy syntax with tag preservation:
+
+```r
+x <- dtaparser::recode(x, `1` = 10)
+```
+
+It preserves unmatched missing payloads, classes, and Stata metadata
+attributes. It does not rewrite a value-label table when its underlying codes
+change, so update the `labels` attribute separately if the recode changes that
+code scheme. Supplying `.missing` intentionally replaces all missing codes.
+When dtaparser is loaded, `dplyr::recode()` also dispatches to this safe method
+for classed `haven_labelled`, `Date`, and `POSIXct` columns. Bare numeric
+vectors have no Stata-specific R class, so the explicit `dtaparser::` prefix is
+the only load-order-independent guarantee. When the source contains missing
+values, a recode to character must supply `.missing` because tagged numeric
+payloads cannot exist in a character result.
+
+Alternatively, prefer `case_when()` or a correctly specified `if_else()` for
+new code. Operations intended to replace missing values, such as
 `dplyr::coalesce()`, `tidyr::replace_na()`, or a branch selected by `is.na()`,
 match all 27 codes by design; use `haven::is_tagged_na(x, tag)` when only one
 extended code should change.

@@ -1,2 +1,6 @@
 useDynLib(dtaparser, .registration = TRUE)
+S3method(dplyr::recode,Date)
+S3method(dplyr::recode,POSIXct)
+S3method(dplyr::recode,haven_labelled)
 export(read_dta)
+export(recode)

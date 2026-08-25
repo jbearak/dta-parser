@@ -41,9 +41,10 @@
 #' branch. `dplyr::if_else()` preserves unselected tags when its condition is
 #' complete; if the condition can be `NA`, also supply `missing = x`. On bare
 #' numeric columns, legacy `dplyr::recode()` normalizes unmatched tagged
-#' missings to ordinary `NA`; it does not support classed `haven_labelled`,
-#' `Date`, or `POSIXct` columns. Missing-value replacement helpers match all 27
-#' codes; select a particular code with
+#' missings to ordinary `NA`. Use [recode()] for the same interface with tag
+#' preservation; it also supplies `dplyr::recode()` methods for classed
+#' `haven_labelled`, `Date`, and `POSIXct` columns. Missing-value replacement
+#' helpers match all 27 codes; select a particular code with
 #' `haven::is_tagged_na(x, tag)` instead. A transformation may materialize an
 #' ALTREP column and may drop Stata metadata attributes when it constructs a
 #' new vector, following the same behavior as haven-compatible vectors.

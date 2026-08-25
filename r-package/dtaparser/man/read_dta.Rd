@@ -87,11 +87,12 @@ When recoding, \code{dplyr::case_when()} preserves values returned by its
 default branch. \code{dplyr::if_else()} preserves unselected tags when its
 condition is complete; if the condition can be \code{NA}, also supply
 \code{missing = x}. On bare numeric columns, legacy \code{dplyr::recode()}
-normalizes unmatched tagged missings to ordinary \code{NA}; it does not support
-classed \code{haven_labelled}, \code{Date}, or \code{POSIXct} columns.
-Missing-value replacement helpers match all 27 codes; select a particular code
-with \code{haven::is_tagged_na(x, tag)} instead. A transformation may
-materialize an ALTREP column and may drop Stata metadata attributes when it
-constructs a new vector, following the same behavior as haven-compatible
-vectors.
+normalizes unmatched tagged missings to ordinary \code{NA}. Use \code{recode()}
+for the same interface with tag preservation; it also supplies
+\code{dplyr::recode()} methods for classed \code{haven_labelled}, \code{Date},
+and \code{POSIXct} columns. Missing-value replacement helpers match all 27
+codes; select a particular code with \code{haven::is_tagged_na(x, tag)}
+instead. A transformation may materialize an ALTREP column and may drop Stata
+metadata attributes when it constructs a new vector, following the same
+behavior as haven-compatible vectors.
 }
