@@ -49,20 +49,20 @@ including the synthetic, DHS, MICS, and NSFG results.
 
 ## Compatibility
 
-All three libraries read Stata releases 105, 108, 110--111, 113--115, and 117--119:
+All three libraries read DTA formats used by Stata 5 through 19:
 
-| Release | Stata generation |
+| DTA format code | Stata versions |
 | ---: | --- |
 | 105 | Stata 5 |
 | 108 | Stata 6 |
 | 110 | Stata 7 |
-| 111 | Stata/SE 7 |
-| 113 | Stata 8 |
-| 114 | Stata 10 |
+| 111 | Stata 7/SE |
+| 113 | Stata 8–9 |
+| 114 | Stata 10–11 |
 | 115 | Stata 12 |
 | 117 | Stata 13 |
-| 118 | Stata 14--19 |
-| 119 | Stata 15--19 files with more than 32,767 variables |
+| 118 | Stata 14–19 |
+| 119 | Stata 15–19 files with more than 32,767 variables |
 
 Releases 105, 108, and 110 use pre-111 storage codes. Release 105 has a compact
 60-byte header, 32-byte labels, 9-byte names, and 16-bit expansion lengths;

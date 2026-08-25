@@ -15,8 +15,10 @@ Large reads from every supported Stata release use a shared block decoder
 across multiple cores by default. `threads = 0` selects an automatic count,
 `threads = 1` forces the serial executor, and a positive larger value requests
 an explicit count capped by available parallelism and selected columns. Small
-inputs and projections containing `strL` remain serial. Both executors use the
-same validated observation plan and scalar value-decoding semantics.
+inputs remain serial. For selected `strL` columns, workers decode observation
+references in parallel; the coordinator then validates the shared object table
+and resolves the referenced payloads. Both executors use the same validated
+observation plan and scalar value-decoding semantics.
 
 ## Installation
 
@@ -65,7 +67,7 @@ URLs use temporary files that are removed when the read succeeds, errors, or
 is interrupted. This keeps network and decompression dependencies out of the
 reusable Rust parser.
 
-The reader supports Stata releases 105, 108, 110--111, 113--115, and 117--119. It retains dataset
+The reader supports Stata 5–19 file formats. It retains dataset
 and variable labels, dataset notes, display formats, value-label tables,
 `strL` values, and system missing values plus `.a`--`.z` tags where the release
 supports them. `%td` and legacy or
@@ -247,17 +249,24 @@ have identical R missing-value semantics.
 
 The dta-parser cells below were rerun from PR #48 at implementation commit
 `1006ae4`. Haven 2.5.5 and Stata/MP 18 were not rerun: their cells retain the
-archived matched measurements on the identical files. Restricting the refresh
+saved matched measurements on the identical files. Restricting the refresh
 to four deterministic synthetic workloads and one recent file from each survey
 family keeps the comparison economical while covering both controlled and
 real-world inputs.
 
 Measurements used an Apple M4 Max with 128 GB RAM, macOS 26.5.2, R 4.6.1, and
-Rust 1.98.0. Synthetic inputs are mixed-type, 40-column Stata 15 files. Their
-elapsed times are seven-run warm-cache medians and their peak RSS values are
-three-run fresh-process medians. The India DHS and NSFG rows each use one
-fresh-process read, matching the archived corpus methodology. All refreshed
-reads returned the archived row and column dimensions.
+Rust 1.98.0. Every dta-parser measurement used `threads = 0`, its default
+automatic multicore mode, which uses up to eight workers for eligible reads.
+Synthetic inputs are mixed-type, 40-column files in the wide-file DTA format
+introduced with Stata 15. Their elapsed times are seven-run warm-cache medians
+and their peak RSS values are three-run fresh-process medians. The India DHS
+and NSFG rows each use one fresh-process read, matching the detailed corpus
+methodology. All refreshed reads returned the previously recorded row and
+column dimensions.
+
+The Stata version descriptions below identify the generation in which each
+on-disk format was introduced. A DTA header does not identify which version of
+the Stata application created a particular file.
 
 Peak RSS means peak resident set size: the greatest amount of physical memory
 attributed to the reader process during the run. It includes the R or Stata
@@ -267,12 +276,12 @@ operating system's file cache outside that process. Values below use decimal GB
 
 | Dataset/workload | Input | dta-parser time | haven time | Stata time | dta-parser / haven time | dta-parser / Stata time | dta-parser peak RSS | haven peak RSS | Stata peak RSS |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Synthetic 100 MB, full 40 columns (release 119) | 0.100 GB | 0.025 s | 1.053 s | 0.011 s | 0.024x | 2.273x | 0.223 GB | 0.253 GB | 0.143 GB |
-| Synthetic 100 MB, projected 8 columns (release 119) | 0.100 GB | 0.014 s | 0.271 s | 0.014 s | 0.052x | 1.000x | 0.182 GB | 0.168 GB | 0.058 GB |
-| Synthetic 1 GB, full 40 columns (release 119) | 1.000 GB | 0.143 s | 10.958 s | 0.101 s | 0.013x | 1.416x | 0.663 GB | 0.888 GB | 1.133 GB |
-| Synthetic 1 GB, projected 8 columns (release 119) | 1.000 GB | 0.073 s | 3.120 s | 0.140 s | 0.023x | 0.521x | 0.269 GB | 0.292 GB | 0.365 GB |
-| India DHS 2021 women (release 113; 724,115 × 5,972) | 5.196 GB | 1.896 s | 437.088 s | 0.718 s | 0.004x | 2.641x | 5.218 GB | 35.103 GB | 5.256 GB |
-| NSFG 2017–2019 women (release 118; 6,141 × 2,610) | 0.020 GB | 0.068 s | 1.002 s | 0.003 s | 0.068x | 22.667x | 0.142 GB | 0.308 GB | 0.051 GB |
+| Synthetic 100 MB, full 40 columns (wide-file format introduced with Stata 15) | 0.100 GB | 0.025 s | 1.053 s | 0.011 s | 0.024x | 2.273x | 0.223 GB | 0.253 GB | 0.143 GB |
+| Synthetic 100 MB, projected 8 columns (wide-file format introduced with Stata 15) | 0.100 GB | 0.014 s | 0.271 s | 0.014 s | 0.052x | 1.000x | 0.182 GB | 0.168 GB | 0.058 GB |
+| Synthetic 1 GB, full 40 columns (wide-file format introduced with Stata 15) | 1.000 GB | 0.143 s | 10.958 s | 0.101 s | 0.013x | 1.416x | 0.663 GB | 0.888 GB | 1.133 GB |
+| Synthetic 1 GB, projected 8 columns (wide-file format introduced with Stata 15) | 1.000 GB | 0.073 s | 3.120 s | 0.140 s | 0.023x | 0.521x | 0.269 GB | 0.292 GB | 0.365 GB |
+| India DHS 2021 women (format introduced with Stata 8; 724,115 × 5,972) | 5.196 GB | 1.896 s | 437.088 s | 0.718 s | 0.004x | 2.641x | 5.218 GB | 35.103 GB | 5.256 GB |
+| NSFG 2017–2019 women (format introduced with Stata 14; 6,141 × 2,610) | 0.020 GB | 0.068 s | 1.002 s | 0.003 s | 0.068x | 22.667x | 0.142 GB | 0.308 GB | 0.051 GB |
 
 Both ratio columns are dta-parser time divided by comparator time. Values below
 1x favor dta-parser. Across these rows, dta-parser was 14.7–230.5 times as fast
@@ -302,10 +311,10 @@ in fresh-process peak RSS. Stata's official
 in-memory load, so it remains a useful eager native-format reference even
 though dta-parser must additionally construct R-compatible objects.
 
-The archived [synthetic report](../../benchmarks/large-scale/results-2026-08-24.md)
-and [corpus report](../../benchmarks/r-corpus-performance/results-2026-08-24.md)
-provide comparator provenance and the full older corpus run. Benchmark
-artifacts are report-only evidence, not CI performance thresholds.
+The [detailed synthetic report](../../benchmarks/large-scale/results-2026-08-24.md)
+and [detailed corpus report](../../benchmarks/r-corpus-performance/results-2026-08-24.md)
+provide comparator provenance and broader results. Benchmark artifacts are
+report-only evidence, not CI performance thresholds.
 
 ## Scope and limitations
 
@@ -321,9 +330,10 @@ artifacts are report-only evidence, not CI performance thresholds.
   are applied.
 - Reads are synchronous. Long reads cooperatively check for R user interrupts.
 - `threads = 0` automatically parallelizes sufficiently large reads from any
-  supported release without selected `strL` columns. Use `threads = 1` for
-  deterministic single-thread benchmarking. Option `dtaparser.threads`
-  controls the default.
+  supported release. With selected `strL` columns, observation references are
+  decoded across workers before the coordinator resolves their shared
+  payloads. Use `threads = 1` to force the serial executor. Option
+  `dtaparser.threads` controls the default.
 - `use_numeric_altrep = TRUE` retains byte, int, long, and float source widths until
   R needs a contiguous double data pointer. Set it to `FALSE`, or set option
   `dtaparser.numeric_altrep = FALSE`, to create eager double vectors during
