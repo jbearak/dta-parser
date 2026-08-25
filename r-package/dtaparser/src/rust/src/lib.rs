@@ -57,10 +57,10 @@ extern "C" {
 struct DictStringData {
     value_ids: *mut u32,
     length: usize,
-    // Owns the string buffers referenced by `value_views` and must outlive
-    // every raw-pointer view.
-    _values: AHashMap<String, u32>,
     value_views: Vec<(*const u8, usize)>,
+    // Owns the string buffers referenced by `value_views`. Declared after the
+    // views so it is dropped after them.
+    _values: AHashMap<String, u32>,
 }
 
 impl DictStringData {
@@ -75,8 +75,8 @@ impl DictStringData {
         Self {
             value_ids,
             length,
-            _values: values,
             value_views,
+            _values: values,
         }
     }
 }
