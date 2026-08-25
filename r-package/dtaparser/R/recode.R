@@ -31,10 +31,12 @@
 #' to recode a bare numeric vector, are rejected rather than silently dropping
 #' the replacement class. Apply the desired class after recoding instead.
 #'
-#' When dtaparser is loaded, `dplyr::recode()` dispatches here for
-#' `haven_labelled`, `Date`, and `POSIXct` vectors. Bare numeric vectors do not
-#' have a Stata-specific R class, so use `dtaparser::recode()` explicitly to
-#' guarantee tag preservation regardless of package attachment order.
+#' When the dtaparser namespace is loaded, `dplyr::recode()` dispatches here
+#' for bare numeric, `haven_labelled`, `Date`, and `POSIXct` vectors. This also
+#' applies when `recode()` is called inside `dplyr::mutate()`, regardless of
+#' package attachment order. Numeric vectors without tags retain dplyr's exact
+#' legacy behavior; tagged vectors preserve unmatched tag payloads and numeric
+#' metadata.
 #'
 #' @return A recoded vector. Unmatched numeric missing values retain their exact
 #'   payload unless `.missing` is supplied.
@@ -78,8 +80,8 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         .recode_data(.default, source = .x),
         .recode_data(.missing, source = .x)
     )
-    method <- utils::getS3method(
-        "recode", "numeric", envir = asNamespace("dplyr")
+    method <- get(
+        "recode.numeric", envir = asNamespace("dplyr"), inherits = FALSE
     )
     result <- rlang::exec(
         method,
@@ -199,8 +201,10 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
 }
 
 .call_dplyr_recode_method <- function(class, .x, ..., .default, .missing) {
-    method <- utils::getS3method(
-        "recode", class, envir = asNamespace("dplyr")
+    method <- get(
+        paste0("recode.", class),
+        envir = asNamespace("dplyr"),
+        inherits = FALSE
     )
     rlang::exec(
         method,
@@ -209,6 +213,22 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         .default = .default,
         .missing = .missing
     )
+}
+
+recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {
+    # Tagged missings are special NA payloads in otherwise ordinary R doubles.
+    # Keep dplyr's exact legacy behavior for vectors without any tags, and take
+    # the preserving path only when one of those payloads is present.
+    if (!.has_tagged_na(.x)) {
+        return(.call_dplyr_recode_method(
+            "numeric", .x, ..., .default = .default, .missing = .missing
+        ))
+    }
+    recode(.x, ..., .default = .default, .missing = .missing)
+}
+
+.has_tagged_na <- function(value) {
+    .Call(C_dtaparser_has_tagged_na, value)
 }
 
 recode.haven_labelled <- function(.x, ..., .default = NULL, .missing = NULL) {

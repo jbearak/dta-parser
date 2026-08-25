@@ -46,11 +46,12 @@ Class-changing numeric replacements, such as using \code{Date} or factor
 values to recode a bare numeric vector, are rejected rather than silently
 dropping the replacement class. Apply the desired class after recoding instead.
 
-When dtaparser is loaded, \code{dplyr::recode()} dispatches here for
-\code{haven_labelled}, \code{Date}, and \code{POSIXct} vectors. Bare numeric
-vectors do not have a Stata-specific R class, so use \code{dtaparser::recode()}
-explicitly to guarantee tag preservation regardless of package attachment
-order.
+When the dtaparser namespace is loaded, \code{dplyr::recode()} dispatches here
+for bare numeric, \code{haven_labelled}, \code{Date}, and \code{POSIXct}
+vectors. This also applies when \code{recode()} is called inside
+\code{dplyr::mutate()}, regardless of package attachment order. Ordinary
+numeric vectors without tags retain dplyr's exact legacy behavior; tagged
+vectors preserve unmatched tag payloads and numeric metadata.
 }
 \examples{
 if (requireNamespace("haven", quietly = TRUE)) {

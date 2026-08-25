@@ -16,6 +16,11 @@
 #' create them. Use ordinary `NA_real_`, rather than a tagged value, to create
 #' Stata system missing. Missing tags are part of the numeric values and are
 #' distinct from Stata value labels stored in a column's `labels` attribute.
+#' Tagged missings can be stored in any R double vector; no Stata-specific
+#' class is required. Assigning one to an R integer vector widens that vector
+#' to double because R integers have only `NA_integer_`. This does not reflect
+#' a Stata limitation: Stata `byte`, `int`, and `long` storage each encode all
+#' 27 missing codes in reserved high values.
 #' For example:
 #' ```
 #' x <- c(1, NA_real_, haven::tagged_na("a"), haven::tagged_na("z"))
@@ -39,11 +44,10 @@
 #'
 #' When recoding, `dplyr::case_when()` preserves values returned by its default
 #' branch. `dplyr::if_else()` preserves unselected tags when its condition is
-#' complete; if the condition can be `NA`, also supply `missing = x`. On bare
-#' numeric columns, legacy `dplyr::recode()` normalizes unmatched tagged
-#' missings to ordinary `NA`. Use [recode()] for the same interface with tag
-#' preservation; it also supplies `dplyr::recode()` methods for classed
-#' `haven_labelled`, `Date`, and `POSIXct` columns. Missing-value replacement
+#' complete; if the condition can be `NA`, also supply `missing = x`. Once the
+#' dtaparser namespace is loaded, [recode()] and `dplyr::recode()` preserve
+#' unmatched tags in bare numeric, `haven_labelled`, `Date`, and `POSIXct`
+#' columns, including inside `dplyr::mutate()`. Missing-value replacement
 #' helpers match all 27 codes; select a particular code with
 #' `haven::is_tagged_na(x, tag)` instead. A transformation may materialize an
 #' ALTREP column and may drop Stata metadata attributes when it constructs a
@@ -76,7 +80,8 @@
 #'   larger than `2^53`.
 #' @param threads Number of decoder threads. Zero selects an automatic count
 #'   for sufficiently large files in any supported Stata release. One always
-#'   uses the serial decoder. Projections containing `strL` remain serial.
+#'   uses the serial decoder. For selected `strL` columns, workers decode
+#'   observation references before the coordinator resolves their payloads.
 #' @param use_numeric_altrep Whether byte, int, long, and float columns should retain
 #'   their compact Stata storage through ALTREP. Set to `FALSE` to create eager
 #'   R double vectors during decoding, which uses more memory but avoids later
