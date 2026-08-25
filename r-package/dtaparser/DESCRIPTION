@@ -21,6 +21,7 @@ Suggests:
     callr,
     haven,
     httpuv,
+    labelled,
     testthat (>= 3.1.7)
 Config/testthat/edition: 3
 SystemRequirements: Cargo and Rust >= 1.98.0; on Windows, the Rust target matching

@@ -113,3 +113,27 @@ instead. A transformation may materialize an ALTREP column and may drop Stata
 metadata attributes when it constructs a new vector, following the same
 behavior as haven-compatible vectors.
 }
+
+\section{Optional helpers for labels and missing codes}{
+Reading DTA files does not require haven or labelled. The suggested haven
+package provides helpers for inspecting, selecting, and creating the tagged
+missing values returned by \code{dtaparser}, as well as conversions such as
+\code{haven::as_factor()}. The suggested labelled package provides getters and
+setters for variable labels and value-label tables. For example:
+\preformatted{haven::na_tag(data$status)
+haven::is_tagged_na(data$status, "a")
+data$status[1] <- haven::tagged_na("a")
+
+labelled::var_label(data$status)
+labelled::var_label(data$status) <- "Interview status"
+labelled::val_labels(data$status)
+labelled::val_labels(data$status) <- c(Complete = 1, Refused = 2)
+}
+Install these optional packages with
+\code{install.packages(c("haven", "labelled"))}. Installing the tidyverse also
+installs haven, but \code{library(tidyverse)} does not attach it; labelled is a
+separate package. The explicit namespace prefixes above work without attaching
+either package. Value-label setters may reconstruct a vector and drop other
+attributes such as \code{format.stata}; save and restore any such metadata that
+an analysis needs to retain.
+}
