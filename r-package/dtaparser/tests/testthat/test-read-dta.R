@@ -126,9 +126,11 @@ test_that("R and haven recognize every Stata numeric missing code", {
     expected_tagged <- c(FALSE, rep(TRUE, 26L))
     expected_system <- c(TRUE, rep(FALSE, 26L))
 
+    paths <- character()
+    on.exit(unlink(paths), add = TRUE)
     for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
         path <- fixture_with_all_numeric_missing_codes(name)
-        on.exit(unlink(path), add = TRUE)
+        paths <- c(paths, path)
         storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
         numeric_indices <- which(storage != "character")
 
@@ -183,9 +185,11 @@ test_that("base R recoding preserves tags with complete predicates", {
     skip_if_not_installed("haven")
     expected_tags <- c(NA_character_, letters)
 
+    paths <- character()
+    on.exit(unlink(paths), add = TRUE)
     for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
         path <- fixture_with_all_numeric_missing_codes(name)
-        on.exit(unlink(path), add = TRUE)
+        paths <- c(paths, path)
         storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
 
         for (use_numeric_altrep in c(TRUE, FALSE)) {
@@ -297,9 +301,11 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
         )
     }
 
+    paths <- character()
+    on.exit(unlink(paths), add = TRUE)
     for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
         path <- fixture_with_all_numeric_missing_codes(name)
-        on.exit(unlink(path), add = TRUE)
+        paths <- c(paths, path)
         storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
         reference_tags <- recode_tags(haven::read_dta(path, n_max = 27))
         reference_observed <- recode_observed(
