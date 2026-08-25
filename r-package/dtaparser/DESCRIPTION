@@ -11,13 +11,14 @@ License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports:
+    dplyr (>= 1.1.0),
     readr (>= 2.2.0),
     rlang,
     tibble,
-    tidyselect
+    tidyselect,
+    vctrs
 Suggests:
     callr,
-    dplyr (>= 1.1.0),
     haven,
     httpuv,
     testthat (>= 3.1.7)

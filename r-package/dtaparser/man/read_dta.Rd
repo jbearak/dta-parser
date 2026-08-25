@@ -34,7 +34,8 @@ convention. Non-negative values must be whole numbers no larger than
 \item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
 \item{threads}{Number of decoder threads. Zero selects an automatic count for
 sufficiently large files in any supported Stata release. One always uses the
-serial decoder. Projections containing \code{strL} remain serial.}
+serial decoder. For selected \code{strL} columns, workers decode observation
+references before the coordinator resolves their payloads.}
 \item{use_numeric_altrep}{Whether byte, int, long, and float columns should retain
 their compact Stata storage through ALTREP. Set to \code{FALSE} to create eager
 R double vectors during decoding, which uses more memory but avoids later
@@ -63,6 +64,23 @@ every code present. Use \code{haven::na_tag()} to recover their letters,
 than a tagged value, to create Stata system missing. Missing tags are part of
 the numeric values and are distinct from Stata value labels stored in a
 column's \code{labels} attribute.
+Tagged missings can be stored in any R double vector; no Stata-specific class
+is required. Assigning one to an R integer vector widens that vector to double
+because R integers have only \code{NA_integer_}. This does not reflect a Stata
+limitation: Stata \code{byte}, \code{int}, and \code{long} storage each encode
+all 27 missing codes in reserved high values.
+
+\code{dtaparser} therefore presents Stata numeric columns as R doubles. A
+double can retain the tag in the payload bits of an IEEE-754 missing value, so
+base \code{is.na()} works without a package-specific class or method and
+haven's tag helpers remain interoperable. R integers have only one missing
+encoding and could not expose \code{.a} through \code{.z} losslessly. The
+R-facing double type does not require eight bytes per source value while the
+column remains ALTREP: source \code{byte}, \code{int}, \code{long}, and
+\code{float} values stay in their compact Stata storage and are converted to
+doubles on access. A write or full materialization creates an ordinary R
+double vector. This combines lossless missing-code semantics with compact
+storage for read-mostly data.
 For example:
 \preformatted{x <- c(1, NA_real_, haven::tagged_na("a"), haven::tagged_na("z"))
 is.na(x)
@@ -86,12 +104,12 @@ condition entries become ordinary \code{NA} and lose their tags.
 When recoding, \code{dplyr::case_when()} preserves values returned by its
 default branch. \code{dplyr::if_else()} preserves unselected tags when its
 condition is complete; if the condition can be \code{NA}, also supply
-\code{missing = x}. On bare numeric columns, legacy \code{dplyr::recode()}
-normalizes unmatched tagged missings to ordinary \code{NA}; it does not support
-classed \code{haven_labelled}, \code{Date}, or \code{POSIXct} columns.
-Missing-value replacement helpers match all 27 codes; select a particular code
-with \code{haven::is_tagged_na(x, tag)} instead. A transformation may
-materialize an ALTREP column and may drop Stata metadata attributes when it
-constructs a new vector, following the same behavior as haven-compatible
-vectors.
+\code{missing = x}. Once the dtaparser namespace is loaded, \code{recode()} and
+\code{dplyr::recode()} preserve unmatched tags in bare numeric,
+\code{haven_labelled}, \code{Date}, and \code{POSIXct} columns, including
+inside \code{dplyr::mutate()}. Missing-value replacement helpers match all 27
+codes; select a particular code with \code{haven::is_tagged_na(x, tag)}
+instead. A transformation may materialize an ALTREP column and may drop Stata
+metadata attributes when it constructs a new vector, following the same
+behavior as haven-compatible vectors.
 }

@@ -109,6 +109,25 @@ missing `.` becomes `NA_real_`; `.a` through `.z` become the tagged-NA payloads
 used by haven. Base R therefore recognizes every Stata missing code without a
 package-specific method.
 
+### Why R sees these columns as doubles
+
+R doubles can carry information in the payload bits of an IEEE-754 missing
+value. Haven uses those bits to distinguish `.a` through `.z` while keeping
+each value inside an otherwise ordinary R double vector. This gives
+`dtaparser` three useful properties: base `is.na()` recognizes every Stata
+missing code, haven's tag helpers can inspect and create the extended codes,
+and numeric columns do not need a package-specific class or `is.na()` method.
+
+R integers cannot do the same: `NA_integer_` is their only missing-value
+encoding. Consequently, `dtaparser` presents Stata `byte`, `int`, and `long`
+columns as R doubles so that none of the 27 Stata codes is lost. This describes
+the column's interface to R, not necessarily its physical memory use. Numeric
+ALTREP keeps each source value in its original compact Stata width and converts
+it to an R double, including the appropriate tagged-NA payload, only when R
+requests the value. A write or full materialization produces an ordinary R
+double vector. This design combines lossless Stata semantics with normal R and
+haven interoperability while retaining compact storage for read-mostly data.
+
 ### Using missing values in R
 
 ```r
@@ -149,14 +168,25 @@ system_missing <- is.na(x) & !is.nan(x) &
 ```
 
 Use ordinary `NA_real_` to create Stata system missing and
-`haven::tagged_na()` for an extended missing value. Assignment to a compact
-numeric ALTREP column materializes that column as an ordinary R double vector,
-as any writable mutation must.
+`haven::tagged_na()` for an extended missing value. Tagged missings can be
+stored in any R double vector; no Stata-specific class is required. Assigning
+one to an R integer vector widens that vector to double because R integer
+vectors have only `NA_integer_` and cannot represent distinct tagged payloads.
+Stata `byte`, `int`, and `long` storage does encode all 27 missing codes in its
+reserved high values. Assignment to a compact numeric ALTREP column similarly
+materializes that column as an ordinary R double vector, as any writable
+mutation must. `haven::labelled()` is needed only when a vector also has a
+value-label table, not for extended missing values themselves.
 
 ```r
 x[1] <- NA_real_                 # Stata .
 x[2] <- haven::tagged_na("a")    # Stata .a
 x[3] <- haven::tagged_na("f")    # Stata .f
+
+integer_x <- 1:3
+integer_x[2] <- haven::tagged_na("a")
+typeof(integer_x)
+#> [1] "double"
 ```
 
 ### Recoding without losing missing tags
@@ -198,13 +228,28 @@ data <- dplyr::mutate(
 
 `dplyr::if_else()` preserves tags when its condition contains no `NA` and its
 unselected branch returns the original values. If its condition can be `NA`,
-also pass `missing = x`; otherwise those positions become ordinary `NA`. In
-contrast, legacy `dplyr::recode()` rebuilds unmatched missing values in bare
+also pass `missing = x`; otherwise those positions become ordinary `NA`. By
+contrast, legacy dplyr by itself rebuilds unmatched missing values in bare
 numeric columns as ordinary `NA` and therefore loses their tags, even when
-recoding only an observed number. It does not support classed
-`haven_labelled`, `Date`, or `POSIXct` columns. Prefer `case_when()` or a
-correctly specified `if_else()` for tagged columns. Operations intended to
-replace missing values, such as
+recoding only an observed number. Dtaparser registers tag-preserving methods
+for the legacy interface, so either ordinary `recode()` or an explicit
+`dplyr::recode()` is safe once the dtaparser namespace has been loaded:
+
+```r
+data <- dplyr::mutate(data, status = dplyr::recode(status, `1` = 10))
+```
+
+This works for bare numeric, `haven_labelled`, `Date`, and `POSIXct` columns,
+regardless of package attachment order. It preserves unmatched missing
+payloads, classes, and Stata metadata attributes. It does not rewrite a
+value-label table when its underlying codes change, so update the `labels`
+attribute separately if the recode changes that code scheme. Supplying
+`.missing` intentionally replaces all missing codes. When the source contains
+tagged missings, a recode to character must supply `.missing` because tagged
+numeric payloads cannot exist in a character result.
+
+Alternatively, prefer `case_when()` or a correctly specified `if_else()` for
+new code. Operations intended to replace missing values, such as
 `dplyr::coalesce()`, `tidyr::replace_na()`, or a branch selected by `is.na()`,
 match all 27 codes by design; use `haven::is_tagged_na(x, tag)` when only one
 extended code should change.

@@ -265,6 +265,405 @@ test_that("base R recoding preserves tags with complete predicates", {
     }
 })
 
+test_that("both recode interfaces preserve every Stata missing code", {
+    skip_if_not_installed("haven")
+    expected_tags <- c(NA_character_, letters)
+    interfaces <- list(
+        dtaparser = dtaparser::recode,
+        dplyr = dplyr::recode
+    )
+
+    paths <- character()
+    on.exit(unlink(paths), add = TRUE)
+    for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
+        path <- fixture_with_all_numeric_missing_codes(name)
+        paths <- c(paths, path)
+        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+
+        for (use_numeric_altrep in c(TRUE, FALSE)) {
+            actual <- read_dta(
+                path,
+                n_max = 30,
+                use_numeric_altrep = use_numeric_altrep
+            )
+            mode <- if (use_numeric_altrep) "default" else "eager"
+
+            for (index in seq_along(actual)) {
+                original <- actual[[index]]
+                replacement <- stats::setNames(
+                    list(-1), as.character(original[[28L]])
+                )
+
+                for (interface in names(interfaces)) {
+                    recode_function <- interfaces[[interface]]
+                    recoded <- rlang::exec(
+                        recode_function, original, !!!replacement
+                    )
+                    info <- paste(
+                        name, storage[[index]], mode, interface
+                    )
+
+                    expect_identical(
+                        haven::na_tag(recoded[seq_len(27L)]),
+                        expected_tags,
+                        info = paste(info, "tags")
+                    )
+                    expect_identical(
+                        attributes(recoded),
+                        attributes(original),
+                        info = paste(info, "attributes")
+                    )
+                    expect_identical(
+                        unname(recoded[[28L]]),
+                        -1,
+                        info = paste(info, "observed replacement")
+                    )
+                    expect_false(
+                        dtaparser:::.is_numeric_altrep(recoded),
+                        info = paste(info, "materialized result")
+                    )
+
+                    replaced_missing <- rlang::exec(
+                        recode_function,
+                        original,
+                        !!!replacement,
+                        .missing = -99
+                    )
+                    expect_identical(
+                        unname(replaced_missing[seq_len(27L)]),
+                        rep(-99, 27L),
+                        info = paste(info, "explicit missing replacement")
+                    )
+                    expect_false(
+                        any(haven::is_tagged_na(replaced_missing)),
+                        info = paste(info, "explicit replacement tags")
+                    )
+
+                    expect_error(
+                        rlang::exec(
+                            recode_function,
+                            original,
+                            !!!stats::setNames(
+                                list("observed"),
+                                as.character(original[[28L]])
+                            ),
+                            .default = "other"
+                        ),
+                        "non-numeric recode"
+                    )
+                    character_result <- rlang::exec(
+                        recode_function,
+                        original,
+                        !!!stats::setNames(
+                            list("observed"),
+                            as.character(original[[28L]])
+                        ),
+                        .default = "other",
+                        .missing = "missing"
+                    )
+                    expect_identical(
+                        character_result[seq_len(27L)],
+                        rep("missing", 27L),
+                        info = paste(info, "type-changing missing choice")
+                    )
+                }
+            }
+
+            mutated <- dplyr::mutate(
+                actual,
+                dplyr::across(
+                    dplyr::everything(),
+                    function(values) {
+                        dynamic_replacement <- stats::setNames(
+                            list(-1), as.character(values[[28L]])
+                        )
+                        do.call(
+                            dplyr::recode,
+                            c(list(values), dynamic_replacement)
+                        )
+                    }
+                )
+            )
+            for (index in seq_along(mutated)) {
+                info <- paste(name, storage[[index]], mode, "mutate")
+                expect_identical(
+                    haven::na_tag(mutated[[index]][seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "tags")
+                )
+                expect_identical(
+                    attributes(mutated[[index]]),
+                    attributes(actual[[index]]),
+                    info = paste(info, "attributes")
+                )
+                expect_identical(
+                    unname(mutated[[index]][[28L]]),
+                    -1,
+                    info = paste(info, "observed replacement")
+                )
+            }
+        }
+    }
+})
+
+test_that("dplyr recode keeps its ordinary numeric behavior", {
+    cases <- list(
+        list(
+            source = c(1, 2, 3), replacements = list(10, 20),
+            default = NULL, missing = NULL,
+            expected = c(10, 20, 3)
+        ),
+        list(
+            source = c(1, 2, 3),
+            replacements = stats::setNames(list(10), "1"),
+            default = -1, missing = NULL,
+            expected = c(10, -1, -1)
+        ),
+        list(
+            source = c(1, NA_real_, 2),
+            replacements = stats::setNames(list(10), "1"),
+            default = NULL, missing = -99,
+            expected = c(10, -99, 2)
+        ),
+        list(
+            source = c(1L, 2L, NA_integer_),
+            replacements = stats::setNames(list(10L), "1"),
+            default = NULL, missing = NULL,
+            expected = c(10L, 2L, NA_integer_)
+        ),
+        list(
+            source = c(1L, 2L, NA_integer_),
+            replacements = stats::setNames(list(10), "1"),
+            default = NULL, missing = NULL,
+            expected = c(10, NA_real_, NA_real_),
+            expected_warning = "Unreplaced values treated as NA"
+        ),
+        list(
+            source = c(1, 2),
+            replacements = stats::setNames(
+                list("one", "two"), c("1", "2")
+            ),
+            default = "other", missing = "missing",
+            expected = c("one", "two")
+        ),
+        list(
+            source = c(1, NA_real_),
+            replacements = stats::setNames(list("one"), "1"),
+            default = "other", missing = NULL,
+            expected = c("one", NA_character_)
+        ),
+        list(
+            source = c(1, NaN, 2),
+            replacements = stats::setNames(list(10), "1"),
+            default = NULL, missing = NULL,
+            expected = c(10, NA_real_, 2)
+        ),
+        list(
+            source = structure(c(1, 2), label = "ordinary numeric"),
+            replacements = stats::setNames(list(10), "1"),
+            default = NULL, missing = NULL,
+            expected = c(10, 2)
+        )
+    )
+
+    call_recode <- function(recode_function, specification) {
+        rlang::exec(
+            recode_function,
+            specification$source,
+            !!!specification$replacements,
+            .default = specification$default,
+            .missing = specification$missing
+        )
+    }
+    for (index in seq_along(cases)) {
+        expected_warning <- cases[[index]]$expected_warning
+        if (!is.null(expected_warning)) {
+            expect_warning(
+                actual <- call_recode(dplyr::recode, cases[[index]]),
+                expected_warning
+            )
+        } else {
+            actual <- call_recode(dplyr::recode, cases[[index]])
+        }
+        expect_identical(
+            actual,
+            cases[[index]]$expected,
+            info = paste("ordinary numeric case", index)
+        )
+    }
+})
+
+test_that("tag detection distinguishes R missing payloads", {
+    skip_if_not_installed("haven")
+    untagged <- c(
+        1, NA_real_, NA_real_ + 0, -NA_real_, -(NA_real_ + 0), NaN, -NaN
+    )
+    expect_false(dtaparser:::.has_tagged_na(untagged))
+    expect_true(dtaparser:::.has_tagged_na(haven::tagged_na("a")))
+    expect_true(dtaparser:::.has_tagged_na(haven::tagged_na("z")))
+    expect_false(dtaparser:::.has_tagged_na(c(1L, NA_integer_)))
+
+    expected_tags <- c(NA_character_, letters)
+    canonical <- c(NA_real_, haven::tagged_na(letters))
+    variants <- list(
+        canonical = canonical,
+        quiet = canonical + 0,
+        signed = -canonical,
+        signed_quiet = -(canonical + 0)
+    )
+    for (name in names(variants)) {
+        values <- variants[[name]]
+        expect_identical(
+            haven::na_tag(values), expected_tags,
+            info = paste(name, "recognized by haven")
+        )
+        expect_true(
+            dtaparser:::.has_tagged_na(values),
+            info = paste(name, "detected by dtaparser")
+        )
+        recoded <- dplyr::recode(c(values, 1), `1` = 10)
+        expect_identical(
+            haven::na_tag(recoded[seq_along(values)]), expected_tags,
+            info = paste(name, "preserved by dplyr recode")
+        )
+    }
+
+    created <- 1:3
+    created[[2L]] <- haven::tagged_na("f")
+    expect_type(created, "double")
+    expect_identical(
+        haven::na_tag(dplyr::recode(created, `1` = 10)),
+        c(NA_character_, "f", NA_character_)
+    )
+})
+
+test_that("dtaparser recode retains the familiar vector interface", {
+    skip_if_not_installed("haven")
+    expect_true("recode" %in% getNamespaceExports("dtaparser"))
+    expect_identical(
+        names(formals(dtaparser::recode)),
+        c(".x", "...", ".default", ".missing")
+    )
+
+    expect_identical(
+        dtaparser::recode(c(1, 2, 3), 10, 20),
+        c(10, 20, 3)
+    )
+    expect_identical(
+        dtaparser::recode(c(1L, 2L, NA_integer_), `1` = 10L),
+        c(10L, 2L, NA_integer_)
+    )
+    expect_identical(
+        dtaparser::recode(c(1L, 2L, NA_integer_), `1` = 10),
+        c(10L, 2L, NA_integer_)
+    )
+    expect_identical(
+        dtaparser::recode(c(1L, 2L, NA_integer_), `1` = 10.5),
+        c(10.5, 2, NA_real_)
+    )
+    expect_identical(
+        dtaparser::recode(c("a", "b", NA_character_), a = "A"),
+        c("A", "b", NA_character_)
+    )
+    expect_identical(
+        dtaparser::recode(factor(c("a", "b", NA_character_)), a = "A"),
+        factor(c("A", "b", NA_character_))
+    )
+    expect_error(
+        dtaparser::recode(
+            factor(c("a", NA_character_)), a = "A", .missing = "missing"
+        ),
+        "not supported for factors"
+    )
+    expect_error(
+        dtaparser::recode(c(1, 2), first = 10, 20),
+        "Either all values must be named"
+    )
+    expect_error(
+        dtaparser::recode(
+            c(1, 2), `1` = as.Date("2020-01-01"),
+            `2` = as.Date("2020-01-02")
+        ),
+        "Class-changing numeric replacements"
+    )
+    expect_error(
+        dtaparser::recode(c(1, 2), `1` = factor("one")),
+        "Class-changing numeric replacements"
+    )
+
+    missing_values <- c(
+        NaN, NA_real_, haven::tagged_na("a"), haven::tagged_na("z")
+    )
+    preserved <- dtaparser::recode(
+        c(1, missing_values), `1` = 10
+    )[-1L]
+    expect_identical(preserved, missing_values)
+
+    retagged <- dtaparser::recode(
+        missing_values,
+        .default = missing_values,
+        .missing = haven::tagged_na("f")
+    )
+    expect_identical(
+        haven::na_tag(retagged),
+        rep("f", length(missing_values))
+    )
+
+    integer_labelled <- haven::labelled(
+        c(1L, 2L, NA_integer_), labels = c(one = 1L, two = 2L)
+    )
+    integer_result <- dtaparser::recode(integer_labelled, `1` = 10)
+    expect_s3_class(integer_result, "haven_labelled")
+    expect_identical(
+        vctrs::vec_data(integer_result), c(10L, 2L, NA_integer_)
+    )
+    expect_identical(attr(integer_result, "labels"), c(one = 1L, two = 2L))
+
+    widened_result <- dtaparser::recode(integer_labelled, `1` = 10.5)
+    expect_s3_class(widened_result, "haven_labelled")
+    expect_identical(
+        vctrs::vec_data(widened_result), c(10.5, 2, NA_real_)
+    )
+    expect_identical(attr(widened_result, "labels"), c(one = 1, two = 2))
+
+    tagged_integer_result <- dtaparser::recode(
+        integer_labelled, `1` = 10L, .missing = haven::tagged_na("f")
+    )
+    expect_s3_class(tagged_integer_result, "haven_labelled")
+    expect_identical(
+        haven::na_tag(vctrs::vec_data(tagged_integer_result)),
+        c(NA_character_, NA_character_, "f")
+    )
+    expect_identical(
+        attr(tagged_integer_result, "labels"), c(one = 1, two = 2)
+    )
+
+    nan_result <- dtaparser::recode(
+        c(1L, 2L, NA_integer_), `1` = NaN
+    )
+    expect_identical(is.nan(nan_result), c(TRUE, FALSE, FALSE))
+    expect_identical(is.na(nan_result), c(TRUE, FALSE, TRUE))
+
+    tagged_date <- structure(
+        c(1, haven::tagged_na("a")),
+        class = "Date",
+        format.stata = "%td"
+    )
+    recoded_date <- dtaparser::recode(tagged_date, `1` = 10L)
+    expect_s3_class(recoded_date, "Date")
+    expect_identical(attr(recoded_date, "format.stata"), "%td")
+    expect_identical(haven::na_tag(unclass(recoded_date)), c(NA, "a"))
+
+    same_class_date <- dtaparser::recode(
+        tagged_date, `1` = as.Date("1970-01-11")
+    )
+    expect_s3_class(same_class_date, "Date")
+    expect_identical(unclass(same_class_date)[[1L]], 10)
+    expect_identical(
+        haven::na_tag(unclass(same_class_date)), c(NA, "a")
+    )
+})
+
 test_that("dplyr recoding preserves unselected Stata missing codes", {
     skip_if_not_installed("dplyr")
     skip_if_not_installed("haven")
@@ -377,7 +776,7 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
                     info = paste(info, "if_else missing branch")
                 )
 
-                legacy_recode <- rlang::exec(
+                registered_recode <- rlang::exec(
                     dplyr::recode,
                     source[[index]],
                     !!!stats::setNames(
@@ -385,9 +784,14 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
                     )
                 )
                 expect_identical(
-                    haven::na_tag(legacy_recode[seq_len(27L)]),
-                    rep(NA_character_, 27L),
-                    info = paste(info, "legacy recode")
+                    haven::na_tag(registered_recode[seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "registered recode tags")
+                )
+                expect_identical(
+                    unname(registered_recode[[28L]]),
+                    -1,
+                    info = paste(info, "registered recode replacement")
                 )
             }
         }
@@ -482,17 +886,23 @@ test_that("dplyr manipulation matches haven for labelled and temporal data", {
     expected <- manipulate(haven::read_dta(path))
     unmanipulated <- read_dta(path)
 
-    expect_error(
-        dplyr::recode(unmanipulated$labelled, `1` = 2),
-        "no applicable method"
+    classed_labelled <- dplyr::recode(unmanipulated$labelled, `1` = 2)
+    classed_date <- dplyr::recode(unmanipulated$date, `0` = 1)
+    classed_instant <- dplyr::recode(unmanipulated$instant, `0` = 1)
+    expect_s3_class(classed_labelled, "haven_labelled")
+    expect_s3_class(classed_date, "Date")
+    expect_s3_class(classed_instant, "POSIXct")
+    expect_identical(
+        haven::na_tag(unclass(classed_labelled)),
+        c(NA_character_, "c", NA_character_)
     )
-    expect_error(
-        dplyr::recode(unmanipulated$date, `0` = 1),
-        "no applicable method"
+    expect_identical(
+        haven::na_tag(unclass(classed_date)),
+        c(NA_character_, "a", NA_character_)
     )
-    expect_error(
-        dplyr::recode(unmanipulated$instant, `0` = 1),
-        "no applicable method"
+    expect_identical(
+        haven::na_tag(unclass(classed_instant)),
+        c(NA_character_, "b", NA_character_)
     )
 
     for (use_numeric_altrep in c(TRUE, FALSE)) {

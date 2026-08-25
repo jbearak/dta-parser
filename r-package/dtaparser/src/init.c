@@ -114,6 +114,21 @@ static double numeric_missing_value(int offset) {
     return value;
 }
 
+static int is_tagged_na_value(double value) {
+    uint64_t bits;
+    memcpy(&bits, &value, sizeof(bits));
+    const uint64_t sign_bit = UINT64_C(0x8000000000000000);
+    const uint64_t quiet_nan_bit = UINT64_C(0x0008000000000000);
+    const uint64_t tag_bits = UINT64_C(0x000000ff00000000);
+    const uint64_t ignored_bits = sign_bit | quiet_nan_bit | tag_bits;
+    const uint64_t tagged_na_layout = UINT64_C(0x7ff00000000007a2);
+    /* Arithmetic may quiet a NaN and unary minus may set its sign; haven
+       treats both layouts as the same tagged missing value. */
+    uint64_t tag = (bits & tag_bits) >> 32;
+    return tag != 0 &&
+        (bits & ~ignored_bits) == (tagged_na_layout & ~ignored_bits);
+}
+
 static double numeric_observed_value(double value, int temporal) {
     if (temporal == 1) return value - 3653.0;
     if (temporal == 2) return value / 1000.0 - 315619200.0;
@@ -798,11 +813,24 @@ SEXP C_dtaparser_is_numeric_altrep(SEXP value) {
     return Rf_ScalarLogical(R_altrep_inherits(value, dtaparser_numeric_class));
 }
 
+SEXP C_dtaparser_has_tagged_na(SEXP value) {
+    if (TYPEOF(value) != REALSXP) return Rf_ScalarLogical(0);
+    R_xlen_t length = XLENGTH(value);
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        if (is_tagged_na_value(REAL_ELT(value, index))) {
+            return Rf_ScalarLogical(1);
+        }
+    }
+    return Rf_ScalarLogical(0);
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 4},
     {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 8},
     {"C_dtaparser_is_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
+    {"C_dtaparser_has_tagged_na", (DL_FUNC) &C_dtaparser_has_tagged_na, 1},
     {NULL, NULL, 0}
 };
 
