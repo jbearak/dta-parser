@@ -13,7 +13,7 @@ extern SEXP dtaparser_metadata_rust(
     const char *, uint32_t, uint32_t, const char *, char **
 );
 extern SEXP dtaparser_read_rust(
-    const char *, const int *, size_t, int, double, double, int, int,
+    const char *, const int *, size_t, int, double, double, int, int, int,
     const char *, char **
 );
 extern void dtaparser_free_error(char *);
@@ -751,7 +751,7 @@ SEXP C_dtaparser_metadata(
 
 SEXP C_dtaparser_read(
     SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP direct_to_r,
-    SEXP threads, SEXP encoding
+    SEXP threads, SEXP numeric_altrep, SEXP encoding
 ) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
@@ -772,6 +772,10 @@ SEXP C_dtaparser_read(
         INTEGER(threads)[0] < 0) {
         Rf_error("internal thread count must be one non-negative integer");
     }
+    if (TYPEOF(numeric_altrep) != LGLSXP || XLENGTH(numeric_altrep) != 1 ||
+        LOGICAL(numeric_altrep)[0] == NA_LOGICAL) {
+        Rf_error("internal numeric ALTREP selector must be logical");
+    }
     char *error = NULL;
     SEXP result = dtaparser_read_rust(
         Rf_translateCharUTF8(STRING_ELT(path, 0)),
@@ -782,6 +786,7 @@ SEXP C_dtaparser_read(
         REAL(n_max)[0],
         LOGICAL(direct_to_r)[0],
         INTEGER(threads)[0],
+        LOGICAL(numeric_altrep)[0],
         optional_encoding(encoding),
         &error
     );
@@ -795,7 +800,7 @@ SEXP C_dtaparser_is_numeric_altrep(SEXP value) {
 
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 4},
-    {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 7},
+    {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 8},
     {"C_dtaparser_is_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
     {NULL, NULL, 0}

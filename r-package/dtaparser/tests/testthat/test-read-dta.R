@@ -62,7 +62,7 @@ replace_first_byte <- function(bytes, text, replacement) {
 test_that("read_dta extends the haven-compatible public signature", {
     expected <- c(
         "file", "encoding", "col_select", "skip", "n_max", ".name_repair",
-        "threads"
+        "threads", "use_numeric_altrep"
     )
     expect_identical(names(formals(read_dta)), expected)
     expect_null(formals(read_dta)$encoding)
@@ -74,6 +74,50 @@ test_that("read_dta extends the haven-compatible public signature", {
         formals(read_dta)$threads,
         quote(getOption("dtaparser.threads", 0L))
     )
+    expect_identical(
+        formals(read_dta)$use_numeric_altrep,
+        quote(getOption("dtaparser.numeric_altrep", TRUE))
+    )
+    expect_identical(nrow(read_dta(fixture("auto_v118.dta"), n = 2)), 2L)
+})
+
+test_that("numeric ALTREP can be disabled explicitly or by option", {
+    path <- fixture("all_types_v118.dta")
+    reference <- dtaparser:::.read_dta_rust_vectors(path)
+    explicit <- read_dta(path, use_numeric_altrep = FALSE, threads = 1L)
+    parallel <- read_dta(path, use_numeric_altrep = FALSE, threads = 4L)
+
+    expect_identical(explicit, reference)
+    expect_identical(parallel, explicit)
+    numeric_columns <- vapply(explicit, is.numeric, logical(1))
+    expect_false(any(vapply(
+        explicit[numeric_columns],
+        dtaparser:::.is_numeric_altrep,
+        logical(1)
+    )))
+
+    previous <- options(dtaparser.numeric_altrep = FALSE)
+    on.exit(options(previous), add = TRUE)
+    from_option <- read_dta(path)
+    expect_identical(from_option, explicit)
+    expect_false(any(vapply(
+        from_option[numeric_columns],
+        dtaparser:::.is_numeric_altrep,
+        logical(1)
+    )))
+
+    empty <- read_dta(
+        path,
+        col_select = c(v_byte, v_double),
+        n_max = 0,
+        use_numeric_altrep = FALSE
+    )
+    expect_identical(empty, dtaparser:::.read_dta_rust_vectors(
+        path, col_select = c(v_byte, v_double), n_max = 0
+    ))
+    expect_false(any(vapply(
+        empty, dtaparser:::.is_numeric_altrep, logical(1)
+    )))
 })
 
 test_that("parallel decoding is identical across supported releases", {
@@ -456,7 +500,9 @@ test_that("native numerics use width-aware storage with R value semantics", {
         name <- fixture_names[[case]]
         path <- normalizePath(paths[[case]])
         actual <- read_dta(path)
+        eager <- read_dta(path, use_numeric_altrep = FALSE)
         reference <- dtaparser:::.read_dta_rust_vectors(path)
+        expect_identical(eager, reference, info = paste(name, "eager"))
         storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
         numeric_indices <- which(storage != "character")
         if (startsWith(name, "missing_values_")) {
@@ -474,6 +520,13 @@ test_that("native numerics use width-aware storage with R value semantics", {
                         name, storage[[index]], "native missing codes"
                     )
                 )
+                expect_identical(
+                    haven::na_tag(eager[[index]][seq_along(expected_tags)]),
+                    expected_tags,
+                    info = paste(
+                        name, storage[[index]], "eager missing codes"
+                    )
+                )
             }
         }
         altrep_indices <- which(storage %in% c("byte", "int", "long", "float"))
@@ -488,6 +541,11 @@ test_that("native numerics use width-aware storage with R value semantics", {
             dtaparser:::.is_numeric_altrep,
             logical(1)
         )), info = name)
+        expect_false(any(vapply(
+            eager[numeric_indices],
+            dtaparser:::.is_numeric_altrep,
+            logical(1)
+        )), info = paste(name, "eager"))
         if (startsWith(name, "missing_values_")) {
             missing_only <- read_dta(path, n_max = 27)
             for (index in altrep_indices) {
@@ -582,12 +640,17 @@ test_that("date and datetime storage become native R temporal vectors", {
     haven::write_dta(input, path, version = 15)
 
     actual <- read_dta(path)
+    eager <- read_dta(path, use_numeric_altrep = FALSE)
     expected <- haven::read_dta(path)
     expect_equal(actual$date, expected$date)
     expect_s3_class(actual$date, "Date")
     expect_equal(actual$instant, expected$instant)
     expect_s3_class(actual$instant, "POSIXct")
     expect_identical(attr(actual$instant, "tzone"), "UTC")
+    expect_identical(eager, actual)
+    expect_false(any(vapply(
+        eager, dtaparser:::.is_numeric_altrep, logical(1)
+    )))
 })
 
 test_that("legacy and custom daily-date formats match haven", {
@@ -779,6 +842,14 @@ test_that("argument and native parse failures are ordinary R errors", {
     expect_error(read_dta(path, encoding = 1), "one non-missing")
     for (threads in list(-1, 1.5, NA_real_, Inf, c(1, 2), "2")) {
         expect_error(read_dta(path, threads = threads), "threads.*non-negative")
+    }
+    for (use_numeric_altrep in list(
+        NULL, NA, logical(), c(TRUE, FALSE), 1, "TRUE"
+    )) {
+        expect_error(
+            read_dta(path, use_numeric_altrep = use_numeric_altrep),
+            "use_numeric_altrep.*non-missing logical"
+        )
     }
     expect_error(read_dta(path, col_select = absent), "absent")
 

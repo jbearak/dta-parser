@@ -4,7 +4,8 @@
 \usage{
 read_dta(file, encoding = NULL, col_select = NULL, skip = 0,
   n_max = Inf, .name_repair = "unique",
-  threads = getOption("dtaparser.threads", 0L))
+  threads = getOption("dtaparser.threads", 0L),
+  use_numeric_altrep = getOption("dtaparser.numeric_altrep", TRUE))
 }
 \arguments{
 \item{file}{A path, URL, raw vector, or binary connection. Local and remote
@@ -34,6 +35,11 @@ convention. Non-negative values must be whole numbers no larger than
 \item{threads}{Number of decoder threads. Zero selects an automatic count for
 sufficiently large files in any supported Stata release. One always uses the
 serial decoder. Projections containing \code{strL} remain serial.}
+\item{use_numeric_altrep}{Whether byte, int, long, and float columns should retain
+their compact Stata storage through ALTREP. Set to \code{FALSE} to create eager
+R double vectors during decoding, which uses more memory but avoids later
+widening when a workload requires a contiguous double data pointer.
+Character-column ALTREP is unaffected.}
 }
 \value{A tibble containing native numeric and character vectors. Byte, int,
 long, and float columns retain their compact Stata storage width until R

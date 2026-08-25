@@ -90,7 +90,10 @@ The public reader interns each distinct character value once per column and
 returns a dictionary-backed ALTREP vector with compact row-to-dictionary
 indices. Byte, int, long, and float columns also retain their source storage
 width behind ALTREP until R requests a double data pointer; source doubles are
-eager because ALTREP would not reduce their storage. Timed reads therefore
+eager because ALTREP would not reduce their storage. Workloads that immediately
+require contiguous double vectors can set `use_numeric_altrep = FALSE` (or option
+`dtaparser.numeric_altrep = FALSE`) to widen numeric values during decoding.
+Timed reads therefore
 measure dataset loading and tibble construction; the dimension check
 materializes neither the full row-level string-pointer vector nor widened
 numeric vectors. The exact

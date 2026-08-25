@@ -94,6 +94,15 @@ enum NumericKind {
     Float = 3,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EagerNumericKind {
+    Byte,
+    Int,
+    Long,
+    Float,
+    Double,
+}
+
 struct RNumericData {
     backing: Sexp,
     values: *mut u8,
@@ -694,6 +703,7 @@ enum RColumn {
         vector: Sexp,
         output: *mut f64,
         length: usize,
+        source_kind: EagerNumericKind,
         temporal: TemporalKind,
         system_missing: f64,
     },
@@ -760,6 +770,7 @@ impl RDataFrameSink {
         metadata: &DtaMetadata,
         row_count: u64,
         source_indices: &[u32],
+        numeric_altrep: bool,
     ) -> Result<Self, DtaError> {
         let length = RLen::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
@@ -792,12 +803,21 @@ impl RDataFrameSink {
                             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?,
                     )?,
                 },
-                DtaType::Double => {
+                _ if !numeric_altrep || matches!(variable.dta_type, DtaType::Double) => {
                     let vector = guard.alloc(REALSXP, length).map_err(DtaError::Output)?;
+                    let source_kind = match variable.dta_type {
+                        DtaType::Byte => EagerNumericKind::Byte,
+                        DtaType::Int => EagerNumericKind::Int,
+                        DtaType::Long => EagerNumericKind::Long,
+                        DtaType::Float => EagerNumericKind::Float,
+                        DtaType::Double => EagerNumericKind::Double,
+                        DtaType::FixedString(_) | DtaType::StrL => unreachable!(),
+                    };
                     RColumn::NumericEager {
                         vector,
                         output: REAL(vector),
                         length: native_length,
+                        source_kind,
                         temporal: temporal_kind(&variable.format),
                         system_missing: R_NaReal,
                     }
@@ -839,28 +859,14 @@ impl RDataFrameSink {
     }
 
     #[inline(always)]
-    fn numeric_column_mut(&mut self, column: usize) -> Result<&mut RNumericData, DtaError> {
+    fn numeric_column_mut(&mut self, column: usize) -> Result<&mut RColumn, DtaError> {
         match self.columns.get_mut(column) {
-            Some(RColumn::NumericAltRep { data, .. }) => Ok(data),
+            Some(column @ (RColumn::NumericAltRep { .. } | RColumn::NumericEager { .. })) => {
+                Ok(column)
+            }
             _ => Err(DtaError::Output(
                 "numeric output column mismatch".to_owned(),
             )),
-        }
-    }
-
-    #[inline(always)]
-    fn write_eager_double(
-        &mut self,
-        column: usize,
-        row: usize,
-        value: f64,
-        missing: Option<MissingTag>,
-    ) -> Result<(), DtaError> {
-        match self.columns.get_mut(column) {
-            Some(column @ RColumn::NumericEager { .. }) => {
-                column.write_eager_double(row, value, missing)
-            }
-            _ => Err(DtaError::Output("double output column mismatch".to_owned())),
         }
     }
 
@@ -971,32 +977,32 @@ impl RNumericData {
 }
 
 impl RColumn {
-    fn numeric_mut(&mut self) -> Result<&mut RNumericData, DtaError> {
-        let Self::NumericAltRep { data, .. } = self else {
-            return Err(DtaError::Output(
-                "numeric output column mismatch".to_owned(),
-            ));
-        };
-        Ok(data)
-    }
-
     #[inline(always)]
-    fn write_eager_double(
+    fn write_eager_numeric(
         &mut self,
         row: usize,
         value: f64,
         missing: Option<MissingTag>,
+        expected_kind: EagerNumericKind,
     ) -> Result<(), DtaError> {
         let Self::NumericEager {
             output,
             length,
+            source_kind,
             temporal,
             system_missing,
             ..
         } = self
         else {
-            return Err(DtaError::Output("double output column mismatch".to_owned()));
+            return Err(DtaError::Output(
+                "numeric output column mismatch".to_owned(),
+            ));
         };
+        if *source_kind != expected_kind {
+            return Err(DtaError::Output(
+                "value used for another numeric storage type".to_owned(),
+            ));
+        }
         if row >= *length {
             return Err(RNumericData::row_error(row, *length));
         }
@@ -1007,6 +1013,88 @@ impl RColumn {
         }
         Ok(())
     }
+
+    #[inline(always)]
+    fn store_byte(
+        &mut self,
+        row: usize,
+        value: i8,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        match self {
+            Self::NumericAltRep { data, .. } => data.write_byte(row, value, missing),
+            Self::NumericEager { .. } => {
+                self.write_eager_numeric(row, f64::from(value), missing, EagerNumericKind::Byte)
+            }
+            Self::String { .. } => Err(DtaError::Output(
+                "numeric output column mismatch".to_owned(),
+            )),
+        }
+    }
+
+    #[inline(always)]
+    fn store_int(
+        &mut self,
+        row: usize,
+        value: i16,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        match self {
+            Self::NumericAltRep { data, .. } => data.write_int(row, value, missing),
+            Self::NumericEager { .. } => {
+                self.write_eager_numeric(row, f64::from(value), missing, EagerNumericKind::Int)
+            }
+            Self::String { .. } => Err(DtaError::Output(
+                "numeric output column mismatch".to_owned(),
+            )),
+        }
+    }
+
+    #[inline(always)]
+    fn store_long(
+        &mut self,
+        row: usize,
+        value: i32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        match self {
+            Self::NumericAltRep { data, .. } => data.write_long(row, value, missing),
+            Self::NumericEager { .. } => {
+                self.write_eager_numeric(row, f64::from(value), missing, EagerNumericKind::Long)
+            }
+            Self::String { .. } => Err(DtaError::Output(
+                "numeric output column mismatch".to_owned(),
+            )),
+        }
+    }
+
+    #[inline(always)]
+    fn store_float(
+        &mut self,
+        row: usize,
+        value: f32,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        match self {
+            Self::NumericAltRep { data, .. } => data.write_float(row, value, missing),
+            Self::NumericEager { .. } => {
+                self.write_eager_numeric(row, f64::from(value), missing, EagerNumericKind::Float)
+            }
+            Self::String { .. } => Err(DtaError::Output(
+                "numeric output column mismatch".to_owned(),
+            )),
+        }
+    }
+
+    #[inline(always)]
+    fn store_double(
+        &mut self,
+        row: usize,
+        value: f64,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        self.write_eager_numeric(row, value, missing, EagerNumericKind::Double)
+    }
 }
 
 impl DtaColumnSink for RColumn {
@@ -1016,7 +1104,7 @@ impl DtaColumnSink for RColumn {
         value: i8,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.numeric_mut()?.write_byte(row, value, missing)
+        self.store_byte(row, value, missing)
     }
 
     fn push_int(
@@ -1025,7 +1113,7 @@ impl DtaColumnSink for RColumn {
         value: i16,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.numeric_mut()?.write_int(row, value, missing)
+        self.store_int(row, value, missing)
     }
 
     fn push_long(
@@ -1034,7 +1122,7 @@ impl DtaColumnSink for RColumn {
         value: i32,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.numeric_mut()?.write_long(row, value, missing)
+        self.store_long(row, value, missing)
     }
 
     fn push_float(
@@ -1043,7 +1131,7 @@ impl DtaColumnSink for RColumn {
         value: f32,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.numeric_mut()?.write_float(row, value, missing)
+        self.store_float(row, value, missing)
     }
 
     fn push_double(
@@ -1052,7 +1140,7 @@ impl DtaColumnSink for RColumn {
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_eager_double(row, value, missing)
+        self.store_double(row, value, missing)
     }
 
     fn push_fixed_string(&mut self, row: usize, value: &str) -> Result<(), DtaError> {
@@ -1098,7 +1186,7 @@ impl DtaSink for RDataFrameSink {
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
         self.numeric_column_mut(column)?
-            .write_byte(row, value, missing)
+            .store_byte(row, value, missing)
     }
 
     #[inline(always)]
@@ -1110,7 +1198,7 @@ impl DtaSink for RDataFrameSink {
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
         self.numeric_column_mut(column)?
-            .write_int(row, value, missing)
+            .store_int(row, value, missing)
     }
 
     #[inline(always)]
@@ -1122,7 +1210,7 @@ impl DtaSink for RDataFrameSink {
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
         self.numeric_column_mut(column)?
-            .write_long(row, value, missing)
+            .store_long(row, value, missing)
     }
 
     #[inline(always)]
@@ -1134,7 +1222,7 @@ impl DtaSink for RDataFrameSink {
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
         self.numeric_column_mut(column)?
-            .write_float(row, value, missing)
+            .store_float(row, value, missing)
     }
 
     #[inline(always)]
@@ -1145,7 +1233,8 @@ impl DtaSink for RDataFrameSink {
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.write_eager_double(column, row, value, missing)
+        self.numeric_column_mut(column)?
+            .store_double(row, value, missing)
     }
 
     #[inline(always)]
@@ -1365,14 +1454,19 @@ fn validate_r_row_count(nobs: u64, row_start: u64, row_count: Option<u64>) -> Re
     Ok(output_rows)
 }
 
+struct RReadConfig {
+    direct_to_r: bool,
+    numeric_altrep: bool,
+    encoding: TextEncoding,
+    requested_threads: usize,
+}
+
 unsafe fn read_impl(
     path: &str,
     columns: Option<Vec<u32>>,
     skip: f64,
     n_max: f64,
-    direct_to_r: bool,
-    encoding: TextEncoding,
-    requested_threads: usize,
+    config: RReadConfig,
 ) -> Result<Sexp, String> {
     // Public semantics are normalized once by the R wrapper. These checks are
     // only a defensive ABI guard for exact representability and +Inf as the
@@ -1393,16 +1487,16 @@ unsafe fn read_impl(
         Some(n_max as u64)
     };
     let mut file =
-        DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
+        DtaFile::open_with_encoding(path, config.encoding).map_err(|error| error.to_string())?;
     validate_r_row_count(file.metadata().nobs, row_start, row_count)?;
     let options = ReadOptions {
         row_start,
         row_count,
         column_indices: columns,
     };
-    if direct_to_r {
+    if config.direct_to_r {
         let threads = file
-            .parallel_thread_count(&options, requested_threads)
+            .parallel_thread_count(&options, config.requested_threads)
             .map_err(|error| error.to_string())?;
         let columnar = file
             .supports_columnar_sink(&options)
@@ -1412,7 +1506,7 @@ unsafe fn read_impl(
                 &options,
                 threads,
                 |metadata, _row_start, row_count, indices| unsafe {
-                    RDataFrameSink::new(metadata, row_count, indices)
+                    RDataFrameSink::new(metadata, row_count, indices, config.numeric_altrep)
                 },
                 coarse_interrupt,
             )
@@ -1421,7 +1515,7 @@ unsafe fn read_impl(
             file.read_with_sink_and_interrupts(
                 &options,
                 |metadata, _row_start, row_count, indices| unsafe {
-                    RDataFrameSink::new(metadata, row_count, indices)
+                    RDataFrameSink::new(metadata, row_count, indices, config.numeric_altrep)
                 },
                 coarse_interrupt,
                 frequent_interrupt_poller(),
@@ -1539,6 +1633,7 @@ pub unsafe extern "C" fn dtaparser_read_rust(
     n_max: f64,
     direct_to_r: c_int,
     requested_threads: c_int,
+    numeric_altrep: c_int,
     encoding: *const c_char,
     error: *mut *mut c_char,
 ) -> Sexp {
@@ -1576,9 +1671,12 @@ pub unsafe extern "C" fn dtaparser_read_rust(
             projection,
             skip,
             n_max,
-            direct_to_r != 0,
-            text_encoding(encoding)?,
-            requested_threads,
+            RReadConfig {
+                direct_to_r: direct_to_r != 0,
+                numeric_altrep: numeric_altrep != 0,
+                encoding: text_encoding(encoding)?,
+                requested_threads,
+            },
         )
     })
 }

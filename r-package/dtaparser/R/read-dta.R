@@ -35,6 +35,11 @@
 #' @param threads Number of decoder threads. Zero selects an automatic count
 #'   for sufficiently large files in any supported Stata release. One always
 #'   uses the serial decoder. Projections containing `strL` remain serial.
+#' @param use_numeric_altrep Whether byte, int, long, and float columns should retain
+#'   their compact Stata storage through ALTREP. Set to `FALSE` to create eager
+#'   R double vectors during decoding, which uses more memory but avoids later
+#'   widening when a workload requires a contiguous double data pointer.
+#'   Character-column ALTREP is unaffected.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
 #' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
@@ -43,10 +48,14 @@
 #' @export
 read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      n_max = Inf, .name_repair = "unique",
-                     threads = getOption("dtaparser.threads", 0L)) {
+                     threads = getOption("dtaparser.threads", 0L),
+                     use_numeric_altrep = getOption(
+                         "dtaparser.numeric_altrep", TRUE
+                     )) {
     .read_dta_impl(
         file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
-        materialization = "direct", threads = threads
+        materialization = "direct", threads = threads,
+        use_numeric_altrep = use_numeric_altrep
     )
 }
 
@@ -57,7 +66,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                                    .name_repair = "unique") {
     .read_dta_impl(
         file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
-        materialization = "rust-vectors", threads = 1L
+        materialization = "rust-vectors", threads = 1L,
+        use_numeric_altrep = FALSE
     )
 }
 
@@ -67,10 +77,12 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 }
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
-                           .name_repair, materialization, threads) {
+                           .name_repair, materialization, threads,
+                           use_numeric_altrep) {
     encoding <- .validate_dta_encoding(encoding)
     row_window <- .normalize_row_window(skip, n_max)
     threads <- .normalize_threads(threads)
+    use_numeric_altrep <- .normalize_use_numeric_altrep(use_numeric_altrep)
 
     source <- .resolve_dta_source(file)
     on.exit(.cleanup_dta_source(source), add = TRUE)
@@ -100,6 +112,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         row_window$n_max,
         identical(materialization, "direct"),
         threads,
+        use_numeric_altrep,
         encoding
     )
     if (!is.null(column_indices)) {
@@ -112,6 +125,14 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
     result
+}
+
+.normalize_use_numeric_altrep <- function(value) {
+    if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+        stop("`use_numeric_altrep` must be one non-missing logical value",
+             call. = FALSE)
+    }
+    value
 }
 
 .normalize_threads <- function(value) {

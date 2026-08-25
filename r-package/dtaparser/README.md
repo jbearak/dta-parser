@@ -2,9 +2,10 @@
 
 `dtaparser` is the R interface to this repository's bounded Rust DTA
 reader. Its exported `read_dta()` function follows `haven::read_dta()` and adds
-an optional `threads` execution control, while observation storage is decoded by Rust
-and materialized through an R-specific collector. Numeric values are written
-into their final R vectors during decoding. Each character column interns its
+optional `threads` and `use_numeric_altrep` controls, while observation storage is
+decoded by Rust and materialized through an R-specific collector. Byte, int,
+long, and float values retain their compact source widths through ALTREP by
+default; source doubles are written eagerly. Each character column interns its
 distinct normalized UTF-8 values once and keeps compact row-to-dictionary
 indices behind an ordinary R character vector through ALTREP. Element access
 resolves the dictionary immediately; allocation of the complete row-level
@@ -216,6 +217,10 @@ performance thresholds.
   supported release without selected `strL` columns. Use `threads = 1` for
   deterministic single-thread benchmarking. Option `dtaparser.threads`
   controls the default.
+- `use_numeric_altrep = TRUE` retains byte, int, long, and float source widths until
+  R needs a contiguous double data pointer. Set it to `FALSE`, or set option
+  `dtaparser.numeric_altrep = FALSE`, to create eager double vectors during
+  decoding for workloads that immediately materialize every numeric column.
 - Character columns use dictionary-backed ALTREP vectors. Loading does not
   depend on the source path after `read_dta()` returns. Distinct R strings are
   created once during the load; operations that request a contiguous pointer
