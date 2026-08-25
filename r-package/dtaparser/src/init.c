@@ -5,6 +5,7 @@
 #include <R_ext/Altrep.h>
 #include <R_ext/Utils.h>
 #include <R_ext/Visibility.h>
+#include <float.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -269,6 +270,20 @@ static int numeric_no_na(SEXP value) {
         return 1;
     }
     return numeric_storage(value)->no_na;
+}
+
+static SEXP numeric_sum(SEXP value, Rboolean na_rm) {
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    numeric_data *data = numeric_storage(value);
+    long double sum = 0.0;
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        double element = numeric_value_at(data, index);
+        if (!na_rm || !ISNAN(element)) sum += element;
+    }
+    if (sum > DBL_MAX) return Rf_ScalarReal(R_PosInf);
+    if (sum < -DBL_MAX) return Rf_ScalarReal(R_NegInf);
+    return Rf_ScalarReal((double) sum);
 }
 
 typedef struct {
@@ -681,6 +696,7 @@ void attribute_visible R_init_dtaparser(DllInfo *dll) {
     R_set_altreal_Elt_method(dtaparser_numeric_class, numeric_value);
     R_set_altreal_Get_region_method(dtaparser_numeric_class, numeric_region);
     R_set_altreal_No_NA_method(dtaparser_numeric_class, numeric_no_na);
+    R_set_altreal_Sum_method(dtaparser_numeric_class, numeric_sum);
     dtaparser_dictstring_class = R_make_altstring_class(
         "dtaparser_dictstring", "dtaparser", dll
     );

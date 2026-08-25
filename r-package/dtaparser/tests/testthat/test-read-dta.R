@@ -2,6 +2,52 @@ fixture <- function(name) {
     system.file("extdata", name, package = "dtaparser", mustWork = TRUE)
 }
 
+fixture_with_all_numeric_missing_codes <- function(name) {
+    input <- fixture(name)
+    bytes <- readBin(input, "raw", n = file.info(input)[["size"]])
+    row_width <- 19L
+    row_count <- 30L
+    if (identical(name, "missing_values_v115.dta")) {
+        data_start <- length(bytes) - row_width * row_count + 1L
+    } else {
+        data_tag <- charToRaw("<data>")
+        matches <- grepRaw(data_tag, bytes, fixed = TRUE, all = TRUE)
+        stopifnot(length(matches) == 1L)
+        data_start <- matches[[1L]] + length(data_tag)
+        closing_tag <- charToRaw("</data>")
+        closing_start <- data_start + row_width * row_count
+        stopifnot(identical(
+            bytes[closing_start + seq_along(closing_tag) - 1L],
+            closing_tag
+        ))
+    }
+
+    raw_integer <- function(value, size) {
+        writeBin(as.integer(value), raw(), size = size, endian = "little")
+    }
+    assign_raw <- function(row, offset, value) {
+        start <- data_start + row * row_width + offset
+        bytes[start + seq_along(value) - 1L] <<- value
+    }
+    for (code in 0:26) {
+        assign_raw(
+            code, 0L,
+            c(raw(4L), raw_integer(0x7fe00000 + code * 0x100, 4L))
+        )
+        assign_raw(code, 8L, as.raw(101L + code))
+        assign_raw(code, 9L, raw_integer(32741L + code, 2L))
+        assign_raw(code, 11L, raw_integer(2147483621 + code, 4L))
+        assign_raw(
+            code, 15L,
+            raw_integer(0x7f000000 + code * 0x800, 4L)
+        )
+    }
+
+    output <- tempfile(fileext = ".dta")
+    writeBin(bytes, output)
+    output
+}
+
 replace_first_byte <- function(bytes, text, replacement) {
     needle <- charToRaw(text)
     starts <- seq_len(length(bytes) - length(needle) + 1L)
@@ -351,6 +397,7 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
 })
 
 test_that("native numerics use ALTREP with ordinary R value semantics", {
+    skip_if_not_installed("haven")
     path <- normalizePath(fixture("auto_v118.dta"))
     reference <- dtaparser:::.read_dta_rust_vectors(path)
     actual <- read_dta(path)
@@ -382,18 +429,61 @@ test_that("native numerics use ALTREP with ordinary R value semantics", {
     expect_length(empty, 0L)
     expect_false(anyNA(empty))
 
-    for (name in c("all_types_v115.dta", "all_types_v118.dta")) {
-        path <- normalizePath(fixture(name))
+    fixture_names <- c(
+        "all_types_v115.dta", "all_types_v118.dta",
+        "missing_values_v115.dta", "missing_values_v118.dta"
+    )
+    paths <- vapply(fixture_names, function(name) {
+        if (startsWith(name, "missing_values_")) {
+            fixture_with_all_numeric_missing_codes(name)
+        } else {
+            fixture(name)
+        }
+    }, character(1))
+    on.exit(
+        unlink(paths[startsWith(fixture_names, "missing_values_")]),
+        add = TRUE
+    )
+    for (case in seq_along(paths)) {
+        name <- fixture_names[[case]]
+        path <- normalizePath(paths[[case]])
         actual <- read_dta(path)
         reference <- dtaparser:::.read_dta_rust_vectors(path)
         storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
         numeric_indices <- which(storage != "character")
+        if (startsWith(name, "missing_values_")) {
+            expected_tags <- c(NA_character_, letters)
+            for (index in numeric_indices) {
+                expect_identical(
+                    haven::na_tag(reference[[index]][seq_along(expected_tags)]),
+                    expected_tags,
+                    info = paste(name, storage[[index]], "missing codes")
+                )
+                expect_identical(
+                    haven::na_tag(actual[[index]][seq_along(expected_tags)]),
+                    expected_tags,
+                    info = paste(
+                        name, storage[[index]], "ALTREP missing codes"
+                    )
+                )
+            }
+        }
         expect_true(all(vapply(
             actual[numeric_indices],
             dtaparser:::.is_numeric_altrep,
             logical(1)
         )), info = name)
         for (index in numeric_indices) {
+            actual_column <- unclass(actual[[index]])
+            reference_column <- unclass(reference[[index]])
+            expect_true(dtaparser:::.is_numeric_altrep(actual_column))
+            for (na_rm in c(FALSE, TRUE)) {
+                expect_identical(
+                    sum(actual_column, na.rm = na_rm),
+                    sum(reference_column, na.rm = na_rm),
+                    info = paste(name, storage[[index]], "sum", na_rm)
+                )
+            }
             expect_identical(actual[[index]][], reference[[index]][],
                              info = paste(name, storage[[index]]))
             expect_identical(anyNA(actual[[index]]),
