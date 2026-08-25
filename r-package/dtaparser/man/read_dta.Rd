@@ -69,6 +69,18 @@ is required. Assigning one to an R integer vector widens that vector to double
 because R integers have only \code{NA_integer_}. This does not reflect a Stata
 limitation: Stata \code{byte}, \code{int}, and \code{long} storage each encode
 all 27 missing codes in reserved high values.
+
+\code{dtaparser} therefore presents Stata numeric columns as R doubles. A
+double can retain the tag in the payload bits of an IEEE-754 missing value, so
+base \code{is.na()} works without a package-specific class or method and
+haven's tag helpers remain interoperable. R integers have only one missing
+encoding and could not expose \code{.a} through \code{.z} losslessly. The
+R-facing double type does not require eight bytes per source value while the
+column remains ALTREP: source \code{byte}, \code{int}, \code{long}, and
+\code{float} values stay in their compact Stata storage and are converted to
+doubles on access. A write or full materialization creates an ordinary R
+double vector. This combines lossless missing-code semantics with compact
+storage for read-mostly data.
 For example:
 \preformatted{x <- c(1, NA_real_, haven::tagged_na("a"), haven::tagged_na("z"))
 is.na(x)

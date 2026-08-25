@@ -109,6 +109,25 @@ missing `.` becomes `NA_real_`; `.a` through `.z` become the tagged-NA payloads
 used by haven. Base R therefore recognizes every Stata missing code without a
 package-specific method.
 
+### Why R sees these columns as doubles
+
+R doubles can carry information in the payload bits of an IEEE-754 missing
+value. Haven uses those bits to distinguish `.a` through `.z` while keeping
+each value inside an otherwise ordinary R double vector. This gives
+`dtaparser` three useful properties: base `is.na()` recognizes every Stata
+missing code, haven's tag helpers can inspect and create the extended codes,
+and numeric columns do not need a package-specific class or `is.na()` method.
+
+R integers cannot do the same: `NA_integer_` is their only missing-value
+encoding. Consequently, `dtaparser` presents Stata `byte`, `int`, and `long`
+columns as R doubles so that none of the 27 Stata codes is lost. This describes
+the column's interface to R, not necessarily its physical memory use. Numeric
+ALTREP keeps each source value in its original compact Stata width and converts
+it to an R double, including the appropriate tagged-NA payload, only when R
+requests the value. A write or full materialization produces an ordinary R
+double vector. This design combines lossless Stata semantics with normal R and
+haven interoperability while retaining compact storage for read-mostly data.
+
 ### Using missing values in R
 
 ```r

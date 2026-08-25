@@ -21,6 +21,17 @@
 #' to double because R integers have only `NA_integer_`. This does not reflect
 #' a Stata limitation: Stata `byte`, `int`, and `long` storage each encode all
 #' 27 missing codes in reserved high values.
+#'
+#' `dtaparser` therefore presents Stata numeric columns as R doubles. A double
+#' can retain the tag in the payload bits of an IEEE-754 missing value, so base
+#' [is.na()] works without a package-specific class or method and haven's tag
+#' helpers remain interoperable. R integers have only one missing encoding and
+#' could not expose `.a` through `.z` losslessly. The R-facing double type does
+#' not require eight bytes per source value while the column remains ALTREP:
+#' source `byte`, `int`, `long`, and `float` values stay in their compact Stata
+#' storage and are converted to doubles on access. A write or full
+#' materialization creates an ordinary R double vector. This combines lossless
+#' missing-code semantics with compact storage for read-mostly data.
 #' For example:
 #' ```
 #' x <- c(1, NA_real_, haven::tagged_na("a"), haven::tagged_na("z"))
