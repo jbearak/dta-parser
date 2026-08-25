@@ -259,6 +259,12 @@ three-run fresh-process medians. The India DHS and NSFG rows each use one
 fresh-process read, matching the archived corpus methodology. All refreshed
 reads returned the archived row and column dimensions.
 
+Peak RSS means peak resident set size: the greatest amount of physical memory
+attributed to the reader process during the run. It includes the R or Stata
+runtime and the loaded result, but not memory used by other processes or the
+operating system's file cache outside that process. Values below use decimal GB
+(`GB = 10^9 bytes`).
+
 | Dataset/workload | Input | dta-parser time | haven time | Stata time | dta-parser / haven time | dta-parser / Stata time | dta-parser peak RSS | haven peak RSS | Stata peak RSS |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Synthetic 100 MB, full 40 columns (release 119) | 0.100 GB | 0.025 s | 1.053 s | 0.011 s | 0.024x | 2.273x | 0.223 GB | 0.253 GB | 0.143 GB |
