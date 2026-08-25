@@ -283,6 +283,38 @@ numeric vector whose names are display text and whose values are the associated
 codes. If Stata labels a missing code, that attribute value uses the same
 tagged-NA representation and can also be inspected with `haven::na_tag()`.
 
+### Label-aware frequency tables
+
+Base `table()` counts the underlying values of a labelled vector. Converting
+with `haven::as_factor()` exposes ordinary value labels, but an unlabelled
+tagged missing becomes ordinary `NA`, so extended-missing distinctions can be
+lost. `tab()` uses labels while optionally retaining every missing code as a
+distinct category:
+
+```r
+table(x, useNA = "ifany")
+table(haven::as_factor(x), useNA = "ifany")
+tab(x, missing = TRUE)
+```
+
+By default, `tab()` displays labels and excludes missing values, like Stata's
+`tab` command. Set `missing = TRUE` (or `"distinguish"`) to show `.`, every
+observed `.a` through `.z`, and R `NaN` separately. A missing code uses its
+value label when one exists and falls back to the code otherwise.
+`missing = "combine"` instead creates one base-R missing category.
+
+Use `display = "value"` for underlying codes or `display = "both"` for values
+and labels together. The result is a standard `table`, and both direct-vector
+and data-frame forms are supported:
+
+```r
+tab(x)
+tab(x, y)
+tab(status, region, data = survey)
+survey |> tab(status, region)
+survey |> dplyr::select(status, region) |> tab()
+```
+
 Narrow numeric ALTREP columns keep the original Stata sentinels in compact
 backing storage until values are requested. Conversion to R system/tagged NAs
 happens during element or region access, summary kernels, or materialization.

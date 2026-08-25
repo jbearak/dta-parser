@@ -114,7 +114,7 @@ static double numeric_missing_value(int offset) {
     return value;
 }
 
-static int is_tagged_na_value(double value) {
+static int tagged_na_tag_value(double value) {
     uint64_t bits;
     memcpy(&bits, &value, sizeof(bits));
     const uint64_t sign_bit = UINT64_C(0x8000000000000000);
@@ -126,7 +126,12 @@ static int is_tagged_na_value(double value) {
        treats both layouts as the same tagged missing value. */
     uint64_t tag = (bits & tag_bits) >> 32;
     return tag != 0 &&
-        (bits & ~ignored_bits) == (tagged_na_layout & ~ignored_bits);
+        (bits & ~ignored_bits) == (tagged_na_layout & ~ignored_bits)
+        ? (int) tag : 0;
+}
+
+static int is_tagged_na_value(double value) {
+    return tagged_na_tag_value(value) != 0;
 }
 
 static double numeric_observed_value(double value, int temporal) {
@@ -825,12 +830,50 @@ SEXP C_dtaparser_has_tagged_na(SEXP value) {
     return Rf_ScalarLogical(0);
 }
 
+SEXP C_dtaparser_missing_codes(SEXP value) {
+    /* NA means observed, zero is system missing, 1--255 is the tagged-NA
+       payload byte, and 256 is an ordinary R NaN. */
+    R_xlen_t length = XLENGTH(value);
+    SEXP result = PROTECT(Rf_allocVector(INTSXP, length));
+    int *output = INTEGER(result);
+
+    if (TYPEOF(value) == REALSXP) {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            double element = REAL_ELT(value, index);
+            int tag = tagged_na_tag_value(element);
+            if (tag != 0) {
+                output[index] = tag;
+            } else if (ISNA(element)) {
+                output[index] = 0;
+            } else if (ISNAN(element)) {
+                output[index] = 256;
+            } else {
+                output[index] = NA_INTEGER;
+            }
+        }
+    } else if (TYPEOF(value) == INTSXP) {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            output[index] = INTEGER_ELT(value, index) == NA_INTEGER
+                ? 0 : NA_INTEGER;
+        }
+    } else {
+        Rf_error("missing-code classification requires a numeric vector");
+    }
+
+    UNPROTECT(1);
+    return result;
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 4},
     {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 8},
     {"C_dtaparser_is_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
     {"C_dtaparser_has_tagged_na", (DL_FUNC) &C_dtaparser_has_tagged_na, 1},
+    {"C_dtaparser_missing_codes",
+     (DL_FUNC) &C_dtaparser_missing_codes, 1},
     {NULL, NULL, 0}
 };
 
