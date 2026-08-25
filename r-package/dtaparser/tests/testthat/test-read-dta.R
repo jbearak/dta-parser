@@ -528,6 +528,42 @@ test_that("native numerics use width-aware storage with R value semantics", {
                     )
                 )
             }
+            for (code in seq_along(expected_tags)) {
+                tagged <- read_dta(path, skip = code - 1L, n_max = 1L)
+                tagged_eager <- read_dta(
+                    path,
+                    skip = code - 1L,
+                    n_max = 1L,
+                    use_numeric_altrep = FALSE
+                )
+                for (index in numeric_indices) {
+                    for (summary_name in c("min", "max")) {
+                        summary_function <- match.fun(summary_name)
+                        actual_tag <- haven::na_tag(summary_function(
+                            unclass(tagged[[index]])
+                        ))
+                        eager_tag <- haven::na_tag(summary_function(
+                            unclass(tagged_eager[[index]])
+                        ))
+                        expect_identical(
+                            actual_tag,
+                            expected_tags[[code]],
+                            info = paste(
+                                name, storage[[index]], summary_name,
+                                "single missing code", code - 1L
+                            )
+                        )
+                        expect_identical(
+                            actual_tag,
+                            eager_tag,
+                            info = paste(
+                                name, storage[[index]], summary_name,
+                                "eager missing code", code - 1L
+                            )
+                        )
+                    }
+                }
+            }
         }
         altrep_indices <- which(storage %in% c("byte", "int", "long", "float"))
         eager_indices <- which(storage == "double")
