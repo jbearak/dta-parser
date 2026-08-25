@@ -35,10 +35,10 @@ convention. Non-negative values must be whole numbers no larger than
 sufficiently large files in any supported Stata release. One always uses the
 serial decoder. Projections containing \code{strL} remain serial.}
 }
-\value{A tibble containing native numeric and character vectors. Numeric
-columns retain their compact Stata storage width until R requests a
-materialized double vector. \code{\%td} columns and legacy or custom formats
-beginning \code{\%d} have class
+\value{A tibble containing native numeric and character vectors. Byte, int,
+long, and float columns retain their compact Stata storage width until R
+requests a materialized double vector; source doubles are created eagerly.
+\code{\%td} columns and legacy or custom formats beginning \code{\%d} have class
 \code{Date}; \code{\%tc} and \code{\%tC} columns have classes \code{POSIXct}
 and \code{POSIXt} in UTC. Other Stata temporal formats remain numeric with
 their \code{format.stata} attribute.}

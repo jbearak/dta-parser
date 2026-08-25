@@ -396,7 +396,7 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
     expect_identical(retained[[2L]], reference$make[[2L]])
 })
 
-test_that("native numerics use ALTREP with ordinary R value semantics", {
+test_that("native numerics use width-aware storage with R value semantics", {
     skip_if_not_installed("haven")
     path <- normalizePath(fixture("auto_v118.dta"))
     reference <- dtaparser:::.read_dta_rust_vectors(path)
@@ -463,20 +463,30 @@ test_that("native numerics use ALTREP with ordinary R value semantics", {
                     haven::na_tag(actual[[index]][seq_along(expected_tags)]),
                     expected_tags,
                     info = paste(
-                        name, storage[[index]], "ALTREP missing codes"
+                        name, storage[[index]], "native missing codes"
                     )
                 )
             }
         }
+        altrep_indices <- which(storage %in% c("byte", "int", "long", "float"))
+        eager_indices <- which(storage == "double")
         expect_true(all(vapply(
-            actual[numeric_indices],
+            actual[altrep_indices],
+            dtaparser:::.is_numeric_altrep,
+            logical(1)
+        )), info = name)
+        expect_false(any(vapply(
+            actual[eager_indices],
             dtaparser:::.is_numeric_altrep,
             logical(1)
         )), info = name)
         for (index in numeric_indices) {
             actual_column <- unclass(actual[[index]])
             reference_column <- unclass(reference[[index]])
-            expect_true(dtaparser:::.is_numeric_altrep(actual_column))
+            expect_identical(
+                dtaparser:::.is_numeric_altrep(actual_column),
+                storage[[index]] != "double"
+            )
             for (na_rm in c(FALSE, TRUE)) {
                 expect_identical(
                     sum(actual_column, na.rm = na_rm),

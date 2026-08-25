@@ -1,11 +1,11 @@
 #' Read a Stata DTA file
 #'
 #' Reads releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser.
-#' Numeric and character columns are created directly by native code. Numeric
-#' columns retain their compact Stata storage width until R requests a
-#' materialized double vector. Dataset and variable labels, dataset notes,
-#' Stata display formats, value labels, `strL` content, and Stata
-#' system/extended missing values are retained.
+#' Numeric and character columns are created directly by native code. Byte,
+#' int, long, and float columns retain their compact Stata storage width until
+#' R requests a materialized double vector; source doubles are created eagerly.
+#' Dataset and variable labels, dataset notes, Stata display formats, value
+#' labels, `strL` content, and Stata system/extended missing values are retained.
 #'
 #' @param file A path, URL, raw vector, or binary connection. Local and remote
 #'   gzip files and local bzip2, xz, and zip files are decompressed

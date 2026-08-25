@@ -92,7 +92,6 @@ enum NumericKind {
     Int = 1,
     Long = 2,
     Float = 3,
-    Double = 4,
 }
 
 struct RNumericData {
@@ -687,16 +686,29 @@ impl RStringData {
 }
 
 enum RColumn {
-    Numeric { vector: Sexp, data: RNumericData },
-    String { vector: Sexp, data: RStringData },
+    NumericAltRep {
+        vector: Sexp,
+        data: RNumericData,
+    },
+    NumericEager {
+        vector: Sexp,
+        output: *mut f64,
+        length: usize,
+        temporal: TemporalKind,
+        system_missing: f64,
+    },
+    String {
+        vector: Sexp,
+        data: RStringData,
+    },
 }
 
 // Parallel workers receive disjoint columns. Numeric workers write to compact
-// R-owned raw vectors allocated before threads start, while string workers
-// mutate Rust-owned dictionaries. Workers never invoke the R API.
+// raw or eager double vectors allocated before threads start, while string
+// workers mutate Rust-owned dictionaries. Workers never invoke the R API.
 unsafe impl Send for RColumn {}
 
-unsafe fn numeric_storage(
+unsafe fn numeric_altrep_storage(
     dta_type: DtaType,
     length: usize,
     temporal: TemporalKind,
@@ -708,7 +720,11 @@ unsafe fn numeric_storage(
         DtaType::Int => (NumericKind::Int, std::mem::size_of::<i16>()),
         DtaType::Long => (NumericKind::Long, std::mem::size_of::<i32>()),
         DtaType::Float => (NumericKind::Float, std::mem::size_of::<f32>()),
-        DtaType::Double => (NumericKind::Double, std::mem::size_of::<f64>()),
+        DtaType::Double => {
+            return Err(DtaError::Output(
+                "double storage used for a narrow numeric ALTREP".to_owned(),
+            ));
+        }
         DtaType::FixedString(_) | DtaType::StrL => {
             return Err(DtaError::Output(
                 "string type used for numeric output".to_owned(),
@@ -776,9 +792,19 @@ impl RDataFrameSink {
                             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?,
                     )?,
                 },
-                _ => RColumn::Numeric {
+                DtaType::Double => {
+                    let vector = guard.alloc(REALSXP, length).map_err(DtaError::Output)?;
+                    RColumn::NumericEager {
+                        vector,
+                        output: REAL(vector),
+                        length: native_length,
+                        temporal: temporal_kind(&variable.format),
+                        system_missing: R_NaReal,
+                    }
+                }
+                _ => RColumn::NumericAltRep {
                     vector: ptr::null_mut(),
-                    data: numeric_storage(
+                    data: numeric_altrep_storage(
                         variable.dta_type.clone(),
                         native_length,
                         temporal_kind(&variable.format),
@@ -788,7 +814,9 @@ impl RDataFrameSink {
                 },
             };
             let vector = match &column {
-                RColumn::Numeric { vector, .. } | RColumn::String { vector, .. } => *vector,
+                RColumn::NumericAltRep { vector, .. }
+                | RColumn::NumericEager { vector, .. }
+                | RColumn::String { vector, .. } => *vector,
             };
             if !vector.is_null() {
                 SET_VECTOR_ELT(result, output_index as RLen, vector);
@@ -813,10 +841,26 @@ impl RDataFrameSink {
     #[inline(always)]
     fn numeric_column_mut(&mut self, column: usize) -> Result<&mut RNumericData, DtaError> {
         match self.columns.get_mut(column) {
-            Some(RColumn::Numeric { data, .. }) => Ok(data),
+            Some(RColumn::NumericAltRep { data, .. }) => Ok(data),
             _ => Err(DtaError::Output(
                 "numeric output column mismatch".to_owned(),
             )),
+        }
+    }
+
+    #[inline(always)]
+    fn write_eager_double(
+        &mut self,
+        column: usize,
+        row: usize,
+        value: f64,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        match self.columns.get_mut(column) {
+            Some(column @ RColumn::NumericEager { .. }) => {
+                column.write_eager_double(row, value, missing)
+            }
+            _ => Err(DtaError::Output("double output column mismatch".to_owned())),
         }
     }
 
@@ -924,31 +968,44 @@ impl RNumericData {
             missing.is_none() && !value.is_nan(),
         )
     }
-
-    #[inline(always)]
-    fn write_double(
-        &mut self,
-        row: usize,
-        value: f64,
-        missing: Option<MissingTag>,
-    ) -> Result<(), DtaError> {
-        self.write_value(
-            row,
-            value,
-            NumericKind::Double,
-            missing.is_none() && !value.is_nan(),
-        )
-    }
 }
 
 impl RColumn {
     fn numeric_mut(&mut self) -> Result<&mut RNumericData, DtaError> {
-        let Self::Numeric { data, .. } = self else {
+        let Self::NumericAltRep { data, .. } = self else {
             return Err(DtaError::Output(
                 "numeric output column mismatch".to_owned(),
             ));
         };
         Ok(data)
+    }
+
+    #[inline(always)]
+    fn write_eager_double(
+        &mut self,
+        row: usize,
+        value: f64,
+        missing: Option<MissingTag>,
+    ) -> Result<(), DtaError> {
+        let Self::NumericEager {
+            output,
+            length,
+            temporal,
+            system_missing,
+            ..
+        } = self
+        else {
+            return Err(DtaError::Output("double output column mismatch".to_owned()));
+        };
+        if row >= *length {
+            return Err(RNumericData::row_error(row, *length));
+        }
+        unsafe {
+            *output.add(row) = missing
+                .map(|tag| r_missing_with_system(tag, *system_missing))
+                .unwrap_or_else(|| observed_value(value, *temporal));
+        }
+        Ok(())
     }
 }
 
@@ -995,7 +1052,7 @@ impl DtaColumnSink for RColumn {
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.numeric_mut()?.write_double(row, value, missing)
+        self.write_eager_double(row, value, missing)
     }
 
     fn push_fixed_string(&mut self, row: usize, value: &str) -> Result<(), DtaError> {
@@ -1088,8 +1145,7 @@ impl DtaSink for RDataFrameSink {
         value: f64,
         missing: Option<MissingTag>,
     ) -> Result<(), DtaError> {
-        self.numeric_column_mut(column)?
-            .write_double(row, value, missing)
+        self.write_eager_double(column, row, value, missing)
     }
 
     #[inline(always)]
@@ -1138,11 +1194,12 @@ impl DtaSink for RDataFrameSink {
         unsafe {
             for (output_index, column) in self.columns.iter_mut().enumerate() {
                 match column {
-                    RColumn::Numeric { vector, data } => {
+                    RColumn::NumericAltRep { vector, data } => {
                         let data = data.take();
                         *vector = self._guard.numeric(data).map_err(DtaError::Output)?;
                         SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
                     }
+                    RColumn::NumericEager { .. } => {}
                     RColumn::String { vector, data } => {
                         if data.value_ids.len() != expected_string_rows {
                             return Err(DtaError::Output(format!(
@@ -1171,7 +1228,9 @@ impl DtaSink for RDataFrameSink {
                         .find(|table| table.name == variable.value_label_name)
                 };
                 let vector = match &self.columns[output_index] {
-                    RColumn::Numeric { vector, .. } | RColumn::String { vector, .. } => *vector,
+                    RColumn::NumericAltRep { vector, .. }
+                    | RColumn::NumericEager { vector, .. }
+                    | RColumn::String { vector, .. } => *vector,
                 };
                 let mut attribute_guard = ProtectGuard::new();
                 attach_variable_attributes(vector, variable, table, &mut attribute_guard)

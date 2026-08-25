@@ -88,10 +88,12 @@ in the numerator.
 
 The public reader interns each distinct character value once per column and
 returns a dictionary-backed ALTREP vector with compact row-to-dictionary
-indices. Numeric columns also retain their source storage width behind ALTREP
-until R requests a double data pointer. Timed reads therefore measure dataset
-loading and tibble construction; the dimension check materializes neither the
-full row-level string-pointer vector nor widened numeric vectors. The exact
+indices. Byte, int, long, and float columns also retain their source storage
+width behind ALTREP until R requests a double data pointer; source doubles are
+eager because ALTREP would not reduce their storage. Timed reads therefore
+measure dataset loading and tibble construction; the dimension check
+materializes neither the full row-level string-pointer vector nor widened
+numeric vectors. The exact
 dta-parser/Rust-vector comparison and the haven window comparisons before timing
 do access values, so laziness cannot hide correctness differences.
 Use the separate `benchmarks/r-materialization/string-workloads.R` and
