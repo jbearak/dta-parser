@@ -57,6 +57,8 @@ extern "C" {
 struct DictStringData {
     value_ids: *mut u32,
     length: usize,
+    // Owns the string buffers referenced by `value_views` and must outlive
+    // every raw-pointer view.
     _values: AHashMap<String, u32>,
     value_views: Vec<(*const u8, usize)>,
 }

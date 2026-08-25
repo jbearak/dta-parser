@@ -906,10 +906,10 @@ fn decode_worker_block<C: DtaColumnSink>(
     encoding: TextEncoding,
     mut should_interrupt: Option<&mut dyn FnMut() -> bool>,
 ) -> Result<(), DtaError> {
+    if block.row_count == 0 {
+        return Ok(());
+    }
     for (column_index, column) in columns.iter_mut().enumerate() {
-        if block.row_count == 0 {
-            continue;
-        }
         let last_row = block
             .row_count
             .checked_sub(1)
@@ -4365,45 +4365,75 @@ fn materialize_file_strls<R: Read + Seek, F: FnMut() -> bool, S: DtaSink>(
         let Some(column_pointers) = column_pointers else {
             continue;
         };
-        for (row_index, pointer) in column_pointers.iter().copied().enumerate() {
-            if pointer_count.is_multiple_of(STRL_CANCEL_CHECK_INTERVAL) {
-                check_cancel(should_interrupt)?;
-            }
-            pointer_count = pointer_count
-                .checked_add(1)
-                .ok_or(DtaError::ArithmeticOverflow("strL pointer count"))?;
-            let Some(key) = pointer else {
-                sink.push_strl(column_index, row_index, "")?;
-                continue;
-            };
-            if let Some(value) = decoded.get(&key) {
-                sink.push_strl(column_index, row_index, value)?;
-                continue;
-            }
-            let entry = entries.get(&key).ok_or(DtaError::DanglingStrlPointer {
-                variable: key.variable,
-                observation: key.observation,
-            })?;
+        materialize_file_strl_pointers(
+            reader,
+            scratch,
+            entries,
+            column_pointers,
+            &mut decoded,
+            &mut pointer_count,
+            should_interrupt,
+            encoding,
+            |row_index, value| sink.push_strl(column_index, row_index, value),
+        )?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn materialize_file_strl_pointers<
+    R: Read + Seek,
+    F: FnMut() -> bool,
+    P: FnMut(usize, &str) -> Result<(), DtaError>,
+>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    entries: &HashMap<FileGsoKey, FileGsoEntry>,
+    pointers: &[Option<FileGsoKey>],
+    decoded: &mut HashMap<FileGsoKey, String>,
+    pointer_count: &mut usize,
+    should_interrupt: &mut F,
+    encoding: TextEncoding,
+    mut push: P,
+) -> Result<(), DtaError> {
+    for (row_index, pointer) in pointers.iter().copied().enumerate() {
+        if pointer_count.is_multiple_of(STRL_CANCEL_CHECK_INTERVAL) {
             check_cancel(should_interrupt)?;
-            let decoded_length = if entry.gso_type == 130 {
-                entry.content_length - 1
-            } else {
-                entry.content_length
-            };
-            let value = decode_range(
-                reader,
-                entry.content_offset,
-                decoded_length,
-                encoding,
-                false,
-                scratch,
-                should_interrupt,
-                "reading selected GSO content",
-            )?
-            .0;
-            sink.push_strl(column_index, row_index, &value)?;
-            decoded.insert(key, value);
         }
+        *pointer_count = pointer_count
+            .checked_add(1)
+            .ok_or(DtaError::ArithmeticOverflow("strL pointer count"))?;
+        let Some(key) = pointer else {
+            push(row_index, "")?;
+            continue;
+        };
+        if let Some(value) = decoded.get(&key) {
+            push(row_index, value)?;
+            continue;
+        }
+        let entry = entries.get(&key).ok_or(DtaError::DanglingStrlPointer {
+            variable: key.variable,
+            observation: key.observation,
+        })?;
+        check_cancel(should_interrupt)?;
+        let decoded_length = if entry.gso_type == 130 {
+            entry.content_length - 1
+        } else {
+            entry.content_length
+        };
+        let value = decode_range(
+            reader,
+            entry.content_offset,
+            decoded_length,
+            encoding,
+            false,
+            scratch,
+            should_interrupt,
+            "reading selected GSO content",
+        )?
+        .0;
+        push(row_index, &value)?;
+        decoded.insert(key, value);
     }
     Ok(())
 }
@@ -4432,45 +4462,18 @@ fn resolve_parallel_file_strls<R: Read + Seek, F: FnMut() -> bool, C: DtaColumnS
         let Some(pointers) = column.strl_pointers.as_ref() else {
             continue;
         };
-        for (row_index, pointer) in pointers.iter().copied().enumerate() {
-            if pointer_count.is_multiple_of(STRL_CANCEL_CHECK_INTERVAL) {
-                check_cancel(should_interrupt)?;
-            }
-            pointer_count = pointer_count
-                .checked_add(1)
-                .ok_or(DtaError::ArithmeticOverflow("strL pointer count"))?;
-            let Some(key) = pointer else {
-                column.sink.push_strl(row_index, "")?;
-                continue;
-            };
-            if let Some(value) = decoded.get(&key) {
-                column.sink.push_strl(row_index, value)?;
-                continue;
-            }
-            let entry = entries.get(&key).ok_or(DtaError::DanglingStrlPointer {
-                variable: key.variable,
-                observation: key.observation,
-            })?;
-            check_cancel(should_interrupt)?;
-            let decoded_length = if entry.gso_type == 130 {
-                entry.content_length - 1
-            } else {
-                entry.content_length
-            };
-            let value = decode_range(
-                reader,
-                entry.content_offset,
-                decoded_length,
-                encoding,
-                false,
-                scratch,
-                should_interrupt,
-                "reading selected GSO content",
-            )?
-            .0;
-            column.sink.push_strl(row_index, &value)?;
-            decoded.insert(key, value);
-        }
+        let sink = &mut column.sink;
+        materialize_file_strl_pointers(
+            reader,
+            scratch,
+            &entries,
+            pointers,
+            &mut decoded,
+            &mut pointer_count,
+            should_interrupt,
+            encoding,
+            |row_index, value| sink.push_strl(row_index, value),
+        )?;
     }
     Ok(())
 }
