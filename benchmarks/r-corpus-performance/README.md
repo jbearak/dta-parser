@@ -20,8 +20,9 @@ per-file peak RSS observed for each reader. Unrecognized or
 unreadable signatures remain accounted for as `unknown` inventory groups. The
 report never publishes private paths or data values.
 
-See the [2026-08-24 aggregate report](results-2026-08-24.md) for the complete
-1,823-file run used in the R package README.
+See the [detailed corpus report](results-2026-08-24.md) for the complete
+1,823-file run and the current numeric ALTREP spot check used in the R package
+README.
 
 On macOS, run the complete suite from the checkout root:
 

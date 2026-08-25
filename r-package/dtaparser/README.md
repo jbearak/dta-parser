@@ -15,8 +15,10 @@ Large reads from every supported Stata release use a shared block decoder
 across multiple cores by default. `threads = 0` selects an automatic count,
 `threads = 1` forces the serial executor, and a positive larger value requests
 an explicit count capped by available parallelism and selected columns. Small
-inputs and projections containing `strL` remain serial. Both executors use the
-same validated observation plan and scalar value-decoding semantics.
+inputs remain serial. For selected `strL` columns, workers decode observation
+references in parallel; the coordinator then validates the shared object table
+and resolves the referenced payloads. Both executors use the same validated
+observation plan and scalar value-decoding semantics.
 
 ## Installation
 
@@ -65,7 +67,7 @@ URLs use temporary files that are removed when the read succeeds, errors, or
 is interrupted. This keeps network and decompression dependencies out of the
 reusable Rust parser.
 
-The reader supports Stata releases 105, 108, 110--111, 113--115, and 117--119. It retains dataset
+The reader supports Stata 5–19 file formats. It retains dataset
 and variable labels, dataset notes, display formats, value-label tables,
 `strL` values, and system missing values plus `.a`--`.z` tags where the release
 supports them. `%td` and legacy or
@@ -262,113 +264,74 @@ have identical R missing-value semantics.
 
 ## Performance compared with haven and Stata
 
-The dta-parser cells for synthetic release-119 inputs and every recognized
-corpus release were refreshed with the automatic multicore executor at commit
-`2d09478`. Haven and Stata were not rerun: their cells retain the archived
-matched comparison on the identical files.
+The dta-parser cells below were rerun from PR #48 at implementation commit
+`1006ae4`. Haven 2.5.5 and Stata/MP 18 were not rerun: their cells retain the
+saved matched measurements on the identical files. Restricting the refresh
+to four deterministic synthetic workloads and one recent file from each survey
+family keeps the comparison economical while covering both controlled and
+real-world inputs.
 
-On an Apple M4 Max with 128 GB RAM, the new dictionary-backed implementation
-was benchmarked against haven 2.5.5 and Stata/MP 18. The synthetic files are
-deterministic mixed-type Stata 15 datasets with 40 columns; their time cells are
-seven-run warm-cache medians. The DHS, MICS, and NSFG suite visited all 1,823
-regular DTA files under the local corpus cache in fresh processes. Its time
-cells are sums and its memory cells are the largest per-file peak RSS on the
-common set that all three readers loaded with identical dimensions. Corpus
-rows are disaggregated by the release stored in each DTA signature. Comparator
-values are unchanged in both the release-specific and `all releases` rows.
+Measurements used an Apple M4 Max with 128 GB RAM, macOS 26.5.2, R 4.6.1, and
+Rust 1.98.0. Every dta-parser measurement used `threads = 0`, its default
+automatic multicore mode, which uses up to eight workers for eligible reads.
+Synthetic inputs are mixed-type, 40-column files in the wide-file DTA format
+introduced with Stata 15. Their elapsed times are seven-run warm-cache medians
+and their peak RSS values are three-run fresh-process medians. The India DHS
+and NSFG rows each use one fresh-process read, matching the detailed corpus
+methodology. All refreshed reads returned the previously recorded row and
+column dimensions.
 
-| Dataset/workload | Common files | Input | dta-parser time | haven time | Stata time | dta-parser / haven time | dta-parser / Stata time | dta-parser peak RSS | haven peak RSS | Stata peak RSS |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Synthetic 100 MB, full 40 columns (release 119) | 1 | 0.100 GB | 0.073 s | 1.053 s | 0.011 s | 0.069x | 6.636x | 0.276 GB | 0.253 GB | 0.143 GB |
-| Synthetic 100 MB, projected 8 columns (release 119) | 1 | 0.100 GB | 0.035 s | 0.271 s | 0.014 s | 0.129x | 2.500x | 0.201 GB | 0.168 GB | 0.058 GB |
-| Synthetic 1 GB, full 40 columns (release 119) | 1 | 1.000 GB | 0.258 s | 10.958 s | 0.101 s | 0.024x | 2.554x | 0.839 GB | 0.888 GB | 1.133 GB |
-| Synthetic 1 GB, projected 8 columns (release 119) | 1 | 1.000 GB | 0.130 s | 3.120 s | 0.140 s | 0.042x | 0.929x | 0.302 GB | 0.292 GB | 0.365 GB |
-| DHS — release 111 | 129 | 8.320 GB | 18.254 s | 435.302 s | 63.506 s | 0.042x | 0.287x | 4.526 GB | 4.526 GB | 0.725 GB |
-| DHS — release 113 | 484 | 37.343 GB | 71.413 s | 2,226.568 s | 5.124 s | 0.032x | 13.937x | 35.127 GB | 35.103 GB | 5.256 GB |
-| DHS — release 114 | 24 | 1.162 GB | 3.210 s | 61.036 s | 0.163 s | 0.053x | 19.693x | 0.898 GB | 0.914 GB | 0.149 GB |
-| DHS — release 117 | 1 | 0.028 GB | 0.090 s | 1.505 s | 0.004 s | 0.060x | 22.500x | 0.325 GB | 0.344 GB | 0.056 GB |
-| DHS — release 118 | 3 | 0.050 GB | 0.185 s | 2.640 s | 0.009 s | 0.070x | 20.556x | 0.411 GB | 0.430 GB | 0.077 GB |
-| DHS — all releases | 641 | 46.903 GB | 93.152 s | 2,727.051 s | 68.806 s | 0.034x | 1.354x | 35.127 GB | 35.103 GB | 5.256 GB |
-| MICS — release 117 | 494 | 1.634 GB | 14.708 s | 98.402 s | 0.567 s | 0.149x | 25.940x | 0.304 GB | 0.367 GB | 0.073 GB |
-| MICS — release 118 | 455 | 2.056 GB | 14.633 s | 118.330 s | 0.588 s | 0.124x | 24.886x | 0.651 GB | 0.669 GB | 0.100 GB |
-| MICS — all releases | 949 | 3.690 GB | 29.341 s | 216.732 s | 1.155 s | 0.135x | 25.403x | 0.651 GB | 0.669 GB | 0.100 GB |
-| NSFG — release 105 | 4 | 0.005 GB | 0.083 s | 0.196 s | 0.028 s | 0.423x | 2.964x | 0.125 GB | 0.121 GB | 0.054 GB |
-| NSFG — release 108 | 4 | 0.001 GB | 0.066 s | 0.097 s | 0.006 s | 0.680x | 11.000x | 0.106 GB | 0.104 GB | 0.030 GB |
-| NSFG — release 110 | 7 | 0.015 GB | 0.164 s | 0.497 s | 0.106 s | 0.330x | 1.547x | 0.128 GB | 0.123 GB | 0.041 GB |
-| NSFG — release 113 | 28 | 0.673 GB | 1.232 s | 7.389 s | 0.079 s | 0.167x | 15.595x | 0.525 GB | 0.543 GB | 0.435 GB |
-| NSFG — release 114 | 44 | 1.171 GB | 4.819 s | 47.892 s | 0.156 s | 0.101x | 30.891x | 0.751 GB | 0.765 GB | 0.208 GB |
-| NSFG — release 115 | 9 | 0.100 GB | 0.514 s | 3.512 s | 0.015 s | 0.146x | 34.267x | 0.392 GB | 0.414 GB | 0.068 GB |
-| NSFG — release 117 | 69 | 2.180 GB | 7.565 s | 107.544 s | 0.288 s | 0.070x | 26.267x | 1.318 GB | 1.330 GB | 0.201 GB |
-| NSFG — release 118 | 57 | 1.626 GB | 4.687 s | 67.461 s | 0.207 s | 0.069x | 22.643x | 2.460 GB | 2.470 GB | 0.375 GB |
-| NSFG — all releases | 222 | 5.772 GB | 19.130 s | 234.588 s | 0.885 s | 0.082x | 21.616x | 2.460 GB | 2.470 GB | 0.435 GB |
+The Stata version descriptions below identify the generation in which each
+on-disk format was introduced. A DTA header does not identify which version of
+the Stata application created a particular file.
 
-Both ratio columns are dta-parser time divided by comparator time, the
-reciprocals of the previously reported ratios. Values below 1x mean dta-parser
-was faster; values above 1x mean the comparator was faster.
+Peak RSS means peak resident set size: the greatest amount of physical memory
+attributed to the reader process during the run. It includes the R or Stata
+runtime and the loaded result, but not memory used by other processes or the
+operating system's file cache outside that process. Values below use decimal GB
+(`GB = 10^9 bytes`).
 
-Stata's result is not a metadata-only or lazy `use`. The official
-[`use` manual](https://www.stata.com/manuals/duse.pdf) says that `use` loads a
-Stata-format dataset into memory, and the
-[User's Guide](https://www.stata.com/manuals/u.pdf) says Stata works with a copy
-of the data loaded into memory and stores data in memory. The measured RSS also
-supports a real load: the 1 GB full synthetic file produced a 1.133 GB Stata
-process, and the largest DHS read produced 5.256 GB. Stata's exact loader is
-closed source, but its advantage plausibly comes from reading its native format
-into compact native storage widths, plus mature implementation work and the
-warm operating-system page cache. Dta-parser must additionally construct R
-objects; in particular, its numeric result vectors use R's eight-byte doubles.
-Matching Stata while returning ordinary R-compatible objects is therefore a
-different engineering target, but the Stata time is still a valid eager-load
-reference rather than an unattainable lazy-open measurement.
+| Dataset/workload | Input | dta-parser time | haven time | Stata time | dta-parser / haven time | dta-parser / Stata time | dta-parser peak RSS | haven peak RSS | Stata peak RSS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Synthetic 100 MB, full 40 columns (wide-file format introduced with Stata 15) | 0.100 GB | 0.025 s | 1.053 s | 0.011 s | 0.024x | 2.273x | 0.223 GB | 0.253 GB | 0.143 GB |
+| Synthetic 100 MB, projected 8 columns (wide-file format introduced with Stata 15) | 0.100 GB | 0.014 s | 0.271 s | 0.014 s | 0.052x | 1.000x | 0.182 GB | 0.168 GB | 0.058 GB |
+| Synthetic 1 GB, full 40 columns (wide-file format introduced with Stata 15) | 1.000 GB | 0.143 s | 10.958 s | 0.101 s | 0.013x | 1.416x | 0.663 GB | 0.888 GB | 1.133 GB |
+| Synthetic 1 GB, projected 8 columns (wide-file format introduced with Stata 15) | 1.000 GB | 0.073 s | 3.120 s | 0.140 s | 0.023x | 0.521x | 0.269 GB | 0.292 GB | 0.365 GB |
+| India DHS 2021 women (format introduced with Stata 8; 724,115 × 5,972) | 5.196 GB | 1.896 s | 437.088 s | 0.718 s | 0.004x | 2.641x | 5.218 GB | 35.103 GB | 5.256 GB |
+| NSFG 2017–2019 women (format introduced with Stata 14; 6,141 × 2,610) | 0.020 GB | 0.068 s | 1.002 s | 0.003 s | 0.068x | 22.667x | 0.142 GB | 0.308 GB | 0.051 GB |
 
-For the synthetic release-119 loads, dta-parser was 7.74--42.47 times as fast
-as haven. The stored-release strata make the corpus spread explicit:
-dta-parser was 2.36--31.18 times as fast as haven, while the all-release corpus
-subtotals were 7.39--29.28 times as fast. Dta-parser was 3.48 times as fast as
-Stata on the DHS release-111 stratum and took 0.929 times Stata's time on the
-projected 1 GB synthetic workload; Stata was 1.55--34.27 times as fast on the
-remaining corpus strata. At corpus level Stata was 1.35, 25.40, and 21.62 times
-as fast as dta-parser on DHS, MICS, and NSFG. Dta-parser peak RSS was 2.7% lower
-on MICS, 0.4% lower on NSFG, and 0.1% higher on the largest DHS file; Stata used
-82.3--85.0% less peak RSS on those corpus maxima. On the 1 GB full synthetic
-load, however, dta-parser used 26.0% less peak RSS than Stata. These are
-workload- and machine-specific observations, not guarantees.
+Both ratio columns are dta-parser time divided by comparator time. Values below
+1x favor dta-parser. Across these rows, dta-parser was 14.7–230.5 times as fast
+as haven. It matched Stata on the projected 100 MB file and was faster on the
+projected 1 GB file; Stata remained faster on the other four workloads.
 
-Compared with the archived dta-parser corpus run, the all-release refresh
-reduced aggregate time from 297.669 to 93.152 seconds on DHS (68.7%), from
-30.687 to 29.341 seconds on MICS (4.4%), and from 29.865 to 19.130 seconds on
-NSFG (35.9%).
+Numeric ALTREP materially changes both load time and memory. Relative to the
+previous dta-parser cells at `2d09478`, the four synthetic medians fell by
+43.8–65.8%, India DHS fell from 35.030 to 1.896 seconds (94.6%), and NSFG fell
+from 0.188 to 0.068 seconds (63.8%). Peak RSS fell by 9.3–21.0% on the
+synthetic workloads, by 85.2% on India DHS, and by 49.8% on NSFG. On the
+5.196 GB India file, dta-parser used 5.218 GB peak RSS versus haven's
+35.103 GB and Stata's 5.256 GB.
 
-The corpus comparison is deliberately paired. Two MICS files were rejected by
-all three readers. Nine additional files (two DHS and seven NSFG) were read with
-matching dimensions by dta-parser and Stata but did not yield a comparable
-haven result, so they are excluded from every aggregate rather than giving one
-reader a different input set. Private paths and values are not published.
+These are load-and-return measurements. The result remains reachable through
+process exit, but the dimensions check does not request contiguous vectors, so
+dictionary-backed strings and narrow numeric ALTREP columns can remain compact.
+A later operation that requires a writable or contiguous double vector pays
+the deferred conversion cost then. That is expected deferral rather than
+duplicate loading; use `use_numeric_altrep = FALSE` when eager widening better
+matches the downstream workload.
 
-R elapsed time covers the reader call, while Stata elapsed time covers its
-`use` command; application startup is excluded from both. Peak RSS comes from a
-fresh process and includes the complete runtime. The archived synthetic
-comparison alternated reader order after warmup; the current refresh reran only
-dta-parser on the same generated files. Exact dta-parser collector identity
-and sampled haven parity were checked for the archived comparison. The corpus
-suite originally rotated reader order between files and retained only
-successful, dimension-identical triples; the current refresh reran dta-parser
-only for all recognized releases and verified status and dimensions against
-that archive.
+R elapsed time covers only the reader call. Stata elapsed time covers its
+`use` command. Application startup is excluded from elapsed time and included
+in fresh-process peak RSS. Stata's official
+[`use` manual](https://www.stata.com/manuals/duse.pdf) describes a real
+in-memory load, so it remains a useful eager native-format reference even
+though dta-parser must additionally construct R-compatible objects.
 
-Compared with the old eager collector rebuilt under Rust 1.98.0, the new 1 GB
-full-load median fell from 2.354 s to 0.911 s (61.3%) and dimensions-only peak
-RSS fell from 2.184 GB to 0.834 GB (61.8%). Forcing every character vector with
-`object.size()` still completes in 1.722 s versus 2.256 s for the eager
-collector and uses 0.975 GB peak RSS versus haven's 1.313 GB. Thus the deferred
-dictionary representation keeps its partial-access benefit without imposing
-the earlier raw-deferral prototype's forcing cliff.
-
-See the [synthetic benchmark report](../../benchmarks/large-scale/results-2026-08-24.md)
-and [DHS/MICS/NSFG report](../../benchmarks/r-corpus-performance/results-2026-08-24.md)
-for exact methodology, provenance, validation, and reproduction commands. The
-benchmark harnesses and raw private outputs are report-only evidence, not CI
-performance thresholds.
+The [detailed synthetic report](../../benchmarks/large-scale/results-2026-08-24.md)
+and [detailed corpus report](../../benchmarks/r-corpus-performance/results-2026-08-24.md)
+provide comparator provenance and broader results. Benchmark artifacts are
+report-only evidence, not CI performance thresholds.
 
 ## Scope and limitations
 
@@ -384,9 +347,10 @@ performance thresholds.
   are applied.
 - Reads are synchronous. Long reads cooperatively check for R user interrupts.
 - `threads = 0` automatically parallelizes sufficiently large reads from any
-  supported release without selected `strL` columns. Use `threads = 1` for
-  deterministic single-thread benchmarking. Option `dtaparser.threads`
-  controls the default.
+  supported release. With selected `strL` columns, observation references are
+  decoded across workers before the coordinator resolves their shared
+  payloads. Use `threads = 1` to force the serial executor. Option
+  `dtaparser.threads` controls the default.
 - `use_numeric_altrep = TRUE` retains byte, int, long, and float source widths until
   R needs a contiguous double data pointer. Set it to `FALSE`, or set option
   `dtaparser.numeric_altrep = FALSE`, to create eager double vectors during
