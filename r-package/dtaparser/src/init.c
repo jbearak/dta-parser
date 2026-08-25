@@ -44,8 +44,7 @@ enum {
     NUMERIC_BYTE = 0,
     NUMERIC_INT = 1,
     NUMERIC_LONG = 2,
-    NUMERIC_FLOAT = 3,
-    NUMERIC_DOUBLE = 4
+    NUMERIC_FLOAT = 3
 };
 
 static void numeric_finalize(SEXP external) {
@@ -106,27 +105,6 @@ static int float_missing_offset(float value, int format_version) {
         ? (int) (delta / UINT32_C(0x00000800)) : -1;
 }
 
-static int double_missing_offset(double value, int format_version) {
-    uint64_t bits;
-    memcpy(&bits, &value, sizeof(bits));
-    if (format_version == 105) {
-        return bits == UINT64_C(0x54c0000000000000) ||
-               (bits >= UINT64_C(0x7fe0000000000000) &&
-                bits < UINT64_C(0x8000000000000000)) ? 0 : -1;
-    }
-    if (format_version <= 111) {
-        return bits >= UINT64_C(0x7fe0000000000000) &&
-               bits < UINT64_C(0x8000000000000000) ? 0 : -1;
-    }
-    if (bits < UINT64_C(0x7fe0000000000000) ||
-        bits > UINT64_C(0x7fe01a0000000000)) {
-        return -1;
-    }
-    uint64_t delta = bits - UINT64_C(0x7fe0000000000000);
-    return delta % UINT64_C(0x0000010000000000) == 0
-        ? (int) (delta / UINT64_C(0x0000010000000000)) : -1;
-}
-
 static double numeric_missing_value(int offset) {
     if (offset == 0) return NA_REAL;
     uint64_t letter = (uint64_t) ('a' + offset - 1);
@@ -142,55 +120,184 @@ static double numeric_observed_value(double value, int temporal) {
     return value;
 }
 
-static double numeric_value_at(numeric_data *data, size_t index) {
-    double value;
-    int missing;
+#define DEFINE_NUMERIC_KERNELS(NAME, TYPE, MISSING_OFFSET)                    \
+    static TYPE numeric_##NAME##_raw_at(                                     \
+        const numeric_data *data, size_t index                               \
+    ) {                                                                       \
+        TYPE raw;                                                             \
+        memcpy(&raw, (const char *) data->values + index * sizeof(raw),       \
+               sizeof(raw));                                                  \
+        return raw;                                                           \
+    }                                                                         \
+                                                                              \
+    static double numeric_##NAME##_value_at(                                  \
+        const numeric_data *data, size_t index                                \
+    ) {                                                                       \
+        TYPE raw = numeric_##NAME##_raw_at(data, index);                      \
+        int missing = MISSING_OFFSET(raw, data->format_version);              \
+        return missing >= 0                                                   \
+            ? numeric_missing_value(missing)                                  \
+            : numeric_observed_value((double) raw, data->temporal);           \
+    }                                                                         \
+                                                                              \
+    static void numeric_##NAME##_region(                                      \
+        const numeric_data *data, size_t index, size_t length, double *output \
+    ) {                                                                       \
+        if (data->no_na) {                                                     \
+            for (size_t offset = 0; offset < length; offset++) {              \
+                if ((offset & 16383) == 0) R_CheckUserInterrupt();            \
+                TYPE raw = numeric_##NAME##_raw_at(data, index + offset);     \
+                output[offset] = numeric_observed_value(                      \
+                    (double) raw, data->temporal                              \
+                );                                                            \
+            }                                                                 \
+        } else {                                                              \
+            for (size_t offset = 0; offset < length; offset++) {              \
+                if ((offset & 16383) == 0) R_CheckUserInterrupt();            \
+                output[offset] = numeric_##NAME##_value_at(                   \
+                    data, index + offset                                      \
+                );                                                            \
+            }                                                                 \
+        }                                                                     \
+    }                                                                         \
+                                                                              \
+    static long double numeric_##NAME##_sum(                                  \
+        const numeric_data *data, Rboolean na_rm                              \
+    ) {                                                                       \
+        long double sum = 0.0;                                                \
+        if (data->no_na) {                                                     \
+            for (size_t index = 0; index < data->length; index++) {           \
+                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
+                TYPE raw = numeric_##NAME##_raw_at(data, index);              \
+                sum += numeric_observed_value((double) raw, data->temporal);  \
+            }                                                                 \
+        } else {                                                              \
+            for (size_t index = 0; index < data->length; index++) {           \
+                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
+                double element = numeric_##NAME##_value_at(data, index);      \
+                if (!na_rm || !ISNAN(element)) sum += element;                \
+            }                                                                 \
+        }                                                                     \
+        return sum;                                                           \
+    }                                                                         \
+                                                                              \
+    static int numeric_##NAME##_extreme(                                      \
+        const numeric_data *data, Rboolean na_rm, int minimum, double *result \
+    ) {                                                                       \
+        double current = 0.0;                                                 \
+        int updated = 0;                                                      \
+        if (data->no_na) {                                                     \
+            if (data->length == 0) return 0;                                  \
+            TYPE raw = numeric_##NAME##_raw_at(data, 0);                     \
+            current = numeric_observed_value(                                \
+                (double) raw, data->temporal                                  \
+            );                                                                \
+            updated = 1;                                                      \
+            for (size_t index = 1; index < data->length; index++) {           \
+                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
+                raw = numeric_##NAME##_raw_at(data, index);                   \
+                double element = numeric_observed_value(                     \
+                    (double) raw, data->temporal                              \
+                );                                                            \
+                if (minimum ? element < current : element > current) {        \
+                    current = element;                                        \
+                }                                                             \
+            }                                                                 \
+        } else {                                                              \
+            for (size_t index = 0; index < data->length; index++) {           \
+                if ((index & 16383) == 0) R_CheckUserInterrupt();             \
+                double element = numeric_##NAME##_value_at(data, index);      \
+                if (ISNAN(element)) {                                         \
+                    if (!na_rm) {                                             \
+                        if (!ISNA(current)) current = element;                \
+                        updated = 1;                                          \
+                    }                                                         \
+                } else if (!updated ||                                        \
+                           (minimum ? element < current : element > current)) {\
+                    current = element;                                        \
+                    updated = 1;                                              \
+                }                                                             \
+            }                                                                 \
+        }                                                                     \
+        if (updated) *result = current;                                       \
+        return updated;                                                       \
+    }
+
+DEFINE_NUMERIC_KERNELS(byte, int8_t, byte_missing_offset)
+DEFINE_NUMERIC_KERNELS(int, int16_t, int_missing_offset)
+DEFINE_NUMERIC_KERNELS(long, int32_t, long_missing_offset)
+DEFINE_NUMERIC_KERNELS(float, float, float_missing_offset)
+
+#undef DEFINE_NUMERIC_KERNELS
+
+static double numeric_value_at(const numeric_data *data, size_t index) {
     switch (data->kind) {
-    case NUMERIC_BYTE: {
-        int8_t raw;
-        memcpy(&raw, (const char *) data->values + index, sizeof(raw));
-        value = (double) raw;
-        missing = byte_missing_offset(raw, data->format_version);
-        break;
-    }
-    case NUMERIC_INT: {
-        int16_t raw;
-        memcpy(&raw, (const char *) data->values + index * sizeof(raw),
-               sizeof(raw));
-        value = (double) raw;
-        missing = int_missing_offset(raw, data->format_version);
-        break;
-    }
-    case NUMERIC_LONG: {
-        int32_t raw;
-        memcpy(&raw, (const char *) data->values + index * sizeof(raw),
-               sizeof(raw));
-        value = (double) raw;
-        missing = long_missing_offset(raw, data->format_version);
-        break;
-    }
-    case NUMERIC_FLOAT: {
-        float raw;
-        memcpy(&raw, (const char *) data->values + index * sizeof(raw),
-               sizeof(raw));
-        value = (double) raw;
-        missing = float_missing_offset(raw, data->format_version);
-        break;
-    }
-    case NUMERIC_DOUBLE: {
-        double raw;
-        memcpy(&raw, (const char *) data->values + index * sizeof(raw),
-               sizeof(raw));
-        value = raw;
-        missing = double_missing_offset(raw, data->format_version);
-        break;
-    }
+    case NUMERIC_BYTE:
+        return numeric_byte_value_at(data, index);
+    case NUMERIC_INT:
+        return numeric_int_value_at(data, index);
+    case NUMERIC_LONG:
+        return numeric_long_value_at(data, index);
+    case NUMERIC_FLOAT:
+        return numeric_float_value_at(data, index);
     default:
         Rf_error("invalid dtaparser numeric storage kind");
     }
-    return missing >= 0
-        ? numeric_missing_value(missing)
-        : numeric_observed_value(value, data->temporal);
+}
+
+static void numeric_fill_region(
+    const numeric_data *data, size_t index, size_t length, double *output
+) {
+    switch (data->kind) {
+    case NUMERIC_BYTE:
+        numeric_byte_region(data, index, length, output);
+        return;
+    case NUMERIC_INT:
+        numeric_int_region(data, index, length, output);
+        return;
+    case NUMERIC_LONG:
+        numeric_long_region(data, index, length, output);
+        return;
+    case NUMERIC_FLOAT:
+        numeric_float_region(data, index, length, output);
+        return;
+    default:
+        Rf_error("invalid dtaparser numeric storage kind");
+    }
+}
+
+static long double numeric_sum_storage(
+    const numeric_data *data, Rboolean na_rm
+) {
+    switch (data->kind) {
+    case NUMERIC_BYTE:
+        return numeric_byte_sum(data, na_rm);
+    case NUMERIC_INT:
+        return numeric_int_sum(data, na_rm);
+    case NUMERIC_LONG:
+        return numeric_long_sum(data, na_rm);
+    case NUMERIC_FLOAT:
+        return numeric_float_sum(data, na_rm);
+    default:
+        Rf_error("invalid dtaparser numeric storage kind");
+    }
+}
+
+static int numeric_extreme_storage(
+    const numeric_data *data, Rboolean na_rm, int minimum, double *result
+) {
+    switch (data->kind) {
+    case NUMERIC_BYTE:
+        return numeric_byte_extreme(data, na_rm, minimum, result);
+    case NUMERIC_INT:
+        return numeric_int_extreme(data, na_rm, minimum, result);
+    case NUMERIC_LONG:
+        return numeric_long_extreme(data, na_rm, minimum, result);
+    case NUMERIC_FLOAT:
+        return numeric_float_extreme(data, na_rm, minimum, result);
+    default:
+        Rf_error("invalid dtaparser numeric storage kind");
+    }
 }
 
 static double numeric_value(SEXP value, R_xlen_t index) {
@@ -221,10 +328,7 @@ static R_xlen_t numeric_region(
     size_t available = data->length - (size_t) index;
     size_t requested = (size_t) count;
     size_t length = requested < available ? requested : available;
-    for (size_t offset = 0; offset < length; offset++) {
-        if ((offset & 16383) == 0) R_CheckUserInterrupt();
-        output[offset] = numeric_value_at(data, (size_t) index + offset);
-    }
+    numeric_fill_region(data, (size_t) index, length, output);
     return (R_xlen_t) length;
 }
 
@@ -234,10 +338,7 @@ static SEXP numeric_materialize(SEXP value) {
     numeric_data *data = numeric_storage(value);
     materialized = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) data->length));
     double *output = REAL(materialized);
-    for (size_t index = 0; index < data->length; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        output[index] = numeric_value_at(data, index);
-    }
+    numeric_fill_region(data, 0, data->length, output);
     R_set_altrep_data2(value, materialized);
     numeric_finalize(R_altrep_data1(value));
     UNPROTECT(1);
@@ -275,15 +376,31 @@ static int numeric_no_na(SEXP value) {
 static SEXP numeric_sum(SEXP value, Rboolean na_rm) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
     numeric_data *data = numeric_storage(value);
-    long double sum = 0.0;
-    for (size_t index = 0; index < data->length; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        double element = numeric_value_at(data, index);
-        if (!na_rm || !ISNAN(element)) sum += element;
-    }
+    long double sum = numeric_sum_storage(data, na_rm);
     if (sum > DBL_MAX) return Rf_ScalarReal(R_PosInf);
     if (sum < -DBL_MAX) return Rf_ScalarReal(R_NegInf);
     return Rf_ScalarReal((double) sum);
+}
+
+static SEXP numeric_extreme(
+    SEXP value, Rboolean na_rm, int minimum
+) {
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    double result;
+    if (!numeric_extreme_storage(
+            numeric_storage(value), na_rm, minimum, &result
+        )) {
+        return NULL;
+    }
+    return Rf_ScalarReal(result);
+}
+
+static SEXP numeric_min(SEXP value, Rboolean na_rm) {
+    return numeric_extreme(value, na_rm, 1);
+}
+
+static SEXP numeric_max(SEXP value, Rboolean na_rm) {
+    return numeric_extreme(value, na_rm, 0);
 }
 
 typedef struct {
@@ -697,6 +814,8 @@ void attribute_visible R_init_dtaparser(DllInfo *dll) {
     R_set_altreal_Get_region_method(dtaparser_numeric_class, numeric_region);
     R_set_altreal_No_NA_method(dtaparser_numeric_class, numeric_no_na);
     R_set_altreal_Sum_method(dtaparser_numeric_class, numeric_sum);
+    R_set_altreal_Min_method(dtaparser_numeric_class, numeric_min);
+    R_set_altreal_Max_method(dtaparser_numeric_class, numeric_max);
     dtaparser_dictstring_class = R_make_altstring_class(
         "dtaparser_dictstring", "dtaparser", dll
     );

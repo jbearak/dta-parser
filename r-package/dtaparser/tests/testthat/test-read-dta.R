@@ -428,6 +428,14 @@ test_that("native numerics use width-aware storage with R value semantics", {
     expect_true(dtaparser:::.is_numeric_altrep(empty))
     expect_length(empty, 0L)
     expect_false(anyNA(empty))
+    expect_warning(
+        expect_identical(min(empty), Inf),
+        "no non-missing arguments to min"
+    )
+    expect_warning(
+        expect_identical(max(empty), -Inf),
+        "no non-missing arguments to max"
+    )
 
     fixture_names <- c(
         "all_types_v115.dta", "all_types_v118.dta",
@@ -480,6 +488,25 @@ test_that("native numerics use width-aware storage with R value semantics", {
             dtaparser:::.is_numeric_altrep,
             logical(1)
         )), info = name)
+        if (startsWith(name, "missing_values_")) {
+            missing_only <- read_dta(path, n_max = 27)
+            for (index in altrep_indices) {
+                expect_warning(
+                    expect_identical(
+                        min(unclass(missing_only[[index]]), na.rm = TRUE),
+                        Inf
+                    ),
+                    "no non-missing arguments to min"
+                )
+                expect_warning(
+                    expect_identical(
+                        max(unclass(missing_only[[index]]), na.rm = TRUE),
+                        -Inf
+                    ),
+                    "no non-missing arguments to max"
+                )
+            }
+        }
         for (index in numeric_indices) {
             actual_column <- unclass(actual[[index]])
             reference_column <- unclass(reference[[index]])
@@ -493,6 +520,16 @@ test_that("native numerics use width-aware storage with R value semantics", {
                     sum(reference_column, na.rm = na_rm),
                     info = paste(name, storage[[index]], "sum", na_rm)
                 )
+                for (summary_name in c("min", "max")) {
+                    summary_function <- match.fun(summary_name)
+                    expect_identical(
+                        summary_function(actual_column, na.rm = na_rm),
+                        summary_function(reference_column, na.rm = na_rm),
+                        info = paste(
+                            name, storage[[index]], summary_name, na_rm
+                        )
+                    )
+                }
             }
             expect_identical(actual[[index]][], reference[[index]][],
                              info = paste(name, storage[[index]]))
