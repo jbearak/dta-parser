@@ -495,10 +495,38 @@ test_that("dplyr recode keeps its ordinary numeric behavior", {
 
 test_that("tag detection distinguishes R missing payloads", {
     skip_if_not_installed("haven")
-    expect_false(dtaparser:::.has_tagged_na(c(1, NA_real_, NaN)))
+    untagged <- c(
+        1, NA_real_, NA_real_ + 0, -NA_real_, -(NA_real_ + 0), NaN, -NaN
+    )
+    expect_false(dtaparser:::.has_tagged_na(untagged))
     expect_true(dtaparser:::.has_tagged_na(haven::tagged_na("a")))
     expect_true(dtaparser:::.has_tagged_na(haven::tagged_na("z")))
     expect_false(dtaparser:::.has_tagged_na(c(1L, NA_integer_)))
+
+    expected_tags <- c(NA_character_, letters)
+    canonical <- c(NA_real_, haven::tagged_na(letters))
+    variants <- list(
+        canonical = canonical,
+        quiet = canonical + 0,
+        signed = -canonical,
+        signed_quiet = -(canonical + 0)
+    )
+    for (name in names(variants)) {
+        values <- variants[[name]]
+        expect_identical(
+            haven::na_tag(values), expected_tags,
+            info = paste(name, "recognized by haven")
+        )
+        expect_true(
+            dtaparser:::.has_tagged_na(values),
+            info = paste(name, "detected by dtaparser")
+        )
+        recoded <- dplyr::recode(c(values, 1), `1` = 10)
+        expect_identical(
+            haven::na_tag(recoded[seq_along(values)]), expected_tags,
+            info = paste(name, "preserved by dplyr recode")
+        )
+    }
 
     created <- 1:3
     created[[2L]] <- haven::tagged_na("f")
