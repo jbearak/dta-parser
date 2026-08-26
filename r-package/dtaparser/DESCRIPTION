@@ -1,12 +1,14 @@
 Package: dtaparser
-Title: Native Reader for Stata DTA Files
+Title: Fast Reader for Stata DTA Files
 Version: 0.5.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"),
-    email = "jbearak@guttmacher.org")
-Description: Reads Stata DTA files through the repository's native Rust
-    parser. Numeric and character vectors are populated directly by compiled
-    code while retaining dataset labels, variable labels, display formats,
-    value labels, temporal classes, and Stata tagged missing values.
+    email = "jonathan@bearak.net")
+Description: Reads Stata DTA files into tibbles with a Rust parser, multicore
+    decoding, and compact in-memory representations for numeric and character
+    columns. Its read interface follows 'haven' while retaining dataset labels,
+    variable labels, display formats, value labels, temporal classes, and Stata
+    tagged missing values. It also provides label-aware tabulation and
+    tag-preserving recoding.
 License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.1.0)

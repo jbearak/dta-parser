@@ -1,9 +1,50 @@
 //! Native parsing primitives for Stata `.dta` files.
 //!
-//! The crate parses releases 105, 108, 110–111, 113–115, and 117–119 into column-oriented data,
-//! including numeric and fixed-string observations, resolved `strL` payloads,
-//! exact missing tags, metadata, and value-label tables. Byte-slice APIs are
-//! complemented by bounded, projected [`DtaFile`] reads over `Read + Seek`.
+//! The crate parses releases 105, 108, 110 through 111, 113 through 115, and
+//! 117 through 119 into column-oriented data. It retains numeric storage
+//! widths, fixed strings, resolved `strL` values, exact missing tags, metadata,
+//! and value-label tables.
+//!
+//! The crate is the internal parser used by the repository's R package. It is
+//! not published to crates.io.
+//!
+//! # Read complete file bytes
+//!
+//! ```no_run
+//! use dta_parser::read_dta;
+//!
+//! let bytes = std::fs::read("data.dta")?;
+//! let data = read_dta(&bytes)?;
+//! println!("{} columns", data.columns.len());
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! Use [`read_dta_with_options`] for row windows and column projections. Use a
+//! [`TextEncoding`] override when a pre-Unicode file is not Windows-1252.
+//!
+//! # Read from a seekable source
+//!
+//! [`DtaFile`] parses metadata when it opens and leaves observation data on
+//! the source until requested. Its temporary raw-byte allocations and read
+//! requests are bounded by [`FileOptions::max_buffer_bytes`].
+//!
+//! ```no_run
+//! use dta_parser::{DtaFile, ReadOptions};
+//!
+//! let mut file = DtaFile::open("data.dta")?;
+//! let page = file.read_with_options(&ReadOptions {
+//!     row_start: 1_000,
+//!     row_count: Some(100),
+//!     column_indices: Some(vec![0, 4, 9]),
+//! })?;
+//! println!("{} selected columns", page.columns.len());
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! [`ColumnValues`] retains each numeric source width and carries a parallel
+//! missing-tag classification. [`DtaSink`] and [`ParallelDtaSink`] let native
+//! adapters materialize another column store through the same validated
+//! decoder.
 
 mod data_reader;
 mod endian;
