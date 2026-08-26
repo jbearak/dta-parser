@@ -926,7 +926,12 @@ static void metadata_string_set_elt(
 }
 
 static SEXP metadata_proxy(SEXP value, R_altrep_class_t proxy_class) {
-    SEXP result = PROTECT(R_new_altrep(proxy_class, value, R_NilValue));
+    SEXP source = value;
+    while (ALTREP(source) && R_altrep_inherits(source, proxy_class) &&
+           R_altrep_data2(source) == R_NilValue) {
+        source = R_altrep_data1(source);
+    }
+    SEXP result = PROTECT(R_new_altrep(proxy_class, source, R_NilValue));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
     UNPROTECT(1);
     return result;
@@ -946,11 +951,12 @@ SEXP C_dtaparser_metadata_copy(SEXP value) {
 }
 
 SEXP C_dtaparser_is_unmaterialized_numeric_altrep(SEXP value) {
-    for (int depth = 0; depth < 64 && ALTREP(value); depth++) {
+    while (ALTREP(value)) {
         if (R_altrep_inherits(value, dtaparser_numeric_class)) {
             return Rf_ScalarLogical(R_altrep_data2(value) == R_NilValue);
         }
         if (!R_altrep_inherits(value, dtaparser_metadata_real_class)) break;
+        if (R_altrep_data2(value) != R_NilValue) return Rf_ScalarLogical(0);
         value = R_altrep_data1(value);
     }
     return Rf_ScalarLogical(0);

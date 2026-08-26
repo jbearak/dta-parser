@@ -490,7 +490,10 @@ test_that("value-label setters keep imported numeric storage compact", {
 test_that("repeated metadata setters keep numeric backing unmaterialized", {
     source <- read_dta(fixture("value_labels_v118.dta"))$foreign
 
-    updated <- set_variable_labels(source, "Vehicle origin")
+    updated <- source
+    for (index in seq_len(100L)) {
+        updated <- set_variable_labels(updated, paste("Vehicle origin", index))
+    }
     updated <- set_value_labels(updated, Domestic = 0, Imported = 1)
 
     expect_identical(
@@ -503,7 +506,7 @@ test_that("repeated metadata setters keep numeric backing unmaterialized", {
         ),
         list(
             unmaterialized = TRUE,
-            variable = "Vehicle origin",
+            variable = "Vehicle origin 100",
             values = c(Domestic = 0, Imported = 1),
             format = "%8.0g"
         )
@@ -523,12 +526,15 @@ test_that("metadata proxies preserve copy-on-write in both directions", {
         list(
             source_value = as.double(source[[1L]]),
             updated_value = as.double(updated[[1L]]),
+            updated_is_unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(updated),
             second_source_value = as.double(second_source[[1L]]),
             second_updated_value = as.double(second_updated[[1L]])
         ),
         list(
             source_value = 1,
             updated_value = 99,
+            updated_is_unmaterialized = FALSE,
             second_source_value = 99,
             second_updated_value = 1
         )
@@ -627,4 +633,56 @@ test_that("value-label tables must be numeric vectors", {
     }, logical(1))
 
     expect_identical(unname(rejected), rep(TRUE, length(invalid)))
+})
+
+test_that("label helpers reject non-vector reference objects", {
+    value <- new.env(parent = emptyenv())
+    attr(value, "label") <- "Original"
+    attr(value, "labels") <- c(No = 0, Yes = 1)
+
+    calls <- list(
+        function() var_label(value),
+        function() val_labels(value),
+        function() set_variable_labels(value, "Changed"),
+        function() set_value_labels(value)
+    )
+    rejected <- vapply(calls, function(call) {
+        inherits(try(call(), silent = TRUE), "try-error")
+    }, logical(1))
+
+    expect_identical(
+        list(
+            rejected = rejected,
+            variable = attr(value, "label", exact = TRUE),
+            values = attr(value, "labels", exact = TRUE)
+        ),
+        list(
+            rejected = rep(TRUE, length(calls)),
+            variable = "Original",
+            values = c(No = 0, Yes = 1)
+        )
+    )
+})
+
+test_that("bulk value-label setters normalize each table once", {
+    counter <- new.env(parent = emptyenv())
+    counter$calls <- 0L
+    suppressMessages(trace(
+        ".tab_missing_codes",
+        tracer = function() counter$calls <- counter$calls + 1L,
+        where = asNamespace("dtaparser"),
+        print = FALSE
+    ))
+    on.exit(suppressMessages(untrace(
+        ".tab_missing_codes", where = asNamespace("dtaparser")
+    )), add = TRUE)
+
+    updated <- set_value_labels(
+        data.frame(x = c(0, 1)), x = c(No = 0, Yes = 1)
+    )
+
+    expect_identical(
+        list(calls = counter$calls, labels = val_labels(updated$x)),
+        list(calls = 1L, labels = c(No = 0, Yes = 1))
+    )
 })

@@ -76,6 +76,7 @@
 #' val_labels(survey$status)
 #' @export
 var_label <- function(x) {
+    .validate_label_object(x)
     if (is.data.frame(x)) {
         return(stats::setNames(
             lapply(x, attr, which = "label", exact = TRUE),
@@ -89,6 +90,7 @@ var_label <- function(x) {
 #' @rdname var_label
 #' @export
 val_labels <- function(x) {
+    .validate_label_object(x)
     if (is.data.frame(x)) {
         return(stats::setNames(
             lapply(x, attr, which = "labels", exact = TRUE),
@@ -107,6 +109,18 @@ dataset_label <- function(data) {
     }
 
     attr(data, "label", exact = TRUE)
+}
+
+.validate_label_object <- function(value, argument = "x") {
+    vector_types <- c(
+        "logical", "integer", "double", "complex", "character", "raw",
+        "list", "expression"
+    )
+    if (!is.data.frame(value) && !typeof(value) %in% vector_types) {
+        stop(sprintf("`%s` must be a vector or data frame", argument),
+             call. = FALSE)
+    }
+    invisible(NULL)
 }
 
 .normalize_text_label <- function(value, argument = "value") {
@@ -322,9 +336,40 @@ dataset_label <- function(data) {
     value
 }
 
+.apply_variable_label_updates <- function(data, updates) {
+    .warn_stata_metadata_limits(
+        .text_label_violations(updates, "variable label for")
+    )
+    for (name in names(updates)) {
+        column <- .metadata_copy(data[[name]])
+        attr(column, "label") <- updates[[name]]
+        data[[name]] <- column
+    }
+    data
+}
+
+.apply_value_label_updates <- function(data, updates) {
+    for (name in names(updates)) {
+        .validate_value_label_target(
+            data[[name]], updates[[name]], paste0("x$", name)
+        )
+    }
+    .warn_stata_metadata_limits(.value_label_violations(updates))
+    for (name in names(updates)) {
+        column <- .metadata_copy(data[[name]])
+        attr(column, "labels") <- updates[[name]]
+        column <- .apply_haven_labelled_class(
+            column, !is.null(updates[[name]])
+        )
+        data[[name]] <- column
+    }
+    data
+}
+
 #' @rdname var_label
 #' @export
 `var_label<-` <- function(x, value) {
+    .validate_label_object(x)
     if (is.data.frame(x)) {
         if (is.null(value)) {
             for (index in seq_along(x)) {
@@ -337,15 +382,7 @@ dataset_label <- function(data) {
         updates <- .validate_column_updates(
             x, value, .normalize_text_label, "value"
         )
-        .warn_stata_metadata_limits(
-            .text_label_violations(updates, "variable label for")
-        )
-        for (name in names(updates)) {
-            column <- .metadata_copy(x[[name]])
-            attr(column, "label") <- updates[[name]]
-            x[[name]] <- column
-        }
-        return(x)
+        return(.apply_variable_label_updates(x, updates))
     }
 
     value <- .normalize_text_label(value)
@@ -374,6 +411,7 @@ dataset_label <- function(data) {
 #' @rdname var_label
 #' @export
 `val_labels<-` <- function(x, value) {
+    .validate_label_object(x)
     if (is.data.frame(x)) {
         if (is.null(value)) {
             for (index in seq_along(x)) {
@@ -387,21 +425,7 @@ dataset_label <- function(data) {
         updates <- .validate_column_updates(
             x, value, .normalize_value_labels, "value"
         )
-        for (name in names(updates)) {
-            .validate_value_label_target(
-                x[[name]], updates[[name]], paste0("x$", name)
-            )
-        }
-        .warn_stata_metadata_limits(.value_label_violations(updates))
-        for (name in names(updates)) {
-            column <- .metadata_copy(x[[name]])
-            attr(column, "labels") <- updates[[name]]
-            column <- .apply_haven_labelled_class(
-                column, !is.null(updates[[name]])
-            )
-            x[[name]] <- column
-        }
-        return(x)
+        return(.apply_value_label_updates(x, updates))
     }
 
     value <- .normalize_value_labels(value)
@@ -442,7 +466,7 @@ set_variable_labels <- function(.data, ..., .labels = NULL) {
     updates <- .validate_column_updates(
         .data, updates, .normalize_text_label, "labels"
     )
-    `var_label<-`(.data, updates)
+    .apply_variable_label_updates(.data, updates)
 }
 
 #' @rdname var_label
@@ -475,5 +499,5 @@ set_value_labels <- function(.data, ..., .labels = NULL) {
     updates <- .validate_column_updates(
         .data, updates, .normalize_value_labels, "labels"
     )
-    `val_labels<-`(.data, updates)
+    .apply_value_label_updates(.data, updates)
 }
