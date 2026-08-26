@@ -129,11 +129,13 @@ construction rounds to binary32, as Stata does.
 Subassignment, \code{replace()}, \code{dplyr::if_else()}, and
 \code{dplyr::mutate()} retain declared storage and re-encode compact results.
 Arithmetic starts at the operands' common Stata storage type and widens only
-when the result values require it. Base \code{ifelse()} takes attributes from
-its condition and therefore returns a bare vector. Pass that result to a
-storage constructor to declare and compact it again. Re-encoding temporarily
-materializes doubles, so the memory saving applies after construction and
-across columns held in memory.
+when the result values require it. Imported \code{Date} and \code{POSIXct}
+columns validate on Stata's source scale, including Stata's 1960 epoch and
+millisecond datetime unit, while continuing to expose ordinary R temporal
+values. Base \code{ifelse()} takes attributes from its condition and therefore
+returns a bare vector. Pass that result to a storage constructor to declare and
+compact it again. Re-encoding temporarily materializes doubles, so the memory
+saving applies after construction and across columns held in memory.
 }
 
 \section{Labels and missing-code helpers}{

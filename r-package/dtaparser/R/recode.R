@@ -182,7 +182,8 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
 .recode_data <- function(value, source) {
     if (!is.null(value) && typeof(value) %in% c("double", "integer")) {
         if (is.object(value) &&
-            (!is.object(source) || !identical(class(value), class(source)))) {
+            (!is.object(source) ||
+             !.compatible_recode_classes(value, source))) {
             stop(
                 "Class-changing numeric replacements are not supported; ",
                 "apply the desired class after recoding.",
@@ -192,6 +193,14 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         return(vctrs::vec_data(value))
     }
     value
+}
+
+.compatible_recode_classes <- function(value, source) {
+    if (identical(class(value), class(source))) return(TRUE)
+    if (inherits(source, "stata_date") && inherits(value, "Date")) {
+        return(TRUE)
+    }
+    inherits(source, "stata_datetime") && inherits(value, "POSIXct")
 }
 
 recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {

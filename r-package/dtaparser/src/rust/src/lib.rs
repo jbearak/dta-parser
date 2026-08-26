@@ -133,12 +133,13 @@ pub unsafe extern "C" fn dtaparser_numeric_free(data: *mut c_void) {
 /// # Safety
 ///
 /// `values` must point into an R raw vector that remains protected by the
-/// resulting ALTREP external pointer. `kind` must use the `NumericKind`
-/// discriminants shared with `init.c`.
+/// resulting ALTREP external pointer. `kind` and `temporal` must use the
+/// `NumericKind` and `TemporalKind` discriminants shared with `init.c`.
 pub unsafe extern "C" fn dtaparser_numeric_alloc(
     values: *mut c_void,
     length: usize,
     kind: c_int,
+    temporal: c_int,
     no_na: c_int,
 ) -> *mut c_void {
     let kind = match kind {
@@ -148,11 +149,17 @@ pub unsafe extern "C" fn dtaparser_numeric_alloc(
         3 => NumericKind::Float,
         _ => return ptr::null_mut(),
     };
+    let temporal = match temporal {
+        0 => TemporalKind::None,
+        1 => TemporalKind::Date,
+        2 => TemporalKind::Datetime,
+        _ => return ptr::null_mut(),
+    };
     Box::into_raw(Box::new(NumericData {
         values,
         length,
         kind: kind as c_int,
-        temporal: TemporalKind::None as c_int,
+        temporal: temporal as c_int,
         format_version: 119,
         no_na,
     }))

@@ -21,7 +21,7 @@ extern SEXP dtaparser_read_rust(
 );
 extern void dtaparser_free_error(char *);
 extern void dtaparser_numeric_free(void *);
-extern void *dtaparser_numeric_alloc(void *, size_t, int, int);
+extern void *dtaparser_numeric_alloc(void *, size_t, int, int, int);
 extern void dtaparser_dictstring_free(void *);
 extern int dtaparser_dictstring_bytes(
     void *, uint32_t, const char **, int *
@@ -1022,7 +1022,9 @@ static void write_numeric_observed(
     }
 }
 
-SEXP C_dtaparser_construct_numeric(SEXP value, SEXP kind_value) {
+SEXP C_dtaparser_construct_numeric(
+    SEXP value, SEXP kind_value, SEXP temporal_value
+) {
     if (TYPEOF(value) != REALSXP) {
         Rf_error("compact Stata numeric construction requires doubles");
     }
@@ -1030,6 +1032,12 @@ SEXP C_dtaparser_construct_numeric(SEXP value, SEXP kind_value) {
         Rf_error("invalid compact Stata numeric storage type");
     }
     int kind = INTEGER(kind_value)[0];
+    if (TYPEOF(temporal_value) != INTSXP ||
+        XLENGTH(temporal_value) != 1 ||
+        INTEGER(temporal_value)[0] < 0 || INTEGER(temporal_value)[0] > 2) {
+        Rf_error("invalid compact Stata temporal storage type");
+    }
+    int temporal = INTEGER(temporal_value)[0];
     size_t width = numeric_kind_width(kind);
     R_xlen_t length = XLENGTH(value);
     if ((size_t) length > SIZE_MAX / width ||
@@ -1060,7 +1068,7 @@ SEXP C_dtaparser_construct_numeric(SEXP value, SEXP kind_value) {
     }
 
     void *data = dtaparser_numeric_alloc(
-        output, (size_t) length, kind, no_na
+        output, (size_t) length, kind, temporal, no_na
     );
     if (data == NULL) {
         UNPROTECT(1);
@@ -1870,7 +1878,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 4},
     {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 8},
     {"C_dtaparser_construct_numeric",
-     (DL_FUNC) &C_dtaparser_construct_numeric, 2},
+     (DL_FUNC) &C_dtaparser_construct_numeric, 3},
     {"C_dtaparser_is_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
     {"C_dtaparser_is_altrep", (DL_FUNC) &C_dtaparser_is_altrep, 1},

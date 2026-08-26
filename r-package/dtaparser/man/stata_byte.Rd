@@ -49,6 +49,26 @@ Re-encoding materializes \code{x} as doubles while it validates the values. The
 compact representation reduces steady-state memory use, not peak memory use
 during construction.
 }
+\section{Vector operations}{
+
+Subset assignment, \code{\link[=replace]{replace()}}, \code{dplyr::if_else()}, \code{dplyr::mutate()}, and
+vctrs concatenation retain declared storage and re-encode compact results.
+Base \code{ifelse()} takes attributes from its condition, so it returns a bare
+vector. Pass that result to a constructor to declare storage again.
+
+Common types follow the lossless Stata lattice: \code{byte} promotes to \code{int},
+\code{long}, \code{float}, or \code{double}; \code{int} promotes to \code{long}, \code{float}, or \code{double};
+and \code{long} combined with \code{float} promotes to \code{double}. Declared storage wins
+over a bare logical, integer, or double vector. Explicit casts into declared
+storage are strict and use the same errors as the constructors.
+
+Arithmetic and the numeric group generics start at the operands' common
+storage type, then widen only when the computed values require it. This is
+value-dependent: integer overflow or a fractional result may change the
+result's declared storage. Computational overflow and undefined numeric
+results become Stata system missing.
+}
+
 \examples{
 codes <- stata_byte(c(1, 2, NA_real_, tagged_missing("a")))
 stata_storage_type(codes)

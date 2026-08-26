@@ -78,10 +78,13 @@
 #' Subassignment, [replace()], `dplyr::if_else()`, and `dplyr::mutate()` retain
 #' declared storage and re-encode compact results. Arithmetic starts at the
 #' operands' common Stata storage type and widens only when the result values
-#' require it. Base `ifelse()` takes attributes from its condition and therefore
-#' returns a bare vector. Pass that result to a storage constructor to declare
-#' and compact it again. Re-encoding temporarily materializes doubles, so the
-#' memory saving applies after construction and across columns held in memory.
+#' require it. Imported `Date` and `POSIXct` columns validate on Stata's source
+#' scale, including Stata's 1960 epoch and millisecond datetime unit, while
+#' continuing to expose ordinary R temporal values. Base `ifelse()` takes
+#' attributes from its condition and therefore returns a bare vector. Pass that
+#' result to a storage constructor to declare and compact it again. Re-encoding
+#' temporarily materializes doubles, so the memory saving applies after
+#' construction and across columns held in memory.
 #'
 #' @section Labels and missing-code helpers:
 #' Reading DTA files and working with their labels does not require haven or

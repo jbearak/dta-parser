@@ -1,3 +1,25 @@
+fixture_with_temporal_storage <- function(column) {
+    path <- fixture("auto_v118.dta")
+    bytes <- readBin(path, "raw", n = file.info(path)[["size"]])
+
+    old_format <- if (identical(column, "foreign")) "%8.0g" else "%8.0gc"
+    matches <- grepRaw(
+        charToRaw(old_format), bytes, fixed = TRUE, all = TRUE
+    )
+    format_start <- if (identical(column, "foreign")) {
+        tail(matches, 1L)
+    } else {
+        matches[[2L]]
+    }
+    bytes[format_start + seq_len(nchar(old_format)) - 1L] <- c(
+        charToRaw("%td"), raw(nchar(old_format) - 3L)
+    )
+
+    output <- tempfile(fileext = ".dta")
+    writeBin(bytes, output)
+    output
+}
+
 test_that("storage constructors create declared compact vectors", {
     constructors <- list(
         byte = stata_byte,
@@ -62,8 +84,12 @@ test_that("constructors enforce Stata ranges and precision rules", {
     expect_error(stata_int(1.5), "stata_float\\(x\\)")
     expect_error(stata_int(32741), "stata_long\\(x\\)")
     expect_error(stata_long(2147483621), "stata_double\\(x\\)")
-    expect_error(stata_float(Inf), "stata_double\\(x\\)")
-    expect_error(stata_double(Inf), "cannot represent")
+    expect_error(stata_float(Inf), "No Stata numeric storage")
+    expect_error(stata_double(Inf), "No Stata numeric storage")
+    expect_error(stata_byte(NaN), "No Stata numeric storage")
+    expect_error(
+        stata_byte(.Machine$double.xmax), "No Stata numeric storage"
+    )
 })
 
 test_that("constructors preserve Stata extended missing codes", {
@@ -117,6 +143,98 @@ test_that("imported temporal columns retain storage through supported mutation",
     expect_identical(
         as.character(selected), c("1960-01-01", "2020-01-02")
     )
+})
+
+test_that("narrow dates validate and encode in Stata source units", {
+    byte_path <- fixture_with_temporal_storage("foreign")
+    int_path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(c(byte_path, int_path)), add = TRUE)
+
+    byte_date <- read_dta(byte_path)$foreign
+    expect_s3_class(byte_date, "Date")
+    expect_identical(stata_storage_type(byte_date), "byte")
+    expect_identical(stata_storage_type(byte_date[1]), "byte")
+    expect_identical(stata_storage_type(byte_date[[1]]), "byte")
+    expect_identical(stata_storage_type(byte_date + 1), "byte")
+    expect_identical(
+        stata_storage_type(dplyr::if_else(
+            rep(TRUE, length(byte_date)), byte_date, byte_date
+        )),
+        "byte"
+    )
+    expect_identical(
+        stata_storage_type(dplyr::slice(
+            tibble::tibble(value = byte_date), 1:2
+        )$value),
+        "byte"
+    )
+
+    updated <- byte_date
+    updated[1] <- as.Date(-3553, origin = "1970-01-01")
+    expect_identical(stata_storage_type(updated), "byte")
+    expect_identical(as.double(updated[[1]]), -3553)
+    expect_error({
+        updated[1] <- as.Date(-3552, origin = "1970-01-01")
+    }, "stata_int\\(x\\)")
+    expect_error(
+        replace(
+            byte_date, 1,
+            structure(-3652.5, class = "Date")
+        ),
+        "stata_float\\(x\\)"
+    )
+
+    int_date <- read_dta(int_path)$price
+    int_date[1] <- as.Date(29087, origin = "1970-01-01")
+    expect_identical(stata_storage_type(int_date), "int")
+    expect_identical(as.double(int_date[[1]]), 29087)
+    expect_error({
+        int_date[1] <- as.Date(29088, origin = "1970-01-01")
+    }, "stata_long\\(x\\)")
+    expect_identical(stata_storage_type(int_date[[1]] + 1), "long")
+})
+
+test_that("temporal summaries, concatenation, and recodes retain storage", {
+    path <- fixture_with_temporal_storage("foreign")
+    on.exit(unlink(path), add = TRUE)
+    values <- read_dta(path)$foreign
+
+    expect_identical(stata_storage_type(min(values)), "byte")
+    expect_identical(stata_storage_type(mean(values)), "float")
+    expect_identical(stata_storage_type(c(values, values)), "byte")
+    expect_identical(stata_storage_type(rep(values, 2)), "byte")
+    expect_identical(
+        stata_storage_type(vctrs::vec_c(
+            values[1], as.Date(-3652, origin = "1970-01-01")
+        )),
+        "byte"
+    )
+
+    recoded <- dtaparser::recode(
+        values,
+        `-3653` = as.Date(-3651, origin = "1970-01-01")
+    )
+    expect_s3_class(recoded, "Date")
+    expect_identical(stata_storage_type(recoded), "byte")
+    expect_true(all(as.double(recoded[as.double(values) == -3653]) == -3651))
+})
+
+test_that("datetime arithmetic promotes using Stata millisecond values", {
+    skip_if_not_installed("haven")
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    input <- structure(
+        c(-315619200L, -315619199L),
+        class = c("POSIXct", "POSIXt"),
+        tzone = "UTC"
+    )
+    haven::write_dta(data.frame(value = input), path, version = 15)
+    values <- read_dta(path)$value
+
+    expect_identical(stata_storage_type(values), "long")
+    shifted <- values + 315619200
+    expect_identical(stata_storage_type(shifted), "double")
+    expect_identical(as.double(shifted), c(0, 1))
 })
 
 test_that("common types follow the Stata storage promotion lattice", {
@@ -228,6 +346,49 @@ test_that("value labels compose with declared storage classes", {
     expect_identical(stata_storage_type(values), "byte")
 })
 
+test_that("common types reconcile value and variable labels", {
+    left <- set_variable_labels(
+        set_value_labels(stata_byte(c(1, 2)), One = 1),
+        "Left variable"
+    )
+    right <- set_variable_labels(
+        set_value_labels(stata_int(c(2, 3)), Three = 3),
+        "Right variable"
+    )
+    unlabelled <- stata_byte(c(2, 3))
+
+    for (result in list(
+        vctrs::vec_c(left, unlabelled),
+        vctrs::vec_c(unlabelled, left),
+        dplyr::if_else(c(TRUE, FALSE), left, unlabelled)
+    )) {
+        expect_s3_class(result, "haven_labelled")
+        expect_identical(val_labels(result), c(One = 1))
+    }
+
+    left_right <- vctrs::vec_c(left, right)
+    right_left <- vctrs::vec_c(right, left)
+    conditional <- dplyr::if_else(c(TRUE, FALSE), left, right)
+    expect_identical(val_labels(left_right), c(One = 1, Three = 3))
+    expect_identical(val_labels(right_left), c(Three = 3, One = 1))
+    expect_identical(val_labels(conditional), c(One = 1, Three = 3))
+    expect_identical(var_label(left_right), "Left variable")
+    expect_identical(var_label(right_left), "Right variable")
+
+    conflict <- set_value_labels(stata_byte(1), Uno = 1)
+    expect_warning(
+        resolved <- vctrs::vec_c(left, conflict),
+        "conflicting value labels"
+    )
+    expect_identical(val_labels(resolved)[[1L]], 1)
+    expect_identical(names(val_labels(resolved))[[1L]], "One")
+    expect_warning(
+        reversed <- vctrs::vec_c(conflict, left),
+        "conflicting value labels"
+    )
+    expect_identical(names(val_labels(reversed))[[1L]], "Uno")
+})
+
 test_that("arithmetic promotes from operand storage according to result values", {
     cases <- list(
         byte_stays_byte = list(stata_byte(c(1, 2)) + 1, "byte", c(2, 3)),
@@ -262,6 +423,20 @@ test_that("arithmetic preserves tags and returns bare logical comparisons", {
     expect_identical(missing_tag(result), c(NA_character_, "a", NA))
     expect_identical(values == 1, c(TRUE, NA, NA))
     expect_null(stata_storage_type(values == 1))
+    expect_identical(!stata_int(c(0, 1, NA_real_)), c(TRUE, FALSE, NA))
+})
+
+test_that("Complex group members use value-dependent storage", {
+    argument <- Arg(stata_int(-1))
+    modulus <- Mod(stata_int(-32767))
+
+    expect_identical(stata_storage_type(argument), "float")
+    expect_equal(as.double(argument), pi, tolerance = 1e-6)
+    expect_identical(stata_storage_type(modulus), "long")
+    expect_identical(as.double(modulus), 32767)
+    expect_identical(stata_storage_type(Re(stata_byte(2))), "byte")
+    expect_identical(stata_storage_type(Im(stata_byte(2))), "byte")
+    expect_identical(stata_storage_type(Conj(stata_byte(2))), "byte")
 })
 
 test_that("math and summary generics use value-dependent storage", {
@@ -287,6 +462,25 @@ test_that("math and summary generics use value-dependent storage", {
     expect_identical(stata_storage_type(cumulative), "int")
     expect_identical(as.double(cumulative), c(50, 100, 150))
     expect_identical(is.finite(stata_float(c(1, NA_real_))), c(TRUE, FALSE))
+})
+
+test_that("Summary generics accept bare numeric and logical arguments", {
+    total <- sum(stata_byte(1), 2)
+    extremes <- range(stata_byte(1), 101)
+
+    expect_identical(stata_storage_type(total), "byte")
+    expect_identical(as.double(total), 3)
+    expect_identical(stata_storage_type(extremes), "int")
+    expect_identical(as.double(extremes), c(1, 101))
+    expect_identical(all(stata_byte(1), TRUE), TRUE)
+    expect_identical(any(stata_byte(0), TRUE), TRUE)
+})
+
+test_that("base ifelse strips declared storage as documented", {
+    result <- ifelse(c(TRUE, FALSE), stata_byte(c(1, 2)), 0)
+
+    expect_null(stata_storage_type(result))
+    expect_identical(result, c(1, 0))
 })
 
 test_that("undefined Stata arithmetic becomes system missing", {
