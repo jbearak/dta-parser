@@ -58,19 +58,20 @@ ordered after observed values as system missing, extended missings
 uses its value label unless \code{display = "value"}; otherwise its Stata code
 is shown. \code{missing = "combine"} follows base R by collapsing all missing
 numeric payloads into one category.
+
+Numeric factorization is shared with \code{factor_from_labels()} and does not
+materialize compact numeric columns returned by \code{read_dta()}.
 }
 \examples{
-if (requireNamespace("haven", quietly = TRUE)) {
-    x <- haven::labelled(
-        c(1, 2, 1, NA_real_, haven::tagged_na(c("a", "b"))),
-        c(Yes = 1, No = 2, Refused = haven::tagged_na("a"))
-    )
+x <- set_value_labels(
+    c(1, 2, 1, NA_real_, tagged_missing(c("a", "b"))),
+    Yes = 1, No = 2, Refused = tagged_missing("a")
+)
 
-    table(x, useNA = "ifany")
-    table(haven::as_factor(x), useNA = "ifany")
-    tab(x, missing = TRUE)
-    tab(x, missing = TRUE, display = "both")
-}
+table(unclass(x), useNA = "ifany")
+table(factor_from_labels(x), useNA = "ifany")
+tab(x, missing = TRUE)
+tab(x, missing = TRUE, display = "both")
 
 mtcars |>
     tab(cyl, gear)

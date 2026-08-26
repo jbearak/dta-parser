@@ -186,12 +186,14 @@ test_that("tab handles imported labelled ALTREP columns", {
     data <- read_dta(input)
     before <- data$foreign
     expect_true(dtaparser:::.is_numeric_altrep(data$foreign))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(data$foreign))
 
     result <- data |> tab(foreign)
     expect_identical(dimnames(result)[[1L]], c("Domestic", "Foreign"))
     expect_identical(sum(result), nrow(data))
     expect_identical(data$foreign, before)
     expect_true(dtaparser:::.is_numeric_altrep(data$foreign))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(data$foreign))
 
     subset <- data$foreign[c(1L, 2L, 1L)]
     expect_identical(sum(tab(subset)), length(subset))
