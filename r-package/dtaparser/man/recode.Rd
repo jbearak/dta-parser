@@ -54,11 +54,9 @@ numeric vectors without tags retain dplyr's exact legacy behavior; tagged
 vectors preserve unmatched tag payloads and numeric metadata.
 }
 \examples{
-if (requireNamespace("haven", quietly = TRUE)) {
-    x <- c(1, 2, NA_real_, haven::tagged_na(c("a", "z")))
-    y <- recode(x, `1` = 10)
-    haven::na_tag(y)
+x <- c(1, 2, NA_real_, tagged_missing(c("a", "z")))
+y <- recode(x, `1` = 10)
+missing_tag(y)
 
-    recode(x, `1` = 10, .missing = -99)
-}
+recode(x, `1` = 10, .missing = -99)
 }

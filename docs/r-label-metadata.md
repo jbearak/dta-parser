@@ -51,7 +51,7 @@ Value-label codes are limited to values that Stata can use in a label definition
 - whole, nonmissing values from -2,147,483,647 through 2,147,483,620;
 - extended missings `.a` through `.z`.
 
-System missing `.`, ordinary R `NA` and `NaN`, fractions, and infinities are rejected. `haven` remains useful, but optional, for creating or inspecting tagged missings and for `haven::as_factor()`.
+System missing `.`, ordinary R `NA` and `NaN`, fractions, and infinities are rejected. Use `tagged_missing()`, `missing_tag()`, and `is_tagged_missing()` to create or inspect extended missing values without haven. The suggested haven package remains useful for `haven::as_factor()`.
 
 The helpers target the documented Stata 19 metadata limits:
 
