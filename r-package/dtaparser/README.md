@@ -79,6 +79,19 @@ Stata byte, int, and long columns appear as R doubles so every missing tag can b
 tab(cars$foreign, missing = TRUE)
 ```
 
+`factor_from_labels()` makes an ordinary R factor for modeling, plotting, or
+data manipulation. It keeps distinct numeric codes distinct even when their
+label text is the same. The default excludes missing values and retains unused
+nonmissing value-label entries as levels:
+
+```r
+origin <- factor_from_labels(cars$foreign)
+origin_with_missing <- factor_from_labels(cars$foreign, missing = TRUE)
+```
+
+This conversion is intentionally one-way. Both it and `tab()` read compact
+numeric columns without first allocating their decoded double representation.
+
 The package also owns the common label getters and setters; `labelled` is not
 required:
 
@@ -103,9 +116,10 @@ Use the installed help for exact behavior and examples:
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?recode    # recoding without losing unmatched missing tags
-?tagged_missing # create, inspect, and select extended missing values
-?tab       # label-aware frequency tables
-?var_label # dataset, variable, and value-label metadata
+?tagged_missing    # create, inspect, and select extended missing values
+?factor_from_labels # one-way conversion to an ordinary factor
+?tab                # label-aware frequency tables
+?var_label          # dataset, variable, and value-label metadata
 ```
 
 ## Performance controls

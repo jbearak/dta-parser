@@ -8,6 +8,7 @@
 #include <float.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 extern SEXP dtaparser_metadata_rust(
@@ -347,6 +348,381 @@ static int numeric_missing_offset_at(
     default:
         Rf_error("invalid dtaparser numeric storage kind");
     }
+}
+
+typedef struct {
+    SEXP value;
+    numeric_data *storage;
+    const double *real_values;
+    const int *integer_values;
+    int type;
+} numeric_reader;
+
+static numeric_reader numeric_reader_create(
+    SEXP value, R_xlen_t expected_length
+) {
+    numeric_reader reader = {
+        value, NULL, NULL, NULL, TYPEOF(value)
+    };
+    if (reader.type == REALSXP) {
+        reader.storage = unmaterialized_numeric_storage(value);
+        if (reader.storage != NULL &&
+            (R_xlen_t) reader.storage->length != expected_length) {
+            Rf_error(
+                "dtaparser numeric storage length does not match vector length"
+            );
+        } else if (reader.storage == NULL) {
+            reader.real_values = (const double *) DATAPTR_OR_NULL(value);
+        }
+    } else if (reader.type == INTSXP) {
+        reader.integer_values = (const int *) DATAPTR_OR_NULL(value);
+    } else {
+        Rf_error("internal numeric grouping requires doubles or integers");
+    }
+    return reader;
+}
+
+static double numeric_reader_at(
+    const numeric_reader *reader, R_xlen_t index, int *missing_code
+) {
+    if (reader->storage != NULL) {
+        numeric_data *data = reader->storage;
+        int offset = numeric_missing_offset_at(data, (size_t) index);
+        if (offset >= 0) {
+            *missing_code = offset == 0 ? 0 : 'a' + offset - 1;
+            return 0.0;
+        }
+        double value = numeric_value_at(data, (size_t) index);
+        if (ISNAN(value)) {
+            *missing_code = 256;
+            return 0.0;
+        }
+        *missing_code = -1;
+        return value;
+    }
+
+    if (reader->type == INTSXP) {
+        int value = reader->integer_values == NULL
+            ? INTEGER_ELT(reader->value, index)
+            : reader->integer_values[index];
+        if (value == NA_INTEGER) {
+            *missing_code = 0;
+            return 0.0;
+        }
+        *missing_code = -1;
+        return (double) value;
+    }
+
+    double value = reader->real_values == NULL
+        ? REAL_ELT(reader->value, index)
+        : reader->real_values[index];
+    if (!ISNAN(value)) {
+        *missing_code = -1;
+        return value;
+    }
+    int payload_tag = tagged_na_tag_value(value);
+    int tag = payload_tag >= 'a' && payload_tag <= 'z' ? payload_tag : 0;
+    *missing_code = tag != 0
+        ? tag : (payload_tag != 0 ? 256 : (ISNA(value) ? 0 : 256));
+    return 0.0;
+}
+
+typedef struct {
+    uint64_t key;
+    int id_plus_one;
+} numeric_hash_entry;
+
+typedef struct {
+    double value;
+    int old_id;
+} numeric_level_entry;
+
+typedef struct {
+    SEXP value;
+    SEXP seeds;
+    int missing_mode;
+    numeric_hash_entry *entries;
+    size_t entry_capacity;
+    uint64_t *keys;
+    size_t key_capacity;
+    size_t key_count;
+    numeric_level_entry *levels;
+} numeric_factor_context;
+
+static uint64_t normalized_numeric_key(double value) {
+    if (value == 0.0) return 0;
+    uint64_t key;
+    memcpy(&key, &value, sizeof(key));
+    return key;
+}
+
+static uint64_t numeric_key_hash(uint64_t key) {
+    key ^= key >> 33;
+    key *= UINT64_C(0xff51afd7ed558ccd);
+    key ^= key >> 33;
+    key *= UINT64_C(0xc4ceb9fe1a85ec53);
+    return key ^ (key >> 33);
+}
+
+static void numeric_hash_resize(
+    numeric_factor_context *context, size_t capacity
+) {
+    if (capacity > SIZE_MAX / sizeof(numeric_hash_entry)) {
+        Rf_error("too many distinct numeric factor levels");
+    }
+    numeric_hash_entry *entries = (numeric_hash_entry *) calloc(
+        capacity, sizeof(numeric_hash_entry)
+    );
+    if (entries == NULL) Rf_error("failed to allocate numeric level index");
+
+    free(context->entries);
+    context->entries = entries;
+    context->entry_capacity = capacity;
+    for (size_t id = 0; id < context->key_count; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        uint64_t key = context->keys[id];
+        size_t slot = (size_t) numeric_key_hash(key) & (capacity - 1);
+        while (context->entries[slot].id_plus_one != 0) {
+            slot = (slot + 1) & (capacity - 1);
+        }
+        context->entries[slot].key = key;
+        context->entries[slot].id_plus_one = (int) id + 1;
+    }
+}
+
+static void numeric_keys_grow(numeric_factor_context *context) {
+    if (context->key_capacity > SIZE_MAX / 2) {
+        Rf_error("too many distinct numeric factor levels");
+    }
+    size_t capacity = context->key_capacity == 0
+        ? 16 : context->key_capacity * 2;
+    if (capacity > SIZE_MAX / sizeof(uint64_t)) {
+        Rf_error("too many distinct numeric factor levels");
+    }
+    uint64_t *keys = (uint64_t *) realloc(
+        context->keys, capacity * sizeof(uint64_t)
+    );
+    if (keys == NULL) Rf_error("failed to allocate numeric factor levels");
+    context->keys = keys;
+    context->key_capacity = capacity;
+}
+
+static int numeric_level_id(
+    numeric_factor_context *context, double value
+) {
+    if (context->entry_capacity == 0) numeric_hash_resize(context, 16);
+    if (context->key_count >=
+        context->entry_capacity - context->entry_capacity / 4) {
+        if (context->entry_capacity > SIZE_MAX / 2) {
+            Rf_error("too many distinct numeric factor levels");
+        }
+        numeric_hash_resize(context, context->entry_capacity * 2);
+    }
+
+    uint64_t key = normalized_numeric_key(value);
+    size_t slot = (size_t) numeric_key_hash(key) &
+        (context->entry_capacity - 1);
+    while (context->entries[slot].id_plus_one != 0) {
+        if (context->entries[slot].key == key) {
+            return context->entries[slot].id_plus_one - 1;
+        }
+        slot = (slot + 1) & (context->entry_capacity - 1);
+    }
+
+    if (context->key_count >= (size_t) INT_MAX) {
+        Rf_error("a factor cannot have more than INT_MAX levels");
+    }
+    if (context->key_count == context->key_capacity) {
+        numeric_keys_grow(context);
+    }
+    int id = (int) context->key_count;
+    context->keys[context->key_count++] = key;
+    context->entries[slot].key = key;
+    context->entries[slot].id_plus_one = id + 1;
+    return id;
+}
+
+static int numeric_level_after(
+    const numeric_level_entry *left, const numeric_level_entry *right
+) {
+    return left->value > right->value;
+}
+
+static void numeric_level_sift_down(
+    numeric_level_entry *levels, size_t root, size_t count
+) {
+    if (count < 2) return;
+    while (root <= (count - 2) / 2) {
+        size_t child = root * 2 + 1;
+        if (child + 1 < count &&
+            numeric_level_after(&levels[child + 1], &levels[child])) {
+            child++;
+        }
+        if (!numeric_level_after(&levels[child], &levels[root])) return;
+        numeric_level_entry temporary = levels[root];
+        levels[root] = levels[child];
+        levels[child] = temporary;
+        root = child;
+    }
+}
+
+static void numeric_level_sort(numeric_level_entry *levels, size_t count) {
+    if (count < 2) return;
+    for (size_t start = count / 2; start > 0; start--) {
+        if ((start & 16383) == 0) R_CheckUserInterrupt();
+        numeric_level_sift_down(levels, start - 1, count);
+    }
+    for (size_t end = count; end > 1; end--) {
+        if ((end & 16383) == 0) R_CheckUserInterrupt();
+        numeric_level_entry temporary = levels[0];
+        levels[0] = levels[end - 1];
+        levels[end - 1] = temporary;
+        numeric_level_sift_down(levels, 0, end - 1);
+    }
+}
+
+static void numeric_factor_cleanup(void *data) {
+    numeric_factor_context *context = (numeric_factor_context *) data;
+    free(context->entries);
+    free(context->keys);
+    free(context->levels);
+}
+
+static SEXP numeric_factor_body(void *data) {
+    numeric_factor_context *context = (numeric_factor_context *) data;
+    R_xlen_t length = XLENGTH(context->value);
+    SEXP codes = PROTECT(Rf_allocVector(INTSXP, length));
+    int *code_values = INTEGER(codes);
+    int missing_seen[257] = {0};
+    numeric_reader reader = numeric_reader_create(context->value, length);
+
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int missing_code;
+        double value = numeric_reader_at(&reader, index, &missing_code);
+        if (missing_code < 0) {
+            code_values[index] = numeric_level_id(context, value) + 1;
+        } else if (context->missing_mode == 1) {
+            missing_seen[missing_code] = 1;
+            code_values[index] = -(missing_code + 1);
+        } else {
+            code_values[index] = NA_INTEGER;
+        }
+    }
+
+    if (context->seeds != R_NilValue) {
+        R_xlen_t seed_count = XLENGTH(context->seeds);
+        numeric_reader seed_reader = numeric_reader_create(
+            context->seeds, seed_count
+        );
+        for (R_xlen_t index = 0; index < seed_count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            int missing_code;
+            double value = numeric_reader_at(
+                &seed_reader, index, &missing_code
+            );
+            if (missing_code < 0) {
+                (void) numeric_level_id(context, value);
+            } else if (context->missing_mode == 1) {
+                missing_seen[missing_code] = 1;
+            }
+        }
+    }
+
+    size_t level_count = context->key_count;
+    if (level_count > 0) {
+        if (level_count > SIZE_MAX / sizeof(numeric_level_entry)) {
+            Rf_error("too many distinct numeric factor levels");
+        }
+        context->levels = (numeric_level_entry *) malloc(
+            level_count * sizeof(numeric_level_entry)
+        );
+        if (context->levels == NULL) {
+            Rf_error("failed to allocate sorted numeric factor levels");
+        }
+    }
+    for (size_t index = 0; index < level_count; index++) {
+        double value;
+        memcpy(&value, &context->keys[index], sizeof(value));
+        context->levels[index].value = value;
+        context->levels[index].old_id = (int) index;
+    }
+    numeric_level_sort(context->levels, level_count);
+
+    SEXP values = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) level_count));
+    int *remap = level_count == 0 ? NULL :
+        (int *) R_alloc(level_count, sizeof(int));
+    for (size_t index = 0; index < level_count; index++) {
+        REAL(values)[index] = context->levels[index].value;
+        remap[context->levels[index].old_id] = (int) index + 1;
+    }
+
+    int missing_positions[257] = {0};
+    int missing_count = 0;
+    for (int code = 0; code <= 256; code++) {
+        if (missing_seen[code]) missing_positions[code] = ++missing_count;
+    }
+    if (level_count > (size_t) (INT_MAX - missing_count)) {
+        Rf_error("a factor cannot have more than INT_MAX levels");
+    }
+    SEXP missing_codes = PROTECT(Rf_allocVector(INTSXP, missing_count));
+    for (int code = 0; code <= 256; code++) {
+        if (missing_positions[code] != 0) {
+            INTEGER(missing_codes)[missing_positions[code] - 1] = code;
+        }
+    }
+
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int code = code_values[index];
+        if (code > 0) {
+            code_values[index] = remap[code - 1];
+        } else if (code != NA_INTEGER) {
+            int missing_code = -code - 1;
+            code_values[index] = (int) level_count +
+                missing_positions[missing_code];
+        }
+    }
+
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 3));
+    SET_VECTOR_ELT(result, 0, codes);
+    SET_VECTOR_ELT(result, 1, values);
+    SET_VECTOR_ELT(result, 2, missing_codes);
+    SEXP result_names = PROTECT(Rf_allocVector(STRSXP, 3));
+    SET_STRING_ELT(result_names, 0, Rf_mkChar("codes"));
+    SET_STRING_ELT(result_names, 1, Rf_mkChar("values"));
+    SET_STRING_ELT(result_names, 2, Rf_mkChar("missing_codes"));
+    Rf_setAttrib(result, R_NamesSymbol, result_names);
+    UNPROTECT(5);
+    return result;
+}
+
+SEXP C_dtaparser_factorize_numeric(
+    SEXP value, SEXP seeds, SEXP missing_mode
+) {
+    if ((TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP) ||
+        (seeds != R_NilValue &&
+         TYPEOF(seeds) != REALSXP && TYPEOF(seeds) != INTSXP)) {
+        Rf_error("internal numeric grouping requires doubles or integers");
+    }
+    if (TYPEOF(missing_mode) != INTSXP || XLENGTH(missing_mode) != 1 ||
+        INTEGER(missing_mode)[0] < 0 || INTEGER(missing_mode)[0] > 2) {
+        Rf_error("internal missing mode is invalid");
+    }
+    numeric_factor_context context = {
+        value,
+        seeds,
+        INTEGER(missing_mode)[0],
+        NULL,
+        0,
+        NULL,
+        0,
+        0,
+        NULL
+    };
+    return R_ExecWithCleanup(
+        numeric_factor_body, &context, numeric_factor_cleanup, &context
+    );
 }
 
 static void numeric_fill_region(
@@ -1353,6 +1729,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_missing_tag", (DL_FUNC) &C_dtaparser_missing_tag, 1},
     {"C_dtaparser_is_tagged_missing",
      (DL_FUNC) &C_dtaparser_is_tagged_missing, 2},
+    {"C_dtaparser_factorize_numeric",
+     (DL_FUNC) &C_dtaparser_factorize_numeric, 3},
     {"C_dtaparser_missing_codes",
      (DL_FUNC) &C_dtaparser_missing_codes, 1},
     {NULL, NULL, 0}

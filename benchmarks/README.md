@@ -43,6 +43,11 @@ and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
 aggregate results used in the R package README.
 
+The report-only [`r-helper-performance/`](r-helper-performance/) benchmark
+compares label factorization and one-way tabulation with Haven on a generated
+compact integer column. It checks result equivalence and reports whether each
+workflow materializes the source.
+
 Record the exact command, toolchain, host, fixture sizes, iteration count, and
 correctness status in `baseline.md`. Results are evidence for investigation,
 not a release gate.

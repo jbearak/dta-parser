@@ -51,7 +51,29 @@ Value-label codes are limited to values that Stata can use in a label definition
 - whole, nonmissing values from -2,147,483,647 through 2,147,483,620;
 - extended missings `.a` through `.z`.
 
-System missing `.`, ordinary R `NA` and `NaN`, fractions, and infinities are rejected. Use `tagged_missing()`, `missing_tag()`, and `is_tagged_missing()` to create or inspect extended missing values without haven. The suggested haven package remains useful for `haven::as_factor()`.
+System missing `.`, ordinary R `NA` and `NaN`, fractions, and infinities are rejected. Use `tagged_missing()`, `missing_tag()`, and `is_tagged_missing()` to create or inspect extended missing values without haven.
+
+## Converting labels to factors
+
+`factor_from_labels()` converts one numeric vector and its value-label table to
+an ordinary factor. Its purpose is analysis after import: the factor is suitable
+for models, plots, and data manipulation, but cannot be converted back to the
+original numeric representation. The package therefore does not register an
+`as.factor()` method or introduce a reversible labelled-factor class.
+
+By default, missing values become factor `NA` and unused nonmissing value-label
+entries remain levels. Labelled missing entries become levels only when
+`missing = TRUE` or `"distinguish"`. In that mode, observed missing payloads
+for `.`, extended missing codes, and R `NaN` get distinct levels. Labelled
+extended-missing entries absent from the data remain as unused levels unless
+`drop_unused = TRUE`. `display` selects labels, values, or both. Distinct codes
+with the same label text remain distinct, qualified levels without a warning.
+Double-backed `Date` and `POSIXct` vectors are supported; their Stata label
+codes and displayed levels are translated to the R temporal representation.
+
+Factor conversion and `tab()` share a native grouping path. Both preserve a
+compact dtaparser numeric source instead of allocating its decoded double
+backing before grouping.
 
 The helpers target the documented Stata 19 metadata limits:
 
@@ -90,3 +112,19 @@ The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is n
 The version-pinned comparison and both package attach orders run in [`test-labelled-interop.R`](../scripts/test-labelled-interop.R). CI installs `labelled` only for that repository-level gate; it is not a dtaparser runtime, suggested, or enhanced dependency.
 
 If `labelled` is attached first and `dtaparser` second, unqualified common helper names resolve to dtaparser. If `labelled` is attached after dtaparser, normal R masking makes them resolve to `labelled`; dtaparser emits one scoped warning. Qualified calls such as `dtaparser::set_value_labels()` always select this implementation.
+
+## Compared with `haven` helpers
+
+The missing-code helpers and factor conversion intentionally use package-owned
+names rather than masking haven. On the Haven 2.5.5 baseline, Haven accepts tag
+payloads outside Stata's `.a` through `.z` domain, classifies some noncanonical
+NaNs as tagged values, and materializes compact dtaparser columns during tag
+inspection and factor conversion. Its label-only factor display also merges
+distinct numeric codes when their label text is identical.
+
+dtaparser validates the narrower Stata domain, preserves distinct factor
+levels, and scans compact storage directly. Two-way missing-payload
+interoperability with the installed Haven release runs in the ordinary package
+tests. [`test-haven-helper-interop.R`](../scripts/test-haven-helper-interop.R)
+retains the pinned 2.5.5 behavior comparison; Haven remains a suggested
+dependency for writing DTA files and reading other statistical formats.

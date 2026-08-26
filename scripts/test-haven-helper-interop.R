@@ -84,4 +84,77 @@ assert(
     "The noncanonical-NaN classification comparison changed"
 )
 
+duplicate_labels <- haven::labelled(
+    c(1, 2),
+    c(Same = 1, Same = 2)
+)
+ours_factor <- dtaparser::factor_from_labels(duplicate_labels)
+haven_factor <- haven::as_factor(duplicate_labels)
+assert(
+    identical(levels(ours_factor), c("Same [1]", "Same [2]")) &&
+        identical(levels(haven_factor), "Same"),
+    "The duplicate-label factor comparison changed"
+)
+
+missing_factor_input <- haven::labelled(
+    c(1, haven::tagged_na("a"), haven::tagged_na("b")),
+    c(One = 1, Refused = haven::tagged_na("a"))
+)
+ours_missing_factor <- dtaparser::factor_from_labels(
+    missing_factor_input,
+    missing = TRUE
+)
+haven_missing_factor <- haven::as_factor(missing_factor_input)
+assert(
+    identical(
+        as.character(ours_missing_factor),
+        c("One", "Refused", ".b")
+    ) &&
+        identical(
+            as.character(haven_missing_factor),
+            c("One", "Refused", NA_character_)
+        ),
+    "The missing-code factor comparison changed"
+)
+
+date_input <- as.Date(c("1960-01-01", "1960-01-02"))
+attr(date_input, "format.stata") <- "%td"
+attr(date_input, "labels") <- c(Origin = 0)
+datetime_input <- as.POSIXct(
+    c("1960-01-01 00:00:00", "1960-01-01 00:00:01"),
+    tz = "UTC"
+)
+attr(datetime_input, "format.stata") <- "%tc"
+attr(datetime_input, "labels") <- c(Epoch = 0)
+assert(
+    identical(
+        as.character(dtaparser::factor_from_labels(date_input)),
+        c("Origin", "1960-01-02")
+    ) &&
+        identical(
+            as.character(dtaparser::factor_from_labels(datetime_input)),
+            c("Epoch", "1960-01-01 00:00:01")
+        ) &&
+        inherits(try(haven::as_factor(date_input), silent = TRUE), "try-error") &&
+        inherits(
+            try(haven::as_factor(datetime_input), silent = TRUE),
+            "try-error"
+        ),
+    "The temporal factor comparison changed"
+)
+
+compact_factor_ours <- dtaparser::read_dta(fixture)$foreign
+invisible(dtaparser::factor_from_labels(compact_factor_ours))
+assert(
+    dtaparser:::.is_unmaterialized_numeric_altrep(compact_factor_ours),
+    "dtaparser factor conversion materialized compact numeric storage"
+)
+
+compact_factor_haven <- dtaparser::read_dta(fixture)$foreign
+invisible(haven::as_factor(compact_factor_haven))
+assert(
+    !dtaparser:::.is_unmaterialized_numeric_altrep(compact_factor_haven),
+    "The haven 2.5.5 factor materialization comparison changed"
+)
+
 message("haven helper interoperability passed for haven ", actual_version)

@@ -131,8 +131,9 @@ The package-owned missing-code helpers also work without haven:
 is_tagged_missing(data$status, "a")
 data$status[1] <- tagged_missing("a")
 }
-The suggested haven package remains useful for writing DTA files and for
-conversions such as \code{haven::as_factor()}.
+Use \code{factor_from_labels()} for an intentional one-way conversion to an
+ordinary factor. The suggested haven package remains useful for writing DTA
+files and for reading other statistical formats.
 See the
 \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 for bulk setters, Stata 19 limits, and the version-specific comparison with

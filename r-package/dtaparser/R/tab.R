@@ -11,29 +11,48 @@
 #'   unquoted column names. All selected vectors must have the same length.
 #' @param data Optional data frame in which to evaluate `x` and `...`.
 #' @param missing How missing values should be handled. `FALSE` and
-#'   `"exclude"` omit them; `TRUE` and `"distinguish"` give Stata system
-#'   missing (`.`), every observed extended missing (`.a` through `.z`), and R
-#'   `NaN` separate categories; `"combine"` creates one base-R missing
-#'   category.
+#'   `"exclude"` omit them; `TRUE` and `"distinguish"` give observed Stata
+#'   system missing (`.`), extended missing codes (`.a` through `.z`), and R
+#'   `NaN` separate categories; `"combine"` creates one base-R missing category.
 #' @param display How labelled values should be named: by `"label"` (the
 #'   default), underlying `"value"`, or `"both"`. An absent label always falls
 #'   back to the underlying value. Duplicate displayed labels are qualified by
 #'   their values.
 #'
+#' @details
+#' Calls may supply vectors directly, select unquoted names from `data`, or
+#' pipe a data frame into `tab()`. A data frame passed as `x` contributes all
+#' of its columns when no names follow it. Thus `tab(df)` tabulates every
+#' column, while `tab(x, y, data = df)` and `df |> tab(x, y)` are equivalent
+#' ways to select `x` and `y`.
+#'
+#' Value labels affect only displayed dimension names. Categories remain
+#' ordered by their underlying values. Unused value-label definitions do not
+#' create zero-count categories. If displayed labels collide, their underlying
+#' values are appended to keep every dimension name unambiguous.
+#'
+#' With `missing = TRUE` or `"distinguish"`, numeric categories are ordered
+#' after observed values as system missing, extended missings `.a` through
+#' `.z`, and then R `NaN`. A labelled missing code uses its value label unless
+#' `display = "value"`; otherwise its Stata code is shown.
+#' `missing = "combine"` follows base R by collapsing all missing numeric
+#' payloads into one category.
+#'
+#' Numeric factorization is shared with [factor_from_labels()] and does not
+#' materialize compact numeric columns returned by [read_dta()].
+#'
 #' @return A standard `table` object.
 #' @export
 #' @examples
-#' if (requireNamespace("haven", quietly = TRUE)) {
-#'     x <- haven::labelled(
-#'         c(1, 2, 1, NA_real_, haven::tagged_na(c("a", "b"))),
-#'         c(Yes = 1, No = 2, Refused = haven::tagged_na("a"))
-#'     )
+#' x <- set_value_labels(
+#'     c(1, 2, 1, NA_real_, tagged_missing(c("a", "b"))),
+#'     Yes = 1, No = 2, Refused = tagged_missing("a")
+#' )
 #'
-#'     table(x, useNA = "ifany")
-#'     table(haven::as_factor(x), useNA = "ifany")
-#'     tab(x, missing = TRUE)
-#'     tab(x, missing = TRUE, display = "both")
-#' }
+#' table(unclass(x), useNA = "ifany")
+#' table(factor_from_labels(x), useNA = "ifany")
+#' tab(x, missing = TRUE)
+#' tab(x, missing = TRUE, display = "both")
 #'
 #' mtcars |>
 #'     tab(cyl, gear)
@@ -169,26 +188,23 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
 
 .prepare_tab_argument <- function(value, missing, display) {
     labels <- attr(value, "labels", exact = TRUE)
-    data <- if (is.object(value)) vctrs::vec_data(value) else value
-    numeric_data <- typeof(data) %in% c("double", "integer") &&
+    numeric_data <- typeof(value) %in% c("double", "integer") &&
         !is.factor(value)
     labelled <- numeric_data && .valid_tab_labels(labels)
     needs_missing <- !identical(missing, "exclude") && numeric_data
-    has_missing <- if (labelled || needs_missing) anyNA(data) else FALSE
-    special_missing <- needs_missing && has_missing
 
-    if (!labelled && !special_missing) return(value)
+    if (!labelled && !needs_missing) return(value)
 
     restore_to <- if (is.object(value) &&
         !inherits(value, "haven_labelled")) value else NULL
     if (labelled) labels <- .tab_label_values(labels, value)
     .tab_factor(
-        data,
+        value,
         if (labelled) labels else NULL,
         missing,
         display,
         restore_to,
-        has_missing
+        drop_unused = TRUE
     )
 }
 
@@ -213,29 +229,18 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
 }
 
 .tab_factor <- function(value, labels, missing, display, restore_to,
-                        has_missing) {
-    if (has_missing) {
-        missing_rows <- is.na(value)
-        observed_values <- sort(unique(value[!missing_rows]), na.last = NA)
-    } else {
-        missing_rows <- NULL
-        observed_values <- sort(unique(value), na.last = NA)
-    }
+                        drop_unused) {
+    seeds <- if (drop_unused) NULL else labels
+    grouped <- .factorize_numeric(value, seeds, missing)
+    factor_codes <- grouped$codes
+    observed_values <- grouped$values
+    observed_missing_codes <- grouped$missing_codes
     level_values <- if (is.null(restore_to)) {
         as.character(observed_values)
     } else {
         as.character(vctrs::vec_restore(observed_values, restore_to))
     }
-    factor_codes <- match(value, observed_values)
-
-    if (identical(missing, "distinguish") && has_missing) {
-        missing_codes <- .tab_missing_codes(value[missing_rows])
-        observed_missing_codes <- sort(unique(missing_codes))
-        first_missing_level <- length(observed_values)
-        factor_codes[missing_rows] <-
-            first_missing_level + match(
-                missing_codes, observed_missing_codes
-            )
+    if (length(observed_missing_codes) > 0L) {
         level_values <- c(
             level_values,
             vapply(
@@ -244,8 +249,6 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
                 character(1)
             )
         )
-    } else {
-        observed_missing_codes <- integer()
     }
 
     label_names <- .tab_level_labels(
@@ -270,6 +273,19 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
         levels = level_names,
         class = "factor"
     )
+}
+
+.factorize_numeric <- function(value, seeds, missing) {
+    missing_mode <- switch(missing,
+        exclude = 0L,
+        distinguish = 1L,
+        combine = 2L
+    )
+    result <- .Call(C_dtaparser_factorize_numeric, value, seeds, missing_mode)
+    if (typeof(value) == "integer") {
+        result$values <- as.integer(result$values)
+    }
+    result
 }
 
 .tab_level_labels <- function(labels, observed_values, missing_codes) {
