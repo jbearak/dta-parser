@@ -4,9 +4,9 @@ dta-parser provides TypeScript and R libraries that read Stata DTA files without
 
 ## R package language
 
-**Default Stata reader**:
-The R package's intended role for DTA imports, including in projects that use haven for file writing or other statistical formats.
-_Avoid_: Large-file fallback, Haven replacement
+**Stata import**:
+Reading a Stata DTA file into R. Use dtaparser for this operation, including in projects that use haven for file writing or other statistical formats.
+_Avoid_: Default Stata reader, Haven replacement
 
 **Haven-compatible read**:
 A DTA read that accepts haven's common read arguments and returns equivalent values, labels, dates, and missing codes for valid supported inputs. It does not promise identical validation or encoding behavior.
