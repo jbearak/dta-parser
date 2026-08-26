@@ -1,123 +1,47 @@
 # @jbearak/dta-parser
 
-A TypeScript parser for Stata `.dta` files. The package exposes portable
-helpers for callers that already have file bytes and a Node entrypoint for
-filesystem-backed random access.
+A TypeScript parser for Stata `.dta` files. It ships JavaScript bundles for ESM and CommonJS callers. Use the portable entrypoint when you already have the file bytes, or the Node entrypoint for filesystem-backed random access.
 
-This parser was first written inside
-[Sight](https://github.com/jbearak/sight), then extracted so it could also be
-used by [manuscript-markdown](https://github.com/jbearak/manuscript-markdown).
-It is one of the libraries in the
-[dta-parser multi-language repository](../../README.md); the repository also
-contains an independent [Rust parser](../../r-package/dtaparser/src/dta-parser) and an
-[R binding around that Rust parser](../../r-package/dtaparser).
+The parser began inside [Sight](https://github.com/jbearak/sight). Sight, [manuscript-markdown](https://github.com/jbearak/manuscript-markdown), and [Table Viewer](https://github.com/jbearak/table-viewer) now use the standalone package.
 
 ## Installation
 
 ```sh
 npm install @jbearak/dta-parser
-bun add @jbearak/dta-parser
-pnpm add @jbearak/dta-parser
 ```
 
-Node.js 20 or newer is required.
+Bun and pnpm can install the same package. The Node entrypoint requires Node.js 20 or newer.
 
-## Entrypoints
+## Choose an entrypoint
 
-The package has two public entrypoints:
+| Import | Use it when |
+| --- | --- |
+| `@jbearak/dta-parser/node` | The package should open a local file and read rows or columns on demand |
+| `@jbearak/dta-parser` | The caller already has the complete file as an `ArrayBuffer` |
 
-- `@jbearak/dta-parser` provides portable parsing helpers for callers that
-  already have `.dta` bytes, plus shared types, display formatting, value-label
-  parsing, `strL` helpers, and missing-value helpers.
-- `@jbearak/dta-parser/node` provides filesystem-backed access through
-  `DtaFile`, including metadata, row reads, column reads, value labels, and
-  `strL` resolution.
+The `/node` suffix is an npm subpath export, not a directory in the installed package.
 
-The `/node` suffix is an npm package subpath export, like `pkg/server` or
-`pkg/browser`. It does not refer to a directory in an installed project.
+## Read a file in Node
 
 ```ts
-import {
-    apply_display_format,
-    is_missing_value_object,
-    missing_type_to_label_key,
-    parse_metadata,
-    read_rows_from_buffer,
-} from '@jbearak/dta-parser';
-
 import { DtaFile } from '@jbearak/dta-parser/node';
-```
 
-## Node quickstart
-
-Use `@jbearak/dta-parser/node` when the package should open the file and keep
-filesystem-backed random access available for row and column reads.
-
-```ts
-import {
-    DtaFile,
-    apply_display_format,
-    is_missing_value_object,
-    missing_type_to_label_key,
-} from '@jbearak/dta-parser/node';
-
-const dta_file = await DtaFile.open('data/auto.dta');
+const file = await DtaFile.open('data/auto.dta');
 
 try {
-    console.log(dta_file.dataset_label);
-    console.log(`${dta_file.nobs} rows, ${dta_file.nvar} columns`);
+    console.log(`${file.nobs} rows, ${file.nvar} columns`);
+    console.log(file.variables.map(variable => variable.name));
 
-    const rows = await dta_file.read_rows(0, 25);
-    const columns = await dta_file.read_columns([0, 2, 5]);
-
-    const price_index = dta_file.variables.findIndex(
-        variable => variable.name === 'price'
-    );
-    const price_variable = dta_file.variables[price_index];
-    const price_cell = rows[0]?.[price_index];
-    const displayed_price =
-        price_variable && typeof price_cell === 'number'
-            ? apply_display_format(price_cell, price_variable.format)
-            : price_cell && is_missing_value_object(price_cell)
-                ? price_cell.missing_type
-                : null;
-
-    const foreign_index = dta_file.variables.findIndex(
-        variable => variable.name === 'foreign'
-    );
-    const foreign_variable = dta_file.variables[foreign_index];
-    const foreign_cell = rows[0]?.[foreign_index];
-    const foreign_table = foreign_variable
-        ? dta_file.value_label_tables.get(
-            foreign_variable.value_label_name
-        )
-        : undefined;
-    const foreign_key = typeof foreign_cell === 'number'
-        ? foreign_cell
-        : foreign_cell && is_missing_value_object(foreign_cell)
-            ? missing_type_to_label_key(foreign_cell.missing_type)
-            : undefined;
-
-    console.log({
-        displayed_price,
-        foreign_label: foreign_key === undefined
-            ? undefined
-            : foreign_table?.get(foreign_key),
-        first_make: columns.get(0)?.[0],
-    });
+    const rows = await file.read_rows(0, 25);
+    console.log(rows[0]);
 } finally {
-    dta_file.close();
+    file.close();
 }
 ```
 
-`read_rows(start, count, col_start?, col_end?, options?)` uses zero-based row
-and column indexes; `col_end` is exclusive. `read_columns(col_indices,
-options?)` returns a `Map<number, RowCell[]>` keyed by the requested indexes.
+`read_rows(start, count, col_start?, col_end?, options?)` uses zero-based indexes and an exclusive `col_end`. `read_columns(col_indices, options?)` returns a `Map` keyed by the requested column indexes. Both methods accept an `AbortSignal` for cooperative cancellation.
 
-## Portable buffer quickstart
-
-Use the root entrypoint when the caller already has the entire file as an
-`ArrayBuffer`.
+## Read an ArrayBuffer
 
 ```ts
 import {
@@ -134,138 +58,34 @@ console.log(metadata.variables.map(variable => variable.name));
 console.log(rows[0]);
 ```
 
-`read_rows_from_buffer()` expects the full file. Callers that already hold
-only contiguous observation bytes can use `read_rows_from_data_buffer()`.
+Buffer helpers expect the complete file. Callers holding only contiguous observation bytes can use `read_rows_from_data_buffer()`.
 
-## Text encoding
+## Data behavior
 
-By default, the parser uses Windows-1252 for releases 105, 108, 110--111,
-113--115, and 117, and UTF-8 for releases 118--119. Files through release 117
-do not record a code page, so Windows-1252 is a pragmatic guess that commonly
-recovers the intended text. Select UTF-8 explicitly for strict current-Stata
-behavior:
+The parser covers Stata 5 through 19. Numeric values remain numbers and strings remain strings. Stata system and extended missing values remain distinct:
 
 ```ts
-const strict_file = await DtaFile.open(
-    'data/legacy.dta',
-    { encoding: 'utf-8' }
-);
-
-const metadata = parse_metadata(buffer, {
-    encoding: 'windows-1252',
-});
-const rows = read_rows_from_buffer(buffer, metadata, 0, 25);
+type MissingValue = {
+    kind: 'missing';
+    missing_type: '.' | '.a' | /* ... */ '.z';
+};
 ```
 
-Supported values are `auto`, `utf-8`, `windows-1252`, and `iso-8859-1`.
-The common `UTF8`, `CP1252`, and `latin1` aliases are also accepted
-case-insensitively, with hyphens, underscores, and spaces ignored.
-An explicit choice applies consistently to metadata, fixed strings,
-value-label table names and values, dataset notes, and `strL` text.
-`iso-8859-1` remains intentionally distinct from Windows-1252 at bytes
-0x80--0x9f rather than following the Web Encoding Standard alias.
+Metadata includes variables, labels, display formats, notes, value-label tables, and section offsets. `DtaFile` resolves selected `strL` values and validates their object references.
 
-The resolved choice is available as `metadata.text_encoding` and
-`dta_file.text_encoding`. Buffer helpers inherit it from the metadata object,
-so callers select the encoding once when calling `parse_metadata()` or
-`parse_legacy_metadata()`.
+Automatic text decoding uses Windows-1252 for pre-Unicode files and UTF-8 for Unicode files. Callers can override it with UTF-8, Windows-1252, or ISO-8859-1. See the repository's [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact releases and language differences.
 
-## Supported files and data model
+## Main exports
 
-The parser supports releases 105, 108, 110--111, 113--115, and 117--119,
-covering Stata 5 onward for files using these format releases. Other formats are rejected.
-It reads numeric and fixed-string values, `strL` long strings, labels,
-display formats, value-label tables, and the missing values supported by each
-release.
+The portable entrypoint includes `parse_metadata()`, `read_rows_from_buffer()`, display-format helpers, value-label parsing, `strL` helpers, missing-value helpers, and shared types. The Node entrypoint adds `DtaFile` and re-exports the portable interface.
 
-| Type | Shape |
-| --- | --- |
-| `DtaMetadata` | File metadata, dimensions, variables, section offsets, and observation width |
-| `VariableInfo` | Name, type, storage code, format, label, value-label name, width, and offset |
-| `Row` | A `RowCell[]` representing one observation |
-| `RowCell` | `number`, `string`, or `MissingValue` |
-| `MissingValue` | `{ kind: 'missing', missing_type: '.' \| '.a' \| ... \| '.z' }` |
+TypeScript declarations ship with the package and provide the complete interface reference.
 
-Stata missing values remain tagged objects instead of becoming `null` or
-`NaN`, so `.`, `.a`, and the remaining extended missing values stay distinct.
+## Project links
 
-`DtaFile` and the buffer helpers apply strict Generic String Object (`strL`)
-validation. Invalid or duplicate keys, unsupported types, truncated or
-unterminated payloads, partial pointers, and dangling non-null references are
-rejected.
-
-## Common operations
-
-Read a page or a column projection:
-
-```ts
-const page = await dta_file.read_rows(200, 100);
-const selected_rows = await dta_file.read_rows(0, 100, 3, 8);
-const selected_columns = await dta_file.read_columns([0, 4, 7]);
-```
-
-Cancel a long Node read:
-
-```ts
-const controller = new AbortController();
-const rows = await dta_file.read_rows(
-    0,
-    dta_file.nobs,
-    undefined,
-    undefined,
-    { signal: controller.signal, chunk_rows: 10_000 }
-);
-```
-
-`read_columns()` accepts the same cancellation options. Cancellation is
-cooperative and is enabled only when an options object supplies a signal.
-
-## API reference
-
-Root entrypoint exports:
-
-| Export | Purpose |
-| --- | --- |
-| `parse_metadata(buffer, options?)` | Parse modern file metadata and select its text encoding |
-| `parse_legacy_metadata(buffer, file_size, options?)` | Parse supported legacy metadata and select its text encoding |
-| `read_rows_from_buffer()` | Decode rows from a full file buffer |
-| `read_rows_from_data_buffer()` | Decode rows from observation bytes |
-| `parse_value_labels()` | Parse value-label tables |
-| `apply_display_format()` | Apply supported Stata display formats |
-| `build_gso_index()`, `decode_gso_entry()`, `read_strl_pointer()`, `resolve_strl()` | Resolve `strL` values |
-| Missing-value helpers | Classify, construct, inspect, and map Stata missing tags |
-| Shared types | `DtaMetadata`, `VariableInfo`, `Row`, `RowCell`, `MissingValue`, `DtaType`, `FormatVersion`, and text-encoding option types |
-
-Node entrypoint exports:
-
-| Export | Purpose |
-| --- | --- |
-| `DtaFile.open(file_path, options?)` | Open a `.dta` file with an optional source encoding |
-| `read_rows()` | Read a row window and optional contiguous column range |
-| `read_columns()` | Read selected columns into a keyed `Map` |
-| `close()` | Close the descriptor and clear cached sections |
-| `DtaFileOpenOptions` | Source text-encoding option |
-| `ReadRowsOptions`, `ReadColumnsOptions` | Cancellation and chunk-size options |
-| Shared root exports | Types, formatting, and missing-value helpers |
-
-## Development
-
-From `typescript/dta-parser` in a repository checkout:
-
-```sh
-bun install --frozen-lockfile
-bun run typecheck
-bun run test
-bun run build
-bun run conformance
-DTA_BENCH_ITERATIONS=100 bun run bench:ts
-npm pack --dry-run
-```
-
-The package tests include its unit and data-browser smoke tests plus the
-repository's TypeScript integration checks. Shared fixtures live at
-[`../../tests/fixtures/dta`](../../tests/fixtures/dta), and the cross-language
-contract is described in the [repository README](../../README.md).
+- [Repository](https://github.com/jbearak/dta-parser)
+- [Contributing](https://github.com/jbearak/dta-parser/blob/main/CONTRIBUTING.md)
+- [Benchmarks](https://github.com/jbearak/dta-parser/tree/main/benchmarks)
 
 ## License
 
