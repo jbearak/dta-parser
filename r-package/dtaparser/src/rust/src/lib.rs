@@ -127,6 +127,38 @@ pub unsafe extern "C" fn dtaparser_numeric_free(data: *mut c_void) {
     drop(Box::from_raw(data.cast::<NumericData>()));
 }
 
+#[no_mangle]
+/// Allocate the descriptor for compact numeric storage created by R code.
+///
+/// # Safety
+///
+/// `values` must point into an R raw vector that remains protected by the
+/// resulting ALTREP external pointer. `kind` must use the `NumericKind`
+/// discriminants shared with `init.c`.
+pub unsafe extern "C" fn dtaparser_numeric_alloc(
+    values: *mut c_void,
+    length: usize,
+    kind: c_int,
+    no_na: c_int,
+) -> *mut c_void {
+    let kind = match kind {
+        0 => NumericKind::Byte,
+        1 => NumericKind::Int,
+        2 => NumericKind::Long,
+        3 => NumericKind::Float,
+        _ => return ptr::null_mut(),
+    };
+    Box::into_raw(Box::new(NumericData {
+        values,
+        length,
+        kind: kind as c_int,
+        temporal: TemporalKind::None as c_int,
+        format_version: 119,
+        no_na,
+    }))
+    .cast::<c_void>()
+}
+
 #[repr(C)]
 struct DictStringData {
     value_ids: *mut u32,
@@ -454,17 +486,60 @@ unsafe fn attach_variable_attributes(
         set_attr(vector, "labels", labels)?;
     }
 
-    match temporal_kind(&variable.format) {
-        TemporalKind::Date => set_class(vector, &["Date"], guard)?,
-        TemporalKind::Datetime => {
+    let storage = match variable.dta_type {
+        DtaType::Byte => Some(("byte", "stata_byte")),
+        DtaType::Int => Some(("int", "stata_int")),
+        DtaType::Long => Some(("long", "stata_long")),
+        DtaType::Float => Some(("float", "stata_float")),
+        DtaType::Double => Some(("double", "stata_double")),
+        DtaType::FixedString(_) | DtaType::StrL => None,
+    };
+    if let Some((storage_name, _)) = storage {
+        let storage_value = scalar_string(storage_name, guard)?;
+        set_attr(vector, "stata.storage", storage_value)?;
+    }
+
+    match (temporal_kind(&variable.format), storage) {
+        (TemporalKind::Date, Some(_)) => {
+            set_class(vector, &["stata_temporal", "stata_date", "Date"], guard)?;
+        }
+        (TemporalKind::Datetime, Some(_)) => {
+            set_class(
+                vector,
+                &["stata_temporal", "stata_datetime", "POSIXct", "POSIXt"],
+                guard,
+            )?;
+            let timezone = scalar_string("UTC", guard)?;
+            set_attr(vector, "tzone", timezone)?;
+        }
+        (TemporalKind::None, Some((_, storage_class))) if table.is_some() => {
+            set_class(
+                vector,
+                &[
+                    "stata_numeric",
+                    storage_class,
+                    "haven_labelled",
+                    "vctrs_vctr",
+                    "double",
+                ],
+                guard,
+            )?;
+        }
+        (TemporalKind::None, Some((_, storage_class))) => set_class(
+            vector,
+            &["stata_numeric", storage_class, "vctrs_vctr", "double"],
+            guard,
+        )?,
+        (TemporalKind::Date, None) => set_class(vector, &["Date"], guard)?,
+        (TemporalKind::Datetime, None) => {
             set_class(vector, &["POSIXct", "POSIXt"], guard)?;
             let timezone = scalar_string("UTC", guard)?;
             set_attr(vector, "tzone", timezone)?;
         }
-        TemporalKind::None if table.is_some() => {
+        (TemporalKind::None, None) if table.is_some() => {
             set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
         }
-        TemporalKind::None => {}
+        (TemporalKind::None, None) => {}
     }
     Ok(())
 }

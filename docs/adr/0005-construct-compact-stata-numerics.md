@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Persistent Stata storage types with compact construction

@@ -42,9 +42,10 @@ R double vectors during decoding, which uses more memory but avoids later
 widening when a workload requires a contiguous double data pointer.
 Character-column ALTREP is unaffected.}
 }
-\value{A tibble containing native numeric and character vectors. Byte, int,
-long, and float columns retain their compact Stata storage width until R
-requests a materialized double vector; source doubles are created eagerly.
+\value{A tibble containing native numeric and character vectors. Numeric
+columns carry their declared Stata storage type. Byte, int, long, and float
+columns retain their compact Stata storage width until R requests a
+materialized double vector; source doubles are created eagerly.
 \code{\%td} columns and legacy or custom formats beginning \code{\%d} have class
 \code{Date}; \code{\%tc} and \code{\%tC} columns have classes \code{POSIXct}
 and \code{POSIXt} in UTC. Other Stata temporal formats remain numeric with
@@ -64,8 +65,10 @@ every code present. Use \code{missing_tag()} to recover their letters,
 than a tagged value, to create Stata system missing. Missing tags are part of
 the numeric values and are distinct from Stata value labels stored in a
 column's \code{labels} attribute.
-Tagged missings can be stored in any R double vector; no Stata-specific class
-is required. Assigning one to an R integer vector widens that vector to double
+Tagged missings can be stored in any R double vector; the missing payload
+itself does not require a Stata-specific class. Imported Stata numerics carry
+a class so their storage declaration survives supported operations. Assigning
+one to an R integer vector widens that vector to double
 because R integers have only \code{NA_integer_}. This does not reflect a Stata
 limitation: Stata \code{byte}, \code{int}, and \code{long} storage each encode
 all 27 missing codes in reserved high values.
@@ -78,9 +81,10 @@ encoding and could not expose \code{.a} through \code{.z} losslessly. The
 R-facing double type does not require eight bytes per source value while the
 column remains ALTREP: source \code{byte}, \code{int}, \code{long}, and
 \code{float} values stay in their compact Stata storage and are converted to
-doubles on access. A write or full materialization creates an ordinary R
-double vector. This combines lossless missing-code semantics with compact
-storage for read-mostly data.
+doubles on access. Supported mutations validate and re-encode the result. A
+full materialization widens the backing to R doubles but retains the declared
+storage class. This combines lossless missing-code semantics with compact
+steady-state storage.
 For example:
 \preformatted{x <- c(1, NA_real_, tagged_missing("a"), tagged_missing("z"))
 is.na(x)
@@ -111,6 +115,25 @@ codes; select particular extended missing codes with
 instead. A transformation may materialize an ALTREP column and may drop Stata
 metadata attributes when it constructs a new vector, following the same
 behavior as haven-compatible vectors.
+}
+
+\section{Stata storage declarations}{
+\code{stata_storage_type()} reports \code{"byte"}, \code{"int"},
+\code{"long"}, \code{"float"}, or \code{"double"} without materializing
+compact backing. Use \code{stata_byte()}, \code{stata_int()},
+\code{stata_long()}, \code{stata_float()}, and \code{stata_double()} to
+declare storage for derived vectors. Constructors and explicit casts reject
+unrepresentable values and name the wider constructor to use. Float
+construction rounds to binary32, as Stata does.
+
+Subassignment, \code{replace()}, \code{dplyr::if_else()}, and
+\code{dplyr::mutate()} retain declared storage and re-encode compact results.
+Arithmetic starts at the operands' common Stata storage type and widens only
+when the result values require it. Base \code{ifelse()} takes attributes from
+its condition and therefore returns a bare vector. Pass that result to a
+storage constructor to declare and compact it again. Re-encoding temporarily
+materializes doubles, so the memory saving applies after construction and
+across columns held in memory.
 }
 
 \section{Labels and missing-code helpers}{

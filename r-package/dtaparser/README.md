@@ -1,6 +1,6 @@
 # dtaparser
 
-`dtaparser` reads Stata `.dta` files into R tibbles. Use it instead of `haven::read_dta()` for Stata imports. It accepts haven's common read arguments and returns the same R representations for labels, dates, and tagged missing values.
+`dtaparser` reads Stata `.dta` files into R tibbles. Use it instead of `haven::read_dta()` for Stata imports. It accepts haven's common read arguments and returns compatible values, labels, dates, and tagged missing values. Numeric columns also retain their declared Stata storage type.
 
 ## Why use dtaparser?
 
@@ -67,9 +67,31 @@ is_tagged_missing(cars$foreign, "a")
 cars$foreign[1] <- tagged_missing("f")
 ```
 
-Stata byte, int, and long columns appear as R doubles so every missing tag can be represented. `dtaparser` keeps those columns at their smaller Stata widths until R needs a full double vector. R calls this mechanism ALTREP.
+Stata byte, int, long, and float columns appear as R doubles so every missing tag can be represented. `dtaparser` keeps those columns at their Stata widths until R needs a full double vector. The storage declaration remains on the column after materialization.
 
 ## Working with Stata data
+
+Inspect storage without materializing a compact column, or declare storage for
+a derived vector:
+
+```r
+stata_storage_type(cars$foreign)
+
+status <- stata_byte(c(1, 2, NA_real_, tagged_missing("a")))
+empty_status <- stata_byte(.size = 1000)
+```
+
+The five constructors are `stata_byte()`, `stata_int()`, `stata_long()`,
+`stata_float()`, and `stata_double()`. They reject values that the requested
+type cannot store and name a wider constructor in the error. Float construction
+rounds values to binary32.
+
+Subset assignment, `replace()`, `dplyr::if_else()`, and `dplyr::mutate()`
+retain declared storage. Arithmetic widens only when its result values require
+it. Base `ifelse()` strips the declaration because it takes attributes from the
+condition; pass its result to a constructor to declare storage again. Encoding
+materializes doubles temporarily, so the memory reduction is steady-state
+rather than a reduction in peak memory during construction.
 
 `recode()` changes selected values without losing unmatched system or extended missing codes. It also preserves classes and Stata metadata for numeric, `haven_labelled`, `Date`, and `POSIXct` vectors.
 
@@ -115,6 +137,7 @@ Use the installed help for exact behavior and examples:
 
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
+?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values
 ?factor_from_labels # one-way conversion to an ordinary factor

@@ -206,6 +206,15 @@ recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {
     recode(.x, ..., .default = .default, .missing = .missing)
 }
 
+#' @export
+recode.stata_numeric <- function(
+    .x, ..., .default = NULL, .missing = NULL
+) {
+    .recode_numeric_like(
+        .x, ..., .default = .default, .missing = .missing
+    )
+}
+
 # Package-owned implementation of the legacy dplyr numeric contract. Calling
 # dplyr's generic from recode.numeric() would dispatch straight back here, and
 # its original numeric method is deliberately not part of dplyr's public API.

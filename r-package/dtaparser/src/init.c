@@ -7,6 +7,7 @@
 #include <R_ext/Visibility.h>
 #include <float.h>
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,7 @@ extern SEXP dtaparser_read_rust(
 );
 extern void dtaparser_free_error(char *);
 extern void dtaparser_numeric_free(void *);
+extern void *dtaparser_numeric_alloc(void *, size_t, int, int);
 extern void dtaparser_dictstring_free(void *);
 extern int dtaparser_dictstring_bytes(
     void *, uint32_t, const char **, int *
@@ -917,6 +919,162 @@ int dtaparser_make_numeric(
     return ok;
 }
 
+static size_t numeric_kind_width(int kind) {
+    switch (kind) {
+    case NUMERIC_BYTE:
+        return sizeof(int8_t);
+    case NUMERIC_INT:
+        return sizeof(int16_t);
+    case NUMERIC_LONG:
+        return sizeof(int32_t);
+    case NUMERIC_FLOAT:
+        return sizeof(float);
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+}
+
+static void write_numeric_missing(
+    unsigned char *output, R_xlen_t index, int kind, int offset
+) {
+    switch (kind) {
+    case NUMERIC_BYTE: {
+        int8_t encoded = (int8_t) (101 + offset);
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_INT: {
+        int16_t encoded = (int16_t) (32741 + offset);
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_LONG: {
+        int32_t encoded = INT32_C(2147483621) + offset;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_FLOAT: {
+        uint32_t bits = UINT32_C(0x7f000000) +
+            (uint32_t) offset * UINT32_C(0x00000800);
+        float encoded;
+        memcpy(&encoded, &bits, sizeof(encoded));
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+}
+
+static void write_numeric_observed(
+    unsigned char *output, R_xlen_t index, int kind, double value
+) {
+    switch (kind) {
+    case NUMERIC_BYTE: {
+        if (!R_FINITE(value) || value != trunc(value) ||
+            value < -127.0 || value > 100.0) {
+            Rf_error("value cannot be represented as Stata byte storage");
+        }
+        int8_t encoded = (int8_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_INT: {
+        if (!R_FINITE(value) || value != trunc(value) ||
+            value < -32767.0 || value > 32740.0) {
+            Rf_error("value cannot be represented as Stata int storage");
+        }
+        int16_t encoded = (int16_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_LONG: {
+        if (!R_FINITE(value) || value != trunc(value) ||
+            value < -2147483647.0 || value > 2147483620.0) {
+            Rf_error("value cannot be represented as Stata long storage");
+        }
+        int32_t encoded = (int32_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_FLOAT: {
+        uint32_t maximum_bits = UINT32_C(0x7effffff);
+        float maximum;
+        memcpy(&maximum, &maximum_bits, sizeof(maximum));
+        if (!R_FINITE(value) || value < -(double) maximum ||
+            value > (double) maximum) {
+            Rf_error("value cannot be represented as Stata float storage");
+        }
+        float encoded = (float) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+}
+
+SEXP C_dtaparser_construct_numeric(SEXP value, SEXP kind_value) {
+    if (TYPEOF(value) != REALSXP) {
+        Rf_error("compact Stata numeric construction requires doubles");
+    }
+    if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1) {
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+    int kind = INTEGER(kind_value)[0];
+    size_t width = numeric_kind_width(kind);
+    R_xlen_t length = XLENGTH(value);
+    if ((size_t) length > SIZE_MAX / width ||
+        (size_t) length * width > (size_t) R_XLEN_T_MAX) {
+        Rf_error("compact Stata numeric vector is too long");
+    }
+    R_xlen_t byte_length = (R_xlen_t) ((size_t) length * width);
+    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
+    unsigned char *output = RAW(backing);
+    int no_na = 1;
+
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        double element = REAL_ELT(value, index);
+        int tag = stata_missing_tag_value(element);
+        int offset = tag == 0 ? -1 : tag - 'a' + 1;
+        if (tag == 0 && ISNA(element)) offset = 0;
+        if (offset >= 0) {
+            no_na = 0;
+            write_numeric_missing(output, index, kind, offset);
+        } else if (ISNAN(element)) {
+            Rf_error(
+                "compact Stata numerics accept only system missing and `.a` through `.z`"
+            );
+        } else {
+            write_numeric_observed(output, index, kind, element);
+        }
+    }
+
+    void *data = dtaparser_numeric_alloc(
+        output, (size_t) length, kind, no_na
+    );
+    if (data == NULL) {
+        UNPROTECT(1);
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = PROTECT(R_new_altrep(
+        dtaparser_numeric_class, external, R_NilValue
+    ));
+    UNPROTECT(3);
+    return result;
+}
+
 static void dictstring_finalize(SEXP external) {
     void *data = R_ExternalPtrAddr(external);
     if (data != NULL) {
@@ -1711,6 +1869,8 @@ SEXP C_dtaparser_missing_codes(SEXP value) {
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 4},
     {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 8},
+    {"C_dtaparser_construct_numeric",
+     (DL_FUNC) &C_dtaparser_construct_numeric, 2},
     {"C_dtaparser_is_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
     {"C_dtaparser_is_altrep", (DL_FUNC) &C_dtaparser_is_altrep, 1},

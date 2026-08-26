@@ -92,7 +92,7 @@ test_that("R and haven recognize every Stata numeric missing code", {
             )
             mode <- if (use_numeric_altrep) "default" else "eager"
             for (index in numeric_indices) {
-                values <- unclass(actual[[index]])
+                values <- actual[[index]]
                 info <- paste(name, storage[[index]], mode)
 
                 expect_identical(
@@ -263,8 +263,8 @@ test_that("both recode interfaces preserve every Stata missing code", {
                         attributes(original),
                         info = paste(info, "attributes")
                     )
-                    expect_identical(
-                        unname(recoded[[28L]]),
+                expect_identical(
+                    unname(as.double(recoded[[28L]])),
                         -1,
                         info = paste(info, "observed replacement")
                     )
@@ -279,8 +279,8 @@ test_that("both recode interfaces preserve every Stata missing code", {
                         !!!replacement,
                         .missing = -99
                     )
-                    expect_identical(
-                        unname(replaced_missing[seq_len(27L)]),
+                expect_identical(
+                    unname(as.double(replaced_missing[seq_len(27L)])),
                         rep(-99, 27L),
                         info = paste(info, "explicit missing replacement")
                     )
@@ -347,7 +347,7 @@ test_that("both recode interfaces preserve every Stata missing code", {
                     info = paste(info, "attributes")
                 )
                 expect_identical(
-                    unname(mutated[[index]][[28L]]),
+                    unname(as.double(mutated[[index]][[28L]])),
                     -1,
                     info = paste(info, "observed replacement")
                 )
@@ -678,8 +678,8 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
             for (index in seq_along(tagged)) {
                 info <- paste(name, storage[[index]], mode)
                 expect_identical(
-                    tagged[[index]],
-                    reference_tags[[index]],
+                    as.double(tagged[[index]]),
+                    as.double(reference_tags[[index]]),
                     info = paste(info, "selective recode matches haven")
                 )
                 expect_identical(
@@ -693,13 +693,13 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
                     info = paste(info, "missing positions")
                 )
                 expect_identical(
-                    unname(tagged[[index]][c(2L, 7L)]),
+                    unname(as.double(tagged[[index]][c(2L, 7L)])),
                     c(-1, -6),
                     info = paste(info, "selected replacements")
                 )
                 expect_identical(
-                    observed[[index]],
-                    reference_observed[[index]],
+                    as.double(observed[[index]]),
+                    as.double(reference_observed[[index]]),
                     info = paste(info, "observed recode matches haven")
                 )
                 expect_identical(
@@ -739,7 +739,7 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
                     info = paste(info, "registered recode tags")
                 )
                 expect_identical(
-                    unname(registered_recode[[28L]]),
+                    unname(as.double(registered_recode[[28L]])),
                     -1,
                     info = paste(info, "registered recode replacement")
                 )
@@ -783,9 +783,14 @@ test_that("dplyr manipulation matches haven for every storage type", {
             mode <- if (use_numeric_altrep) "default" else "eager"
             expect_identical(names(actual), names(expected))
             for (index in seq_along(actual)) {
-                expect_identical(
-                    actual[[index]],
+                expect_equal(
+                    without_stata_storage(actual[[index]]),
                     expected[[index]],
+                    tolerance = if (identical(storage[[index]], "float")) {
+                        1e-6
+                    } else {
+                        0
+                    },
                     info = paste(name, storage[[index]], mode)
                 )
             }
@@ -861,7 +866,7 @@ test_that("dplyr manipulation matches haven for labelled and temporal data", {
             use_numeric_altrep = use_numeric_altrep
         ))
         mode <- if (use_numeric_altrep) "default" else "eager"
-        expect_identical(actual, expected, info = mode)
+        expect_identical(data_values(actual), data_values(expected), info = mode)
         expect_s3_class(actual$labelled, "haven_labelled")
         expect_s3_class(actual$date, "Date")
         expect_s3_class(actual$instant, "POSIXct")
@@ -940,8 +945,7 @@ test_that("dplyr manipulation matches haven for labelled and temporal data", {
     narrow_transformed <- manipulate_narrow(narrow_input)
     narrow_expected <- manipulate_narrow(narrow_reference)
     expect_identical(
-        narrow_transformed,
-        narrow_expected
+        data_values(narrow_transformed), data_values(narrow_expected)
     )
     expect_identical(
         haven::na_tag(unclass(narrow_transformed$foreign))[[1L]],
@@ -1045,10 +1049,12 @@ test_that("all bundled fixtures agree with haven", {
 
         for (name in names(actual)) {
             if (storage[[name]] %in% c("float", "double")) {
-                expect_equal(actual[[name]], expected[[name]], tolerance = 1e-7,
+                expect_equal(without_stata_storage(actual[[name]]),
+                             expected[[name]], tolerance = 1e-7,
                              info = paste(info, name))
             } else {
-                expect_equal(actual[[name]], expected[[name]], tolerance = 0,
+                expect_equal(without_stata_storage(actual[[name]]),
+                             expected[[name]], tolerance = 0,
                              info = paste(info, name, "exact"))
             }
             expect_identical(is.na(actual[[name]]), is.na(expected[[name]]),
@@ -1111,9 +1117,9 @@ test_that("projection, renaming, and row bounds match haven", {
 
     expect_identical(actual, rust_vectors)
     expect_identical(names(actual), c("origin", "make", "price"))
-    expect_equal(actual$origin, expected$foreign)
+    expect_equal(without_stata_storage(actual$origin), expected$foreign)
     expect_equal(actual$make, expected$make)
-    expect_equal(actual$price, expected$price)
+    expect_equal(without_stata_storage(actual$price), expected$price)
     expect_identical(attr(actual, "label"), attr(expected, "label"))
     expect_identical(attr(actual, "notes"), attr(expected, "notes"))
     expect_null(attr(actual, "dta_format_version", exact = TRUE))
@@ -1158,7 +1164,9 @@ test_that("safe row-window inputs align with haven in both collectors", {
 
         expect_identical(actual, rust_vectors,
                          info = paste(name, "materialization"))
-        expect_identical(actual, expected, info = name)
+        expect_identical(
+            without_stata_storage_data(actual), expected, info = name
+        )
     }
 })
 
@@ -1188,7 +1196,7 @@ test_that("normalized windows cover empty data and zero-column projections", {
         )
         expected <- haven::read_dta(empty, n_max = n_max)
         expect_identical(actual, rust_vectors)
-        expect_identical(actual, expected)
+        expect_identical(without_stata_storage_data(actual), expected)
     }
 
     path <- fixture("auto_v118.dta")
@@ -1245,7 +1253,7 @@ test_that("native materialization survives forced garbage collection", {
     expect_identical(dim(result), c(1L, 2L))
     expect_identical(result$make[[1L]], "AMC Concord")
     expect_true(dtaparser:::.is_numeric_altrep(result$price))
-    expect_identical(result$price[[1L]], 4099)
+    expect_identical(as.double(result$price[[1L]]), 4099)
 })
 
 test_that("native strings serialize and preserve copy-on-modify semantics", {
@@ -1295,7 +1303,7 @@ test_that("native numerics use width-aware storage with R value semantics", {
     expect_identical(original[[1L]], reference$price[[1L]])
     expect_false(anyNA(original))
     expect_true(anyNA(modified))
-    expect_identical(modified[[1L]], NA_real_)
+    expect_identical(as.double(modified[[1L]]), NA_real_)
 
     retained <- read_dta(path)$price
     invisible(gc())
@@ -1435,23 +1443,27 @@ test_that("native numerics use width-aware storage with R value semantics", {
             }
         }
         for (index in numeric_indices) {
-            actual_column <- unclass(actual[[index]])
-            reference_column <- unclass(reference[[index]])
+            actual_column <- actual[[index]]
+            reference_column <- reference[[index]]
             expect_identical(
                 dtaparser:::.is_numeric_altrep(actual_column),
                 storage[[index]] != "double"
             )
             for (na_rm in c(FALSE, TRUE)) {
                 expect_identical(
-                    sum(actual_column, na.rm = na_rm),
-                    sum(reference_column, na.rm = na_rm),
+                    as.double(sum(actual_column, na.rm = na_rm)),
+                    as.double(sum(reference_column, na.rm = na_rm)),
                     info = paste(name, storage[[index]], "sum", na_rm)
                 )
                 for (summary_name in c("min", "max")) {
                     summary_function <- match.fun(summary_name)
                     expect_identical(
-                        summary_function(actual_column, na.rm = na_rm),
-                        summary_function(reference_column, na.rm = na_rm),
+                        as.double(summary_function(
+                            actual_column, na.rm = na_rm
+                        )),
+                        as.double(summary_function(
+                            reference_column, na.rm = na_rm
+                        )),
                         info = paste(
                             name, storage[[index]], summary_name, na_rm
                         )
@@ -1511,9 +1523,9 @@ test_that("date and datetime storage become native R temporal vectors", {
     actual <- read_dta(path)
     eager <- read_dta(path, use_numeric_altrep = FALSE)
     expected <- haven::read_dta(path)
-    expect_equal(actual$date, expected$date)
+    expect_equal(without_stata_storage(actual$date), expected$date)
     expect_s3_class(actual$date, "Date")
-    expect_equal(actual$instant, expected$instant)
+    expect_equal(without_stata_storage(actual$instant), expected$instant)
     expect_s3_class(actual$instant, "POSIXct")
     expect_identical(attr(actual$instant, "tzone"), "UTC")
     expect_identical(eager, actual)
@@ -1559,7 +1571,9 @@ test_that("legacy and custom daily-date formats match haven", {
 
     expect_identical(actual, rust_vectors)
     for (name in names(formats)) {
-        expect_identical(actual[[name]], expected[[name]], info = name)
+        expect_identical(
+            without_stata_storage(actual[[name]]), expected[[name]], info = name
+        )
         expect_identical(attr(actual[[name]], "format.stata"), formats[[name]],
                          info = name)
         expect_identical(haven::na_tag(actual[[name]]),
@@ -1577,9 +1591,9 @@ test_that("legacy and custom daily-date formats match haven", {
     expect_true(all(vapply(actual[datetime_names], function(column) {
         identical(attr(column, "tzone"), "UTC")
     }, logical(1))))
-    expect_true(all(vapply(actual[numeric_names], function(column) {
-        identical(class(column), "numeric")
-    }, logical(1))))
+    expect_true(all(vapply(
+        actual[numeric_names], inherits, logical(1), "stata_numeric"
+    )))
 
     selected_names <- c("daily_custom", "datetime_tC", "near_uppercase_d")
     selected <- read_dta(
@@ -1601,7 +1615,9 @@ test_that("legacy and custom daily-date formats match haven", {
         n_max = 2
     )
     expect_identical(selected, selected_rust_vectors)
-    expect_identical(selected, selected_expected)
+    expect_identical(
+        without_stata_storage_data(selected), selected_expected
+    )
 })
 
 test_that("explicit encodings match haven across ordinary textual surfaces", {

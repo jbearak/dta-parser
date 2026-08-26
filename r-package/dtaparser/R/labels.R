@@ -318,9 +318,17 @@ dataset_label <- function(data) {
 
     if (has_labels && !temporal &&
         typeof(value) %in% c("integer", "double") &&
-        !inherits(value, "haven_labelled") && is.null(classes)) {
-        storage_class <- typeof(value)
-        classes <- c("haven_labelled", "vctrs_vctr", storage_class)
+        !inherits(value, "haven_labelled")) {
+        if (inherits(value, "stata_numeric")) {
+            location <- match("vctrs_vctr", classes)
+            classes <- append(classes, "haven_labelled", after = location - 1L)
+        } else if (is.null(classes)) {
+            storage_class <- typeof(value)
+            classes <- c("haven_labelled", "vctrs_vctr", storage_class)
+        } else {
+            return(value)
+        }
+        value <- .metadata_copy(value)
         attr(value, "class") <- classes
     }
 
@@ -331,6 +339,7 @@ dataset_label <- function(data) {
         } else {
             classes[classes != "haven_labelled"]
         }
+        value <- .metadata_copy(value)
         attr(value, "class") <- if (length(classes) == 0L) NULL else classes
     }
     value
