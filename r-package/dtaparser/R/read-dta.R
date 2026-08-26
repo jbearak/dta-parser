@@ -170,6 +170,14 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .Call(C_dtaparser_is_unmaterialized_numeric_altrep, value)
 }
 
+.force_altrep_materialization <- function(value) {
+    .Call(C_dtaparser_force_altrep_materialization, value)
+}
+
+.metadata_proxy_depth <- function(value) {
+    .Call(C_dtaparser_metadata_proxy_depth, value)
+}
+
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, materialization, threads,
                            use_numeric_altrep) {

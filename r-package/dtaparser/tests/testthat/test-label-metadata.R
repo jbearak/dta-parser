@@ -500,15 +500,40 @@ test_that("repeated metadata setters keep numeric backing unmaterialized", {
         list(
             unmaterialized =
                 dtaparser:::.is_unmaterialized_numeric_altrep(updated),
+            proxy_depth = dtaparser:::.metadata_proxy_depth(updated),
             variable = var_label(updated),
             values = val_labels(updated),
             format = attr(updated, "format.stata", exact = TRUE)
         ),
         list(
             unmaterialized = TRUE,
+            proxy_depth = 1L,
             variable = "Vehicle origin 100",
             values = c(Domestic = 0, Imported = 1),
             format = "%8.0g"
+        )
+    )
+})
+
+test_that("compactness probe detects materialized metadata proxies", {
+    source <- read_dta(fixture("value_labels_v118.dta"))$foreign
+    updated <- set_variable_labels(source, "Vehicle origin")
+
+    updated <- dtaparser:::.force_altrep_materialization(updated)
+
+    expect_identical(
+        list(
+            is_altrep = dtaparser:::.is_altrep(updated),
+            is_unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(updated),
+            proxy_depth = dtaparser:::.metadata_proxy_depth(updated),
+            values = as.numeric(unclass(updated))
+        ),
+        list(
+            is_altrep = TRUE,
+            is_unmaterialized = FALSE,
+            proxy_depth = 1L,
+            values = rep(c(1, 0), 5L)
         )
     )
 })
@@ -524,12 +549,12 @@ test_that("metadata proxies preserve copy-on-write in both directions", {
 
     expect_identical(
         list(
-            source_value = as.double(source[[1L]]),
-            updated_value = as.double(updated[[1L]]),
+            source_value = unclass(source)[[1L]],
+            updated_value = unclass(updated)[[1L]],
             updated_is_unmaterialized =
                 dtaparser:::.is_unmaterialized_numeric_altrep(updated),
-            second_source_value = as.double(second_source[[1L]]),
-            second_updated_value = as.double(second_updated[[1L]])
+            second_source_value = unclass(second_source)[[1L]],
+            second_updated_value = unclass(second_updated)[[1L]]
         ),
         list(
             source_value = 1,

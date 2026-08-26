@@ -6,6 +6,7 @@
 #include <R_ext/Utils.h>
 #include <R_ext/Visibility.h>
 #include <float.h>
+#include <limits.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -962,6 +963,33 @@ SEXP C_dtaparser_is_unmaterialized_numeric_altrep(SEXP value) {
     return Rf_ScalarLogical(0);
 }
 
+SEXP C_dtaparser_force_altrep_materialization(SEXP value) {
+    if (!ALTREP(value) ||
+        !(TYPEOF(value) == REALSXP || TYPEOF(value) == STRSXP)) {
+        Rf_error("internal materialization probe requires an ALTREP vector");
+    }
+#if R_VERSION >= R_Version(4, 6, 0)
+    (void) DATAPTR_RO(value);
+#else
+    (void) DATAPTR(value);
+#endif
+    return value;
+}
+
+SEXP C_dtaparser_metadata_proxy_depth(SEXP value) {
+    int depth = 0;
+    while (ALTREP(value)) {
+        if (!(R_altrep_inherits(value, dtaparser_metadata_real_class) ||
+              R_altrep_inherits(value, dtaparser_metadata_string_class))) {
+            break;
+        }
+        if (depth == INT_MAX) Rf_error("metadata proxy depth exceeds R limits");
+        depth++;
+        value = R_altrep_data1(value);
+    }
+    return Rf_ScalarInteger(depth);
+}
+
 SEXP C_dtaparser_has_tagged_na(SEXP value) {
     if (TYPEOF(value) != REALSXP) return Rf_ScalarLogical(0);
     R_xlen_t length = XLENGTH(value);
@@ -1019,6 +1047,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata_copy", (DL_FUNC) &C_dtaparser_metadata_copy, 1},
     {"C_dtaparser_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_unmaterialized_numeric_altrep, 1},
+    {"C_dtaparser_force_altrep_materialization",
+     (DL_FUNC) &C_dtaparser_force_altrep_materialization, 1},
+    {"C_dtaparser_metadata_proxy_depth",
+     (DL_FUNC) &C_dtaparser_metadata_proxy_depth, 1},
     {"C_dtaparser_has_tagged_na", (DL_FUNC) &C_dtaparser_has_tagged_na, 1},
     {"C_dtaparser_missing_codes",
      (DL_FUNC) &C_dtaparser_missing_codes, 1},
