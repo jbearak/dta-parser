@@ -179,7 +179,8 @@ tab <- function(x, ..., data = NULL, missing = FALSE,
 
     if (!labelled && !special_missing) return(value)
 
-    restore_to <- if (is.object(value)) value else NULL
+    restore_to <- if (is.object(value) &&
+        !inherits(value, "haven_labelled")) value else NULL
     if (labelled) labels <- .tab_label_values(labels, value)
     .tab_factor(
         data,

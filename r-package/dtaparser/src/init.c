@@ -818,6 +818,22 @@ SEXP C_dtaparser_is_numeric_altrep(SEXP value) {
     return Rf_ScalarLogical(R_altrep_inherits(value, dtaparser_numeric_class));
 }
 
+SEXP C_dtaparser_is_altrep(SEXP value) {
+    return Rf_ScalarLogical(ALTREP(value));
+}
+
+SEXP C_dtaparser_metadata_copy(SEXP value) {
+    if (!ALTREP(value)) return Rf_shallow_duplicate(value);
+
+    SEXP result = PROTECT(R_tryWrap(value));
+    if (result == value) {
+        UNPROTECT(1);
+        return Rf_shallow_duplicate(value);
+    }
+    UNPROTECT(1);
+    return result;
+}
+
 SEXP C_dtaparser_has_tagged_na(SEXP value) {
     if (TYPEOF(value) != REALSXP) return Rf_ScalarLogical(0);
     R_xlen_t length = XLENGTH(value);
@@ -871,6 +887,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 8},
     {"C_dtaparser_is_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
+    {"C_dtaparser_is_altrep", (DL_FUNC) &C_dtaparser_is_altrep, 1},
+    {"C_dtaparser_metadata_copy", (DL_FUNC) &C_dtaparser_metadata_copy, 1},
     {"C_dtaparser_has_tagged_na", (DL_FUNC) &C_dtaparser_has_tagged_na, 1},
     {"C_dtaparser_missing_codes",
      (DL_FUNC) &C_dtaparser_missing_codes, 1},

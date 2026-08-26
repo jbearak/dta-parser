@@ -114,26 +114,29 @@ metadata attributes when it constructs a new vector, following the same
 behavior as haven-compatible vectors.
 }
 
-\section{Optional helpers for labels and missing codes}{
-Reading DTA files does not require haven or labelled. The suggested haven
-package provides helpers for inspecting, selecting, and creating the tagged
-missing values returned by \code{dtaparser}, as well as conversions such as
-\code{haven::as_factor()}. The suggested labelled package provides getters and
-setters for variable labels and value-label tables. For example:
+\section{Labels and optional missing-code helpers}{
+Reading DTA files and working with their labels does not require haven or
+labelled. Use \code{var_label()}, \code{val_labels()}, \code{dataset_label()},
+\code{set_variable_labels()}, and \code{set_value_labels()} to inspect or
+change package-owned Stata metadata without materializing compact numeric
+columns or dropping unrelated attributes. For example:
+\preformatted{var_label(data$status)
+var_label(data$status) <- "Interview status"
+val_labels(data$status)
+val_labels(data$status) <- c(Complete = 1, Refused = 2)
+}
+
+The suggested haven package remains useful for inspecting, selecting, and
+creating tagged missing values, and for conversions such as
+\code{haven::as_factor()}:
 \preformatted{haven::na_tag(data$status)
 haven::is_tagged_na(data$status, "a")
 data$status[1] <- haven::tagged_na("a")
-
-labelled::var_label(data$status)
-labelled::var_label(data$status) <- "Interview status"
-labelled::val_labels(data$status)
-labelled::val_labels(data$status) <- c(Complete = 1, Refused = 2)
 }
-Install these optional packages with
-\code{install.packages(c("haven", "labelled"))}. Installing the tidyverse also
-installs haven, but \code{library(tidyverse)} does not attach it; labelled is a
-separate package. The explicit namespace prefixes above work without attaching
-either package. Value-label setters may reconstruct a vector and drop other
-attributes such as \code{format.stata}; save and restore any such metadata that
-an analysis needs to retain.
+Installing the tidyverse installs haven but \code{library(tidyverse)} does not
+attach it, so use the explicit \code{haven::} prefix unless haven is attached.
+See the
+\href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
+for bulk setters, Stata 19 limits, and the version-specific comparison with
+labelled 2.16.0.
 }

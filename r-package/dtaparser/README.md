@@ -78,12 +78,32 @@ Stata byte, int, and long columns appear as R doubles so every missing tag can b
 tab(cars$foreign, missing = TRUE)
 ```
 
+The package also owns the common label getters and setters; `labelled` is not
+required:
+
+```r
+var_label(cars$foreign)
+var_label(cars$foreign) <- "Vehicle origin"
+
+val_labels(cars$foreign)
+val_labels(cars$foreign) <- c(Domestic = 0, Imported = 1)
+
+dataset_label(cars) <- "Automobile data"
+```
+
+These setters retain compact numeric storage, Stata formats, temporal classes,
+and unrelated attributes. See the
+[R label metadata guide](../../docs/r-label-metadata.md) for bulk updates,
+Stata 19 validation and portability limits, attach-order behavior, and the
+version-specific comparison with `labelled` 2.16.0.
+
 Use the installed help for exact behavior and examples:
 
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?recode    # recoding without losing unmatched missing tags
 ?tab       # label-aware frequency tables
+?var_label # dataset, variable, and value-label metadata
 ```
 
 ## Performance controls

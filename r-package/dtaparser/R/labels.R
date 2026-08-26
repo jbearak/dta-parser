@@ -1,0 +1,454 @@
+#' Get and set Stata label metadata
+#'
+#' Dependency-free helpers for dataset labels, variable labels, and numeric
+#' value-label tables. The common function names and call forms are compatible
+#' with `labelled`, but validation and mutation follow Stata's metadata model
+#' and preserve dtaparser's compact columns and unrelated attributes.
+#'
+#' @section Getter results:
+#' For a vector, `var_label()` returns one character value or `NULL`, and
+#' `val_labels()` returns a named numeric vector or `NULL`. For a data frame,
+#' each returns a named list with one element per column, including `NULL`
+#' entries. `dataset_label()` accepts only a data frame or tibble and returns
+#' one character value or `NULL`.
+#'
+#' @section Setting labels:
+#' Replacement functions modify the supplied metadata. On a data frame,
+#' replacement values must be a named list; a bare `NULL` clears that metadata
+#' from every column. `set_variable_labels()` and `set_value_labels()` support
+#' named column updates in `...` and a programmatic named list in `.labels`.
+#' They also accept vectors for pipeline use. Unknown, duplicate, unnamed, or
+#' overlapping column updates fail atomically.
+#'
+#' `NULL`, `NA_character_`, and `""` all remove a variable or dataset label.
+#' Empty or missing value-label text is discarded. If no entries remain, the
+#' `labels` attribute is removed. Duplicate display text is allowed, but every
+#' numeric code must be unique.
+#'
+#' @section Stata 19 compatibility:
+#' Value-label codes must be whole, nonmissing values in Stata's `long` range,
+#' -2,147,483,647 through 2,147,483,620, or tagged missings `.a` through `.z`.
+#' System missing `.`, ordinary R `NA`/`NaN`, fractions, and infinities cannot
+#' be value-label codes.
+#'
+#' Metadata beyond Stata 19's documented limits is stored unchanged in R with
+#' one aggregated warning: 80 Unicode characters for dataset and variable
+#' labels, 65,536 entries per value-label table, and 32,000 Unicode characters
+#' per value-label text. Export behavior depends on the writer and may fail,
+#' truncate metadata, or produce a file outside Stata's documented limits.
+#'
+#' Adding a value-label table to an ordinary numeric vector adds the
+#' dependency-free classes `haven_labelled`, `vctrs_vctr`, and its storage type.
+#' Date and POSIXct classes, time zones, Stata formats, and unrelated attributes
+#' are preserved. Removing the table removes only compatibility classes added
+#' for the label table and retains unrelated classes.
+#'
+#' See the
+#' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
+#' for the supported call surface and the version-specific comparison with
+#' `labelled`.
+#'
+#' @param x A vector or data frame.
+#' @param data A data frame or tibble.
+#' @param value New label metadata. Data-frame replacement forms require a
+#'   named list or `NULL`.
+#' @param .data A vector or data frame to update.
+#' @param ... Named column updates for a data frame. For a vector, supply one
+#'   variable label or one or more named value-label codes.
+#' @param .labels A programmatic label value for a vector, or a named list of
+#'   column updates for a data frame.
+#' @return Getters return the metadata described above. Replacement functions
+#'   and `set_*()` functions return the updated vector or data frame.
+#' @examples
+#' status <- c(1, 2, 1)
+#' var_label(status) <- "Interview status"
+#' val_labels(status) <- c(Complete = 1, Refused = 2)
+#'
+#' survey <- data.frame(status = status, stratum = c(1, 1, 2))
+#' dataset_label(survey) <- "Baseline survey"
+#' survey <- set_variable_labels(
+#'     survey,
+#'     status = "Interview status",
+#'     .labels = list(stratum = "Sampling stratum")
+#' )
+#' var_label(survey)
+#' val_labels(survey$status)
+#' @export
+var_label <- function(x) {
+    if (is.data.frame(x)) {
+        return(stats::setNames(
+            lapply(x, attr, which = "label", exact = TRUE),
+            names(x)
+        ))
+    }
+
+    attr(x, "label", exact = TRUE)
+}
+
+#' @rdname var_label
+#' @export
+val_labels <- function(x) {
+    if (is.data.frame(x)) {
+        return(stats::setNames(
+            lapply(x, attr, which = "labels", exact = TRUE),
+            names(x)
+        ))
+    }
+
+    attr(x, "labels", exact = TRUE)
+}
+
+#' @rdname var_label
+#' @export
+dataset_label <- function(data) {
+    if (!is.data.frame(data)) {
+        stop("`data` must be a data frame", call. = FALSE)
+    }
+
+    attr(data, "label", exact = TRUE)
+}
+
+.normalize_text_label <- function(value, argument = "value") {
+    if (is.null(value)) return(NULL)
+    if (!is.character(value) || length(value) != 1L) {
+        stop(sprintf("`%s` must be one character value or NULL", argument),
+             call. = FALSE)
+    }
+    if (is.na(value) || identical(value, "")) NULL else value
+}
+
+.validate_column_updates <- function(data, value, normalize, argument) {
+    if (!is.list(value)) {
+        stop(sprintf("`%s` must be a named list or NULL", argument),
+             call. = FALSE)
+    }
+    update_names <- names(value)
+    if (length(value) > 0L &&
+        (is.null(update_names) || anyNA(update_names) ||
+         any(update_names == ""))) {
+        stop(sprintf("`%s` must have one non-empty name per update", argument),
+             call. = FALSE)
+    }
+    if (anyDuplicated(update_names)) {
+        stop(sprintf("`%s` must not contain duplicate column names", argument),
+             call. = FALSE)
+    }
+    unknown <- setdiff(update_names, names(data))
+    if (length(unknown) > 0L) {
+        stop(sprintf(
+            "Unknown column%s: %s",
+            if (length(unknown) == 1L) "" else "s",
+            paste(unknown, collapse = ", ")
+        ), call. = FALSE)
+    }
+
+    stats::setNames(
+        lapply(seq_along(value), function(index) {
+            normalize(value[[index]], sprintf("%s$%s", argument,
+                                               update_names[[index]]))
+        }),
+        update_names
+    )
+}
+
+.warn_stata_metadata_limits <- function(violations) {
+    if (length(violations) == 0L) return(invisible(NULL))
+
+    warning(
+        paste0(
+            "Stored unchanged in R, but exceeds Stata 19's documented ",
+            "limits: ", paste(violations, collapse = "; "), ". Export ",
+            "behavior depends on the writer and may fail, truncate metadata, ",
+            "or create a file outside Stata's documented limits."
+        ),
+        call. = FALSE
+    )
+    invisible(NULL)
+}
+
+.text_label_violations <- function(values, kind, limit = 80L) {
+    if (!is.list(values)) values <- list(values)
+    locations <- names(values)
+    if (is.null(locations)) locations <- rep("value", length(values))
+
+    lengths <- vapply(values, function(value) {
+        if (is.null(value)) 0L else nchar(value, type = "chars")
+    }, integer(1))
+    over_limit <- which(lengths > limit)
+    if (length(over_limit) == 0L) return(character())
+
+    sprintf(
+        "%s `%s` has %d Unicode characters (limit: %d Unicode characters)",
+        kind, locations[over_limit], lengths[over_limit], limit
+    )
+}
+
+.metadata_copy <- function(value) {
+    .Call(C_dtaparser_metadata_copy, value)
+}
+
+.normalize_value_labels <- function(value, argument = "value") {
+    if (is.null(value) || length(value) == 0L) return(NULL)
+    if (!(typeof(value) %in% c("integer", "double"))) {
+        stop(sprintf("`%s` must be a named numeric vector or NULL", argument),
+             call. = FALSE)
+    }
+
+    label_text <- names(value)
+    if (is.null(label_text) || length(label_text) != length(value)) {
+        stop(sprintf("`%s` must name every value-label code", argument),
+             call. = FALSE)
+    }
+    keep <- !is.na(label_text) & label_text != ""
+    value <- value[keep]
+    label_text <- label_text[keep]
+    if (length(value) == 0L) return(NULL)
+
+    missing_codes <- .tab_missing_codes(value)
+    tagged <- !is.na(missing_codes) &
+        missing_codes >= utf8ToInt("a") & missing_codes <= utf8ToInt("z")
+    observed <- is.na(missing_codes) & is.finite(value) &
+        value == floor(value) &
+        value >= -2147483647 & value <= 2147483620
+    if (any(!(tagged | observed))) {
+        stop(
+            sprintf(
+                paste0(
+                    "`%s` codes must be nonmissing integers in Stata's long ",
+                    "range or extended missings `.a` through `.z`"
+                ),
+                argument
+            ),
+            call. = FALSE
+        )
+    }
+
+    keys <- character(length(value))
+    keys[observed] <- paste0("number:", format(
+        value[observed], scientific = FALSE, trim = TRUE
+    ))
+    keys[tagged] <- paste0("missing:", missing_codes[tagged])
+    if (anyDuplicated(keys)) {
+        stop(sprintf("`%s` must not contain duplicate value-label codes",
+                     argument), call. = FALSE)
+    }
+
+    value <- if (is.integer(value)) as.integer(value) else as.double(value)
+    names(value) <- label_text
+    value
+}
+
+.value_label_violations <- function(values) {
+    if (!is.list(values)) values <- list(value = values)
+    locations <- names(values)
+    if (is.null(locations)) locations <- rep("value", length(values))
+    violations <- character()
+
+    for (index in seq_along(values)) {
+        value <- values[[index]]
+        if (is.null(value)) next
+        location <- locations[[index]]
+        if (length(value) > 65536L) {
+            violations <- c(violations, sprintf(
+                "value-label table for `%s` has %s entries (limit: 65,536 entries)",
+                location,
+                format(length(value), big.mark = ",", scientific = FALSE)
+            ))
+        }
+
+        text_lengths <- nchar(names(value), type = "chars")
+        if (any(text_lengths > 32000L)) {
+            violations <- c(violations, sprintf(
+                paste0(
+                    "value-label text for `%s` has %s Unicode characters ",
+                    "(limit: 32,000 Unicode characters)"
+                ),
+                location,
+                format(max(text_lengths), big.mark = ",", scientific = FALSE)
+            ))
+        }
+    }
+    violations
+}
+
+.validate_value_label_target <- function(value, labels, argument = "x") {
+    if (!is.null(labels) &&
+        !(typeof(value) %in% c("integer", "double"))) {
+        stop(sprintf(
+            "`%s` must be a numeric Stata variable to receive value labels",
+            argument
+        ), call. = FALSE)
+    }
+    invisible(NULL)
+}
+
+.apply_haven_labelled_class <- function(value, has_labels) {
+    classes <- attr(value, "class", exact = TRUE)
+    temporal <- inherits(value, "Date") || inherits(value, "POSIXct")
+
+    if (has_labels && !temporal &&
+        typeof(value) %in% c("integer", "double") &&
+        !inherits(value, "haven_labelled")) {
+        storage_class <- typeof(value)
+        if (is.null(classes)) {
+            classes <- c("haven_labelled", "vctrs_vctr", storage_class)
+        } else {
+            classes <- unique(c(
+                "haven_labelled", classes, "vctrs_vctr", storage_class
+            ))
+        }
+        attr(value, "class") <- classes
+    }
+
+    if (!has_labels && "haven_labelled" %in% classes) {
+        compatibility <- c("haven_labelled", "vctrs_vctr", typeof(value))
+        classes <- classes[!(classes %in% compatibility)]
+        attr(value, "class") <- if (length(classes) == 0L) NULL else classes
+    }
+    value
+}
+
+#' @rdname var_label
+#' @export
+`var_label<-` <- function(x, value) {
+    if (is.data.frame(x)) {
+        if (is.null(value)) {
+            value <- stats::setNames(rep(list(NULL), length(x)), names(x))
+        }
+        updates <- .validate_column_updates(
+            x, value, .normalize_text_label, "value"
+        )
+        .warn_stata_metadata_limits(
+            .text_label_violations(updates, "variable label for")
+        )
+        for (name in names(updates)) {
+            column <- .metadata_copy(x[[name]])
+            attr(column, "label") <- updates[[name]]
+            x[[name]] <- column
+        }
+        return(x)
+    }
+
+    value <- .normalize_text_label(value)
+    .warn_stata_metadata_limits(
+        .text_label_violations(value, "variable label")
+    )
+    x <- .metadata_copy(x)
+    attr(x, "label") <- value
+    x
+}
+
+#' @rdname var_label
+#' @export
+`dataset_label<-` <- function(data, value) {
+    if (!is.data.frame(data)) {
+        stop("`data` must be a data frame", call. = FALSE)
+    }
+    value <- .normalize_text_label(value)
+    .warn_stata_metadata_limits(
+        .text_label_violations(value, "dataset label")
+    )
+    attr(data, "label") <- value
+    data
+}
+
+#' @rdname var_label
+#' @export
+`val_labels<-` <- function(x, value) {
+    if (is.data.frame(x)) {
+        if (is.null(value)) {
+            value <- stats::setNames(rep(list(NULL), length(x)), names(x))
+        }
+        updates <- .validate_column_updates(
+            x, value, .normalize_value_labels, "value"
+        )
+        for (name in names(updates)) {
+            .validate_value_label_target(
+                x[[name]], updates[[name]], paste0("x$", name)
+            )
+        }
+        .warn_stata_metadata_limits(.value_label_violations(updates))
+        for (name in names(updates)) {
+            column <- .metadata_copy(x[[name]])
+            attr(column, "labels") <- updates[[name]]
+            column <- .apply_haven_labelled_class(
+                column, !is.null(updates[[name]])
+            )
+            x[[name]] <- column
+        }
+        return(x)
+    }
+
+    value <- .normalize_value_labels(value)
+    .validate_value_label_target(x, value)
+    .warn_stata_metadata_limits(.value_label_violations(value))
+    x <- .metadata_copy(x)
+    attr(x, "labels") <- value
+    .apply_haven_labelled_class(x, !is.null(value))
+}
+
+#' @rdname var_label
+#' @export
+set_variable_labels <- function(.data, ..., .labels = NULL) {
+    dots <- rlang::dots_list(
+        ..., .homonyms = "keep", .ignore_empty = "none"
+    )
+    if (!is.data.frame(.data)) {
+        if (!is.null(.labels) && length(dots) > 0L) {
+            stop("Supply a vector label in either `...` or `.labels`, not both",
+                 call. = FALSE)
+        }
+        if (is.null(.labels)) {
+            if (length(dots) > 1L) {
+                stop("Supply at most one variable label for a vector",
+                     call. = FALSE)
+            }
+            value <- if (length(dots) == 0L) NULL else dots[[1L]]
+        } else {
+            value <- .labels
+        }
+        return(`var_label<-`(.data, value))
+    }
+    if (!is.null(.labels) && !is.list(.labels)) {
+        stop("`.labels` must be a named list or NULL", call. = FALSE)
+    }
+
+    updates <- c(if (is.null(.labels)) list() else .labels, dots)
+    updates <- .validate_column_updates(
+        .data, updates, .normalize_text_label, "labels"
+    )
+    `var_label<-`(.data, updates)
+}
+
+#' @rdname var_label
+#' @export
+set_value_labels <- function(.data, ..., .labels = NULL) {
+    dots <- rlang::dots_list(
+        ..., .homonyms = "keep", .ignore_empty = "none"
+    )
+    if (!is.data.frame(.data)) {
+        if (!is.null(.labels) && length(dots) > 0L) {
+            stop(
+                "Supply vector value labels in either `...` or `.labels`, not both",
+                call. = FALSE
+            )
+        }
+        value <- if (is.null(.labels)) {
+            if (length(dots) == 0L) NULL else unlist(
+                dots, recursive = FALSE, use.names = TRUE
+            )
+        } else {
+            .labels
+        }
+        return(`val_labels<-`(.data, value))
+    }
+    if (!is.null(.labels) && !is.list(.labels)) {
+        stop("`.labels` must be a named list or NULL", call. = FALSE)
+    }
+
+    updates <- c(if (is.null(.labels)) list() else .labels, dots)
+    updates <- .validate_column_updates(
+        .data, updates, .normalize_value_labels, "labels"
+    )
+    `val_labels<-`(.data, updates)
+}

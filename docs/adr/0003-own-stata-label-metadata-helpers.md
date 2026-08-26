@@ -1,0 +1,5 @@
+# Own Stata label-metadata helpers
+
+The R package will own a small, exported label-metadata interface compatible with the common `labelled` calls already used in dtaparser documentation: variable-label, value-label, and dataset-label getters and setters, plus bulk setters. Depending on `labelled` would add avoidable materialization and metadata-loss behavior to compact Stata columns, while inventing unrelated names would make migration harder. The implementations will therefore have no `labelled` runtime dependency, will preserve dtaparser ALTREP storage and unrelated attributes, and will validate against Stata's metadata model rather than reproduce `labelled` behavior outside the tested call surface.
+
+This compatibility boundary excludes tagged-missing creation and factor conversion, which remain optional `haven` operations. `labelled` interoperability is tested separately in CI, but the package neither suggests nor attaches it; documentation warns narrowly about its same-named setters and attach-order masking.
