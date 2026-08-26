@@ -4,7 +4,7 @@
 
 ## Why use dtaparser?
 
-`dtaparser` decodes columns across multiple CPU cores and postpones expanding some columns into larger R objects until an operation needs them. Repository benchmarks show the difference on both a large survey corpus and one especially wide file:
+Repository benchmarks compare `dtaparser` with haven across a large survey corpus and one especially wide file:
 
 | Workload | dtaparser | haven | Difference |
 | --- | ---: | ---: | ---: |
