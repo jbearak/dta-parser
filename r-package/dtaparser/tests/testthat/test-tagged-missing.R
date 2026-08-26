@@ -101,7 +101,10 @@ test_that("tagged-missing inspectors reject nonnumeric vectors", {
         }, logical(1)))
     }, logical(1))
 
-    expect_identical(unname(rejected), rep(TRUE, length(invalid)))
+    expect_identical(
+        rejected,
+        setNames(rep(TRUE, length(invalid)), names(invalid))
+    )
 })
 
 test_that("tag arguments reject values outside Stata's extended missings", {
@@ -125,7 +128,10 @@ test_that("tag arguments reject values outside Stata's extended missings", {
         }, logical(1)))
     }, logical(1))
 
-    expect_identical(unname(rejected), rep(TRUE, length(invalid)))
+    expect_identical(
+        rejected,
+        setNames(rep(TRUE, length(invalid)), names(invalid))
+    )
 })
 
 test_that("inspectors preserve shape but not source metadata", {

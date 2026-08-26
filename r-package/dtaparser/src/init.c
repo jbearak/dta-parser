@@ -1191,9 +1191,16 @@ SEXP C_dtaparser_is_tagged_missing(SEXP value, SEXP tag) {
         const double *input = storage == NULL
             ? (const double *) DATAPTR_OR_NULL(value) : NULL;
         if (storage != NULL) {
-            for (size_t index = 0; index < storage->length; index++) {
+            if ((R_xlen_t) storage->length != length) {
+                Rf_error(
+                    "dtaparser numeric storage length does not match vector length"
+                );
+            }
+            for (R_xlen_t index = 0; index < length; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int offset = numeric_missing_offset_at(storage, index);
+                int offset = numeric_missing_offset_at(
+                    storage, (size_t) index
+                );
                 output[index] = offset >= 1 && offset <= 26 &&
                     (match_any || selected[offset - 1]);
             }
@@ -1242,9 +1249,16 @@ SEXP C_dtaparser_missing_tag(SEXP value) {
         const double *input = storage == NULL
             ? (const double *) DATAPTR_OR_NULL(value) : NULL;
         if (storage != NULL) {
-            for (size_t index = 0; index < storage->length; index++) {
+            if ((R_xlen_t) storage->length != length) {
+                Rf_error(
+                    "dtaparser numeric storage length does not match vector length"
+                );
+            }
+            for (R_xlen_t index = 0; index < length; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
-                int offset = numeric_missing_offset_at(storage, index);
+                int offset = numeric_missing_offset_at(
+                    storage, (size_t) index
+                );
                 SET_STRING_ELT(
                     result, index,
                     offset >= 1 && offset <= 26
