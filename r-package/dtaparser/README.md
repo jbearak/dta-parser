@@ -75,7 +75,7 @@ Stata byte, int, and long columns appear as R doubles so every missing tag can b
 `tab()` creates one-way and multidimensional frequency tables using Stata value labels. With `missing = TRUE`, it keeps `.`, `.a` through `.z`, and R `NaN` as separate categories when they occur:
 
 ```r
-tab(cars$foreign, missing = TRUE, display = "both")
+tab(cars$foreign, missing = TRUE)
 ```
 
 Use the installed help for exact behavior and examples:
