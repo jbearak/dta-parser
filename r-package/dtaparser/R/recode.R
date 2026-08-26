@@ -41,13 +41,11 @@
 #' @return A recoded vector. Unmatched numeric missing values retain their exact
 #'   payload unless `.missing` is supplied.
 #' @examples
-#' if (requireNamespace("haven", quietly = TRUE)) {
-#'     x <- c(1, 2, NA_real_, haven::tagged_na(c("a", "z")))
-#'     y <- recode(x, `1` = 10)
-#'     haven::na_tag(y)
+#' x <- c(1, 2, NA_real_, tagged_missing(c("a", "z")))
+#' y <- recode(x, `1` = 10)
+#' missing_tag(y)
 #'
-#'     recode(x, `1` = 10, .missing = -99)
-#' }
+#' recode(x, `1` = 10, .missing = -99)
 #' @export
 recode <- function(.x, ..., .default = NULL, .missing = NULL) {
     if (is.factor(.x)) {

@@ -16,6 +16,14 @@ _Avoid_: Drop-in replacement
 A recode that changes matched values while retaining each unmatched system or extended missing code.
 _Avoid_: Missing-value-safe recode
 
+**Tagged missing**:
+The R representation of one Stata extended missing code, `.a` through `.z`, encoded in the payload of a double-precision missing value. It is distinct from ordinary `NA_real_`, which represents Stata system missing `.`.
+_Avoid_: Tagged NA, value label
+
+**Label-based factor conversion**:
+An intentional, one-way conversion of a Stata numeric variable and its value-label metadata to an ordinary R factor for modeling, plotting, or data manipulation. It keeps distinct source codes distinct but does not support reconstruction of the original numeric representation.
+_Avoid_: Stata factor, Haven factor conversion
+
 **Label-aware tabulation**:
 A frequency table that uses Stata value labels and, when requested, keeps system missing, extended missing codes, and R `NaN` as distinct categories.
 _Avoid_: Safe tabulation

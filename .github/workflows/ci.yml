@@ -162,19 +162,20 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: DTA_REQUIRE_R_CONFORMANCE=1 scripts/conformance.sh
-      - name: Install pinned labelled interoperability baseline
+      - name: Install pinned interoperability baselines
         if: runner.os == 'Linux'
         shell: Rscript {0}
         run: |
           install.packages("remotes")
           remotes::install_version("haven", "2.5.5", upgrade = "never")
           remotes::install_version("labelled", "2.16.0", upgrade = "never")
-      - name: Test labelled interoperability and attach order
+      - name: Test labelled and haven helper interoperability
         if: runner.os == 'Linux'
         shell: bash
         run: |
           R CMD INSTALL r-package/dtaparser
           Rscript --vanilla scripts/test-labelled-interop.R
+          Rscript --vanilla scripts/test-haven-helper-interop.R
 
   r-minimum:
     name: R package / R 4.1.3

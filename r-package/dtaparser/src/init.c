@@ -146,6 +146,53 @@ static int is_tagged_na_value(double value) {
     return tagged_na_tag_value(value) != 0;
 }
 
+static int stata_missing_tag_value(double value) {
+    int tag = tagged_na_tag_value(value);
+    return tag >= 'a' && tag <= 'z' ? tag : 0;
+}
+
+static int normalized_stata_missing_tag(SEXP value, const char *argument) {
+    if (value == NA_STRING) {
+        Rf_error("`%s` must contain only letters `a` through `z`", argument);
+    }
+    const char *text = Rf_translateCharUTF8(value);
+    if (text[0] == '\0' || text[1] != '\0' ||
+        !((text[0] >= 'a' && text[0] <= 'z') ||
+          (text[0] >= 'A' && text[0] <= 'Z'))) {
+        Rf_error("`%s` must contain only letters `a` through `z`", argument);
+    }
+    return text[0] >= 'A' && text[0] <= 'Z'
+        ? text[0] - 'A' + 'a' : text[0];
+}
+
+static void copy_shape_attributes(SEXP target, SEXP source) {
+    SEXP dimensions = Rf_getAttrib(source, R_DimSymbol);
+    if (dimensions != R_NilValue) {
+        Rf_setAttrib(target, R_DimSymbol, dimensions);
+        SEXP dimension_names = Rf_getAttrib(source, R_DimNamesSymbol);
+        if (dimension_names != R_NilValue) {
+            Rf_setAttrib(target, R_DimNamesSymbol, dimension_names);
+        }
+    }
+
+    SEXP names = Rf_getAttrib(source, R_NamesSymbol);
+    if (names != R_NilValue) Rf_setAttrib(target, R_NamesSymbol, names);
+}
+
+static numeric_data *unmaterialized_numeric_storage(SEXP value) {
+    while (ALTREP(value) &&
+           R_altrep_inherits(value, dtaparser_metadata_real_class)) {
+        if (R_altrep_data2(value) != R_NilValue) return NULL;
+        value = R_altrep_data1(value);
+    }
+    if (!ALTREP(value) ||
+        !R_altrep_inherits(value, dtaparser_numeric_class) ||
+        R_altrep_data2(value) != R_NilValue) {
+        return NULL;
+    }
+    return numeric_storage(value);
+}
+
 static double numeric_observed_value(double value, int temporal) {
     if (temporal == 1) return value - 3653.0;
     if (temporal == 2) return value / 1000.0 - 315619200.0;
@@ -272,6 +319,31 @@ static double numeric_value_at(const numeric_data *data, size_t index) {
         return numeric_long_value_at(data, index);
     case NUMERIC_FLOAT:
         return numeric_float_value_at(data, index);
+    default:
+        Rf_error("invalid dtaparser numeric storage kind");
+    }
+}
+
+static int numeric_missing_offset_at(
+    const numeric_data *data, size_t index
+) {
+    switch (data->kind) {
+    case NUMERIC_BYTE:
+        return byte_missing_offset(
+            numeric_byte_raw_at(data, index), data->format_version
+        );
+    case NUMERIC_INT:
+        return int_missing_offset(
+            numeric_int_raw_at(data, index), data->format_version
+        );
+    case NUMERIC_LONG:
+        return long_missing_offset(
+            numeric_long_raw_at(data, index), data->format_version
+        );
+    case NUMERIC_FLOAT:
+        return float_missing_offset(
+            numeric_float_raw_at(data, index), data->format_version
+        );
     default:
         Rf_error("invalid dtaparser numeric storage kind");
     }
@@ -1069,6 +1141,147 @@ SEXP C_dtaparser_has_tagged_na(SEXP value) {
     return Rf_ScalarLogical(0);
 }
 
+SEXP C_dtaparser_tagged_missing(SEXP tag) {
+    if (TYPEOF(tag) != STRSXP) {
+        Rf_error("`tag` must be a character vector");
+    }
+
+    R_xlen_t length = XLENGTH(tag);
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, length));
+    double *output = REAL(result);
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int normalized = normalized_stata_missing_tag(
+            STRING_ELT(tag, index), "tag"
+        );
+        output[index] = numeric_missing_value(normalized - 'a' + 1);
+    }
+    copy_shape_attributes(result, tag);
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP C_dtaparser_is_tagged_missing(SEXP value, SEXP tag) {
+    if ((TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP) ||
+        Rf_inherits(value, "factor")) {
+        Rf_error("`x` must be a numeric vector");
+    }
+
+    int match_any = tag == R_NilValue;
+    int selected[26] = {0};
+    if (!match_any) {
+        if (TYPEOF(tag) != STRSXP) {
+            Rf_error("`tag` must be a character vector or NULL");
+        }
+        R_xlen_t tag_count = XLENGTH(tag);
+        for (R_xlen_t index = 0; index < tag_count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            int normalized = normalized_stata_missing_tag(
+                STRING_ELT(tag, index), "tag"
+            );
+            selected[normalized - 'a'] = 1;
+        }
+    }
+
+    R_xlen_t length = XLENGTH(value);
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, length));
+    int *output = LOGICAL(result);
+    if (TYPEOF(value) == REALSXP) {
+        numeric_data *storage = unmaterialized_numeric_storage(value);
+        const double *input = storage == NULL
+            ? (const double *) DATAPTR_OR_NULL(value) : NULL;
+        if (storage != NULL) {
+            for (size_t index = 0; index < storage->length; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                int offset = numeric_missing_offset_at(storage, index);
+                output[index] = offset >= 1 && offset <= 26 &&
+                    (match_any || selected[offset - 1]);
+            }
+        } else if (input != NULL) {
+            for (R_xlen_t index = 0; index < length; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                int actual = stata_missing_tag_value(input[index]);
+                output[index] = actual != 0 &&
+                    (match_any || selected[actual - 'a']);
+            }
+        } else {
+            for (R_xlen_t index = 0; index < length; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                int actual = stata_missing_tag_value(REAL_ELT(value, index));
+                output[index] = actual != 0 &&
+                    (match_any || selected[actual - 'a']);
+            }
+        }
+    } else {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            output[index] = 0;
+        }
+    }
+    copy_shape_attributes(result, value);
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP C_dtaparser_missing_tag(SEXP value) {
+    if ((TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP) ||
+        Rf_inherits(value, "factor")) {
+        Rf_error("`x` must be a numeric vector");
+    }
+
+    R_xlen_t length = XLENGTH(value);
+    SEXP result = PROTECT(Rf_allocVector(STRSXP, length));
+    if (TYPEOF(value) == REALSXP) {
+        SEXP tag_names = PROTECT(Rf_allocVector(STRSXP, 26));
+        for (int index = 0; index < 26; index++) {
+            char text = (char) ('a' + index);
+            SET_STRING_ELT(tag_names, index, Rf_mkCharLen(&text, 1));
+        }
+
+        numeric_data *storage = unmaterialized_numeric_storage(value);
+        const double *input = storage == NULL
+            ? (const double *) DATAPTR_OR_NULL(value) : NULL;
+        if (storage != NULL) {
+            for (size_t index = 0; index < storage->length; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                int offset = numeric_missing_offset_at(storage, index);
+                SET_STRING_ELT(
+                    result, index,
+                    offset >= 1 && offset <= 26
+                        ? STRING_ELT(tag_names, offset - 1) : NA_STRING
+                );
+            }
+        } else if (input != NULL) {
+            for (R_xlen_t index = 0; index < length; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                int tag = stata_missing_tag_value(input[index]);
+                SET_STRING_ELT(
+                    result, index,
+                    tag == 0 ? NA_STRING : STRING_ELT(tag_names, tag - 'a')
+                );
+            }
+        } else {
+            for (R_xlen_t index = 0; index < length; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                int tag = stata_missing_tag_value(REAL_ELT(value, index));
+                SET_STRING_ELT(
+                    result, index,
+                    tag == 0 ? NA_STRING : STRING_ELT(tag_names, tag - 'a')
+                );
+            }
+        }
+        UNPROTECT(1);
+    } else {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            SET_STRING_ELT(result, index, NA_STRING);
+        }
+    }
+    copy_shape_attributes(result, value);
+    UNPROTECT(1);
+    return result;
+}
+
 SEXP C_dtaparser_missing_codes(SEXP value) {
     /* NA means observed, zero is system missing, 1--255 is the tagged-NA
        payload byte, and 256 is an ordinary R NaN. */
@@ -1121,6 +1334,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata_proxy_aggregate_mask",
      (DL_FUNC) &C_dtaparser_metadata_proxy_aggregate_mask, 1},
     {"C_dtaparser_has_tagged_na", (DL_FUNC) &C_dtaparser_has_tagged_na, 1},
+    {"C_dtaparser_tagged_missing",
+     (DL_FUNC) &C_dtaparser_tagged_missing, 1},
+    {"C_dtaparser_missing_tag", (DL_FUNC) &C_dtaparser_missing_tag, 1},
+    {"C_dtaparser_is_tagged_missing",
+     (DL_FUNC) &C_dtaparser_is_tagged_missing, 2},
     {"C_dtaparser_missing_codes",
      (DL_FUNC) &C_dtaparser_missing_codes, 1},
     {NULL, NULL, 0}

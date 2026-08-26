@@ -11,9 +11,9 @@
 #' Stata system missing (`.`) is returned as `NA_real_`; in releases supporting
 #' extended missings (113 and newer), `.a` through `.z` use haven-compatible
 #' tagged-NA payloads. Base [is.na()] therefore identifies every code present.
-#' Use `haven::na_tag()` to recover their letters,
-#' `haven::is_tagged_na()` to select tagged values, and `haven::tagged_na()` to
-#' create them. Use ordinary `NA_real_`, rather than a tagged value, to create
+#' Use [missing_tag()] to recover their letters, [is_tagged_missing()] to
+#' select tagged values, and [tagged_missing()] to create them. Use ordinary
+#' `NA_real_`, rather than a tagged value, to create
 #' Stata system missing. Missing tags are part of the numeric values and are
 #' distinct from Stata value labels stored in a column's `labels` attribute.
 #' Tagged missings can be stored in any R double vector; no Stata-specific
@@ -34,19 +34,17 @@
 #' missing-code semantics with compact storage for read-mostly data.
 #' For example:
 #' ```
-#' x <- c(1, NA_real_, haven::tagged_na("a"), haven::tagged_na("z"))
+#' x <- c(1, NA_real_, tagged_missing("a"), tagged_missing("z"))
 #' is.na(x)
-#' haven::na_tag(x)
-#' haven::is_tagged_na(x)
-#' haven::is_tagged_na(x, "a")
-#' haven::na_tag(x) %in% c("a", "f")
+#' missing_tag(x)
+#' is_tagged_missing(x)
+#' is_tagged_missing(x, "a")
+#' is_tagged_missing(x, c("a", "f"))
 #'
 #' x[1] <- NA_real_                 # Stata .
-#' x[2] <- haven::tagged_na("a")    # Stata .a
-#' x[3] <- haven::tagged_na("f")    # Stata .f
+#' x[2] <- tagged_missing("a")       # Stata .a
+#' x[3] <- tagged_missing("f")       # Stata .f
 #' ```
-#' `haven::is_tagged_na()` accepts only one specific tag at a time; extract
-#' tags with `haven::na_tag()` and use `%in%` to match several tags.
 #'
 #' Base subassignment and [replace()] retain unselected tags when their index
 #' contains no missing values; use `!is.na(x) & x == value` when recoding an
@@ -59,12 +57,12 @@
 #' dtaparser namespace is loaded, [recode()] and `dplyr::recode()` preserve
 #' unmatched tags in bare numeric, `haven_labelled`, `Date`, and `POSIXct`
 #' columns, including inside `dplyr::mutate()`. Missing-value replacement
-#' helpers match all 27 codes; select a particular code with
-#' `haven::is_tagged_na(x, tag)` instead. A transformation may materialize an
+#' helpers match all 27 codes; select particular extended missing codes with
+#' `is_tagged_missing(x, tag)` instead. A transformation may materialize an
 #' ALTREP column and may drop Stata metadata attributes when it constructs a
 #' new vector, following the same behavior as haven-compatible vectors.
 #'
-#' @section Labels and optional missing-code helpers:
+#' @section Labels and missing-code helpers:
 #' Reading DTA files and working with their labels does not require haven or
 #' labelled. Use [var_label()], [val_labels()], [dataset_label()],
 #' [set_variable_labels()], and [set_value_labels()] to inspect or change
@@ -78,16 +76,14 @@
 #' val_labels(data$status) <- c(Complete = 1, Refused = 2)
 #' ```
 #'
-#' The suggested haven package remains useful for inspecting, selecting, and
-#' creating tagged missing values, and for conversions such as
-#' `haven::as_factor()`:
+#' The package-owned missing-code helpers also work without haven:
 #' ```
-#' haven::na_tag(data$status)
-#' haven::is_tagged_na(data$status, "a")
-#' data$status[1] <- haven::tagged_na("a")
+#' missing_tag(data$status)
+#' is_tagged_missing(data$status, "a")
+#' data$status[1] <- tagged_missing("a")
 #' ```
-#' Installing the tidyverse installs haven but `library(tidyverse)` does not
-#' attach it, so use the explicit `haven::` prefix unless haven is attached.
+#' The suggested haven package remains useful for writing DTA files and for
+#' conversions such as `haven::as_factor()`.
 #' See the
 #' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 #' for bulk setters, Stata 19 limits, and the version-specific comparison with

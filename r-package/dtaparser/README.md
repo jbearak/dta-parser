@@ -62,8 +62,9 @@ Dataset and variable labels, notes, display formats, and value-label tables are 
 System missing `.` becomes `NA_real_`. Extended `.a` through `.z` values use the tagged-NA payloads understood by haven:
 
 ```r
-haven::na_tag(cars$foreign)
-haven::is_tagged_na(cars$foreign, "a")
+missing_tag(cars$foreign)
+is_tagged_missing(cars$foreign, "a")
+cars$foreign[1] <- tagged_missing("f")
 ```
 
 Stata byte, int, and long columns appear as R doubles so every missing tag can be represented. `dtaparser` keeps those columns at their smaller Stata widths until R needs a full double vector. R calls this mechanism ALTREP.
@@ -102,6 +103,7 @@ Use the installed help for exact behavior and examples:
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?recode    # recoding without losing unmatched missing tags
+?tagged_missing # create, inspect, and select extended missing values
 ?tab       # label-aware frequency tables
 ?var_label # dataset, variable, and value-label metadata
 ```
