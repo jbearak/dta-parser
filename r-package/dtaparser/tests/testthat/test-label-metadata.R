@@ -515,6 +515,43 @@ test_that("repeated metadata setters keep numeric backing unmaterialized", {
     )
 })
 
+test_that("aggregate operations keep metadata proxies unmaterialized", {
+    source <- read_dta(fixture("auto_v118.dta"))$price
+    updated <- set_variable_labels(source, "Price")
+    invisible(dtaparser:::.metadata_proxy_aggregate_mask(TRUE))
+    on.exit(
+        invisible(dtaparser:::.metadata_proxy_aggregate_mask(FALSE)),
+        add = TRUE
+    )
+
+    results <- list(
+        sum = sum(updated),
+        min = min(updated),
+        max = max(updated),
+        any_na = anyNA(updated)
+    )
+    aggregate_mask <- dtaparser:::.metadata_proxy_aggregate_mask(FALSE)
+
+    expect_identical(
+        list(
+            results = results,
+            aggregate_mask = aggregate_mask,
+            unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(updated)
+        ),
+        list(
+            results = list(
+                sum = 456229,
+                min = 3291,
+                max = 15906,
+                any_na = FALSE
+            ),
+            aggregate_mask = 15L,
+            unmaterialized = TRUE
+        )
+    )
+})
+
 test_that("compactness probe detects materialized metadata proxies", {
     source <- read_dta(fixture("value_labels_v118.dta"))$foreign
     updated <- set_variable_labels(source, "Vehicle origin")

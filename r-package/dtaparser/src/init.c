@@ -33,6 +33,15 @@ static R_altrep_class_t dtaparser_dictstring_class;
 static R_altrep_class_t dtaparser_numeric_class;
 static R_altrep_class_t dtaparser_metadata_real_class;
 static R_altrep_class_t dtaparser_metadata_string_class;
+static int metadata_real_aggregate_mask_enabled;
+static int metadata_real_aggregate_mask;
+
+enum {
+    METADATA_AGGREGATE_NO_NA = 1,
+    METADATA_AGGREGATE_SUM = 2,
+    METADATA_AGGREGATE_MIN = 4,
+    METADATA_AGGREGATE_MAX = 8
+};
 
 typedef struct {
     void *values;
@@ -881,6 +890,50 @@ static const void *metadata_real_dataptr_or_null(SEXP value) {
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
 
+static int metadata_real_no_na(SEXP value) {
+    if (metadata_real_aggregate_mask_enabled) {
+        metadata_real_aggregate_mask |= METADATA_AGGREGATE_NO_NA;
+    }
+    if (R_altrep_data2(value) != R_NilValue) return 0;
+    SEXP source = R_altrep_data1(value);
+    return ALTREP(source) &&
+        R_altrep_inherits(source, dtaparser_numeric_class)
+        ? numeric_no_na(source) : 0;
+}
+
+static SEXP metadata_real_sum(SEXP value, Rboolean na_rm) {
+    if (metadata_real_aggregate_mask_enabled) {
+        metadata_real_aggregate_mask |= METADATA_AGGREGATE_SUM;
+    }
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    SEXP source = R_altrep_data1(value);
+    return ALTREP(source) &&
+        R_altrep_inherits(source, dtaparser_numeric_class)
+        ? numeric_sum(source, na_rm) : NULL;
+}
+
+static SEXP metadata_real_min(SEXP value, Rboolean na_rm) {
+    if (metadata_real_aggregate_mask_enabled) {
+        metadata_real_aggregate_mask |= METADATA_AGGREGATE_MIN;
+    }
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    SEXP source = R_altrep_data1(value);
+    return ALTREP(source) &&
+        R_altrep_inherits(source, dtaparser_numeric_class)
+        ? numeric_min(source, na_rm) : NULL;
+}
+
+static SEXP metadata_real_max(SEXP value, Rboolean na_rm) {
+    if (metadata_real_aggregate_mask_enabled) {
+        metadata_real_aggregate_mask |= METADATA_AGGREGATE_MAX;
+    }
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    SEXP source = R_altrep_data1(value);
+    return ALTREP(source) &&
+        R_altrep_inherits(source, dtaparser_numeric_class)
+        ? numeric_max(source, na_rm) : NULL;
+}
+
 static SEXP metadata_string_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     return STRING_ELT(
@@ -990,6 +1043,20 @@ SEXP C_dtaparser_metadata_proxy_depth(SEXP value) {
     return Rf_ScalarInteger(depth);
 }
 
+SEXP C_dtaparser_metadata_proxy_aggregate_mask(SEXP enabled) {
+    if (TYPEOF(enabled) != LGLSXP || XLENGTH(enabled) != 1 ||
+        LOGICAL(enabled)[0] == NA_LOGICAL) {
+        Rf_error("internal aggregate-mask state must be logical");
+    }
+    if (LOGICAL(enabled)[0]) {
+        metadata_real_aggregate_mask = 0;
+        metadata_real_aggregate_mask_enabled = 1;
+    } else {
+        metadata_real_aggregate_mask_enabled = 0;
+    }
+    return Rf_ScalarInteger(metadata_real_aggregate_mask);
+}
+
 SEXP C_dtaparser_has_tagged_na(SEXP value) {
     if (TYPEOF(value) != REALSXP) return Rf_ScalarLogical(0);
     R_xlen_t length = XLENGTH(value);
@@ -1051,6 +1118,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtaparser_force_altrep_materialization, 1},
     {"C_dtaparser_metadata_proxy_depth",
      (DL_FUNC) &C_dtaparser_metadata_proxy_depth, 1},
+    {"C_dtaparser_metadata_proxy_aggregate_mask",
+     (DL_FUNC) &C_dtaparser_metadata_proxy_aggregate_mask, 1},
     {"C_dtaparser_has_tagged_na", (DL_FUNC) &C_dtaparser_has_tagged_na, 1},
     {"C_dtaparser_missing_codes",
      (DL_FUNC) &C_dtaparser_missing_codes, 1},
@@ -1100,6 +1169,18 @@ void attribute_visible R_init_dtaparser(DllInfo *dll) {
     );
     R_set_altreal_Get_region_method(
         dtaparser_metadata_real_class, metadata_real_region
+    );
+    R_set_altreal_No_NA_method(
+        dtaparser_metadata_real_class, metadata_real_no_na
+    );
+    R_set_altreal_Sum_method(
+        dtaparser_metadata_real_class, metadata_real_sum
+    );
+    R_set_altreal_Min_method(
+        dtaparser_metadata_real_class, metadata_real_min
+    );
+    R_set_altreal_Max_method(
+        dtaparser_metadata_real_class, metadata_real_max
     );
     dtaparser_metadata_string_class = R_make_altstring_class(
         "dtaparser_metadata_string", "dtaparser", dll

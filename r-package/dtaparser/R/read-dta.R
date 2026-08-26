@@ -71,6 +71,7 @@
 #' package-owned Stata metadata without materializing compact numeric columns
 #' or dropping unrelated attributes. For example:
 #' ```
+#' data <- data.frame(status = c(1, 2, 1))
 #' var_label(data$status)
 #' var_label(data$status) <- "Interview status"
 #' val_labels(data$status)
@@ -176,6 +177,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .metadata_proxy_depth <- function(value) {
     .Call(C_dtaparser_metadata_proxy_depth, value)
+}
+
+.metadata_proxy_aggregate_mask <- function(enabled) {
+    .Call(C_dtaparser_metadata_proxy_aggregate_mask, enabled)
 }
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,

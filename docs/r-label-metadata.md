@@ -4,6 +4,10 @@
 
 ```r
 library(dtaparser)
+data <- data.frame(
+  status = c(1, 2, 1),
+  stratum = c(1, 1, 2)
+)
 
 var_label(data$status)
 var_label(data$status) <- "Interview status"

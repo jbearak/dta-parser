@@ -120,7 +120,8 @@ labelled. Use \code{var_label()}, \code{val_labels()}, \code{dataset_label()},
 \code{set_variable_labels()}, and \code{set_value_labels()} to inspect or
 change package-owned Stata metadata without materializing compact numeric
 columns or dropping unrelated attributes. For example:
-\preformatted{var_label(data$status)
+\preformatted{data <- data.frame(status = c(1, 2, 1))
+var_label(data$status)
 var_label(data$status) <- "Interview status"
 val_labels(data$status)
 val_labels(data$status) <- c(Complete = 1, Refused = 2)
