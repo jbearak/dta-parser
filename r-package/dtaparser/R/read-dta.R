@@ -64,29 +64,34 @@
 #' ALTREP column and may drop Stata metadata attributes when it constructs a
 #' new vector, following the same behavior as haven-compatible vectors.
 #'
-#' @section Optional helpers for labels and missing codes:
-#' Reading DTA files does not require haven or labelled. The suggested haven
-#' package provides helpers for inspecting, selecting, and creating the tagged
-#' missing values returned by `dtaparser`, as well as conversions such as
-#' `haven::as_factor()`. The suggested labelled package provides getters and
-#' setters for variable labels and value-label tables. For example:
+#' @section Labels and optional missing-code helpers:
+#' Reading DTA files and working with their labels does not require haven or
+#' labelled. Use [var_label()], [val_labels()], [dataset_label()],
+#' [set_variable_labels()], and [set_value_labels()] to inspect or change
+#' package-owned Stata metadata without materializing compact numeric columns
+#' or dropping unrelated attributes. For example:
+#' ```
+#' data <- data.frame(status = c(1, 2, 1))
+#' var_label(data$status)
+#' var_label(data$status) <- "Interview status"
+#' val_labels(data$status)
+#' val_labels(data$status) <- c(Complete = 1, Refused = 2)
+#' ```
+#'
+#' The suggested haven package remains useful for inspecting, selecting, and
+#' creating tagged missing values, and for conversions such as
+#' `haven::as_factor()`:
 #' ```
 #' haven::na_tag(data$status)
 #' haven::is_tagged_na(data$status, "a")
 #' data$status[1] <- haven::tagged_na("a")
-#'
-#' labelled::var_label(data$status)
-#' labelled::var_label(data$status) <- "Interview status"
-#' labelled::val_labels(data$status)
-#' labelled::val_labels(data$status) <- c(Complete = 1, Refused = 2)
 #' ```
-#' Install these optional packages with
-#' `install.packages(c("haven", "labelled"))`. Installing the tidyverse also
-#' installs haven, but `library(tidyverse)` does not attach it; labelled is a
-#' separate package. The explicit namespace prefixes above work without
-#' attaching either package. Value-label setters may reconstruct a vector and
-#' drop other attributes such as `format.stata`; save and restore any such
-#' metadata that an analysis needs to retain.
+#' Installing the tidyverse installs haven but `library(tidyverse)` does not
+#' attach it, so use the explicit `haven::` prefix unless haven is attached.
+#' See the
+#' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
+#' for bulk setters, Stata 19 limits, and the version-specific comparison with
+#' labelled 2.16.0.
 #'
 #' @param file A path, URL, raw vector, or binary connection. Local and remote
 #'   gzip files and local bzip2, xz, and zip files are decompressed
@@ -156,6 +161,26 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 # Internal invariant probe used by the native-materialization tests.
 .is_numeric_altrep <- function(value) {
     .Call(C_dtaparser_is_numeric_altrep, value)
+}
+
+.is_altrep <- function(value) {
+    .Call(C_dtaparser_is_altrep, value)
+}
+
+.is_unmaterialized_numeric_altrep <- function(value) {
+    .Call(C_dtaparser_is_unmaterialized_numeric_altrep, value)
+}
+
+.force_altrep_materialization <- function(value) {
+    .Call(C_dtaparser_force_altrep_materialization, value)
+}
+
+.metadata_proxy_depth <- function(value) {
+    .Call(C_dtaparser_metadata_proxy_depth, value)
+}
+
+.metadata_proxy_aggregate_mask <- function(enabled) {
+    .Call(C_dtaparser_metadata_proxy_aggregate_mask, enabled)
 }
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,

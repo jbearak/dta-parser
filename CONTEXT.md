@@ -19,3 +19,15 @@ _Avoid_: Missing-value-safe recode
 **Label-aware tabulation**:
 A frequency table that uses Stata value labels and, when requested, keeps system missing, extended missing codes, and R `NaN` as distinct categories.
 _Avoid_: Safe tabulation
+
+**Variable label**:
+A human-readable description of a variable, distinct from its programmatic name.
+_Avoid_: Column label, variable name
+
+**Value labels**:
+Mappings from nonmissing integers in Stata's `long` range or Stata extended missing codes (`.a` through `.z`) to human-readable category descriptions.
+_Avoid_: Factor levels, variable labels
+
+**Dataset label**:
+A human-readable description of a dataset as a whole, distinct from its file name and its variables' labels.
+_Avoid_: Variable label, file name
