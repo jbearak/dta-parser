@@ -166,6 +166,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .Call(C_dtaparser_is_altrep, value)
 }
 
+.is_unmaterialized_numeric_altrep <- function(value) {
+    .Call(C_dtaparser_is_unmaterialized_numeric_altrep, value)
+}
+
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, materialization, threads,
                            use_numeric_altrep) {

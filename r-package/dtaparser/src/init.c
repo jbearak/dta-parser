@@ -30,6 +30,8 @@ typedef struct {
 
 static R_altrep_class_t dtaparser_dictstring_class;
 static R_altrep_class_t dtaparser_numeric_class;
+static R_altrep_class_t dtaparser_metadata_real_class;
+static R_altrep_class_t dtaparser_metadata_string_class;
 
 typedef struct {
     void *values;
@@ -822,16 +824,136 @@ SEXP C_dtaparser_is_altrep(SEXP value) {
     return Rf_ScalarLogical(ALTREP(value));
 }
 
-SEXP C_dtaparser_metadata_copy(SEXP value) {
-    if (!ALTREP(value)) return Rf_shallow_duplicate(value);
+static R_xlen_t metadata_proxy_length(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    return materialized == R_NilValue
+        ? XLENGTH(R_altrep_data1(value)) : XLENGTH(materialized);
+}
 
-    SEXP result = PROTECT(R_tryWrap(value));
-    if (result == value) {
+static double metadata_real_value(SEXP value, R_xlen_t index) {
+    SEXP materialized = R_altrep_data2(value);
+    return REAL_ELT(
+        materialized == R_NilValue ? R_altrep_data1(value) : materialized,
+        index
+    );
+}
+
+static R_xlen_t metadata_real_region(
+    SEXP value, R_xlen_t index, R_xlen_t count, double *output
+) {
+    SEXP materialized = R_altrep_data2(value);
+    return REAL_GET_REGION(
+        materialized == R_NilValue ? R_altrep_data1(value) : materialized,
+        index, count, output
+    );
+}
+
+static SEXP metadata_real_materialize(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized != R_NilValue) return materialized;
+
+    SEXP source = R_altrep_data1(value);
+    R_xlen_t length = XLENGTH(source);
+    materialized = PROTECT(Rf_allocVector(REALSXP, length));
+    R_xlen_t copied = REAL_GET_REGION(source, 0, length, REAL(materialized));
+    if (copied != length) {
         UNPROTECT(1);
-        return Rf_shallow_duplicate(value);
+        Rf_error("failed to materialize dtaparser metadata proxy");
     }
+    R_set_altrep_data2(value, materialized);
+    UNPROTECT(1);
+    return materialized;
+}
+
+static void *metadata_real_dataptr(SEXP value, Rboolean writeable) {
+    SEXP materialized = metadata_real_materialize(value);
+#if R_VERSION >= R_Version(4, 6, 0)
+    return writeable ? DATAPTR_RW(materialized) : (void *) DATAPTR_RO(materialized);
+#else
+    (void) writeable;
+    return DATAPTR(materialized);
+#endif
+}
+
+static const void *metadata_real_dataptr_or_null(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
+}
+
+static SEXP metadata_string_value(SEXP value, R_xlen_t index) {
+    SEXP materialized = R_altrep_data2(value);
+    return STRING_ELT(
+        materialized == R_NilValue ? R_altrep_data1(value) : materialized,
+        index
+    );
+}
+
+static SEXP metadata_string_materialize(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized != R_NilValue) return materialized;
+
+    SEXP source = R_altrep_data1(value);
+    R_xlen_t length = XLENGTH(source);
+    materialized = PROTECT(Rf_allocVector(STRSXP, length));
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        SET_STRING_ELT(materialized, index, STRING_ELT(source, index));
+    }
+    R_set_altrep_data2(value, materialized);
+    UNPROTECT(1);
+    return materialized;
+}
+
+static void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
+    (void) writeable;
+    SEXP materialized = metadata_string_materialize(value);
+#if R_VERSION >= R_Version(4, 6, 0)
+    return DATAPTR_RW(materialized);
+#else
+    return DATAPTR(materialized);
+#endif
+}
+
+static const void *metadata_string_dataptr_or_null(SEXP value) {
+    SEXP materialized = R_altrep_data2(value);
+    return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
+}
+
+static void metadata_string_set_elt(
+    SEXP value, R_xlen_t index, SEXP replacement
+) {
+    SET_STRING_ELT(metadata_string_materialize(value), index, replacement);
+}
+
+static SEXP metadata_proxy(SEXP value, R_altrep_class_t proxy_class) {
+    SEXP result = PROTECT(R_new_altrep(proxy_class, value, R_NilValue));
+    SHALLOW_DUPLICATE_ATTRIB(result, value);
     UNPROTECT(1);
     return result;
+}
+
+SEXP C_dtaparser_metadata_copy(SEXP value) {
+    if (!ALTREP(value)) return Rf_shallow_duplicate(value);
+    if (R_altrep_inherits(value, dtaparser_numeric_class) ||
+        R_altrep_inherits(value, dtaparser_metadata_real_class)) {
+        return metadata_proxy(value, dtaparser_metadata_real_class);
+    }
+    if (R_altrep_inherits(value, dtaparser_dictstring_class) ||
+        R_altrep_inherits(value, dtaparser_metadata_string_class)) {
+        return metadata_proxy(value, dtaparser_metadata_string_class);
+    }
+    return Rf_shallow_duplicate(value);
+}
+
+SEXP C_dtaparser_is_unmaterialized_numeric_altrep(SEXP value) {
+    for (int depth = 0; depth < 64 && ALTREP(value); depth++) {
+        if (R_altrep_inherits(value, dtaparser_numeric_class)) {
+            return Rf_ScalarLogical(R_altrep_data2(value) == R_NilValue);
+        }
+        if (!R_altrep_inherits(value, dtaparser_metadata_real_class)) break;
+        value = R_altrep_data1(value);
+    }
+    return Rf_ScalarLogical(0);
 }
 
 SEXP C_dtaparser_has_tagged_na(SEXP value) {
@@ -889,6 +1011,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
     {"C_dtaparser_is_altrep", (DL_FUNC) &C_dtaparser_is_altrep, 1},
     {"C_dtaparser_metadata_copy", (DL_FUNC) &C_dtaparser_metadata_copy, 1},
+    {"C_dtaparser_is_unmaterialized_numeric_altrep",
+     (DL_FUNC) &C_dtaparser_is_unmaterialized_numeric_altrep, 1},
     {"C_dtaparser_has_tagged_na", (DL_FUNC) &C_dtaparser_has_tagged_na, 1},
     {"C_dtaparser_missing_codes",
      (DL_FUNC) &C_dtaparser_missing_codes, 1},
@@ -921,6 +1045,42 @@ void attribute_visible R_init_dtaparser(DllInfo *dll) {
     R_set_altstring_Elt_method(dtaparser_dictstring_class, dictstring_value);
     R_set_altstring_Set_elt_method(dtaparser_dictstring_class, dictstring_set_elt);
     R_set_altstring_No_NA_method(dtaparser_dictstring_class, dictstring_no_na);
+    dtaparser_metadata_real_class = R_make_altreal_class(
+        "dtaparser_metadata_real", "dtaparser", dll
+    );
+    R_set_altrep_Length_method(
+        dtaparser_metadata_real_class, metadata_proxy_length
+    );
+    R_set_altvec_Dataptr_method(
+        dtaparser_metadata_real_class, metadata_real_dataptr
+    );
+    R_set_altvec_Dataptr_or_null_method(
+        dtaparser_metadata_real_class, metadata_real_dataptr_or_null
+    );
+    R_set_altreal_Elt_method(
+        dtaparser_metadata_real_class, metadata_real_value
+    );
+    R_set_altreal_Get_region_method(
+        dtaparser_metadata_real_class, metadata_real_region
+    );
+    dtaparser_metadata_string_class = R_make_altstring_class(
+        "dtaparser_metadata_string", "dtaparser", dll
+    );
+    R_set_altrep_Length_method(
+        dtaparser_metadata_string_class, metadata_proxy_length
+    );
+    R_set_altvec_Dataptr_method(
+        dtaparser_metadata_string_class, metadata_string_dataptr
+    );
+    R_set_altvec_Dataptr_or_null_method(
+        dtaparser_metadata_string_class, metadata_string_dataptr_or_null
+    );
+    R_set_altstring_Elt_method(
+        dtaparser_metadata_string_class, metadata_string_value
+    );
+    R_set_altstring_Set_elt_method(
+        dtaparser_metadata_string_class, metadata_string_set_elt
+    );
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
     R_forceSymbols(dll, TRUE);

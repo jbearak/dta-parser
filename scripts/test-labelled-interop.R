@@ -88,6 +88,46 @@ assert(
     "Attaching labelled after dtaparser must emit one scoped masking warning"
 )
 
+namespace_then_attach <- callr::r(
+    function() {
+        dtaparser::var_label(1)
+        capture_attach <- function(package) {
+            warnings <- character()
+            withCallingHandlers(
+                suppressPackageStartupMessages(library(
+                    package, character.only = TRUE
+                )),
+                warning = function(condition) {
+                    warnings <<- c(warnings, conditionMessage(condition))
+                    invokeRestart("muffleWarning")
+                }
+            )
+            warnings
+        }
+
+        namespace_only <- capture_attach("labelled")
+        detach("package:labelled", unload = FALSE)
+        suppressPackageStartupMessages(library(dtaparser))
+        genuinely_masked <- capture_attach("labelled")
+        list(namespace_only = namespace_only, genuinely_masked = genuinely_masked)
+    },
+    spinner = FALSE
+)
+assert(
+    !any(grepl(
+        "attached after dtaparser", namespace_then_attach$namespace_only,
+        fixed = TRUE
+    )),
+    "Namespace-only dtaparser use triggered a false masking warning"
+)
+assert(
+    sum(grepl(
+        "attached after dtaparser", namespace_then_attach$genuinely_masked,
+        fixed = TRUE
+    )) == 1L,
+    "A false attach event consumed the later genuine masking warning"
+)
+
 interop <- callr::r(
     function() {
         suppressPackageStartupMessages(library(dtaparser))
@@ -104,6 +144,8 @@ interop <- callr::r(
         ours <- dtaparser::set_value_labels(
             source, Domestic = 0, Imported = 1
         )
+        ours_unmaterialized <-
+            dtaparser:::.is_unmaterialized_numeric_altrep(ours)
         recoded <- dplyr::recode(ours, `0` = 10)
 
         labelled_result <- source
@@ -118,9 +160,18 @@ interop <- callr::r(
         )
         date_result <- as.Date(c("1970-01-01", "1970-01-02"))
         labelled::val_labels(date_result) <- c(Epoch = 0)
+        time_result <- as.POSIXct(
+            c("1970-01-01", "1970-01-02"), tz = "UTC"
+        )
+        labelled::val_labels(time_result) <- c(Epoch = 0)
+        removal_result <- labelled::labelled(
+            c(0, 1), labels = c(No = 0, Yes = 1)
+        )
+        labelled::val_labels(removal_result) <- NULL
 
         list(
             ours_is_altrep = dtaparser:::.is_altrep(ours),
+            ours_unmaterialized = ours_unmaterialized,
             ours_format = attr(ours, "format.stata", exact = TRUE),
             labelled_reads_ours = labelled::val_labels(ours),
             labelled_reads_variable = labelled::var_label(ours),
@@ -136,6 +187,9 @@ interop <- callr::r(
                 labelled_custom_result, "provenance", exact = TRUE
             ),
             labelled_date_class = class(date_result),
+            labelled_time_class = class(time_result),
+            labelled_time_zone = attr(time_result, "tzone", exact = TRUE),
+            labelled_removal_class = class(removal_result),
             qualified_owner = identical(
                 dtaparser::var_label,
                 getExportedValue("dtaparser", "var_label")
@@ -146,6 +200,10 @@ interop <- callr::r(
 )
 
 assert(interop$ours_is_altrep, "dtaparser value-label mutation materialized ALTREP")
+assert(
+    interop$ours_unmaterialized,
+    "dtaparser value-label mutation decoded its numeric ALTREP backing"
+)
 assert(identical(interop$ours_format, "%8.0g"), "dtaparser dropped format.stata")
 assert(
     identical(interop$labelled_reads_ours, c(Domestic = 0, Imported = 1)),
@@ -182,6 +240,17 @@ assert(
         c("haven_labelled", "vctrs_vctr", "double")
     ),
     "The labelled 2.16.0 temporal-class comparison changed"
+)
+assert(
+    identical(
+        interop$labelled_time_class,
+        c("haven_labelled", "vctrs_vctr", "double")
+    ) && is.null(interop$labelled_time_zone),
+    "The labelled 2.16.0 POSIXct/time-zone comparison changed"
+)
+assert(
+    identical(interop$labelled_removal_class, "numeric"),
+    "The labelled 2.16.0 value-label removal comparison changed"
 )
 assert(interop$qualified_owner, "Qualified dtaparser helpers were displaced")
 

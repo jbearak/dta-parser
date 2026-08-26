@@ -134,8 +134,10 @@ test_that("bulk variable-label limits produce one complete portability warning",
     expect_identical(
         list(
             warning_count = length(messages),
-            mentions_x = grepl("x", messages, fixed = TRUE),
-            mentions_y = grepl("y", messages, fixed = TRUE),
+            mentions_x = grepl("variable label for `x`", messages,
+                               fixed = TRUE),
+            mentions_y = grepl("variable label for `y`", messages,
+                               fixed = TRUE),
             mentions_limit = grepl("80 Unicode characters", messages,
                                    fixed = TRUE),
             stored_characters = nchar(var_label(updated$x), type = "chars")
@@ -158,13 +160,19 @@ test_that("variable-label setters keep imported numeric storage compact", {
     expect_identical(
         list(
             source_is_native_altrep = dtaparser:::.is_numeric_altrep(source),
+            source_is_unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(source),
             result_is_altrep = dtaparser:::.is_altrep(updated),
+            result_is_unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(updated),
             values = as.vector(updated),
             label = var_label(updated)
         ),
         list(
             source_is_native_altrep = TRUE,
+            source_is_unmaterialized = TRUE,
             result_is_altrep = TRUE,
+            result_is_unmaterialized = TRUE,
             values = rep(c(1, 0), 5L),
             label = "Vehicle origin"
         )
@@ -278,8 +286,10 @@ test_that("bulk value-label limits produce one complete portability warning", {
     expect_identical(
         list(
             warning_count = length(messages),
-            mentions_x = grepl("x", messages, fixed = TRUE),
-            mentions_y = grepl("y", messages, fixed = TRUE),
+            mentions_x = grepl("value-label text for `x`", messages,
+                               fixed = TRUE),
+            mentions_y = grepl("value-label table for `y`", messages,
+                               fixed = TRUE),
             mentions_text_limit = grepl(
                 "32,000 Unicode characters", messages, fixed = TRUE
             ),
@@ -431,7 +441,10 @@ test_that("value-label setters preserve Date and POSIXct classes", {
 })
 
 test_that("removing value labels retains unrelated numeric classes", {
-    values <- structure(c(0, 1), class = "stata_custom")
+    values <- structure(
+        c(0, 1),
+        class = c("stata_custom", "vctrs_vctr")
+    )
 
     labelled <- set_value_labels(values, No = 0, Yes = 1)
     removed <- set_value_labels(labelled)
@@ -439,10 +452,8 @@ test_that("removing value labels retains unrelated numeric classes", {
     expect_identical(
         list(labelled_class = class(labelled), removed_class = class(removed)),
         list(
-            labelled_class = c(
-                "haven_labelled", "stata_custom", "vctrs_vctr", "double"
-            ),
-            removed_class = "stata_custom"
+            labelled_class = c("stata_custom", "vctrs_vctr"),
+            removed_class = c("stata_custom", "vctrs_vctr")
         )
     )
 })
@@ -455,17 +466,71 @@ test_that("value-label setters keep imported numeric storage compact", {
     expect_identical(
         list(
             source_is_native_altrep = dtaparser:::.is_numeric_altrep(source),
+            source_is_unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(source),
             result_is_altrep = dtaparser:::.is_altrep(updated),
+            result_is_unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(updated),
             source_labels = val_labels(source),
             result_labels = val_labels(updated),
             result_format = attr(updated, "format.stata", exact = TRUE)
         ),
         list(
             source_is_native_altrep = TRUE,
+            source_is_unmaterialized = TRUE,
             result_is_altrep = TRUE,
+            result_is_unmaterialized = TRUE,
             source_labels = c(Domestic = 0, Foreign = 1),
             result_labels = c(Domestic = 0, Imported = 1),
             result_format = "%8.0g"
+        )
+    )
+})
+
+test_that("repeated metadata setters keep numeric backing unmaterialized", {
+    source <- read_dta(fixture("value_labels_v118.dta"))$foreign
+
+    updated <- set_variable_labels(source, "Vehicle origin")
+    updated <- set_value_labels(updated, Domestic = 0, Imported = 1)
+
+    expect_identical(
+        list(
+            unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(updated),
+            variable = var_label(updated),
+            values = val_labels(updated),
+            format = attr(updated, "format.stata", exact = TRUE)
+        ),
+        list(
+            unmaterialized = TRUE,
+            variable = "Vehicle origin",
+            values = c(Domestic = 0, Imported = 1),
+            format = "%8.0g"
+        )
+    )
+})
+
+test_that("metadata proxies preserve copy-on-write in both directions", {
+    source <- read_dta(fixture("value_labels_v118.dta"))$foreign
+    updated <- set_variable_labels(source, "Vehicle origin")
+    updated[[1L]] <- 99
+
+    second_source <- read_dta(fixture("value_labels_v118.dta"))$foreign
+    second_updated <- set_variable_labels(second_source, "Vehicle origin")
+    second_source[[1L]] <- 99
+
+    expect_identical(
+        list(
+            source_value = as.double(source[[1L]]),
+            updated_value = as.double(updated[[1L]]),
+            second_source_value = as.double(second_source[[1L]]),
+            second_updated_value = as.double(second_updated[[1L]])
+        ),
+        list(
+            source_value = 1,
+            updated_value = 99,
+            second_source_value = 99,
+            second_updated_value = 1
         )
     )
 })
@@ -506,9 +571,60 @@ test_that("bulk setters reject ambiguous column updates atomically", {
     )
 })
 
+test_that("named updates reject duplicated data-frame column names", {
+    data <- data.frame(x = c(0, 1), x = c(1, 2), check.names = FALSE)
+    attr(data[[1L]], "label") <- "First"
+    attr(data[[2L]], "label") <- "Second"
+    attr(data[[1L]], "labels") <- c(No = 0, Yes = 1)
+    attr(data[[2L]], "labels") <- c(First = 1, Second = 2)
+    original <- data
+
+    expect_error(set_variable_labels(data, x = "Ambiguous"), "ambiguous")
+    expect_error(set_value_labels(data, x = c(Zero = 0)), "ambiguous")
+    expect_identical(data, original)
+
+    var_label(data) <- NULL
+    val_labels(data) <- NULL
+    expect_identical(
+        list(variable = var_label(data), values = val_labels(data)),
+        list(
+            variable = list(x = NULL, x = NULL),
+            values = list(x = NULL, x = NULL)
+        )
+    )
+})
+
 test_that("value labels can only be attached to numeric Stata variables", {
     expect_error(
         set_value_labels(c("No", "Yes"), No = 0, Yes = 1),
         "numeric"
     )
+    expect_error(
+        set_value_labels(factor(c("No", "Yes")), No = 1, Yes = 2),
+        "numeric Stata variable"
+    )
+    expect_error(
+        set_value_labels(matrix(c(0, 1), ncol = 1), No = 0, Yes = 1),
+        "numeric Stata variable"
+    )
+})
+
+test_that("value-label tables must be numeric vectors", {
+    invalid <- list(
+        empty_character = character(),
+        empty_list = list(),
+        empty_raw = raw(),
+        factor = stats::setNames(factor(c("1", "2")), c("No", "Yes")),
+        matrix = matrix(c(0, 1), ncol = 1,
+                        dimnames = list(c("No", "Yes"), NULL))
+    )
+
+    rejected <- vapply(invalid, function(labels) {
+        inherits(
+            try(set_value_labels(c(0, 1), .labels = labels), silent = TRUE),
+            "try-error"
+        )
+    }, logical(1))
+
+    expect_identical(unname(rejected), rep(TRUE, length(invalid)))
 })

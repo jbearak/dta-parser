@@ -1,9 +1,10 @@
 #' Get and set Stata label metadata
 #'
 #' Dependency-free helpers for dataset labels, variable labels, and numeric
-#' value-label tables. The common function names and call forms are compatible
-#' with `labelled`, but validation and mutation follow Stata's metadata model
-#' and preserve dtaparser's compact columns and unrelated attributes.
+#' value-label tables. The variable- and value-label function names and common
+#' call forms are compatible with `labelled`; `dataset_label()` is a dtaparser
+#' addition. Validation and mutation follow Stata's metadata model and preserve
+#' dtaparser's compact columns and unrelated attributes.
 #'
 #' @section Getter results:
 #' For a vector, `var_label()` returns one character value or `NULL`, and
@@ -141,6 +142,17 @@ dataset_label <- function(data) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
+    duplicated_data_names <- unique(names(data)[
+        duplicated(names(data)) | duplicated(names(data), fromLast = TRUE)
+    ])
+    ambiguous <- intersect(update_names, duplicated_data_names)
+    if (length(ambiguous) > 0L) {
+        stop(sprintf(
+            "ambiguous column name%s: %s",
+            if (length(ambiguous) == 1L) "" else "s",
+            paste(ambiguous, collapse = ", ")
+        ), call. = FALSE)
+    }
 
     stats::setNames(
         lapply(seq_along(value), function(index) {
@@ -188,11 +200,14 @@ dataset_label <- function(data) {
 }
 
 .normalize_value_labels <- function(value, argument = "value") {
-    if (is.null(value) || length(value) == 0L) return(NULL)
-    if (!(typeof(value) %in% c("integer", "double"))) {
+    if (is.null(value)) return(NULL)
+    if (!is.numeric(value) ||
+        !(typeof(value) %in% c("integer", "double")) ||
+        !is.null(dim(value))) {
         stop(sprintf("`%s` must be a named numeric vector or NULL", argument),
              call. = FALSE)
     }
+    if (length(value) == 0L) return(NULL)
 
     label_text <- names(value)
     if (is.null(label_text) || length(label_text) != length(value)) {
@@ -273,7 +288,8 @@ dataset_label <- function(data) {
 
 .validate_value_label_target <- function(value, labels, argument = "x") {
     if (!is.null(labels) &&
-        !(typeof(value) %in% c("integer", "double"))) {
+        (!(typeof(value) %in% c("integer", "double")) ||
+         is.factor(value) || !is.null(dim(value)))) {
         stop(sprintf(
             "`%s` must be a numeric Stata variable to receive value labels",
             argument
@@ -288,21 +304,19 @@ dataset_label <- function(data) {
 
     if (has_labels && !temporal &&
         typeof(value) %in% c("integer", "double") &&
-        !inherits(value, "haven_labelled")) {
+        !inherits(value, "haven_labelled") && is.null(classes)) {
         storage_class <- typeof(value)
-        if (is.null(classes)) {
-            classes <- c("haven_labelled", "vctrs_vctr", storage_class)
-        } else {
-            classes <- unique(c(
-                "haven_labelled", classes, "vctrs_vctr", storage_class
-            ))
-        }
+        classes <- c("haven_labelled", "vctrs_vctr", storage_class)
         attr(value, "class") <- classes
     }
 
     if (!has_labels && "haven_labelled" %in% classes) {
         compatibility <- c("haven_labelled", "vctrs_vctr", typeof(value))
-        classes <- classes[!(classes %in% compatibility)]
+        classes <- if (identical(classes, compatibility)) {
+            NULL
+        } else {
+            classes[classes != "haven_labelled"]
+        }
         attr(value, "class") <- if (length(classes) == 0L) NULL else classes
     }
     value
@@ -313,7 +327,12 @@ dataset_label <- function(data) {
 `var_label<-` <- function(x, value) {
     if (is.data.frame(x)) {
         if (is.null(value)) {
-            value <- stats::setNames(rep(list(NULL), length(x)), names(x))
+            for (index in seq_along(x)) {
+                column <- .metadata_copy(x[[index]])
+                attr(column, "label") <- NULL
+                x[[index]] <- column
+            }
+            return(x)
         }
         updates <- .validate_column_updates(
             x, value, .normalize_text_label, "value"
@@ -357,7 +376,13 @@ dataset_label <- function(data) {
 `val_labels<-` <- function(x, value) {
     if (is.data.frame(x)) {
         if (is.null(value)) {
-            value <- stats::setNames(rep(list(NULL), length(x)), names(x))
+            for (index in seq_along(x)) {
+                column <- .metadata_copy(x[[index]])
+                attr(column, "labels") <- NULL
+                column <- .apply_haven_labelled_class(column, FALSE)
+                x[[index]] <- column
+            }
+            return(x)
         }
         updates <- .validate_column_updates(
             x, value, .normalize_value_labels, "value"

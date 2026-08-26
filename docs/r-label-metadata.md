@@ -70,7 +70,7 @@ These guarantees are covered at the exported helper seam in [`test-label-metadat
 
 ## Compared with `labelled`
 
-The names above intentionally match the common `labelled` calls, but dtaparser promises call compatibility only for the documented surface. It does not implement `prefixed`, `null_action`, `.strict`, `.overwrite`, recursive/survey-object behavior, or the rest of the `labelled` package.
+The variable- and value-label names above intentionally match common `labelled` calls; `dataset_label()` is a dtaparser addition. dtaparser promises call compatibility only for the documented surface. It does not implement `prefixed`, `null_action`, `.strict`, `.overwrite`, recursive/survey-object behavior, or the rest of the `labelled` package.
 
 The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is not a claim about future releases.
 
@@ -80,7 +80,7 @@ The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is n
 | Set a variable label on numeric ALTREP | Keeps an ALTREP result | Materializes the vector |
 | Set value labels on numeric ALTREP | Keeps an ALTREP result and preserves `format.stata` and custom attributes | Materializes the vector and drops `format.stata` and custom attributes |
 | Set value labels on `Date` or `POSIXct` | Preserves temporal classes and time zone | Reconstructs a plain haven-labelled numeric vector |
-| Remove all value labels | Removes compatibility classes while retaining unrelated classes | May reconstruct or unclass the vector according to its own `null_action` behavior |
+| Remove all value labels | Removes compatibility classes added to ordinary numeric vectors while retaining unrelated classes | Reconstructs a standard haven-labelled numeric vector as an unclassed numeric vector |
 | Validate labels | Enforces Stata-native codes and atomic named data-frame updates | Implements the broader `labelled` contract, including behaviors dtaparser deliberately omits |
 
 The version-pinned comparison and both package attach orders run in [`test-labelled-interop.R`](../scripts/test-labelled-interop.R). CI installs `labelled` only for that repository-level gate; it is not a dtaparser runtime, suggested, or enhanced dependency.

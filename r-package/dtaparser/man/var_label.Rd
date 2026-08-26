@@ -49,9 +49,10 @@ and \verb{set_*()} functions return the updated vector or data frame.
 }
 \description{
 Dependency-free helpers for dataset labels, variable labels, and numeric
-value-label tables. The common function names and call forms are compatible
-with \code{labelled}, but validation and mutation follow Stata's metadata model
-and preserve dtaparser's compact columns and unrelated attributes.
+value-label tables. The variable- and value-label function names and common
+call forms are compatible with \code{labelled}; \code{dataset_label()} is a dtaparser
+addition. Validation and mutation follow Stata's metadata model and preserve
+dtaparser's compact columns and unrelated attributes.
 }
 \section{Getter results}{
 

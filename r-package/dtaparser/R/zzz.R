@@ -25,6 +25,16 @@
 .labelled_attach_state$warned <- FALSE
 
 .warn_labelled_masking <- function(...) {
+    if (!"package:dtaparser" %in% search()) return(invisible(NULL))
+    shared <- c(
+        "var_label", "var_label<-", "val_labels", "val_labels<-",
+        "set_variable_labels", "set_value_labels"
+    )
+    masks_dtaparser <- any(vapply(shared, function(name) {
+        locations <- utils::find(name, mode = "function")
+        length(locations) > 0L && identical(locations[[1L]], "package:labelled")
+    }, logical(1)))
+    if (!masks_dtaparser) return(invisible(NULL))
     if (.labelled_attach_state$warned) return(invisible(NULL))
     .labelled_attach_state$warned <- TRUE
     warning(
