@@ -4,7 +4,7 @@
 
 ## Why use dtaparser?
 
-The reader combines multicore decoding with compact ALTREP vectors. Repository benchmarks show the difference on both a large survey corpus and one especially wide file:
+`dtaparser` decodes columns across multiple CPU cores and postpones expanding some columns into larger R objects until an operation needs them. Repository benchmarks show the difference on both a large survey corpus and one especially wide file:
 
 | Workload | dtaparser | haven | Difference |
 | --- | ---: | ---: | ---: |
@@ -66,7 +66,7 @@ haven::na_tag(cars$foreign)
 haven::is_tagged_na(cars$foreign, "a")
 ```
 
-Stata byte, int, and long columns appear as R doubles so every missing tag can be represented. Numeric ALTREP keeps their compact source width until R needs a materialized double vector.
+Stata byte, int, and long columns appear as R doubles so every missing tag can be represented. `dtaparser` keeps those columns at their smaller Stata widths until R needs a full double vector. R calls this mechanism ALTREP.
 
 ## Working with Stata data
 
@@ -81,14 +81,14 @@ tab(cars$foreign, missing = TRUE, display = "both")
 Use the installed help for exact behavior and examples:
 
 ```r
-?read_dta  # inputs, selection, encoding, threads, ALTREP, labels, and missing values
+?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?recode    # recoding without losing unmatched missing tags
 ?tab       # label-aware frequency tables
 ```
 
 ## Performance controls
 
-`threads = 0` chooses an automatic worker count for sufficiently large reads; `threads = 1` forces serial decoding. `use_numeric_altrep = FALSE` creates eager R double vectors when downstream work will immediately materialize every numeric column.
+`threads = 0` chooses an automatic worker count for sufficiently large reads; `threads = 1` forces serial decoding. `use_numeric_altrep = FALSE` disables the compact numeric representation and creates R double vectors during the read.
 
 Additional measurements and their provenance live in the repository's [dated benchmark reports](https://github.com/jbearak/dta-parser/tree/main/benchmarks).
 
