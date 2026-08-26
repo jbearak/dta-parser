@@ -17,9 +17,10 @@ factor_from_labels(
 \code{POSIXct}.}
 
 \item{missing}{How missing values should be handled. \code{FALSE} and
-\code{"exclude"} make them factor \code{NA}; \code{TRUE} and \code{"distinguish"} give Stata
-system missing (\code{.}), every extended missing code, and R \code{NaN} separate
-levels.}
+\code{"exclude"} make them factor \code{NA}; \code{TRUE} and \code{"distinguish"} give
+observed missing payloads separate levels for Stata system missing (\code{.}),
+extended missing codes, and R \code{NaN}. Labelled extended-missing entries
+absent from \code{x} also remain as levels unless \code{drop_unused = TRUE}.}
 
 \item{display}{How labelled levels should be named: by \code{"label"} (the
 default), underlying \code{"value"}, or \code{"both"}. Unlabelled values always

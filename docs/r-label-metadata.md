@@ -63,12 +63,13 @@ original numeric representation. The package therefore does not register an
 
 By default, missing values become factor `NA` and unused nonmissing value-label
 entries remain levels. Labelled missing entries become levels only when
-`missing = TRUE`, which gives `.`, each extended missing code, and R `NaN`
-distinct levels. `drop_unused = TRUE` omits label entries not present in the
-data. `display` selects labels, values, or both. Distinct codes with the same
-label text remain distinct, qualified levels without a warning. Double-backed
-`Date` and `POSIXct` vectors are supported; their Stata label codes and
-displayed levels are translated to the R temporal representation.
+`missing = TRUE` or `"distinguish"`. In that mode, observed missing payloads
+for `.`, extended missing codes, and R `NaN` get distinct levels. Labelled
+extended-missing entries absent from the data remain as unused levels unless
+`drop_unused = TRUE`. `display` selects labels, values, or both. Distinct codes
+with the same label text remain distinct, qualified levels without a warning.
+Double-backed `Date` and `POSIXct` vectors are supported; their Stata label
+codes and displayed levels are translated to the R temporal representation.
 
 Factor conversion and `tab()` share a native grouping path. Both preserve a
 compact dtaparser numeric source instead of allocating its decoded double

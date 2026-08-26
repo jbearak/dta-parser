@@ -11,14 +11,32 @@
 #'   unquoted column names. All selected vectors must have the same length.
 #' @param data Optional data frame in which to evaluate `x` and `...`.
 #' @param missing How missing values should be handled. `FALSE` and
-#'   `"exclude"` omit them; `TRUE` and `"distinguish"` give Stata system
-#'   missing (`.`), every observed extended missing (`.a` through `.z`), and R
-#'   `NaN` separate categories; `"combine"` creates one base-R missing
-#'   category.
+#'   `"exclude"` omit them; `TRUE` and `"distinguish"` give observed Stata
+#'   system missing (`.`), extended missing codes (`.a` through `.z`), and R
+#'   `NaN` separate categories; `"combine"` creates one base-R missing category.
 #' @param display How labelled values should be named: by `"label"` (the
 #'   default), underlying `"value"`, or `"both"`. An absent label always falls
 #'   back to the underlying value. Duplicate displayed labels are qualified by
 #'   their values.
+#'
+#' @details
+#' Calls may supply vectors directly, select unquoted names from `data`, or
+#' pipe a data frame into `tab()`. A data frame passed as `x` contributes all
+#' of its columns when no names follow it. Thus `tab(df)` tabulates every
+#' column, while `tab(x, y, data = df)` and `df |> tab(x, y)` are equivalent
+#' ways to select `x` and `y`.
+#'
+#' Value labels affect only displayed dimension names. Categories remain
+#' ordered by their underlying values. Unused value-label definitions do not
+#' create zero-count categories. If displayed labels collide, their underlying
+#' values are appended to keep every dimension name unambiguous.
+#'
+#' With `missing = TRUE` or `"distinguish"`, numeric categories are ordered
+#' after observed values as system missing, extended missings `.a` through
+#' `.z`, and then R `NaN`. A labelled missing code uses its value label unless
+#' `display = "value"`; otherwise its Stata code is shown.
+#' `missing = "combine"` follows base R by collapsing all missing numeric
+#' payloads into one category.
 #'
 #' Numeric factorization is shared with [factor_from_labels()] and does not
 #' materialize compact numeric columns returned by [read_dta()].

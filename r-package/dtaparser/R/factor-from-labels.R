@@ -17,9 +17,10 @@
 #' @param x An undimensioned numeric-storage vector, including `Date` and
 #'   `POSIXct`.
 #' @param missing How missing values should be handled. `FALSE` and
-#'   `"exclude"` make them factor `NA`; `TRUE` and `"distinguish"` give Stata
-#'   system missing (`.`), every extended missing code, and R `NaN` separate
-#'   levels.
+#'   `"exclude"` make them factor `NA`; `TRUE` and `"distinguish"` give
+#'   observed missing payloads separate levels for Stata system missing (`.`),
+#'   extended missing codes, and R `NaN`. Labelled extended-missing entries
+#'   absent from `x` also remain as levels unless `drop_unused = TRUE`.
 #' @param display How labelled levels should be named: by `"label"` (the
 #'   default), underlying `"value"`, or `"both"`. Unlabelled values always
 #'   fall back to the underlying value.
