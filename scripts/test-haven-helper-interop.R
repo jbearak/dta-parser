@@ -144,17 +144,20 @@ assert(
 )
 
 compact_factor_ours <- dtaparser::read_dta(fixture)$foreign
-invisible(dtaparser::factor_from_labels(compact_factor_ours))
+compact_factor_ours_result <- dtaparser::factor_from_labels(
+    compact_factor_ours
+)
 assert(
     dtaparser:::.is_unmaterialized_numeric_altrep(compact_factor_ours),
     "dtaparser factor conversion materialized compact numeric storage"
 )
 
 compact_factor_haven <- dtaparser::read_dta(fixture)$foreign
-invisible(haven::as_factor(compact_factor_haven))
+compact_factor_haven_result <- haven::as_factor(compact_factor_haven)
 assert(
-    !dtaparser:::.is_unmaterialized_numeric_altrep(compact_factor_haven),
-    "The haven 2.5.5 factor materialization comparison changed"
+    identical(compact_factor_haven_result, compact_factor_ours_result) &&
+        dtaparser:::.is_unmaterialized_numeric_altrep(compact_factor_haven),
+    "The haven 2.5.5 factor output or compactness comparison changed"
 )
 
 message("haven helper interoperability passed for haven ", actual_version)
