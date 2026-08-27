@@ -58,7 +58,6 @@ if (workload == "stata-storage" && writer == "dtaparser") {
     if (!identical(as.integer(observed), unname(expected_storage))) {
         stop("primary write fixture does not contain the expected Stata storage types")
     }
-    data[[1L]][1L] <- data[[1L]][1L] + 1
 }
 rows <- nrow(data)
 columns <- ncol(data)

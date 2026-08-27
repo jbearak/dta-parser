@@ -20,7 +20,10 @@ reference_summary <- read_table(args[[5L]])
 reference_provenance <- read_table(args[[6L]])
 output <- normalizePath(args[[7L]], winslash = "/", mustWork = FALSE)
 
-contract_fields <- c("workload", "fixture_storage_schema", "dirty_mutation")
+contract_fields <- c(
+    "workload", "fixture_storage_schema", "fixture_creator",
+    "fixture_generator_sha256", "stata_save_state", "dtaparser_input"
+)
 if (nrow(current_provenance) != 1L || nrow(reference_provenance) != 1L ||
     !all(contract_fields %in% names(current_provenance)) ||
     !all(contract_fields %in% names(reference_provenance)) ||

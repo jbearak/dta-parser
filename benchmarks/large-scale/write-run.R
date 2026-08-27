@@ -20,6 +20,11 @@ script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/
 script_dir <- dirname(script_path)
 checkout_root <- normalizePath(file.path(script_dir, "..", ".."), winslash = "/")
 sys.source(file.path(script_dir, "provenance.R"), envir = environment())
+sys.source(file.path(script_dir, "stata-fixture.R"), envir = environment())
+stata_generator <- file.path(script_dir, "stata-generate-fixture.do")
+stata_generator_sha256 <- tolower(
+    unname(tools::sha256sum(stata_generator))[[1L]]
+)
 
 writer_selection <- Sys.getenv("DTAPARSER_WRITE_WRITERS")
 writers <- if (nzchar(writer_selection)) {
@@ -73,7 +78,10 @@ datasets <- read.delim(
     manifest_path, check.names = FALSE, stringsAsFactors = FALSE,
     colClasses = "character"
 )
-required <- c("dataset", "path", "actual_bytes", "sha256", "rows")
+required <- c(
+    "dataset", "path", "actual_bytes", "sha256", "rows", "columns",
+    "obs_bytes", "creator", "generator_sha256"
+)
 if (!all(required %in% names(datasets)) ||
     !identical(datasets$dataset, c("100mb", "1gb"))) {
     stop("dataset manifest is invalid")
@@ -84,9 +92,17 @@ expected_paths <- file.path(
 datasets$path <- vapply(datasets$path, normalizePath, character(1), winslash = "/")
 datasets$actual_bytes <- suppressWarnings(as.numeric(datasets$actual_bytes))
 datasets$rows <- suppressWarnings(as.numeric(datasets$rows))
+datasets$columns <- suppressWarnings(as.numeric(datasets$columns))
+datasets$obs_bytes <- suppressWarnings(as.numeric(datasets$obs_bytes))
 if (!identical(unname(datasets$path), expected_paths) ||
     any(!is.finite(datasets$actual_bytes) | datasets$actual_bytes <= 0) ||
     any(!is.finite(datasets$rows) | datasets$rows <= 0) ||
+    any(!is.finite(datasets$columns) |
+        datasets$columns != stata_fixture_columns) ||
+    any(!is.finite(datasets$obs_bytes) |
+        datasets$obs_bytes != stata_fixture_row_bytes) ||
+    any(datasets$creator != "stata-first-save") ||
+    any(tolower(datasets$generator_sha256) != stata_generator_sha256) ||
     !identical(as.double(file.info(expected_paths)$size), datasets$actual_bytes)) {
     stop("synthetic dataset paths or sizes are invalid")
 }
@@ -99,15 +115,7 @@ datasets$sha256 <- actual_hashes
 rscript <- Sys.which("Rscript")
 stata <- ""
 if ("stata" %in% writers) {
-    stata_candidates <- unique(c(
-        Sys.getenv("STATA_BIN"),
-        "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp",
-        Sys.which("stata-mp"), Sys.which("stata")
-    ))
-    stata_candidates <- stata_candidates[nzchar(stata_candidates)]
-    stata_candidates <- stata_candidates[file.exists(stata_candidates)]
-    if (!length(stata_candidates)) stop("Stata is required; set STATA_BIN")
-    stata <- normalizePath(stata_candidates[[1L]], winslash = "/", mustWork = TRUE)
+    stata <- find_stata()
 }
 time_flag <- if (identical(Sys.info()[["sysname"]], "Darwin")) "-l" else "-v"
 
@@ -142,47 +150,25 @@ run_timed <- function(command, arguments, work_dir) {
     )
 }
 
-measure <- function(dataset, writer, iteration, writer_order) {
-    work_dir <- tempfile(
-        pattern = paste0("synthetic-write-", dataset$dataset, "-", writer, "-"),
-        tmpdir = output_parents[[1L]]
-    )
-    dir.create(work_dir)
-    on.exit(unlink(work_dir, recursive = TRUE, force = TRUE), add = TRUE)
-    input <- file.path(work_dir, "input.dta")
-    if (!file.symlink(dataset$path, input)) stop("could not create input alias")
-    if (writer == "stata") {
-        file.copy(file.path(script_dir, "stata-write-worker.do"),
-                  file.path(work_dir, "stata-write-worker.do"))
-        process <- run_timed(
-            stata, c("-q", "-b", "do", "stata-write-worker.do"), work_dir
-        )
-        result <- file.path(work_dir, "result.tsv")
-        fields <- if (file.exists(result)) {
-            strsplit(readLines(result, n = 1L, warn = FALSE), "\t", fixed = TRUE)[[1L]]
-        } else character()
-    } else {
-        process <- run_timed(
-            rscript,
-            c("--vanilla", file.path(script_dir, "write-worker.R"),
-              writer, "stata-storage", input,
-              file.path(work_dir, "output.dta")),
-            work_dir
-        )
-        fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
-    }
-    if (length(fields) != 6L || fields[[1L]] != writer || fields[[2L]] != "ok") {
-        stop(writer, " synthetic write failed: ", process$stderr)
+measurement_row <- function(dataset, input_sha256, writer, iteration,
+                            writer_order, fields, stderr) {
+    if (length(fields) != 6L || fields[[1L]] != writer ||
+        fields[[2L]] != "ok") {
+        stop(writer, " synthetic write failed: ", stderr)
     }
     numeric <- suppressWarnings(as.numeric(fields[3:6]))
-    rss <- parse_memory(process$stderr)
+    rss <- parse_memory(stderr)
     if (any(!is.finite(numeric)) || numeric[[1L]] <= 0 ||
-        numeric[[2L]] != dataset$rows || numeric[[3L]] <= 0 ||
-        numeric[[4L]] <= 0 || !is.finite(rss) || rss <= 0) {
+        numeric[[2L]] != dataset$rows ||
+        numeric[[3L]] != stata_fixture_columns ||
+        numeric[[4L]] <= 0 ||
+        (writer == "stata" && numeric[[4L]] != dataset$actual_bytes) ||
+        !is.finite(rss) || rss <= 0) {
         stop(writer, " synthetic write returned invalid measurements")
     }
     data.frame(
         dataset = dataset$dataset, dataset_sha256 = dataset$sha256,
+        input_sha256 = input_sha256,
         input_bytes = dataset$actual_bytes, rows = numeric[[2L]],
         columns = numeric[[3L]], writer = writer, iteration = iteration,
         writer_order = writer_order, elapsed_seconds = numeric[[1L]],
@@ -191,19 +177,70 @@ measure <- function(dataset, writer, iteration, writer_order) {
     )
 }
 
+measure_iteration <- function(dataset, iteration) {
+    work_dir <- tempfile(
+        pattern = paste0("synthetic-write-", dataset$dataset, "-"),
+        tmpdir = output_parents[[1L]]
+    )
+    dir.create(work_dir)
+    on.exit(unlink(work_dir, recursive = TRUE, force = TRUE), add = TRUE)
+    input <- file.path(work_dir, "input.dta")
+    results <- list()
+    if ("stata" %in% writers) {
+        if (!file.copy(
+            stata_generator, file.path(work_dir, basename(stata_generator))
+        )) stop("could not stage the Stata fixture generator")
+        process <- run_timed(
+            stata,
+            c("-q", "-b", "do", basename(stata_generator), "input.dta",
+              as.character(dataset$rows), dataset$dataset, "result.tsv"),
+            work_dir
+        )
+        result <- file.path(work_dir, "result.tsv")
+        fields <- if (file.exists(result)) {
+            strsplit(readLines(result, n = 1L, warn = FALSE), "\t", fixed = TRUE)[[1L]]
+        } else character()
+        if (!file.exists(input)) {
+            stop("Stata synthetic write did not produce its input: ", process$stderr)
+        }
+        input_sha256 <- tolower(unname(tools::sha256sum(input))[[1L]])
+        results[[length(results) + 1L]] <- measurement_row(
+            dataset, input_sha256, "stata", iteration, 1L,
+            fields, process$stderr
+        )
+        message(dataset$dataset, " stata ", iteration, "/", iterations)
+    } else {
+        if (!file.symlink(dataset$path, input)) stop("could not create input alias")
+        input_sha256 <- dataset$sha256
+    }
+    if ("dtaparser" %in% writers) {
+        process <- run_timed(
+            rscript,
+            c("--vanilla", file.path(script_dir, "write-worker.R"),
+              "dtaparser", "stata-storage", input,
+              file.path(work_dir, "output.dta")),
+            work_dir
+        )
+        fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
+        results[[length(results) + 1L]] <- measurement_row(
+            dataset, input_sha256, "dtaparser", iteration,
+            if ("stata" %in% writers) 2L else 1L,
+            fields, process$stderr
+        )
+        message(dataset$dataset, " dtaparser ", iteration, "/", iterations)
+    }
+    results
+}
+
 rows <- vector("list", nrow(datasets) * iterations * length(writers))
 row_index <- 0L
 for (dataset_index in seq_len(nrow(datasets))) {
     dataset <- datasets[dataset_index, , drop = FALSE]
     for (iteration in seq_len(iterations)) {
-        shift <- (dataset_index + iteration - 2L) %% length(writers)
-        order <- writers[c(seq.int(shift + 1L, length(writers)),
-                           if (shift) seq_len(shift) else integer())]
-        for (writer_order in seq_along(order)) {
-            writer <- order[[writer_order]]
+        measured <- measure_iteration(dataset, iteration)
+        for (value in measured) {
             row_index <- row_index + 1L
-            rows[[row_index]] <- measure(dataset, writer, iteration, writer_order)
-            message(dataset$dataset, " ", writer, " ", iteration, "/", iterations)
+            rows[[row_index]] <- value
         }
     }
 }
@@ -213,7 +250,11 @@ final_build <- verify_benchmark_provenance(
     checkout_root, benchmark_library, build_provenance_path
 )
 if (!identical(final_build$provenance_id, build_provenance$provenance_id) ||
-    !identical(tolower(unname(tools::sha256sum(expected_paths))), datasets$sha256)) {
+    !identical(tolower(unname(tools::sha256sum(expected_paths))), datasets$sha256) ||
+    !identical(
+        tolower(unname(tools::sha256sum(stata_generator))[[1L]]),
+        stata_generator_sha256
+    )) {
     stop("benchmark build or datasets changed during synthetic writes")
 }
 stable_provenance <- data.frame(
@@ -223,11 +264,15 @@ stable_provenance <- data.frame(
     dataset_100mb_sha256 = datasets$sha256[[1L]],
     dataset_1gb_sha256 = datasets$sha256[[2L]],
     iterations = iterations,
-    workload = "stata-storage-roundtrip",
-    fixture_storage_schema = paste0(
-        "byte=4,int=4,long=9,float=4,double=9,string=10"
-    ),
-    dirty_mutation = "id[1]=id[1]+1",
+    workload = "stata-first-save-to-dtaparser-roundtrip",
+    fixture_storage_schema = stata_fixture_schema,
+    fixture_creator = "stata-first-save",
+    fixture_generator_sha256 = stata_generator_sha256,
+    stata_save_state = "first-save-after-generate",
+    dtaparser_input = "exact-stata-first-save-output",
+    execution_order = if (setequal(writers, c("dtaparser", "stata"))) {
+        "stata-before-dtaparser"
+    } else paste0(writers, "-only"),
     writers = paste(writers, collapse = ","),
     r_version = R.version.string,
     r_platform = R.version$platform,
@@ -252,6 +297,21 @@ expected <- expand.grid(
 tuple <- function(data) paste(data$dataset, data$writer, data$iteration, sep = "\r")
 if (anyDuplicated(tuple(raw)) || !setequal(tuple(raw), tuple(expected))) {
     stop("synthetic write results are not the exact expected matrix")
+}
+if (setequal(writers, c("dtaparser", "stata"))) {
+    pairs <- split(raw, interaction(
+        raw$dataset, raw$iteration, drop = TRUE
+    ))
+    exact_pair <- vapply(pairs, function(pair) {
+        nrow(pair) == 2L && length(unique(pair$input_sha256)) == 1L &&
+            identical(
+                pair$writer[order(pair$writer_order)],
+                c("stata", "dtaparser")
+            )
+    }, logical(1L))
+    if (!all(exact_pair)) {
+        stop("dtaparser did not consume each exact timed Stata output")
+    }
 }
 
 groups <- split(raw, interaction(raw$dataset, raw$writer, drop = TRUE))

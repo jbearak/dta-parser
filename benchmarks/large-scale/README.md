@@ -7,21 +7,23 @@ This report-only benchmark compares three readers in the same R process:
 - `rust-vectors`: the retained internal `dtaparser:::.read_dta_rust_vectors()` baseline;
 - `haven`: `haven::read_dta()`.
 
-It measures full reads and a fixed eight-column projection on deterministic
-approximately 100 MB and 1 GB Stata files. The default is 101 measured
+It measures full reads and a fixed eight-column projection on Stata-authored,
+schema-deterministic approximately 100 MB and 1 GB files. The default is 101 measured
 iterations per implementation, workload, and size. Each path is warmed first,
 execution order reverses on alternating iterations, and garbage collection runs
 outside timed regions. There are no timing assertions or CI gates.
 
-The same run has two synthetic write benchmarks. The primary benchmark compares
-dtaparser with Stata by loading and saving the deterministic 100 MB and 1 GB DTA
-files. Its 40 columns cover every numeric Stata storage type: 4 `byte`, 4 `int`,
+The same run has two synthetic write benchmarks. In every primary iteration, a
+fresh Stata process generates the data in memory and times its first `save`.
+dtaparser then loads and saves that exact Stata output. This rules out timing an
+unchanged-file save after `use`. The 40 columns cover every numeric Stata
+storage type: 4 `byte`, 4 `int`,
 9 `long`, 4 `float`, and 9 `double` columns, plus 10 fixed-width strings. Four
 of the longs have value labels; two doubles are Stata dates and two are Stata
 datetimes. dtaparser's reader retains those storage declarations, while Stata
-uses its native in-memory storage. Each worker changes the first `id` value
-before timing so the benchmark measures serialization of dirty data rather than
-any unchanged-file save shortcut.
+creates them directly with storage-qualified `generate` commands. The canonical
+100 MB and 1 GB inputs used by the read benchmarks come from the same Stata
+generator.
 
 The secondary benchmark compares dtaparser with Haven on the exact same
 freshly constructed ordinary R data frame. Its 40 columns are 11 doubles, 11
@@ -33,12 +35,14 @@ Stata is excluded because it cannot receive an in-memory R data frame, and
 Haven is excluded from the primary matrix because its reader widens Stata
 numeric storage into ordinary R vectors.
 
-Every writer runs in a fresh process. Operation timing starts after the primary
-input has been read or the secondary R input has been constructed. Peak RSS
+Every writer runs in a fresh process. Stata's primary operation timer covers
+only its first `save`; dtaparser's starts after it reads Stata's output. The
+secondary timer starts after the R input has been constructed. Peak RSS
 covers the whole fresh process because the in-memory input is part of the write
-workload. Writer order rotates, and raw and summary reports retain elapsed write
-time, peak RSS, and output size. The default is seven iterations per writer and
-size.
+workload. Stata necessarily precedes dtaparser in each primary pair; writer order
+rotates in the independent secondary matrix. Raw primary rows retain the exact
+paired input SHA-256 in addition to elapsed time, peak RSS, and output size. The
+default is seven iterations per writer and size.
 
 The [2026-08-27 write report](results-2026-08-27.md) records the first complete
 seven-iteration comparison.
@@ -113,6 +117,17 @@ measurements and a combined dtaparser/Stata comparison beneath
 `target/large-scale/dtaparser-write-runs/`. Pass a complete run directory as
 the second argument to override `target/large-scale/CURRENT`.
 
+Run only the complete paired primary matrix with:
+
+```sh
+benchmarks/large-scale/primary-write-only.sh 7
+```
+
+This runner rebuilds dtaparser, asks Stata to replace the synthetic inputs, and
+publishes the paired Stata/dtaparser results under
+`target/large-scale/primary-write-runs/`. It runs neither the read benchmark nor
+the large corpus suite.
+
 Run only the secondary ordinary-R matrix with:
 
 ```sh
@@ -124,10 +139,11 @@ This runner rebuilds dtaparser and publishes its dtaparser/Haven results under
 large corpus benchmark.
 
 All generated inputs and reports are written beneath an ignored checkout-local
-private artifact root. Dataset files and the manifest are replaced atomically,
-and rerunning the orchestration script recreates the same datasets and a
-duplicate-free manifest. Completed report bundles are immutable and privately
-selected. Python is invoked with bytecode generation disabled.
+private artifact root. Each dataset file is replaced atomically, and the exact
+hash manifest is published only after both files pass shape and size checks.
+Stata leaves volatile padding in some metadata fields, so semantic content and
+storage are deterministic while file hashes bind the exact files created in
+that run. Completed report bundles are immutable and privately selected.
 
 The default raw report has 1,212 rows:
 
