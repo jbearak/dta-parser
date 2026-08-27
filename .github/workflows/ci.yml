@@ -90,7 +90,11 @@ jobs:
       - run: scripts/check-r-cargo-vendor.sh
       - run: scripts/rebuild-r-vendor.sh
       - run: git diff --exit-code -- r-package/dtaparser/src/rust/vendor.tar.gz
-      - run: bun test tests/integration/benchmark-config.test.ts tests/integration/fixture-inventory.test.ts
+      - run: >-
+          bun test
+          tests/integration/benchmark-config.test.ts
+          tests/integration/fixture-inventory.test.ts
+          tests/integration/typescript-product-benchmarks.test.ts
 
   r-package:
     name: R package / ${{ matrix.os }}
