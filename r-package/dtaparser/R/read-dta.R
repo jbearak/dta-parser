@@ -1,9 +1,11 @@
 #' Read a Stata DTA file
 #'
 #' Reads releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser.
-#' Numeric and character columns are created directly by native code. Byte,
-#' int, long, and float columns retain their compact Stata storage width until
-#' R requests a materialized double vector; source doubles are created eagerly.
+#' Numeric and character columns are created directly by native code. Numeric
+#' columns carry their declared Stata storage type throughout the R session.
+#' Byte, int, long, and float columns retain their compact Stata storage width
+#' until R requests a materialized double vector; source doubles are created
+#' eagerly.
 #' Dataset and variable labels, dataset notes, Stata display formats, value
 #' labels, `strL` content, and Stata system/extended missing values are retained.
 #'
@@ -16,8 +18,10 @@
 #' `NA_real_`, rather than a tagged value, to create
 #' Stata system missing. Missing tags are part of the numeric values and are
 #' distinct from Stata value labels stored in a column's `labels` attribute.
-#' Tagged missings can be stored in any R double vector; no Stata-specific
-#' class is required. Assigning one to an R integer vector widens that vector
+#' Tagged missings can be stored in any R double vector; the missing payload
+#' itself does not require a Stata-specific class. Imported Stata numerics do
+#' carry a class so their storage declaration survives supported operations.
+#' Assigning one to an R integer vector widens that vector
 #' to double because R integers have only `NA_integer_`. This does not reflect
 #' a Stata limitation: Stata `byte`, `int`, and `long` storage each encode all
 #' 27 missing codes in reserved high values.
@@ -29,9 +33,10 @@
 #' could not expose `.a` through `.z` losslessly. The R-facing double type does
 #' not require eight bytes per source value while the column remains ALTREP:
 #' source `byte`, `int`, `long`, and `float` values stay in their compact Stata
-#' storage and are converted to doubles on access. A write or full
-#' materialization creates an ordinary R double vector. This combines lossless
-#' missing-code semantics with compact storage for read-mostly data.
+#' storage and are converted to doubles on access. Supported mutations validate
+#' and re-encode the result. A full materialization widens the backing to R
+#' doubles but retains the declared storage class. This combines lossless
+#' missing-code semantics with compact steady-state storage.
 #' For example:
 #' ```
 #' x <- c(1, NA_real_, tagged_missing("a"), tagged_missing("z"))
@@ -61,6 +66,25 @@
 #' `is_tagged_missing(x, tag)` instead. A transformation may materialize an
 #' ALTREP column and may drop Stata metadata attributes when it constructs a
 #' new vector, following the same behavior as haven-compatible vectors.
+#'
+#' @section Stata storage declarations:
+#' [stata_storage_type()] reports `"byte"`, `"int"`, `"long"`, `"float"`, or
+#' `"double"` without materializing compact backing. Use [stata_byte()],
+#' [stata_int()], [stata_long()], [stata_float()], and [stata_double()] to
+#' declare storage for derived vectors. Constructors and explicit casts reject
+#' unrepresentable values and name the wider constructor to use. Float
+#' construction rounds to binary32, as Stata does.
+#'
+#' Subassignment, [replace()], `dplyr::if_else()`, and `dplyr::mutate()` retain
+#' declared storage and re-encode compact results. Arithmetic starts at the
+#' operands' common Stata storage type and widens only when the result values
+#' require it. Imported `Date` and `POSIXct` columns validate on Stata's source
+#' scale, including Stata's 1960 epoch and millisecond datetime unit, while
+#' continuing to expose ordinary R temporal values. Base `ifelse()` takes
+#' attributes from its condition and therefore returns a bare vector. Pass that
+#' result to a storage constructor to declare and compact it again. Re-encoding
+#' temporarily materializes doubles, so the memory saving applies after
+#' construction and across columns held in memory.
 #'
 #' @section Labels and missing-code helpers:
 #' Reading DTA files and working with their labels does not require haven or

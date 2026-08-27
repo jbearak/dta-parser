@@ -534,7 +534,11 @@ test_that("aggregate operations keep metadata proxies unmaterialized", {
 
     expect_identical(
         list(
-            results = results,
+            results = lapply(results[1:3], as.double),
+            storage = vapply(
+                results[1:3], stata_storage_type, character(1)
+            ),
+            any_na = results$any_na,
             aggregate_mask = aggregate_mask,
             unmaterialized =
                 dtaparser:::.is_unmaterialized_numeric_altrep(updated)
@@ -543,9 +547,10 @@ test_that("aggregate operations keep metadata proxies unmaterialized", {
             results = list(
                 sum = 456229,
                 min = 3291,
-                max = 15906,
-                any_na = FALSE
+                max = 15906
             ),
+            storage = c(sum = "long", min = "int", max = "int"),
+            any_na = FALSE,
             aggregate_mask = 15L,
             unmaterialized = TRUE
         )

@@ -14,8 +14,12 @@ expect_source_parity <- function(actual, expected) {
     expect_identical(attr(actual, "label", exact = TRUE),
                      attr(expected, "label", exact = TRUE))
     for (name in names(actual)) {
-        expect_equal(actual[[name]], expected[[name]], tolerance = 1e-7,
-                     info = name)
+        expect_equal(
+            without_stata_storage(actual[[name]]),
+            expected[[name]],
+            tolerance = 1e-7,
+            info = name
+        )
     }
 }
 

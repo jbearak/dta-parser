@@ -22,21 +22,29 @@
 #' result. When the result remains numeric, the original class and Stata
 #' metadata attributes are restored. Value-label definitions are not rewritten
 #' when their associated numeric codes change.
+#' Unmatched `NaN` values in a bare numeric `.x` retain their payload. A
+#' storage-bearing Stata vector cannot contain `NaN`, so inserting one through
+#' a replacement, `.default`, or `.missing` errors. Use `NA_real_` for system
+#' missing or [tagged_missing()] for an extended missing value. Arithmetic is
+#' different: undefined results become system missing as described in
+#' [stata_byte()].
 #'
 #' A recode from numeric to a non-numeric type cannot retain tagged-NA
 #' payloads. If `.x` contains missing values and the result is non-numeric,
 #' supply `.missing` explicitly to choose their new representation. Numeric
 #' widening from integer to double preserves missing values automatically.
-#' Class-changing numeric replacements, such as using `Date` or factor values
-#' to recode a bare numeric vector, are rejected rather than silently dropping
-#' the replacement class. Apply the desired class after recoding instead.
+#' `dtaparser::recode()` rejects classed replacements such as `Date` or factor
+#' values for bare numeric sources rather than silently dropping the replacement
+#' class. Stata date and datetime sources accept `Date` and `POSIXct`
+#' replacements, respectively. For other class changes, apply the desired class
+#' after recoding.
 #'
 #' When the dtaparser namespace is loaded, `dplyr::recode()` dispatches here
 #' for bare numeric, `haven_labelled`, `Date`, and `POSIXct` vectors. This also
 #' applies when `recode()` is called inside `dplyr::mutate()`, regardless of
-#' package attachment order. Numeric vectors without tags retain dplyr's exact
-#' legacy behavior; tagged vectors preserve unmatched tag payloads and numeric
-#' metadata.
+#' package attachment order. For numeric vectors without tags, this method
+#' retains dplyr's exact legacy behavior. Tagged numeric vectors use
+#' `dtaparser::recode()` and preserve unmatched tag payloads and numeric metadata.
 #'
 #' @return A recoded vector. Unmatched numeric missing values retain their exact
 #'   payload unless `.missing` is supplied.
@@ -182,7 +190,8 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
 .recode_data <- function(value, source) {
     if (!is.null(value) && typeof(value) %in% c("double", "integer")) {
         if (is.object(value) &&
-            (!is.object(source) || !identical(class(value), class(source)))) {
+            (!is.object(source) ||
+             !.compatible_recode_classes(value, source))) {
             stop(
                 "Class-changing numeric replacements are not supported; ",
                 "apply the desired class after recoding.",
@@ -192,6 +201,14 @@ recode <- function(.x, ..., .default = NULL, .missing = NULL) {
         return(vctrs::vec_data(value))
     }
     value
+}
+
+.compatible_recode_classes <- function(value, source) {
+    if (identical(class(value), class(source))) return(TRUE)
+    if (inherits(source, "stata_date") && inherits(value, "Date")) {
+        return(TRUE)
+    }
+    inherits(source, "stata_datetime") && inherits(value, "POSIXct")
 }
 
 recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {
@@ -204,6 +221,15 @@ recode.numeric <- function(.x, ..., .default = NULL, .missing = NULL) {
         ))
     }
     recode(.x, ..., .default = .default, .missing = .missing)
+}
+
+#' @export
+recode.stata_numeric <- function(
+    .x, ..., .default = NULL, .missing = NULL
+) {
+    .recode_numeric_like(
+        .x, ..., .default = .default, .missing = .missing
+    )
 }
 
 # Package-owned implementation of the legacy dplyr numeric contract. Calling

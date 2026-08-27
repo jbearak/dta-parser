@@ -2,6 +2,40 @@ fixture <- function(name) {
     system.file("extdata", name, package = "dtaparser", mustWork = TRUE)
 }
 
+without_stata_storage <- function(value) {
+    if (is.null(attr(value, "stata.storage", exact = TRUE))) return(value)
+
+    value <- dtaparser:::.metadata_copy(value)
+    attr(value, "stata.storage") <- NULL
+    classes <- attr(value, "class", exact = TRUE)
+    if (!is.null(classes)) {
+        classes <- classes[!classes %in% c(
+            "stata_numeric", "stata_temporal", "stata_date",
+            "stata_datetime", paste0("stata_", c(
+                "byte", "int", "long", "float", "double"
+            ))
+        )]
+        if (!"haven_labelled" %in% classes) {
+            classes <- classes[!classes %in% c("vctrs_vctr", "double")]
+        }
+        attr(value, "class") <- if (length(classes) == 0L) NULL else classes
+    }
+    value
+}
+
+data_values <- function(data) {
+    lapply(data, function(value) {
+        if (is.numeric(value)) as.double(value) else as.vector(value)
+    })
+}
+
+without_stata_storage_data <- function(data) {
+    for (index in seq_along(data)) {
+        data[[index]] <- without_stata_storage(data[[index]])
+    }
+    data
+}
+
 fixture_with_all_numeric_missing_codes <- function(name) {
     input <- fixture(name)
     bytes <- readBin(input, "raw", n = file.info(input)[["size"]])
