@@ -23,7 +23,8 @@ projected slice decode, and a projected 1 KiB-bounded file read. It includes
 modern all-types, wide, `strL`, and legacy files. The TypeScript report retains
 the corresponding checked-fixture cases and adds product-shaped workloads:
 
-- Sight: a natural 200-row viewport, a sorted sparse 200-row viewport, restoring
+- Sight: a natural 200-row viewport, a 200-row viewport in sorted display order
+  whose original source-row indices are sparse, restoring
   three full sort/filter columns, and the first `strL` column touch.
 - Table Viewer: a 100-row page across 120 columns, sparse indexed reads of three
   columns, a 128-row-chunked selected-column scan, a large value-label section,

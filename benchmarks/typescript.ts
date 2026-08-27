@@ -254,7 +254,7 @@ const my_sight_buffer = scale_modern_rows(
     SIGHT_ROWS
 );
 const my_sight_metadata = parse_metadata(my_sight_buffer);
-const the_sight_sorted_rows = deterministic_sparse_rows(
+const the_sight_sorted_view_source_rows = deterministic_sparse_rows(
     SIGHT_ROWS,
     SIGHT_VIEWPORT_ROWS
 );
@@ -314,10 +314,10 @@ try {
         );
         await report(
             'sight',
-            'viewport-200-sorted-sparse-file',
+            'viewport-200-sorted-view-sparse-source-file',
             my_sight_buffer.byteLength,
             () => read_indexed_file_rows(
-                my_sight_file, the_sight_sorted_rows
+                my_sight_file, the_sight_sorted_view_source_rows
             )
         );
         await report(
