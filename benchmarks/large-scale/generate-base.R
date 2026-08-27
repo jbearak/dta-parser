@@ -7,8 +7,16 @@ output <- normalizePath(args[[1L]], mustWork = FALSE)
 rows <- if (length(args) >= 2L) as.integer(args[[2L]]) else 100000L
 stopifnot(is.finite(rows), rows >= 1000L)
 
+benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
+if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
+.libPaths(c(normalizePath(benchmark_library, winslash = "/", mustWork = TRUE),
+            .libPaths()))
+
 if (!requireNamespace("haven", quietly = TRUE)) {
     stop("haven is required")
+}
+if (!requireNamespace("dtaparser", quietly = TRUE)) {
+    stop("dtaparser is required")
 }
 
 i <- seq_len(rows)
@@ -103,16 +111,38 @@ for (name in names(dataset)) {
     attr(dataset[[name]], "label") <- paste("Benchmark field", name)
 }
 
+storage_columns <- list(
+    byte = c("wave", "household_size", "children", "survey_month"),
+    int = c("age", "visits", "survey_year", "status_code"),
+    long = c(
+        "id", "household_id", "provider_count", "event_count",
+        "quality_flag", "region", "education", "employment",
+        "self_rated_health"
+    ),
+    float = c(
+        "sampling_weight", "latitude", "score_physical", "score_mental"
+    ),
+    double = c(
+        "income", "expenditure", "longitude", "score_economic",
+        "score_environment"
+    )
+)
+for (storage in names(storage_columns)) {
+    for (name in storage_columns[[storage]]) {
+        attr(dataset[[name]], "stata.storage") <- storage
+    }
+}
+
 dir.create(dirname(output), recursive = TRUE, showWarnings = FALSE)
 temporary <- tempfile(
     pattern = paste0(basename(output), "."),
     tmpdir = dirname(output), fileext = ".dta"
 )
 on.exit(unlink(temporary), add = TRUE)
-haven::write_dta(dataset, temporary, version = 15)
+dtaparser::write_dta(dataset, temporary, version = 19L)
 
-# haven records the wall-clock write time in the Stata 118 header. Replace only
-# that fixed-width field so identical inputs produce byte-identical fixtures.
+# Replace the wall-clock write time in the Stata 118 header so identical inputs
+# produce byte-identical fixtures.
 bytes <- readBin(temporary, "raw", file.info(temporary)$size)
 tag <- charToRaw("<timestamp>")
 timestamp_start <- grepRaw(tag, bytes, fixed = TRUE)

@@ -312,10 +312,11 @@ write_dta <- function(data, path, version = 19L,
     list(unname(labels), enc2utf8(label_text), TRUE)
 }
 
-.prepare_numeric_write_values <- function(column, storage) {
+.prepare_numeric_write_values <- function(column, storage, shift = 0, scale = 1) {
     type_code <- match(storage, .stata_storage) - 1L
     issue_count <- .Call(
-        C_dtaparser_write_numeric_issues, column, as.integer(type_code)
+        C_dtaparser_write_numeric_issues, column, as.integer(type_code),
+        as.double(shift), as.double(scale)
     )
     if (issue_count == 0) {
         return(list(values = column, issue_count = issue_count))
@@ -327,19 +328,20 @@ write_dta <- function(data, path, version = 19L,
         missing_codes >= utf8ToInt("a") & missing_codes <= utf8ToInt("z")
     system <- !is.na(missing_codes) & missing_codes == 0L
     observed <- is.na(missing_codes)
+    checked <- values
+    checked[observed] <- (checked[observed] + shift) * scale
     invalid <- (!observed & !(tagged | system)) |
-        .invalid_stata_observed(values, observed, storage)
+        .invalid_stata_observed(checked, observed, storage)
     values[invalid] <- NA_real_
     list(values = values, issue_count = issue_count)
 }
 
 .temporal_write_values <- function(column, kind, adjust_tz) {
-    values <- as.double(column)
+    values <- column
     missing_codes <- .tab_missing_codes(values)
     observed <- is.na(missing_codes)
     if (identical(kind, "date")) {
-        values[observed] <- values[observed] + 3653
-        return(values)
+        return(list(values = values, shift = 3653, scale = 1))
     }
 
     if (adjust_tz && any(observed)) {
@@ -349,14 +351,22 @@ write_dta <- function(data, path, version = 19L,
         } else {
             timezone <- timezone[[1L]]
         }
-        local <- as.POSIXlt(column[observed], tz = timezone)
-        values[observed] <- as.double(ISOdatetime(
-            local$year + 1900L, local$mon + 1L, local$mday,
-            local$hour, local$min, local$sec, tz = "UTC"
-        ))
+        if (!(timezone %in% c("UTC", "GMT"))) {
+            values <- as.double(column)
+            local <- as.POSIXlt(column[observed], tz = timezone)
+            offset <- local$gmtoff
+            if (!is.null(offset) && length(offset) == sum(observed) &&
+                !anyNA(offset)) {
+                values[observed] <- values[observed] + offset
+            } else {
+                values[observed] <- as.double(ISOdatetime(
+                    local$year + 1900L, local$mon + 1L, local$mday,
+                    local$hour, local$min, local$sec, tz = "UTC"
+                ))
+            }
+        }
     }
-    values[observed] <- (values[observed] + 315619200) * 1000
-    values
+    list(values = values, shift = 315619200, scale = 1000)
 }
 
 .prepare_dta_write_column <- function(column, name, strl_threshold,
@@ -384,15 +394,13 @@ write_dta <- function(data, path, version = 19L,
         return(list(
             enc2utf8(name), 2L, enc2utf8(format), variable_label,
             as.double(seq_along(levels)), enc2utf8(levels), as.integer(column),
-            TRUE
+            TRUE, 0, 1
         ))
     }
     if (is.character(column) && is.null(dim(column))) {
-        values <- column
-        values[is.na(values)] <- ""
-        values <- enc2utf8(values)
-        widths <- nchar(values, type = "bytes", allowNA = FALSE)
-        maximum <- if (length(widths)) max(widths) else 0L
+        plan <- .Call(C_dtaparser_write_string_plan, column)
+        maximum <- plan[[1L]]
+        values <- if (plan[[3L]] != 0) enc2utf8(column) else column
         fixed <- maximum <= strl_threshold && maximum <= 2045L
         width <- max(1L, maximum)
         type_code <- if (fixed) width + 4L else 2050L
@@ -409,10 +417,12 @@ write_dta <- function(data, path, version = 19L,
                 "Character column `%s` cannot have numeric value labels", name
             ))
         }
-        return(list(
+        result <- list(
             enc2utf8(name), as.integer(type_code), enc2utf8(format),
-            variable_label, double(), character(), values, FALSE
-        ))
+            variable_label, double(), character(), values, FALSE, 0, 1
+        )
+        attr(result, "character_missing") <- plan[[2L]]
+        return(result)
     }
     temporal <- if (inherits(column, "Date")) {
         "date"
@@ -444,12 +454,16 @@ write_dta <- function(data, path, version = 19L,
             sprintf("variable label for `%s`", name)
         )
         value_labels <- .prepare_write_value_labels(column, name)
-        values <- .temporal_write_values(column, temporal, adjust_tz)
-        prepared_values <- .prepare_numeric_write_values(values, storage)
+        temporal_values <- .temporal_write_values(column, temporal, adjust_tz)
+        prepared_values <- .prepare_numeric_write_values(
+            temporal_values$values, storage,
+            temporal_values$shift, temporal_values$scale
+        )
         result <- list(
             enc2utf8(name), as.integer(match(storage, .stata_storage) - 1L),
             enc2utf8(format), variable_label, value_labels[[1L]],
-            value_labels[[2L]], prepared_values$values, value_labels[[3L]]
+            value_labels[[2L]], prepared_values$values, value_labels[[3L]],
+            temporal_values$shift, temporal_values$scale
         )
         attr(result, "numeric_replacements") <- prepared_values$issue_count
         return(result)
@@ -474,7 +488,7 @@ write_dta <- function(data, path, version = 19L,
     result <- list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format),
         variable_label, value_labels[[1L]], value_labels[[2L]],
-        prepared_values$values, value_labels[[3L]]
+        prepared_values$values, value_labels[[3L]], 0, 1
     )
     attr(result, "numeric_replacements") <- prepared_values$issue_count
     result
@@ -555,9 +569,10 @@ write_dta <- function(data, path, version = 19L,
             "dtaparser_write_factor_warning"
         )))
     }
-    character_missing <- vapply(data, function(column) {
-        if (is.character(column) && !is.factor(column)) sum(is.na(column)) else 0L
-    }, integer(1))
+    character_missing <- vapply(columns, function(column) {
+        count <- attr(column, "character_missing", exact = TRUE)
+        if (is.null(count)) 0 else count
+    }, numeric(1))
     if (any(character_missing > 0L)) {
         affected <- data_names[character_missing > 0L]
         details <- sprintf(

@@ -19,10 +19,23 @@ test_that("write_dta writes a typed release-118 dataset and returns its input in
     expect_identical(as.double(actual$answer[[1L]]), -5)
 })
 
+test_that("bare logical columns write as Stata bytes", {
+    data <- data.frame(flag = c(TRUE, FALSE, NA))
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+
+    expect_silent(write_dta(data, path))
+    actual <- read_dta(path, use_numeric_altrep = FALSE)
+    expect_identical(stata_storage_type(actual$flag), "byte")
+    expect_identical(as.double(actual$flag), c(1, 0, NA_real_))
+})
+
 test_that("character missing values become empty strings and long values use strL", {
+    latin <- iconv("café", from = "UTF-8", to = "latin1")
     data <- data.frame(
         short = c("é", NA_character_, ""),
         long = c(strrep("x", 20L), strrep("x", 20L), "different"),
+        latin = c(latin, NA_character_, latin),
         stringsAsFactors = FALSE
     )
     path <- tempfile(fileext = ".dta")
@@ -35,6 +48,15 @@ test_that("character missing values become empty strings and long values use str
     actual <- read_dta(path)
     expect_identical(unname(vapply(actual$short, identity, character(1))), c("é", "", ""))
     expect_identical(unname(vapply(actual$long, identity, character(1))), data$long)
+    expect_identical(
+        unname(vapply(actual$latin, identity, character(1))),
+        c("café", "", "café")
+    )
+
+    specification <- dtaparser:::.prepare_dta_write(
+        data, 19L, NULL, 4L, TRUE
+    )
+    expect_identical(specification[[3L]][[1L]][[7L]], data$short)
 })
 
 test_that("ordered and unordered factors become labelled long integers", {
@@ -112,6 +134,14 @@ test_that("Date and POSIXct columns use Stata epochs and both timezone modes", {
     )
     expect_equal(as.double(instant$times), as.double(times), tolerance = 1e-9)
     expect_identical(attr(wall$times, "tzone"), "UTC")
+
+    specification <- dtaparser:::.prepare_dta_write(
+        data, 19L, NULL, 2045L, TRUE
+    )
+    expect_identical(specification[[3L]][[1L]][[9L]], 3653)
+    expect_identical(specification[[3L]][[1L]][[10L]], 1)
+    expect_identical(specification[[3L]][[2L]][[9L]], 315619200)
+    expect_identical(specification[[3L]][[2L]][[10L]], 1000)
 })
 
 test_that("value labels and ordered dataset notes round-trip", {

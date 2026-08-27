@@ -13,13 +13,32 @@ iterations per implementation, workload, and size. Each path is warmed first,
 execution order reverses on alternating iterations, and garbage collection runs
 outside timed regions. There are no timing assertions or CI gates.
 
-The same run also compares synthetic writes through dtaparser, Stata, and
-Haven. Each writer runs in a fresh process on the 100 MB and 1 GB inputs. The
-operation timer starts after that writer's native reader has loaded the input;
-peak RSS covers the whole fresh process because the in-memory input is part of
-the write workload. Writer order rotates, and the raw and summary reports retain
-elapsed write time, peak RSS, and output size. The default is seven write
-iterations per writer and size.
+The same run has two synthetic write benchmarks. The primary benchmark compares
+dtaparser with Stata by loading and saving the deterministic 100 MB and 1 GB DTA
+files. Its 40 columns cover every numeric Stata storage type: 4 `byte`, 4 `int`,
+9 `long`, 4 `float`, and 9 `double` columns, plus 10 fixed-width strings. Four
+of the longs have value labels; two doubles are Stata dates and two are Stata
+datetimes. dtaparser's reader retains those storage declarations, while Stata
+uses its native in-memory storage. Each worker changes the first `id` value
+before timing so the benchmark measures serialization of dirty data rather than
+any unchanged-file save shortcut.
+
+The secondary benchmark compares dtaparser with Haven on the exact same
+freshly constructed ordinary R data frame. Its 40 columns are 11 doubles, 11
+integers, 4 logicals, 2 `Date` columns, 2 UTC `POSIXct` columns, and 10 character
+columns. They have no Stata storage, format, label, or value-label attributes.
+Its checked-in row counts are independent of the primary DTA fixture, so a
+change to the primary storage mix cannot silently change the secondary workload.
+Stata is excluded because it cannot receive an in-memory R data frame, and
+Haven is excluded from the primary matrix because its reader widens Stata
+numeric storage into ordinary R vectors.
+
+Every writer runs in a fresh process. Operation timing starts after the primary
+input has been read or the secondary R input has been constructed. Peak RSS
+covers the whole fresh process because the in-memory input is part of the write
+workload. Writer order rotates, and raw and summary reports retain elapsed write
+time, peak RSS, and output size. The default is seven iterations per writer and
+size.
 
 The [2026-08-27 write report](results-2026-08-27.md) records the first complete
 seven-iteration comparison.
@@ -81,6 +100,29 @@ executes both complete two-size matrices once:
 benchmarks/large-scale/benchmark.sh 1 1
 ```
 
+After a complete comparison, rerun only the primary dtaparser writes while
+retaining the selected run's Stata measurements:
+
+```sh
+benchmarks/large-scale/dtaparser-write-only.sh 7
+```
+
+The dtaparser-only runner rebuilds the current package, verifies the primary
+synthetic hashes against the fixed reference rows, and publishes both its raw
+measurements and a combined dtaparser/Stata comparison beneath
+`target/large-scale/dtaparser-write-runs/`. Pass a complete run directory as
+the second argument to override `target/large-scale/CURRENT`.
+
+Run only the secondary ordinary-R matrix with:
+
+```sh
+benchmarks/large-scale/standard-r-write-only.sh 7
+```
+
+This runner rebuilds dtaparser and publishes its dtaparser/Haven results under
+`target/large-scale/standard-r-write-runs/`. It does not execute Stata or the
+large corpus benchmark.
+
 All generated inputs and reports are written beneath an ignored checkout-local
 private artifact root. Dataset files and the manifest are replaced atomically,
 and rerunning the orchestration script recreates the same datasets and a
@@ -93,14 +135,21 @@ The default raw report has 1,212 rows:
 2 sizes × 2 workloads × 3 implementations × 101 iterations
 ```
 
-`write-raw.tsv` has 42 rows by default:
+The primary `write-raw.tsv` has 28 rows by default:
 
 ```text
-2 sizes × 3 writers × 7 iterations
+2 sizes × 2 writers × 7 iterations
 ```
 
-`write-summary.tsv` has one row per size and writer. Stata is required for the
-write matrix; `STATA_BIN` may override executable discovery.
+The secondary `r-write-raw.tsv` also has 28 rows:
+
+```text
+2 sizes × 2 writers × 7 iterations
+```
+
+Each corresponding summary has one row per size and writer. Stata is required
+only for the primary write matrix; `STATA_BIN` may override executable
+discovery.
 
 `summary.tsv` has four rows, one per size/workload combination, with median,
 5th percentile, 95th percentile, and median input throughput for all three

@@ -109,6 +109,10 @@ Rscript --vanilla "$script_dir/write-run.R" \
     "$manifest" "$run_stage/write-raw.tsv" \
     "$run_stage/write-summary.tsv" "$run_stage/write-provenance.tsv" \
     "$write_iterations"
+Rscript --vanilla "$script_dir/standard-r-write-run.R" \
+    "$script_dir/standard-r-write-sizes.tsv" "$run_stage/r-write-raw.tsv" \
+    "$run_stage/r-write-summary.tsv" "$run_stage/r-write-provenance.tsv" \
+    "$write_iterations"
 
 run_id=$(Rscript --vanilla -e \
     'x <- read.delim(commandArgs(TRUE)[[1L]], colClasses = "character", check.names = FALSE); cat(x$provenance_id[[1L]])' \

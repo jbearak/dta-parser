@@ -12,6 +12,7 @@ if _rc != 0 {
 
 local rows = _N
 local columns = c(k)
+quietly replace id = id + 1 in 1
 timer clear 1
 timer on 1
 capture noisily save "output.dta", replace

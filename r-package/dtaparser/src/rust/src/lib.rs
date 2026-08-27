@@ -1793,6 +1793,8 @@ pub struct RWriteColumnDescriptor {
     label_texts: Sexp,
     label_count: usize,
     has_value_labels: c_int,
+    numeric_shift: f64,
+    numeric_scale: f64,
 }
 
 struct RWriteSource<'a> {
@@ -1823,7 +1825,7 @@ unsafe fn r_numeric_at(reader: *const c_void, index: usize) -> Result<(f64, c_in
     Ok((value, missing_code))
 }
 
-unsafe fn r_string_at(values: Sexp, index: usize) -> Result<String, String> {
+unsafe fn r_string_bytes(values: Sexp, index: usize) -> Result<(*const u8, usize), String> {
     let mut value = ptr::null();
     let mut length = 0_usize;
     let mut missing = 0;
@@ -1831,15 +1833,20 @@ unsafe fn r_string_at(values: Sexp, index: usize) -> Result<String, String> {
         return Err("R character source could not supply a value".into());
     }
     if missing != 0 {
-        return Err("R character missing value reached the native writer".into());
+        return Ok((ptr::null(), 0));
     }
     if value.is_null() && length != 0 {
         return Err("R character source returned a null byte pointer".into());
     }
+    Ok((value.cast::<u8>(), length))
+}
+
+unsafe fn r_string_at(values: Sexp, index: usize) -> Result<String, String> {
+    let (value, length) = r_string_bytes(values, index)?;
     let bytes = if length == 0 {
         &[]
     } else {
-        std::slice::from_raw_parts(value.cast::<u8>(), length)
+        std::slice::from_raw_parts(value, length)
     };
     String::from_utf8(bytes.to_vec()).map_err(|_| "R character value is not valid UTF-8".to_owned())
 }
@@ -1857,7 +1864,9 @@ impl DtaWriteColumnSource for RWriteSource<'_> {
         let (value, missing_code) = unsafe { r_numeric_at(self.descriptor.numeric_values, index) }?;
         Ok(match missing_from_code(missing_code)? {
             Some(tag) => DtaWriteNumericValue::Missing(tag),
-            None => DtaWriteNumericValue::Value(value),
+            None => DtaWriteNumericValue::Value(
+                (value + self.descriptor.numeric_shift) * self.descriptor.numeric_scale,
+            ),
         })
     }
 
@@ -1866,7 +1875,17 @@ impl DtaWriteColumnSource for RWriteSource<'_> {
             return Err("write interrupted".into());
         }
         let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
-        unsafe { r_string_at(self.descriptor.string_values, index) }.map(Cow::Owned)
+        let (value, length) = unsafe { r_string_bytes(self.descriptor.string_values, index) }?;
+        let bytes = if length == 0 {
+            &[]
+        } else {
+            // The protected R character vector owns immutable CHARSXPs for the
+            // complete native call, so their byte storage outlives this borrow.
+            unsafe { std::slice::from_raw_parts(value, length) }
+        };
+        std::str::from_utf8(bytes)
+            .map(Cow::Borrowed)
+            .map_err(|_| "R character value is not valid UTF-8".to_owned())
     }
 }
 
@@ -1923,6 +1942,9 @@ unsafe fn write_impl(
         .collect::<Vec<_>>();
     let mut columns = Vec::with_capacity(column_count);
     for (descriptor, source) in descriptors.iter().zip(&sources) {
+        if !descriptor.numeric_shift.is_finite() || !descriptor.numeric_scale.is_finite() {
+            return Err("numeric write transform must be finite".into());
+        }
         let dta_type = match descriptor.dta_type {
             0 => DtaType::Byte,
             1 => DtaType::Int,
