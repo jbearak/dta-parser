@@ -20,8 +20,21 @@ of 25; valid values are clamped to 1 through 10,000.
 
 The Rust report separates filesystem I/O, metadata parsing, full slice decode,
 projected slice decode, and a projected 1 KiB-bounded file read. It includes
-modern all-types, wide, `strL`, and legacy files. The TypeScript report separates
-I/O, metadata, buffer decoding, and Node wrapper-backed projection. The R report
+modern all-types, wide, `strL`, and legacy files. The TypeScript report retains
+the corresponding checked-fixture cases and adds product-shaped workloads:
+
+- Sight: a natural 200-row viewport, a 200-row viewport in sorted display order
+  whose original source-row indices are sparse, restoring
+  three full sort/filter columns, and the first `strL` column touch.
+- Table Viewer: a 100-row page across 120 columns, sparse indexed reads of three
+  columns, a 128-row-chunked selected-column scan, a large value-label section,
+  and first-touch indexing of a large `strL` section.
+
+The product cases generate deterministic valid DTA files in the system temporary
+directory before timing begins and remove them when the run ends. They scale the
+checked fixtures to 100,000 Sight rows, 1,000 wide Table Viewer rows, 6,144 value
+label tables, and 4,096 256-byte `strL` entries. Fixture construction is covered
+by correctness tests and is excluded from reported timings. The R report
 captures native allocation/population plus wrapper overhead as one public-call
 measurement, and compares the same first-two-column row window with haven when
 installed; the C ABI

@@ -19,6 +19,7 @@ import type {
 } from './legacy-layout';
 import type { DtaTextDecoder } from './text-encoding';
 import {
+    decode_text_range,
     resolve_text_encoding,
     text_decoder,
 } from './text-encoding';
@@ -90,37 +91,24 @@ function parse_label_entry_payload(
         );
     }
 
-    // offsets[n]: byte offsets into text block
-    const the_offsets: number[] = [];
-    for (let i = 0; i < my_n; i++) {
-        the_offsets.push(
-            view.getInt32(pos, little_endian)
-        );
-        pos += 4;
-    }
-
-    // values[n]: integer values
-    const the_values: number[] = [];
-    for (let i = 0; i < my_n; i++) {
-        the_values.push(
-            view.getInt32(pos, little_endian)
-        );
-        pos += 4;
-    }
-
-    // text block: packed null-terminated strings
-    const my_text_start = pos;
+    const my_offsets_start = pos;
+    const my_values_start = my_offsets_start + my_n * 4;
+    const my_text_start = my_values_start + my_n * 4;
     const my_label_map = new Map<number, string>();
 
     for (let i = 0; i < my_n; i++) {
-        if (the_offsets[i] < 0
-            || the_offsets[i] >= my_txt_len) {
+        const my_text_offset = view.getInt32(
+            my_offsets_start + i * 4,
+            little_endian
+        );
+        if (my_text_offset < 0
+            || my_text_offset >= my_txt_len) {
             throw new Error(
                 'Corrupt value label table: invalid text offset'
             );
         }
         const my_str_start =
-            my_text_start + the_offsets[i];
+            my_text_start + my_text_offset;
         let my_str_end = my_str_start;
         const my_str_limit =
             my_text_start + my_txt_len;
@@ -137,11 +125,15 @@ function parse_label_entry_payload(
                 'Corrupt value label table: missing text terminator'
             );
         }
-        const my_label = decoder.decode(
-            bytes.subarray(my_str_start, my_str_end)
+        const my_label = decode_text_range(
+            decoder, bytes, my_str_start, my_str_end
         );
-        if (!my_label_map.has(the_values[i])) {
-            my_label_map.set(the_values[i], my_label);
+        const my_value = view.getInt32(
+            my_values_start + i * 4,
+            little_endian
+        );
+        if (!my_label_map.has(my_value)) {
+            my_label_map.set(my_value, my_label);
         }
     }
 
@@ -165,9 +157,7 @@ function read_label_name(
     while (my_end < my_limit && bytes[my_end] !== 0) {
         my_end++;
     }
-    return decoder.decode(
-        bytes.subarray(pos, my_end)
-    );
+    return decode_text_range(decoder, bytes, pos, my_end);
 }
 
 // -----------------------------------------------------------
