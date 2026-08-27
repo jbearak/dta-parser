@@ -1,6 +1,6 @@
 Package: dtaparser
 Title: Fast Reader for Stata DTA Files
-Version: 0.5.0
+Version: 0.6.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"),
     email = "jonathan@bearak.net")
 Description: Reads Stata DTA files into tibbles with a Rust parser, multicore
