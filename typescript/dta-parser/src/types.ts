@@ -218,8 +218,8 @@ export type MissingType =
     | '.v' | '.w' | '.x' | '.y' | '.z';
 
 export interface MissingValue {
-    kind: 'missing';
-    missing_type: MissingType;
+    readonly kind: 'missing';
+    readonly missing_type: MissingType;
 }
 
 export type RowCell = number | string | MissingValue;

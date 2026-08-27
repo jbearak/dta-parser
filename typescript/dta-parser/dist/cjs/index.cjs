@@ -1019,6 +1019,13 @@ function classify_missing_from_offset(offset) {
   }
   return `.${String.fromCharCode(96 + offset)}`;
 }
+var MISSING_VALUES = Array.from(
+  { length: 27 },
+  (_, offset) => Object.freeze({
+    kind: "missing",
+    missing_type: offset === 0 ? "." : `.${String.fromCharCode(96 + offset)}`
+  })
+);
 function classify_integer_missing(value, dot, z) {
   if (value < dot || value > z) {
     return null;
@@ -1060,10 +1067,11 @@ function classify_double_js_missing(value) {
   );
 }
 function make_missing_value(missing_type) {
-  return {
-    kind: "missing",
-    missing_type
-  };
+  const my_offset = missing_type === "." ? 0 : missing_type.charCodeAt(1) - 96;
+  return MISSING_VALUES[my_offset];
+}
+function missing_value_from_offset(offset) {
+  return MISSING_VALUES[offset];
 }
 function is_missing_value_object(value) {
   return typeof value === "object" && value !== null && value.kind === "missing" && typeof value.missing_type === "string";
@@ -1078,24 +1086,6 @@ function classify_raw_double_missing_at(view, offset, little_endian) {
     my_hi_word,
     my_lo_word
   );
-}
-function classify_double_missing_for_version(view, offset, little_endian, format_version) {
-  if (format_version >= 113) {
-    return classify_raw_double_missing_at(
-      view,
-      offset,
-      little_endian
-    );
-  }
-  const my_hi_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
-  const my_lo_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
-  if (my_hi_word >= 2145386496 && my_hi_word < 2147483648) {
-    return ".";
-  }
-  if (format_version === 105 && my_hi_word === 1421869056 && my_lo_word === 0) {
-    return ".";
-  }
-  return null;
 }
 function is_missing_value(value, type) {
   return classify_missing_value(value, type) !== null;
@@ -1140,144 +1130,178 @@ function classify_missing_value(value, type) {
 }
 
 // src/data-reader.ts
-var DATA_TAG = "<data>";
-var DATA_TAG_LENGTH = DATA_TAG.length;
+var DATA_TAG_LENGTH = "<data>".length;
+var STRL_PLACEHOLDER = "__strl__";
+var BYTE_MISSING_DOT2 = 101;
+var INT_MISSING_DOT2 = 32741;
+var LONG_MISSING_DOT2 = 2147483621;
+var FLOAT_MISSING_DOT_RAW2 = 2130706432;
+var FLOAT_MISSING_STEP_RAW2 = 2048;
+var FLOAT_MISSING_Z_RAW2 = FLOAT_MISSING_DOT_RAW2 + 26 * FLOAT_MISSING_STEP_RAW2;
+function buffer_views(buffer) {
+  if (buffer instanceof Uint8Array) {
+    return {
+      view: new DataView(
+        buffer.buffer,
+        buffer.byteOffset,
+        buffer.byteLength
+      ),
+      bytes: new Uint8Array(
+        buffer.buffer,
+        buffer.byteOffset,
+        buffer.byteLength
+      )
+    };
+  }
+  return {
+    view: new DataView(buffer),
+    bytes: new Uint8Array(buffer)
+  };
+}
+function decoder_for_metadata(metadata) {
+  return text_decoder(
+    metadata.text_encoding ?? resolve_text_encoding(metadata.format_version)
+  );
+}
 function read_fixed_string3(bytes, offset, width, decoder) {
-  let my_end = offset;
+  if (width === 0 || bytes[offset] === 0) return "";
+  let my_end = offset + 1;
   const my_limit = offset + width;
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return decoder.decode(
-    bytes.subarray(offset, my_end)
-  );
+  return decoder.decode(bytes.subarray(offset, my_end));
 }
-function read_cell(view, bytes, offset, type, width, little_endian, decoder, format_version) {
-  switch (type) {
-    case "byte": {
-      const my_val = view.getInt8(offset);
-      const my_missing_type = format_version < 113 ? my_val === 127 ? "." : null : classify_missing_value(my_val, "byte");
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
+function modern_double_missing_offset(view, offset, little_endian) {
+  const my_hi_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
+  if (my_hi_word >>> 16 !== 32736) return -1;
+  const my_letter = my_hi_word >>> 8 & 255;
+  if (my_letter > 26 || (my_hi_word & 255) !== 0) {
+    return -1;
+  }
+  const my_lo_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
+  return my_lo_word === 0 ? my_letter : -1;
+}
+function legacy_double_is_missing(view, offset, little_endian, is_v105) {
+  const my_hi_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
+  if (my_hi_word >= 2145386496 && my_hi_word < 2147483648) {
+    return true;
+  }
+  if (!is_v105 || my_hi_word !== 1421869056) return false;
+  const my_lo_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
+  return my_lo_word === 0;
+}
+function decode_column_into_rows(view, bytes, rows, variable, output_column, row_base_offset, row_width, little_endian, modern_missing, is_v105, decoder) {
+  let my_offset = row_base_offset + variable.byte_offset;
+  switch (variable.type) {
+    case "byte":
+      for (let i = 0; i < rows.length; i++, my_offset += row_width) {
+        const my_value = view.getInt8(my_offset);
+        rows[i][output_column] = modern_missing && my_value >= BYTE_MISSING_DOT2 ? missing_value_from_offset(my_value - BYTE_MISSING_DOT2) : !modern_missing && my_value === 127 ? missing_value_from_offset(0) : my_value;
       }
-      return my_val;
-    }
-    case "int": {
-      const my_val = view.getInt16(
-        offset,
-        little_endian
-      );
-      const my_missing_type = format_version < 113 ? my_val === 32767 ? "." : null : classify_missing_value(my_val, "int");
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
+      return;
+    case "int":
+      for (let i = 0; i < rows.length; i++, my_offset += row_width) {
+        const my_value = view.getInt16(my_offset, little_endian);
+        rows[i][output_column] = modern_missing && my_value >= INT_MISSING_DOT2 ? missing_value_from_offset(my_value - INT_MISSING_DOT2) : !modern_missing && my_value === 32767 ? missing_value_from_offset(0) : my_value;
       }
-      return my_val;
-    }
-    case "long": {
-      const my_val = view.getInt32(
-        offset,
-        little_endian
-      );
-      const my_missing_type = format_version < 113 ? my_val === 2147483647 ? "." : null : classify_missing_value(my_val, "long");
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
+      return;
+    case "long":
+      for (let i = 0; i < rows.length; i++, my_offset += row_width) {
+        const my_value = view.getInt32(my_offset, little_endian);
+        rows[i][output_column] = modern_missing && my_value >= LONG_MISSING_DOT2 ? missing_value_from_offset(my_value - LONG_MISSING_DOT2) : !modern_missing && my_value === 2147483647 ? missing_value_from_offset(0) : my_value;
       }
-      return my_val;
-    }
-    case "float": {
-      const my_raw = view.getUint32(
-        offset,
-        little_endian
-      );
-      const my_missing_type = format_version < 113 ? my_raw >= 2130706432 && my_raw < 2147483648 ? "." : null : classify_raw_float_missing(my_raw);
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
+      return;
+    case "float":
+      for (let i = 0; i < rows.length; i++, my_offset += row_width) {
+        const my_raw = view.getUint32(my_offset, little_endian);
+        if (modern_missing) {
+          const my_delta = my_raw - FLOAT_MISSING_DOT_RAW2;
+          rows[i][output_column] = my_raw <= FLOAT_MISSING_Z_RAW2 && my_delta >= 0 && my_delta % FLOAT_MISSING_STEP_RAW2 === 0 ? missing_value_from_offset(
+            my_delta / FLOAT_MISSING_STEP_RAW2
+          ) : view.getFloat32(my_offset, little_endian);
+        } else {
+          rows[i][output_column] = my_raw >= FLOAT_MISSING_DOT_RAW2 && my_raw < 2147483648 ? missing_value_from_offset(0) : view.getFloat32(my_offset, little_endian);
+        }
       }
-      return view.getFloat32(
-        offset,
-        little_endian
-      );
-    }
-    case "double": {
-      const my_missing_type = classify_double_missing_for_version(
-        view,
-        offset,
-        little_endian,
-        format_version
-      );
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
+      return;
+    case "double":
+      if (modern_missing) {
+        for (let i = 0; i < rows.length; i++, my_offset += row_width) {
+          const my_missing = modern_double_missing_offset(
+            view,
+            my_offset,
+            little_endian
+          );
+          rows[i][output_column] = my_missing >= 0 ? missing_value_from_offset(my_missing) : view.getFloat64(my_offset, little_endian);
+        }
+      } else {
+        for (let i = 0; i < rows.length; i++, my_offset += row_width) {
+          rows[i][output_column] = legacy_double_is_missing(
+            view,
+            my_offset,
+            little_endian,
+            is_v105
+          ) ? missing_value_from_offset(0) : view.getFloat64(my_offset, little_endian);
+        }
       }
-      return view.getFloat64(
-        offset,
-        little_endian
-      );
-    }
-    case "strL": {
-      return "__strl__";
-    }
-    default: {
-      return read_fixed_string3(
-        bytes,
-        offset,
-        width,
-        decoder
-      );
-    }
+      return;
+    case "strL":
+      for (let i = 0; i < rows.length; i++) {
+        rows[i][output_column] = STRL_PLACEHOLDER;
+      }
+      return;
+    default:
+      for (let i = 0; i < rows.length; i++, my_offset += row_width) {
+        rows[i][output_column] = read_fixed_string3(
+          bytes,
+          my_offset,
+          variable.byte_width,
+          decoder
+        );
+      }
   }
 }
 function read_rows_from_view(view, bytes, metadata, row_base_offset, start, count, col_start, col_end) {
   if (metadata.nobs === 0 || start < 0 || count <= 0 || start >= metadata.nobs) {
     return [];
   }
-  const my_actual_count = Math.min(
-    count,
-    metadata.nobs - start
-  );
-  if (my_actual_count <= 0) return [];
+  const my_actual_count = Math.min(count, metadata.nobs - start);
   const my_col_start = Math.max(0, col_start ?? 0);
   const my_col_end = Math.min(
     metadata.nvar,
     col_end ?? metadata.nvar
   );
-  if (my_col_start >= my_col_end) {
-    return [];
+  if (my_col_start >= my_col_end) return [];
+  const my_column_count = my_col_end - my_col_start;
+  const the_rows = new Array(my_actual_count);
+  for (let i = 0; i < my_actual_count; i++) {
+    the_rows[i] = new Array(my_column_count);
   }
   const little_endian = metadata.byte_order === "LSF";
-  const my_decoder = text_decoder(resolve_text_encoding(
-    metadata.format_version,
-    metadata.text_encoding
-  ));
-  const the_rows = [];
-  for (let i = 0; i < my_actual_count; i++) {
-    const my_row_offset = row_base_offset + i * metadata.obs_length;
-    const my_row = [];
-    for (let j = my_col_start; j < my_col_end; j++) {
-      const my_var = metadata.variables[j];
-      const my_cell_offset = my_row_offset + my_var.byte_offset;
-      my_row.push(
-        read_cell(
-          view,
-          bytes,
-          my_cell_offset,
-          my_var.type,
-          my_var.byte_width,
-          little_endian,
-          my_decoder,
-          metadata.format_version
-        )
-      );
-    }
-    the_rows.push(my_row);
+  const modern_missing = metadata.format_version >= 113;
+  const is_v105 = metadata.format_version === 105;
+  const my_decoder = decoder_for_metadata(metadata);
+  for (let my_abs_col = my_col_start, my_output_col = 0; my_abs_col < my_col_end; my_abs_col++, my_output_col++) {
+    decode_column_into_rows(
+      view,
+      bytes,
+      the_rows,
+      metadata.variables[my_abs_col],
+      my_output_col,
+      row_base_offset,
+      metadata.obs_length,
+      little_endian,
+      modern_missing,
+      is_v105,
+      my_decoder
+    );
   }
   return the_rows;
 }
 function read_rows_from_buffer(buffer, metadata, start, count, col_start, col_end) {
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
-  const my_tag_length = is_legacy_format(
-    metadata.format_version
-  ) ? 0 : DATA_TAG_LENGTH;
+  const { view, bytes } = buffer_views(buffer);
+  const my_tag_length = is_legacy_format(metadata.format_version) ? 0 : DATA_TAG_LENGTH;
   const my_data_start = metadata.section_offsets.data + my_tag_length;
   return read_rows_from_view(
     view,
@@ -1291,8 +1315,7 @@ function read_rows_from_buffer(buffer, metadata, start, count, col_start, col_en
   );
 }
 function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, col_end) {
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
+  const { view, bytes } = buffer_views(buffer);
   return read_rows_from_view(
     view,
     bytes,

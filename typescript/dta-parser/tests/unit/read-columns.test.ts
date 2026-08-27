@@ -205,6 +205,36 @@ describe('DtaFile.read_columns', () => {
         expect((my_error as Error).name).toBe('AbortError');
     });
 
+    it('checks a pre-aborted signal before allocating result columns', async () => {
+        my_file = await DtaFile.open(
+            path.join(FIXTURE_DIR, 'auto_v118.dta')
+        );
+        const my_metadata = (
+            my_file as unknown as {
+                _metadata: { nobs: number };
+            }
+        )._metadata;
+        const my_original_nobs = my_metadata.nobs;
+        const my_controller = new AbortController();
+        my_controller.abort();
+
+        let my_error: unknown = null;
+        try {
+            my_metadata.nobs = 0x1_0000_0000;
+            await my_file.read_columns(
+                [0],
+                { signal: my_controller.signal }
+            );
+        } catch (err) {
+            my_error = err;
+        } finally {
+            my_metadata.nobs = my_original_nobs;
+        }
+
+        expect(my_error).toBeInstanceOf(Error);
+        expect((my_error as Error).name).toBe('AbortError');
+    });
+
     it('rejects with AbortError when aborted mid-read', async () => {
         my_file = await DtaFile.open(
             path.join(FIXTURE_DIR, 'auto_v118.dta')
@@ -222,6 +252,39 @@ describe('DtaFile.read_columns', () => {
             await my_promise;
         } catch (err) {
             my_error = err;
+        }
+
+        expect(my_error).toBeInstanceOf(Error);
+        expect((my_error as Error).name).toBe('AbortError');
+    });
+
+    it('does not preallocate full columns before the first yield', async () => {
+        my_file = await DtaFile.open(
+            path.join(FIXTURE_DIR, 'auto_v118.dta')
+        );
+        const my_metadata = (
+            my_file as unknown as {
+                _metadata: { nobs: number };
+            }
+        )._metadata;
+        const my_original_nobs = my_metadata.nobs;
+        const my_controller = new AbortController();
+        setImmediate(() => my_controller.abort());
+
+        let my_error: unknown = null;
+        try {
+            my_metadata.nobs = 0x1_0000_0000;
+            await my_file.read_columns(
+                [0, 1],
+                {
+                    signal: my_controller.signal,
+                    chunk_rows: 1,
+                }
+            );
+        } catch (err) {
+            my_error = err;
+        } finally {
+            my_metadata.nobs = my_original_nobs;
         }
 
         expect(my_error).toBeInstanceOf(Error);

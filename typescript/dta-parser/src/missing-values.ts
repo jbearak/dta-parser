@@ -86,6 +86,18 @@ function classify_missing_from_offset(
     return `.${String.fromCharCode(96 + offset)}` as MissingType;
 }
 
+const MISSING_VALUES: readonly MissingValue[] = Array.from(
+    { length: 27 },
+    (_, offset) => Object.freeze({
+        kind: 'missing' as const,
+        missing_type: (
+            offset === 0
+                ? '.'
+                : `.${String.fromCharCode(96 + offset)}`
+        ) as MissingType,
+    })
+);
+
 function classify_integer_missing(
     value: number,
     dot: number,
@@ -150,10 +162,17 @@ function classify_double_js_missing(
 export function make_missing_value(
     missing_type: MissingType
 ): MissingValue {
-    return {
-        kind: 'missing',
-        missing_type,
-    };
+    const my_offset = missing_type === '.'
+        ? 0
+        : missing_type.charCodeAt(1) - 96;
+    return MISSING_VALUES[my_offset];
+}
+
+/** Return the canonical immutable value for a validated missing offset. */
+export function missing_value_from_offset(
+    offset: number
+): MissingValue {
+    return MISSING_VALUES[offset];
 }
 
 export function is_missing_value_object(

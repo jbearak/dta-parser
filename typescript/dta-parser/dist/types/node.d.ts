@@ -5,11 +5,10 @@ export interface ReadRowsOptions {
     /**
      * When provided, the read is performed in chunks that yield to the
      * event loop between them, and is abandoned with an `AbortError` as
-     * soon as the signal fires. Without a signal, the read is a single
-     * synchronous pass (the original fast path).
+     * soon as the signal fires. Reads without a signal remain synchronous.
      */
     signal?: AbortSignal;
-    /** Rows per chunk on the cancellable path (default 65536). */
+    /** Rows per chunk. The default is at most 65536 rows or 16 MiB. */
     chunk_rows?: number;
 }
 /** Options for {@link DtaFile.open}. */
@@ -21,7 +20,7 @@ export interface ReadColumnsOptions {
      * between observation chunks.
      */
     signal?: AbortSignal;
-    /** Rows per chunk (default 65536). */
+    /** Rows per chunk. The default is at most 65536 rows or 16 MiB. */
     chunk_rows?: number;
 }
 export declare class DtaFile {
@@ -29,7 +28,6 @@ export declare class DtaFile {
     private readonly _metadata;
     private _gso_index;
     private _gso_section;
-    private _gso_base;
     private _gso_loaded;
     private _value_label_tables;
     private _closed;
@@ -68,8 +66,8 @@ export declare class DtaFile {
      * @param options - Cancellation options (see {@link ReadRowsOptions}).
      *   When `options.signal` is provided, the read is chunked and
      *   yields between chunks so the abort can be observed; it rejects
-     *   with an `AbortError` if the signal fires. Without a signal the
-     *   read is a single synchronous pass identical to prior behavior.
+     *   with an `AbortError` if the signal fires. Without a signal, chunks
+     *   run synchronously and bound the temporary observation buffer.
      */
     read_rows(start: number, count: number, col_start?: number, col_end?: number, options?: ReadRowsOptions): Promise<Row[]>;
     /**
@@ -91,8 +89,8 @@ export declare class DtaFile {
     read_columns(col_indices: number[], options?: ReadColumnsOptions): Promise<Map<number, RowCell[]>>;
     /**
      * Read a contiguous row range in a single synchronous pass and
-     * resolve any strL columns in range. Shared by both the fast path
-     * and each chunk of the cancellable path. Callers must ensure the
+     * resolve any strL columns in range. Shared by single-chunk reads
+     * and each chunk of larger reads. Callers must ensure the
      * file is open (`_fd !== null`).
      */
     private _read_rows_range;

@@ -1,34 +1,16 @@
 import type { DtaMetadata, Row, RowCell } from './types';
-/**
- * Read observation rows from a .dta buffer.
- *
- * @param buffer - The full .dta file as an ArrayBuffer
- * @param metadata - Parsed metadata from parse_metadata()
- * @param start - First row index (0-based)
- * @param count - Number of rows to read
- * @param col_start - First column index (inclusive, optional)
- * @param col_end - Last column index (exclusive, optional)
- * @returns Array of rows, each row an array of cell values
- */
+type DataBuffer = ArrayBuffer | Uint8Array;
+/** Read observation rows from a complete .dta file buffer. */
 export declare function read_rows_from_buffer(buffer: ArrayBuffer, metadata: DtaMetadata, start: number, count: number, col_start?: number, col_end?: number): Row[];
+/** Read rows from a buffer containing contiguous observation bytes. */
+export declare function read_rows_from_data_buffer(buffer: DataBuffer, metadata: DtaMetadata, start: number, count: number, col_start?: number, col_end?: number): Row[];
 /**
- * Read observation rows from a buffer that contains only
- * contiguous observation bytes, starting at `start`.
- */
-export declare function read_rows_from_data_buffer(buffer: ArrayBuffer, metadata: DtaMetadata, start: number, count: number, col_start?: number, col_end?: number): Row[];
-/**
- * Decode a set of columns from a contiguous chunk buffer in a single
- * pass, appending each column's values to its array in `out`.
+ * Decode selected columns from contiguous observation bytes.
  *
- * The buffer must contain exactly `count` observations starting at its
- * first byte (as produced for one chunk). Every index in `col_indices`
- * must already have an entry in `out`. strL cells decode to the
- * `'__strl__'` placeholder and must be resolved by the caller.
- *
- * One DataView/Uint8Array is built per call (not per column), and cells
- * are written straight into the flat column arrays — avoiding the
- * per-column re-parse and throwaway single-element rows that result from
- * calling the row reader once per column.
+ * When `out_offset` is present, values overwrite that range in each target.
+ * Otherwise each target is appended to, preserving the original helper
+ * contract for callers outside the Node reader.
  */
-export declare function read_columns_from_data_buffer(buffer: ArrayBuffer, metadata: DtaMetadata, count: number, col_indices: number[], out: Map<number, RowCell[]>): void;
+export declare function read_columns_from_data_buffer(buffer: DataBuffer, metadata: DtaMetadata, count: number, col_indices: number[], out: Map<number, RowCell[]>, out_offset?: number): void;
+export {};
 //# sourceMappingURL=data-reader.d.ts.map

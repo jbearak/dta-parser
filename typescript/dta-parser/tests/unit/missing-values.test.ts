@@ -3,6 +3,7 @@ import {
     classify_raw_float_missing,
     is_missing_value,
     classify_missing_value,
+    make_missing_value,
     missing_type_to_label_key,
     STATA_MISSING,
     STATA_MISSING_A,
@@ -15,6 +16,11 @@ import {
 // -----------------------------------------------------------
 
 describe('missing-values', () => {
+    it('reuses immutable missing-value objects', () => {
+        const my_dot = make_missing_value('.');
+        expect(make_missing_value('.')).toBe(my_dot);
+        expect(Object.isFrozen(my_dot)).toBe(true);
+    });
 
     // ----- Exported constants -----
 
