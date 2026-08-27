@@ -7,6 +7,10 @@ import {
     make_missing_value,
 } from '../../src/node';
 import { parse_legacy_metadata } from '../../src/legacy-header';
+import {
+    V119_STRL_VALUE,
+    v119_strl_fixture,
+} from '../helpers/v119-strl-fixture';
 
 // -----------------------------------------------------------
 // DtaFile public API integration tests
@@ -234,6 +238,35 @@ describe('DtaFile', () => {
             expect(
                 (my_cell as string).length
             ).toBeGreaterThan(0);
+        });
+
+        it('resolves release-119 strLs in both byte orders', async () => {
+            for (const my_byte_order of ['LSF', 'MSF'] as const) {
+                const my_directory = fs.mkdtempSync(
+                    path.join(os.tmpdir(), 'dta-v119-strl-')
+                );
+                const my_path = path.join(
+                    my_directory, `${my_byte_order}.dta`
+                );
+                try {
+                    fs.writeFileSync(
+                        my_path,
+                        new Uint8Array(v119_strl_fixture(my_byte_order))
+                    );
+                    my_file = await DtaFile.open(my_path);
+                    expect(my_file.format_version).toBe(119);
+                    expect(await my_file.read_rows(0, 1)).toEqual([
+                        [V119_STRL_VALUE],
+                    ]);
+                    my_file.close();
+                    my_file = null;
+                } finally {
+                    fs.rmSync(my_directory, {
+                        recursive: true,
+                        force: true,
+                    });
+                }
+            }
         });
 
         it('resolves strL in all_types.dta', async () => {

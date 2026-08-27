@@ -1456,28 +1456,36 @@ function read_strl_pointer(view, metadata, pointer_offset) {
       pointer_offset + 4,
       little_endian
     );
+  } else if (metadata.format_version === 118) {
+    if (little_endian) {
+      my_v = view.getUint16(pointer_offset, true);
+      const my_lo = view.getUint32(
+        pointer_offset + 2,
+        true
+      );
+      const my_hi = view.getUint16(
+        pointer_offset + 6,
+        true
+      );
+      my_o = my_hi * 4294967296 + my_lo;
+    } else {
+      my_v = view.getUint16(pointer_offset, false);
+      const my_hi = view.getUint16(
+        pointer_offset + 2,
+        false
+      );
+      const my_lo = view.getUint32(
+        pointer_offset + 4,
+        false
+      );
+      my_o = my_hi * 4294967296 + my_lo;
+    }
   } else if (little_endian) {
-    my_v = view.getUint16(pointer_offset, true);
-    const my_lo = view.getUint32(
-      pointer_offset + 2,
-      true
-    );
-    const my_hi = view.getUint16(
-      pointer_offset + 6,
-      true
-    );
-    my_o = my_hi * 4294967296 + my_lo;
+    my_v = view.getUint16(pointer_offset, true) + view.getUint8(pointer_offset + 2) * 65536;
+    my_o = view.getUint32(pointer_offset + 3, true) + view.getUint8(pointer_offset + 7) * 4294967296;
   } else {
-    my_v = view.getUint16(pointer_offset, false);
-    const my_hi = view.getUint16(
-      pointer_offset + 2,
-      false
-    );
-    const my_lo = view.getUint32(
-      pointer_offset + 4,
-      false
-    );
-    my_o = my_hi * 4294967296 + my_lo;
+    my_v = view.getUint8(pointer_offset) * 65536 + view.getUint16(pointer_offset + 1, false);
+    my_o = view.getUint8(pointer_offset + 3) * 4294967296 + view.getUint32(pointer_offset + 4, false);
   }
   if (my_v === 0 && my_o === 0) {
     return null;

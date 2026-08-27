@@ -3,12 +3,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parse_metadata } from '../../src/header';
 import {
+    build_gso_index as build_public_gso_index,
+    resolve_strl as resolve_public_strl,
+} from '../../src/index';
+import {
     build_gso_index,
     decode_gso_entry,
     read_strl_pointer,
     resolve_strl,
 } from '../../src/strl-reader';
 import type { DtaMetadata } from '../../src/types';
+import {
+    V119_STRL_VALUE,
+    v119_strl_fixture,
+} from '../helpers/v119-strl-fixture';
 
 // -----------------------------------------------------------
 // strL (GSO) resolution tests
@@ -35,11 +43,80 @@ function load_fixture(name: string): {
 
 describe('build_gso_index', () => {
 
-    // ----- strl_test.dta (v119) -----
+    // ----- release-119 pointer layout and checked strL fixture -----
 
     describe('strl_test.dta', () => {
         const { buffer, metadata } =
             load_fixture('strl_test.dta');
+
+        function boundary_metadata(
+            byte_order: 'LSF' | 'MSF'
+        ): DtaMetadata {
+            const my_variable_id = 0x010203;
+            const the_variables = new Array(
+                my_variable_id
+            );
+            the_variables[my_variable_id - 1] = {
+                ...metadata.variables[0],
+                type: 'strL',
+            };
+            return {
+                ...metadata,
+                format_version: 119,
+                byte_order,
+                nvar: my_variable_id,
+                nobs: 0x0102030405,
+                variables: the_variables,
+            };
+        }
+
+        it('reads little-endian release-119 3+5 boundary bytes', () => {
+            const my_little_endian = new Uint8Array([
+                0x03, 0x02, 0x01,
+                0x05, 0x04, 0x03, 0x02, 0x01,
+            ]);
+
+            expect(read_strl_pointer(
+                new DataView(my_little_endian.buffer),
+                boundary_metadata('LSF'),
+                0
+            )).toEqual({
+                v: 0x010203,
+                o: 0x0102030405,
+            });
+        });
+
+        it('reads big-endian release-119 3+5 boundary bytes', () => {
+            const my_big_endian = new Uint8Array([
+                0x01, 0x02, 0x03,
+                0x01, 0x02, 0x03, 0x04, 0x05,
+            ]);
+
+            expect(read_strl_pointer(
+                new DataView(my_big_endian.buffer),
+                boundary_metadata('MSF'),
+                0
+            )).toEqual({
+                v: 0x010203,
+                o: 0x0102030405,
+            });
+        });
+
+        it('resolves release-119 strLs from complete buffers', () => {
+            for (const my_byte_order of ['LSF', 'MSF'] as const) {
+                const my_buffer = v119_strl_fixture(my_byte_order);
+                const my_metadata = parse_metadata(my_buffer);
+                const my_index = build_public_gso_index(
+                    my_buffer, my_metadata
+                );
+                expect(resolve_public_strl(
+                    my_buffer,
+                    my_metadata,
+                    my_index,
+                    my_metadata.section_offsets.data + 6
+                )).toBe(V119_STRL_VALUE);
+            }
+        });
 
         it('builds an index from strl_test.dta', () => {
             const my_index = build_gso_index(

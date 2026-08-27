@@ -237,9 +237,12 @@ export function read_strl_pointer(
 ): StrlPointer | null {
     const little_endian = metadata.byte_order === 'LSF';
 
-    // v118/v119 pointer layout (LE):
+    // v118 pointer layout (LE):
     //   bytes 0-1: v (uint16)
     //   bytes 2-7: o (6-byte little-endian integer)
+    // v119 pointer layout (LE):
+    //   bytes 0-2: v (3-byte little-endian integer)
+    //   bytes 3-7: o (5-byte little-endian integer)
     // v117 pointer layout:
     //   bytes 0-3: v (uint32)
     //   bytes 4-7: o (uint32)
@@ -253,24 +256,36 @@ export function read_strl_pointer(
         my_o = view.getUint32(
             pointer_offset + 4, little_endian
         );
+    } else if (metadata.format_version === 118) {
+        if (little_endian) {
+            my_v = view.getUint16(pointer_offset, true);
+            const my_lo = view.getUint32(
+                pointer_offset + 2, true
+            );
+            const my_hi = view.getUint16(
+                pointer_offset + 6, true
+            );
+            my_o = my_hi * 0x100000000 + my_lo;
+        } else {
+            my_v = view.getUint16(pointer_offset, false);
+            const my_hi = view.getUint16(
+                pointer_offset + 2, false
+            );
+            const my_lo = view.getUint32(
+                pointer_offset + 4, false
+            );
+            my_o = my_hi * 0x100000000 + my_lo;
+        }
     } else if (little_endian) {
-        my_v = view.getUint16(pointer_offset, true);
-        const my_lo = view.getUint32(
-            pointer_offset + 2, true
-        );
-        const my_hi = view.getUint16(
-            pointer_offset + 6, true
-        );
-        my_o = my_hi * 0x100000000 + my_lo;
+        my_v = view.getUint16(pointer_offset, true)
+            + view.getUint8(pointer_offset + 2) * 0x10000;
+        my_o = view.getUint32(pointer_offset + 3, true)
+            + view.getUint8(pointer_offset + 7) * 0x100000000;
     } else {
-        my_v = view.getUint16(pointer_offset, false);
-        const my_hi = view.getUint16(
-            pointer_offset + 2, false
-        );
-        const my_lo = view.getUint32(
-            pointer_offset + 4, false
-        );
-        my_o = my_hi * 0x100000000 + my_lo;
+        my_v = view.getUint8(pointer_offset) * 0x10000
+            + view.getUint16(pointer_offset + 1, false);
+        my_o = view.getUint8(pointer_offset + 3) * 0x100000000
+            + view.getUint32(pointer_offset + 4, false);
     }
 
     if (my_v === 0 && my_o === 0) {
