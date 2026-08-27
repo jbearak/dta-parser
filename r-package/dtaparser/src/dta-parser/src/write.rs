@@ -57,6 +57,10 @@ pub struct DtaWriteValueLabel {
 pub trait DtaWriteColumnSource {
     fn len(&self) -> u64;
 
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     fn numeric_value(&self, _row: u64) -> Result<DtaWriteNumericValue, String> {
         Err("column source does not provide numeric values".into())
     }
@@ -987,12 +991,14 @@ fn write_value_labels<W: Write>(
     Ok(())
 }
 
+type ObservationEncoder<'a, W> = dyn FnMut(&mut W) -> Result<(), DtaWriteError> + 'a;
+
 fn write_dta_impl<W: Write + Seek>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
     validate_values: bool,
-    mut observation_encoder: Option<&mut dyn FnMut(&mut W) -> Result<(), DtaWriteError>>,
+    mut observation_encoder: Option<&mut ObservationEncoder<'_, W>>,
 ) -> Result<DtaWriteSummary, DtaWriteError> {
     validate_data(data, options, validate_values)?;
     let version = if data.columns.len() <= RELEASE_118_MAX_VARIABLES {

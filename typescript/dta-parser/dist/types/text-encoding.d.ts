@@ -16,6 +16,8 @@ export interface TextEncodingOptions {
 export interface DtaTextDecoder {
     decode(input: Uint8Array): string;
 }
+/** Decode a byte range without allocating a view for the common ASCII case. */
+export declare function decode_text_range(decoder: DtaTextDecoder, bytes: Uint8Array, start: number, end: number): string;
 /** Validate an encoding label without requiring a file release. */
 export declare function validate_text_encoding(encoding?: TextEncodingLabel): void;
 /** Resolve the release-specific default or validate an explicit encoding. */

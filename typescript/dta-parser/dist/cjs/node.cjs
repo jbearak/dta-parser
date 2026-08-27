@@ -157,6 +157,135 @@ function legacy_type_code_to_dta_type(code, format_version) {
 }
 
 // src/text-encoding.ts
+function decode_text_range(decoder, bytes, start, end) {
+  if (start < 0 || end > bytes.length) {
+    return decoder.decode(bytes.subarray(start, end));
+  }
+  const my_length = end - start;
+  if (my_length > 12) {
+    return decoder.decode(bytes.subarray(start, end));
+  }
+  for (let i = start; i < end; i++) {
+    if (bytes[i] >= 128) {
+      return decoder.decode(bytes.subarray(start, end));
+    }
+  }
+  switch (my_length) {
+    case 0:
+      return "";
+    case 1:
+      return String.fromCharCode(bytes[start]);
+    case 2:
+      return String.fromCharCode(bytes[start], bytes[start + 1]);
+    case 3:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2]
+      );
+    case 4:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3]
+      );
+    case 5:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4]
+      );
+    case 6:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4],
+        bytes[start + 5]
+      );
+    case 7:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4],
+        bytes[start + 5],
+        bytes[start + 6]
+      );
+    case 8:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4],
+        bytes[start + 5],
+        bytes[start + 6],
+        bytes[start + 7]
+      );
+    case 9:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4],
+        bytes[start + 5],
+        bytes[start + 6],
+        bytes[start + 7],
+        bytes[start + 8]
+      );
+    case 10:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4],
+        bytes[start + 5],
+        bytes[start + 6],
+        bytes[start + 7],
+        bytes[start + 8],
+        bytes[start + 9]
+      );
+    case 11:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4],
+        bytes[start + 5],
+        bytes[start + 6],
+        bytes[start + 7],
+        bytes[start + 8],
+        bytes[start + 9],
+        bytes[start + 10]
+      );
+    case 12:
+      return String.fromCharCode(
+        bytes[start],
+        bytes[start + 1],
+        bytes[start + 2],
+        bytes[start + 3],
+        bytes[start + 4],
+        bytes[start + 5],
+        bytes[start + 6],
+        bytes[start + 7],
+        bytes[start + 8],
+        bytes[start + 9],
+        bytes[start + 10],
+        bytes[start + 11]
+      );
+    default:
+      return decoder.decode(bytes.subarray(start, end));
+  }
+}
 var UTF8_DECODER = new TextDecoder(
   "utf-8",
   { ignoreBOM: true }
@@ -1184,10 +1313,17 @@ function buffer_views(buffer) {
   };
 }
 function decoder_for_metadata(metadata) {
-  return text_decoder(resolve_text_encoding(
-    metadata.format_version,
-    metadata.text_encoding
-  ));
+  switch (metadata.text_encoding) {
+    case "utf-8":
+    case "windows-1252":
+    case "iso-8859-1":
+      return text_decoder(metadata.text_encoding);
+    default:
+      return text_decoder(resolve_text_encoding(
+        metadata.format_version,
+        metadata.text_encoding
+      ));
+  }
 }
 function read_fixed_string3(bytes, offset, width, decoder) {
   if (width === 0 || bytes[offset] === 0) return "";
@@ -1196,7 +1332,7 @@ function read_fixed_string3(bytes, offset, width, decoder) {
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return decoder.decode(bytes.subarray(offset, my_end));
+  return decode_text_range(decoder, bytes, offset, my_end);
 }
 function read_cell(view, bytes, offset, variable, little_endian, modern_missing, decoder, format_version) {
   let my_missing = -1;
@@ -1334,6 +1470,77 @@ function decode_column_into_values(view, bytes, values, output_start, count, var
       }
   }
 }
+function decode_single_column_into_rows(view, bytes, rows, output_start, count, row_base_offset, variable, row_width, little_endian, modern_missing, decoder, format_version) {
+  let my_offset = row_base_offset + variable.byte_offset;
+  const my_end = output_start + count;
+  switch (variable.type) {
+    case "byte":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_value = view.getInt8(my_offset);
+        const my_missing = byte_missing_offset(
+          my_value,
+          modern_missing
+        );
+        rows[i] = [my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value];
+      }
+      return;
+    case "int":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_value = view.getInt16(my_offset, little_endian);
+        const my_missing = int_missing_offset(
+          my_value,
+          modern_missing
+        );
+        rows[i] = [my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value];
+      }
+      return;
+    case "long":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_value = view.getInt32(my_offset, little_endian);
+        const my_missing = long_missing_offset(
+          my_value,
+          modern_missing
+        );
+        rows[i] = [my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value];
+      }
+      return;
+    case "float":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_raw = view.getUint32(my_offset, little_endian);
+        const my_missing = float_missing_offset(
+          my_raw,
+          modern_missing
+        );
+        rows[i] = [my_missing >= 0 ? missing_value_from_offset(my_missing) : view.getFloat32(my_offset, little_endian)];
+      }
+      return;
+    case "double":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_missing = double_missing_offset_for_version(
+          view,
+          my_offset,
+          little_endian,
+          format_version
+        );
+        rows[i] = [my_missing >= 0 ? missing_value_from_offset(my_missing) : view.getFloat64(my_offset, little_endian)];
+      }
+      return;
+    case "strL":
+      for (let i = output_start; i < my_end; i++) {
+        rows[i] = [STRL_PLACEHOLDER];
+      }
+      return;
+    default:
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        rows[i] = [read_fixed_string3(
+          bytes,
+          my_offset,
+          variable.byte_width,
+          decoder
+        )];
+      }
+  }
+}
 function read_rows_from_view(view, bytes, metadata, row_base_offset, start, count, col_start, col_end, out, out_offset = 0) {
   if (metadata.nobs === 0 || start < 0 || count <= 0 || start >= metadata.nobs) {
     return out ?? [];
@@ -1350,6 +1557,23 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
   const my_decoder = decoder_for_metadata(metadata);
   const the_rows = out ?? new Array(my_actual_count);
   const my_column_count = my_col_end - my_col_start;
+  if (my_column_count === 1) {
+    decode_single_column_into_rows(
+      view,
+      bytes,
+      the_rows,
+      out_offset,
+      my_actual_count,
+      row_base_offset,
+      metadata.variables[my_col_start],
+      metadata.obs_length,
+      little_endian,
+      modern_missing,
+      my_decoder,
+      metadata.format_version
+    );
+    return the_rows;
+  }
   for (let i = 0; i < my_actual_count; i++) {
     const my_row = new Array(my_column_count);
     const my_row_offset = row_base_offset + i * metadata.obs_length;
@@ -1460,16 +1684,14 @@ function build_gso_index(buffer, metadata, base_offset = 0) {
       my_o = view.getUint32(pos, little_endian);
       pos += 4;
     } else {
-      const my_big_o = view.getBigUint64(
-        pos,
-        little_endian
-      );
-      if (my_big_o > BigInt(Number.MAX_SAFE_INTEGER)) {
+      const my_hi = little_endian ? view.getUint32(pos + 4, true) : view.getUint32(pos, false);
+      const my_lo = little_endian ? view.getUint32(pos, true) : view.getUint32(pos + 4, false);
+      if (my_hi > 2097151) {
         throw new Error(
           "strL observation number exceeds JavaScript safe integer range"
         );
       }
-      my_o = Number(my_big_o);
+      my_o = my_hi * 4294967296 + my_lo;
       pos += 8;
     }
     const my_variable = metadata.variables[my_v - 1];
@@ -1518,28 +1740,36 @@ function read_strl_pointer(view, metadata, pointer_offset) {
       pointer_offset + 4,
       little_endian
     );
+  } else if (metadata.format_version === 118) {
+    if (little_endian) {
+      my_v = view.getUint16(pointer_offset, true);
+      const my_lo = view.getUint32(
+        pointer_offset + 2,
+        true
+      );
+      const my_hi = view.getUint16(
+        pointer_offset + 6,
+        true
+      );
+      my_o = my_hi * 4294967296 + my_lo;
+    } else {
+      my_v = view.getUint16(pointer_offset, false);
+      const my_hi = view.getUint16(
+        pointer_offset + 2,
+        false
+      );
+      const my_lo = view.getUint32(
+        pointer_offset + 4,
+        false
+      );
+      my_o = my_hi * 4294967296 + my_lo;
+    }
   } else if (little_endian) {
-    my_v = view.getUint16(pointer_offset, true);
-    const my_lo = view.getUint32(
-      pointer_offset + 2,
-      true
-    );
-    const my_hi = view.getUint16(
-      pointer_offset + 6,
-      true
-    );
-    my_o = my_hi * 4294967296 + my_lo;
+    my_v = view.getUint16(pointer_offset, true) + view.getUint8(pointer_offset + 2) * 65536;
+    my_o = view.getUint32(pointer_offset + 3, true) + view.getUint8(pointer_offset + 7) * 4294967296;
   } else {
-    my_v = view.getUint16(pointer_offset, false);
-    const my_hi = view.getUint16(
-      pointer_offset + 2,
-      false
-    );
-    const my_lo = view.getUint32(
-      pointer_offset + 4,
-      false
-    );
-    my_o = my_hi * 4294967296 + my_lo;
+    my_v = view.getUint8(pointer_offset) * 65536 + view.getUint16(pointer_offset + 1, false);
+    my_o = view.getUint8(pointer_offset + 3) * 4294967296 + view.getUint32(pointer_offset + 4, false);
   }
   if (my_v === 0 && my_o === 0) {
     return null;
@@ -1612,29 +1842,21 @@ function parse_label_entry_payload(bytes, view, little_endian, pos, entry_end, d
       "Corrupt value label table: payload exceeds entry bounds"
     );
   }
-  const the_offsets = [];
-  for (let i = 0; i < my_n; i++) {
-    the_offsets.push(
-      view.getInt32(pos, little_endian)
-    );
-    pos += 4;
-  }
-  const the_values = [];
-  for (let i = 0; i < my_n; i++) {
-    the_values.push(
-      view.getInt32(pos, little_endian)
-    );
-    pos += 4;
-  }
-  const my_text_start = pos;
+  const my_offsets_start = pos;
+  const my_values_start = my_offsets_start + my_n * 4;
+  const my_text_start = my_values_start + my_n * 4;
   const my_label_map = /* @__PURE__ */ new Map();
   for (let i = 0; i < my_n; i++) {
-    if (the_offsets[i] < 0 || the_offsets[i] >= my_txt_len) {
+    const my_text_offset = view.getInt32(
+      my_offsets_start + i * 4,
+      little_endian
+    );
+    if (my_text_offset < 0 || my_text_offset >= my_txt_len) {
       throw new Error(
         "Corrupt value label table: invalid text offset"
       );
     }
-    const my_str_start = my_text_start + the_offsets[i];
+    const my_str_start = my_text_start + my_text_offset;
     let my_str_end = my_str_start;
     const my_str_limit = my_text_start + my_txt_len;
     while (my_str_end < my_str_limit && bytes[my_str_end] !== 0) {
@@ -1645,11 +1867,18 @@ function parse_label_entry_payload(bytes, view, little_endian, pos, entry_end, d
         "Corrupt value label table: missing text terminator"
       );
     }
-    const my_label = decoder.decode(
-      bytes.subarray(my_str_start, my_str_end)
+    const my_label = decode_text_range(
+      decoder,
+      bytes,
+      my_str_start,
+      my_str_end
     );
-    if (!my_label_map.has(the_values[i])) {
-      my_label_map.set(the_values[i], my_label);
+    const my_value = view.getInt32(
+      my_values_start + i * 4,
+      little_endian
+    );
+    if (!my_label_map.has(my_value)) {
+      my_label_map.set(my_value, my_label);
     }
   }
   return {
@@ -1663,9 +1892,7 @@ function read_label_name(bytes, pos, name_width, decoder) {
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return decoder.decode(
-    bytes.subarray(pos, my_end)
-  );
+  return decode_text_range(decoder, bytes, pos, my_end);
 }
 function parse_modern_entries(bytes, view, little_endian, name_width, start_pos, section_end, decoder) {
   const my_result = /* @__PURE__ */ new Map();

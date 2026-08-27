@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use crate::endian::{
-    checked_add, checked_sub, expect_at, offset_to_usize, read_u16, read_u32, read_u64, slice_at,
+    checked_add, checked_sub, expect_at, offset_to_usize, read_u16, read_u32, read_u64, read_uint,
+    slice_at,
 };
 use crate::text::TextEncoding;
 use crate::{Column, ColumnValues, DtaError, DtaMetadata, DtaType, FormatVersion, VariableInfo};
@@ -33,30 +34,6 @@ fn checked_mul_u64(left: u64, right: u64, context: &'static str) -> Result<u64, 
         .ok_or(DtaError::ArithmeticOverflow(context))
 }
 
-fn read_packed_integer(
-    bytes: &[u8],
-    offset: usize,
-    width: usize,
-    metadata: &DtaMetadata,
-    context: &'static str,
-) -> Result<u64, DtaError> {
-    let field = slice_at(bytes, offset, width, context)?;
-    let mut value = 0_u64;
-    match metadata.byte_order {
-        crate::ByteOrder::Lsf => {
-            for (shift, byte) in field.iter().enumerate() {
-                value |= u64::from(*byte) << (shift * 8);
-            }
-        }
-        crate::ByteOrder::Msf => {
-            for byte in field {
-                value = (value << 8) | u64::from(*byte);
-            }
-        }
-    }
-    Ok(value)
-}
-
 fn read_pointer(
     bytes: &[u8],
     offset: usize,
@@ -79,28 +56,27 @@ fn read_pointer(
                 metadata.byte_order,
                 "strL variable pointer",
             )?),
-            read_packed_integer(
+            read_uint(
                 bytes,
                 checked_add(offset, 2, "strL observation pointer")?,
                 6,
-                metadata,
+                metadata.byte_order,
                 "strL observation pointer",
             )?,
         ),
         FormatVersion::V119 => (
-            u32::try_from(read_packed_integer(
+            read_uint(
                 bytes,
                 offset,
                 3,
-                metadata,
+                metadata.byte_order,
                 "strL variable pointer",
-            )?)
-            .map_err(|_| DtaError::ArithmeticOverflow("strL variable pointer"))?,
-            read_packed_integer(
+            )? as u32,
+            read_uint(
                 bytes,
                 checked_add(offset, 3, "strL observation pointer")?,
                 5,
-                metadata,
+                metadata.byte_order,
                 "strL observation pointer",
             )?,
         ),
@@ -412,7 +388,7 @@ mod tests {
     #[test]
     fn reads_release_119_three_byte_variables_and_five_byte_observations() {
         let variable = 65_536_u32;
-        let observation = 0x0102_0304_05_u64;
+        let observation = 0x0001_0203_0405_u64;
 
         let mut little = [0_u8; 8];
         little[..3].copy_from_slice(&[0x00, 0x00, 0x01]);

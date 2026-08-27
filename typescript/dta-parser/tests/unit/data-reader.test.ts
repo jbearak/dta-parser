@@ -301,6 +301,52 @@ describe('read_rows_from_buffer', () => {
             expect(the_rows[0][1]).toEqual(the_full[0][4]);
             expect(the_rows[0][2]).toEqual(the_full[0][5]);
         });
+
+        it('matches full rows through every single-column decoder', () => {
+            for (const my_fixture of [
+                'all_types.dta',
+                'missing_values.dta',
+            ]) {
+                const { buffer, metadata } = load_fixture(my_fixture);
+                const the_full = read_rows_from_buffer(
+                    buffer, metadata, 0, metadata.nobs
+                );
+
+                for (let my_col = 0; my_col < metadata.nvar; my_col++) {
+                    expect(read_rows_from_buffer(
+                        buffer,
+                        metadata,
+                        0,
+                        metadata.nobs,
+                        my_col,
+                        my_col + 1
+                    )).toEqual(the_full.map(
+                        my_row => [my_row[my_col]]
+                    ));
+                }
+            }
+        });
+
+        it('clips truncated short strings to the available bytes', () => {
+            const { metadata } = load_fixture('all_types.dta');
+            const my_string_column = metadata.variables.findIndex(
+                my_variable => my_variable.type === 'str5'
+            );
+            const my_string_offset = metadata.variables[
+                my_string_column
+            ].byte_offset;
+            const my_truncated = new Uint8Array(my_string_offset + 2);
+            my_truncated.set([0x61, 0x62], my_string_offset);
+
+            expect(read_rows_from_data_buffer(
+                my_truncated,
+                metadata,
+                0,
+                1,
+                my_string_column,
+                my_string_column + 1
+            )).toEqual([['ab']]);
+        });
     });
 
     // ----- all_types.dta -----

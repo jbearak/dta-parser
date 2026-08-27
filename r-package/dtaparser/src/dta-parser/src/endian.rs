@@ -85,6 +85,33 @@ pub(crate) fn read_i8(bytes: &[u8], offset: usize, context: &'static str) -> Res
     Ok(i8::from_ne_bytes([read_u8(bytes, offset, context)?]))
 }
 
+pub(crate) fn read_uint(
+    bytes: &[u8],
+    offset: usize,
+    width: usize,
+    byte_order: ByteOrder,
+    context: &'static str,
+) -> Result<u64, DtaError> {
+    if width > std::mem::size_of::<u64>() {
+        return Err(DtaError::ArithmeticOverflow(context));
+    }
+    let field = slice_at(bytes, offset, width, context)?;
+    let mut value = 0_u64;
+    match byte_order {
+        ByteOrder::Lsf => {
+            for (shift, byte) in field.iter().enumerate() {
+                value |= u64::from(*byte) << (shift * 8);
+            }
+        }
+        ByteOrder::Msf => {
+            for byte in field {
+                value = (value << 8) | u64::from(*byte);
+            }
+        }
+    }
+    Ok(value)
+}
+
 pub(crate) fn read_u16(
     bytes: &[u8],
     offset: usize,
@@ -160,6 +187,14 @@ mod tests {
         assert_eq!(read_u16(&bytes, 0, ByteOrder::Msf, "test").unwrap(), 0x0102);
         assert_eq!(read_u16(&bytes, 0, ByteOrder::Lsf, "test").unwrap(), 0x0201);
         assert_eq!(
+            read_uint(&bytes, 0, 3, ByteOrder::Msf, "test").unwrap(),
+            0x01_0203
+        );
+        assert_eq!(
+            read_uint(&bytes, 0, 5, ByteOrder::Lsf, "test").unwrap(),
+            0x05_0403_0201
+        );
+        assert_eq!(
             read_u32(&bytes, 0, ByteOrder::Msf, "test").unwrap(),
             0x0102_0304
         );
@@ -184,6 +219,10 @@ mod tests {
             read_u64(&[0; 7], 0, ByteOrder::Lsf, "u64"),
             Err(DtaError::Truncated { context: "u64", .. })
         ));
+        assert_eq!(
+            read_uint(&[0; 9], 0, 9, ByteOrder::Lsf, "uint"),
+            Err(DtaError::ArithmeticOverflow("uint"))
+        );
         assert_eq!(
             checked_add(usize::MAX, 1, "offset"),
             Err(DtaError::ArithmeticOverflow("offset"))

@@ -124,9 +124,7 @@ pub(crate) fn dataset_note_index(variable: &[u8], characteristic: &[u8]) -> Opti
         return None;
     }
     let name = field_bytes(characteristic);
-    let Some(index) = name.strip_prefix(b"note") else {
-        return None;
-    };
+    let index = name.strip_prefix(b"note")?;
     if index.is_empty() || !index.iter().all(u8::is_ascii_digit) {
         return None;
     }
