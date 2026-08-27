@@ -1,4 +1,4 @@
-fixture_with_temporal_storage <- function(column) {
+fixture_with_temporal_storage <- function(column, display_format = "%td") {
     path <- fixture("auto_v118.dta")
     bytes <- readBin(path, "raw", n = file.info(path)[["size"]])
 
@@ -12,7 +12,8 @@ fixture_with_temporal_storage <- function(column) {
         matches[[2L]]
     }
     bytes[format_start + seq_len(nchar(old_format)) - 1L] <- c(
-        charToRaw("%td"), raw(nchar(old_format) - 3L)
+        charToRaw(display_format),
+        raw(nchar(old_format) - nchar(display_format))
     )
 
     output <- tempfile(fileext = ".dta")
@@ -156,12 +157,13 @@ test_that("narrow dates validate and encode in Stata source units", {
     expect_identical(stata_storage_type(byte_date[1]), "byte")
     expect_identical(stata_storage_type(byte_date[[1]]), "byte")
     expect_identical(stata_storage_type(byte_date + 1), "byte")
-    expect_identical(
-        stata_storage_type(dplyr::if_else(
-            rep(TRUE, length(byte_date)), byte_date, byte_date
-        )),
-        "byte"
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(byte_date[1]))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(byte_date + 1))
+    conditional <- dplyr::if_else(
+        rep(TRUE, length(byte_date)), byte_date, byte_date
     )
+    expect_identical(stata_storage_type(conditional), "byte")
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(conditional))
     expect_identical(
         stata_storage_type(dplyr::slice(
             tibble::tibble(value = byte_date), 1:2
@@ -203,12 +205,32 @@ test_that("temporal summaries, concatenation, and recodes retain storage", {
     expect_identical(stata_storage_type(mean(values)), "float")
     expect_identical(stata_storage_type(c(values, values)), "byte")
     expect_identical(stata_storage_type(rep(values, 2)), "byte")
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(
+        c(values, values)
+    ))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(rep(values, 2)))
     expect_identical(
         stata_storage_type(vctrs::vec_c(
             values[1], as.Date(-3652, origin = "1970-01-01")
         )),
         "byte"
     )
+
+    unlabelled <- set_variable_labels(set_value_labels(values), NULL)
+    for (combined in list(
+        vctrs::vec_c(values, unlabelled),
+        vctrs::vec_c(unlabelled, values),
+        dplyr::if_else(
+            rep(c(TRUE, FALSE), length.out = length(values)),
+            values,
+            unlabelled
+        )
+    )) {
+        expect_identical(var_label(combined), "Car origin")
+        expect_identical(
+            val_labels(combined), c(Domestic = 0, Foreign = 1)
+        )
+    }
 
     recoded <- dtaparser::recode(
         values,
@@ -217,6 +239,43 @@ test_that("temporal summaries, concatenation, and recodes retain storage", {
     expect_s3_class(recoded, "Date")
     expect_identical(stata_storage_type(recoded), "byte")
     expect_true(all(as.double(recoded[as.double(values) == -3653]) == -3651))
+})
+
+test_that("temporal common operations reject mixed kinds", {
+    date_path <- fixture_with_temporal_storage("foreign", "%td")
+    datetime_path <- fixture_with_temporal_storage("foreign", "%tc")
+    on.exit(unlink(c(date_path, datetime_path)), add = TRUE)
+    date <- read_dta(date_path)$foreign[1]
+    datetime <- read_dta(datetime_path)$foreign[1]
+
+    expect_error(c(date, datetime), "combine")
+    expect_error(c(datetime, date), "combine")
+    expect_error(min(date, datetime), "combine")
+    expect_error(min(datetime, date), "combine")
+    expect_error(max(date, datetime), "combine")
+    expect_error(max(datetime, date), "combine")
+    expect_error(range(date, datetime), "combine")
+    expect_error(range(datetime, date), "combine")
+    expect_error(
+        c(date, as.Date(-3552, origin = "1970-01-01")),
+        "stata_int\\(x\\)"
+    )
+})
+
+test_that("empty temporal extrema retain base infinity behavior", {
+    path <- fixture_with_temporal_storage("foreign")
+    on.exit(unlink(path), add = TRUE)
+    empty <- read_dta(path)$foreign[0]
+
+    minimum <- suppressWarnings(min(empty))
+    maximum <- suppressWarnings(max(empty))
+    interval <- suppressWarnings(range(empty))
+    expect_identical(as.double(minimum), Inf)
+    expect_identical(as.double(maximum), -Inf)
+    expect_identical(as.double(interval), c(Inf, -Inf))
+    expect_null(stata_storage_type(minimum))
+    expect_null(stata_storage_type(maximum))
+    expect_null(stata_storage_type(interval))
 })
 
 test_that("datetime arithmetic promotes using Stata millisecond values", {
@@ -235,6 +294,39 @@ test_that("datetime arithmetic promotes using Stata millisecond values", {
     shifted <- values + 315619200
     expect_identical(stata_storage_type(shifted), "double")
     expect_identical(as.double(shifted), c(0, 1))
+})
+
+test_that("integer datetime backing round-trips fractional R seconds", {
+    skip_if_not_installed("haven")
+    byte_path <- fixture_with_temporal_storage("foreign", "%tc")
+    int_path <- fixture_with_temporal_storage("price", "%tc")
+    on.exit(unlink(c(byte_path, int_path)), add = TRUE)
+
+    byte_value <- read_dta(byte_path)$foreign[53]
+    int_value <- read_dta(int_path)$price[1]
+    expect_identical(stata_storage_type(byte_value), "byte")
+    expect_identical(stata_storage_type(int_value), "int")
+
+    long_input <- structure(
+        c(-315619200L, -315619199L),
+        class = c("POSIXct", "POSIXt"),
+        tzone = "UTC"
+    )
+    long_path <- tempfile(fileext = ".dta")
+    haven::write_dta(data.frame(value = long_input), long_path, version = 15)
+    bytes <- readBin(long_path, "raw", n = file.info(long_path)[["size"]])
+    data_start <- grepRaw(charToRaw("<data>"), bytes, fixed = TRUE)[[1L]] +
+        nchar("<data>")
+    bytes[data_start + 0:3] <- writeBin(
+        1L, raw(), size = 4L, endian = "little"
+    )
+    writeBin(bytes, long_path)
+    on.exit(unlink(long_path), add = TRUE)
+
+    long_values <- read_dta(long_path)$value
+    expect_identical(stata_storage_type(long_values), "long")
+    expect_identical(stata_storage_type(long_values[1]), "long")
+    expect_identical(as.double(long_values[1]), as.double(long_values)[1])
 })
 
 test_that("common types follow the Stata storage promotion lattice", {
@@ -340,6 +432,9 @@ test_that("value labels compose with declared storage classes", {
     expect_identical(stata_storage_type(values), "byte")
     expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(values))
 
+    values[1] <- 1
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(values))
+
     values <- set_value_labels(values)
     expect_false(inherits(values, "haven_labelled"))
     expect_s3_class(values, "stata_numeric")
@@ -356,6 +451,9 @@ test_that("common types reconcile value and variable labels", {
         "Right variable"
     )
     unlabelled <- stata_byte(c(2, 3))
+    variable_only <- set_variable_labels(
+        stata_byte(c(1, 2)), "Only variable"
+    )
 
     for (result in list(
         vctrs::vec_c(left, unlabelled),
@@ -364,6 +462,14 @@ test_that("common types reconcile value and variable labels", {
     )) {
         expect_s3_class(result, "haven_labelled")
         expect_identical(val_labels(result), c(One = 1))
+    }
+
+    for (result in list(
+        vctrs::vec_c(variable_only, unlabelled),
+        vctrs::vec_c(unlabelled, variable_only),
+        dplyr::if_else(c(TRUE, FALSE), variable_only, unlabelled)
+    )) {
+        expect_identical(var_label(result), "Only variable")
     }
 
     left_right <- vctrs::vec_c(left, right)

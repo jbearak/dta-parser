@@ -772,7 +772,8 @@ test_that("dplyr manipulation matches haven for every storage type", {
 
     for (name in c("all_types_v115.dta", "all_types_v118.dta")) {
         path <- fixture(name)
-        expected <- manipulate(haven::read_dta(path))
+        reference <- haven::read_dta(path)
+        expected <- manipulate(reference)
         storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
 
         for (use_numeric_altrep in c(TRUE, FALSE)) {
@@ -783,9 +784,13 @@ test_that("dplyr manipulation matches haven for every storage type", {
             mode <- if (use_numeric_altrep) "default" else "eager"
             expect_identical(names(actual), names(expected))
             for (index in seq_along(actual)) {
+                actual_value <- without_stata_storage(actual[[index]])
+                expected_value <- expected[[index]]
+                attr(actual_value, "label") <- NULL
+                attr(expected_value, "label") <- NULL
                 expect_equal(
-                    without_stata_storage(actual[[index]]),
-                    expected[[index]],
+                    actual_value,
+                    expected_value,
                     tolerance = if (identical(storage[[index]], "float")) {
                         1e-6
                     } else {
@@ -793,6 +798,13 @@ test_that("dplyr manipulation matches haven for every storage type", {
                     },
                     info = paste(name, storage[[index]], mode)
                 )
+                if (!identical(storage[[index]], "character")) {
+                    expect_identical(
+                        var_label(actual[[index]]),
+                        var_label(reference[[index]]),
+                        info = paste(name, storage[[index]], mode, "label")
+                    )
+                }
             }
         }
     }

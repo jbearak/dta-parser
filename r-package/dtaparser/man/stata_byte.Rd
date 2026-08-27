@@ -60,7 +60,9 @@ Common types follow the lossless Stata lattice: \code{byte} promotes to \code{in
 \code{long}, \code{float}, or \code{double}; \code{int} promotes to \code{long}, \code{float}, or \code{double};
 and \code{long} combined with \code{float} promotes to \code{double}. Declared storage wins
 over a bare logical, integer, or double vector. Explicit casts into declared
-storage are strict and use the same errors as the constructors.
+storage are strict and use the same errors as the constructors. Common-type
+operations retain variable labels and merge compatible value-label tables;
+conflicting text for one code warns and uses the left input's label.
 
 Arithmetic and the numeric group generics start at the operands' common
 storage type, then widen only when the computed values require it. This is
