@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use crate::endian::{
-    checked_add, checked_sub, expect_at, offset_to_usize, read_u16, read_u32, read_u64, slice_at,
+    checked_add, checked_sub, expect_at, offset_to_usize, read_u16, read_u32, read_u64, read_uint,
+    slice_at,
 };
 use crate::text::TextEncoding;
 use crate::{Column, ColumnValues, DtaError, DtaMetadata, DtaType, FormatVersion, VariableInfo};
@@ -33,24 +34,6 @@ fn checked_mul_u64(left: u64, right: u64, context: &'static str) -> Result<u64, 
         .ok_or(DtaError::ArithmeticOverflow(context))
 }
 
-fn read_u48(bytes: &[u8], offset: usize, metadata: &DtaMetadata) -> Result<u64, DtaError> {
-    let field = slice_at(bytes, offset, 6, "strL observation pointer")?;
-    let mut value = 0_u64;
-    match metadata.byte_order {
-        crate::ByteOrder::Lsf => {
-            for (shift, byte) in field.iter().enumerate() {
-                value |= u64::from(*byte) << (shift * 8);
-            }
-        }
-        crate::ByteOrder::Msf => {
-            for byte in field {
-                value = (value << 8) | u64::from(*byte);
-            }
-        }
-    }
-    Ok(value)
-}
-
 fn read_pointer(
     bytes: &[u8],
     offset: usize,
@@ -66,7 +49,7 @@ fn read_pointer(
                 "strL observation pointer",
             )?),
         )
-    } else {
+    } else if metadata.format_version == FormatVersion::V118 {
         (
             u32::from(read_u16(
                 bytes,
@@ -74,10 +57,29 @@ fn read_pointer(
                 metadata.byte_order,
                 "strL variable pointer",
             )?),
-            read_u48(
+            read_uint(
                 bytes,
                 checked_add(offset, 2, "strL observation pointer")?,
-                metadata,
+                6,
+                metadata.byte_order,
+                "strL observation pointer",
+            )?,
+        )
+    } else {
+        (
+            read_uint(
+                bytes,
+                offset,
+                3,
+                metadata.byte_order,
+                "strL variable pointer",
+            )? as u32,
+            read_uint(
+                bytes,
+                checked_add(offset, 3, "strL observation pointer")?,
+                5,
+                metadata.byte_order,
+                "strL observation pointer",
             )?,
         )
     };
@@ -374,6 +376,30 @@ mod tests {
         let mut big = [0_u8; 8];
         big[..2].copy_from_slice(&1_u16.to_be_bytes());
         big[2..].copy_from_slice(&[0x01, 0x02, 0x03, 0x04, 0x05, 0x06]);
+        let big_metadata = metadata(FormatVersion::V118, ByteOrder::Msf, observation);
+        assert_eq!(
+            read_pointer(&big, 0, &big_metadata).unwrap(),
+            Some(GsoKey {
+                variable: 1,
+                observation
+            })
+        );
+    }
+
+    #[test]
+    fn reads_v119_three_byte_variable_and_five_byte_observation_in_both_orders() {
+        let observation = 0x01_0203_0405_u64;
+        let little = [0x01, 0x00, 0x00, 0x05, 0x04, 0x03, 0x02, 0x01];
+        let little_metadata = metadata(FormatVersion::V119, ByteOrder::Lsf, observation);
+        assert_eq!(
+            read_pointer(&little, 0, &little_metadata).unwrap(),
+            Some(GsoKey {
+                variable: 1,
+                observation
+            })
+        );
+
+        let big = [0x00, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05];
         let big_metadata = metadata(FormatVersion::V119, ByteOrder::Msf, observation);
         assert_eq!(
             read_pointer(&big, 0, &big_metadata).unwrap(),

@@ -7,7 +7,7 @@ use std::thread;
 
 use encoding_rs::CoderResult;
 
-use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
+use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64, read_uint};
 use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
@@ -4007,27 +4007,21 @@ fn parse_pointer(
                 "strL observation pointer",
             )?),
         )
+    } else if metadata.format_version == FormatVersion::V118 {
+        (
+            u32::from(read_u16(
+                bytes,
+                0,
+                metadata.byte_order,
+                "strL variable pointer",
+            )?),
+            read_uint(bytes, 2, 6, metadata.byte_order, "strL observation pointer")?,
+        )
     } else {
-        let variable = u32::from(read_u16(
-            bytes,
-            0,
-            metadata.byte_order,
-            "strL variable pointer",
-        )?);
-        let mut observation = 0_u64;
-        match metadata.byte_order {
-            ByteOrder::Lsf => {
-                for (shift, byte) in bytes[2..8].iter().enumerate() {
-                    observation |= u64::from(*byte) << (shift * 8);
-                }
-            }
-            ByteOrder::Msf => {
-                for byte in &bytes[2..8] {
-                    observation = (observation << 8) | u64::from(*byte);
-                }
-            }
-        }
-        (variable, observation)
+        (
+            read_uint(bytes, 0, 3, metadata.byte_order, "strL variable pointer")? as u32,
+            read_uint(bytes, 3, 5, metadata.byte_order, "strL observation pointer")?,
+        )
     };
     if variable == 0 && observation == 0 {
         return Ok(None);
@@ -4594,49 +4588,53 @@ mod tests {
     }
 
     #[test]
-    fn column_kernel_collects_big_endian_modern_strl_pointers() {
-        let mut metadata = kernel_metadata(ByteOrder::Msf);
-        metadata.format_version = FormatVersion::V119;
-        metadata.nvar = 1;
-        metadata.nobs = 42;
-        metadata.obs_length = 8;
-        metadata.variables = vec![VariableInfo {
-            name: "text".to_owned(),
-            dta_type: DtaType::StrL,
-            type_code: 32_768,
-            format: "%9s".to_owned(),
-            label: String::new(),
-            value_label_name: String::new(),
-            byte_width: 8,
-            byte_offset: 0,
-        }];
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&1_u16.to_be_bytes());
-        bytes.extend_from_slice(&42_u64.to_be_bytes()[2..]);
-        bytes.extend_from_slice(&[0; 8]);
-        let mut columns = vec![kernel_column(ObservationKind::StrL, 0, 8)];
-        let block = ObservationBlock {
-            bytes,
-            source_offset: 512,
-            output_row_start: 0,
-            row_count: 2,
-        };
+    fn column_kernel_collects_v119_strl_pointers_in_both_byte_orders() {
+        for (byte_order, pointer) in [
+            (ByteOrder::Lsf, [1, 0, 0, 42, 0, 0, 0, 0]),
+            (ByteOrder::Msf, [0, 0, 1, 0, 0, 0, 0, 42]),
+        ] {
+            let mut metadata = kernel_metadata(byte_order);
+            metadata.format_version = FormatVersion::V119;
+            metadata.nvar = 1;
+            metadata.nobs = 42;
+            metadata.obs_length = 8;
+            metadata.variables = vec![VariableInfo {
+                name: "text".to_owned(),
+                dta_type: DtaType::StrL,
+                type_code: 32_768,
+                format: "%9s".to_owned(),
+                label: String::new(),
+                value_label_name: String::new(),
+                byte_width: 8,
+                byte_offset: 0,
+            }];
+            let mut bytes = Vec::from(pointer);
+            bytes.extend_from_slice(&[0; 8]);
+            let mut columns = vec![kernel_column(ObservationKind::StrL, 0, 8)];
+            let block = ObservationBlock {
+                bytes,
+                source_offset: 512,
+                output_row_start: 0,
+                row_count: 2,
+            };
 
-        decode_worker_block(&mut columns, &block, 8, &metadata, TextEncoding::Utf8, None).unwrap();
+            decode_worker_block(&mut columns, &block, 8, &metadata, TextEncoding::Utf8, None)
+                .unwrap();
 
-        assert_eq!(
-            columns[0].strl_pointers.as_deref(),
-            Some(
-                [
-                    Some(FileGsoKey {
-                        variable: 1,
-                        observation: 42,
-                    }),
-                    None,
-                ]
-                .as_slice()
-            )
-        );
+            assert_eq!(
+                columns[0].strl_pointers.as_deref(),
+                Some(
+                    [
+                        Some(FileGsoKey {
+                            variable: 1,
+                            observation: 42,
+                        }),
+                        None,
+                    ]
+                    .as_slice()
+                )
+            );
+        }
     }
 
     #[test]
