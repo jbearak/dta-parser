@@ -44,6 +44,9 @@ Supply \code{x} to encode values or \code{.size} to allocate that many Stata sys
 missing values. Observed values must fit the requested storage type. Use the
 wider constructor named in an error when they do not. Stata system missing
 and extended missings \code{.a} through \code{.z} are valid in every storage type.
+R \code{NaN} is not a Stata missing code. Construction, explicit casts,
+assignment, and recode replacements reject it. Use \code{NA_real_} for system
+missing or \code{\link[=tagged_missing]{tagged_missing()}} for an extended missing value.
 
 Re-encoding materializes \code{x} as doubles while it validates the values. The
 compact representation reduces steady-state memory use, not peak memory use
@@ -67,12 +70,15 @@ conflicting text for one code warns and uses the left input's label.
 Arithmetic and the numeric group generics start at the operands' common
 storage type, then widen only when the computed values require it. This is
 value-dependent: integer overflow or a fractional result may change the
-result's declared storage. Computational overflow and undefined numeric
-results become Stata system missing.
+result's declared storage. Arithmetic results that are \code{NaN}, infinite, or
+outside Stata's double range become Stata system missing.
 }
 
 \examples{
 codes <- stata_byte(c(1, 2, NA_real_, tagged_missing("a")))
 stata_storage_type(codes)
 missing <- stata_int(.size = 100)
+undefined <- stata_byte(0) / stata_byte(0)
+is.na(undefined)
+try(stata_byte(NaN))
 }

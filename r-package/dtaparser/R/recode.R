@@ -22,6 +22,12 @@
 #' result. When the result remains numeric, the original class and Stata
 #' metadata attributes are restored. Value-label definitions are not rewritten
 #' when their associated numeric codes change.
+#' Unmatched `NaN` values in a bare numeric `.x` retain their payload. A
+#' storage-bearing Stata vector cannot contain `NaN`, so inserting one through
+#' a replacement, `.default`, or `.missing` errors. Use `NA_real_` for system
+#' missing or [tagged_missing()] for an extended missing value. Arithmetic is
+#' different: undefined results become system missing as described in
+#' [stata_byte()].
 #'
 #' A recode from numeric to a non-numeric type cannot retain tagged-NA
 #' payloads. If `.x` contains missing values and the result is non-numeric,
