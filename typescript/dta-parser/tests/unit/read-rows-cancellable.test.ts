@@ -110,6 +110,36 @@ describe('read_rows (cancellable)', () => {
             }
         });
 
+        it('does not let a signal change NaN range errors', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const my_controller = new AbortController();
+
+            for (const [my_start, my_count] of [
+                [0, NaN],
+                [NaN, 1],
+            ]) {
+                for (const my_options of [
+                    undefined,
+                    {
+                        signal: my_controller.signal,
+                        chunk_rows: 1,
+                    },
+                ]) {
+                    await expect(
+                        my_file.read_rows(
+                            my_start,
+                            my_count,
+                            undefined,
+                            undefined,
+                            my_options
+                        )
+                    ).rejects.toBeInstanceOf(RangeError);
+                }
+            }
+        });
+
         it('chunked read resolves strL across chunk boundary', async () => {
             my_file = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'all_types.dta')
@@ -121,6 +151,36 @@ describe('read_rows (cancellable)', () => {
                 { signal: my_controller.signal, chunk_rows: 2 }
             );
             expect(the_chunked).toEqual(the_single);
+        });
+
+        it('clamps a negative projection before resolving strL', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'all_types.dta')
+            );
+            const my_strl_idx = my_file.variables.findIndex(
+                my_var => my_var.type === 'strL'
+            );
+            const the_expected = await my_file.read_rows(
+                0,
+                my_file.nobs,
+                0,
+                my_strl_idx + 1
+            );
+
+            for (const my_options of [
+                undefined,
+                { chunk_rows: 2 },
+            ]) {
+                expect(
+                    await my_file.read_rows(
+                        0,
+                        my_file.nobs,
+                        -1,
+                        my_strl_idx + 1,
+                        my_options
+                    )
+                ).toEqual(the_expected);
+            }
         });
 
         it('falls back to the default for invalid chunk_rows', async () => {

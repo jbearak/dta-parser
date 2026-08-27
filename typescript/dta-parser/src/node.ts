@@ -310,18 +310,22 @@ export class DtaFile {
     ): Promise<Row[]> {
         if (this._closed || this._fd === null) return [];
 
+        if (
+            this._metadata.nobs === 0
+            || start < 0
+            || count <= 0
+            || start >= this._metadata.nobs
+        ) {
+            return [];
+        }
+        if (Number.isNaN(start) || Number.isNaN(count)) {
+            throw new RangeError('Invalid array length');
+        }
+
         const my_actual_count = Math.min(
             count,
             this._metadata.nobs - start
         );
-        if (
-            this._metadata.nobs === 0
-            || start < 0
-            || start >= this._metadata.nobs
-            || my_actual_count <= 0
-        ) {
-            return [];
-        }
 
         const my_signal = options?.signal;
         const my_chunk_rows = normalise_chunk_rows(
@@ -339,7 +343,10 @@ export class DtaFile {
 
         if (my_actual_count <= my_chunk_rows) {
             const the_rows = this._read_rows_range(
-                start, my_actual_count, col_start, col_end
+                start,
+                my_actual_count,
+                my_col_start,
+                my_col_end
             );
             if (my_signal) throw_if_aborted(my_signal);
             return the_rows;
@@ -365,8 +372,8 @@ export class DtaFile {
             const my_chunk = this._read_rows_range(
                 start + my_read,
                 my_chunk_count,
-                col_start,
-                col_end
+                my_col_start,
+                my_col_end
             );
             if (my_signal) {
                 for (const my_row of my_chunk) {
