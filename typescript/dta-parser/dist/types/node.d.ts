@@ -8,21 +8,16 @@ export interface ReadRowsOptions {
      * soon as the signal fires. Reads without a signal remain synchronous.
      */
     signal?: AbortSignal;
-    /** Rows per chunk. The default is at most 65536 rows or 16 MiB. */
+    /**
+     * Rows per chunk. By default, cancellable reads use at most 65536
+     * rows or 16 MiB; synchronous chunks are bounded only by 16 MiB.
+     */
     chunk_rows?: number;
 }
 /** Options for {@link DtaFile.open}. */
 export type DtaFileOpenOptions = TextEncodingOptions;
 /** Options for {@link DtaFile.read_columns}. */
-export interface ReadColumnsOptions {
-    /**
-     * When provided, aborting the signal rejects with an `AbortError`
-     * between observation chunks.
-     */
-    signal?: AbortSignal;
-    /** Rows per chunk. The default is at most 65536 rows or 16 MiB. */
-    chunk_rows?: number;
-}
+export type ReadColumnsOptions = ReadRowsOptions;
 export declare class DtaFile {
     private _fd;
     private readonly _metadata;
@@ -87,13 +82,13 @@ export declare class DtaFile {
      *   directly) rather than assuming every requested key is present.
      */
     read_columns(col_indices: number[], options?: ReadColumnsOptions): Promise<Map<number, RowCell[]>>;
+    /** Decode one observation chunk directly into the caller's row array. */
+    private _decode_rows_range;
     /**
-     * Read a contiguous row range in a single synchronous pass and
-     * resolve any strL columns in range. Shared by single-chunk reads
-     * and each chunk of larger reads. Callers must ensure the
-     * file is open (`_fd !== null`).
+     * Read contiguous observation chunks and centralize yielding,
+     * cancellation, and close handling for every output layout.
      */
-    private _read_rows_range;
+    private _for_each_observation_chunk;
     /**
      * Release the open file handle and internal caches.
      * After close, read_rows returns empty arrays.

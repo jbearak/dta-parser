@@ -3,11 +3,13 @@ import {
     it,
     expect,
     afterEach,
-    spyOn,
 } from 'bun:test';
-import * as fs from 'fs';
 import * as path from 'path';
 import { DtaFile } from '../../src/node';
+import {
+    capture_read_lengths,
+    with_temporary_nobs,
+} from './test-helpers';
 
 // -----------------------------------------------------------
 // read_rows cancellable / chunked path
@@ -80,8 +82,6 @@ describe('read_rows (cancellable)', () => {
                     { chunk_rows: 1 }
                 );
                 expect(the_rows).toEqual([]);
-                expect(the_rows.length).toBe(0);
-                expect(JSON.stringify(the_rows)).toBe('[]');
             }
         });
 
@@ -281,17 +281,10 @@ describe('read_rows (cancellable)', () => {
             const my_controller = new AbortController();
             my_controller.abort();
 
-            let my_error: unknown = null;
-            try {
-                await my_file.read_rows(
-                    0, 74, undefined, undefined,
-                    { signal: my_controller.signal, chunk_rows: 7 }
-                );
-            } catch (err) {
-                my_error = err;
-            }
-            expect(my_error).toBeInstanceOf(Error);
-            expect((my_error as Error).name).toBe('AbortError');
+            await expect(my_file.read_rows(
+                0, 74, undefined, undefined,
+                { signal: my_controller.signal, chunk_rows: 7 }
+            )).rejects.toHaveProperty('name', 'AbortError');
         });
 
         it('rejects with AbortError when aborted mid-read', async () => {
@@ -307,50 +300,34 @@ describe('read_rows (cancellable)', () => {
             // Abort after the first inter-chunk yield.
             setImmediate(() => my_controller.abort());
 
-            let my_error: unknown = null;
-            try {
-                await my_promise;
-            } catch (err) {
-                my_error = err;
-            }
-            expect(my_error).toBeInstanceOf(Error);
-            expect((my_error as Error).name).toBe('AbortError');
+            await expect(my_promise).rejects.toHaveProperty(
+                'name', 'AbortError'
+            );
         });
 
         it('does not preallocate the full result before the first yield', async () => {
             my_file = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'auto_v118.dta')
             );
-            const my_metadata = (
-                my_file as unknown as {
-                    _metadata: { nobs: number };
-                }
-            )._metadata;
-            const my_original_nobs = my_metadata.nobs;
             const my_controller = new AbortController();
             setImmediate(() => my_controller.abort());
 
-            let my_error: unknown = null;
-            try {
-                my_metadata.nobs = 0x1_0000_0000;
-                await my_file.read_rows(
-                    0,
-                    my_metadata.nobs,
-                    undefined,
-                    undefined,
-                    {
-                        signal: my_controller.signal,
-                        chunk_rows: 1,
-                    }
-                );
-            } catch (err) {
-                my_error = err;
-            } finally {
-                my_metadata.nobs = my_original_nobs;
-            }
-
-            expect(my_error).toBeInstanceOf(Error);
-            expect((my_error as Error).name).toBe('AbortError');
+            await with_temporary_nobs(
+                my_file,
+                0x1_0000_0000,
+                async () => {
+                    await expect(my_file!.read_rows(
+                        0,
+                        my_file!.nobs,
+                        undefined,
+                        undefined,
+                        {
+                            signal: my_controller.signal,
+                            chunk_rows: 1,
+                        }
+                    )).rejects.toHaveProperty('name', 'AbortError');
+                }
+            );
         });
     });
 
@@ -399,30 +376,18 @@ describe('read_rows (cancellable)', () => {
                 (sum, variable) => sum + variable.byte_width,
                 0
             );
-            const the_read_lengths: number[] = [];
-            const my_original = fs.readSync;
-            const my_spy = spyOn(fs, 'readSync');
-            my_spy.mockImplementation(
-                (fd, buffer, offset, length, position) => {
-                    the_read_lengths.push(length);
-                    return my_original(
-                        fd, buffer, offset, length, position
+            const the_read_lengths = await capture_read_lengths(
+                async () => {
+                    const the_rows = await my_file!.read_rows(
+                        0,
+                        my_file!.nobs,
+                        undefined,
+                        undefined,
+                        { chunk_rows: my_chunk_rows }
                     );
+                    expect(the_rows.length).toBe(my_file!.nobs);
                 }
             );
-
-            try {
-                const the_rows = await my_file.read_rows(
-                    0,
-                    my_file.nobs,
-                    undefined,
-                    undefined,
-                    { chunk_rows: my_chunk_rows }
-                );
-                expect(the_rows.length).toBe(my_file.nobs);
-            } finally {
-                my_spy.mockRestore();
-            }
 
             expect(the_read_lengths.length).toBeGreaterThan(1);
             expect(Math.max(...the_read_lengths)).toBeLessThanOrEqual(
