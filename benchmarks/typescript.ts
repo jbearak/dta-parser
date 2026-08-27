@@ -269,7 +269,7 @@ const the_table_viewer_sparse_rows = deterministic_sparse_rows(
     TABLE_VIEWER_WIDE_ROWS,
     TABLE_VIEWER_PAGE_ROWS,
     0x7ab1_e001
-);
+).sort((my_left, my_right) => my_left - my_right);
 const my_large_labels_buffer = repeat_modern_value_labels(
     fixture_buffer('value_labels_v118.dta'),
     LARGE_LABEL_REPETITIONS

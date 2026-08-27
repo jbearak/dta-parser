@@ -326,6 +326,27 @@ describe('read_rows_from_buffer', () => {
                 }
             }
         });
+
+        it('clips truncated short strings to the available bytes', () => {
+            const { metadata } = load_fixture('all_types.dta');
+            const my_string_column = metadata.variables.findIndex(
+                my_variable => my_variable.type === 'str5'
+            );
+            const my_string_offset = metadata.variables[
+                my_string_column
+            ].byte_offset;
+            const my_truncated = new Uint8Array(my_string_offset + 2);
+            my_truncated.set([0x61, 0x62], my_string_offset);
+
+            expect(read_rows_from_data_buffer(
+                my_truncated,
+                metadata,
+                0,
+                1,
+                my_string_column,
+                my_string_column + 1
+            )).toEqual([['ab']]);
+        });
     });
 
     // ----- all_types.dta -----

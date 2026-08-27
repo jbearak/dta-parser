@@ -43,6 +43,9 @@ export function decode_text_range(
     start: number,
     end: number
 ): string {
+    if (start < 0 || end > bytes.length) {
+        return decoder.decode(bytes.subarray(start, end));
+    }
     const my_length = end - start;
     // Native TextDecoder wins for longer fields even after the view
     // allocation. Short labels and fixed strings are faster inline.

@@ -157,6 +157,9 @@ function legacy_type_code_to_dta_type(code, format_version) {
 
 // src/text-encoding.ts
 function decode_text_range(decoder, bytes, start, end) {
+  if (start < 0 || end > bytes.length) {
+    return decoder.decode(bytes.subarray(start, end));
+  }
   const my_length = end - start;
   if (my_length > 12) {
     return decoder.decode(bytes.subarray(start, end));

@@ -45,7 +45,7 @@ describe('build_gso_index', () => {
 
     // ----- release-119 pointer layout and checked strL fixture -----
 
-    describe('strl_test.dta', () => {
+    describe('release-specific pointer layouts', () => {
         const { buffer, metadata } =
             load_fixture('strl_test.dta');
 
@@ -115,6 +115,38 @@ describe('build_gso_index', () => {
                     my_index,
                     my_metadata.section_offsets.data + 6
                 )).toBe(V119_STRL_VALUE);
+            }
+        });
+
+        it('indexes the maximum safe GSO observation in both byte orders', () => {
+            for (const my_byte_order of ['LSF', 'MSF'] as const) {
+                const my_buffer = v119_strl_fixture(my_byte_order);
+                const my_metadata = parse_metadata(my_buffer);
+                const my_copy = my_buffer.slice(0);
+                const my_o_offset =
+                    my_metadata.section_offsets.strls
+                    + '<strls>'.length
+                    + 'GSO'.length
+                    + 4;
+                const my_view = new DataView(my_copy);
+                if (my_byte_order === 'LSF') {
+                    my_view.setUint32(my_o_offset, 0xffff_ffff, true);
+                    my_view.setUint32(
+                        my_o_offset + 4, 0x001f_ffff, true
+                    );
+                } else {
+                    my_view.setUint32(
+                        my_o_offset, 0x001f_ffff, false
+                    );
+                    my_view.setUint32(
+                        my_o_offset + 4, 0xffff_ffff, false
+                    );
+                }
+
+                expect(build_gso_index(my_copy, {
+                    ...my_metadata,
+                    nobs: Number.MAX_SAFE_INTEGER,
+                }).has(`1:${Number.MAX_SAFE_INTEGER}`)).toBe(true);
             }
         });
 
