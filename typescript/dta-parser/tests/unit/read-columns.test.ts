@@ -123,6 +123,20 @@ describe('DtaFile.read_columns', () => {
             [my_strl_idx, 0, 2],
             2
         );
+
+        const the_gso_entries = [
+            ...(
+                my_file as unknown as {
+                    _gso_index: Map<string, object>;
+                }
+            )._gso_index.values(),
+        ];
+        expect(the_gso_entries.length).toBeGreaterThan(0);
+        expect(
+            the_gso_entries.some(
+                my_entry => 'decoded_value' in my_entry
+            )
+        ).toBe(false);
     });
 
     it('loads the strL section lazily and only once', async () => {

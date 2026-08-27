@@ -16,10 +16,16 @@ import {
 // -----------------------------------------------------------
 
 describe('missing-values', () => {
-    it('reuses immutable missing-value objects', () => {
-        const my_dot = make_missing_value('.');
-        expect(make_missing_value('.')).toBe(my_dot);
-        expect(Object.isFrozen(my_dot)).toBe(true);
+    it('returns independent mutable missing-value objects', () => {
+        const my_first = make_missing_value('.');
+        const my_second = make_missing_value('.');
+
+        expect(my_second).not.toBe(my_first);
+        expect(Object.isFrozen(my_first)).toBe(false);
+
+        my_first.missing_type = '.a';
+        expect(my_first.missing_type).toBe('.a');
+        expect(my_second.missing_type).toBe('.');
     });
 
     // ----- Exported constants -----

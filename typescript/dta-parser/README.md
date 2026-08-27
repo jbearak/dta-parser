@@ -66,13 +66,10 @@ The parser covers Stata 5 through 19. Numeric values remain numbers and strings 
 
 ```ts
 type MissingValue = {
-    readonly kind: 'missing';
-    readonly missing_type: '.' | '.a' | /* ... */ '.z';
+    kind: 'missing';
+    missing_type: '.' | '.a' | /* ... */ '.z';
 };
 ```
-
-Missing values are immutable shared value objects, so missing-heavy files do
-not allocate one object for every cell.
 
 Metadata includes variables, labels, display formats, notes, value-label tables, and section offsets. `DtaFile` resolves selected `strL` values and validates their object references.
 

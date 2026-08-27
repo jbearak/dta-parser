@@ -12,7 +12,7 @@ export declare const STATA_MISSING_B: number;
 /** Extended missing .z as a JS number. */
 export declare const STATA_MISSING_Z: number;
 export declare function make_missing_value(missing_type: MissingType): MissingValue;
-/** Return the canonical immutable value for a validated missing offset. */
+/** Create a missing value for a validated missing offset. */
 export declare function missing_value_from_offset(offset: number): MissingValue;
 export declare function is_missing_value_object(value: unknown): value is MissingValue;
 export declare function classify_raw_float_missing(raw_value: number): MissingType | null;

@@ -977,12 +977,9 @@ function classify_missing_from_offset(offset) {
   }
   return `.${String.fromCharCode(96 + offset)}`;
 }
-var MISSING_VALUES = Array.from(
+var MISSING_TYPES = Array.from(
   { length: 27 },
-  (_, offset) => Object.freeze({
-    kind: "missing",
-    missing_type: offset === 0 ? "." : `.${String.fromCharCode(96 + offset)}`
-  })
+  (_, offset) => offset === 0 ? "." : `.${String.fromCharCode(96 + offset)}`
 );
 function classify_integer_missing(value, dot, z) {
   if (value < dot || value > z) {
@@ -1025,11 +1022,16 @@ function classify_double_js_missing(value) {
   );
 }
 function make_missing_value(missing_type) {
-  const my_offset = missing_type === "." ? 0 : missing_type.charCodeAt(1) - 96;
-  return MISSING_VALUES[my_offset];
+  return {
+    kind: "missing",
+    missing_type
+  };
 }
 function missing_value_from_offset(offset) {
-  return MISSING_VALUES[offset];
+  return {
+    kind: "missing",
+    missing_type: MISSING_TYPES[offset]
+  };
 }
 function is_missing_value_object(value) {
   return typeof value === "object" && value !== null && value.kind === "missing" && typeof value.missing_type === "string";
@@ -1277,7 +1279,9 @@ function decode_column_into_values(view, bytes, values, output_start, count, var
       }
       return;
     case "strL":
-      values.fill(STRL_PLACEHOLDER, output_start, my_end);
+      for (let i = output_start; i < my_end; i++) {
+        values[i] = STRL_PLACEHOLDER;
+      }
       return;
     default:
       for (let i = output_start; i < my_end; i++, my_offset += row_width) {
@@ -2218,7 +2222,7 @@ var DtaFile = class _DtaFile {
       count,
       this._metadata.nobs - start
     );
-    if (this._metadata.nobs === 0 || start >= this._metadata.nobs || my_actual_count <= 0) {
+    if (this._metadata.nobs === 0 || start < 0 || start >= this._metadata.nobs || my_actual_count <= 0) {
       return [];
     }
     const my_signal = options?.signal;
@@ -2527,16 +2531,11 @@ var DtaFile = class _DtaFile {
         `Dangling strL pointer ${my_pointer.v}:${my_pointer.o}`
       );
     }
-    if (my_entry.decoded_value !== void 0) {
-      return my_entry.decoded_value;
-    }
-    const my_value = decode_gso_entry(
+    return decode_gso_entry(
       this._gso_section,
       my_entry,
       this.text_encoding
     );
-    my_entry.decoded_value = my_value;
-    return my_value;
   }
 };
 var LEGACY_VERSION_BYTES = /* @__PURE__ */ new Set([105, 108, 110, 111, 113, 114, 115]);

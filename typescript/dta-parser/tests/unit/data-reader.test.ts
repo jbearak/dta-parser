@@ -2,9 +2,12 @@ import { describe, it, expect } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parse_metadata } from '../../src/header';
-import { read_rows_from_buffer } from '../../src/data-reader';
+import {
+    read_columns_from_data_buffer,
+    read_rows_from_buffer,
+} from '../../src/data-reader';
 import { make_missing_value } from '../../src';
-import type { DtaMetadata } from '../../src/types';
+import type { DtaMetadata, RowCell } from '../../src/types';
 
 // -----------------------------------------------------------
 // Data section row reader tests
@@ -137,6 +140,7 @@ describe('read_rows_from_buffer', () => {
             const my_row0 = the_rows[0];
             expect(my_row0[0]).toEqual(make_missing_value('.'));
             expect(my_row0[1]).toEqual(make_missing_value('.'));
+            expect(my_row0[1]).not.toBe(my_row0[0]);
             expect(my_row0[2]).toEqual(make_missing_value('.'));
             expect(my_row0[3]).toEqual(make_missing_value('.'));
             expect(my_row0[4]).toEqual(make_missing_value('.'));
@@ -166,6 +170,37 @@ describe('read_rows_from_buffer', () => {
             // x_byte for _n==5: gen byte x_byte = _n
             // if _n <= 100 => 5
             expect(my_row4[1]).toBe(5);
+        });
+    });
+
+    describe('read_columns_from_data_buffer', () => {
+        it('appends strL placeholders to an empty target', () => {
+            const { buffer, metadata } =
+                load_fixture('all_types.dta');
+            const my_strl_idx = metadata.variables.findIndex(
+                my_var => my_var.type === 'strL'
+            );
+            const my_data_start =
+                metadata.section_offsets.data + '<data>'.length;
+            const my_data = buffer.slice(
+                my_data_start,
+                my_data_start + metadata.obs_length
+            );
+            const the_columns = new Map<number, RowCell[]>([
+                [my_strl_idx, []],
+            ]);
+
+            read_columns_from_data_buffer(
+                my_data,
+                metadata,
+                1,
+                [my_strl_idx],
+                the_columns
+            );
+
+            expect(the_columns.get(my_strl_idx)).toEqual([
+                '__strl__',
+            ]);
         });
     });
 

@@ -116,10 +116,6 @@ function normalise_chunk_rows(
     return Math.min(DEFAULT_CHUNK_ROWS, my_byte_bounded_rows);
 }
 
-interface CachedGsoEntry extends GsoEntry {
-    decoded_value?: string;
-}
-
 function normalise_column_indices(
     col_indices: number[],
     nvar: number
@@ -161,7 +157,7 @@ export class DtaFile {
     // section. Once loaded, the section bytes stay resident so each cell
     // resolves with an in-memory slice + decode rather than a per-cell
     // disk read.
-    private _gso_index: Map<string, CachedGsoEntry>;
+    private _gso_index: Map<string, GsoEntry>;
     private _gso_section: Uint8Array | null;
     private _gso_loaded: boolean;
     private _value_label_tables: Map<
@@ -320,6 +316,7 @@ export class DtaFile {
         );
         if (
             this._metadata.nobs === 0
+            || start < 0
             || start >= this._metadata.nobs
             || my_actual_count <= 0
         ) {
@@ -732,17 +729,11 @@ export class DtaFile {
             );
         }
 
-        if (my_entry.decoded_value !== undefined) {
-            return my_entry.decoded_value;
-        }
-
-        const my_value = decode_gso_entry(
+        return decode_gso_entry(
             this._gso_section,
             my_entry,
             this.text_encoding
         );
-        my_entry.decoded_value = my_value;
-        return my_value;
     }
 }
 

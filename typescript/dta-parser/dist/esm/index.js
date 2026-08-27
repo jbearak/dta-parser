@@ -974,12 +974,9 @@ function classify_missing_from_offset(offset) {
   }
   return `.${String.fromCharCode(96 + offset)}`;
 }
-var MISSING_VALUES = Array.from(
+var MISSING_TYPES = Array.from(
   { length: 27 },
-  (_, offset) => Object.freeze({
-    kind: "missing",
-    missing_type: offset === 0 ? "." : `.${String.fromCharCode(96 + offset)}`
-  })
+  (_, offset) => offset === 0 ? "." : `.${String.fromCharCode(96 + offset)}`
 );
 function classify_integer_missing(value, dot, z) {
   if (value < dot || value > z) {
@@ -1022,11 +1019,16 @@ function classify_double_js_missing(value) {
   );
 }
 function make_missing_value(missing_type) {
-  const my_offset = missing_type === "." ? 0 : missing_type.charCodeAt(1) - 96;
-  return MISSING_VALUES[my_offset];
+  return {
+    kind: "missing",
+    missing_type
+  };
 }
 function missing_value_from_offset(offset) {
-  return MISSING_VALUES[offset];
+  return {
+    kind: "missing",
+    missing_type: MISSING_TYPES[offset]
+  };
 }
 function is_missing_value_object(value) {
   return typeof value === "object" && value !== null && value.kind === "missing" && typeof value.missing_type === "string";

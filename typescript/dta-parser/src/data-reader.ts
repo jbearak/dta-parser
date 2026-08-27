@@ -327,7 +327,9 @@ function decode_column_into_values(
             return;
 
         case 'strL':
-            values.fill(STRL_PLACEHOLDER, output_start, my_end);
+            for (let i = output_start; i < my_end; i++) {
+                values[i] = STRL_PLACEHOLDER;
+            }
             return;
 
         default:

@@ -85,6 +85,31 @@ describe('read_rows (cancellable)', () => {
             }
         });
 
+        it('returns [] for a negative start across chunks', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const my_controller = new AbortController();
+
+            for (const my_options of [
+                { chunk_rows: 1 },
+                {
+                    signal: my_controller.signal,
+                    chunk_rows: 1,
+                },
+            ]) {
+                expect(
+                    await my_file.read_rows(
+                        -1,
+                        3,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
+            }
+        });
+
         it('chunked read resolves strL across chunk boundary', async () => {
             my_file = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'all_types.dta')
