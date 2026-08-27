@@ -129,16 +129,19 @@ export function build_gso_index(
             my_o = view.getUint32(pos, little_endian);
             pos += 4;
         } else {
-            const my_big_o = view.getBigUint64(
-                pos, little_endian
-            );
-            if (my_big_o > BigInt(Number.MAX_SAFE_INTEGER)) {
+            const my_hi = little_endian
+                ? view.getUint32(pos + 4, true)
+                : view.getUint32(pos, false);
+            const my_lo = little_endian
+                ? view.getUint32(pos, true)
+                : view.getUint32(pos + 4, false);
+            if (my_hi > 0x1F_FFFF) {
                 throw new Error(
                     'strL observation number exceeds '
                     + 'JavaScript safe integer range'
                 );
             }
-            my_o = Number(my_big_o);
+            my_o = my_hi * 0x1_0000_0000 + my_lo;
             pos += 8;
         }
 

@@ -301,6 +301,31 @@ describe('read_rows_from_buffer', () => {
             expect(the_rows[0][1]).toEqual(the_full[0][4]);
             expect(the_rows[0][2]).toEqual(the_full[0][5]);
         });
+
+        it('matches full rows through every single-column decoder', () => {
+            for (const my_fixture of [
+                'all_types.dta',
+                'missing_values.dta',
+            ]) {
+                const { buffer, metadata } = load_fixture(my_fixture);
+                const the_full = read_rows_from_buffer(
+                    buffer, metadata, 0, metadata.nobs
+                );
+
+                for (let my_col = 0; my_col < metadata.nvar; my_col++) {
+                    expect(read_rows_from_buffer(
+                        buffer,
+                        metadata,
+                        0,
+                        metadata.nobs,
+                        my_col,
+                        my_col + 1
+                    )).toEqual(the_full.map(
+                        my_row => [my_row[my_col]]
+                    ));
+                }
+            }
+        });
     });
 
     // ----- all_types.dta -----

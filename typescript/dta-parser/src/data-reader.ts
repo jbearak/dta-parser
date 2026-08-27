@@ -20,6 +20,7 @@ import type {
 import { is_legacy_format } from './types';
 import type { DtaTextDecoder } from './text-encoding';
 import {
+    decode_text_range,
     resolve_text_encoding,
     text_decoder,
 } from './text-encoding';
@@ -74,10 +75,17 @@ function buffer_views(buffer: DataBuffer): BufferViews {
 function decoder_for_metadata(
     metadata: DtaMetadata
 ): DtaTextDecoder {
-    return text_decoder(resolve_text_encoding(
-        metadata.format_version,
-        metadata.text_encoding
-    ));
+    switch (metadata.text_encoding) {
+        case 'utf-8':
+        case 'windows-1252':
+        case 'iso-8859-1':
+            return text_decoder(metadata.text_encoding);
+        default:
+            return text_decoder(resolve_text_encoding(
+                metadata.format_version,
+                metadata.text_encoding
+            ));
+    }
 }
 
 function read_fixed_string(
@@ -93,7 +101,7 @@ function read_fixed_string(
     while (my_end < my_limit && bytes[my_end] !== 0) {
         my_end++;
     }
-    return decoder.decode(bytes.subarray(offset, my_end));
+    return decode_text_range(decoder, bytes, offset, my_end);
 }
 
 function read_cell(
@@ -269,6 +277,104 @@ function decode_column_into_values(
     }
 }
 
+function decode_single_column_into_rows(
+    view: DataView,
+    bytes: Uint8Array,
+    rows: Row[],
+    output_start: number,
+    count: number,
+    row_base_offset: number,
+    variable: VariableInfo,
+    row_width: number,
+    little_endian: boolean,
+    modern_missing: boolean,
+    decoder: DtaTextDecoder,
+    format_version: FormatVersion
+): void {
+    let my_offset = row_base_offset + variable.byte_offset;
+    const my_end = output_start + count;
+
+    switch (variable.type) {
+        case 'byte':
+            for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+                const my_value = view.getInt8(my_offset);
+                const my_missing = byte_missing_offset(
+                    my_value, modern_missing
+                );
+                rows[i] = [my_missing >= 0
+                    ? missing_value_from_offset(my_missing)
+                    : my_value];
+            }
+            return;
+
+        case 'int':
+            for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+                const my_value = view.getInt16(my_offset, little_endian);
+                const my_missing = int_missing_offset(
+                    my_value, modern_missing
+                );
+                rows[i] = [my_missing >= 0
+                    ? missing_value_from_offset(my_missing)
+                    : my_value];
+            }
+            return;
+
+        case 'long':
+            for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+                const my_value = view.getInt32(my_offset, little_endian);
+                const my_missing = long_missing_offset(
+                    my_value, modern_missing
+                );
+                rows[i] = [my_missing >= 0
+                    ? missing_value_from_offset(my_missing)
+                    : my_value];
+            }
+            return;
+
+        case 'float':
+            for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+                const my_raw = view.getUint32(my_offset, little_endian);
+                const my_missing = float_missing_offset(
+                    my_raw, modern_missing
+                );
+                rows[i] = [my_missing >= 0
+                    ? missing_value_from_offset(my_missing)
+                    : view.getFloat32(my_offset, little_endian)];
+            }
+            return;
+
+        case 'double':
+            for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+                const my_missing = double_missing_offset_for_version(
+                    view,
+                    my_offset,
+                    little_endian,
+                    format_version
+                );
+                rows[i] = [my_missing >= 0
+                    ? missing_value_from_offset(my_missing)
+                    : view.getFloat64(my_offset, little_endian)];
+            }
+            return;
+
+        case 'strL':
+            for (let i = output_start; i < my_end; i++) {
+                rows[i] = [STRL_PLACEHOLDER];
+            }
+            return;
+
+        default:
+            for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+                rows[i] = [read_fixed_string(
+                    bytes,
+                    my_offset,
+                    variable.byte_width,
+                    decoder
+                )];
+            }
+    }
+}
+
 function read_rows_from_view(
     view: DataView,
     bytes: Uint8Array,
@@ -302,6 +408,24 @@ function read_rows_from_view(
     const my_decoder = decoder_for_metadata(metadata);
     const the_rows = out ?? new Array<Row>(my_actual_count);
     const my_column_count = my_col_end - my_col_start;
+
+    if (my_column_count === 1) {
+        decode_single_column_into_rows(
+            view,
+            bytes,
+            the_rows,
+            out_offset,
+            my_actual_count,
+            row_base_offset,
+            metadata.variables[my_col_start],
+            metadata.obs_length,
+            little_endian,
+            modern_missing,
+            my_decoder,
+            metadata.format_version
+        );
+        return the_rows;
+    }
 
     for (let i = 0; i < my_actual_count; i++) {
         const my_row = new Array<RowCell>(my_column_count);

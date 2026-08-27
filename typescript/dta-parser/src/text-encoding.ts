@@ -36,6 +36,96 @@ export interface DtaTextDecoder {
     decode(input: Uint8Array): string;
 }
 
+/** Decode a byte range without allocating a view for the common ASCII case. */
+export function decode_text_range(
+    decoder: DtaTextDecoder,
+    bytes: Uint8Array,
+    start: number,
+    end: number
+): string {
+    const my_length = end - start;
+    // Native TextDecoder wins for longer fields even after the view
+    // allocation. Short labels and fixed strings are faster inline.
+    if (my_length > 12) {
+        return decoder.decode(bytes.subarray(start, end));
+    }
+    for (let i = start; i < end; i++) {
+        if (bytes[i] >= 0x80) {
+            return decoder.decode(bytes.subarray(start, end));
+        }
+    }
+    // Each arm creates one flat string. Incremental concatenation retains
+    // short rope fragments and costs more memory in large label tables.
+    switch (my_length) {
+        case 0:
+            return '';
+        case 1:
+            return String.fromCharCode(bytes[start]);
+        case 2:
+            return String.fromCharCode(bytes[start], bytes[start + 1]);
+        case 3:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2]
+            );
+        case 4:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3]
+            );
+        case 5:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4]
+            );
+        case 6:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4], bytes[start + 5]
+            );
+        case 7:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4], bytes[start + 5],
+                bytes[start + 6]
+            );
+        case 8:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4], bytes[start + 5],
+                bytes[start + 6], bytes[start + 7]
+            );
+        case 9:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4], bytes[start + 5],
+                bytes[start + 6], bytes[start + 7], bytes[start + 8]
+            );
+        case 10:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4], bytes[start + 5],
+                bytes[start + 6], bytes[start + 7], bytes[start + 8],
+                bytes[start + 9]
+            );
+        case 11:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4], bytes[start + 5],
+                bytes[start + 6], bytes[start + 7], bytes[start + 8],
+                bytes[start + 9], bytes[start + 10]
+            );
+        case 12:
+            return String.fromCharCode(
+                bytes[start], bytes[start + 1], bytes[start + 2],
+                bytes[start + 3], bytes[start + 4], bytes[start + 5],
+                bytes[start + 6], bytes[start + 7], bytes[start + 8],
+                bytes[start + 9], bytes[start + 10], bytes[start + 11]
+            );
+        default:
+            return decoder.decode(bytes.subarray(start, end));
+    }
+}
+
 // DTA fields are independently bounded values, not BOM-signaled documents.
 // Preserve a leading U+FEFF to match Rust's decoder_without_bom_handling.
 const UTF8_DECODER = new TextDecoder(

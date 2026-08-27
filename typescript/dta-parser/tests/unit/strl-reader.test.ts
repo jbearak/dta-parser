@@ -246,6 +246,22 @@ describe('build_gso_index', () => {
                 o: 0x100000001,
             });
         });
+
+        it('rejects GSO observation numbers above the safe range', () => {
+            const { buffer, metadata } =
+                load_fixture('strl_test_v118.dta');
+            const my_copy = buffer.slice(0);
+            const my_first_gso = metadata.section_offsets.strls + 7;
+            const my_o_offset = my_first_gso + 3 + 4;
+            const my_view = new DataView(my_copy);
+            my_view.setUint32(my_o_offset, 0, true);
+            my_view.setUint32(my_o_offset + 4, 0x20_0000, true);
+
+            expect(() => build_gso_index(
+                my_copy,
+                { ...metadata, nobs: Number.MAX_SAFE_INTEGER }
+            )).toThrow('safe integer range');
+        });
     });
 
     // ----- (v=0, o=0) empty pointer -----
