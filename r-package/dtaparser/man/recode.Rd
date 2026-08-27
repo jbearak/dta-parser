@@ -42,9 +42,10 @@ If \code{.x} contains missing values and the result is non-numeric, supply
 \code{.missing} explicitly to choose their new representation. Numeric widening
 from integer to double preserves missing values automatically.
 
-Class-changing numeric replacements, such as using \code{Date} or factor
-values to recode a bare numeric vector, are rejected rather than silently
-dropping the replacement class. Apply the desired class after recoding instead.
+Bare numeric sources reject classed replacements such as \code{Date} or factor
+values rather than silently dropping the replacement class. Stata date and
+datetime sources accept \code{Date} and \code{POSIXct} replacements,
+respectively. For other class changes, apply the desired class after recoding.
 
 When the dtaparser namespace is loaded, \code{dplyr::recode()} dispatches here
 for bare numeric, \code{haven_labelled}, \code{Date}, and \code{POSIXct}

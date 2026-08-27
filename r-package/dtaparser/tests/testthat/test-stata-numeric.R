@@ -6,6 +6,8 @@ fixture_with_temporal_storage <- function(column, display_format = "%td") {
     matches <- grepRaw(
         charToRaw(old_format), bytes, fixed = TRUE, all = TRUE
     )
+    minimum_matches <- if (identical(column, "foreign")) 1L else 2L
+    expect_gte(length(matches), minimum_matches)
     format_start <- if (identical(column, "foreign")) {
         tail(matches, 1L)
     } else {
@@ -100,6 +102,22 @@ test_that("constructors preserve Stata extended missing codes", {
                              stata_double)) {
         value <- constructor(input)
         expect_identical(missing_tag(value), c(NA_character_, NA, "a", "z"))
+    }
+})
+
+test_that("native construction rejects unsupported tagged missing payloads", {
+    skip_if_not_installed("haven")
+    constructor <- get(
+        "C_dtaparser_construct_numeric",
+        envir = asNamespace("dtaparser")
+    )
+
+    for (tag in c("?", "A")) {
+        expect_error(
+            .Call(constructor, haven::tagged_na(tag), 0L, 0L),
+            "accept only system missing and `.a` through `.z`",
+            info = tag
+        )
     }
 })
 

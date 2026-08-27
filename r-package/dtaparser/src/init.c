@@ -1052,9 +1052,10 @@ SEXP C_dtaparser_construct_numeric(
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         double element = REAL_ELT(value, index);
-        int tag = stata_missing_tag_value(element);
-        int offset = tag == 0 ? -1 : tag - 'a' + 1;
-        if (tag == 0 && ISNA(element)) offset = 0;
+        int payload_tag = tagged_na_tag_value(element);
+        int offset = payload_tag >= 'a' && payload_tag <= 'z'
+            ? payload_tag - 'a' + 1 : -1;
+        if (payload_tag == 0 && ISNA(element)) offset = 0;
         if (offset >= 0) {
             no_na = 0;
             write_numeric_missing(output, index, kind, offset);
