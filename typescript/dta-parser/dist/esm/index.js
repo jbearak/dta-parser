@@ -1095,6 +1095,13 @@ var LONG_MISSING_DOT2 = 2147483621;
 var FLOAT_MISSING_DOT_RAW2 = 2130706432;
 var FLOAT_MISSING_STEP_RAW2 = 2048;
 var FLOAT_MISSING_Z_RAW2 = FLOAT_MISSING_DOT_RAW2 + 26 * FLOAT_MISSING_STEP_RAW2;
+function assert_integer_row_range(start, count) {
+  if (!Number.isInteger(start) || !Number.isInteger(count)) {
+    throw new RangeError(
+      "Row start and count must be integers"
+    );
+  }
+}
 function buffer_views(buffer) {
   if (buffer instanceof Uint8Array) {
     return {
@@ -1257,6 +1264,7 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
   return the_rows;
 }
 function read_rows_from_buffer(buffer, metadata, start, count, col_start, col_end) {
+  assert_integer_row_range(start, count);
   const { view, bytes } = buffer_views(buffer);
   const my_tag_length = is_legacy_format(metadata.format_version) ? 0 : DATA_TAG_LENGTH;
   const my_data_start = metadata.section_offsets.data + my_tag_length;
@@ -1272,6 +1280,7 @@ function read_rows_from_buffer(buffer, metadata, start, count, col_start, col_en
   );
 }
 function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, col_end) {
+  assert_integer_row_range(start, count);
   const { view, bytes } = buffer_views(buffer);
   return read_rows_from_view(
     view,

@@ -34,6 +34,17 @@ interface BufferViews {
     bytes: Uint8Array;
 }
 
+export function assert_integer_row_range(
+    start: number,
+    count: number
+): void {
+    if (!Number.isInteger(start) || !Number.isInteger(count)) {
+        throw new RangeError(
+            'Row start and count must be integers'
+        );
+    }
+}
+
 function buffer_views(buffer: DataBuffer): BufferViews {
     if (buffer instanceof Uint8Array) {
         return {
@@ -413,6 +424,7 @@ export function read_rows_from_buffer(
     col_start?: number,
     col_end?: number
 ): Row[] {
+    assert_integer_row_range(start, count);
     const { view, bytes } = buffer_views(buffer);
     const my_tag_length = is_legacy_format(metadata.format_version)
         ? 0
@@ -441,6 +453,7 @@ export function read_rows_from_data_buffer(
     col_start?: number,
     col_end?: number
 ): Row[] {
+    assert_integer_row_range(start, count);
     const { view, bytes } = buffer_views(buffer);
     return read_rows_from_view(
         view,
@@ -469,6 +482,9 @@ export function read_columns_from_data_buffer(
     out: Map<number, RowCell[]>,
     out_offset?: number
 ): void {
+    if (!Number.isInteger(count)) {
+        throw new RangeError('Row count must be an integer');
+    }
     if (count <= 0 || col_indices.length === 0) return;
 
     const { view, bytes } = buffer_views(buffer);

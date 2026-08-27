@@ -19,6 +19,7 @@ import {
 } from './legacy-header';
 import { legacy_layout_for_version, legacy_expansion_header_size } from './legacy-layout';
 import {
+    assert_integer_row_range,
     read_rows_from_data_buffer,
     read_columns_from_data_buffer,
 } from './data-reader';
@@ -310,6 +311,8 @@ export class DtaFile {
     ): Promise<Row[]> {
         if (this._closed || this._fd === null) return [];
 
+        assert_integer_row_range(start, count);
+
         if (
             this._metadata.nobs === 0
             || start < 0
@@ -317,9 +320,6 @@ export class DtaFile {
             || start >= this._metadata.nobs
         ) {
             return [];
-        }
-        if (Number.isNaN(start) || Number.isNaN(count)) {
-            throw new RangeError('Invalid array length');
         }
 
         const my_actual_count = Math.min(

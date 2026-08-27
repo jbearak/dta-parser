@@ -110,7 +110,7 @@ describe('read_rows (cancellable)', () => {
             }
         });
 
-        it('does not let a signal change NaN range errors', async () => {
+        it('rejects non-integer ranges consistently', async () => {
             my_file = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'auto_v118.dta')
             );
@@ -119,9 +119,14 @@ describe('read_rows (cancellable)', () => {
             for (const [my_start, my_count] of [
                 [0, NaN],
                 [NaN, 1],
+                [0.5, 1],
+                [0, 1.5],
+                [Infinity, 1],
+                [0, Infinity],
             ]) {
                 for (const my_options of [
                     undefined,
+                    { chunk_rows: 1 },
                     {
                         signal: my_controller.signal,
                         chunk_rows: 1,

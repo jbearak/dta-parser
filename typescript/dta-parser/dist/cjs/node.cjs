@@ -1141,6 +1141,13 @@ var LONG_MISSING_DOT2 = 2147483621;
 var FLOAT_MISSING_DOT_RAW2 = 2130706432;
 var FLOAT_MISSING_STEP_RAW2 = 2048;
 var FLOAT_MISSING_Z_RAW2 = FLOAT_MISSING_DOT_RAW2 + 26 * FLOAT_MISSING_STEP_RAW2;
+function assert_integer_row_range(start, count) {
+  if (!Number.isInteger(start) || !Number.isInteger(count)) {
+    throw new RangeError(
+      "Row start and count must be integers"
+    );
+  }
+}
 function buffer_views(buffer) {
   if (buffer instanceof Uint8Array) {
     return {
@@ -1375,6 +1382,7 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
   return the_rows;
 }
 function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, col_end) {
+  assert_integer_row_range(start, count);
   const { view, bytes } = buffer_views(buffer);
   return read_rows_from_view(
     view,
@@ -1388,6 +1396,9 @@ function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, c
   );
 }
 function read_columns_from_data_buffer(buffer, metadata, count, col_indices, out, out_offset) {
+  if (!Number.isInteger(count)) {
+    throw new RangeError("Row count must be an integer");
+  }
   if (count <= 0 || col_indices.length === 0) return;
   const { view, bytes } = buffer_views(buffer);
   const little_endian = metadata.byte_order === "LSF";
@@ -2261,11 +2272,9 @@ var DtaFile = class _DtaFile {
    */
   async read_rows(start, count, col_start, col_end, options) {
     if (this._closed || this._fd === null) return [];
+    assert_integer_row_range(start, count);
     if (this._metadata.nobs === 0 || start < 0 || count <= 0 || start >= this._metadata.nobs) {
       return [];
-    }
-    if (Number.isNaN(start) || Number.isNaN(count)) {
-      throw new RangeError("Invalid array length");
     }
     const my_actual_count = Math.min(
       count,

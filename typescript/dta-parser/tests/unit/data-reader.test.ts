@@ -4,6 +4,7 @@ import * as path from 'path';
 import { parse_metadata } from '../../src/header';
 import {
     read_columns_from_data_buffer,
+    read_rows_from_data_buffer,
     read_rows_from_buffer,
 } from '../../src/data-reader';
 import { make_missing_value } from '../../src';
@@ -202,6 +203,25 @@ describe('read_rows_from_buffer', () => {
                 '__strl__',
             ]);
         });
+
+        it('rejects a fractional row count', () => {
+            const { buffer, metadata } =
+                load_fixture('all_types.dta');
+            const my_strl_idx = metadata.variables.findIndex(
+                my_var => my_var.type === 'strL'
+            );
+            const the_columns = new Map<number, RowCell[]>([
+                [my_strl_idx, []],
+            ]);
+
+            expect(() => read_columns_from_data_buffer(
+                buffer,
+                metadata,
+                0.5,
+                [my_strl_idx],
+                the_columns
+            )).toThrow(RangeError);
+        });
     });
 
     // ----- Cross-version -----
@@ -386,6 +406,34 @@ describe('read_rows_from_buffer', () => {
                 buffer, metadata, 0, 0
             );
             expect(the_rows).toEqual([]);
+        });
+
+        it('rejects non-integer row ranges before decoding', () => {
+            const { buffer, metadata } =
+                load_fixture('auto_v118.dta');
+            const my_data_start =
+                metadata.section_offsets.data + '<data>'.length;
+            const my_data = buffer.slice(my_data_start);
+
+            for (const [my_start, my_count] of [
+                [0.5, 1],
+                [0, 1.5],
+                [NaN, 1],
+                [0, Infinity],
+            ]) {
+                expect(() => read_rows_from_buffer(
+                    buffer,
+                    metadata,
+                    my_start,
+                    my_count
+                )).toThrow(RangeError);
+                expect(() => read_rows_from_data_buffer(
+                    my_data,
+                    metadata,
+                    my_start,
+                    my_count
+                )).toThrow(RangeError);
+            }
         });
     });
 });
