@@ -33,17 +33,18 @@
 #' payloads. If `.x` contains missing values and the result is non-numeric,
 #' supply `.missing` explicitly to choose their new representation. Numeric
 #' widening from integer to double preserves missing values automatically.
-#' Bare numeric sources reject classed replacements such as `Date` or factor
-#' values rather than silently dropping the replacement class. Stata date and
-#' datetime sources accept `Date` and `POSIXct` replacements, respectively.
-#' For other class changes, apply the desired class after recoding.
+#' `dtaparser::recode()` rejects classed replacements such as `Date` or factor
+#' values for bare numeric sources rather than silently dropping the replacement
+#' class. Stata date and datetime sources accept `Date` and `POSIXct`
+#' replacements, respectively. For other class changes, apply the desired class
+#' after recoding.
 #'
 #' When the dtaparser namespace is loaded, `dplyr::recode()` dispatches here
 #' for bare numeric, `haven_labelled`, `Date`, and `POSIXct` vectors. This also
 #' applies when `recode()` is called inside `dplyr::mutate()`, regardless of
-#' package attachment order. Numeric vectors without tags retain dplyr's exact
-#' legacy behavior; tagged vectors preserve unmatched tag payloads and numeric
-#' metadata.
+#' package attachment order. For numeric vectors without tags, this method
+#' retains dplyr's exact legacy behavior. Tagged numeric vectors use
+#' `dtaparser::recode()` and preserve unmatched tag payloads and numeric metadata.
 #'
 #' @return A recoded vector. Unmatched numeric missing values retain their exact
 #'   payload unless `.missing` is supplied.

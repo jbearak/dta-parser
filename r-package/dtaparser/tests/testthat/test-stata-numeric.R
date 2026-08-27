@@ -344,7 +344,8 @@ test_that("integer datetime backing round-trips fractional R seconds", {
     long_values <- read_dta(long_path)$value
     expect_identical(stata_storage_type(long_values), "long")
     expect_identical(stata_storage_type(long_values[1]), "long")
-    expect_identical(as.double(long_values[1]), as.double(long_values)[1])
+    expected_first <- -315619200 + 0.001
+    expect_identical(as.double(long_values[1]), expected_first)
 })
 
 test_that("common types follow the Stata storage promotion lattice", {

@@ -49,17 +49,19 @@ If \code{.x} contains missing values and the result is non-numeric, supply
 \code{.missing} explicitly to choose their new representation. Numeric widening
 from integer to double preserves missing values automatically.
 
-Bare numeric sources reject classed replacements such as \code{Date} or factor
-values rather than silently dropping the replacement class. Stata date and
-datetime sources accept \code{Date} and \code{POSIXct} replacements,
-respectively. For other class changes, apply the desired class after recoding.
+\code{dtaparser::recode()} rejects classed replacements such as \code{Date} or
+factor values for bare numeric sources rather than silently dropping the
+replacement class. Stata date and datetime sources accept \code{Date} and
+\code{POSIXct} replacements, respectively. For other class changes, apply the
+desired class after recoding.
 
 When the dtaparser namespace is loaded, \code{dplyr::recode()} dispatches here
 for bare numeric, \code{haven_labelled}, \code{Date}, and \code{POSIXct}
 vectors. This also applies when \code{recode()} is called inside
-\code{dplyr::mutate()}, regardless of package attachment order. Ordinary
-numeric vectors without tags retain dplyr's exact legacy behavior; tagged
-vectors preserve unmatched tag payloads and numeric metadata.
+\code{dplyr::mutate()}, regardless of package attachment order. For numeric
+vectors without tags, this method retains dplyr's exact legacy behavior. Tagged
+numeric vectors use \code{dtaparser::recode()} and preserve unmatched tag
+payloads and numeric metadata.
 }
 \examples{
 x <- c(1, 2, NA_real_, tagged_missing(c("a", "z")))
