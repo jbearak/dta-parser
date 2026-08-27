@@ -1095,10 +1095,12 @@ var LONG_MISSING_DOT2 = 2147483621;
 var FLOAT_MISSING_DOT_RAW2 = 2130706432;
 var FLOAT_MISSING_STEP_RAW2 = 2048;
 var FLOAT_MISSING_Z_RAW2 = FLOAT_MISSING_DOT_RAW2 + 26 * FLOAT_MISSING_STEP_RAW2;
-function assert_integer_row_range(start, count) {
-  if (!Number.isInteger(start) || !Number.isInteger(count)) {
+function assert_valid_row_range(start, count) {
+  const my_start_valid = Number.isInteger(start) || start === Infinity || start === -Infinity;
+  const my_count_valid = Number.isInteger(count) || count === Infinity || count === -Infinity;
+  if (!my_start_valid || !my_count_valid) {
     throw new RangeError(
-      "Row start and count must be integers"
+      "Row start and count must not be NaN or fractional"
     );
   }
 }
@@ -1264,7 +1266,7 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
   return the_rows;
 }
 function read_rows_from_buffer(buffer, metadata, start, count, col_start, col_end) {
-  assert_integer_row_range(start, count);
+  assert_valid_row_range(start, count);
   const { view, bytes } = buffer_views(buffer);
   const my_tag_length = is_legacy_format(metadata.format_version) ? 0 : DATA_TAG_LENGTH;
   const my_data_start = metadata.section_offsets.data + my_tag_length;
@@ -1280,7 +1282,7 @@ function read_rows_from_buffer(buffer, metadata, start, count, col_start, col_en
   );
 }
 function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, col_end) {
-  assert_integer_row_range(start, count);
+  assert_valid_row_range(start, count);
   const { view, bytes } = buffer_views(buffer);
   return read_rows_from_view(
     view,

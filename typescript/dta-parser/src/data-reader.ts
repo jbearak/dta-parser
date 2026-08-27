@@ -34,13 +34,20 @@ interface BufferViews {
     bytes: Uint8Array;
 }
 
-export function assert_integer_row_range(
+/** Reject NaN and finite fractions; infinities retain sentinel semantics. */
+export function assert_valid_row_range(
     start: number,
     count: number
 ): void {
-    if (!Number.isInteger(start) || !Number.isInteger(count)) {
+    const my_start_valid = Number.isInteger(start)
+        || start === Infinity
+        || start === -Infinity;
+    const my_count_valid = Number.isInteger(count)
+        || count === Infinity
+        || count === -Infinity;
+    if (!my_start_valid || !my_count_valid) {
         throw new RangeError(
-            'Row start and count must be integers'
+            'Row start and count must not be NaN or fractional'
         );
     }
 }
@@ -424,7 +431,7 @@ export function read_rows_from_buffer(
     col_start?: number,
     col_end?: number
 ): Row[] {
-    assert_integer_row_range(start, count);
+    assert_valid_row_range(start, count);
     const { view, bytes } = buffer_views(buffer);
     const my_tag_length = is_legacy_format(metadata.format_version)
         ? 0
@@ -453,7 +460,7 @@ export function read_rows_from_data_buffer(
     col_start?: number,
     col_end?: number
 ): Row[] {
-    assert_integer_row_range(start, count);
+    assert_valid_row_range(start, count);
     const { view, bytes } = buffer_views(buffer);
     return read_rows_from_view(
         view,

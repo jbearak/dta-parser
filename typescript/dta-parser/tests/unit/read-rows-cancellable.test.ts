@@ -121,8 +121,6 @@ describe('read_rows (cancellable)', () => {
                 [NaN, 1],
                 [0.5, 1],
                 [0, 1.5],
-                [Infinity, 1],
-                [0, Infinity],
             ]) {
                 for (const my_options of [
                     undefined,
@@ -142,6 +140,62 @@ describe('read_rows (cancellable)', () => {
                         )
                     ).rejects.toBeInstanceOf(RangeError);
                 }
+            }
+        });
+
+        it('preserves infinite row-bound sentinels', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const the_expected = await my_file.read_rows(
+                0,
+                my_file.nobs
+            );
+
+            for (const my_options of [
+                undefined,
+                { chunk_rows: 1 },
+                {
+                    signal: new AbortController().signal,
+                    chunk_rows: 1,
+                },
+            ]) {
+                expect(
+                    await my_file.read_rows(
+                        0,
+                        Infinity,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual(the_expected);
+                expect(
+                    await my_file.read_rows(
+                        Infinity,
+                        1,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
+                expect(
+                    await my_file.read_rows(
+                        -Infinity,
+                        1,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
+                expect(
+                    await my_file.read_rows(
+                        0,
+                        -Infinity,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
             }
         });
 

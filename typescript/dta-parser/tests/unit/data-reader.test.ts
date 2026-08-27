@@ -419,7 +419,6 @@ describe('read_rows_from_buffer', () => {
                 [0.5, 1],
                 [0, 1.5],
                 [NaN, 1],
-                [0, Infinity],
             ]) {
                 expect(() => read_rows_from_buffer(
                     buffer,
@@ -434,6 +433,42 @@ describe('read_rows_from_buffer', () => {
                     my_count
                 )).toThrow(RangeError);
             }
+        });
+
+        it('preserves infinite row-bound sentinels', () => {
+            const { buffer, metadata } =
+                load_fixture('auto_v118.dta');
+            const the_expected = read_rows_from_buffer(
+                buffer,
+                metadata,
+                0,
+                metadata.nobs
+            );
+
+            expect(read_rows_from_buffer(
+                buffer,
+                metadata,
+                0,
+                Infinity
+            )).toEqual(the_expected);
+            expect(read_rows_from_buffer(
+                buffer,
+                metadata,
+                Infinity,
+                1
+            )).toEqual([]);
+            expect(read_rows_from_buffer(
+                buffer,
+                metadata,
+                -Infinity,
+                1
+            )).toEqual([]);
+            expect(read_rows_from_buffer(
+                buffer,
+                metadata,
+                0,
+                -Infinity
+            )).toEqual([]);
         });
     });
 });

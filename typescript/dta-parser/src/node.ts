@@ -19,7 +19,7 @@ import {
 } from './legacy-header';
 import { legacy_layout_for_version, legacy_expansion_header_size } from './legacy-layout';
 import {
-    assert_integer_row_range,
+    assert_valid_row_range,
     read_rows_from_data_buffer,
     read_columns_from_data_buffer,
 } from './data-reader';
@@ -311,7 +311,7 @@ export class DtaFile {
     ): Promise<Row[]> {
         if (this._closed || this._fd === null) return [];
 
-        assert_integer_row_range(start, count);
+        assert_valid_row_range(start, count);
 
         if (
             this._metadata.nobs === 0

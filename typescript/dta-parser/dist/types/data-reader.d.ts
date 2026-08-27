@@ -1,6 +1,7 @@
 import type { DtaMetadata, Row, RowCell } from './types';
 type DataBuffer = ArrayBuffer | Uint8Array;
-export declare function assert_integer_row_range(start: number, count: number): void;
+/** Reject NaN and finite fractions; infinities retain sentinel semantics. */
+export declare function assert_valid_row_range(start: number, count: number): void;
 /** Read observation rows from a complete .dta file buffer. */
 export declare function read_rows_from_buffer(buffer: ArrayBuffer, metadata: DtaMetadata, start: number, count: number, col_start?: number, col_end?: number): Row[];
 /** Read rows from a buffer containing contiguous observation bytes. */
