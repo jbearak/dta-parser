@@ -43,6 +43,8 @@ static R_altrep_class_t dtaparser_metadata_string_class;
 static int metadata_real_aggregate_mask_enabled;
 static int metadata_real_aggregate_mask;
 
+static SEXP unmaterialized_dictstring_source(SEXP value);
+
 enum {
     METADATA_AGGREGATE_NO_NA = 1,
     METADATA_AGGREGATE_SUM = 2,
@@ -364,6 +366,16 @@ typedef struct {
     int type;
 } numeric_reader;
 
+enum {
+    WRITE_NUMERIC_CALLBACK = 0,
+    WRITE_NUMERIC_INTEGER = 1,
+    WRITE_NUMERIC_DOUBLE = 2,
+    WRITE_NUMERIC_BYTE = 3,
+    WRITE_NUMERIC_INT = 4,
+    WRITE_NUMERIC_LONG = 5,
+    WRITE_NUMERIC_FLOAT = 6
+};
+
 static numeric_reader numeric_reader_create(
     SEXP value, R_xlen_t expected_length
 ) {
@@ -450,16 +462,24 @@ typedef struct {
     int has_value_labels;
     double numeric_shift;
     double numeric_scale;
+    const void *direct_numeric_values;
+    int direct_numeric_kind;
+    int direct_numeric_format_version;
+    int direct_numeric_temporal;
+    int direct_numeric_no_na;
+    void *direct_string_data;
 } dtaparser_write_column;
 
-static int write_string_is_utf8_or_ascii(SEXP value) {
-    if (Rf_getCharCE(value) == CE_UTF8) return 1;
+static int write_string_utf8_status(SEXP value) {
+    int utf8 = Rf_getCharCE(value) == CE_UTF8;
+    int ascii = 1;
     const unsigned char *bytes = (const unsigned char *) CHAR(value);
     int length = LENGTH(value);
     for (int index = 0; index < length; index++) {
-        if (bytes[index] > 0x7f) return 0;
+        if (bytes[index] == 0) return -1;
+        if (bytes[index] > 0x7f) ascii = 0;
     }
-    return 1;
+    return utf8 || ascii;
 }
 
 int dtaparser_write_numeric_at(
@@ -501,6 +521,39 @@ SEXP C_dtaparser_write_string_plan(SEXP value) {
     size_t maximum = 0;
     double missing = 0;
     int needs_translation = 0;
+    SEXP dictionary_source = unmaterialized_dictstring_source(value);
+    if (dictionary_source != R_NilValue) {
+        SEXP external = R_altrep_data1(dictionary_source);
+        dictstring_data *data = (dictstring_data *) R_ExternalPtrAddr(external);
+        SEXP cache = R_ExternalPtrProtected(external);
+        if (data == NULL || TYPEOF(cache) != VECSXP) {
+            Rf_error("dtaparser string dictionary is no longer available");
+        }
+        R_xlen_t value_count = XLENGTH(cache);
+        for (R_xlen_t id = 0; id < value_count; id++) {
+            if ((id & 16383) == 0) R_CheckUserInterrupt();
+            const char *bytes = NULL;
+            int length = 0;
+            if (!dtaparser_dictstring_bytes(
+                    data, (uint32_t) id, &bytes, &length
+                ) || bytes == NULL || length < 0) {
+                Rf_error("invalid dtaparser string-dictionary value");
+            }
+            if (memchr(bytes, 0, (size_t) length) != NULL) {
+                Rf_error("character values cannot contain NUL bytes");
+            }
+            if ((uint64_t) length > UINT64_C(2000000000)) {
+                Rf_error("a strL value exceeds Stata's 2,000,000,000-byte limit");
+            }
+            if ((size_t) length > maximum) maximum = (size_t) length;
+        }
+        SEXP result = PROTECT(Rf_allocVector(REALSXP, 3));
+        REAL(result)[0] = (double) maximum;
+        REAL(result)[1] = 0;
+        REAL(result)[2] = 0;
+        UNPROTECT(1);
+        return result;
+    }
     R_xlen_t length = XLENGTH(value);
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -509,14 +562,21 @@ SEXP C_dtaparser_write_string_plan(SEXP value) {
             missing += 1;
             continue;
         }
+        int utf8_status = write_string_utf8_status(element);
+        if (utf8_status < 0) {
+            Rf_error("character values cannot contain NUL bytes");
+        }
         size_t bytes;
-        if (write_string_is_utf8_or_ascii(element)) {
+        if (utf8_status) {
             bytes = (size_t) LENGTH(element);
         } else {
             bytes = strlen(Rf_translateCharUTF8(element));
             needs_translation = 1;
         }
         if (bytes > maximum) maximum = bytes;
+    }
+    if (maximum > UINT64_C(2000000000)) {
+        Rf_error("a strL value exceeds Stata's 2,000,000,000-byte limit");
     }
 
     SEXP result = PROTECT(Rf_allocVector(REALSXP, 3));
@@ -545,6 +605,14 @@ SEXP C_dtaparser_write_numeric_issues(
     int storage = INTEGER(storage_value)[0];
     double shift = REAL(shift_value)[0];
     double scale = REAL(scale_value)[0];
+    if (reader.storage != NULL && reader.storage->format_version > 111 &&
+        storage == reader.storage->kind &&
+        ((reader.storage->temporal == 0 && shift == 0.0 && scale == 1.0) ||
+         (reader.storage->temporal == 1 && shift == 3653.0 && scale == 1.0) ||
+         (reader.storage->temporal == 2 && shift == 315619200.0 &&
+          scale == 1000.0))) {
+        return Rf_ScalarReal(0.0);
+    }
     double count = 0;
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -1262,6 +1330,18 @@ static SEXP dictstring_cache(SEXP value) {
     return cache;
 }
 
+static SEXP unmaterialized_dictstring_source(SEXP value) {
+    while (ALTREP(value) &&
+           R_altrep_inherits(value, dtaparser_metadata_string_class) &&
+           R_altrep_data2(value) == R_NilValue) {
+        value = R_altrep_data1(value);
+    }
+    return ALTREP(value) &&
+            R_altrep_inherits(value, dtaparser_dictstring_class) &&
+            R_altrep_data2(value) == R_NilValue
+        ? value : R_NilValue;
+}
+
 static SEXP dictstring_cached_value(
     dictstring_data *data, SEXP cache, uint32_t id
 ) {
@@ -1685,16 +1765,47 @@ SEXP C_dtaparser_write(SEXP specification, SEXP path) {
         );
         descriptor->numeric_values = NULL;
         descriptor->string_values = R_NilValue;
+        descriptor->direct_numeric_values = NULL;
+        descriptor->direct_numeric_kind = WRITE_NUMERIC_CALLBACK;
+        descriptor->direct_numeric_format_version = 0;
+        descriptor->direct_numeric_temporal = 0;
+        descriptor->direct_numeric_no_na = 0;
+        descriptor->direct_string_data = NULL;
         if (descriptor->dta_type <= 4) {
             value_readers[index] = numeric_reader_create(
                 values, (R_xlen_t) row_count
             );
             descriptor->numeric_values = &value_readers[index];
+            numeric_reader *reader = &value_readers[index];
+            if (reader->storage != NULL) {
+                descriptor->direct_numeric_values = reader->storage->values;
+                descriptor->direct_numeric_kind =
+                    WRITE_NUMERIC_BYTE + reader->storage->kind;
+                descriptor->direct_numeric_format_version =
+                    reader->storage->format_version;
+                descriptor->direct_numeric_temporal = reader->storage->temporal;
+                descriptor->direct_numeric_no_na = reader->storage->no_na;
+            } else if (reader->integer_values != NULL) {
+                descriptor->direct_numeric_values = reader->integer_values;
+                descriptor->direct_numeric_kind = WRITE_NUMERIC_INTEGER;
+            } else if (reader->real_values != NULL) {
+                descriptor->direct_numeric_values = reader->real_values;
+                descriptor->direct_numeric_kind = WRITE_NUMERIC_DOUBLE;
+            }
         } else {
             if (TYPEOF(values) != STRSXP) {
                 Rf_error("internal string write column must be character");
             }
             descriptor->string_values = values;
+            SEXP dictionary_source = unmaterialized_dictstring_source(values);
+            if (dictionary_source != R_NilValue) {
+                descriptor->direct_string_data = R_ExternalPtrAddr(
+                    R_altrep_data1(dictionary_source)
+                );
+                if (descriptor->direct_string_data == NULL) {
+                    Rf_error("dtaparser string dictionary is no longer available");
+                }
+            }
         }
         descriptor->label_count = (size_t) XLENGTH(label_values);
         descriptor->has_value_labels = LOGICAL(has_value_labels)[0];

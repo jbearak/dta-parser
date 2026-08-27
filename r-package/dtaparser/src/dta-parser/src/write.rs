@@ -18,6 +18,7 @@ const MAX_VALUE_LABEL_TEXT_BYTES: usize = 32_000;
 const MAX_NOTES: usize = 9_999;
 const MAX_NOTE_BYTES: usize = 67_784;
 const MAX_STRL_BYTES: usize = 2_000_000_000;
+const OBSERVATION_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 
 /// Stata application generation that should be able to open an output file.
 ///
@@ -341,7 +342,11 @@ fn validate_numeric_value(
     }
 }
 
-fn validate_data(data: &DtaWriteData<'_>, options: &DtaWriteOptions) -> Result<(), DtaWriteError> {
+fn validate_data(
+    data: &DtaWriteData<'_>,
+    options: &DtaWriteOptions,
+    validate_values: bool,
+) -> Result<(), DtaWriteError> {
     match options.stata_version {
         StataVersion::V18 | StataVersion::V19 => {}
     }
@@ -472,45 +477,51 @@ fn validate_data(data: &DtaWriteData<'_>, options: &DtaWriteOptions) -> Result<(
             }
         }
 
-        for row in 0..data.row_count {
-            match column.dta_type {
-                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
-                    validate_numeric_value(
-                        column,
-                        row,
-                        column.values.numeric_value(&column.name, row)?,
-                    )?;
-                }
-                DtaType::FixedString(width) => {
-                    let value = column.values.string_value(&column.name, row)?;
-                    if value.contains('\0') || value.len() > usize::from(width) {
-                        return Err(DtaWriteError::InvalidValue {
-                            column: column.name.clone(),
+        if validate_values {
+            for row in 0..data.row_count {
+                match column.dta_type {
+                    DtaType::Byte
+                    | DtaType::Int
+                    | DtaType::Long
+                    | DtaType::Float
+                    | DtaType::Double => {
+                        validate_numeric_value(
+                            column,
                             row,
-                            message: format!(
-                                "string must contain at most {width} UTF-8 bytes and no NUL"
-                            ),
-                        });
+                            column.values.numeric_value(&column.name, row)?,
+                        )?;
                     }
-                }
-                DtaType::StrL => {
-                    let value = column.values.string_value(&column.name, row)?;
-                    if value.contains('\0') {
-                        return Err(DtaWriteError::InvalidValue {
-                            column: column.name.clone(),
-                            row,
-                            message: "strL value contains a NUL character".into(),
-                        });
+                    DtaType::FixedString(width) => {
+                        let value = column.values.string_value(&column.name, row)?;
+                        if value.contains('\0') || value.len() > usize::from(width) {
+                            return Err(DtaWriteError::InvalidValue {
+                                column: column.name.clone(),
+                                row,
+                                message: format!(
+                                    "string must contain at most {width} UTF-8 bytes and no NUL"
+                                ),
+                            });
+                        }
                     }
-                    if value.len() > MAX_STRL_BYTES {
-                        return Err(DtaWriteError::InvalidValue {
-                            column: column.name.clone(),
-                            row,
-                            message: format!(
-                                "strL has {} UTF-8 bytes; maximum is {MAX_STRL_BYTES}",
-                                value.len()
-                            ),
-                        });
+                    DtaType::StrL => {
+                        let value = column.values.string_value(&column.name, row)?;
+                        if value.contains('\0') {
+                            return Err(DtaWriteError::InvalidValue {
+                                column: column.name.clone(),
+                                row,
+                                message: "strL value contains a NUL character".into(),
+                            });
+                        }
+                        if value.len() > MAX_STRL_BYTES {
+                            return Err(DtaWriteError::InvalidValue {
+                                column: column.name.clone(),
+                                row,
+                                message: format!(
+                                    "strL has {} UTF-8 bytes; maximum is {MAX_STRL_BYTES}",
+                                    value.len()
+                                ),
+                            });
+                        }
                     }
                 }
             }
@@ -682,47 +693,40 @@ fn missing_integer(tag: MissingTag, dot: i64) -> i64 {
     dot + i64::from(tag.offset())
 }
 
-fn write_numeric<W: Write>(
-    writer: &mut W,
-    dta_type: &DtaType,
-    value: DtaWriteNumericValue,
-) -> Result<(), DtaWriteError> {
+fn append_numeric(buffer: &mut Vec<u8>, dta_type: &DtaType, value: DtaWriteNumericValue) {
     match (dta_type, value) {
-        (DtaType::Byte, DtaWriteNumericValue::Value(value)) => {
-            writer.write_all(&[(value as i8) as u8])?
-        }
+        (DtaType::Byte, DtaWriteNumericValue::Value(value)) => buffer.push((value as i8) as u8),
         (DtaType::Byte, DtaWriteNumericValue::Missing(tag)) => {
-            writer.write_all(&[(missing_integer(tag, 101) as i8) as u8])?
+            buffer.push((missing_integer(tag, 101) as i8) as u8)
         }
         (DtaType::Int, DtaWriteNumericValue::Value(value)) => {
-            writer.write_all(&(value as i16).to_le_bytes())?
+            buffer.extend_from_slice(&(value as i16).to_le_bytes())
         }
         (DtaType::Int, DtaWriteNumericValue::Missing(tag)) => {
-            writer.write_all(&(missing_integer(tag, 32_741) as i16).to_le_bytes())?
+            buffer.extend_from_slice(&(missing_integer(tag, 32_741) as i16).to_le_bytes())
         }
         (DtaType::Long, DtaWriteNumericValue::Value(value)) => {
-            writer.write_all(&(value as i32).to_le_bytes())?
+            buffer.extend_from_slice(&(value as i32).to_le_bytes())
         }
         (DtaType::Long, DtaWriteNumericValue::Missing(tag)) => {
-            writer.write_all(&(missing_integer(tag, 2_147_483_621) as i32).to_le_bytes())?
+            buffer.extend_from_slice(&(missing_integer(tag, 2_147_483_621) as i32).to_le_bytes())
         }
         (DtaType::Float, DtaWriteNumericValue::Value(value)) => {
-            writer.write_all(&(value as f32).to_bits().to_le_bytes())?
+            buffer.extend_from_slice(&(value as f32).to_bits().to_le_bytes())
         }
         (DtaType::Float, DtaWriteNumericValue::Missing(tag)) => {
             let bits = FLOAT_MISSING_DOT_BITS + u32::from(tag.offset()) * FLOAT_MISSING_STEP_BITS;
-            writer.write_all(&bits.to_le_bytes())?
+            buffer.extend_from_slice(&bits.to_le_bytes())
         }
         (DtaType::Double, DtaWriteNumericValue::Value(value)) => {
-            writer.write_all(&value.to_bits().to_le_bytes())?
+            buffer.extend_from_slice(&value.to_bits().to_le_bytes())
         }
         (DtaType::Double, DtaWriteNumericValue::Missing(tag)) => {
             let bits = DOUBLE_MISSING_DOT_BITS + u64::from(tag.offset()) * DOUBLE_MISSING_STEP_BITS;
-            writer.write_all(&bits.to_le_bytes())?
+            buffer.extend_from_slice(&bits.to_le_bytes())
         }
         _ => unreachable!("validated numeric storage type"),
     }
-    Ok(())
 }
 
 #[derive(Debug)]
@@ -810,23 +814,29 @@ fn write_observations<W: Write>(
     data: &DtaWriteData<'_>,
     version: FormatVersion,
     strls: &[Option<StrlColumnPlan>],
+    observation_width: u64,
 ) -> Result<(), DtaWriteError> {
+    let row_width = usize::try_from(observation_width)
+        .map_err(|_| DtaWriteError::Overflow("observation width"))?;
+    let rows_per_buffer = (OBSERVATION_BUFFER_BYTES / row_width).max(1);
+    let buffer_capacity = row_width
+        .checked_mul(rows_per_buffer)
+        .ok_or(DtaWriteError::Overflow("observation buffer"))?;
+    let mut buffer = Vec::with_capacity(buffer_capacity);
     for row in 0..data.row_count {
         for (column_index, column) in data.columns.iter().enumerate() {
             match column.dta_type {
                 DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
-                    write_numeric(
-                        writer,
+                    append_numeric(
+                        &mut buffer,
                         &column.dta_type,
                         column.values.numeric_value(&column.name, row)?,
-                    )?
+                    )
                 }
                 DtaType::FixedString(width) => {
                     let value = column.values.string_value(&column.name, row)?;
-                    writer.write_all(value.as_bytes())?;
-                    for _ in value.len()..usize::from(width) {
-                        writer.write_all(&[0])?;
-                    }
+                    buffer.extend_from_slice(value.as_bytes());
+                    buffer.resize(buffer.len() + usize::from(width) - value.len(), 0);
                 }
                 DtaType::StrL => {
                     let target = strls[column_index]
@@ -834,17 +844,24 @@ fn write_observations<W: Write>(
                         .and_then(|plan| plan.targets[usize::try_from(row).ok()?]);
                     match target {
                         Some(observation) => write_strl_pointer(
-                            writer,
+                            &mut buffer,
                             version,
                             u32::try_from(column_index + 1)
                                 .map_err(|_| DtaWriteError::Overflow("strL variable pointer"))?,
                             observation,
                         )?,
-                        None => writer.write_all(&[0; 8])?,
+                        None => buffer.extend_from_slice(&[0; 8]),
                     }
                 }
             }
         }
+        if (row + 1) % rows_per_buffer as u64 == 0 {
+            writer.write_all(&buffer)?;
+            buffer.clear();
+        }
+    }
+    if !buffer.is_empty() {
+        writer.write_all(&buffer)?;
     }
     Ok(())
 }
@@ -970,23 +987,20 @@ fn write_value_labels<W: Write>(
     Ok(())
 }
 
-/// Validate and stream a standalone release-118 or release-119 DTA dataset.
-///
-/// The destination must be seekable because the section map is patched after
-/// the last section offset is known. No output bytes are written unless the
-/// complete input validates successfully.
-pub fn write_dta_to<W: Write + Seek>(
+fn write_dta_impl<W: Write + Seek>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
+    validate_values: bool,
+    mut observation_encoder: Option<&mut dyn FnMut(&mut W) -> Result<(), DtaWriteError>>,
 ) -> Result<DtaWriteSummary, DtaWriteError> {
-    validate_data(data, options)?;
+    validate_data(data, options, validate_values)?;
     let version = if data.columns.len() <= RELEASE_118_MAX_VARIABLES {
         FormatVersion::V118
     } else {
         FormatVersion::V119
     };
-    let _observation_width = data.columns.iter().try_fold(0_u64, |width, column| {
+    let observation_width = data.columns.iter().try_fold(0_u64, |width, column| {
         width
             .checked_add(storage_width(&column.dta_type))
             .ok_or(DtaWriteError::Overflow("observation width"))
@@ -1006,7 +1020,11 @@ pub fn write_dta_to<W: Write + Seek>(
     write_metadata_sections(writer, data, version, &mut offsets)?;
     offsets[9] = position(writer)?;
     write_tag(writer, b"<data>")?;
-    write_observations(writer, data, version, &strls)?;
+    if let Some(encoder) = observation_encoder.as_mut() {
+        encoder(writer)?;
+    } else {
+        write_observations(writer, data, version, &strls, observation_width)?;
+    }
     write_tag(writer, b"</data>")?;
 
     offsets[10] = position(writer)?;
@@ -1028,6 +1046,52 @@ pub fn write_dta_to<W: Write + Seek>(
         format_version: version,
         bytes_written: end,
     })
+}
+
+/// Validate and stream a standalone release-118 or release-119 DTA dataset.
+///
+/// The destination must be seekable because the section map is patched after
+/// the last section offset is known. No output bytes are written unless the
+/// complete input validates successfully.
+pub fn write_dta_to<W: Write + Seek>(
+    writer: &mut W,
+    data: &DtaWriteData<'_>,
+    options: &DtaWriteOptions,
+) -> Result<DtaWriteSummary, DtaWriteError> {
+    write_dta_impl(writer, data, options, true, None)
+}
+
+/// Stream data whose adapter has already validated every column value.
+///
+/// Dataset and variable structure are still validated. This internal seam
+/// avoids a redundant value pass for adapters that perform equivalent checks
+/// while preparing their native descriptors.
+#[doc(hidden)]
+pub fn write_prevalidated_dta_to<W: Write + Seek>(
+    writer: &mut W,
+    data: &DtaWriteData<'_>,
+    options: &DtaWriteOptions,
+) -> Result<DtaWriteSummary, DtaWriteError> {
+    write_dta_impl(writer, data, options, false, None)
+}
+
+/// Stream prevalidated data with an adapter-specific observation encoder.
+///
+/// The encoder writes exactly the row-major observation payload between the
+/// DTA data tags. The common writer retains ownership of every other section,
+/// the map, structural validation, and error propagation.
+#[doc(hidden)]
+pub fn write_prevalidated_dta_with_observation_encoder_to<W, F>(
+    writer: &mut W,
+    data: &DtaWriteData<'_>,
+    options: &DtaWriteOptions,
+    mut observation_encoder: F,
+) -> Result<DtaWriteSummary, DtaWriteError>
+where
+    W: Write + Seek,
+    F: FnMut(&mut W) -> Result<(), DtaWriteError>,
+{
+    write_dta_impl(writer, data, options, false, Some(&mut observation_encoder))
 }
 
 impl std::fmt::Display for DtaWriteLabelValue {

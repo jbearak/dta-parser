@@ -30,6 +30,72 @@ test_that("bare logical columns write as Stata bytes", {
     expect_identical(as.double(actual$flag), c(1, 0, NA_real_))
 })
 
+test_that("compact reader storage and materialized fallbacks write identically", {
+    source_path <- tempfile(fileext = ".dta")
+    direct_path <- tempfile(fileext = ".dta")
+    materialized_path <- tempfile(fileext = ".dta")
+    numeric_path <- tempfile(fileext = ".dta")
+    string_path <- tempfile(fileext = ".dta")
+    on.exit(unlink(c(
+        source_path, direct_path, materialized_path, numeric_path, string_path
+    )), add = TRUE)
+
+    source <- data.frame(
+        narrow = stata_byte(c(-5, 100, tagged_missing("b"))),
+        text = c("alpha", "beta", "alpha")
+    )
+    expect_silent(write_dta(source, source_path))
+    compact <- read_dta(source_path)
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(compact$narrow))
+
+    expect_silent(write_dta(compact, direct_path))
+    materialized <- compact
+    materialized[] <- lapply(
+        materialized, dtaparser:::.force_altrep_materialization
+    )
+    expect_false(
+        dtaparser:::.is_unmaterialized_numeric_altrep(materialized$narrow)
+    )
+    expect_silent(write_dta(materialized, materialized_path))
+    expect_identical(
+        readBin(direct_path, "raw", n = file.info(direct_path)$size),
+        readBin(
+            materialized_path, "raw", n = file.info(materialized_path)$size
+        )
+    )
+
+    changed_numeric <- compact["narrow"]
+    changed_numeric$narrow[[2L]] <- 99
+    expect_silent(write_dta(changed_numeric, numeric_path))
+    expect_identical(
+        as.double(read_dta(numeric_path, use_numeric_altrep = FALSE)$narrow),
+        c(-5, 99, tagged_missing("b"))
+    )
+
+    changed_string <- compact["text"]
+    changed_string$text[[2L]] <- NA_character_
+    expect_warning(
+        write_dta(changed_string, string_path),
+        class = "dtaparser_write_character_missing_warning"
+    )
+    expect_identical(
+        as.character(read_dta(string_path)$text), c("alpha", "", "alpha")
+    )
+})
+
+test_that("legacy compact numerics are revalidated for modern missing ranges", {
+    legacy_path <- system.file(
+        "extdata", "synthetic_v111.dta", package = "dtaparser"
+    )
+    legacy <- read_dta(legacy_path, col_select = "b")
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(legacy$b))
+    prepared <- dtaparser:::.prepare_numeric_write_values(
+        legacy$b, "byte"
+    )
+    expect_identical(prepared$issue_count, 2)
+    expect_identical(as.double(prepared$values), c(1, NA, NA, NA))
+})
+
 test_that("character missing values become empty strings and long values use strL", {
     latin <- iconv("café", from = "UTF-8", to = "latin1")
     data <- data.frame(

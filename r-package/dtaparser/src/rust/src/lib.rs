@@ -8,11 +8,13 @@ use std::ptr;
 
 use ahash::AHashMap;
 use dta_parser::{
-    write_dta_to, ColumnValues, DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink,
-    DtaType, DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData,
-    DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteOptions, DtaWriteValueLabel, FormatVersion,
-    MissingTag, ParallelDtaSink, ReadOptions, StataVersion, TextEncoding, ValueLabelTable,
-    VariableInfo,
+    write_prevalidated_dta_to, write_prevalidated_dta_with_observation_encoder_to, ColumnValues,
+    DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteColumn,
+    DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
+    DtaWriteNumericValue, DtaWriteOptions, DtaWriteValueLabel, FormatVersion, MissingTag,
+    ParallelDtaSink, ReadOptions, StataVersion, TextEncoding, ValueLabelTable, VariableInfo,
+    DOUBLE_MISSING_DOT_BITS, DOUBLE_MISSING_STEP_BITS, FLOAT_MISSING_DOT_BITS,
+    FLOAT_MISSING_STEP_BITS,
 };
 
 type Sexp = *mut c_void;
@@ -28,6 +30,7 @@ const INTERRUPT_STRIDE: usize = 16_384;
 const R_DATA_FRAME_MAX_ROWS: u64 = c_int::MAX as u64;
 const SECONDS_1960_TO_1970: f64 = 315_619_200.0;
 const DAYS_1960_TO_1970: f64 = 3_653.0;
+const R_WRITE_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 
 extern "C" {
     fn SET_STRING_ELT(vector: Sexp, index: RLen, value: Sexp);
@@ -1795,6 +1798,12 @@ pub struct RWriteColumnDescriptor {
     has_value_labels: c_int,
     numeric_shift: f64,
     numeric_scale: f64,
+    direct_numeric_values: *const c_void,
+    direct_numeric_kind: c_int,
+    direct_numeric_format_version: c_int,
+    direct_numeric_temporal: c_int,
+    direct_numeric_no_na: c_int,
+    direct_string_data: *mut c_void,
 }
 
 struct RWriteSource<'a> {
@@ -1823,6 +1832,127 @@ unsafe fn r_numeric_at(reader: *const c_void, index: usize) -> Result<(f64, c_in
         return Err("R numeric source could not supply a value".into());
     }
     Ok((value, missing_code))
+}
+
+fn direct_missing_code(offset: u8) -> c_int {
+    if offset == 0 {
+        0
+    } else {
+        c_int::from(b'a' + offset - 1)
+    }
+}
+
+fn direct_signed_missing(value: i64, dot: i64, z: i64, legacy: bool) -> Option<u8> {
+    if legacy {
+        return (value == z).then_some(0);
+    }
+    (dot..=z)
+        .contains(&value)
+        .then(|| u8::try_from(value - dot).expect("missing offset is bounded"))
+}
+
+fn direct_float_missing(bits: u32, legacy: bool) -> Option<u8> {
+    if legacy {
+        return ((FLOAT_MISSING_DOT_BITS..0x8000_0000).contains(&bits)).then_some(0);
+    }
+    let delta = bits.checked_sub(FLOAT_MISSING_DOT_BITS)?;
+    (delta <= 26 * FLOAT_MISSING_STEP_BITS && delta % FLOAT_MISSING_STEP_BITS == 0)
+        .then(|| u8::try_from(delta / FLOAT_MISSING_STEP_BITS).expect("missing offset is bounded"))
+}
+
+fn direct_r_missing_code(value: f64) -> c_int {
+    if !value.is_nan() {
+        return -1;
+    }
+    let bits = value.to_bits();
+    let sign_bit = 0x8000_0000_0000_0000_u64;
+    let quiet_nan_bit = 0x0008_0000_0000_0000_u64;
+    let tag_bits = 0x0000_00ff_0000_0000_u64;
+    let ignored_bits = sign_bit | quiet_nan_bit | tag_bits;
+    let tagged_layout = 0x7ff0_0000_0000_07a2_u64;
+    let tag = ((bits & tag_bits) >> 32) as u8;
+    if tag != 0 && (bits & !ignored_bits) == (tagged_layout & !ignored_bits) {
+        return if tag.is_ascii_lowercase() {
+            c_int::from(tag)
+        } else {
+            256
+        };
+    }
+    if bits == unsafe { R_NaReal }.to_bits() {
+        0
+    } else {
+        256
+    }
+}
+
+unsafe fn direct_numeric_at(
+    descriptor: &RWriteColumnDescriptor,
+    index: usize,
+) -> Result<Option<(f64, c_int)>, String> {
+    let values = descriptor.direct_numeric_values;
+    if values.is_null() || descriptor.direct_numeric_kind == 0 {
+        return Ok(None);
+    }
+    let legacy = descriptor.direct_numeric_format_version <= 111;
+    let no_na = descriptor.direct_numeric_no_na != 0;
+    let (mut value, missing_code) = match descriptor.direct_numeric_kind {
+        1 => {
+            let value = ptr::read(values.cast::<c_int>().add(index));
+            if value == c_int::MIN {
+                (0.0, 0)
+            } else {
+                (f64::from(value), -1)
+            }
+        }
+        2 => {
+            let value = ptr::read(values.cast::<f64>().add(index));
+            (value, direct_r_missing_code(value))
+        }
+        3 => {
+            let value = ptr::read(values.cast::<i8>().add(index));
+            let missing = (!no_na)
+                .then(|| direct_signed_missing(i64::from(value), 101, 127, legacy))
+                .flatten();
+            (f64::from(value), missing.map_or(-1, direct_missing_code))
+        }
+        4 => {
+            let value = ptr::read(values.cast::<i16>().add(index));
+            let missing = (!no_na)
+                .then(|| direct_signed_missing(i64::from(value), 32_741, 32_767, legacy))
+                .flatten();
+            (f64::from(value), missing.map_or(-1, direct_missing_code))
+        }
+        5 => {
+            let value = ptr::read(values.cast::<i32>().add(index));
+            let missing = (!no_na)
+                .then(|| {
+                    direct_signed_missing(i64::from(value), 2_147_483_621, 2_147_483_647, legacy)
+                })
+                .flatten();
+            (f64::from(value), missing.map_or(-1, direct_missing_code))
+        }
+        6 => {
+            let value = ptr::read(values.cast::<f32>().add(index));
+            let missing = (!no_na)
+                .then(|| direct_float_missing(value.to_bits(), legacy))
+                .flatten();
+            let missing_code = missing.map_or_else(
+                || if value.is_nan() { 256 } else { -1 },
+                direct_missing_code,
+            );
+            (f64::from(value), missing_code)
+        }
+        _ => return Err("invalid direct R numeric source kind".into()),
+    };
+    if missing_code == -1 {
+        value = match descriptor.direct_numeric_temporal {
+            0 => value,
+            1 => value - DAYS_1960_TO_1970,
+            2 => value / 1000.0 - SECONDS_1960_TO_1970,
+            _ => return Err("invalid direct R numeric temporal kind".into()),
+        };
+    }
+    Ok(Some((value, missing_code)))
 }
 
 unsafe fn r_string_bytes(values: Sexp, index: usize) -> Result<(*const u8, usize), String> {
@@ -1861,7 +1991,11 @@ impl DtaWriteColumnSource for RWriteSource<'_> {
             return Err("write interrupted".into());
         }
         let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
-        let (value, missing_code) = unsafe { r_numeric_at(self.descriptor.numeric_values, index) }?;
+        let (value, missing_code) = unsafe { direct_numeric_at(self.descriptor, index) }?
+            .map_or_else(
+                || unsafe { r_numeric_at(self.descriptor.numeric_values, index) },
+                Ok,
+            )?;
         Ok(match missing_from_code(missing_code)? {
             Some(tag) => DtaWriteNumericValue::Missing(tag),
             None => DtaWriteNumericValue::Value(
@@ -1875,6 +2009,25 @@ impl DtaWriteColumnSource for RWriteSource<'_> {
             return Err("write interrupted".into());
         }
         let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+        if !self.descriptor.direct_string_data.is_null() {
+            let data = unsafe { &*self.descriptor.direct_string_data.cast::<DictStringData>() };
+            if index >= data.length {
+                return Err("R row index is outside the string dictionary".into());
+            }
+            let id = unsafe { ptr::read(data.value_ids.add(index)) };
+            let &(value, length) = data
+                .value_views
+                .get(id as usize)
+                .ok_or_else(|| "R string dictionary contains an invalid value ID".to_owned())?;
+            let bytes = if length == 0 {
+                &[]
+            } else {
+                unsafe { std::slice::from_raw_parts(value, length) }
+            };
+            return std::str::from_utf8(bytes)
+                .map(Cow::Borrowed)
+                .map_err(|_| "R string dictionary value is not valid UTF-8".to_owned());
+        }
         let (value, length) = unsafe { r_string_bytes(self.descriptor.string_values, index) }?;
         let bytes = if length == 0 {
             &[]
@@ -1887,6 +2040,99 @@ impl DtaWriteColumnSource for RWriteSource<'_> {
             .map(Cow::Borrowed)
             .map_err(|_| "R character value is not valid UTF-8".to_owned())
     }
+}
+
+fn append_r_numeric(buffer: &mut Vec<u8>, dta_type: &DtaType, value: DtaWriteNumericValue) {
+    let missing_integer = |tag: MissingTag, dot: i64| dot + i64::from(tag.offset());
+    match (dta_type, value) {
+        (DtaType::Byte, DtaWriteNumericValue::Value(value)) => buffer.push((value as i8) as u8),
+        (DtaType::Byte, DtaWriteNumericValue::Missing(tag)) => {
+            buffer.push((missing_integer(tag, 101) as i8) as u8)
+        }
+        (DtaType::Int, DtaWriteNumericValue::Value(value)) => {
+            buffer.extend_from_slice(&(value as i16).to_le_bytes())
+        }
+        (DtaType::Int, DtaWriteNumericValue::Missing(tag)) => {
+            buffer.extend_from_slice(&(missing_integer(tag, 32_741) as i16).to_le_bytes())
+        }
+        (DtaType::Long, DtaWriteNumericValue::Value(value)) => {
+            buffer.extend_from_slice(&(value as i32).to_le_bytes())
+        }
+        (DtaType::Long, DtaWriteNumericValue::Missing(tag)) => {
+            buffer.extend_from_slice(&(missing_integer(tag, 2_147_483_621) as i32).to_le_bytes())
+        }
+        (DtaType::Float, DtaWriteNumericValue::Value(value)) => {
+            buffer.extend_from_slice(&(value as f32).to_bits().to_le_bytes())
+        }
+        (DtaType::Float, DtaWriteNumericValue::Missing(tag)) => {
+            let bits = FLOAT_MISSING_DOT_BITS + u32::from(tag.offset()) * FLOAT_MISSING_STEP_BITS;
+            buffer.extend_from_slice(&bits.to_le_bytes())
+        }
+        (DtaType::Double, DtaWriteNumericValue::Value(value)) => {
+            buffer.extend_from_slice(&value.to_bits().to_le_bytes())
+        }
+        (DtaType::Double, DtaWriteNumericValue::Missing(tag)) => {
+            let bits = DOUBLE_MISSING_DOT_BITS + u64::from(tag.offset()) * DOUBLE_MISSING_STEP_BITS;
+            buffer.extend_from_slice(&bits.to_le_bytes())
+        }
+        _ => unreachable!("direct R observation storage was checked"),
+    }
+}
+
+fn write_direct_r_observations<W: Write>(
+    writer: &mut W,
+    data: &DtaWriteData<'_>,
+    sources: &[RWriteSource<'_>],
+) -> Result<(), DtaWriteError> {
+    let row_width = data.columns.iter().try_fold(0_usize, |width, column| {
+        let column_width = match column.dta_type {
+            DtaType::Byte => 1,
+            DtaType::Int => 2,
+            DtaType::Long | DtaType::Float => 4,
+            DtaType::Double => 8,
+            DtaType::FixedString(width) => usize::from(width),
+            DtaType::StrL => unreachable!("strL does not use the direct R encoder"),
+        };
+        width.checked_add(column_width)
+    });
+    let row_width = row_width.ok_or(DtaWriteError::Overflow("R observation width"))?;
+    let rows_per_buffer = (R_WRITE_BUFFER_BYTES / row_width).max(1);
+    let capacity = row_width
+        .checked_mul(rows_per_buffer)
+        .ok_or(DtaWriteError::Overflow("R observation buffer"))?;
+    let mut buffer = Vec::with_capacity(capacity);
+    for row in 0..data.row_count {
+        for (column, source) in data.columns.iter().zip(sources) {
+            let map_source_error = |message| DtaWriteError::Source {
+                column: column.name.clone(),
+                row,
+                message,
+            };
+            match column.dta_type {
+                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
+                    append_r_numeric(
+                        &mut buffer,
+                        &column.dta_type,
+                        source.numeric_value(row).map_err(map_source_error)?,
+                    )
+                }
+                DtaType::FixedString(width) => {
+                    let value = source.string_value(row).map_err(map_source_error)?;
+                    buffer.extend_from_slice(value.as_bytes());
+                    buffer.resize(buffer.len() + usize::from(width) - value.len(), 0);
+                }
+                DtaType::StrL => unreachable!("strL does not use the direct R encoder"),
+            }
+        }
+        if (row + 1) % rows_per_buffer as u64 == 0 {
+            writer.write_all(&buffer)?;
+            buffer.clear();
+        }
+    }
+    if !buffer.is_empty() {
+        writer.write_all(&buffer)?;
+    }
+    Ok(())
 }
 
 unsafe fn required_c_string(value: *const c_char, description: &str) -> Result<String, String> {
@@ -2000,13 +2246,31 @@ unsafe fn write_impl(
         row_count,
         columns,
     };
+    let direct_observations = descriptors.iter().all(|descriptor| {
+        if descriptor.dta_type <= 4 {
+            !descriptor.direct_numeric_values.is_null()
+        } else {
+            descriptor.dta_type != 2_050 && !descriptor.direct_string_data.is_null()
+        }
+    });
     let file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(path)
         .map_err(|error| format!("could not create temporary DTA output: {error}"))?;
     let mut writer = BufWriter::new(file);
-    write_dta_to(&mut writer, &data, &options).map_err(|error| error.to_string())?;
+    if direct_observations {
+        write_prevalidated_dta_with_observation_encoder_to(
+            &mut writer,
+            &data,
+            &options,
+            |writer| write_direct_r_observations(writer, &data, &sources),
+        )
+        .map_err(|error| error.to_string())?;
+    } else {
+        write_prevalidated_dta_to(&mut writer, &data, &options)
+            .map_err(|error| error.to_string())?;
+    }
     writer
         .flush()
         .map_err(|error| format!("could not flush DTA output: {error}"))?;

@@ -61,7 +61,9 @@ if (workload == "stata-storage" && writer == "dtaparser") {
 }
 rows <- nrow(data)
 columns <- ncol(data)
-input_object_bytes <- as.numeric(object.size(data))
+input_object_bytes <- if (workload == "standard-r") {
+    as.numeric(object.size(data))
+} else NA_real_
 schema <- if (workload == "standard-r") standard_r_write_schema(data) else ""
 invisible(gc())
 options(warn = 2)

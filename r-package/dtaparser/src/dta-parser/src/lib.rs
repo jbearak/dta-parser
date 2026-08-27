@@ -79,7 +79,8 @@ pub use types::{
 };
 pub use value_labels::{parse_value_labels, parse_value_labels_with_encoding};
 pub use write::{
-    write_dta_to, DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData,
-    DtaWriteError, DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteOptions, DtaWriteSummary,
-    DtaWriteValueLabel, StataVersion,
+    write_dta_to, write_prevalidated_dta_to, write_prevalidated_dta_with_observation_encoder_to,
+    DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError,
+    DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteOptions, DtaWriteSummary, DtaWriteValueLabel,
+    StataVersion,
 };

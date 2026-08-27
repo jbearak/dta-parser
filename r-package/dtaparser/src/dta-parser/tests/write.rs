@@ -1,11 +1,87 @@
-use std::io::Cursor;
+use std::cell::Cell;
+use std::io::{Cursor, Write};
 
 use dta_parser::{
-    read_dta, read_dta_with_options, write_dta_to, ByteOrder, ColumnValues, DtaType,
-    DtaWriteColumn, DtaWriteColumnValues, DtaWriteData, DtaWriteLabelValue, DtaWriteNumericValue,
-    DtaWriteOptions, DtaWriteValueLabel, FormatVersion, MissingTag, ReadOptions, StataVersion,
+    read_dta, read_dta_with_options, write_dta_to, write_prevalidated_dta_to,
+    write_prevalidated_dta_with_observation_encoder_to, ByteOrder, ColumnValues, DtaType,
+    DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteLabelValue,
+    DtaWriteNumericValue, DtaWriteOptions, DtaWriteValueLabel, FormatVersion, MissingTag,
+    ReadOptions, StataVersion,
 };
 use sha2::{Digest, Sha256};
+
+struct CountingSource {
+    calls: Cell<usize>,
+    values: [DtaWriteNumericValue; 3],
+}
+
+impl DtaWriteColumnSource for CountingSource {
+    fn len(&self) -> u64 {
+        self.values.len() as u64
+    }
+
+    fn numeric_value(&self, row: u64) -> Result<DtaWriteNumericValue, String> {
+        self.calls.set(self.calls.get() + 1);
+        self.values
+            .get(row as usize)
+            .copied()
+            .ok_or_else(|| "row is outside test source".into())
+    }
+}
+
+#[test]
+fn prevalidated_adapter_avoids_a_redundant_value_pass() {
+    let source = CountingSource {
+        calls: Cell::new(0),
+        values: [
+            DtaWriteNumericValue::Value(-1.0),
+            DtaWriteNumericValue::Missing(MissingTag::System),
+            DtaWriteNumericValue::Value(1.0),
+        ],
+    };
+    let data = DtaWriteData {
+        dataset_label: String::new(),
+        notes: Vec::new(),
+        row_count: 3,
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Long,
+            format: "%12.0g".into(),
+            label: String::new(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            values: DtaWriteColumnValues::Source(&source),
+        }],
+    };
+
+    let mut checked = Cursor::new(Vec::new());
+    write_dta_to(&mut checked, &data, &DtaWriteOptions::default()).unwrap();
+    assert_eq!(source.calls.get(), 6);
+    let checked = checked.into_inner();
+
+    source.calls.set(0);
+    let mut prevalidated = Cursor::new(Vec::new());
+    write_prevalidated_dta_to(&mut prevalidated, &data, &DtaWriteOptions::default()).unwrap();
+    assert_eq!(source.calls.get(), 3);
+    assert_eq!(prevalidated.into_inner(), checked);
+
+    source.calls.set(0);
+    let mut adapted = Cursor::new(Vec::new());
+    write_prevalidated_dta_with_observation_encoder_to(
+        &mut adapted,
+        &data,
+        &DtaWriteOptions::default(),
+        |writer| {
+            for value in [-1_i32, 2_147_483_621, 1] {
+                writer.write_all(&value.to_le_bytes())?;
+            }
+            Ok(())
+        },
+    )
+    .unwrap();
+    assert_eq!(source.calls.get(), 0);
+    assert_eq!(adapted.into_inner(), checked);
+}
 
 #[test]
 fn writes_a_release_118_dataset_that_the_public_parser_can_read() {

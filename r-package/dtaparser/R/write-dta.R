@@ -52,17 +52,15 @@
 write_dta <- function(data, path, version = 19L,
                       label = attr(data, "label", exact = TRUE),
                       strl_threshold = 2045L, adjust_tz = TRUE) {
+    resolved_path <- .resolve_dta_write_path(path)
+    for (write_warning in resolved_path$warnings) {
+        .dta_write_warn(write_warning$message, write_warning$class)
+    }
     specification <- .prepare_dta_write(
         data, version, label, strl_threshold, adjust_tz
     )
-    resolved_path <- .resolve_dta_write_path(path)
     destination <- resolved_path$path
-    for (write_warning in c(
-        attr(specification, "write_warnings", exact = TRUE),
-        resolved_path$warnings
-    )) {
-        .dta_write_warn(write_warning$message, write_warning$class)
-    }
+    write_warnings <- attr(specification, "write_warnings", exact = TRUE)
 
     temporary <- tempfile(
         pattern = paste0(".", basename(destination), "-dtaparser-"),
@@ -80,6 +78,9 @@ write_dta <- function(data, path, version = 19L,
             )
         }
     )
+    for (write_warning in write_warnings) {
+        .dta_write_warn(write_warning$message, write_warning$class)
+    }
 
     if (file.exists(destination)) {
         mode <- file.info(destination)$mode
@@ -391,11 +392,17 @@ write_dta <- function(data, path, version = 19L,
             attr(column, "label", exact = TRUE),
             sprintf("variable label for `%s`", name)
         )
-        return(list(
+        prepared_values <- .prepare_numeric_write_values(
+            as.integer(column), "long"
+        )
+        result <- list(
             enc2utf8(name), 2L, enc2utf8(format), variable_label,
-            as.double(seq_along(levels)), enc2utf8(levels), as.integer(column),
+            as.double(seq_along(levels)), enc2utf8(levels),
+            prepared_values$values,
             TRUE, 0, 1
-        ))
+        )
+        attr(result, "numeric_replacements") <- prepared_values$issue_count
+        return(result)
     }
     if (is.character(column) && is.null(dim(column))) {
         plan <- .Call(C_dtaparser_write_string_plan, column)
