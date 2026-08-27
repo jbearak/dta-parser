@@ -1,6 +1,15 @@
-import { describe, it, expect, afterEach } from 'bun:test';
+import {
+    describe,
+    it,
+    expect,
+    afterEach,
+} from 'bun:test';
 import * as path from 'path';
 import { DtaFile } from '../../src/node';
+import {
+    capture_read_lengths,
+    with_temporary_nobs,
+} from './test-helpers';
 
 // -----------------------------------------------------------
 // read_rows cancellable / chunked path
@@ -56,6 +65,140 @@ describe('read_rows (cancellable)', () => {
             expect(the_chunked).toEqual(the_single);
         });
 
+        it('returns [] for an empty projection across chunks', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+
+            for (const [my_col_start, my_col_end] of [
+                [4, 4],
+                [my_file.nvar + 1, my_file.nvar + 2],
+            ]) {
+                const the_rows = await my_file.read_rows(
+                    0,
+                    my_file.nobs,
+                    my_col_start,
+                    my_col_end,
+                    { chunk_rows: 1 }
+                );
+                expect(the_rows).toEqual([]);
+            }
+        });
+
+        it('returns [] for a negative start across chunks', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const my_controller = new AbortController();
+
+            for (const my_options of [
+                { chunk_rows: 1 },
+                {
+                    signal: my_controller.signal,
+                    chunk_rows: 1,
+                },
+            ]) {
+                expect(
+                    await my_file.read_rows(
+                        -1,
+                        3,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
+            }
+        });
+
+        it('rejects non-integer ranges consistently', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const my_controller = new AbortController();
+
+            for (const [my_start, my_count] of [
+                [0, NaN],
+                [NaN, 1],
+                [0.5, 1],
+                [0, 1.5],
+            ]) {
+                for (const my_options of [
+                    undefined,
+                    { chunk_rows: 1 },
+                    {
+                        signal: my_controller.signal,
+                        chunk_rows: 1,
+                    },
+                ]) {
+                    await expect(
+                        my_file.read_rows(
+                            my_start,
+                            my_count,
+                            undefined,
+                            undefined,
+                            my_options
+                        )
+                    ).rejects.toBeInstanceOf(RangeError);
+                }
+            }
+        });
+
+        it('preserves infinite row-bound sentinels', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const the_expected = await my_file.read_rows(
+                0,
+                my_file.nobs
+            );
+
+            for (const my_options of [
+                undefined,
+                { chunk_rows: 1 },
+                {
+                    signal: new AbortController().signal,
+                    chunk_rows: 1,
+                },
+            ]) {
+                expect(
+                    await my_file.read_rows(
+                        0,
+                        Infinity,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual(the_expected);
+                expect(
+                    await my_file.read_rows(
+                        Infinity,
+                        1,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
+                expect(
+                    await my_file.read_rows(
+                        -Infinity,
+                        1,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
+                expect(
+                    await my_file.read_rows(
+                        0,
+                        -Infinity,
+                        undefined,
+                        undefined,
+                        my_options
+                    )
+                ).toEqual([]);
+            }
+        });
+
         it('chunked read resolves strL across chunk boundary', async () => {
             my_file = await DtaFile.open(
                 path.join(FIXTURE_DIR, 'all_types.dta')
@@ -67,6 +210,36 @@ describe('read_rows (cancellable)', () => {
                 { signal: my_controller.signal, chunk_rows: 2 }
             );
             expect(the_chunked).toEqual(the_single);
+        });
+
+        it('clamps a negative projection before resolving strL', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'all_types.dta')
+            );
+            const my_strl_idx = my_file.variables.findIndex(
+                my_var => my_var.type === 'strL'
+            );
+            const the_expected = await my_file.read_rows(
+                0,
+                my_file.nobs,
+                0,
+                my_strl_idx + 1
+            );
+
+            for (const my_options of [
+                undefined,
+                { chunk_rows: 2 },
+            ]) {
+                expect(
+                    await my_file.read_rows(
+                        0,
+                        my_file.nobs,
+                        -1,
+                        my_strl_idx + 1,
+                        my_options
+                    )
+                ).toEqual(the_expected);
+            }
         });
 
         it('falls back to the default for invalid chunk_rows', async () => {
@@ -108,17 +281,10 @@ describe('read_rows (cancellable)', () => {
             const my_controller = new AbortController();
             my_controller.abort();
 
-            let my_error: unknown = null;
-            try {
-                await my_file.read_rows(
-                    0, 74, undefined, undefined,
-                    { signal: my_controller.signal, chunk_rows: 7 }
-                );
-            } catch (err) {
-                my_error = err;
-            }
-            expect(my_error).toBeInstanceOf(Error);
-            expect((my_error as Error).name).toBe('AbortError');
+            await expect(my_file.read_rows(
+                0, 74, undefined, undefined,
+                { signal: my_controller.signal, chunk_rows: 7 }
+            )).rejects.toHaveProperty('name', 'AbortError');
         });
 
         it('rejects with AbortError when aborted mid-read', async () => {
@@ -134,14 +300,34 @@ describe('read_rows (cancellable)', () => {
             // Abort after the first inter-chunk yield.
             setImmediate(() => my_controller.abort());
 
-            let my_error: unknown = null;
-            try {
-                await my_promise;
-            } catch (err) {
-                my_error = err;
-            }
-            expect(my_error).toBeInstanceOf(Error);
-            expect((my_error as Error).name).toBe('AbortError');
+            await expect(my_promise).rejects.toHaveProperty(
+                'name', 'AbortError'
+            );
+        });
+
+        it('does not preallocate the full result before the first yield', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const my_controller = new AbortController();
+            setImmediate(() => my_controller.abort());
+
+            await with_temporary_nobs(
+                my_file,
+                0x1_0000_0000,
+                async () => {
+                    await expect(my_file!.read_rows(
+                        0,
+                        my_file!.nobs,
+                        undefined,
+                        undefined,
+                        {
+                            signal: my_controller.signal,
+                            chunk_rows: 1,
+                        }
+                    )).rejects.toHaveProperty('name', 'AbortError');
+                }
+            );
         });
     });
 
@@ -179,6 +365,34 @@ describe('read_rows (cancellable)', () => {
                 0, 74, undefined, undefined, {}
             );
             expect(the_b).toEqual(the_a);
+        });
+
+        it('honors chunk_rows to bound observation reads', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const my_chunk_rows = 5;
+            const my_row_width = my_file.variables.reduce(
+                (sum, variable) => sum + variable.byte_width,
+                0
+            );
+            const the_read_lengths = await capture_read_lengths(
+                async () => {
+                    const the_rows = await my_file!.read_rows(
+                        0,
+                        my_file!.nobs,
+                        undefined,
+                        undefined,
+                        { chunk_rows: my_chunk_rows }
+                    );
+                    expect(the_rows.length).toBe(my_file!.nobs);
+                }
+            );
+
+            expect(the_read_lengths.length).toBeGreaterThan(1);
+            expect(Math.max(...the_read_lengths)).toBeLessThanOrEqual(
+                my_chunk_rows * my_row_width
+            );
         });
     });
 });

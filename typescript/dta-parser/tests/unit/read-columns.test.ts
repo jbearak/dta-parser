@@ -3,12 +3,14 @@ import {
     describe,
     expect,
     it,
-    spyOn,
 } from 'bun:test';
-import * as fs from 'fs';
 import * as path from 'path';
 import { DtaFile } from '../../src/node';
 import type { RowCell } from '../../src/types';
+import {
+    capture_read_lengths,
+    with_temporary_nobs,
+} from './test-helpers';
 
 const FIXTURE_DIR = path.resolve(
     __dirname, '../../../../tests/fixtures/dta'
@@ -123,6 +125,20 @@ describe('DtaFile.read_columns', () => {
             [my_strl_idx, 0, 2],
             2
         );
+
+        const the_gso_entries = [
+            ...(
+                my_file as unknown as {
+                    _gso_index: Map<string, object>;
+                }
+            )._gso_index.values(),
+        ];
+        expect(the_gso_entries.length).toBeGreaterThan(0);
+        expect(
+            the_gso_entries.some(
+                my_entry => 'decoded_value' in my_entry
+            )
+        ).toBe(false);
     });
 
     it('loads the strL section lazily and only once', async () => {
@@ -134,19 +150,10 @@ describe('DtaFile.read_columns', () => {
         );
         expect(my_strl_idx).toBeGreaterThanOrEqual(0);
 
-        const my_original = fs.readSync;
-        function count_reads(
+        async function count_reads(
             fn: () => Promise<unknown>
         ): Promise<number> {
-            let n = 0;
-            const my_spy = spyOn(fs, 'readSync');
-            my_spy.mockImplementation((...args) => {
-                n++;
-                return (my_original as Function)(...args);
-            });
-            return fn()
-                .then(() => n)
-                .finally(() => my_spy.mockRestore());
+            return (await capture_read_lengths(fn)).length;
         }
 
         // Numeric columns must not touch the GSO section at all.
@@ -191,18 +198,29 @@ describe('DtaFile.read_columns', () => {
         const my_controller = new AbortController();
         my_controller.abort();
 
-        let my_error: unknown = null;
-        try {
-            await my_file.read_columns(
-                [0, 1],
-                { signal: my_controller.signal, chunk_rows: 2 }
-            );
-        } catch (err) {
-            my_error = err;
-        }
+        await expect(my_file.read_columns(
+            [0, 1],
+            { signal: my_controller.signal, chunk_rows: 2 }
+        )).rejects.toHaveProperty('name', 'AbortError');
+    });
 
-        expect(my_error).toBeInstanceOf(Error);
-        expect((my_error as Error).name).toBe('AbortError');
+    it('checks a pre-aborted signal before allocating result columns', async () => {
+        my_file = await DtaFile.open(
+            path.join(FIXTURE_DIR, 'auto_v118.dta')
+        );
+        const my_controller = new AbortController();
+        my_controller.abort();
+
+        await with_temporary_nobs(
+            my_file,
+            0x1_0000_0000,
+            async () => {
+                await expect(my_file!.read_columns(
+                    [0],
+                    { signal: my_controller.signal }
+                )).rejects.toHaveProperty('name', 'AbortError');
+            }
+        );
     });
 
     it('rejects with AbortError when aborted mid-read', async () => {
@@ -217,15 +235,31 @@ describe('DtaFile.read_columns', () => {
         );
         setImmediate(() => my_controller.abort());
 
-        let my_error: unknown = null;
-        try {
-            await my_promise;
-        } catch (err) {
-            my_error = err;
-        }
+        await expect(my_promise).rejects.toHaveProperty(
+            'name', 'AbortError'
+        );
+    });
 
-        expect(my_error).toBeInstanceOf(Error);
-        expect((my_error as Error).name).toBe('AbortError');
+    it('does not preallocate full columns before the first yield', async () => {
+        my_file = await DtaFile.open(
+            path.join(FIXTURE_DIR, 'auto_v118.dta')
+        );
+        const my_controller = new AbortController();
+        setImmediate(() => my_controller.abort());
+
+        await with_temporary_nobs(
+            my_file,
+            0x1_0000_0000,
+            async () => {
+                await expect(my_file!.read_columns(
+                    [0, 1],
+                    {
+                        signal: my_controller.signal,
+                        chunk_rows: 1,
+                    }
+                )).rejects.toHaveProperty('name', 'AbortError');
+            }
+        );
     });
 
     it('chunks even without a signal so data reads stay bounded', async () => {
@@ -237,30 +271,12 @@ describe('DtaFile.read_columns', () => {
             (sum, my_var) => sum + my_var.byte_width,
             0
         );
-        const the_read_lengths: number[] = [];
-        const my_original = fs.readSync;
-        const my_spy = spyOn(fs, 'readSync');
-        my_spy.mockImplementation(
-            (fd, buffer, offset, length, position) => {
-                the_read_lengths.push(length);
-                return my_original(
-                    fd,
-                    buffer,
-                    offset,
-                    length,
-                    position
-                );
-            }
-        );
-
-        try {
-            await my_file.read_columns(
+        const the_read_lengths = await capture_read_lengths(
+            () => my_file!.read_columns(
                 [1, 10],
                 { chunk_rows: my_chunk_rows }
-            );
-        } finally {
-            my_spy.mockRestore();
-        }
+            )
+        );
 
         expect(the_read_lengths.length).toBeGreaterThan(1);
         expect(

@@ -3,6 +3,7 @@ import {
     classify_raw_float_missing,
     is_missing_value,
     classify_missing_value,
+    make_missing_value,
     missing_type_to_label_key,
     STATA_MISSING,
     STATA_MISSING_A,
@@ -15,6 +16,17 @@ import {
 // -----------------------------------------------------------
 
 describe('missing-values', () => {
+    it('returns independent mutable missing-value objects', () => {
+        const my_first = make_missing_value('.');
+        const my_second = make_missing_value('.');
+
+        expect(my_second).not.toBe(my_first);
+        expect(Object.isFrozen(my_first)).toBe(false);
+
+        my_first.missing_type = '.a';
+        expect(my_first.missing_type).toBe('.a');
+        expect(my_second.missing_type).toBe('.');
+    });
 
     // ----- Exported constants -----
 

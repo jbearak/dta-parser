@@ -12,7 +12,8 @@ export interface StrlPointer {
 /**
  * Build an index of all GSO entries from the strls section.
  *
- * Returns a Map keyed by "v:o" string for O(1) lookup.
+ * Returns a Map keyed by "v:o" string for O(1) lookup. Content offsets
+ * are relative to `buffer`; `base_offset` only maps file coordinates into it.
  * The map is empty when the dataset has no strL variables.
  */
 export declare function build_gso_index(buffer: ArrayBuffer, metadata: DtaMetadata, base_offset?: number): Map<string, GsoEntry>;

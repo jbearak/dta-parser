@@ -19,6 +19,8 @@ import {
 } from './legacy-header';
 import { legacy_layout_for_version, legacy_expansion_header_size } from './legacy-layout';
 import {
+    assert_valid_row_range,
+    data_buffer_view,
     read_rows_from_data_buffer,
     read_columns_from_data_buffer,
 } from './data-reader';
@@ -55,21 +57,23 @@ const MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 const MAX_READ_RETRIES = 2;
 const DATA_TAG_LENGTH = '<data>'.length;
 
-// Default rows per chunk for the cancellable read path. Bounds the
-// synchronous work between event-loop yields so an abort posted while
-// a large column is being read can be observed promptly.
+// Default chunk limits. The byte limit prevents wide files from creating
+// observation buffers hundreds of megabytes in size.
 const DEFAULT_CHUNK_ROWS = 65536;
+const DEFAULT_CHUNK_BYTES = 16 * 1024 * 1024;
 
 /** Options for {@link DtaFile.read_rows}. */
 export interface ReadRowsOptions {
     /**
      * When provided, the read is performed in chunks that yield to the
      * event loop between them, and is abandoned with an `AbortError` as
-     * soon as the signal fires. Without a signal, the read is a single
-     * synchronous pass (the original fast path).
+     * soon as the signal fires. Reads without a signal remain synchronous.
      */
     signal?: AbortSignal;
-    /** Rows per chunk on the cancellable path (default 65536). */
+    /**
+     * Rows per chunk. By default, cancellable reads use at most 65536
+     * rows or 16 MiB; synchronous chunks are bounded only by 16 MiB.
+     */
     chunk_rows?: number;
 }
 
@@ -77,15 +81,7 @@ export interface ReadRowsOptions {
 export type DtaFileOpenOptions = TextEncodingOptions;
 
 /** Options for {@link DtaFile.read_columns}. */
-export interface ReadColumnsOptions {
-    /**
-     * When provided, aborting the signal rejects with an `AbortError`
-     * between observation chunks.
-     */
-    signal?: AbortSignal;
-    /** Rows per chunk (default 65536). */
-    chunk_rows?: number;
-}
+export type ReadColumnsOptions = ReadRowsOptions;
 
 function throw_if_aborted(signal: AbortSignal): void {
     if (signal.aborted) {
@@ -100,13 +96,24 @@ function yield_to_event_loop(): Promise<void> {
 }
 
 function normalise_chunk_rows(
-    requested_chunk_rows: number | undefined
+    requested_chunk_rows: number | undefined,
+    row_width: number,
+    cancellable: boolean
 ): number {
-    return typeof requested_chunk_rows === 'number'
+    if (
+        typeof requested_chunk_rows === 'number'
         && Number.isInteger(requested_chunk_rows)
         && requested_chunk_rows >= 1
-        ? requested_chunk_rows
+    ) {
+        return requested_chunk_rows;
+    }
+
+    const my_byte_bounded_rows = row_width > 0
+        ? Math.max(1, Math.floor(DEFAULT_CHUNK_BYTES / row_width))
         : DEFAULT_CHUNK_ROWS;
+    return cancellable
+        ? Math.min(DEFAULT_CHUNK_ROWS, my_byte_bounded_rows)
+        : my_byte_bounded_rows;
 }
 
 function normalise_column_indices(
@@ -149,11 +156,9 @@ export class DtaFile {
     // and reads that never touch an strL column, never read or retain the
     // section. Once loaded, the section bytes stay resident so each cell
     // resolves with an in-memory slice + decode rather than a per-cell
-    // disk read. `_gso_base` is the section's file offset, used to map an
-    // entry's absolute offset into `_gso_section`.
+    // disk read.
     private _gso_index: Map<string, GsoEntry>;
     private _gso_section: Uint8Array | null;
-    private _gso_base: number;
     private _gso_loaded: boolean;
     private _value_label_tables: Map<
         string,
@@ -178,7 +183,6 @@ export class DtaFile {
         this._metadata = metadata;
         this._gso_index = new Map();
         this._gso_section = null;
-        this._gso_base = 0;
         this._gso_loaded = false;
         this._value_label_tables = value_label_tables;
         this._closed = false;
@@ -296,8 +300,8 @@ export class DtaFile {
      * @param options - Cancellation options (see {@link ReadRowsOptions}).
      *   When `options.signal` is provided, the read is chunked and
      *   yields between chunks so the abort can be observed; it rejects
-     *   with an `AbortError` if the signal fires. Without a signal the
-     *   read is a single synchronous pass identical to prior behavior.
+     *   with an `AbortError` if the signal fires. Without a signal, chunks
+     *   run synchronously and bound the temporary observation buffer.
      */
     async read_rows(
         start: number,
@@ -308,69 +312,64 @@ export class DtaFile {
     ): Promise<Row[]> {
         if (this._closed || this._fd === null) return [];
 
-        const my_actual_count = Math.min(
-            count,
-            this._metadata.nobs - start
-        );
+        assert_valid_row_range(start, count);
+
         if (
             this._metadata.nobs === 0
+            || start < 0
+            || count <= 0
             || start >= this._metadata.nobs
-            || my_actual_count <= 0
         ) {
             return [];
         }
 
-        // Fast path: no signal → single synchronous read,
-        // byte-identical to the original implementation.
-        if (!options?.signal) {
-            return this._read_rows_range(
-                start, my_actual_count, col_start, col_end
-            );
-        }
-
-        // Cancellable path: read in chunks, yielding to the event
-        // loop between them so a queued abort is observed promptly.
-        const my_signal = options.signal;
-        // Use the default for any non-positive-integer chunk size (0,
-        // negative, NaN, fractional); each would stall or corrupt the
-        // chunk loop.
-        const my_chunk_rows = normalise_chunk_rows(
-            options.chunk_rows
+        const my_actual_count = Math.min(
+            count,
+            this._metadata.nobs - start
         );
-        throw_if_aborted(my_signal);
 
-        const the_rows: Row[] = [];
-        let my_read = 0;
-        while (my_read < my_actual_count) {
-            // Yield before every chunk after the first, then check the
-            // signal, so an abort delivered during the yield is caught
-            // before the next (potentially long) synchronous read.
-            if (my_read > 0) {
-                await yield_to_event_loop();
-                throw_if_aborted(my_signal);
-            }
-            // A close during the yield must not surface a partial
-            // column; matching the "closed returns []" contract keeps
-            // a truncated read from masquerading as success.
-            if (this._closed || this._fd === null) return [];
+        const my_signal = options?.signal;
+        const my_chunk_rows = normalise_chunk_rows(
+            options?.chunk_rows,
+            this._metadata.obs_length,
+            my_signal !== undefined
+        );
+        if (my_signal) throw_if_aborted(my_signal);
 
-            const my_chunk_count = Math.min(
-                my_chunk_rows, my_actual_count - my_read
-            );
-            const my_chunk = this._read_rows_range(
-                start + my_read,
+        const my_col_start = Math.max(0, col_start ?? 0);
+        const my_col_end = Math.min(
+            this._metadata.nvar,
+            col_end ?? this._metadata.nvar
+        );
+        if (my_col_start >= my_col_end) return [];
+
+        const the_rows: Row[] = my_signal
+            ? []
+            : new Array<Row>(my_actual_count);
+        const my_complete = await this._for_each_observation_chunk(
+            start,
+            my_actual_count,
+            my_chunk_rows,
+            my_signal,
+            (
+                my_data_buffer,
+                my_chunk_start,
                 my_chunk_count,
-                col_start,
-                col_end
-            );
-            for (const my_row of my_chunk) {
-                the_rows.push(my_row);
+                my_output_offset
+            ) => {
+                this._decode_rows_range(
+                    my_data_buffer,
+                    my_chunk_start,
+                    my_chunk_count,
+                    my_col_start,
+                    my_col_end,
+                    the_rows,
+                    my_output_offset
+                );
             }
-            my_read += my_chunk_count;
-        }
+        );
 
-        throw_if_aborted(my_signal);
-        return the_rows;
+        return my_complete ? the_rows : [];
     }
 
     /**
@@ -405,9 +404,23 @@ export class DtaFile {
             col_indices,
             this._metadata.nvar
         );
+        const my_signal = options?.signal;
+        if (
+            my_signal
+            && the_columns.length > 0
+            && this._metadata.nobs > 0
+        ) {
+            throw_if_aborted(my_signal);
+        }
+
         const the_values = new Map<number, RowCell[]>();
         for (const my_col of the_columns) {
-            the_values.set(my_col, []);
+            the_values.set(
+                my_col,
+                my_signal
+                    ? []
+                    : new Array<RowCell>(this._metadata.nobs)
+            );
         }
 
         if (
@@ -417,113 +430,129 @@ export class DtaFile {
             return the_values;
         }
 
-        const my_signal = options?.signal;
-        if (my_signal) {
-            throw_if_aborted(my_signal);
-        }
-
         const my_chunk_rows = normalise_chunk_rows(
-            options?.chunk_rows
+            options?.chunk_rows,
+            this._metadata.obs_length,
+            my_signal !== undefined
         );
-        let my_read = 0;
-        while (my_read < this._metadata.nobs) {
-            if (my_read > 0) {
-                await yield_to_event_loop();
-                if (my_signal) {
-                    throw_if_aborted(my_signal);
+        const my_complete = await this._for_each_observation_chunk(
+            0,
+            this._metadata.nobs,
+            my_chunk_rows,
+            my_signal,
+            (
+                my_data_buffer,
+                _my_chunk_start,
+                my_chunk_count,
+                my_output_offset
+            ) => {
+                read_columns_from_data_buffer(
+                    my_data_buffer,
+                    this._metadata,
+                    my_chunk_count,
+                    the_columns,
+                    the_values,
+                    my_output_offset,
+                    false
+                );
+
+                for (const my_col of the_columns) {
+                    if (this._strl_col_set.has(my_col)) {
+                        this._resolve_strl_column(
+                            the_values.get(my_col)!,
+                            my_output_offset,
+                            my_data_buffer,
+                            my_col,
+                            my_chunk_count
+                        );
+                    }
                 }
             }
-            // A close during the yield must not surface a partial result;
-            // returning a keyless map keeps a truncated read from
-            // masquerading as complete data, matching read_rows' "closed
-            // returns []" contract (see the @returns note above).
+        );
+
+        return my_complete ? the_values : new Map();
+    }
+
+    /** Decode one observation chunk directly into the caller's row array. */
+    private _decode_rows_range(
+        data_buffer: Uint8Array,
+        start: number,
+        count: number,
+        col_start: number,
+        col_end: number,
+        out: Row[],
+        out_offset: number
+    ): void {
+        read_rows_from_data_buffer(
+            data_buffer,
+            this._metadata,
+            start,
+            count,
+            col_start,
+            col_end,
+            out,
+            out_offset
+        );
+
+        if (this._strl_col_indices.length > 0) {
+            this._resolve_strls(
+                out,
+                data_buffer,
+                col_start,
+                col_end,
+                out_offset,
+                count
+            );
+        }
+    }
+
+    /**
+     * Read contiguous observation chunks and centralize yielding,
+     * cancellation, and close handling for every output layout.
+     */
+    private async _for_each_observation_chunk(
+        start: number,
+        count: number,
+        chunk_rows: number,
+        signal: AbortSignal | undefined,
+        consume: (
+            data_buffer: Uint8Array,
+            chunk_start: number,
+            chunk_count: number,
+            output_offset: number
+        ) => void
+    ): Promise<boolean> {
+        let my_read = 0;
+        while (my_read < count) {
+            if (my_read > 0 && signal) {
+                await yield_to_event_loop();
+                throw_if_aborted(signal);
+            }
             if (this._closed || this._fd === null) {
-                return new Map();
+                return false;
             }
 
             const my_chunk_count = Math.min(
-                my_chunk_rows,
-                this._metadata.nobs - my_read
+                chunk_rows, count - my_read
             );
-            const my_chunk_start = my_read;
+            const my_chunk_start = start + my_read;
             const my_data_buffer = read_data_rows(
                 this._fd,
                 this._metadata,
                 my_chunk_start,
                 my_chunk_count
             );
-
-            // One pass decodes every requested column straight into its
-            // flat array (strL cells land as placeholders)...
-            read_columns_from_data_buffer(
+            consume(
                 my_data_buffer,
-                this._metadata,
+                my_chunk_start,
                 my_chunk_count,
-                the_columns,
-                the_values
+                my_read
             );
-
-            // ...then resolve the placeholders for any strL columns.
-            for (const my_col of the_columns) {
-                if (this._strl_col_set.has(my_col)) {
-                    this._resolve_strl_column(
-                        the_values.get(my_col)!,
-                        my_chunk_start,
-                        my_data_buffer,
-                        my_col,
-                        my_chunk_count
-                    );
-                }
-            }
-
             my_read += my_chunk_count;
         }
 
-        if (my_signal) {
-            throw_if_aborted(my_signal);
-        }
-        return the_values;
-    }
-
-    /**
-     * Read a contiguous row range in a single synchronous pass and
-     * resolve any strL columns in range. Shared by both the fast path
-     * and each chunk of the cancellable path. Callers must ensure the
-     * file is open (`_fd !== null`).
-     */
-    private _read_rows_range(
-        start: number,
-        count: number,
-        col_start?: number,
-        col_end?: number
-    ): Row[] {
-        const my_data_buffer = read_data_rows(
-            this._fd!,
-            this._metadata,
-            start,
-            count
-        );
-        const the_rows = read_rows_from_data_buffer(
-            my_data_buffer,
-            this._metadata,
-            start,
-            count,
-            col_start,
-            col_end
-        );
-
-        // Resolve strL placeholders if any strL columns
-        // fall within the requested column range
-        if (this._strl_col_indices.length > 0) {
-            this._resolve_strls(
-                the_rows,
-                my_data_buffer,
-                col_start ?? 0,
-                col_end ?? this._metadata.nvar
-            );
-        }
-
-        return the_rows;
+        if (signal) throw_if_aborted(signal);
+        return true;
     }
 
     // -------------------------------------------------------
@@ -589,7 +618,6 @@ export class DtaFile {
             my_buffer, this._metadata, my_start
         );
         this._gso_section = new Uint8Array(my_buffer);
-        this._gso_base = my_start;
         this._gso_loaded = true;
     }
 
@@ -602,9 +630,11 @@ export class DtaFile {
      */
     private _resolve_strls(
         the_rows: Row[],
-        data_buffer: ArrayBuffer,
+        data_buffer: Uint8Array,
         col_start: number,
-        col_end: number
+        col_end: number,
+        row_start: number,
+        row_count: number
     ): void {
         if (this._fd === null) return;
 
@@ -619,7 +649,7 @@ export class DtaFile {
         if (!my_has_strl_in_range) return;
         this._ensure_gso();
 
-        const my_view = new DataView(data_buffer);
+        const my_view = data_buffer_view(data_buffer);
 
         for (const my_abs_col of this._strl_col_indices) {
             // Skip columns outside the requested range
@@ -635,11 +665,11 @@ export class DtaFile {
             const my_var = this._metadata
                 .variables[my_abs_col];
 
-            for (let i = 0; i < the_rows.length; i++) {
+            for (let i = 0; i < row_count; i++) {
                 const my_pointer_offset =
                     i * this._metadata.obs_length
                     + my_var.byte_offset;
-                the_rows[i][my_row_col] =
+                the_rows[row_start + i][my_row_col] =
                     this._resolve_strl_at(
                         my_view, my_pointer_offset
                     );
@@ -657,12 +687,12 @@ export class DtaFile {
     private _resolve_strl_column(
         col_values: RowCell[],
         base_index: number,
-        data_buffer: ArrayBuffer,
+        data_buffer: Uint8Array,
         abs_col: number,
         count: number
     ): void {
         this._ensure_gso();
-        const my_view = new DataView(data_buffer);
+        const my_view = data_buffer_view(data_buffer);
         const my_var = this._metadata.variables[abs_col];
         for (let i = 0; i < count; i++) {
             const my_pointer_offset =
@@ -701,11 +731,7 @@ export class DtaFile {
 
         return decode_gso_entry(
             this._gso_section,
-            {
-                ...my_entry,
-                content_offset:
-                    my_entry.content_offset - this._gso_base,
-            },
+            my_entry,
             this.text_encoding
         );
     }
@@ -895,7 +921,7 @@ function read_data_rows(
     metadata: DtaMetadata,
     start: number,
     count: number
-): ArrayBuffer {
+): Uint8Array {
     const my_tag_length = is_legacy_format(
         metadata.format_version
     ) ? 0 : DATA_TAG_LENGTH;
@@ -905,14 +931,14 @@ function read_data_rows(
         + start * metadata.obs_length;
     const my_length = count * metadata.obs_length;
 
-    return read_range(fd, my_offset, my_length);
+    return read_bytes(fd, my_offset, my_length);
 }
 
-function read_range(
+function read_bytes(
     fd: number,
     offset: number,
     length: number
-): ArrayBuffer {
+): Uint8Array {
     const my_buffer = Buffer.allocUnsafe(length);
     let my_total_read = 0;
     let my_attempts = 0;
@@ -940,9 +966,25 @@ function read_range(
         my_total_read += my_bytes_read;
     }
 
-    return my_buffer.buffer.slice(
-        my_buffer.byteOffset,
-        my_buffer.byteOffset + my_total_read
+    return my_buffer;
+}
+
+function read_range(
+    fd: number,
+    offset: number,
+    length: number
+): ArrayBuffer {
+    const my_bytes = read_bytes(fd, offset, length);
+    if (
+        my_bytes.buffer instanceof ArrayBuffer
+        && my_bytes.byteOffset === 0
+        && my_bytes.byteLength === my_bytes.buffer.byteLength
+    ) {
+        return my_bytes.buffer;
+    }
+    return my_bytes.buffer.slice(
+        my_bytes.byteOffset,
+        my_bytes.byteOffset + my_bytes.byteLength
     ) as ArrayBuffer;
 }
 

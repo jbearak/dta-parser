@@ -5,31 +5,24 @@ export interface ReadRowsOptions {
     /**
      * When provided, the read is performed in chunks that yield to the
      * event loop between them, and is abandoned with an `AbortError` as
-     * soon as the signal fires. Without a signal, the read is a single
-     * synchronous pass (the original fast path).
+     * soon as the signal fires. Reads without a signal remain synchronous.
      */
     signal?: AbortSignal;
-    /** Rows per chunk on the cancellable path (default 65536). */
+    /**
+     * Rows per chunk. By default, cancellable reads use at most 65536
+     * rows or 16 MiB; synchronous chunks are bounded only by 16 MiB.
+     */
     chunk_rows?: number;
 }
 /** Options for {@link DtaFile.open}. */
 export type DtaFileOpenOptions = TextEncodingOptions;
 /** Options for {@link DtaFile.read_columns}. */
-export interface ReadColumnsOptions {
-    /**
-     * When provided, aborting the signal rejects with an `AbortError`
-     * between observation chunks.
-     */
-    signal?: AbortSignal;
-    /** Rows per chunk (default 65536). */
-    chunk_rows?: number;
-}
+export type ReadColumnsOptions = ReadRowsOptions;
 export declare class DtaFile {
     private _fd;
     private readonly _metadata;
     private _gso_index;
     private _gso_section;
-    private _gso_base;
     private _gso_loaded;
     private _value_label_tables;
     private _closed;
@@ -68,8 +61,8 @@ export declare class DtaFile {
      * @param options - Cancellation options (see {@link ReadRowsOptions}).
      *   When `options.signal` is provided, the read is chunked and
      *   yields between chunks so the abort can be observed; it rejects
-     *   with an `AbortError` if the signal fires. Without a signal the
-     *   read is a single synchronous pass identical to prior behavior.
+     *   with an `AbortError` if the signal fires. Without a signal, chunks
+     *   run synchronously and bound the temporary observation buffer.
      */
     read_rows(start: number, count: number, col_start?: number, col_end?: number, options?: ReadRowsOptions): Promise<Row[]>;
     /**
@@ -89,13 +82,13 @@ export declare class DtaFile {
      *   directly) rather than assuming every requested key is present.
      */
     read_columns(col_indices: number[], options?: ReadColumnsOptions): Promise<Map<number, RowCell[]>>;
+    /** Decode one observation chunk directly into the caller's row array. */
+    private _decode_rows_range;
     /**
-     * Read a contiguous row range in a single synchronous pass and
-     * resolve any strL columns in range. Shared by both the fast path
-     * and each chunk of the cancellable path. Callers must ensure the
-     * file is open (`_fd !== null`).
+     * Read contiguous observation chunks and centralize yielding,
+     * cancellation, and close handling for every output layout.
      */
-    private _read_rows_range;
+    private _for_each_observation_chunk;
     /**
      * Release the open file handle and internal caches.
      * After close, read_rows returns empty arrays.

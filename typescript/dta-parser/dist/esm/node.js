@@ -968,45 +968,70 @@ var STATA_MISSING_B = bytes_to_double(
 var STATA_MISSING_Z = bytes_to_double(
   [127, 224, 26, 0, 0, 0, 0, 0]
 );
+var MISSING_TYPES = Array.from(
+  { length: 27 },
+  (_, offset) => offset === 0 ? "." : `.${String.fromCharCode(96 + offset)}`
+);
 function classify_missing_from_offset(offset) {
-  if (offset < 0 || offset > 26) {
-    return null;
-  }
-  if (offset === 0) {
-    return ".";
-  }
-  return `.${String.fromCharCode(96 + offset)}`;
+  return MISSING_TYPES[offset] ?? null;
 }
-function classify_integer_missing(value, dot, z) {
-  if (value < dot || value > z) {
-    return null;
-  }
-  return classify_missing_from_offset(value - dot);
+function integer_missing_offset(value, dot, z, modern) {
+  if (!modern) return value === z ? 0 : -1;
+  return value >= dot && value <= z ? value - dot : -1;
 }
-function classify_float_raw_missing(raw_value) {
-  if (raw_value < FLOAT_MISSING_DOT_RAW || raw_value > FLOAT_MISSING_Z_RAW) {
-    return null;
-  }
-  const my_delta = raw_value - FLOAT_MISSING_DOT_RAW;
-  if (my_delta % FLOAT_MISSING_STEP_RAW !== 0) {
-    return null;
-  }
-  return classify_missing_from_offset(
-    my_delta / FLOAT_MISSING_STEP_RAW
+function byte_missing_offset(value, modern) {
+  return integer_missing_offset(
+    value,
+    BYTE_MISSING_DOT,
+    BYTE_MISSING_Z,
+    modern
   );
 }
-function classify_double_big_endian_parts(hi_word, lo_word) {
+function int_missing_offset(value, modern) {
+  return integer_missing_offset(
+    value,
+    INT_MISSING_DOT,
+    INT_MISSING_Z,
+    modern
+  );
+}
+function long_missing_offset(value, modern) {
+  return integer_missing_offset(
+    value,
+    LONG_MISSING_DOT,
+    LONG_MISSING_Z,
+    modern
+  );
+}
+function float_missing_offset(raw_value, modern) {
+  if (!modern) {
+    return raw_value >= FLOAT_MISSING_DOT_RAW && raw_value < 2147483648 ? 0 : -1;
+  }
+  if (raw_value < FLOAT_MISSING_DOT_RAW || raw_value > FLOAT_MISSING_Z_RAW) {
+    return -1;
+  }
+  const my_delta = raw_value - FLOAT_MISSING_DOT_RAW;
+  return my_delta % FLOAT_MISSING_STEP_RAW === 0 ? my_delta / FLOAT_MISSING_STEP_RAW : -1;
+}
+function classify_float_raw_missing(raw_value) {
+  return classify_missing_from_offset(
+    float_missing_offset(raw_value, true)
+  );
+}
+function double_missing_offset_from_parts(hi_word, lo_word) {
   if (hi_word >>> 16 !== DOUBLE_PREFIX_HI) {
-    return null;
+    return -1;
   }
   const my_letter = hi_word >>> 8 & 255;
-  if (my_letter > DOUBLE_LETTER_MAX) {
-    return null;
+  if (my_letter > DOUBLE_LETTER_MAX || (hi_word & 255) !== 0 || lo_word !== 0) {
+    return -1;
   }
-  if ((hi_word & 255) !== 0 || lo_word !== 0) {
-    return null;
-  }
-  return classify_missing_from_offset(my_letter);
+  return my_letter;
+}
+function classify_double_big_endian_parts(hi_word, lo_word) {
+  return classify_missing_from_offset(
+    double_missing_offset_from_parts(hi_word, lo_word)
+  );
 }
 function classify_double_js_missing(value) {
   const my_buf = new ArrayBuffer(8);
@@ -1023,11 +1048,28 @@ function make_missing_value(missing_type) {
     missing_type
   };
 }
+function missing_value_from_offset(offset) {
+  return make_missing_value(MISSING_TYPES[offset]);
+}
 function is_missing_value_object(value) {
   return typeof value === "object" && value !== null && value.kind === "missing" && typeof value.missing_type === "string";
 }
 function classify_raw_float_missing(raw_value) {
   return classify_float_raw_missing(raw_value);
+}
+function double_missing_offset_for_version(view, offset, little_endian, format_version) {
+  const my_hi_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
+  const my_lo_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
+  if (format_version >= 113) {
+    return double_missing_offset_from_parts(
+      my_hi_word,
+      my_lo_word
+    );
+  }
+  if (my_hi_word >= 2145386496 && my_hi_word < 2147483648) {
+    return 0;
+  }
+  return format_version === 105 && my_hi_word === 1421869056 && my_lo_word === 0 ? 0 : -1;
 }
 function classify_raw_double_missing_at(view, offset, little_endian) {
   const my_hi_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
@@ -1036,24 +1078,6 @@ function classify_raw_double_missing_at(view, offset, little_endian) {
     my_hi_word,
     my_lo_word
   );
-}
-function classify_double_missing_for_version(view, offset, little_endian, format_version) {
-  if (format_version >= 113) {
-    return classify_raw_double_missing_at(
-      view,
-      offset,
-      little_endian
-    );
-  }
-  const my_hi_word = little_endian ? view.getUint32(offset + 4, true) : view.getUint32(offset, false);
-  const my_lo_word = little_endian ? view.getUint32(offset, true) : view.getUint32(offset + 4, false);
-  if (my_hi_word >= 2145386496 && my_hi_word < 2147483648) {
-    return ".";
-  }
-  if (format_version === 105 && my_hi_word === 1421869056 && my_lo_word === 0) {
-    return ".";
-  }
-  return null;
 }
 function is_missing_value(value, type) {
   return classify_missing_value(value, type) !== null;
@@ -1068,22 +1092,16 @@ function missing_type_to_label_key(missing_type) {
 function classify_missing_value(value, type) {
   switch (type) {
     case "byte":
-      return classify_integer_missing(
-        value,
-        BYTE_MISSING_DOT,
-        BYTE_MISSING_Z
+      return classify_missing_from_offset(
+        byte_missing_offset(value, true)
       );
     case "int":
-      return classify_integer_missing(
-        value,
-        INT_MISSING_DOT,
-        INT_MISSING_Z
+      return classify_missing_from_offset(
+        int_missing_offset(value, true)
       );
     case "long":
-      return classify_integer_missing(
-        value,
-        LONG_MISSING_DOT,
-        LONG_MISSING_Z
+      return classify_missing_from_offset(
+        long_missing_offset(value, true)
       );
     case "float":
       return classify_float_raw_missing(
@@ -1098,141 +1116,220 @@ function classify_missing_value(value, type) {
 }
 
 // src/data-reader.ts
-var DATA_TAG = "<data>";
-var DATA_TAG_LENGTH = DATA_TAG.length;
+var DATA_TAG_LENGTH = "<data>".length;
+var STRL_PLACEHOLDER = "__strl__";
+function assert_valid_row_range(start, count) {
+  const my_start_valid = Number.isInteger(start) || start === Infinity || start === -Infinity;
+  const my_count_valid = Number.isInteger(count) || count === Infinity || count === -Infinity;
+  if (!my_start_valid || !my_count_valid) {
+    throw new RangeError(
+      "Row start and count must not be NaN or fractional"
+    );
+  }
+}
+function data_buffer_view(buffer) {
+  return buffer instanceof Uint8Array ? new DataView(
+    buffer.buffer,
+    buffer.byteOffset,
+    buffer.byteLength
+  ) : new DataView(buffer);
+}
+function buffer_views(buffer) {
+  return {
+    view: data_buffer_view(buffer),
+    bytes: buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+  };
+}
+function decoder_for_metadata(metadata) {
+  return text_decoder(resolve_text_encoding(
+    metadata.format_version,
+    metadata.text_encoding
+  ));
+}
 function read_fixed_string3(bytes, offset, width, decoder) {
-  let my_end = offset;
+  if (width === 0 || bytes[offset] === 0) return "";
+  let my_end = offset + 1;
   const my_limit = offset + width;
   while (my_end < my_limit && bytes[my_end] !== 0) {
     my_end++;
   }
-  return decoder.decode(
-    bytes.subarray(offset, my_end)
-  );
+  return decoder.decode(bytes.subarray(offset, my_end));
 }
-function read_cell(view, bytes, offset, type, width, little_endian, decoder, format_version) {
-  switch (type) {
+function read_cell(view, bytes, offset, variable, little_endian, modern_missing, decoder, format_version) {
+  let my_missing = -1;
+  switch (variable.type) {
     case "byte": {
-      const my_val = view.getInt8(offset);
-      const my_missing_type = format_version < 113 ? my_val === 127 ? "." : null : classify_missing_value(my_val, "byte");
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
-      }
-      return my_val;
+      const my_value = view.getInt8(offset);
+      my_missing = byte_missing_offset(
+        my_value,
+        modern_missing
+      );
+      return my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value;
     }
     case "int": {
-      const my_val = view.getInt16(
+      const my_value = view.getInt16(
         offset,
         little_endian
       );
-      const my_missing_type = format_version < 113 ? my_val === 32767 ? "." : null : classify_missing_value(my_val, "int");
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
-      }
-      return my_val;
+      my_missing = int_missing_offset(
+        my_value,
+        modern_missing
+      );
+      return my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value;
     }
     case "long": {
-      const my_val = view.getInt32(
+      const my_value = view.getInt32(
         offset,
         little_endian
       );
-      const my_missing_type = format_version < 113 ? my_val === 2147483647 ? "." : null : classify_missing_value(my_val, "long");
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
-      }
-      return my_val;
+      my_missing = long_missing_offset(
+        my_value,
+        modern_missing
+      );
+      return my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value;
     }
     case "float": {
       const my_raw = view.getUint32(
         offset,
         little_endian
       );
-      const my_missing_type = format_version < 113 ? my_raw >= 2130706432 && my_raw < 2147483648 ? "." : null : classify_raw_float_missing(my_raw);
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
-      }
-      return view.getFloat32(
-        offset,
-        little_endian
+      my_missing = float_missing_offset(
+        my_raw,
+        modern_missing
       );
+      return my_missing >= 0 ? missing_value_from_offset(my_missing) : view.getFloat32(offset, little_endian);
     }
-    case "double": {
-      const my_missing_type = classify_double_missing_for_version(
+    case "double":
+      my_missing = double_missing_offset_for_version(
         view,
         offset,
         little_endian,
         format_version
       );
-      if (my_missing_type) {
-        return make_missing_value(my_missing_type);
-      }
-      return view.getFloat64(
-        offset,
-        little_endian
-      );
-    }
-    case "strL": {
-      return "__strl__";
-    }
-    default: {
+      return my_missing >= 0 ? missing_value_from_offset(my_missing) : view.getFloat64(offset, little_endian);
+    case "strL":
+      return STRL_PLACEHOLDER;
+    default:
       return read_fixed_string3(
         bytes,
         offset,
-        width,
+        variable.byte_width,
         decoder
       );
-    }
   }
 }
-function read_rows_from_view(view, bytes, metadata, row_base_offset, start, count, col_start, col_end) {
-  if (metadata.nobs === 0 || start < 0 || count <= 0 || start >= metadata.nobs) {
-    return [];
+function decode_column_into_values(view, bytes, values, output_start, count, variable, row_width, little_endian, modern_missing, decoder, format_version, write_strl_placeholder) {
+  let my_offset = variable.byte_offset;
+  const my_end = output_start + count;
+  switch (variable.type) {
+    case "byte":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_value = view.getInt8(my_offset);
+        const my_missing = byte_missing_offset(
+          my_value,
+          modern_missing
+        );
+        values[i] = my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value;
+      }
+      return;
+    case "int":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_value = view.getInt16(my_offset, little_endian);
+        const my_missing = int_missing_offset(
+          my_value,
+          modern_missing
+        );
+        values[i] = my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value;
+      }
+      return;
+    case "long":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_value = view.getInt32(my_offset, little_endian);
+        const my_missing = long_missing_offset(
+          my_value,
+          modern_missing
+        );
+        values[i] = my_missing >= 0 ? missing_value_from_offset(my_missing) : my_value;
+      }
+      return;
+    case "float":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_raw = view.getUint32(my_offset, little_endian);
+        const my_missing = float_missing_offset(
+          my_raw,
+          modern_missing
+        );
+        values[i] = my_missing >= 0 ? missing_value_from_offset(my_missing) : view.getFloat32(my_offset, little_endian);
+      }
+      return;
+    case "double":
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        const my_missing = double_missing_offset_for_version(
+          view,
+          my_offset,
+          little_endian,
+          format_version
+        );
+        values[i] = my_missing >= 0 ? missing_value_from_offset(my_missing) : view.getFloat64(my_offset, little_endian);
+      }
+      return;
+    case "strL":
+      if (write_strl_placeholder) {
+        for (let i = output_start; i < my_end; i++) {
+          values[i] = STRL_PLACEHOLDER;
+        }
+      }
+      return;
+    default:
+      for (let i = output_start; i < my_end; i++, my_offset += row_width) {
+        values[i] = read_fixed_string3(
+          bytes,
+          my_offset,
+          variable.byte_width,
+          decoder
+        );
+      }
   }
-  const my_actual_count = Math.min(
-    count,
-    metadata.nobs - start
-  );
-  if (my_actual_count <= 0) return [];
+}
+function read_rows_from_view(view, bytes, metadata, row_base_offset, start, count, col_start, col_end, out, out_offset = 0) {
+  if (metadata.nobs === 0 || start < 0 || count <= 0 || start >= metadata.nobs) {
+    return out ?? [];
+  }
+  const my_actual_count = Math.min(count, metadata.nobs - start);
   const my_col_start = Math.max(0, col_start ?? 0);
   const my_col_end = Math.min(
     metadata.nvar,
     col_end ?? metadata.nvar
   );
-  if (my_col_start >= my_col_end) {
-    return [];
-  }
+  if (my_col_start >= my_col_end) return out ?? [];
   const little_endian = metadata.byte_order === "LSF";
-  const my_decoder = text_decoder(resolve_text_encoding(
-    metadata.format_version,
-    metadata.text_encoding
-  ));
-  const the_rows = [];
+  const modern_missing = metadata.format_version >= 113;
+  const my_decoder = decoder_for_metadata(metadata);
+  const the_rows = out ?? new Array(my_actual_count);
+  const my_column_count = my_col_end - my_col_start;
   for (let i = 0; i < my_actual_count; i++) {
+    const my_row = new Array(my_column_count);
     const my_row_offset = row_base_offset + i * metadata.obs_length;
-    const my_row = [];
-    for (let j = my_col_start; j < my_col_end; j++) {
-      const my_var = metadata.variables[j];
-      const my_cell_offset = my_row_offset + my_var.byte_offset;
-      my_row.push(
-        read_cell(
-          view,
-          bytes,
-          my_cell_offset,
-          my_var.type,
-          my_var.byte_width,
-          little_endian,
-          my_decoder,
-          metadata.format_version
-        )
+    for (let my_abs_col = my_col_start, my_output_col = 0; my_abs_col < my_col_end; my_abs_col++, my_output_col++) {
+      const my_variable = metadata.variables[my_abs_col];
+      my_row[my_output_col] = read_cell(
+        view,
+        bytes,
+        my_row_offset + my_variable.byte_offset,
+        my_variable,
+        little_endian,
+        modern_missing,
+        my_decoder,
+        metadata.format_version
       );
     }
-    the_rows.push(my_row);
+    the_rows[out_offset + i] = my_row;
   }
   return the_rows;
 }
-function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, col_end) {
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
+function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, col_end, out, out_offset = 0) {
+  assert_valid_row_range(start, count);
+  const { view, bytes } = buffer_views(buffer);
   return read_rows_from_view(
     view,
     bytes,
@@ -1241,41 +1338,36 @@ function read_rows_from_data_buffer(buffer, metadata, start, count, col_start, c
     start,
     count,
     col_start,
-    col_end
+    col_end,
+    out,
+    out_offset
   );
 }
-function read_columns_from_data_buffer(buffer, metadata, count, col_indices, out) {
+function read_columns_from_data_buffer(buffer, metadata, count, col_indices, out, out_offset, write_strl_placeholders = true) {
+  if (!Number.isInteger(count)) {
+    throw new RangeError("Row count must be an integer");
+  }
   if (count <= 0 || col_indices.length === 0) return;
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
+  const { view, bytes } = buffer_views(buffer);
   const little_endian = metadata.byte_order === "LSF";
-  const my_decoder = text_decoder(resolve_text_encoding(
-    metadata.format_version,
-    metadata.text_encoding
-  ));
-  const my_vars = col_indices.map(
-    (my_col) => metadata.variables[my_col]
-  );
-  const my_targets = col_indices.map(
-    (my_col) => out.get(my_col)
-  );
-  for (let i = 0; i < count; i++) {
-    const my_row_offset = i * metadata.obs_length;
-    for (let k = 0; k < col_indices.length; k++) {
-      const my_var = my_vars[k];
-      my_targets[k].push(
-        read_cell(
-          view,
-          bytes,
-          my_row_offset + my_var.byte_offset,
-          my_var.type,
-          my_var.byte_width,
-          little_endian,
-          my_decoder,
-          metadata.format_version
-        )
-      );
-    }
+  const modern_missing = metadata.format_version >= 113;
+  const my_decoder = decoder_for_metadata(metadata);
+  for (const my_col of col_indices) {
+    const my_target = out.get(my_col);
+    decode_column_into_values(
+      view,
+      bytes,
+      my_target,
+      out_offset ?? my_target.length,
+      count,
+      metadata.variables[my_col],
+      metadata.obs_length,
+      little_endian,
+      modern_missing,
+      my_decoder,
+      metadata.format_version,
+      write_strl_placeholders
+    );
   }
 }
 
@@ -1359,7 +1451,7 @@ function build_gso_index(buffer, metadata, base_offset = 0) {
       throw new Error(`Duplicate GSO key ${my_key}`);
     }
     my_index.set(my_key, {
-      content_offset: pos + base_offset,
+      content_offset: pos,
       content_length: my_len,
       type: my_type
     });
@@ -1973,6 +2065,7 @@ var MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 var MAX_READ_RETRIES = 2;
 var DATA_TAG_LENGTH2 = "<data>".length;
 var DEFAULT_CHUNK_ROWS = 65536;
+var DEFAULT_CHUNK_BYTES = 16 * 1024 * 1024;
 function throw_if_aborted(signal) {
   if (signal.aborted) {
     throw new DOMException(
@@ -1984,8 +2077,12 @@ function throw_if_aborted(signal) {
 function yield_to_event_loop() {
   return new Promise((resolve) => setImmediate(resolve));
 }
-function normalise_chunk_rows(requested_chunk_rows) {
-  return typeof requested_chunk_rows === "number" && Number.isInteger(requested_chunk_rows) && requested_chunk_rows >= 1 ? requested_chunk_rows : DEFAULT_CHUNK_ROWS;
+function normalise_chunk_rows(requested_chunk_rows, row_width, cancellable) {
+  if (typeof requested_chunk_rows === "number" && Number.isInteger(requested_chunk_rows) && requested_chunk_rows >= 1) {
+    return requested_chunk_rows;
+  }
+  const my_byte_bounded_rows = row_width > 0 ? Math.max(1, Math.floor(DEFAULT_CHUNK_BYTES / row_width)) : DEFAULT_CHUNK_ROWS;
+  return cancellable ? Math.min(DEFAULT_CHUNK_ROWS, my_byte_bounded_rows) : my_byte_bounded_rows;
 }
 function normalise_column_indices(col_indices, nvar) {
   const the_seen = /* @__PURE__ */ new Set();
@@ -2016,11 +2113,9 @@ var DtaFile = class _DtaFile {
   // and reads that never touch an strL column, never read or retain the
   // section. Once loaded, the section bytes stay resident so each cell
   // resolves with an in-memory slice + decode rather than a per-cell
-  // disk read. `_gso_base` is the section's file offset, used to map an
-  // entry's absolute offset into `_gso_section`.
+  // disk read.
   _gso_index;
   _gso_section;
-  _gso_base;
   _gso_loaded;
   _value_label_tables;
   _closed;
@@ -2033,7 +2128,6 @@ var DtaFile = class _DtaFile {
     this._metadata = metadata;
     this._gso_index = /* @__PURE__ */ new Map();
     this._gso_section = null;
-    this._gso_base = 0;
     this._gso_loaded = false;
     this._value_label_tables = value_label_tables;
     this._closed = false;
@@ -2124,56 +2218,51 @@ var DtaFile = class _DtaFile {
    * @param options - Cancellation options (see {@link ReadRowsOptions}).
    *   When `options.signal` is provided, the read is chunked and
    *   yields between chunks so the abort can be observed; it rejects
-   *   with an `AbortError` if the signal fires. Without a signal the
-   *   read is a single synchronous pass identical to prior behavior.
+   *   with an `AbortError` if the signal fires. Without a signal, chunks
+   *   run synchronously and bound the temporary observation buffer.
    */
   async read_rows(start, count, col_start, col_end, options) {
     if (this._closed || this._fd === null) return [];
+    assert_valid_row_range(start, count);
+    if (this._metadata.nobs === 0 || start < 0 || count <= 0 || start >= this._metadata.nobs) {
+      return [];
+    }
     const my_actual_count = Math.min(
       count,
       this._metadata.nobs - start
     );
-    if (this._metadata.nobs === 0 || start >= this._metadata.nobs || my_actual_count <= 0) {
-      return [];
-    }
-    if (!options?.signal) {
-      return this._read_rows_range(
-        start,
-        my_actual_count,
-        col_start,
-        col_end
-      );
-    }
-    const my_signal = options.signal;
+    const my_signal = options?.signal;
     const my_chunk_rows = normalise_chunk_rows(
-      options.chunk_rows
+      options?.chunk_rows,
+      this._metadata.obs_length,
+      my_signal !== void 0
     );
-    throw_if_aborted(my_signal);
-    const the_rows = [];
-    let my_read = 0;
-    while (my_read < my_actual_count) {
-      if (my_read > 0) {
-        await yield_to_event_loop();
-        throw_if_aborted(my_signal);
+    if (my_signal) throw_if_aborted(my_signal);
+    const my_col_start = Math.max(0, col_start ?? 0);
+    const my_col_end = Math.min(
+      this._metadata.nvar,
+      col_end ?? this._metadata.nvar
+    );
+    if (my_col_start >= my_col_end) return [];
+    const the_rows = my_signal ? [] : new Array(my_actual_count);
+    const my_complete = await this._for_each_observation_chunk(
+      start,
+      my_actual_count,
+      my_chunk_rows,
+      my_signal,
+      (my_data_buffer, my_chunk_start, my_chunk_count, my_output_offset) => {
+        this._decode_rows_range(
+          my_data_buffer,
+          my_chunk_start,
+          my_chunk_count,
+          my_col_start,
+          my_col_end,
+          the_rows,
+          my_output_offset
+        );
       }
-      if (this._closed || this._fd === null) return [];
-      const my_chunk_count = Math.min(
-        my_chunk_rows,
-        my_actual_count - my_read
-      );
-      const my_chunk = this._read_rows_range(
-        start + my_read,
-        my_chunk_count,
-        col_start,
-        col_end
-      );
-      for (const my_row of my_chunk) {
-        the_rows.push(my_row);
-      }
-      my_read += my_chunk_count;
-    }
-    throw_if_aborted(my_signal);
-    return the_rows;
+    );
+    return my_complete ? the_rows : [];
   }
   /**
    * Read multiple columns in a single pass over the data section,
@@ -2199,97 +2288,113 @@ var DtaFile = class _DtaFile {
       col_indices,
       this._metadata.nvar
     );
+    const my_signal = options?.signal;
+    if (my_signal && the_columns.length > 0 && this._metadata.nobs > 0) {
+      throw_if_aborted(my_signal);
+    }
     const the_values = /* @__PURE__ */ new Map();
     for (const my_col of the_columns) {
-      the_values.set(my_col, []);
+      the_values.set(
+        my_col,
+        my_signal ? [] : new Array(this._metadata.nobs)
+      );
     }
     if (the_columns.length === 0 || this._metadata.nobs === 0) {
       return the_values;
     }
-    const my_signal = options?.signal;
-    if (my_signal) {
-      throw_if_aborted(my_signal);
-    }
     const my_chunk_rows = normalise_chunk_rows(
-      options?.chunk_rows
+      options?.chunk_rows,
+      this._metadata.obs_length,
+      my_signal !== void 0
     );
-    let my_read = 0;
-    while (my_read < this._metadata.nobs) {
-      if (my_read > 0) {
-        await yield_to_event_loop();
-        if (my_signal) {
-          throw_if_aborted(my_signal);
+    const my_complete = await this._for_each_observation_chunk(
+      0,
+      this._metadata.nobs,
+      my_chunk_rows,
+      my_signal,
+      (my_data_buffer, _my_chunk_start, my_chunk_count, my_output_offset) => {
+        read_columns_from_data_buffer(
+          my_data_buffer,
+          this._metadata,
+          my_chunk_count,
+          the_columns,
+          the_values,
+          my_output_offset,
+          false
+        );
+        for (const my_col of the_columns) {
+          if (this._strl_col_set.has(my_col)) {
+            this._resolve_strl_column(
+              the_values.get(my_col),
+              my_output_offset,
+              my_data_buffer,
+              my_col,
+              my_chunk_count
+            );
+          }
         }
       }
+    );
+    return my_complete ? the_values : /* @__PURE__ */ new Map();
+  }
+  /** Decode one observation chunk directly into the caller's row array. */
+  _decode_rows_range(data_buffer, start, count, col_start, col_end, out, out_offset) {
+    read_rows_from_data_buffer(
+      data_buffer,
+      this._metadata,
+      start,
+      count,
+      col_start,
+      col_end,
+      out,
+      out_offset
+    );
+    if (this._strl_col_indices.length > 0) {
+      this._resolve_strls(
+        out,
+        data_buffer,
+        col_start,
+        col_end,
+        out_offset,
+        count
+      );
+    }
+  }
+  /**
+   * Read contiguous observation chunks and centralize yielding,
+   * cancellation, and close handling for every output layout.
+   */
+  async _for_each_observation_chunk(start, count, chunk_rows, signal, consume) {
+    let my_read = 0;
+    while (my_read < count) {
+      if (my_read > 0 && signal) {
+        await yield_to_event_loop();
+        throw_if_aborted(signal);
+      }
       if (this._closed || this._fd === null) {
-        return /* @__PURE__ */ new Map();
+        return false;
       }
       const my_chunk_count = Math.min(
-        my_chunk_rows,
-        this._metadata.nobs - my_read
+        chunk_rows,
+        count - my_read
       );
-      const my_chunk_start = my_read;
+      const my_chunk_start = start + my_read;
       const my_data_buffer = read_data_rows(
         this._fd,
         this._metadata,
         my_chunk_start,
         my_chunk_count
       );
-      read_columns_from_data_buffer(
+      consume(
         my_data_buffer,
-        this._metadata,
+        my_chunk_start,
         my_chunk_count,
-        the_columns,
-        the_values
+        my_read
       );
-      for (const my_col of the_columns) {
-        if (this._strl_col_set.has(my_col)) {
-          this._resolve_strl_column(
-            the_values.get(my_col),
-            my_chunk_start,
-            my_data_buffer,
-            my_col,
-            my_chunk_count
-          );
-        }
-      }
       my_read += my_chunk_count;
     }
-    if (my_signal) {
-      throw_if_aborted(my_signal);
-    }
-    return the_values;
-  }
-  /**
-   * Read a contiguous row range in a single synchronous pass and
-   * resolve any strL columns in range. Shared by both the fast path
-   * and each chunk of the cancellable path. Callers must ensure the
-   * file is open (`_fd !== null`).
-   */
-  _read_rows_range(start, count, col_start, col_end) {
-    const my_data_buffer = read_data_rows(
-      this._fd,
-      this._metadata,
-      start,
-      count
-    );
-    const the_rows = read_rows_from_data_buffer(
-      my_data_buffer,
-      this._metadata,
-      start,
-      count,
-      col_start,
-      col_end
-    );
-    if (this._strl_col_indices.length > 0) {
-      this._resolve_strls(
-        the_rows,
-        my_data_buffer,
-        col_start ?? 0,
-        col_end ?? this._metadata.nvar
-      );
-    }
-    return the_rows;
+    if (signal) throw_if_aborted(signal);
+    return true;
   }
   // -------------------------------------------------------
   // Resource management
@@ -2341,7 +2446,6 @@ var DtaFile = class _DtaFile {
       my_start
     );
     this._gso_section = new Uint8Array(my_buffer);
-    this._gso_base = my_start;
     this._gso_loaded = true;
   }
   /**
@@ -2351,23 +2455,23 @@ var DtaFile = class _DtaFile {
    * from the row buffer and resolve the GSO payload from the
    * in-memory strL section (no per-cell disk reads).
    */
-  _resolve_strls(the_rows, data_buffer, col_start, col_end) {
+  _resolve_strls(the_rows, data_buffer, col_start, col_end, row_start, row_count) {
     if (this._fd === null) return;
     const my_has_strl_in_range = this._strl_col_indices.some(
       (my_col) => my_col >= col_start && my_col < col_end
     );
     if (!my_has_strl_in_range) return;
     this._ensure_gso();
-    const my_view = new DataView(data_buffer);
+    const my_view = data_buffer_view(data_buffer);
     for (const my_abs_col of this._strl_col_indices) {
       if (my_abs_col < col_start || my_abs_col >= col_end) {
         continue;
       }
       const my_row_col = my_abs_col - col_start;
       const my_var = this._metadata.variables[my_abs_col];
-      for (let i = 0; i < the_rows.length; i++) {
+      for (let i = 0; i < row_count; i++) {
         const my_pointer_offset = i * this._metadata.obs_length + my_var.byte_offset;
-        the_rows[i][my_row_col] = this._resolve_strl_at(
+        the_rows[row_start + i][my_row_col] = this._resolve_strl_at(
           my_view,
           my_pointer_offset
         );
@@ -2383,7 +2487,7 @@ var DtaFile = class _DtaFile {
    */
   _resolve_strl_column(col_values, base_index, data_buffer, abs_col, count) {
     this._ensure_gso();
-    const my_view = new DataView(data_buffer);
+    const my_view = data_buffer_view(data_buffer);
     const my_var = this._metadata.variables[abs_col];
     for (let i = 0; i < count; i++) {
       const my_pointer_offset = i * this._metadata.obs_length + my_var.byte_offset;
@@ -2416,10 +2520,7 @@ var DtaFile = class _DtaFile {
     }
     return decode_gso_entry(
       this._gso_section,
-      {
-        ...my_entry,
-        content_offset: my_entry.content_offset - this._gso_base
-      },
+      my_entry,
       this.text_encoding
     );
   }
@@ -2556,9 +2657,9 @@ function read_data_rows(fd, metadata, start, count) {
   ) ? 0 : DATA_TAG_LENGTH2;
   const my_offset = metadata.section_offsets.data + my_tag_length + start * metadata.obs_length;
   const my_length = count * metadata.obs_length;
-  return read_range(fd, my_offset, my_length);
+  return read_bytes(fd, my_offset, my_length);
 }
-function read_range(fd, offset, length) {
+function read_bytes(fd, offset, length) {
   const my_buffer = Buffer.allocUnsafe(length);
   let my_total_read = 0;
   let my_attempts = 0;
@@ -2581,9 +2682,16 @@ function read_range(fd, offset, length) {
     }
     my_total_read += my_bytes_read;
   }
-  return my_buffer.buffer.slice(
-    my_buffer.byteOffset,
-    my_buffer.byteOffset + my_total_read
+  return my_buffer;
+}
+function read_range(fd, offset, length) {
+  const my_bytes = read_bytes(fd, offset, length);
+  if (my_bytes.buffer instanceof ArrayBuffer && my_bytes.byteOffset === 0 && my_bytes.byteLength === my_bytes.buffer.byteLength) {
+    return my_bytes.buffer;
+  }
+  return my_bytes.buffer.slice(
+    my_bytes.byteOffset,
+    my_bytes.byteOffset + my_bytes.byteLength
   );
 }
 export {

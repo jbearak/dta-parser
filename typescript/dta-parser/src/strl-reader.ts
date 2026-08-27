@@ -21,7 +21,7 @@ import {
 // -----------------------------------------------------------
 
 export interface GsoEntry {
-    content_offset: number;  // byte offset of content
+    content_offset: number;  // offset within the supplied buffer
     content_length: number;  // bytes of content
     type: number;            // 129=binary, 130=ASCII
 }
@@ -48,7 +48,8 @@ const ASCII_DECODER = new TextDecoder('utf-8');
 /**
  * Build an index of all GSO entries from the strls section.
  *
- * Returns a Map keyed by "v:o" string for O(1) lookup.
+ * Returns a Map keyed by "v:o" string for O(1) lookup. Content offsets
+ * are relative to `buffer`; `base_offset` only maps file coordinates into it.
  * The map is empty when the dataset has no strL variables.
  */
 export function build_gso_index(
@@ -178,7 +179,7 @@ export function build_gso_index(
             throw new Error(`Duplicate GSO key ${my_key}`);
         }
         my_index.set(my_key, {
-            content_offset: pos + base_offset,
+            content_offset: pos,
             content_length: my_len,
             type: my_type,
         });
