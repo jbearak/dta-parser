@@ -33,8 +33,14 @@ fn checked_mul_u64(left: u64, right: u64, context: &'static str) -> Result<u64, 
         .ok_or(DtaError::ArithmeticOverflow(context))
 }
 
-fn read_u48(bytes: &[u8], offset: usize, metadata: &DtaMetadata) -> Result<u64, DtaError> {
-    let field = slice_at(bytes, offset, 6, "strL observation pointer")?;
+fn read_packed_integer(
+    bytes: &[u8],
+    offset: usize,
+    width: usize,
+    metadata: &DtaMetadata,
+    context: &'static str,
+) -> Result<u64, DtaError> {
+    let field = slice_at(bytes, offset, width, context)?;
     let mut value = 0_u64;
     match metadata.byte_order {
         crate::ByteOrder::Lsf => {
@@ -56,8 +62,8 @@ fn read_pointer(
     offset: usize,
     metadata: &DtaMetadata,
 ) -> Result<Option<GsoKey>, DtaError> {
-    let (variable, observation) = if metadata.format_version == FormatVersion::V117 {
-        (
+    let (variable, observation) = match metadata.format_version {
+        FormatVersion::V117 => (
             read_u32(bytes, offset, metadata.byte_order, "strL variable pointer")?,
             u64::from(read_u32(
                 bytes,
@@ -65,21 +71,40 @@ fn read_pointer(
                 metadata.byte_order,
                 "strL observation pointer",
             )?),
-        )
-    } else {
-        (
+        ),
+        FormatVersion::V118 => (
             u32::from(read_u16(
                 bytes,
                 offset,
                 metadata.byte_order,
                 "strL variable pointer",
             )?),
-            read_u48(
+            read_packed_integer(
                 bytes,
                 checked_add(offset, 2, "strL observation pointer")?,
+                6,
                 metadata,
+                "strL observation pointer",
             )?,
-        )
+        ),
+        FormatVersion::V119 => (
+            u32::try_from(read_packed_integer(
+                bytes,
+                offset,
+                3,
+                metadata,
+                "strL variable pointer",
+            )?)
+            .map_err(|_| DtaError::ArithmeticOverflow("strL variable pointer"))?,
+            read_packed_integer(
+                bytes,
+                checked_add(offset, 3, "strL observation pointer")?,
+                5,
+                metadata,
+                "strL observation pointer",
+            )?,
+        ),
+        _ => unreachable!("strL is only available in modern DTA releases"),
     };
     if variable == 0 && observation == 0 {
         return Ok(None);
@@ -374,11 +399,51 @@ mod tests {
         let mut big = [0_u8; 8];
         big[..2].copy_from_slice(&1_u16.to_be_bytes());
         big[2..].copy_from_slice(&[0x01, 0x02, 0x03, 0x04, 0x05, 0x06]);
-        let big_metadata = metadata(FormatVersion::V119, ByteOrder::Msf, observation);
+        let big_metadata = metadata(FormatVersion::V118, ByteOrder::Msf, observation);
         assert_eq!(
             read_pointer(&big, 0, &big_metadata).unwrap(),
             Some(GsoKey {
                 variable: 1,
+                observation
+            })
+        );
+    }
+
+    #[test]
+    fn reads_release_119_three_byte_variables_and_five_byte_observations() {
+        let variable = 65_536_u32;
+        let observation = 0x0102_0304_05_u64;
+
+        let mut little = [0_u8; 8];
+        little[..3].copy_from_slice(&[0x00, 0x00, 0x01]);
+        little[3..].copy_from_slice(&[0x05, 0x04, 0x03, 0x02, 0x01]);
+        let mut little_metadata = metadata(FormatVersion::V119, ByteOrder::Lsf, observation);
+        little_metadata.nvar = variable;
+        let little_variable = little_metadata.variables[0].clone();
+        little_metadata
+            .variables
+            .resize(variable as usize, little_variable);
+        assert_eq!(
+            read_pointer(&little, 0, &little_metadata).unwrap(),
+            Some(GsoKey {
+                variable,
+                observation
+            })
+        );
+
+        let mut big = [0_u8; 8];
+        big[..3].copy_from_slice(&[0x01, 0x00, 0x00]);
+        big[3..].copy_from_slice(&[0x01, 0x02, 0x03, 0x04, 0x05]);
+        let mut big_metadata = metadata(FormatVersion::V119, ByteOrder::Msf, observation);
+        big_metadata.nvar = variable;
+        let big_variable = big_metadata.variables[0].clone();
+        big_metadata
+            .variables
+            .resize(variable as usize, big_variable);
+        assert_eq!(
+            read_pointer(&big, 0, &big_metadata).unwrap(),
+            Some(GsoKey {
+                variable,
                 observation
             })
         );

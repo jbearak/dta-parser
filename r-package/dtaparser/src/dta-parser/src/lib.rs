@@ -58,6 +58,7 @@ mod strl;
 mod text;
 mod types;
 mod value_labels;
+mod write;
 
 pub use data_reader::{
     read_dta, read_dta_with_encoding, read_dta_with_options, read_dta_with_options_and_encoding,
@@ -77,3 +78,8 @@ pub use types::{
     SectionOffsets, ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
 pub use value_labels::{parse_value_labels, parse_value_labels_with_encoding};
+pub use write::{
+    write_dta_to, DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData,
+    DtaWriteError, DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteOptions, DtaWriteSummary,
+    DtaWriteValueLabel, StataVersion,
+};

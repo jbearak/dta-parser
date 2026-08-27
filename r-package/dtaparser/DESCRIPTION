@@ -1,5 +1,5 @@
 Package: dtaparser
-Title: Fast Reader for Stata DTA Files
+Title: Fast Reader and Writer for Stata DTA Files
 Version: 0.5.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"),
     email = "jonathan@bearak.net")
@@ -7,7 +7,8 @@ Description: Reads Stata DTA files into tibbles with a Rust parser, multicore
     decoding, and compact in-memory representations for numeric and character
     columns. Its read interface follows 'haven' while retaining dataset labels,
     variable labels, display formats, value labels, temporal classes, and Stata
-    tagged missing values. It also provides label-aware tabulation and
+    tagged missing values. It writes standalone Stata 18 and 19 datasets through
+    a streaming Rust writer. It also provides label-aware tabulation and
     tag-preserving recoding.
 License: GPL-3
 Encoding: UTF-8

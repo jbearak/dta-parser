@@ -374,7 +374,7 @@ fn file_reads_match_slice_for_modern_strl_and_legacy_projections() {
         if name == "auto_v118.dta" {
             assert_eq!(
                 actual.metadata.notes,
-                ["From Consumer Reports with permission", "1"]
+                ["From Consumer Reports with permission"]
             );
         }
     }

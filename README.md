@@ -1,6 +1,9 @@
 # dta-parser
 
-`dta-parser` provides TypeScript and R libraries for reading Stata `.dta` files. Both cover Stata 5 through 19 and preserve labels, long strings, display formats, and Stata missing values.
+`dta-parser` provides TypeScript and R libraries for reading Stata `.dta` files.
+Both readers cover Stata 5 through 19 and preserve labels, long strings, display
+formats, and Stata missing values. The R package also writes standalone Stata
+18/19 datasets.
 
 ## Choose a library
 

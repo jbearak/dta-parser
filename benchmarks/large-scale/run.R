@@ -28,6 +28,7 @@ if (!startsWith(benchmark_library, paste0(checkout_root, "/"))) {
     stop("DTAPARSER_BENCH_LIB must point to a library inside this checkout")
 }
 sys.source(file.path(dirname(script_path), "provenance.R"), envir = environment())
+sys.source(file.path(dirname(script_path), "haven-parity.R"), envir = environment())
 provenance_path <- file.path(
     benchmark_library, "dtaparser-benchmark-provenance.tsv"
 )
@@ -287,13 +288,6 @@ read_one <- function(implementation, workload, path, skip = 0, n_max = Inf) {
             skip = skip, n_max = n_max
         )
     }
-}
-
-normalize_for_haven <- function(value) {
-    # Old development builds exposed this parser-only attribute. It is not part
-    # of the public tibble returned by either current dtaparser or haven.
-    attr(value, "dta_format_version") <- NULL
-    value
 }
 
 validate_direct_identity <- function(path, workload, rows, expected_columns) {

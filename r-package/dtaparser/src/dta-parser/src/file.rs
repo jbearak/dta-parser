@@ -11,7 +11,10 @@ use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
 use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
-use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
+use crate::text::{
+    dataset_note_index, field_bytes, is_utf8_boundary, ordered_dataset_notes, TextDecoder,
+    TextEncoding,
+};
 use crate::value_labels::has_legacy_offset_table_framing;
 use crate::{
     missing::{
@@ -2524,7 +2527,7 @@ fn read_modern_notes<R: Read + Seek>(
                 scratch,
             )?;
             ensure_absolute("data", cursor, header.section_offsets.data)?;
-            return Ok(notes);
+            return Ok(ordered_dataset_notes(notes));
         }
         if marker != b"<ch>" {
             return Err(DtaError::UnexpectedTag {
@@ -2574,7 +2577,7 @@ fn read_modern_notes<R: Read + Seek>(
             scratch,
             "reading characteristic names",
         )?;
-        if is_dataset_note(&names[..width], &names[width..]) {
+        if let Some(index) = dataset_note_index(&names[..width], &names[width..]) {
             let value_offset = checked_add_u64(
                 cursor,
                 u64::try_from(names_length)
@@ -2594,9 +2597,7 @@ fn read_modern_notes<R: Read + Seek>(
                 "reading characteristic value",
             )?
             .0;
-            if !note.is_empty() {
-                notes.push(note);
-            }
+            notes.push((index, note));
         }
         cursor = expect_file_tag(reader, close, b"</ch>", "</ch>", scratch)?;
     }
@@ -3160,7 +3161,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                 scratch,
                 "reading legacy characteristic names",
             )?;
-            if is_dataset_note(
+            if let Some(index) = dataset_note_index(
                 &names[..layout.varname_width],
                 &names[layout.varname_width..],
             ) {
@@ -3183,8 +3184,8 @@ fn read_legacy_metadata<R: Read + Seek>(
                     "reading legacy characteristic value",
                 )?
                 .0;
-                if !note.is_empty() {
-                    notes.push(note);
+                if index != 0 && !note.is_empty() {
+                    notes.push((index, note));
                 }
             }
         }
@@ -3210,7 +3211,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         nvar,
         nobs,
         dataset_label,
-        notes,
+        notes: ordered_dataset_notes(notes),
         variables,
         section_offsets: SectionOffsets {
             stata_data: 0,
@@ -3997,8 +3998,8 @@ fn parse_pointer(
         needed: 8,
         available: bytes.len(),
     })?;
-    let (variable, observation) = if metadata.format_version == FormatVersion::V117 {
-        (
+    let (variable, observation) = match metadata.format_version {
+        FormatVersion::V117 => (
             read_u32(bytes, 0, metadata.byte_order, "strL variable pointer")?,
             u64::from(read_u32(
                 bytes,
@@ -4006,28 +4007,36 @@ fn parse_pointer(
                 metadata.byte_order,
                 "strL observation pointer",
             )?),
-        )
-    } else {
-        let variable = u32::from(read_u16(
-            bytes,
-            0,
-            metadata.byte_order,
-            "strL variable pointer",
-        )?);
-        let mut observation = 0_u64;
-        match metadata.byte_order {
-            ByteOrder::Lsf => {
-                for (shift, byte) in bytes[2..8].iter().enumerate() {
-                    observation |= u64::from(*byte) << (shift * 8);
+        ),
+        FormatVersion::V118 | FormatVersion::V119 => {
+            let variable_width = if metadata.format_version == FormatVersion::V119 {
+                3
+            } else {
+                2
+            };
+            let mut variable = 0_u32;
+            let mut observation = 0_u64;
+            match metadata.byte_order {
+                ByteOrder::Lsf => {
+                    for (shift, byte) in bytes[..variable_width].iter().enumerate() {
+                        variable |= u32::from(*byte) << (shift * 8);
+                    }
+                    for (shift, byte) in bytes[variable_width..8].iter().enumerate() {
+                        observation |= u64::from(*byte) << (shift * 8);
+                    }
+                }
+                ByteOrder::Msf => {
+                    for byte in &bytes[..variable_width] {
+                        variable = (variable << 8) | u32::from(*byte);
+                    }
+                    for byte in &bytes[variable_width..8] {
+                        observation = (observation << 8) | u64::from(*byte);
+                    }
                 }
             }
-            ByteOrder::Msf => {
-                for byte in &bytes[2..8] {
-                    observation = (observation << 8) | u64::from(*byte);
-                }
-            }
+            (variable, observation)
         }
-        (variable, observation)
+        _ => unreachable!("strL is only available in modern DTA releases"),
     };
     if variable == 0 && observation == 0 {
         return Ok(None);
@@ -4611,8 +4620,8 @@ mod tests {
             byte_offset: 0,
         }];
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(&1_u16.to_be_bytes());
-        bytes.extend_from_slice(&42_u64.to_be_bytes()[2..]);
+        bytes.extend_from_slice(&[0, 0, 1]);
+        bytes.extend_from_slice(&42_u64.to_be_bytes()[3..]);
         bytes.extend_from_slice(&[0; 8]);
         let mut columns = vec![kernel_column(ObservationKind::StrL, 0, 8)];
         let block = ObservationBlock {

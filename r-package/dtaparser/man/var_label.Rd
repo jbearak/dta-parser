@@ -87,9 +87,9 @@ be value-label codes.
 
 Metadata beyond Stata 19's documented limits is stored unchanged in R with
 one aggregated warning: 80 Unicode characters for dataset and variable
-labels, 65,536 entries per value-label table, and 32,000 Unicode characters
-per value-label text. Export behavior depends on the writer and may fail,
-truncate metadata, or produce a file outside Stata's documented limits.
+labels, 65,536 entries per value-label table, and 32,000 UTF-8 bytes per
+value-label text. \code{write_dta()} rejects over-limit metadata rather than
+truncating it.
 
 Adding a value-label table to an ordinary numeric vector adds the
 dependency-free classes \code{haven_labelled}, \code{vctrs_vctr}, and its storage type.

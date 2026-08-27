@@ -43,6 +43,14 @@ and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
 aggregate results used in the R package README.
 
+The manual [`r-corpus-roundtrip/`](r-corpus-roundtrip/) workflow qualifies the
+R writer against the same 1,823-file cache, requires semantic re-read equality
+plus Haven and Stata-open checks, and only then benchmarks writes against Stata.
+Its [2026-08-27 report](r-corpus-roundtrip/results-2026-08-27.md) records the
+complete qualification and aggregate write results. The controlled synthetic
+[write report](large-scale/results-2026-08-27.md) adds repeated Haven, Stata,
+and dtaparser timing and peak-RSS comparisons.
+
 The report-only [`r-helper-performance/`](r-helper-performance/) benchmark
 compares label factorization and one-way tabulation with Haven on a generated
 compact integer column. It checks result equivalence and reports whether each

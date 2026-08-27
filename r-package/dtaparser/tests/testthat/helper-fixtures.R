@@ -36,6 +36,22 @@ without_stata_storage_data <- function(data) {
     data
 }
 
+without_haven_note_count <- function(data) {
+    notes <- attr(data, "notes", exact = TRUE)
+    if (is.null(notes)) return(data)
+
+    # Haven exposes Stata's `_dta[note0]` count characteristic as a note value
+    # without retaining its characteristic name. Stata and dtaparser treat it
+    # as framing metadata. In Haven output it is the last all-decimal entry for
+    # the checked fixtures, even when the characteristic order differs.
+    count_candidates <- which(grepl("^[0-9]+$", notes))
+    if (length(count_candidates)) {
+        notes <- notes[-tail(count_candidates, 1L)]
+    }
+    attr(data, "notes") <- if (length(notes)) notes else NULL
+    data
+}
+
 fixture_with_all_numeric_missing_codes <- function(name) {
     input <- fixture(name)
     bytes <- readBin(input, "raw", n = file.info(input)[["size"]])

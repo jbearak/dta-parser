@@ -74,10 +74,7 @@ fn matches_known_shared_fixture_metadata() {
     assert_eq!(metadata.nvar, 12);
     assert_eq!(metadata.nobs, 74);
     assert_eq!(metadata.dataset_label, "1978 automobile data");
-    assert_eq!(
-        metadata.notes,
-        ["From Consumer Reports with permission", "1"]
-    );
+    assert_eq!(metadata.notes, ["From Consumer Reports with permission"]);
     assert_eq!(metadata.variables[0].name, "make");
     assert_eq!(metadata.variables[0].dta_type, DtaType::FixedString(18));
     assert_eq!(metadata.variables[0].label, "Make and model");

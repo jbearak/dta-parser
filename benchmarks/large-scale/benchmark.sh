@@ -8,6 +8,7 @@ R_ENVIRON_USER=/dev/null
 R_PROFILE_USER=/dev/null
 export R_ENVIRON_USER R_PROFILE_USER
 iterations=${1:-101}
+write_iterations=${2:-7}
 
 case "$iterations" in
     ''|*[!0-9]*)
@@ -18,6 +19,20 @@ esac
 if [ "$iterations" -lt 1 ]; then
     printf '%s\n' "iterations must be a positive integer" >&2
     exit 2
+fi
+case "$write_iterations" in
+    ''|*[!0-9]*)
+        printf '%s\n' "write iterations must be a positive integer" >&2
+        exit 2
+        ;;
+esac
+if [ "$write_iterations" -lt 1 ]; then
+    printf '%s\n' "write iterations must be a positive integer" >&2
+    exit 2
+fi
+if test -z "${STATA_BIN:-}" && test -x /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp; then
+    STATA_BIN=/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
+    export STATA_BIN
 fi
 
 mkdir -p "$target_dir"
@@ -90,6 +105,10 @@ cp "$build_provenance" "$run_stage/build-provenance.tsv"
 Rscript --vanilla "$script_dir/summarize.R" \
     "$run_stage/raw.tsv" "$run_stage/summary.tsv" \
     "$run_stage/run-provenance.tsv"
+Rscript --vanilla "$script_dir/write-run.R" \
+    "$manifest" "$run_stage/write-raw.tsv" \
+    "$run_stage/write-summary.tsv" "$run_stage/write-provenance.tsv" \
+    "$write_iterations"
 
 run_id=$(Rscript --vanilla -e \
     'x <- read.delim(commandArgs(TRUE)[[1L]], colClasses = "character", check.names = FALSE); cat(x$provenance_id[[1L]])' \

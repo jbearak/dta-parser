@@ -8,6 +8,10 @@ dta-parser provides TypeScript and R libraries that read Stata DTA files without
 A variable's numeric representation in a DTA dataset: `byte`, `int`, `long`, `float`, or `double`. It determines the observed range, precision, and encodings reserved for missing codes.
 _Avoid_: R type, display format
 
+**Stata string missing**:
+The empty string, which is Stata's only missing string representation. Exporting `NA_character_` converts it to an empty string and reports the conversion.
+_Avoid_: String NA, tagged string missing
+
 **Compact representation**:
 A read-mostly in-memory backing that stores a numeric column at its Stata storage type's width while presenting values to R as doubles. The column's storage type persists through supported mutations; operations that strip it require re-encoding with a storage-named constructor.
 _Avoid_: ALTREP column, packed vector
@@ -32,6 +36,10 @@ _Avoid_: Tagged NA, value label
 An intentional, one-way conversion of a Stata numeric variable and its value-label metadata to an ordinary R factor for modeling, plotting, or data manipulation. It keeps distinct source codes distinct but does not support reconstruction of the original numeric representation.
 _Avoid_: Stata factor, Haven factor conversion
 
+**Factor export**:
+A one-way conversion of an R factor's level positions to Stata `long` values with its levels as value labels. The R factor class and orderedness do not survive a semantic DTA round-trip.
+_Avoid_: Factor round-trip, Stata factor
+
 **Label-aware tabulation**:
 A frequency table that uses Stata value labels and, when requested, keeps system missing, extended missing codes, and R `NaN` as distinct categories.
 _Avoid_: Safe tabulation
@@ -47,3 +55,27 @@ _Avoid_: Factor levels, variable labels
 **Dataset label**:
 A human-readable description of a dataset as a whole, distinct from its file name and its variables' labels.
 _Avoid_: Variable label, file name
+
+**Target Stata version**:
+The Stata application generation an exported dataset targets. It is distinct from the DTA format release stored in the file header.
+_Avoid_: DTA release, file format code
+
+**DTA format release**:
+The numeric code identifying a DTA file's on-disk layout. Several Stata application generations may read the same release.
+_Avoid_: Target Stata version, Stata version
+
+**Implicit DTA extension**:
+Resolving a local filename with no extension by appending `.dta`, matching Stata's `save` and `use` commands. An explicit filename extension remains part of the requested name.
+_Avoid_: Missing-file fallback, extension repair
+
+**Standalone DTA dataset**:
+A single DTA dataset with no cross-frame alias variables. It may use release 118 or the wide-dataset release 119 when targeting Stata 18 or 19.
+_Avoid_: Frameset, alias-variable dataset
+
+**Semantic DTA round-trip**:
+After any reported export conversions, writing and reading a dataset preserves its represented values, storage types, missing codes, display formats, labels, and notes. It does not require byte-identical output or preserve source details absent from the in-memory model.
+_Avoid_: Byte-identical round-trip, source-file reproduction
+
+**Lossy export conversion**:
+A reported replacement required when an R value has no representation in the selected Stata storage. Numeric values become system missing, character missing values become empty strings, and factor classes become value-labelled `long` variables.
+_Avoid_: Silent coercion, semantic round-trip

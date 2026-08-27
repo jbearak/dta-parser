@@ -19,6 +19,23 @@ The TypeScript and Rust parsers are independent implementations. The R package u
 
 Other format codes are rejected.
 
+## Write compatibility
+
+The R package and reusable Rust core write standalone datasets for the Stata 18
+and 19 applications. Datasets with at most 32,767 variables use release 118;
+wider datasets use release 119, up to Stata's 120,000-variable limit. The writer
+does not emit older releases or release 120/121 alias-variable layouts.
+
+Output is always little-endian. This makes files deterministic across writer
+hosts and follows the dominant contemporary DTA representation; byte order has
+no effect on the values Stata exposes. The writer preserves the metadata held
+by the R package, including dataset notes, but does not expose arbitrary Stata
+characteristics.
+
+Local output names with no extension receive `.dta` with a warning. Local
+extensionless reads likewise resolve to the `.dta` path, even when an exact
+extensionless file exists. Explicit extensions remain unchanged.
+
 ## Shared parsing contract
 
 Both parsers retain:

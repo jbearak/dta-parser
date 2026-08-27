@@ -3,7 +3,7 @@ use crate::endian::{
     read_u64, read_u8, slice_at,
 };
 use crate::legacy::parse_legacy_metadata;
-use crate::text::{field_bytes, is_dataset_note, TextEncoding};
+use crate::text::{dataset_note_index, field_bytes, ordered_dataset_notes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -339,7 +339,7 @@ fn parse_characteristics(
         {
             cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
             ensure_map_offset("data", cursor, offsets.data)?;
-            return Ok(notes);
+            return Ok(ordered_dataset_notes(notes));
         }
 
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
@@ -376,11 +376,9 @@ fn parse_characteristics(
         let payload = slice_at(bytes, cursor, payload_length, "characteristic payload")?;
         let (variable, remainder) = payload.split_at(width);
         let (characteristic, value) = remainder.split_at(width);
-        if is_dataset_note(variable, characteristic) {
+        if let Some(index) = dataset_note_index(variable, characteristic) {
             let note = encoding.decode(field_bytes(value));
-            if !note.is_empty() {
-                notes.push(note);
-            }
+            notes.push((index, note));
         }
         cursor = payload_end;
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_CLOSE, "</ch>")?;

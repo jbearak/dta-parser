@@ -13,12 +13,24 @@ iterations per implementation, workload, and size. Each path is warmed first,
 execution order reverses on alternating iterations, and garbage collection runs
 outside timed regions. There are no timing assertions or CI gates.
 
+The same run also compares synthetic writes through dtaparser, Stata, and
+Haven. Each writer runs in a fresh process on the 100 MB and 1 GB inputs. The
+operation timer starts after that writer's native reader has loaded the input;
+peak RSS covers the whole fresh process because the in-memory input is part of
+the write workload. Writer order rotates, and the raw and summary reports retain
+elapsed write time, peak RSS, and output size. The default is seven write
+iterations per writer and size.
+
+The [2026-08-27 write report](results-2026-08-27.md) records the first complete
+seven-iteration comparison.
+
 Before timing, the runner requires exact identity between the dta-parser and
 Rust-vector collectors for both workloads. It also compares 32-row projected
 windows at the beginning, middle, and end of each file with haven, allowing only
-`1e-7` numeric tolerance. The obsolete parser-only `dta_format_version`
-attribute is normalized uniformly for the haven comparison; dta-parser versus
-Rust-vector identity is checked before that normalization. The manifest binds
+`1e-7` numeric tolerance. Parser-only DTA storage classes and attributes are
+removed uniformly for the haven comparison while labels and display formats
+remain checked; dta-parser versus Rust-vector identity is checked before that
+normalization. The manifest binds
 each canonical dataset path to its exact byte size, row width, row count,
 fixed-file overhead, and SHA-256. Those invariants and hashes are verified both
 before timing and immediately before atomic raw-result publication.
@@ -62,11 +74,11 @@ Failed reruns leave the prior completed bundle selected, and replacing the
 working benchmark library cannot alter the build record copied into an older
 bundle. Preserve the complete content-bound bundle with any dated report.
 
-Pass an iteration count only for local validation. For example, this executes
-the complete two-size matrix once:
+Pass read and write iteration counts for local validation. For example, this
+executes both complete two-size matrices once:
 
 ```sh
-benchmarks/large-scale/benchmark.sh 1
+benchmarks/large-scale/benchmark.sh 1 1
 ```
 
 All generated inputs and reports are written beneath an ignored checkout-local
@@ -80,6 +92,15 @@ The default raw report has 1,212 rows:
 ```text
 2 sizes × 2 workloads × 3 implementations × 101 iterations
 ```
+
+`write-raw.tsv` has 42 rows by default:
+
+```text
+2 sizes × 3 writers × 7 iterations
+```
+
+`write-summary.tsv` has one row per size and writer. Stata is required for the
+write matrix; `STATA_BIN` may override executable discovery.
 
 `summary.tsv` has four rows, one per size/workload combination, with median,
 5th percentile, 95th percentile, and median input throughput for all three

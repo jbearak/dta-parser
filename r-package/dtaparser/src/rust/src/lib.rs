@@ -1,12 +1,17 @@
 use std::any::Any;
+use std::borrow::Cow;
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
 use ahash::AHashMap;
 use dta_parser::{
-    ColumnValues, DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType,
-    FormatVersion, MissingTag, ParallelDtaSink, ReadOptions, TextEncoding, ValueLabelTable,
+    write_dta_to, ColumnValues, DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink,
+    DtaType, DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData,
+    DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteOptions, DtaWriteValueLabel, FormatVersion,
+    MissingTag, ParallelDtaSink, ReadOptions, StataVersion, TextEncoding, ValueLabelTable,
     VariableInfo,
 };
 
@@ -60,6 +65,19 @@ extern "C" {
     ) -> c_int;
     fn dtaparser_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtaparser_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
+    fn dtaparser_write_numeric_at(
+        reader: *const c_void,
+        index: usize,
+        value: *mut f64,
+        missing_code: *mut c_int,
+    ) -> c_int;
+    fn dtaparser_write_string_at(
+        values: Sexp,
+        index: usize,
+        value: *mut *const c_char,
+        length: *mut usize,
+        missing: *mut c_int,
+    ) -> c_int;
 }
 
 #[repr(C)]
@@ -1761,6 +1779,271 @@ pub unsafe extern "C" fn dtaparser_read_rust(
             },
         )
     })
+}
+
+#[repr(C)]
+pub struct RWriteColumnDescriptor {
+    name: *const c_char,
+    dta_type: c_int,
+    format: *const c_char,
+    label: *const c_char,
+    numeric_values: *const c_void,
+    string_values: Sexp,
+    label_values: *const c_void,
+    label_texts: Sexp,
+    label_count: usize,
+    has_value_labels: c_int,
+}
+
+struct RWriteSource<'a> {
+    descriptor: &'a RWriteColumnDescriptor,
+    row_count: u64,
+}
+
+fn missing_from_code(code: c_int) -> Result<Option<MissingTag>, String> {
+    match code {
+        -1 => Ok(None),
+        0 => Ok(Some(MissingTag::System)),
+        value if (c_int::from(b'a')..=c_int::from(b'z')).contains(&value) => {
+            Ok(MissingTag::from_offset(
+                u8::try_from(value - c_int::from(b'a') + 1)
+                    .map_err(|_| "invalid extended missing code".to_owned())?,
+            ))
+        }
+        _ => Err("R NaN or an invalid tagged missing reached the native writer".into()),
+    }
+}
+
+unsafe fn r_numeric_at(reader: *const c_void, index: usize) -> Result<(f64, c_int), String> {
+    let mut value = 0.0;
+    let mut missing_code = -1;
+    if dtaparser_write_numeric_at(reader, index, &mut value, &mut missing_code) == 0 {
+        return Err("R numeric source could not supply a value".into());
+    }
+    Ok((value, missing_code))
+}
+
+unsafe fn r_string_at(values: Sexp, index: usize) -> Result<String, String> {
+    let mut value = ptr::null();
+    let mut length = 0_usize;
+    let mut missing = 0;
+    if dtaparser_write_string_at(values, index, &mut value, &mut length, &mut missing) == 0 {
+        return Err("R character source could not supply a value".into());
+    }
+    if missing != 0 {
+        return Err("R character missing value reached the native writer".into());
+    }
+    if value.is_null() && length != 0 {
+        return Err("R character source returned a null byte pointer".into());
+    }
+    let bytes = if length == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(value.cast::<u8>(), length)
+    };
+    String::from_utf8(bytes.to_vec()).map_err(|_| "R character value is not valid UTF-8".to_owned())
+}
+
+impl DtaWriteColumnSource for RWriteSource<'_> {
+    fn len(&self) -> u64 {
+        self.row_count
+    }
+
+    fn numeric_value(&self, row: u64) -> Result<DtaWriteNumericValue, String> {
+        if row % INTERRUPT_STRIDE as u64 == 0 && unsafe { dtaparser_check_interrupt() } != 0 {
+            return Err("write interrupted".into());
+        }
+        let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+        let (value, missing_code) = unsafe { r_numeric_at(self.descriptor.numeric_values, index) }?;
+        Ok(match missing_from_code(missing_code)? {
+            Some(tag) => DtaWriteNumericValue::Missing(tag),
+            None => DtaWriteNumericValue::Value(value),
+        })
+    }
+
+    fn string_value(&self, row: u64) -> Result<Cow<'_, str>, String> {
+        if row % INTERRUPT_STRIDE as u64 == 0 && unsafe { dtaparser_check_interrupt() } != 0 {
+            return Err("write interrupted".into());
+        }
+        let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+        unsafe { r_string_at(self.descriptor.string_values, index) }.map(Cow::Owned)
+    }
+}
+
+unsafe fn required_c_string(value: *const c_char, description: &str) -> Result<String, String> {
+    if value.is_null() {
+        return Err(format!("{description} is null"));
+    }
+    CStr::from_ptr(value)
+        .to_str()
+        .map(str::to_owned)
+        .map_err(|_| format!("{description} is not valid UTF-8"))
+}
+
+unsafe fn write_impl(
+    path: *const c_char,
+    dataset_label: *const c_char,
+    notes: *const *const c_char,
+    note_count: usize,
+    descriptors: *const RWriteColumnDescriptor,
+    column_count: usize,
+    row_count: usize,
+    stata_version: c_int,
+    timestamp: *const c_char,
+) -> Result<(), String> {
+    let path = required_c_string(path, "output path")?;
+    let dataset_label = required_c_string(dataset_label, "dataset label")?;
+    if notes.is_null() && note_count != 0 {
+        return Err("dataset note pointer is null".into());
+    }
+    if descriptors.is_null() && column_count != 0 {
+        return Err("write column pointer is null".into());
+    }
+    let note_pointers = if note_count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(notes, note_count)
+    };
+    let notes = note_pointers
+        .iter()
+        .map(|note| required_c_string(*note, "dataset note"))
+        .collect::<Result<Vec<_>, _>>()?;
+    let descriptors = if column_count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(descriptors, column_count)
+    };
+    let row_count = u64::try_from(row_count).map_err(|_| "row count is too large".to_owned())?;
+    let sources = descriptors
+        .iter()
+        .map(|descriptor| RWriteSource {
+            descriptor,
+            row_count,
+        })
+        .collect::<Vec<_>>();
+    let mut columns = Vec::with_capacity(column_count);
+    for (descriptor, source) in descriptors.iter().zip(&sources) {
+        let dta_type = match descriptor.dta_type {
+            0 => DtaType::Byte,
+            1 => DtaType::Int,
+            2 => DtaType::Long,
+            3 => DtaType::Float,
+            4 => DtaType::Double,
+            width if (5..=2_049).contains(&width) => DtaType::FixedString(
+                u16::try_from(width - 4).map_err(|_| "invalid fixed-string width".to_owned())?,
+            ),
+            2_050 => DtaType::StrL,
+            _ => return Err("invalid native DTA storage type".into()),
+        };
+        let mut value_labels = Vec::with_capacity(descriptor.label_count);
+        for index in 0..descriptor.label_count {
+            let (value, missing_code) = r_numeric_at(descriptor.label_values, index)?;
+            let value = match missing_from_code(missing_code)? {
+                Some(tag) => DtaWriteLabelValue::Missing(tag),
+                None if value.is_finite()
+                    && value.fract() == 0.0
+                    && value >= f64::from(i32::MIN)
+                    && value <= f64::from(i32::MAX) =>
+                {
+                    DtaWriteLabelValue::Integer(value as i32)
+                }
+                None => return Err("value-label key is not a representable integer".into()),
+            };
+            value_labels.push(DtaWriteValueLabel {
+                value,
+                label: r_string_at(descriptor.label_texts, index)?,
+            });
+        }
+        columns.push(DtaWriteColumn {
+            name: required_c_string(descriptor.name, "variable name")?,
+            dta_type,
+            format: required_c_string(descriptor.format, "display format")?,
+            label: required_c_string(descriptor.label, "variable label")?,
+            has_value_labels: descriptor.has_value_labels != 0,
+            value_labels,
+            values: DtaWriteColumnValues::Source(source),
+        });
+    }
+    let options = DtaWriteOptions {
+        stata_version: match stata_version {
+            18 => StataVersion::V18,
+            19 => StataVersion::V19,
+            _ => return Err("`version` must be 18 or 19".into()),
+        },
+        timestamp: Some(required_c_string(timestamp, "timestamp")?),
+    };
+    let data = DtaWriteData {
+        dataset_label,
+        notes,
+        row_count,
+        columns,
+    };
+    let file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|error| format!("could not create temporary DTA output: {error}"))?;
+    let mut writer = BufWriter::new(file);
+    write_dta_to(&mut writer, &data, &options).map_err(|error| error.to_string())?;
+    writer
+        .flush()
+        .map_err(|error| format!("could not flush DTA output: {error}"))?;
+    let file = writer
+        .into_inner()
+        .map_err(|error| format!("could not close DTA output: {error}"))?;
+    file.sync_all()
+        .map_err(|error| format!("could not synchronize DTA output: {error}"))?;
+    Ok(())
+}
+
+#[no_mangle]
+/// Stream a prevalidated R data frame to a new temporary DTA file.
+///
+/// # Safety
+///
+/// All pointers must remain valid for the call. The caller must run on R's
+/// main thread because column sources call back into the R runtime.
+pub unsafe extern "C" fn dtaparser_write_rust(
+    path: *const c_char,
+    dataset_label: *const c_char,
+    notes: *const *const c_char,
+    note_count: usize,
+    descriptors: *const RWriteColumnDescriptor,
+    column_count: usize,
+    row_count: usize,
+    stata_version: c_int,
+    timestamp: *const c_char,
+    error: *mut *mut c_char,
+) -> c_int {
+    if !error.is_null() {
+        *error = ptr::null_mut();
+    }
+    match catch_unwind(AssertUnwindSafe(|| {
+        write_impl(
+            path,
+            dataset_label,
+            notes,
+            note_count,
+            descriptors,
+            column_count,
+            row_count,
+            stata_version,
+            timestamp,
+        )
+    })) {
+        Ok(Ok(())) => 1,
+        Ok(Err(message)) => {
+            set_error(error, message);
+            0
+        }
+        Err(payload) => {
+            set_error(
+                error,
+                format!("native Rust panic: {}", panic_message(payload)),
+            );
+            0
+        }
+    }
 }
 
 #[no_mangle]

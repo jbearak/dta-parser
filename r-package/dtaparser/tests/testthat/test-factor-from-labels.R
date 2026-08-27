@@ -212,7 +212,7 @@ test_that("factor_from_labels warns for nonportable label metadata", {
 
     expect_warning(
         actual <- factor_from_labels(x, drop_unused = TRUE),
-        "65,537 entries.*32,001 Unicode characters"
+        "65,537 entries.*32,001 UTF-8 bytes"
     )
     expect_identical(as.character(actual), strrep("x", 32001L))
 })

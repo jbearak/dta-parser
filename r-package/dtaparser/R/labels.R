@@ -34,9 +34,9 @@
 #'
 #' Metadata beyond Stata 19's documented limits is stored unchanged in R with
 #' one aggregated warning: 80 Unicode characters for dataset and variable
-#' labels, 65,536 entries per value-label table, and 32,000 Unicode characters
-#' per value-label text. Export behavior depends on the writer and may fail,
-#' truncate metadata, or produce a file outside Stata's documented limits.
+#' labels, 65,536 entries per value-label table, and 32,000 UTF-8 bytes per
+#' value-label text. `write_dta()` rejects over-limit metadata rather than
+#' truncating it.
 #'
 #' Adding a value-label table to an ordinary numeric vector adds the
 #' dependency-free classes `haven_labelled`, `vctrs_vctr`, and its storage type.
@@ -183,9 +183,8 @@ dataset_label <- function(data) {
     warning(
         paste0(
             "Stored unchanged in R, but exceeds Stata 19's documented ",
-            "limits: ", paste(violations, collapse = "; "), ". Export ",
-            "behavior depends on the writer and may fail, truncate metadata, ",
-            "or create a file outside Stata's documented limits."
+            "limits: ", paste(violations, collapse = "; "), ". dtaparser's ",
+            "writer will reject this metadata rather than truncate it."
         ),
         call. = FALSE
     )
@@ -285,12 +284,12 @@ dataset_label <- function(data) {
             ))
         }
 
-        text_lengths <- nchar(names(value), type = "chars")
+        text_lengths <- nchar(names(value), type = "bytes")
         if (any(text_lengths > 32000L)) {
             violations <- c(violations, sprintf(
                 paste0(
-                    "value-label text for `%s` has %s Unicode characters ",
-                    "(limit: 32,000 Unicode characters)"
+                    "value-label text for `%s` has %s UTF-8 bytes ",
+                    "(limit: 32,000 UTF-8 bytes)"
                 ),
                 location,
                 format(max(text_lengths), big.mark = ",", scientific = FALSE)

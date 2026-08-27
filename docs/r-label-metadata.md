@@ -82,9 +82,9 @@ The helpers target the documented Stata 19 metadata limits:
 | Dataset label | 80 Unicode characters |
 | Variable label | 80 Unicode characters |
 | Entries in one value-label table | 65,536 |
-| Text for one value-label entry | 32,000 Unicode characters |
+| Text for one value-label entry | 32,000 UTF-8 bytes |
 
-An over-limit value is stored unchanged in R. A call emits one standard, suppressible warning that summarizes every affected column and limit. Export behavior depends on the writer and may fail, truncate metadata, or create a file outside Stata's documented limits. A future dtaparser writer will support only Stata 18/19 and will not silently emit metadata outside those limits; see [issue #57](https://github.com/jbearak/dta-parser/issues/57).
+An over-limit value is stored unchanged in R. A call emits one standard, suppressible warning that summarizes every affected column and limit. `write_dta()` supports Stata 18/19 and rejects metadata outside those limits instead of truncating it.
 
 ## Classes, attributes, and compact columns
 
@@ -127,4 +127,4 @@ levels, and scans compact storage directly. Two-way missing-payload
 interoperability with the installed Haven release runs in the ordinary package
 tests. [`test-haven-helper-interop.R`](../scripts/test-haven-helper-interop.R)
 retains the pinned 2.5.5 behavior comparison; Haven remains a suggested
-dependency for writing DTA files and reading other statistical formats.
+dependency for writing older DTA releases and reading other statistical formats.
