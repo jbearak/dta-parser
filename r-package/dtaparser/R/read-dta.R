@@ -107,8 +107,8 @@
 #' data$status[1] <- tagged_missing("a")
 #' ```
 #' Use [factor_from_labels()] for an intentional one-way conversion to an
-#' ordinary factor. The suggested haven package remains useful for writing
-#' older DTA releases and for reading other statistical formats.
+#' ordinary factor. Haven can be installed separately to write older DTA
+#' releases or read other statistical formats.
 #' See the
 #' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 #' for bulk setters, Stata 19 limits, and the version-specific comparison with
@@ -194,6 +194,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .force_altrep_materialization <- function(value) {
     .Call(C_dtaparser_force_altrep_materialization, value)
+}
+
+.mutate_first_numeric_altrep <- function(value, replacement) {
+    .Call(C_dtaparser_mutate_first_numeric_altrep, value, replacement)
 }
 
 .metadata_proxy_depth <- function(value) {

@@ -124,7 +124,8 @@ distinct numeric codes when their label text is identical.
 
 dtaparser validates the narrower Stata domain, preserves distinct factor
 levels, and scans compact storage directly. Two-way missing-payload
-interoperability with the installed Haven release runs in the ordinary package
-tests. [`test-haven-helper-interop.R`](../scripts/test-haven-helper-interop.R)
-retains the pinned 2.5.5 behavior comparison; Haven remains a suggested
-dependency for writing older DTA releases and reading other statistical formats.
+interoperability and reader/writer comparisons run in a repository-only CI
+suite. [`test-haven-helper-interop.R`](../scripts/test-haven-helper-interop.R)
+retains the pinned 2.5.5 behavior comparison. dtaparser does not suggest or
+install Haven; users can install it separately to write older DTA releases or
+read other statistical formats.

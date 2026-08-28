@@ -14,7 +14,7 @@ if ! command -v Rscript >/dev/null 2>&1; then
   exit 0
 fi
 
-if ! Rscript -e 'quit(status = !all(vapply(c("rlang", "tibble", "tidyselect", "testthat", "haven"), requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))))'; then
+if ! Rscript -e 'quit(status = !all(vapply(c("rlang", "tibble", "tidyselect", "testthat"), requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))))'; then
   if test "$required" = 1; then
     echo "R conformance: REQUIRED but one or more declared test dependencies are unavailable" >&2
     exit 1
@@ -31,4 +31,4 @@ tarball="dtaparser_${version}.tar.gz"
 (cd "$temporary" && R CMD build dtaparser)
 scripts/check-r-package-archive.sh "$temporary/$tarball"
 (cd "$temporary" && R CMD check --no-manual "$tarball")
-echo "R/haven conformance: PASS (current source built and checked with offline Cargo archive)"
+echo "R package conformance: PASS (current source built and checked with offline Cargo archive)"

@@ -87,7 +87,8 @@ test_that("constructors enforce Stata ranges and precision rules", {
     expect_error(stata_int(1.5), "stata_float\\(x\\)")
     expect_error(stata_int(32741), "stata_long\\(x\\)")
     expect_error(stata_long(2147483621), "stata_double\\(x\\)")
-    expect_error(stata_float(Inf), "No Stata numeric storage")
+    expect_error(stata_float(Inf), "use `NA_real_` for system missing")
+    expect_error(stata_int(-Inf), "use `NA_real_` for system missing")
     expect_error(stata_double(Inf), "No Stata numeric storage")
     expect_error(stata_byte(NaN), "No Stata numeric storage")
     expect_error(
@@ -106,7 +107,6 @@ test_that("constructors preserve Stata extended missing codes", {
 })
 
 test_that("native construction rejects unsupported tagged missing payloads", {
-    skip_if_not_installed("haven")
     constructor <- get(
         "C_dtaparser_construct_numeric",
         envir = asNamespace("dtaparser")
@@ -114,7 +114,7 @@ test_that("native construction rejects unsupported tagged missing payloads", {
 
     for (tag in c("?", "A")) {
         expect_error(
-            .Call(constructor, haven::tagged_na(tag), 0L, 0L),
+            .Call(constructor, tagged_nan_for_test(tag), 0L, 0L),
             "accept only system missing and `.a` through `.z`",
             info = tag
         )
@@ -140,28 +140,77 @@ test_that("storage inspection does not materialize imported columns", {
     expect_null(stata_storage_type(1:3))
 })
 
-test_that("imported temporal columns retain storage through supported mutation", {
-    skip_if_not_installed("haven")
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    haven::write_dta(
-        data.frame(date = as.Date(c("1960-01-01", "2020-01-01"))),
-        path,
-        version = 15
-    )
-    values <- read_dta(path)$date
-    shifted <- values + 1
-    selected <- dplyr::if_else(c(TRUE, FALSE), values, shifted)
+test_that("serialization preserves compact numeric backing", {
+    source <- stata_byte(rep(c(-1, 0, 1, NA_real_), 25000L))
 
-    expect_s3_class(values, "Date")
-    expect_s3_class(values, "stata_temporal")
-    expect_s3_class(shifted, "Date")
-    expect_s3_class(selected, "Date")
-    expect_identical(stata_storage_type(shifted), "double")
-    expect_identical(stata_storage_type(selected), "double")
+    serialized <- serialize(source, NULL)
+    restored <- unserialize(serialized)
+
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(restored))
+    expect_identical(restored, source)
+    expect_lt(length(serialized), length(serialize(as.double(source), NULL)))
+})
+
+test_that("saveRDS preserves compact numeric backing", {
+    source <- read_dta(fixture("all_types_v118.dta"))$v_int
+    path <- tempfile(fileext = ".rds")
+    on.exit(unlink(path), add = TRUE)
+
+    saveRDS(source, path, compress = FALSE)
+    restored <- readRDS(path)
+
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(restored))
+    expect_identical(restored, source)
+})
+
+test_that("serialization preserves writable materialized values", {
+    source <- stata_int(c(1, 2, 3))
+    source <- dtaparser:::.mutate_first_numeric_altrep(source, 99)
+
+    expect_false(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    restored <- unserialize(serialize(source, NULL))
+
+    expect_identical(as.double(restored), c(99, 2, 3))
+    expect_identical(attributes(restored), attributes(source))
+    expect_false(dtaparser:::.is_unmaterialized_numeric_altrep(restored))
+})
+
+test_that("base subsetting and duplication preserve compact backing", {
+    source <- read_dta(fixture("all_types_v118.dta"))$v_long
+    selected <- source[c(5L, 2L, NA_integer_, 2L)]
+    copied <- rlang::duplicate(source)
+
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(selected))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(copied))
     expect_identical(
-        as.character(selected), c("1960-01-01", "2020-01-02")
+        as.double(selected),
+        c(as.double(source[c(5L, 2L)]), NA_real_, as.double(source[2L]))
     )
+    expect_identical(copied, source)
+})
+
+test_that("legacy compact widths preserve system missing encoding", {
+    data <- read_dta(fixture("synthetic_v111.dta"))
+
+    for (name in c("b", "i", "l", "f")) {
+        source <- data[[name]]
+        selected <- source[c(1L, 4L, NA_integer_)]
+        restored <- unserialize(serialize(source, NULL))
+
+        expect_true(
+            dtaparser:::.is_unmaterialized_numeric_altrep(selected),
+            info = name
+        )
+        expect_true(
+            dtaparser:::.is_unmaterialized_numeric_altrep(restored),
+            info = name
+        )
+        expect_identical(as.double(selected), c(as.double(source[1]), NA, NA))
+        expect_identical(as.double(restored), as.double(source), info = name)
+    }
 })
 
 test_that("narrow dates validate and encode in Stata source units", {
@@ -296,57 +345,7 @@ test_that("empty temporal extrema retain base infinity behavior", {
     expect_null(stata_storage_type(interval))
 })
 
-test_that("datetime arithmetic promotes using Stata millisecond values", {
-    skip_if_not_installed("haven")
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    input <- structure(
-        c(-315619200L, -315619199L),
-        class = c("POSIXct", "POSIXt"),
-        tzone = "UTC"
-    )
-    haven::write_dta(data.frame(value = input), path, version = 15)
-    values <- read_dta(path)$value
 
-    expect_identical(stata_storage_type(values), "long")
-    shifted <- values + 315619200
-    expect_identical(stata_storage_type(shifted), "double")
-    expect_identical(as.double(shifted), c(0, 1))
-})
-
-test_that("integer datetime backing round-trips fractional R seconds", {
-    skip_if_not_installed("haven")
-    byte_path <- fixture_with_temporal_storage("foreign", "%tc")
-    int_path <- fixture_with_temporal_storage("price", "%tc")
-    on.exit(unlink(c(byte_path, int_path)), add = TRUE)
-
-    byte_value <- read_dta(byte_path)$foreign[53]
-    int_value <- read_dta(int_path)$price[1]
-    expect_identical(stata_storage_type(byte_value), "byte")
-    expect_identical(stata_storage_type(int_value), "int")
-
-    long_input <- structure(
-        c(-315619200L, -315619199L),
-        class = c("POSIXct", "POSIXt"),
-        tzone = "UTC"
-    )
-    long_path <- tempfile(fileext = ".dta")
-    haven::write_dta(data.frame(value = long_input), long_path, version = 15)
-    bytes <- readBin(long_path, "raw", n = file.info(long_path)[["size"]])
-    data_start <- grepRaw(charToRaw("<data>"), bytes, fixed = TRUE)[[1L]] +
-        nchar("<data>")
-    bytes[data_start + 0:3] <- writeBin(
-        1L, raw(), size = 4L, endian = "little"
-    )
-    writeBin(bytes, long_path)
-    on.exit(unlink(long_path), add = TRUE)
-
-    long_values <- read_dta(long_path)$value
-    expect_identical(stata_storage_type(long_values), "long")
-    expect_identical(stata_storage_type(long_values[1]), "long")
-    expected_first <- -315619200 + 0.001
-    expect_identical(as.double(long_values[1]), expected_first)
-})
 
 test_that("common types follow the Stata storage promotion lattice", {
     types <- c("byte", "int", "long", "float", "double")
