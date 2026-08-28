@@ -49,6 +49,6 @@ installed package, source tarball, and hash-bound inventory. The retained
 public-style reports contain no input paths, labels, or values.
 
 The aggregate-only [2026-08-28 report](results-2026-08-28.md) records the
-latest complete qualification against dtaparser 0.6.0. The
-[2026-08-27 report](results-2026-08-27.md) remains the historical first
-complete qualification and write comparison.
+latest complete qualification against dtaparser 0.6.0 under the documented
+Stata/MP 18 executable scope. The [2026-08-27 report](results-2026-08-27.md)
+remains the historical first complete qualification and write comparison.
