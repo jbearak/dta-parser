@@ -49,9 +49,9 @@ assignment, and recode replacements reject it. Use \code{NA_real_} for system
 missing or \code{\link[=tagged_missing]{tagged_missing()}} for an extended missing value.
 
 Construction validates and encodes ordinary numeric vectors in native code
-without allocating full-length validation vectors. Re-encoding an existing
-compact vector still exposes its values as doubles before writing the new
-compact backing.
+without allocating full-length validation vectors. Native and vctrs slicing
+gather compact backing directly. Operations that require re-encoding an
+existing compact vector still expose its values as doubles first.
 
 \code{serialize()} and \code{saveRDS()} retain compact backing for unmaterialized
 \code{byte}, \code{int}, \code{long}, and \code{float} vectors. Loading the result reconstructs

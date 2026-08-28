@@ -144,14 +144,10 @@ stata_merge <- function(x, y, by, relationship,
 
     columns <- list()
     for (name in by) {
-        column <- vctrs::vec_slice(keys[[name]]$x, x_rows)
-        if (length(using_only) > 0L) {
-            column <- vctrs::vec_assign(
-                column, using_only,
-                vctrs::vec_slice(keys[[name]]$y, y_rows[using_only])
-            )
-        }
-        columns[[name]] <- column
+        columns[[name]] <- .stata_merge_coalesce(
+            keys[[name]]$x, keys[[name]]$y,
+            x_rows, y_rows, using_only
+        )
     }
     x_extra <- setdiff(names(x), by)
     overlapping <- intersect(x_extra, names(y))
@@ -167,33 +163,39 @@ stata_merge <- function(x, y, by, relationship,
         ), call. = FALSE)
     }
     .warn_coalesced_metadata(x, y, c(by, overlapping))
+
+    x_only <- setdiff(x_extra, overlapping)
+    y_only <- setdiff(names(y), c(by, overlapping))
+    x_only_columns <- .stata_merge_slice_columns(x[x_only], x_rows)
+    y_only_columns <- .stata_merge_slice_columns(y[y_only], y_rows)
+    overlap_x <- overlap_prototypes <- vector(
+        "list", length(overlapping)
+    )
+    names(overlap_x) <- names(overlap_prototypes) <- overlapping
+    for (name in overlapping) {
+        prototype <- vctrs::vec_ptype2(
+            x[[name]], y[[name]],
+            x_arg = paste0("x$", name),
+            y_arg = paste0("y$", name)
+        )
+        overlap_prototypes[[name]] <- prototype
+        overlap_x[[name]] <- .stata_merge_cast(
+            x[[name]], prototype, paste0("x$", name)
+        )
+    }
+    overlap_columns <- .stata_merge_coalesce_columns(
+        overlap_x, y[overlapping],
+        x_rows, y_rows, using_only, overlap_prototypes
+    )
     for (name in x_extra) {
-        if (name %in% overlapping) {
-            prototype <- vctrs::vec_ptype2(
-                x[[name]], y[[name]],
-                x_arg = paste0("x$", name),
-                y_arg = paste0("y$", name)
-            )
-            column <- vctrs::vec_slice(
-                .stata_merge_cast(x[[name]], prototype, paste0("x$", name)),
-                x_rows
-            )
-            if (length(using_only) > 0L) {
-                column <- vctrs::vec_assign(
-                    column, using_only,
-                    .stata_merge_cast(
-                        vctrs::vec_slice(y[[name]], y_rows[using_only]),
-                        prototype, paste0("y$", name)
-                    )
-                )
-            }
-            columns[[name]] <- column
+        columns[[name]] <- if (name %in% overlapping) {
+            overlap_columns[[name]]
         } else {
-            columns[[name]] <- vctrs::vec_slice(x[[name]], x_rows)
+            x_only_columns[[name]]
         }
     }
-    for (name in setdiff(names(y), c(by, overlapping))) {
-        columns[[name]] <- vctrs::vec_slice(y[[name]], y_rows)
+    for (name in y_only) {
+        columns[[name]] <- y_only_columns[[name]]
     }
     indicator <- stata_byte(merge_codes)
     val_labels(indicator) <- c(
@@ -422,6 +424,163 @@ stata_merge <- function(x, y, by, relationship,
         return(value)
     }
     vctrs::vec_cast(value, prototype, x_arg = arg)
+}
+
+.stata_merge_has_compact_storage <- function(value) {
+    !identical(stata_storage_type(value), "double") &&
+        .is_unmaterialized_numeric_altrep(value)
+}
+
+.stata_merge_same_compact_storage <- function(x, y) {
+    .stata_merge_has_compact_storage(x) &&
+        .stata_merge_has_compact_storage(y) &&
+        identical(stata_storage_type(x), stata_storage_type(y)) &&
+        identical(
+            .temporal_kind_or_missing(x),
+            .temporal_kind_or_missing(y)
+        )
+}
+
+.stata_merge_same_double_storage <- function(x, y) {
+    identical(stata_storage_type(x), "double") &&
+        identical(stata_storage_type(y), "double") &&
+        identical(
+            .temporal_kind_or_missing(x),
+            .temporal_kind_or_missing(y)
+        )
+}
+
+.stata_merge_restore_gathered <- function(value, prototype) {
+    storage <- stata_storage_type(prototype)
+    if (inherits(prototype, "stata_temporal")) {
+        return(.attach_stata_temporal(value, prototype, storage))
+    }
+    .restore_stata_metadata(value, prototype, storage)
+}
+
+.stata_merge_slice <- function(value, rows) {
+    if (.stata_merge_has_compact_storage(value)) {
+        gathered <- .Call(
+            C_dtaparser_gather_numeric,
+            value, NULL, rows, NULL
+        )
+        return(.stata_merge_restore_gathered(gathered, value))
+    }
+    if (identical(stata_storage_type(value), "double")) {
+        gathered <- .stata_data(value)[rows]
+        return(.stata_merge_restore_gathered(gathered, value))
+    }
+    vctrs::vec_slice(value, rows)
+}
+
+.stata_merge_slice_columns <- function(values, rows) {
+    count <- length(values)
+    result <- vector("list", count)
+    names(result) <- names(values)
+    if (count == 0L) return(result)
+
+    compact <- vapply(
+        values, .stata_merge_has_compact_storage, logical(1)
+    )
+    if (any(compact)) {
+        gathered <- .Call(
+            C_dtaparser_gather_numeric_columns,
+            unname(as.list(values[compact])), NULL, rows, NULL
+        )
+        locations <- which(compact)
+        for (offset in seq_along(locations)) {
+            location <- locations[[offset]]
+            value <- values[[location]]
+            result[[location]] <- if (is.null(gathered[[offset]])) {
+                .stata_merge_slice(value, rows)
+            } else {
+                .stata_merge_restore_gathered(
+                    gathered[[offset]], value
+                )
+            }
+        }
+    }
+    for (location in which(!compact)) {
+        result[[location]] <- .stata_merge_slice(
+            values[[location]], rows
+        )
+    }
+    result
+}
+
+.stata_merge_coalesce <- function(
+    x, y, x_rows, y_rows, using_only,
+    prototype = NULL, y_arg = ""
+) {
+    if (.stata_merge_same_compact_storage(x, y)) {
+        gathered <- .Call(
+            C_dtaparser_gather_numeric,
+            x, y, x_rows, y_rows
+        )
+        if (!is.null(gathered)) {
+            return(.stata_merge_restore_gathered(gathered, x))
+        }
+    }
+    if (.stata_merge_same_double_storage(x, y)) {
+        gathered <- .stata_data(x)[x_rows]
+        if (length(using_only) > 0L) {
+            gathered[using_only] <- .stata_data(y)[y_rows[using_only]]
+        }
+        return(.stata_merge_restore_gathered(gathered, x))
+    }
+
+    column <- .stata_merge_slice(x, x_rows)
+    if (length(using_only) == 0L) return(column)
+    replacement <- .stata_merge_slice(y, y_rows[using_only])
+    if (!is.null(prototype)) {
+        replacement <- .stata_merge_cast(replacement, prototype, y_arg)
+    }
+    vctrs::vec_assign(column, using_only, replacement)
+}
+
+.stata_merge_coalesce_columns <- function(
+    x, y, x_rows, y_rows, using_only, prototypes
+) {
+    count <- length(x)
+    result <- vector("list", count)
+    names(result) <- names(x)
+    if (count == 0L) return(result)
+
+    compact <- vapply(seq_len(count), function(index) {
+        .stata_merge_same_compact_storage(x[[index]], y[[index]])
+    }, logical(1))
+    if (any(compact)) {
+        gathered <- .Call(
+            C_dtaparser_gather_numeric_columns,
+            unname(x[compact]), unname(as.list(y[compact])),
+            x_rows, y_rows
+        )
+        locations <- which(compact)
+        for (offset in seq_along(locations)) {
+            location <- locations[[offset]]
+            result[[location]] <- if (is.null(gathered[[offset]])) {
+                .stata_merge_coalesce(
+                    x[[location]], y[[location]],
+                    x_rows, y_rows, using_only,
+                    prototype = prototypes[[location]],
+                    y_arg = paste0("y$", names(x)[[location]])
+                )
+            } else {
+                .stata_merge_restore_gathered(
+                    gathered[[offset]], x[[location]]
+                )
+            }
+        }
+    }
+    for (location in which(!compact)) {
+        result[[location]] <- .stata_merge_coalesce(
+            x[[location]], y[[location]],
+            x_rows, y_rows, using_only,
+            prototype = prototypes[[location]],
+            y_arg = paste0("y$", names(x)[[location]])
+        )
+    }
+    result
 }
 
 .merge_vctrs_relationships <- c(

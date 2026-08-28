@@ -28,6 +28,9 @@ extern int dtaparser_write_path_kind(const char *, char **);
 extern void dtaparser_free_error(char *);
 extern void dtaparser_numeric_free(void *);
 extern void *dtaparser_numeric_alloc(void *, size_t, int, int, int);
+extern int dtaparser_gather_numeric_columns(
+    const void *, size_t, const int *, const int *, size_t
+);
 extern void dtaparser_dictstring_free(void *);
 extern int dtaparser_dictstring_bytes(
     void *, uint32_t, const char **, int *
@@ -70,6 +73,14 @@ typedef struct {
     int format_version;
     int no_na;
 } numeric_data;
+
+typedef struct {
+    uintptr_t x_values;
+    uintptr_t y_values;
+    uintptr_t output;
+    size_t width;
+    unsigned char missing[4];
+} numeric_gather_column;
 
 enum {
     NUMERIC_BYTE = 0,
@@ -1484,6 +1495,313 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
 }
 
 typedef struct {
+    SEXP value;
+    const int *integer_values;
+    const double *real_values;
+    int type;
+} numeric_gather_indices;
+
+static numeric_gather_indices numeric_gather_indices_create(
+    SEXP value, const char *argument
+) {
+    numeric_gather_indices indices = {
+        value, NULL, NULL, TYPEOF(value)
+    };
+    if (indices.type == INTSXP) {
+        indices.integer_values = (const int *) DATAPTR_OR_NULL(value);
+    } else if (indices.type == REALSXP) {
+        indices.real_values = (const double *) DATAPTR_OR_NULL(value);
+    } else {
+        Rf_error("`%s` must be an integer or double vector", argument);
+    }
+    return indices;
+}
+
+static R_xlen_t numeric_gather_index(
+    const numeric_gather_indices *indices, R_xlen_t position,
+    size_t source_length, const char *argument
+) {
+    if (indices->type == INTSXP) {
+        int candidate = indices->integer_values == NULL
+            ? INTEGER_ELT(indices->value, position)
+            : indices->integer_values[position];
+        if (candidate == NA_INTEGER) return -1;
+        if (candidate <= 0 || (size_t) candidate > source_length) {
+            Rf_error("`%s` contains an invalid row index", argument);
+        }
+        return (R_xlen_t) candidate - 1;
+    }
+
+    double candidate = indices->real_values == NULL
+        ? REAL_ELT(indices->value, position)
+        : indices->real_values[position];
+    if (ISNAN(candidate)) return -1;
+    if (!R_FINITE(candidate) || candidate != trunc(candidate) ||
+        candidate <= 0 || candidate > (double) source_length) {
+        Rf_error("`%s` contains an invalid row index", argument);
+    }
+    return (R_xlen_t) candidate - 1;
+}
+
+static void numeric_gather_element(
+    unsigned char *output, R_xlen_t output_index,
+    const numeric_data *source, R_xlen_t source_index, size_t width
+) {
+    const unsigned char *input = (const unsigned char *) source->values;
+    if (width == 1) {
+        output[output_index] = input[source_index];
+    } else if (width == 2) {
+        uint16_t element;
+        memcpy(&element, input + (size_t) source_index * 2, 2);
+        memcpy(output + (size_t) output_index * 2, &element, 2);
+    } else {
+        uint32_t element;
+        memcpy(&element, input + (size_t) source_index * 4, 4);
+        memcpy(output + (size_t) output_index * 4, &element, 4);
+    }
+}
+
+SEXP C_dtaparser_gather_numeric(
+    SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
+) {
+    numeric_data *x_data = unmaterialized_numeric_storage(x);
+    if (x_data == NULL) {
+        Rf_error("internal numeric gather requires compact `x` storage");
+    }
+    numeric_data *y_data = NULL;
+    if (y != R_NilValue) {
+        y_data = unmaterialized_numeric_storage(y);
+        if (y_data == NULL) {
+            Rf_error("internal numeric gather requires compact `y` storage");
+        }
+        if (x_data->kind != y_data->kind ||
+            x_data->temporal != y_data->temporal) {
+            Rf_error("internal numeric gather requires matching storage");
+        }
+        if ((x_data->format_version <= 111) !=
+            (y_data->format_version <= 111)) {
+            return R_NilValue;
+        }
+        if (XLENGTH(y_rows) != XLENGTH(x_rows)) {
+            Rf_error("internal numeric gather row vectors differ in length");
+        }
+    } else if (y_rows != R_NilValue) {
+        Rf_error("internal numeric gather received `y_rows` without `y`");
+    }
+
+    R_xlen_t length = XLENGTH(x_rows);
+    size_t width = numeric_kind_width(x_data->kind);
+    if ((size_t) length > SIZE_MAX / width ||
+        (size_t) length * width > (size_t) R_XLEN_T_MAX) {
+        Rf_error("compact Stata numeric gather is too long");
+    }
+    SEXP backing = PROTECT(Rf_allocVector(
+        RAWSXP, (R_xlen_t) ((size_t) length * width)
+    ));
+    numeric_gather_indices x_indices = numeric_gather_indices_create(
+        x_rows, "x_rows"
+    );
+    numeric_gather_indices y_indices;
+    if (y_data != NULL) {
+        y_indices = numeric_gather_indices_create(y_rows, "y_rows");
+    }
+    unsigned char *output = RAW(backing);
+    SEXP x_names = Rf_getAttrib(x, R_NamesSymbol);
+    SEXP gathered_names = R_NilValue;
+    if (x_names != R_NilValue) {
+        gathered_names = PROTECT(Rf_allocVector(STRSXP, length));
+    }
+    int no_na = x_data->no_na &&
+        (y_data == NULL || y_data->no_na);
+
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t source_index = numeric_gather_index(
+            &x_indices, index, x_data->length, "x_rows"
+        );
+        const numeric_data *source = x_data;
+        if (source_index < 0 && y_data != NULL) {
+            source_index = numeric_gather_index(
+                &y_indices, index, y_data->length, "y_rows"
+            );
+            source = y_data;
+        }
+        if (source_index < 0) {
+            write_numeric_system_missing_raw(
+                output, index, x_data->kind, x_data->format_version
+            );
+            no_na = 0;
+        } else {
+            numeric_gather_element(
+                output, index, source, source_index, width
+            );
+        }
+        if (gathered_names != R_NilValue) {
+            SET_STRING_ELT(
+                gathered_names, index,
+                source == x_data && source_index >= 0
+                    ? STRING_ELT(x_names, source_index) : R_BlankString
+            );
+        }
+    }
+
+    SEXP result = PROTECT(numeric_from_backing(
+        backing, (size_t) length, x_data->kind, x_data->temporal,
+        x_data->format_version, no_na
+    ));
+    if (gathered_names != R_NilValue) {
+        Rf_setAttrib(result, R_NamesSymbol, gathered_names);
+    }
+    UNPROTECT(gathered_names == R_NilValue ? 2 : 3);
+    return result;
+}
+
+static int *numeric_gather_plan(
+    SEXP rows, size_t source_length, int *has_missing,
+    const char *argument
+) {
+    if (source_length > (size_t) INT_MAX) {
+        Rf_error("compact numeric gather source is too long");
+    }
+    R_xlen_t length = XLENGTH(rows);
+    if ((size_t) length > SIZE_MAX / sizeof(int)) {
+        Rf_error("compact numeric gather plan is too long");
+    }
+    int *plan = (int *) R_alloc((size_t) length, sizeof(int));
+    numeric_gather_indices indices = numeric_gather_indices_create(
+        rows, argument
+    );
+    *has_missing = 0;
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t source = numeric_gather_index(
+            &indices, index, source_length, argument
+        );
+        plan[index] = (int) source;
+        if (source < 0) *has_missing = 1;
+    }
+    return plan;
+}
+
+SEXP C_dtaparser_gather_numeric_columns(
+    SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
+) {
+    if (TYPEOF(x) != VECSXP ||
+        (y != R_NilValue &&
+         (TYPEOF(y) != VECSXP || XLENGTH(y) != XLENGTH(x)))) {
+        Rf_error("internal column gather requires matching lists");
+    }
+    R_xlen_t column_count = XLENGTH(x);
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, column_count));
+    if (column_count == 0) {
+        UNPROTECT(1);
+        return result;
+    }
+
+    numeric_data *first_x = unmaterialized_numeric_storage(
+        VECTOR_ELT(x, 0)
+    );
+    if (first_x == NULL) {
+        Rf_error("internal column gather requires compact `x` storage");
+    }
+    numeric_data *first_y = NULL;
+    if (y != R_NilValue) {
+        first_y = unmaterialized_numeric_storage(VECTOR_ELT(y, 0));
+        if (first_y == NULL) {
+            Rf_error("internal column gather requires compact `y` storage");
+        }
+        if (XLENGTH(y_rows) != XLENGTH(x_rows)) {
+            Rf_error("internal column gather row vectors differ in length");
+        }
+    } else if (y_rows != R_NilValue) {
+        Rf_error("internal column gather received `y_rows` without `y`");
+    }
+
+    int x_has_missing = 0;
+    int y_has_missing = 0;
+    int *x_plan = numeric_gather_plan(
+        x_rows, first_x->length, &x_has_missing, "x_rows"
+    );
+    int *y_plan = y == R_NilValue ? NULL : numeric_gather_plan(
+        y_rows, first_y->length, &y_has_missing, "y_rows"
+    );
+    (void) y_has_missing;
+    if ((size_t) column_count > SIZE_MAX / sizeof(numeric_gather_column)) {
+        Rf_error("compact numeric column gather is too wide");
+    }
+    numeric_gather_column *columns = (numeric_gather_column *) R_alloc(
+        (size_t) column_count, sizeof(numeric_gather_column)
+    );
+    size_t active = 0;
+
+    for (R_xlen_t index = 0; index < column_count; index++) {
+        numeric_data *x_data = unmaterialized_numeric_storage(
+            VECTOR_ELT(x, index)
+        );
+        numeric_data *y_data = y == R_NilValue ? NULL :
+            unmaterialized_numeric_storage(VECTOR_ELT(y, index));
+        if (x_data == NULL || x_data->length != first_x->length ||
+            (y_data != NULL && y_data->length != first_y->length)) {
+            Rf_error("internal column gather received inconsistent storage");
+        }
+        if (y != R_NilValue && y_data == NULL) {
+            Rf_error("internal column gather requires compact `y` storage");
+        }
+        if (y_data != NULL &&
+            (x_data->kind != y_data->kind ||
+             x_data->temporal != y_data->temporal)) {
+            Rf_error("internal column gather requires matching storage");
+        }
+        if (Rf_getAttrib(VECTOR_ELT(x, index), R_NamesSymbol) != R_NilValue ||
+            (y_data != NULL &&
+             ((x_data->format_version <= 111) !=
+              (y_data->format_version <= 111)))) {
+            SET_VECTOR_ELT(result, index, R_NilValue);
+            continue;
+        }
+
+        size_t width = numeric_kind_width(x_data->kind);
+        R_xlen_t row_count = XLENGTH(x_rows);
+        if ((size_t) row_count > SIZE_MAX / width ||
+            (size_t) row_count * width > (size_t) R_XLEN_T_MAX) {
+            Rf_error("compact Stata numeric gather is too long");
+        }
+        SEXP backing = PROTECT(Rf_allocVector(
+            RAWSXP, (R_xlen_t) ((size_t) row_count * width)
+        ));
+        numeric_gather_column *column = &columns[active++];
+        column->x_values = (uintptr_t) x_data->values;
+        column->y_values = y_data == NULL
+            ? (uintptr_t) 0 : (uintptr_t) y_data->values;
+        column->output = (uintptr_t) RAW(backing);
+        column->width = width;
+        memset(column->missing, 0, sizeof(column->missing));
+        write_numeric_system_missing_raw(
+            column->missing, 0, x_data->kind, x_data->format_version
+        );
+        int no_na = x_data->no_na && !x_has_missing &&
+            (y_data == NULL || y_data->no_na);
+        SEXP gathered = PROTECT(numeric_from_backing(
+            backing, (size_t) row_count, x_data->kind, x_data->temporal,
+            x_data->format_version, no_na
+        ));
+        SET_VECTOR_ELT(result, index, gathered);
+        UNPROTECT(2);
+    }
+
+    R_CheckUserInterrupt();
+    if (active > 0 && !dtaparser_gather_numeric_columns(
+            columns, active, x_plan, y_plan,
+            (size_t) XLENGTH(x_rows)
+        )) {
+        Rf_error("parallel compact numeric gather failed");
+    }
+    R_CheckUserInterrupt();
+    UNPROTECT(1);
+    return result;
+}
+
+typedef struct {
     void *data;
     SEXP backing;
     int transferred;
@@ -2455,6 +2773,18 @@ static const void *metadata_real_dataptr_or_null(SEXP value) {
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
 
+static SEXP metadata_real_extract_subset(
+    SEXP value, SEXP index, SEXP call
+) {
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    SEXP source = R_altrep_data1(value);
+    if (!ALTREP(source) ||
+        !R_altrep_inherits(source, dtaparser_numeric_class)) {
+        return NULL;
+    }
+    return numeric_extract_subset(source, index, call);
+}
+
 static int metadata_real_no_na(SEXP value) {
     if (metadata_real_aggregate_mask_enabled) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_NO_NA;
@@ -2579,6 +2909,22 @@ SEXP C_dtaparser_is_unmaterialized_numeric_altrep(SEXP value) {
         value = R_altrep_data1(value);
     }
     return Rf_ScalarLogical(0);
+}
+
+SEXP C_dtaparser_numeric_storage_matches(
+    SEXP value, SEXP kind_value, SEXP temporal_value
+) {
+    if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1 ||
+        INTEGER(kind_value)[0] < 0 || INTEGER(kind_value)[0] > 4 ||
+        TYPEOF(temporal_value) != INTSXP || XLENGTH(temporal_value) != 1 ||
+        INTEGER(temporal_value)[0] < 0 || INTEGER(temporal_value)[0] > 2) {
+        Rf_error("invalid compact Stata storage probe");
+    }
+    numeric_data *storage = unmaterialized_numeric_storage(value);
+    return Rf_ScalarLogical(
+        storage != NULL && storage->kind == INTEGER(kind_value)[0] &&
+        storage->temporal == INTEGER(temporal_value)[0]
+    );
 }
 
 SEXP C_dtaparser_force_altrep_materialization(SEXP value) {
@@ -2851,12 +3197,18 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtaparser_ephemeral_altstring, 1},
     {"C_dtaparser_construct_numeric",
      (DL_FUNC) &C_dtaparser_construct_numeric, 3},
+    {"C_dtaparser_gather_numeric",
+     (DL_FUNC) &C_dtaparser_gather_numeric, 4},
+    {"C_dtaparser_gather_numeric_columns",
+     (DL_FUNC) &C_dtaparser_gather_numeric_columns, 4},
     {"C_dtaparser_is_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_numeric_altrep, 1},
     {"C_dtaparser_is_altrep", (DL_FUNC) &C_dtaparser_is_altrep, 1},
     {"C_dtaparser_metadata_copy", (DL_FUNC) &C_dtaparser_metadata_copy, 1},
     {"C_dtaparser_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtaparser_is_unmaterialized_numeric_altrep, 1},
+    {"C_dtaparser_numeric_storage_matches",
+     (DL_FUNC) &C_dtaparser_numeric_storage_matches, 3},
     {"C_dtaparser_force_altrep_materialization",
      (DL_FUNC) &C_dtaparser_force_altrep_materialization, 1},
     {"C_dtaparser_mutate_first_numeric_altrep",
@@ -2944,6 +3296,9 @@ void attribute_visible R_init_dtaparser(DllInfo *dll) {
     );
     R_set_altvec_Dataptr_or_null_method(
         dtaparser_metadata_real_class, metadata_real_dataptr_or_null
+    );
+    R_set_altvec_Extract_subset_method(
+        dtaparser_metadata_real_class, metadata_real_extract_subset
     );
     R_set_altreal_Elt_method(
         dtaparser_metadata_real_class, metadata_real_value

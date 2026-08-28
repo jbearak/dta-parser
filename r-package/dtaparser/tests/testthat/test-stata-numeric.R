@@ -167,6 +167,33 @@ test_that("base subsetting and duplication preserve compact backing", {
     expect_identical(copied, source)
 })
 
+test_that("vctrs proxy slicing preserves compact backing", {
+    constructors <- list(stata_byte, stata_int, stata_long, stata_float)
+
+    for (construct in constructors) {
+        source <- construct(c(1, 2, NA_real_, tagged_missing("a")))
+        proxy <- vctrs::vec_proxy(source)
+        selected <- vctrs::vec_slice(
+            proxy, c(4L, 2L, NA_integer_, 1L)
+        )
+
+        expect_true(
+            dtaparser:::.is_unmaterialized_numeric_altrep(selected)
+        )
+        expect_identical(missing_tag(selected), c("a", NA, NA, NA))
+        expect_identical(as.double(selected)[c(2L, 4L)], c(2, 1))
+    }
+})
+
+test_that("vctrs restoration does not relabel different compact storage", {
+    int_proxy <- vctrs::vec_proxy(stata_int(200))
+
+    expect_error(
+        vctrs::vec_restore(int_proxy, stata_byte()),
+        "stata_int\\(x\\)"
+    )
+})
+
 test_that("legacy compact widths preserve system missing encoding", {
     data <- read_dta(fixture("synthetic_v111.dta"))
 

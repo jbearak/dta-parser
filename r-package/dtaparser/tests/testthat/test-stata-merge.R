@@ -184,6 +184,73 @@ test_that("overlapping non-key variables follow the master-wins rule", {
     )
 })
 
+test_that("compact variables retain values across merge partitions", {
+    constructors <- list(
+        byte = stata_byte,
+        int = stata_int,
+        long = stata_long,
+        float = stata_float
+    )
+    master <- tibble::tibble(id = c(1, 2))
+    using <- tibble::tibble(id = c(2, 3))
+    for (name in names(constructors)) {
+        master[[name]] <- constructors[[name]](
+            c(10, tagged_missing("a"))
+        )
+        using[[name]] <- constructors[[name]](
+            c(tagged_missing("b"), 20)
+        )
+    }
+
+    result <- suppressWarnings(stata_merge(
+        master, using, by = "id", relationship = "1:1"
+    ))
+
+    for (name in names(constructors)) {
+        expect_identical(stata_storage_type(result[[name]]), name)
+        expect_true(
+            dtaparser:::.is_unmaterialized_numeric_altrep(result[[name]])
+        )
+        expect_identical(
+            missing_tag(result[[name]]), c(NA, "a", NA)
+        )
+        expect_identical(as.double(result[[name]])[c(1L, 3L)], c(10, 20))
+    }
+})
+
+test_that("compact variables keep legacy observed encodings", {
+    legacy <- read_dta(fixture("synthetic_v111.dta"))
+    master <- tibble::tibble(id = c(1, 2), value = legacy$b[1:2])
+    using <- tibble::tibble(id = c(2, 3), other = c("a", "b"))
+
+    result <- stata_merge(master, using, by = "id", relationship = "1:1")
+
+    expect_identical(as.double(result$value), c(1, 101, NA_real_))
+    expect_true(
+        dtaparser:::.is_unmaterialized_numeric_altrep(result$value)
+    )
+})
+
+test_that("compact coalescing handles legacy and modern missing layouts", {
+    legacy <- read_dta(fixture("synthetic_v111.dta"))
+    master <- tibble::tibble(
+        id = c(1, 2), value = legacy$b[c(1L, 4L)]
+    )
+    using <- tibble::tibble(
+        id = c(2, 3), value = stata_byte(c(2, tagged_missing("a")))
+    )
+
+    result <- suppressWarnings(stata_merge(
+        master, using, by = "id", relationship = "1:1"
+    ))
+
+    expect_identical(as.double(result$value)[1], 1)
+    expect_identical(missing_tag(result$value), c(NA, NA, "a"))
+    expect_true(
+        dtaparser:::.is_unmaterialized_numeric_altrep(result$value)
+    )
+})
+
 test_that("merge relationships are validated with explicit diagnostics", {
     unique_keys <- tibble::tibble(id = c(1, 2))
     duplicated_keys <- tibble::tibble(id = c(2, 2))
@@ -339,6 +406,20 @@ test_that("zero-row inputs merge cleanly", {
     )
     expect_identical(nrow(empty), 0L)
     expect_identical(stata_storage_type(empty$`_merge`), "byte")
+
+    compact_empty <- suppressWarnings(stata_merge(
+        tibble::tibble(
+            id = stata_byte(double()), value = stata_byte(double())
+        ),
+        tibble::tibble(
+            id = stata_byte(double()), value = stata_byte(double())
+        ),
+        by = "id", relationship = "1:1"
+    ))
+    expect_identical(nrow(compact_empty), 0L)
+    expect_true(
+        dtaparser:::.is_unmaterialized_numeric_altrep(compact_empty$value)
+    )
 })
 
 test_that("temporal keys merge with promoted storage", {

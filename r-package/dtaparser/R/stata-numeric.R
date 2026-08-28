@@ -14,9 +14,9 @@
 #' missing or [tagged_missing()] for an extended missing value.
 #'
 #' Construction validates and encodes ordinary numeric vectors in native code
-#' without allocating full-length validation vectors. Re-encoding an existing
-#' compact vector still exposes its values as doubles before writing the new
-#' compact backing.
+#' without allocating full-length validation vectors. Native and vctrs slicing
+#' gather compact backing directly. Operations that require re-encoding an
+#' existing compact vector still expose its values as doubles first.
 #'
 #' `serialize()` and `saveRDS()` retain compact backing for unmaterialized
 #' `byte`, `int`, `long`, and `float` vectors. Loading the result reconstructs
@@ -106,6 +106,15 @@ stata_storage_type <- function(x) {
 
 .stata_storage_class <- function(storage) {
     c("stata_numeric", paste0("stata_", storage), "vctrs_vctr", "double")
+}
+
+.compact_stata_storage_matches <- function(
+    value, storage, temporal = .stata_temporal_none
+) {
+    .Call(
+        C_dtaparser_numeric_storage_matches,
+        value, match(storage, .stata_storage) - 1L, temporal
+    )
 }
 
 .normalize_stata_size <- function(size) {
@@ -445,6 +454,9 @@ vec_proxy.stata_numeric <- function(x, ...) {
 #' @export
 vec_restore.stata_numeric <- function(x, to, ...) {
     storage <- stata_storage_type(to)
+    if (.compact_stata_storage_matches(x, storage)) {
+        return(.restore_stata_metadata(x, to, storage))
+    }
     value <- .construct_stata_numeric(x, NULL, storage)
     .restore_stata_metadata(value, to, storage)
 }
@@ -785,6 +797,11 @@ Complex.stata_numeric <- function(z) {
 }
 
 .restore_stata_temporal <- function(value, prototype, storage) {
+    if (.compact_stata_storage_matches(
+        value, storage, .stata_temporal_code(prototype)
+    )) {
+        return(.attach_stata_temporal(value, prototype, storage))
+    }
     result <- .construct_stata_numeric(
         as.double(value), NULL, storage,
         temporal = .stata_temporal_code(prototype)
