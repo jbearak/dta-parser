@@ -50,6 +50,10 @@ static int metadata_real_aggregate_mask;
 static dictstring_data *dictstring_storage(SEXP value);
 static SEXP dictstring_cache(SEXP value);
 static SEXP unmaterialized_dictstring_source(SEXP value);
+static size_t numeric_kind_width(int kind);
+static void write_numeric_missing(
+    unsigned char *output, R_xlen_t index, int kind, int offset
+);
 
 enum {
     METADATA_AGGREGATE_NO_NA = 1,
@@ -1275,6 +1279,210 @@ static SEXP numeric_max(SEXP value, Rboolean na_rm) {
     return numeric_extreme(value, na_rm, 0);
 }
 
+static SEXP numeric_from_backing(
+    SEXP backing, size_t length, int kind, int temporal,
+    int format_version, int no_na
+) {
+    void *data = dtaparser_numeric_alloc(
+        RAW(backing), length, kind, temporal, no_na
+    );
+    if (data == NULL) {
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    ((numeric_data *) data)->format_version = format_version;
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = PROTECT(R_new_altrep(
+        dtaparser_numeric_class, external, R_NilValue
+    ));
+    UNPROTECT(2);
+    return result;
+}
+
+static SEXP numeric_compact_copy(const numeric_data *data) {
+    size_t width = numeric_kind_width(data->kind);
+    if (data->length > SIZE_MAX / width ||
+        data->length * width > (size_t) R_XLEN_T_MAX) {
+        Rf_error("compact Stata numeric vector is too long");
+    }
+    R_xlen_t byte_length = (R_xlen_t) (data->length * width);
+    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
+    memcpy(RAW(backing), data->values, (size_t) byte_length);
+    SEXP result = numeric_from_backing(
+        backing, data->length, data->kind, data->temporal,
+        data->format_version, data->no_na
+    );
+    UNPROTECT(1);
+    return result;
+}
+
+static int host_is_little_endian(void) {
+    uint16_t value = UINT16_C(1);
+    return *((unsigned char *) &value) == 1;
+}
+
+static void swap_compact_numeric_bytes(
+    unsigned char *bytes, size_t length, size_t width
+) {
+    if (width == 1) return;
+    for (size_t index = 0; index < length; index++) {
+        unsigned char *element = bytes + index * width;
+        for (size_t left = 0; left < width / 2; left++) {
+            size_t right = width - left - 1;
+            unsigned char temporary = element[left];
+            element[left] = element[right];
+            element[right] = temporary;
+        }
+    }
+}
+
+static SEXP numeric_serialized_state(SEXP value) {
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    numeric_data *data = numeric_storage(value);
+    SEXP backing = PROTECT(Rf_allocVector(
+        RAWSXP, (R_xlen_t) (data->length * numeric_kind_width(data->kind))
+    ));
+    memcpy(RAW(backing), data->values, (size_t) XLENGTH(backing));
+    if (!host_is_little_endian()) {
+        swap_compact_numeric_bytes(
+            RAW(backing), data->length, numeric_kind_width(data->kind)
+        );
+    }
+    SEXP metadata = PROTECT(Rf_allocVector(INTSXP, 5));
+    INTEGER(metadata)[0] = data->kind;
+    INTEGER(metadata)[1] = data->temporal;
+    INTEGER(metadata)[2] = data->format_version;
+    INTEGER(metadata)[3] = data->no_na;
+    INTEGER(metadata)[4] = 2;
+    SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(state, 0, backing);
+    SET_VECTOR_ELT(state, 1, metadata);
+    UNPROTECT(3);
+    return state;
+}
+
+static SEXP numeric_unserialize(SEXP class, SEXP state) {
+    (void) class;
+    if (TYPEOF(state) != VECSXP || XLENGTH(state) != 2) {
+        Rf_error("invalid serialized dtaparser numeric state");
+    }
+    SEXP backing = VECTOR_ELT(state, 0);
+    SEXP metadata = VECTOR_ELT(state, 1);
+    if (TYPEOF(backing) != RAWSXP || TYPEOF(metadata) != INTSXP ||
+        XLENGTH(metadata) != 5 || INTEGER(metadata)[4] != 2) {
+        Rf_error("invalid serialized dtaparser numeric state");
+    }
+    int kind = INTEGER(metadata)[0];
+    size_t width = numeric_kind_width(kind);
+    size_t byte_length = (size_t) XLENGTH(backing);
+    if (byte_length % width != 0) {
+        Rf_error("invalid serialized dtaparser numeric state");
+    }
+    int protected_backing = 0;
+    if (!host_is_little_endian()) {
+        backing = PROTECT(Rf_duplicate(backing));
+        protected_backing = 1;
+        swap_compact_numeric_bytes(RAW(backing), byte_length / width, width);
+    }
+    SEXP result = numeric_from_backing(
+        backing, byte_length / width, kind, INTEGER(metadata)[1],
+        INTEGER(metadata)[2], INTEGER(metadata)[3]
+    );
+    if (protected_backing) UNPROTECT(1);
+    return result;
+}
+
+static SEXP numeric_duplicate(SEXP value, Rboolean deep) {
+    (void) deep;
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    return numeric_compact_copy(numeric_storage(value));
+}
+
+static void write_numeric_system_missing_raw(
+    unsigned char *output, R_xlen_t index, int kind, int format_version
+) {
+    if (format_version > 111) {
+        write_numeric_missing(output, index, kind, 0);
+        return;
+    }
+    switch (kind) {
+    case NUMERIC_BYTE: {
+        int8_t encoded = INT8_MAX;
+        memcpy(output + (size_t) index, &encoded, sizeof(encoded));
+        return;
+    }
+    case NUMERIC_INT: {
+        int16_t encoded = INT16_MAX;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_LONG: {
+        int32_t encoded = INT32_MAX;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_FLOAT: {
+        uint32_t bits = UINT32_C(0x7f000000);
+        memcpy(output + (size_t) index * sizeof(bits), &bits, sizeof(bits));
+        return;
+    }
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+}
+
+static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
+    (void) call;
+    if (R_altrep_data2(value) != R_NilValue ||
+        (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP)) {
+        return NULL;
+    }
+    numeric_data *data = numeric_storage(value);
+    R_xlen_t length = XLENGTH(index);
+    size_t width = numeric_kind_width(data->kind);
+    if ((size_t) length > SIZE_MAX / width) {
+        Rf_error("compact Stata numeric subset is too long");
+    }
+    SEXP backing = PROTECT(Rf_allocVector(
+        RAWSXP, (R_xlen_t) ((size_t) length * width)
+    ));
+    unsigned char *output = RAW(backing);
+    int no_na = data->no_na;
+    for (R_xlen_t i = 0; i < length; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t source = -1;
+        if (TYPEOF(index) == INTSXP) {
+            int candidate = INTEGER_ELT(index, i);
+            if (candidate != NA_INTEGER && candidate > 0 &&
+                (size_t) candidate <= data->length) source = candidate - 1;
+        } else {
+            double candidate = REAL_ELT(index, i);
+            if (R_FINITE(candidate) && candidate >= 1 &&
+                candidate <= (double) data->length) {
+                source = (R_xlen_t) candidate - 1;
+            }
+        }
+        if (source >= 0) {
+            memcpy(output + (size_t) i * width,
+                   (unsigned char *) data->values + (size_t) source * width,
+                   width);
+        } else {
+            write_numeric_system_missing_raw(
+                output, i, data->kind, data->format_version
+            );
+            no_na = 0;
+        }
+    }
+    SEXP result = numeric_from_backing(
+        backing, (size_t) length, data->kind, data->temporal,
+        data->format_version, no_na
+    );
+    UNPROTECT(1);
+    return result;
+}
+
 typedef struct {
     void *data;
     SEXP backing;
@@ -1433,6 +1641,82 @@ SEXP C_dtaparser_construct_numeric(
     if ((size_t) length > SIZE_MAX / width ||
         (size_t) length * width > (size_t) R_XLEN_T_MAX) {
         Rf_error("compact Stata numeric vector is too long");
+    }
+
+    int fits_requested = 1;
+    int fits_int = 1;
+    int fits_long = 1;
+    int fits_float = 1;
+    int fits_double = 1;
+    uint32_t float_maximum_bits = UINT32_C(0x7effffff);
+    float float_maximum;
+    memcpy(&float_maximum, &float_maximum_bits, sizeof(float_maximum));
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        double element = REAL_ELT(value, index);
+        int payload_tag = tagged_na_tag_value(element);
+        int valid_missing = ISNA(element) ||
+            (payload_tag >= 'a' && payload_tag <= 'z');
+        if (valid_missing) continue;
+        if (ISNAN(element)) {
+            if (payload_tag == 0) {
+                Rf_error(
+                    "No Stata numeric storage can represent `x`; use `NA_real_` for system missing or `tagged_missing()` for `.a` through `.z`"
+                );
+            }
+            Rf_error(
+                "compact Stata numerics accept only system missing and `.a` through `.z`"
+            );
+        }
+        int integral = R_FINITE(element) && element == trunc(element);
+        int element_fits_int = integral &&
+            element >= -32767.0 && element <= 32740.0;
+        int element_fits_long = integral &&
+            element >= -2147483647.0 && element <= 2147483620.0;
+        int element_fits_float = R_FINITE(element) &&
+            fabs(element) <= (double) float_maximum;
+        int element_fits_double = R_FINITE(element) &&
+            fabs(element) <= DBL_MAX / 2.0;
+        fits_int = fits_int && element_fits_int;
+        fits_long = fits_long && element_fits_long;
+        fits_float = fits_float && element_fits_float;
+        fits_double = fits_double && element_fits_double;
+        switch (kind) {
+        case NUMERIC_BYTE:
+            fits_requested = fits_requested && integral &&
+                element >= -127.0 && element <= 100.0;
+            break;
+        case NUMERIC_INT:
+            fits_requested = fits_requested && element_fits_int;
+            break;
+        case NUMERIC_LONG:
+            fits_requested = fits_requested && element_fits_long;
+            break;
+        case NUMERIC_FLOAT:
+            fits_requested = fits_requested && element_fits_float;
+            break;
+        default:
+            Rf_error("invalid compact Stata numeric storage type");
+        }
+    }
+    if (!fits_requested) {
+        const char *storage_name = kind == NUMERIC_BYTE ? "byte" :
+            kind == NUMERIC_INT ? "int" :
+            kind == NUMERIC_LONG ? "long" : "float";
+        const char *recommendation = NULL;
+        if (kind == NUMERIC_BYTE && fits_int) recommendation = "int";
+        else if ((kind == NUMERIC_BYTE || kind == NUMERIC_INT) && fits_long)
+            recommendation = "long";
+        else if ((kind == NUMERIC_BYTE || kind == NUMERIC_INT) && fits_float)
+            recommendation = "float";
+        else if (fits_double) recommendation = "double";
+        if (recommendation == NULL) {
+            Rf_error("No Stata numeric storage can represent `x`");
+        }
+        Rf_error(
+            "Stata %s storage cannot represent `x`; use `stata_%s(x)`",
+            storage_name, recommendation
+        );
     }
     R_xlen_t byte_length = (R_xlen_t) ((size_t) length * width);
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
@@ -2303,6 +2587,20 @@ SEXP C_dtaparser_force_altrep_materialization(SEXP value) {
     return value;
 }
 
+SEXP C_dtaparser_mutate_first_numeric_altrep(SEXP value, SEXP replacement) {
+    if (!ALTREP(value) || TYPEOF(value) != REALSXP || XLENGTH(value) == 0 ||
+        TYPEOF(replacement) != REALSXP || XLENGTH(replacement) != 1) {
+        Rf_error("internal writable ALTREP probe requires a nonempty numeric ALTREP vector");
+    }
+#if R_VERSION >= R_Version(4, 6, 0)
+    double *data = (double *) DATAPTR_RW(value);
+#else
+    double *data = REAL(value);
+#endif
+    data[0] = REAL(replacement)[0];
+    return value;
+}
+
 SEXP C_dtaparser_metadata_proxy_depth(SEXP value) {
     int depth = 0;
     while (ALTREP(value)) {
@@ -2554,6 +2852,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtaparser_is_unmaterialized_numeric_altrep, 1},
     {"C_dtaparser_force_altrep_materialization",
      (DL_FUNC) &C_dtaparser_force_altrep_materialization, 1},
+    {"C_dtaparser_mutate_first_numeric_altrep",
+     (DL_FUNC) &C_dtaparser_mutate_first_numeric_altrep, 2},
     {"C_dtaparser_metadata_proxy_depth",
      (DL_FUNC) &C_dtaparser_metadata_proxy_depth, 1},
     {"C_dtaparser_metadata_proxy_aggregate_mask",
@@ -2583,7 +2883,19 @@ void attribute_visible R_init_dtaparser(DllInfo *dll) {
     dtaparser_numeric_class = R_make_altreal_class(
         "dtaparser_numeric", "dtaparser", dll
     );
+    R_set_altrep_Unserialize_method(
+        dtaparser_numeric_class, numeric_unserialize
+    );
+    R_set_altrep_Serialized_state_method(
+        dtaparser_numeric_class, numeric_serialized_state
+    );
+    R_set_altrep_Duplicate_method(
+        dtaparser_numeric_class, numeric_duplicate
+    );
     R_set_altrep_Length_method(dtaparser_numeric_class, numeric_length);
+    R_set_altvec_Extract_subset_method(
+        dtaparser_numeric_class, numeric_extract_subset
+    );
     R_set_altvec_Dataptr_method(dtaparser_numeric_class, numeric_dataptr);
     R_set_altvec_Dataptr_or_null_method(
         dtaparser_numeric_class, numeric_dataptr_or_null

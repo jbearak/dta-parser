@@ -13,9 +13,15 @@
 #' assignment, and recode replacements reject it. Use `NA_real_` for system
 #' missing or [tagged_missing()] for an extended missing value.
 #'
-#' Re-encoding materializes `x` as doubles while it validates the values. The
-#' compact representation reduces steady-state memory use, not peak memory use
-#' during construction.
+#' Construction validates and encodes ordinary numeric vectors in native code
+#' without allocating full-length validation vectors. Re-encoding an existing
+#' compact vector still exposes its values as doubles before writing the new
+#' compact backing.
+#'
+#' `serialize()` and `saveRDS()` retain compact backing for unmaterialized
+#' `byte`, `int`, `long`, and `float` vectors. Loading the result reconstructs
+#' an unmaterialized compact vector. A vector that was already materialized is
+#' serialized as its current R doubles so any prior writable access is kept.
 #'
 #' @section Vector operations:
 #' Subset assignment, [replace()], `dplyr::if_else()`, `dplyr::mutate()`, and
@@ -123,6 +129,19 @@ stata_storage_type <- function(x) {
 
     value_names <- names(x)
     values <- as.double(x)
+    if (!identical(storage, "double") &&
+        identical(temporal, .stata_temporal_none)) {
+        result <- .Call(
+            C_dtaparser_construct_numeric,
+            values,
+            match(storage, .stata_storage) - 1L,
+            temporal
+        )
+        attr(result, "stata.storage") <- storage
+        attr(result, "class") <- .stata_storage_class(storage)
+        names(result) <- value_names
+        return(result)
+    }
     missing_codes <- .tab_missing_codes(values)
     stata_missing <- !is.na(missing_codes) &
         (missing_codes == 0L |

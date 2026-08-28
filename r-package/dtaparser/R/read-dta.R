@@ -196,6 +196,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .Call(C_dtaparser_force_altrep_materialization, value)
 }
 
+.mutate_first_numeric_altrep <- function(value, replacement) {
+    .Call(C_dtaparser_mutate_first_numeric_altrep, value, replacement)
+}
+
 .metadata_proxy_depth <- function(value) {
     .Call(C_dtaparser_metadata_proxy_depth, value)
 }
