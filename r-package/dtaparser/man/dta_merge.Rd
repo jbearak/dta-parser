@@ -27,8 +27,8 @@ with \code{"master"} and \code{"using"} accepted as aliases for \code{"x"} and \
 The default keeps every row, as Stata does.}
 
 \item{assert}{Optional match results that are allowed to occur, using the
-same names as \code{keep}. Any other match result is an error reporting its
-count.}
+same names as \code{keep}. Any other match result is an error naming each
+disallowed match result and its row count.}
 }
 \value{
 A tibble with the key columns, the remaining columns of \code{x}, the
