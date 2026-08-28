@@ -10,10 +10,9 @@ Use these names:
 | --- | --- | --- |
 | CRAN | `dtatools` | No current or archived collision found. |
 | crates.io | `dta-tools` | No crate record found. |
-| npm | `@jbearak/dta-tools` | No package record found in the existing `@jbearak` scope. |
 | GitHub | `jbearak/dta-tools` | No repository visible to the authenticated owner account. |
 
-All four names appear available. None of these checks reserves a name. Publication, CRAN review, or a repository rename still has to succeed, and another party could claim an unscoped name first.
+All three names appear available. None of these checks reserves a name. Publication, CRAN review, or a repository rename still has to succeed, and another party could claim an unscoped name first.
 
 ## Registry checks
 
@@ -31,11 +30,10 @@ Result: no conflicting crates.io record was found. The crate is only a prospecti
 
 ### TypeScript and npm
 
-The convention-matching npm name is `@jbearak/dta-tools`. The existing [npm package record](https://registry.npmjs.org/%40jbearak%2Fdta-parser/latest) establishes the `@jbearak/` owner scope, and the repository's [package manifest](../../typescript/dta-tools/package.json) retains the scoped, hyphenated form. [npm scopes](https://docs.npmjs.com/about-scopes/) are owner namespaces.
-
-The official [registry endpoint for `@jbearak/dta-tools`](https://registry.npmjs.org/%40jbearak%2Fdta-tools) returned HTTP 404. The unscoped `dta-tools` and `dtatools` forms also returned 404, but neither matches the repository's established npm convention.
-
-Result: `@jbearak/dta-tools` appears available and is the recommended TypeScript package name.
+The TypeScript package remains `@jbearak/dta-parser`. It is still a parser,
+and its existing [npm package record](https://registry.npmjs.org/%40jbearak%2Fdta-parser/latest)
+shows that it is already published under that name. No new npm name needs to
+be checked or reserved for this rename.
 
 ### GitHub repository
 
@@ -45,4 +43,11 @@ Result: the `jbearak/dta-tools` repository path appears available. This is indep
 
 ## Publication surfaces found in this repository
 
-The repository's [`publish.yml`](../../.github/workflows/publish.yml) targets npm. It distributes compiled R packages as GitHub Release assets through [`release-r-packages.yml`](../../.github/workflows/release-r-packages.yml). GitHub Releases inherit the repository path and do not introduce another package name to reserve. No CRAN or crates.io publication workflow is present, but both names were checked because the rename proposal identifies them as possible public package targets.
+The repository's [`publish.yml`](../../.github/workflows/publish.yml) continues
+to publish the existing `@jbearak/dta-parser` npm package. It distributes
+compiled R packages as GitHub Release assets through
+[`release-r-packages.yml`](../../.github/workflows/release-r-packages.yml).
+GitHub Releases inherit the repository path and do not introduce another
+package name to reserve. No CRAN or crates.io publication workflow is present,
+but both names were checked because the rename proposal identifies them as
+possible public package targets.

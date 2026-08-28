@@ -1,13 +1,13 @@
-# @jbearak/dta-tools
+# @jbearak/dta-parser
 
-TypeScript tools for reading Stata `.dta` files. The package ships JavaScript bundles for ESM and CommonJS callers. Use the portable entrypoint when you already have the file bytes, or the Node entrypoint for filesystem-backed random access.
+A TypeScript parser for Stata `.dta` files. It ships JavaScript bundles for ESM and CommonJS callers. Use the portable entrypoint when you already have the file bytes, or the Node entrypoint for filesystem-backed random access.
 
 The parser began inside [Sight](https://github.com/jbearak/sight). Sight, [manuscript-markdown](https://github.com/jbearak/manuscript-markdown), and [Table Viewer](https://github.com/jbearak/table-viewer) now use the standalone package.
 
 ## Installation
 
 ```sh
-npm install @jbearak/dta-tools
+npm install @jbearak/dta-parser
 ```
 
 Bun and pnpm can install the same package. The Node entrypoint requires Node.js 20 or newer.
@@ -16,15 +16,15 @@ Bun and pnpm can install the same package. The Node entrypoint requires Node.js 
 
 | Import | Use it when |
 | --- | --- |
-| `@jbearak/dta-tools/node` | The package should open a local file and read rows or columns on demand |
-| `@jbearak/dta-tools` | The caller already has the complete file as an `ArrayBuffer` |
+| `@jbearak/dta-parser/node` | The package should open a local file and read rows or columns on demand |
+| `@jbearak/dta-parser` | The caller already has the complete file as an `ArrayBuffer` |
 
 The `/node` suffix is an npm subpath export, not a directory in the installed package.
 
 ## Read a file in Node
 
 ```ts
-import { DtaFile } from '@jbearak/dta-tools/node';
+import { DtaFile } from '@jbearak/dta-parser/node';
 
 const file = await DtaFile.open('data/auto.dta');
 
@@ -47,7 +47,7 @@ try {
 import {
     parse_metadata,
     read_rows_from_buffer,
-} from '@jbearak/dta-tools';
+} from '@jbearak/dta-parser';
 
 const response = await fetch('/datasets/auto.dta');
 const buffer = await response.arrayBuffer();

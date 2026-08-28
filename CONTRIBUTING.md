@@ -1,6 +1,6 @@
 # Contributing
 
-This repository contains an independent TypeScript reader, a Rust read/write
+This repository contains an independent TypeScript parser, a Rust read/write
 core, and an R package built on that Rust core. Run checks for the code you
 change, then run the shared conformance gate when parsing behavior changes.
 
@@ -18,7 +18,7 @@ R package dependencies are listed in [`DESCRIPTION`](r-package/dtatools/DESCRIPT
 
 | Path | Purpose |
 | --- | --- |
-| [`typescript/dta-tools`](typescript/dta-tools) | TypeScript source, tests, distribution, and npm metadata |
+| [`typescript/dta-parser`](typescript/dta-parser) | TypeScript source, tests, distribution, and npm metadata |
 | [`r-package/dtatools`](r-package/dtatools) | R source package and native bridge |
 | [`r-package/dtatools/src/dta-tools`](r-package/dtatools/src/dta-tools) | Canonical Rust read/write core used by the R package |
 | [`tests/fixtures/dta`](tests/fixtures/dta) | Shared immutable DTA fixtures |
@@ -33,7 +33,7 @@ The Rust core lives inside the R source package so `R CMD build` includes its so
 Run package checks from its directory:
 
 ```sh
-cd typescript/dta-tools
+cd typescript/dta-parser
 bun install --frozen-lockfile
 bun run typecheck
 bun run test

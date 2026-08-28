@@ -11,14 +11,14 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parse_metadata } from '../../../../../../typescript/dta-tools/src/header';
-import { parse_legacy_metadata } from '../../../../../../typescript/dta-tools/src/legacy-header';
-import { is_missing_value_object } from '../../../../../../typescript/dta-tools/src/missing-values';
-import { DtaFile } from '../../../../../../typescript/dta-tools/src/node';
+import { parse_metadata } from '../../../../../../typescript/dta-parser/src/header';
+import { parse_legacy_metadata } from '../../../../../../typescript/dta-parser/src/legacy-header';
+import { is_missing_value_object } from '../../../../../../typescript/dta-parser/src/missing-values';
+import { DtaFile } from '../../../../../../typescript/dta-parser/src/node';
 import {
     is_legacy_format,
     type FormatVersion,
-} from '../../../../../../typescript/dta-tools/src/types';
+} from '../../../../../../typescript/dta-parser/src/types';
 
 const script_dir = path.dirname(fileURLToPath(import.meta.url));
 const repository_root = path.resolve(script_dir, '../../../../../..');

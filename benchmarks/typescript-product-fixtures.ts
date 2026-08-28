@@ -1,6 +1,6 @@
-import { parse_metadata } from '../typescript/dta-tools/src/header';
-import { build_gso_index } from '../typescript/dta-tools/src/strl-reader';
-import type { DtaMetadata } from '../typescript/dta-tools/src/types';
+import { parse_metadata } from '../typescript/dta-parser/src/header';
+import { build_gso_index } from '../typescript/dta-parser/src/strl-reader';
+import type { DtaMetadata } from '../typescript/dta-parser/src/types';
 
 const MAP_TAG_LENGTH = '<map>'.length;
 const DATA_TAG_LENGTH = '<data>'.length;

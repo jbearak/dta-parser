@@ -5,8 +5,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { parse_metadata } from '../../typescript/dta-tools/src/header';
-import { parse_legacy_metadata } from '../../typescript/dta-tools/src/legacy-header';
+import { parse_metadata } from '../../typescript/dta-parser/src/header';
+import { parse_legacy_metadata } from '../../typescript/dta-parser/src/legacy-header';
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures', 'dta');
 

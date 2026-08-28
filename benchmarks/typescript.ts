@@ -8,16 +8,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-import { read_rows_from_buffer } from '../typescript/dta-tools/src/data-reader';
-import { parse_metadata } from '../typescript/dta-tools/src/header';
-import { parse_legacy_metadata } from '../typescript/dta-tools/src/legacy-header';
-import { DtaFile } from '../typescript/dta-tools/src/node';
+import { read_rows_from_buffer } from '../typescript/dta-parser/src/data-reader';
+import { parse_metadata } from '../typescript/dta-parser/src/header';
+import { parse_legacy_metadata } from '../typescript/dta-parser/src/legacy-header';
+import { DtaFile } from '../typescript/dta-parser/src/node';
 import {
     build_gso_index,
     resolve_strl,
-} from '../typescript/dta-tools/src/strl-reader';
-import type { DtaMetadata } from '../typescript/dta-tools/src/types';
-import { parse_value_labels } from '../typescript/dta-tools/src/value-labels';
+} from '../typescript/dta-parser/src/strl-reader';
+import type { DtaMetadata } from '../typescript/dta-parser/src/types';
+import { parse_value_labels } from '../typescript/dta-parser/src/value-labels';
 import { parse_benchmark_iterations } from './config';
 import {
     deterministic_sparse_rows,

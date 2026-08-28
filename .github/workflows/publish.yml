@@ -1,6 +1,6 @@
 name: Publish to npm
 
-# Publishes @jbearak/dta-tools when a version tag is pushed (e.g. v0.2.1),
+# Publishes @jbearak/dta-parser when a version tag is pushed (e.g. v0.2.1),
 # using npm Trusted Publishing (OIDC) — no NPM_TOKEN secret required.
 # Also runnable manually from the Actions tab.
 #
@@ -16,9 +16,9 @@ name: Publish to npm
 #   attached automatically. Nothing to store or rotate.
 #
 # Release flow:
-#   - bump "version" in typescript/dta-tools/package.json, commit to main
+#   - bump "version" in typescript/dta-parser/package.json, commit to main
 #   - git tag vX.Y.Z && git push origin vX.Y.Z
-# The tag must match typescript/dta-tools/package.json's version or the job
+# The tag must match typescript/dta-parser/package.json's version or the job
 # fails before publish.
 
 on:
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: typescript/dta-tools
+        working-directory: typescript/dta-parser
     # Publishing runs through the "release" environment. Bind the npm
     # trusted publisher to this same environment name, and add protection
     # rules on GitHub (Settings → Environments → release): require a
@@ -82,7 +82,7 @@ jobs:
           tag_version="${GITHUB_REF_NAME#v}"
           pkg_version="$(node -p "require('./package.json').version")"
           if [ "$tag_version" != "$pkg_version" ]; then
-            echo "Tag $GITHUB_REF_NAME ($tag_version) does not match typescript/dta-tools/package.json version ($pkg_version)" >&2
+            echo "Tag $GITHUB_REF_NAME ($tag_version) does not match typescript/dta-parser/package.json version ($pkg_version)" >&2
             exit 1
           fi
 

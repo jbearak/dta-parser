@@ -1,14 +1,14 @@
 {
-  "name": "@jbearak/dta-tools",
+  "name": "@jbearak/dta-parser",
   "version": "0.6.0",
-  "description": "TypeScript tools for reading Stata .dta files",
+  "description": "TypeScript parser for Stata .dta files",
   "type": "module",
   "license": "GPL-3.0",
   "author": "Jonathan Marc Bearak",
   "repository": {
     "type": "git",
     "url": "https://github.com/jbearak/dta-tools.git",
-    "directory": "typescript/dta-tools"
+    "directory": "typescript/dta-parser"
   },
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.js",

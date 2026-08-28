@@ -33,11 +33,11 @@ if [[ $# -gt 1 ]]; then
 fi
 
 BUMP_TYPE="${1:-patch}"
-PACKAGE_JSON="$REPO_ROOT/typescript/dta-tools/package.json"
+PACKAGE_JSON="$REPO_ROOT/typescript/dta-parser/package.json"
 DESCRIPTION="$REPO_ROOT/r-package/dtatools/DESCRIPTION"
 VERSION_FILES=(
     Cargo.lock
-    typescript/dta-tools/package.json
+    typescript/dta-parser/package.json
     r-package/dtatools/DESCRIPTION
     r-package/dtatools/src/dta-tools/Cargo.toml
     r-package/dtatools/src/rust/Cargo.toml
@@ -133,7 +133,7 @@ VERSION_CHANGES_STARTED=true
 node - "$NEW_VERSION" <<'NODE'
 const fs = require("fs");
 const version = process.argv[2];
-const file = "typescript/dta-tools/package.json";
+const file = "typescript/dta-parser/package.json";
 const packageJson = JSON.parse(fs.readFileSync(file, "utf8"));
 packageJson.version = version;
 fs.writeFileSync(file, JSON.stringify(packageJson, null, 2) + "\n");
@@ -174,9 +174,9 @@ for (const [file, packageNames] of lockfiles) {
 NODE
 
 echo "Verifying TypeScript package"
-bun --cwd typescript/dta-tools run typecheck
-bun --cwd typescript/dta-tools test
-bun --cwd typescript/dta-tools run build
+bun --cwd typescript/dta-parser run typecheck
+bun --cwd typescript/dta-parser test
+bun --cwd typescript/dta-parser run build
 
 echo "Verifying Rust and R release inputs"
 cargo test --workspace --locked

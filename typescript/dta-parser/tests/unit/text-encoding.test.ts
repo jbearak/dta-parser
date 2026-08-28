@@ -162,7 +162,7 @@ describe('text encoding policy', () => {
         replace_first_byte(strl, 'This is observation 1', 0x80);
 
         temporary_directory = fs.mkdtempSync(
-            path.join(os.tmpdir(), 'dta-tools-encoding-')
+            path.join(os.tmpdir(), 'dta-parser-encoding-')
         );
         const ordinary_path = path.join(temporary_directory, 'ordinary.dta');
         const strl_path = path.join(temporary_directory, 'strl.dta');
