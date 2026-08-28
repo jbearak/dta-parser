@@ -1648,6 +1648,7 @@ SEXP C_dtaparser_construct_numeric(
     int fits_long = 1;
     int fits_float = 1;
     int fits_double = 1;
+    int has_nonfinite = 0;
     uint32_t float_maximum_bits = UINT32_C(0x7effffff);
     float float_maximum;
     memcpy(&float_maximum, &float_maximum_bits, sizeof(float_maximum));
@@ -1668,6 +1669,7 @@ SEXP C_dtaparser_construct_numeric(
                 "compact Stata numerics accept only system missing and `.a` through `.z`"
             );
         }
+        if (!R_FINITE(element)) has_nonfinite = 1;
         int integral = R_FINITE(element) && element == trunc(element);
         int element_fits_int = integral &&
             element >= -32767.0 && element <= 32740.0;
@@ -1700,6 +1702,11 @@ SEXP C_dtaparser_construct_numeric(
         }
     }
     if (!fits_requested) {
+        if (has_nonfinite) {
+            Rf_error(
+                "No Stata numeric storage can represent `x`; use `NA_real_` for system missing or `tagged_missing()` for `.a` through `.z`"
+            );
+        }
         const char *storage_name = kind == NUMERIC_BYTE ? "byte" :
             kind == NUMERIC_INT ? "int" :
             kind == NUMERIC_LONG ? "long" : "float";

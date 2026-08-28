@@ -87,7 +87,8 @@ test_that("constructors enforce Stata ranges and precision rules", {
     expect_error(stata_int(1.5), "stata_float\\(x\\)")
     expect_error(stata_int(32741), "stata_long\\(x\\)")
     expect_error(stata_long(2147483621), "stata_double\\(x\\)")
-    expect_error(stata_float(Inf), "No Stata numeric storage")
+    expect_error(stata_float(Inf), "use `NA_real_` for system missing")
+    expect_error(stata_int(-Inf), "use `NA_real_` for system missing")
     expect_error(stata_double(Inf), "No Stata numeric storage")
     expect_error(stata_byte(NaN), "No Stata numeric storage")
     expect_error(

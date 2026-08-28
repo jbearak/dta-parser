@@ -51,7 +51,9 @@ result <- switch(operation,
         heap <- gc()
         data.frame(
             operation, label,
-            max_vector_heap_mb = heap["Vcells", 7L],
+            max_vector_heap_mb = round(
+                heap["Vcells", "max used"] * 8 / 1024^2, 1
+            ),
             elapsed_s = unname(timing[["elapsed"]]),
             result_compact = compact(y)
         )
