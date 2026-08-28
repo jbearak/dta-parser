@@ -65,13 +65,13 @@ These are default-workflow timings, not identical output construction.
 
 | Method | Input columns | 1:m median | m:1 median | 1:m allocated | m:1 allocated |
 | --- | --- | ---: | ---: | ---: | ---: |
-| `dta_merge()` | Stata classes | 0.085 s | 0.088 s | 0.62 GB | 0.62 GB |
-| dplyr `full_join()` | Stata classes | 1.464 s | 1.330 s | 9.27 GB | 9.43 GB |
-| base `merge()` | Stata classes | 4.909 s | 7.246 s | 23.27 GB | 31.23 GB |
-| `dta_merge()` | Standard R | 0.090 s | 0.099 s | 0.66 GB | 0.79 GB |
-| dplyr `full_join()` | Standard R | 0.102 s | 0.101 s | 0.74 GB | 0.76 GB |
-| base `merge()` | Standard R | 1.550 s | 1.846 s | 2.06 GB | 2.06 GB |
-| Stata 18 MP `merge` | Native DTA | 0.217 s | 0.284 s | Not measured | Not measured |
+| `dta_merge()` | Stata classes | 0.101 s | 0.097 s | 0.61 GB | 0.62 GB |
+| dplyr `full_join()` | Stata classes | 1.716 s | 1.411 s | 9.27 GB | 9.43 GB |
+| base `merge()` | Stata classes | 5.125 s | 7.433 s | 23.26 GB | 31.23 GB |
+| `dta_merge()` | Standard R | 0.107 s | 0.108 s | 0.66 GB | 0.79 GB |
+| dplyr `full_join()` | Standard R | 0.115 s | 0.108 s | 0.74 GB | 0.76 GB |
+| base `merge()` | Standard R | 1.576 s | 1.855 s | 2.06 GB | 2.06 GB |
+| Stata 18 MP `merge` | Native DTA | 0.257 s | 0.329 s | Not measured | Not measured |
 
 The Stata-class inputs come from `read_dta()`. The standard controls contain
 the same values in base character, integer, and double columns. dplyr and base
