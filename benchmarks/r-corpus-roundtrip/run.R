@@ -67,7 +67,7 @@ require_stata_mp <- function() {
     } else character()
     if (process$status != 0L || !identical(status, "ok")) {
         message("Stata capability probe failed: ", process$stderr)
-        stop("Stata/MP with maxvar 120000 is required")
+        stop("Stata/MP 18 or later with maxvar 120000 is required")
     }
     invisible(NULL)
 }
