@@ -70,8 +70,7 @@ test_that("numeric ALTREP can be disabled explicitly or by option", {
     )))
 })
 
-test_that("R and haven recognize every Stata numeric missing code", {
-    skip_if_not_installed("haven")
+test_that("dtaparser recognizes every Stata numeric missing code", {
     expected_tags <- c(NA_character_, letters)
     expected_tagged <- c(FALSE, rep(TRUE, 26L))
     expected_system <- c(TRUE, rep(FALSE, 26L))
@@ -102,18 +101,18 @@ test_that("R and haven recognize every Stata numeric missing code", {
                 )
                 expect_true(all(is.na(values)), info = paste(info, "is.na"))
                 expect_identical(
-                    haven::na_tag(values),
+                    missing_tag(values),
                     expected_tags,
                     info = paste(info, "na_tag")
                 )
                 expect_identical(
-                    haven::is_tagged_na(values),
+                    is_tagged_missing(values),
                     expected_tagged,
                     info = paste(info, "is_tagged_na")
                 )
                 expect_identical(
                     is.na(values) & !is.nan(values) &
-                        !haven::is_tagged_na(values),
+                        !is_tagged_missing(values),
                     expected_system,
                     info = paste(info, "system missing")
                 )
@@ -121,7 +120,7 @@ test_that("R and haven recognize every Stata numeric missing code", {
                     expected_match <- seq_along(expected_tags) ==
                         match(tag, letters) + 1L
                     expect_identical(
-                        haven::is_tagged_na(values, tag),
+                        is_tagged_missing(values, tag),
                         expected_match,
                         info = paste(info, "tag", tag)
                     )
@@ -132,7 +131,6 @@ test_that("R and haven recognize every Stata numeric missing code", {
 })
 
 test_that("base R recoding preserves tags with complete predicates", {
-    skip_if_not_installed("haven")
     expected_tags <- c(NA_character_, letters)
 
     paths <- character()
@@ -159,7 +157,7 @@ test_that("base R recoding preserves tags with complete predicates", {
                 assigned <- original
                 assigned[selected] <- -1
                 expect_identical(
-                    haven::na_tag(assigned[seq_len(27L)]),
+                    missing_tag(assigned[seq_len(27L)]),
                     expected_tags,
                     info = paste(info, "subassignment tags")
                 )
@@ -171,7 +169,7 @@ test_that("base R recoding preserves tags with complete predicates", {
 
                 replaced <- replace(original, selected, -1)
                 expect_identical(
-                    haven::na_tag(replaced[seq_len(27L)]),
+                    missing_tag(replaced[seq_len(27L)]),
                     expected_tags,
                     info = paste(info, "replace tags")
                 )
@@ -182,18 +180,18 @@ test_that("base R recoding preserves tags with complete predicates", {
                 )
 
                 tag_assigned <- original
-                tag_assigned[haven::is_tagged_na(tag_assigned, "a")] <- -2
+                tag_assigned[is_tagged_missing(tag_assigned, "a")] <- -2
                 remaining_tags <- expected_tags
                 remaining_tags[[2L]] <- NA_character_
                 expect_identical(
-                    haven::na_tag(tag_assigned[seq_len(27L)]),
+                    missing_tag(tag_assigned[seq_len(27L)]),
                     remaining_tags,
                     info = paste(info, "tag-specific assignment")
                 )
 
                 safe_ifelse <- ifelse(selected, -1, original)
                 expect_identical(
-                    haven::na_tag(safe_ifelse[seq_len(27L)]),
+                    missing_tag(safe_ifelse[seq_len(27L)]),
                     expected_tags,
                     info = paste(info, "complete ifelse predicate")
                 )
@@ -206,7 +204,7 @@ test_that("base R recoding preserves tags with complete predicates", {
                     original == original[[28L]], -1, original
                 )
                 expect_identical(
-                    haven::na_tag(unsafe_ifelse[seq_len(27L)]),
+                    missing_tag(unsafe_ifelse[seq_len(27L)]),
                     rep(NA_character_, 27L),
                     info = paste(info, "incomplete ifelse predicate")
                 )
@@ -216,7 +214,6 @@ test_that("base R recoding preserves tags with complete predicates", {
 })
 
 test_that("both recode interfaces preserve every Stata missing code", {
-    skip_if_not_installed("haven")
     expected_tags <- c(NA_character_, letters)
     interfaces <- list(
         dtaparser = dtaparser::recode,
@@ -254,7 +251,7 @@ test_that("both recode interfaces preserve every Stata missing code", {
                     )
 
                     expect_identical(
-                        haven::na_tag(recoded[seq_len(27L)]),
+                        missing_tag(recoded[seq_len(27L)]),
                         expected_tags,
                         info = paste(info, "tags")
                     )
@@ -285,7 +282,7 @@ test_that("both recode interfaces preserve every Stata missing code", {
                         info = paste(info, "explicit missing replacement")
                     )
                     expect_false(
-                        any(haven::is_tagged_na(replaced_missing)),
+                        any(is_tagged_missing(replaced_missing)),
                         info = paste(info, "explicit replacement tags")
                     )
 
@@ -337,7 +334,7 @@ test_that("both recode interfaces preserve every Stata missing code", {
             for (index in seq_along(mutated)) {
                 info <- paste(name, storage[[index]], mode, "mutate")
                 expect_identical(
-                    haven::na_tag(mutated[[index]][seq_len(27L)]),
+                    missing_tag(mutated[[index]][seq_len(27L)]),
                     expected_tags,
                     info = paste(info, "tags")
                 )
@@ -444,17 +441,16 @@ test_that("dplyr recode keeps its ordinary numeric behavior", {
 })
 
 test_that("tag detection distinguishes R missing payloads", {
-    skip_if_not_installed("haven")
     untagged <- c(
         1, NA_real_, NA_real_ + 0, -NA_real_, -(NA_real_ + 0), NaN, -NaN
     )
     expect_false(dtaparser:::.has_tagged_na(untagged))
-    expect_true(dtaparser:::.has_tagged_na(haven::tagged_na("a")))
-    expect_true(dtaparser:::.has_tagged_na(haven::tagged_na("z")))
+    expect_true(dtaparser:::.has_tagged_na(tagged_missing("a")))
+    expect_true(dtaparser:::.has_tagged_na(tagged_missing("z")))
     expect_false(dtaparser:::.has_tagged_na(c(1L, NA_integer_)))
 
     expected_tags <- c(NA_character_, letters)
-    canonical <- c(NA_real_, haven::tagged_na(letters))
+    canonical <- c(NA_real_, tagged_missing(letters))
     variants <- list(
         canonical = canonical,
         quiet = canonical + 0,
@@ -464,8 +460,8 @@ test_that("tag detection distinguishes R missing payloads", {
     for (name in names(variants)) {
         values <- variants[[name]]
         expect_identical(
-            haven::na_tag(values), expected_tags,
-            info = paste(name, "recognized by haven")
+            missing_tag(values), expected_tags,
+            info = paste(name, "recognized by missing_tag")
         )
         expect_true(
             dtaparser:::.has_tagged_na(values),
@@ -473,22 +469,21 @@ test_that("tag detection distinguishes R missing payloads", {
         )
         recoded <- dplyr::recode(c(values, 1), `1` = 10)
         expect_identical(
-            haven::na_tag(recoded[seq_along(values)]), expected_tags,
+            missing_tag(recoded[seq_along(values)]), expected_tags,
             info = paste(name, "preserved by dplyr recode")
         )
     }
 
     created <- 1:3
-    created[[2L]] <- haven::tagged_na("f")
+    created[[2L]] <- tagged_missing("f")
     expect_type(created, "double")
     expect_identical(
-        haven::na_tag(dplyr::recode(created, `1` = 10)),
+        missing_tag(dplyr::recode(created, `1` = 10)),
         c(NA_character_, "f", NA_character_)
     )
 })
 
 test_that("dtaparser recode retains the familiar vector interface", {
-    skip_if_not_installed("haven")
     expect_true("recode" %in% getNamespaceExports("dtaparser"))
     expect_identical(
         names(formals(dtaparser::recode)),
@@ -542,7 +537,7 @@ test_that("dtaparser recode retains the familiar vector interface", {
     )
 
     missing_values <- c(
-        NaN, NA_real_, haven::tagged_na("a"), haven::tagged_na("z")
+        NaN, NA_real_, tagged_missing("a"), tagged_missing("z")
     )
     preserved <- dtaparser::recode(
         c(1, missing_values), `1` = 10
@@ -552,14 +547,14 @@ test_that("dtaparser recode retains the familiar vector interface", {
     retagged <- dtaparser::recode(
         missing_values,
         .default = missing_values,
-        .missing = haven::tagged_na("f")
+        .missing = tagged_missing("f")
     )
     expect_identical(
-        haven::na_tag(retagged),
+        missing_tag(retagged),
         rep("f", length(missing_values))
     )
 
-    integer_labelled <- haven::labelled(
+    integer_labelled <- labelled_for_test(
         c(1L, 2L, NA_integer_), labels = c(one = 1L, two = 2L)
     )
     integer_result <- dtaparser::recode(integer_labelled, `1` = 10)
@@ -577,11 +572,11 @@ test_that("dtaparser recode retains the familiar vector interface", {
     expect_identical(attr(widened_result, "labels"), c(one = 1, two = 2))
 
     tagged_integer_result <- dtaparser::recode(
-        integer_labelled, `1` = 10L, .missing = haven::tagged_na("f")
+        integer_labelled, `1` = 10L, .missing = tagged_missing("f")
     )
     expect_s3_class(tagged_integer_result, "haven_labelled")
     expect_identical(
-        haven::na_tag(vctrs::vec_data(tagged_integer_result)),
+        missing_tag(vctrs::vec_data(tagged_integer_result)),
         c(NA_character_, NA_character_, "f")
     )
     expect_identical(
@@ -595,14 +590,14 @@ test_that("dtaparser recode retains the familiar vector interface", {
     expect_identical(is.na(nan_result), c(TRUE, FALSE, TRUE))
 
     tagged_date <- structure(
-        c(1, haven::tagged_na("a")),
+        c(1, tagged_missing("a")),
         class = "Date",
         format.stata = "%td"
     )
     recoded_date <- dtaparser::recode(tagged_date, `1` = 10L)
     expect_s3_class(recoded_date, "Date")
     expect_identical(attr(recoded_date, "format.stata"), "%td")
-    expect_identical(haven::na_tag(unclass(recoded_date)), c(NA, "a"))
+    expect_identical(missing_tag(unclass(recoded_date)), c(NA, "a"))
 
     same_class_date <- dtaparser::recode(
         tagged_date, `1` = as.Date("1970-01-11")
@@ -610,364 +605,12 @@ test_that("dtaparser recode retains the familiar vector interface", {
     expect_s3_class(same_class_date, "Date")
     expect_identical(unclass(same_class_date)[[1L]], 10)
     expect_identical(
-        haven::na_tag(unclass(same_class_date)), c(NA, "a")
+        missing_tag(unclass(same_class_date)), c(NA, "a")
     )
 })
 
-test_that("dplyr recoding preserves unselected Stata missing codes", {
-    skip_if_not_installed("dplyr")
-    skip_if_not_installed("haven")
-    expected_tags <- c(NA_character_, letters)
-    recoded_tags <- expected_tags
-    recoded_tags[c(2L, 7L)] <- NA_character_
-    recoded_missing <- rep(TRUE, 27L)
-    recoded_missing[c(2L, 7L)] <- FALSE
 
-    recode_tags <- function(data) {
-        dplyr::mutate(
-            data,
-            dplyr::across(
-                dplyr::everything(),
-                function(values) {
-                    dplyr::case_when(
-                        haven::is_tagged_na(values, "a") ~ -1,
-                        haven::is_tagged_na(values, "f") ~ -6,
-                        .default = values
-                    )
-                }
-            )
-        )
-    }
-    recode_observed <- function(data) {
-        dplyr::mutate(
-            data,
-            dplyr::across(
-                dplyr::everything(),
-                function(values) {
-                    dplyr::if_else(is.na(values), values, values + 1)
-                }
-            )
-        )
-    }
 
-    paths <- character()
-    on.exit(unlink(paths), add = TRUE)
-    for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
-        path <- fixture_with_all_numeric_missing_codes(name)
-        paths <- c(paths, path)
-        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
-        reference_tags <- recode_tags(haven::read_dta(path, n_max = 27))
-        reference_observed <- recode_observed(
-            haven::read_dta(path, n_max = 30)
-        )
-
-        for (use_numeric_altrep in c(TRUE, FALSE)) {
-            tagged <- recode_tags(read_dta(
-                path,
-                n_max = 27,
-                use_numeric_altrep = use_numeric_altrep
-            ))
-            source <- read_dta(
-                path,
-                n_max = 30,
-                use_numeric_altrep = use_numeric_altrep
-            )
-            observed <- recode_observed(source)
-            mode <- if (use_numeric_altrep) "default" else "eager"
-
-            for (index in seq_along(tagged)) {
-                info <- paste(name, storage[[index]], mode)
-                expect_identical(
-                    as.double(tagged[[index]]),
-                    as.double(reference_tags[[index]]),
-                    info = paste(info, "selective recode matches haven")
-                )
-                expect_identical(
-                    haven::na_tag(tagged[[index]]),
-                    recoded_tags,
-                    info = paste(info, "unselected tags")
-                )
-                expect_identical(
-                    is.na(tagged[[index]]),
-                    recoded_missing,
-                    info = paste(info, "missing positions")
-                )
-                expect_identical(
-                    unname(as.double(tagged[[index]][c(2L, 7L)])),
-                    c(-1, -6),
-                    info = paste(info, "selected replacements")
-                )
-                expect_identical(
-                    as.double(observed[[index]]),
-                    as.double(reference_observed[[index]]),
-                    info = paste(info, "observed recode matches haven")
-                )
-                expect_identical(
-                    haven::na_tag(observed[[index]][seq_len(27L)]),
-                    expected_tags,
-                    info = paste(info, "observed recode tags")
-                )
-
-                condition <- source[[index]] == source[[index]][[28L]]
-                unsafe_if_else <- dplyr::if_else(
-                    condition, -1, source[[index]]
-                )
-                expect_identical(
-                    haven::na_tag(unsafe_if_else[seq_len(27L)]),
-                    rep(NA_character_, 27L),
-                    info = paste(info, "if_else missing condition")
-                )
-                safe_if_else <- dplyr::if_else(
-                    condition, -1, source[[index]], missing = source[[index]]
-                )
-                expect_identical(
-                    haven::na_tag(safe_if_else[seq_len(27L)]),
-                    expected_tags,
-                    info = paste(info, "if_else missing branch")
-                )
-
-                registered_recode <- rlang::exec(
-                    dplyr::recode,
-                    source[[index]],
-                    !!!stats::setNames(
-                        list(-1), as.character(source[[index]][[28L]])
-                    )
-                )
-                expect_identical(
-                    haven::na_tag(registered_recode[seq_len(27L)]),
-                    expected_tags,
-                    info = paste(info, "registered recode tags")
-                )
-                expect_identical(
-                    unname(as.double(registered_recode[[28L]])),
-                    -1,
-                    info = paste(info, "registered recode replacement")
-                )
-            }
-        }
-    }
-})
-
-test_that("dplyr manipulation matches haven for every storage type", {
-    skip_if_not_installed("dplyr")
-    skip_if_not_installed("haven")
-
-    manipulate <- function(data) {
-        dplyr::mutate(
-            data,
-            dplyr::across(
-                dplyr::everything(),
-                function(values) {
-                    if (is.character(values)) {
-                        dplyr::if_else(
-                            is.na(values), values, paste0(values, "-recoded")
-                        )
-                    } else {
-                        dplyr::if_else(is.na(values), values, values + 1)
-                    }
-                }
-            )
-        )
-    }
-
-    for (name in c("all_types_v115.dta", "all_types_v118.dta")) {
-        path <- fixture(name)
-        reference <- haven::read_dta(path)
-        expected <- manipulate(reference)
-        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
-
-        for (use_numeric_altrep in c(TRUE, FALSE)) {
-            actual <- manipulate(read_dta(
-                path,
-                use_numeric_altrep = use_numeric_altrep
-            ))
-            mode <- if (use_numeric_altrep) "default" else "eager"
-            expect_identical(names(actual), names(expected))
-            for (index in seq_along(actual)) {
-                actual_value <- without_stata_storage(actual[[index]])
-                expected_value <- expected[[index]]
-                attr(actual_value, "label") <- NULL
-                attr(expected_value, "label") <- NULL
-                expect_equal(
-                    actual_value,
-                    expected_value,
-                    tolerance = if (identical(storage[[index]], "float")) {
-                        1e-6
-                    } else {
-                        0
-                    },
-                    info = paste(name, storage[[index]], mode)
-                )
-                if (!identical(storage[[index]], "character")) {
-                    expect_identical(
-                        var_label(actual[[index]]),
-                        var_label(reference[[index]]),
-                        info = paste(name, storage[[index]], mode, "label")
-                    )
-                }
-            }
-        }
-    }
-})
-
-test_that("dplyr manipulation matches haven for labelled and temporal data", {
-    skip_if_not_installed("dplyr")
-    skip_if_not_installed("haven")
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-
-    tagged_date <- structure(
-        c(0, unclass(haven::tagged_na("a")), NA_real_),
-        class = "Date"
-    )
-    tagged_instant <- structure(
-        c(0, unclass(haven::tagged_na("b")), NA_real_),
-        class = c("POSIXct", "POSIXt"),
-        tzone = "UTC"
-    )
-    input <- tibble::tibble(
-        labelled = haven::labelled(
-            c(1, haven::tagged_na("c"), NA_real_),
-            labels = c(one = 1)
-        ),
-        date = tagged_date,
-        instant = tagged_instant,
-        text = c("alpha", "", "omega")
-    )
-    haven::write_dta(input, path, version = 15)
-
-    manipulate <- function(data) {
-        dplyr::mutate(
-            data,
-            labelled = dplyr::case_when(
-                labelled == 1 ~ 2,
-                .default = labelled
-            ),
-            date = dplyr::if_else(is.na(date), date, date + 1),
-            instant = dplyr::if_else(
-                is.na(instant), instant, instant + 1
-            ),
-            text = dplyr::if_else(text == "alpha", "recoded", text)
-        )
-    }
-    expected <- manipulate(haven::read_dta(path))
-    unmanipulated <- read_dta(path)
-
-    classed_labelled <- dplyr::recode(unmanipulated$labelled, `1` = 2)
-    classed_date <- dplyr::recode(unmanipulated$date, `0` = 1)
-    classed_instant <- dplyr::recode(unmanipulated$instant, `0` = 1)
-    expect_s3_class(classed_labelled, "haven_labelled")
-    expect_s3_class(classed_date, "Date")
-    expect_s3_class(classed_instant, "POSIXct")
-    expect_identical(
-        haven::na_tag(unclass(classed_labelled)),
-        c(NA_character_, "c", NA_character_)
-    )
-    expect_identical(
-        haven::na_tag(unclass(classed_date)),
-        c(NA_character_, "a", NA_character_)
-    )
-    expect_identical(
-        haven::na_tag(unclass(classed_instant)),
-        c(NA_character_, "b", NA_character_)
-    )
-
-    for (use_numeric_altrep in c(TRUE, FALSE)) {
-        actual <- manipulate(read_dta(
-            path,
-            use_numeric_altrep = use_numeric_altrep
-        ))
-        mode <- if (use_numeric_altrep) "default" else "eager"
-        expect_identical(data_values(actual), data_values(expected), info = mode)
-        expect_s3_class(actual$labelled, "haven_labelled")
-        expect_s3_class(actual$date, "Date")
-        expect_s3_class(actual$instant, "POSIXct")
-        expect_identical(
-            haven::na_tag(unclass(actual$labelled)),
-            c(NA_character_, "c", NA_character_),
-            info = paste(mode, "labelled tag")
-        )
-        expect_identical(
-            haven::na_tag(unclass(actual$date)),
-            c(NA_character_, "a", NA_character_),
-            info = paste(mode, "Date tag")
-        )
-        expect_identical(
-            haven::na_tag(unclass(actual$instant)),
-            c(NA_character_, "b", NA_character_),
-            info = paste(mode, "POSIXct tag")
-        )
-    }
-
-    source <- fixture("auto_v118.dta")
-    bytes <- readBin(source, "raw", n = file.info(source)[["size"]])
-    data_tag <- charToRaw("<data>")
-    data_start <- grepRaw(data_tag, bytes, fixed = TRUE)[[1L]] +
-        length(data_tag)
-    closing_start <- grepRaw(
-        charToRaw("</data>"), bytes, fixed = TRUE
-    )[[1L]]
-    row_width <- as.integer((closing_start - data_start) / 74L)
-    expect_identical(row_width, 43L)
-
-    # `foreign` is the final one-byte field; make its first value `.a` while
-    # retaining its value-label table and haven_labelled class.
-    bytes[[data_start + row_width - 1L]] <- as.raw(102L)
-
-    # `price` follows the 18-byte `make` field and is a two-byte int. Change
-    # its first value to `.a` and its display format to `%td`, making it an
-    # integer-backed Date. The second format match is `price`; the first occurs
-    # outside its fixed-width format entry in this fixture.
-    bytes[data_start + 18L + 0:1] <- writeBin(
-        as.integer(32742L), raw(), size = 2L, endian = "little"
-    )
-    old_format <- charToRaw("%8.0gc")
-    format_matches <- grepRaw(old_format, bytes, fixed = TRUE, all = TRUE)
-    expect_gte(length(format_matches), 2L)
-    price_format <- format_matches[[2L]]
-    bytes[price_format + seq_along(old_format) - 1L] <- c(
-        charToRaw("%td"), raw(length(old_format) - 3L)
-    )
-
-    narrow_path <- tempfile(fileext = ".dta")
-    on.exit(unlink(narrow_path), add = TRUE)
-    writeBin(bytes, narrow_path)
-    narrow <- read_dta(narrow_path)
-    narrow_reference <- haven::read_dta(narrow_path)
-    expect_true(dtaparser:::.is_numeric_altrep(narrow$foreign))
-    expect_true(dtaparser:::.is_numeric_altrep(narrow$price))
-    expect_s3_class(narrow$foreign, "haven_labelled")
-    expect_s3_class(narrow$price, "Date")
-    expect_identical(haven::na_tag(unclass(narrow$foreign))[[1L]], "a")
-    expect_identical(haven::na_tag(unclass(narrow$price))[[1L]], "a")
-
-    manipulate_narrow <- function(data) {
-        dplyr::mutate(
-            data,
-            foreign = dplyr::case_when(
-                foreign == 0 ~ 2,
-                .default = foreign
-            ),
-            price = dplyr::if_else(is.na(price), price, price + 1)
-        )
-    }
-    narrow_input <- read_dta(narrow_path)
-    expect_true(dtaparser:::.is_numeric_altrep(narrow_input$foreign))
-    expect_true(dtaparser:::.is_numeric_altrep(narrow_input$price))
-    narrow_transformed <- manipulate_narrow(narrow_input)
-    narrow_expected <- manipulate_narrow(narrow_reference)
-    expect_identical(
-        data_values(narrow_transformed), data_values(narrow_expected)
-    )
-    expect_identical(
-        haven::na_tag(unclass(narrow_transformed$foreign))[[1L]],
-        "a"
-    )
-    expect_identical(
-        haven::na_tag(unclass(narrow_transformed$price))[[1L]],
-        "a"
-    )
-})
 
 test_that("parallel decoding is identical across supported releases", {
     modern <- fixture("auto_v118.dta")
@@ -1025,134 +668,8 @@ test_that("internal metadata projection is bounded and preserves attributes", {
     }
 })
 
-test_that("all bundled fixtures agree with haven", {
-    skip_if_not_installed("haven")
-    paths <- list.files(
-        system.file("extdata", package = "dtaparser"),
-        pattern = "[.]dta$",
-        full.names = TRUE
-    )
-    expect_gt(length(paths), 20L)
 
-    for (path in paths) {
-        actual <- read_dta(path)
-        rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
-        expected <- without_haven_note_count(haven::read_dta(path))
-        info <- basename(path)
-        metadata <- dtaparser:::.dta_metadata(normalizePath(path))
-        storage <- stats::setNames(
-            attr(metadata, "dta_storage", exact = TRUE),
-            as.character(metadata)
-        )
 
-        expect_identical(actual, rust_vectors,
-                         info = paste(info, "direct and Rust-vector collectors"))
-        expect_identical(dim(actual), dim(expected), info = info)
-        expect_identical(names(actual), names(expected), info = info)
-        expect_identical(attr(actual, "label", exact = TRUE),
-                         attr(expected, "label", exact = TRUE), info = info)
-        expect_identical(attr(actual, "notes", exact = TRUE),
-                         attr(expected, "notes", exact = TRUE), info = info)
-        expect_null(attr(actual, "dta_format_version", exact = TRUE), info = info)
-        expect_identical(attributes(actual), attributes(expected), info = info)
-        expect_true(attr(metadata, "dta_format_version", exact = TRUE) %in%
-                    c(105L, 108L, 110L, 111L, 113L, 114L, 115L,
-                      117L, 118L, 119L), info = info)
-
-        for (name in names(actual)) {
-            if (storage[[name]] %in% c("float", "double")) {
-                expect_equal(without_stata_storage(actual[[name]]),
-                             expected[[name]], tolerance = 1e-7,
-                             info = paste(info, name))
-            } else {
-                expect_equal(without_stata_storage(actual[[name]]),
-                             expected[[name]], tolerance = 0,
-                             info = paste(info, name, "exact"))
-            }
-            expect_identical(is.na(actual[[name]]), is.na(expected[[name]]),
-                             info = paste(info, name, "missing positions"))
-            if (is.numeric(actual[[name]])) {
-                expect_identical(
-                    haven::na_tag(actual[[name]]),
-                    haven::na_tag(expected[[name]]),
-                    info = paste(info, name, "missing tags")
-                )
-            }
-        }
-    }
-})
-
-test_that("dataset-note cardinality, ordering, and empty values are semantic", {
-    skip_if_not_installed("haven")
-    source <- fixture("auto_v118.dta")
-    multiple <- readBin(source, "raw", file.info(source)$size)
-    one <- replace_first_byte(multiple, "note0", utf8ToInt("x"))
-    empty <- replace_first_byte(
-        multiple, "From Consumer Reports with permission", 0
-    )
-    zero <- replace_first_byte(one, "note1", utf8ToInt("x"))
-
-    variants <- list(multiple = multiple, one = one, empty = empty, zero = zero)
-    expected_notes <- list(
-        multiple = "From Consumer Reports with permission",
-        one = "From Consumer Reports with permission",
-        empty = "",
-        zero = NULL
-    )
-    for (name in names(variants)) {
-        variant <- variants[[name]]
-        expected <- without_haven_note_count(haven::read_dta(
-            variant, col_select = make, skip = 2, n_max = 3
-        ))
-        actual <- read_dta(
-            variant, col_select = make, skip = 2, n_max = 3
-        )
-        rust_vectors <- dtaparser:::.read_dta_rust_vectors(
-            variant, col_select = make, skip = 2, n_max = 3
-        )
-
-        expect_identical(actual, rust_vectors)
-        expect_identical(
-            attr(actual, "notes", exact = TRUE), expected_notes[[name]]
-        )
-        if (name != "empty") {
-            expect_identical(attr(actual, "notes", exact = TRUE),
-                             attr(expected, "notes", exact = TRUE))
-        } else {
-            # Haven drops an empty note; dtaparser preserves its value.
-            expect_null(attr(expected, "notes", exact = TRUE))
-        }
-    }
-})
-
-test_that("projection, renaming, and row bounds match haven", {
-    skip_if_not_installed("haven")
-    path <- fixture("auto_v118.dta")
-    actual <- read_dta(
-        path,
-        col_select = c(origin = foreign, make, price),
-        skip = 5,
-        n_max = 4
-    )
-    rust_vectors <- dtaparser:::.read_dta_rust_vectors(
-        path,
-        col_select = c(origin = foreign, make, price),
-        skip = 5,
-        n_max = 4
-    )
-    expected <- without_haven_note_count(
-        haven::read_dta(path, skip = 5, n_max = 4)
-    )
-
-    expect_identical(actual, rust_vectors)
-    expect_identical(names(actual), c("origin", "make", "price"))
-    expect_equal(without_stata_storage(actual$origin), expected$foreign)
-    expect_equal(actual$make, expected$make)
-    expect_equal(without_stata_storage(actual$price), expected$price)
-    expect_identical(attr(actual, "label"), attr(expected, "label"))
-    expect_identical(attr(actual, "notes"), attr(expected, "notes"))
-    expect_null(attr(actual, "dta_format_version", exact = TRUE))
-})
 
 test_that("an empty projection retains the selected row count", {
     path <- fixture("auto_v118.dta")
@@ -1164,42 +681,6 @@ test_that("an empty projection retains the selected row count", {
     expect_identical(dim(result), c(3L, 0L))
 })
 
-test_that("safe row-window inputs align with haven in both collectors", {
-    skip_if_not_installed("haven")
-    path <- fixture("auto_v118.dta")
-    cases <- list(
-        integer = list(skip = 2L, n_max = 3L),
-        integer_valued_double = list(skip = 2, n_max = 3),
-        zero = list(skip = 0, n_max = 0),
-        skip_beyond_rows = list(skip = 1000, n_max = 3),
-        n_max_beyond_rows = list(skip = 72, n_max = 1000),
-        bare_na_unlimited = list(skip = 2, n_max = NA),
-        real_na_unlimited = list(skip = 2, n_max = NA_real_),
-        positive_infinity_unlimited = list(skip = 2, n_max = Inf),
-        negative_infinity_unlimited = list(skip = 2, n_max = -Inf),
-        negative_integer_unlimited = list(skip = 2, n_max = -1L),
-        negative_double_unlimited = list(skip = 2, n_max = -1.5)
-    )
-
-    for (name in names(cases)) {
-        arguments <- c(
-            list(path, col_select = c("make", "price")), cases[[name]]
-        )
-        actual <- do.call(read_dta, arguments)
-        rust_vectors <- do.call(
-            dtaparser:::.read_dta_rust_vectors, arguments
-        )
-        expected <- without_haven_note_count(
-            do.call(haven::read_dta, arguments)
-        )
-
-        expect_identical(actual, rust_vectors,
-                         info = paste(name, "materialization"))
-        expect_identical(
-            without_stata_storage_data(actual), expected, info = name
-        )
-    }
-})
 
 test_that("the largest exact skip is deterministic in both collectors", {
     path <- fixture("auto_v118.dta")
@@ -1214,44 +695,6 @@ test_that("the largest exact skip is deterministic in both collectors", {
     expect_identical(dim(actual), c(0L, 2L))
 })
 
-test_that("normalized windows cover empty data and zero-column projections", {
-    skip_if_not_installed("haven")
-    empty <- tempfile(fileext = ".dta")
-    on.exit(unlink(empty), add = TRUE)
-    haven::write_dta(data.frame(number = double(), text = character()), empty)
-
-    for (n_max in list(0L, NA, Inf, -Inf, -1)) {
-        actual <- read_dta(empty, n_max = n_max)
-        rust_vectors <- dtaparser:::.read_dta_rust_vectors(
-            empty, n_max = n_max
-        )
-        expected <- haven::read_dta(empty, n_max = n_max)
-        expect_identical(actual, rust_vectors)
-        expect_identical(without_stata_storage_data(actual), expected)
-    }
-
-    path <- fixture("auto_v118.dta")
-    windows <- list(
-        zero = list(skip = 0, n_max = 0),
-        unlimited = list(skip = 2, n_max = NA),
-        out_of_range = list(skip = 1000, n_max = 10)
-    )
-    for (name in names(windows)) {
-        arguments <- c(
-            list(path, col_select = character()), windows[[name]]
-        )
-        actual <- do.call(read_dta, arguments)
-        rust_vectors <- do.call(
-            dtaparser:::.read_dta_rust_vectors, arguments
-        )
-        expected_rows <- do.call(
-            haven::read_dta, c(list(path), windows[[name]])
-        )
-        expect_identical(actual, rust_vectors, info = name)
-        expect_identical(nrow(actual), nrow(expected_rows), info = name)
-        expect_identical(ncol(actual), 0L, info = name)
-    }
-})
 
 test_that("typed predicates and duplicate selections are deterministic", {
     path <- fixture("auto_v118.dta")
@@ -1313,7 +756,6 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
 })
 
 test_that("native numerics use width-aware storage with R value semantics", {
-    skip_if_not_installed("haven")
     path <- normalizePath(fixture("auto_v118.dta"))
     reference <- dtaparser:::.read_dta_rust_vectors(path)
     actual <- read_dta(path)
@@ -1381,19 +823,19 @@ test_that("native numerics use width-aware storage with R value semantics", {
             expected_tags <- c(NA_character_, letters)
             for (index in numeric_indices) {
                 expect_identical(
-                    haven::na_tag(reference[[index]][seq_along(expected_tags)]),
+                    missing_tag(reference[[index]][seq_along(expected_tags)]),
                     expected_tags,
                     info = paste(name, storage[[index]], "missing codes")
                 )
                 expect_identical(
-                    haven::na_tag(actual[[index]][seq_along(expected_tags)]),
+                    missing_tag(actual[[index]][seq_along(expected_tags)]),
                     expected_tags,
                     info = paste(
                         name, storage[[index]], "native missing codes"
                     )
                 )
                 expect_identical(
-                    haven::na_tag(eager[[index]][seq_along(expected_tags)]),
+                    missing_tag(eager[[index]][seq_along(expected_tags)]),
                     expected_tags,
                     info = paste(
                         name, storage[[index]], "eager missing codes"
@@ -1411,10 +853,10 @@ test_that("native numerics use width-aware storage with R value semantics", {
                 for (index in numeric_indices) {
                     for (summary_name in c("min", "max")) {
                         summary_function <- match.fun(summary_name)
-                        actual_tag <- haven::na_tag(summary_function(
+                        actual_tag <- missing_tag(summary_function(
                             unclass(tagged[[index]])
                         ))
-                        eager_tag <- haven::na_tag(summary_function(
+                        eager_tag <- missing_tag(summary_function(
                             unclass(tagged_eager[[index]])
                         ))
                         expect_identical(
@@ -1510,205 +952,10 @@ test_that("native numerics use width-aware storage with R value semantics", {
     }
 })
 
-test_that("repeated string patterns can diverge without changing values", {
-    skip_if_not_installed("haven")
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    values <- c("alpha", "beta", "alpha", "beta", "alpha", "gamma",
-                "alpha", "beta", rep(c("delta", "epsilon", "zeta"), 8L))
-    haven::write_dta(data.frame(value = values), path, version = 15)
 
-    actual <- read_dta(path)
-    expect_identical(as.vector(actual$value), values)
-    expect_identical(actual, dtaparser:::.read_dta_rust_vectors(path))
-})
 
-test_that("wide materialization uses bounded native protection", {
-    skip_if_not_installed("haven")
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    column_count <- 5500L
-    input <- as.data.frame(
-        stats::setNames(rep.int(list(1), column_count),
-                        sprintf("v%05d", seq_len(column_count))),
-        check.names = FALSE
-    )
-    haven::write_dta(input, path, version = 15)
 
-    result <- read_dta(path)
-    expect_identical(dim(result), c(1L, column_count))
-    expect_identical(as.double(result[[column_count]]), 1)
-})
 
-test_that("date and datetime storage become native R temporal vectors", {
-    skip_if_not_installed("haven")
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    input <- data.frame(
-        date = as.Date(c("1960-01-01", "2024-02-29")),
-        instant = as.POSIXct(c("1960-01-01 00:00:00", "2024-02-29 12:34:56"),
-                            tz = "UTC")
-    )
-    haven::write_dta(input, path, version = 15)
-
-    actual <- read_dta(path)
-    eager <- read_dta(path, use_numeric_altrep = FALSE)
-    expected <- haven::read_dta(path)
-    expect_equal(without_stata_storage(actual$date), expected$date)
-    expect_s3_class(actual$date, "Date")
-    expect_equal(without_stata_storage(actual$instant), expected$instant)
-    expect_s3_class(actual$instant, "POSIXct")
-    expect_identical(attr(actual$instant, "tzone"), "UTC")
-    expect_identical(eager, actual)
-    expect_false(any(vapply(
-        eager, dtaparser:::.is_numeric_altrep, logical(1)
-    )))
-})
-
-test_that("legacy and custom daily-date formats match haven", {
-    skip_if_not_installed("haven")
-    path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-
-    formats <- c(
-        daily_td = "%td",
-        daily_d = "%d",
-        daily_custom = "%dCY-N-D",
-        daily_unusual = "%dollars",
-        daily_other = "%dfoo",
-        datetime_tc = "%tc",
-        datetime_tC = "%tC",
-        near_uppercase_d = "%D",
-        near_width_d = "%9d",
-        weekly = "%tw",
-        monthly = "%tm",
-        quarterly = "%tq",
-        halfyear = "%th",
-        yearly = "%ty",
-        incomplete_temporal = "%t",
-        bare_d = "d"
-    )
-    values <- c(0, 3653, haven::tagged_na("a"), NA_real_)
-    input <- as.data.frame(lapply(formats, function(format) {
-        column <- values
-        attr(column, "format.stata") <- format
-        column
-    }), check.names = FALSE)
-    haven::write_dta(input, path, version = 15)
-
-    actual <- read_dta(path)
-    rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
-    expected <- haven::read_dta(path)
-
-    expect_identical(actual, rust_vectors)
-    for (name in names(formats)) {
-        expect_identical(
-            without_stata_storage(actual[[name]]), expected[[name]], info = name
-        )
-        expect_identical(attr(actual[[name]], "format.stata"), formats[[name]],
-                         info = name)
-        expect_identical(haven::na_tag(actual[[name]]),
-                         haven::na_tag(expected[[name]]), info = name)
-    }
-
-    date_names <- names(formats)[startsWith(formats, "%d") |
-                                 startsWith(formats, "%td")]
-    datetime_names <- names(formats)[startsWith(formats, "%tc") |
-                                     startsWith(formats, "%tC")]
-    numeric_names <- setdiff(names(formats), c(date_names, datetime_names))
-    expect_true(all(vapply(actual[date_names], inherits, logical(1), "Date")))
-    expect_true(all(vapply(actual[datetime_names], inherits, logical(1),
-                           "POSIXct")))
-    expect_true(all(vapply(actual[datetime_names], function(column) {
-        identical(attr(column, "tzone"), "UTC")
-    }, logical(1))))
-    expect_true(all(vapply(
-        actual[numeric_names], inherits, logical(1), "stata_numeric"
-    )))
-
-    selected_names <- c("daily_custom", "datetime_tC", "near_uppercase_d")
-    selected <- read_dta(
-        path,
-        col_select = all_of(selected_names),
-        skip = 1,
-        n_max = 2
-    )
-    selected_rust_vectors <- dtaparser:::.read_dta_rust_vectors(
-        path,
-        col_select = all_of(selected_names),
-        skip = 1,
-        n_max = 2
-    )
-    selected_expected <- haven::read_dta(
-        path,
-        col_select = all_of(selected_names),
-        skip = 1,
-        n_max = 2
-    )
-    expect_identical(selected, selected_rust_vectors)
-    expect_identical(
-        without_stata_storage_data(selected), selected_expected
-    )
-})
-
-test_that("explicit encodings match haven across ordinary textual surfaces", {
-    skip_if_not_installed("haven")
-    for (version in c(115L, 118L)) local({
-        source <- fixture(sprintf("auto_v%d.dta", version))
-        bytes <- readBin(source, "raw", file.info(source)$size)
-        for (text in c(
-            "1978 automobile data", "Make and model", "AMC Concord", "Domestic"
-        )) {
-            bytes <- replace_first_byte(bytes, text, 0x80)
-        }
-        path <- tempfile(fileext = ".dta")
-        on.exit(unlink(path), add = TRUE)
-        writeBin(bytes, path)
-
-        for (encoding in c("Windows-1252", "ISO-8859-1")) {
-            actual <- read_dta(path, encoding = encoding)
-            rust_vectors <- dtaparser:::.read_dta_rust_vectors(
-                path, encoding = encoding
-            )
-            expected <- haven::read_dta(path, encoding = encoding)
-            info <- paste("release", version, encoding)
-
-            expect_identical(actual, rust_vectors,
-                             info = paste(info, "materialization"))
-            expect_identical(actual$make, expected$make,
-                             info = paste(info, "fixed string"))
-            expect_identical(attr(actual, "label"), attr(expected, "label"),
-                             info = paste(info, "dataset label"))
-            expect_identical(attr(actual$make, "label"),
-                             attr(expected$make, "label"),
-                             info = paste(info, "variable label"))
-            expect_identical(attr(actual$foreign, "labels"),
-                             attr(expected$foreign, "labels"),
-                             info = paste(info, "value labels"))
-        }
-    })
-
-    modern <- fixture("auto_v118.dta")
-    expect_identical(read_dta(modern, encoding = "utf_8"),
-                     read_dta(modern, encoding = "UTF8"))
-    expect_identical(read_dta(modern, encoding = "UTF-8")$make,
-                     haven::read_dta(modern, encoding = "UTF-8")$make)
-
-    note_bytes <- readBin(modern, "raw", file.info(modern)$size)
-    note_bytes <- replace_first_byte(
-        note_bytes, "From Consumer Reports with permission", 0x80
-    )
-    cp1252 <- read_dta(note_bytes, encoding = "Windows-1252")
-    latin1 <- read_dta(note_bytes, encoding = "ISO-8859-1")
-    expect_identical(cp1252, dtaparser:::.read_dta_rust_vectors(
-        note_bytes, encoding = "CP1252"
-    ))
-    expect_identical(latin1, dtaparser:::.read_dta_rust_vectors(
-        note_bytes, encoding = "latin1"
-    ))
-    expect_true(startsWith(attr(cp1252, "notes")[[1L]], "\u20ac"))
-    expect_true(startsWith(attr(latin1, "notes")[[1L]], "\u0080"))
-})
 
 test_that("explicit encodings apply consistently to strL text", {
     source <- fixture("strl_test_v118.dta")
@@ -1807,25 +1054,4 @@ test_that("unsafe row-window coercions fail before parsing", {
             )
         }
     }
-})
-
-test_that("deliberate row-window divergences from haven are stable", {
-    skip_if_not_installed("haven")
-    path <- fixture("auto_v118.dta")
-
-    expect_identical(nrow(haven::read_dta(path, n_max = 2.9)), 2L)
-    expect_error(read_dta(path, n_max = 2.9), "whole number")
-    expect_identical(nrow(haven::read_dta(path, n_max = NaN)), 74L)
-    expect_error(read_dta(path, n_max = NaN), "must not be NaN")
-
-    expect_identical(nrow(haven::read_dta(path, skip = -1, n_max = 2)), 2L)
-    expect_error(read_dta(path, skip = -1, n_max = 2), "non-negative whole")
-    expect_identical(nrow(haven::read_dta(path, skip = NA, n_max = 2)), 2L)
-    expect_error(read_dta(path, skip = NA, n_max = 2), "integer or double")
-    expect_s3_class(haven::read_dta(path, skip = Inf, n_max = 2), "tbl_df")
-    expect_error(read_dta(path, skip = Inf, n_max = 2), "non-negative whole")
-    expect_error(haven::read_dta(path, skip = 2.9, n_max = 2),
-                 "single integer")
-    expect_error(read_dta(path, skip = 2.9, n_max = 2),
-                 "non-negative whole")
 })

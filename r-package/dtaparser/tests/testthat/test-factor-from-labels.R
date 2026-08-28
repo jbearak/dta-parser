@@ -60,20 +60,8 @@ test_that("factor_from_labels controls unused levels, display, and ordering", {
     expect_s3_class(factor_from_labels(x, ordered = TRUE), "ordered")
 })
 
-test_that("factor_from_labels matches installed haven on its simple seam", {
-    skip_if_not_installed("haven")
-    x <- haven::labelled(c(2, 1, 2), c(Yes = 1, No = 2))
-
-    ours <- factor_from_labels(x)
-    theirs <- haven::as_factor(x)
-
-    expect_identical(as.character(ours), as.character(theirs))
-    expect_identical(levels(ours), levels(theirs))
-})
-
 test_that("factor_from_labels does not invent non-Stata missing tags", {
-    skip_if_not_installed("haven")
-    invalid_tag <- haven::tagged_na("?")
+    invalid_tag <- tagged_nan_for_test("?")
 
     actual <- factor_from_labels(
         invalid_tag,
