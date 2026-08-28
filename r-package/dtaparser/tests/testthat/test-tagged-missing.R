@@ -212,15 +212,3 @@ test_that("inspectors reject noncanonical NaN payloads", {
         list(tag = NA_character_, selected = FALSE)
     )
 })
-
-test_that("tagged-missing helpers interoperate with the installed haven", {
-    skip_if_not_installed("haven")
-
-    ours <- tagged_missing(c("a", "z"))
-    theirs <- haven::tagged_na(c("a", "z"))
-
-    expect_identical(haven::na_tag(ours), c("a", "z"))
-    expect_true(all(haven::is_tagged_na(ours)))
-    expect_identical(missing_tag(theirs), c("a", "z"))
-    expect_true(all(is_tagged_missing(theirs)))
-})

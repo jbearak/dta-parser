@@ -2,6 +2,25 @@ fixture <- function(name) {
     system.file("extdata", name, package = "dtaparser", mustWork = TRUE)
 }
 
+labelled_for_test <- function(x, labels = NULL, label = NULL) {
+    structure(
+        x,
+        labels = labels,
+        label = label,
+        class = c("haven_labelled", "vctrs_vctr", typeof(x))
+    )
+}
+
+tagged_nan_for_test <- function(tag) {
+    stopifnot(is.character(tag), length(tag) == 1L, nchar(tag) == 1L)
+    code <- utf8ToInt(tag)
+    stopifnot(code >= 1L, code <= 127L)
+    bytes <- as.raw(c(
+        0x7f, 0xf0, 0x00, code, 0x00, 0x00, 0x07, 0xa2
+    ))
+    readBin(bytes, "double", n = 1L, size = 8L, endian = "big")
+}
+
 without_stata_storage <- function(value) {
     if (is.null(attr(value, "stata.storage", exact = TRUE))) return(value)
 

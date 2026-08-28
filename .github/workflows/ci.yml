@@ -142,9 +142,9 @@ jobs:
         run: |
           rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
           rustup default "$RUSTUP_TOOLCHAIN"
-      - name: Install package and test dependencies
+      - name: Install package and declared test dependencies
         shell: Rscript {0}
-        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "haven", "dplyr", "callr", "httpuv"))
+        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "dplyr", "callr", "httpuv"))
       - name: Test Rust source hash validation
         if: runner.os == 'Linux'
         shell: bash
@@ -167,17 +167,16 @@ jobs:
         shell: bash
         run: DTA_REQUIRE_R_CONFORMANCE=1 scripts/conformance.sh
       - name: Install pinned interoperability baselines
-        if: runner.os == 'Linux'
         shell: Rscript {0}
         run: |
           install.packages("remotes")
           remotes::install_version("haven", "2.5.5", upgrade = "never")
           remotes::install_version("labelled", "2.16.0", upgrade = "never")
-      - name: Test labelled and haven helper interoperability
-        if: runner.os == 'Linux'
+      - name: Test repository-only labelled and Haven conformance
         shell: bash
         run: |
           R CMD INSTALL r-package/dtaparser
+          Rscript --vanilla scripts/test-haven-conformance.R
           Rscript --vanilla scripts/test-labelled-interop.R
           Rscript --vanilla scripts/test-haven-helper-interop.R
 

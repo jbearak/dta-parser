@@ -87,8 +87,7 @@ test_that("labelled temporal vectors match Stata codes and format fallbacks", {
 })
 
 test_that("missing modes distinguish every numeric payload", {
-    skip_if_not_installed("haven")
-    x <- c(2, 1, NA_real_, haven::tagged_na(letters), NaN)
+    x <- c(2, 1, NA_real_, tagged_missing(letters), NaN)
     expected_levels <- c("1", "2", ".", paste0(".", letters), "NaN")
 
     expect_identical(as.vector(tab(x)), c(1L, 1L))
@@ -105,7 +104,7 @@ test_that("missing modes distinguish every numeric payload", {
     expect_identical(as.vector(combined), c(1L, 1L, 28L))
     expect_true(is.na(dimnames(combined)[[1L]][[3L]]))
 
-    transformed <- -haven::tagged_na(c("a", "z"))
+    transformed <- -tagged_missing(c("a", "z"))
     expect_identical(
         dimnames(tab(transformed, missing = TRUE))[[1L]],
         c(".a", ".z")
@@ -113,17 +112,16 @@ test_that("missing modes distinguish every numeric payload", {
 })
 
 test_that("labels apply to observed and missing values without adding levels", {
-    skip_if_not_installed("haven")
-    x <- haven::labelled(
+    x <- labelled_for_test(
         c(
             2, 1, 2, 4, NA_real_,
-            haven::tagged_na(c("a", "b")), NaN
+            tagged_missing(c("a", "b")), NaN
         ),
         c(
             Yes = 1,
             Yes = 2,
             Unused = 3,
-            Refused = haven::tagged_na("a"),
+            Refused = tagged_missing("a"),
             Numeric = 4
         )
     )
@@ -152,9 +150,8 @@ test_that("labels apply to observed and missing values without adding levels", {
 })
 
 test_that("cross-tabs handle labelled and ordinary vectors in either order", {
-    skip_if_not_installed("haven")
-    labelled <- haven::labelled(
-        c(1, 2, 1, haven::tagged_na("a")),
+    labelled <- labelled_for_test(
+        c(1, 2, 1, tagged_missing("a")),
         c(Yes = 1, No = 2)
     )
     ordinary <- c("a", "a", "b", "b")
@@ -167,10 +164,9 @@ test_that("cross-tabs handle labelled and ordinary vectors in either order", {
 })
 
 test_that("tab preserves source values and metadata", {
-    skip_if_not_installed("haven")
-    x <- haven::labelled(
-        c(1, NA_real_, haven::tagged_na("a")),
-        c(One = 1, Refused = haven::tagged_na("a")),
+    x <- labelled_for_test(
+        c(1, NA_real_, tagged_missing("a")),
+        c(One = 1, Refused = tagged_missing("a")),
         label = "Response"
     )
     attr(x, "format.stata") <- "%8.0g"
@@ -181,7 +177,6 @@ test_that("tab preserves source values and metadata", {
 })
 
 test_that("tab handles imported labelled ALTREP columns", {
-    skip_if_not_installed("haven")
     input <- fixture("auto_v118.dta")
     data <- read_dta(input)
     before <- data$foreign
@@ -208,7 +203,6 @@ test_that("tab handles imported labelled ALTREP columns", {
 })
 
 test_that("tab distinguishes all missing codes read by dtaparser", {
-    skip_if_not_installed("haven")
     path <- fixture_with_all_numeric_missing_codes(
         "missing_values_v118.dta"
     )
