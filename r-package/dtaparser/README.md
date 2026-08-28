@@ -6,6 +6,21 @@ read interface accepts haven's common arguments and returns compatible values,
 labels, dates, and tagged missing values. Numeric columns also retain their
 declared Stata storage type.
 
+## Functions
+
+| Function | Purpose |
+| --- | --- |
+| `read_dta()` | Read a DTA file into a tibble with labels, display formats, notes, tagged missing values, and compact numeric columns. |
+| `write_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
+| `stata_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
+| `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
+| `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
+| `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a derived vector's Stata storage type, with validation and compact backing. |
+| `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
+| `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
+| `var_label()`, `val_labels()`, `dataset_label()`, `set_variable_labels()`, `set_value_labels()` | Get and set Stata label metadata without haven or `labelled`. |
+
 ## Why use dtaparser?
 
 Repository benchmarks compare `dtaparser` with haven across a large survey corpus and one especially wide file:
@@ -104,6 +119,32 @@ become empty strings, and unrepresentable numeric values become Stata system
 missing. Each conversion category produces one warning per call. An
 extensionless output path receives `.dta` with a warning.
 
+## Merge datasets
+
+```r
+merged <- stata_merge(cars, "makes.dta", by = "make", relationship = "m:1")
+```
+
+Use `stata_merge()` instead of base `merge()` or a dplyr join when Stata key
+identity matters. Both of those match keys with R missing semantics: system
+missing `.` and extended missings `.a` through `.z` fall into one missing
+bucket, so by default every missing key matches every other missing key. Rows
+that Stata would keep apart match each other, sometimes into an accidental
+many-to-many expansion, and the opt-outs (`incomparables`, `na_matches`) can
+only stop missing keys from matching at all. This affects only the key columns
+being matched; non-key columns pass through any of these joins with their
+missing codes intact. Base `merge()` can additionally drop the right key's
+labels and other metadata, since it keeps only the left key column.
+
+`stata_merge()` matches each of the 27 missing codes only to itself, requires
+the relationship declaration (`"1:1"`, `"m:1"`, or `"1:m"`), coalesces key
+storage types and labels, follows Stata's master-wins rule for overlapping
+variables, and generates the value-labelled `_merge` indicator. `keep` and
+`assert` mirror Stata's options, and either input may be a DTA file path so
+only the merged result occupies memory. See
+[the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence
+behind these differences.
+
 ## Data returned to R
 
 Dataset and variable labels, notes, display formats, and value-label tables are retained as attributes. Stata daily dates become `Date`; `%tc` and `%tC` values become UTC `POSIXct`.
@@ -187,6 +228,7 @@ Use the installed help for exact behavior and examples:
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?write_dta # standalone Stata 18/19 output, conversions, and metadata
+?stata_merge # Stata-identity merges with relationship checks and _merge
 ?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values

@@ -40,6 +40,22 @@ _Avoid_: Stata factor, Haven factor conversion
 A one-way conversion of an R factor's level positions to Stata `long` values with its levels as value labels. The R factor class and orderedness do not survive a semantic DTA round-trip.
 _Avoid_: Factor round-trip, Stata factor
 
+**Stata merge**:
+A package-owned merge of a master dataset with a using dataset that matches keys under Stata missing-code identity, requires a declared merge relationship, records each row's match result, and keeps the master's values for overlapping variables.
+_Avoid_: base merge wrapper, Stata join
+
+**Stata missing-code identity**:
+Key equality in which system missing `.` and each extended missing `.a` through `.z` are distinct values that match only themselves.
+_Avoid_: NA matching, missing bucket
+
+**Merge relationship**:
+The declared key multiplicity between the master and using datasets: `1:1`, `m:1`, or `1:m`. Many-to-many merges are rejected.
+_Avoid_: join cardinality, relationship check
+
+**Match result**:
+The per-row outcome of a Stata merge, recorded in the generated `_merge` variable: master only, using only, or matched.
+_Avoid_: join indicator, merge status
+
 **Label-aware tabulation**:
 A frequency table that uses Stata value labels and, when requested, keeps system missing, extended missing codes, and R `NaN` as distinct categories.
 _Avoid_: Safe tabulation

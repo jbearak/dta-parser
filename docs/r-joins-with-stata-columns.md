@@ -186,8 +186,15 @@ before using `<`, `>=`, `closest()`, or an overlap helper.
 
 ## Practical recommendation
 
-Use dplyr joins for data frames containing native dtaparser columns, and name
-the intended key relationship. Use `keep = TRUE` when the two key columns have
+When Stata key identity matters, use dtaparser's own `stata_merge()`. It
+matches `.` and each of `.a` through `.z` only to themselves, requires a
+declared merge relationship, generates Stata's `_merge` indicator, and
+reconciles key storage and metadata through the package's vctrs methods.
+ADR 0009 records its semantics and the rejected alternatives, including the
+equality-proxy change discussed below.
+
+For R-semantics joins, use dplyr joins for data frames containing native
+dtaparser columns, and name the intended key relationship. Use `keep = TRUE` when the two key columns have
 metadata worth comparing. Before any join in which Stata missing codes are
 valid keys, create an explicit surrogate that preserves the tag. Do the same
 for inequality joins that are supposed to use Stata's missing-value ordering.
