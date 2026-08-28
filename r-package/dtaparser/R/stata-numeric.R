@@ -26,6 +26,12 @@
 #' @section Vector operations:
 #' Subset assignment, [replace()], `dplyr::if_else()`, `dplyr::mutate()`, and
 #' vctrs concatenation retain declared storage and re-encode compact results.
+#' Extending a vector with another declared Stata numeric uses their common
+#' storage type and combines compatible metadata. This supports base data-frame
+#' reconstruction such as right and full [merge()] calls. Extending with a bare
+#' value remains strict, like replacement within the existing vector.
+#' Stata-backed `Date` and `POSIXct` vectors use the same extension rule when
+#' both inputs have the same temporal kind.
 #' Base `ifelse()` takes attributes from its condition, so it returns a bare
 #' vector. Pass that result to a constructor to declare storage again.
 #'
@@ -439,7 +445,7 @@ vec_proxy.stata_numeric <- function(x, ...) {
 #' @export
 vec_restore.stata_numeric <- function(x, to, ...) {
     storage <- stata_storage_type(to)
-    value <- .construct_stata_numeric(as.double(x), NULL, storage)
+    value <- .construct_stata_numeric(x, NULL, storage)
     .restore_stata_metadata(value, to, storage)
 }
 
@@ -484,7 +490,7 @@ vec_ptype2.logical.stata_numeric <- vec_ptype2.double.stata_numeric
 
 .cast_to_stata <- function(x, to) {
     storage <- stata_storage_type(to)
-    value <- .construct_stata_numeric(as.double(x), NULL, storage)
+    value <- .construct_stata_numeric(x, NULL, storage)
     .restore_stata_metadata(value, to, storage)
 }
 
@@ -515,12 +521,44 @@ vec_cast.double.stata_numeric <- function(
     as.double(x)
 }
 
+.stata_subscript_extends <- function(x, i) {
+    size <- length(x)
+    if (is.character(i)) {
+        existing <- names(x)
+        if (is.null(existing)) existing <- character()
+        return(any(!is.na(i) & !(i %in% existing)))
+    }
+    if (is.logical(i)) {
+        if (length(i) <= size) return(FALSE)
+        return(any(i[seq.int(size + 1L, length(i))], na.rm = TRUE))
+    }
+    if (is.numeric(i)) {
+        return(any(trunc(i) > size, na.rm = TRUE))
+    }
+    FALSE
+}
+
+.extend_stata_numeric <- function(x, i, value, scalar = FALSE) {
+    prototype <- if (inherits(value, "stata_numeric")) {
+        vctrs::vec_ptype2(x, value)
+    } else {
+        vctrs::vec_ptype(x)
+    }
+    data <- .stata_data(x)
+    replacement <- .stata_data(vctrs::vec_cast(value, prototype))
+    if (scalar) data[[i]] <- replacement else data[i] <- replacement
+    vctrs::vec_restore(data, prototype)
+}
+
 #' @export
 `[<-.stata_numeric` <- function(x, i, ..., value) {
     if (missing(i)) i <- rep(TRUE, length(x))
     if (length(list(...)) > 0L) {
         stop("Stata numeric vectors do not support array subscripts",
              call. = FALSE)
+    }
+    if (.stata_subscript_extends(x, i)) {
+        return(.extend_stata_numeric(x, i, value))
     }
     vctrs::vec_assign(x, i, value)
 }
@@ -530,6 +568,9 @@ vec_cast.double.stata_numeric <- function(
     if (length(list(...)) > 0L) {
         stop("Stata numeric vectors do not support array subscripts",
              call. = FALSE)
+    }
+    if (.stata_subscript_extends(x, i)) {
+        return(.extend_stata_numeric(x, i, value, scalar = TRUE))
     }
     vctrs::vec_assign(x, i, value)
 }
@@ -778,6 +819,20 @@ vec_restore.stata_temporal <- function(x, to, ...) {
     .restore_stata_temporal(x, to, stata_storage_type(to))
 }
 
+.extend_stata_temporal <- function(x, i, value, scalar = FALSE) {
+    prototype <- if (inherits(value, "stata_temporal")) {
+        vctrs::vec_ptype2(x, value)
+    } else {
+        vctrs::vec_ptype(x)
+    }
+    data <- .base_stata_temporal(x)
+    replacement <- .base_stata_temporal(
+        vctrs::vec_cast(value, prototype)
+    )
+    if (scalar) data[[i]] <- replacement else data[i] <- replacement
+    vctrs::vec_restore(data, prototype)
+}
+
 #' @export
 `[.stata_temporal` <- function(x, i, ..., drop = TRUE) {
     if (length(list(...)) > 0L) {
@@ -805,6 +860,9 @@ vec_restore.stata_temporal <- function(x, to, ...) {
         stop("Stata temporal vectors do not support array subscripts",
              call. = FALSE)
     }
+    if (!missing(i) && .stata_subscript_extends(x, i)) {
+        return(.extend_stata_temporal(x, i, value))
+    }
     data <- .base_stata_temporal(x)
     replacement <- if (inherits(value, "stata_temporal")) {
         .base_stata_temporal(value)
@@ -820,6 +878,9 @@ vec_restore.stata_temporal <- function(x, to, ...) {
     if (length(list(...)) > 0L) {
         stop("Stata temporal vectors do not support array subscripts",
              call. = FALSE)
+    }
+    if (.stata_subscript_extends(x, i)) {
+        return(.extend_stata_temporal(x, i, value, scalar = TRUE))
     }
     data <- .base_stata_temporal(x)
     replacement <- if (inherits(value, "stata_temporal")) {

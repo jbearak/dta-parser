@@ -442,6 +442,122 @@ test_that("assignment and vctrs recodes re-encode compact storage", {
     )
 })
 
+test_that("base right and full merges can append native Stata keys", {
+    left <- data.frame(
+        id = set_variable_labels(
+            set_value_labels(stata_byte(c(1, 2)), One = 1),
+            "Identifier"
+        ),
+        left_value = c("a", "b")
+    )
+    right <- data.frame(
+        id = set_value_labels(stata_byte(c(2, 3)), Three = 3),
+        right_value = c("c", "d")
+    )
+
+    right_result <- merge(left, right, by = "id", all.y = TRUE)
+    full_result <- merge(left, right, by = "id", all = TRUE)
+
+    expect_identical(as.double(right_result$id), c(2, 3))
+    expect_identical(as.double(full_result$id), c(1, 2, 3))
+    expect_identical(stata_storage_type(right_result$id), "byte")
+    expect_identical(stata_storage_type(full_result$id), "byte")
+    expect_identical(var_label(full_result$id), "Identifier")
+    expect_identical(val_labels(full_result$id), c(One = 1, Three = 3))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(full_result$id))
+
+    wider <- data.frame(
+        id = set_value_labels(stata_int(c(2, 200)), TwoHundred = 200)
+    )
+    promoted <- merge(left, wider, by = "id", all = TRUE)
+    expect_identical(as.double(promoted$id), c(1, 2, 200))
+    expect_identical(stata_storage_type(promoted$id), "int")
+    expect_identical(
+        val_labels(promoted$id), c(One = 1, TwoHundred = 200)
+    )
+})
+
+test_that("base full merges promote native Stata temporal keys", {
+    byte_path <- fixture_with_temporal_storage("foreign")
+    int_path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(c(byte_path, int_path)), add = TRUE)
+    byte_date <- read_dta(byte_path)$foreign[1]
+    int_date <- read_dta(int_path)$price[1]
+
+    result <- merge(
+        data.frame(id = byte_date),
+        data.frame(id = int_date),
+        by = "id",
+        all = TRUE
+    )
+
+    expect_s3_class(result$id, "Date")
+    expect_identical(stata_storage_type(result$id), "int")
+    expect_identical(var_label(result$id), var_label(byte_date))
+    expect_identical(val_labels(result$id), val_labels(byte_date))
+    expect_identical(
+        as.double(result$id), sort(c(as.double(byte_date), as.double(int_date)))
+    )
+})
+
+test_that("extension promotes declared inputs without weakening assignment", {
+    extended <- set_value_labels(stata_byte(1), One = 1)
+    extended[3] <- set_value_labels(stata_int(200), TwoHundred = 200)
+
+    expect_identical(as.double(extended), c(1, NA, 200))
+    expect_identical(stata_storage_type(extended), "int")
+    expect_identical(
+        val_labels(extended), c(One = 1, TwoHundred = 200)
+    )
+
+    strict <- stata_byte(1)
+    expect_error({
+        strict[3] <- 101
+    }, "stata_int\\(x\\)")
+
+    fractional <- stata_byte(c(1, 2))
+    expect_error({
+        fractional[2.5] <- stata_int(200)
+    })
+
+    named <- stats::setNames(stata_byte(1), "one")
+    named["two"] <- stats::setNames(stata_int(2), "source")
+    expect_identical(names(named), c("one", "two"))
+    expect_identical(stata_storage_type(named), "int")
+})
+
+test_that("dplyr joins preserve compatible Stata key information", {
+    left_key <- set_variable_labels(
+        set_value_labels(stata_byte(c(1, 2)), One = 1),
+        "Identifier"
+    )
+    right_key <- set_value_labels(
+        stata_int(c(2, 200)), TwoHundred = 200
+    )
+    left <- tibble::tibble(id = left_key, left_value = c("a", "b"))
+    right <- tibble::tibble(id = right_key, right_value = c("c", "d"))
+
+    coalesced <- dplyr::full_join(
+        left, right, dplyr::join_by(id), relationship = "one-to-one"
+    )
+    retained <- dplyr::full_join(
+        left, right, dplyr::join_by(id),
+        relationship = "one-to-one", keep = TRUE
+    )
+
+    expect_identical(as.double(coalesced$id), c(1, 2, 200))
+    expect_identical(stata_storage_type(coalesced$id), "int")
+    expect_identical(var_label(coalesced$id), "Identifier")
+    expect_identical(
+        val_labels(coalesced$id), c(One = 1, TwoHundred = 200)
+    )
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(coalesced$id))
+    expect_identical(stata_storage_type(retained$id.x), "byte")
+    expect_identical(stata_storage_type(retained$id.y), "int")
+    expect_identical(val_labels(retained$id.x), c(One = 1))
+    expect_identical(val_labels(retained$id.y), c(TwoHundred = 200))
+})
+
 test_that("value labels compose with declared storage classes", {
     values <- stata_byte(c(0, 1))
     values <- set_value_labels(values, No = 0, Yes = 1)
