@@ -180,13 +180,14 @@ interop <- callr::r(
             recode_format = attr(recoded, "format.stata", exact = TRUE),
             labelled_is_altrep = dtaparser:::.is_altrep(labelled_result),
             labelled_format = attr(labelled_result, "format.stata", exact = TRUE),
-            labelled_variable_is_altrep = dtaparser:::.is_altrep(
-                labelled_variable_result
-            ),
             labelled_variable_unmaterialized =
                 dtaparser:::.is_unmaterialized_numeric_altrep(
                     labelled_variable_result
                 ),
+            labelled_variable_label = labelled::var_label(
+                labelled_variable_result
+            ),
+            source_variable_label = labelled::var_label(source),
             labelled_custom = attr(
                 labelled_custom_result, "provenance", exact = TRUE
             ),
@@ -231,9 +232,16 @@ assert(
     "The labelled 2.16.0 materialization/metadata-loss comparison changed"
 )
 assert(
-    interop$labelled_variable_is_altrep &&
-        interop$labelled_variable_unmaterialized,
+    interop$labelled_variable_unmaterialized,
     "The labelled 2.16.0 variable-label compact-storage comparison changed"
+)
+assert(
+    identical(interop$labelled_variable_label, "Vehicle origin"),
+    "labelled 2.16.0 did not set the requested variable label"
+)
+assert(
+    identical(interop$source_variable_label, "Car origin"),
+    "labelled 2.16.0 modified the source variable label"
 )
 assert(
     is.null(interop$labelled_custom),
