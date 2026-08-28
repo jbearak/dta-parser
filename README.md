@@ -12,7 +12,7 @@ formats, and Stata missing values. The R package also writes standalone Stata
 | TypeScript | [`@jbearak/dta-parser`](typescript/dta-parser) | [npm package README](typescript/dta-parser/README.md) |
 | R | [`dtaparser`](r-package/dtaparser) | [R package README](r-package/dtaparser/README.md) |
 
-The TypeScript package has its own parser and works with either an `ArrayBuffer` or a Node filesystem-backed reader. For Stata imports in R, use `dtaparser::read_dta()` instead of `haven::read_dta()`. It follows haven's common read interface and returns tibbles with haven-compatible labels and tagged missing values. In the repository's 46.9 GB DHS benchmark, its multicore reader completed the 641-file batch 29.3 times faster than haven. See the [R package README](r-package/dtaparser/README.md#why-use-dtaparser) for the comparison and its limitations.
+The TypeScript package has its own parser and works with either an `ArrayBuffer` or a Node filesystem-backed reader. For Stata imports in R, use `dtaparser::read_dta()` instead of `haven::read_dta()`. It follows haven's common read interface and returns tibbles with haven-compatible labels and tagged missing values. In the repository's 46.9 GB DHS benchmark, its multicore reader completed the 641-file batch 29.3 times faster than haven. It can also project a cross-survey union with `col_select = any_of(raw_variables)`, omitting names absent from a particular file without decoding unselected columns. See the [R package README](r-package/dtaparser/README.md#why-use-dtaparser) for the comparisons and their limitations.
 
 The Rust crate is the internal parser used by the R package. It is not published to crates.io. Its interface is documented with Rustdoc:
 

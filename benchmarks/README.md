@@ -56,6 +56,12 @@ and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
 aggregate results used in the R package README.
 
+The synthetic [`projection-introspection/`](projection-introspection/) suite
+compares a union-safe `any_of()` projection with Stata's full-load-then-keep
+workflow and Stata's direct, non-union-safe projected `use`. It varies dataset
+width and row count while requiring every method to return the same ten
+columns.
+
 The manual [`r-corpus-roundtrip/`](r-corpus-roundtrip/) workflow qualifies the
 R writer against the same 1,823-file cache, requires semantic re-read equality
 plus Haven and Stata-open checks, and only then benchmarks writes against Stata.
