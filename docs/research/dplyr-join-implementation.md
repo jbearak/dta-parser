@@ -16,7 +16,7 @@ I used only those tagged repositories, their official license files, the install
 
 dplyr does not have a separate fast join matcher for data frames. It delegates row matching to `vctrs::vec_locate_matches()`, the same function that `dta_merge()` already calls. Copying dplyr's matching code would add maintenance and licensing work without changing the algorithm.
 
-The useful idea is in column assembly. dplyr slices all output columns from `x` in one data-frame `vec_slice()` call and all output columns from `y` in a second call. vctrs validates each row index once per data frame, then loops over its columns in C with an unchecked internal slicer. The current ordinary-column path in `dta_merge()` crosses the R-to-native boundary once per column and repeats index validation, proxy lookup, and restoration each time.
+The useful idea is in column assembly. dplyr slices all output columns from `x` in one data-frame `vec_slice()` call and all output columns from `y` in a second call. vctrs validates each row index once per data frame, then loops over its columns in C with an unchecked internal slicer. The checkpoint's ordinary-column path crossed the R-to-native boundary once per column and repeated index validation, proxy lookup, and restoration each time.
 
 A scratch override that batched ordinary columns through one data-frame `vec_slice()` per side closed the measured standard-R gap. The nine-iteration medians were 0.1015 seconds for `dta_merge()` and 0.1024 seconds for dplyr. This did not change matching or copy dplyr source.
 
@@ -69,7 +69,7 @@ vctrs validates the subscript at the outer `vec_slice()` call. For a data frame,
 
 Bare logical, integer, double, complex, raw, and character columns then use tight native allocation-and-copy loops. Missing row locations become the type's missing value inside the same loop. See the slice macros and dispatch in [`src/slice.c`](https://github.com/r-lib/vctrs/blob/d452a02c9f4752f3268431a3ac8aa221dbe4040f/src/slice.c#L6-L88) and [`src/slice.c` lines 258 through 270](https://github.com/r-lib/vctrs/blob/d452a02c9f4752f3268431a3ac8aa221dbe4040f/src/slice.c#L258-L270).
 
-At the checkpoint, `.dta_merge_slice_columns()` sends compact Stata columns through its native batch gather but loops over every other column and calls `.dta_merge_slice()`. The fallback in turn calls `vctrs::vec_slice(value, rows)` for one vector. See [`R/dta-merge.R`](../../r-package/dtaparser/R/dta-merge.R#L461) and [`R/dta-merge.R`](../../r-package/dtaparser/R/dta-merge.R#L476). This repeats work that dplyr pays twice, once per input frame.
+At the checkpoint, the then-named `.stata_merge_slice_columns()` sent compact Stata columns through its native batch gather but looped over every other column and called `.stata_merge_slice()`. The fallback in turn called `vctrs::vec_slice(value, rows)` for one vector. See the pinned checkpoint's [`R/stata-merge.R` slicing helper](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/R/stata-merge.R#L461-L474) and [column loop](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/R/stata-merge.R#L476-L510). This repeated work that dplyr paid twice, once per input frame.
 
 The profiler confirms the source reading. Over 20 joins of the standard synthetic fixture:
 
@@ -80,7 +80,7 @@ The profiler confirms the source reading. Over 20 joins of the standard syntheti
 
 The profiler is intrusive, so these are attribution figures rather than publishable benchmark times. The matching calls were 0.231 seconds for `dta_merge()` and 0.248 seconds for dplyr over the same 20 iterations. Matching is not the cause of the gap.
 
-The ordinary-column batching prototype kept the current matcher, relationship checks, overlap coalescing, metadata warnings, and `_merge` construction. It changed only the noncompact branch of `.dta_merge_slice_columns()` to slice `values[ordinary]` as one data frame and scatter its columns back into the result list.
+The ordinary-column batching prototype kept the checkpoint's matcher, relationship checks, overlap coalescing, metadata warnings, and `_merge` construction. It changed only the noncompact branch of the column slicer to slice `values[ordinary]` as one data frame and scatter its columns back into the result list.
 
 | Nine-iteration median | Unmodified | Batched prototype |
 |---|---:|---:|
@@ -95,7 +95,7 @@ The small differences between the two dplyr medians are normal run-to-run variat
 - It verifies uniqueness among unmatched keys because vctrs relationship checks apply to matched pairs.
 - It checks coalesced Stata metadata, creates the labelled compact `_merge` column, and restores dataset metadata.
 
-These costs are visible but secondary. The current unmatched-duplicate check took about 1.6% of sampled standard-R time. Metadata warnings took less than 0.2%.
+These costs were visible but secondary. The checkpoint's unmatched-duplicate check took about 1.6% of sampled standard-R time. Metadata warnings took less than 0.2%.
 
 ## Why Stata classes are slower in the like-for-like run
 
@@ -107,11 +107,11 @@ The earlier report included fresh-process compact times and separate repeated co
 | `dta_merge()`, standard R | 0.1468 s | 0.657 GB |
 | dplyr, standard R | 0.1019 s | 0.742 GB |
 
-The fixture has 61 compact byte or int columns and 138 `stata_double` columns. Compact byte, int, long, and float columns use the merge-private parallel gather. Stata doubles do not. `.dta_merge_slice()` strips metadata with `.stata_data(x)`, subsets one double column, then restores the class and attributes. See [`R/dta-merge.R`](../../r-package/dtaparser/R/dta-merge.R#L461), [`.stata_data()`](../../r-package/dtaparser/R/stata-numeric.R#L306), and [metadata restoration](../../r-package/dtaparser/R/stata-numeric.R#L344).
+The fixture has 61 compact byte or int columns and 138 `stata_double` columns. At the checkpoint, compact byte, int, long, and float columns used the merge-private parallel gather, while Stata doubles did not. `.stata_merge_slice()` stripped metadata with `.stata_data(x)`, subset one double column, then restored the class and attributes. See the pinned checkpoint's [`R/stata-merge.R`](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/R/stata-merge.R#L461-L474), [`.stata_data()`](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/R/stata-numeric.R#L306-L325), and [metadata restoration](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/R/stata-numeric.R#L344-L355).
 
-The compact fixture profile over 20 joins assigned 1.186 seconds of self time to `.dta_merge_slice()`, 0.323 seconds to `.metadata_copy()`, and 0.250 seconds to `.dta_merge_coalesce_columns()`. Matching took 0.256 seconds. Per-column double slicing and attribute handling, not compact-byte copying, dominate this fixture.
+The compact fixture profile over 20 joins assigned 1.186 seconds of self time to `.stata_merge_slice()`, 0.323 seconds to `.metadata_copy()`, and 0.250 seconds to `.stata_merge_coalesce_columns()`. Matching took 0.256 seconds. Per-column double slicing and attribute handling, not compact-byte copying, dominated this fixture.
 
-The existing native batch gather validates shared row plans once and copies independent compact columns in worker threads, but its width switch accepts only byte, int, long, and float storage. See [`src/init.c`](../../r-package/dtaparser/src/init.c#L1686), the supported widths in [`src/init.c`](../../r-package/dtaparser/src/init.c#L1838), and the worker loop in [`src/rust/src/lib.rs`](../../r-package/dtaparser/src/rust/src/lib.rs#L208).
+The checkpoint's native batch gather validated shared row plans once and copied independent compact columns in worker threads, but its width switch accepted only byte, int, long, and float storage. See the pinned checkpoint's [`src/init.c` gather entry](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/src/init.c#L1686-L1715), [supported widths](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/src/init.c#L1838-L1868), and [`src/rust/src/lib.rs` worker loop](https://github.com/jbearak/dta-parser/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtaparser/src/rust/src/lib.rs#L208-L252).
 
 Batching Stata doubles through a single data-frame slice lowered the compact median to 0.1486 seconds, but it remained 46% slower than the batched standard-R path at 0.1015 seconds. Each result column still paid for `.stata_data()` and metadata restoration. A native double gather with direct attribute attachment is the next useful experiment.
 

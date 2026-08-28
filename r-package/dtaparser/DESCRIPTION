@@ -8,8 +8,8 @@ Description: Reads Stata DTA files into tibbles with a Rust parser, multicore
     columns. Its read interface follows 'haven' while retaining dataset labels,
     variable labels, display formats, value labels, temporal classes, and Stata
     tagged missing values. It writes standalone Stata 18 and 19 datasets through
-    a streaming Rust writer. It also provides label-aware tabulation and
-    tag-preserving recoding.
+    a streaming Rust writer. It also provides merges under Stata missing-code
+    identity, label-aware tabulation, and tag-preserving recoding.
 License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.1.0)

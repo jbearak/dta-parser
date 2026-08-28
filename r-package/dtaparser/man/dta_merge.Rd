@@ -14,7 +14,8 @@ mirrors Stata's \verb{merge ... using filename} and keeps only the merged
 result in the caller's workspace; a path accepts anything \code{read_dta()}'s
 \code{file} argument accepts as one string, including the implicit \code{.dta}
 extension. Read with \code{\link[=read_dta]{read_dta()}} first when a merge needs non-default
-read arguments.}
+read arguments. Data-frame inputs must have unique, non-missing, nonempty
+column names.}
 
 \item{by}{A character vector naming key columns present in both inputs.}
 
@@ -40,6 +41,8 @@ and each extended missing \code{.a} through \code{.z} matches only itself. Base
 \code{\link[=merge]{merge()}} and dplyr joins instead place all 27 codes in one R missing
 bucket. Keys containing R \code{NaN} are rejected because \code{NaN} has no Stata
 missing identity; use \code{NA_real_} or \code{\link[=tagged_missing]{tagged_missing()}}.
+Character keys containing \code{NA_character_} are also rejected because Stata
+has only the empty string for a missing string; use \code{""} instead.
 }
 \details{
 \code{x} plays the role of Stata's master dataset and \code{y} the using dataset.

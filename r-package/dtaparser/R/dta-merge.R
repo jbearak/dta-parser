@@ -6,6 +6,8 @@
 #' [merge()] and dplyr joins instead place all 27 codes in one R missing
 #' bucket. Keys containing R `NaN` are rejected because `NaN` has no Stata
 #' missing identity; use `NA_real_` or [tagged_missing()].
+#' Character keys containing `NA_character_` are also rejected because Stata
+#' has only the empty string for a missing string; use `""` instead.
 #'
 #' `x` plays the role of Stata's master dataset and `y` the using dataset.
 #' Match results are named `"x"` (a row only in `x`), `"y"` (a row only in
@@ -47,7 +49,8 @@
 #'   result in the caller's workspace; a path accepts anything `read_dta()`'s
 #'   `file` argument accepts as one string, including the implicit `.dta`
 #'   extension. Read with [read_dta()] first when a merge needs non-default
-#'   read arguments.
+#'   read arguments. Data-frame inputs must have unique, non-missing, nonempty
+#'   column names.
 #' @param by A character vector naming key columns present in both inputs.
 #' @param relationship The declared key multiplicity: `"1:1"`, `"m:1"`, or
 #'   `"1:m"`. Required.
@@ -75,6 +78,8 @@ dta_merge <- function(x, y, by, relationship,
                       assert = NULL) {
     x <- .resolve_merge_input(x, "x")
     y <- .resolve_merge_input(y, "y")
+    .validate_merge_input_names(x, "x")
+    .validate_merge_input_names(y, "y")
     relationship <- .validate_merge_relationship(
         if (missing(relationship)) NULL else relationship
     )
@@ -144,9 +149,12 @@ dta_merge <- function(x, y, by, relationship,
 
     columns <- list()
     for (name in by) {
-        columns[[name]] <- .dta_merge_coalesce(
+        column <- .dta_merge_coalesce(
             keys[[name]]$x, keys[[name]]$y,
             x_rows, y_rows, using_only
+        )
+        columns[[name]] <- .dta_merge_reconcile_variable_label(
+            column, x[[name]], y[[name]]
         )
     }
     x_extra <- setdiff(names(x), by)
@@ -187,6 +195,11 @@ dta_merge <- function(x, y, by, relationship,
         overlap_x, y[overlapping],
         x_rows, y_rows, using_only, overlap_prototypes
     )
+    for (name in overlapping) {
+        overlap_columns[[name]] <- .dta_merge_reconcile_variable_label(
+            overlap_columns[[name]], x[[name]], y[[name]]
+        )
+    }
     for (name in x_extra) {
         columns[[name]] <- if (name %in% overlapping) {
             overlap_columns[[name]]
@@ -219,6 +232,18 @@ dta_merge <- function(x, y, by, relationship,
     }
     stop(sprintf("`%s` must be a data frame or one DTA file path", side),
          call. = FALSE)
+}
+
+.validate_merge_input_names <- function(data, side) {
+    column_names <- names(data)
+    if (length(column_names) != ncol(data) || anyNA(column_names) ||
+        any(column_names == "") || anyDuplicated(column_names)) {
+        stop(sprintf(
+            "`%s` must have unique, non-missing, nonempty column names",
+            side
+        ), call. = FALSE)
+    }
+    invisible(NULL)
 }
 
 .merge_match_results <- c(
@@ -361,6 +386,15 @@ dta_merge <- function(x, y, by, relationship,
 # missing values on either side skips the code column, because the codes
 # would be constant and matching a single column is cheaper.
 .dta_merge_key_half <- function(key, arg) {
+    if (typeof(key) == "character" && anyNA(key)) {
+        stop(sprintf(
+            paste0(
+                "`%s` contains `NA_character_`, but Stata uses the empty ",
+                "string for missing string values; use `\"\"` instead"
+            ),
+            arg
+        ), call. = FALSE)
+    }
     if (typeof(key) != "double") {
         return(list(value = key, missing = FALSE))
     }
@@ -456,6 +490,14 @@ dta_merge <- function(x, y, by, relationship,
         return(.attach_stata_temporal(value, prototype, storage))
     }
     .restore_stata_metadata(value, prototype, storage)
+}
+
+.dta_merge_reconcile_variable_label <- function(value, x, y) {
+    label <- var_label(x)
+    if (is.null(label)) label <- var_label(y)
+    if (identical(var_label(value), label)) return(value)
+    var_label(value) <- label
+    value
 }
 
 .dta_merge_slice <- function(value, rows) {

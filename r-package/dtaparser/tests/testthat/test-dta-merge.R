@@ -69,6 +69,28 @@ test_that("NaN key values are rejected with a Stata remedy", {
     )
 })
 
+test_that("character missing keys require Stata's empty string", {
+    missing_key <- tibble::tibble(id = c("a", NA_character_))
+    empty_key <- tibble::tibble(id = c("a", ""))
+
+    expect_error(
+        dta_merge(missing_key, empty_key, by = "id", relationship = "1:1"),
+        "NA_character_.*empty string.*use.*\\\"\\\""
+    )
+    expect_error(
+        dta_merge(empty_key, missing_key, by = "id", relationship = "1:1"),
+        "NA_character_.*empty string.*use.*\\\"\\\""
+    )
+    expect_error(
+        dta_merge(
+            tibble::tibble(id = c(NA_character_, "")),
+            tibble::tibble(id = "x"),
+            by = "id", relationship = "1:1"
+        ),
+        "NA_character_.*empty string"
+    )
+})
+
 test_that("key columns coalesce storage and metadata", {
     master <- tibble::tibble(
         id = set_variable_labels(
@@ -115,6 +137,30 @@ test_that("key columns coalesce storage and metadata", {
         all = FALSE
     )
     expect_no_match(warnings, "variable labels differ")
+})
+
+test_that("ordinary coalesced columns use y's label when x has none", {
+    master <- tibble::tibble(
+        id = c("a", "b"),
+        group = c("master a", "master b")
+    )
+    using <- tibble::tibble(
+        id = c("b", "c"),
+        group = c("using b", "using c")
+    )
+    var_label(using$id) <- "Identifier"
+    var_label(using$group) <- "Group"
+
+    result <- suppressWarnings(dta_merge(
+        master, using, by = "id", relationship = "1:1"
+    ))
+
+    expect_identical(as.vector(result$id), c("a", "b", "c"))
+    expect_identical(
+        as.vector(result$group), c("master a", "master b", "using c")
+    )
+    expect_identical(var_label(result$id), "Identifier")
+    expect_identical(var_label(result$group), "Group")
 })
 
 test_that("coalesced variables with matching metadata merge silently", {
@@ -433,6 +479,22 @@ test_that("inputs and by keys are validated", {
     expect_error(
         dta_merge(1, plain, by = "id", relationship = "1:1"),
         "`x` must be a data frame"
+    )
+
+    duplicated_key <- data.frame(first = 1, second = 2, check.names = FALSE)
+    names(duplicated_key) <- c("id", "id")
+    expect_error(
+        dta_merge(duplicated_key, plain, by = "id", relationship = "1:1"),
+        "`x` must have unique"
+    )
+
+    duplicated_value <- data.frame(
+        id = 1, first = 2, second = 3, check.names = FALSE
+    )
+    names(duplicated_value) <- c("id", "value", "value")
+    expect_error(
+        dta_merge(plain, duplicated_value, by = "id", relationship = "1:1"),
+        "`y` must have unique"
     )
 })
 

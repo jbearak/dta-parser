@@ -61,6 +61,8 @@ The merge benchmark joins a 200,000-row, 151-column master to a 360,044-row,
 110-column using dataset on a character key. Sixty non-key variables occur in
 both inputs, and the result has 440,044 rows.
 
+These are default-workflow timings, not identical output construction.
+
 | Method | Input columns | 1:m median | m:1 median | 1:m allocated | m:1 allocated |
 | --- | --- | ---: | ---: | ---: | ---: |
 | `dta_merge()` | Stata classes | 0.085 s | 0.088 s | 0.62 GB | 0.62 GB |
@@ -73,10 +75,12 @@ both inputs, and the result has 440,044 rows.
 
 The Stata-class inputs come from `read_dta()`. The standard controls contain
 the same values in base character, integer, and double columns. dplyr and base
-R materialize or reconstruct the classed numeric vectors, which accounts for
-their larger allocation. `dta_merge()` and Stata coalesce the 60 shared
-variables and return 201 columns including `_merge`; dplyr and base R retain
-suffixed copies and return 260 columns.
+R materialize intermediate values or reconstruct classed outputs, and their
+wider results also increase allocation. They leave the compact source columns
+untouched. `dta_merge()` and Stata coalesce the 60 shared variables and return
+201 columns including `_merge`; dplyr and base R retain suffixed copies and
+return 260 columns. Base R and Stata sort by the key; `dta_merge()` and dplyr
+retain input order.
 
 The R figures are `bench::mark()` medians on the same Apple M4 Max. Allocated
 memory is cumulative R allocation, not peak RSS. The Stata median includes

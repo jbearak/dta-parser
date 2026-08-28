@@ -108,20 +108,132 @@ invisible(gc())
 master_stata <- read_dta(master_path)
 using_stata <- read_dta(using_path)
 
-validate_result <- function(result, columns) {
-    stopifnot(nrow(result) == 440044L, ncol(result) == columns)
+master_s1_by_key <- setNames(
+    as.double(master_standard$s1), master_standard$caseid
+)
+using_s1_by_row <- setNames(
+    as.double(using_standard$s1),
+    paste(using_standard$caseid, using_standard$bidx, sep = "\034")
+)
+
+numeric_values <- function(value) unname(as.double(value))
+
+validate_values <- function(actual, expected, label) {
+    if (!identical(numeric_values(actual), unname(as.double(expected)))) {
+        stop(label, " values differ from the fixture", call. = FALSE)
+    }
+}
+
+validate_shape <- function(result, columns) {
+    stopifnot(
+        nrow(result) == 440044L,
+        ncol(result) == columns,
+        !anyNA(result$caseid),
+        length(unique(result$caseid)) == 200000L,
+        sum(duplicated(result$caseid)) == 240044L
+    )
+}
+
+validate_dta_result <- function(result, direction) {
+    validate_shape(result, 201L)
+    codes <- as.integer(numeric_values(result$`_merge`))
+    expected_counts <- if (direction == "1:m") {
+        c(80000L, 0L, 360044L)
+    } else {
+        c(0L, 80000L, 360044L)
+    }
+    stopifnot(identical(tabulate(codes, nbins = 3L), expected_counts))
+
+    if (direction == "1:m") {
+        validate_values(
+            result$s1, master_s1_by_key[result$caseid],
+            paste("dta_merge", direction, "s1")
+        )
+    } else {
+        matched <- codes == 3L
+        y_only <- codes == 2L
+        using_rows <- paste(
+            result$caseid[matched],
+            as.integer(numeric_values(result$bidx)[matched]),
+            sep = "\034"
+        )
+        validate_values(
+            result$s1[matched], using_s1_by_row[using_rows],
+            paste("dta_merge", direction, "matched s1")
+        )
+        validate_values(
+            result$s1[y_only], master_s1_by_key[result$caseid[y_only]],
+            paste("dta_merge", direction, "y-only s1")
+        )
+    }
     invisible(NULL)
 }
 
-validate_result(suppressWarnings(dta_merge(
+validate_join_result <- function(result, direction, method) {
+    validate_shape(result, 260L)
+    bidx <- numeric_values(result$bidx)
+    using_rows <- !is.na(bidx)
+    using_keys <- paste(
+        result$caseid[using_rows], as.integer(bidx[using_rows]), sep = "\034"
+    )
+    master_expected <- master_s1_by_key[result$caseid]
+    using_expected <- using_s1_by_row[using_keys]
+
+    if (direction == "1:m") {
+        validate_values(result$s1.x, master_expected,
+                        paste(method, direction, "x s1"))
+        validate_values(result$s1.y[using_rows], using_expected,
+                        paste(method, direction, "y s1"))
+        stopifnot(all(is.na(result$s1.y[!using_rows])))
+    } else {
+        validate_values(result$s1.x[using_rows], using_expected,
+                        paste(method, direction, "x s1"))
+        stopifnot(all(is.na(result$s1.x[!using_rows])))
+        validate_values(result$s1.y, master_expected,
+                        paste(method, direction, "y s1"))
+    }
+    invisible(NULL)
+}
+
+validate_dta_result(suppressWarnings(dta_merge(
     master_stata, using_stata, by = "caseid", relationship = "1:m"
-)), 201L)
-validate_result(full_join(
+)), "1:m")
+validate_dta_result(suppressWarnings(dta_merge(
+    master_standard, using_standard, by = "caseid", relationship = "1:m"
+)), "1:m")
+validate_dta_result(suppressWarnings(dta_merge(
+    using_stata, master_stata, by = "caseid", relationship = "m:1"
+)), "m:1")
+validate_dta_result(suppressWarnings(dta_merge(
+    using_standard, master_standard, by = "caseid", relationship = "m:1"
+)), "m:1")
+
+validate_join_result(full_join(
+    master_stata, using_stata, by = join_by(caseid)
+), "1:m", "dplyr")
+validate_join_result(full_join(
     master_standard, using_standard, by = join_by(caseid)
-), 260L)
-validate_result(merge(
+), "1:m", "dplyr")
+validate_join_result(full_join(
+    using_stata, master_stata, by = join_by(caseid)
+), "m:1", "dplyr")
+validate_join_result(full_join(
+    using_standard, master_standard, by = join_by(caseid)
+), "m:1", "dplyr")
+
+validate_join_result(merge(
+    master_stata, using_stata, by = "caseid", all = TRUE
+), "1:m", "base")
+validate_join_result(merge(
     master_standard, using_standard, by = "caseid", all = TRUE
-), 260L)
+), "1:m", "base")
+validate_join_result(merge(
+    using_stata, master_stata, by = "caseid", all = TRUE
+), "m:1", "base")
+validate_join_result(merge(
+    using_standard, master_standard, by = "caseid", all = TRUE
+), "m:1", "base")
+
 stopifnot(dtaparser:::.is_unmaterialized_numeric_altrep(master_stata$s1))
 invisible(gc())
 
