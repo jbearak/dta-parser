@@ -107,6 +107,10 @@ invisible(gc())
 
 master_stata <- read_dta(master_path)
 using_stata <- read_dta(using_path)
+stopifnot(
+    dtaparser:::.is_unmaterialized_numeric_altrep(master_stata$s1),
+    dtaparser:::.is_unmaterialized_numeric_altrep(using_stata$s1)
+)
 
 master_s1_by_key <- setNames(
     as.double(master_standard$s1), master_standard$caseid
@@ -234,7 +238,10 @@ validate_join_result(merge(
     using_standard, master_standard, by = "caseid", all = TRUE
 ), "m:1", "base")
 
-stopifnot(dtaparser:::.is_unmaterialized_numeric_altrep(master_stata$s1))
+stopifnot(
+    dtaparser:::.is_unmaterialized_numeric_altrep(master_stata$s1),
+    dtaparser:::.is_unmaterialized_numeric_altrep(using_stata$s1)
+)
 invisible(gc())
 
 primary <- mark(

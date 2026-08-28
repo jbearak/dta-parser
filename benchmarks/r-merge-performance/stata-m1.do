@@ -10,7 +10,7 @@ forvalues i = 1/7 {
     quietly merge m:1 caseid using "`fixture_dir'/master.dta"
     timer off `i'
     assert _N == 440044
-    isid caseid bidx
+    isid caseid bidx, missok
     quietly count if _merge == 1
     assert r(N) == 0
     quietly count if _merge == 2

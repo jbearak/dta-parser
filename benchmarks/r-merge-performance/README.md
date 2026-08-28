@@ -33,7 +33,7 @@ The Stata timer includes reading the using file. The R timers start with both
 inputs loaded. Allocated memory reported by `bench::mark()` is cumulative R
 allocation, not peak resident memory. There are no timing assertions.
 
-Each Stata script validates row identity and `_merge` counts after every
+Each Stata script validates row-key uniqueness and `_merge` counts after every
 timer. It writes the full timer log beside the generated fixtures.
 
 See [results-2026-08-28.md](results-2026-08-28.md) for the dated baseline.
