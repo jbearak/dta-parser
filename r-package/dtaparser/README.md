@@ -19,6 +19,27 @@ Across the full DHS, MICS, and NSFG comparison, `dtaparser` was faster on 1,803 
 
 These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtaparser only. See the [dated corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
 
+### Synthetic write benchmarks
+
+The primary synthetic benchmark gives dtaparser the exact output from Stata's
+first save of an in-memory fixture covering every numeric Stata storage type:
+
+| Scale | dtaparser | Stata | Comparison |
+| --- | ---: | ---: | ---: |
+| 100 MB | 0.119 seconds | 0.014 seconds | 8.50 times Stata |
+| 1 GB | 1.225 seconds | 0.131 seconds | 9.35 times Stata |
+
+The secondary benchmark gives dtaparser and haven the same ordinary R data
+frame, without Stata storage or labelling metadata:
+
+| Scale | dtaparser | haven | dtaparser advantage |
+| --- | ---: | ---: | ---: |
+| 100 MB | 0.183 seconds | 0.439 seconds | 58.3% faster |
+| 1 GB | 1.797 seconds | 4.052 seconds | 55.7% faster |
+
+These are medians from seven fresh-process runs on the same Apple M4 Max, not
+performance guarantees. See the [dated write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md) for percentiles, memory and output sizes, source provenance, and the complete methodology.
+
 Keep using haven when you need to write older DTA releases or work with SAS and
 SPSS formats.
 
