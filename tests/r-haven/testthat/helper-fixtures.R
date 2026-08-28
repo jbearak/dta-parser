@@ -10,11 +10,21 @@ load_test_helpers <- function(file, names) {
     expressions <- parse(file.path(
         root, "r-package", "dtaparser", "tests", "testthat", file
     ))
+    found <- character()
     for (expression in expressions) {
         if (is.call(expression) && identical(expression[[1L]], quote(`<-`)) &&
             as.character(expression[[2L]]) %in% names) {
+            found <- c(found, as.character(expression[[2L]]))
             eval(expression, envir = parent.frame())
         }
+    }
+    absent <- setdiff(names, found)
+    if (length(absent) > 0L) {
+        stop(
+            "Helpers not found in ", file, ": ",
+            paste(absent, collapse = ", "),
+            call. = FALSE
+        )
     }
 }
 

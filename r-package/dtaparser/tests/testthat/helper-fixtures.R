@@ -13,8 +13,10 @@ labelled_for_test <- function(x, labels = NULL, label = NULL) {
 
 tagged_nan_for_test <- function(tag) {
     stopifnot(is.character(tag), length(tag) == 1L, nchar(tag) == 1L)
+    code <- utf8ToInt(tag)
+    stopifnot(code >= 1L, code <= 127L)
     bytes <- as.raw(c(
-        0x7f, 0xf0, 0x00, utf8ToInt(tag), 0x00, 0x00, 0x07, 0xa2
+        0x7f, 0xf0, 0x00, code, 0x00, 0x00, 0x07, 0xa2
     ))
     readBin(bytes, "double", n = 1L, size = 8L, endian = "big")
 }

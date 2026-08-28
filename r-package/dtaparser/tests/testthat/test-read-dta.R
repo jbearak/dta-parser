@@ -70,7 +70,7 @@ test_that("numeric ALTREP can be disabled explicitly or by option", {
     )))
 })
 
-test_that("R and haven recognize every Stata numeric missing code", {
+test_that("dtaparser recognizes every Stata numeric missing code", {
     expected_tags <- c(NA_character_, letters)
     expected_tagged <- c(FALSE, rep(TRUE, 26L))
     expected_system <- c(TRUE, rep(FALSE, 26L))
@@ -461,7 +461,7 @@ test_that("tag detection distinguishes R missing payloads", {
         values <- variants[[name]]
         expect_identical(
             missing_tag(values), expected_tags,
-            info = paste(name, "recognized by haven")
+            info = paste(name, "recognized by missing_tag")
         )
         expect_true(
             dtaparser:::.has_tagged_na(values),
