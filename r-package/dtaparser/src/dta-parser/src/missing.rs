@@ -99,6 +99,26 @@ impl MissingTag {
     pub const fn offset(self) -> u8 {
         self as u8
     }
+
+    pub(crate) const fn byte_value(self) -> i8 {
+        BYTE_MISSING_DOT + self.offset() as i8
+    }
+
+    pub(crate) const fn int_value(self) -> i16 {
+        INT_MISSING_DOT + self.offset() as i16
+    }
+
+    pub(crate) const fn long_value(self) -> i32 {
+        LONG_MISSING_DOT + self.offset() as i32
+    }
+
+    pub(crate) const fn float_bits(self) -> u32 {
+        FLOAT_MISSING_DOT_BITS + self.offset() as u32 * FLOAT_MISSING_STEP_BITS
+    }
+
+    pub(crate) const fn double_bits(self) -> u64 {
+        DOUBLE_MISSING_DOT_BITS + self.offset() as u64 * DOUBLE_MISSING_STEP_BITS
+    }
 }
 
 impl fmt::Display for MissingTag {
@@ -191,10 +211,8 @@ pub fn classify_double_missing_bits(bits: u64) -> Option<MissingTag> {
     MissingTag::from_offset(u8::try_from(delta / DOUBLE_MISSING_STEP_BITS).ok()?)
 }
 
-pub(crate) fn classify_byte_missing_for_version(
-    value: i8,
-    version: FormatVersion,
-) -> Option<MissingTag> {
+#[doc(hidden)]
+pub fn classify_byte_missing_for_version(value: i8, version: FormatVersion) -> Option<MissingTag> {
     if matches!(
         version,
         FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
@@ -204,10 +222,8 @@ pub(crate) fn classify_byte_missing_for_version(
     classify_byte_missing(value)
 }
 
-pub(crate) fn classify_int_missing_for_version(
-    value: i16,
-    version: FormatVersion,
-) -> Option<MissingTag> {
+#[doc(hidden)]
+pub fn classify_int_missing_for_version(value: i16, version: FormatVersion) -> Option<MissingTag> {
     if matches!(
         version,
         FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
@@ -217,10 +233,8 @@ pub(crate) fn classify_int_missing_for_version(
     classify_int_missing(value)
 }
 
-pub(crate) fn classify_long_missing_for_version(
-    value: i32,
-    version: FormatVersion,
-) -> Option<MissingTag> {
+#[doc(hidden)]
+pub fn classify_long_missing_for_version(value: i32, version: FormatVersion) -> Option<MissingTag> {
     if matches!(
         version,
         FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
@@ -230,7 +244,8 @@ pub(crate) fn classify_long_missing_for_version(
     classify_long_missing(value)
 }
 
-pub(crate) fn classify_float_missing_bits_for_version(
+#[doc(hidden)]
+pub fn classify_float_missing_bits_for_version(
     bits: u32,
     version: FormatVersion,
 ) -> Option<MissingTag> {

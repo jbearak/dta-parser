@@ -7,11 +7,14 @@ use std::thread;
 
 use encoding_rs::CoderResult;
 
-use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64, read_uint};
+use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
 use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
-use crate::text::{field_bytes, is_dataset_note, is_utf8_boundary, TextDecoder, TextEncoding};
+use crate::text::{
+    dataset_note_index, field_bytes, is_utf8_boundary, ordered_dataset_notes, TextDecoder,
+    TextEncoding,
+};
 use crate::value_labels::has_legacy_offset_table_framing;
 use crate::{
     missing::{
@@ -2524,7 +2527,7 @@ fn read_modern_notes<R: Read + Seek>(
                 scratch,
             )?;
             ensure_absolute("data", cursor, header.section_offsets.data)?;
-            return Ok(notes);
+            return Ok(ordered_dataset_notes(notes));
         }
         if marker != b"<ch>" {
             return Err(DtaError::UnexpectedTag {
@@ -2574,7 +2577,7 @@ fn read_modern_notes<R: Read + Seek>(
             scratch,
             "reading characteristic names",
         )?;
-        if is_dataset_note(&names[..width], &names[width..]) {
+        if let Some(index) = dataset_note_index(&names[..width], &names[width..]) {
             let value_offset = checked_add_u64(
                 cursor,
                 u64::try_from(names_length)
@@ -2594,9 +2597,7 @@ fn read_modern_notes<R: Read + Seek>(
                 "reading characteristic value",
             )?
             .0;
-            if !note.is_empty() {
-                notes.push(note);
-            }
+            notes.push((index, note));
         }
         cursor = expect_file_tag(reader, close, b"</ch>", "</ch>", scratch)?;
     }
@@ -3160,7 +3161,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                 scratch,
                 "reading legacy characteristic names",
             )?;
-            if is_dataset_note(
+            if let Some(index) = dataset_note_index(
                 &names[..layout.varname_width],
                 &names[layout.varname_width..],
             ) {
@@ -3183,9 +3184,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                     "reading legacy characteristic value",
                 )?
                 .0;
-                if !note.is_empty() {
-                    notes.push(note);
-                }
+                notes.push((index, note));
             }
         }
         cursor = payload_end;
@@ -3210,7 +3209,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         nvar,
         nobs,
         dataset_label,
-        notes,
+        notes: ordered_dataset_notes(notes),
         variables,
         section_offsets: SectionOffsets {
             stata_data: 0,
@@ -3997,32 +3996,7 @@ fn parse_pointer(
         needed: 8,
         available: bytes.len(),
     })?;
-    let (variable, observation) = if metadata.format_version == FormatVersion::V117 {
-        (
-            read_u32(bytes, 0, metadata.byte_order, "strL variable pointer")?,
-            u64::from(read_u32(
-                bytes,
-                4,
-                metadata.byte_order,
-                "strL observation pointer",
-            )?),
-        )
-    } else if metadata.format_version == FormatVersion::V118 {
-        (
-            u32::from(read_u16(
-                bytes,
-                0,
-                metadata.byte_order,
-                "strL variable pointer",
-            )?),
-            read_uint(bytes, 2, 6, metadata.byte_order, "strL observation pointer")?,
-        )
-    } else {
-        (
-            read_uint(bytes, 0, 3, metadata.byte_order, "strL variable pointer")? as u32,
-            read_uint(bytes, 3, 5, metadata.byte_order, "strL observation pointer")?,
-        )
-    };
+    let (variable, observation) = crate::strl::read_pointer_parts(bytes, 0, metadata)?;
     if variable == 0 && observation == 0 {
         return Ok(None);
     }
@@ -4030,39 +4004,14 @@ fn parse_pointer(
         variable,
         observation,
     };
-    validate_gso_key(metadata, key, offset, true)?;
+    crate::strl::validate_key(
+        metadata,
+        key.variable,
+        key.observation,
+        error_offset(offset),
+        true,
+    )?;
     Ok(Some(key))
-}
-
-fn validate_gso_key(
-    metadata: &DtaMetadata,
-    key: FileGsoKey,
-    offset: u64,
-    pointer: bool,
-) -> Result<(), DtaError> {
-    let valid_variable = key
-        .variable
-        .checked_sub(1)
-        .and_then(|index| usize::try_from(index).ok())
-        .and_then(|index| metadata.variables.get(index))
-        .is_some_and(|variable| variable.dta_type == DtaType::StrL);
-    let valid_observation = key.observation >= 1 && key.observation <= metadata.nobs;
-    if valid_variable && valid_observation {
-        return Ok(());
-    }
-    if pointer {
-        Err(DtaError::InvalidStrlPointer {
-            variable: key.variable,
-            observation: key.observation,
-            offset: error_offset(offset),
-        })
-    } else {
-        Err(DtaError::InvalidGsoKey {
-            variable: key.variable,
-            observation: key.observation,
-            offset: error_offset(offset),
-        })
-    }
 }
 
 struct CellDecoder<'a, S> {
@@ -4316,7 +4265,13 @@ fn index_file_strls<R: Read + Seek, F: FnMut() -> bool>(
             variable,
             observation,
         };
-        validate_gso_key(metadata, key, cursor, false)?;
+        crate::strl::validate_key(
+            metadata,
+            key.variable,
+            key.observation,
+            error_offset(cursor),
+            false,
+        )?;
         if !seen.insert(key) {
             return Err(DtaError::DuplicateGsoKey {
                 variable,

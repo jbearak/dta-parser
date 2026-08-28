@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use crate::endian::{
-    checked_add, checked_sub, expect_at, offset_to_usize, read_u16, read_u32, read_u64, read_uint,
-    slice_at,
+    checked_add, checked_sub, expect_at, offset_to_usize, read_u32, read_u64, read_uint, slice_at,
 };
 use crate::text::TextEncoding;
 use crate::{Column, ColumnValues, DtaError, DtaMetadata, DtaType, FormatVersion, VariableInfo};
@@ -34,55 +33,63 @@ fn checked_mul_u64(left: u64, right: u64, context: &'static str) -> Result<u64, 
         .ok_or(DtaError::ArithmeticOverflow(context))
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct StrlPointerLayout {
+    pub variable_width: usize,
+    pub observation_width: usize,
+}
+
+pub(crate) const fn pointer_layout(version: FormatVersion) -> StrlPointerLayout {
+    match version {
+        FormatVersion::V117 => StrlPointerLayout {
+            variable_width: 4,
+            observation_width: 4,
+        },
+        FormatVersion::V118 => StrlPointerLayout {
+            variable_width: 2,
+            observation_width: 6,
+        },
+        FormatVersion::V119 => StrlPointerLayout {
+            variable_width: 3,
+            observation_width: 5,
+        },
+        _ => panic!("strL is only available in modern DTA releases"),
+    }
+}
+
+pub(crate) fn read_pointer_parts(
+    bytes: &[u8],
+    offset: usize,
+    metadata: &DtaMetadata,
+) -> Result<(u32, u64), DtaError> {
+    let layout = pointer_layout(metadata.format_version);
+    let variable = read_uint(
+        bytes,
+        offset,
+        layout.variable_width,
+        metadata.byte_order,
+        "strL variable pointer",
+    )?;
+    let observation = read_uint(
+        bytes,
+        checked_add(offset, layout.variable_width, "strL observation pointer")?,
+        layout.observation_width,
+        metadata.byte_order,
+        "strL observation pointer",
+    )?;
+    Ok((
+        u32::try_from(variable)
+            .map_err(|_| DtaError::ArithmeticOverflow("strL variable pointer"))?,
+        observation,
+    ))
+}
+
 fn read_pointer(
     bytes: &[u8],
     offset: usize,
     metadata: &DtaMetadata,
 ) -> Result<Option<GsoKey>, DtaError> {
-    let (variable, observation) = if metadata.format_version == FormatVersion::V117 {
-        (
-            read_u32(bytes, offset, metadata.byte_order, "strL variable pointer")?,
-            u64::from(read_u32(
-                bytes,
-                checked_add(offset, 4, "strL observation pointer")?,
-                metadata.byte_order,
-                "strL observation pointer",
-            )?),
-        )
-    } else if metadata.format_version == FormatVersion::V118 {
-        (
-            u32::from(read_u16(
-                bytes,
-                offset,
-                metadata.byte_order,
-                "strL variable pointer",
-            )?),
-            read_uint(
-                bytes,
-                checked_add(offset, 2, "strL observation pointer")?,
-                6,
-                metadata.byte_order,
-                "strL observation pointer",
-            )?,
-        )
-    } else {
-        (
-            read_uint(
-                bytes,
-                offset,
-                3,
-                metadata.byte_order,
-                "strL variable pointer",
-            )? as u32,
-            read_uint(
-                bytes,
-                checked_add(offset, 3, "strL observation pointer")?,
-                5,
-                metadata.byte_order,
-                "strL observation pointer",
-            )?,
-        )
-    };
+    let (variable, observation) = read_pointer_parts(bytes, offset, metadata)?;
     if variable == 0 && observation == 0 {
         return Ok(None);
     }
@@ -90,34 +97,34 @@ fn read_pointer(
         variable,
         observation,
     };
-    validate_key(metadata, key, offset, true)?;
+    validate_key(metadata, key.variable, key.observation, offset, true)?;
     Ok(Some(key))
 }
 
-fn validate_key(
+pub(crate) fn validate_key(
     metadata: &DtaMetadata,
-    key: GsoKey,
+    variable: u32,
+    observation: u64,
     offset: usize,
     pointer: bool,
 ) -> Result<(), DtaError> {
-    let valid_variable = key
-        .variable
+    let valid_variable = variable
         .checked_sub(1)
         .and_then(|index| usize::try_from(index).ok())
         .and_then(|index| metadata.variables.get(index))
         .is_some_and(|variable| variable.dta_type == DtaType::StrL);
-    let valid_observation = key.observation >= 1 && key.observation <= metadata.nobs;
-    if key.variable == 0 || key.observation == 0 || !valid_variable || !valid_observation {
+    let valid_observation = observation >= 1 && observation <= metadata.nobs;
+    if variable == 0 || observation == 0 || !valid_variable || !valid_observation {
         return if pointer {
             Err(DtaError::InvalidStrlPointer {
-                variable: key.variable,
-                observation: key.observation,
+                variable,
+                observation,
                 offset,
             })
         } else {
             Err(DtaError::InvalidGsoKey {
-                variable: key.variable,
-                observation: key.observation,
+                variable,
+                observation,
                 offset,
             })
         };
@@ -202,7 +209,13 @@ fn build_index(
             variable,
             observation,
         };
-        validate_key(metadata, key, record_offset, false)?;
+        validate_key(
+            metadata,
+            key.variable,
+            key.observation,
+            record_offset,
+            false,
+        )?;
         let entry = GsoEntry {
             content_offset,
             content_length,
@@ -387,26 +400,26 @@ mod tests {
     }
 
     #[test]
-    fn reads_v119_three_byte_variable_and_five_byte_observation_in_both_orders() {
-        let observation = 0x01_0203_0405_u64;
-        let little = [0x01, 0x00, 0x00, 0x05, 0x04, 0x03, 0x02, 0x01];
+    fn reads_release_119_three_byte_variables_and_five_byte_observations() {
+        let variable = 65_536_u32;
+        let observation = 0x0001_0203_0405_u64;
+
+        let mut little = [0_u8; 8];
+        little[..3].copy_from_slice(&[0x00, 0x00, 0x01]);
+        little[3..].copy_from_slice(&[0x05, 0x04, 0x03, 0x02, 0x01]);
         let little_metadata = metadata(FormatVersion::V119, ByteOrder::Lsf, observation);
         assert_eq!(
-            read_pointer(&little, 0, &little_metadata).unwrap(),
-            Some(GsoKey {
-                variable: 1,
-                observation
-            })
+            read_pointer_parts(&little, 0, &little_metadata).unwrap(),
+            (variable, observation)
         );
 
-        let big = [0x00, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05];
+        let mut big = [0_u8; 8];
+        big[..3].copy_from_slice(&[0x01, 0x00, 0x00]);
+        big[3..].copy_from_slice(&[0x01, 0x02, 0x03, 0x04, 0x05]);
         let big_metadata = metadata(FormatVersion::V119, ByteOrder::Msf, observation);
         assert_eq!(
-            read_pointer(&big, 0, &big_metadata).unwrap(),
-            Some(GsoKey {
-                variable: 1,
-                observation
-            })
+            read_pointer_parts(&big, 0, &big_metadata).unwrap(),
+            (variable, observation)
         );
     }
 

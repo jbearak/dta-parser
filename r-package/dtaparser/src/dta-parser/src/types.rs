@@ -99,6 +99,43 @@ pub enum DtaType {
     StrL,
 }
 
+impl DtaType {
+    pub(crate) const fn modern_code(&self) -> u16 {
+        match self {
+            Self::Byte => 65_530,
+            Self::Int => 65_529,
+            Self::Long => 65_528,
+            Self::Float => 65_527,
+            Self::Double => 65_526,
+            Self::FixedString(width) => *width,
+            Self::StrL => 32_768,
+        }
+    }
+
+    pub(crate) const fn storage_width(&self) -> u32 {
+        match self {
+            Self::Byte => 1,
+            Self::Int => 2,
+            Self::Long | Self::Float => 4,
+            Self::Double | Self::StrL => 8,
+            Self::FixedString(width) => *width as u32,
+        }
+    }
+
+    pub(crate) const fn from_modern_code(code: u16) -> Option<Self> {
+        match code {
+            65_530 => Some(Self::Byte),
+            65_529 => Some(Self::Int),
+            65_528 => Some(Self::Long),
+            65_527 => Some(Self::Float),
+            65_526 => Some(Self::Double),
+            32_768 => Some(Self::StrL),
+            1..=2_045 => Some(Self::FixedString(code)),
+            _ => None,
+        }
+    }
+}
+
 impl fmt::Display for DtaType {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -230,7 +267,7 @@ pub struct VariableInfo {
 
 /// Absolute file offsets. Legacy files synthesize the modern section names
 /// from their sequential layout.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SectionOffsets {
     #[serde(with = "decimal_u64")]
     pub stata_data: u64,

@@ -74,10 +74,7 @@ fn matches_known_shared_fixture_metadata() {
     assert_eq!(metadata.nvar, 12);
     assert_eq!(metadata.nobs, 74);
     assert_eq!(metadata.dataset_label, "1978 automobile data");
-    assert_eq!(
-        metadata.notes,
-        ["From Consumer Reports with permission", "1"]
-    );
+    assert_eq!(metadata.notes, ["From Consumer Reports with permission"]);
     assert_eq!(metadata.variables[0].name, "make");
     assert_eq!(metadata.variables[0].dta_type, DtaType::FixedString(18));
     assert_eq!(metadata.variables[0].label, "Make and model");
@@ -164,6 +161,18 @@ fn synthetic_v119_metadata_fixture() -> Vec<u8> {
         bytes[start..start + 8].copy_from_slice(&offset.to_be_bytes());
     }
     bytes
+}
+
+#[test]
+fn release_117_accepts_wide_fixed_string_type_codes() {
+    let mut bytes = fixture("auto_v117.dta");
+    let type_code = find(&bytes, b"<variable_types>") + b"<variable_types>".len();
+    bytes[type_code..type_code + 2].copy_from_slice(&300_u16.to_le_bytes());
+
+    let metadata = parse_metadata(&bytes).unwrap();
+    assert_eq!(metadata.variables[0].type_code, 300);
+    assert_eq!(metadata.variables[0].dta_type, DtaType::FixedString(300));
+    assert_eq!(metadata.variables[0].byte_width, 300);
 }
 
 #[test]

@@ -119,15 +119,22 @@ pub(crate) fn field_bytes(bytes: &[u8]) -> &[u8] {
     &bytes[..end]
 }
 
-pub(crate) fn is_dataset_note(variable: &[u8], characteristic: &[u8]) -> bool {
+pub(crate) fn dataset_note_index(variable: &[u8], characteristic: &[u8]) -> Option<usize> {
     if field_bytes(variable) != b"_dta" {
-        return false;
+        return None;
     }
     let name = field_bytes(characteristic);
-    let Some(index) = name.strip_prefix(b"note") else {
-        return false;
-    };
-    !index.is_empty() && index.iter().all(u8::is_ascii_digit)
+    let index = name.strip_prefix(b"note")?;
+    if index.is_empty() || !index.iter().all(u8::is_ascii_digit) {
+        return None;
+    }
+    let index = std::str::from_utf8(index).ok()?.parse().ok()?;
+    (index != 0).then_some(index)
+}
+
+pub(crate) fn ordered_dataset_notes(mut notes: Vec<(usize, String)>) -> Vec<String> {
+    notes.sort_by_key(|(index, _)| *index);
+    notes.into_iter().map(|(_, note)| note).collect()
 }
 
 pub(crate) fn is_utf8_continuation(byte: u8) -> bool {

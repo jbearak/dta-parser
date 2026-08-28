@@ -3,6 +3,7 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Altrep.h>
+#include <R_ext/GraphicsEngine.h>
 #include <R_ext/Utils.h>
 #include <R_ext/Visibility.h>
 #include <float.h>
@@ -19,6 +20,11 @@ extern SEXP dtaparser_read_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
     const char *, char **
 );
+extern int dtaparser_write_rust(
+    const char *, const char *, const char *const *, size_t, const void *,
+    size_t, double *, size_t, const char *, char **
+);
+extern int dtaparser_write_path_kind(const char *, char **);
 extern void dtaparser_free_error(char *);
 extern void dtaparser_numeric_free(void *);
 extern void *dtaparser_numeric_alloc(void *, size_t, int, int, int);
@@ -36,8 +42,14 @@ static R_altrep_class_t dtaparser_dictstring_class;
 static R_altrep_class_t dtaparser_numeric_class;
 static R_altrep_class_t dtaparser_metadata_real_class;
 static R_altrep_class_t dtaparser_metadata_string_class;
+static R_altrep_class_t dtaparser_ephemeral_string_class;
+static SEXP write_callback_condition_classes;
 static int metadata_real_aggregate_mask_enabled;
 static int metadata_real_aggregate_mask;
+
+static dictstring_data *dictstring_storage(SEXP value);
+static SEXP dictstring_cache(SEXP value);
+static SEXP unmaterialized_dictstring_source(SEXP value);
 
 enum {
     METADATA_AGGREGATE_NO_NA = 1,
@@ -360,6 +372,16 @@ typedef struct {
     int type;
 } numeric_reader;
 
+enum {
+    WRITE_NUMERIC_CALLBACK = 0,
+    WRITE_NUMERIC_INTEGER = 1,
+    WRITE_NUMERIC_DOUBLE = 2,
+    WRITE_NUMERIC_BYTE = 3,
+    WRITE_NUMERIC_INT = 4,
+    WRITE_NUMERIC_LONG = 5,
+    WRITE_NUMERIC_FLOAT = 6
+};
+
 static numeric_reader numeric_reader_create(
     SEXP value, R_xlen_t expected_length
 ) {
@@ -376,12 +398,35 @@ static numeric_reader numeric_reader_create(
         } else if (reader.storage == NULL) {
             reader.real_values = (const double *) DATAPTR_OR_NULL(value);
         }
-    } else if (reader.type == INTSXP) {
+    } else if (reader.type == INTSXP || reader.type == LGLSXP) {
         reader.integer_values = (const int *) DATAPTR_OR_NULL(value);
     } else {
-        Rf_error("internal numeric grouping requires doubles or integers");
+        Rf_error(
+            "internal numeric grouping requires doubles, integers, or logicals"
+        );
     }
     return reader;
+}
+
+static double numeric_integer_value(int value, int *missing_code) {
+    if (value == NA_INTEGER) {
+        *missing_code = 0;
+        return 0.0;
+    }
+    *missing_code = -1;
+    return (double) value;
+}
+
+static double numeric_real_value(double value, int *missing_code) {
+    if (!ISNAN(value)) {
+        *missing_code = -1;
+        return value;
+    }
+    int payload_tag = tagged_na_tag_value(value);
+    int tag = payload_tag >= 'a' && payload_tag <= 'z' ? payload_tag : 0;
+    *missing_code = tag != 0
+        ? tag : (payload_tag != 0 ? 256 : (ISNA(value) ? 0 : 256));
+    return 0.0;
 }
 
 static double numeric_reader_at(
@@ -403,30 +448,375 @@ static double numeric_reader_at(
         return value;
     }
 
-    if (reader->type == INTSXP) {
+    if (reader->type == INTSXP || reader->type == LGLSXP) {
         int value = reader->integer_values == NULL
-            ? INTEGER_ELT(reader->value, index)
+            ? (reader->type == LGLSXP
+                ? LOGICAL_ELT(reader->value, index)
+                : INTEGER_ELT(reader->value, index))
             : reader->integer_values[index];
-        if (value == NA_INTEGER) {
-            *missing_code = 0;
-            return 0.0;
-        }
-        *missing_code = -1;
-        return (double) value;
+        return numeric_integer_value(value, missing_code);
     }
 
     double value = reader->real_values == NULL
         ? REAL_ELT(reader->value, index)
         : reader->real_values[index];
-    if (!ISNAN(value)) {
-        *missing_code = -1;
-        return value;
+    return numeric_real_value(value, missing_code);
+}
+
+typedef struct {
+    const char *name;
+    int dta_type;
+    const char *format;
+    const char *label;
+    void *numeric_values;
+    SEXP string_values;
+    void *label_values;
+    SEXP label_texts;
+    size_t label_count;
+    int has_value_labels;
+    double numeric_shift;
+    double numeric_scale;
+    const void *direct_numeric_values;
+    int direct_numeric_kind;
+    int direct_numeric_format_version;
+    int direct_numeric_temporal;
+    int direct_numeric_no_na;
+    void *direct_string_data;
+} dtaparser_write_column;
+
+static int write_string_utf8_status(SEXP value) {
+    int utf8 = Rf_getCharCE(value) == CE_UTF8;
+    int ascii = 1;
+    const unsigned char *bytes = (const unsigned char *) CHAR(value);
+    int length = LENGTH(value);
+    for (int index = 0; index < length; index++) {
+        if (bytes[index] == 0) return -1;
+        if (bytes[index] > 0x7f) ascii = 0;
     }
-    int payload_tag = tagged_na_tag_value(value);
-    int tag = payload_tag >= 'a' && payload_tag <= 'z' ? payload_tag : 0;
-    *missing_code = tag != 0
-        ? tag : (payload_tag != 0 ? 256 : (ISNA(value) ? 0 : 256));
-    return 0.0;
+    return utf8 || ascii;
+}
+
+typedef struct {
+    void (*function)(void *);
+    void *data;
+    int status;
+    char *error_message;
+    size_t error_capacity;
+} write_callback_exec_context;
+
+static SEXP write_callback_body(void *data) {
+    write_callback_exec_context *context = (
+        write_callback_exec_context *
+    ) data;
+    context->function(context->data);
+    context->status = 1;
+    return R_NilValue;
+}
+
+static void write_callback_copy_condition(
+    write_callback_exec_context *context, SEXP condition
+) {
+    if (context->error_message == NULL || context->error_capacity == 0) return;
+    context->error_message[0] = '\0';
+
+    SEXP call = PROTECT(Rf_lang2(Rf_install("conditionMessage"), condition));
+    int failed = 0;
+    SEXP result = R_tryEval(call, R_BaseEnv, &failed);
+    if (!failed) {
+        PROTECT(result);
+        if (TYPEOF(result) == STRSXP && XLENGTH(result) >= 1 &&
+            STRING_ELT(result, 0) != NA_STRING) {
+            const char *message = Rf_translateCharUTF8(
+                STRING_ELT(result, 0)
+            );
+            size_t length = strlen(message);
+            if (length >= context->error_capacity) {
+                length = context->error_capacity - 1;
+            }
+            memcpy(context->error_message, message, length);
+            context->error_message[length] = '\0';
+        }
+        UNPROTECT(1);
+    }
+    UNPROTECT(1);
+}
+
+static SEXP write_callback_handler(SEXP condition, void *data) {
+    write_callback_exec_context *context = (
+        write_callback_exec_context *
+    ) data;
+    int interrupted = Rf_inherits(condition, "interrupt");
+    context->status = interrupted ? -1 : 0;
+    if (!interrupted) write_callback_copy_condition(context, condition);
+    return R_NilValue;
+}
+
+static void write_callback_try_catch(void *data) {
+    write_callback_exec_context *context = (
+        write_callback_exec_context *
+    ) data;
+    R_tryCatch(
+        write_callback_body, context, write_callback_condition_classes,
+        write_callback_handler, context, NULL, NULL
+    );
+}
+
+static int write_callback_exec(
+    void (*function)(void *), void *data,
+    char *error_message, size_t error_capacity
+) {
+    if (error_message != NULL && error_capacity > 0) error_message[0] = '\0';
+    write_callback_exec_context context = {
+        function, data, 0, error_message, error_capacity
+    };
+    return R_ToplevelExec(write_callback_try_catch, &context)
+        ? context.status : 0;
+}
+
+typedef struct {
+    const numeric_reader *reader;
+    size_t start;
+    size_t length;
+    double *values;
+    int *missing_codes;
+    int success;
+} write_numeric_region_context;
+
+static void write_numeric_region_call(void *data) {
+    write_numeric_region_context *context = (
+        write_numeric_region_context *
+    ) data;
+    const numeric_reader *reader = context->reader;
+    size_t available = (size_t) XLENGTH(reader->value);
+    if (context->start > available ||
+        context->length > available - context->start) {
+        return;
+    }
+    if (reader->storage != NULL || reader->integer_values != NULL ||
+        reader->real_values != NULL) {
+        for (size_t offset = 0; offset < context->length; offset++) {
+            context->values[offset] = numeric_reader_at(
+                reader,
+                (R_xlen_t) (context->start + offset),
+                &context->missing_codes[offset]
+            );
+        }
+        context->success = 1;
+        return;
+    }
+
+    size_t total = 0;
+    while (total < context->length) {
+        R_xlen_t requested = (R_xlen_t) (context->length - total);
+        R_xlen_t copied;
+        if (reader->type == INTSXP) {
+            copied = INTEGER_GET_REGION(
+                reader->value,
+                (R_xlen_t) (context->start + total),
+                requested,
+                context->missing_codes + total
+            );
+        } else if (reader->type == LGLSXP) {
+            copied = LOGICAL_GET_REGION(
+                reader->value,
+                (R_xlen_t) (context->start + total),
+                requested,
+                context->missing_codes + total
+            );
+        } else {
+            copied = REAL_GET_REGION(
+                reader->value,
+                (R_xlen_t) (context->start + total),
+                requested,
+                context->values + total
+            );
+        }
+        if (copied <= 0 || copied > requested) return;
+        total += (size_t) copied;
+    }
+
+    if (reader->type == INTSXP || reader->type == LGLSXP) {
+        for (size_t offset = 0; offset < context->length; offset++) {
+            context->values[offset] = numeric_integer_value(
+                context->missing_codes[offset], &context->missing_codes[offset]
+            );
+        }
+    } else {
+        for (size_t offset = 0; offset < context->length; offset++) {
+            context->values[offset] = numeric_real_value(
+                context->values[offset], &context->missing_codes[offset]
+            );
+        }
+    }
+    context->success = 1;
+}
+
+int dtaparser_write_numeric_region(
+    const void *reader_pointer, size_t start, size_t length,
+    double *values, int *missing_codes,
+    char *error_message, size_t error_capacity
+) {
+    if (reader_pointer == NULL || values == NULL || missing_codes == NULL) {
+        return 0;
+    }
+    const numeric_reader *reader = (const numeric_reader *) reader_pointer;
+    write_numeric_region_context context = {
+        reader, start, length, values, missing_codes, 0
+    };
+    int status = write_callback_exec(
+        write_numeric_region_call, &context, error_message, error_capacity
+    );
+    return status == 1 ? context.success : status;
+}
+
+typedef struct {
+    SEXP values;
+    size_t start;
+    size_t length;
+    uint64_t *ids;
+    const char **strings;
+    size_t *string_lengths;
+    int success;
+} write_string_region_context;
+
+static void write_string_region_call(void *data) {
+    write_string_region_context *context =
+        (write_string_region_context *) data;
+    size_t available = (size_t) XLENGTH(context->values);
+    if (context->start > available ||
+        context->length > available - context->start) {
+        return;
+    }
+    for (size_t offset = 0; offset < context->length; offset++) {
+        SEXP element = STRING_ELT(
+            context->values, (R_xlen_t) (context->start + offset)
+        );
+        if (context->ids != NULL) {
+            context->ids[offset] = (uint64_t) (uintptr_t) element;
+        }
+        if (element == NA_STRING) {
+            context->strings[offset] = NULL;
+            context->string_lengths[offset] = 0;
+        } else {
+            context->strings[offset] = CHAR(element);
+            context->string_lengths[offset] = (size_t) LENGTH(element);
+        }
+    }
+    context->success = 1;
+}
+
+int dtaparser_write_string_region(
+    SEXP values, size_t start, size_t length, uint64_t *ids,
+    const char **strings, size_t *string_lengths,
+    char *error_message, size_t error_capacity
+) {
+    if (TYPEOF(values) != STRSXP || strings == NULL ||
+        string_lengths == NULL) {
+        return 0;
+    }
+    write_string_region_context context = {
+        values, start, length, ids, strings, string_lengths, 0
+    };
+    int status = write_callback_exec(
+        write_string_region_call, &context, error_message, error_capacity
+    );
+    return status == 1 ? context.success : status;
+}
+
+static SEXP write_string_plan_result(
+    size_t maximum, double missing, SEXP values
+) {
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, 3));
+    SEXP maximum_value = PROTECT(Rf_ScalarReal((double) maximum));
+    SEXP missing_value = PROTECT(Rf_ScalarReal(missing));
+    SET_VECTOR_ELT(result, 0, maximum_value);
+    SET_VECTOR_ELT(result, 1, missing_value);
+    SET_VECTOR_ELT(result, 2, values);
+    UNPROTECT(3);
+    return result;
+}
+
+SEXP C_dtaparser_write_string_plan(SEXP value) {
+    if (TYPEOF(value) != STRSXP) {
+        Rf_error("internal string planning requires a character vector");
+    }
+    size_t maximum = 0;
+    double missing = 0;
+    SEXP normalized = R_NilValue;
+    SEXP dictionary_source = unmaterialized_dictstring_source(value);
+    if (dictionary_source != R_NilValue) {
+        dictstring_data *data = dictstring_storage(dictionary_source);
+        SEXP cache = dictstring_cache(dictionary_source);
+        R_xlen_t value_count = XLENGTH(cache);
+        for (R_xlen_t id = 0; id < value_count; id++) {
+            if ((id & 16383) == 0) R_CheckUserInterrupt();
+            const char *bytes = NULL;
+            int length = 0;
+            if (!dtaparser_dictstring_bytes(
+                    data, (uint32_t) id, &bytes, &length
+                ) || bytes == NULL || length < 0) {
+                Rf_error("invalid dtaparser string-dictionary value");
+            }
+            if (memchr(bytes, 0, (size_t) length) != NULL) {
+                Rf_error("character values cannot contain NUL bytes");
+            }
+            if ((uint64_t) length > UINT64_C(2000000000)) {
+                Rf_error("a strL value exceeds Stata's 2,000,000,000-byte limit");
+            }
+            if ((size_t) length > maximum) maximum = (size_t) length;
+        }
+        return write_string_plan_result(maximum, 0, value);
+    }
+    R_xlen_t length = XLENGTH(value);
+    int materialize_altstring = ALTREP(value);
+    if (materialize_altstring) {
+        normalized = PROTECT(Rf_allocVector(STRSXP, length));
+    }
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        SEXP element = STRING_ELT(value, index);
+        if (materialize_altstring) PROTECT(element);
+        if (element == NA_STRING) {
+            missing += 1;
+            if (normalized != R_NilValue) {
+                SET_STRING_ELT(normalized, index, NA_STRING);
+            }
+            if (materialize_altstring) UNPROTECT(1);
+            continue;
+        }
+        int utf8_status = write_string_utf8_status(element);
+        if (utf8_status < 0) {
+            Rf_error("character values cannot contain NUL bytes");
+        }
+        size_t bytes;
+        if (utf8_status) {
+            bytes = (size_t) LENGTH(element);
+            if (normalized != R_NilValue) {
+                SET_STRING_ELT(normalized, index, element);
+            }
+        } else {
+            if (normalized == R_NilValue) {
+                normalized = PROTECT(Rf_allocVector(STRSXP, length));
+                        for (R_xlen_t prior = 0; prior < index; prior++) {
+                    SET_STRING_ELT(normalized, prior, STRING_ELT(value, prior));
+                }
+            }
+            const char *translated = Rf_translateCharUTF8(element);
+            bytes = strlen(translated);
+            SET_STRING_ELT(normalized, index, Rf_mkCharCE(translated, CE_UTF8));
+        }
+        if (bytes > maximum) maximum = bytes;
+        if (materialize_altstring) UNPROTECT(1);
+    }
+    if (maximum > UINT64_C(2000000000)) {
+        Rf_error("a strL value exceeds Stata's 2,000,000,000-byte limit");
+    }
+
+    SEXP result = write_string_plan_result(
+        maximum, missing, normalized == R_NilValue ? value : normalized
+    );
+    if (normalized != R_NilValue) UNPROTECT(1);
+    return result;
 }
 
 typedef struct {
@@ -1108,6 +1498,18 @@ static SEXP dictstring_cache(SEXP value) {
     return cache;
 }
 
+static SEXP unmaterialized_dictstring_source(SEXP value) {
+    while (ALTREP(value) &&
+           R_altrep_inherits(value, dtaparser_metadata_string_class) &&
+           R_altrep_data2(value) == R_NilValue) {
+        value = R_altrep_data1(value);
+    }
+    return ALTREP(value) &&
+            R_altrep_inherits(value, dtaparser_dictstring_class) &&
+            R_altrep_data2(value) == R_NilValue
+        ? value : R_NilValue;
+}
+
 static SEXP dictstring_cached_value(
     dictstring_data *data, SEXP cache, uint32_t id
 ) {
@@ -1439,6 +1841,263 @@ SEXP C_dtaparser_read(
     );
     if (result == NULL) fail_from_rust(error);
     return result;
+}
+
+static const char *write_scalar_string(SEXP value, const char *name) {
+    if (TYPEOF(value) != STRSXP || XLENGTH(value) != 1 ||
+        STRING_ELT(value, 0) == NA_STRING) {
+        Rf_error("internal `%s` must be one non-missing string", name);
+    }
+    return Rf_translateCharUTF8(STRING_ELT(value, 0));
+}
+
+static SEXP write_utf8_strings(SEXP values, const char *name) {
+    if (TYPEOF(values) != STRSXP) {
+        Rf_error("internal `%s` must be character", name);
+    }
+    R_xlen_t length = XLENGTH(values);
+    SEXP normalized = PROTECT(Rf_allocVector(STRSXP, length));
+    for (R_xlen_t index = 0; index < length; index++) {
+        SEXP element = PROTECT(STRING_ELT(values, index));
+        if (element == NA_STRING) {
+            UNPROTECT(2);
+            Rf_error("internal `%s` contains a missing string", name);
+        }
+        SEXP utf8 = PROTECT(Rf_mkCharCE(
+            Rf_translateCharUTF8(element), CE_UTF8
+        ));
+        SET_STRING_ELT(normalized, index, utf8);
+        UNPROTECT(2);
+    }
+    UNPROTECT(1);
+    return normalized;
+}
+
+static SEXP write_rooted_strings(
+    SEXP roots, R_xlen_t index, SEXP values, const char *name
+) {
+    SEXP normalized = PROTECT(write_utf8_strings(values, name));
+    SET_VECTOR_ELT(roots, index, normalized);
+    UNPROTECT(1);
+    return normalized;
+}
+
+static const char *write_rooted_scalar_string(
+    SEXP roots, R_xlen_t index, SEXP value, const char *name
+) {
+    if (TYPEOF(value) != STRSXP || XLENGTH(value) != 1) {
+        Rf_error("internal `%s` must be one non-missing string", name);
+    }
+    SEXP normalized = write_rooted_strings(roots, index, value, name);
+    return CHAR(STRING_ELT(normalized, 0));
+}
+
+SEXP C_dtaparser_write_path_kind(SEXP path) {
+    const char *output_path = write_scalar_string(path, "path");
+    char *rust_error = NULL;
+    int kind = dtaparser_write_path_kind(output_path, &rust_error);
+    if (kind < 0) fail_from_rust(rust_error);
+    return Rf_ScalarInteger(kind);
+}
+
+static int write_column_type(SEXP column) {
+    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 10) {
+        Rf_error("internal write column must be a ten-element list");
+    }
+    SEXP dta_type = VECTOR_ELT(column, 1);
+    if (TYPEOF(dta_type) != INTSXP || XLENGTH(dta_type) != 1 ||
+        INTEGER(dta_type)[0] < 0 || INTEGER(dta_type)[0] > 2050) {
+        Rf_error("invalid internal write column metadata");
+    }
+    return INTEGER(dta_type)[0];
+}
+
+SEXP C_dtaparser_write(SEXP specification, SEXP path) {
+    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 4) {
+        Rf_error("internal write specification must be a four-element list");
+    }
+    SEXP notes = VECTOR_ELT(specification, 1);
+    SEXP columns = VECTOR_ELT(specification, 2);
+    if (TYPEOF(notes) != STRSXP || TYPEOF(columns) != VECSXP) {
+        Rf_error("invalid internal write specification");
+    }
+
+    size_t column_count = (size_t) XLENGTH(columns);
+    if (column_count > ((size_t) R_XLEN_T_MAX - 4) / 4) {
+        Rf_error("too many internal write columns");
+    }
+    SEXP string_roots = PROTECT(Rf_allocVector(
+        VECSXP, (R_xlen_t) (4 + 4 * column_count)
+    ));
+    R_xlen_t root_index = 0;
+    const char *output_path = write_rooted_scalar_string(
+        string_roots, root_index++, path, "path"
+    );
+    const char *dataset_label = write_rooted_scalar_string(
+        string_roots, root_index++, VECTOR_ELT(specification, 0),
+        "dataset label"
+    );
+    SEXP rooted_notes = write_rooted_strings(
+        string_roots, root_index++, notes, "dataset notes"
+    );
+    const char *timestamp = write_rooted_scalar_string(
+        string_roots, root_index++, VECTOR_ELT(specification, 3), "timestamp"
+    );
+
+    size_t note_count = (size_t) XLENGTH(rooted_notes);
+    const char **note_values = (const char **) R_alloc(
+        (R_SIZE_T) note_count, (int) sizeof(const char *)
+    );
+    for (size_t index = 0; index < note_count; index++) {
+        note_values[index] = CHAR(STRING_ELT(rooted_notes, (R_xlen_t) index));
+    }
+
+    size_t numeric_column_count = 0;
+    size_t labelled_column_count = 0;
+    for (size_t index = 0; index < column_count; index++) {
+        SEXP column = VECTOR_ELT(columns, (R_xlen_t) index);
+        if (write_column_type(column) <= 4) numeric_column_count++;
+        if (XLENGTH(VECTOR_ELT(column, 4)) > 0) labelled_column_count++;
+    }
+
+    SEXP numeric_replacements = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) column_count));
+    dtaparser_write_column *descriptors = (dtaparser_write_column *) R_alloc(
+        (R_SIZE_T) column_count, (int) sizeof(dtaparser_write_column)
+    );
+    numeric_reader *value_readers = numeric_column_count == 0 ? NULL :
+        (numeric_reader *) R_alloc(
+            (R_SIZE_T) numeric_column_count, (int) sizeof(numeric_reader)
+        );
+    numeric_reader *label_readers = labelled_column_count == 0 ? NULL :
+        (numeric_reader *) R_alloc(
+            (R_SIZE_T) labelled_column_count, (int) sizeof(numeric_reader)
+        );
+    size_t value_reader_index = 0;
+    size_t label_reader_index = 0;
+    size_t row_count = 0;
+    for (size_t index = 0; index < column_count; index++) {
+        SEXP column = VECTOR_ELT(columns, (R_xlen_t) index);
+        int dta_type = write_column_type(column);
+        SEXP label_values = VECTOR_ELT(column, 4);
+        SEXP label_texts = VECTOR_ELT(column, 5);
+        SEXP values = VECTOR_ELT(column, 6);
+        SEXP has_value_labels = VECTOR_ELT(column, 7);
+        SEXP numeric_shift = VECTOR_ELT(column, 8);
+        SEXP numeric_scale = VECTOR_ELT(column, 9);
+        if (TYPEOF(label_texts) != STRSXP ||
+            XLENGTH(label_values) != XLENGTH(label_texts) ||
+            TYPEOF(has_value_labels) != LGLSXP ||
+            XLENGTH(has_value_labels) != 1 ||
+            LOGICAL(has_value_labels)[0] == NA_LOGICAL ||
+            TYPEOF(numeric_shift) != REALSXP || XLENGTH(numeric_shift) != 1 ||
+            TYPEOF(numeric_scale) != REALSXP || XLENGTH(numeric_scale) != 1 ||
+            !R_FINITE(REAL(numeric_shift)[0]) ||
+            !R_FINITE(REAL(numeric_scale)[0])) {
+            Rf_error("invalid internal write column metadata");
+        }
+        size_t length = (size_t) XLENGTH(values);
+        if (index == 0) row_count = length;
+        if (length != row_count) {
+            Rf_error("internal write columns have different lengths");
+        }
+
+        const char *name = write_rooted_scalar_string(
+            string_roots, root_index++, VECTOR_ELT(column, 0), "name"
+        );
+        const char *format = write_rooted_scalar_string(
+            string_roots, root_index++, VECTOR_ELT(column, 2), "format"
+        );
+        const char *label = write_rooted_scalar_string(
+            string_roots, root_index++, VECTOR_ELT(column, 3), "variable label"
+        );
+        label_texts = write_rooted_strings(
+            string_roots, root_index++, label_texts, "value-label text"
+        );
+        dtaparser_write_column *descriptor = &descriptors[index];
+        *descriptor = (dtaparser_write_column) {
+            .name = name,
+            .dta_type = dta_type,
+            .format = format,
+            .label = label,
+            .string_values = R_NilValue,
+            .label_texts = label_texts,
+            .label_count = (size_t) XLENGTH(label_values),
+            .has_value_labels = LOGICAL(has_value_labels)[0],
+            .numeric_shift = REAL(numeric_shift)[0],
+            .numeric_scale = REAL(numeric_scale)[0],
+            .direct_numeric_kind = WRITE_NUMERIC_CALLBACK
+        };
+        if (descriptor->dta_type <= 4) {
+            numeric_reader *reader = &value_readers[value_reader_index++];
+            *reader = numeric_reader_create(values, (R_xlen_t) row_count);
+            descriptor->numeric_values = reader;
+            if (reader->storage != NULL) {
+                descriptor->direct_numeric_values = reader->storage->values;
+                descriptor->direct_numeric_kind =
+                    WRITE_NUMERIC_BYTE + reader->storage->kind;
+                descriptor->direct_numeric_format_version =
+                    reader->storage->format_version;
+                descriptor->direct_numeric_temporal = reader->storage->temporal;
+                descriptor->direct_numeric_no_na = reader->storage->no_na;
+            } else if (reader->integer_values != NULL) {
+                descriptor->direct_numeric_values = reader->integer_values;
+                descriptor->direct_numeric_kind = WRITE_NUMERIC_INTEGER;
+            } else if (reader->real_values != NULL) {
+                descriptor->direct_numeric_values = reader->real_values;
+                descriptor->direct_numeric_kind = WRITE_NUMERIC_DOUBLE;
+            }
+        } else {
+            if (TYPEOF(values) != STRSXP) {
+                Rf_error("internal string write column must be character");
+            }
+            descriptor->string_values = values;
+            SEXP dictionary_source = unmaterialized_dictstring_source(values);
+            if (dictionary_source != R_NilValue) {
+                descriptor->direct_string_data = dictstring_storage(dictionary_source);
+            }
+        }
+        if (descriptor->label_count > 0) {
+            numeric_reader *reader = &label_readers[label_reader_index++];
+            *reader = numeric_reader_create(
+                label_values, (R_xlen_t) descriptor->label_count
+            );
+            descriptor->label_values = reader;
+        }
+    }
+
+    char *rust_error = NULL;
+    int ok = dtaparser_write_rust(
+        output_path, dataset_label, note_values, note_count, descriptors,
+        column_count, REAL(numeric_replacements), row_count, timestamp,
+        &rust_error
+    );
+    if (ok < 0) {
+        UNPROTECT(2);
+        Rf_onintr();
+        Rf_error("write interrupted");
+    }
+    if (!ok) fail_from_rust(rust_error);
+    UNPROTECT(2);
+    return numeric_replacements;
+}
+
+static R_xlen_t ephemeral_string_length(SEXP value) {
+    return XLENGTH(R_altrep_data1(value));
+}
+
+static SEXP ephemeral_string_value(SEXP value, R_xlen_t index) {
+    SEXP source = STRING_ELT(R_altrep_data1(value), index);
+    if (source == NA_STRING) return NA_STRING;
+    return Rf_mkCharLenCE(CHAR(source), LENGTH(source), Rf_getCharCE(source));
+}
+
+SEXP C_dtaparser_ephemeral_altstring(SEXP value) {
+    if (TYPEOF(value) != STRSXP) {
+        Rf_error("ephemeral ALTSTRING source must be character");
+    }
+    return R_new_altrep(
+        dtaparser_ephemeral_string_class, value, R_NilValue
+    );
 }
 
 SEXP C_dtaparser_is_numeric_altrep(SEXP value) {
@@ -1878,6 +2537,13 @@ SEXP C_dtaparser_missing_codes(SEXP value) {
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtaparser_metadata", (DL_FUNC) &C_dtaparser_metadata, 4},
     {"C_dtaparser_read", (DL_FUNC) &C_dtaparser_read, 8},
+    {"C_dtaparser_write", (DL_FUNC) &C_dtaparser_write, 2},
+    {"C_dtaparser_write_path_kind",
+     (DL_FUNC) &C_dtaparser_write_path_kind, 1},
+    {"C_dtaparser_write_string_plan",
+     (DL_FUNC) &C_dtaparser_write_string_plan, 1},
+    {"C_dtaparser_ephemeral_altstring",
+     (DL_FUNC) &C_dtaparser_ephemeral_altstring, 1},
     {"C_dtaparser_construct_numeric",
      (DL_FUNC) &C_dtaparser_construct_numeric, 3},
     {"C_dtaparser_is_numeric_altrep",
@@ -1906,6 +2572,14 @@ static const R_CallMethodDef CallEntries[] = {
 };
 
 void attribute_visible R_init_dtaparser(DllInfo *dll) {
+    write_callback_condition_classes = PROTECT(Rf_allocVector(STRSXP, 2));
+    SET_STRING_ELT(
+        write_callback_condition_classes, 0, Rf_mkChar("interrupt")
+    );
+    SET_STRING_ELT(write_callback_condition_classes, 1, Rf_mkChar("error"));
+    R_PreserveObject(write_callback_condition_classes);
+    UNPROTECT(1);
+
     dtaparser_numeric_class = R_make_altreal_class(
         "dtaparser_numeric", "dtaparser", dll
     );
@@ -1931,6 +2605,15 @@ void attribute_visible R_init_dtaparser(DllInfo *dll) {
     R_set_altstring_Elt_method(dtaparser_dictstring_class, dictstring_value);
     R_set_altstring_Set_elt_method(dtaparser_dictstring_class, dictstring_set_elt);
     R_set_altstring_No_NA_method(dtaparser_dictstring_class, dictstring_no_na);
+    dtaparser_ephemeral_string_class = R_make_altstring_class(
+        "dtaparser_ephemeral_string", "dtaparser", dll
+    );
+    R_set_altrep_Length_method(
+        dtaparser_ephemeral_string_class, ephemeral_string_length
+    );
+    R_set_altstring_Elt_method(
+        dtaparser_ephemeral_string_class, ephemeral_string_value
+    );
     dtaparser_metadata_real_class = R_make_altreal_class(
         "dtaparser_metadata_real", "dtaparser", dll
     );

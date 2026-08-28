@@ -3,7 +3,7 @@ use crate::endian::{
     read_u64, read_u8, slice_at,
 };
 use crate::legacy::parse_legacy_metadata;
-use crate::text::{field_bytes, is_dataset_note, TextEncoding};
+use crate::text::{dataset_note_index, field_bytes, ordered_dataset_notes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -50,7 +50,7 @@ pub(crate) struct FieldWidths {
     pub(crate) variable_label: usize,
 }
 
-pub(crate) fn field_widths(version: FormatVersion) -> FieldWidths {
+pub(crate) const fn field_widths(version: FormatVersion) -> FieldWidths {
     match version {
         FormatVersion::V117 => FieldWidths {
             varname: 33,
@@ -71,7 +71,7 @@ pub(crate) fn field_widths(version: FormatVersion) -> FieldWidths {
         | FormatVersion::V113
         | FormatVersion::V114
         | FormatVersion::V115 => {
-            unreachable!("legacy releases are rejected before widths are selected")
+            panic!("legacy releases are rejected before widths are selected")
         }
     }
 }
@@ -339,7 +339,7 @@ fn parse_characteristics(
         {
             cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
             ensure_map_offset("data", cursor, offsets.data)?;
-            return Ok(notes);
+            return Ok(ordered_dataset_notes(notes));
         }
 
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
@@ -376,11 +376,9 @@ fn parse_characteristics(
         let payload = slice_at(bytes, cursor, payload_length, "characteristic payload")?;
         let (variable, remainder) = payload.split_at(width);
         let (characteristic, value) = remainder.split_at(width);
-        if is_dataset_note(variable, characteristic) {
+        if let Some(index) = dataset_note_index(variable, characteristic) {
             let note = encoding.decode(field_bytes(value));
-            if !note.is_empty() {
-                notes.push(note);
-            }
+            notes.push((index, note));
         }
         cursor = payload_end;
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_CLOSE, "</ch>")?;
@@ -396,35 +394,12 @@ fn parse_characteristics(
 }
 
 pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {
-    let numeric = match code {
-        65530 => Some((DtaType::Byte, 1)),
-        65529 => Some((DtaType::Int, 2)),
-        65528 => Some((DtaType::Long, 4)),
-        65527 => Some((DtaType::Float, 4)),
-        65526 => Some((DtaType::Double, 8)),
-        251 if version == FormatVersion::V117 => Some((DtaType::Byte, 1)),
-        252 if version == FormatVersion::V117 => Some((DtaType::Int, 2)),
-        253 if version == FormatVersion::V117 => Some((DtaType::Long, 4)),
-        254 if version == FormatVersion::V117 => Some((DtaType::Float, 4)),
-        255 if version == FormatVersion::V117 => Some((DtaType::Double, 8)),
-        _ => None,
-    };
-    if let Some(resolved) = numeric {
-        return Ok(resolved);
-    }
-    if code == 32768 {
-        return Ok((DtaType::StrL, 8));
-    }
-
-    let maximum = if version == FormatVersion::V117 {
-        244
-    } else {
-        2045
-    };
-    if (1..=maximum).contains(&code) {
-        return Ok((DtaType::FixedString(code), u32::from(code)));
-    }
-    Err(DtaError::UnknownTypeCode { code, version })
+    DtaType::from_modern_code(code)
+        .map(|dta_type| {
+            let width = dta_type.storage_width();
+            (dta_type, width)
+        })
+        .ok_or(DtaError::UnknownTypeCode { code, version })
 }
 
 /// Parse metadata from a Stata 105, 108, 110–111, 113–115, or 117–119 byte slice.
@@ -570,23 +545,17 @@ mod tests {
 
     #[test]
     fn enforces_type_boundaries_by_release() {
-        assert_eq!(
-            resolve_type(244, FormatVersion::V117).unwrap(),
-            (DtaType::FixedString(244), 244)
-        );
-        assert!(matches!(
-            resolve_type(245, FormatVersion::V117),
-            Err(DtaError::UnknownTypeCode { code: 245, .. })
-        ));
+        for width in [244, 245, 251, 2045] {
+            assert_eq!(
+                resolve_type(width, FormatVersion::V117).unwrap(),
+                (DtaType::FixedString(width), u32::from(width))
+            );
+        }
         assert_eq!(
             resolve_type(2045, FormatVersion::V119).unwrap(),
             (DtaType::FixedString(2045), 2045)
         );
         assert!(resolve_type(2046, FormatVersion::V118).is_err());
-        assert_eq!(
-            resolve_type(251, FormatVersion::V117).unwrap(),
-            (DtaType::Byte, 1)
-        );
         assert_eq!(
             resolve_type(251, FormatVersion::V118).unwrap(),
             (DtaType::FixedString(251), 251)

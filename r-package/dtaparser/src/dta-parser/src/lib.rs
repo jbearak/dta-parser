@@ -58,6 +58,7 @@ mod strl;
 mod text;
 mod types;
 mod value_labels;
+mod write;
 
 pub use data_reader::{
     read_dta, read_dta_with_encoding, read_dta_with_options, read_dta_with_options_and_encoding,
@@ -66,10 +67,11 @@ pub use error::DtaError;
 pub use file::{DtaColumnSink, DtaFile, DtaSink, FileOptions, ParallelDtaSink};
 pub use metadata::{parse_metadata, parse_metadata_with_encoding};
 pub use missing::{
-    classify_byte_missing, classify_double_missing_bits, classify_float_missing_bits,
-    classify_int_missing, classify_long_missing, MissingTag, DOUBLE_MISSING_DOT_BITS,
-    DOUBLE_MISSING_STEP_BITS, DOUBLE_MISSING_Z_BITS, FLOAT_MISSING_DOT_BITS,
-    FLOAT_MISSING_STEP_BITS, FLOAT_MISSING_Z_BITS,
+    classify_byte_missing, classify_byte_missing_for_version, classify_double_missing_bits,
+    classify_float_missing_bits, classify_float_missing_bits_for_version, classify_int_missing,
+    classify_int_missing_for_version, classify_long_missing, classify_long_missing_for_version,
+    MissingTag, DOUBLE_MISSING_DOT_BITS, DOUBLE_MISSING_STEP_BITS, DOUBLE_MISSING_Z_BITS,
+    FLOAT_MISSING_DOT_BITS, FLOAT_MISSING_STEP_BITS, FLOAT_MISSING_Z_BITS,
 };
 pub use text::TextEncoding;
 pub use types::{
@@ -77,3 +79,10 @@ pub use types::{
     SectionOffsets, ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
 pub use value_labels::{parse_value_labels, parse_value_labels_with_encoding};
+pub use write::{
+    dta_write_numeric_value_is_representable, write_dta_to,
+    write_prevalidated_dta_with_observation_source_to, DtaWriteColumn, DtaWriteColumnSource,
+    DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNumericValue,
+    DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteSummary,
+    DtaWriteValueLabel,
+};

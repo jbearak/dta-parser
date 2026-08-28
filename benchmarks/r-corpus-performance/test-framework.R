@@ -1,6 +1,7 @@
 script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
 script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/")
-source(file.path(dirname(script_path), "common.R"), local = TRUE)
+script_dir <- dirname(script_path)
+source(file.path(script_dir, "common.R"), local = TRUE)
 
 root <- tempfile("r-corpus-performance-")
 dir.create(root)
@@ -29,6 +30,40 @@ stopifnot(
     is.na(corpus_dta_release(unknown)),
     is.na(corpus_dta_release(empty)),
     is.na(corpus_dta_release(file.path(root, "missing.dta")))
+)
+
+manifest <- file.path(root, "inventory.tsv")
+first_manifest <- data.frame(id = "one", sha256 = strrep("a", 64L))
+first_hash <- benchmark_publish_or_verify_tsv(
+    first_manifest,
+    manifest,
+    "inventory drift",
+    "inventory publish failed"
+)
+stopifnot(
+    grepl("^[0-9a-f]{64}$", first_hash),
+    identical(
+        benchmark_publish_or_verify_tsv(
+            first_manifest,
+            manifest,
+            "inventory drift",
+            "inventory publish failed"
+        ),
+        first_hash
+    )
+)
+drift_error <- tryCatch(
+    benchmark_publish_or_verify_tsv(
+        transform(first_manifest, id = "two"),
+        manifest,
+        "inventory drift",
+        "inventory publish failed"
+    ),
+    error = identity
+)
+stopifnot(
+    inherits(drift_error, "error"),
+    identical(conditionMessage(drift_error), "inventory drift")
 )
 
 inventory <- data.frame(

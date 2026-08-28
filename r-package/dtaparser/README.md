@@ -1,6 +1,10 @@
 # dtaparser
 
-`dtaparser` reads Stata `.dta` files into R tibbles. Use it instead of `haven::read_dta()` for Stata imports. It accepts haven's common read arguments and returns compatible values, labels, dates, and tagged missing values. Numeric columns also retain their declared Stata storage type.
+`dtaparser` reads Stata `.dta` files into R tibbles and writes standalone Stata
+18/19 datasets. Use it instead of `haven::read_dta()` for Stata imports. The
+read interface accepts haven's common arguments and returns compatible values,
+labels, dates, and tagged missing values. Numeric columns also retain their
+declared Stata storage type.
 
 ## Why use dtaparser?
 
@@ -15,7 +19,29 @@ Across the full DHS, MICS, and NSFG comparison, `dtaparser` was faster on 1,803 
 
 These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtaparser only. See the [dated corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
 
-`dtaparser` reads Stata files only. Keep using haven when you need to write `.dta` files or work with SAS and SPSS formats.
+### Synthetic write benchmarks
+
+The primary synthetic benchmark gives dtaparser the exact output from Stata's
+first save of an in-memory fixture covering every numeric Stata storage type:
+
+| Scale | dtaparser | Stata | Comparison |
+| --- | ---: | ---: | ---: |
+| 100 MB | 0.119 seconds | 0.014 seconds | 8.50 times Stata |
+| 1 GB | 1.225 seconds | 0.131 seconds | 9.35 times Stata |
+
+The secondary benchmark gives dtaparser and haven the same ordinary R data
+frame, without Stata storage or labelling metadata:
+
+| Scale | dtaparser | haven | dtaparser advantage |
+| --- | ---: | ---: | ---: |
+| 100 MB | 0.183 seconds | 0.439 seconds | 58.3% faster |
+| 1 GB | 1.797 seconds | 4.052 seconds | 55.7% faster |
+
+These are medians from seven fresh-process runs on the same Apple M4 Max, not
+performance guarantees. See the [dated write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md) for percentiles, memory and output sizes, source provenance, and the complete methodology.
+
+Keep using haven when you need to write older DTA releases or work with SAS and
+SPSS formats.
 
 ## Installation
 
@@ -53,7 +79,30 @@ cars <- read_dta(
 cars
 ```
 
+An extensionless local path resolves to its `.dta` file:
+
+```r
+cars <- read_dta("auto") # reads auto.dta
+```
+
 `file` accepts local paths, raw DTA bytes, binary connections, and URLs. Local gzip, bzip2, xz, and zip files are decompressed automatically; remote gzip is also supported. Applications should validate or allowlist untrusted URLs before passing them to `read_dta()`.
+
+## Write a file
+
+```r
+write_dta(cars, "cars.dta")
+```
+
+The writer targets Stata 18 or 19 and emits release 118 for ordinary datasets
+or release 119 above 32,767 variables. It preserves declared numeric storage,
+formats, temporal values, labels, tagged missing codes, long strings, and
+dataset notes. It writes through a sibling temporary file so validation,
+serialization, and interruption failures leave an existing destination intact.
+
+Factors become value-labelled Stata `long` variables, character missing values
+become empty strings, and unrepresentable numeric values become Stata system
+missing. Each conversion category produces one warning per call. An
+extensionless output path receives `.dta` with a warning.
 
 ## Data returned to R
 
@@ -137,6 +186,7 @@ Use the installed help for exact behavior and examples:
 
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
+?write_dta # standalone Stata 18/19 output, conversions, and metadata
 ?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values
@@ -153,7 +203,8 @@ Additional measurements and their provenance live in the repository's [dated ben
 
 ## Compatibility
 
-The reader covers Stata 5 through 19. See the shared [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact format releases, encodings, missing-value behavior, and intentional differences from haven.
+The reader covers Stata 5 through 19. The writer targets Stata 18/19 and does
+not emit older formats. See the shared [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact format releases, encodings, missing-value behavior, and intentional differences from haven.
 
 ## Contributing
 

@@ -5,6 +5,10 @@ if (length(args) < 3L) {
 
 script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
 script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/")
+sys.source(
+    file.path(dirname(script_path), "..", "benchmark-common.R"),
+    envir = environment()
+)
 sys.source(file.path(dirname(script_path), "provenance.R"), envir = environment())
 
 runtime <- read.delim(
@@ -192,12 +196,5 @@ summary <- summary[order(summary$actual_bytes, summary$workload), ]
 stopifnot(nrow(summary) == 4L)
 
 dir.create(dirname(args[[2L]]), recursive = TRUE, showWarnings = FALSE)
-temporary_output <- tempfile(
-    pattern = paste0(basename(args[[2L]]), "."), tmpdir = dirname(args[[2L]])
-)
-on.exit(unlink(temporary_output), add = TRUE)
-write.table(summary, temporary_output, sep = "\t", row.names = FALSE, quote = FALSE)
-if (!file.rename(temporary_output, args[[2L]])) {
-    stop("could not atomically replace ", args[[2L]])
-}
+atomic_tsv(summary, args[[2L]])
 print(summary, row.names = FALSE)

@@ -1,5 +1,5 @@
 use crate::endian::{checked_add, checked_mul, read_i16, read_i32, read_u16, slice_at};
-use crate::text::{field_bytes, is_dataset_note, TextEncoding};
+use crate::text::{dataset_note_index, field_bytes, ordered_dataset_notes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -240,7 +240,7 @@ fn scan_expansion_fields_ordered(
                     layout.expansion_header_width(),
                     "legacy expansion-field terminator",
                 )?,
-                notes,
+                ordered_dataset_notes(notes),
             ));
         }
         if value < 0 {
@@ -266,11 +266,9 @@ fn scan_expansion_fields_ordered(
         if data_type == 1 && payload.len() >= 2 * layout.varname_width {
             let (variable, remainder) = payload.split_at(layout.varname_width);
             let (characteristic, value) = remainder.split_at(layout.varname_width);
-            if is_dataset_note(variable, characteristic) {
+            if let Some(index) = dataset_note_index(variable, characteristic) {
                 let note = encoding.decode(field_bytes(value));
-                if !note.is_empty() {
-                    notes.push(note);
-                }
+                notes.push((index, note));
             }
         }
         cursor = checked_add(cursor, length, "legacy expansion-field payload")?;

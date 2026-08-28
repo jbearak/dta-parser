@@ -1037,7 +1037,7 @@ test_that("all bundled fixtures agree with haven", {
     for (path in paths) {
         actual <- read_dta(path)
         rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
-        expected <- haven::read_dta(path)
+        expected <- without_haven_note_count(haven::read_dta(path))
         info <- basename(path)
         metadata <- dtaparser:::.dta_metadata(normalizePath(path))
         storage <- stats::setNames(
@@ -1082,7 +1082,7 @@ test_that("all bundled fixtures agree with haven", {
     }
 })
 
-test_that("dataset-note cardinality, ordering, and empty values match haven", {
+test_that("dataset-note cardinality, ordering, and empty values are semantic", {
     skip_if_not_installed("haven")
     source <- fixture("auto_v118.dta")
     multiple <- readBin(source, "raw", file.info(source)$size)
@@ -1092,11 +1092,18 @@ test_that("dataset-note cardinality, ordering, and empty values match haven", {
     )
     zero <- replace_first_byte(one, "note1", utf8ToInt("x"))
 
-    for (variant in list(multiple = multiple, one = one, empty = empty,
-                         zero = zero)) {
-        expected <- haven::read_dta(
+    variants <- list(multiple = multiple, one = one, empty = empty, zero = zero)
+    expected_notes <- list(
+        multiple = "From Consumer Reports with permission",
+        one = "From Consumer Reports with permission",
+        empty = "",
+        zero = NULL
+    )
+    for (name in names(variants)) {
+        variant <- variants[[name]]
+        expected <- without_haven_note_count(haven::read_dta(
             variant, col_select = make, skip = 2, n_max = 3
-        )
+        ))
         actual <- read_dta(
             variant, col_select = make, skip = 2, n_max = 3
         )
@@ -1105,8 +1112,16 @@ test_that("dataset-note cardinality, ordering, and empty values match haven", {
         )
 
         expect_identical(actual, rust_vectors)
-        expect_identical(attr(actual, "notes", exact = TRUE),
-                         attr(expected, "notes", exact = TRUE))
+        expect_identical(
+            attr(actual, "notes", exact = TRUE), expected_notes[[name]]
+        )
+        if (name != "empty") {
+            expect_identical(attr(actual, "notes", exact = TRUE),
+                             attr(expected, "notes", exact = TRUE))
+        } else {
+            # Haven drops an empty note; dtaparser preserves its value.
+            expect_null(attr(expected, "notes", exact = TRUE))
+        }
     }
 })
 
@@ -1125,7 +1140,9 @@ test_that("projection, renaming, and row bounds match haven", {
         skip = 5,
         n_max = 4
     )
-    expected <- haven::read_dta(path, skip = 5, n_max = 4)
+    expected <- without_haven_note_count(
+        haven::read_dta(path, skip = 5, n_max = 4)
+    )
 
     expect_identical(actual, rust_vectors)
     expect_identical(names(actual), c("origin", "make", "price"))
@@ -1172,7 +1189,9 @@ test_that("safe row-window inputs align with haven in both collectors", {
         rust_vectors <- do.call(
             dtaparser:::.read_dta_rust_vectors, arguments
         )
-        expected <- do.call(haven::read_dta, arguments)
+        expected <- without_haven_note_count(
+            do.call(haven::read_dta, arguments)
+        )
 
         expect_identical(actual, rust_vectors,
                          info = paste(name, "materialization"))

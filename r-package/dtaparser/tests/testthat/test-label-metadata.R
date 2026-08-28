@@ -266,7 +266,11 @@ test_that("set_value_labels supports vector pipelines", {
 
 test_that("bulk value-label limits produce one complete portability warning", {
     data <- data.frame(x = 1, y = 1)
-    overlong_text <- paste(rep("é", 32001), collapse = "")
+    overlong_text <- iconv(
+        paste(rep("é", 16001), collapse = ""),
+        from = "UTF-8",
+        to = "latin1"
+    )
     too_many <- seq_len(65537L) - 1
     names(too_many) <- paste0("Label ", seq_along(too_many))
     messages <- character()
@@ -291,13 +295,14 @@ test_that("bulk value-label limits produce one complete portability warning", {
             mentions_y = grepl("value-label table for `y`", messages,
                                fixed = TRUE),
             mentions_text_limit = grepl(
-                "32,000 Unicode characters", messages, fixed = TRUE
+                "32,000 UTF-8 bytes", messages, fixed = TRUE
             ),
             mentions_table_limit = grepl(
                 "65,536 entries", messages, fixed = TRUE
             ),
-            stored_text_characters = nchar(
-                names(val_labels(updated$x)), type = "chars"
+            stored_text_bytes = nchar(
+                enc2utf8(names(val_labels(updated$x))),
+                type = "bytes"
             ),
             stored_entries = length(val_labels(updated$y))
         ),
@@ -307,7 +312,7 @@ test_that("bulk value-label limits produce one complete portability warning", {
             mentions_y = TRUE,
             mentions_text_limit = TRUE,
             mentions_table_limit = TRUE,
-            stored_text_characters = 32001L,
+            stored_text_bytes = 32002L,
             stored_entries = 65537L
         )
     )
@@ -316,7 +321,7 @@ test_that("bulk value-label limits produce one complete portability warning", {
 test_that("Stata 19 metadata boundaries do not warn", {
     data <- data.frame(x = 1, y = 1)
     exact_variable <- paste(rep("é", 80), collapse = "")
-    exact_text <- paste(rep("é", 32000), collapse = "")
+    exact_text <- paste(rep("é", 16000), collapse = "")
     exact_table <- seq_len(65536L) - 1
     names(exact_table) <- paste0("Label ", seq_along(exact_table))
 
@@ -334,7 +339,7 @@ test_that("Stata 19 metadata boundaries do not warn", {
         c(
             dataset = nchar(dataset_label(data), type = "chars"),
             variable = nchar(var_label(data$x), type = "chars"),
-            value_text = nchar(names(val_labels(data$x)), type = "chars"),
+            value_text = nchar(names(val_labels(data$x)), type = "bytes"),
             table_entries = length(val_labels(data$y))
         ),
         c(

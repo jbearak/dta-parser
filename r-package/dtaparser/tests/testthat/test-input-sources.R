@@ -108,6 +108,18 @@ test_that("plain local paths retain the direct path fast path", {
     expect_false(source$temporary)
 })
 
+test_that("extensionless local reads resolve to the matching .dta file", {
+    base <- tempfile(pattern = "dtaparser-extensionless-")
+    dta <- paste0(base, ".dta")
+    file.copy(input_fixture(), dta)
+    writeBin(as.raw(1:8), base)
+    on.exit(unlink(c(base, dta)), add = TRUE)
+
+    actual <- read_dta(base, n_max = 2)
+    expected <- read_dta(dta, n_max = 2)
+    expect_identical(actual, expected)
+})
+
 test_that("caller-supplied datasource paths are never deleted", {
     path <- tempfile(fileext = ".dta")
     file.copy(input_fixture(), path)

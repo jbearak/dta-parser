@@ -107,8 +107,8 @@
 #' data$status[1] <- tagged_missing("a")
 #' ```
 #' Use [factor_from_labels()] for an intentional one-way conversion to an
-#' ordinary factor. The suggested haven package remains useful for writing DTA
-#' files and for reading other statistical formats.
+#' ordinary factor. The suggested haven package remains useful for writing
+#' older DTA releases and for reading other statistical formats.
 #' See the
 #' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 #' for bulk setters, Stata 19 limits, and the version-specific comparison with
@@ -273,6 +273,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 }
 
 .resolve_dta_source <- function(file) {
+    file <- .resolve_implicit_dta_read_path(file)
     caller_supplied_source <- inherits(file, "source")
     caller_path <- .caller_dta_source_path(file)
     datasource <- readr::datasource(file)
@@ -314,6 +315,13 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     stop("This kind of input is not handled.", call. = FALSE)
+}
+
+.resolve_implicit_dta_read_path <- function(file) {
+    local_scalar <- is.character(file) && length(file) == 1L && !is.na(file) &&
+        !grepl("^[[:alpha:]][[:alnum:]+.-]*://", file)
+    if (!local_scalar || nzchar(tools::file_ext(basename(file)))) return(file)
+    paste0(file, ".dta")
 }
 
 .caller_dta_source_path <- function(file) {

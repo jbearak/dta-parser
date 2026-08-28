@@ -721,19 +721,21 @@ fn explicit_encoding_overrides_every_legacy_text_surface() {
 }
 
 #[test]
-fn omits_empty_legacy_dataset_notes() {
+fn preserves_empty_legacy_dataset_notes() {
     let mut bytes = synthetic_v113_msf();
     let value = bytes
         .windows(5)
         .rposition(|window| window == b"Caf\xe9\0")
         .unwrap();
     bytes[value] = 0;
-    assert!(parse_metadata(&bytes).unwrap().notes.is_empty());
-    assert!(DtaFile::from_reader(Cursor::new(bytes))
-        .unwrap()
-        .metadata()
-        .notes
-        .is_empty());
+    assert_eq!(parse_metadata(&bytes).unwrap().notes, [""]);
+    assert_eq!(
+        DtaFile::from_reader(Cursor::new(bytes))
+            .unwrap()
+            .metadata()
+            .notes,
+        [""]
+    );
 }
 
 #[test]
