@@ -56,6 +56,10 @@ _Avoid_: join cardinality, relationship check
 The per-row outcome of a Stata merge, recorded in the generated `_merge` variable: only in the master (x), only in the using (y), or matched.
 _Avoid_: join indicator, merge status
 
+**Coalesced variable**:
+A variable present in both inputs of a Stata merge, resolved into one column: keys take matched values from either side, and overlapping non-key variables keep the master's values. Metadata the inputs disagree on resolves master-first with a warning.
+_Avoid_: overlapping column, suffixed column
+
 **Label-aware tabulation**:
 A frequency table that uses Stata value labels and, when requested, keeps system missing, extended missing codes, and R `NaN` as distinct categories.
 _Avoid_: Safe tabulation

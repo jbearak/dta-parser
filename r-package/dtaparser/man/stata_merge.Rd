@@ -58,7 +58,13 @@ variable label unless it is absent, and combine compatible value-label
 tables with a warning when one code's text conflicts. Overlapping non-key
 variables follow Stata's master-wins rule: matched and master-only rows
 keep the values from \code{x}, and using-only rows take the values from \code{y}
-cast to the common type. There are no suffixed duplicate columns.
+cast to the common type. There are no suffixed duplicate columns. Stata
+applies this rule silently; \code{stata_merge()} warns and names the
+overlapping variables, because the \code{y} values for matched rows are
+discarded whether or not they agree with \code{x}. When the inputs disagree
+on a coalesced variable's variable label or value-label table (keys
+included), an additional warning names those variables, since the
+resolution keeps \code{x}'s side and Stata would say nothing.
 
 Every merge generates a \verb{_merge} variable, a \code{stata_byte} column using
 Stata's \verb{_merge} codes with value labels \verb{x only (1)}, \verb{y only (2)}, and

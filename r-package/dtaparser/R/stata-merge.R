@@ -23,7 +23,13 @@
 #' tables with a warning when one code's text conflicts. Overlapping non-key
 #' variables follow Stata's master-wins rule: matched and master-only rows
 #' keep the values from `x`, and using-only rows take the values from `y`
-#' cast to the common type. There are no suffixed duplicate columns.
+#' cast to the common type. There are no suffixed duplicate columns. Stata
+#' applies this rule silently; `stata_merge()` warns and names the
+#' overlapping variables, because the `y` values for matched rows are
+#' discarded whether or not they agree with `x`. When the inputs disagree
+#' on a coalesced variable's variable label or value-label table (keys
+#' included), an additional warning names those variables, since the
+#' resolution keeps `x`'s side and Stata would say nothing.
 #'
 #' Every merge generates a `_merge` variable, a `stata_byte` column using
 #' Stata's `_merge` codes with value labels `x only (1)`, `y only (2)`, and
@@ -141,6 +147,18 @@ stata_merge <- function(x, y, by, relationship,
     }
     x_extra <- setdiff(names(x), by)
     overlapping <- intersect(x_extra, names(y))
+    if (length(overlapping) > 0L) {
+        warning(sprintf(
+            paste0(
+                "%d variable%s in both inputs besides the keys; matched ",
+                "rows keep the `x` values: %s"
+            ),
+            length(overlapping),
+            if (length(overlapping) == 1L) " is" else "s are",
+            .listed_variable_names(overlapping)
+        ), call. = FALSE)
+    }
+    .warn_coalesced_metadata(x, y, c(by, overlapping))
     for (name in x_extra) {
         if (name %in% overlapping) {
             prototype <- vctrs::vec_ptype2(
@@ -242,6 +260,69 @@ stata_merge <- function(x, y, by, relationship,
         ), call. = FALSE)
     }
     results
+}
+
+.listed_variable_names <- function(names) {
+    shown <- names[seq_len(min(5L, length(names)))]
+    listed <- paste(shown, collapse = ", ")
+    if (length(names) > length(shown)) {
+        listed <- sprintf(
+            "%s, and %d more", listed, length(names) - length(shown)
+        )
+    }
+    listed
+}
+
+.normalized_value_labels <- function(column) {
+    labels <- val_labels(column)
+    if (is.null(labels) || length(labels) == 0L) {
+        return(NULL)
+    }
+    labels[order(unname(labels), names(labels))]
+}
+
+# Coalescing keeps one column per variable, so metadata the two inputs
+# disagree on is silently resolved; Stata says nothing, we warn.
+.warn_coalesced_metadata <- function(x, y, coalesced) {
+    var_label_diff <- character()
+    val_label_diff <- character()
+    for (name in coalesced) {
+        x_label <- var_label(x[[name]])
+        y_label <- var_label(y[[name]])
+        if (!is.null(x_label) && !is.null(y_label) &&
+            !identical(x_label, y_label)) {
+            var_label_diff <- c(var_label_diff, name)
+        }
+        if (!identical(
+            .normalized_value_labels(x[[name]]),
+            .normalized_value_labels(y[[name]])
+        )) {
+            val_label_diff <- c(val_label_diff, name)
+        }
+    }
+    if (length(var_label_diff) > 0L) {
+        warning(sprintf(
+            paste0(
+                "variable labels differ for %d coalesced variable%s; ",
+                "the `x` labels win: %s"
+            ),
+            length(var_label_diff),
+            if (length(var_label_diff) == 1L) "" else "s",
+            .listed_variable_names(var_label_diff)
+        ), call. = FALSE)
+    }
+    if (length(val_label_diff) > 0L) {
+        warning(sprintf(
+            paste0(
+                "value labels differ for %d coalesced variable%s; ",
+                "the tables combine and `x` wins conflicts: %s"
+            ),
+            length(val_label_diff),
+            if (length(val_label_diff) == 1L) "" else "s",
+            .listed_variable_names(val_label_diff)
+        ), call. = FALSE)
+    }
+    invisible(NULL)
 }
 
 .validate_merge_by <- function(x, y, by) {

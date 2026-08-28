@@ -139,7 +139,8 @@ labels and other metadata, since it keeps only the left key column.
 `stata_merge()` matches each of the 27 missing codes only to itself, requires
 the relationship declaration (`"1:1"`, `"m:1"`, or `"1:m"`), coalesces key
 storage types and labels, follows Stata's master-wins rule for overlapping
-variables, and generates the value-labelled `_merge` indicator. `keep` and
+variables (with a warning naming them, where Stata is silent), and generates
+the value-labelled `_merge` indicator. `keep` and
 `assert` mirror Stata's options, and either input may be a DTA file path so
 only the merged result occupies memory. See
 [the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence

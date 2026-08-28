@@ -85,7 +85,17 @@ test_that("key columns coalesce storage and metadata", {
         using_value = c("c", "d")
     )
 
-    result <- stata_merge(master, using, by = "id", relationship = "1:1")
+    warnings <- testthat::capture_warnings(
+        result <- stata_merge(master, using, by = "id", relationship = "1:1")
+    )
+    expect_match(
+        warnings, "variable labels differ for 1 coalesced variable.*id",
+        all = FALSE
+    )
+    expect_match(
+        warnings, "value labels differ for 1 coalesced variable.*id",
+        all = FALSE
+    )
 
     expect_identical(as.double(result$id), c(1, 2, 200))
     expect_identical(stata_storage_type(result$id), "int")
@@ -96,9 +106,49 @@ test_that("key columns coalesce storage and metadata", {
     conflicting <- tibble::tibble(
         id = set_value_labels(stata_byte(1), Uno = 1)
     )
-    expect_warning(
-        stata_merge(master, conflicting, by = "id", relationship = "1:1"),
-        "conflicting value labels"
+    warnings <- testthat::capture_warnings(
+        stata_merge(master, conflicting, by = "id", relationship = "1:1")
+    )
+    expect_match(warnings, "conflicting value labels", all = FALSE)
+    expect_match(
+        warnings, "value labels differ for 1 coalesced variable",
+        all = FALSE
+    )
+    expect_no_match(warnings, "variable labels differ")
+})
+
+test_that("coalesced variables with matching metadata merge silently", {
+    master <- tibble::tibble(
+        id = set_variable_labels(
+            set_value_labels(stata_byte(c(1, 2)), One = 1),
+            "Identifier"
+        ),
+        score = c(10, 20)
+    )
+    using <- tibble::tibble(
+        id = set_variable_labels(
+            set_value_labels(stata_int(c(1, 2)), One = 1),
+            "Identifier"
+        ),
+        group = c("a", "b")
+    )
+
+    expect_silent(
+        stata_merge(master, using, by = "id", relationship = "1:1")
+    )
+
+    unlabelled_using <- tibble::tibble(
+        id = stata_int(c(1, 2)),
+        group = c("a", "b")
+    )
+    warnings <- testthat::capture_warnings(
+        stata_merge(master, unlabelled_using, by = "id",
+                    relationship = "1:1")
+    )
+    expect_no_match(warnings, "variable labels differ")
+    expect_match(
+        warnings, "value labels differ for 1 coalesced variable",
+        all = FALSE
     )
 })
 
@@ -112,11 +162,26 @@ test_that("overlapping non-key variables follow the master-wins rule", {
         score = stata_int(c(99, 300))
     )
 
-    result <- stata_merge(master, using, by = "id", relationship = "1:1")
+    expect_warning(
+        result <- stata_merge(master, using, by = "id", relationship = "1:1"),
+        "1 variable is in both inputs besides the keys.*`x` values: score"
+    )
 
     expect_identical(names(result), c("id", "score", "_merge"))
     expect_identical(as.double(result$score), c(10, NA_real_, 300))
     expect_identical(stata_storage_type(result$score), "int")
+
+    wide_master <- tibble::tibble(
+        id = 1, a = 1, b = 1, c = 1, d = 1, e = 1, f = 1, g = 1
+    )
+    wide_using <- tibble::tibble(
+        id = 1, a = 2, b = 2, c = 2, d = 2, e = 2, f = 2, g = 2
+    )
+    expect_warning(
+        stata_merge(wide_master, wide_using, by = "id",
+                    relationship = "1:1"),
+        "7 variables are in both inputs besides the keys.*e, and 2 more"
+    )
 })
 
 test_that("merge relationships are validated with explicit diagnostics", {
@@ -283,12 +348,16 @@ test_that("temporal keys merge with promoted storage", {
     byte_date <- read_dta(byte_path)$foreign[1]
     int_date <- read_dta(int_path)$price[1]
 
-    result <- stata_merge(
-        tibble::tibble(id = byte_date, master_value = "m"),
-        tibble::tibble(id = int_date, using_value = "u"),
-        by = "id",
-        relationship = "1:1"
+    warnings <- testthat::capture_warnings(
+        result <- stata_merge(
+            tibble::tibble(id = byte_date, master_value = "m"),
+            tibble::tibble(id = int_date, using_value = "u"),
+            by = "id",
+            relationship = "1:1"
+        )
     )
+    expect_match(warnings, "variable labels differ", all = FALSE)
+    expect_match(warnings, "value labels differ", all = FALSE)
 
     expect_s3_class(result$id, "Date")
     expect_identical(stata_storage_type(result$id), "int")
