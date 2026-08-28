@@ -99,44 +99,52 @@ stata_merge <- function(x, y, by, relationship,
             y_arg = paste0("y$", name)
         )
         list(
-            x = vctrs::vec_cast(
-                x[[name]], prototype, x_arg = paste0("x$", name)
-            ),
-            y = vctrs::vec_cast(
-                y[[name]], prototype, x_arg = paste0("y$", name)
-            )
+            x = .stata_merge_cast(x[[name]], prototype, paste0("x$", name)),
+            y = .stata_merge_cast(y[[name]], prototype, paste0("y$", name))
         )
     })
     names(keys) <- by
 
-    x_proxy <- .stata_merge_key_frame(keys, "x", by)
-    y_proxy <- .stata_merge_key_frame(keys, "y", by)
-    .validate_merge_uniqueness(x_proxy, y_proxy, relationship)
-
-    matches <- vctrs::vec_locate_matches(
-        x_proxy, y_proxy,
-        remaining = NA_integer_,
-        needles_arg = "x",
-        haystack_arg = "y"
+    proxies <- .stata_merge_key_frames(keys, by)
+    matches <- tryCatch(
+        vctrs::vec_locate_matches(
+            proxies$x, proxies$y,
+            remaining = NA_integer_,
+            relationship = .merge_vctrs_relationships[[relationship]],
+            needles_arg = "x",
+            haystack_arg = "y"
+        ),
+        vctrs_error_matches_relationship = function(condition) {
+            stop(sprintf(
+                "`relationship = \"%s\"` requires unique keys in `%s`",
+                relationship, .merge_duplicated_side(condition)
+            ), call. = FALSE)
+        }
     )
     x_rows <- matches$needles
     y_rows <- matches$haystack
-    merge_codes <- ifelse(is.na(x_rows), 2, ifelse(is.na(y_rows), 1, 3))
+    .validate_unmatched_duplicates(proxies, x_rows, y_rows, relationship)
+    merge_codes <- rep(3, length(x_rows))
+    merge_codes[is.na(y_rows)] <- 1
+    merge_codes[is.na(x_rows)] <- 2
 
     if (!is.null(assert)) {
         .assert_match_results(merge_codes, assert)
     }
-    retained <- merge_codes %in% .match_result_codes(keep)
-    if (!all(retained)) {
-        x_rows <- x_rows[retained]
-        y_rows <- y_rows[retained]
-        merge_codes <- merge_codes[retained]
+    keep_codes <- .match_result_codes(keep)
+    if (length(setdiff(c(1, 2, 3), keep_codes)) > 0L) {
+        retained <- merge_codes %in% keep_codes
+        if (!all(retained)) {
+            x_rows <- x_rows[retained]
+            y_rows <- y_rows[retained]
+            merge_codes <- merge_codes[retained]
+        }
     }
+    using_only <- which(is.na(x_rows))
 
     columns <- list()
     for (name in by) {
         column <- vctrs::vec_slice(keys[[name]]$x, x_rows)
-        using_only <- which(is.na(x_rows))
         if (length(using_only) > 0L) {
             column <- vctrs::vec_assign(
                 column, using_only,
@@ -167,16 +175,15 @@ stata_merge <- function(x, y, by, relationship,
                 y_arg = paste0("y$", name)
             )
             column <- vctrs::vec_slice(
-                vctrs::vec_cast(x[[name]], prototype),
+                .stata_merge_cast(x[[name]], prototype, paste0("x$", name)),
                 x_rows
             )
-            using_only <- which(is.na(x_rows))
             if (length(using_only) > 0L) {
                 column <- vctrs::vec_assign(
                     column, using_only,
-                    vctrs::vec_slice(
-                        vctrs::vec_cast(y[[name]], prototype),
-                        y_rows[using_only]
+                    .stata_merge_cast(
+                        vctrs::vec_slice(y[[name]], y_rows[using_only]),
+                        prototype, paste0("y$", name)
                     )
                 )
             }
@@ -348,14 +355,19 @@ stata_merge <- function(x, y, by, relationship,
 
 # The tag-preserving equality proxy: a double key column becomes an observed
 # value plus its Stata missing code, so `.` and `.a` through `.z` match only
-# themselves while every observed value compares numerically.
-.stata_merge_key_proxy <- function(key, arg) {
+# themselves while every observed value compares numerically. A key with no
+# missing values on either side skips the code column, because the codes
+# would be constant and matching a single column is cheaper.
+.stata_merge_key_half <- function(key, arg) {
     if (typeof(key) != "double") {
-        return(list(value = key))
+        return(list(value = key, missing = FALSE))
     }
     values <- as.double(key)
     codes <- .tab_missing_codes(values)
     observed <- is.na(codes)
+    if (all(observed)) {
+        return(list(value = values, missing = FALSE))
+    }
     if (any(codes[!observed] == 256L)) {
         stop(sprintf(
             paste0(
@@ -367,30 +379,74 @@ stata_merge <- function(x, y, by, relationship,
     }
     values[!observed] <- NA_real_
     codes[observed] <- -1L
-    list(value = values, code = codes)
+    list(value = values, code = codes, missing = TRUE)
 }
 
-.stata_merge_key_frame <- function(keys, side, by) {
-    columns <- list()
+# Both proxy frames must have the same shape, so the code column is decided
+# per key name across the two sides.
+.stata_merge_key_frames <- function(keys, by) {
+    x_columns <- list()
+    y_columns <- list()
     for (name in by) {
-        proxy <- .stata_merge_key_proxy(
-            keys[[name]][[side]], paste0(side, "$", name)
-        )
-        names(proxy) <- paste0(name, "..", names(proxy))
-        columns <- c(columns, proxy)
+        x_half <- .stata_merge_key_half(keys[[name]]$x, paste0("x$", name))
+        y_half <- .stata_merge_key_half(keys[[name]]$y, paste0("y$", name))
+        with_code <- x_half$missing || y_half$missing
+        value_name <- paste0(name, "..value")
+        code_name <- paste0(name, "..code")
+        x_columns[[value_name]] <- x_half$value
+        y_columns[[value_name]] <- y_half$value
+        if (with_code) {
+            x_columns[[code_name]] <- if (is.null(x_half$code)) {
+                rep(-1L, length(x_half$value))
+            } else {
+                x_half$code
+            }
+            y_columns[[code_name]] <- if (is.null(y_half$code)) {
+                rep(-1L, length(y_half$value))
+            } else {
+                y_half$code
+            }
+        }
     }
-    vctrs::new_data_frame(columns)
+    list(
+        x = vctrs::new_data_frame(x_columns),
+        y = vctrs::new_data_frame(y_columns)
+    )
 }
 
-.validate_merge_uniqueness <- function(x_proxy, y_proxy, relationship) {
-    unique_sides <- switch(relationship,
+# Casting to a prototype the value already has re-encodes compact numeric
+# columns for nothing, and merges of files with shared heritage hit that
+# case on most columns.
+.stata_merge_cast <- function(value, prototype, arg) {
+    if (identical(vctrs::vec_ptype(value), prototype)) {
+        return(value)
+    }
+    vctrs::vec_cast(value, prototype, x_arg = arg)
+}
+
+.merge_vctrs_relationships <- c(
+    "1:1" = "one-to-one", "m:1" = "many-to-one", "1:m" = "one-to-many"
+)
+
+# vctrs enforces the declared relationship only across matched pairs, so
+# duplicate keys among unmatched rows must be caught separately; the check
+# hashes only the unmatched remainder.
+.validate_unmatched_duplicates <- function(proxies, x_rows, y_rows,
+                                           relationship) {
+    sides <- switch(relationship,
         "1:1" = c("x", "y"),
         "m:1" = "y",
         "1:m" = "x"
     )
-    for (side in unique_sides) {
-        proxy <- if (identical(side, "x")) x_proxy else y_proxy
-        if (vctrs::vec_duplicate_any(proxy)) {
+    for (side in sides) {
+        rows <- if (identical(side, "x")) {
+            x_rows[is.na(y_rows)]
+        } else {
+            y_rows[is.na(x_rows)]
+        }
+        if (length(rows) > 1L && vctrs::vec_duplicate_any(
+            vctrs::vec_slice(proxies[[side]], rows)
+        )) {
             stop(sprintf(
                 "`relationship = \"%s\"` requires unique keys in `%s`",
                 relationship, side
@@ -398,6 +454,18 @@ stata_merge <- function(x, y, by, relationship,
         }
     }
     invisible(NULL)
+}
+
+# vctrs reports the side whose row matched multiple values, which is the
+# opposite side from the duplicate keys.
+.merge_duplicated_side <- function(condition) {
+    if (inherits(condition, "vctrs_error_matches_relationship_one_to_many")) {
+        return("x")
+    }
+    if (inherits(condition, "vctrs_error_matches_relationship_many_to_one")) {
+        return("y")
+    }
+    if (identical(condition$which, "haystack")) "x" else "y"
 }
 
 .assert_match_results <- function(merge_codes, assert) {
