@@ -53,7 +53,7 @@ The declared key multiplicity between the master and using datasets: `1:1`, `m:1
 _Avoid_: join cardinality, relationship check
 
 **Match result**:
-The per-row outcome of a Stata merge, recorded in the generated `_merge` variable: master only, using only, or matched.
+The per-row outcome of a Stata merge, recorded in the generated `_merge` variable: only in the master (x), only in the using (y), or matched.
 _Avoid_: join indicator, merge status
 
 **Label-aware tabulation**:

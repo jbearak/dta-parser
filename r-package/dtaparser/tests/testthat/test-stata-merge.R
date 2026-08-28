@@ -1,6 +1,6 @@
 merge_indicator_labels <- c(
-    "master only (1)" = 1,
-    "using only (2)" = 2,
+    "x only (1)" = 1,
+    "y only (2)" = 2,
     "matched (3)" = 3
 )
 
@@ -187,12 +187,12 @@ test_that("keep filters match results and assert validates them", {
     expect_error(
         stata_merge(master, using, by = "id", relationship = "1:1",
                     assert = "match"),
-        "master only"
+        "x only"
     )
     expect_error(
         stata_merge(master, using, by = "id", relationship = "1:1",
                     assert = c("master", "match")),
-        "using only"
+        "y only"
     )
     asserted <- stata_merge(
         master, using, by = "id", relationship = "1:1",
@@ -200,10 +200,26 @@ test_that("keep filters match results and assert validates them", {
     )
     expect_identical(nrow(asserted), 3L)
 
+    x_tokens <- stata_merge(
+        master, using, by = "id", relationship = "1:1",
+        keep = c("x", "match")
+    )
+    expect_identical(data_values(x_tokens), data_values(kept))
+    expect_error(
+        stata_merge(master, using, by = "id", relationship = "1:1",
+                    assert = "y"),
+        "x only"
+    )
+
     expect_error(
         stata_merge(master, using, by = "id", relationship = "1:1",
                     keep = "matched"),
         "keep"
+    )
+    expect_error(
+        stata_merge(master, using, by = "id", relationship = "1:1",
+                    keep = c("x", "master")),
+        "aliases"
     )
 })
 

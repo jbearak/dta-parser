@@ -4,14 +4,7 @@
 \alias{stata_merge}
 \title{Merge datasets under Stata missing-code identity}
 \usage{
-stata_merge(
-  x,
-  y,
-  by,
-  relationship,
-  keep = c("master", "using", "match"),
-  assert = NULL
-)
+stata_merge(x, y, by, relationship, keep = c("x", "y", "match"), assert = NULL)
 }
 \arguments{
 \item{x, y}{Data frames to merge, or DTA file paths read with
@@ -28,11 +21,13 @@ read arguments.}
 \item{relationship}{The declared key multiplicity: \code{"1:1"}, \code{"m:1"}, or
 \code{"1:m"}. Required.}
 
-\item{keep}{Match results to retain: any of \code{"master"}, \code{"using"}, and
-\code{"match"}. The default keeps every row, as Stata does.}
+\item{keep}{Match results to retain: any of \code{"x"}, \code{"y"}, and \code{"match"},
+with \code{"master"} and \code{"using"} accepted as aliases for \code{"x"} and \code{"y"}.
+The default keeps every row, as Stata does.}
 
-\item{assert}{Optional match results that are allowed to occur. Any other
-match result is an error naming the offending rows.}
+\item{assert}{Optional match results that are allowed to occur, using the
+same names as \code{keep}. Any other match result is an error naming the
+offending rows.}
 }
 \value{
 A tibble with the key columns, the remaining columns of \code{x}, the
@@ -48,8 +43,9 @@ missing identity; use \code{NA_real_} or \code{\link[=tagged_missing]{tagged_mis
 }
 \details{
 \code{x} plays the role of Stata's master dataset and \code{y} the using dataset.
-Match results keep Stata's names: a \code{"master"} row exists only in \code{x}, a
-\code{"using"} row only in \code{y}, and a \code{"match"} row in both.
+Match results are named \code{"x"} (a row only in \code{x}), \code{"y"} (a row only in
+\code{y}), and \code{"match"} (a row in both). \code{"master"} and \code{"using"} are
+permanent aliases for \code{"x"} and \code{"y"}, matching Stata's vocabulary.
 
 The declared merge relationship is required, as in Stata. \code{"1:1"} requires
 unique keys on both sides, \code{"m:1"} unique keys in \code{y}, and \code{"1:m"} unique
@@ -64,8 +60,8 @@ variables follow Stata's master-wins rule: matched and master-only rows
 keep the values from \code{x}, and using-only rows take the values from \code{y}
 cast to the common type. There are no suffixed duplicate columns.
 
-Every merge generates a \verb{_merge} variable, a \code{stata_byte} column with
-Stata's value labels \verb{master only (1)}, \verb{using only (2)}, and
+Every merge generates a \verb{_merge} variable, a \code{stata_byte} column using
+Stata's \verb{_merge} codes with value labels \verb{x only (1)}, \verb{y only (2)}, and
 \code{matched (3)}. Merging errors if either input already has a \verb{_merge}
 column. The result keeps the dataset label and notes from \code{x}.
 

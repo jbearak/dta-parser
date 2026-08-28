@@ -8,8 +8,9 @@
 #' missing identity; use `NA_real_` or [tagged_missing()].
 #'
 #' `x` plays the role of Stata's master dataset and `y` the using dataset.
-#' Match results keep Stata's names: a `"master"` row exists only in `x`, a
-#' `"using"` row only in `y`, and a `"match"` row in both.
+#' Match results are named `"x"` (a row only in `x`), `"y"` (a row only in
+#' `y`), and `"match"` (a row in both). `"master"` and `"using"` are
+#' permanent aliases for `"x"` and `"y"`, matching Stata's vocabulary.
 #'
 #' The declared merge relationship is required, as in Stata. `"1:1"` requires
 #' unique keys on both sides, `"m:1"` unique keys in `y`, and `"1:m"` unique
@@ -24,8 +25,8 @@
 #' keep the values from `x`, and using-only rows take the values from `y`
 #' cast to the common type. There are no suffixed duplicate columns.
 #'
-#' Every merge generates a `_merge` variable, a `stata_byte` column with
-#' Stata's value labels `master only (1)`, `using only (2)`, and
+#' Every merge generates a `_merge` variable, a `stata_byte` column using
+#' Stata's `_merge` codes with value labels `x only (1)`, `y only (2)`, and
 #' `matched (3)`. Merging errors if either input already has a `_merge`
 #' column. The result keeps the dataset label and notes from `x`.
 #'
@@ -44,10 +45,12 @@
 #' @param by A character vector naming key columns present in both inputs.
 #' @param relationship The declared key multiplicity: `"1:1"`, `"m:1"`, or
 #'   `"1:m"`. Required.
-#' @param keep Match results to retain: any of `"master"`, `"using"`, and
-#'   `"match"`. The default keeps every row, as Stata does.
-#' @param assert Optional match results that are allowed to occur. Any other
-#'   match result is an error naming the offending rows.
+#' @param keep Match results to retain: any of `"x"`, `"y"`, and `"match"`,
+#'   with `"master"` and `"using"` accepted as aliases for `"x"` and `"y"`.
+#'   The default keeps every row, as Stata does.
+#' @param assert Optional match results that are allowed to occur, using the
+#'   same names as `keep`. Any other match result is an error naming the
+#'   offending rows.
 #' @return A tibble with the key columns, the remaining columns of `x`, the
 #'   columns only in `y`, and `_merge`, in that order.
 #' @examples
@@ -62,7 +65,7 @@
 #' stata_merge(master, using, by = "id", relationship = "1:1")
 #' @export
 stata_merge <- function(x, y, by, relationship,
-                        keep = c("master", "using", "match"),
+                        keep = c("x", "y", "match"),
                         assert = NULL) {
     x <- .resolve_merge_input(x, "x")
     y <- .resolve_merge_input(y, "y")
@@ -169,8 +172,8 @@ stata_merge <- function(x, y, by, relationship,
     }
     indicator <- stata_byte(merge_codes)
     val_labels(indicator) <- c(
-        "master only (1)" = 1,
-        "using only (2)" = 2,
+        "x only (1)" = 1,
+        "y only (2)" = 2,
         "matched (3)" = 3
     )
     columns[["_merge"]] <- indicator
@@ -191,10 +194,12 @@ stata_merge <- function(x, y, by, relationship,
          call. = FALSE)
 }
 
-.merge_match_results <- c(master = 1, using = 2, match = 3)
+.merge_match_results <- c(
+    x = 1, y = 2, master = 1, using = 2, match = 3
+)
 
 .merge_result_labels <- c(
-    "master only (1)", "using only (2)", "matched (3)"
+    "x only (1)", "y only (2)", "matched (3)"
 )
 
 .match_result_codes <- function(results) {
@@ -221,11 +226,18 @@ stata_merge <- function(x, y, by, relationship,
 }
 
 .validate_match_results <- function(results, argument) {
-    if (!is.character(results) || length(results) == 0L ||
-        anyNA(results) || anyDuplicated(results) ||
-        !all(results %in% names(.merge_match_results))) {
+    valid <- is.character(results) && length(results) > 0L &&
+        !anyNA(results) && all(results %in% names(.merge_match_results))
+    if (valid && anyDuplicated(.merge_match_results[results])) {
+        valid <- FALSE
+    }
+    if (!valid) {
         stop(sprintf(
-            "`%s` values must be \"master\", \"using\", or \"match\"",
+            paste0(
+                "`%s` values must be \"x\", \"y\", or \"match\", without ",
+                "repeating a match result; \"master\" and \"using\" are ",
+                "aliases for \"x\" and \"y\""
+            ),
             argument
         ), call. = FALSE)
     }
