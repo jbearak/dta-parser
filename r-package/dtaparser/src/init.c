@@ -1,9 +1,9 @@
 #include <R.h>
 #include <Rversion.h>
-#include <Rinterface.h>
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Altrep.h>
+#include <R_ext/GraphicsEngine.h>
 #include <R_ext/Utils.h>
 #include <R_ext/Visibility.h>
 #include <float.h>
@@ -2073,7 +2073,7 @@ SEXP C_dtaparser_write(SEXP specification, SEXP path) {
     );
     if (ok < 0) {
         UNPROTECT(2);
-        onintr();
+        Rf_onintr();
         Rf_error("write interrupted");
     }
     if (!ok) fail_from_rust(rust_error);

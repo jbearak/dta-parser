@@ -2,15 +2,19 @@
 
 This manual workflow qualifies `dtaparser::write_dta()` against every DTA file
 in the DHS, MICS, and NSFG directories beneath `/opt/aww_cache`, then compares
-its write performance with Stata. It refuses CI and requires Stata, haven, and
-processx.
+its write performance with Stata. It refuses CI and requires Stata/MP 18 or
+later, haven, and processx. The complete workflow requires Stata/MP because its
+32,768-variable release-119 case exceeds Stata/SE's 32,767-variable limit; an
+early capability probe fails before corpus work when `maxvar 120000` is not
+available.
 
 Qualification uses a fresh R process for each input. It reads with dtaparser,
 writes a Stata 18/19 standalone file, reads that output again, and checks the
 values, storage declarations, tagged missing codes, formats, labels, and notes.
 Haven must report the same dimensions, and Stata 18 must open each output with
 the same dimensions. The two known unreadable source files are exclusions only
-when their corpus, byte length, and SHA-256 digest all match the recorded facts.
+when their stable corpus identity, byte length, and SHA-256 digest all match the
+recorded facts.
 The complete gate is exactly 1,821 passes and two exclusions.
 
 Only after that gate succeeds does the same package build write all 1,821

@@ -83,7 +83,7 @@ processes disable user profiles and environment files as defense in depth.
 Each run also writes `run-provenance.tsv`. Its stable provenance ID binds the
 build provenance ID, exact iteration count, manifest and dataset SHA-256 values,
 sizes, row counts, full-column count, and projected-column count, R
-version/platform, OS/kernel and CPU identity, Python version/path,
+version/platform, OS/kernel and CPU identity,
 and versions plus resolved paths for dtaparser, haven, tidyselect, readr, rlang,
 and tibble. Every raw timing row carries the run and build IDs and its dataset
 SHA-256; summaries retain all three fields. The summarizer accepts the runtime

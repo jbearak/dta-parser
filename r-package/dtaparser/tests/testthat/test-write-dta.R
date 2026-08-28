@@ -8,7 +8,7 @@ test_that("write_dta writes a typed release-118 dataset and returns its input in
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_invisible(expect_identical(write_dta(data, path), data))
+    expect_identical(expect_invisible(write_dta(data, path)), data)
     expect_true(file.exists(path))
 
     actual <- read_dta(path, use_numeric_altrep = FALSE)

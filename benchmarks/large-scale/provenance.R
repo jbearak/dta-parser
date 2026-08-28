@@ -65,10 +65,11 @@ benchmark_tree_digest <- function(checkout_root, scope) {
 
     absolute <- file.path(checkout_root, paths)
     hashes <- rep.int("<missing>", length(paths))
-    present <- file.exists(absolute)
-    if (any(nzchar(Sys.readlink(absolute[present])))) {
+    links <- Sys.readlink(absolute)
+    if (any(!is.na(links) & nzchar(links))) {
         stop("benchmark source provenance input must be a regular nonsymlink file")
     }
+    present <- file.exists(absolute)
     present_paths <- absolute[present]
     if (length(present_paths) && any(!file_test("-f", present_paths))) {
         stop("benchmark source provenance input must be a regular nonsymlink file")

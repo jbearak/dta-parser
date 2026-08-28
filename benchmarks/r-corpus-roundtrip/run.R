@@ -31,6 +31,49 @@ rscript <- normalizePath(Sys.which("Rscript"), winslash = "/", mustWork = TRUE)
 stata <- find_stata()
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
+run_process <- function(
+    command, arguments, working_directory = NULL, timed = FALSE
+) {
+    environment <- c(
+        DTAPARSER_BENCH_LIB = benchmark_library,
+        R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
+    )
+    if (timed) {
+        return(run_timed_process(
+            command, arguments, working_directory, environment
+        ))
+    }
+    processx::run(
+        command, arguments, wd = working_directory, env = environment,
+        error_on_status = FALSE, echo = FALSE
+    )
+}
+
+require_stata_mp <- function() {
+    work_dir <- tempfile("stata-preflight-", tmpdir = output_dir)
+    dir.create(work_dir)
+    on.exit(unlink(work_dir, recursive = TRUE, force = TRUE), add = TRUE)
+    copied <- file.copy(
+        file.path(script_dir, "stata-preflight.do"),
+        file.path(work_dir, "stata-preflight.do")
+    )
+    if (!copied) stop("could not stage the Stata capability probe")
+    process <- run_process(
+        stata, c("-q", "-b", "do", "stata-preflight.do"), work_dir
+    )
+    result_path <- file.path(work_dir, "stata-preflight-result.tsv")
+    status <- if (file.exists(result_path)) {
+        readLines(result_path, n = 1L, warn = FALSE)
+    } else character()
+    if (process$status != 0L || !identical(status, "ok")) {
+        message("Stata capability probe failed: ", process$stderr)
+        stop("Stata/MP with maxvar 120000 is required")
+    }
+    invisible(NULL)
+}
+
+require_stata_mp()
+
 source_inventory_path <- file.path(output_dir, "corpus-inventory.tsv")
 force_inventory <- identical(
     Sys.getenv("DTAPARSER_ROUNDTRIP_VERIFY_INVENTORY"), "1"
@@ -98,24 +141,6 @@ benchmark_publish_or_verify_binding(
     ),
     "existing results do not have a resumable run binding"
 )
-
-run_process <- function(
-    command, arguments, working_directory = NULL, timed = FALSE
-) {
-    environment <- c(
-        DTAPARSER_BENCH_LIB = benchmark_library,
-        R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
-    )
-    if (timed) {
-        return(run_timed_process(
-            command, arguments, working_directory, environment
-        ))
-    }
-    processx::run(
-        command, arguments, wd = working_directory, env = environment,
-        error_on_status = FALSE, echo = FALSE
-    )
-}
 
 parse_marker <- function(output, prefix, fields,
                          failure_status = "worker-error") {

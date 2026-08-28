@@ -13,7 +13,7 @@ sys.source(
 benchmark_activate_library("dtaparser")
 
 input <- normalizePath(args[[1L]], winslash = "/", mustWork = TRUE)
-output <- args[[2L]]
+output <- dtaparser:::.resolve_dta_write_path(args[[2L]])$path
 data <- dtaparser::read_dta(input)
 gc()
 started <- proc.time()[["elapsed"]]

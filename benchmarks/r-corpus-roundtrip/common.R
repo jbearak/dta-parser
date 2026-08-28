@@ -81,6 +81,13 @@ roundtrip_cached_inventory <- function(cache_root, path, max_files = Inf) {
         !identical(inventory$modified, files$modified)) {
         stop("corpus files changed since the cached inventory was created")
     }
+    cached_releases <- suppressWarnings(as.integer(inventory$release))
+    canonical_releases <- ifelse(
+        is.na(cached_releases), NA_character_, as.character(cached_releases)
+    )
+    if (!identical(inventory$release, canonical_releases)) {
+        stop("cached corpus inventory is invalid")
+    }
     current_hashes <- benchmark_files_sha256(files$path, progress = FALSE)
     current_ids <- mapply(
         roundtrip_stable_id,
@@ -89,11 +96,15 @@ roundtrip_cached_inventory <- function(cache_root, path, max_files = Inf) {
         current_hashes,
         USE.NAMES = FALSE
     )
+    current_releases <- unname(vapply(
+        files$path, corpus_dta_release, integer(1L)
+    ))
     if (!identical(inventory$sha256, current_hashes) ||
-        !identical(inventory$id, current_ids)) {
+        !identical(inventory$id, current_ids) ||
+        !identical(cached_releases, current_releases)) {
         stop("corpus files changed since the cached inventory was created")
     }
-    inventory$release <- as.integer(inventory$release)
+    inventory$release <- current_releases
     inventory$bytes <- as.double(inventory$bytes)
     inventory$path <- files$path
     rownames(inventory) <- NULL
@@ -177,6 +188,10 @@ roundtrip_validate_benchmark_matrix <- function(raw, inputs, writers) {
 
 roundtrip_expected_exclusions <- data.frame(
     corpus = c("MICS", "MICS"),
+    id = c(
+        "MICS-9fcbb54ada2fcece459bca33",
+        "MICS-8cb7d864111538cd2265198f"
+    ),
     bytes = c(0, 27792),
     sha256 = c(
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -189,6 +204,7 @@ roundtrip_expected_exclusions <- data.frame(
 roundtrip_exclusion_reason <- function(item) {
     matched <- which(
         roundtrip_expected_exclusions$corpus == item$corpus &
+        roundtrip_expected_exclusions$id == item$id &
         roundtrip_expected_exclusions$bytes == item$bytes &
         roundtrip_expected_exclusions$sha256 == item$sha256
     )

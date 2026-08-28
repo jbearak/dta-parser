@@ -68,7 +68,21 @@ stopifnot(
 writeBin(ordinary_bytes, ordinary)
 Sys.setFileTime(ordinary, ordinary_info$mtime[[1L]])
 empty <- inventory[inventory$corpus == "MICS", , drop = FALSE]
-stopifnot(identical(roundtrip_exclusion_reason(empty), "empty-source"))
+known_empty <- empty
+known_empty$id <- roundtrip_expected_exclusions$id[
+    roundtrip_expected_exclusions$reason == "empty-source"
+]
+malformed <- roundtrip_expected_exclusions[
+    roundtrip_expected_exclusions$reason == "malformed-source", , drop = FALSE
+]
+wrong_malformed <- malformed
+wrong_malformed$id <- paste0(wrong_malformed$id, "-other")
+stopifnot(
+    is.na(roundtrip_exclusion_reason(empty)),
+    identical(roundtrip_exclusion_reason(known_empty), "empty-source"),
+    identical(roundtrip_exclusion_reason(malformed), "malformed-source"),
+    is.na(roundtrip_exclusion_reason(wrong_malformed))
+)
 stopifnot(
     identical(benchmark_hash_workers(NA_integer_), 1L),
     identical(benchmark_hash_workers(integer()), 1L),
@@ -167,11 +181,39 @@ write.table(inventory[c("corpus", "id", "sha256")], manifest, sep = "\t",
 stopifnot(grepl("^[0-9a-f]{64}$", benchmark_file_sha256(manifest)))
 
 cached_inventory_path <- file.path(root, "cached-inventory.tsv")
+cached_inventory <- inventory[c(
+    "corpus", "id", "relative_path", "release", "bytes", "modified",
+    "sha256"
+)]
 write.table(
-    inventory[c(
-        "corpus", "id", "relative_path", "release", "bytes", "modified",
-        "sha256"
-    )],
+    cached_inventory,
+    cached_inventory_path,
+    sep = "\t",
+    row.names = FALSE,
+    quote = TRUE
+)
+validated_cache <- roundtrip_cached_inventory(root, cached_inventory_path)
+stopifnot(identical(validated_cache$release, inventory$release))
+stale_release <- cached_inventory
+stale_release$release[stale_release$corpus == "DHS"] <- 117L
+write.table(
+    stale_release,
+    cached_inventory_path,
+    sep = "\t",
+    row.names = FALSE,
+    quote = TRUE
+)
+stale_release_error <- tryCatch(
+    roundtrip_cached_inventory(root, cached_inventory_path),
+    error = identity
+)
+stopifnot(
+    inherits(stale_release_error, "error"),
+    grepl("corpus files changed", conditionMessage(stale_release_error),
+          fixed = TRUE)
+)
+write.table(
+    cached_inventory,
     cached_inventory_path,
     sep = "\t",
     row.names = FALSE,

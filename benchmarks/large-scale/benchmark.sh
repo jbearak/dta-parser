@@ -19,7 +19,10 @@ manifest="$target_dir/datasets.tsv"
 build_dir="$target_dir/.build.$$"
 run_stage="$target_dir/.run.$$"
 benchmark_library="$build_dir/library"
-trap 'rm -rf "$build_dir" "$run_stage"' EXIT HUP INT TERM
+trap 'rm -rf "$build_dir" "$run_stage"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 build_dtaparser_library "$checkout_root" "$script_dir" "$build_dir"
 export DTAPARSER_BENCH_LIB="$benchmark_library"
