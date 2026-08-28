@@ -1,0 +1,12 @@
+Revision: 8e0b580f4fcf130a79eea82cb72e24390c5ad395
+Command: stata-mp -b do benchmarks/r-merge-performance/stata-m1.do target/r-merge-performance
+
+   1:      0.44 /        1 =       0.4440
+   2:      0.35 /        1 =       0.3500
+   3:      0.33 /        1 =       0.3290
+   4:      0.33 /        1 =       0.3290
+   5:      0.32 /        1 =       0.3240
+   6:      0.32 /        1 =       0.3190
+   7:      0.32 /        1 =       0.3180
+
+Median: 0.3290 seconds
