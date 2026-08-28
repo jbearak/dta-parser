@@ -103,7 +103,7 @@ The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is n
 | Scenario on dtaparser data | `dtaparser` helpers | `labelled` 2.16.0 |
 | --- | --- | --- |
 | Read variable/value labels | Reads the native attributes | Reads the same attributes |
-| Set a variable label on numeric ALTREP | Keeps an ALTREP result | Materializes the vector |
+| Set a variable label on numeric ALTREP | Keeps an unmaterialized compact result | Keeps an unmaterialized compact result |
 | Set value labels on numeric ALTREP | Keeps an ALTREP result and preserves `format.stata` and custom attributes | Materializes the vector and drops `format.stata` and custom attributes |
 | Set value labels on `Date` or `POSIXct` | Preserves temporal classes and time zone | Reconstructs a plain haven-labelled numeric vector |
 | Remove all value labels | Removes compatibility classes added to ordinary numeric vectors while retaining unrelated classes | Reconstructs a standard haven-labelled numeric vector as an unclassed numeric vector |

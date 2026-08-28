@@ -183,6 +183,10 @@ interop <- callr::r(
             labelled_variable_is_altrep = dtaparser:::.is_altrep(
                 labelled_variable_result
             ),
+            labelled_variable_unmaterialized =
+                dtaparser:::.is_unmaterialized_numeric_altrep(
+                    labelled_variable_result
+                ),
             labelled_custom = attr(
                 labelled_custom_result, "provenance", exact = TRUE
             ),
@@ -227,8 +231,9 @@ assert(
     "The labelled 2.16.0 materialization/metadata-loss comparison changed"
 )
 assert(
-    !interop$labelled_variable_is_altrep,
-    "The labelled 2.16.0 variable-label materialization comparison changed"
+    interop$labelled_variable_is_altrep &&
+        interop$labelled_variable_unmaterialized,
+    "The labelled 2.16.0 variable-label compact-storage comparison changed"
 )
 assert(
     is.null(interop$labelled_custom),
