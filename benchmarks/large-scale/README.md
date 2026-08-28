@@ -44,8 +44,9 @@ rotates in the independent secondary matrix. Raw primary rows retain the exact
 paired input SHA-256 in addition to elapsed time, peak RSS, and output size. The
 default is seven iterations per writer and size.
 
-The [2026-08-27 write report](results-2026-08-27.md) records the first complete
-seven-iteration comparison.
+The [2026-08-28 write report](results-2026-08-28.md) records the latest complete
+seven-iteration comparison. The [2026-08-27 report](results-2026-08-27.md) is
+retained as the historical baseline.
 
 Before timing, the runner requires exact identity between the dta-parser and
 Rust-vector collectors for both workloads. It also compares 32-row projected
