@@ -1,29 +1,4 @@
-corpus_legacy_releases <- c(104L, 105L, 108L, 110L, 111L, 113L, 114L, 115L)
-corpus_modern_release_prefix <- charToRaw("<stata_dta><header><release>")
-
-corpus_dta_release <- function(path) {
-    tryCatch({
-        if (!file.exists(path) || dir.exists(path)) return(NA_integer_)
-        connection <- suppressWarnings(file(path, open = "rb"))
-        on.exit(close(connection), add = TRUE)
-        needed <- length(corpus_modern_release_prefix) + 3L
-        header <- readBin(connection, what = "raw", n = needed)
-        if (!length(header)) return(NA_integer_)
-
-        first <- as.integer(header[[1L]])
-        if (first %in% corpus_legacy_releases) return(first)
-        if (length(header) < needed || !identical(
-            header[seq_along(corpus_modern_release_prefix)],
-            corpus_modern_release_prefix
-        )) return(NA_integer_)
-
-        digits <- rawToChar(header[seq.int(
-            length(corpus_modern_release_prefix) + 1L, needed
-        )])
-        if (!grepl("^[0-9]{3}$", digits)) return(NA_integer_)
-        as.integer(digits)
-    }, error = function(error) NA_integer_)
-}
+source(file.path(script_dir, "..", "benchmark-common.R"), local = TRUE)
 
 corpus_pair_results <- function(raw, inventory) {
     raw_required <- c(

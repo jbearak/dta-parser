@@ -128,11 +128,11 @@ pub(crate) fn dataset_note_index(variable: &[u8], characteristic: &[u8]) -> Opti
     if index.is_empty() || !index.iter().all(u8::is_ascii_digit) {
         return None;
     }
-    std::str::from_utf8(index).ok()?.parse().ok()
+    let index = std::str::from_utf8(index).ok()?.parse().ok()?;
+    (index != 0).then_some(index)
 }
 
 pub(crate) fn ordered_dataset_notes(mut notes: Vec<(usize, String)>) -> Vec<String> {
-    notes.retain(|(index, _)| *index != 0);
     notes.sort_by_key(|(index, _)| *index);
     notes.into_iter().map(|(_, note)| note).collect()
 }

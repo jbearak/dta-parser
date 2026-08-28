@@ -266,7 +266,11 @@ test_that("set_value_labels supports vector pipelines", {
 
 test_that("bulk value-label limits produce one complete portability warning", {
     data <- data.frame(x = 1, y = 1)
-    overlong_text <- paste(rep("é", 16001), collapse = "")
+    overlong_text <- iconv(
+        paste(rep("é", 16001), collapse = ""),
+        from = "UTF-8",
+        to = "latin1"
+    )
     too_many <- seq_len(65537L) - 1
     names(too_many) <- paste0("Label ", seq_along(too_many))
     messages <- character()
@@ -297,7 +301,8 @@ test_that("bulk value-label limits produce one complete portability warning", {
                 "65,536 entries", messages, fixed = TRUE
             ),
             stored_text_bytes = nchar(
-                names(val_labels(updated$x)), type = "bytes"
+                enc2utf8(names(val_labels(updated$x))),
+                type = "bytes"
             ),
             stored_entries = length(val_labels(updated$y))
         ),

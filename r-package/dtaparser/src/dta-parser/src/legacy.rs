@@ -268,9 +268,7 @@ fn scan_expansion_fields_ordered(
             let (characteristic, value) = remainder.split_at(layout.varname_width);
             if let Some(index) = dataset_note_index(variable, characteristic) {
                 let note = encoding.decode(field_bytes(value));
-                if index != 0 && !note.is_empty() {
-                    notes.push((index, note));
-                }
+                notes.push((index, note));
             }
         }
         cursor = checked_add(cursor, length, "legacy expansion-field payload")?;

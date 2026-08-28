@@ -11,7 +11,7 @@ if test -n "${CI:-}${GITHUB_ACTIONS:-}${GITHUB_RUN_ID:-}${GITHUB_WORKFLOW:-}"; t
     echo "the private DTA write qualification is manual and refuses CI" >&2
     exit 2
 fi
-for command in R Rscript awk shasum; do
+for command in R Rscript; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "required command is unavailable: $command" >&2
         exit 2
@@ -26,35 +26,36 @@ if test -n "$max_files"; then
         exit 2
     fi
 fi
-if test -z "${STATA_BIN:-}" && test -x /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp; then
-    STATA_BIN=/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp
-    export STATA_BIN
-fi
-if test -z "${STATA_BIN:-}" || ! test -x "$STATA_BIN"; then
-    echo "Stata is required; set STATA_BIN to its executable" >&2
-    exit 2
-fi
 if ! Rscript --vanilla -e 'quit(status = !all(vapply(c("haven", "processx"), requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))))'; then
     echo "the R packages haven and processx are required" >&2
     exit 2
 fi
 
+run_root="$checkout/target/r-corpus-roundtrip"
+mkdir -p "$run_root"
 if test -n "${DTAPARSER_ROUNDTRIP_RUN_DIR:-}"; then
     run_dir=$DTAPARSER_ROUNDTRIP_RUN_DIR
 else
     stamp=$(date -u '+%Y%m%dT%H%M%SZ')
-    run_dir="$checkout/target/r-corpus-roundtrip/$stamp"
+    run_dir=$(mktemp -d "$run_root/$stamp-$$.XXXXXX")
 fi
+lock_dir="$run_dir.lock"
+if ! mkdir "$lock_dir"; then
+    echo "round-trip run directory is already active: $run_dir" >&2
+    exit 2
+fi
+trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT
+trap 'exit 130' HUP INT TERM
 build_dir="$run_dir/build"
 library="$run_dir/library"
 mkdir -p "$build_dir" "$library"
 
 set -- "$build_dir"/dtaparser_*.tar.gz
-if test "$#" -eq 1 && test -f "$1" && test -d "$library/dtaparser"; then
+if test "$#" -eq 1 && test -f "$1"; then
     source_tarball=$1
-elif test "$#" -eq 1 && test -f "$1" && ! test -d "$library/dtaparser"; then
-    source_tarball=$1
-    R CMD INSTALL --library="$library" "$source_tarball"
+    if ! test -d "$library/dtaparser"; then
+        R CMD INSTALL --library="$library" "$source_tarball"
+    fi
 elif test "$#" -eq 1 && test "$1" = "$build_dir/dtaparser_*.tar.gz" &&
      ! test -d "$library/dtaparser"; then
     (cd "$build_dir" && R CMD build "$checkout/r-package/dtaparser")
@@ -70,8 +71,11 @@ else
     exit 1
 fi
 
-source_sha256=$(shasum -a 256 "$source_tarball" | awk '{print $1}')
+source_sha256=$(Rscript --vanilla -e \
+    'source(commandArgs(TRUE)[[1L]]); cat(benchmark_file_sha256(commandArgs(TRUE)[[2L]]))' \
+    "$script_dir/../benchmark-common.R" "$source_tarball")
 export DTAPARSER_BENCH_LIB="$library"
+export DTAPARSER_SOURCE_TARBALL="$source_tarball"
 export DTAPARSER_SOURCE_SHA256="$source_sha256"
 export R_ENVIRON_USER=/dev/null
 export R_PROFILE_USER=/dev/null

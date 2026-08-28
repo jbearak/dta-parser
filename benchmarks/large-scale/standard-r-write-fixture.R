@@ -1,14 +1,17 @@
+standard_r_write_type_counts <- c(
+    double = 11L, integer = 11L, logical = 4L, Date = 2L,
+    POSIXct = 2L, character = 10L
+)
+standard_r_write_columns <- sum(standard_r_write_type_counts)
+
 standard_r_write_schema <- function(data) {
-    stopifnot(is.data.frame(data), ncol(data) == 40L)
+    stopifnot(is.data.frame(data), ncol(data) == standard_r_write_columns)
     classes <- vapply(data, function(column) {
         if (inherits(column, "POSIXct")) return("POSIXct")
         if (inherits(column, "Date")) return("Date")
         typeof(column)
     }, character(1L))
-    expected <- c(
-        double = 11L, integer = 11L, logical = 4L, Date = 2L,
-        POSIXct = 2L, character = 10L
-    )
+    expected <- standard_r_write_type_counts
     observed <- table(factor(classes, levels = names(expected)))
     if (!identical(as.integer(observed), unname(expected)) ||
         any(vapply(data, function(column) {
@@ -24,9 +27,7 @@ make_standard_r_write_fixture <- function(rows) {
     stopifnot(length(rows) == 1L, is.finite(rows), rows >= 1L)
     rows <- as.integer(rows)
     i <- seq_len(rows)
-    cycle <- function(values, offset = 0L) {
-        rep_len(c(tail(values, offset), head(values, length(values) - offset)), rows)
-    }
+    cycle <- function(values) rep_len(values, rows)
     repeated_format <- function(format, modulus, multiplier = 1L) {
         base_i <- seq_len(min(rows, modulus))
         values <- sprintf(format, (base_i * multiplier) %% modulus)
@@ -112,6 +113,5 @@ make_standard_r_write_fixture <- function(rows) {
         stringsAsFactors = FALSE,
         check.names = FALSE
     )
-    standard_r_write_schema(data)
     data
 }

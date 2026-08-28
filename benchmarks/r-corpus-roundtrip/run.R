@@ -16,97 +16,115 @@ script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = T
 script_dir <- dirname(normalizePath(sub("^--file=", "", script_argument), winslash = "/"))
 source(file.path(script_dir, "common.R"), local = TRUE)
 
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
-if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
-benchmark_library <- normalizePath(benchmark_library, winslash = "/", mustWork = TRUE)
-installed_package <- system.file(package = "dtaparser", lib.loc = benchmark_library,
-                                 mustWork = TRUE)
-package_hash <- roundtrip_directory_hash(installed_package)
+benchmark_library <- benchmark_library_path()
+installed_package <- benchmark_installed_package_path(benchmark_library)
+source_tarball <- Sys.getenv("DTAPARSER_SOURCE_TARBALL")
+if (!nzchar(source_tarball)) stop("DTAPARSER_SOURCE_TARBALL is required")
+source_tarball <- normalizePath(source_tarball, winslash = "/", mustWork = TRUE)
 source_sha256 <- Sys.getenv("DTAPARSER_SOURCE_SHA256")
-if (!grepl("^[0-9a-f]{64}$", source_sha256)) {
+if (!grepl("^[0-9a-f]{64}$", source_sha256) ||
+    !identical(benchmark_file_sha256(source_tarball), source_sha256)) {
     stop("DTAPARSER_SOURCE_SHA256 must bind the installed source package")
 }
 
-rscript <- Sys.which("Rscript")
-time_command <- "/usr/bin/time"
-stata_candidates <- unique(c(
-    Sys.getenv("STATA_BIN"),
-    "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp",
-    Sys.which("stata-mp"), Sys.which("stata")
-))
-stata_candidates <- stata_candidates[nzchar(stata_candidates)]
-stata_candidates <- stata_candidates[file.exists(stata_candidates)]
-if (!length(stata_candidates)) stop("Stata is required; set STATA_BIN")
-stata <- normalizePath(stata_candidates[[1L]], winslash = "/", mustWork = TRUE)
+rscript <- normalizePath(Sys.which("Rscript"), winslash = "/", mustWork = TRUE)
+stata <- find_stata()
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-inventory <- roundtrip_inventory(cache_root)
-if (is.finite(max_files)) {
-    inventory <- do.call(rbind, lapply(split(inventory, inventory$corpus), function(items) {
-        head(items[order(-items$bytes, items$relative_path, method = "radix"), ], max_files)
-    }))
-    rownames(inventory) <- NULL
+source_inventory_path <- file.path(output_dir, "corpus-inventory.tsv")
+force_inventory <- identical(
+    Sys.getenv("DTAPARSER_ROUNDTRIP_VERIFY_INVENTORY"), "1"
+)
+if (file.exists(source_inventory_path) && !force_inventory) {
+    inventory <- roundtrip_cached_inventory(
+        cache_root, source_inventory_path, max_files
+    )
+} else {
+    inventory <- roundtrip_inventory(cache_root, max_files = max_files)
+    source_inventory <- inventory[c(
+        "corpus", "id", "relative_path", "release", "bytes", "modified",
+        "sha256"
+    )]
+    benchmark_publish_or_verify_tsv(
+        source_inventory,
+        source_inventory_path,
+        "corpus inventory drifted from this resumable run",
+        "could not publish private source corpus inventory"
+    )
 }
 inventory_path <- file.path(output_dir, "inventory.tsv")
 inventory_public <- inventory[c(
     "corpus", "id", "relative_path", "release", "bytes", "sha256"
 )]
-candidate_inventory <- tempfile("roundtrip-inventory-")
-write.table(inventory_public, candidate_inventory, sep = "\t", row.names = FALSE,
-            quote = TRUE)
-candidate_inventory_hash <- roundtrip_manifest_hash(candidate_inventory)
-if (file.exists(inventory_path)) {
-    if (!identical(roundtrip_manifest_hash(inventory_path), candidate_inventory_hash)) {
-        stop("corpus inventory drifted from this resumable run")
-    }
-} else if (!file.copy(candidate_inventory, inventory_path)) {
-    stop("could not publish private corpus inventory")
-}
-inventory_hash <- roundtrip_manifest_hash(inventory_path)
-unlink(candidate_inventory)
-binding_path <- file.path(output_dir, "run-binding.tsv")
-binding <- data.frame(
-    schema_version = 1L,
-    inventory_sha256 = inventory_hash,
-    package_sha256 = package_hash,
-    source_tarball_sha256 = source_sha256,
-    stringsAsFactors = FALSE
+inventory_hash <- benchmark_publish_or_verify_tsv(
+    inventory_public,
+    inventory_path,
+    "corpus inventory drifted from this resumable run",
+    "could not publish private corpus inventory"
 )
-if (file.exists(binding_path)) {
-    existing_binding <- read.delim(
-        binding_path, check.names = FALSE, stringsAsFactors = FALSE
+binding_path <- file.path(output_dir, "run-binding.tsv")
+current_binding <- function() {
+    current_source_sha256 <- benchmark_file_sha256(source_tarball)
+    cbind(
+        data.frame(
+            schema_version = 4L,
+            inventory_sha256 = inventory_hash,
+            package_sha256 = benchmark_directory_sha256(installed_package),
+            source_tarball_sha256 = current_source_sha256,
+            harness_sha256 = benchmark_harness_sha256(script_dir),
+            stringsAsFactors = FALSE
+        ),
+        benchmark_runtime_binding(stata, rscript_executable = rscript)
     )
-    if (!identical(existing_binding, binding)) {
-        stop("resumable results belong to a different inventory or package build")
-    }
-} else {
-    write.table(binding, binding_path, sep = "\t", row.names = FALSE,
-                quote = FALSE)
 }
+binding <- current_binding()
+package_hash <- binding$package_sha256[[1L]]
+assert_current_binding <- function() {
+    if (!identical(current_binding(), binding)) {
+        stop("benchmark build, harness, runtime, or comparator changed during the run")
+    }
+    invisible(NULL)
+}
+benchmark_publish_or_verify_binding(
+    binding,
+    binding_path,
+    file.path(
+        output_dir,
+        c("qualification-raw.tsv", "qualification.tsv", "benchmark-raw.tsv")
+    ),
+    paste0(
+        "resumable results belong to a different inventory, ",
+        "package build, benchmark harness, runtime, or comparator"
+    ),
+    "existing results do not have a resumable run binding"
+)
 
-run_process <- function(command, arguments, working_directory = NULL, timed = FALSE) {
+run_process <- function(
+    command, arguments, working_directory = NULL, timed = FALSE
+) {
+    environment <- c(
+        DTAPARSER_BENCH_LIB = benchmark_library,
+        R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
+    )
     if (timed) {
-        time_flag <- if (identical(Sys.info()[["sysname"]], "Darwin")) "-l" else "-v"
-        arguments <- c(time_flag, command, arguments)
-        command <- time_command
+        return(run_timed_process(
+            command, arguments, working_directory, environment
+        ))
     }
     processx::run(
-        command, arguments, wd = working_directory,
-        env = c(
-            DTAPARSER_BENCH_LIB = benchmark_library,
-            R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
-        ),
+        command, arguments, wd = working_directory, env = environment,
         error_on_status = FALSE, echo = FALSE
     )
 }
 
-parse_marker <- function(output, prefix, fields) {
-    lines <- strsplit(output, "\n", fixed = TRUE)[[1L]]
-    marker <- grep(paste0("^", prefix, "\t"), lines, value = TRUE)
-    if (!length(marker)) return(NULL)
-    values <- strsplit(tail(marker, 1L), "\t", fixed = TRUE)[[1L]]
-    if (length(values) != length(fields) + 1L) return(NULL)
-    stats::setNames(as.list(values[-1L]), fields)
+parse_marker <- function(output, prefix, fields,
+                         failure_status = "worker-error") {
+    values <- parse_fields(output, prefix)
+    if (length(values) != length(fields)) {
+        values <- rep(NA_character_, length(fields))
+        values[[1L]] <- failure_status
+    }
+    stats::setNames(as.list(values), fields)
 }
 
 stata_open <- function(output, expected_rows, expected_columns, work_dir) {
@@ -146,7 +164,7 @@ qualify_wide <- function() {
         message("Wide generator failed: ", generated$stderr)
         return("r-worker-error")
     }
-    if (!identical(roundtrip_release(output), 119L)) return("release-mismatch")
+    if (!identical(corpus_dta_release(output), 119L)) return("release-mismatch")
     verified <- run_process(
         rscript,
         c("--vanilla", file.path(script_dir, "wide-verify.R"), output)
@@ -172,18 +190,29 @@ write_private_report <- function(raw, path, title) {
     writeLines(lines, path, useBytes = TRUE)
 }
 
+qualification_path <- file.path(output_dir, "qualification.tsv")
 if (identical(mode, "qualify")) {
     raw_path <- file.path(output_dir, "qualification-raw.tsv")
     completed <- if (file.exists(raw_path)) {
-        existing <- read.delim(raw_path, check.names = FALSE, stringsAsFactors = FALSE)
-        existing$id
-    } else character()
+        existing <- read.delim(
+            raw_path,
+            check.names = FALSE,
+            stringsAsFactors = FALSE
+        )
+        successful <- roundtrip_qualification_successes(existing)
+        if (nrow(successful) != nrow(existing)) {
+            atomic_tsv(successful, raw_path, quote = TRUE)
+        }
+        new_key_set(successful$id)
+    } else {
+        new_key_set()
+    }
     ordered <- inventory[order(inventory$bytes, inventory$relative_path, method = "radix"), ]
     work_root <- file.path(output_dir, "qualification-work")
     dir.create(work_root, recursive = TRUE, showWarnings = FALSE)
     for (index in seq_len(nrow(ordered))) {
         item <- ordered[index, , drop = FALSE]
-        if (item$id %in% completed) next
+        if (key_set_contains(completed, item$id)) next
         exclusion <- roundtrip_exclusion_reason(item)
         if (!is.na(exclusion)) {
             row <- data.frame(
@@ -194,19 +223,24 @@ if (identical(mode, "qualify")) {
         } else {
             work_dir <- file.path(work_root, item$id)
             dir.create(work_dir, recursive = TRUE, showWarnings = FALSE)
+            input <- benchmark_snapshot_file(
+                item$path, file.path(work_dir, "input.dta"),
+                item$bytes, item$sha256
+            )
             output <- file.path(work_dir, "roundtrip.dta")
             process <- run_process(
                 rscript,
-                c("--vanilla", file.path(script_dir, "qualify-worker.R"), item$path, output)
+                c("--vanilla", file.path(script_dir, "qualify-worker.R"), input, output)
             )
             marker <- parse_marker(
                 process$stdout, "DTAPARSER_ROUNDTRIP",
-                c("status", "rows", "columns", "output_bytes")
+                c("status", "rows", "columns", "output_bytes"),
+                failure_status = "r-worker-error"
             )
-            status <- if (is.null(marker)) "r-worker-error" else marker$status
-            rows <- if (is.null(marker)) NA_real_ else as.numeric(marker$rows)
-            columns <- if (is.null(marker)) NA_real_ else as.numeric(marker$columns)
-            output_bytes <- if (is.null(marker)) NA_real_ else as.numeric(marker$output_bytes)
+            status <- marker$status
+            rows <- as.numeric(marker$rows)
+            columns <- as.numeric(marker$columns)
+            output_bytes <- as.numeric(marker$output_bytes)
             if (!identical(status, "r-pass")) {
                 message("Qualification worker diagnostics: ", process$stderr)
             }
@@ -224,8 +258,8 @@ if (identical(mode, "qualify")) {
             )
             unlink(work_dir, recursive = TRUE, force = TRUE)
         }
-        roundtrip_append_tsv(row, raw_path)
-        completed <- c(completed, item$id)
+        append_tsv(row, raw_path)
+        key_set_add(completed, item$id)
         message(length(completed), "/", nrow(ordered), ": ", item$id, " ", row$status)
     }
     raw <- read.delim(raw_path, check.names = FALSE, stringsAsFactors = FALSE)
@@ -233,21 +267,40 @@ if (identical(mode, "qualify")) {
     pass <- sum(raw$status == "pass")
     excluded <- sum(raw$status == "expected-exclusion")
     failures <- nrow(raw) - pass - excluded
-    wide_status <- qualify_wide()
+    if (failures == 0L) {
+        raw <- roundtrip_validate_complete_qualification(raw, inventory)
+    }
+    qualification_raw_hash <- benchmark_file_sha256(raw_path)
+    previous <- if (file.exists(qualification_path)) {
+        read.delim(
+            qualification_path, check.names = FALSE,
+            stringsAsFactors = FALSE
+        )
+    } else NULL
+    reuse_wide <- !is.null(previous) && nrow(previous) == 1L &&
+        identical(previous$status, "complete") &&
+        identical(previous$inventory_sha256, inventory_hash) &&
+        identical(previous$package_sha256, package_hash) &&
+        identical(previous$source_tarball_sha256, source_sha256) &&
+        identical(previous$qualification_raw_sha256, qualification_raw_hash) &&
+        identical(previous$synthetic_wide, "pass")
+    wide_status <- if (reuse_wide) "pass" else qualify_wide()
     if (!is.finite(max_files) &&
         (nrow(raw) != 1823L || pass != 1821L || excluded != 2L || failures != 0L)) {
         stop("full qualification did not achieve 1,821 passes and two bound exclusions")
     }
+    assert_current_binding()
     manifest <- data.frame(
-        schema_version = 1L, status = if (failures == 0L) "complete" else "failed",
+        schema_version = 2L,
+        status = roundtrip_qualification_status(failures, wide_status),
         inventory_sha256 = inventory_hash, package_sha256 = package_hash,
-        source_tarball_sha256 = source_sha256, inventoried = nrow(raw),
-        passed = pass, excluded = excluded, failed = failures,
-        synthetic_wide = wide_status,
+        source_tarball_sha256 = source_sha256,
+        qualification_raw_sha256 = qualification_raw_hash,
+        inventoried = nrow(raw), passed = pass, excluded = excluded,
+        failed = failures, synthetic_wide = wide_status,
         stringsAsFactors = FALSE
     )
-    write.table(manifest, file.path(output_dir, "qualification.tsv"), sep = "\t",
-                row.names = FALSE, quote = FALSE)
+    atomic_tsv(manifest, file.path(output_dir, "qualification.tsv"))
     write_private_report(raw, file.path(output_dir, "qualification-report.md"),
                          "DTA write qualification")
     if (failures != 0L || wide_status != "pass") {
@@ -256,59 +309,143 @@ if (identical(mode, "qualify")) {
     quit(status = 0L)
 }
 
-qualification_path <- file.path(output_dir, "qualification.tsv")
-if (!file.exists(qualification_path)) stop("benchmark requires a completed qualification")
+qualification_raw_path <- file.path(output_dir, "qualification-raw.tsv")
+if (!file.exists(qualification_path) || !file.exists(qualification_raw_path)) {
+    stop("benchmark requires a completed qualification")
+}
 qualification <- read.delim(qualification_path, check.names = FALSE,
                             stringsAsFactors = FALSE)
+qualification_raw_hash <- benchmark_file_sha256(qualification_raw_path)
 if (nrow(qualification) != 1L || qualification$status != "complete" ||
     qualification$inventory_sha256 != inventory_hash ||
     qualification$package_sha256 != package_hash ||
     qualification$source_tarball_sha256 != source_sha256 ||
+    qualification$qualification_raw_sha256 != qualification_raw_hash ||
     qualification$synthetic_wide != "pass") {
     stop("benchmark build or inventory differs from successful qualification")
 }
 qualification_raw <- read.delim(
-    file.path(output_dir, "qualification-raw.tsv"), check.names = FALSE,
-    stringsAsFactors = FALSE
+    qualification_raw_path, check.names = FALSE, stringsAsFactors = FALSE
 )
+qualification_raw <- roundtrip_validate_complete_qualification(
+    qualification_raw, inventory
+)
+qualification_counts <- c(
+    inventoried = nrow(qualification_raw),
+    passed = sum(qualification_raw$status == "pass"),
+    excluded = sum(qualification_raw$status == "expected-exclusion"),
+    failed = 0L
+)
+if (!identical(
+    as.integer(unlist(
+        qualification[names(qualification_counts)], use.names = FALSE
+    )),
+    unname(as.integer(qualification_counts))
+)) {
+    stop("qualification manifest counts do not match its bound rows")
+}
 qualified_ids <- qualification_raw$id[qualification_raw$status == "pass"]
-selected <- inventory[inventory$id %in% qualified_ids, ]
-if (nrow(selected) != length(qualified_ids)) stop("qualified inventory mismatch")
+selected <- inventory[match(qualified_ids, inventory$id), ]
 selected <- selected[order(-selected$bytes, selected$relative_path, method = "radix"), ]
 
 benchmark_path <- file.path(output_dir, "benchmark-raw.tsv")
 completed <- if (file.exists(benchmark_path)) {
-    existing <- read.delim(benchmark_path, check.names = FALSE, stringsAsFactors = FALSE)
+    existing <- read.delim(
+        benchmark_path, check.names = FALSE, stringsAsFactors = FALSE
+    )
+    required <- c("id", "writer", "status", "input_sha256")
+    if (!all(required %in% names(existing)) ||
+        anyNA(existing$input_sha256) ||
+        any(!grepl("^[0-9a-f]{64}$", existing$input_sha256))) {
+        stop("benchmark checkpoint is missing bound input identities")
+    }
     keys <- paste(existing$id, existing$writer, sep = "\037")
     if (anyDuplicated(keys)) stop("benchmark contains duplicate writer measurements")
     successful <- existing[existing$status == "ok", , drop = FALSE]
     if (nrow(successful) != nrow(existing)) {
-        write.table(successful, benchmark_path, sep = "\t", row.names = FALSE,
-                    quote = TRUE)
+        atomic_tsv(successful, benchmark_path, quote = TRUE)
     }
-    paste(successful$id, successful$writer, sep = "\037")
-} else character()
+    new_key_set(paste(successful$id, successful$writer, sep = "\037"))
+} else {
+    new_key_set()
+}
 work_root <- file.path(output_dir, "benchmark-work")
 dir.create(work_root, recursive = TRUE, showWarnings = FALSE)
 
-wide_source <- file.path(work_root, "synthetic-wide-source.dta")
-wide_generation <- run_process(
-    rscript,
-    c("--vanilla", file.path(script_dir, "wide-generate.R"), wide_source)
+wide_id <- "synthetic-wide-32768"
+wide_keys <- paste(wide_id, c("dtaparser", "stata"), sep = "\037")
+wide_completed <- vapply(
+    wide_keys,
+    function(key) key_set_contains(completed, key),
+    logical(1L)
 )
-if (wide_generation$status != 0L || !file.exists(wide_source) ||
-    !identical(roundtrip_release(wide_source), 119L)) {
-    stop("could not generate the qualified release-119 benchmark input")
+wide_source <- file.path(output_dir, "synthetic-wide-input.dta")
+wide_manifest_path <- file.path(output_dir, "synthetic-wide-input.tsv")
+if (xor(file.exists(wide_source), file.exists(wide_manifest_path))) {
+    if (any(wide_completed)) {
+        stop("the resumable synthetic-wide input is incomplete")
+    }
+    unlink(c(wide_source, wide_manifest_path))
 }
-on.exit(unlink(wide_source), add = TRUE)
-wide_item <- data.frame(
-    corpus = "synthetic-wide", id = "synthetic-wide-32768",
-    relative_path = "generated/32768-variables.dta", path = wide_source,
-    release = 119L,
-    bytes = as.double(file.info(wide_source, extra_cols = FALSE)$size[[1L]]),
-    sha256 = unname(tools::sha256sum(wide_source)), stringsAsFactors = FALSE
-)
-selected <- rbind(selected, wide_item)
+if (!file.exists(wide_source)) {
+    if (any(wide_completed)) {
+        stop("completed synthetic-wide rows have no bound input")
+    }
+    staged_wide <- tempfile(
+        pattern = "synthetic-wide-input.", tmpdir = output_dir,
+        fileext = ".dta"
+    )
+    on.exit(unlink(staged_wide), add = TRUE)
+    wide_generation <- run_process(
+        rscript,
+        c("--vanilla", file.path(script_dir, "wide-generate.R"), staged_wide)
+    )
+    if (wide_generation$status != 0L || !file.exists(staged_wide) ||
+        !identical(corpus_dta_release(staged_wide), 119L)) {
+        stop("could not generate the qualified release-119 benchmark input")
+    }
+    wide_info <- file.info(staged_wide, extra_cols = FALSE)
+    wide_manifest <- data.frame(
+        schema_version = 1L,
+        bytes = as.double(wide_info$size[[1L]]),
+        sha256 = benchmark_file_sha256(staged_wide),
+        release = 119L,
+        stringsAsFactors = FALSE
+    )
+    if (!file.rename(staged_wide, wide_source)) {
+        stop("could not publish the resumable synthetic-wide input")
+    }
+    atomic_tsv(wide_manifest, wide_manifest_path)
+} else {
+    wide_manifest <- read.delim(
+        wide_manifest_path, check.names = FALSE, stringsAsFactors = FALSE
+    )
+}
+if (!identical(
+        names(wide_manifest),
+        c("schema_version", "bytes", "sha256", "release")
+    ) || nrow(wide_manifest) != 1L ||
+    !identical(as.integer(wide_manifest$schema_version), 1L) ||
+    !identical(as.integer(wide_manifest$release), 119L) ||
+    nzchar(Sys.readlink(wide_source)) || !file_test("-f", wide_source) ||
+    as.double(wide_manifest$bytes) !=
+        as.double(file.info(wide_source)$size[[1L]]) ||
+    !identical(
+        tolower(as.character(wide_manifest$sha256)),
+        benchmark_file_sha256(wide_source)
+    ) || !identical(corpus_dta_release(wide_source), 119L)) {
+    stop("the resumable synthetic-wide input differs from its manifest")
+}
+wide_info <- file.info(wide_source, extra_cols = FALSE)
+selected <- rbind(selected, data.frame(
+    corpus = "synthetic-wide", id = wide_id,
+    relative_path = "generated/32768-variables.dta",
+    path = wide_source, release = 119L,
+    bytes = as.double(wide_info$size[[1L]]),
+    modified = sprintf("%.6f", as.numeric(wide_info$mtime[[1L]])),
+    sha256 = as.character(wide_manifest$sha256[[1L]]),
+    stringsAsFactors = FALSE
+))
 
 measure_dtaparser <- function(item, order_index) {
     work_dir <- file.path(work_root, paste0(item$id, "-dtaparser"))
@@ -323,11 +460,12 @@ measure_dtaparser <- function(item, order_index) {
     marker <- parse_marker(process$stdout, "DTAPARSER_WRITE", c("status", "elapsed", "bytes"))
     data.frame(
         corpus = item$corpus, id = item$id, release = item$release,
+        input_sha256 = item$sha256,
         writer = "dtaparser", writer_order = order_index,
-        status = if (is.null(marker)) "worker-error" else marker$status,
-        elapsed_seconds = if (is.null(marker)) NA_real_ else as.numeric(marker$elapsed),
-        rss_bytes = roundtrip_parse_memory(process$stderr),
-        output_bytes = if (is.null(marker)) NA_real_ else as.numeric(marker$bytes),
+        status = marker$status,
+        elapsed_seconds = as.numeric(marker$elapsed),
+        rss_bytes = parse_memory(process$stderr),
+        output_bytes = as.numeric(marker$bytes),
         stringsAsFactors = FALSE
     )
 }
@@ -354,10 +492,11 @@ measure_stata <- function(item, order_index) {
         elapsed <- if (length(fields) >= 2L) as.numeric(fields[[2L]]) else NA_real_
         output <- file.path(work_dir, "stata-output.dta")
         output_bytes <- if (file.exists(output)) file.info(output)$size[[1L]] else NA_real_
-        rss <- roundtrip_parse_memory(process$stderr)
+        rss <- parse_memory(process$stderr)
     }
     data.frame(
         corpus = item$corpus, id = item$id, release = item$release,
+        input_sha256 = item$sha256,
         writer = "stata", writer_order = order_index, status = status,
         elapsed_seconds = elapsed, rss_bytes = rss, output_bytes = output_bytes,
         stringsAsFactors = FALSE
@@ -367,24 +506,36 @@ measure_stata <- function(item, order_index) {
 for (index in seq_len(nrow(selected))) {
     item <- selected[index, , drop = FALSE]
     writers <- if (index %% 2L) c("dtaparser", "stata") else c("stata", "dtaparser")
-    for (writer_index in seq_along(writers)) {
-        writer <- writers[[writer_index]]
-        key <- paste(item$id, writer, sep = "\037")
-        if (key %in% completed) next
-        row <- if (writer == "dtaparser") {
-            measure_dtaparser(item, writer_index)
-        } else measure_stata(item, writer_index)
-        roundtrip_append_tsv(row, benchmark_path)
-        completed <- c(completed, key)
+    keys <- paste(item$id, writers, sep = "\037")
+    pending <- !vapply(
+        keys, function(key) key_set_contains(completed, key), logical(1L)
+    )
+    if (any(pending)) {
+        input_dir <- file.path(work_root, paste0(item$id, "-source"))
+        unlink(input_dir, recursive = TRUE, force = TRUE)
+        dir.create(input_dir, recursive = TRUE, showWarnings = FALSE)
+        item$path <- benchmark_snapshot_file(
+            item$path, file.path(input_dir, "input.dta"),
+            item$bytes, item$sha256
+        )
+        for (writer_index in seq_along(writers)) {
+            if (!pending[[writer_index]]) next
+            writer <- writers[[writer_index]]
+            row <- if (writer == "dtaparser") {
+                measure_dtaparser(item, writer_index)
+            } else measure_stata(item, writer_index)
+            append_tsv(row, benchmark_path)
+            key_set_add(completed, keys[[writer_index]])
+        }
+        unlink(input_dir, recursive = TRUE, force = TRUE)
     }
     message(index, "/", nrow(selected), ": ", item$id)
 }
 
 raw <- read.delim(benchmark_path, check.names = FALSE, stringsAsFactors = FALSE)
-if (anyDuplicated(paste(raw$id, raw$writer, sep = "\037"))) {
-    stop("benchmark contains duplicate writer measurements")
-}
-if (any(raw$status != "ok")) stop("write benchmark contains worker failures")
+roundtrip_validate_benchmark_matrix(
+    raw, selected, c("dtaparser", "stata")
+)
 summary <- aggregate(
     cbind(elapsed_seconds, output_bytes) ~ corpus + release + writer,
     raw, sum
@@ -401,8 +552,17 @@ summary <- summary[c(
     "corpus", "release", "writer", "files", "elapsed_seconds",
     "rss_bytes", "output_bytes"
 )]
-write.table(summary, file.path(output_dir, "benchmark-summary.tsv"), sep = "\t",
-            row.names = FALSE, quote = FALSE)
+assert_current_binding()
+if (!identical(
+    benchmark_file_sha256(qualification_raw_path),
+    qualification_raw_hash
+) || !identical(
+    benchmark_file_sha256(wide_source),
+    tolower(as.character(wide_manifest$sha256))
+)) {
+    stop("qualified benchmark inputs changed before publication")
+}
+atomic_tsv(summary, file.path(output_dir, "benchmark-summary.tsv"))
 report_lines <- c(
     "# DTA write benchmark", "",
     paste0(
@@ -422,4 +582,3 @@ report_lines <- c(
     ))
 )
 writeLines(report_lines, file.path(output_dir, "benchmark-report.md"), useBytes = TRUE)
-unlink(wide_source)

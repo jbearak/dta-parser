@@ -1,20 +1,25 @@
 use std::any::Any;
 use std::borrow::Cow;
+use std::cell::{Cell, RefCell};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
-use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
+use std::fs::{self, OpenOptions};
+use std::io::{BufWriter, ErrorKind};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
+
 use ahash::AHashMap;
 use dta_parser::{
-    write_prevalidated_dta_to, write_prevalidated_dta_with_observation_encoder_to, ColumnValues,
-    DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteColumn,
-    DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
-    DtaWriteNumericValue, DtaWriteOptions, DtaWriteValueLabel, FormatVersion, MissingTag,
-    ParallelDtaSink, ReadOptions, StataVersion, TextEncoding, ValueLabelTable, VariableInfo,
-    DOUBLE_MISSING_DOT_BITS, DOUBLE_MISSING_STEP_BITS, FLOAT_MISSING_DOT_BITS,
-    FLOAT_MISSING_STEP_BITS,
+    classify_byte_missing_for_version, classify_float_missing_bits_for_version,
+    classify_int_missing_for_version, classify_long_missing_for_version,
+    dta_write_numeric_value_is_representable, write_prevalidated_dta_with_observation_source_to,
+    ColumnValues, DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType,
+    DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError,
+    DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
+    DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag, ParallelDtaSink,
+    ReadOptions, TextEncoding, ValueLabelTable, VariableInfo,
 };
 
 type Sexp = *mut c_void;
@@ -27,10 +32,10 @@ const VECSXP: c_int = 19;
 const RAWSXP: c_int = 24;
 const CE_UTF8: c_int = 1;
 const INTERRUPT_STRIDE: usize = 16_384;
+const WRITE_CALLBACK_REGION_BYTES: usize = 8 * 1024 * 1024;
 const R_DATA_FRAME_MAX_ROWS: u64 = c_int::MAX as u64;
 const SECONDS_1960_TO_1970: f64 = 315_619_200.0;
 const DAYS_1960_TO_1970: f64 = 3_653.0;
-const R_WRITE_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 
 extern "C" {
     fn SET_STRING_ELT(vector: Sexp, index: RLen, value: Sexp);
@@ -68,18 +73,24 @@ extern "C" {
     ) -> c_int;
     fn dtaparser_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtaparser_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
-    fn dtaparser_write_numeric_at(
+    fn dtaparser_write_numeric_region(
         reader: *const c_void,
-        index: usize,
-        value: *mut f64,
-        missing_code: *mut c_int,
+        start: usize,
+        length: usize,
+        values: *mut f64,
+        missing_codes: *mut c_int,
+        error_message: *mut c_char,
+        error_capacity: usize,
     ) -> c_int;
-    fn dtaparser_write_string_at(
+    fn dtaparser_write_string_region(
         values: Sexp,
-        index: usize,
-        value: *mut *const c_char,
-        length: *mut usize,
-        missing: *mut c_int,
+        start: usize,
+        length: usize,
+        ids: *mut u64,
+        strings: *mut *const c_char,
+        string_lengths: *mut usize,
+        error_message: *mut c_char,
+        error_capacity: usize,
     ) -> c_int;
 }
 
@@ -113,6 +124,20 @@ enum NumericKind {
     Int = 1,
     Long = 2,
     Float = 3,
+}
+
+impl TryFrom<c_int> for NumericKind {
+    type Error = String;
+
+    fn try_from(value: c_int) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Byte),
+            1 => Ok(Self::Int),
+            2 => Ok(Self::Long),
+            3 => Ok(Self::Float),
+            _ => Err("invalid R numeric kind".into()),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -163,18 +188,11 @@ pub unsafe extern "C" fn dtaparser_numeric_alloc(
     temporal: c_int,
     no_na: c_int,
 ) -> *mut c_void {
-    let kind = match kind {
-        0 => NumericKind::Byte,
-        1 => NumericKind::Int,
-        2 => NumericKind::Long,
-        3 => NumericKind::Float,
-        _ => return ptr::null_mut(),
+    let Ok(kind) = NumericKind::try_from(kind) else {
+        return ptr::null_mut();
     };
-    let temporal = match temporal {
-        0 => TemporalKind::None,
-        1 => TemporalKind::Date,
-        2 => TemporalKind::Datetime,
-        _ => return ptr::null_mut(),
+    let Ok(temporal) = TemporalKind::try_from(temporal) else {
+        return ptr::null_mut();
     };
     Box::into_raw(Box::new(NumericData {
         values,
@@ -376,6 +394,19 @@ enum TemporalKind {
     Datetime = 2,
 }
 
+impl TryFrom<c_int> for TemporalKind {
+    type Error = String;
+
+    fn try_from(value: c_int) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::None),
+            1 => Ok(Self::Date),
+            2 => Ok(Self::Datetime),
+            _ => Err("invalid direct R numeric temporal kind".into()),
+        }
+    }
+}
+
 fn temporal_kind(format: &str) -> TemporalKind {
     if format.starts_with("%tC") || format.starts_with("%tc") {
         TemporalKind::Datetime
@@ -392,6 +423,17 @@ fn observed_value(value: f64, temporal: TemporalKind) -> f64 {
         TemporalKind::Date => value - DAYS_1960_TO_1970,
         TemporalKind::Datetime => value / 1_000.0 - SECONDS_1960_TO_1970,
     }
+}
+
+fn write_numeric_value(value: f64, shift: f64, scale: f64) -> f64 {
+    let encoded = (value + shift) * scale;
+    if shift == SECONDS_1960_TO_1970 && scale == 1_000.0 {
+        let rounded = encoded.round();
+        if rounded.is_finite() && rounded / scale - shift == value {
+            return rounded;
+        }
+    }
+    encoded
 }
 
 fn r_missing_with_system(tag: MissingTag, system_missing: f64) -> f64 {
@@ -711,12 +753,8 @@ impl RStringData {
         })
     }
 
-    fn push_id(&mut self, id: u32) -> Result<(), DtaError> {
-        self.value_ids
-            .try_reserve(1)
-            .map_err(|_| DtaError::Output("could not grow R string indices".to_owned()))?;
+    fn push_id(&mut self, id: u32) {
         self.value_ids.push(id);
-        Ok(())
     }
 
     fn value_matches(&self, id: u32, value: &str) -> bool {
@@ -739,7 +777,8 @@ impl RStringData {
         if let Some(period) = self.cycle_period {
             let id = self.value_ids[row % period];
             if self.value_matches(id, value) {
-                return self.push_id(id);
+                self.push_id(id);
+                return Ok(());
             }
             self.cycle_period = None;
             self.cycle_rejected = true;
@@ -768,7 +807,8 @@ impl RStringData {
         if !self.cycle_rejected && row > 0 && id == self.value_ids[0] {
             self.cycle_period = Some(row);
         }
-        self.push_id(id)
+        self.push_id(id);
+        Ok(())
     }
 
     fn push_utf8_bytes(&mut self, row: usize, value: &[u8]) -> Result<(), DtaError> {
@@ -789,7 +829,8 @@ impl RStringData {
             // the ordinary replacement decoder, preserving exact semantics.
             let cached = unsafe { std::slice::from_raw_parts(cached, length) };
             if cached == value {
-                return self.push_id(id);
+                self.push_id(id);
+                return Ok(());
             }
         }
         let decoded = String::from_utf8_lossy(value);
@@ -1383,6 +1424,12 @@ impl DtaSink for RDataFrameSink {
     ) -> Result<Self::Output, DtaError> {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
+        let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
+        for table in &value_label_tables {
+            value_label_tables_by_name
+                .entry(table.name.as_str())
+                .or_insert(table);
+        }
         unsafe {
             for (output_index, column) in self.columns.iter_mut().enumerate() {
                 match column {
@@ -1415,9 +1462,9 @@ impl DtaSink for RDataFrameSink {
                 let table = if variable.value_label_name.is_empty() {
                     None
                 } else {
-                    value_label_tables
-                        .iter()
-                        .find(|table| table.name == variable.value_label_name)
+                    value_label_tables_by_name
+                        .get(variable.value_label_name.as_str())
+                        .copied()
                 };
                 let vector = match &self.columns[output_index] {
                     RColumn::NumericAltRep { vector, .. }
@@ -1651,9 +1698,10 @@ unsafe fn set_error(error: *mut *mut c_char, message: String) {
     *error = CString::new(message).unwrap().into_raw();
 }
 
-unsafe fn boundary<F>(error: *mut *mut c_char, call: F) -> Sexp
+unsafe fn boundary<T, F>(error: *mut *mut c_char, failure: T, call: F) -> T
 where
-    F: FnOnce() -> Result<Sexp, String>,
+    T: Copy,
+    F: FnOnce() -> Result<T, String>,
 {
     if !error.is_null() {
         *error = ptr::null_mut();
@@ -1662,14 +1710,14 @@ where
         Ok(Ok(value)) => value,
         Ok(Err(message)) => {
             set_error(error, message);
-            ptr::null_mut()
+            failure
         }
         Err(payload) => {
             set_error(
                 error,
                 format!("native Rust panic: {}", panic_message(payload)),
             );
-            ptr::null_mut()
+            failure
         }
     }
 }
@@ -1703,7 +1751,7 @@ pub unsafe extern "C" fn dtaparser_metadata_rust(
     encoding: *const c_char,
     error: *mut *mut c_char,
 ) -> Sexp {
-    boundary(error, || {
+    boundary(error, ptr::null_mut(), || {
         if path.is_null() {
             return Err("file path is null".to_owned());
         }
@@ -1740,7 +1788,7 @@ pub unsafe extern "C" fn dtaparser_read_rust(
     encoding: *const c_char,
     error: *mut *mut c_char,
 ) -> Sexp {
-    boundary(error, || {
+    boundary(error, ptr::null_mut(), || {
         if path.is_null() {
             return Err("file path is null".to_owned());
         }
@@ -1806,9 +1854,184 @@ pub struct RWriteColumnDescriptor {
     direct_string_data: *mut c_void,
 }
 
+#[derive(Debug)]
+enum RWriteError {
+    Interrupted,
+    Message(String),
+}
+
+impl From<String> for RWriteError {
+    fn from(message: String) -> Self {
+        Self::Message(message)
+    }
+}
+
+impl From<&str> for RWriteError {
+    fn from(message: &str) -> Self {
+        Self::Message(message.to_owned())
+    }
+}
+
+impl From<DtaWriteError> for RWriteError {
+    fn from(error: DtaWriteError) -> Self {
+        match error {
+            DtaWriteError::Interrupted => Self::Interrupted,
+            error => Self::Message(error.to_string()),
+        }
+    }
+}
+
+const WRITE_CALLBACK_ERROR_CAPACITY: usize = 4_096;
+
+struct WriteCallbackErrorBuffer {
+    bytes: [c_char; WRITE_CALLBACK_ERROR_CAPACITY],
+}
+
+impl WriteCallbackErrorBuffer {
+    fn new() -> Self {
+        Self {
+            bytes: [0; WRITE_CALLBACK_ERROR_CAPACITY],
+        }
+    }
+
+    fn as_mut_ptr(&mut self) -> *mut c_char {
+        self.bytes.as_mut_ptr()
+    }
+
+    fn capacity(&self) -> usize {
+        self.bytes.len()
+    }
+
+    fn message(&self) -> Option<String> {
+        let message = unsafe { CStr::from_ptr(self.bytes.as_ptr()) }
+            .to_string_lossy()
+            .into_owned();
+        (!message.is_empty()).then_some(message)
+    }
+}
+
+fn write_callback_status(
+    status: c_int,
+    fallback: &str,
+    error: &WriteCallbackErrorBuffer,
+) -> Result<(), RWriteError> {
+    match status {
+        value if value > 0 => Ok(()),
+        -1 => Err(RWriteError::Interrupted),
+        _ => Err(RWriteError::Message(
+            error.message().unwrap_or_else(|| fallback.to_owned()),
+        )),
+    }
+}
+
+#[derive(Default)]
+struct RWriteNumericRegion {
+    start: u64,
+    values: Vec<f64>,
+    missing_codes: Vec<c_int>,
+}
+
+struct RWriteNumericRegionCache {
+    rows: usize,
+    region: RefCell<RWriteNumericRegion>,
+}
+
+#[derive(Default)]
+struct RWriteStringRegion {
+    start: u64,
+    ids: Vec<u64>,
+    values: Vec<*const c_char>,
+    lengths: Vec<usize>,
+}
+
+struct RWriteStringRegionCache {
+    rows: usize,
+    region: RefCell<RWriteStringRegion>,
+}
+
+#[derive(Clone, Copy)]
+enum DirectNumericKind {
+    Callback,
+    Integer,
+    Double,
+    Compact(NumericKind),
+}
+
+impl TryFrom<c_int> for DirectNumericKind {
+    type Error = String;
+
+    fn try_from(value: c_int) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Callback),
+            1 => Ok(Self::Integer),
+            2 => Ok(Self::Double),
+            3..=6 => NumericKind::try_from(value - 3)
+                .map(Self::Compact)
+                .map_err(|_| "invalid direct R numeric source kind".into()),
+            _ => Err("invalid direct R numeric source kind".into()),
+        }
+    }
+}
+
+impl DirectNumericKind {
+    fn is_compact(self) -> bool {
+        matches!(self, Self::Compact(_))
+    }
+}
+
 struct RWriteSource<'a> {
     descriptor: &'a RWriteColumnDescriptor,
     row_count: u64,
+    direct_numeric_kind: DirectNumericKind,
+    direct_numeric_version: Option<FormatVersion>,
+    direct_numeric_temporal: TemporalKind,
+    direct_numeric_no_na: bool,
+    raw_numeric: bool,
+    numeric_region: Option<Box<RWriteNumericRegionCache>>,
+    string_region: Option<Box<RWriteStringRegionCache>>,
+    numeric_replacements: Cell<u64>,
+}
+
+fn write_dta_type(code: c_int) -> Result<DtaType, String> {
+    match code {
+        0 => Ok(DtaType::Byte),
+        1 => Ok(DtaType::Int),
+        2 => Ok(DtaType::Long),
+        3 => Ok(DtaType::Float),
+        4 => Ok(DtaType::Double),
+        width if (5..=2_049).contains(&width) => Ok(DtaType::FixedString(
+            u16::try_from(width - 4).map_err(|_| "invalid fixed-string width".to_owned())?,
+        )),
+        2_050 => Ok(DtaType::StrL),
+        _ => Err("invalid native DTA storage type".into()),
+    }
+}
+
+fn direct_numeric_is_output_encoded(
+    descriptor: &RWriteColumnDescriptor,
+    kind: DirectNumericKind,
+    temporal: TemporalKind,
+) -> bool {
+    descriptor.direct_numeric_format_version > 111
+        && matches!(
+            (kind, descriptor.dta_type),
+            (DirectNumericKind::Compact(NumericKind::Byte), 0)
+                | (DirectNumericKind::Compact(NumericKind::Int), 1)
+                | (DirectNumericKind::Compact(NumericKind::Long), 2)
+                | (DirectNumericKind::Compact(NumericKind::Float), 3)
+        )
+        && match temporal {
+            TemporalKind::None => {
+                descriptor.numeric_shift == 0.0 && descriptor.numeric_scale == 1.0
+            }
+            TemporalKind::Date => {
+                descriptor.numeric_shift == DAYS_1960_TO_1970 && descriptor.numeric_scale == 1.0
+            }
+            TemporalKind::Datetime => {
+                descriptor.numeric_shift == SECONDS_1960_TO_1970
+                    && descriptor.numeric_scale == 1000.0
+            }
+        }
 }
 
 fn missing_from_code(code: c_int) -> Result<Option<MissingTag>, String> {
@@ -1825,16 +2048,32 @@ fn missing_from_code(code: c_int) -> Result<Option<MissingTag>, String> {
     }
 }
 
-unsafe fn r_numeric_at(reader: *const c_void, index: usize) -> Result<(f64, c_int), String> {
-    let mut value = 0.0;
-    let mut missing_code = -1;
-    if dtaparser_write_numeric_at(reader, index, &mut value, &mut missing_code) == 0 {
-        return Err("R numeric source could not supply a value".into());
+unsafe fn fill_r_numeric_region(
+    reader: *const c_void,
+    start: usize,
+    values: &mut [f64],
+    missing_codes: &mut [c_int],
+    fallback_message: &str,
+) -> Result<(), RWriteError> {
+    if values.len() != missing_codes.len() {
+        return Err("R numeric region buffers have different lengths".into());
     }
-    Ok((value, missing_code))
+    let mut error = WriteCallbackErrorBuffer::new();
+    let error_capacity = error.capacity();
+    let status = dtaparser_write_numeric_region(
+        reader,
+        start,
+        values.len(),
+        values.as_mut_ptr(),
+        missing_codes.as_mut_ptr(),
+        error.as_mut_ptr(),
+        error_capacity,
+    );
+    write_callback_status(status, fallback_message, &error)
 }
 
-fn direct_missing_code(offset: u8) -> c_int {
+fn direct_missing_code(tag: MissingTag) -> c_int {
+    let offset = tag.offset();
     if offset == 0 {
         0
     } else {
@@ -1842,22 +2081,15 @@ fn direct_missing_code(offset: u8) -> c_int {
     }
 }
 
-fn direct_signed_missing(value: i64, dot: i64, z: i64, legacy: bool) -> Option<u8> {
-    if legacy {
-        return (value == z).then_some(0);
+fn r_na_real_bits() -> u64 {
+    #[cfg(test)]
+    {
+        0x7ff0_0000_0000_07a2_u64
     }
-    (dot..=z)
-        .contains(&value)
-        .then(|| u8::try_from(value - dot).expect("missing offset is bounded"))
-}
-
-fn direct_float_missing(bits: u32, legacy: bool) -> Option<u8> {
-    if legacy {
-        return ((FLOAT_MISSING_DOT_BITS..0x8000_0000).contains(&bits)).then_some(0);
+    #[cfg(not(test))]
+    {
+        unsafe { R_NaReal }.to_bits()
     }
-    let delta = bits.checked_sub(FLOAT_MISSING_DOT_BITS)?;
-    (delta <= 26 * FLOAT_MISSING_STEP_BITS && delta % FLOAT_MISSING_STEP_BITS == 0)
-        .then(|| u8::try_from(delta / FLOAT_MISSING_STEP_BITS).expect("missing offset is bounded"))
 }
 
 fn direct_r_missing_code(value: f64) -> c_int {
@@ -1868,35 +2100,113 @@ fn direct_r_missing_code(value: f64) -> c_int {
     let sign_bit = 0x8000_0000_0000_0000_u64;
     let quiet_nan_bit = 0x0008_0000_0000_0000_u64;
     let tag_bits = 0x0000_00ff_0000_0000_u64;
-    let ignored_bits = sign_bit | quiet_nan_bit | tag_bits;
+    let layout_bits = sign_bit | quiet_nan_bit;
     let tagged_layout = 0x7ff0_0000_0000_07a2_u64;
     let tag = ((bits & tag_bits) >> 32) as u8;
-    if tag != 0 && (bits & !ignored_bits) == (tagged_layout & !ignored_bits) {
+    if tag != 0 && (bits & !(layout_bits | tag_bits)) == (tagged_layout & !(layout_bits | tag_bits))
+    {
         return if tag.is_ascii_lowercase() {
             c_int::from(tag)
         } else {
             256
         };
     }
-    if bits == unsafe { R_NaReal }.to_bits() {
+    if bits as u32 == r_na_real_bits() as u32 {
         0
     } else {
         256
     }
 }
 
+#[derive(Clone, Copy)]
+enum DirectCompactValue {
+    Byte(i8),
+    Int(i16),
+    Long(i32),
+    Float(f32),
+}
+
+impl DirectCompactValue {
+    fn as_f64(self) -> f64 {
+        match self {
+            Self::Byte(value) => f64::from(value),
+            Self::Int(value) => f64::from(value),
+            Self::Long(value) => f64::from(value),
+            Self::Float(value) => f64::from(value),
+        }
+    }
+
+    fn missing(self, version: FormatVersion) -> Option<MissingTag> {
+        match self {
+            Self::Byte(value) => classify_byte_missing_for_version(value, version),
+            Self::Int(value) => classify_int_missing_for_version(value, version),
+            Self::Long(value) => classify_long_missing_for_version(value, version),
+            Self::Float(value) => classify_float_missing_bits_for_version(value.to_bits(), version),
+        }
+    }
+
+    fn raw(self) -> DtaWriteRawNumericValue {
+        match self {
+            Self::Byte(value) => DtaWriteRawNumericValue::Byte(value),
+            Self::Int(value) => DtaWriteRawNumericValue::Int(value),
+            Self::Long(value) => DtaWriteRawNumericValue::Long(value),
+            Self::Float(value) => DtaWriteRawNumericValue::Float(value),
+        }
+    }
+
+    fn is_representable(self) -> bool {
+        let dta_type = match self {
+            Self::Byte(_) => DtaType::Byte,
+            Self::Int(_) => DtaType::Int,
+            Self::Long(_) => DtaType::Long,
+            Self::Float(_) => DtaType::Float,
+        };
+        dta_write_numeric_value_is_representable(&dta_type, self.as_f64())
+    }
+
+    fn is_nan(self) -> bool {
+        matches!(self, Self::Float(value) if value.is_nan())
+    }
+}
+
+unsafe fn direct_compact_at(
+    source: &RWriteSource<'_>,
+    index: usize,
+) -> Option<(DirectCompactValue, Option<MissingTag>)> {
+    let values = source.descriptor.direct_numeric_values;
+    let value = match source.direct_numeric_kind {
+        DirectNumericKind::Compact(NumericKind::Byte) => {
+            DirectCompactValue::Byte(ptr::read(values.cast::<i8>().add(index)))
+        }
+        DirectNumericKind::Compact(NumericKind::Int) => {
+            DirectCompactValue::Int(ptr::read(values.cast::<i16>().add(index)))
+        }
+        DirectNumericKind::Compact(NumericKind::Long) => {
+            DirectCompactValue::Long(ptr::read(values.cast::<i32>().add(index)))
+        }
+        DirectNumericKind::Compact(NumericKind::Float) => {
+            DirectCompactValue::Float(ptr::read(values.cast::<f32>().add(index)))
+        }
+        DirectNumericKind::Callback | DirectNumericKind::Integer | DirectNumericKind::Double => {
+            return None;
+        }
+    };
+    let missing = (!source.direct_numeric_no_na)
+        .then(|| value.missing(source.direct_numeric_version.unwrap()))
+        .flatten();
+    Some((value, missing))
+}
+
 unsafe fn direct_numeric_at(
-    descriptor: &RWriteColumnDescriptor,
+    source: &RWriteSource<'_>,
     index: usize,
 ) -> Result<Option<(f64, c_int)>, String> {
-    let values = descriptor.direct_numeric_values;
-    if values.is_null() || descriptor.direct_numeric_kind == 0 {
+    let values = source.descriptor.direct_numeric_values;
+    if values.is_null() || matches!(source.direct_numeric_kind, DirectNumericKind::Callback) {
         return Ok(None);
     }
-    let legacy = descriptor.direct_numeric_format_version <= 111;
-    let no_na = descriptor.direct_numeric_no_na != 0;
-    let (mut value, missing_code) = match descriptor.direct_numeric_kind {
-        1 => {
+    let (mut value, missing_code) = match source.direct_numeric_kind {
+        DirectNumericKind::Integer => {
             let value = ptr::read(values.cast::<c_int>().add(index));
             if value == c_int::MIN {
                 (0.0, 0)
@@ -1904,117 +2214,282 @@ unsafe fn direct_numeric_at(
                 (f64::from(value), -1)
             }
         }
-        2 => {
+        DirectNumericKind::Double => {
             let value = ptr::read(values.cast::<f64>().add(index));
             (value, direct_r_missing_code(value))
         }
-        3 => {
-            let value = ptr::read(values.cast::<i8>().add(index));
-            let missing = (!no_na)
-                .then(|| direct_signed_missing(i64::from(value), 101, 127, legacy))
-                .flatten();
-            (f64::from(value), missing.map_or(-1, direct_missing_code))
-        }
-        4 => {
-            let value = ptr::read(values.cast::<i16>().add(index));
-            let missing = (!no_na)
-                .then(|| direct_signed_missing(i64::from(value), 32_741, 32_767, legacy))
-                .flatten();
-            (f64::from(value), missing.map_or(-1, direct_missing_code))
-        }
-        5 => {
-            let value = ptr::read(values.cast::<i32>().add(index));
-            let missing = (!no_na)
-                .then(|| {
-                    direct_signed_missing(i64::from(value), 2_147_483_621, 2_147_483_647, legacy)
-                })
-                .flatten();
-            (f64::from(value), missing.map_or(-1, direct_missing_code))
-        }
-        6 => {
-            let value = ptr::read(values.cast::<f32>().add(index));
-            let missing = (!no_na)
-                .then(|| direct_float_missing(value.to_bits(), legacy))
-                .flatten();
+        DirectNumericKind::Compact(_) => {
+            let (value, missing) = direct_compact_at(source, index)
+                .expect("compact source has a direct compact value");
             let missing_code = missing.map_or_else(
                 || if value.is_nan() { 256 } else { -1 },
                 direct_missing_code,
             );
-            (f64::from(value), missing_code)
+            (value.as_f64(), missing_code)
         }
-        _ => return Err("invalid direct R numeric source kind".into()),
+        DirectNumericKind::Callback => unreachable!("callback source returned above"),
     };
     if missing_code == -1 {
-        value = match descriptor.direct_numeric_temporal {
-            0 => value,
-            1 => value - DAYS_1960_TO_1970,
-            2 => value / 1000.0 - SECONDS_1960_TO_1970,
-            _ => return Err("invalid direct R numeric temporal kind".into()),
-        };
+        value = observed_value(value, source.direct_numeric_temporal);
     }
     Ok(Some((value, missing_code)))
 }
 
-unsafe fn r_string_bytes(values: Sexp, index: usize) -> Result<(*const u8, usize), String> {
-    let mut value = ptr::null();
-    let mut length = 0_usize;
-    let mut missing = 0;
-    if dtaparser_write_string_at(values, index, &mut value, &mut length, &mut missing) == 0 {
-        return Err("R character source could not supply a value".into());
+unsafe fn fill_r_string_region(
+    values: Sexp,
+    start: usize,
+    ids: Option<&mut [u64]>,
+    strings: &mut [*const c_char],
+    lengths: &mut [usize],
+    fallback_message: &str,
+) -> Result<(), RWriteError> {
+    if strings.len() != lengths.len() || ids.as_ref().is_some_and(|ids| ids.len() != strings.len())
+    {
+        return Err("R character region buffers have different lengths".into());
     }
-    if missing != 0 {
-        return Ok((ptr::null(), 0));
-    }
+    let ids = ids.map_or(ptr::null_mut(), |ids| ids.as_mut_ptr());
+    let mut error = WriteCallbackErrorBuffer::new();
+    let error_capacity = error.capacity();
+    let status = dtaparser_write_string_region(
+        values,
+        start,
+        strings.len(),
+        ids,
+        strings.as_mut_ptr(),
+        lengths.as_mut_ptr(),
+        error.as_mut_ptr(),
+        error_capacity,
+    );
+    write_callback_status(status, fallback_message, &error)
+}
+
+unsafe fn r_string_from_bytes<'a>(
+    value: *const u8,
+    length: usize,
+) -> Result<Cow<'a, str>, RWriteError> {
     if value.is_null() && length != 0 {
         return Err("R character source returned a null byte pointer".into());
     }
-    Ok((value.cast::<u8>(), length))
-}
-
-unsafe fn r_string_at(values: Sexp, index: usize) -> Result<String, String> {
-    let (value, length) = r_string_bytes(values, index)?;
     let bytes = if length == 0 {
         &[]
     } else {
         std::slice::from_raw_parts(value, length)
     };
-    String::from_utf8(bytes.to_vec()).map_err(|_| "R character value is not valid UTF-8".to_owned())
+    std::str::from_utf8(bytes)
+        .map(Cow::Borrowed)
+        .map_err(|_| RWriteError::from("R character value is not valid UTF-8"))
 }
 
-impl DtaWriteColumnSource for RWriteSource<'_> {
-    fn len(&self) -> u64 {
-        self.row_count
-    }
-
-    fn numeric_value(&self, row: u64) -> Result<DtaWriteNumericValue, String> {
-        if row % INTERRUPT_STRIDE as u64 == 0 && unsafe { dtaparser_check_interrupt() } != 0 {
-            return Err("write interrupted".into());
-        }
-        let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
-        let (value, missing_code) = unsafe { direct_numeric_at(self.descriptor, index) }?
-            .map_or_else(
-                || unsafe { r_numeric_at(self.descriptor.numeric_values, index) },
-                Ok,
-            )?;
-        Ok(match missing_from_code(missing_code)? {
-            Some(tag) => DtaWriteNumericValue::Missing(tag),
-            None => DtaWriteNumericValue::Value(
-                (value + self.descriptor.numeric_shift) * self.descriptor.numeric_scale,
+impl<'a> RWriteSource<'a> {
+    fn new(
+        descriptor: &'a RWriteColumnDescriptor,
+        row_count: u64,
+        numeric_region_rows: usize,
+        string_region_rows: usize,
+    ) -> Result<Self, String> {
+        let direct_numeric_kind = DirectNumericKind::try_from(descriptor.direct_numeric_kind)?;
+        let direct_numeric_version = if direct_numeric_kind.is_compact() {
+            let release = u16::try_from(descriptor.direct_numeric_format_version)
+                .map_err(|_| "invalid direct numeric format version".to_owned())?;
+            Some(
+                FormatVersion::try_from(release)
+                    .map_err(|_| "invalid direct numeric format version".to_owned())?,
+            )
+        } else {
+            None
+        };
+        let direct_numeric_temporal = TemporalKind::try_from(descriptor.direct_numeric_temporal)?;
+        let uses_numeric_callback = descriptor.dta_type <= 4
+            && (descriptor.direct_numeric_values.is_null()
+                || matches!(direct_numeric_kind, DirectNumericKind::Callback));
+        let uses_string_callback =
+            descriptor.dta_type >= 5 && descriptor.direct_string_data.is_null();
+        Ok(Self {
+            descriptor,
+            row_count,
+            direct_numeric_kind,
+            direct_numeric_version,
+            direct_numeric_temporal,
+            direct_numeric_no_na: descriptor.direct_numeric_no_na != 0,
+            raw_numeric: direct_numeric_is_output_encoded(
+                descriptor,
+                direct_numeric_kind,
+                direct_numeric_temporal,
             ),
+            numeric_region: uses_numeric_callback.then(|| {
+                Box::new(RWriteNumericRegionCache {
+                    rows: numeric_region_rows.max(1),
+                    region: RefCell::new(RWriteNumericRegion::default()),
+                })
+            }),
+            string_region: uses_string_callback.then(|| {
+                Box::new(RWriteStringRegionCache {
+                    rows: string_region_rows.max(1),
+                    region: RefCell::new(RWriteStringRegion::default()),
+                })
+            }),
+            numeric_replacements: Cell::new(0),
         })
     }
 
-    fn string_value(&self, row: u64) -> Result<Cow<'_, str>, String> {
-        if row % INTERRUPT_STRIDE as u64 == 0 && unsafe { dtaparser_check_interrupt() } != 0 {
-            return Err("write interrupted".into());
+    fn callback_numeric_value_at(&self, row: u64) -> Result<(f64, c_int), RWriteError> {
+        let cache = self
+            .numeric_region
+            .as_ref()
+            .ok_or_else(|| "R numeric callback source is unavailable".to_owned())?;
+        let mut region = cache.region.borrow_mut();
+        let end = region
+            .start
+            .checked_add(region.values.len() as u64)
+            .ok_or_else(|| "R numeric region is too large".to_owned())?;
+        if region.values.is_empty() || row < region.start || row >= end {
+            let remaining = usize::try_from(self.row_count - row)
+                .map_err(|_| "R numeric region is too large".to_owned())?;
+            let length = remaining.min(cache.rows);
+            region.values.resize(length, 0.0);
+            region.missing_codes.resize(length, -1);
+            let start = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+            let RWriteNumericRegion {
+                values,
+                missing_codes,
+                ..
+            } = &mut *region;
+            unsafe {
+                fill_r_numeric_region(
+                    self.descriptor.numeric_values,
+                    start,
+                    values,
+                    missing_codes,
+                    "R numeric source could not supply a region",
+                )
+            }?;
+            region.start = row;
+        }
+        let offset = usize::try_from(row - region.start)
+            .map_err(|_| "R numeric region index is too large".to_owned())?;
+        Ok((region.values[offset], region.missing_codes[offset]))
+    }
+
+    fn raw_numeric_value_at(
+        &self,
+        row: u64,
+    ) -> Result<Option<DtaWriteRawNumericValue>, RWriteError> {
+        if !self.raw_numeric {
+            return Ok(None);
         }
         let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
-        if !self.descriptor.direct_string_data.is_null() {
-            let data = unsafe { &*self.descriptor.direct_string_data.cast::<DictStringData>() };
-            if index >= data.length {
-                return Err("R row index is outside the string dictionary".into());
+        let (value, missing) = unsafe { direct_compact_at(self, index) }
+            .ok_or_else(|| "noncompact source reached raw numeric access".to_owned())?;
+        if missing.is_none() && !value.is_representable() {
+            return Ok(None);
+        }
+        Ok(Some(value.raw()))
+    }
+
+    fn numeric_value_at(
+        &self,
+        row: u64,
+        dta_type: &DtaType,
+    ) -> Result<DtaWriteNumericValue, RWriteError> {
+        let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+        let (value, missing_code) = match unsafe { direct_numeric_at(self, index) }? {
+            Some(value) => value,
+            None => self.callback_numeric_value_at(row)?,
+        };
+        let value = match missing_from_code(missing_code) {
+            Ok(Some(tag)) => return Ok(DtaWriteNumericValue::Missing(tag)),
+            Ok(None) => write_numeric_value(
+                value,
+                self.descriptor.numeric_shift,
+                self.descriptor.numeric_scale,
+            ),
+            Err(_) => {
+                self.numeric_replacements
+                    .set(self.numeric_replacements.get() + 1);
+                return Ok(DtaWriteNumericValue::Missing(MissingTag::System));
             }
-            let id = unsafe { ptr::read(data.value_ids.add(index)) };
+        };
+        if dta_write_numeric_value_is_representable(dta_type, value) {
+            Ok(DtaWriteNumericValue::Value(value))
+        } else {
+            self.numeric_replacements
+                .set(self.numeric_replacements.get() + 1);
+            Ok(DtaWriteNumericValue::Missing(MissingTag::System))
+        }
+    }
+
+    fn callback_string_at(
+        &self,
+        row: u64,
+    ) -> Result<(u64, *const c_char, usize, bool), RWriteError> {
+        let cache = self
+            .string_region
+            .as_ref()
+            .ok_or_else(|| "R character callback source is unavailable".to_owned())?;
+        let mut region = cache.region.borrow_mut();
+        let end = region
+            .start
+            .checked_add(region.values.len() as u64)
+            .ok_or_else(|| "R character region is too large".to_owned())?;
+        if region.values.is_empty() || row < region.start || row >= end {
+            let remaining = usize::try_from(self.row_count - row)
+                .map_err(|_| "R character region is too large".to_owned())?;
+            let length = remaining.min(cache.rows);
+            let has_ids = self.descriptor.dta_type == 2_050;
+            region.ids.resize(if has_ids { length } else { 0 }, 0);
+            region.values.resize(length, ptr::null());
+            region.lengths.resize(length, 0);
+            let start = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+            let RWriteStringRegion {
+                ids,
+                values,
+                lengths,
+                ..
+            } = &mut *region;
+            unsafe {
+                fill_r_string_region(
+                    self.descriptor.string_values,
+                    start,
+                    has_ids.then_some(ids.as_mut_slice()),
+                    values,
+                    lengths,
+                    "R character source could not supply a region",
+                )?;
+            }
+            region.start = row;
+        }
+        let offset = usize::try_from(row - region.start)
+            .map_err(|_| "R character region index is too large".to_owned())?;
+        Ok((
+            region.ids.get(offset).copied().unwrap_or(0),
+            region.values[offset],
+            region.lengths[offset],
+            region.values[offset].is_null(),
+        ))
+    }
+
+    fn dictionary_value_id_at(&self, index: usize) -> Result<(&DictStringData, u32), String> {
+        let data = unsafe { &*self.descriptor.direct_string_data.cast::<DictStringData>() };
+        if index >= data.length {
+            return Err("R row index is outside the string dictionary".into());
+        }
+        Ok((data, unsafe { ptr::read(data.value_ids.add(index)) }))
+    }
+
+    fn string_id_at(&self, row: u64) -> Result<Option<u64>, RWriteError> {
+        let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+        if self.descriptor.direct_string_data.is_null() {
+            let (id, _, _, _) = self.callback_string_at(row)?;
+            return Ok(Some(id));
+        }
+        let (_, id) = self.dictionary_value_id_at(index)?;
+        Ok(Some(u64::from(id)))
+    }
+
+    fn string_value_at(&self, row: u64) -> Result<Cow<'_, str>, RWriteError> {
+        let index = usize::try_from(row).map_err(|_| "R row index is too large".to_owned())?;
+        if !self.descriptor.direct_string_data.is_null() {
+            let (data, id) = self.dictionary_value_id_at(index)?;
             let &(value, length) = data
                 .value_views
                 .get(id as usize)
@@ -2024,145 +2499,223 @@ impl DtaWriteColumnSource for RWriteSource<'_> {
             } else {
                 unsafe { std::slice::from_raw_parts(value, length) }
             };
-            return std::str::from_utf8(bytes)
-                .map(Cow::Borrowed)
-                .map_err(|_| "R string dictionary value is not valid UTF-8".to_owned());
+            // `value_views` point into owned Rust `String` keys, so their bytes
+            // remain valid UTF-8 for the lifetime of the dictionary payload.
+            return Ok(Cow::Borrowed(unsafe {
+                std::str::from_utf8_unchecked(bytes)
+            }));
         }
-        let (value, length) = unsafe { r_string_bytes(self.descriptor.string_values, index) }?;
+        let (_, value, length, missing) = self.callback_string_at(row)?;
+        if missing {
+            return Ok(Cow::Borrowed(""));
+        }
+        if value.is_null() && length != 0 {
+            return Err("R character source returned a null byte pointer".into());
+        }
         let bytes = if length == 0 {
             &[]
         } else {
-            // The protected R character vector owns immutable CHARSXPs for the
-            // complete native call, so their byte storage outlives this borrow.
-            unsafe { std::slice::from_raw_parts(value, length) }
+            unsafe { std::slice::from_raw_parts(value.cast::<u8>(), length) }
         };
+        // The protected R character vector owns immutable CHARSXPs for the
+        // complete native call, so their byte storage outlives this borrow.
         std::str::from_utf8(bytes)
             .map(Cow::Borrowed)
-            .map_err(|_| "R character value is not valid UTF-8".to_owned())
+            .map_err(|_| "R character value is not valid UTF-8".into())
     }
 }
 
-fn append_r_numeric(buffer: &mut Vec<u8>, dta_type: &DtaType, value: DtaWriteNumericValue) {
-    let missing_integer = |tag: MissingTag, dot: i64| dot + i64::from(tag.offset());
-    match (dta_type, value) {
-        (DtaType::Byte, DtaWriteNumericValue::Value(value)) => buffer.push((value as i8) as u8),
-        (DtaType::Byte, DtaWriteNumericValue::Missing(tag)) => {
-            buffer.push((missing_integer(tag, 101) as i8) as u8)
-        }
-        (DtaType::Int, DtaWriteNumericValue::Value(value)) => {
-            buffer.extend_from_slice(&(value as i16).to_le_bytes())
-        }
-        (DtaType::Int, DtaWriteNumericValue::Missing(tag)) => {
-            buffer.extend_from_slice(&(missing_integer(tag, 32_741) as i16).to_le_bytes())
-        }
-        (DtaType::Long, DtaWriteNumericValue::Value(value)) => {
-            buffer.extend_from_slice(&(value as i32).to_le_bytes())
-        }
-        (DtaType::Long, DtaWriteNumericValue::Missing(tag)) => {
-            buffer.extend_from_slice(&(missing_integer(tag, 2_147_483_621) as i32).to_le_bytes())
-        }
-        (DtaType::Float, DtaWriteNumericValue::Value(value)) => {
-            buffer.extend_from_slice(&(value as f32).to_bits().to_le_bytes())
-        }
-        (DtaType::Float, DtaWriteNumericValue::Missing(tag)) => {
-            let bits = FLOAT_MISSING_DOT_BITS + u32::from(tag.offset()) * FLOAT_MISSING_STEP_BITS;
-            buffer.extend_from_slice(&bits.to_le_bytes())
-        }
-        (DtaType::Double, DtaWriteNumericValue::Value(value)) => {
-            buffer.extend_from_slice(&value.to_bits().to_le_bytes())
-        }
-        (DtaType::Double, DtaWriteNumericValue::Missing(tag)) => {
-            let bits = DOUBLE_MISSING_DOT_BITS + u64::from(tag.offset()) * DOUBLE_MISSING_STEP_BITS;
-            buffer.extend_from_slice(&bits.to_le_bytes())
-        }
-        _ => unreachable!("direct R observation storage was checked"),
+impl DtaWriteColumnSource for RWriteSource<'_> {
+    fn len(&self) -> u64 {
+        self.row_count
     }
 }
 
-fn write_direct_r_observations<W: Write>(
-    writer: &mut W,
-    data: &DtaWriteData<'_>,
-    sources: &[RWriteSource<'_>],
-) -> Result<(), DtaWriteError> {
-    let row_width = data.columns.iter().try_fold(0_usize, |width, column| {
-        let column_width = match column.dta_type {
-            DtaType::Byte => 1,
-            DtaType::Int => 2,
-            DtaType::Long | DtaType::Float => 4,
-            DtaType::Double => 8,
-            DtaType::FixedString(width) => usize::from(width),
-            DtaType::StrL => unreachable!("strL does not use the direct R encoder"),
-        };
-        width.checked_add(column_width)
-    });
-    let row_width = row_width.ok_or(DtaWriteError::Overflow("R observation width"))?;
-    let rows_per_buffer = (R_WRITE_BUFFER_BYTES / row_width).max(1);
-    let capacity = row_width
-        .checked_mul(rows_per_buffer)
-        .ok_or(DtaWriteError::Overflow("R observation buffer"))?;
-    let mut buffer = Vec::with_capacity(capacity);
-    for row in 0..data.row_count {
-        for (column, source) in data.columns.iter().zip(sources) {
-            let map_source_error = |message| DtaWriteError::Source {
-                column: column.name.clone(),
+struct RWriteObservationSource<'data, 'source> {
+    data: &'data DtaWriteData<'source>,
+    sources: &'data [RWriteSource<'source>],
+}
+
+impl RWriteObservationSource<'_, '_> {
+    fn source_result<T>(
+        &self,
+        column_index: usize,
+        row: u64,
+        result: Result<T, RWriteError>,
+    ) -> Result<T, DtaWriteError> {
+        result.map_err(|error| match error {
+            RWriteError::Interrupted => DtaWriteError::Interrupted,
+            RWriteError::Message(message) => DtaWriteError::Source {
+                column: self.data.columns[column_index].name.to_string(),
                 row,
                 message,
-            };
-            match column.dta_type {
-                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
-                    append_r_numeric(
-                        &mut buffer,
-                        &column.dta_type,
-                        source.numeric_value(row).map_err(map_source_error)?,
-                    )
-                }
-                DtaType::FixedString(width) => {
-                    let value = source.string_value(row).map_err(map_source_error)?;
-                    buffer.extend_from_slice(value.as_bytes());
-                    buffer.resize(buffer.len() + usize::from(width) - value.len(), 0);
-                }
-                DtaType::StrL => unreachable!("strL does not use the direct R encoder"),
-            }
-        }
-        if (row + 1) % rows_per_buffer as u64 == 0 {
-            writer.write_all(&buffer)?;
-            buffer.clear();
-        }
+            },
+        })
     }
-    if !buffer.is_empty() {
-        writer.write_all(&buffer)?;
-    }
-    Ok(())
 }
 
-unsafe fn required_c_string(value: *const c_char, description: &str) -> Result<String, String> {
+impl DtaWriteObservationSource for RWriteObservationSource<'_, '_> {
+    fn begin_row(&self, row: u64) -> Result<(), DtaWriteError> {
+        if row.is_multiple_of(INTERRUPT_STRIDE as u64) && coarse_interrupt() {
+            Err(DtaWriteError::Interrupted)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_interrupt(&self) -> Result<(), DtaWriteError> {
+        if coarse_interrupt() {
+            Err(DtaWriteError::Interrupted)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn raw_numeric_value(
+        &self,
+        column_index: usize,
+        row: u64,
+    ) -> Result<Option<DtaWriteRawNumericValue>, DtaWriteError> {
+        self.source_result(
+            column_index,
+            row,
+            self.sources[column_index].raw_numeric_value_at(row),
+        )
+    }
+
+    fn numeric_value(
+        &self,
+        column_index: usize,
+        row: u64,
+    ) -> Result<DtaWriteNumericValue, DtaWriteError> {
+        self.source_result(
+            column_index,
+            row,
+            self.sources[column_index]
+                .numeric_value_at(row, &self.data.columns[column_index].dta_type),
+        )
+    }
+
+    fn string_id(&self, column_index: usize, row: u64) -> Result<Option<u64>, DtaWriteError> {
+        self.source_result(
+            column_index,
+            row,
+            self.sources[column_index].string_id_at(row),
+        )
+    }
+
+    fn string_value(&self, column_index: usize, row: u64) -> Result<Cow<'_, str>, DtaWriteError> {
+        self.source_result(
+            column_index,
+            row,
+            self.sources[column_index].string_value_at(row),
+        )
+    }
+}
+
+unsafe fn required_c_str<'a>(value: *const c_char, description: &str) -> Result<&'a str, String> {
     if value.is_null() {
         return Err(format!("{description} is null"));
     }
     CStr::from_ptr(value)
         .to_str()
-        .map(str::to_owned)
         .map_err(|_| format!("{description} is not valid UTF-8"))
 }
 
-unsafe fn write_impl(
+unsafe fn required_c_string(value: *const c_char, description: &str) -> Result<String, String> {
+    required_c_str(value, description).map(str::to_owned)
+}
+
+unsafe fn r_value_labels<'a>(
+    descriptor: &'a RWriteColumnDescriptor,
+) -> Result<Vec<DtaWriteValueLabel<'a>>, RWriteError> {
+    let mut result = Vec::with_capacity(descriptor.label_count);
+    if descriptor.label_count == 0 {
+        return Ok(result);
+    }
+    let bytes_per_entry =
+        size_of::<f64>() + size_of::<c_int>() + size_of::<*const c_char>() + size_of::<usize>();
+    let region_capacity = descriptor
+        .label_count
+        .min((WRITE_CALLBACK_REGION_BYTES / bytes_per_entry).max(1));
+    let mut values = vec![0.0; region_capacity];
+    let mut missing_codes = vec![-1; region_capacity];
+    let mut strings = vec![ptr::null(); region_capacity];
+    let mut lengths = vec![0; region_capacity];
+    let mut start = 0;
+    while start < descriptor.label_count {
+        let length = (descriptor.label_count - start).min(region_capacity);
+        fill_r_numeric_region(
+            descriptor.label_values,
+            start,
+            &mut values[..length],
+            &mut missing_codes[..length],
+            "R numeric source could not supply value-label keys",
+        )?;
+        fill_r_string_region(
+            descriptor.label_texts,
+            start,
+            None,
+            &mut strings[..length],
+            &mut lengths[..length],
+            "R character source could not supply value-label text",
+        )?;
+        for offset in 0..length {
+            let value = match missing_from_code(missing_codes[offset])? {
+                Some(tag) => DtaWriteLabelValue::Missing(tag),
+                None if values[offset].is_finite()
+                    && values[offset].fract() == 0.0
+                    && values[offset] >= f64::from(i32::MIN)
+                    && values[offset] <= f64::from(i32::MAX) =>
+                {
+                    DtaWriteLabelValue::Integer(values[offset] as i32)
+                }
+                None => return Err("value-label key is not a representable integer".into()),
+            };
+            result.push(DtaWriteValueLabel {
+                value,
+                label: r_string_from_bytes(strings[offset].cast(), lengths[offset])?,
+            });
+        }
+        start += length;
+    }
+    Ok(result)
+}
+
+struct RWriteRequest {
     path: *const c_char,
     dataset_label: *const c_char,
     notes: *const *const c_char,
     note_count: usize,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
+    numeric_replacements: *mut f64,
     row_count: usize,
-    stata_version: c_int,
     timestamp: *const c_char,
-) -> Result<(), String> {
+}
+
+unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
+    let RWriteRequest {
+        path,
+        dataset_label,
+        notes,
+        note_count,
+        descriptors,
+        column_count,
+        numeric_replacements,
+        row_count,
+        timestamp,
+    } = request;
     let path = required_c_string(path, "output path")?;
-    let dataset_label = required_c_string(dataset_label, "dataset label")?;
+    let dataset_label = Cow::Borrowed(required_c_str(dataset_label, "dataset label")?);
     if notes.is_null() && note_count != 0 {
         return Err("dataset note pointer is null".into());
     }
     if descriptors.is_null() && column_count != 0 {
         return Err("write column pointer is null".into());
+    }
+    if numeric_replacements.is_null() && column_count != 0 {
+        return Err("numeric replacement output pointer is null".into());
     }
     let note_pointers = if note_count == 0 {
         &[]
@@ -2171,7 +2724,7 @@ unsafe fn write_impl(
     };
     let notes = note_pointers
         .iter()
-        .map(|note| required_c_string(*note, "dataset note"))
+        .map(|note| required_c_str(*note, "dataset note").map(Cow::Borrowed))
         .collect::<Result<Vec<_>, _>>()?;
     let descriptors = if column_count == 0 {
         &[]
@@ -2179,106 +2732,102 @@ unsafe fn write_impl(
         std::slice::from_raw_parts(descriptors, column_count)
     };
     let row_count = u64::try_from(row_count).map_err(|_| "row count is too large".to_owned())?;
+    let callback_numeric_count = descriptors
+        .iter()
+        .filter(|descriptor| descriptor.dta_type <= 4 && descriptor.direct_numeric_kind == 0)
+        .count();
+    let numeric_region_rows = if callback_numeric_count == 0 {
+        0
+    } else {
+        let bytes_per_row = callback_numeric_count
+            .checked_mul(size_of::<f64>() + size_of::<c_int>())
+            .ok_or_else(|| "R numeric region width is too large".to_owned())?;
+        (WRITE_CALLBACK_REGION_BYTES / bytes_per_row).max(1)
+    };
+    let string_region_bytes_per_row = descriptors
+        .iter()
+        .filter(|descriptor| descriptor.dta_type >= 5 && descriptor.direct_string_data.is_null())
+        .try_fold(0_usize, |bytes, descriptor| {
+            bytes.checked_add(
+                size_of::<*const c_char>()
+                    + size_of::<usize>()
+                    + if descriptor.dta_type == 2_050 {
+                        size_of::<u64>()
+                    } else {
+                        0
+                    },
+            )
+        })
+        .ok_or_else(|| "R character region width is too large".to_owned())?;
+    let string_region_rows = WRITE_CALLBACK_REGION_BYTES
+        .checked_div(string_region_bytes_per_row)
+        .map_or(0, |rows| rows.max(1));
     let sources = descriptors
         .iter()
-        .map(|descriptor| RWriteSource {
-            descriptor,
-            row_count,
+        .map(|descriptor| {
+            RWriteSource::new(
+                descriptor,
+                row_count,
+                numeric_region_rows,
+                string_region_rows,
+            )
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     let mut columns = Vec::with_capacity(column_count);
     for (descriptor, source) in descriptors.iter().zip(&sources) {
         if !descriptor.numeric_shift.is_finite() || !descriptor.numeric_scale.is_finite() {
             return Err("numeric write transform must be finite".into());
         }
-        let dta_type = match descriptor.dta_type {
-            0 => DtaType::Byte,
-            1 => DtaType::Int,
-            2 => DtaType::Long,
-            3 => DtaType::Float,
-            4 => DtaType::Double,
-            width if (5..=2_049).contains(&width) => DtaType::FixedString(
-                u16::try_from(width - 4).map_err(|_| "invalid fixed-string width".to_owned())?,
-            ),
-            2_050 => DtaType::StrL,
-            _ => return Err("invalid native DTA storage type".into()),
-        };
-        let mut value_labels = Vec::with_capacity(descriptor.label_count);
-        for index in 0..descriptor.label_count {
-            let (value, missing_code) = r_numeric_at(descriptor.label_values, index)?;
-            let value = match missing_from_code(missing_code)? {
-                Some(tag) => DtaWriteLabelValue::Missing(tag),
-                None if value.is_finite()
-                    && value.fract() == 0.0
-                    && value >= f64::from(i32::MIN)
-                    && value <= f64::from(i32::MAX) =>
-                {
-                    DtaWriteLabelValue::Integer(value as i32)
-                }
-                None => return Err("value-label key is not a representable integer".into()),
-            };
-            value_labels.push(DtaWriteValueLabel {
-                value,
-                label: r_string_at(descriptor.label_texts, index)?,
-            });
-        }
+        let dta_type = write_dta_type(descriptor.dta_type)?;
+        let value_labels = r_value_labels(descriptor)?;
         columns.push(DtaWriteColumn {
-            name: required_c_string(descriptor.name, "variable name")?,
+            name: Cow::Borrowed(required_c_str(descriptor.name, "variable name")?),
             dta_type,
-            format: required_c_string(descriptor.format, "display format")?,
-            label: required_c_string(descriptor.label, "variable label")?,
+            format: Cow::Borrowed(required_c_str(descriptor.format, "display format")?),
+            label: Cow::Borrowed(required_c_str(descriptor.label, "variable label")?),
             has_value_labels: descriptor.has_value_labels != 0,
             value_labels,
             values: DtaWriteColumnValues::Source(source),
         });
     }
     let options = DtaWriteOptions {
-        stata_version: match stata_version {
-            18 => StataVersion::V18,
-            19 => StataVersion::V19,
-            _ => return Err("`version` must be 18 or 19".into()),
-        },
         timestamp: Some(required_c_string(timestamp, "timestamp")?),
     };
     let data = DtaWriteData {
         dataset_label,
         notes,
-        row_count,
         columns,
     };
-    let direct_observations = descriptors.iter().all(|descriptor| {
-        if descriptor.dta_type <= 4 {
-            !descriptor.direct_numeric_values.is_null()
-        } else {
-            descriptor.dta_type != 2_050 && !descriptor.direct_string_data.is_null()
-        }
-    });
-    let file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
+    let observation_source = RWriteObservationSource {
+        data: &data,
+        sources: &sources,
+    };
+    let mut open_options = OpenOptions::new();
+    open_options.write(true).create_new(true);
+    #[cfg(unix)]
+    open_options.mode(0o600);
+    let file = open_options
         .open(path)
         .map_err(|error| format!("could not create temporary DTA output: {error}"))?;
     let mut writer = BufWriter::new(file);
-    if direct_observations {
-        write_prevalidated_dta_with_observation_encoder_to(
-            &mut writer,
-            &data,
-            &options,
-            |writer| write_direct_r_observations(writer, &data, &sources),
-        )
-        .map_err(|error| error.to_string())?;
-    } else {
-        write_prevalidated_dta_to(&mut writer, &data, &options)
-            .map_err(|error| error.to_string())?;
-    }
-    writer
-        .flush()
-        .map_err(|error| format!("could not flush DTA output: {error}"))?;
+    write_prevalidated_dta_with_observation_source_to(
+        &mut writer,
+        &data,
+        &options,
+        &observation_source,
+        row_count,
+    )?;
     let file = writer
         .into_inner()
-        .map_err(|error| format!("could not close DTA output: {error}"))?;
+        .map_err(|error| format!("could not flush DTA output: {}", error.error()))?;
     file.sync_all()
         .map_err(|error| format!("could not synchronize DTA output: {error}"))?;
+    for (index, source) in sources.iter().enumerate() {
+        ptr::write(
+            numeric_replacements.add(index),
+            source.numeric_replacements.get() as f64,
+        );
+    }
     Ok(())
 }
 
@@ -2296,40 +2845,65 @@ pub unsafe extern "C" fn dtaparser_write_rust(
     note_count: usize,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
+    numeric_replacements: *mut f64,
     row_count: usize,
-    stata_version: c_int,
     timestamp: *const c_char,
     error: *mut *mut c_char,
 ) -> c_int {
-    if !error.is_null() {
-        *error = ptr::null_mut();
-    }
-    match catch_unwind(AssertUnwindSafe(|| {
-        write_impl(
+    boundary(error, 0, || {
+        match write_impl(RWriteRequest {
             path,
             dataset_label,
             notes,
             note_count,
             descriptors,
             column_count,
+            numeric_replacements,
             row_count,
-            stata_version,
             timestamp,
-        )
-    })) {
-        Ok(Ok(())) => 1,
-        Ok(Err(message)) => {
-            set_error(error, message);
-            0
+        }) {
+            Ok(()) => Ok(1),
+            Err(RWriteError::Interrupted) => Ok(-1),
+            Err(RWriteError::Message(message)) => Err(message),
         }
-        Err(payload) => {
-            set_error(
-                error,
-                format!("native Rust panic: {}", panic_message(payload)),
-            );
-            0
+    })
+}
+
+#[no_mangle]
+/// Classify an output destination without following its final symbolic link.
+///
+/// Returns zero for a missing path, one for a regular file, two for a symbolic
+/// link, three for a directory, four for another existing file type, and -1 on
+/// error.
+///
+/// # Safety
+///
+/// `path` must point to a readable NUL-terminated C byte string for the
+/// duration of this call. If non-null, `error` must point to writable storage
+/// for one C string pointer.
+pub unsafe extern "C" fn dtaparser_write_path_kind(
+    path: *const c_char,
+    error: *mut *mut c_char,
+) -> c_int {
+    boundary(error, -1, || {
+        let path = required_c_str(path, "output destination path")?;
+        match fs::symlink_metadata(path) {
+            Ok(metadata) => {
+                let kind = metadata.file_type();
+                Ok(if kind.is_file() {
+                    1
+                } else if kind.is_symlink() {
+                    2
+                } else if kind.is_dir() {
+                    3
+                } else {
+                    4
+                })
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(0),
+            Err(error) => Err(format!("could not inspect output destination: {error}")),
         }
-    }
+    })
 }
 
 #[no_mangle]
@@ -2348,8 +2922,9 @@ pub unsafe extern "C" fn dtaparser_free_error(error: *mut c_char) {
 #[cfg(test)]
 mod tests {
     use super::{
-        selected_row_count, temporal_kind, validate_r_row_count, TemporalKind,
-        R_DATA_FRAME_MAX_ROWS,
+        direct_r_missing_code, observed_value, selected_row_count, temporal_kind,
+        validate_r_row_count, write_callback_status, write_numeric_value, RWriteError,
+        TemporalKind, WriteCallbackErrorBuffer, R_DATA_FRAME_MAX_ROWS,
     };
 
     #[test]
@@ -2374,6 +2949,41 @@ mod tests {
                 "{format} should remain numeric"
             );
         }
+    }
+
+    #[test]
+    fn decoded_stata_milliseconds_snap_back_to_integer_storage() {
+        for raw in [1.0, 999.0, 1_001.0] {
+            let observed = observed_value(raw, TemporalKind::Datetime);
+            assert_eq!(write_numeric_value(observed, 315_619_200.0, 1_000.0), raw);
+        }
+    }
+
+    #[test]
+    fn direct_r_missing_codes_match_r_system_na_payloads() {
+        let system_missing = 0x7ff0_0000_0000_07a2_u64;
+        for bits in [
+            system_missing,
+            system_missing | 0x0008_0000_0000_0000,
+            system_missing | 0x8000_0000_0000_0000,
+            0x7ff0_0100_0000_07a2,
+        ] {
+            assert_eq!(direct_r_missing_code(f64::from_bits(bits)), 0);
+        }
+    }
+
+    #[test]
+    fn callback_errors_preserve_r_condition_messages() {
+        let mut error = WriteCallbackErrorBuffer::new();
+        let message = b"ALTREP callback failed\0";
+        for (destination, source) in error.bytes.iter_mut().zip(message) {
+            *destination = *source as _;
+        }
+        let result = write_callback_status(0, "generic callback failure", &error);
+        assert!(matches!(
+            result,
+            Err(RWriteError::Message(message)) if message == "ALTREP callback failed"
+        ));
     }
 
     #[test]

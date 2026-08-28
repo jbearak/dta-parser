@@ -5,15 +5,19 @@ if (length(args) != 2L || !args[[1L]] %in% c("dtaparser", "haven")) {
 
 reader <- args[[1L]]
 path <- normalizePath(args[[2L]], winslash = "/", mustWork = TRUE)
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
-if (!nzchar(benchmark_library)) {
-    stop("DTAPARSER_BENCH_LIB is required")
-}
-.libPaths(c(normalizePath(benchmark_library, winslash = "/"), .libPaths()))
-if (!requireNamespace("dtaparser", quietly = TRUE) ||
-        !requireNamespace("haven", quietly = TRUE)) {
-    stop("dtaparser and haven must be installed")
-}
+script_argument <- grep(
+    "^--file=", commandArgs(trailingOnly = FALSE), value = TRUE
+)[[1L]]
+script_dir <- dirname(normalizePath(
+    sub("^--file=", "", script_argument), winslash = "/"
+))
+sys.source(
+    file.path(script_dir, "..", "benchmark-common.R"),
+    envir = environment()
+)
+benchmark_activate_library(
+    reader, verify_dtaparser = identical(reader, "dtaparser")
+)
 
 started <- proc.time()[["elapsed"]]
 result <- tryCatch(

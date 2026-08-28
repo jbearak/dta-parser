@@ -6,6 +6,18 @@ if (length(args) != 7L) {
     ))
 }
 
+script_argument <- grep(
+    "^--file=", commandArgs(trailingOnly = FALSE), value = TRUE
+)[[1L]]
+script_path <- normalizePath(
+    sub("^--file=", "", script_argument), winslash = "/"
+)
+script_dir <- dirname(script_path)
+sys.source(
+    file.path(script_dir, "..", "benchmark-common.R"),
+    envir = environment()
+)
+
 read_table <- function(path) {
     read.delim(
         normalizePath(path, winslash = "/", mustWork = TRUE),
@@ -68,5 +80,5 @@ combined <- combined[
     order(match(combined$dataset, dataset_order),
           match(combined$writer, writer_order)),
 ]
-write.table(combined, output, sep = "\t", row.names = FALSE, quote = FALSE)
+atomic_tsv(combined, output)
 print(combined, row.names = FALSE)

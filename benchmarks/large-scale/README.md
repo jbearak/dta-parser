@@ -53,8 +53,8 @@ windows at the beginning, middle, and end of each file with haven, allowing only
 `1e-7` numeric tolerance. Parser-only DTA storage classes and attributes are
 removed uniformly for the haven comparison while labels and display formats
 remain checked; dta-parser versus Rust-vector identity is checked before that
-normalization. The manifest binds
-each canonical dataset path to its exact byte size, row width, row count,
+normalization. The manifest selects one immutable fixture generation and binds
+each dataset path to its exact byte size, row width, row count,
 fixed-file overhead, and SHA-256. Those invariants and hashes are verified both
 before timing and immediately before atomic raw-result publication.
 
@@ -123,7 +123,8 @@ Run only the complete paired primary matrix with:
 benchmarks/large-scale/primary-write-only.sh 7
 ```
 
-This runner rebuilds dtaparser, asks Stata to replace the synthetic inputs, and
+This runner rebuilds dtaparser, asks Stata to publish a complete immutable
+synthetic-input generation, and
 publishes the paired Stata/dtaparser results under
 `target/large-scale/primary-write-runs/`. It runs neither the read benchmark nor
 the large corpus suite.
@@ -139,8 +140,10 @@ This runner rebuilds dtaparser and publishes its dtaparser/Haven results under
 large corpus benchmark.
 
 All generated inputs and reports are written beneath an ignored checkout-local
-private artifact root. Each dataset file is replaced atomically, and the exact
-hash manifest is published only after both files pass shape and size checks.
+private artifact root. Each complete dataset pair is published under an
+immutable content-addressed generation directory, and the exact hash manifest
+atomically selects that generation only after both files pass shape and size
+checks.
 Stata leaves volatile padding in some metadata fields, so semantic content and
 storage are deterministic while file hashes bind the exact files created in
 that run. Completed report bundles are immutable and privately selected.
@@ -195,11 +198,11 @@ timing and fresh-process peak RSS. `STATA_BIN` may override executable
 discovery:
 
 ```sh
+stata_1gb=$(Rscript --vanilla -e \
+  'x <- read.delim("target/large-scale/datasets.tsv"); cat(x$path[x$dataset == "1gb"])')
 Rscript benchmarks/large-scale/stata.R \
-  target/large-scale/synthetic-1gb.dta \
-  target/large-scale/stata-1gb-full.tsv 7 full
+  "$stata_1gb" target/large-scale/stata-1gb-full.tsv 7 full
 
 Rscript benchmarks/large-scale/stata.R \
-  target/large-scale/synthetic-1gb.dta \
-  target/large-scale/stata-1gb-projected.tsv 7 projected-eight-columns
+  "$stata_1gb" target/large-scale/stata-1gb-projected.tsv 7 projected-eight-columns
 ```

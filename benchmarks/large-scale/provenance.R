@@ -1,11 +1,3 @@
-benchmark_assert_plain_text <- function(values, label) {
-    values <- as.character(values)
-    if (anyNA(values) || any(grepl("[\t\r\n]", values, perl = TRUE))) {
-        stop(label, " must not contain tabs, newlines, or missing values")
-    }
-    invisible(values)
-}
-
 benchmark_assert_provenance_fields <- function(provenance) {
     stopifnot(is.data.frame(provenance), nrow(provenance) == 1L)
     for (field in names(provenance)) {
@@ -93,73 +85,6 @@ benchmark_tree_digest <- function(checkout_root, scope) {
     unname(tools::md5sum(temporary))
 }
 
-benchmark_installed_package_path <- function(benchmark_library) {
-    benchmark_library <- normalizePath(
-        benchmark_library, winslash = "/", mustWork = TRUE
-    )
-    benchmark_assert_plain_text(benchmark_library, "benchmark library path")
-    lexical_path <- file.path(benchmark_library, "dtaparser")
-    link_target <- Sys.readlink(lexical_path)
-    if (nzchar(link_target)) {
-        stop("installed dtaparser package root must not be a symbolic link")
-    }
-    resolved_path <- normalizePath(
-        lexical_path, winslash = "/", mustWork = TRUE
-    )
-    if (!identical(dirname(resolved_path), benchmark_library)) {
-        stop("installed dtaparser package must resolve directly inside DTAPARSER_BENCH_LIB")
-    }
-    resolved_path
-}
-
-benchmark_directory_files <- function(directory) {
-    prefix <- paste0(directory, "/")
-    files <- character()
-    walk <- function(current, relative) {
-        if (file.access(current, 4L) != 0L ||
-            (.Platform$OS.type == "unix" && file.access(current, 1L) != 0L)) {
-            stop("installed dtaparser package tree contains an unreadable directory")
-        }
-        entries <- tryCatch(
-            list.files(
-                current, recursive = FALSE, all.files = TRUE,
-                full.names = FALSE, no.. = TRUE
-            ),
-            warning = function(condition) stop(condition),
-            error = function(condition) stop(condition)
-        )
-        entries <- sort(entries)
-        benchmark_assert_plain_text(entries, "installed package entry")
-        for (entry in entries) {
-            entry_relative <- if (nzchar(relative)) {
-                file.path(relative, entry)
-            } else entry
-            absolute <- file.path(current, entry)
-            if (nzchar(Sys.readlink(absolute))) {
-                stop("installed dtaparser package tree must not contain symbolic links")
-            }
-            info <- file.info(absolute)
-            if (is.na(info$isdir[[1L]])) {
-                stop("installed dtaparser package tree contains an unreadable entry")
-            }
-            resolved <- normalizePath(absolute, winslash = "/", mustWork = TRUE)
-            if (!startsWith(resolved, prefix)) {
-                stop("installed dtaparser package entry resolves outside its package tree")
-            }
-            if (isTRUE(info$isdir[[1L]])) {
-                walk(absolute, entry_relative)
-            } else {
-                if (!file_test("-f", absolute)) {
-                    stop("installed dtaparser package tree contains a non-regular file")
-                }
-                files <<- c(files, entry_relative)
-            }
-        }
-    }
-    walk(directory, "")
-    sort(files)
-}
-
 benchmark_directory_digest <- function(directory) {
     directory <- normalizePath(directory, winslash = "/", mustWork = TRUE)
     benchmark_assert_plain_text(directory, "installed package path")
@@ -176,7 +101,8 @@ benchmark_directory_digest <- function(directory) {
     unname(tools::md5sum(temporary))
 }
 
-benchmark_current_provenance <- function(checkout_root, benchmark_library) {
+benchmark_current_provenance <- function(checkout_root, benchmark_library,
+                                         package_source_md5 = NULL) {
     checkout_root <- normalizePath(checkout_root, winslash = "/", mustWork = TRUE)
     benchmark_library <- normalizePath(
         benchmark_library, winslash = "/", mustWork = TRUE
@@ -186,24 +112,38 @@ benchmark_current_provenance <- function(checkout_root, benchmark_library) {
     )
     commit <- benchmark_git_lines(checkout_root, c("rev-parse", "HEAD"))
     stopifnot(length(commit) == 1L)
+    benchmark_scope <- c(
+        "benchmarks/benchmark-common.R",
+        "benchmarks/large-scale"
+    )
     status <- benchmark_git_lines(
         checkout_root,
         c("status", "--porcelain", "--untracked-files=all", "--",
-          "r-package/dtaparser", "benchmarks/large-scale")
+          "r-package/dtaparser", benchmark_scope)
     )
     description <- read.dcf(
         file.path(checkout_root, "r-package", "dtaparser", "DESCRIPTION")
     )
+    if (is.null(package_source_md5)) {
+        package_source_md5 <- benchmark_tree_digest(
+            checkout_root, "r-package/dtaparser"
+        )
+    } else {
+        package_source_md5 <- tolower(as.character(package_source_md5))
+        if (length(package_source_md5) != 1L ||
+            is.na(package_source_md5) ||
+            !grepl("^[0-9a-f]{32}$", package_source_md5)) {
+            stop("package source digest is invalid")
+        }
+    }
     provenance <- data.frame(
         schema_version = 1L,
         checkout_root = checkout_root,
         git_commit = commit,
         git_dirty = length(status) > 0L,
-        package_source_md5 = benchmark_tree_digest(
-            checkout_root, "r-package/dtaparser"
-        ),
+        package_source_md5 = package_source_md5,
         benchmark_source_md5 = benchmark_tree_digest(
-            checkout_root, "benchmarks/large-scale"
+            checkout_root, benchmark_scope
         ),
         installed_package_md5 = benchmark_directory_digest(
             benchmark_installed_package_path(benchmark_library)
@@ -229,13 +169,9 @@ benchmark_provenance_id <- function(provenance) {
 write_benchmark_provenance <- function(checkout_root, benchmark_library, path,
                                        expected_package_source_md5,
                                        source_tarball_sha256) {
-    provenance <- benchmark_current_provenance(checkout_root, benchmark_library)
-    if (!identical(
-        as.character(provenance$package_source_md5[[1L]]),
-        as.character(expected_package_source_md5)
-    )) {
-        stop("package source changed while building the benchmark installation")
-    }
+    provenance <- benchmark_current_provenance(
+        checkout_root, benchmark_library, expected_package_source_md5
+    )
     source_tarball_sha256 <- tolower(as.character(source_tarball_sha256))
     if (length(source_tarball_sha256) != 1L ||
         is.na(source_tarball_sha256) ||
@@ -248,16 +184,7 @@ write_benchmark_provenance <- function(checkout_root, benchmark_library, path,
         Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"
     )
     benchmark_assert_provenance_fields(provenance)
-    temporary <- tempfile(
-        pattern = paste0(basename(path), "."), tmpdir = dirname(path)
-    )
-    on.exit(unlink(temporary), add = TRUE)
-    write.table(
-        provenance, temporary, sep = "\t", row.names = FALSE, quote = FALSE
-    )
-    if (!file.rename(temporary, path)) {
-        stop("could not atomically replace ", path)
-    }
+    atomic_tsv(provenance, path)
     invisible(provenance)
 }
 

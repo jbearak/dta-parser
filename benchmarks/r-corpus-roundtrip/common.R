@@ -1,44 +1,6 @@
+source(file.path(script_dir, "..", "benchmark-common.R"), local = TRUE)
+
 roundtrip_corpora <- c("DHS", "MICS", "NSFG")
-roundtrip_modern_prefix <- charToRaw("<stata_dta><header><release>")
-roundtrip_legacy_releases <- c(104L, 105L, 108L, 110L, 111L, 113L, 114L, 115L)
-
-roundtrip_release <- function(path) {
-    size <- file.info(path, extra_cols = FALSE)$size[[1L]]
-    if (is.na(size) || size < 1) return(NA_integer_)
-    needed <- length(roundtrip_modern_prefix) + 3L
-    connection <- file(path, "rb")
-    on.exit(close(connection), add = TRUE)
-    header <- readBin(connection, "raw", n = min(size, needed))
-    first <- as.integer(header[[1L]])
-    if (first %in% roundtrip_legacy_releases) return(first)
-    if (length(header) < needed ||
-        !identical(header[seq_along(roundtrip_modern_prefix)], roundtrip_modern_prefix)) {
-        return(NA_integer_)
-    }
-    release <- suppressWarnings(as.integer(rawToChar(header[(length(
-        roundtrip_modern_prefix
-    ) + 1L):needed])))
-    if (length(release) != 1L || is.na(release)) NA_integer_ else release
-}
-
-roundtrip_walk_dta <- function(directory) {
-    entries <- list.files(
-        directory, all.files = TRUE, full.names = TRUE,
-        no.. = TRUE, recursive = FALSE
-    )
-    result <- character()
-    for (path in entries) {
-        if (!is.na(Sys.readlink(path)) && nzchar(Sys.readlink(path))) next
-        info <- file.info(path, extra_cols = FALSE)
-        if (is.na(info$isdir[[1L]])) stop("cannot inspect corpus entry")
-        if (isTRUE(info$isdir[[1L]])) {
-            result <- c(result, roundtrip_walk_dta(path))
-        } else if (grepl("[.]dta$", basename(path), ignore.case = TRUE)) {
-            result <- c(result, normalizePath(path, winslash = "/", mustWork = TRUE))
-        }
-    }
-    result
-}
 
 roundtrip_stable_id <- function(corpus, relative_path, sha256) {
     digest <- tools::sha256sum(bytes = charToRaw(paste(
@@ -47,45 +9,170 @@ roundtrip_stable_id <- function(corpus, relative_path, sha256) {
     paste0(corpus, "-", substr(unname(digest), 1L, 24L))
 }
 
-roundtrip_inventory <- function(cache_root, progress = TRUE) {
-    roots <- setNames(file.path(cache_root, roundtrip_corpora), roundtrip_corpora)
-    if (!all(dir.exists(roots))) {
-        stop("cache root must contain DHS, MICS, and NSFG directories")
-    }
-    rows <- list()
-    completed <- 0L
-    for (corpus in names(roots)) {
-        paths <- roundtrip_walk_dta(roots[[corpus]])
-        relative <- substring(paths, nchar(cache_root, type = "chars") + 2L)
-        order_index <- order(relative, method = "radix")
-        paths <- paths[order_index]
-        relative <- relative[order_index]
-        info <- file.info(paths, extra_cols = FALSE)
-        sha256 <- character(length(paths))
-        for (index in seq_along(paths)) {
-            sha256[[index]] <- unname(tools::sha256sum(paths[[index]]))
-            completed <- completed + 1L
-            if (progress && completed %% 50L == 0L) {
-                message("hashed ", completed, " corpus files")
-            }
+roundtrip_inventory_files <- function(cache_root, max_files = Inf) {
+    inventory <- benchmark_corpus_inventory_files(
+        cache_root, roundtrip_corpora
+    )
+    rows <- lapply(roundtrip_corpora, function(corpus) {
+        items <- inventory[inventory$corpus == corpus, , drop = FALSE]
+        order_index <- if (is.finite(max_files)) {
+            head(order(-items$bytes, items$relative_path, method = "radix"),
+                 max_files)
+        } else {
+            seq_len(nrow(items))
         }
-        rows[[corpus]] <- data.frame(
-            corpus = rep(corpus, length(paths)),
-            id = mapply(roundtrip_stable_id, rep(corpus, length(paths)),
-                        relative, sha256,
-                        USE.NAMES = FALSE),
-            relative_path = relative,
-            path = paths,
-            release = vapply(paths, roundtrip_release, integer(1)),
-            bytes = as.double(info$size),
-            sha256 = sha256,
+        items <- items[order_index, , drop = FALSE]
+        data.frame(
+            corpus = items$corpus,
+            relative_path = items$relative_path,
+            path = items$path,
+            bytes = items$bytes,
+            modified = sprintf("%.6f", items$mtime),
             stringsAsFactors = FALSE
         )
-    }
-    inventory <- do.call(rbind, rows)
+    })
+    result <- do.call(rbind, rows)
+    rownames(result) <- NULL
+    result
+}
+
+roundtrip_inventory <- function(cache_root, progress = TRUE, max_files = Inf) {
+    files <- roundtrip_inventory_files(cache_root, max_files)
+    sha256 <- benchmark_files_sha256(files$path, progress)
+    inventory <- data.frame(
+        corpus = files$corpus,
+        id = mapply(
+            roundtrip_stable_id, files$corpus, files$relative_path, sha256,
+            USE.NAMES = FALSE
+        ),
+        relative_path = files$relative_path,
+        path = files$path,
+        release = vapply(files$path, corpus_dta_release, integer(1)),
+        bytes = files$bytes,
+        modified = files$modified,
+        sha256 = sha256,
+        stringsAsFactors = FALSE
+    )
     rownames(inventory) <- NULL
     if (anyDuplicated(inventory$id)) stop("stable corpus ID collision")
     inventory
+}
+
+roundtrip_cached_inventory <- function(cache_root, path, max_files = Inf) {
+    inventory <- read.delim(
+        path, check.names = FALSE, stringsAsFactors = FALSE,
+        colClasses = "character"
+    )
+    required <- c(
+        "corpus", "id", "relative_path", "release", "bytes", "modified",
+        "sha256"
+    )
+    if (!identical(names(inventory), required) ||
+        anyDuplicated(inventory$id) ||
+        !all(inventory$corpus %in% roundtrip_corpora) ||
+        any(!grepl("^[0-9a-f]{64}$", inventory$sha256))) {
+        stop("cached corpus inventory is invalid")
+    }
+
+    files <- roundtrip_inventory_files(cache_root, max_files)
+    if (!identical(inventory$corpus, files$corpus) ||
+        !identical(inventory$relative_path, files$relative_path) ||
+        !identical(inventory$bytes, sprintf("%.0f", files$bytes)) ||
+        !identical(inventory$modified, files$modified)) {
+        stop("corpus files changed since the cached inventory was created")
+    }
+    current_hashes <- benchmark_files_sha256(files$path, progress = FALSE)
+    current_ids <- mapply(
+        roundtrip_stable_id,
+        files$corpus,
+        files$relative_path,
+        current_hashes,
+        USE.NAMES = FALSE
+    )
+    if (!identical(inventory$sha256, current_hashes) ||
+        !identical(inventory$id, current_ids)) {
+        stop("corpus files changed since the cached inventory was created")
+    }
+    inventory$release <- as.integer(inventory$release)
+    inventory$bytes <- as.double(inventory$bytes)
+    inventory$path <- files$path
+    rownames(inventory) <- NULL
+    inventory[c(
+        "corpus", "id", "relative_path", "path", "release", "bytes",
+        "modified", "sha256"
+    )]
+}
+
+roundtrip_qualification_successes <- function(rows) {
+    required <- c("id", "status")
+    if (!all(required %in% names(rows))) {
+        stop("qualification rows are missing resume columns")
+    }
+    if (anyDuplicated(rows$id)) {
+        stop("qualification contains duplicate file IDs")
+    }
+    rows[
+        rows$status %in% c("pass", "expected-exclusion"),
+        ,
+        drop = FALSE
+    ]
+}
+
+roundtrip_qualification_status <- function(failures, wide_status) {
+    if (failures == 0L && identical(wide_status, "pass")) {
+        "complete"
+    } else {
+        "failed"
+    }
+}
+
+roundtrip_validate_complete_qualification <- function(rows, inventory) {
+    if (!all(c("id", "status") %in% names(rows)) || anyDuplicated(rows$id) ||
+        nrow(rows) != nrow(inventory)) {
+        stop("qualification does not cover the exact corpus inventory")
+    }
+    indices <- match(inventory$id, rows$id)
+    if (anyNA(indices)) {
+        stop("qualification does not cover the exact corpus inventory")
+    }
+    expected <- vapply(seq_len(nrow(inventory)), function(index) {
+        if (is.na(roundtrip_exclusion_reason(inventory[index, , drop = FALSE]))) {
+            "pass"
+        } else {
+            "expected-exclusion"
+        }
+    }, character(1L))
+    if (!identical(rows$status[indices], expected)) {
+        stop("qualification statuses do not match the bound corpus inventory")
+    }
+    rows[indices, , drop = FALSE]
+}
+
+roundtrip_validate_benchmark_matrix <- function(raw, inputs, writers) {
+    required <- c("id", "writer", "status", "input_sha256")
+    if (!all(required %in% names(raw)) ||
+        !all(c("id", "sha256") %in% names(inputs)) ||
+        anyDuplicated(inputs$id) || anyDuplicated(writers)) {
+        stop("benchmark rows are missing identity columns")
+    }
+    actual_keys <- paste(raw$id, raw$writer, sep = "\037")
+    expected_keys <- unlist(lapply(inputs$id, function(id) {
+        paste(id, writers, sep = "\037")
+    }), use.names = FALSE)
+    if (anyDuplicated(actual_keys) ||
+        !identical(sort(actual_keys), sort(expected_keys))) {
+        stop("benchmark does not contain the exact input-by-writer matrix")
+    }
+    expected_sha256 <- inputs$sha256[match(raw$id, inputs$id)]
+    if (anyNA(raw$input_sha256) || anyNA(expected_sha256) ||
+        any(!grepl("^[0-9a-f]{64}$", raw$input_sha256)) ||
+        !identical(tolower(raw$input_sha256), tolower(expected_sha256))) {
+        stop("benchmark rows do not match their bound input identities")
+    }
+    if (anyNA(raw$status) || any(raw$status != "ok")) {
+        stop("write benchmark contains worker failures")
+    }
+    invisible(NULL)
 }
 
 roundtrip_expected_exclusions <- data.frame(
@@ -106,38 +193,4 @@ roundtrip_exclusion_reason <- function(item) {
         roundtrip_expected_exclusions$sha256 == item$sha256
     )
     if (length(matched) == 1L) roundtrip_expected_exclusions$reason[[matched]] else NA_character_
-}
-
-roundtrip_manifest_hash <- function(path) {
-    unname(tools::sha256sum(path))
-}
-
-roundtrip_directory_hash <- function(directory) {
-    directory <- normalizePath(directory, winslash = "/", mustWork = TRUE)
-    paths <- list.files(directory, recursive = TRUE, all.files = TRUE,
-                        full.names = TRUE, no.. = TRUE)
-    paths <- sort(paths[file_test("-f", paths)])
-    relative <- substring(paths, nchar(directory, type = "chars") + 2L)
-    hashes <- unname(tools::sha256sum(paths))
-    unname(tools::sha256sum(bytes = charToRaw(paste(
-        paste(relative, hashes, sep = "\t"), collapse = "\n"
-    ))))
-}
-
-roundtrip_parse_memory <- function(stderr) {
-    lines <- strsplit(stderr, "\n", fixed = TRUE)[[1L]]
-    if (identical(Sys.info()[["sysname"]], "Darwin")) {
-        line <- grep("maximum resident set size", lines, value = TRUE)
-        if (length(line)) as.numeric(sub("^ *([0-9]+).*$", "\\1", tail(line, 1L))) else NA_real_
-    } else {
-        line <- grep("Maximum resident set size [(]kbytes[)]", lines, value = TRUE)
-        if (length(line)) 1024 * as.numeric(sub("^.*: *([0-9]+).*$", "\\1", tail(line, 1L))) else NA_real_
-    }
-}
-
-roundtrip_append_tsv <- function(row, path) {
-    write.table(
-        row, path, sep = "\t", row.names = FALSE, quote = TRUE,
-        append = file.exists(path), col.names = !file.exists(path)
-    )
 }

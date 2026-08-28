@@ -20,14 +20,12 @@ script_argument <- grep(
 )[[1L]]
 script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/")
 script_dir <- dirname(script_path)
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
-if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
-.libPaths(c(normalizePath(benchmark_library, winslash = "/", mustWork = TRUE),
-            .libPaths()))
-if (!requireNamespace("dtaparser", quietly = TRUE)) stop("dtaparser is required")
-if (writer == "haven" && !requireNamespace("haven", quietly = TRUE)) {
-    stop("haven is required for Haven writes")
-}
+sys.source(
+    file.path(script_dir, "..", "benchmark-common.R"),
+    envir = environment()
+)
+required_packages <- c("dtaparser", if (writer == "haven") "haven")
+benchmark_activate_library(required_packages)
 
 data <- if (workload == "standard-r") {
     rows <- suppressWarnings(as.integer(input_argument))
@@ -38,24 +36,23 @@ data <- if (workload == "standard-r") {
     sys.source(file.path(script_dir, "standard-r-write-fixture.R"),
                envir = environment())
     make_standard_r_write_fixture(rows)
-} else if (writer == "dtaparser") {
+} else {
+    sys.source(file.path(script_dir, "stata-fixture.R"),
+               envir = environment())
     input <- normalizePath(input_argument, winslash = "/", mustWork = TRUE)
     dtaparser::read_dta(input)
-} else {
-    input <- normalizePath(input_argument, winslash = "/", mustWork = TRUE)
-    haven::read_dta(input)
 }
-if (workload == "stata-storage" && writer == "dtaparser") {
+if (workload == "stata-storage") {
     storage <- vapply(data, function(column) {
         value <- attr(column, "stata.storage", exact = TRUE)
         if (is.null(value)) "string" else value
     }, character(1L))
-    expected_storage <- c(
-        byte = 4L, int = 4L, long = 9L, float = 4L, double = 9L,
-        string = 10L
-    )
-    observed <- table(factor(storage, levels = names(expected_storage)))
-    if (!identical(as.integer(observed), unname(expected_storage))) {
+    observed <- table(factor(
+        storage, levels = names(stata_fixture_storage)
+    ))
+    if (!identical(
+        as.integer(observed), unname(stata_fixture_storage)
+    )) {
         stop("primary write fixture does not contain the expected Stata storage types")
     }
 }

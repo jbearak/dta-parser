@@ -1,9 +1,16 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 2L) stop("usage: write-worker.R INPUT_DTA OUTPUT_DTA")
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
-if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
-.libPaths(c(normalizePath(benchmark_library, winslash = "/", mustWork = TRUE), .libPaths()))
-if (!requireNamespace("dtaparser", quietly = TRUE)) stop("dtaparser is required")
+script_argument <- grep(
+    "^--file=", commandArgs(trailingOnly = FALSE), value = TRUE
+)[[1L]]
+script_dir <- dirname(normalizePath(
+    sub("^--file=", "", script_argument), winslash = "/"
+))
+sys.source(
+    file.path(script_dir, "..", "benchmark-common.R"),
+    envir = environment()
+)
+benchmark_activate_library("dtaparser")
 
 input <- normalizePath(args[[1L]], winslash = "/", mustWork = TRUE)
 output <- args[[2L]]

@@ -13,6 +13,7 @@ exclude = ["tests/**"]
 encoding_rs = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
+unicode-general-category = "1.1.0"
 
 [dev-dependencies]
 serde_json = "1.0"

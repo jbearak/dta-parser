@@ -212,6 +212,22 @@ dataset_label <- function(data) {
     .Call(C_dtaparser_metadata_copy, value)
 }
 
+.stata_value_label_code_info <- function(value) {
+    missing_codes <- .tab_missing_codes(value)
+    tagged <- !is.na(missing_codes) &
+        missing_codes >= utf8ToInt("a") & missing_codes <= utf8ToInt("z")
+    observed <- is.na(missing_codes)
+    observed <- observed & !.invalid_stata_observed(
+        value, observed, "long"
+    )
+    list(
+        valid = tagged | observed,
+        missing_codes = missing_codes,
+        tagged = tagged,
+        observed = observed
+    )
+}
+
 .normalize_value_labels <- function(value, argument = "value") {
     if (is.null(value)) return(NULL)
     if (!is.numeric(value) ||
@@ -232,13 +248,8 @@ dataset_label <- function(data) {
     label_text <- label_text[keep]
     if (length(value) == 0L) return(NULL)
 
-    missing_codes <- .tab_missing_codes(value)
-    tagged <- !is.na(missing_codes) &
-        missing_codes >= utf8ToInt("a") & missing_codes <= utf8ToInt("z")
-    observed <- is.na(missing_codes) & is.finite(value) &
-        value == floor(value) &
-        value >= -2147483647 & value <= 2147483620
-    if (any(!(tagged | observed))) {
+    code_info <- .stata_value_label_code_info(value)
+    if (any(!code_info$valid)) {
         stop(
             sprintf(
                 paste0(
@@ -252,10 +263,12 @@ dataset_label <- function(data) {
     }
 
     keys <- character(length(value))
-    keys[observed] <- paste0("number:", format(
-        value[observed], scientific = FALSE, trim = TRUE
+    keys[code_info$observed] <- paste0("number:", format(
+        value[code_info$observed], scientific = FALSE, trim = TRUE
     ))
-    keys[tagged] <- paste0("missing:", missing_codes[tagged])
+    keys[code_info$tagged] <- paste0(
+        "missing:", code_info$missing_codes[code_info$tagged]
+    )
     if (anyDuplicated(keys)) {
         stop(sprintf("`%s` must not contain duplicate value-label codes",
                      argument), call. = FALSE)
@@ -264,6 +277,29 @@ dataset_label <- function(data) {
     value <- if (is.integer(value)) as.integer(value) else as.double(value)
     names(value) <- label_text
     value
+}
+
+.value_label_limit_violations <- function(count, text, location) {
+    violations <- character()
+    if (count > 65536L) {
+        violations <- c(violations, sprintf(
+            "value-label table for `%s` has %s entries (limit: 65,536 entries)",
+            location, format(count, big.mark = ",", scientific = FALSE)
+        ))
+    }
+
+    text_lengths <- nchar(enc2utf8(text), type = "bytes")
+    if (any(text_lengths > 32000L)) {
+        violations <- c(violations, sprintf(
+            paste0(
+                "value-label text for `%s` has %s UTF-8 bytes ",
+                "(limit: 32,000 UTF-8 bytes)"
+            ),
+            location,
+            format(max(text_lengths), big.mark = ",", scientific = FALSE)
+        ))
+    }
+    violations
 }
 
 .value_label_violations <- function(values) {
@@ -275,26 +311,9 @@ dataset_label <- function(data) {
     for (index in seq_along(values)) {
         value <- values[[index]]
         if (is.null(value)) next
-        location <- locations[[index]]
-        if (length(value) > 65536L) {
-            violations <- c(violations, sprintf(
-                "value-label table for `%s` has %s entries (limit: 65,536 entries)",
-                location,
-                format(length(value), big.mark = ",", scientific = FALSE)
-            ))
-        }
-
-        text_lengths <- nchar(names(value), type = "bytes")
-        if (any(text_lengths > 32000L)) {
-            violations <- c(violations, sprintf(
-                paste0(
-                    "value-label text for `%s` has %s UTF-8 bytes ",
-                    "(limit: 32,000 UTF-8 bytes)"
-                ),
-                location,
-                format(max(text_lengths), big.mark = ",", scientific = FALSE)
-            ))
-        }
+        violations <- c(violations, .value_label_limit_violations(
+            length(value), names(value), locations[[index]]
+        ))
     }
     violations
 }

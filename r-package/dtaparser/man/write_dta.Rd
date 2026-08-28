@@ -34,8 +34,8 @@ time (\code{TRUE}) or the underlying UTC instant (\code{FALSE}).}
 }
 \description{
 Streams a data frame to the standalone DTA encoding used by Stata 18 and
-19. Files with at most 32,767 variables use DTA release 118; wider files use
-release 119.
+19. Stata 18 targets are limited to 32,767 variables and DTA release 118.
+Stata 19 targets use release 118 through that limit and release 119 above it.
 }
 \section{Conversions and metadata}{
 
@@ -65,7 +65,8 @@ Only local, uncompressed files are supported. The complete input is validated
 before native serialization starts. Output streams to a sibling temporary
 file and atomically replaces the destination only after the file is closed;
 an existing destination therefore survives validation, I/O, and interruption
-failures. Symbolic-link and directory destinations are rejected. Output is
+failures. Symbolic-link, directory, and other non-regular destinations are
+rejected. Output is
 always little-endian.
 }
 

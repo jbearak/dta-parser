@@ -7,7 +7,7 @@ use std::thread;
 
 use encoding_rs::CoderResult;
 
-use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64, read_uint};
+use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
 use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
@@ -3184,9 +3184,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                     "reading legacy characteristic value",
                 )?
                 .0;
-                if index != 0 && !note.is_empty() {
-                    notes.push((index, note));
-                }
+                notes.push((index, note));
             }
         }
         cursor = payload_end;
@@ -3998,31 +3996,7 @@ fn parse_pointer(
         needed: 8,
         available: bytes.len(),
     })?;
-    let (variable, observation) = match metadata.format_version {
-        FormatVersion::V117 => (
-            read_u32(bytes, 0, metadata.byte_order, "strL variable pointer")?,
-            u64::from(read_u32(
-                bytes,
-                4,
-                metadata.byte_order,
-                "strL observation pointer",
-            )?),
-        ),
-        FormatVersion::V118 => (
-            u32::from(read_u16(
-                bytes,
-                0,
-                metadata.byte_order,
-                "strL variable pointer",
-            )?),
-            read_uint(bytes, 2, 6, metadata.byte_order, "strL observation pointer")?,
-        ),
-        FormatVersion::V119 => (
-            read_uint(bytes, 0, 3, metadata.byte_order, "strL variable pointer")? as u32,
-            read_uint(bytes, 3, 5, metadata.byte_order, "strL observation pointer")?,
-        ),
-        _ => unreachable!("strL is only available in modern DTA releases"),
-    };
+    let (variable, observation) = crate::strl::read_pointer_parts(bytes, 0, metadata)?;
     if variable == 0 && observation == 0 {
         return Ok(None);
     }
@@ -4030,39 +4004,14 @@ fn parse_pointer(
         variable,
         observation,
     };
-    validate_gso_key(metadata, key, offset, true)?;
+    crate::strl::validate_key(
+        metadata,
+        key.variable,
+        key.observation,
+        error_offset(offset),
+        true,
+    )?;
     Ok(Some(key))
-}
-
-fn validate_gso_key(
-    metadata: &DtaMetadata,
-    key: FileGsoKey,
-    offset: u64,
-    pointer: bool,
-) -> Result<(), DtaError> {
-    let valid_variable = key
-        .variable
-        .checked_sub(1)
-        .and_then(|index| usize::try_from(index).ok())
-        .and_then(|index| metadata.variables.get(index))
-        .is_some_and(|variable| variable.dta_type == DtaType::StrL);
-    let valid_observation = key.observation >= 1 && key.observation <= metadata.nobs;
-    if valid_variable && valid_observation {
-        return Ok(());
-    }
-    if pointer {
-        Err(DtaError::InvalidStrlPointer {
-            variable: key.variable,
-            observation: key.observation,
-            offset: error_offset(offset),
-        })
-    } else {
-        Err(DtaError::InvalidGsoKey {
-            variable: key.variable,
-            observation: key.observation,
-            offset: error_offset(offset),
-        })
-    }
 }
 
 struct CellDecoder<'a, S> {
@@ -4316,7 +4265,13 @@ fn index_file_strls<R: Read + Seek, F: FnMut() -> bool>(
             variable,
             observation,
         };
-        validate_gso_key(metadata, key, cursor, false)?;
+        crate::strl::validate_key(
+            metadata,
+            key.variable,
+            key.observation,
+            error_offset(cursor),
+            false,
+        )?;
         if !seen.insert(key) {
             return Err(DtaError::DuplicateGsoKey {
                 variable,

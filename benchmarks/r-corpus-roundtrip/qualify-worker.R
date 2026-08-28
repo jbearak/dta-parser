@@ -1,17 +1,14 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 2L) stop("usage: qualify-worker.R INPUT_DTA OUTPUT_DTA")
 
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
-if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
-.libPaths(c(normalizePath(benchmark_library, winslash = "/", mustWork = TRUE), .libPaths()))
-if (!requireNamespace("dtaparser", quietly = TRUE) ||
-    !requireNamespace("haven", quietly = TRUE)) {
-    stop("dtaparser and haven must be installed in the benchmark environment")
-}
-
-script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
-script_dir <- dirname(normalizePath(sub("^--file=", "", script_argument), winslash = "/"))
+script_argument <- grep(
+    "^--file=", commandArgs(trailingOnly = FALSE), value = TRUE
+)[[1L]]
+script_dir <- dirname(normalizePath(
+    sub("^--file=", "", script_argument), winslash = "/"
+))
 source(file.path(script_dir, "common.R"), local = TRUE)
+benchmark_activate_library(c("dtaparser", "haven"))
 
 input <- normalizePath(args[[1L]], winslash = "/", mustWork = TRUE)
 output <- args[[2L]]
@@ -43,10 +40,9 @@ column_difference <- function(before, after) {
     }
     if (!identical(label_table(before), label_table(after))) return("value labels")
     if (is.character(before)) {
-        if (!identical(
-            unname(vapply(before, identity, character(1))),
-            unname(vapply(after, identity, character(1)))
-        )) return("character values")
+        if (!identical(as.vector(before), as.vector(after))) {
+            return("character values")
+        }
         return(NULL)
     }
     if (!identical(
@@ -91,18 +87,19 @@ expected_after_reported_conversions <- function(before, warning_classes) {
         return(before)
     }
 
-    specification <- suppressWarnings(dtaparser:::.prepare_dta_write(
-        before, 19L, attr(before, "label", exact = TRUE), 2045L, TRUE
-    ))
     expected <- before
     for (index in seq_along(before)) {
         column <- before[[index]]
         if (!is.numeric(column) || is.factor(column)) next
-        prepared <- specification[[3L]][[index]][[7L]]
-        source_codes <- dtaparser:::.tab_missing_codes(column)
-        prepared_codes <- dtaparser:::.tab_missing_codes(prepared)
-        replaced <- !is.na(prepared_codes) & prepared_codes == 0L &
-            (is.na(source_codes) | source_codes != 0L)
+        kind <- dtaparser:::.write_column_kind(column)
+        plan <- suppressWarnings(
+            dtaparser:::.prepare_dta_write_numeric(
+                column, names(before)[[index]], kind, TRUE
+            )
+        )
+        replaced <- dtaparser:::.dta_write_numeric_replacement_mask(
+            plan
+        )
         if (!any(replaced)) next
         values <- as.double(column)
         values[replaced] <- NA_real_
@@ -124,7 +121,7 @@ result <- tryCatch({
             invokeRestart("muffleWarning")
         }
     )
-    if (!identical(roundtrip_release(output), 118L)) {
+    if (!identical(corpus_dta_release(output), 118L)) {
         stop("ordinary corpus output did not use DTA release 118")
     }
     after <- dtaparser::read_dta(output)
@@ -133,13 +130,15 @@ result <- tryCatch({
     if (!is.null(difference)) {
         stop("semantic round-trip mismatch: ", difference)
     }
+    rows <- nrow(before)
+    columns <- ncol(before)
+    rm(before, expected, after)
+    gc()
     haven_result <- haven::read_dta(output)
-    if (!identical(dim(haven_result), dim(before))) {
+    if (!identical(dim(haven_result), c(rows, columns))) {
         stop("haven dimension mismatch")
     }
     status <- "r-pass"
-    rows <- nrow(before)
-    columns <- ncol(before)
     output_bytes <- file.info(output, extra_cols = FALSE)$size[[1L]]
     TRUE
 }, error = function(condition) {

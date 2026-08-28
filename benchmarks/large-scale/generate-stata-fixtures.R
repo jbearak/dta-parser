@@ -20,6 +20,10 @@ if (!identical(sizes_path, expected_sizes_path) ||
     !identical(dirname(manifest_path), target_root)) {
     stop("Stata fixture inputs and outputs must use their canonical paths")
 }
+sys.source(
+    file.path(script_dir, "..", "benchmark-common.R"),
+    envir = environment()
+)
 sys.source(file.path(script_dir, "stata-fixture.R"), envir = environment())
 if (!requireNamespace("processx", quietly = TRUE)) stop("processx is required")
 
@@ -41,12 +45,14 @@ if (!identical(sizes$target_bytes, c(100000000, 1000000000)) ||
 
 stata <- find_stata()
 generator <- file.path(script_dir, "stata-generate-fixture.do")
-generator_sha256 <- tolower(unname(tools::sha256sum(generator))[[1L]])
-outputs <- file.path(
-    target_root, c("synthetic-100mb.dta", "synthetic-1gb.dta")
+generator_sha256 <- benchmark_file_sha256(generator)
+generation_stage <- tempfile(
+    pattern = ".fixture-generation-", tmpdir = target_root
 )
+dir.create(generation_stage)
+on.exit(unlink(generation_stage, recursive = TRUE, force = TRUE), add = TRUE)
+output_names <- paste0("synthetic-", sizes$dataset, ".dta")
 rows <- vector("list", nrow(sizes))
-staged_outputs <- character(nrow(sizes))
 for (index in seq_len(nrow(sizes))) {
     work_dir <- tempfile(
         pattern = paste0("stata-fixture-", sizes$dataset[[index]], "-"),
@@ -76,12 +82,15 @@ for (index in seq_len(nrow(sizes))) {
     if (!file.exists(staged) || file.info(staged)$size[[1L]] != result$bytes) {
         stop("Stata fixture output is missing or has an unexpected size")
     }
-    staged_outputs[[index]] <- staged
+    published <- file.path(generation_stage, output_names[[index]])
+    if (!file.rename(staged, published)) {
+        stop("could not stage the complete Stata fixture generation")
+    }
     rows[[index]] <- data.frame(
-        dataset = sizes$dataset[[index]], path = outputs[[index]],
+        dataset = sizes$dataset[[index]], path = "",
         target_bytes = sizes$target_bytes[[index]],
-        actual_bytes = file.info(staged)$size[[1L]],
-        sha256 = tolower(unname(tools::sha256sum(staged))[[1L]]),
+        actual_bytes = file.info(published)$size[[1L]],
+        sha256 = benchmark_file_sha256(published),
         rows = sizes$rows[[index]], columns = stata_fixture_columns,
         obs_bytes = stata_fixture_row_bytes,
         base_rows = stata_fixture_calibration_rows,
@@ -96,17 +105,30 @@ if (length(unique(overhead)) != 1L || overhead[[1L]] <= 0 ||
         stata_fixture_row_bytes / 2 + 0.5)) {
     stop("Stata fixture size does not match the declared fixed-width schema")
 }
-for (index in seq_along(outputs)) {
-    if (!file.rename(staged_outputs[[index]], outputs[[index]])) {
-        stop("could not publish Stata fixture ", outputs[[index]])
-    }
-}
-temporary <- paste0(manifest_path, ".partial")
-on.exit(unlink(temporary), add = TRUE)
-write.table(
-    manifest, temporary, sep = "\t", row.names = FALSE, quote = FALSE
+generation_identity <- paste(
+    manifest$dataset, manifest$actual_bytes, manifest$sha256, manifest$rows,
+    manifest$generator_sha256, sep = "\037", collapse = "\036"
 )
-if (!file.rename(temporary, manifest_path)) {
-    stop("could not publish Stata fixture manifest")
+generation_id <- substr(unname(tools::sha256sum(
+    bytes = charToRaw(generation_identity)
+)), 1L, 32L)
+generations_root <- file.path(target_root, "fixture-generations")
+dir.create(generations_root, showWarnings = FALSE)
+generation_dir <- file.path(generations_root, generation_id)
+outputs <- file.path(generation_dir, output_names)
+manifest$path <- outputs
+if (dir.exists(generation_dir)) {
+    if (nzchar(Sys.readlink(generation_dir)) ||
+        !identical(benchmark_file_sha256(outputs), manifest$sha256) ||
+        !identical(
+            as.double(file.info(outputs, extra_cols = FALSE)$size),
+            as.double(manifest$actual_bytes)
+        )) {
+        stop("existing Stata fixture generation differs from its content ID")
+    }
+} else if (!file.rename(generation_stage, generation_dir)) {
+    stop("could not publish the complete Stata fixture generation")
 }
+validate_stata_fixture_paths(manifest_path, manifest$path)
+atomic_tsv(manifest, manifest_path)
 print(manifest, row.names = FALSE)

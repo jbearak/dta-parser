@@ -4,7 +4,7 @@ status: accepted
 
 # Write standalone Stata 18 and 19 datasets
 
-`write_dta()` targets the Stata 18 and 19 applications while writing the ordinary standalone DTA layouts those applications use: release 118 for datasets with at most 32,767 variables and release 119 for wider datasets. It does not write legacy releases or the release 120/121 alias-variable layouts. This keeps the writer within the package's single-dataset model, although the resulting ordinary files may also open in older Stata versions.
+`write_dta()` targets the Stata 18 and 19 applications while writing the ordinary standalone DTA layouts those applications use. Stata 18 targets are limited to 32,767 variables and release 118. Stata 19 targets use release 118 through that limit and release 119 for wider datasets. The writer does not emit legacy releases or the release 120/121 alias-variable layouts. This keeps it within the package's single-dataset model, although the resulting ordinary files may also open in older Stata versions.
 
 The public R function uses a reusable Rust-core writer. Its round-trip promise covers the semantics represented by the R package, including dataset notes, rather than byte identity or source details the reader does not retain. Metadata outside Stata's documented limits fails validation before the destination is created or replaced; the writer does not truncate it.
 

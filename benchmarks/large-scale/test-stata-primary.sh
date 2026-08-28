@@ -2,10 +2,9 @@
 set -eu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-checkout_root=$(CDPATH= cd -- "$script_dir/../.." && pwd)
-benchmark_library=${DTAPARSER_BENCH_LIB:-$checkout_root/target/large-scale/standard-r-write-library}
+benchmark_library=${DTAPARSER_BENCH_LIB:-}
 
-if [ ! -d "$benchmark_library/dtaparser" ]; then
+if [ -z "$benchmark_library" ] || [ ! -d "$benchmark_library/dtaparser" ]; then
     printf '%s\n' "set DTAPARSER_BENCH_LIB to a library containing dtaparser" >&2
     exit 2
 fi
@@ -50,20 +49,13 @@ fi
 
 DTAPARSER_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
 R_PROFILE_USER=/dev/null Rscript --vanilla -e '
-    .libPaths(c(Sys.getenv("DTAPARSER_BENCH_LIB"), .libPaths()))
-    before <- dtaparser::read_dta(commandArgs(TRUE)[[1L]], use_numeric_altrep = FALSE)
-    after <- dtaparser::read_dta(commandArgs(TRUE)[[2L]], use_numeric_altrep = FALSE)
-    storage <- vapply(before, function(column) {
-        type <- attr(column, "stata.storage", exact = TRUE)
-        if (is.null(type)) "string" else type
-    }, character(1L))
-    expected <- c(byte = 4L, int = 4L, long = 9L, float = 4L,
-                  double = 9L, string = 10L)
-    stopifnot(
-        identical(as.integer(table(factor(storage, levels = names(expected)))),
-                  unname(expected)),
-        identical(before, after)
-    )
-' "$work_dir/input.dta" "$work_dir/output.dta"
+    arguments <- commandArgs(TRUE)
+    sys.source(arguments[[3L]], envir = environment())
+    benchmark_activate_library("dtaparser")
+    before <- dtaparser::read_dta(arguments[[1L]], use_numeric_altrep = FALSE)
+    after <- dtaparser::read_dta(arguments[[2L]], use_numeric_altrep = FALSE)
+    stopifnot(identical(before, after))
+' "$work_dir/input.dta" "$work_dir/output.dta" \
+    "$script_dir/../benchmark-common.R"
 
 printf '%s\n' "Stata-first primary write workflow: PASS"

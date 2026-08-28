@@ -17,71 +17,25 @@ max_files <- if (length(args) == 3L) as.integer(args[[3L]]) else Inf
 if (length(max_files) != 1L || is.na(max_files) || max_files < 1L) {
     stop("MAX_FILES_PER_CORPUS must be a positive integer")
 }
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
-if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
-benchmark_library <- normalizePath(benchmark_library, winslash = "/", mustWork = TRUE)
+benchmark_library <- benchmark_library_path()
 
 worker_path <- file.path(script_dir, "worker.R")
 stata_worker_path <- file.path(script_dir, "stata-worker.do")
 rscript <- Sys.which("Rscript")
-time_command <- "/usr/bin/time"
-if (!nzchar(rscript) || !file.exists(time_command)) {
+if (!nzchar(rscript) || !file.exists("/usr/bin/time")) {
     stop("Rscript and /usr/bin/time are required")
 }
-stata_candidates <- c(
-    Sys.getenv("STATA_BIN"),
-    "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp",
-    Sys.which("stata-mp"), Sys.which("stata")
-)
-stata_candidates <- unique(stata_candidates[nzchar(stata_candidates)])
-stata_candidates <- stata_candidates[file.exists(stata_candidates)]
-if (!length(stata_candidates)) stop("Stata is required; set STATA_BIN if needed")
-stata <- normalizePath(stata_candidates[[1L]], winslash = "/", mustWork = TRUE)
-
-walk_dta <- function(directory) {
-    entries <- list.files(
-        directory, all.files = TRUE, full.names = TRUE,
-        no.. = TRUE, recursive = FALSE
-    )
-    result <- character()
-    for (path in entries) {
-        if (nzchar(Sys.readlink(path))) next
-        info <- file.info(path, extra_cols = FALSE)
-        if (is.na(info$isdir)) stop(sprintf("cannot inspect %s", path))
-        if (isTRUE(info$isdir)) {
-            result <- c(result, walk_dta(path))
-        } else if (grepl("[.]dta$", basename(path), ignore.case = TRUE)) {
-            result <- c(result, normalizePath(path, winslash = "/"))
-        }
-    }
-    result
-}
+stata <- find_stata()
+installed_package <- benchmark_installed_package_path(benchmark_library)
 
 corpus_names <- c("DHS", "MICS", "NSFG")
-corpus_roots <- setNames(file.path(cache_root, corpus_names), corpus_names)
-if (!all(dir.exists(corpus_roots))) {
-    stop("CACHE_ROOT must contain DHS, MICS, and NSFG directories")
-}
-inventory_rows <- lapply(names(corpus_roots), function(corpus) {
-    paths <- walk_dta(corpus_roots[[corpus]])
-    relative_paths <- substring(paths, nchar(cache_root, type = "chars") + 2L)
-    info <- file.info(paths, extra_cols = TRUE)
-    order_index <- order(relative_paths, method = "radix")
-    paths <- paths[order_index]
-    relative_paths <- relative_paths[order_index]
-    info <- info[order_index, , drop = FALSE]
-    data.frame(
-        corpus = corpus,
-        id = sprintf("%s-%04d", corpus, seq_along(paths)),
-        relative_path = relative_paths,
-        path = paths,
-        release = vapply(paths, corpus_dta_release, integer(1)),
-        bytes = as.double(info$size),
-        mtime = as.numeric(info$mtime),
-        stringsAsFactors = FALSE
-    )
-})
-inventory <- do.call(rbind, inventory_rows)
+inventory <- benchmark_corpus_inventory_files(cache_root, corpus_names)
+inventory <- do.call(rbind, lapply(corpus_names, function(corpus) {
+    items <- inventory[inventory$corpus == corpus, , drop = FALSE]
+    items$id <- sprintf("%s-%04d", corpus, seq_len(nrow(items)))
+    items$release <- vapply(items$path, corpus_dta_release, integer(1))
+    items
+}))
 
 # Largest inputs are visited first. Alternating reader order then distributes
 # first-reader cache effects across the files that dominate aggregate time.
@@ -91,64 +45,83 @@ inventory <- do.call(rbind, lapply(split(inventory, inventory$corpus), function(
 }))
 rownames(inventory) <- NULL
 if (anyDuplicated(inventory$id)) stop("inventory ID collision")
+inventory$modified <- sprintf("%.6f", inventory$mtime)
+inventory$sha256 <- benchmark_files_sha256(
+    inventory$path, progress = TRUE
+)
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 raw_path <- file.path(output_dir, "raw.tsv")
 inventory_path <- file.path(output_dir, "inventory.tsv")
-write.table(
-    inventory[c("corpus", "id", "relative_path", "release", "bytes", "mtime")],
-    inventory_path, sep = "\t", row.names = FALSE, quote = TRUE
+inventory_hash <- benchmark_publish_or_verify_tsv(
+    inventory[c(
+        "corpus", "id", "relative_path", "release", "bytes", "modified",
+        "sha256"
+    )],
+    inventory_path,
+    "corpus inventory drifted from this resumable run",
+    "could not publish private corpus inventory"
+)
+binding_path <- file.path(output_dir, "run-binding.tsv")
+current_binding <- function() {
+    cbind(
+        data.frame(
+            schema_version = 1L,
+            inventory_sha256 = inventory_hash,
+            package_sha256 = benchmark_directory_sha256(installed_package),
+            harness_sha256 = benchmark_harness_sha256(script_dir),
+            stringsAsFactors = FALSE
+        ),
+        benchmark_runtime_binding(stata)
+    )
+}
+binding <- current_binding()
+assert_current_binding <- function() {
+    if (!identical(current_binding(), binding)) {
+        stop(
+            paste(
+                "benchmark build, harness, runtime, or comparator",
+                "changed during the run"
+            )
+        )
+    }
+    invisible(NULL)
+}
+benchmark_publish_or_verify_binding(
+    binding,
+    binding_path,
+    raw_path,
+    paste0(
+        "resumable results belong to a different inventory, ",
+        "package build, benchmark harness, runtime, or comparator"
+    ),
+    "existing raw results do not have a resumable run binding"
 )
 
-parse_memory <- function(stderr) {
-    lines <- strsplit(stderr, "\n", fixed = TRUE)[[1L]]
-    if (identical(Sys.info()[["sysname"]], "Darwin")) {
-        rss_line <- grep("maximum resident set size", lines, value = TRUE)
-        footprint_line <- grep("peak memory footprint", lines, value = TRUE)
-        rss <- if (length(rss_line)) {
-            as.numeric(sub("^ *([0-9]+).*$", "\\1", tail(rss_line, 1L)))
-        } else NA_real_
-        footprint <- if (length(footprint_line)) {
-            as.numeric(sub("^ *([0-9]+).*$", "\\1", tail(footprint_line, 1L)))
-        } else NA_real_
-    } else {
-        rss_line <- grep("Maximum resident set size [(]kbytes[)]", lines, value = TRUE)
-        rss <- if (length(rss_line)) {
-            1024 * as.numeric(sub("^.*: *([0-9]+).*$", "\\1", tail(rss_line, 1L)))
-        } else NA_real_
-        footprint <- NA_real_
-    }
-    c(rss_bytes = rss, footprint_bytes = footprint)
-}
-
 measure_r <- function(item, reader, order_index) {
-    time_arguments <- if (identical(Sys.info()[["sysname"]], "Darwin")) "-l" else "-v"
-    process <- processx::run(
-        time_command,
-        c(time_arguments, rscript, "--vanilla", worker_path, reader, item$path),
-        env = c(
+    process <- run_timed_process(
+        rscript,
+        c("--vanilla", worker_path, reader, item$path),
+        environment = c(
             DTAPARSER_BENCH_LIB = benchmark_library,
             R_ENVIRON_USER = "/dev/null",
             R_PROFILE_USER = "/dev/null"
-        ),
-        error_on_status = FALSE,
-        echo = FALSE
+        )
     )
-    marker <- grep("^DTAPARSER_BENCH\\t", strsplit(process$stdout, "\n")[[1L]], value = TRUE)
-    fields <- if (length(marker)) strsplit(tail(marker, 1L), "\t", fixed = TRUE)[[1L]] else character()
-    memory <- parse_memory(process$stderr)
-    valid <- length(fields) == 5L && fields[[1L]] == "DTAPARSER_BENCH"
+    fields <- parse_fields(process$stdout, "DTAPARSER_BENCH")
+    valid <- length(fields) == 4L
+    memory <- parse_memory_metrics(process$stderr)
     data.frame(
         corpus = item$corpus,
         id = item$id,
         reader = reader,
         reader_order = order_index,
-        status = if (valid) fields[[2L]] else "worker-error",
-        elapsed_seconds = if (valid) as.numeric(fields[[3L]]) else NA_real_,
-        rows = if (valid) as.numeric(fields[[4L]]) else NA_real_,
-        columns = if (valid) as.numeric(fields[[5L]]) else NA_real_,
-        rss_bytes = unname(memory[["rss_bytes"]]),
-        footprint_bytes = unname(memory[["footprint_bytes"]]),
+        status = if (valid) fields[[1L]] else "worker-error",
+        elapsed_seconds = if (valid) as.numeric(fields[[2L]]) else NA_real_,
+        rows = if (valid) as.numeric(fields[[3L]]) else NA_real_,
+        columns = if (valid) as.numeric(fields[[4L]]) else NA_real_,
+        rss_bytes = memory$rss_bytes,
+        footprint_bytes = memory$footprint_bytes,
         stringsAsFactors = FALSE
     )
 }
@@ -169,21 +142,20 @@ measure_stata <- function(item, order_index) {
         ))
     }
     file.copy(stata_worker_path, file.path(work_dir, "stata-worker.do"), overwrite = TRUE)
-    time_arguments <- if (identical(Sys.info()[["sysname"]], "Darwin")) "-l" else "-v"
-    process <- processx::run(
-        time_command,
-        c(time_arguments, stata, "-q", "-b", "do", "stata-worker.do"),
-        wd = work_dir, error_on_status = FALSE, echo = FALSE
+    process <- run_timed_process(
+        stata,
+        c("-q", "-b", "do", "stata-worker.do"),
+        work_dir = work_dir
     )
     result_path <- file.path(work_dir, "result.tsv")
     fields <- if (file.exists(result_path)) {
         trimws(strsplit(readLines(result_path, n = 1L, warn = FALSE), "\t", fixed = TRUE)[[1L]])
     } else character()
-    memory <- parse_memory(process$stderr)
     valid <- length(fields) == 4L
     stata_number <- function(field) {
         if (!nzchar(field) || field %in% c("NA", ".")) NA_real_ else as.numeric(field)
     }
+    memory <- parse_memory_metrics(process$stderr)
     result <- data.frame(
         corpus = item$corpus,
         id = item$id,
@@ -193,8 +165,8 @@ measure_stata <- function(item, order_index) {
         elapsed_seconds = if (valid) stata_number(fields[[2L]]) else NA_real_,
         rows = if (valid) stata_number(fields[[3L]]) else NA_real_,
         columns = if (valid) stata_number(fields[[4L]]) else NA_real_,
-        rss_bytes = unname(memory[["rss_bytes"]]),
-        footprint_bytes = unname(memory[["footprint_bytes"]]),
+        rss_bytes = memory$rss_bytes,
+        footprint_bytes = memory$footprint_bytes,
         stringsAsFactors = FALSE
     )
     unlink(work_dir, recursive = TRUE, force = TRUE)
@@ -205,44 +177,63 @@ raw_columns <- c(
     "corpus", "id", "reader", "reader_order", "status", "elapsed_seconds",
     "rows", "columns", "rss_bytes", "footprint_bytes"
 )
-if (file.exists(raw_path)) {
+completed <- if (file.exists(raw_path)) {
     existing <- read.delim(raw_path, check.names = FALSE, stringsAsFactors = FALSE)
     if (!identical(names(existing), raw_columns)) stop("existing raw.tsv has an invalid schema")
-    completed <- paste(existing$corpus, existing$id, existing$reader, sep = "\037")
+    keys <- paste(existing$corpus, existing$id, existing$reader, sep = "\037")
+    if (anyDuplicated(keys)) stop("raw results contain duplicate reader measurements")
+    successful <- existing[
+        !is.na(existing$status) & existing$status == "ok",
+        , drop = FALSE
+    ]
+    if (nrow(successful) != nrow(existing)) {
+        atomic_tsv(successful, raw_path, quote = TRUE)
+    }
+    new_key_set(paste(
+        successful$corpus, successful$id, successful$reader, sep = "\037"
+    ))
 } else {
-    completed <- character()
+    new_key_set()
 }
+reader_orders <- list(
+    c("dtaparser", "haven", "stata"),
+    c("haven", "stata", "dtaparser"),
+    c("stata", "dtaparser", "haven")
+)
 for (index in seq_len(nrow(inventory))) {
     item <- inventory[index, , drop = FALSE]
-    orders <- list(
-        c("dtaparser", "haven", "stata"),
-        c("haven", "stata", "dtaparser"),
-        c("stata", "dtaparser", "haven")
+    readers <- reader_orders[[((index - 1L) %% length(reader_orders)) + 1L]]
+    keys <- paste(item$corpus, item$id, readers, sep = "\037")
+    pending <- !vapply(
+        keys, function(key) key_set_contains(completed, key), logical(1L)
     )
-    readers <- orders[[((index - 1L) %% length(orders)) + 1L]]
-    for (reader_index in seq_along(readers)) {
-        reader <- readers[[reader_index]]
-        key <- paste(item$corpus, item$id, reader, sep = "\037")
-        if (key %in% completed) next
-        measured <- if (identical(reader, "stata")) {
-            measure_stata(item, reader_index)
-        } else {
-            measure_r(item, reader, reader_index)
-        }
-        write.table(
-            measured, raw_path, sep = "\t", row.names = FALSE, quote = TRUE,
-            append = file.exists(raw_path), col.names = !file.exists(raw_path)
+    if (any(pending)) {
+        input_dir <- file.path(output_dir, "input-work", item$id)
+        unlink(input_dir, recursive = TRUE, force = TRUE)
+        dir.create(input_dir, recursive = TRUE, showWarnings = FALSE)
+        item$path <- benchmark_snapshot_file(
+            item$path, file.path(input_dir, "input.dta"),
+            item$bytes, item$sha256
         )
-        completed <- c(completed, key)
+        for (reader_index in seq_along(readers)) {
+            if (!pending[[reader_index]]) next
+            reader <- readers[[reader_index]]
+            measured <- if (identical(reader, "stata")) {
+                measure_stata(item, reader_index)
+            } else {
+                measure_r(item, reader, reader_index)
+            }
+            append_tsv(measured, raw_path)
+            key_set_add(completed, keys[[reader_index]])
+        }
+        unlink(input_dir, recursive = TRUE, force = TRUE)
     }
     cat(sprintf("%d/%d: %s\n", index, nrow(inventory), item$id))
 }
 
 raw <- read.delim(raw_path, check.names = FALSE, stringsAsFactors = FALSE)
 paired <- corpus_pair_results(raw, inventory)
-summary <- corpus_performance_summary(inventory, paired, names(corpus_roots))
-write.table(
-    summary, file.path(output_dir, "summary.tsv"),
-    sep = "\t", row.names = FALSE, quote = FALSE
-)
+summary <- corpus_performance_summary(inventory, paired, corpus_names)
+assert_current_binding()
+atomic_tsv(summary, file.path(output_dir, "summary.tsv"))
 print(summary, row.names = FALSE)

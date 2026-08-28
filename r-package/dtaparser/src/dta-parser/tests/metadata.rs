@@ -164,6 +164,18 @@ fn synthetic_v119_metadata_fixture() -> Vec<u8> {
 }
 
 #[test]
+fn release_117_accepts_wide_fixed_string_type_codes() {
+    let mut bytes = fixture("auto_v117.dta");
+    let type_code = find(&bytes, b"<variable_types>") + b"<variable_types>".len();
+    bytes[type_code..type_code + 2].copy_from_slice(&300_u16.to_le_bytes());
+
+    let metadata = parse_metadata(&bytes).unwrap();
+    assert_eq!(metadata.variables[0].type_code, 300);
+    assert_eq!(metadata.variables[0].dta_type, DtaType::FixedString(300));
+    assert_eq!(metadata.variables[0].byte_width, 300);
+}
+
+#[test]
 fn parses_deterministic_big_endian_v119_metadata_prefix() {
     let bytes = synthetic_v119_metadata_fixture();
     let metadata = parse_metadata(&bytes).unwrap();
