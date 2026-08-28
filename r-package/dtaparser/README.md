@@ -6,6 +6,21 @@ read interface accepts haven's common arguments and returns compatible values,
 labels, dates, and tagged missing values. Numeric columns also retain their
 declared Stata storage type.
 
+## Functions
+
+| Function | Purpose |
+| --- | --- |
+| `read_dta()` | Read a DTA file into a tibble with labels, display formats, notes, tagged missing values, and compact numeric columns. |
+| `write_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
+| `dta_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
+| `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
+| `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
+| `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a derived vector's Stata storage type, with validation and compact backing. |
+| `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
+| `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
+| `var_label()`, `val_labels()`, `dataset_label()`, `set_variable_labels()`, `set_value_labels()` | Get and set Stata label metadata without haven or `labelled`. |
+
 ## Why use dtaparser?
 
 Repository benchmarks compare `dtaparser` with haven across a large survey corpus and one especially wide file:
@@ -18,6 +33,39 @@ Repository benchmarks compare `dtaparser` with haven across a large survey corpu
 Across the full DHS, MICS, and NSFG comparison, `dtaparser` was faster on 1,803 of 1,812 files and tied on five. `haven` led on four files between 31 and 66 KB, each by 1 millisecond. `dtaparser` was faster on all 1,534 files larger than 1 MB.
 
 These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtaparser only. See the [dated corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
+
+### Projected reads across surveys
+
+Pipelines that process many surveys can pass the union of every raw variable
+they use without first loading or special-casing each file:
+
+```r
+raw_variables <- c("caseid", "v005", "v012", "survey_specific_variable")
+data <- read_dta(
+  "survey.dta",
+  col_select = tidyselect::any_of(raw_variables)
+)
+```
+
+`any_of()` keeps requested variables that exist and silently omits those that
+do not. `read_dta()` resolves the selection from DTA metadata before reading
+observations, so it does not decode unselected columns.
+
+A warm-cache benchmark selected 100 variables spread across the 5.2 GB,
+5,972-column India 2021 DHS women's file. The `any_of()` union also contained
+100 absent names:
+
+| Method | Median read time |
+| --- | ---: |
+| `read_dta(any_of(union))` | 0.301 seconds |
+| Stata direct projected `use` with known-present names | 0.482 seconds |
+| Stata full `use`, inspect union, then `keep` | 0.552 seconds |
+
+All methods returned the same 724,115-row, 100-column result. These are medians
+from 11 runs on an Apple M4 Max. The direct Stata command is not union-safe;
+Stata errors if its varlist contains an absent name. See the
+[dated projection report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/projection-introspection/results-2026-08-28.md)
+for the synthetic comparisons, per-method bounds, and limitations.
 
 ### Synthetic write benchmarks
 
@@ -39,6 +87,40 @@ frame, without Stata storage or labelling metadata:
 
 These are medians from seven fresh-process runs on the same Apple M4 Max, not
 performance guarantees. See the [dated write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md) for percentiles, memory and output sizes, source provenance, and the complete methodology.
+
+### Synthetic merge benchmarks
+
+The merge benchmark joins a 200,000-row, 151-column master to a 360,044-row,
+110-column using dataset on a character key. Sixty non-key variables occur in
+both inputs, and the result has 440,044 rows.
+
+These are default-workflow timings, not identical output construction.
+
+| Method | Input columns | 1:m median | m:1 median | 1:m allocated | m:1 allocated |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `dta_merge()` | Stata classes | 0.101 s | 0.097 s | 0.61 GB | 0.62 GB |
+| dplyr `full_join()` | Stata classes | 1.716 s | 1.411 s | 9.27 GB | 9.43 GB |
+| base `merge()` | Stata classes | 5.125 s | 7.433 s | 23.26 GB | 31.23 GB |
+| `dta_merge()` | Standard R | 0.107 s | 0.108 s | 0.66 GB | 0.79 GB |
+| dplyr `full_join()` | Standard R | 0.115 s | 0.108 s | 0.74 GB | 0.76 GB |
+| base `merge()` | Standard R | 1.576 s | 1.855 s | 2.06 GB | 2.06 GB |
+| Stata 18 MP `merge` | Native DTA | 0.257 s | 0.329 s | Not measured | Not measured |
+
+The Stata-class inputs come from `read_dta()`. The standard controls contain
+the same values in base character, integer, and double columns. dplyr and base
+R materialize intermediate values or reconstruct classed outputs, and their
+wider results also increase allocation. They leave the compact source columns
+untouched. `dta_merge()` and Stata coalesce the 60 shared variables and return
+201 columns including `_merge`; dplyr and base R retain suffixed copies and
+return 260 columns. Base R and Stata sort by the key; `dta_merge()` and dplyr
+retain input order.
+
+The R figures are `bench::mark()` medians on the same Apple M4 Max. Allocated
+memory is cumulative R allocation, not peak RSS. The Stata median includes
+reading the using file, while the R operation timers start with both inputs
+loaded. These are not performance guarantees. See the
+[dated merge report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-merge-performance/results-2026-08-28.md)
+for versions, iteration counts, correctness checks, and reproduction commands.
 
 Keep using haven when you need to write older DTA releases or work with SAS and
 SPSS formats.
@@ -103,6 +185,33 @@ Factors become value-labelled Stata `long` variables, character missing values
 become empty strings, and unrepresentable numeric values become Stata system
 missing. Each conversion category produces one warning per call. An
 extensionless output path receives `.dta` with a warning.
+
+## Merge datasets
+
+```r
+merged <- dta_merge(cars, "makes.dta", by = "make", relationship = "m:1")
+```
+
+Use `dta_merge()` instead of base `merge()` or a dplyr join when Stata key
+identity matters. Both of those match keys with R missing semantics: system
+missing `.` and extended missings `.a` through `.z` fall into one missing
+bucket, so by default every missing key matches every other missing key. Rows
+that Stata would keep apart match each other, sometimes into an accidental
+many-to-many expansion, and the opt-outs (`incomparables`, `na_matches`) can
+only stop missing keys from matching at all. This affects only the key columns
+being matched; non-key columns pass through any of these joins with their
+missing codes intact. Base `merge()` can additionally drop the right key's
+labels and other metadata, since it keeps only the left key column.
+
+`dta_merge()` matches each of the 27 missing codes only to itself, requires
+the relationship declaration (`"1:1"`, `"m:1"`, or `"1:m"`), coalesces key
+storage types and labels, follows Stata's master-wins rule for overlapping
+variables (with a warning naming them, where Stata is silent), and generates
+the value-labelled `_merge` indicator. `keep` and
+`assert` mirror Stata's options, and either input may be a DTA file path so
+only the merged result occupies memory. See
+[the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence
+behind these differences.
 
 ## Data returned to R
 
@@ -187,6 +296,7 @@ Use the installed help for exact behavior and examples:
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?write_dta # standalone Stata 18/19 output, conversions, and metadata
+?dta_merge # Stata-identity merges with relationship checks and _merge
 ?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values

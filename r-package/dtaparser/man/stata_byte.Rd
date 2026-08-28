@@ -49,9 +49,9 @@ assignment, and recode replacements reject it. Use \code{NA_real_} for system
 missing or \code{\link[=tagged_missing]{tagged_missing()}} for an extended missing value.
 
 Construction validates and encodes ordinary numeric vectors in native code
-without allocating full-length validation vectors. Re-encoding an existing
-compact vector still exposes its values as doubles before writing the new
-compact backing.
+without allocating full-length validation vectors. Native and vctrs slicing
+gather compact backing directly. Operations that require re-encoding an
+existing compact vector still expose its values as doubles first.
 
 \code{serialize()} and \code{saveRDS()} retain compact backing for unmaterialized
 \code{byte}, \code{int}, \code{long}, and \code{float} vectors. Loading the result reconstructs
@@ -62,6 +62,12 @@ serialized as its current R doubles so any prior writable access is kept.
 
 Subset assignment, \code{\link[=replace]{replace()}}, \code{dplyr::if_else()}, \code{dplyr::mutate()}, and
 vctrs concatenation retain declared storage and re-encode compact results.
+Extending a vector with another declared Stata numeric uses their common
+storage type and combines compatible metadata. This supports base data-frame
+reconstruction such as right and full \code{\link[=merge]{merge()}} calls. Extending with a bare
+value remains strict, like replacement within the existing vector.
+Stata-backed \code{Date} and \code{POSIXct} vectors use the same extension rule when
+both inputs have the same temporal kind.
 Base \code{ifelse()} takes attributes from its condition, so it returns a bare
 vector. Pass that result to a constructor to declare storage again.
 

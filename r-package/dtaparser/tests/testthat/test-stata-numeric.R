@@ -1,28 +1,3 @@
-fixture_with_temporal_storage <- function(column, display_format = "%td") {
-    path <- fixture("auto_v118.dta")
-    bytes <- readBin(path, "raw", n = file.info(path)[["size"]])
-
-    old_format <- if (identical(column, "foreign")) "%8.0g" else "%8.0gc"
-    matches <- grepRaw(
-        charToRaw(old_format), bytes, fixed = TRUE, all = TRUE
-    )
-    minimum_matches <- if (identical(column, "foreign")) 1L else 2L
-    expect_gte(length(matches), minimum_matches)
-    format_start <- if (identical(column, "foreign")) {
-        tail(matches, 1L)
-    } else {
-        matches[[2L]]
-    }
-    bytes[format_start + seq_len(nchar(old_format)) - 1L] <- c(
-        charToRaw(display_format),
-        raw(nchar(old_format) - nchar(display_format))
-    )
-
-    output <- tempfile(fileext = ".dta")
-    writeBin(bytes, output)
-    output
-}
-
 test_that("storage constructors create declared compact vectors", {
     constructors <- list(
         byte = stata_byte,
@@ -190,6 +165,56 @@ test_that("base subsetting and duplication preserve compact backing", {
         c(as.double(source[c(5L, 2L)]), NA_real_, as.double(source[2L]))
     )
     expect_identical(copied, source)
+})
+
+test_that("vctrs proxy slicing preserves compact backing", {
+    constructors <- list(stata_byte, stata_int, stata_long, stata_float)
+
+    for (construct in constructors) {
+        source <- construct(c(1, 2, NA_real_, tagged_missing("a")))
+        proxy <- vctrs::vec_proxy(source)
+        selected <- vctrs::vec_slice(
+            proxy, c(4L, 2L, NA_integer_, 1L)
+        )
+
+        expect_true(
+            dtaparser:::.is_unmaterialized_numeric_altrep(selected)
+        )
+        expect_identical(missing_tag(selected), c("a", NA, NA, NA))
+        expect_identical(as.double(selected)[c(2L, 4L)], c(2, 1))
+    }
+})
+
+test_that("vctrs restoration distinguishes storage and temporal encoding", {
+    int_proxy <- vctrs::vec_proxy(stata_int(200))
+
+    expect_error(
+        vctrs::vec_restore(int_proxy, stata_byte()),
+        "stata_int\\(x\\)"
+    )
+
+    path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(path), add = TRUE)
+    date <- read_dta(path)$price
+    date_proxy <- vctrs::vec_proxy(date)
+
+    expect_false(dtaparser:::.compact_stata_storage_matches(
+        date_proxy, "int"
+    ))
+    plain <- vctrs::vec_restore(date_proxy, stata_int())
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(plain))
+    expect_identical(as.double(plain), as.double(date))
+
+    plain_proxy <- vctrs::vec_proxy(stata_int(c(0, 1, 2)))
+    expect_false(dtaparser:::.compact_stata_storage_matches(
+        plain_proxy, "int", dtaparser:::.stata_temporal_date
+    ))
+    restored_date <- vctrs::vec_restore(plain_proxy, date[0])
+    expect_true(
+        dtaparser:::.is_unmaterialized_numeric_altrep(restored_date)
+    )
+    expect_s3_class(restored_date, "Date")
+    expect_identical(as.double(restored_date), c(0, 1, 2))
 })
 
 test_that("legacy compact widths preserve system missing encoding", {
@@ -440,6 +465,122 @@ test_that("assignment and vctrs recodes re-encode compact storage", {
         dplyr::if_else(rep(TRUE, length(values)), 101, values),
         "stata_int\\(x\\)"
     )
+})
+
+test_that("base right and full merges can append native Stata keys", {
+    left <- data.frame(
+        id = set_variable_labels(
+            set_value_labels(stata_byte(c(1, 2)), One = 1),
+            "Identifier"
+        ),
+        left_value = c("a", "b")
+    )
+    right <- data.frame(
+        id = set_value_labels(stata_byte(c(2, 3)), Three = 3),
+        right_value = c("c", "d")
+    )
+
+    right_result <- merge(left, right, by = "id", all.y = TRUE)
+    full_result <- merge(left, right, by = "id", all = TRUE)
+
+    expect_identical(as.double(right_result$id), c(2, 3))
+    expect_identical(as.double(full_result$id), c(1, 2, 3))
+    expect_identical(stata_storage_type(right_result$id), "byte")
+    expect_identical(stata_storage_type(full_result$id), "byte")
+    expect_identical(var_label(full_result$id), "Identifier")
+    expect_identical(val_labels(full_result$id), c(One = 1, Three = 3))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(full_result$id))
+
+    wider <- data.frame(
+        id = set_value_labels(stata_int(c(2, 200)), TwoHundred = 200)
+    )
+    promoted <- merge(left, wider, by = "id", all = TRUE)
+    expect_identical(as.double(promoted$id), c(1, 2, 200))
+    expect_identical(stata_storage_type(promoted$id), "int")
+    expect_identical(
+        val_labels(promoted$id), c(One = 1, TwoHundred = 200)
+    )
+})
+
+test_that("base full merges promote native Stata temporal keys", {
+    byte_path <- fixture_with_temporal_storage("foreign")
+    int_path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(c(byte_path, int_path)), add = TRUE)
+    byte_date <- read_dta(byte_path)$foreign[1]
+    int_date <- read_dta(int_path)$price[1]
+
+    result <- merge(
+        data.frame(id = byte_date),
+        data.frame(id = int_date),
+        by = "id",
+        all = TRUE
+    )
+
+    expect_s3_class(result$id, "Date")
+    expect_identical(stata_storage_type(result$id), "int")
+    expect_identical(var_label(result$id), var_label(byte_date))
+    expect_identical(val_labels(result$id), val_labels(byte_date))
+    expect_identical(
+        as.double(result$id), sort(c(as.double(byte_date), as.double(int_date)))
+    )
+})
+
+test_that("extension promotes declared inputs without weakening assignment", {
+    extended <- set_value_labels(stata_byte(1), One = 1)
+    extended[3] <- set_value_labels(stata_int(200), TwoHundred = 200)
+
+    expect_identical(as.double(extended), c(1, NA, 200))
+    expect_identical(stata_storage_type(extended), "int")
+    expect_identical(
+        val_labels(extended), c(One = 1, TwoHundred = 200)
+    )
+
+    strict <- stata_byte(1)
+    expect_error({
+        strict[3] <- 101
+    }, "stata_int\\(x\\)")
+
+    fractional <- stata_byte(c(1, 2))
+    expect_error({
+        fractional[2.5] <- stata_int(200)
+    })
+
+    named <- stats::setNames(stata_byte(1), "one")
+    named["two"] <- stats::setNames(stata_int(2), "source")
+    expect_identical(names(named), c("one", "two"))
+    expect_identical(stata_storage_type(named), "int")
+})
+
+test_that("dplyr joins preserve compatible Stata key information", {
+    left_key <- set_variable_labels(
+        set_value_labels(stata_byte(c(1, 2)), One = 1),
+        "Identifier"
+    )
+    right_key <- set_value_labels(
+        stata_int(c(2, 200)), TwoHundred = 200
+    )
+    left <- tibble::tibble(id = left_key, left_value = c("a", "b"))
+    right <- tibble::tibble(id = right_key, right_value = c("c", "d"))
+
+    coalesced <- dplyr::full_join(
+        left, right, dplyr::join_by(id), relationship = "one-to-one"
+    )
+    retained <- dplyr::full_join(
+        left, right, dplyr::join_by(id),
+        relationship = "one-to-one", keep = TRUE
+    )
+
+    expect_identical(as.double(coalesced$id), c(1, 2, 200))
+    expect_identical(stata_storage_type(coalesced$id), "int")
+    expect_identical(var_label(coalesced$id), "Identifier")
+    expect_identical(
+        val_labels(coalesced$id), c(One = 1, TwoHundred = 200)
+    )
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(coalesced$id))
+    expect_identical(stata_storage_type(retained$id.x), "byte")
+    expect_identical(stata_storage_type(retained$id.y), "int")
+    expect_identical(val_labels(retained$id.x), c(One = 1))
+    expect_identical(val_labels(retained$id.y), c(TwoHundred = 200))
 })
 
 test_that("value labels compose with declared storage classes", {

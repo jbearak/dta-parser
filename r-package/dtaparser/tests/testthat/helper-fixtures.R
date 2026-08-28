@@ -2,6 +2,31 @@ fixture <- function(name) {
     system.file("extdata", name, package = "dtaparser", mustWork = TRUE)
 }
 
+fixture_with_temporal_storage <- function(column, display_format = "%td") {
+    path <- fixture("auto_v118.dta")
+    bytes <- readBin(path, "raw", n = file.info(path)[["size"]])
+
+    old_format <- if (identical(column, "foreign")) "%8.0g" else "%8.0gc"
+    matches <- grepRaw(
+        charToRaw(old_format), bytes, fixed = TRUE, all = TRUE
+    )
+    minimum_matches <- if (identical(column, "foreign")) 1L else 2L
+    stopifnot(length(matches) >= minimum_matches)
+    format_start <- if (identical(column, "foreign")) {
+        tail(matches, 1L)
+    } else {
+        matches[[2L]]
+    }
+    bytes[format_start + seq_len(nchar(old_format)) - 1L] <- c(
+        charToRaw(display_format),
+        raw(nchar(old_format) - nchar(display_format))
+    )
+
+    output <- tempfile(fileext = ".dta")
+    writeBin(bytes, output)
+    output
+}
+
 labelled_for_test <- function(x, labels = NULL, label = NULL) {
     structure(
         x,

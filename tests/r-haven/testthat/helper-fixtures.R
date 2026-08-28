@@ -36,5 +36,4 @@ load_test_helpers(
     )
 )
 load_test_helpers("test-read-dta.R", "replace_first_byte")
-load_test_helpers("test-stata-numeric.R", "fixture_with_temporal_storage")
 rm(load_test_helpers)

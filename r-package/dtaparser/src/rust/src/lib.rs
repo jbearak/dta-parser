@@ -206,6 +206,105 @@ pub unsafe extern "C" fn dtaparser_numeric_alloc(
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NumericGatherColumn {
+    x_values: usize,
+    y_values: usize,
+    output: usize,
+    width: usize,
+    missing: [u8; 8],
+}
+
+unsafe fn gather_numeric_column(
+    column: NumericGatherColumn,
+    x_rows: &[c_int],
+    y_rows: Option<&[c_int]>,
+) {
+    let x_values = column.x_values as *const u8;
+    let y_values = column.y_values as *const u8;
+    let output = column.output as *mut u8;
+    for (output_index, &x_index) in x_rows.iter().enumerate() {
+        let (source, source_index) = if x_index >= 0 {
+            (x_values, x_index as usize)
+        } else if !y_values.is_null() {
+            let y_index = y_rows.expect("paired gather requires y rows")[output_index];
+            if y_index >= 0 {
+                (y_values, y_index as usize)
+            } else {
+                (ptr::null(), 0)
+            }
+        } else {
+            (ptr::null(), 0)
+        };
+
+        let target = output.add(output_index * column.width);
+        if source.is_null() {
+            ptr::copy_nonoverlapping(column.missing.as_ptr(), target, column.width);
+        } else {
+            ptr::copy_nonoverlapping(
+                source.add(source_index * column.width),
+                target,
+                column.width,
+            );
+        }
+    }
+}
+
+#[no_mangle]
+/// Gather independent Stata numeric columns in parallel.
+///
+/// # Safety
+///
+/// `columns` must describe disjoint writable outputs and live compact or R
+/// double source buffers. Row indices must be validated zero-based offsets or
+/// negative for an absent row. All pointers must remain live until this call
+/// returns.
+pub unsafe extern "C" fn dtaparser_gather_numeric_columns(
+    columns: *const NumericGatherColumn,
+    column_count: usize,
+    x_rows: *const c_int,
+    y_rows: *const c_int,
+    row_count: usize,
+) -> c_int {
+    let call = || {
+        if columns.is_null() || (row_count > 0 && x_rows.is_null()) {
+            return false;
+        }
+        let columns = std::slice::from_raw_parts(columns, column_count);
+        let x_rows = if row_count == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(x_rows, row_count)
+        };
+        let y_rows = if y_rows.is_null() {
+            None
+        } else {
+            Some(std::slice::from_raw_parts(y_rows, row_count))
+        };
+        let workers = std::thread::available_parallelism()
+            .map_or(1, usize::from)
+            .min(column_count.max(1));
+        let columns_per_worker = column_count.div_ceil(workers);
+
+        std::thread::scope(|scope| {
+            for chunk in columns.chunks(columns_per_worker) {
+                scope.spawn(move || {
+                    for &column in chunk {
+                        unsafe { gather_numeric_column(column, x_rows, y_rows) };
+                    }
+                });
+            }
+        });
+        true
+    };
+
+    match catch_unwind(AssertUnwindSafe(call)) {
+        Ok(true) => 1,
+        Ok(false) | Err(_) => 0,
+    }
+}
+
+#[repr(C)]
 struct DictStringData {
     value_ids: *mut u32,
     length: usize,

@@ -56,6 +56,12 @@ and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
 aggregate results used in the R package README.
 
+The synthetic [`projection-introspection/`](projection-introspection/) suite
+compares a union-safe `any_of()` projection with Stata's full-load-then-keep
+workflow and Stata's direct, non-union-safe projected `use`. It varies dataset
+width and row count while requiring every method to return the same ten
+columns.
+
 The manual [`r-corpus-roundtrip/`](r-corpus-roundtrip/) workflow qualifies the
 R writer against the same 1,823-file cache, requires semantic re-read equality
 plus Haven and Stata-open checks, and only then benchmarks writes against Stata.
@@ -68,6 +74,11 @@ The report-only [`r-helper-performance/`](r-helper-performance/) benchmark
 compares label factorization and one-way tabulation with Haven on a generated
 compact integer column. It checks result equivalence and reports whether each
 workflow materializes the source.
+
+The report-only [`r-merge-performance/`](r-merge-performance/) benchmark
+compares `dta_merge()`, dplyr, base R, and Stata on deterministic wide 1:m and
+m:1 merges. It measures both DTA-read Stata classes and ordinary R columns and
+reports cumulative R allocation so materialization costs remain visible.
 
 Record the exact command, toolchain, host, fixture sizes, iteration count, and
 correctness status in `baseline.md`. Results are evidence for investigation,
