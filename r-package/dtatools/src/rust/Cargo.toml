@@ -1,0 +1,21 @@
+[package]
+name = "dtatools-r"
+version = "0.6.0"
+edition = "2021"
+rust-version = "1.98.0"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+ahash = { version = "0.8", default-features = false, features = ["std"] }
+dta-tools = { path = "../dta-tools" }
+
+[profile.release]
+lto = "thin"
+panic = "unwind"
+strip = "debuginfo"
+
+[workspace]

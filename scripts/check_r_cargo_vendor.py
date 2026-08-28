@@ -289,7 +289,7 @@ def check_vendor_archive(archive: Path, integrity_path: Path, lock_path: Path) -
 
 
 def check_repository(root: Path) -> None:
-    rust = root / "r-package/dtaparser/src/rust"
+    rust = root / "r-package/dtatools/src/rust"
     check_vendor_archive(
         rust / "vendor.tar.gz",
         rust / "vendor.sha256",

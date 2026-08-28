@@ -62,7 +62,7 @@ aww_stata_kind <- function(dispute) {
     if (identical(dispute$category, "storage")) return("storage")
     if (identical(dispute$category, "format")) return("format")
     if (identical(dispute$category, "class")) {
-        labelled <- any(vapply(c(dispute$dtaparser, dispute$haven), function(value) {
+        labelled <- any(vapply(c(dispute$dtatools, dispute$haven), function(value) {
             is.character(value) && "haven_labelled" %in% value
         }, logical(1)))
         return(if (identical(attribute, "class") && labelled) {
@@ -299,14 +299,14 @@ aww_adjudicate_batch <- function(disputes, metadata, item, options, run_dir,
         rows <- response[response$id == index & response$status == "ok", , drop = FALSE]
         source <- aww_stata_value(rows)
         if (is.null(source)) next
-        left <- aww_matches_stata(dispute$dtaparser[[1L]], source, dispute, metadata)
+        left <- aww_matches_stata(dispute$dtatools[[1L]], source, dispute, metadata)
         right <- aww_matches_stata(dispute$haven[[1L]], source, dispute, metadata)
-        ownership[[index]] <- if (identical(dispute$reader, "dtaparser")) {
-            if (left) "representation-only" else "dtaparser-wrong"
+        ownership[[index]] <- if (identical(dispute$reader, "dtatools")) {
+            if (left) "representation-only" else "dtatools-wrong"
         } else if (identical(dispute$reader, "haven")) {
             if (right) "representation-only" else "haven-wrong"
         } else if (left && !right) "haven-wrong" else
-            if (!left && right) "dtaparser-wrong" else
+            if (!left && right) "dtatools-wrong" else
             if (left && right) "representation-only" else "both-wrong"
     }
     list(state = "complete", ownership = ownership, response = response)
@@ -316,7 +316,7 @@ aww_stata_row_count <- function(item, metadata, options, run_dir, script_dir,
                                  stata_info, batch_id) {
     dispute <- aww_dispute(
         "metadata", "dimension", attribute = "source-row-count",
-        dtaparser = NA_real_, haven = NA_real_
+        dtatools = NA_real_, haven = NA_real_
     )
     result <- aww_adjudicate_batch(
         dispute, metadata, item, options, run_dir, script_dir,

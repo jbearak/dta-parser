@@ -5,7 +5,7 @@ if (length(args) != 2L) {
 
 operation <- args[[1L]]
 label <- args[[2L]]
-library(dtaparser)
+library(dtatools)
 
 profile_allocations <- function(expression, threshold) {
     path <- tempfile()
@@ -20,7 +20,7 @@ profile_allocations <- function(expression, threshold) {
     list(value = value, bytes = sum(sizes, na.rm = TRUE))
 }
 
-compact <- dtaparser:::.is_unmaterialized_numeric_altrep
+compact <- dtatools:::.is_unmaterialized_numeric_altrep
 
 result <- switch(operation,
     serialize = {
@@ -47,7 +47,7 @@ result <- switch(operation,
     recode = {
         x <- stata_int(rep(c(1, 2, 3, NA_real_), 2500000L))
         gc(reset = TRUE)
-        timing <- system.time(y <- dtaparser::recode(x, `1` = 4))
+        timing <- system.time(y <- dtatools::recode(x, `1` = 4))
         heap <- gc()
         data.frame(
             operation, label,
@@ -83,9 +83,9 @@ result <- switch(operation,
             "category-%03d", rep(1:100, length.out = 1000000L)
         )), path, version = 15)
         x <- read_dta(path)$value
-        initial_altrep <- dtaparser:::.is_altrep(x)
+        initial_altrep <- dtatools:::.is_altrep(x)
         measured <- profile_allocations(
-            dtaparser:::.force_altrep_materialization(x), 100 * 1024
+            dtatools:::.force_altrep_materialization(x), 100 * 1024
         )
         data.frame(
             operation, label, allocation_bytes = measured$bytes,

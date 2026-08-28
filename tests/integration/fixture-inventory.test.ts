@@ -5,8 +5,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { parse_metadata } from '../../typescript/dta-parser/src/header';
-import { parse_legacy_metadata } from '../../typescript/dta-parser/src/legacy-header';
+import { parse_metadata } from '../../typescript/dta-tools/src/header';
+import { parse_legacy_metadata } from '../../typescript/dta-tools/src/legacy-header';
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures', 'dta');
 
@@ -64,12 +64,12 @@ describe('DTA fixture inventory', () => {
                     path.join(generated, `synthetic-v${release}.dta`)
                 );
                 const rust = fs.readFileSync(path.join(
-                    root, 'r-package', 'dtaparser', 'src', 'dta-parser',
+                    root, 'r-package', 'dtatools', 'src', 'dta-tools',
                     'tests', 'data',
                     `synthetic-v${release}.dta`
                 ));
                 const r = fs.readFileSync(path.join(
-                    root, 'r-package', 'dtaparser', 'inst', 'extdata',
+                    root, 'r-package', 'dtatools', 'inst', 'extdata',
                     `synthetic_v${release}.dta`
                 ));
                 expect(rust.equals(expected)).toBe(true);

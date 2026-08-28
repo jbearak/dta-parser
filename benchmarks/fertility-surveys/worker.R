@@ -14,16 +14,16 @@ fertility_worker_base <- function(item, framework_id, timeout_seconds) {
 
 fertility_load_readers <- function(package_library, expected_package_path) {
     package_attestation <- fertility_attest_regular_tree(
-        expected_package_path, "installed dtaparser package"
+        expected_package_path, "installed dtatools package"
     )
     .libPaths(c(package_library, .libPaths()))
     fertility_revalidate_regular_tree(
-        package_attestation, "installed dtaparser package"
+        package_attestation, "installed dtatools package"
     )
-    if (!requireNamespace("dtaparser", quietly = TRUE)) stop("dtaparser-load-error")
-    loaded <- normalizePath(getNamespaceInfo(asNamespace("dtaparser"), "path"),
+    if (!requireNamespace("dtatools", quietly = TRUE)) stop("dtatools-load-error")
+    loaded <- normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path"),
                             winslash = "/", mustWork = TRUE)
-    if (!identical(loaded, expected_package_path)) stop("foreign-dtaparser-installation")
+    if (!identical(loaded, expected_package_path)) stop("foreign-dtatools-installation")
     if (!requireNamespace("haven", quietly = TRUE)) stop("haven-load-error")
     invisible(NULL)
 }
@@ -44,11 +44,11 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
     fertility_reset_bound_input(path)
     if (identical(tile$type, "metadata")) {
         frame <- if (identical(reader, "direct")) {
-            dtaparser::read_dta(
+            dtatools::read_dta(
                 path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
             )
         } else if (identical(reader, "rust")) {
-            dtaparser:::.read_dta_rust_vectors(
+            dtatools:::.read_dta_rust_vectors(
                 path, encoding = encoding, n_max = 0L, .name_repair = "minimal"
             )
         } else {
@@ -58,12 +58,12 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
         }
         fertility_reset_bound_input(path)
         shape <- if (identical(reader, "direct")) {
-            dtaparser::read_dta(
+            dtatools::read_dta(
                 path, encoding = encoding, col_select = character(),
                 .name_repair = "minimal"
             )
         } else if (identical(reader, "rust")) {
-            dtaparser:::.read_dta_rust_vectors(
+            dtatools:::.read_dta_rust_vectors(
                 path, encoding = encoding, col_select = character(),
                 .name_repair = "minimal"
             )
@@ -79,13 +79,13 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
     columns <- tile$column_names
     if (!length(columns)) {
         if (identical(reader, "direct")) {
-            return(dtaparser::read_dta(
+            return(dtatools::read_dta(
                 path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
                 .name_repair = "minimal"
             ))
         }
         if (identical(reader, "rust")) {
-            return(dtaparser:::.read_dta_rust_vectors(
+            return(dtatools:::.read_dta_rust_vectors(
                 path, encoding = encoding, skip = tile$skip, n_max = tile$n_max,
                 .name_repair = "minimal"
             ))
@@ -96,12 +96,12 @@ fertility_tile_read <- function(reader, path, tile, encoding = NULL) {
         ))
     }
     if (identical(reader, "direct")) {
-        dtaparser::read_dta(
+        dtatools::read_dta(
             path, encoding = encoding, col_select = tidyselect::all_of(columns),
             skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
         )
     } else if (identical(reader, "rust")) {
-        dtaparser:::.read_dta_rust_vectors(
+        dtatools:::.read_dta_rust_vectors(
             path, encoding = encoding, col_select = tidyselect::all_of(columns),
             skip = tile$skip, n_max = tile$n_max, .name_repair = "minimal"
         )
@@ -180,7 +180,7 @@ fertility_reader_error_classification <- function(errors) {
     dta_error <- errors[["direct"]] || errors[["rust"]]
     haven_error <- errors[["haven"]]
     if (dta_error && haven_error) "shared-reader-error" else
-        if (dta_error) "dtaparser-only-error" else
+        if (dta_error) "dtatools-only-error" else
         if (haven_error) "haven-only-error" else NA_character_
 }
 
@@ -319,7 +319,7 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
     }
     if (identical(tile$type, "metadata")) fertility_reset_bound_input(item$path)
     structural <- if (identical(tile$type, "metadata")) tryCatch(
-        dtaparser:::.dta_metadata(item$path, encoding = encoding), error = identity
+        dtatools:::.dta_metadata(item$path, encoding = encoding), error = identity
     ) else NULL
     source_structure <- if (identical(tile$type, "metadata")) tryCatch(
         fertility_structural_metadata(item$path), error = identity
@@ -389,7 +389,7 @@ fertility_worker_tile <- function(item, tile, compare_script, package_library,
     }
     error_classification <- fertility_reader_error_classification(errors)
     classification <- if (any(memory_errors)) "memory-limit" else if ("metadata-reader-error" %in% secondary)
-        "dtaparser-only-error" else if (!is.na(error_classification))
+        "dtatools-only-error" else if (!is.na(error_classification))
         error_classification else if (source_structure_unavailable)
         "unresolved" else if ("row-termination-mismatch" %in% secondary)
         "row-termination-mismatch" else if ("direct-vs-rust-mismatch" %in% secondary)

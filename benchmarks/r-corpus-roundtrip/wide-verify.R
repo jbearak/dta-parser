@@ -10,9 +10,9 @@ sys.source(
     file.path(script_dir, "..", "benchmark-common.R"),
     envir = environment()
 )
-benchmark_activate_library(c("dtaparser", "haven"))
+benchmark_activate_library(c("dtatools", "haven"))
 expected <- c(1L, 32768L)
 stopifnot(
-    identical(dim(dtaparser::read_dta(args[[1L]])), expected),
+    identical(dim(dtatools::read_dta(args[[1L]])), expected),
     identical(dim(haven::read_dta(args[[1L]])), expected)
 )

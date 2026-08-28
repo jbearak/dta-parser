@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: typescript/dta-parser
+        working-directory: typescript/dta-tools
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,10 +51,10 @@ jobs:
       - run: cargo +${{ matrix.toolchain }} clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo +${{ matrix.toolchain }} test --workspace --all-targets --locked
       - run: RUSTDOCFLAGS="-D warnings" cargo +${{ matrix.toolchain }} doc --workspace --locked --no-deps
-      - run: cargo +${{ matrix.toolchain }} package -p dta-parser --locked
+      - run: cargo +${{ matrix.toolchain }} package -p dta-tools --locked
       - name: Check isolated R bridge offline
         if: matrix.toolchain == 'stable'
-        working-directory: r-package/dtaparser/src
+        working-directory: r-package/dtatools/src
         shell: bash
         env:
           CARGO_TARGET_DIR: ../../../target
@@ -71,7 +71,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup toolchain install stable --profile minimal
-      - run: DTA_FUZZ_CASES=16 cargo +stable test -p dta-parser --locked --test fuzz_smoke -- --nocapture
+      - run: DTA_FUZZ_CASES=16 cargo +stable test -p dta-tools --locked --test fuzz_smoke -- --nocapture
 
   r-cargo-vendor:
     name: R offline Cargo dependencies
@@ -89,7 +89,7 @@ jobs:
       - run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - run: scripts/check-r-cargo-vendor.sh
       - run: scripts/rebuild-r-vendor.sh
-      - run: git diff --exit-code -- r-package/dtaparser/src/rust/vendor.tar.gz
+      - run: git diff --exit-code -- r-package/dtatools/src/rust/vendor.tar.gz
       - run: >-
           bun test
           tests/integration/benchmark-config.test.ts
@@ -157,9 +157,9 @@ jobs:
         if: runner.os != 'Linux'
         shell: bash
         run: |
-          R CMD build r-package/dtaparser
-          version=$(sed -n 's/^Version: //p' r-package/dtaparser/DESCRIPTION)
-          tarball="dtaparser_${version}.tar.gz"
+          R CMD build r-package/dtatools
+          version=$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)
+          tarball="dtatools_${version}.tar.gz"
           scripts/check-r-package-archive.sh "$tarball"
           R CMD check --no-manual --as-cran "$tarball"
       - name: Run the single required conformance orchestrator
@@ -175,7 +175,7 @@ jobs:
       - name: Test repository-only labelled and Haven conformance
         shell: bash
         run: |
-          R CMD INSTALL r-package/dtaparser
+          R CMD INSTALL r-package/dtatools
           Rscript --vanilla scripts/test-haven-conformance.R
           Rscript --vanilla scripts/test-labelled-interop.R
           Rscript --vanilla scripts/test-haven-helper-interop.R
@@ -202,4 +202,4 @@ jobs:
         shell: Rscript {0}
         run: install.packages(c("dplyr", "readr", "rlang", "tibble", "tidyselect", "vctrs"))
       - name: Install on the declared minimum R version
-        run: R CMD INSTALL r-package/dtaparser
+        run: R CMD INSTALL r-package/dtatools

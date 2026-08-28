@@ -3,7 +3,7 @@ set -eu
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH='' cd -- "$script_dir/.." && pwd)
-package_root="$root/r-package/dtaparser"
+package_root="$root/r-package/dtatools"
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
@@ -18,7 +18,7 @@ inputs=$(
   DTA_RUST_HASH_LIST_INPUTS=1 \
     "$rscript" --vanilla tools/rust-source-hash.R
 )
-fixture="$temporary/dtaparser"
+fixture="$temporary/dtatools"
 for path in $inputs; do
   mkdir -p "$fixture/$(dirname -- "$path")"
   cp -R "$package_root/$path" "$fixture/$path"

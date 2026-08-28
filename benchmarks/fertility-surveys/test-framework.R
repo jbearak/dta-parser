@@ -41,10 +41,10 @@ local({
         file.path(outside, "outside.txt"), file.path(fixture, "ignored-link.txt")
     ))
     old_root <- fertility_output_root
-    old_hook <- getOption("dtaparser.fertility.output_inventory_test_hook")
+    old_hook <- getOption("dtatools.fertility.output_inventory_test_hook")
     on.exit({
         assign("fertility_output_root", old_root, envir = .GlobalEnv)
-        options(dtaparser.fertility.output_inventory_test_hook = old_hook)
+        options(dtatools.fertility.output_inventory_test_hook = old_hook)
     }, add = TRUE)
     assign(
         "fertility_output_root",
@@ -73,7 +73,7 @@ local({
 
     unavailable <- file.path(fixture, "unavailable.dta")
     writeBin(as.raw(7:9), unavailable)
-    options(dtaparser.fertility.output_inventory_test_hook = function(
+    options(dtatools.fertility.output_inventory_test_hook = function(
         boundary, context
     ) {
         if (identical(boundary, "before-entry-info") &&
@@ -82,11 +82,11 @@ local({
     expect_error(
         fertility_output_entries(fertility_output_root), "metadata is unavailable"
     )
-    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+    options(dtatools.fertility.output_inventory_test_hook = NULL)
 
     raced <- file.path(fixture, "raced.dta")
     writeBin(as.raw(10:12), raced)
-    options(dtaparser.fertility.output_inventory_test_hook = function(
+    options(dtatools.fertility.output_inventory_test_hook = function(
         boundary, context
     ) {
         if (identical(boundary, "after-entry-info") &&
@@ -99,7 +99,7 @@ local({
         fertility_output_entries(fertility_output_root),
         "changed to a symlink|must not be a symlink"
     )
-    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+    options(dtatools.fertility.output_inventory_test_hook = NULL)
     unlink(raced)
 
     mkfifo <- Sys.which("mkfifo")
@@ -121,7 +121,7 @@ local({
     writeBin(c(as.raw(113L), as.raw(rep(255L, 40L))), external_dta)
     external_before <- unname(tools::sha256sum(external_dta))
     restorer <- NULL
-    options(dtaparser.fertility.output_inventory_test_hook = function(
+    options(dtatools.fertility.output_inventory_test_hook = function(
         boundary, context
     ) {
         if (identical(boundary, "before-descriptor-content-read")) {
@@ -151,7 +151,7 @@ local({
         !file.exists(descriptor_saved),
         identical(unname(tools::sha256sum(external_dta)), external_before)
     )
-    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+    options(dtatools.fertility.output_inventory_test_hook = NULL)
 
     descriptor_capture <- fertility_nofollow_file_capture(
         descriptor_target, include_release = TRUE
@@ -176,7 +176,7 @@ local({
     )
     unlink(ambiguous_release)
     restorer <- NULL
-    options(dtaparser.fertility.output_inventory_test_hook = function(
+    options(dtatools.fertility.output_inventory_test_hook = function(
         boundary, context
     ) {
         if (identical(boundary, "before-descriptor-file-read")) {
@@ -204,11 +204,11 @@ local({
         !fertility_path_is_symlink(descriptor_target),
         identical(unname(tools::sha256sum(external_dta)), external_before)
     )
-    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+    options(dtatools.fertility.output_inventory_test_hook = NULL)
 
     root_saved <- paste0(fixture, ".saved")
     restorer <- NULL
-    options(dtaparser.fertility.output_inventory_test_hook = function(
+    options(dtatools.fertility.output_inventory_test_hook = function(
         boundary, context
     ) {
         if (identical(boundary, "before-descriptor-content-read")) {
@@ -250,7 +250,7 @@ local({
         ancestor_output, winslash = "/", mustWork = TRUE
     ), envir = .GlobalEnv)
     restorer <- NULL
-    options(dtaparser.fertility.output_inventory_test_hook = function(
+    options(dtatools.fertility.output_inventory_test_hook = function(
         boundary, context
     ) {
         if (identical(boundary, "before-descriptor-content-read")) {
@@ -281,7 +281,7 @@ local({
     assign("fertility_output_root", normalizePath(
         fixture, winslash = "/", mustWork = TRUE
     ), envir = .GlobalEnv)
-    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+    options(dtatools.fertility.output_inventory_test_hook = NULL)
 
     capture_parent <- file.path(fixture, "capture-parent")
     capture_parent_saved <- paste0(capture_parent, ".saved")
@@ -293,7 +293,7 @@ local({
     writeBin(c(as.raw(118L), as.raw(rep(2L, 40L))),
              file.path(external_parent, "target.dta"))
     restorer <- NULL
-    options(dtaparser.fertility.output_inventory_test_hook = function(
+    options(dtatools.fertility.output_inventory_test_hook = function(
         boundary, context
     ) {
         if (identical(boundary, "before-descriptor-file-read")) {
@@ -320,7 +320,7 @@ local({
         identical(restorer$get_result(), TRUE),
         !fertility_path_is_symlink(capture_parent)
     )
-    options(dtaparser.fertility.output_inventory_test_hook = NULL)
+    options(dtatools.fertility.output_inventory_test_hook = NULL)
 })
 
 # Inventory versioning preserves the prior persistent authority as explicitly
@@ -515,8 +515,8 @@ atomic_competitor <- file.path(atomic_parent, "competitor")
 atomic_race_destination <- file.path(atomic_parent, "race-destination")
 dir.create(atomic_competitor)
 writeLines("competitor", file.path(atomic_competitor, "value"))
-old_atomic_hook <- getOption("dtaparser.fertility.publication_test_hook")
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+old_atomic_hook <- getOption("dtatools.fertility.publication_test_hook")
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "atomic-noreplace-before-operation")) {
         dir.create(context$to)
         writeLines("winner", file.path(context$to, "value"))
@@ -526,7 +526,7 @@ expect_error(fertility_atomic_rename_noreplace(
     atomic_competitor, atomic_race_destination,
     "synthetic atomic race publication"
 ), "destination already exists")
-options(dtaparser.fertility.publication_test_hook = old_atomic_hook)
+options(dtatools.fertility.publication_test_hook = old_atomic_hook)
 stopifnot(
     identical(readLines(file.path(atomic_competitor, "value")), "competitor"),
     identical(readLines(file.path(atomic_race_destination, "value")), "winner")
@@ -542,9 +542,9 @@ source_attestation <- fertility_attest_existing_files(
     "publication source"
 )
 old_publication_hook <- getOption(
-    "dtaparser.fertility.publication_test_hook"
+    "dtatools.fertility.publication_test_hook"
 )
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "synthetic-before-current")) {
         writeLines("framework-v2", framework_source_fixture)
     }
@@ -554,7 +554,7 @@ expect_error(fertility_revalidate_existing_files(
     source_attestation, "publication source"
 ), "identity changed")
 writeLines("framework-v1", framework_source_fixture)
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "synthetic-before-current")) {
         saveRDS("checkpoint-v2", checkpoint_source_fixture)
     }
@@ -564,7 +564,7 @@ expect_error(fertility_revalidate_existing_files(
     source_attestation, "publication source"
 ), "identity changed")
 saveRDS("checkpoint-v1", checkpoint_source_fixture)
-options(dtaparser.fertility.publication_test_hook = old_publication_hook)
+options(dtatools.fertility.publication_test_hook = old_publication_hook)
 stopifnot(isTRUE(fertility_revalidate_existing_files(
     source_attestation, "publication source"
 )))
@@ -658,7 +658,7 @@ build_id_fixture <- paste(rep("c", 64L), collapse = "")
 builds_fixture <- file.path(confinement_raw, "builds")
 generation_fixture <- file.path(builds_fixture, build_id_fixture)
 library_fixture <- file.path(generation_fixture, "library")
-package_fixture <- file.path(library_fixture, "dtaparser")
+package_fixture <- file.path(library_fixture, "dtatools")
 dir.create(package_fixture, recursive = TRUE)
 writeLines("synthetic", file.path(generation_fixture, "build-provenance.tsv"))
 writeLines(build_id_fixture, file.path(builds_fixture, "CURRENT"))
@@ -669,7 +669,7 @@ stopifnot(identical(
     package_fixture
 ))
 build_external <- file.path(root, "build-descendant-external")
-dir.create(file.path(build_external, "library", "dtaparser"), recursive = TRUE)
+dir.create(file.path(build_external, "library", "dtatools"), recursive = TRUE)
 writeLines("external", file.path(build_external, "CURRENT"))
 writeLines("external", file.path(build_external, "build-provenance.tsv"))
 build_external_before <- as.list(file.info(c(
@@ -684,7 +684,7 @@ for (case in list(
     list(path = file.path(generation_fixture, "build-provenance.tsv"),
          target = file.path(build_external, "build-provenance.tsv")),
     list(path = package_fixture,
-         target = file.path(build_external, "library", "dtaparser"))
+         target = file.path(build_external, "library", "dtatools"))
 )) {
     saved <- paste0(case$path, ".saved")
     stopifnot(file.rename(case$path, saved), file.symlink(case$target, case$path))
@@ -700,7 +700,7 @@ stopifnot(identical(as.list(file.info(c(
 ))[, c("size", "mode")]), build_external_before))
 package_nested <- file.path(package_fixture, "R")
 dir.create(package_nested)
-package_file <- file.path(package_nested, "dtaparser")
+package_file <- file.path(package_nested, "dtatools")
 writeLines("equal-content", package_file)
 package_attestation <- fertility_attest_regular_tree(
     package_fixture, "synthetic installed package"
@@ -716,7 +716,7 @@ unlink(package_file)
 stopifnot(file.rename(paste0(package_file, ".saved"), package_file))
 external_package_directory <- file.path(root, "external-package-directory")
 dir.create(external_package_directory)
-writeLines("equal-content", file.path(external_package_directory, "dtaparser"))
+writeLines("equal-content", file.path(external_package_directory, "dtatools"))
 stopifnot(file.rename(package_nested, paste0(package_nested, ".saved")))
 stopifnot(file.symlink(external_package_directory, package_nested))
 expect_error(fertility_attest_regular_tree(
@@ -867,7 +867,7 @@ run_shell_confinement <- function(arguments = "--inventory-only") {
     c(
         "-u", "CI", "-u", "GITHUB_ACTIONS", "-u", "GITHUB_RUN_ID",
         "-u", "GITHUB_WORKFLOW",
-        paste0("DTAPARSER_FERTILITY_CORPUS=", fertility_opt_in_value),
+        paste0("DTATOOLS_FERTILITY_CORPUS=", fertility_opt_in_value),
         "sh", file.path(shell_script_dir, "benchmark.sh"),
         source_arguments, arguments
     ),
@@ -898,12 +898,12 @@ shell_build_id <- paste(rep("d", 64L), collapse = "")
 shell_builds <- file.path(shell_raw, "builds")
 shell_generation <- file.path(shell_builds, shell_build_id)
 shell_library <- file.path(shell_generation, "library")
-shell_package <- file.path(shell_library, "dtaparser")
+shell_package <- file.path(shell_library, "dtatools")
 dir.create(shell_package, recursive = TRUE)
 writeLines(shell_build_id, file.path(shell_builds, "CURRENT"))
 writeLines("synthetic", file.path(shell_generation, "build-provenance.tsv"))
 shell_external <- file.path(root, "shell-build-external")
-dir.create(file.path(shell_external, "library", "dtaparser"), recursive = TRUE)
+dir.create(file.path(shell_external, "library", "dtatools"), recursive = TRUE)
 writeLines(shell_build_id, file.path(shell_external, "CURRENT"))
 writeLines("external", file.path(shell_external, "build-provenance.tsv"))
 shell_external_mode <- file.info(shell_external)$mode[[1L]]
@@ -915,7 +915,7 @@ for (case in list(
     list(path = file.path(shell_generation, "build-provenance.tsv"),
          target = file.path(shell_external, "build-provenance.tsv")),
     list(path = shell_package,
-         target = file.path(shell_external, "library", "dtaparser"))
+         target = file.path(shell_external, "library", "dtatools"))
 )) {
     saved <- paste0(case$path, ".saved")
     stopifnot(file.rename(case$path, saved), file.symlink(case$target, case$path))
@@ -1102,7 +1102,7 @@ for (entry_name in names(missing_root_entry_points)) {
         stdout = TRUE, stderr = TRUE,
         env = c(
             "CI=", "GITHUB_ACTIONS=", "GITHUB_RUN_ID=", "GITHUB_WORKFLOW=",
-            paste0("DTAPARSER_FERTILITY_CORPUS=", fertility_opt_in_value)
+            paste0("DTATOOLS_FERTILITY_CORPUS=", fertility_opt_in_value)
         )
     ))
     stopifnot(
@@ -1724,7 +1724,7 @@ supported_bundle <- which(vapply(output_fixture$bundles, function(bundle) {
 }, logical(1)))[[1L]]
 supported_row <- match("F0131", output_fixture$bundles[[supported_bundle]]$results$id)
 expected_output_terminal_classifications <- c(
-    "pass", "direct-vs-rust-mismatch", "dtaparser-only-error",
+    "pass", "direct-vs-rust-mismatch", "dtatools-only-error",
     "haven-only-error", "shared-reader-error", "metadata-mismatch",
     "value-mismatch", "tag-mismatch", "date-mismatch",
     "encoding-mismatch", "row-termination-mismatch",
@@ -2101,8 +2101,8 @@ sequential_reuse_refuses_changed_early_input <- function() {
     ), "input changed during capture")
 }
 sequential_reuse_refuses_changed_early_input()
-old_hook <- getOption("dtaparser.fertility.publication_test_hook")
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+old_hook <- getOption("dtatools.fertility.publication_test_hook")
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "acceptance-before-existing-reuse-revalidation")) {
         writeBin(as.raw(c(118L, 92L, 0:15)), acceptance_paths[[1L]])
     }
@@ -2110,7 +2110,7 @@ options(dtaparser.fertility.publication_test_hook = function(boundary, context) 
 expect_error(fertility_capture_acceptance(
     acceptance_inventory, acceptance_raw
 ), "input changed during capture")
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 writeBin(as.raw(c(118L, 1L, 0:15)), acceptance_paths[[1L]])
 for (with_content in c(FALSE, TRUE)) {
     refusal_raw <- file.path(
@@ -2140,8 +2140,8 @@ dir.create(race_raw)
 race_destination <- file.path(
     race_raw, "accepted-current-hashes", acceptance_id
 )
-old_hook <- getOption("dtaparser.fertility.publication_test_hook")
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+old_hook <- getOption("dtatools.fertility.publication_test_hook")
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "acceptance-before-destination-publication")) {
         dir.create(context$destination)
         writeLines("race-winner", file.path(context$destination, "sentinel"))
@@ -2150,7 +2150,7 @@ options(dtaparser.fertility.publication_test_hook = function(boundary, context) 
 expect_error(fertility_capture_acceptance(
     acceptance_inventory, race_raw
 ), "accepted-current-hash")
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 stopifnot(
     identical(readLines(file.path(race_destination, "sentinel")), "race-winner"),
     !file.exists(file.path(race_destination, "commitment.rds"))
@@ -2163,7 +2163,7 @@ complete_race_destination <- file.path(
 source_commitment <- file.path(
     acceptance_raw, "accepted-current-hashes", acceptance_id, "commitment.rds"
 )
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "acceptance-before-destination-publication")) {
         dir.create(context$destination)
         stopifnot(file.copy(
@@ -2175,7 +2175,7 @@ stopifnot(identical(
     fertility_capture_acceptance(acceptance_inventory, complete_race_raw),
     acceptance_id
 ))
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 stopifnot(identical(
     list.files(complete_race_destination, all.files = TRUE, no.. = TRUE),
     "commitment.rds"
@@ -2185,7 +2185,7 @@ dir.create(publication_winner_raw)
 publication_winner_destination <- file.path(
     publication_winner_raw, "accepted-current-hashes", acceptance_id
 )
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "atomic-noreplace-before-operation") &&
         identical(context$label, "accepted-current-hash commitment")) {
         dir.create(context$to)
@@ -2198,7 +2198,7 @@ stopifnot(identical(
     fertility_capture_acceptance(acceptance_inventory, publication_winner_raw),
     acceptance_id
 ))
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 stopifnot(identical(
     list.files(publication_winner_destination, all.files = TRUE, no.. = TRUE),
     "commitment.rds"
@@ -2208,7 +2208,7 @@ dir.create(extra_claim_raw)
 extra_claim_destination <- file.path(
     extra_claim_raw, "accepted-current-hashes", acceptance_id
 )
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "acceptance-before-destination-publication")) {
         writeLines("unexpected", file.path(context$stage, ".extra"))
     }
@@ -2216,14 +2216,14 @@ options(dtaparser.fertility.publication_test_hook = function(boundary, context) 
 expect_error(fertility_capture_acceptance(
     acceptance_inventory, extra_claim_raw
 ), "exactly commitment.rds")
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 stopifnot(!file.exists(extra_claim_destination))
 atomic_mutation_raw <- file.path(root, "acceptance-atomic-source-mutation")
 dir.create(atomic_mutation_raw)
 atomic_mutation_destination <- file.path(
     atomic_mutation_raw, "accepted-current-hashes", acceptance_id
 )
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "atomic-noreplace-before-operation") &&
         identical(context$label, "accepted-current-hash commitment")) {
         writeLines("invalid", file.path(context$from, ".invalid"))
@@ -2232,7 +2232,7 @@ options(dtaparser.fertility.publication_test_hook = function(boundary, context) 
 expect_error(fertility_capture_acceptance(
     acceptance_inventory, atomic_mutation_raw
 ), "exactly commitment.rds")
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 stopifnot(
     !file.exists(atomic_mutation_destination),
     identical(
@@ -2245,7 +2245,7 @@ dir.create(rollback_raw)
 rollback_destination <- file.path(
     rollback_raw, "accepted-current-hashes", acceptance_id
 )
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(
         boundary, "acceptance-before-new-publication-revalidation"
     )) writeLines("invalid", file.path(context$destination, ".invalid"))
@@ -2253,7 +2253,7 @@ options(dtaparser.fertility.publication_test_hook = function(boundary, context) 
 expect_error(fertility_capture_acceptance(
     acceptance_inventory, rollback_raw
 ), "exactly commitment.rds")
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 stopifnot(
     !file.exists(rollback_destination),
     identical(
@@ -2279,7 +2279,7 @@ writeLines(c(
         encodeString(concurrent_reuse_raw, quote = "\""), ")"
     )
 ), concurrent_reuse_script)
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(
         boundary, "acceptance-before-new-publication-revalidation"
     )) {
@@ -2295,7 +2295,7 @@ options(dtaparser.fertility.publication_test_hook = function(boundary, context) 
 expect_error(fertility_capture_acceptance(
     acceptance_inventory, concurrent_reuse_raw
 ), "input changed during capture")
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 writeBin(as.raw(c(118L, 2L, 0:15)), acceptance_paths[[2L]])
 stopifnot(
     identical(
@@ -2324,7 +2324,7 @@ writeLines(c(
     paste0("source(", encodeString(file.path(script_dir, "runner.R"), quote = "\""), ")"),
     paste0("source(", encodeString(file.path(script_dir, "accepted.R"), quote = "\""), ")"),
     paste0("inventory <- readRDS(", encodeString(terminated_inventory_path, quote = "\""), ")"),
-    "options(dtaparser.fertility.publication_test_hook = function(boundary, context) {",
+    "options(dtatools.fertility.publication_test_hook = function(boundary, context) {",
     "    if (identical(boundary, 'acceptance-before-destination-publication')) {",
     "        tools::pskill(Sys.getpid(), 9L)",
     "    }",
@@ -2355,7 +2355,7 @@ unlink(list.files(
 ), recursive = TRUE)
 input_race_raw <- file.path(root, "acceptance-input-race")
 dir.create(input_race_raw)
-options(dtaparser.fertility.publication_test_hook = function(boundary, context) {
+options(dtatools.fertility.publication_test_hook = function(boundary, context) {
     if (identical(boundary, "acceptance-before-destination-publication")) {
         writeBin(as.raw(c(118L, 91L, 0:15)), acceptance_paths[[4L]])
     }
@@ -2363,7 +2363,7 @@ options(dtaparser.fertility.publication_test_hook = function(boundary, context) 
 expect_error(fertility_capture_acceptance(
     acceptance_inventory, input_race_raw
 ), "input changed during capture")
-options(dtaparser.fertility.publication_test_hook = old_hook)
+options(dtatools.fertility.publication_test_hook = old_hook)
 writeBin(as.raw(c(118L, 4L, 0:15)), acceptance_paths[[4L]])
 stopifnot(!file.exists(file.path(
     input_race_raw, "accepted-current-hashes", acceptance_id
@@ -3422,8 +3422,8 @@ legacy_structure <- fertility_structural_metadata(legacy_path)
 stopifnot(legacy_structure$rows == 3, legacy_structure$columns == 2L,
           identical(legacy_structure$column_bytes, c(4, 3)))
 stata7_path <- normalizePath(file.path(
-    script_dir, "..", "..", "r-package", "dtaparser", "src",
-    "dta-parser", "tests", "data",
+    script_dir, "..", "..", "r-package", "dtatools", "src",
+    "dta-tools", "tests", "data",
     "synthetic-v111.dta"
 ), winslash = "/", mustWork = TRUE)
 stata7_structure <- fertility_structural_metadata(stata7_path)
@@ -4448,14 +4448,14 @@ if (file.exists(build_pointer)) {
         checkout_library <- file.path(checkout_raw, "builds", build_id, "library")
     }
 }
-if (dir.exists(file.path(checkout_library, "dtaparser"))) {
+if (dir.exists(file.path(checkout_library, "dtatools"))) {
     old_paths <- .libPaths()
     .libPaths(c(checkout_library, old_paths))
     on.exit(.libPaths(old_paths), add = TRUE)
-    installed_dtaparser <- normalizePath(find.package("dtaparser"), winslash = "/")
+    installed_dtatools <- normalizePath(find.package("dtatools"), winslash = "/")
     metadata_worker <- fertility_worker_tile(
         bounded_item, fertility_metadata_tile(), file.path(script_dir, "compare.R"),
-        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+        dirname(installed_dtatools), installed_dtatools, "framework", 10L
     )
     stopifnot(metadata_worker$rows == 5L,
               metadata_worker$columns == ncol(bounded_data),
@@ -4488,8 +4488,8 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
         }, add = TRUE)
         fertility_worker_tile(
             bounded_item, fertility_metadata_tile(),
-            file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
-            installed_dtaparser, "framework", 10L
+            file.path(script_dir, "compare.R"), dirname(installed_dtatools),
+            installed_dtatools, "framework", 10L
         )
     })()
     structural_planning_failure <- list(
@@ -4531,7 +4531,7 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     bounded_tile <- fertility_value_tile(1L, 1L, 2L, c("number", "day"))
     bounded_worker <- fertility_worker_tile(
         bounded_item, bounded_tile, file.path(script_dir, "compare.R"),
-        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+        dirname(installed_dtatools), installed_dtatools, "framework", 10L
     )
     stopifnot(bounded_worker$rows == 2L, bounded_worker$columns == 2L,
               all(bounded_worker$projection_ok),
@@ -4546,14 +4546,14 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     stopifnot(
         identical(
             fertility_tile_read("direct", bounded_path, default_tile),
-            dtaparser::read_dta(
+            dtatools::read_dta(
                 bounded_path, col_select = tidyselect::all_of("text"),
                 skip = 0L, n_max = 1L, .name_repair = "minimal"
             )
         ),
         identical(
             fertility_tile_read("rust", bounded_path, default_tile),
-            dtaparser:::.read_dta_rust_vectors(
+            dtatools:::.read_dta_rust_vectors(
                 bounded_path, col_select = tidyselect::all_of("text"),
                 skip = 0L, n_max = 1L, .name_repair = "minimal"
             )
@@ -4622,11 +4622,11 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     )
     encoding_worker <- fertility_worker_tile(
         encoding_item, default_tile, file.path(script_dir, "compare.R"),
-        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+        dirname(installed_dtatools), installed_dtatools, "framework", 10L
     )
     encoding_metadata <- fertility_worker_tile(
         encoding_item, fertility_metadata_tile(), file.path(script_dir, "compare.R"),
-        dirname(installed_dtaparser), installed_dtaparser, "framework", 10L
+        dirname(installed_dtatools), installed_dtatools, "framework", 10L
     )
     encoding_terminal_probe <- (function() {
         worker_environment <- environment(fertility_worker_tile)
@@ -4649,16 +4649,16 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
             encoding_item, fertility_value_tile(
                 1L, nrow(bounded_data), 1L,
                 encoding_metadata$column_names[[4L]], type = "terminal", probe = 1L
-            ), file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
-            installed_dtaparser, "framework", 10L
+            ), file.path(script_dir, "compare.R"), dirname(installed_dtatools),
+            installed_dtatools, "framework", 10L
         )
         list(result = result, calls = calls)
     })()
     encoding_terminal <- encoding_terminal_probe$result
     encoding_sizing <- fertility_worker_tile(
         encoding_item, fertility_sizing_tile(1L, "text", 1, 1L),
-        file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
-        installed_dtaparser, "framework", 10L
+        file.path(script_dir, "compare.R"), dirname(installed_dtatools),
+        installed_dtatools, "framework", 10L
     )
     stopifnot(
         encoding_worker$classification == "pass",
@@ -4667,7 +4667,7 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
         startsWith(encoding_metadata$column_names[[4L]], intToUtf8(128L)),
         identical(
             encoding_metadata$column_names,
-            as.character(dtaparser:::.dta_metadata(
+            as.character(dtatools:::.dta_metadata(
                 encoding_item$path, encoding = "ISO-8859-1"
             ))
         ),
@@ -4689,8 +4689,8 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     wide_item$path <- normalizePath(wide_path, winslash = "/")
     sizing_worker <- fertility_worker_tile(
         wide_item, fertility_sizing_tile(1L, "long_string", 3, 16L),
-        file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
-        installed_dtaparser, "framework", 10L
+        file.path(script_dir, "compare.R"), dirname(installed_dtatools),
+        installed_dtatools, "framework", 10L
     )
     stopifnot(sizing_worker$classification == "pass",
               sizing_worker$samples_requested == 3L,
@@ -4703,8 +4703,8 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
     rare_item$path <- normalizePath(rare_strl_path, winslash = "/")
     rare_sizing <- fertility_worker_tile(
         rare_item, fertility_sizing_tile(1L, "long_string", 1000, 16L),
-        file.path(script_dir, "compare.R"), dirname(installed_dtaparser),
-        installed_dtaparser, "framework", 10L
+        file.path(script_dir, "compare.R"), dirname(installed_dtatools),
+        installed_dtatools, "framework", 10L
     )
     stopifnot(rare_sizing$classification == "pass",
               rare_sizing$samples_completed == 16L,
@@ -4733,8 +4733,8 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
         args = list(
             file.path(script_dir, "common.R"), file.path(script_dir, "runtime.R"),
             file.path(script_dir, "worker.R"), file.path(script_dir, "compare.R"),
-            bounded_item, fertility_metadata_tile(), dirname(installed_dtaparser),
-            installed_dtaparser,
+            bounded_item, fertility_metadata_tile(), dirname(installed_dtatools),
+            installed_dtatools,
             normalizePath(Sys.getenv("TMPDIR"), winslash = "/", mustWork = TRUE)
         ),
         libpath = .libPaths(), timeout = 30, spinner = FALSE, show = FALSE,
@@ -4747,7 +4747,7 @@ if (dir.exists(file.path(checkout_library, "dtaparser"))) {
               isolated_worker$columns == ncol(bounded_data))
 } else {
     stop(paste(
-        "checkout-local dtaparser installation is required; run a manual",
+        "checkout-local dtatools installation is required; run a manual",
         "benchmark.sh smoke first so the isolated worker regression cannot skip"
     ))
 }
@@ -5222,7 +5222,7 @@ stopifnot(length(temp_lifecycle$control) > 0L,
               all_temp_paths, winslash = "/", mustWork = FALSE
           ), private_prefix)))
 
-environment_names <- c("DTAPARSER_FERTILITY_CORPUS", "CI", "GITHUB_ACTIONS",
+environment_names <- c("DTATOOLS_FERTILITY_CORPUS", "CI", "GITHUB_ACTIONS",
                        "GITHUB_RUN_ID", "GITHUB_WORKFLOW")
 old_environment <- Sys.getenv(environment_names, unset = NA_character_)
 on.exit({
@@ -5231,12 +5231,12 @@ on.exit({
         else do.call(Sys.setenv, setNames(list(old_environment[[i]]), environment_names[[i]]))
     }
 }, add = TRUE)
-Sys.setenv(DTAPARSER_FERTILITY_CORPUS = fertility_opt_in_value, CI = "true")
+Sys.setenv(DTATOOLS_FERTILITY_CORPUS = fertility_opt_in_value, CI = "true")
 expect_error(fertility_assert_manual_run(), "refused in CI")
 Sys.unsetenv(c("CI", "GITHUB_ACTIONS", "GITHUB_RUN_ID", "GITHUB_WORKFLOW"))
-Sys.setenv(DTAPARSER_FERTILITY_CORPUS = "")
+Sys.setenv(DTATOOLS_FERTILITY_CORPUS = "")
 expect_error(fertility_assert_manual_run(), "manual opt-in")
-Sys.setenv(DTAPARSER_FERTILITY_CORPUS = fertility_opt_in_value)
+Sys.setenv(DTATOOLS_FERTILITY_CORPUS = fertility_opt_in_value)
 stopifnot(is.null(fertility_assert_manual_run()))
 
 message("fertility framework synthetic tests passed")

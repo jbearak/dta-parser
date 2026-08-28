@@ -7,8 +7,8 @@ benchmark_assert_plain_text <- function(values, label) {
 }
 
 benchmark_library_path <- function() {
-    benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
-    if (!nzchar(benchmark_library)) stop("DTAPARSER_BENCH_LIB is required")
+    benchmark_library <- Sys.getenv("DTATOOLS_BENCH_LIB")
+    if (!nzchar(benchmark_library)) stop("DTATOOLS_BENCH_LIB is required")
     normalizePath(benchmark_library, winslash = "/", mustWork = TRUE)
 }
 
@@ -17,22 +17,22 @@ benchmark_installed_package_path <- function(benchmark_library) {
         benchmark_library, winslash = "/", mustWork = TRUE
     )
     benchmark_assert_plain_text(benchmark_library, "benchmark library path")
-    lexical_path <- file.path(benchmark_library, "dtaparser")
+    lexical_path <- file.path(benchmark_library, "dtatools")
     if (nzchar(Sys.readlink(lexical_path))) {
-        stop("installed dtaparser package root must not be a symbolic link")
+        stop("installed dtatools package root must not be a symbolic link")
     }
     resolved_path <- normalizePath(
         lexical_path, winslash = "/", mustWork = TRUE
     )
     if (!identical(dirname(resolved_path), benchmark_library)) {
-        stop("installed dtaparser package must resolve directly inside DTAPARSER_BENCH_LIB")
+        stop("installed dtatools package must resolve directly inside DTATOOLS_BENCH_LIB")
     }
     resolved_path
 }
 
 benchmark_activate_library <- function(
     required_packages,
-    verify_dtaparser = TRUE,
+    verify_dtatools = TRUE,
     benchmark_library = benchmark_library_path()
 ) {
     .libPaths(c(benchmark_library, .libPaths()))
@@ -45,16 +45,16 @@ benchmark_activate_library <- function(
             paste(required_packages[!available], collapse = ", ")
         )
     }
-    if (verify_dtaparser) {
+    if (verify_dtatools) {
         expected_package <- benchmark_installed_package_path(
             benchmark_library
         )
         loaded_package <- normalizePath(
-            getNamespaceInfo(asNamespace("dtaparser"), "path"),
+            getNamespaceInfo(asNamespace("dtatools"), "path"),
             winslash = "/", mustWork = TRUE
         )
         if (!identical(loaded_package, expected_package)) {
-            stop("dtaparser was not loaded from DTAPARSER_BENCH_LIB")
+            stop("dtatools was not loaded from DTATOOLS_BENCH_LIB")
         }
     }
     invisible(benchmark_library)
@@ -142,7 +142,7 @@ benchmark_directory_files <- function(directory) {
     walk <- function(current, relative) {
         if (file.access(current, 4L) != 0L ||
             (.Platform$OS.type == "unix" && file.access(current, 1L) != 0L)) {
-            stop("installed dtaparser package tree contains an unreadable directory")
+            stop("installed dtatools package tree contains an unreadable directory")
         }
         entries <- tryCatch(
             list.files(
@@ -162,23 +162,23 @@ benchmark_directory_files <- function(directory) {
             } else entry
             absolute <- file.path(current, entry)
             if (nzchar(Sys.readlink(absolute))) {
-                stop("installed dtaparser package tree must not contain symbolic links")
+                stop("installed dtatools package tree must not contain symbolic links")
             }
             info <- file.info(absolute)
             if (is.na(info$isdir[[1L]])) {
-                stop("installed dtaparser package tree contains an unreadable entry")
+                stop("installed dtatools package tree contains an unreadable entry")
             }
             resolved <- normalizePath(
                 absolute, winslash = "/", mustWork = TRUE
             )
             if (!startsWith(resolved, prefix)) {
-                stop("installed dtaparser package entry resolves outside its package tree")
+                stop("installed dtatools package entry resolves outside its package tree")
             }
             if (isTRUE(info$isdir[[1L]])) {
                 walk(absolute, entry_relative)
             } else {
                 if (!file_test("-f", absolute)) {
-                    stop("installed dtaparser package tree contains a non-regular file")
+                    stop("installed dtatools package tree contains a non-regular file")
                 }
                 entry_relative
             }

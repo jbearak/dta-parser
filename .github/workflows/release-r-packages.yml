@@ -94,7 +94,7 @@ jobs:
           ASSET_PLATFORM: ${{ matrix.platform }}
         run: |
           workspace="$PWD"
-          package_version="$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtaparser/DESCRIPTION", fields = "Version"))')"
+          package_version="$(Rscript --vanilla -e 'cat(read.dcf("r-package/dtatools/DESCRIPTION", fields = "Version"))')"
           r_version="$(Rscript --vanilla -e 'cat(as.character(getRversion()))')"
           r_platform="$(Rscript --vanilla -e "cat(R.version[['platform']])")"
           source_dir="$workspace/release-build/source"
@@ -104,9 +104,9 @@ jobs:
 
           (
             cd "$source_dir"
-            R CMD build "$workspace/r-package/dtaparser"
+            R CMD build "$workspace/r-package/dtatools"
           )
-          source_archive="$source_dir/dtaparser_${package_version}.tar.gz"
+          source_archive="$source_dir/dtatools_${package_version}.tar.gz"
           "$workspace/scripts/check-r-package-archive.sh" "$source_archive"
 
           (
@@ -115,9 +115,9 @@ jobs:
           )
 
           case "$ASSET_PLATFORM" in
-            windows-*) generated="$binary_dir/dtaparser_${package_version}.zip"; extension=zip ;;
-            macos-*) generated="$binary_dir/dtaparser_${package_version}.tgz"; extension=tgz ;;
-            linux-*) generated="$binary_dir/dtaparser_${package_version}_R_${r_platform}.tar.gz"; extension=tar.gz ;;
+            windows-*) generated="$binary_dir/dtatools_${package_version}.zip"; extension=zip ;;
+            macos-*) generated="$binary_dir/dtatools_${package_version}.tgz"; extension=tgz ;;
+            linux-*) generated="$binary_dir/dtatools_${package_version}_R_${r_platform}.tar.gz"; extension=tar.gz ;;
           esac
           if [ ! -f "$generated" ]; then
             echo "R CMD INSTALL did not create the expected binary: $generated" >&2
@@ -125,7 +125,7 @@ jobs:
             exit 1
           fi
 
-          asset_name="dtaparser_${package_version}_R-${r_version}_${ASSET_PLATFORM}.${extension}"
+          asset_name="dtatools_${package_version}_R-${r_version}_${ASSET_PLATFORM}.${extension}"
           asset="$binary_dir/$asset_name"
           mv "$generated" "$asset"
           echo "asset=release-build/binary/$asset_name" >> "$GITHUB_OUTPUT"
@@ -135,7 +135,7 @@ jobs:
         shell: Rscript {0}
         run: |
           .libPaths(c(file.path(getwd(), "release-build", "library"), .libPaths()))
-          library(dtaparser)
+          library(dtatools)
           stopifnot(is.function(read_dta))
 
       - name: Stage binary for release

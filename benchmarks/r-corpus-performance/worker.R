@@ -1,6 +1,6 @@
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2L || !args[[1L]] %in% c("dtaparser", "haven")) {
-    stop("usage: Rscript worker.R dtaparser|haven INPUT_DTA")
+if (length(args) != 2L || !args[[1L]] %in% c("dtatools", "haven")) {
+    stop("usage: Rscript worker.R dtatools|haven INPUT_DTA")
 }
 
 reader <- args[[1L]]
@@ -16,13 +16,13 @@ sys.source(
     envir = environment()
 )
 benchmark_activate_library(
-    reader, verify_dtaparser = identical(reader, "dtaparser")
+    reader, verify_dtatools = identical(reader, "dtatools")
 )
 
 started <- proc.time()[["elapsed"]]
 result <- tryCatch(
-    if (identical(reader, "dtaparser")) {
-        dtaparser::read_dta(path)
+    if (identical(reader, "dtatools")) {
+        dtatools::read_dta(path)
     } else {
         haven::read_dta(path)
     },
@@ -30,10 +30,10 @@ result <- tryCatch(
 )
 elapsed <- proc.time()[["elapsed"]] - started
 if (inherits(result, "error")) {
-    cat(sprintf("DTAPARSER_BENCH\terror\t%.9f\tNA\tNA\n", elapsed))
+    cat(sprintf("DTATOOLS_BENCH\terror\t%.9f\tNA\tNA\n", elapsed))
 } else {
     cat(sprintf(
-        "DTAPARSER_BENCH\tok\t%.9f\t%d\t%d\n",
+        "DTATOOLS_BENCH\tok\t%.9f\t%d\t%d\n",
         elapsed, nrow(result), ncol(result)
     ))
 }

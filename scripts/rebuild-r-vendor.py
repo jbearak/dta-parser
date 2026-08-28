@@ -12,7 +12,7 @@ import tempfile
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
-ARCHIVE = REPOSITORY_ROOT / "r-package/dtaparser/src/rust/vendor.tar.gz"
+ARCHIVE = REPOSITORY_ROOT / "r-package/dtatools/src/rust/vendor.tar.gz"
 
 
 def _within(destination: Path, candidate: Path) -> bool:

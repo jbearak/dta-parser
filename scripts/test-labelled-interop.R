@@ -3,7 +3,7 @@ assert <- function(condition, message) {
     if (!isTRUE(condition)) fail(message)
 }
 
-required <- c("callr", "dplyr", "haven", "labelled", "vctrs", "dtaparser")
+required <- c("callr", "dplyr", "haven", "labelled", "vctrs", "dtatools")
 missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing) > 0L) {
     fail("Missing interoperability dependencies: ", paste(missing, collapse = ", "))
@@ -46,8 +46,8 @@ attach_result <- function(order) {
             )
             owner <- vapply(shared, function(name) {
                 resolved <- get(name, mode = "function")
-                if (identical(resolved, getExportedValue("dtaparser", name))) {
-                    "dtaparser"
+                if (identical(resolved, getExportedValue("dtatools", name))) {
+                    "dtatools"
                 } else if (identical(
                     resolved, getExportedValue("labelled", name)
                 )) {
@@ -64,33 +64,33 @@ attach_result <- function(order) {
     )
 }
 
-labelled_first <- attach_result(c("labelled", "dtaparser"))
+labelled_first <- attach_result(c("labelled", "dtatools"))
 assert(
-    identical(unname(labelled_first$owner), rep("dtaparser", 6L)),
-    "dtaparser helpers did not take precedence when dtaparser attached last"
+    identical(unname(labelled_first$owner), rep("dtatools", 6L)),
+    "dtatools helpers did not take precedence when dtatools attached last"
 )
 assert(
-    !any(grepl("attached after dtaparser", labelled_first$warnings,
+    !any(grepl("attached after dtatools", labelled_first$warnings,
                fixed = TRUE)),
     "The masking warning fired for the safe attach order"
 )
 
-dtaparser_first <- attach_result(c("dtaparser", "labelled"))
+dtatools_first <- attach_result(c("dtatools", "labelled"))
 assert(
-    identical(unname(dtaparser_first$owner), rep("labelled", 6L)),
+    identical(unname(dtatools_first$owner), rep("labelled", 6L)),
     "Normal R masking did not apply when labelled attached last"
 )
 masking_warnings <- grepl(
-    "attached after dtaparser", dtaparser_first$warnings, fixed = TRUE
+    "attached after dtatools", dtatools_first$warnings, fixed = TRUE
 )
 assert(
     sum(masking_warnings) == 1L,
-    "Attaching labelled after dtaparser must emit one scoped masking warning"
+    "Attaching labelled after dtatools must emit one scoped masking warning"
 )
 
 namespace_then_attach <- callr::r(
     function() {
-        dtaparser::var_label(1)
+        dtatools::var_label(1)
         capture_attach <- function(package) {
             warnings <- character()
             withCallingHandlers(
@@ -107,7 +107,7 @@ namespace_then_attach <- callr::r(
 
         namespace_only <- capture_attach("labelled")
         detach("package:labelled", unload = FALSE)
-        suppressPackageStartupMessages(library(dtaparser))
+        suppressPackageStartupMessages(library(dtatools))
         genuinely_masked <- capture_attach("labelled")
         list(namespace_only = namespace_only, genuinely_masked = genuinely_masked)
     },
@@ -115,14 +115,14 @@ namespace_then_attach <- callr::r(
 )
 assert(
     !any(grepl(
-        "attached after dtaparser", namespace_then_attach$namespace_only,
+        "attached after dtatools", namespace_then_attach$namespace_only,
         fixed = TRUE
     )),
-    "Namespace-only dtaparser use triggered a false masking warning"
+    "Namespace-only dtatools use triggered a false masking warning"
 )
 assert(
     sum(grepl(
-        "attached after dtaparser", namespace_then_attach$genuinely_masked,
+        "attached after dtatools", namespace_then_attach$genuinely_masked,
         fixed = TRUE
     )) == 1L,
     "A false attach event consumed the later genuine masking warning"
@@ -130,7 +130,7 @@ assert(
 
 interop <- callr::r(
     function() {
-        suppressPackageStartupMessages(library(dtaparser))
+        suppressPackageStartupMessages(library(dtatools))
         withCallingHandlers(
             suppressPackageStartupMessages(library(labelled)),
             warning = function(condition) invokeRestart("muffleWarning")
@@ -138,14 +138,14 @@ interop <- callr::r(
 
         path <- system.file(
             "extdata", "value_labels_v118.dta",
-            package = "dtaparser", mustWork = TRUE
+            package = "dtatools", mustWork = TRUE
         )
-        source <- dtaparser::read_dta(path)$foreign
-        ours <- dtaparser::set_value_labels(
+        source <- dtatools::read_dta(path)$foreign
+        ours <- dtatools::set_value_labels(
             source, Domestic = 0, Imported = 1
         )
         ours_unmaterialized <-
-            dtaparser:::.is_unmaterialized_numeric_altrep(ours)
+            dtatools:::.is_unmaterialized_numeric_altrep(ours)
         recoded <- dplyr::recode(ours, `0` = 10)
 
         labelled_result <- source
@@ -170,18 +170,18 @@ interop <- callr::r(
         labelled::val_labels(removal_result) <- NULL
 
         list(
-            ours_is_altrep = dtaparser:::.is_altrep(ours),
+            ours_is_altrep = dtatools:::.is_altrep(ours),
             ours_unmaterialized = ours_unmaterialized,
             ours_format = attr(ours, "format.stata", exact = TRUE),
             labelled_reads_ours = labelled::val_labels(ours),
             labelled_reads_variable = labelled::var_label(ours),
             factor_values = as.character(haven::as_factor(ours)),
-            recode_labels = dtaparser::val_labels(recoded),
+            recode_labels = dtatools::val_labels(recoded),
             recode_format = attr(recoded, "format.stata", exact = TRUE),
-            labelled_is_altrep = dtaparser:::.is_altrep(labelled_result),
+            labelled_is_altrep = dtatools:::.is_altrep(labelled_result),
             labelled_format = attr(labelled_result, "format.stata", exact = TRUE),
             labelled_variable_unmaterialized =
-                dtaparser:::.is_unmaterialized_numeric_altrep(
+                dtatools:::.is_unmaterialized_numeric_altrep(
                     labelled_variable_result
                 ),
             labelled_variable_label = labelled::var_label(
@@ -196,36 +196,36 @@ interop <- callr::r(
             labelled_time_zone = attr(time_result, "tzone", exact = TRUE),
             labelled_removal_class = class(removal_result),
             qualified_owner = identical(
-                dtaparser::var_label,
-                getExportedValue("dtaparser", "var_label")
+                dtatools::var_label,
+                getExportedValue("dtatools", "var_label")
             )
         )
     },
     spinner = FALSE
 )
 
-assert(interop$ours_is_altrep, "dtaparser value-label mutation materialized ALTREP")
+assert(interop$ours_is_altrep, "dtatools value-label mutation materialized ALTREP")
 assert(
     interop$ours_unmaterialized,
-    "dtaparser value-label mutation decoded its numeric ALTREP backing"
+    "dtatools value-label mutation decoded its numeric ALTREP backing"
 )
-assert(identical(interop$ours_format, "%8.0g"), "dtaparser dropped format.stata")
+assert(identical(interop$ours_format, "%8.0g"), "dtatools dropped format.stata")
 assert(
     identical(interop$labelled_reads_ours, c(Domestic = 0, Imported = 1)),
-    "labelled could not read dtaparser value-label metadata"
+    "labelled could not read dtatools value-label metadata"
 )
 assert(
     identical(interop$labelled_reads_variable, "Car origin"),
-    "labelled could not read dtaparser variable-label metadata"
+    "labelled could not read dtatools variable-label metadata"
 )
 assert(
     identical(interop$factor_values, rep(c("Imported", "Domestic"), 5L)),
-    "haven::as_factor() did not understand dtaparser metadata"
+    "haven::as_factor() did not understand dtatools metadata"
 )
 assert(
     identical(interop$recode_labels, c(Domestic = 0, Imported = 1)) &&
         identical(interop$recode_format, "%8.0g"),
-    "Loading labelled displaced dtaparser's metadata-preserving recode method"
+    "Loading labelled displaced the dtatools package's metadata-preserving recode method"
 )
 assert(
     !interop$labelled_is_altrep && is.null(interop$labelled_format),
@@ -265,7 +265,7 @@ assert(
     identical(interop$labelled_removal_class, "numeric"),
     "The labelled 2.16.0 value-label removal comparison changed"
 )
-assert(interop$qualified_owner, "Qualified dtaparser helpers were displaced")
+assert(interop$qualified_owner, "Qualified dtatools helpers were displaced")
 
 message(
     "labelled interoperability passed for labelled ", actual_versions[["labelled"]],

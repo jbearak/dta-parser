@@ -80,7 +80,7 @@ benchmark_tree_digest <- function(checkout_root, scope) {
     }
     hashes[present] <- observed_hashes
     manifest <- paste(paths, hashes, sep = "\t")
-    temporary <- tempfile("dtaparser-provenance-")
+    temporary <- tempfile("dtatools-provenance-")
     on.exit(unlink(temporary), add = TRUE)
     writeLines(manifest, temporary, useBytes = TRUE)
     unname(tools::md5sum(temporary))
@@ -94,9 +94,9 @@ benchmark_directory_digest <- function(directory) {
         stop("no installed provenance inputs found under ", directory)
     }
     hashes <- unname(tools::md5sum(file.path(directory, paths)))
-    if (anyNA(hashes)) stop("installed dtaparser package file could not be hashed")
+    if (anyNA(hashes)) stop("installed dtatools package file could not be hashed")
     manifest <- paste(paths, hashes, sep = "\t")
-    temporary <- tempfile("dtaparser-installed-provenance-")
+    temporary <- tempfile("dtatools-installed-provenance-")
     on.exit(unlink(temporary), add = TRUE)
     writeLines(manifest, temporary, useBytes = TRUE)
     unname(tools::md5sum(temporary))
@@ -120,14 +120,14 @@ benchmark_current_provenance <- function(checkout_root, benchmark_library,
     status <- benchmark_git_lines(
         checkout_root,
         c("status", "--porcelain", "--untracked-files=all", "--",
-          "r-package/dtaparser", benchmark_scope)
+          "r-package/dtatools", benchmark_scope)
     )
     description <- read.dcf(
-        file.path(checkout_root, "r-package", "dtaparser", "DESCRIPTION")
+        file.path(checkout_root, "r-package", "dtatools", "DESCRIPTION")
     )
     if (is.null(package_source_md5)) {
         package_source_md5 <- benchmark_tree_digest(
-            checkout_root, "r-package/dtaparser"
+            checkout_root, "r-package/dtatools"
         )
     } else {
         package_source_md5 <- tolower(as.character(package_source_md5))

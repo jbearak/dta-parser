@@ -42,7 +42,7 @@ raw_root <- fertility_assert_checkout_raw_root(
     file.path(checkout_root, "target", "fertility-surveys", "raw"), checkout_root
 )
 invisible(fertility_assert_tempdir(raw_root))
-owner_state <- Sys.getenv("DTAPARSER_FERTILITY_OWNER_STATE")
+owner_state <- Sys.getenv("DTATOOLS_FERTILITY_OWNER_STATE")
 if (!nzchar(owner_state)) stop("run benchmark.sh to establish republish ownership")
 owner <- fertility_read_owner(owner_state)
 if (!isTRUE(fertility_owner_alive(owner))) stop("orchestrator owner is not alive")

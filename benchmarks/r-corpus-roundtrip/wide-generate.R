@@ -10,9 +10,9 @@ sys.source(
     file.path(script_dir, "..", "benchmark-common.R"),
     envir = environment()
 )
-benchmark_activate_library("dtaparser")
+benchmark_activate_library("dtatools")
 data <- setNames(
     as.data.frame(rep(list(1L), 32768L), optional = TRUE),
     paste0("x", seq_len(32768L))
 )
-dtaparser::write_dta(data, args[[1L]], version = 19L)
+dtatools::write_dta(data, args[[1L]], version = 19L)

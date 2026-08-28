@@ -33,8 +33,8 @@ fi
 
 run_root="$checkout/target/r-corpus-roundtrip"
 mkdir -p "$run_root"
-if test -n "${DTAPARSER_ROUNDTRIP_RUN_DIR:-}"; then
-    run_dir=$DTAPARSER_ROUNDTRIP_RUN_DIR
+if test -n "${DTATOOLS_ROUNDTRIP_RUN_DIR:-}"; then
+    run_dir=$DTATOOLS_ROUNDTRIP_RUN_DIR
 else
     stamp=$(date -u '+%Y%m%dT%H%M%SZ')
     run_dir=$(mktemp -d "$run_root/$stamp-$$.XXXXXX")
@@ -50,18 +50,18 @@ build_dir="$run_dir/build"
 library="$run_dir/library"
 mkdir -p "$build_dir" "$library"
 
-set -- "$build_dir"/dtaparser_*.tar.gz
+set -- "$build_dir"/dtatools_*.tar.gz
 if test "$#" -eq 1 && test -f "$1"; then
     source_tarball=$1
-    if ! test -d "$library/dtaparser"; then
+    if ! test -d "$library/dtatools"; then
         R CMD INSTALL --library="$library" "$source_tarball"
     fi
-elif test "$#" -eq 1 && test "$1" = "$build_dir/dtaparser_*.tar.gz" &&
-     ! test -d "$library/dtaparser"; then
-    (cd "$build_dir" && R CMD build "$checkout/r-package/dtaparser")
-    set -- "$build_dir"/dtaparser_*.tar.gz
+elif test "$#" -eq 1 && test "$1" = "$build_dir/dtatools_*.tar.gz" &&
+     ! test -d "$library/dtatools"; then
+    (cd "$build_dir" && R CMD build "$checkout/r-package/dtatools")
+    set -- "$build_dir"/dtatools_*.tar.gz
     if test "$#" -ne 1 || ! test -f "$1"; then
-        echo "expected exactly one dtaparser source package" >&2
+        echo "expected exactly one dtatools source package" >&2
         exit 1
     fi
     source_tarball=$1
@@ -74,9 +74,9 @@ fi
 source_sha256=$(Rscript --vanilla -e \
     'source(commandArgs(TRUE)[[1L]]); cat(benchmark_file_sha256(commandArgs(TRUE)[[2L]]))' \
     "$script_dir/../benchmark-common.R" "$source_tarball")
-export DTAPARSER_BENCH_LIB="$library"
-export DTAPARSER_SOURCE_TARBALL="$source_tarball"
-export DTAPARSER_SOURCE_SHA256="$source_sha256"
+export DTATOOLS_BENCH_LIB="$library"
+export DTATOOLS_SOURCE_TARBALL="$source_tarball"
+export DTATOOLS_SOURCE_SHA256="$source_sha256"
 export R_ENVIRON_USER=/dev/null
 export R_PROFILE_USER=/dev/null
 

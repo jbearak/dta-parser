@@ -8,7 +8,7 @@ on.exit(unlink(root, recursive = TRUE, force = TRUE), add = TRUE)
 for (corpus in roundtrip_corpora) dir.create(file.path(root, corpus))
 
 fixture <- normalizePath(
-    file.path(script_dir, "..", "..", "r-package", "dtaparser", "inst",
+    file.path(script_dir, "..", "..", "r-package", "dtatools", "inst",
               "extdata", "all_types_v118.dta"),
     winslash = "/", mustWork = TRUE
 )
@@ -143,18 +143,18 @@ matrix_inputs <- data.frame(
 )
 matrix_rows <- data.frame(
     id = rep(matrix_inputs$id, each = 2L),
-    writer = rep(c("dtaparser", "stata"), 2L),
+    writer = rep(c("dtatools", "stata"), 2L),
     status = "ok",
     input_sha256 = rep(matrix_inputs$sha256, each = 2L),
     stringsAsFactors = FALSE
 )
 stopifnot(is.null(roundtrip_validate_benchmark_matrix(
-    matrix_rows, matrix_inputs, c("dtaparser", "stata")
+    matrix_rows, matrix_inputs, c("dtatools", "stata")
 )))
 incomplete_matrix <- tryCatch(
     roundtrip_validate_benchmark_matrix(
         matrix_rows[-1L, , drop = FALSE], matrix_inputs,
-        c("dtaparser", "stata")
+        c("dtatools", "stata")
     ),
     error = identity
 )
@@ -162,7 +162,7 @@ wrong_input <- matrix_rows
 wrong_input$input_sha256[[1L]] <- strrep("c", 64L)
 input_mismatch <- tryCatch(
     roundtrip_validate_benchmark_matrix(
-        wrong_input, matrix_inputs, c("dtaparser", "stata")
+        wrong_input, matrix_inputs, c("dtatools", "stata")
     ),
     error = identity
 )

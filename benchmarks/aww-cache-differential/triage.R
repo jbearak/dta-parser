@@ -109,7 +109,7 @@ for (file_index in seq_len(nrow(selected))) {
     parts[[file_index]] <- disputes[, c(
         "file_id", "relative_path", "release", "dispute_index", "kind",
         "category", "reader", "column", "row", "skip", "n_max",
-        "attribute", "dtaparser", "haven", "stata", "owner"
+        "attribute", "dtatools", "haven", "stata", "owner"
     )]
 }
 parts <- parts[vapply(parts, Negate(is.null), logical(1))]
@@ -121,13 +121,13 @@ Sys.chmod(triage_rds, "0600")
 
 view <- triage
 if (nrow(view)) {
-    view$dtaparser_text <- vapply(view$dtaparser, object_text, character(1))
+    view$dtatools_text <- vapply(view$dtatools, object_text, character(1))
     view$haven_text <- vapply(view$haven, object_text, character(1))
     view$stata_text <- vapply(view$stata, object_text, character(1))
-    view$dtaparser_rds_hex <- vapply(view$dtaparser, object_hex, character(1))
+    view$dtatools_rds_hex <- vapply(view$dtatools, object_hex, character(1))
     view$haven_rds_hex <- vapply(view$haven, object_hex, character(1))
     view$stata_rds_hex <- vapply(view$stata, object_hex, character(1))
-    view$dtaparser <- view$haven <- view$stata <- NULL
+    view$dtatools <- view$haven <- view$stata <- NULL
 }
 triage_tsv <- file.path(run_dir, "triage.tsv")
 write.table(view, triage_tsv, sep = "\t", quote = TRUE,

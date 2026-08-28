@@ -2,9 +2,9 @@
 
 This report-only benchmark compares three readers in the same R process:
 
-- `dta-parser`: the public `dtaparser::read_dta()` path (recorded as `direct-r`
+- `dta-tools`: the public `dtatools::read_dta()` path (recorded as `direct-r`
   in raw machine-readable output);
-- `rust-vectors`: the retained internal `dtaparser:::.read_dta_rust_vectors()` baseline;
+- `rust-vectors`: the retained internal `dtatools:::.read_dta_rust_vectors()` baseline;
 - `haven`: `haven::read_dta()`.
 
 It measures full reads and a fixed eight-column projection on Stata-authored,
@@ -15,17 +15,17 @@ outside timed regions. There are no timing assertions or CI gates.
 
 The same run has two synthetic write benchmarks. In every primary iteration, a
 fresh Stata process generates the data in memory and times its first `save`.
-dtaparser then loads and saves that exact Stata output. This rules out timing an
+dtatools then loads and saves that exact Stata output. This rules out timing an
 unchanged-file save after `use`. The 40 columns cover every numeric Stata
 storage type: 4 `byte`, 4 `int`,
 9 `long`, 4 `float`, and 9 `double` columns, plus 10 fixed-width strings. Four
 of the longs have value labels; two doubles are Stata dates and two are Stata
-datetimes. dtaparser's reader retains those storage declarations, while Stata
+datetimes. the dtatools package's reader retains those storage declarations, while Stata
 creates them directly with storage-qualified `generate` commands. The canonical
 100 MB and 1 GB inputs used by the read benchmarks come from the same Stata
 generator.
 
-The secondary benchmark compares dtaparser with Haven on the exact same
+The secondary benchmark compares dtatools with Haven on the exact same
 freshly constructed ordinary R data frame. Its 40 columns are 11 doubles, 11
 integers, 4 logicals, 2 `Date` columns, 2 UTC `POSIXct` columns, and 10 character
 columns. They have no Stata storage, format, label, or value-label attributes.
@@ -36,10 +36,10 @@ Haven is excluded from the primary matrix because its reader widens Stata
 numeric storage into ordinary R vectors.
 
 Every writer runs in a fresh process. Stata's primary operation timer covers
-only its first `save`; dtaparser's starts after it reads Stata's output. The
+only its first `save`; the dtatools package's starts after it reads Stata's output. The
 secondary timer starts after the R input has been constructed. Peak RSS
 covers the whole fresh process because the in-memory input is part of the write
-workload. Stata necessarily precedes dtaparser in each primary pair; writer order
+workload. Stata necessarily precedes dtatools in each primary pair; writer order
 rotates in the independent secondary matrix. Raw primary rows retain the exact
 paired input SHA-256 in addition to elapsed time, peak RSS, and output size. The
 default is seven iterations per writer and size.
@@ -48,12 +48,12 @@ The [2026-08-28 write report](results-2026-08-28.md) records the latest complete
 seven-iteration comparison. The [2026-08-27 report](results-2026-08-27.md) is
 retained as the historical baseline.
 
-Before timing, the runner requires exact identity between the dta-parser and
+Before timing, the runner requires exact identity between the dta-tools and
 Rust-vector collectors for both workloads. It also compares 32-row projected
 windows at the beginning, middle, and end of each file with haven, allowing only
 `1e-7` numeric tolerance. Parser-only DTA storage classes and attributes are
 removed uniformly for the haven comparison while labels and display formats
-remain checked; dta-parser versus Rust-vector identity is checked before that
+remain checked; dta-tools versus Rust-vector identity is checked before that
 normalization. The manifest selects one immutable fixture generation and binds
 each dataset path to its exact byte size, row width, row count,
 fixed-file overhead, and SHA-256. Those invariants and hashes are verified both
@@ -68,15 +68,15 @@ benchmarks/large-scale/benchmark.sh
 ```
 
 The orchestration script builds the current package source, installs it into a
-fresh ignored private library, and sets `DTAPARSER_BENCH_LIB` itself. It also
+fresh ignored private library, and sets `DTATOOLS_BENCH_LIB` itself. It also
 writes a private build-provenance record containing the commit, dirty state,
 package version, canonical checkout and library identities, the built
 source tarball SHA-256, and digests of every non-ignored package input,
-large-scale harness input, and installed `library/dtaparser/` file. Package
+large-scale harness input, and installed `library/dtatools/` file. Package
 source is digested before the build and again after installation; any change
 aborts the run before provenance is recorded. `run.R` recomputes and verifies
 that provenance before
-loading dtaparser, then verifies the loaded namespace path itself, so direct
+loading dtatools, then verifies the loaded namespace path itself, so direct
 invocations reject missing records, copied records, source changes, modified,
 swapped, or symlinked installations, and preloaded foreign namespaces. Orchestrated R
 processes disable user profiles and environment files as defense in depth.
@@ -85,7 +85,7 @@ Each run also writes `run-provenance.tsv`. Its stable provenance ID binds the
 build provenance ID, exact iteration count, manifest and dataset SHA-256 values,
 sizes, row counts, full-column count, and projected-column count, R
 version/platform, OS/kernel and CPU identity,
-and versions plus resolved paths for dtaparser, haven, tidyselect, readr, rlang,
+and versions plus resolved paths for dtatools, haven, tidyselect, readr, rlang,
 and tibble. Every raw timing row carries the run and build IDs and its dataset
 SHA-256; summaries retain all three fields. The summarizer accepts the runtime
 provenance explicitly and rejects missing, duplicate, non-contiguous, nonfinite,
@@ -105,17 +105,17 @@ executes both complete two-size matrices once:
 benchmarks/large-scale/benchmark.sh 1 1
 ```
 
-After a complete comparison, rerun only the primary dtaparser writes while
+After a complete comparison, rerun only the primary dtatools writes while
 retaining the selected run's Stata measurements:
 
 ```sh
-benchmarks/large-scale/dtaparser-write-only.sh 7
+benchmarks/large-scale/dtatools-write-only.sh 7
 ```
 
-The dtaparser-only runner rebuilds the current package, verifies the primary
+The dtatools-only runner rebuilds the current package, verifies the primary
 synthetic hashes against the fixed reference rows, and publishes both its raw
-measurements and a combined dtaparser/Stata comparison beneath
-`target/large-scale/dtaparser-write-runs/`. Pass a complete run directory as
+measurements and a combined dtatools/Stata comparison beneath
+`target/large-scale/dtatools-write-runs/`. Pass a complete run directory as
 the second argument to override `target/large-scale/CURRENT`.
 
 Run only the complete paired primary matrix with:
@@ -124,9 +124,9 @@ Run only the complete paired primary matrix with:
 benchmarks/large-scale/primary-write-only.sh 7
 ```
 
-This runner rebuilds dtaparser, asks Stata to publish a complete immutable
+This runner rebuilds dtatools, asks Stata to publish a complete immutable
 synthetic-input generation, and
-publishes the paired Stata/dtaparser results under
+publishes the paired Stata/dtatools results under
 `target/large-scale/primary-write-runs/`. It runs neither the read benchmark nor
 the large corpus suite.
 
@@ -136,7 +136,7 @@ Run only the secondary ordinary-R matrix with:
 benchmarks/large-scale/standard-r-write-only.sh 7
 ```
 
-This runner rebuilds dtaparser and publishes its dtaparser/Haven results under
+This runner rebuilds dtatools and publishes its dtatools/Haven results under
 `target/large-scale/standard-r-write-runs/`. It does not execute Stata or the
 large corpus benchmark.
 
@@ -182,12 +182,12 @@ indices. Byte, int, long, and float columns also retain their source storage
 width behind ALTREP until R requests a double data pointer; source doubles are
 eager because ALTREP would not reduce their storage. Workloads that immediately
 require contiguous double vectors can set `use_numeric_altrep = FALSE` (or option
-`dtaparser.numeric_altrep = FALSE`) to widen numeric values during decoding.
+`dtatools.numeric_altrep = FALSE`) to widen numeric values during decoding.
 Timed reads therefore
 measure dataset loading and tibble construction; the dimension check
 materializes neither the full row-level string-pointer vector nor widened
 numeric vectors. The exact
-dta-parser/Rust-vector comparison and the haven window comparisons before timing
+dta-tools/Rust-vector comparison and the haven window comparisons before timing
 do access values, so laziness cannot hide correctness differences.
 Use the separate `benchmarks/r-materialization/string-workloads.R` and
 `benchmarks/r-materialization/memory-worker.R` harnesses for matched string-access and

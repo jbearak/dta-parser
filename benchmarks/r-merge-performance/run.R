@@ -15,9 +15,9 @@ parse_count <- function(value, default, argument) {
 iterations <- parse_count(args[1L], 9L, "iterations")
 base_iterations <- parse_count(args[2L], 5L, "base_iterations")
 
-bench_library <- Sys.getenv("DTAPARSER_BENCH_LIB", unset = "")
+bench_library <- Sys.getenv("DTATOOLS_BENCH_LIB", unset = "")
 if (!nzchar(bench_library)) {
-    stop("DTAPARSER_BENCH_LIB must name the isolated package library",
+    stop("DTATOOLS_BENCH_LIB must name the isolated package library",
          call. = FALSE)
 }
 bench_library <- normalizePath(bench_library, mustWork = TRUE)
@@ -26,14 +26,14 @@ bench_library <- normalizePath(bench_library, mustWork = TRUE)
 suppressMessages({
     library(bench)
     library(dplyr)
-    library(dtaparser)
+    library(dtatools)
 })
 
 loaded_library <- normalizePath(
-    dirname(system.file(package = "dtaparser")), mustWork = TRUE
+    dirname(system.file(package = "dtatools")), mustWork = TRUE
 )
 if (!identical(loaded_library, bench_library)) {
-    stop("dtaparser was not loaded from DTAPARSER_BENCH_LIB", call. = FALSE)
+    stop("dtatools was not loaded from DTATOOLS_BENCH_LIB", call. = FALSE)
 }
 
 fixture_dir <- file.path("target", "r-merge-performance")
@@ -112,8 +112,8 @@ invisible(gc())
 master_stata <- read_dta(master_path)
 using_stata <- read_dta(using_path)
 stopifnot(
-    dtaparser:::.is_unmaterialized_numeric_altrep(master_stata$s1),
-    dtaparser:::.is_unmaterialized_numeric_altrep(using_stata$s1)
+    dtatools:::.is_unmaterialized_numeric_altrep(master_stata$s1),
+    dtatools:::.is_unmaterialized_numeric_altrep(using_stata$s1)
 )
 
 master_s1_by_key <- setNames(
@@ -243,8 +243,8 @@ validate_join_result(merge(
 ), "m:1", "base")
 
 stopifnot(
-    dtaparser:::.is_unmaterialized_numeric_altrep(master_stata$s1),
-    dtaparser:::.is_unmaterialized_numeric_altrep(using_stata$s1)
+    dtatools:::.is_unmaterialized_numeric_altrep(master_stata$s1),
+    dtatools:::.is_unmaterialized_numeric_altrep(using_stata$s1)
 )
 invisible(gc())
 

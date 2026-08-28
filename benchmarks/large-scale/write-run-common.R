@@ -23,10 +23,10 @@ initialize_write_runner <- function(
     )
     benchmark_library <- benchmark_library_path()
     if (!startsWith(benchmark_library, paste0(checkout_root, "/"))) {
-        stop("DTAPARSER_BENCH_LIB must be inside this checkout")
+        stop("DTATOOLS_BENCH_LIB must be inside this checkout")
     }
     build_provenance_path <- file.path(
-        benchmark_library, "dtaparser-benchmark-provenance.tsv"
+        benchmark_library, "dtatools-benchmark-provenance.tsv"
     )
     build_provenance <- verify_benchmark_provenance(
         checkout_root, benchmark_library, build_provenance_path

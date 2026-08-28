@@ -76,7 +76,7 @@ inventory$bytes <- c(1e9, 2e9, 4e9, 0.5e9)
 raw <- data.frame(
     corpus = rep("DHS", 9L),
     id = rep(c("DHS-0001", "DHS-0002", "DHS-0003"), each = 3L),
-    reader = rep(c("dtaparser", "haven", "stata"), 3L),
+    reader = rep(c("dtatools", "haven", "stata"), 3L),
     reader_order = rep(1:3, 3L),
     status = c(rep("ok", 8L), "error"),
     elapsed_seconds = c(2, 8, 1, 1, 6, 0.25, 5, 9, NA),
@@ -99,15 +99,15 @@ stopifnot(
     identical(summary$excluded_files, c(0L, 1L, 1L, 2L, 0L)),
     isTRUE(all.equal(summary$input_gb, c(1, 2, 0, 3, 0))),
     isTRUE(all.equal(
-        summary$dtaparser_to_haven_time_ratio[c(1:2, 4)],
+        summary$dtatools_to_haven_time_ratio[c(1:2, 4)],
         c(0.25, 1 / 6, 3 / 14)
     )),
     isTRUE(all.equal(
-        summary$dtaparser_to_stata_time_ratio[c(1:2, 4)],
+        summary$dtatools_to_stata_time_ratio[c(1:2, 4)],
         c(2, 4, 3 / 1.25)
     )),
-    all(is.na(summary$dtaparser_seconds[c(3, 5)])),
-    all(is.na(summary$dtaparser_peak_rss_gb[c(3, 5)]))
+    all(is.na(summary$dtatools_seconds[c(3, 5)])),
+    all(is.na(summary$dtatools_peak_rss_gb[c(3, 5)]))
 )
 
 cat("R corpus performance framework: PASS\n")

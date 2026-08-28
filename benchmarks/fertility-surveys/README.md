@@ -60,8 +60,8 @@ MiB), making the memory budget an enforced vector-heap limit rather than only a
 scheduling estimate. Memory-limit failures are reduced to a privacy-safe fixed
 classification. Every metadata/value tile runs in its own timeout-isolated
 subprocess and reads exactly
-that projection/window through `dtaparser::read_dta()`,
-`dtaparser:::.read_dta_rust_vectors()`, and `haven::read_dta()`.
+that projection/window through `dtatools::read_dta()`,
+`dtatools:::.read_dta_rust_vectors()`, and `haven::read_dta()`.
 
 Comparison evaluates every available direct-R/Rust, direct-R/haven, and
 Rust/haven pair and accumulates every mismatch rather than returning at the first
@@ -158,7 +158,7 @@ benchmarks/fertility-surveys/benchmark.sh \
 From the checkout root:
 
 ```sh
-export DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
+export DTATOOLS_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
 export CACHE_ROOT=/absolute/canonical/private-cache-root
 export MANIFEST=/absolute/canonical/private-manifest.csv
 benchmarks/fertility-surveys/benchmark.sh \
@@ -280,7 +280,7 @@ classifications, requires the original full family to retain
 reason `signature-mismatch`, and exposes two historically named orthogonal status
 fields: `manifest_gate=blocked-signature-mismatch` and
 `explicit_local_evidence_gate=validated`. The first records only the unresolved
-caller-supplied external provenance assertion; it is not a dtaparser parser gate
+caller-supplied external provenance assertion; it is not a dtatools parser gate
 or repository responsibility. The assessment does not rewrite either family or
 authorize Wave 3.
 
@@ -404,7 +404,7 @@ completed semantic mismatches remain valid evidence. Filters and shards do not
 alter tile identity.
 
 File-level classifications include `pass`, `expected-unsupported-111`,
-`inventory-hash-error`, `direct-vs-rust-mismatch`, `dtaparser-only-error`,
+`inventory-hash-error`, `direct-vs-rust-mismatch`, `dtatools-only-error`,
 `haven-only-error`, `shared-reader-error`, `metadata-mismatch`, `value-mismatch`,
 `tag-mismatch`, `date-mismatch`, `encoding-mismatch`,
 `row-termination-mismatch`, `known-intentional-divergence`, `timeout`,

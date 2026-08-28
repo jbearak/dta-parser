@@ -2,7 +2,7 @@
 
 This benchmark compares the two output collectors built into the same package:
 
-- `dta-parser`: numeric cells are decoded into their final R vectors; distinct
+- `dta-tools`: numeric cells are decoded into their final R vectors; distinct
   strings are interned once and compact row indices are exposed through ALTREP.
 - `rust-vectors`: the reference path builds a complete `DtaData` value before
   converting it into R vectors.
@@ -14,17 +14,17 @@ install it into a fresh benchmark-only library before starting a benchmark
 session:
 
 ```sh
-dtaparser_version="$(sed -n 's/^Version: //p' r-package/dtaparser/DESCRIPTION)"
-dtaparser_tarball="dtaparser_${dtaparser_version}.tar.gz"
-R CMD build r-package/dtaparser
+dtatools_version="$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)"
+dtatools_tarball="dtatools_${dtatools_version}.tar.gz"
+R CMD build r-package/dtatools
 mkdir -p "$PWD/target"
 benchmark_lib="$(mktemp -d "$PWD/target/r-benchmark-library.XXXXXX")"
-R CMD INSTALL --library="$benchmark_lib" "$dtaparser_tarball"
-export DTAPARSER_BENCH_LIB="$benchmark_lib"
+R CMD INSTALL --library="$benchmark_lib" "$dtatools_tarball"
+export DTATOOLS_BENCH_LIB="$benchmark_lib"
 Rscript benchmarks/r-materialization/run.R input.dta timings.tsv 21
 ```
 
-Both runners require `DTAPARSER_BENCH_LIB` and verify that `dtaparser` was
+Both runners require `DTATOOLS_BENCH_LIB` and verify that `dtatools` was
 loaded from that checkout-local library, preventing a global or stale
 installation from being benchmarked accidentally. Install before the timed
 process so package installation is excluded from the memory measurements.
@@ -33,7 +33,7 @@ Peak memory must be measured in fresh processes. On macOS:
 
 ```sh
 /usr/bin/time -l Rscript benchmarks/r-materialization/memory-worker.R \
-  input.dta dtaparser dimensions full
+  input.dta dtatools dimensions full
 /usr/bin/time -l Rscript benchmarks/r-materialization/memory-worker.R \
   input.dta rust-vectors dimensions full
 /usr/bin/time -l Rscript benchmarks/r-materialization/memory-worker.R \

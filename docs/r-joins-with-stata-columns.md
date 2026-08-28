@@ -5,8 +5,8 @@ with `join_by()`. `join_by()` only describes the match; `left_join()`,
 `full_join()`, and the other join verbs do the work.
 
 The short answer is that dplyr preserves the most column information. The
-dtaparser 0.6.0 development tree now also supports native keys in base right
-and full merges. Dplyr uses vctrs, so dtaparser's proxy, common-type, cast, and
+dtatools 0.6.0 development tree now also supports native keys in base right
+and full merges. Dplyr uses vctrs, so the dtatools package's proxy, common-type, cast, and
 restore methods participate. That support does not make either join
 Stata-equivalent. Equality joins treat every Stata missing code as the same R
 missing value.
@@ -18,7 +18,7 @@ storage type, value and variable labels, display format, and system or extended
 missing values. Source byte, int, long, and float columns can remain compact
 ALTREP vectors until an operation needs ordinary R doubles. Stata `.` becomes
 `NA_real_`; `.a` through `.z` become tagged NA payloads. These facts are part of
-dtaparser's [`read_dta()` contract](../r-package/dtaparser/R/read-dta.R) and
+the dtatools package's [`read_dta()` contract](../r-package/dtatools/R/read-dta.R) and
 agree with Haven's documented representation of [Stata data and variable
 labels](https://haven.tidyverse.org/reference/read_dta.html) and [tagged missing
 values](https://haven.tidyverse.org/reference/tagged_na.html).
@@ -44,7 +44,7 @@ and the public contract is in the [`merge` manual](https://stat.ethz.ch/R-manual
 Before the 0.6.0 fix, a single native Stata key worked for inner and left
 merges. A right or full merge failed if it had to add a key found only in `y`.
 After matching, `merge.data.frame()` starts with the selected `x` keys and
-fills right-only positions using subassignment. Dtaparser's strict
+fills right-only positions using subassignment. The dtatools package's strict
 `[<-.stata_numeric` method rejects assignment past the current vector length.
 For example, merging byte keys `c(1, 2)` and `c(2, 3)` with `all.y = TRUE`
 errors because the result needs another key slot. `all = TRUE` fails for the
@@ -56,13 +56,13 @@ vctrs common-type rules. It promotes storage when needed, combines compatible
 value labels, restores compact backing, and leaves ordinary replacement strict.
 This is a deep vector seam: the same implementation fixes `rbind()` and
 `merge()` without a join wrapper. Regression coverage lives in
-[`test-stata-numeric.R`](../r-package/dtaparser/tests/testthat/test-stata-numeric.R).
+[`test-stata-numeric.R`](../r-package/dtatools/tests/testthat/test-stata-numeric.R).
 
 Base merge still has an information limit. When no right-only key requires
 extension, `merge.data.frame()` keeps the selected `x` key and never combines
 it with the `y` key. Value labels or other attributes present only on `y` are
 therefore unavailable to the column methods. Base merge has no column-level
-dispatch point where dtaparser can reconcile them.
+dispatch point where dtatools can reconcile them.
 
 ### Columns keep metadata in common cases, but the data frame does not
 
@@ -70,7 +70,7 @@ When the key is an ordinary R vector, `merge()` subsets and combines the input
 data frames. S3 subsetting keeps the attributes on non-key Stata columns in the
 cases checked here, including `label`, `labels`, `format.stata`, class, and
 declared storage. In the 0.6.0 checks, result columns were compact ALTREP
-vectors and source columns remained unmaterialized. This follows dtaparser's
+vectors and source columns remained unmaterialized. This follows the dtatools package's
 current subsetting methods, not a guarantee made by `merge.data.frame()`. Test
 it at the package boundary if memory use matters.
 
@@ -88,7 +88,7 @@ documents. R's `match()` regards tagged NAs as missing values rather than as
 one another and create an accidental
 many-to-many expansion.
 
-This differs from the source semantics dtaparser preserves. Stata defines
+This differs from the source semantics dtatools preserves. Stata defines
 distinct numeric missings ordered `. < .a < .b < ... < .z`, as StataCorp's
 [missing-value FAQ](https://www.stata.com/support/faqs/data-management/replacing-missing-values/)
 states. A join intended to reproduce Stata key identity must encode the missing
@@ -110,23 +110,23 @@ says that equality keys are coalesced by default, `keep = TRUE` retains both,
 and a coalesced key is cast to the common type. It also documents output row
 order, suffixes, `multiple`, `unmatched`, and `relationship` checks.
 
-This fits dtaparser much better than base `merge()`. Current dtaparser defines
+This fits dtatools much better than base `merge()`. Current dtatools defines
 `vec_proxy()`, `vec_restore()`, `vec_ptype2()`, and `vec_cast()` methods for
 Stata numerics and Stata temporal vectors in
-[`stata-numeric.R`](../r-package/dtaparser/R/stata-numeric.R). Vctrs applies
+[`stata-numeric.R`](../r-package/dtatools/R/stata-numeric.R). Vctrs applies
 operations to a proxy and restores the original representation afterward, as
 its [proxy and restore documentation](https://vctrs.r-lib.org/reference/vec_proxy.html)
 describes.
 
-### Coalescing invokes dtaparser's metadata policy
+### Coalescing invokes the dtatools package's metadata policy
 
-When both equality keys are native dtaparser columns and `keep` is false, the
+When both equality keys are native dtatools columns and `keep` is false, the
 common-type methods choose a lossless Stata storage type, preserve the left
 variable label unless it is absent, and combine compatible value-label tables.
 Conflicting text for one value warns and the left label wins. Restoration
 re-encodes compact byte, int, long, or float storage. These rules are explicit
-in dtaparser's [`vec_ptype2.stata_numeric.stata_numeric()` and restoration
-code](../r-package/dtaparser/R/stata-numeric.R).
+in the dtatools package's [`vec_ptype2.stata_numeric.stata_numeric()` and restoration
+code](../r-package/dtatools/R/stata-numeric.R).
 
 `keep = TRUE` avoids coalescing the keys. Each side then retains its own key
 column and metadata, with suffixes where names collide. This is the safer form
@@ -138,7 +138,7 @@ Plain Haven vectors have a narrower policy. Haven's
 combines value labels and takes the first available variable label, but creates
 a new labelled prototype. Attributes outside that constructor's contract, such
 as `format.stata` or custom attributes, are not promised on a coalesced key.
-Native dtaparser classes should dispatch dtaparser's earlier class method and
+Native dtatools classes should dispatch the dtatools package's earlier class method and
 retain the package's broader metadata contract. A vector reduced to plain
 `haven_labelled` gets Haven's behavior instead.
 
@@ -152,7 +152,7 @@ Neither choice distinguishes `.`, `.a`, and `.z`.
 A direct check with tagged NAs confirms the consequence: three left keys
 containing `.a`, `.b`, and `.` joined to the same three right keys produce nine
 matches under `na_matches = "na"`, and zero under `"never"`. This happens
-because dtaparser's equality proxy is the underlying R double vector and all
+because the dtatools package's equality proxy is the underlying R double vector and all
 tagged payloads enter dplyr's missing bucket.
 
 For Stata-faithful equality, precompute a surrogate key with two components:
@@ -186,7 +186,7 @@ before using `<`, `>=`, `closest()`, or an overlap helper.
 
 ## Practical recommendation
 
-When Stata key identity matters, use dtaparser's own `dta_merge()`. It
+When Stata key identity matters, use the dtatools package's own `dta_merge()`. It
 matches `.` and each of `.a` through `.z` only to themselves, requires a
 declared merge relationship, generates Stata's `_merge` indicator, and
 reconciles key storage and metadata through the package's vctrs methods.
@@ -194,7 +194,7 @@ ADR 0009 records its semantics and the rejected alternatives, including the
 equality-proxy change discussed below.
 
 For R-semantics joins, use dplyr joins for data frames containing native
-dtaparser columns, and name the intended key relationship. Use `keep = TRUE` when the two key columns have
+dtatools columns, and name the intended key relationship. Use `keep = TRUE` when the two key columns have
 metadata worth comparing. Before any join in which Stata missing codes are
 valid keys, create an explicit surrogate that preserves the tag. Do the same
 for inequality joins that are supposed to use Stata's missing-value ordering.
@@ -212,7 +212,7 @@ for a single key and means that no missing key should match.
 ## Versioned check
 
 The local behavior checks used R 4.6.1, dplyr 1.2.1, vctrs 0.7.3, Haven 2.5.5,
-and a fresh local installation of the dtaparser 0.6.0 workspace tree on
+and a fresh local installation of the dtatools 0.6.0 workspace tree on
 2026-08-28. The durable claims above come from the linked public contracts and
 source. The former base error text, ALTREP behavior, and shape of a
 tagged-missing many-to-many result are versioned observations. Tests should pin

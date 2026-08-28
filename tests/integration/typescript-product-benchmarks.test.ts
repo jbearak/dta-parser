@@ -9,13 +9,13 @@ import {
     repeat_modern_value_labels,
     scale_modern_rows,
 } from '../../benchmarks/typescript-product-fixtures';
-import { read_rows_from_buffer } from '../../typescript/dta-parser/src/data-reader';
-import { parse_metadata } from '../../typescript/dta-parser/src/header';
+import { read_rows_from_buffer } from '../../typescript/dta-tools/src/data-reader';
+import { parse_metadata } from '../../typescript/dta-tools/src/header';
 import {
     build_gso_index,
     decode_gso_entry,
-} from '../../typescript/dta-parser/src/strl-reader';
-import { parse_value_labels } from '../../typescript/dta-parser/src/value-labels';
+} from '../../typescript/dta-tools/src/strl-reader';
+import { parse_value_labels } from '../../typescript/dta-tools/src/value-labels';
 
 const fixture_dir = path.resolve(import.meta.dir, '../fixtures/dta');
 

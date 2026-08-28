@@ -28,10 +28,10 @@ describe('release-111 synthetic fixture', () => {
 
         const expected = fs.readFileSync(generated);
         expect(fs.readFileSync(path.join(
-            ROOT, 'r-package/dtaparser/src/dta-parser/tests/data/synthetic-v111.dta'
+            ROOT, 'r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta'
         ))).toEqual(expected);
         expect(fs.readFileSync(path.join(
-            ROOT, 'r-package/dtaparser/inst/extdata/synthetic_v111.dta'
+            ROOT, 'r-package/dtatools/inst/extdata/synthetic_v111.dta'
         ))).toEqual(expected);
     });
 });

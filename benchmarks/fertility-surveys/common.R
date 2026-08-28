@@ -290,7 +290,7 @@ fertility_atomic_rename_noreplace <- function(
 }
 
 fertility_publication_test_hook <- function(boundary, context = list()) {
-    hook <- getOption("dtaparser.fertility.publication_test_hook")
+    hook <- getOption("dtatools.fertility.publication_test_hook")
     if (is.function(hook)) hook(boundary, context)
     invisible(TRUE)
 }
@@ -486,7 +486,7 @@ fertility_resolve_build_bundle <- function(raw_root, build_id = NULL,
         "build provenance"
     )
     package <- fertility_assert_existing_directory(
-        file.path(library, "dtaparser"), library, "installed dtaparser package"
+        file.path(library, "dtatools"), library, "installed dtatools package"
     )
     list(
         builds_root = builds_root, current_id = current_id,
@@ -609,9 +609,9 @@ fertility_assert_manual_run <- function() {
     if (length(active)) {
         stop("fertility corpus runs are refused in CI and GitHub Actions", call. = FALSE)
     }
-    if (!identical(Sys.getenv("DTAPARSER_FERTILITY_CORPUS"), fertility_opt_in_value)) {
+    if (!identical(Sys.getenv("DTATOOLS_FERTILITY_CORPUS"), fertility_opt_in_value)) {
         stop(paste0(
-            "manual opt-in required: set DTAPARSER_FERTILITY_CORPUS=",
+            "manual opt-in required: set DTATOOLS_FERTILITY_CORPUS=",
             fertility_opt_in_value
         ), call. = FALSE)
     }
@@ -630,7 +630,7 @@ fertility_assert_output_root <- function(path) {
 }
 
 fertility_output_inventory_test_hook <- function(boundary, context) {
-    hook <- getOption("dtaparser.fertility.output_inventory_test_hook")
+    hook <- getOption("dtatools.fertility.output_inventory_test_hook")
     if (is.function(hook)) hook(boundary, context)
     invisible(NULL)
 }

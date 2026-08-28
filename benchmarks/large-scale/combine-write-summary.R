@@ -34,7 +34,7 @@ output <- normalizePath(args[[7L]], winslash = "/", mustWork = FALSE)
 
 contract_fields <- c(
     "workload", "fixture_storage_schema", "fixture_creator",
-    "fixture_generator_sha256", "stata_save_state", "dtaparser_input"
+    "fixture_generator_sha256", "stata_save_state", "dtatools_input"
 )
 if (nrow(current_provenance) != 1L || nrow(reference_provenance) != 1L ||
     !all(contract_fields %in% names(current_provenance)) ||
@@ -44,9 +44,9 @@ if (nrow(current_provenance) != 1L || nrow(reference_provenance) != 1L ||
     stop("current and reference writes do not share the primary workload contract")
 }
 
-if (!identical(unique(current_raw$writer), "dtaparser") ||
-    !identical(unique(current_summary$writer), "dtaparser")) {
-    stop("current write results must contain only dtaparser")
+if (!identical(unique(current_raw$writer), "dtatools") ||
+    !identical(unique(current_summary$writer), "dtatools")) {
+    stop("current write results must contain only dtatools")
 }
 fixed_writers <- "stata"
 fixed_raw <- reference_raw[reference_raw$writer %in% fixed_writers, , drop = FALSE]
@@ -71,10 +71,10 @@ if (!identical(current_shape, reference_shape)) {
     stop("current and reference write inputs have different shapes")
 }
 
-current_summary$measurement <- "current-dtaparser"
+current_summary$measurement <- "current-dtatools"
 fixed_summary$measurement <- "fixed-reference"
 combined <- rbind(current_summary, fixed_summary)
-writer_order <- c("dtaparser", "stata")
+writer_order <- c("dtatools", "stata")
 dataset_order <- c("100mb", "1gb")
 combined <- combined[
     order(match(combined$dataset, dataset_order),

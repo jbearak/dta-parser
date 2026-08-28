@@ -20,14 +20,14 @@ archive_check = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(archive_check)
 
 REQUIRED_FIXTURE_FILES = {
-    "dtaparser/src/dta-parser/Cargo.toml",
-    "dtaparser/src/dta-parser/src/lib.rs",
-    "dtaparser/src/rust/Cargo.toml",
-    "dtaparser/src/rust/Cargo.lock",
-    "dtaparser/src/rust/vendor.tar.gz",
-    "dtaparser/src/Makevars.rust",
-    "dtaparser/tools/configure-rust.sh",
-    "dtaparser/tools/rust-source-hash.R",
+    "dtatools/src/dta-tools/Cargo.toml",
+    "dtatools/src/dta-tools/src/lib.rs",
+    "dtatools/src/rust/Cargo.toml",
+    "dtatools/src/rust/Cargo.lock",
+    "dtatools/src/rust/vendor.tar.gz",
+    "dtatools/src/Makevars.rust",
+    "dtatools/tools/configure-rust.sh",
+    "dtatools/tools/rust-source-hash.R",
 }
 
 
@@ -35,7 +35,7 @@ class PackageArchiveTests(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.archive = Path(temporary.name) / "dtaparser.tar.gz"
+        self.archive = Path(temporary.name) / "dtatools.tar.gz"
 
     def write_archive(
         self,
@@ -80,7 +80,7 @@ class PackageArchiveTests(unittest.TestCase):
                     archive_check.check_archive(self.archive)
 
     def test_required_file_must_not_be_a_symlink(self) -> None:
-        name = "dtaparser/tools/configure-rust.sh"
+        name = "dtatools/tools/configure-rust.sh"
         link = tarfile.TarInfo(name)
         link.type = tarfile.SYMTYPE
         link.linkname = "/tmp/attacker-controlled-script"
@@ -89,20 +89,20 @@ class PackageArchiveTests(unittest.TestCase):
             archive_check.check_archive(self.archive)
 
     def test_member_paths_must_be_canonical_and_inside_package(self) -> None:
-        for name in ("outside", "dtaparser/src/../outside", "dtaparser//file"):
+        for name in ("outside", "dtatools/src/../outside", "dtatools//file"):
             with self.subTest(name=name):
                 self.write_archive(extra=tarfile.TarInfo(name))
                 with self.assertRaisesRegex(archive_check.ArchiveError, "unsafe path"):
                     archive_check.check_archive(self.archive)
 
     def test_cross_platform_path_aliases_fail(self) -> None:
-        alias = tarfile.TarInfo("dtaparser/tools/CONFIGURE-RUST.SH")
+        alias = tarfile.TarInfo("dtatools/tools/CONFIGURE-RUST.SH")
         self.write_archive(extra=alias)
         with self.assertRaisesRegex(archive_check.ArchiveError, "paths collide"):
             archive_check.check_archive(self.archive)
 
     def test_excluded_build_files_fail(self) -> None:
-        self.write_archive(extra=tarfile.TarInfo("dtaparser/src/rust/target/output"))
+        self.write_archive(extra=tarfile.TarInfo("dtatools/src/rust/target/output"))
         with self.assertRaisesRegex(archive_check.ArchiveError, "excluded Rust"):
             archive_check.check_archive(self.archive)
 

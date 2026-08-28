@@ -1,4 +1,4 @@
-test_that("haven opens dtaparser output with matching values and metadata", {
+test_that("haven opens dtatools output with matching values and metadata", {
     skip_if_not_installed("haven")
     x <- c(1, 2, tagged_missing("a"), NA_real_)
     attr(x, "labels") <- c(One = 1, Two = 2)

@@ -1,13 +1,13 @@
 args <- commandArgs(trailingOnly = TRUE)
 valid_mode <- length(args) == 4L && (
-    identical(args[1:2], c("dtaparser", "stata-storage")) ||
-    (args[[1L]] %in% c("dtaparser", "haven") &&
+    identical(args[1:2], c("dtatools", "stata-storage")) ||
+    (args[[1L]] %in% c("dtatools", "haven") &&
      identical(args[[2L]], "standard-r"))
 )
 if (!valid_mode) {
     stop(paste(
-        "usage: write-worker.R dtaparser stata-storage INPUT_DTA OUTPUT_DTA;",
-        "or write-worker.R dtaparser|haven standard-r ROWS OUTPUT_DTA"
+        "usage: write-worker.R dtatools stata-storage INPUT_DTA OUTPUT_DTA;",
+        "or write-worker.R dtatools|haven standard-r ROWS OUTPUT_DTA"
     ))
 }
 
@@ -24,7 +24,7 @@ sys.source(
     file.path(script_dir, "..", "benchmark-common.R"),
     envir = environment()
 )
-required_packages <- c("dtaparser", if (writer == "haven") "haven")
+required_packages <- c("dtatools", if (writer == "haven") "haven")
 benchmark_activate_library(required_packages)
 
 data <- if (workload == "standard-r") {
@@ -40,7 +40,7 @@ data <- if (workload == "standard-r") {
     sys.source(file.path(script_dir, "stata-fixture.R"),
                envir = environment())
     input <- normalizePath(input_argument, winslash = "/", mustWork = TRUE)
-    dtaparser::read_dta(input)
+    dtatools::read_dta(input)
 }
 if (workload == "stata-storage") {
     storage <- vapply(data, function(column) {
@@ -66,8 +66,8 @@ invisible(gc())
 options(warn = 2)
 started <- proc.time()[["elapsed"]]
 status <- tryCatch({
-    if (writer == "dtaparser") {
-        dtaparser::write_dta(data, output, version = 19L)
+    if (writer == "dtatools") {
+        dtatools::write_dta(data, output, version = 19L)
     } else {
         haven::write_dta(data, output, version = 15L)
     }

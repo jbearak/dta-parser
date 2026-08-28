@@ -39,7 +39,7 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
     for (name in c("missing_values_v115.dta", "missing_values_v118.dta")) {
         path <- fixture_with_all_numeric_missing_codes(name)
         paths <- c(paths, path)
-        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+        storage <- attr(dtatools:::.dta_metadata(path), "dta_storage")
         reference_tags <- recode_tags(haven::read_dta(path, n_max = 27))
         reference_observed <- recode_observed(
             haven::read_dta(path, n_max = 30)
@@ -158,7 +158,7 @@ test_that("dplyr manipulation matches haven for every storage type", {
         path <- fixture(name)
         reference <- haven::read_dta(path)
         expected <- manipulate(reference)
-        storage <- attr(dtaparser:::.dta_metadata(path), "dta_storage")
+        storage <- attr(dtatools:::.dta_metadata(path), "dta_storage")
 
         for (use_numeric_altrep in c(TRUE, FALSE)) {
             actual <- manipulate(read_dta(
@@ -318,8 +318,8 @@ test_that("dplyr manipulation matches haven for labelled and temporal data", {
     writeBin(bytes, narrow_path)
     narrow <- read_dta(narrow_path)
     narrow_reference <- haven::read_dta(narrow_path)
-    expect_true(dtaparser:::.is_numeric_altrep(narrow$foreign))
-    expect_true(dtaparser:::.is_numeric_altrep(narrow$price))
+    expect_true(dtatools:::.is_numeric_altrep(narrow$foreign))
+    expect_true(dtatools:::.is_numeric_altrep(narrow$price))
     expect_s3_class(narrow$foreign, "haven_labelled")
     expect_s3_class(narrow$price, "Date")
     expect_identical(missing_tag(unclass(narrow$foreign))[[1L]], "a")
@@ -336,8 +336,8 @@ test_that("dplyr manipulation matches haven for labelled and temporal data", {
         )
     }
     narrow_input <- read_dta(narrow_path)
-    expect_true(dtaparser:::.is_numeric_altrep(narrow_input$foreign))
-    expect_true(dtaparser:::.is_numeric_altrep(narrow_input$price))
+    expect_true(dtatools:::.is_numeric_altrep(narrow_input$foreign))
+    expect_true(dtatools:::.is_numeric_altrep(narrow_input$price))
     narrow_transformed <- manipulate_narrow(narrow_input)
     narrow_expected <- manipulate_narrow(narrow_reference)
     expect_identical(
@@ -356,7 +356,7 @@ test_that("dplyr manipulation matches haven for labelled and temporal data", {
 test_that("all bundled fixtures agree with haven", {
     skip_if_not_installed("haven")
     paths <- list.files(
-        system.file("extdata", package = "dtaparser"),
+        system.file("extdata", package = "dtatools"),
         pattern = "[.]dta$",
         full.names = TRUE
     )
@@ -364,10 +364,10 @@ test_that("all bundled fixtures agree with haven", {
 
     for (path in paths) {
         actual <- read_dta(path)
-        rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
+        rust_vectors <- dtatools:::.read_dta_rust_vectors(path)
         expected <- without_haven_note_count(haven::read_dta(path))
         info <- basename(path)
-        metadata <- dtaparser:::.dta_metadata(normalizePath(path))
+        metadata <- dtatools:::.dta_metadata(normalizePath(path))
         storage <- stats::setNames(
             attr(metadata, "dta_storage", exact = TRUE),
             as.character(metadata)
@@ -435,7 +435,7 @@ test_that("dataset-note cardinality, ordering, and empty values are semantic", {
         actual <- read_dta(
             variant, col_select = make, skip = 2, n_max = 3
         )
-        rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        rust_vectors <- dtatools:::.read_dta_rust_vectors(
             variant, col_select = make, skip = 2, n_max = 3
         )
 
@@ -447,7 +447,7 @@ test_that("dataset-note cardinality, ordering, and empty values are semantic", {
             expect_identical(attr(actual, "notes", exact = TRUE),
                              attr(expected, "notes", exact = TRUE))
         } else {
-            # Haven drops an empty note; dtaparser preserves its value.
+            # Haven drops an empty note; dtatools preserves its value.
             expect_null(attr(expected, "notes", exact = TRUE))
         }
     }
@@ -462,7 +462,7 @@ test_that("projection, renaming, and row bounds match haven", {
         skip = 5,
         n_max = 4
     )
-    rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+    rust_vectors <- dtatools:::.read_dta_rust_vectors(
         path,
         col_select = c(origin = foreign, make, price),
         skip = 5,
@@ -505,7 +505,7 @@ test_that("safe row-window inputs align with haven in both collectors", {
         )
         actual <- do.call(read_dta, arguments)
         rust_vectors <- do.call(
-            dtaparser:::.read_dta_rust_vectors, arguments
+            dtatools:::.read_dta_rust_vectors, arguments
         )
         expected <- without_haven_note_count(
             do.call(haven::read_dta, arguments)
@@ -527,7 +527,7 @@ test_that("normalized windows cover empty data and zero-column projections", {
 
     for (n_max in list(0L, NA, Inf, -Inf, -1)) {
         actual <- read_dta(empty, n_max = n_max)
-        rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+        rust_vectors <- dtatools:::.read_dta_rust_vectors(
             empty, n_max = n_max
         )
         expected <- haven::read_dta(empty, n_max = n_max)
@@ -547,7 +547,7 @@ test_that("normalized windows cover empty data and zero-column projections", {
         )
         actual <- do.call(read_dta, arguments)
         rust_vectors <- do.call(
-            dtaparser:::.read_dta_rust_vectors, arguments
+            dtatools:::.read_dta_rust_vectors, arguments
         )
         expected_rows <- do.call(
             haven::read_dta, c(list(path), windows[[name]])
@@ -568,7 +568,7 @@ test_that("repeated string patterns can diverge without changing values", {
 
     actual <- read_dta(path)
     expect_identical(as.vector(actual$value), values)
-    expect_identical(actual, dtaparser:::.read_dta_rust_vectors(path))
+    expect_identical(actual, dtatools:::.read_dta_rust_vectors(path))
 })
 
 test_that("wide materialization uses bounded native protection", {
@@ -609,7 +609,7 @@ test_that("date and datetime storage become native R temporal vectors", {
     expect_identical(attr(actual$instant, "tzone"), "UTC")
     expect_identical(eager, actual)
     expect_false(any(vapply(
-        eager, dtaparser:::.is_numeric_altrep, logical(1)
+        eager, dtatools:::.is_numeric_altrep, logical(1)
     )))
 })
 
@@ -645,7 +645,7 @@ test_that("legacy and custom daily-date formats match haven", {
     haven::write_dta(input, path, version = 15)
 
     actual <- read_dta(path)
-    rust_vectors <- dtaparser:::.read_dta_rust_vectors(path)
+    rust_vectors <- dtatools:::.read_dta_rust_vectors(path)
     expected <- haven::read_dta(path)
 
     expect_identical(actual, rust_vectors)
@@ -681,7 +681,7 @@ test_that("legacy and custom daily-date formats match haven", {
         skip = 1,
         n_max = 2
     )
-    selected_rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+    selected_rust_vectors <- dtatools:::.read_dta_rust_vectors(
         path,
         col_select = all_of(selected_names),
         skip = 1,
@@ -715,7 +715,7 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
 
         for (encoding in c("Windows-1252", "ISO-8859-1")) {
             actual <- read_dta(path, encoding = encoding)
-            rust_vectors <- dtaparser:::.read_dta_rust_vectors(
+            rust_vectors <- dtatools:::.read_dta_rust_vectors(
                 path, encoding = encoding
             )
             expected <- haven::read_dta(path, encoding = encoding)
@@ -748,10 +748,10 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
     )
     cp1252 <- read_dta(note_bytes, encoding = "Windows-1252")
     latin1 <- read_dta(note_bytes, encoding = "ISO-8859-1")
-    expect_identical(cp1252, dtaparser:::.read_dta_rust_vectors(
+    expect_identical(cp1252, dtatools:::.read_dta_rust_vectors(
         note_bytes, encoding = "CP1252"
     ))
-    expect_identical(latin1, dtaparser:::.read_dta_rust_vectors(
+    expect_identical(latin1, dtatools:::.read_dta_rust_vectors(
         note_bytes, encoding = "latin1"
     ))
     expect_true(startsWith(attr(cp1252, "notes")[[1L]], "\u20ac"))

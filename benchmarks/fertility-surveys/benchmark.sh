@@ -13,8 +13,8 @@ if [ "${CI:-}" ] || [ "${GITHUB_ACTIONS:-}" ] || [ "${GITHUB_RUN_ID:-}" ] || [ "
     printf '%s\n' 'fertility corpus runs are refused in CI and GitHub Actions' >&2
     exit 2
 fi
-if [ "${DTAPARSER_FERTILITY_CORPUS:-}" != 'I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA' ]; then
-    printf '%s\n' 'manual opt-in required: set DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA' >&2
+if [ "${DTATOOLS_FERTILITY_CORPUS:-}" != 'I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA' ]; then
+    printf '%s\n' 'manual opt-in required: set DTATOOLS_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA' >&2
     exit 2
 fi
 
@@ -249,7 +249,7 @@ if [ "$owner_ready" != true ]; then
 fi
 Rscript --vanilla "$script_dir/runtime.R" write-temp-owner "$run_tmp" "$owner_state"
 Rscript --vanilla "$script_dir/runtime.R" clean-temp "$raw_root/tmp" "$run_tmp"
-export DTAPARSER_FERTILITY_OWNER_STATE="$owner_state"
+export DTATOOLS_FERTILITY_OWNER_STATE="$owner_state"
 
 case " $* " in
     *' --inventory-only '*)
@@ -312,11 +312,11 @@ if [ -n "$current_id" ]; then
     generation="$builds_root/$current_id"
     library="$generation/library"
     provenance="$generation/build-provenance.tsv"
-    package_dir="$library/dtaparser"
+    package_dir="$library/dtatools"
     assert_direct_directory "$builds_root" "$generation" 'selected build generation'
     assert_direct_directory "$generation" "$library" 'selected build library'
     assert_direct_file "$generation" "$provenance" 'selected build provenance'
-    assert_direct_directory "$library" "$package_dir" 'selected dtaparser package'
+    assert_direct_directory "$library" "$package_dir" 'selected dtatools package'
     if Rscript --vanilla -e '
             source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]);
             fertility_verify_provenance(commandArgs(TRUE)[[3L]], commandArgs(TRUE)[[4L]], commandArgs(TRUE)[[5L]])
@@ -332,30 +332,30 @@ if [ "$valid_install" != true ]; then
     staged_provenance="$staged_bundle/build-provenance.tsv"
     package_source_before=$(Rscript --vanilla -e '
         source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]);
-        cat(fertility_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtaparser"))
+        cat(fertility_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtatools"))
     ' "$script_dir/common.R" "$script_dir/provenance.R" "$checkout_root")
     mkdir -p "$build_dir" "$staged_library"
     (
         cd "$build_dir"
-        R CMD build "$checkout_root/r-package/dtaparser"
+        R CMD build "$checkout_root/r-package/dtatools"
     )
     tarball=
     tarball_count=0
-    for candidate in "$build_dir"/dtaparser_*.tar.gz; do
+    for candidate in "$build_dir"/dtatools_*.tar.gz; do
         if [ -f "$candidate" ]; then
             tarball=$candidate
             tarball_count=$((tarball_count + 1))
         fi
     done
     if [ "$tarball_count" -ne 1 ]; then
-        printf '%s\n' 'expected exactly one dtaparser source tarball' >&2
+        printf '%s\n' 'expected exactly one dtatools source tarball' >&2
         exit 1
     fi
     tarball_sha256=$(Rscript --vanilla -e 'cat(tolower(unname(tools::sha256sum(commandArgs(TRUE)[[1L]]))))' "$tarball")
     R CMD INSTALL --library="$staged_library" "$tarball"
     package_source_after=$(Rscript --vanilla -e '
         source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]);
-        cat(fertility_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtaparser"))
+        cat(fertility_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtatools"))
     ' "$script_dir/common.R" "$script_dir/provenance.R" "$checkout_root")
     if [ "$package_source_before" != "$package_source_after" ]; then
         printf '%s\n' 'package source changed during build or installation' >&2
@@ -390,7 +390,7 @@ if [ "$valid_install" != true ]; then
     assert_direct_directory "$builds_root" "$generation" 'published build generation'
     assert_direct_directory "$generation" "$library" 'published build library'
     assert_direct_file "$generation" "$provenance" 'published build provenance'
-    assert_direct_directory "$library" "$library/dtaparser" 'published dtaparser package'
+    assert_direct_directory "$library" "$library/dtatools" 'published dtatools package'
     if [ -L "$current_pointer" ] || [ -d "$current_pointer" ]; then
         printf '%s\n' 'build CURRENT must be a direct non-symlink file' >&2
         exit 2
@@ -403,7 +403,7 @@ assert_direct_directory "$raw_root" "$builds_root" 'builds root'
 assert_direct_directory "$builds_root" "$generation" 'selected build generation'
 assert_direct_directory "$generation" "$library" 'selected build library'
 assert_direct_file "$generation" "$provenance" 'selected build provenance'
-assert_direct_directory "$library" "$library/dtaparser" 'selected dtaparser package'
+assert_direct_directory "$library" "$library/dtatools" 'selected dtatools package'
 assert_direct_file "$builds_root" "$current_pointer" 'build CURRENT'
 selected_current_id=$(tr -d '\r\n' < "$current_pointer")
 if [ "$selected_current_id" != "$current_id" ]; then
@@ -411,10 +411,10 @@ if [ "$selected_current_id" != "$current_id" ]; then
     exit 2
 fi
 
-export DTAPARSER_FERTILITY_LIBRARY="$library"
-export DTAPARSER_FERTILITY_PROVENANCE="$provenance"
+export DTATOOLS_FERTILITY_LIBRARY="$library"
+export DTATOOLS_FERTILITY_PROVENANCE="$provenance"
 framework_id=$(Rscript --vanilla "$script_dir/prepare.R" "$@")
-export DTAPARSER_FERTILITY_FRAMEWORK_ID="$framework_id"
+export DTATOOLS_FERTILITY_FRAMEWORK_ID="$framework_id"
 if ! Rscript --vanilla "$script_dir/runtime.R" release-lock "$build_lock" "$build_lock_token"; then
     printf '%s\n' 'could not release fertility corpus build lock' >&2
     exit 1

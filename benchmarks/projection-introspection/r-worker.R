@@ -17,12 +17,12 @@ if (!length(present) || length(union) < length(present) ||
 script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
 script_dir <- dirname(normalizePath(sub("^--file=", "", script_argument), winslash = "/"))
 sys.source(file.path(script_dir, "..", "benchmark-common.R"), envir = environment())
-benchmark_activate_library(c("dtaparser", "tidyselect"))
+benchmark_activate_library(c("dtatools", "tidyselect"))
 
-read_any <- function() dtaparser::read_dta(
+read_any <- function() dtatools::read_dta(
     input, col_select = tidyselect::any_of(union)
 )
-read_all <- function() dtaparser::read_dta(
+read_all <- function() dtatools::read_dta(
     input, col_select = tidyselect::all_of(present)
 )
 validate <- function(value) {
@@ -44,7 +44,7 @@ for (iteration in seq_len(repetitions)) {
     validate(value)
     row_index <- row_index + 1L
     rows[[row_index]] <- data.frame(
-        method = "dtaparser-any-of", iteration = iteration,
+        method = "dtatools-any-of", iteration = iteration,
         elapsed_seconds = elapsed, rows = nrow(value), columns = ncol(value)
     )
 
@@ -55,7 +55,7 @@ for (iteration in seq_len(repetitions)) {
     validate(value)
     row_index <- row_index + 1L
     rows[[row_index]] <- data.frame(
-        method = "dtaparser-all-of", iteration = iteration,
+        method = "dtatools-all-of", iteration = iteration,
         elapsed_seconds = elapsed, rows = nrow(value), columns = ncol(value)
     )
 }

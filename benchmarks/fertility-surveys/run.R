@@ -39,10 +39,10 @@ fertility_atomic_write_table(release_summary,
 message("inventory: ", nrow(inventory), " files; selected: ", nrow(selected))
 if (options$inventory_only) quit(save = "no", status = 0L)
 
-library_value <- Sys.getenv("DTAPARSER_FERTILITY_LIBRARY")
-provenance_value <- Sys.getenv("DTAPARSER_FERTILITY_PROVENANCE")
-prepared_framework_id <- Sys.getenv("DTAPARSER_FERTILITY_FRAMEWORK_ID")
-owner_state <- Sys.getenv("DTAPARSER_FERTILITY_OWNER_STATE")
+library_value <- Sys.getenv("DTATOOLS_FERTILITY_LIBRARY")
+provenance_value <- Sys.getenv("DTATOOLS_FERTILITY_PROVENANCE")
+prepared_framework_id <- Sys.getenv("DTATOOLS_FERTILITY_FRAMEWORK_ID")
+owner_state <- Sys.getenv("DTATOOLS_FERTILITY_OWNER_STATE")
 if (!nzchar(library_value) || !nzchar(provenance_value) ||
     !nzchar(prepared_framework_id) || !nzchar(owner_state)) {
     stop("run benchmark.sh to create immutable corpus setup")
@@ -63,18 +63,18 @@ if (!identical(provenance$provenance_id[[1L]], selected_build_id)) {
 }
 expected_package_path <- build_bundle$package
 package_attestation <- fertility_attest_regular_tree(
-    expected_package_path, "installed dtaparser package"
+    expected_package_path, "installed dtatools package"
 )
 .libPaths(c(library, .libPaths()))
 fertility_revalidate_regular_tree(
-    package_attestation, "installed dtaparser package"
+    package_attestation, "installed dtatools package"
 )
-for (package in c("dtaparser", "haven", "openssl", "callr")) {
+for (package in c("dtatools", "haven", "openssl", "callr")) {
     if (!requireNamespace(package, quietly = TRUE)) stop(package, " is required")
 }
-if (!identical(normalizePath(getNamespaceInfo(asNamespace("dtaparser"), "path"),
+if (!identical(normalizePath(getNamespaceInfo(asNamespace("dtatools"), "path"),
                              winslash = "/"), expected_package_path)) {
-    stop("dtaparser was not loaded from the immutable corpus library")
+    stop("dtatools was not loaded from the immutable corpus library")
 }
 framework_id <- fertility_framework_id(
     provenance$provenance_id[[1L]], fertility_required_paths(options, raw_root)$datasigs, acceptance
@@ -270,7 +270,7 @@ worker_smoke <- execute_tile(
     worker_smoke_item, fertility_metadata_tile(), worker_smoke_input
 )
 if (!is.list(worker_smoke) || worker_smoke$classification %in%
-        c("timeout", "memory-limit", "crash", "dtaparser-only-error",
+        c("timeout", "memory-limit", "crash", "dtatools-only-error",
           "haven-only-error", "shared-reader-error", "unresolved") ||
     !identical(as.integer(worker_smoke$rows), 100L) ||
     !identical(as.integer(worker_smoke$columns), 2L) ||

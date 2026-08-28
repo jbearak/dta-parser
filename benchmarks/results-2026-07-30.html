@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dtaparser benchmark and fertility-corpus report</title>
+  <title>dtatools benchmark and fertility-corpus report</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -89,7 +89,7 @@
 </head>
 <body>
   <header>
-    <h1>dtaparser benchmark and fertility-corpus report</h1>
+    <h1>dtatools benchmark and fertility-corpus report</h1>
     <p class="lede">A consolidated explanation of what changed, why it changed, how the R reader performed against Haven, and what exhaustive testing found across the private raw and generated fertility-survey corpora.</p>
     <div class="meta">
       <span class="pill">Branch: <code>benchmark-fertility-integration</code></span>
@@ -116,9 +116,9 @@
         <div class="metric"><strong>0.19×–0.27×</strong><span>Direct-R / Haven median time ratio</span></div>
         <div class="metric"><strong>2,230 files</strong><span>Raw and generated corpus files accounted for</span></div>
         <div class="metric"><strong>24,500 / 24,500</strong><span>Wave 3 planned tiles verified; Wave 2 covered 874 supported files</span></div>
-        <div class="metric"><strong>0 defects</strong><span>Confirmed dtaparser parser or materialization defects</span></div>
+        <div class="metric"><strong>0 defects</strong><span>Confirmed dtatools parser or materialization defects</span></div>
       </div>
-      <div class="callout good"><strong>Result:</strong> the public Direct-R collector and retained Rust-vector collector remained identical throughout the supported corpus. Stata/SE 7 format 111 is outside dtaparser's current supported range; supported-file differences were attributable to malformed upstream textual metadata or Haven encoding behavior—not to a confirmed dtaparser defect.</div>
+      <div class="callout good"><strong>Result:</strong> the public Direct-R collector and retained Rust-vector collector remained identical throughout the supported corpus. Stata/SE 7 format 111 is outside the dtatools package's current supported range; supported-file differences were attributable to malformed upstream textual metadata or Haven encoding behavior—not to a confirmed dtatools defect.</div>
       <p>The work added two report-only systems: a reproducible same-run R performance benchmark and a manual, bounded, resumable differential corpus framework. Neither adds timing assertions or private-corpus checks to CI.</p>
     </section>
 
@@ -155,7 +155,7 @@
       </div>
       <p>The Direct-R / Haven column divides Direct-R time by Haven time, so values below one favor Direct-R.</p>
       <h3>Why Haven is used as an oracle</h3>
-      <p>Haven is the established R Stata reader and <code>dtaparser::read_dta()</code> deliberately targets its public R API and object semantics. Agreement is strong compatibility evidence, but not proof of universal correctness. Every disagreement is also checked against Direct-R/Rust-vector identity, Stata storage semantics, structural validation, checked fixtures, and targeted synthetic reproductions. Haven can itself differ around malformed UTF-8, undeclared legacy encodings, modern <code>strL</code> overrides, or native coercion boundaries.</p>
+      <p>Haven is the established R Stata reader and <code>dtatools::read_dta()</code> deliberately targets its public R API and object semantics. Agreement is strong compatibility evidence, but not proof of universal correctness. Every disagreement is also checked against Direct-R/Rust-vector identity, Stata storage semantics, structural validation, checked fixtures, and targeted synthetic reproductions. Haven can itself differ around malformed UTF-8, undeclared legacy encodings, modern <code>strL</code> overrides, or native coercion boundaries.</p>
       <p><strong>Caveat:</strong> these are warm-cache, machine- and workload-specific measurements, not API promises or release thresholds.</p>
     </section>
 
@@ -166,7 +166,7 @@
           <caption>Wave 2 original raw classifications</caption>
           <thead><tr><th>Original raw classification</th><th class="num">Files</th></tr></thead>
           <tbody>
-            <tr><td>Stata/SE 7 format 111 (outside dtaparser's current supported range)</td><td class="num">130</td></tr>
+            <tr><td>Stata/SE 7 format 111 (outside the dtatools package's current supported range)</td><td class="num">130</td></tr>
             <tr><td>Pass</td><td class="num">459</td></tr>
             <tr><td>Metadata mismatch</td><td class="num">409</td></tr>
             <tr><td>Haven-only error</td><td class="num">1</td></tr>
@@ -178,7 +178,7 @@
       <p>Five caller-supplied manifest hashes did not identify the current local bytes. Reconciling those external records is outside this repository's responsibility. Under separately authorized, immutable local input identities, all five files completed exhaustive supplemental runs and passed. This yields complete executable evidence for all 874 supported files: 464 pass, 409 metadata mismatch, and one Haven-only error.</p>
       <ul>
         <li>Direct-R/Rust-vector mismatch records: <strong>0</strong>.</li>
-        <li>Confirmed dtaparser defects: <strong>0</strong>.</li>
+        <li>Confirmed dtatools defects: <strong>0</strong>.</li>
         <li>Unresolved supported collector differences after adjudication: <strong>0</strong>.</li>
         <li>The default Haven-only case passed all 100 tiles with a symmetric <code>ISO-8859-1</code> override.</li>
       </ul>
@@ -198,7 +198,7 @@
           <caption>Wave 3 generated-output classifications</caption>
           <thead><tr><th>Classification</th><th class="num">Files</th></tr></thead>
           <tbody>
-            <tr><td>Stata/SE 7 format 111 (outside dtaparser's current supported range)</td><td class="num">130</td></tr>
+            <tr><td>Stata/SE 7 format 111 (outside the dtatools package's current supported range)</td><td class="num">130</td></tr>
             <tr><td>Pass</td><td class="num">691</td></tr>
             <tr><td>Metadata mismatch</td><td class="num">404</td></tr>
             <tr><td>Haven-only error</td><td class="num">1</td></tr>
@@ -207,7 +207,7 @@
         </table>
       </div>
       <p>The 404 metadata-classified files produced 11,820 pairwise records: 5,910 Direct-R/Haven and 5,910 Rust-vector/Haven, with zero Direct-R/Rust-vector records. Private inspection plus a legal synthetic fixture demonstrated malformed upstream textual metadata and Haven decoding behavior; replacement decoding restored parity.</p>
-      <p>The sole Haven-only case completed 51/51 raw tiles and passed 51/51 tiles under a symmetric <code>ISO-8859-1</code> qualification. There were no timeout, memory, crash, unresolved, inventory-hash, value, tag, date, row-termination, or dtaparser-only outcomes.</p>
+      <p>The sole Haven-only case completed 51/51 raw tiles and passed 51/51 tiles under a symmetric <code>ISO-8859-1</code> qualification. There were no timeout, memory, crash, unresolved, inventory-hash, value, tag, date, row-termination, or dtatools-only outcomes.</p>
     </section>
 
     <section id="validation">
@@ -233,7 +233,7 @@
       <h3>Performance benchmark</h3>
       <pre><code>benchmarks/large-scale/benchmark.sh</code></pre>
       <h3>Raw corpus</h3>
-      <pre><code>export DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
+      <pre><code>export DTATOOLS_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
 export CACHE_ROOT=/absolute/canonical/private-cache-root
 export MANIFEST=/absolute/canonical/private-manifest.csv
 
@@ -241,7 +241,7 @@ benchmarks/fertility-surveys/benchmark.sh \
   --cache-root="$CACHE_ROOT" \
   --manifest="$MANIFEST"</code></pre>
       <h3>Generated-output corpus</h3>
-      <pre><code>export DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
+      <pre><code>export DTATOOLS_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA
 export OUTPUT_ROOT=/absolute/canonical/private-output-root
 
 benchmarks/fertility-surveys/benchmark.sh \

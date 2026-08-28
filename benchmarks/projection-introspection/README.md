@@ -7,8 +7,8 @@ of that union. It includes synthetic fixtures and an optional real DHS file.
 For each case, every measured method returns the same selected columns in the
 same order. The benchmark compares:
 
-- `dtaparser-any-of`: `read_dta(..., col_select = any_of(union))`;
-- `dtaparser-all-of`: `read_dta(..., col_select = all_of(present))`, which
+- `dtatools-any-of`: `read_dta(..., col_select = any_of(union))`;
+- `dtatools-all-of`: `read_dta(..., col_select = all_of(present))`, which
   isolates the cost of allowing absent names;
 - `stata-load-inspect-keep`: a full `use`, followed by `confirm variable` for
   every union member and then `keep`;

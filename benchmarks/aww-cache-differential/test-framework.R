@@ -9,7 +9,7 @@ source(file.path(dir, "worker.R"))
 
 root <- paste0(tempfile("aww-inventory-"), "-", intToUtf8(233L))
 dir.create(file.path(root, "nested"), recursive = TRUE)
-fixture <- normalizePath(file.path(dir, "..", "..", "r-package", "dtaparser", "inst", "extdata", "all_types_v118.dta"))
+fixture <- normalizePath(file.path(dir, "..", "..", "r-package", "dtatools", "inst", "extdata", "all_types_v118.dta"))
 invisible(file.copy(fixture, file.path(root, "nested", "included.DTA")))
 invisible(file.copy(fixture, file.path(root, "ignored.dta.gz")))
 invisible(file.symlink(file.path(root, "nested"), file.path(root, "linked-directory")))
@@ -83,40 +83,40 @@ stopifnot(identical(counted_error$error, probe_error), is.na(counted_error$count
 parent_tile <- list(skip = 0, n_max = 100L, column_start = 1L, column_count = 2L)
 column_leaves <- list(
     list(tile = list(skip = 0, n_max = 100L, column_start = 1L, column_count = 1L),
-         reader_rows = c(dtaparser = 75, haven = 75)),
+         reader_rows = c(dtatools = 75, haven = 75)),
     list(tile = list(skip = 0, n_max = 100L, column_start = 2L, column_count = 1L),
-         reader_rows = c(dtaparser = 75, haven = 75))
+         reader_rows = c(dtatools = 75, haven = 75))
 )
-column_coverage <- aww_leaf_reader_rows(column_leaves, parent_tile, "dtaparser")
+column_coverage <- aww_leaf_reader_rows(column_leaves, parent_tile, "dtatools")
 stopifnot(column_coverage$rows == 75, column_coverage$consistent)
 row_leaves <- list(
     list(tile = list(skip = 0, n_max = 50L, column_start = 1L, column_count = 2L),
-         reader_rows = c(dtaparser = 50, haven = 50)),
+         reader_rows = c(dtatools = 50, haven = 50)),
     list(tile = list(skip = 50, n_max = 50L, column_start = 1L, column_count = 2L),
-         reader_rows = c(dtaparser = 25, haven = 25))
+         reader_rows = c(dtatools = 25, haven = 25))
 )
-row_coverage <- aww_leaf_reader_rows(row_leaves, parent_tile, "dtaparser")
+row_coverage <- aww_leaf_reader_rows(row_leaves, parent_tile, "dtatools")
 stopifnot(row_coverage$rows == 75, row_coverage$consistent)
 early_eof_leaves <- row_leaves
 early_eof_leaves[[1L]]$reader_rows[] <- 25
 early_eof_leaves[[2L]]$reader_rows[] <- 0
-early_eof <- aww_leaf_reader_rows(early_eof_leaves, parent_tile, "dtaparser")
+early_eof <- aww_leaf_reader_rows(early_eof_leaves, parent_tile, "dtatools")
 stopifnot(early_eof$rows == 25, early_eof$consistent)
 inconsistent_leaves <- column_leaves
-inconsistent_leaves[[2L]]$reader_rows[["dtaparser"]] <- 70
-inconsistent <- aww_leaf_reader_rows(inconsistent_leaves, parent_tile, "dtaparser")
+inconsistent_leaves[[2L]]$reader_rows[["dtatools"]] <- 70
+inconsistent <- aww_leaf_reader_rows(inconsistent_leaves, parent_tile, "dtatools")
 stopifnot(inconsistent$rows == 75, !inconsistent$consistent)
 
-terminated <- c(dtaparser = NA_real_, haven = NA_real_)
+terminated <- c(dtatools = NA_real_, haven = NA_real_)
 first_end <- aww_update_terminations(
-    terminated, c(dtaparser = 0, haven = 25), requested = 25L, skip = 100
+    terminated, c(dtatools = 0, haven = 25), requested = 25L, skip = 100
 )
-stopifnot(identical(first_end$counts, c(dtaparser = 100, haven = NA_real_)))
+stopifnot(identical(first_end$counts, c(dtatools = 100, haven = NA_real_)))
 second_end <- aww_update_terminations(
-    first_end$counts, c(dtaparser = 0, haven = 10), requested = 25L, skip = 125
+    first_end$counts, c(dtatools = 0, haven = 10), requested = 25L, skip = 125
 )
-stopifnot(identical(second_end$counts, c(dtaparser = 100, haven = 135)))
-stopifnot(identical(second_end$newly_terminated, c(dtaparser = FALSE, haven = TRUE)))
+stopifnot(identical(second_end$counts, c(dtatools = 100, haven = 135)))
+stopifnot(identical(second_end$newly_terminated, c(dtatools = FALSE, haven = TRUE)))
 stopifnot(identical(
     aww_beyond_row_ceiling(first_end$counts, skip = 125, ceiling = 100),
     "haven"
@@ -139,7 +139,7 @@ metadata_disputes <- do.call(rbind, replicate(
 ))
 cell_disputes <- do.call(rbind, lapply(c(1:80, 1001:1080), function(row) {
     aww_dispute("cell", "value", column = 1L, row = row,
-                dtaparser = list(kind = "value", value = row),
+                dtatools = list(kind = "value", value = row),
                 haven = list(kind = "value", value = row + 1))
 }))
 batch_disputes <- aww_bind_disputes(list(metadata_disputes, cell_disputes))
@@ -153,7 +153,7 @@ for (indices in batches) {
 
 dimension_dispute <- aww_dispute(
     "metadata", "dimension", row = 91, skip = 90, n_max = 25L,
-    attribute = "tile-nrow", dtaparser = 10, haven = 9
+    attribute = "tile-nrow", dtatools = 10, haven = 9
 )
 stopifnot(aww_matches_stata(10, 100, dimension_dispute,
                             list(formats = character(), storage = character())))
@@ -162,7 +162,7 @@ stopifnot(!aww_matches_stata(9, 100, dimension_dispute,
 
 name_vector_dispute <- aww_dispute(
     "metadata", "name", attribute = "projection",
-    dtaparser = c("first", "second"), haven = c("wrong", "names")
+    dtatools = c("first", "second"), haven = c("wrong", "names")
 )
 stopifnot(identical(aww_stata_kind(name_vector_dispute), "names"))
 name_response <- data.frame(
@@ -173,11 +173,11 @@ stopifnot(identical(aww_stata_value(name_response), c("first", "second")))
 
 empty_label_class <- aww_dispute(
     "metadata", "class", column = 1L, attribute = "class",
-    dtaparser = c("haven_labelled", "vctrs_vctr", "double"), haven = NULL
+    dtatools = c("haven_labelled", "vctrs_vctr", "double"), haven = NULL
 )
 stopifnot(identical(aww_stata_kind(empty_label_class), "value_label_name"))
 stopifnot(aww_matches_stata(
-    empty_label_class$dtaparser[[1L]], "labels111", empty_label_class,
+    empty_label_class$dtatools[[1L]], "labels111", empty_label_class,
     list(formats = "%6.3f", storage = "float")
 ))
 stopifnot(!aww_matches_stata(
@@ -187,7 +187,7 @@ stopifnot(!aww_matches_stata(
 
 changed_item <- list(path = fixture, sha256 = paste(rep("0", 64L), collapse = ""))
 changed <- aww_adjudicate(
-    aww_dispute("metadata", "dimension", attribute = "ncol", dtaparser = 1, haven = 2),
+    aww_dispute("metadata", "dimension", attribute = "ncol", dtatools = 1, haven = 2),
     list(columns = 1L, formats = "", storage = "long"), changed_item,
     list(stata = "", timeout = 1L, stata_requests = 10L, stata_row_window = 10L),
     tempfile("aww-changed-"), dir
@@ -219,7 +219,7 @@ stopifnot(identical(
     aww_stata_open(probe_item, probe_options, fake_run, dir, probe_info), "open"
 ))
 
-stata_setting <- Sys.getenv("DTAPARSER_TEST_STATA", unset = "")
+stata_setting <- Sys.getenv("DTATOOLS_TEST_STATA", unset = "")
 stata <- if (nzchar(stata_setting)) aww_resolve_stata(stata_setting) else NA_character_
 if (!is.na(stata)) {
     work <- tempfile("aww-stata-")
@@ -235,21 +235,21 @@ if (!is.na(stata)) {
     disputes <- aww_bind_disputes(list(
         aww_dispute(
             "cell", "value", column = 2L, row = 1,
-            dtaparser = list(kind = "value", value = 4099),
+            dtatools = list(kind = "value", value = 4099),
             haven = list(kind = "value", value = 4000)
         ),
         aww_dispute(
             "metadata", "label", column = 12L, attribute = "labels:2",
-            dtaparser = list(code = "1", text = "Foreign"),
+            dtatools = list(code = "1", text = "Foreign"),
             haven = list(code = "1", text = "Wrong")
         ),
         aww_dispute(
             "metadata", "label", attribute = "notes:2",
-            dtaparser = "hello", haven = "wrong"
+            dtatools = "hello", haven = "wrong"
         ),
         aww_dispute(
             "metadata", "name", attribute = "projection",
-            dtaparser = c(
+            dtatools = c(
                 "make", "price", "mpg", "rep78", "headroom", "trunk",
                 "weight", "length", "turn", "displacement", "gear_ratio", "foreign"
             ),
@@ -304,7 +304,7 @@ if (!is.na(stata)) {
     writeBin(malformed, malformed_source)
     malformed_dispute <- aww_dispute(
         "metadata", "label", attribute = "label",
-        dtaparser = paste0("\ufffd", substring(source_label, 2L)),
+        dtatools = paste0("\ufffd", substring(source_label, 2L)),
         haven = "wrong"
     )
     malformed_item <- list(

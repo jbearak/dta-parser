@@ -12,7 +12,7 @@ script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = T
 script_dir <- dirname(normalizePath(sub("^--file=", "", script_argument), winslash = "/"))
 sys.source(file.path(script_dir, "..", "benchmark-common.R"), envir = environment())
 benchmark_library <- benchmark_library_path()
-benchmark_activate_library("dtaparser", benchmark_library = benchmark_library)
+benchmark_activate_library("dtatools", benchmark_library = benchmark_library)
 stata <- find_stata()
 rscript <- Sys.which("Rscript")
 
@@ -71,12 +71,12 @@ for (index in seq_len(nrow(cases))) {
         if (!file.symlink(private_input, input)) {
             stop("could not create a private India fixture alias")
         }
-        metadata_names <- dtaparser:::.dta_metadata(input)
+        metadata_names <- dtatools:::.dta_metadata(input)
         if (length(metadata_names) < 100L) stop("India fixture has fewer than 100 columns")
         indices <- unique(as.integer(round(seq(1, length(metadata_names), length.out = 100L))))
         if (length(indices) != 100L) stop("could not choose 100 distinct India columns")
         present <- as.character(metadata_names[indices])
-        absent <- sprintf("_dtaparser_absent_%05d", seq_len(100L))
+        absent <- sprintf("_dtatools_absent_%05d", seq_len(100L))
         if (any(absent %in% metadata_names)) stop("absent-name sentinel exists in India fixture")
         union <- c(present, absent)
         item$columns <- length(metadata_names)
@@ -93,7 +93,7 @@ for (index in seq_len(nrow(cases))) {
         c("--vanilla", file.path(script_dir, "r-worker.R"), input,
           present_path, union_path, as.character(repetitions), r_output),
         env = c(
-            DTAPARSER_BENCH_LIB = benchmark_library,
+            DTATOOLS_BENCH_LIB = benchmark_library,
             R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
         ),
         error_on_status = FALSE, echo = FALSE

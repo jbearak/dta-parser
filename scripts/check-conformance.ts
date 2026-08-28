@@ -2,11 +2,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
-import { parse_metadata } from '../typescript/dta-parser/src/header';
-import { parse_legacy_metadata } from '../typescript/dta-parser/src/legacy-header';
-import { read_rows_from_buffer } from '../typescript/dta-parser/src/data-reader';
-import { parse_value_labels } from '../typescript/dta-parser/src/value-labels';
-import { DtaFile } from '../typescript/dta-parser/src/node';
+import { parse_metadata } from '../typescript/dta-tools/src/header';
+import { parse_legacy_metadata } from '../typescript/dta-tools/src/legacy-header';
+import { read_rows_from_buffer } from '../typescript/dta-tools/src/data-reader';
+import { parse_value_labels } from '../typescript/dta-tools/src/value-labels';
+import { DtaFile } from '../typescript/dta-tools/src/node';
 
 type FixtureCase = { name: string; sha256: string };
 type Manifest = {

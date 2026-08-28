@@ -22,7 +22,7 @@ context <- initialize_write_runner(
     input_scope = "target",
     input_name = "datasets.tsv",
     artifact_description = "synthetic write",
-    required_packages = c("dtaparser", "processx")
+    required_packages = c("dtatools", "processx")
 )
 manifest_path <- context$input_path
 outputs <- context$outputs
@@ -37,14 +37,14 @@ output_parent <- context$output_parent
 stata_generator <- file.path(script_dir, "stata-generate-fixture.do")
 stata_generator_sha256 <- benchmark_file_sha256(stata_generator)
 
-writer_selection <- Sys.getenv("DTAPARSER_WRITE_WRITERS")
+writer_selection <- Sys.getenv("DTATOOLS_WRITE_WRITERS")
 writers <- if (nzchar(writer_selection)) {
     strsplit(writer_selection, ",", fixed = TRUE)[[1L]]
-} else c("dtaparser", "stata")
-allowed_writers <- c("dtaparser", "stata")
+} else c("dtatools", "stata")
+allowed_writers <- c("dtatools", "stata")
 if (!length(writers) || any(!writers %in% allowed_writers) ||
     anyDuplicated(writers)) {
-    stop("DTAPARSER_WRITE_WRITERS must select unique supported writers")
+    stop("DTATOOLS_WRITE_WRITERS must select unique supported writers")
 }
 
 datasets <- read_stata_fixture_manifest(
@@ -61,7 +61,7 @@ runtime_binding <- write_runtime_binding(
     rscript, packages = "processx", stata = stata
 )
 benchmark_environment <- c(
-    DTAPARSER_BENCH_LIB = benchmark_library,
+    DTATOOLS_BENCH_LIB = benchmark_library,
     R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
 )
 
@@ -128,21 +128,21 @@ measure_iteration <- function(dataset, iteration) {
         if (!file.symlink(dataset$path, input)) stop("could not create input alias")
         input_sha256 <- dataset$sha256
     }
-    if ("dtaparser" %in% writers) {
+    if ("dtatools" %in% writers) {
         process <- run_timed_process(
             rscript,
             c("--vanilla", file.path(script_dir, "write-worker.R"),
-              "dtaparser", "stata-storage", input,
+              "dtatools", "stata-storage", input,
               file.path(work_dir, "output.dta")),
             work_dir, benchmark_environment
         )
         fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
         results[[length(results) + 1L]] <- measurement_row(
-            dataset, input_sha256, "dtaparser", iteration,
+            dataset, input_sha256, "dtatools", iteration,
             if ("stata" %in% writers) 2L else 1L,
             fields, process$stderr
         )
-        message(dataset$dataset, " dtaparser ", iteration, "/", iterations)
+        message(dataset$dataset, " dtatools ", iteration, "/", iterations)
     }
     results
 }
@@ -185,20 +185,20 @@ stable_provenance <- cbind(data.frame(
     dataset_100mb_sha256 = datasets$sha256[[1L]],
     dataset_1gb_sha256 = datasets$sha256[[2L]],
     iterations = iterations,
-    workload = "stata-first-save-to-dtaparser-roundtrip",
+    workload = "stata-first-save-to-dtatools-roundtrip",
     fixture_storage_schema = stata_fixture_schema,
     fixture_creator = "stata-first-save",
     fixture_generator_sha256 = stata_generator_sha256,
     stata_save_state = "first-save-after-generate",
-    dtaparser_input = "exact-stata-first-save-output",
-    execution_order = if (setequal(writers, c("dtaparser", "stata"))) {
-        "stata-before-dtaparser"
+    dtatools_input = "exact-stata-first-save-output",
+    execution_order = if (setequal(writers, c("dtatools", "stata"))) {
+        "stata-before-dtatools"
     } else paste0(writers, "-only"),
     writers = paste(writers, collapse = ","),
     r_version = R.version.string,
     r_platform = R.version$platform,
-    dtaparser_version = as.character(utils::packageVersion("dtaparser")),
-    dtaparser_path = normalizePath(find.package("dtaparser"), winslash = "/"),
+    dtatools_version = as.character(utils::packageVersion("dtatools")),
+    dtatools_path = normalizePath(find.package("dtatools"), winslash = "/"),
     os_version = unname(Sys.info()[["version"]]),
     machine = unname(Sys.info()[["machine"]]),
     stringsAsFactors = FALSE, check.names = FALSE
@@ -206,7 +206,7 @@ stable_provenance <- cbind(data.frame(
 validate_write_result_matrix(
     raw, datasets$dataset, writers, iterations, "synthetic write"
 )
-if (setequal(writers, c("dtaparser", "stata"))) {
+if (setequal(writers, c("dtatools", "stata"))) {
     pairs <- split(raw, interaction(
         raw$dataset, raw$iteration, drop = TRUE
     ))
@@ -214,11 +214,11 @@ if (setequal(writers, c("dtaparser", "stata"))) {
         nrow(pair) == 2L && length(unique(pair$input_sha256)) == 1L &&
             identical(
                 pair$writer[order(pair$writer_order)],
-                c("stata", "dtaparser")
+                c("stata", "dtatools")
             )
     }, logical(1L))
     if (!all(exact_pair)) {
-        stop("dtaparser did not consume each exact timed Stata output")
+        stop("dtatools did not consume each exact timed Stata output")
     }
 }
 if (!identical(

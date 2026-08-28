@@ -38,7 +38,7 @@ fertility_directory_digest <- function(directory) {
 
 fertility_package_path <- function(library) {
     library <- normalizePath(library, winslash = "/", mustWork = TRUE)
-    lexical <- file.path(library, "dtaparser")
+    lexical <- file.path(library, "dtatools")
     if (fertility_path_is_symlink(lexical)) stop("installed package must not be a symlink")
     resolved <- normalizePath(lexical, winslash = "/", mustWork = TRUE)
     if (!identical(dirname(resolved), library)) stop("installed package escaped library")
@@ -69,19 +69,19 @@ fertility_dependency_provenance <- function(packages) {
 }
 
 fertility_current_provenance <- function(checkout_root, library) {
-    description <- read.dcf(file.path(checkout_root, "r-package", "dtaparser",
+    description <- read.dcf(file.path(checkout_root, "r-package", "dtatools",
                                       "DESCRIPTION"))
     status <- fertility_git_lines(
         checkout_root,
         c("status", "--porcelain", "--untracked-files=all", "--",
-          "r-package/dtaparser", "benchmarks/fertility-surveys")
+          "r-package/dtatools", "benchmarks/fertility-surveys")
     )
     provenance <- data.frame(
         schema_version = fertility_schema_version,
         git_commit = fertility_git_lines(checkout_root, c("rev-parse", "HEAD"))[[1L]],
         git_dirty = length(status) > 0L,
         package_version = unname(description[[1L, "Version"]]),
-        package_source_sha256 = fertility_tree_digest(checkout_root, "r-package/dtaparser"),
+        package_source_sha256 = fertility_tree_digest(checkout_root, "r-package/dtatools"),
         framework_source_sha256 = fertility_tree_digest(
             checkout_root, "benchmarks/fertility-surveys"
         ),
@@ -192,7 +192,7 @@ fertility_verify_recorded_provenance <- function(checkout_root, library, path) {
         stdout = FALSE, stderr = FALSE
     )
     if (!identical(exists, 0L)) stop("recorded corpus commit is unavailable")
-    package_tree <- fertility_commit_tree(checkout_root, commit, "r-package/dtaparser")
+    package_tree <- fertility_commit_tree(checkout_root, commit, "r-package/dtatools")
     framework_tree <- fertility_commit_tree(
         checkout_root, commit, "benchmarks/fertility-surveys"
     )

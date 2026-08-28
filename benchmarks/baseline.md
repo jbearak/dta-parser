@@ -12,7 +12,7 @@ and are never CI thresholds.
 - Rust: rustc 1.97.1, release profile
 - R: 4.6.1; current source installed through its locked offline Cargo archive;
   haven available
-- Commands: `DTA_BENCH_ITERATIONS=3 cargo run --release -p dta-parser --example bench`
+- Commands: `DTA_BENCH_ITERATIONS=3 cargo run --release -p dta-tools --example bench`
   and `DTA_BENCH_ITERATIONS=3 bun benchmarks/typescript.ts`, plus
   `Rscript benchmarks/r-benchmark.R 3` with the temporary current-source
   package library in `R_LIBS`
