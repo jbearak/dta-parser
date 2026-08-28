@@ -185,13 +185,36 @@ test_that("vctrs proxy slicing preserves compact backing", {
     }
 })
 
-test_that("vctrs restoration does not relabel different compact storage", {
+test_that("vctrs restoration distinguishes storage and temporal encoding", {
     int_proxy <- vctrs::vec_proxy(stata_int(200))
 
     expect_error(
         vctrs::vec_restore(int_proxy, stata_byte()),
         "stata_int\\(x\\)"
     )
+
+    path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(path), add = TRUE)
+    date <- read_dta(path)$price
+    date_proxy <- vctrs::vec_proxy(date)
+
+    expect_false(dtaparser:::.compact_stata_storage_matches(
+        date_proxy, "int"
+    ))
+    plain <- vctrs::vec_restore(date_proxy, stata_int())
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(plain))
+    expect_identical(as.double(plain), as.double(date))
+
+    plain_proxy <- vctrs::vec_proxy(stata_int(c(0, 1, 2)))
+    expect_false(dtaparser:::.compact_stata_storage_matches(
+        plain_proxy, "int", dtaparser:::.stata_temporal_date
+    ))
+    restored_date <- vctrs::vec_restore(plain_proxy, date[0])
+    expect_true(
+        dtaparser:::.is_unmaterialized_numeric_altrep(restored_date)
+    )
+    expect_s3_class(restored_date, "Date")
+    expect_identical(as.double(restored_date), c(0, 1, 2))
 })
 
 test_that("legacy compact widths preserve system missing encoding", {

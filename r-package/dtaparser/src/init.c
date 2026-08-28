@@ -1758,6 +1758,8 @@ SEXP C_dtaparser_gather_numeric_columns(
     int *y_plan = y == R_NilValue ? NULL : numeric_gather_plan(
         y_rows, first_y.length, &y_has_missing, "y_rows"
     );
+    /* A y row is read only where x is absent. Every reachable y gap is
+       therefore paired with an x gap already recorded by x_has_missing. */
     (void) y_has_missing;
     if ((size_t) column_count > SIZE_MAX / sizeof(numeric_gather_column)) {
         Rf_error("compact numeric column gather is too wide");
@@ -1817,6 +1819,7 @@ SEXP C_dtaparser_gather_numeric_columns(
             backing = PROTECT(Rf_allocVector(
                 RAWSXP, (R_xlen_t) ((size_t) row_count * width)
             ));
+            /* x_has_missing also covers any y gap that reaches the output. */
             int no_na = x_source.compact->no_na && !x_has_missing &&
                 (y == R_NilValue || y_source.compact->no_na);
             gathered = PROTECT(numeric_from_backing(

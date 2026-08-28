@@ -5,7 +5,11 @@ parse_count <- function(value, default, argument) {
     if (!grepl("^[1-9][0-9]*$", value[[1L]])) {
         stop(argument, " must be a positive decimal integer", call. = FALSE)
     }
-    as.integer(value[[1L]])
+    parsed <- suppressWarnings(as.double(value[[1L]]))
+    if (!is.finite(parsed) || parsed > .Machine$integer.max) {
+        stop(argument, " must be a positive decimal integer", call. = FALSE)
+    }
+    as.integer(parsed)
 }
 
 iterations <- parse_count(args[1L], 9L, "iterations")

@@ -58,8 +58,8 @@
 #'   with `"master"` and `"using"` accepted as aliases for `"x"` and `"y"`.
 #'   The default keeps every row, as Stata does.
 #' @param assert Optional match results that are allowed to occur, using the
-#'   same names as `keep`. Any other match result is an error naming the
-#'   offending rows.
+#'   same names as `keep`. Any other match result is an error reporting its
+#'   count.
 #' @return A tibble with the key columns, the remaining columns of `x`, the
 #'   columns only in `y`, and `_merge`, in that order.
 #' @examples
