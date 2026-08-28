@@ -87,7 +87,8 @@ test_that("constructors enforce Stata ranges and precision rules", {
     expect_error(stata_int(1.5), "stata_float\\(x\\)")
     expect_error(stata_int(32741), "stata_long\\(x\\)")
     expect_error(stata_long(2147483621), "stata_double\\(x\\)")
-    expect_error(stata_float(Inf), "No Stata numeric storage")
+    expect_error(stata_float(Inf), "use `NA_real_` for system missing")
+    expect_error(stata_int(-Inf), "use `NA_real_` for system missing")
     expect_error(stata_double(Inf), "No Stata numeric storage")
     expect_error(stata_byte(NaN), "No Stata numeric storage")
     expect_error(
@@ -139,6 +140,78 @@ test_that("storage inspection does not materialize imported columns", {
     expect_null(stata_storage_type(1:3))
 })
 
+test_that("serialization preserves compact numeric backing", {
+    source <- stata_byte(rep(c(-1, 0, 1, NA_real_), 25000L))
+
+    serialized <- serialize(source, NULL)
+    restored <- unserialize(serialized)
+
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(restored))
+    expect_identical(restored, source)
+    expect_lt(length(serialized), length(serialize(as.double(source), NULL)))
+})
+
+test_that("saveRDS preserves compact numeric backing", {
+    source <- read_dta(fixture("all_types_v118.dta"))$v_int
+    path <- tempfile(fileext = ".rds")
+    on.exit(unlink(path), add = TRUE)
+
+    saveRDS(source, path, compress = FALSE)
+    restored <- readRDS(path)
+
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(restored))
+    expect_identical(restored, source)
+})
+
+test_that("serialization preserves writable materialized values", {
+    source <- stata_int(c(1, 2, 3))
+    source <- dtaparser:::.mutate_first_numeric_altrep(source, 99)
+
+    expect_false(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    restored <- unserialize(serialize(source, NULL))
+
+    expect_identical(as.double(restored), c(99, 2, 3))
+    expect_identical(attributes(restored), attributes(source))
+    expect_false(dtaparser:::.is_unmaterialized_numeric_altrep(restored))
+})
+
+test_that("base subsetting and duplication preserve compact backing", {
+    source <- read_dta(fixture("all_types_v118.dta"))$v_long
+    selected <- source[c(5L, 2L, NA_integer_, 2L)]
+    copied <- rlang::duplicate(source)
+
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(selected))
+    expect_true(dtaparser:::.is_unmaterialized_numeric_altrep(copied))
+    expect_identical(
+        as.double(selected),
+        c(as.double(source[c(5L, 2L)]), NA_real_, as.double(source[2L]))
+    )
+    expect_identical(copied, source)
+})
+
+test_that("legacy compact widths preserve system missing encoding", {
+    data <- read_dta(fixture("synthetic_v111.dta"))
+
+    for (name in c("b", "i", "l", "f")) {
+        source <- data[[name]]
+        selected <- source[c(1L, 4L, NA_integer_)]
+        restored <- unserialize(serialize(source, NULL))
+
+        expect_true(
+            dtaparser:::.is_unmaterialized_numeric_altrep(selected),
+            info = name
+        )
+        expect_true(
+            dtaparser:::.is_unmaterialized_numeric_altrep(restored),
+            info = name
+        )
+        expect_identical(as.double(selected), c(as.double(source[1]), NA, NA))
+        expect_identical(as.double(restored), as.double(source), info = name)
+    }
+})
 
 test_that("narrow dates validate and encode in Stata source units", {
     byte_path <- fixture_with_temporal_storage("foreign")

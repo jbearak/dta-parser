@@ -1,0 +1,19 @@
+operation	label	serialized_bytes	elapsed_s	source_compact_before	source_compact_after	result_compact
+serialize	baseline	80000184	0.089	TRUE	FALSE	FALSE
+serialize	candidate	10000302	0.002	TRUE	TRUE	TRUE
+
+operation	label	allocation_bytes	result_compact
+construct	baseline	130001504	TRUE
+construct	candidate	2000048	TRUE
+
+operation	label	max_vector_heap_mb	elapsed_s	result_compact
+recode	baseline	740	0.485	TRUE
+recode	candidate	520.6	0.349	TRUE
+
+operation	label	subset_allocation_bytes	duplicate_allocation_bytes	subset_compact	duplicate_compact
+compact-operations	baseline	71001600	16000096	TRUE	FALSE
+compact-operations	candidate	7000144	2000048	TRUE	TRUE
+
+operation	label	allocation_bytes	source_altrep_before
+character	baseline	8000048	TRUE
+character	candidate	8000048	TRUE

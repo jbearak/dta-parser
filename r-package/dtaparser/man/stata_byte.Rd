@@ -48,9 +48,15 @@ R \code{NaN} is not a Stata missing code. Construction, explicit casts,
 assignment, and recode replacements reject it. Use \code{NA_real_} for system
 missing or \code{\link[=tagged_missing]{tagged_missing()}} for an extended missing value.
 
-Re-encoding materializes \code{x} as doubles while it validates the values. The
-compact representation reduces steady-state memory use, not peak memory use
-during construction.
+Construction validates and encodes ordinary numeric vectors in native code
+without allocating full-length validation vectors. Re-encoding an existing
+compact vector still exposes its values as doubles before writing the new
+compact backing.
+
+\code{serialize()} and \code{saveRDS()} retain compact backing for unmaterialized
+\code{byte}, \code{int}, \code{long}, and \code{float} vectors. Loading the result reconstructs
+an unmaterialized compact vector. A vector that was already materialized is
+serialized as its current R doubles so any prior writable access is kept.
 }
 \section{Vector operations}{
 
