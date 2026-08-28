@@ -186,7 +186,7 @@ before using `<`, `>=`, `closest()`, or an overlap helper.
 
 ## Practical recommendation
 
-When Stata key identity matters, use dtaparser's own `stata_merge()`. It
+When Stata key identity matters, use dtaparser's own `dta_merge()`. It
 matches `.` and each of `.a` through `.z` only to themselves, requires a
 declared merge relationship, generates Stata's `_merge` indicator, and
 reconciles key storage and metadata through the package's vctrs methods.

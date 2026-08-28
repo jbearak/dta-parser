@@ -212,7 +212,7 @@ pub struct NumericGatherColumn {
     y_values: usize,
     output: usize,
     width: usize,
-    missing: [u8; 4],
+    missing: [u8; 8],
 }
 
 unsafe fn gather_numeric_column(
@@ -251,13 +251,14 @@ unsafe fn gather_numeric_column(
 }
 
 #[no_mangle]
-/// Gather independent compact numeric columns in parallel.
+/// Gather independent Stata numeric columns in parallel.
 ///
 /// # Safety
 ///
-/// `columns` must describe disjoint writable outputs and live compact source
-/// buffers. Row indices must be validated zero-based offsets or negative for
-/// an absent row. All pointers must remain live until this call returns.
+/// `columns` must describe disjoint writable outputs and live compact or R
+/// double source buffers. Row indices must be validated zero-based offsets or
+/// negative for an absent row. All pointers must remain live until this call
+/// returns.
 pub unsafe extern "C" fn dtaparser_gather_numeric_columns(
     columns: *const NumericGatherColumn,
     column_count: usize,

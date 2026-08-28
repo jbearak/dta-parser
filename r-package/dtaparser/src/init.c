@@ -79,7 +79,7 @@ typedef struct {
     uintptr_t y_values;
     uintptr_t output;
     size_t width;
-    unsigned char missing[4];
+    unsigned char missing[8];
 } numeric_gather_column;
 
 enum {
@@ -1683,6 +1683,45 @@ static int *numeric_gather_plan(
     return plan;
 }
 
+typedef struct {
+    const unsigned char *values;
+    size_t length;
+    size_t width;
+    numeric_data *compact;
+} numeric_gather_source;
+
+static numeric_gather_source numeric_gather_source_create(
+    SEXP value, const char *argument
+) {
+    numeric_data *compact = unmaterialized_numeric_storage(value);
+    if (compact != NULL) {
+        numeric_gather_source source = {
+            (const unsigned char *) compact->values,
+            compact->length,
+            numeric_kind_width(compact->kind),
+            compact
+        };
+        return source;
+    }
+    if (TYPEOF(value) != REALSXP) {
+        Rf_error(
+            "internal column gather requires compact or double `%s` storage",
+            argument
+        );
+    }
+    R_xlen_t length = XLENGTH(value);
+    if ((uint64_t) length > (uint64_t) SIZE_MAX) {
+        Rf_error("internal column gather `%s` is too long", argument);
+    }
+    numeric_gather_source source = {
+        (const unsigned char *) DATAPTR_RO(value),
+        (size_t) length,
+        sizeof(double),
+        NULL
+    };
+    return source;
+}
+
 SEXP C_dtaparser_gather_numeric_columns(
     SEXP x, SEXP y, SEXP x_rows, SEXP y_rows
 ) {
@@ -1698,18 +1737,12 @@ SEXP C_dtaparser_gather_numeric_columns(
         return result;
     }
 
-    numeric_data *first_x = unmaterialized_numeric_storage(
-        VECTOR_ELT(x, 0)
+    numeric_gather_source first_x = numeric_gather_source_create(
+        VECTOR_ELT(x, 0), "x"
     );
-    if (first_x == NULL) {
-        Rf_error("internal column gather requires compact `x` storage");
-    }
-    numeric_data *first_y = NULL;
+    numeric_gather_source first_y;
     if (y != R_NilValue) {
-        first_y = unmaterialized_numeric_storage(VECTOR_ELT(y, 0));
-        if (first_y == NULL) {
-            Rf_error("internal column gather requires compact `y` storage");
-        }
+        first_y = numeric_gather_source_create(VECTOR_ELT(y, 0), "y");
         if (XLENGTH(y_rows) != XLENGTH(x_rows)) {
             Rf_error("internal column gather row vectors differ in length");
         }
@@ -1720,10 +1753,10 @@ SEXP C_dtaparser_gather_numeric_columns(
     int x_has_missing = 0;
     int y_has_missing = 0;
     int *x_plan = numeric_gather_plan(
-        x_rows, first_x->length, &x_has_missing, "x_rows"
+        x_rows, first_x.length, &x_has_missing, "x_rows"
     );
     int *y_plan = y == R_NilValue ? NULL : numeric_gather_plan(
-        y_rows, first_y->length, &y_has_missing, "y_rows"
+        y_rows, first_y.length, &y_has_missing, "y_rows"
     );
     (void) y_has_missing;
     if ((size_t) column_count > SIZE_MAX / sizeof(numeric_gather_column)) {
@@ -1735,58 +1768,85 @@ SEXP C_dtaparser_gather_numeric_columns(
     size_t active = 0;
 
     for (R_xlen_t index = 0; index < column_count; index++) {
-        numeric_data *x_data = unmaterialized_numeric_storage(
-            VECTOR_ELT(x, index)
+        SEXP x_value = VECTOR_ELT(x, index);
+        SEXP y_value = y == R_NilValue
+            ? R_NilValue : VECTOR_ELT(y, index);
+        numeric_gather_source x_source = numeric_gather_source_create(
+            x_value, "x"
         );
-        numeric_data *y_data = y == R_NilValue ? NULL :
-            unmaterialized_numeric_storage(VECTOR_ELT(y, index));
-        if (x_data == NULL || x_data->length != first_x->length ||
-            (y_data != NULL && y_data->length != first_y->length)) {
+        numeric_gather_source y_source;
+        if (y != R_NilValue) {
+            y_source = numeric_gather_source_create(y_value, "y");
+        }
+        if (x_source.length != first_x.length ||
+            (y != R_NilValue && y_source.length != first_y.length)) {
             Rf_error("internal column gather received inconsistent storage");
         }
-        if (y != R_NilValue && y_data == NULL) {
-            Rf_error("internal column gather requires compact `y` storage");
+        if (y != R_NilValue) {
+            int x_is_compact = x_source.compact != NULL;
+            int y_is_compact = y_source.compact != NULL;
+            if (x_is_compact != y_is_compact ||
+                (x_is_compact &&
+                 (x_source.compact->kind != y_source.compact->kind ||
+                  x_source.compact->temporal !=
+                      y_source.compact->temporal))) {
+                Rf_error("internal column gather requires matching storage");
+            }
         }
-        if (y_data != NULL &&
-            (x_data->kind != y_data->kind ||
-             x_data->temporal != y_data->temporal)) {
-            Rf_error("internal column gather requires matching storage");
-        }
-        if (Rf_getAttrib(VECTOR_ELT(x, index), R_NamesSymbol) != R_NilValue ||
-            (y_data != NULL &&
-             ((x_data->format_version <= 111) !=
-              (y_data->format_version <= 111)))) {
+        if (Rf_getAttrib(x_value, R_NamesSymbol) != R_NilValue ||
+            Rf_getAttrib(x_value, R_DimSymbol) != R_NilValue ||
+            (y != R_NilValue &&
+             (Rf_getAttrib(y_value, R_NamesSymbol) != R_NilValue ||
+              Rf_getAttrib(y_value, R_DimSymbol) != R_NilValue)) ||
+            (y != R_NilValue && x_source.compact != NULL &&
+             ((x_source.compact->format_version <= 111) !=
+              (y_source.compact->format_version <= 111)))) {
             SET_VECTOR_ELT(result, index, R_NilValue);
             continue;
         }
 
-        size_t width = numeric_kind_width(x_data->kind);
+        size_t width = x_source.width;
         R_xlen_t row_count = XLENGTH(x_rows);
         if ((size_t) row_count > SIZE_MAX / width ||
             (size_t) row_count * width > (size_t) R_XLEN_T_MAX) {
-            Rf_error("compact Stata numeric gather is too long");
+            Rf_error("Stata numeric gather is too long");
         }
-        SEXP backing = PROTECT(Rf_allocVector(
-            RAWSXP, (R_xlen_t) ((size_t) row_count * width)
-        ));
+        SEXP gathered;
+        SEXP backing = R_NilValue;
+        if (x_source.compact != NULL) {
+            backing = PROTECT(Rf_allocVector(
+                RAWSXP, (R_xlen_t) ((size_t) row_count * width)
+            ));
+            int no_na = x_source.compact->no_na && !x_has_missing &&
+                (y == R_NilValue || y_source.compact->no_na);
+            gathered = PROTECT(numeric_from_backing(
+                backing, (size_t) row_count,
+                x_source.compact->kind, x_source.compact->temporal,
+                x_source.compact->format_version, no_na
+            ));
+        } else {
+            gathered = PROTECT(Rf_allocVector(REALSXP, row_count));
+        }
         numeric_gather_column *column = &columns[active++];
-        column->x_values = (uintptr_t) x_data->values;
-        column->y_values = y_data == NULL
-            ? (uintptr_t) 0 : (uintptr_t) y_data->values;
-        column->output = (uintptr_t) RAW(backing);
+        column->x_values = (uintptr_t) x_source.values;
+        column->y_values = y == R_NilValue
+            ? (uintptr_t) 0 : (uintptr_t) y_source.values;
+        column->output = x_source.compact == NULL
+            ? (uintptr_t) REAL(gathered) : (uintptr_t) RAW(backing);
         column->width = width;
         memset(column->missing, 0, sizeof(column->missing));
-        write_numeric_system_missing_raw(
-            column->missing, 0, x_data->kind, x_data->format_version
-        );
-        int no_na = x_data->no_na && !x_has_missing &&
-            (y_data == NULL || y_data->no_na);
-        SEXP gathered = PROTECT(numeric_from_backing(
-            backing, (size_t) row_count, x_data->kind, x_data->temporal,
-            x_data->format_version, no_na
-        ));
+        if (x_source.compact != NULL) {
+            write_numeric_system_missing_raw(
+                column->missing, 0,
+                x_source.compact->kind, x_source.compact->format_version
+            );
+        } else {
+            double missing = NA_REAL;
+            memcpy(column->missing, &missing, sizeof(missing));
+        }
+        SHALLOW_DUPLICATE_ATTRIB(gathered, x_value);
         SET_VECTOR_ELT(result, index, gathered);
-        UNPROTECT(2);
+        UNPROTECT(x_source.compact == NULL ? 1 : 2);
     }
 
     R_CheckUserInterrupt();

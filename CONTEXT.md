@@ -40,9 +40,9 @@ _Avoid_: Stata factor, Haven factor conversion
 A one-way conversion of an R factor's level positions to Stata `long` values with its levels as value labels. The R factor class and orderedness do not survive a semantic DTA round-trip.
 _Avoid_: Factor round-trip, Stata factor
 
-**Stata merge**:
+**DTA merge**:
 A package-owned merge of a master dataset with a using dataset that matches keys under Stata missing-code identity, requires a declared merge relationship, records each row's match result, and keeps the master's values for overlapping variables.
-_Avoid_: base merge wrapper, Stata join
+_Avoid_: Stata merge, base merge wrapper, Stata join
 
 **Stata missing-code identity**:
 Key equality in which system missing `.` and each extended missing `.a` through `.z` are distinct values that match only themselves.
@@ -53,11 +53,11 @@ The declared key multiplicity between the master and using datasets: `1:1`, `m:1
 _Avoid_: join cardinality, relationship check
 
 **Match result**:
-The per-row outcome of a Stata merge, recorded in the generated `_merge` variable: only in the master (x), only in the using (y), or matched.
+The per-row outcome of a DTA merge, recorded in the generated `_merge` variable: only in the master (x), only in the using (y), or matched.
 _Avoid_: join indicator, merge status
 
 **Coalesced variable**:
-A variable present in both inputs of a Stata merge, resolved into one column: keys take matched values from either side, and overlapping non-key variables keep the master's values. Metadata the inputs disagree on resolves master-first with a warning.
+A variable present in both inputs of a DTA merge, resolved into one column: keys take matched values from either side, and overlapping non-key variables keep the master's values. Metadata the inputs disagree on resolves master-first with a warning.
 _Avoid_: overlapping column, suffixed column
 
 **Label-aware tabulation**:

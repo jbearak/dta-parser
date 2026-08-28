@@ -69,6 +69,11 @@ compares label factorization and one-way tabulation with Haven on a generated
 compact integer column. It checks result equivalence and reports whether each
 workflow materializes the source.
 
+The report-only [`r-merge-performance/`](r-merge-performance/) benchmark
+compares `dta_merge()`, dplyr, base R, and Stata on deterministic wide 1:m and
+m:1 merges. It measures both DTA-read Stata classes and ordinary R columns and
+reports cumulative R allocation so materialization costs remain visible.
+
 Record the exact command, toolchain, host, fixture sizes, iteration count, and
 correctness status in `baseline.md`. Results are evidence for investigation,
 not a release gate.

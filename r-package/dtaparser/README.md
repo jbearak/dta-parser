@@ -12,7 +12,7 @@ declared Stata storage type.
 | --- | --- |
 | `read_dta()` | Read a DTA file into a tibble with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `write_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
-| `stata_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `dta_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
@@ -54,6 +54,36 @@ frame, without Stata storage or labelling metadata:
 
 These are medians from seven fresh-process runs on the same Apple M4 Max, not
 performance guarantees. See the [dated write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md) for percentiles, memory and output sizes, source provenance, and the complete methodology.
+
+### Synthetic merge benchmarks
+
+The merge benchmark joins a 200,000-row, 151-column master to a 360,044-row,
+110-column using dataset on a character key. Sixty non-key variables occur in
+both inputs, and the result has 440,044 rows.
+
+| Method | Input columns | 1:m median | m:1 median | 1:m allocated | m:1 allocated |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `dta_merge()` | Stata classes | 0.085 s | 0.088 s | 0.62 GB | 0.62 GB |
+| dplyr `full_join()` | Stata classes | 1.464 s | 1.330 s | 9.27 GB | 9.43 GB |
+| base `merge()` | Stata classes | 4.909 s | 7.246 s | 23.27 GB | 31.23 GB |
+| `dta_merge()` | Standard R | 0.090 s | 0.099 s | 0.66 GB | 0.79 GB |
+| dplyr `full_join()` | Standard R | 0.102 s | 0.101 s | 0.74 GB | 0.76 GB |
+| base `merge()` | Standard R | 1.550 s | 1.846 s | 2.06 GB | 2.06 GB |
+| Stata 18 MP `merge` | Native DTA | 0.217 s | 0.284 s | Not measured | Not measured |
+
+The Stata-class inputs come from `read_dta()`. The standard controls contain
+the same values in base character, integer, and double columns. dplyr and base
+R materialize or reconstruct the classed numeric vectors, which accounts for
+their larger allocation. `dta_merge()` and Stata coalesce the 60 shared
+variables and return 201 columns including `_merge`; dplyr and base R retain
+suffixed copies and return 260 columns.
+
+The R figures are `bench::mark()` medians on the same Apple M4 Max. Allocated
+memory is cumulative R allocation, not peak RSS. The Stata median includes
+reading the using file, while the R operation timers start with both inputs
+loaded. These are not performance guarantees. See the
+[dated merge report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-merge-performance/results-2026-08-28.md)
+for versions, iteration counts, correctness checks, and reproduction commands.
 
 Keep using haven when you need to write older DTA releases or work with SAS and
 SPSS formats.
@@ -122,10 +152,10 @@ extensionless output path receives `.dta` with a warning.
 ## Merge datasets
 
 ```r
-merged <- stata_merge(cars, "makes.dta", by = "make", relationship = "m:1")
+merged <- dta_merge(cars, "makes.dta", by = "make", relationship = "m:1")
 ```
 
-Use `stata_merge()` instead of base `merge()` or a dplyr join when Stata key
+Use `dta_merge()` instead of base `merge()` or a dplyr join when Stata key
 identity matters. Both of those match keys with R missing semantics: system
 missing `.` and extended missings `.a` through `.z` fall into one missing
 bucket, so by default every missing key matches every other missing key. Rows
@@ -136,7 +166,7 @@ being matched; non-key columns pass through any of these joins with their
 missing codes intact. Base `merge()` can additionally drop the right key's
 labels and other metadata, since it keeps only the left key column.
 
-`stata_merge()` matches each of the 27 missing codes only to itself, requires
+`dta_merge()` matches each of the 27 missing codes only to itself, requires
 the relationship declaration (`"1:1"`, `"m:1"`, or `"1:m"`), coalesces key
 storage types and labels, follows Stata's master-wins rule for overlapping
 variables (with a warning naming them, where Stata is silent), and generates
@@ -229,7 +259,7 @@ Use the installed help for exact behavior and examples:
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?write_dta # standalone Stata 18/19 output, conversions, and metadata
-?stata_merge # Stata-identity merges with relationship checks and _merge
+?dta_merge # Stata-identity merges with relationship checks and _merge
 ?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values
