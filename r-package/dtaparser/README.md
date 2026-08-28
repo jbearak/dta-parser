@@ -34,6 +34,39 @@ Across the full DHS, MICS, and NSFG comparison, `dtaparser` was faster on 1,803 
 
 These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtaparser only. See the [dated corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
 
+### Projected reads across surveys
+
+Pipelines that process many surveys can pass the union of every raw variable
+they use without first loading or special-casing each file:
+
+```r
+raw_variables <- c("caseid", "v005", "v012", "survey_specific_variable")
+data <- read_dta(
+  "survey.dta",
+  col_select = tidyselect::any_of(raw_variables)
+)
+```
+
+`any_of()` keeps requested variables that exist and silently omits those that
+do not. `read_dta()` resolves the selection from DTA metadata before reading
+observations, so it does not decode unselected columns.
+
+A warm-cache benchmark selected 100 variables spread across the 5.2 GB,
+5,972-column India 2021 DHS women's file. The `any_of()` union also contained
+100 absent names:
+
+| Method | Median read time |
+| --- | ---: |
+| `read_dta(any_of(union))` | 0.301 seconds |
+| Stata direct projected `use` with known-present names | 0.482 seconds |
+| Stata full `use`, inspect union, then `keep` | 0.552 seconds |
+
+All methods returned the same 724,115-row, 100-column result. These are medians
+from 11 runs on an Apple M4 Max. The direct Stata command is not union-safe;
+Stata errors if its varlist contains an absent name. See the
+[dated projection report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/projection-introspection/results-2026-08-28.md)
+for the synthetic comparisons, per-method bounds, and limitations.
+
 ### Synthetic write benchmarks
 
 The primary synthetic benchmark gives dtaparser the exact output from Stata's
