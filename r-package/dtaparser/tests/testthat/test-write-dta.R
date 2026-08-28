@@ -19,6 +19,48 @@ test_that("write_dta writes a typed release-118 dataset and returns its input in
     expect_identical(as.double(actual$answer[[1L]]), -5)
 })
 
+test_that("dataset labels over 80 characters leave destinations unchanged", {
+    data <- data.frame(x = 1L)
+    attr(data, "label") <- strrep("é", 81L)
+    path <- tempfile(fileext = ".dta")
+    sentinel <- charToRaw("existing destination")
+    writeBin(sentinel, path)
+    on.exit(unlink(path), add = TRUE)
+
+    expect_error(
+        write_dta(data, path),
+        "`label` has 81 Unicode characters; Stata's limit is 80",
+        class = "dtaparser_write_validation_error",
+        fixed = TRUE
+    )
+    expect_identical(readBin(path, "raw", n = file.info(path)$size), sentinel)
+})
+
+test_that("unsupported target versions leave destinations unchanged", {
+    data <- data.frame(x = 1L)
+    sentinel <- charToRaw("existing destination")
+
+    for (version in c(17L, 20L)) {
+        path <- tempfile(fileext = ".dta")
+        writeBin(sentinel, path)
+        on.exit(unlink(path), add = TRUE)
+        info <- sprintf("Stata %d", version)
+
+        expect_error(
+            write_dta(data, path, version = version),
+            "`version` must be 18 or 19",
+            class = "dtaparser_write_argument_error",
+            fixed = TRUE,
+            info = info
+        )
+        expect_identical(
+            readBin(path, "raw", n = file.info(path)$size),
+            sentinel,
+            info = info
+        )
+    }
+})
+
 test_that("Stata 18 rejects release-119-width datasets", {
     data <- setNames(
         as.data.frame(
