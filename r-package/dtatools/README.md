@@ -14,7 +14,8 @@ declared Stata storage type.
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
 | `save_arrow()` | Write a checksummed Arrow IPC copy of a dataset, preserving the same Stata storage types, labels, notes, and missing codes. |
 | `read_arrow()` | Read a dtatools Arrow IPC file back into the tibble `read_dta()` would produce, verifying checksums by default. |
-| `dta_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `dta_merge()` | Merge two datasets, or DTA/Arrow files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `datasig()` | Order-sensitive content signature of a data frame or a DTA or Arrow file, for verifying that source data has not changed. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
@@ -40,8 +41,9 @@ These are warm-cache measurements from an Apple M4 Max, not performance guarante
 
 `save_arrow()` writes a dataset to a checksummed Arrow IPC file, and
 `read_arrow()` restores the exact `read_dta()` read model, including storage
-declarations, labels, and tagged missing values. Warm-cache read medians on
-the same files:
+declarations, labels, and tagged missing values. The profile is experimental
+(version `"0"`) and carries no cross-version stability promise yet.
+Warm-cache read medians on the same files:
 
 | Input | `read_dta()` on `.dta` | `read_arrow()` on `.arrow` |
 | --- | ---: | ---: |
@@ -260,10 +262,39 @@ the relationship declaration (`"1:1"`, `"m:1"`, or `"1:m"`), coalesces key
 storage types and labels, follows Stata's master-wins rule for overlapping
 variables (with a warning naming them, where Stata is silent), and generates
 the value-labelled `_merge` indicator. `keep` and
-`assert` mirror Stata's options, and either input may be a DTA file path so
-only the merged result occupies memory. See
+`assert` mirror Stata's options, and either input may be a DTA or Arrow file
+path so only the merged result occupies memory; the
+[dated input-source report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/dta-merge/results-2026-08-29.md)
+shows a from-file merge costs its read plus the merge itself. See
 [the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence
 behind these differences.
+
+## Verify source data
+
+```r
+datasig("survey.dta")
+
+loaded <- read_dta("survey.dta", datasig = TRUE)
+attr(loaded, "datasig")
+```
+
+`datasig()` computes an order-sensitive content signature of a data frame or
+a DTA or Arrow file, shaped `rows:columns:digest`. It covers variable names
+and order, storage types, labels, display formats, notes, and every value in
+row order, so it detects changes Stata's `datasignature` misses: values
+swapped within a variable, reordered observations, and values exchanged
+between same-type variables. A `.dta` file, an `.arrow` copy at any
+compression, and their loaded read models all sign identically, so a
+signature recorded in a tracked table verifies a raw source file regardless
+of container.
+
+`datasig()` always recomputes from current content. Both readers accept
+`datasig = TRUE` to also record the file's signature as a load-time
+attribute: `read_arrow()` derives it from the stored footer checksums in
+milliseconds, even under column projection, while `read_dta()` hashes the
+decoded columns and requires a complete read. The signature shares the
+experimental Arrow profile's stability caveat: recorded signatures may need
+re-baselining until the profile freezes.
 
 ## Data returned to R
 
@@ -348,7 +379,10 @@ Use the installed help for exact behavior and examples:
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?save_dta # standalone Stata 18/19 output, conversions, and metadata
+?save_arrow # checksummed Arrow IPC copies under the dtatools profile
+?read_arrow # restore the read model from an Arrow copy, verifying checksums
 ?dta_merge # Stata-identity merges with relationship checks and _merge
+?datasig   # order-sensitive data signatures for files and data frames
 ?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values

@@ -80,6 +80,21 @@ compares `dta_merge()`, dplyr, base R, and Stata on deterministic wide 1:m and
 m:1 merges. It measures both DTA-read Stata classes and ordinary R columns and
 reports cumulative R allocation so materialization costs remain visible.
 
+The report-only [`arrow-interchange/`](arrow-interchange/) benchmark compares
+`save_arrow()` and `read_arrow()` with the DTA reader/writer, haven, and
+reused Stata medians on the deterministic 100 MB and 1 GB fixtures and the
+India 2021 DHS women's file, including the additive impact of each write
+optimization and the checksums flag. Its
+[2026-08-29 report](arrow-interchange/results-2026-08-29.md) records the
+medians used in the R package README.
+
+The report-only [`dta-merge/`](dta-merge/) benchmark times one `dta_merge()`
+across every x/y input-source combination — preloaded frames and `.dta` and
+`.arrow` file paths — so from-file merge cost can be attributed to the file
+read plus the merge itself. Its
+[2026-08-29 report](dta-merge/results-2026-08-29.md) includes preloaded
+base R and dplyr context rows.
+
 Record the exact command, toolchain, host, fixture sizes, iteration count, and
 correctness status in `baseline.md`. Results are evidence for investigation,
 not a release gate.

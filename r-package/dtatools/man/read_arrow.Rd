@@ -79,7 +79,7 @@ the integer-versus-double distinction.
 }
 \details{
 Plain Arrow IPC files written by other tools are read as ordinary R
-columns; they never acquire Stata semantics. Files carrying a newer frozen
+columns; they never acquire Stata semantics. Files carrying a newer
 profile version than this package understands are a hard error naming that
 version; pass \code{profile = FALSE} to read such a file as plain Arrow data.
 

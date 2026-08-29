@@ -44,7 +44,8 @@ them with \code{verify = FALSE}.}
 }
 \description{
 Writes a data frame to the Arrow IPC file format carrying the dtatools
-Arrow profile, frozen profile version \code{"0"}. The file is a valid Arrow IPC
+Arrow profile, experimental profile version \code{"0"}, which carries no
+cross-version stability promise yet. The file is a valid Arrow IPC
 file that any Arrow reader can open; profile metadata additionally records
 the Stata semantics needed for a semantic Arrow round-trip through
 \code{\link[=read_arrow]{read_arrow()}}: storage declarations, raw Stata missing storage (sentinel
