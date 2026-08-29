@@ -63,15 +63,15 @@ typedef struct {
 
 extern SEXP dtatools_save_arrow_rust(
     const char *, const char *, SEXP, size_t, const dtatools_arrow_column *,
-    size_t, size_t, const char *, int, int, char **
+    size_t, size_t, const char *, int, int, int *, char **
 );
 extern SEXP dtatools_datasig_rust(
     const char *, SEXP, size_t, const dtatools_arrow_column *, size_t, size_t,
-    int, char **
+    int, int *, char **
 );
 extern SEXP dtatools_read_arrow_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
-    int, char **
+    int, int *, char **
 );
 extern SEXP dtatools_arrow_metadata_rust(const char *, int, char **);
 extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
@@ -2991,15 +2991,21 @@ SEXP C_dtatools_save_arrow(
         );
     }
 
+    int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_save_arrow_rust(
         output_path, dataset_label, rooted_notes,
         (size_t) XLENGTH(rooted_notes), descriptors, column_count, row_count,
         compression_label, INTEGER(threads)[0], LOGICAL(checksums)[0],
+        &interrupted,
         &rust_error
     );
     if (result == NULL) {
         UNPROTECT(1);
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow write interrupted");
+        }
         fail_from_rust(rust_error);
     }
     UNPROTECT(1);
@@ -3054,14 +3060,20 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
         );
     }
 
+    int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_datasig_rust(
         dataset_label, rooted_notes, (size_t) XLENGTH(rooted_notes),
         descriptors, column_count, row_count, INTEGER(threads)[0],
+        &interrupted,
         &rust_error
     );
     if (result == NULL) {
         UNPROTECT(1);
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow signature interrupted");
+        }
         fail_from_rust(rust_error);
     }
     UNPROTECT(1);
@@ -3098,7 +3110,8 @@ SEXP C_dtatools_read_arrow(
         INTEGER(threads)[0] < 0) {
         Rf_error("internal thread count must be one non-negative integer");
     }
-    char *error = NULL;
+    int interrupted = 0;
+    char *rust_error = NULL;
     SEXP result = dtatools_read_arrow_rust(
         Rf_translateCharUTF8(STRING_ELT(path, 0)),
         all_columns ? NULL : INTEGER(columns),
@@ -3110,9 +3123,16 @@ SEXP C_dtatools_read_arrow(
         LOGICAL(profile)[0],
         LOGICAL(numeric_altrep)[0],
         INTEGER(threads)[0],
-        &error
+        &interrupted,
+        &rust_error
     );
-    if (result == NULL) fail_from_rust(error);
+    if (result == NULL) {
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow read interrupted");
+        }
+        fail_from_rust(rust_error);
+    }
     return result;
 }
 

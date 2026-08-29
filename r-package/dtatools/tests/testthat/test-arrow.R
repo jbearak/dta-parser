@@ -191,6 +191,38 @@ test_that("multithreaded Arrow writes match single-threaded writes", {
     expect_identical(read_arrow(parallel_path), data)
 })
 
+test_that("native Arrow write cancellation remains an interrupt", {
+    skip_on_os("windows")
+    skip_if_not_installed("callr")
+
+    result <- callr::r(function(library) {
+        .libPaths(c(library, .libPaths()))
+        library(dtatools)
+        data <- data.frame(x = runif(1e7))
+        path <- tempfile(fileext = ".arrow")
+        parent <- Sys.getpid()
+        signal <- parallel::mcparallel({
+            Sys.sleep(0.05)
+            tools::pskill(parent, tools::SIGINT)
+        }, silent = TRUE)
+        condition <- tryCatch(
+            {
+                save_arrow(data, path, compression = "zstd", threads = 1L)
+                NULL
+            },
+            condition = identity
+        )
+        try(parallel::mccollect(signal), silent = TRUE)
+        list(
+            interrupt = inherits(condition, "interrupt"),
+            output_exists = file.exists(path)
+        )
+    }, args = list(dirname(find.package("dtatools"))))
+
+    expect_true(result$interrupt)
+    expect_false(result$output_exists)
+})
+
 test_that("checksum-free writes round trip without verification", {
     data <- standard_arrow_fixture()
     checked_path <- arrow_tempfile()

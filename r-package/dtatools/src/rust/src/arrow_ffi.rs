@@ -24,7 +24,7 @@ use dta_tools::{
     ValueLabelTable, VariableInfo,
 };
 
-use arrow_array::builder::{BooleanBuilder, Int32Builder, StringBuilder};
+use arrow_array::builder::{BooleanBuilder, Int32Builder, LargeStringBuilder, StringBuilder};
 use arrow_array::types::{
     ArrowDictionaryKeyType, ArrowPrimitiveType, Float32Type, Float64Type, Int16Type, Int32Type,
     Int64Type, Int8Type, UInt8Type,
@@ -136,6 +136,35 @@ unsafe fn required_c_string(value: *const c_char, what: &str) -> Result<String, 
     optional_c_string(value, what)
 }
 
+fn native_arrow_interrupted(message: &str) -> bool {
+    matches!(message, "interrupted" | "DTA read interrupted")
+}
+
+unsafe fn arrow_boundary<T, F>(
+    interrupted: *mut c_int,
+    error: *mut *mut c_char,
+    failure: T,
+    call: F,
+) -> T
+where
+    T: Copy,
+    F: FnOnce() -> Result<T, String>,
+{
+    boundary(error, failure, || {
+        if interrupted.is_null() {
+            return Err("native Arrow interrupt status pointer is null".to_owned());
+        }
+        *interrupted = 0;
+        match call() {
+            Err(message) if native_arrow_interrupted(&message) => {
+                *interrupted = 1;
+                Ok(failure)
+            }
+            result => result,
+        }
+    })
+}
+
 /// Read a whole STRSXP into owned strings; `None` marks `NA_character_`.
 unsafe fn read_strings(
     values: Sexp,
@@ -223,15 +252,35 @@ fn classify_doubles(values: &[f64], _name: &str) -> Result<(Vec<c_int>, bool), S
     Ok((codes, has_tags))
 }
 
-fn string_array(values: &[Option<String>]) -> ArrayRef {
-    let mut builder = StringBuilder::new();
-    for value in values {
-        match value {
-            Some(value) => builder.append_value(value),
-            None => builder.append_null(),
+fn uses_large_string_offsets(total_bytes: usize) -> bool {
+    total_bytes > i32::MAX as usize
+}
+
+fn string_array(values: &[Option<String>], name: &str) -> Result<ArrayRef, String> {
+    let total_bytes = values.iter().try_fold(0_usize, |total, value| {
+        total
+            .checked_add(value.as_ref().map_or(0, String::len))
+            .ok_or_else(|| format!("column `{name}` overflows the Arrow string buffer"))
+    })?;
+    if uses_large_string_offsets(total_bytes) {
+        let mut builder = LargeStringBuilder::with_capacity(values.len(), total_bytes);
+        for value in values {
+            match value {
+                Some(value) => builder.append_value(value),
+                None => builder.append_null(),
+            }
         }
+        Ok(Arc::new(builder.finish()))
+    } else {
+        let mut builder = StringBuilder::with_capacity(values.len(), total_bytes);
+        for value in values {
+            match value {
+                Some(value) => builder.append_value(value),
+                None => builder.append_null(),
+            }
+        }
+        Ok(Arc::new(builder.finish()))
     }
-    Arc::new(builder.finish())
 }
 
 /// Build the Arrow string array straight from an unmaterialized
@@ -265,20 +314,27 @@ unsafe fn dictstring_array(
             .checked_add(*length)
             .ok_or_else(|| format!("column `{name}` overflows the Arrow string buffer"))?;
     }
-    if i32::try_from(total_bytes).is_err() {
-        return Err(format!(
-            "column `{name}` holds more string bytes than an Arrow string column can carry"
-        ));
+    if uses_large_string_offsets(total_bytes) {
+        let mut builder = LargeStringBuilder::with_capacity(row_count, total_bytes);
+        for &id in ids {
+            let &(bytes, length) = &data.value_views[id as usize];
+            let view = std::slice::from_raw_parts(bytes, length);
+            let value = std::str::from_utf8(view)
+                .map_err(|_| format!("column `{name}` holds invalid UTF-8"))?;
+            builder.append_value(value);
+        }
+        Ok(Arc::new(builder.finish()))
+    } else {
+        let mut builder = StringBuilder::with_capacity(row_count, total_bytes);
+        for &id in ids {
+            let &(bytes, length) = &data.value_views[id as usize];
+            let view = std::slice::from_raw_parts(bytes, length);
+            let value = std::str::from_utf8(view)
+                .map_err(|_| format!("column `{name}` holds invalid UTF-8"))?;
+            builder.append_value(value);
+        }
+        Ok(Arc::new(builder.finish()))
     }
-    let mut builder = StringBuilder::with_capacity(row_count, total_bytes);
-    for &id in ids {
-        let &(bytes, length) = &data.value_views[id as usize];
-        let view = std::slice::from_raw_parts(bytes, length);
-        let value = std::str::from_utf8(view)
-            .map_err(|_| format!("column `{name}` holds invalid UTF-8"))?;
-        builder.append_value(value);
-    }
-    Ok(Arc::new(builder.finish()))
 }
 
 fn r_semantics(class: &str) -> Option<ArrowRSemantics> {
@@ -841,7 +897,7 @@ unsafe fn encode_column(
             let document = with_labels(base_document);
             (
                 needs_document(&document).then_some(document),
-                string_array(values),
+                string_array(values, name)?,
                 0,
             )
         }
@@ -1251,7 +1307,7 @@ unsafe fn assemble_write_dataset(
 /// # Safety
 ///
 /// The same contracts as [`dtatools_save_arrow_rust`], minus the path and
-/// compression strings.
+/// compression strings. `interrupted` must point to writable status storage.
 pub unsafe extern "C" fn dtatools_datasig_rust(
     dataset_label: *const c_char,
     notes: Sexp,
@@ -1260,9 +1316,10 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
     column_count: usize,
     row_count: usize,
     requested_threads: c_int,
+    interrupted: *mut c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
-    boundary(error, ptr::null_mut(), || {
+    arrow_boundary(interrupted, error, ptr::null_mut(), || {
         if columns.is_null() && column_count > 0 {
             return Err("column descriptor pointer is null".to_owned());
         }
@@ -1316,9 +1373,10 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
 /// must address `column_count` readable descriptors whose pointers stay valid
 /// (the R spec list must stay protected) for the duration of this call.
 /// `notes` must be a protected STRSXP holding `notes_count` strings or null
-/// when `notes_count` is zero. If non-null, `error` must point to writable
-/// storage for one C string pointer. The caller must run on R's main thread
-/// with an initialized R runtime.
+/// when `notes_count` is zero. `interrupted` must point to writable status
+/// storage. If non-null, `error` must point to writable storage for one C
+/// string pointer. The caller must run on R's main thread with an initialized
+/// R runtime.
 pub unsafe extern "C" fn dtatools_save_arrow_rust(
     path: *const c_char,
     dataset_label: *const c_char,
@@ -1330,9 +1388,10 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
     compression: *const c_char,
     requested_threads: c_int,
     checksums: c_int,
+    interrupted: *mut c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
-    boundary(error, ptr::null_mut(), || {
+    arrow_boundary(interrupted, error, ptr::null_mut(), || {
         let path = required_c_string(path, "the output path")?;
         let compression_label = required_c_string(compression, "the compression label")?;
         let compression = ArrowCompression::from_label(&compression_label)
@@ -2680,9 +2739,10 @@ unsafe fn finalize_read_column(
 ///
 /// `path` must point to a readable NUL-terminated C byte string for the
 /// duration of this call. Unless `all_columns` is nonzero, `columns` must
-/// address `column_count` readable integers. If non-null, `error` must point
-/// to writable storage for one C string pointer. The caller must run on R's
-/// main thread with an initialized R runtime.
+/// address `column_count` readable integers. `interrupted` must point to
+/// writable status storage. If non-null, `error` must point to writable
+/// storage for one C string pointer. The caller must run on R's main thread
+/// with an initialized R runtime.
 pub unsafe extern "C" fn dtatools_read_arrow_rust(
     path: *const c_char,
     columns: *const c_int,
@@ -2694,9 +2754,10 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     profile: c_int,
     numeric_altrep: c_int,
     requested_threads: c_int,
+    interrupted: *mut c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
-    boundary(error, ptr::null_mut(), || {
+    arrow_boundary(interrupted, error, ptr::null_mut(), || {
         let path = required_c_string(path, "the input path")?;
         let projection = if all_columns != 0 {
             None
@@ -2964,6 +3025,15 @@ mod tests {
         assert!(exact_u64_as_r_double(CONSECUTIVE_INTEGER_LIMIT as u64 + 1, "x").is_err());
         assert!(exact_u64_as_r_double(CONSECUTIVE_INTEGER_LIMIT as u64 * 2, "x").is_ok());
         assert!(exact_u64_as_r_double(u64::MAX, "x").is_err());
+    }
+
+    #[test]
+    fn native_interrupts_and_large_string_offsets_are_classified() {
+        assert!(native_arrow_interrupted("interrupted"));
+        assert!(native_arrow_interrupted("DTA read interrupted"));
+        assert!(!native_arrow_interrupted("could not read the input"));
+        assert!(!uses_large_string_offsets(i32::MAX as usize));
+        assert!(uses_large_string_offsets(i32::MAX as usize + 1));
     }
 
     #[test]
