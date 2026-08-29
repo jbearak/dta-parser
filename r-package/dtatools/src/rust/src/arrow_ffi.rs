@@ -24,11 +24,15 @@ use dta_tools::{
 };
 
 use arrow_array::builder::{BooleanBuilder, Int32Builder, StringBuilder};
+use arrow_array::types::{
+    ArrowPrimitiveType, Float32Type, Float64Type, Int16Type, Int32Type, Int8Type, UInt8Type,
+};
 use arrow_array::{
     Array, ArrayRef, BooleanArray, Date32Array, DictionaryArray, DurationNanosecondArray,
-    Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, StringArray,
-    TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array,
+    Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, PrimitiveArray,
+    StringArray, TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array,
 };
+use arrow_buffer::{Buffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
@@ -295,22 +299,55 @@ fn base_field_document(label: &str, format: &str) -> ArrowFieldDocument {
     }
 }
 
+/// A non-nullable primitive array over R-owned memory, without copying.
+///
+/// # Safety
+///
+/// `values` must address `row_count` readable elements that stay valid and
+/// unchanged for the array's whole lifetime. The save driver satisfies this:
+/// the R spec list stays protected for the duration of the `.Call`, and every
+/// array is dropped before it returns.
+unsafe fn zero_copy_array<T: ArrowPrimitiveType>(
+    values: *const T::Native,
+    row_count: usize,
+) -> ArrayRef {
+    let Some(bytes) = std::ptr::NonNull::new(values.cast_mut().cast::<u8>()) else {
+        return Arc::new(PrimitiveArray::<T>::from_iter_values(std::iter::empty()));
+    };
+    let buffer = Buffer::from_custom_allocation(
+        bytes,
+        row_count * std::mem::size_of::<T::Native>(),
+        Arc::new(()),
+    );
+    let values = ScalarBuffer::<T::Native>::new(buffer, 0, row_count);
+    Arc::new(PrimitiveArray::<T>::new(values, None))
+}
+
 /// A Float64 array holding the R doubles verbatim, with the field document
 /// marking NaN-payload missing storage. Used whenever tagged NAs must survive
-/// bit-exactly.
-fn payload_double_column(
+/// bit-exactly. The values buffer aliases the R vector; see
+/// [`zero_copy_array`] for the lifetime contract.
+unsafe fn payload_double_column(
     values: &[f64],
     mut field: ArrowFieldDocument,
     class: &str,
 ) -> (Option<ArrowFieldDocument>, ArrayRef) {
     field.missing = Some(ArrowMissingEncoding::Payload);
     field.r = r_semantics(class);
-    (Some(field), Arc::new(Float64Array::from(values.to_vec())))
+    (
+        Some(field),
+        zero_copy_array::<Float64Type>(values.as_ptr(), values.len()),
+    )
 }
 
 /// A nullable Float64 array: R `NA` (missing code 0) becomes an Arrow null,
-/// every other value — plain NaN included — keeps its bits.
-fn semantic_double_array(values: &[f64], codes: &[c_int]) -> ArrayRef {
+/// every other value — plain NaN included — keeps its bits. Columns without
+/// `NA` alias the R vector; see [`zero_copy_array`] for the lifetime
+/// contract.
+unsafe fn semantic_double_array(values: &[f64], codes: &[c_int]) -> ArrayRef {
+    if codes.iter().all(|&code| code != 0) {
+        return zero_copy_array::<Float64Type>(values.as_ptr(), values.len());
+    }
     Arc::new(Float64Array::from_iter(
         values
             .iter()
@@ -404,6 +441,34 @@ unsafe fn compact_profiled_column(
     version: FormatVersion,
     row_count: usize,
 ) -> Result<(ArrayRef, StataStorage), String> {
+    // Modern formats already store the sentinels the profile uses, so the
+    // per-value normalization below is the identity map and the R-owned
+    // backing can be aliased directly (see `zero_copy_array`).
+    let legacy = matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    );
+    if !legacy {
+        let (array, storage): (ArrayRef, StataStorage) = match kind {
+            NumericKind::Byte => (
+                zero_copy_array::<Int8Type>(base.cast::<i8>(), row_count),
+                StataStorage::Byte,
+            ),
+            NumericKind::Int => (
+                zero_copy_array::<Int16Type>(base.cast::<i16>(), row_count),
+                StataStorage::Int,
+            ),
+            NumericKind::Long => (
+                zero_copy_array::<Int32Type>(base.cast::<i32>(), row_count),
+                StataStorage::Long,
+            ),
+            NumericKind::Float => (
+                zero_copy_array::<Float32Type>(base.cast::<f32>(), row_count),
+                StataStorage::Float,
+            ),
+        };
+        return Ok((array, storage));
+    }
     let (array, storage): (ArrayRef, StataStorage) = match kind {
         NumericKind::Byte => {
             let values = std::slice::from_raw_parts(base.cast::<i8>(), row_count);
@@ -689,17 +754,18 @@ unsafe fn encode_column(
         }
         ColumnInput::Integer { values } => {
             let values = std::slice::from_raw_parts(*values, row_count);
-            let array = Int32Array::from_iter(
-                values
-                    .iter()
-                    .map(|&value| (value != R_NaInt).then_some(value)),
-            );
+            // NA-free columns alias the R vector; see `zero_copy_array`.
+            let array: ArrayRef = if values.iter().all(|&value| value != R_NaInt) {
+                zero_copy_array::<Int32Type>(values.as_ptr(), row_count)
+            } else {
+                Arc::new(Int32Array::from_iter(
+                    values
+                        .iter()
+                        .map(|&value| (value != R_NaInt).then_some(value)),
+                ))
+            };
             let document = with_labels(base_document);
-            (
-                needs_document(&document).then_some(document),
-                Arc::new(array),
-                0,
-            )
+            (needs_document(&document).then_some(document), array, 0)
         }
         ColumnInput::DoubleLike { values } => {
             let values = std::slice::from_raw_parts(*values, row_count);
@@ -768,11 +834,10 @@ unsafe fn encode_column(
             (needs_document(&document).then_some(document), array, 0)
         }
         ColumnInput::Raw { values } => {
-            let values = std::slice::from_raw_parts(*values, row_count);
-            let array = UInt8Array::from_iter_values(values.iter().copied());
+            let array = zero_copy_array::<UInt8Type>(*values, row_count);
             let mut document = with_labels(base_document);
             document.r = r_semantics("raw");
-            (Some(document), Arc::new(array), 0)
+            (Some(document), array, 0)
         }
         ColumnInput::Factor { codes, levels } => {
             let codes = std::slice::from_raw_parts(*codes, row_count);
