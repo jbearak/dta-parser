@@ -60,6 +60,8 @@ pub struct ArrowReadColumn {
     pub name: String,
     pub data_type: DataType,
     pub nullable: bool,
+    /// Whether the IPC dictionary encoding declares ordered values.
+    pub dictionary_ordered: bool,
     pub field: Option<ArrowFieldDocument>,
     pub chunks: Vec<ArrayRef>,
 }
@@ -97,6 +99,7 @@ struct FieldLayout {
     buffer: usize,
     buffer_count: usize,
     dictionary_id: Option<i64>,
+    dictionary_ordered: bool,
 }
 
 struct Footer {
@@ -214,20 +217,18 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
                 data_type: field.data_type().to_string(),
             }
         })?;
-        let dictionary_id = (index < fb_fields.len())
-            .then(|| {
-                fb_fields
-                    .get(index)
-                    .dictionary()
-                    .map(|encoding| encoding.id())
-            })
+        let dictionary = (index < fb_fields.len())
+            .then(|| fb_fields.get(index).dictionary())
             .flatten();
+        let dictionary_id = dictionary.map(|encoding| encoding.id());
+        let dictionary_ordered = dictionary.is_some_and(|encoding| encoding.isOrdered());
         // The supported types are all flat, so each field is one node.
         layouts.push(FieldLayout {
             node: index,
             buffer,
             buffer_count,
             dictionary_id,
+            dictionary_ordered,
         });
         buffer += buffer_count;
     }
@@ -744,6 +745,7 @@ fn read_dictionaries<R: Read + Seek>(
             buffer_count: buffer_count_for(value_type)
                 .ok_or_else(|| invalid("unsupported dictionary value type"))?,
             dictionary_id: None,
+            dictionary_ordered: false,
         };
         let body_start = block.offset + u64::from(block.metadata_length);
         let values = decode_field_array(
@@ -1259,6 +1261,7 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
                 name: field.name().clone(),
                 data_type: field.data_type().clone(),
                 nullable: field.is_nullable(),
+                dictionary_ordered: prepared.footer.layouts[index].dictionary_ordered,
                 field: prepared
                     .profile
                     .as_ref()

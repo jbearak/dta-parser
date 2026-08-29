@@ -2660,7 +2660,7 @@ unsafe fn finalize_read_column(
             let ordered = attributes
                 .semantics()
                 .and_then(|semantics| semantics.ordered)
-                .unwrap_or(false);
+                .unwrap_or(column.dictionary_ordered);
             if ordered {
                 set_class(plan.vector, &["ordered", "factor"], guard)?;
             } else {
@@ -2987,6 +2987,7 @@ mod tests {
             name: "x".to_owned(),
             data_type: DataType::Int32,
             nullable: false,
+            dictionary_ordered: false,
             field: None,
             chunks: vec![Arc::new(Int32Array::from(vec![i32::MIN, 7]))],
         };

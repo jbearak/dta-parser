@@ -193,34 +193,29 @@ test_that("multithreaded Arrow writes match single-threaded writes", {
 
 test_that("native Arrow write cancellation remains an interrupt", {
     skip_on_os("windows")
-    skip_if_not_installed("callr")
 
-    result <- callr::r(function(library) {
-        .libPaths(c(library, .libPaths()))
-        library(dtatools)
-        data <- data.frame(x = runif(1e7))
-        path <- tempfile(fileext = ".arrow")
-        parent <- Sys.getpid()
-        signal <- parallel::mcparallel({
-            Sys.sleep(0.05)
-            tools::pskill(parent, tools::SIGINT)
-        }, silent = TRUE)
-        condition <- tryCatch(
-            {
-                save_arrow(data, path, compression = "zstd", threads = 1L)
-                NULL
-            },
-            condition = identity
-        )
-        try(parallel::mccollect(signal), silent = TRUE)
-        list(
-            interrupt = inherits(condition, "interrupt"),
-            output_exists = file.exists(path)
-        )
-    }, args = list(dirname(find.package("dtatools"))))
+    data <- data.frame(x = runif(1e7))
+    path <- arrow_tempfile()
+    parent <- Sys.getpid()
+    signal <- parallel::mcparallel({
+        Sys.sleep(0.05)
+        tools::pskill(parent, tools::SIGINT)
+    }, silent = TRUE)
+    condition <- tryCatch(
+        {
+            save_arrow(data, path, compression = "zstd", threads = 1L)
+            parallel::mccollect(signal)
+            NULL
+        },
+        condition = identity
+    )
+    tryCatch(
+        suppressWarnings(parallel::mccollect(signal)),
+        condition = function(...) NULL
+    )
 
-    expect_true(result$interrupt)
-    expect_false(result$output_exists)
+    expect_s3_class(condition, "interrupt")
+    expect_false(file.exists(path))
 })
 
 test_that("checksum-free writes round trip without verification", {
@@ -832,6 +827,22 @@ test_that("plain Arrow files never acquire Stata semantics", {
     expect_identical(actual$f, data$f)
     expect_null(attr(actual$n, "stata.storage", exact = TRUE))
     expect_null(attr(actual, "label", exact = TRUE))
+})
+
+test_that("plain Arrow ordered dictionaries remain ordered factors", {
+    skip_if_not_installed("arrow")
+    data <- tibble::tibble(
+        rating = ordered(
+            c("low", "high", NA),
+            levels = c("low", "high", "unused")
+        )
+    )
+    path <- arrow_tempfile()
+    arrow::write_ipc_file(data, path, compression = "uncompressed")
+
+    actual <- read_arrow(path)
+    expect_identical(actual$rating, data$rating)
+    expect_s3_class(actual$rating, "ordered")
 })
 
 test_that("wide Arrow integers are rejected instead of rounded", {
