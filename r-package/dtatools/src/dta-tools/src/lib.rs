@@ -46,6 +46,7 @@
 //! adapters materialize another column store through the same validated
 //! decoder.
 
+pub mod arrow;
 mod data_reader;
 mod endian;
 mod error;
