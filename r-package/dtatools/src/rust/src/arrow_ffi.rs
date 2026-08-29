@@ -1163,6 +1163,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
     row_count: usize,
     compression: *const c_char,
     requested_threads: c_int,
+    checksums: c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, ptr::null_mut(), || {
@@ -1236,6 +1237,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             compression,
             ARROW_ROWS_PER_BATCH,
             requested_threads,
+            checksums != 0,
             &mut coarse_interrupt,
         )
         .map_err(|error| error.to_string())?;

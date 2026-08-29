@@ -43,6 +43,10 @@
 #' @param threads Number of threads used to encode columns into Arrow
 #'   buffers. `0` (the default) selects a thread count automatically; `1`
 #'   forces serial encoding. Defaults to the `dtatools.threads` option.
+#' @param checksums Whether to embed per-buffer xxHash64 checksums in the
+#'   file footer (the default). Files written with `checksums = FALSE` are
+#'   slightly smaller and faster to write, but [read_arrow()] can only read
+#'   them with `verify = FALSE`.
 #' @return `data`, invisibly.
 #' @examples
 #' path <- tempfile(fileext = ".arrow")
@@ -55,8 +59,10 @@ save_arrow <- function(data, path,
                        compression = c("uncompressed", "lz4", "zstd"),
                        label = attr(data, "label", exact = TRUE),
                        adjust_tz = TRUE,
-                       threads = getOption("dtatools.threads", 0L)) {
+                       threads = getOption("dtatools.threads", 0L),
+                       checksums = TRUE) {
     threads <- .normalize_threads(threads)
+    checksums <- .normalize_arrow_flag(checksums, "checksums")
     resolved_path <- .resolve_dta_write_path(path, "arrow")
     for (write_warning in resolved_path$warnings) {
         .dta_write_warn(write_warning$message, write_warning$class)
@@ -73,7 +79,7 @@ save_arrow <- function(data, path,
     numeric_replacements <- tryCatch(
         .Call(
             C_dtatools_save_arrow, specification, temporary, compression,
-            threads
+            threads, checksums
         ),
         error = function(condition) {
             if (inherits(condition, "interrupt")) stop(condition)

@@ -56,8 +56,8 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
                        threads = getOption("dtatools.threads", 0L)) {
     selection <- rlang::enquo(col_select)
     row_window <- .normalize_row_window(skip, n_max)
-    verify <- .normalize_arrow_read_flag(verify, "verify")
-    profile <- .normalize_arrow_read_flag(profile, "profile")
+    verify <- .normalize_arrow_flag(verify, "verify")
+    profile <- .normalize_arrow_flag(profile, "profile")
     use_numeric_altrep <- .normalize_use_numeric_altrep(use_numeric_altrep)
     threads <- .normalize_threads(threads)
 
@@ -119,7 +119,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     )
 }
 
-.normalize_arrow_read_flag <- function(value, argument) {
+.normalize_arrow_flag <- function(value, argument) {
     if (!is.logical(value) || length(value) != 1L || is.na(value)) {
         stop(sprintf("`%s` must be one non-missing logical value", argument),
              call. = FALSE)

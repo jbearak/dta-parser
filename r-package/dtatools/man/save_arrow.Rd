@@ -10,7 +10,8 @@ save_arrow(
   compression = c("uncompressed", "lz4", "zstd"),
   label = attr(data, "label", exact = TRUE),
   adjust_tz = TRUE,
-  threads = getOption("dtatools.threads", 0L)
+  threads = getOption("dtatools.threads", 0L),
+  checksums = TRUE
 )
 }
 \arguments{
@@ -32,6 +33,11 @@ unaffected: Arrow timestamps store the instant and the timezone.}
 \item{threads}{Number of threads used to encode columns into Arrow
 buffers. \code{0} (the default) selects a thread count automatically; \code{1}
 forces serial encoding. Defaults to the \code{dtatools.threads} option.}
+
+\item{checksums}{Whether to embed per-buffer xxHash64 checksums in the
+file footer (the default). Files written with \code{checksums = FALSE} are
+slightly smaller and faster to write, but \code{\link[=read_arrow]{read_arrow()}} can only read
+them with \code{verify = FALSE}.}
 }
 \value{
 \code{data}, invisibly.

@@ -28,10 +28,12 @@ read_iterations <- function(read_call, iterations) {
 if (task == "prepare-arrow") {
     input <- arguments[[2L]]
     output <- arguments[[3L]]
+    checksums <- length(arguments) < 4L ||
+        !identical(arguments[[4L]], "nochecksums")
     data <- read_dta(input)
     gc(full = TRUE)
     started <- proc.time()[["elapsed"]]
-    save_arrow(data, output)
+    save_arrow(data, output, checksums = checksums)
     elapsed <- proc.time()[["elapsed"]] - started
     emit("save_arrow", sprintf("%.6f", elapsed),
          file.size(input), file.size(output), nrow(data), ncol(data))
@@ -54,6 +56,7 @@ if (task == "prepare-arrow") {
     switch(writer,
         save_dta = save_dta(data, output, version = 19L),
         save_arrow = save_arrow(data, output),
+        save_arrow_nochecksums = save_arrow(data, output, checksums = FALSE),
         haven = haven::write_dta(data, output, version = 15L),
         stop("unknown writer")
     )
@@ -71,6 +74,7 @@ if (task == "prepare-arrow") {
     switch(writer,
         save_dta = save_dta(data, output, version = 19L),
         save_arrow = save_arrow(data, output),
+        save_arrow_nochecksums = save_arrow(data, output, checksums = FALSE),
         haven = haven::write_dta(data, output, version = 15L),
         stop("unknown writer")
     )

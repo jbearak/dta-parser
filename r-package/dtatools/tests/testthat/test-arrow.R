@@ -155,6 +155,20 @@ test_that("multithreaded Arrow writes match single-threaded writes", {
     expect_identical(read_arrow(parallel_path), data)
 })
 
+test_that("checksum-free writes round trip without verification", {
+    data <- standard_arrow_fixture()
+    checked_path <- arrow_tempfile()
+    unchecked_path <- arrow_tempfile()
+    save_arrow(data, checked_path)
+    save_arrow(data, unchecked_path, checksums = FALSE)
+
+    expect_lt(file.size(unchecked_path), file.size(checked_path))
+    expect_error(read_arrow(unchecked_path), "verification off")
+    expect_identical(read_arrow(unchecked_path, verify = FALSE), data)
+    expect_error(save_arrow(data, unchecked_path, checksums = NA),
+                 "one non-missing logical")
+})
+
 test_that("save_arrow validates threads", {
     data <- tibble::tibble(x = 1)
     path <- arrow_tempfile()

@@ -190,100 +190,33 @@ fn hash_task_loop(
     }
 }
 
-/// Compute every batch-slice and dictionary checksum, in parallel when
-/// `threads` allows it. The calling thread participates in the queue and is
-/// the only interrupt poller.
-fn compute_checksums(
-    dataset: &ArrowWriteDataset,
-    row_count: usize,
-    rows_per_batch: usize,
-    threads: usize,
-    interrupt: &mut dyn FnMut() -> bool,
-) -> Result<ChecksumsDocument, ArrowProfileError> {
-    let column_count = dataset.columns.len();
-    let batch_count = row_count.div_ceil(rows_per_batch);
-    let mut tasks = Vec::with_capacity(batch_count * column_count);
+/// Every hash unit in write order: all batch slices, then one task per
+/// dictionary column.
+fn build_hash_tasks(
+    batch_count: usize,
+    column_count: usize,
+    dictionary_columns: &[usize],
+) -> Vec<HashTask> {
+    let mut tasks = Vec::with_capacity(batch_count * column_count + dictionary_columns.len());
     for batch in 0..batch_count {
         for column in 0..column_count {
             tasks.push(HashTask::Batch { batch, column });
         }
     }
-    let mut dictionary_columns = Vec::new();
-    for (column, write_column) in dataset.columns.iter().enumerate() {
-        if matches!(write_column.array.data_type(), DataType::Dictionary(_, _)) {
-            dictionary_columns.push(column);
-            tasks.push(HashTask::Dictionary { column });
-        }
+    for &column in dictionary_columns {
+        tasks.push(HashTask::Dictionary { column });
     }
+    tasks
+}
 
-    let cells = (row_count as u64).saturating_mul(column_count as u64);
-    let threads = hash_thread_count(threads, tasks.len(), cells);
-    let mut slots: Vec<Option<Vec<String>>> = tasks.iter().map(|_| None).collect();
-    if threads <= 1 {
-        for (index, task) in tasks.iter().enumerate() {
-            if interrupt() {
-                return Err(ArrowProfileError::Interrupted);
-            }
-            slots[index] = Some(run_hash_task(dataset, row_count, rows_per_batch, task)?);
-        }
-    } else {
-        let next = AtomicUsize::new(0);
-        let cancelled = AtomicBool::new(false);
-        let (own_result, worker_results) = thread::scope(|scope| {
-            let handles: Vec<_> = (1..threads)
-                .map(|_| {
-                    let next = &next;
-                    let cancelled = &cancelled;
-                    let tasks = &tasks;
-                    scope.spawn(move || {
-                        hash_task_loop(
-                            dataset,
-                            row_count,
-                            rows_per_batch,
-                            tasks,
-                            next,
-                            cancelled,
-                            || false,
-                        )
-                    })
-                })
-                .collect();
-            let own = hash_task_loop(
-                dataset,
-                row_count,
-                rows_per_batch,
-                &tasks,
-                &next,
-                &cancelled,
-                &mut *interrupt,
-            );
-            if own.is_err() {
-                cancelled.store(true, Ordering::Relaxed);
-            }
-            let worker_results: Vec<_> = handles
-                .into_iter()
-                .map(|handle| {
-                    handle.join().unwrap_or_else(|_| {
-                        Err(ArrowProfileError::Invalid(
-                            "an Arrow checksum worker panicked".to_owned(),
-                        ))
-                    })
-                })
-                .collect();
-            (own, worker_results)
-        });
-        // Surface the caller thread's error (interrupts included) first,
-        // then any worker error.
-        for (index, hashes) in own_result? {
-            slots[index] = Some(hashes);
-        }
-        for result in worker_results {
-            for (index, hashes) in result? {
-                slots[index] = Some(hashes);
-            }
-        }
-    }
-
+/// Fold completed hash slots (in `build_hash_tasks` order) into the footer
+/// document.
+fn assemble_checksums(
+    slots: Vec<Option<Vec<String>>>,
+    batch_count: usize,
+    column_count: usize,
+    dictionary_columns: &[usize],
+) -> Result<ChecksumsDocument, ArrowProfileError> {
     let mut hashes = slots.into_iter().map(|slot| {
         slot.ok_or_else(|| ArrowProfileError::Invalid("a checksum task produced no result".into()))
     });
@@ -319,6 +252,7 @@ pub fn save_arrow_file(
     compression: ArrowCompression,
     rows_per_batch: usize,
     threads: usize,
+    checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
     let file = File::create(path)?;
@@ -329,6 +263,7 @@ pub fn save_arrow_file(
         compression,
         rows_per_batch,
         threads,
+        checksums,
         interrupt,
     )?;
     writer.flush()?;
@@ -341,13 +276,15 @@ pub fn save_arrow_file(
 
 /// Save a dataset as a dtatools Arrow profile file into `output`. `threads`
 /// bounds checksum hashing: `0` selects a count automatically, `1` forces
-/// serial hashing.
+/// serial hashing. `checksums: false` omits the footer checksums document
+/// entirely; such files read back only with verification off.
 pub fn save_arrow_file_to<W: Write>(
     output: W,
     dataset: &ArrowWriteDataset,
     compression: ArrowCompression,
     rows_per_batch: usize,
     threads: usize,
+    checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
     if !rows_per_batch.is_multiple_of(64) || rows_per_batch == 0 {
@@ -409,8 +346,134 @@ pub fn save_arrow_file_to<W: Write>(
     let mut writer = FileWriter::try_new_with_options(output, &schema, options)
         .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
 
-    let checksums = compute_checksums(dataset, row_count, rows_per_batch, threads, interrupt)?;
+    let checksum_document = if !checksums {
+        write_batches(
+            &mut writer,
+            &schema,
+            dataset,
+            row_count,
+            rows_per_batch,
+            interrupt,
+        )?;
+        None
+    } else {
+        let column_count = dataset.columns.len();
+        let batch_count = row_count.div_ceil(rows_per_batch);
+        let dictionary_columns: Vec<usize> = dataset
+            .columns
+            .iter()
+            .enumerate()
+            .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
+            .map(|(index, _)| index)
+            .collect();
+        let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
+        let cells = (row_count as u64).saturating_mul(column_count as u64);
+        let threads = hash_thread_count(threads, tasks.len(), cells);
+        let mut slots: Vec<Option<Vec<String>>> = tasks.iter().map(|_| None).collect();
+        if threads <= 1 {
+            for (index, task) in tasks.iter().enumerate() {
+                if interrupt() {
+                    return Err(ArrowProfileError::Interrupted);
+                }
+                slots[index] = Some(run_hash_task(dataset, row_count, rows_per_batch, task)?);
+            }
+            write_batches(
+                &mut writer,
+                &schema,
+                dataset,
+                row_count,
+                rows_per_batch,
+                interrupt,
+            )?;
+        } else {
+            // Hash on workers while this thread streams the batches to the
+            // output, so the checksum pass hides behind the write pass. This
+            // thread stays the only interrupt poller; a write error cancels
+            // the workers.
+            let next = AtomicUsize::new(0);
+            let cancelled = AtomicBool::new(false);
+            let (write_result, worker_results) = thread::scope(|scope| {
+                let handles: Vec<_> = (0..threads)
+                    .map(|_| {
+                        let next = &next;
+                        let cancelled = &cancelled;
+                        let tasks = &tasks;
+                        scope.spawn(move || {
+                            hash_task_loop(
+                                dataset,
+                                row_count,
+                                rows_per_batch,
+                                tasks,
+                                next,
+                                cancelled,
+                                || false,
+                            )
+                        })
+                    })
+                    .collect();
+                let write_result = write_batches(
+                    &mut writer,
+                    &schema,
+                    dataset,
+                    row_count,
+                    rows_per_batch,
+                    interrupt,
+                );
+                if write_result.is_err() {
+                    cancelled.store(true, Ordering::Relaxed);
+                }
+                let worker_results: Vec<_> = handles
+                    .into_iter()
+                    .map(|handle| {
+                        handle.join().unwrap_or_else(|_| {
+                            Err(ArrowProfileError::Invalid(
+                                "an Arrow checksum worker panicked".to_owned(),
+                            ))
+                        })
+                    })
+                    .collect();
+                (write_result, worker_results)
+            });
+            // Surface the write error (interrupts included) first, then any
+            // worker error.
+            write_result?;
+            for result in worker_results {
+                for (index, hashes) in result? {
+                    slots[index] = Some(hashes);
+                }
+            }
+        }
+        Some(assemble_checksums(
+            slots,
+            batch_count,
+            column_count,
+            &dictionary_columns,
+        )?)
+    };
 
+    if let Some(checksums) = checksum_document {
+        writer.write_metadata(
+            ARROW_CHECKSUMS_KEY,
+            serde_json::to_string(&checksums)
+                .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?,
+        );
+    }
+    writer
+        .finish()
+        .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
+    Ok(())
+}
+
+/// Stream every record batch through the IPC writer, polling for interrupts
+/// between batches.
+fn write_batches<W: Write>(
+    writer: &mut FileWriter<W>,
+    schema: &Arc<Schema>,
+    dataset: &ArrowWriteDataset,
+    row_count: usize,
+    rows_per_batch: usize,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
     let mut row_start = 0_usize;
     while row_start < row_count {
         if interrupt() {
@@ -428,14 +491,5 @@ pub fn save_arrow_file_to<W: Write>(
             .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
         row_start += batch_rows;
     }
-
-    writer.write_metadata(
-        ARROW_CHECKSUMS_KEY,
-        serde_json::to_string(&checksums)
-            .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?,
-    );
-    writer
-        .finish()
-        .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
     Ok(())
 }

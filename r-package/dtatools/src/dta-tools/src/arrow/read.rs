@@ -300,7 +300,12 @@ fn parse_profile(
             .custom_metadata
             .get(ARROW_CHECKSUMS_KEY)
             .ok_or_else(|| {
-                super::profile::malformed(version, "missing checksums document".to_owned())
+                super::profile::malformed(
+                    version,
+                    "missing checksums document; the file was written without checksums, \
+                     so read it with verification off"
+                        .to_owned(),
+                )
             })?;
         let document = parse_checksums_document(version, json)?;
         if document.batches.len() != footer.record_blocks.len() {

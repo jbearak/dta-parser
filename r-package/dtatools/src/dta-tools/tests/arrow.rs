@@ -35,8 +35,16 @@ fn read_all_options() -> ArrowReadOptions {
 
 fn write_to_vec(dataset: &ArrowWriteDataset, compression: ArrowCompression) -> Vec<u8> {
     let mut bytes = Vec::new();
-    save_arrow_file_to(&mut bytes, dataset, compression, 64, 1, &mut no_interrupt())
-        .expect("write succeeds");
+    save_arrow_file_to(
+        &mut bytes,
+        dataset,
+        compression,
+        64,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect("write succeeds");
     bytes
 }
 
@@ -327,6 +335,7 @@ fn projection_reads_io_proportional_to_selected_columns() {
         ArrowCompression::Uncompressed,
         1024,
         1,
+        true,
         &mut no_interrupt(),
     )
     .expect("write succeeds");
@@ -635,6 +644,7 @@ fn unsupported_columns_error_naming_the_column() {
         ArrowCompression::Uncompressed,
         64,
         1,
+        true,
         &mut no_interrupt(),
     )
     .expect_err("nested columns are unsupported");
@@ -801,6 +811,7 @@ fn parallel_checksum_hashing_matches_serial() {
         ArrowCompression::Uncompressed,
         64,
         1,
+        true,
         &mut no_interrupt(),
     )
     .expect("serial write succeeds");
@@ -811,8 +822,67 @@ fn parallel_checksum_hashing_matches_serial() {
         ArrowCompression::Uncompressed,
         64,
         4,
+        true,
         &mut no_interrupt(),
     )
     .expect("parallel write succeeds");
     assert_eq!(serial, parallel, "thread count must not change the bytes");
+}
+
+#[test]
+fn checksum_free_writes_round_trip_without_verification() {
+    let rows = 200_usize;
+    let doubles: ArrayRef = Arc::new(Float64Array::from(
+        (0..rows).map(|row| row as f64 / 3.0).collect::<Vec<_>>(),
+    ));
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "x".to_owned(),
+            field: None,
+            array: doubles.clone(),
+        }],
+    };
+    let mut bytes = Vec::new();
+    save_arrow_file_to(
+        &mut bytes,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        64,
+        1,
+        false,
+        &mut no_interrupt(),
+    )
+    .expect("checksum-free write succeeds");
+
+    let error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &read_all_options(),
+        &mut no_interrupt(),
+    )
+    .expect_err("verification requires checksums");
+    assert!(
+        error.to_string().contains("verification off"),
+        "error should point at the fix: {error}"
+    );
+
+    let unverified = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("reads without verification");
+    assert_eq!(unverified.row_count, rows as u64);
+    let column = arrow_select::concat::concat(
+        &unverified.columns[0]
+            .chunks
+            .iter()
+            .map(|chunk| chunk.as_ref())
+            .collect::<Vec<_>>(),
+    )
+    .expect("chunks concatenate");
+    assert_eq!(column.as_ref(), doubles.as_ref());
 }
