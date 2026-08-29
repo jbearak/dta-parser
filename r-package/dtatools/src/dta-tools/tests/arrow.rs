@@ -12,7 +12,7 @@ use arrow_ipc::writer::FileWriter;
 use arrow_schema::{DataType, Field, Schema};
 
 use dta_tools::arrow::{
-    read_arrow_file, read_arrow_file_from, save_arrow_file_to, ArrowCompression,
+    dataset_signature, read_arrow_file, read_arrow_file_from, save_arrow_file_to, ArrowCompression,
     ArrowFieldDocument, ArrowMissingEncoding, ArrowProfileError, ArrowRSemantics, ArrowReadOptions,
     ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_PROFILE_VERSION_KEY,
 };
@@ -885,4 +885,68 @@ fn checksum_free_writes_round_trip_without_verification() {
     )
     .expect("chunks concatenate");
     assert_eq!(column.as_ref(), doubles.as_ref());
+}
+
+fn signature_dataset(values: Vec<f64>, name: &str) -> ArrowWriteDataset {
+    ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: name.to_owned(),
+            field: None,
+            array: Arc::new(Float64Array::from(values)),
+        }],
+    }
+}
+
+#[test]
+fn dataset_signature_is_stable_across_thread_counts() {
+    let values: Vec<f64> = (0..1_000).map(|row| row as f64 / 7.0).collect();
+    let serial = dataset_signature(
+        &signature_dataset(values.clone(), "x"),
+        64,
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("serial signature");
+    let parallel = dataset_signature(&signature_dataset(values, "x"), 64, 4, &mut no_interrupt())
+        .expect("parallel signature");
+    assert_eq!(serial, parallel);
+    assert!(serial.starts_with("1000:1:"), "unexpected form: {serial}");
+}
+
+#[test]
+fn dataset_signature_detects_value_order_and_names() {
+    // The failure mode Stata's datasignature misses: two values swapped
+    // within one column.
+    let base = dataset_signature(
+        &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
+        64,
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("base signature");
+    let swapped = dataset_signature(
+        &signature_dataset(vec![2.0, 1.0, 3.0], "x"),
+        64,
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("swapped signature");
+    assert_ne!(base, swapped);
+    let renamed = dataset_signature(
+        &signature_dataset(vec![1.0, 2.0, 3.0], "y"),
+        64,
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("renamed signature");
+    assert_ne!(base, renamed);
+    let identical = dataset_signature(
+        &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
+        64,
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("identical signature");
+    assert_eq!(base, identical);
 }

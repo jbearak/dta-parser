@@ -15,7 +15,7 @@ use arrow_ipc::writer::{FileWriter, IpcWriteOptions};
 use arrow_ipc::CompressionType;
 use arrow_schema::{DataType, Field, Schema};
 
-use super::checksum::canonical_array_hashes;
+use super::checksum::{canonical_array_hashes, xxh64};
 use super::profile::{
     checksum_to_hex, ArrowFieldDocument, BatchChecksums, ChecksumsDocument, DatasetDocument,
     ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION,
@@ -241,6 +241,159 @@ fn assemble_checksums(
             .insert(column.to_string(), hashes.next().unwrap()?);
     }
     Ok(checksums)
+}
+
+/// Folded into every signature payload; a change to the payload definition
+/// bumps this so signatures recorded under the old definition mismatch
+/// loudly instead of comparing across definitions.
+const DATASIG_PAYLOAD_VERSION: &str = "1";
+
+/// Compute an order-sensitive content signature: `rows:columns:digest` where
+/// the digest is the xxHash64 of a canonical payload covering the row and
+/// column counts, the `dtatools:dataset` document (label, notes, value-label
+/// tables), and each column's name, Arrow type, `dtatools:field` document
+/// (storage type, format, labels), and canonical per-batch buffer checksums
+/// in row order. Unlike Stata's `datasignature`, reordering rows or swapping
+/// values within a column changes the signature. The signature is a function
+/// of the logical dataset, not its container, so the same data hashed from
+/// memory or after a `.dta` or `.arrow` round trip signs identically.
+pub fn dataset_signature(
+    dataset: &ArrowWriteDataset,
+    rows_per_batch: usize,
+    threads: usize,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<String, ArrowProfileError> {
+    if !rows_per_batch.is_multiple_of(64) || rows_per_batch == 0 {
+        return Err(ArrowProfileError::Invalid(
+            "rows per record batch must be a positive multiple of 64".to_owned(),
+        ));
+    }
+    let row_count = dataset
+        .columns
+        .first()
+        .map_or(0, |column| column.array.len());
+    for column in &dataset.columns {
+        if column.array.len() != row_count {
+            return Err(ArrowProfileError::Invalid(format!(
+                "column `{}` has {} rows; expected {row_count}",
+                column.name,
+                column.array.len()
+            )));
+        }
+        let data_type = column.array.data_type();
+        if !supported_write_type(data_type) {
+            return Err(ArrowProfileError::UnsupportedColumn {
+                column: column.name.clone(),
+                data_type: data_type.to_string(),
+            });
+        }
+    }
+
+    let column_count = dataset.columns.len();
+    let batch_count = row_count.div_ceil(rows_per_batch);
+    let dictionary_columns: Vec<usize> = dataset
+        .columns
+        .iter()
+        .enumerate()
+        .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
+        .map(|(index, _)| index)
+        .collect();
+    let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
+    let cells = (row_count as u64).saturating_mul(column_count as u64);
+    let threads = hash_thread_count(threads, tasks.len(), cells);
+    let next = AtomicUsize::new(0);
+    let cancelled = AtomicBool::new(false);
+    let mut completed = Vec::new();
+    if threads <= 1 {
+        completed.push(hash_task_loop(
+            dataset,
+            row_count,
+            rows_per_batch,
+            &tasks,
+            &next,
+            &cancelled,
+            &mut *interrupt,
+        )?);
+    } else {
+        // Unlike the save path there is no write pass to overlap, so this
+        // thread hashes alongside the workers and stays the only interrupt
+        // poller.
+        let (own_result, worker_results) = thread::scope(|scope| {
+            let handles: Vec<_> = (0..threads - 1)
+                .map(|_| {
+                    let next = &next;
+                    let cancelled = &cancelled;
+                    let tasks = &tasks;
+                    scope.spawn(move || {
+                        hash_task_loop(
+                            dataset,
+                            row_count,
+                            rows_per_batch,
+                            tasks,
+                            next,
+                            cancelled,
+                            || false,
+                        )
+                    })
+                })
+                .collect();
+            let own_result = hash_task_loop(
+                dataset,
+                row_count,
+                rows_per_batch,
+                &tasks,
+                &next,
+                &cancelled,
+                &mut *interrupt,
+            );
+            let worker_results: Vec<_> = handles
+                .into_iter()
+                .map(|handle| {
+                    handle.join().unwrap_or_else(|_| {
+                        Err(ArrowProfileError::Invalid(
+                            "an Arrow checksum worker panicked".to_owned(),
+                        ))
+                    })
+                })
+                .collect();
+            (own_result, worker_results)
+        });
+        completed.push(own_result?);
+        for result in worker_results {
+            completed.push(result?);
+        }
+    }
+    let mut slots: Vec<Option<Vec<String>>> = tasks.iter().map(|_| None).collect();
+    for hashes in completed {
+        for (index, hash) in hashes {
+            slots[index] = Some(hash);
+        }
+    }
+    let checksums = assemble_checksums(slots, batch_count, column_count, &dictionary_columns)?;
+
+    let mut payload = String::new();
+    payload.push_str("dtatools-datasig:");
+    payload.push_str(DATASIG_PAYLOAD_VERSION);
+    payload.push_str(&format!(
+        "\nrows:{row_count}\ncolumns:{column_count}\ndataset:"
+    ));
+    payload.push_str(&serialize_json(&dataset.dataset)?);
+    for column in &dataset.columns {
+        payload.push_str("\nname:");
+        payload.push_str(&serialize_json(&column.name)?);
+        payload.push_str(&format!("\ntype:{}\nfield:", column.array.data_type()));
+        if let Some(document) = &column.field {
+            payload.push_str(&serialize_json(document)?);
+        }
+    }
+    payload.push_str("\nchecksums:");
+    payload.push_str(&serialize_json(&checksums)?);
+    let digest = xxh64(payload.as_bytes());
+    Ok(format!("{row_count}:{column_count}:{digest:016x}"))
+}
+
+fn serialize_json<T: serde::Serialize>(value: &T) -> Result<String, ArrowProfileError> {
+    serde_json::to_string(value).map_err(|error| ArrowProfileError::Invalid(error.to_string()))
 }
 
 /// Save a dataset as a dtatools Arrow profile file at `path`, replacing any

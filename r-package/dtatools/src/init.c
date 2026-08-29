@@ -63,6 +63,10 @@ extern SEXP dtatools_save_arrow_rust(
     const char *, const char *, SEXP, size_t, const dtatools_arrow_column *,
     size_t, size_t, const char *, int, int, char **
 );
+extern SEXP dtatools_datasig_rust(
+    const char *, SEXP, size_t, const dtatools_arrow_column *, size_t, size_t,
+    int, char **
+);
 extern SEXP dtatools_read_arrow_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
     int, char **
@@ -2989,6 +2993,68 @@ SEXP C_dtatools_save_arrow(
     return result;
 }
 
+SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
+    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 3) {
+        Rf_error("internal Arrow specification must be a three-element list");
+    }
+    if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
+        INTEGER(threads)[0] < 0) {
+        Rf_error("internal thread count must be one non-negative integer");
+    }
+    SEXP notes = VECTOR_ELT(specification, 1);
+    SEXP columns = VECTOR_ELT(specification, 2);
+    if (TYPEOF(notes) != STRSXP || TYPEOF(columns) != VECSXP) {
+        Rf_error("invalid internal Arrow specification");
+    }
+
+    size_t column_count = (size_t) XLENGTH(columns);
+    if (column_count > ((size_t) R_XLEN_T_MAX - 2) / 8) {
+        Rf_error("too many internal Arrow columns");
+    }
+    SEXP string_roots = PROTECT(Rf_allocVector(
+        VECSXP, (R_xlen_t) (2 + 8 * column_count)
+    ));
+    R_xlen_t root_index = 0;
+    const char *dataset_label = write_rooted_scalar_string(
+        string_roots, root_index++, VECTOR_ELT(specification, 0),
+        "dataset label"
+    );
+    SEXP rooted_notes = write_rooted_strings(
+        string_roots, root_index++, notes, "dataset notes"
+    );
+
+    size_t row_count = 0;
+    if (column_count > 0) {
+        SEXP first = VECTOR_ELT(columns, 0);
+        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 12) {
+            Rf_error("internal Arrow column must be a twelve-element list");
+        }
+        row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
+    }
+    dtatools_arrow_column *descriptors = (dtatools_arrow_column *) R_alloc(
+        (R_SIZE_T) column_count, (int) sizeof(dtatools_arrow_column)
+    );
+    for (size_t index = 0; index < column_count; index++) {
+        arrow_write_column_descriptor(
+            VECTOR_ELT(columns, (R_xlen_t) index), index, row_count,
+            string_roots, &root_index, &descriptors[index]
+        );
+    }
+
+    char *rust_error = NULL;
+    SEXP result = dtatools_datasig_rust(
+        dataset_label, rooted_notes, (size_t) XLENGTH(rooted_notes),
+        descriptors, column_count, row_count, INTEGER(threads)[0],
+        &rust_error
+    );
+    if (result == NULL) {
+        UNPROTECT(1);
+        fail_from_rust(rust_error);
+    }
+    UNPROTECT(1);
+    return result;
+}
+
 SEXP C_dtatools_read_arrow(
     SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
     SEXP numeric_altrep, SEXP threads
@@ -3556,6 +3622,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},
+    {"C_dtatools_datasig", (DL_FUNC) &C_dtatools_datasig, 2},
     {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 8},
     {"C_dtatools_arrow_metadata",
      (DL_FUNC) &C_dtatools_arrow_metadata, 1},

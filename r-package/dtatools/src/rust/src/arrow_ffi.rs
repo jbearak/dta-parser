@@ -11,9 +11,9 @@ use std::sync::Arc;
 use std::thread;
 
 use dta_tools::arrow::{
-    read_arrow_file, save_arrow_file, summarize_arrow_file, ArrowCompression, ArrowFieldDocument,
-    ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn, ArrowReadOptions, ArrowWriteColumn,
-    ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_ROWS_PER_BATCH,
+    dataset_signature, read_arrow_file, save_arrow_file, summarize_arrow_file, ArrowCompression,
+    ArrowFieldDocument, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn, ArrowReadOptions,
+    ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_ROWS_PER_BATCH,
 };
 use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
@@ -1140,6 +1140,126 @@ fn duration_or_fallback(
     (Some(document), array, 0)
 }
 
+/// Shared write-driver front half: parse the dataset documents, extract every
+/// column on this thread (the only one that may touch the R API), encode into
+/// Arrow arrays on workers, and assemble the write dataset plus the
+/// per-column numeric replacement counts.
+///
+/// # Safety
+///
+/// The same descriptor, label, and notes contracts as
+/// [`dtatools_save_arrow_rust`].
+unsafe fn assemble_write_dataset(
+    dataset_label: *const c_char,
+    notes: Sexp,
+    notes_count: usize,
+    descriptors: &[RArrowColumnDescriptor],
+    row_count: usize,
+    requested_threads: usize,
+) -> Result<(ArrowWriteDataset, Vec<u64>), String> {
+    let column_count = descriptors.len();
+    let mut dataset = DatasetDocument {
+        version: 0,
+        label: optional_c_string(dataset_label, "the dataset label")?,
+        ..DatasetDocument::default()
+    };
+    if notes_count > 0 {
+        let notes = read_strings(notes, notes_count, "dataset notes")?;
+        dataset.notes = notes
+            .into_iter()
+            .map(|note| note.ok_or_else(|| "a dataset note is missing".to_owned()))
+            .collect::<Result<_, _>>()?;
+    }
+
+    let mut extracted = Vec::new();
+    extracted
+        .try_reserve_exact(column_count)
+        .map_err(|_| "could not allocate column inputs".to_owned())?;
+    for descriptor in descriptors {
+        check_interrupt()?;
+        extracted.push(extract_column(descriptor, row_count)?);
+    }
+
+    let threads = encode_thread_count(requested_threads, column_count, row_count);
+    let encoded = run_column_encodes(&extracted, threads)?;
+
+    let mut write_columns = Vec::new();
+    write_columns
+        .try_reserve_exact(column_count)
+        .map_err(|_| "could not allocate output columns".to_owned())?;
+    let mut replacements = Vec::new();
+    replacements
+        .try_reserve_exact(column_count)
+        .map_err(|_| "could not allocate replacement counts".to_owned())?;
+    for (column, (field, array, replaced)) in extracted.into_iter().zip(encoded) {
+        if let Some(table) = &column.value_labels {
+            dataset.insert_value_label_table(table);
+        }
+        replacements.push(replaced);
+        write_columns.push(ArrowWriteColumn {
+            name: column.name,
+            field,
+            array,
+        });
+    }
+
+    Ok((
+        ArrowWriteDataset {
+            dataset,
+            columns: write_columns,
+        },
+        replacements,
+    ))
+}
+
+#[no_mangle]
+/// Compute the order-sensitive content signature of an R dataset.
+///
+/// # Safety
+///
+/// The same contracts as [`dtatools_save_arrow_rust`], minus the path and
+/// compression strings.
+pub unsafe extern "C" fn dtatools_datasig_rust(
+    dataset_label: *const c_char,
+    notes: Sexp,
+    notes_count: usize,
+    columns: *const RArrowColumnDescriptor,
+    column_count: usize,
+    row_count: usize,
+    requested_threads: c_int,
+    error: *mut *mut c_char,
+) -> Sexp {
+    boundary(error, ptr::null_mut(), || {
+        if columns.is_null() && column_count > 0 {
+            return Err("column descriptor pointer is null".to_owned());
+        }
+        let descriptors = if column_count == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(columns, column_count)
+        };
+        let requested_threads =
+            usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
+        let (dataset, _replacements) = assemble_write_dataset(
+            dataset_label,
+            notes,
+            notes_count,
+            descriptors,
+            row_count,
+            requested_threads,
+        )?;
+        let signature = dataset_signature(
+            &dataset,
+            ARROW_ROWS_PER_BATCH,
+            requested_threads,
+            &mut coarse_interrupt,
+        )
+        .map_err(|error| error.to_string())?;
+        let mut guard = ProtectGuard::new();
+        scalar_string(&signature, &mut guard)
+    })
+}
+
 #[no_mangle]
 /// Save an R dataset as a dtatools Arrow profile file.
 ///
@@ -1180,57 +1300,16 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             std::slice::from_raw_parts(columns, column_count)
         };
 
-        let mut dataset = DatasetDocument {
-            version: 0,
-            label: optional_c_string(dataset_label, "the dataset label")?,
-            ..DatasetDocument::default()
-        };
-        if notes_count > 0 {
-            let notes = read_strings(notes, notes_count, "dataset notes")?;
-            dataset.notes = notes
-                .into_iter()
-                .map(|note| note.ok_or_else(|| "a dataset note is missing".to_owned()))
-                .collect::<Result<_, _>>()?;
-        }
-
-        let mut extracted = Vec::new();
-        extracted
-            .try_reserve_exact(column_count)
-            .map_err(|_| "could not allocate column inputs".to_owned())?;
-        for descriptor in descriptors {
-            check_interrupt()?;
-            extracted.push(extract_column(descriptor, row_count)?);
-        }
-
         let requested_threads =
             usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
-        let threads = encode_thread_count(requested_threads, column_count, row_count);
-        let encoded = run_column_encodes(&extracted, threads)?;
-
-        let mut write_columns = Vec::new();
-        write_columns
-            .try_reserve_exact(column_count)
-            .map_err(|_| "could not allocate output columns".to_owned())?;
-        let mut replacements = Vec::new();
-        replacements
-            .try_reserve_exact(column_count)
-            .map_err(|_| "could not allocate replacement counts".to_owned())?;
-        for (column, (field, array, replaced)) in extracted.into_iter().zip(encoded) {
-            if let Some(table) = &column.value_labels {
-                dataset.insert_value_label_table(table);
-            }
-            replacements.push(replaced);
-            write_columns.push(ArrowWriteColumn {
-                name: column.name,
-                field,
-                array,
-            });
-        }
-
-        let dataset = ArrowWriteDataset {
-            dataset,
-            columns: write_columns,
-        };
+        let (dataset, replacements) = assemble_write_dataset(
+            dataset_label,
+            notes,
+            notes_count,
+            descriptors,
+            row_count,
+            requested_threads,
+        )?;
         save_arrow_file(
             &path,
             &dataset,
