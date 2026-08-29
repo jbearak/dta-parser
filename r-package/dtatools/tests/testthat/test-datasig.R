@@ -114,3 +114,66 @@ test_that("datasig agrees between serial and parallel hashing", {
         datasig(data, threads = 4L)
     )
 })
+
+test_that("readers record the disk signature as a datasig attribute", {
+    dta_path <- tempfile(fileext = ".dta")
+    arrow_path <- tempfile(fileext = ".arrow")
+    bare_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(c(dta_path, arrow_path, bare_path)), add = TRUE)
+    data <- tibble::tibble(
+        x = stata_double(c(1, 2, tagged_missing("a"))),
+        g = c("a", "b", "c")
+    )
+    save_dta(data, dta_path)
+    reference <- read_dta(dta_path)
+    save_arrow(reference, arrow_path)
+    signature <- datasig(dta_path)
+
+    expect_null(attr(read_dta(dta_path), "datasig", exact = TRUE))
+    expect_null(attr(read_arrow(arrow_path), "datasig", exact = TRUE))
+
+    loaded <- read_dta(dta_path, datasig = TRUE)
+    expect_identical(attr(loaded, "datasig", exact = TRUE), signature)
+    expect_identical(
+        attr(read_arrow(arrow_path, datasig = TRUE), "datasig", exact = TRUE),
+        signature
+    )
+
+    # The attribute is a load-time record of the disk signature, not a claim
+    # about current content.
+    loaded$x[1] <- 7
+    expect_identical(attr(loaded, "datasig", exact = TRUE), signature)
+    expect_false(identical(datasig(loaded), signature))
+
+    # And it does not perturb signatures computed from the frame.
+    expect_identical(datasig(read_dta(dta_path, datasig = TRUE)), signature)
+
+    # Arrow derives the signature from the footer, so projected reads still
+    # record the whole file's signature; DTA has no stored hashes, so a
+    # partial read cannot testify to the full file.
+    projected <- read_arrow(arrow_path, col_select = "x", n_max = 2,
+                            datasig = TRUE)
+    expect_identical(names(projected), "x")
+    expect_identical(attr(projected, "datasig", exact = TRUE), signature)
+    expect_error(
+        read_dta(dta_path, col_select = "x", datasig = TRUE),
+        "requires reading the complete file"
+    )
+    expect_error(
+        read_dta(dta_path, skip = 1, datasig = TRUE),
+        "requires reading the complete file"
+    )
+    expect_error(
+        read_dta(dta_path, n_max = 1, datasig = TRUE),
+        "requires reading the complete file"
+    )
+
+    save_arrow(reference, bare_path, checksums = FALSE)
+    expect_error(
+        read_arrow(bare_path, verify = FALSE, datasig = TRUE),
+        "without checksums"
+    )
+
+    expect_error(read_dta(dta_path, datasig = NA), "datasig")
+    expect_error(read_arrow(arrow_path, datasig = "yes"), "datasig")
+})

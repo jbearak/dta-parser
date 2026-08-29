@@ -39,6 +39,13 @@
 #' backing memory, so recomputation costs roughly what [save_arrow()] saves in
 #' checksum time — well under a second per gigabyte.
 #'
+#' To record the disk signature at load time instead of recomputing later,
+#' pass `datasig = TRUE` to [read_dta()] or [read_arrow()]: the reader
+#' attaches the file's signature as the result's `datasig` attribute.
+#' [read_arrow()] derives it from the file's stored footer checksums for
+#' almost nothing, even under projection; [read_dta()] hashes the decoded
+#' columns, so it requires a full read.
+#'
 #' The payload definition is versioned internally (currently version 1); any
 #' future change to it will be documented as producing new signatures.
 #'
@@ -78,4 +85,11 @@ datasig <- function(data, threads = getOption("dtatools.threads", 0L)) {
         data, attr(data, "label", exact = TRUE), TRUE
     )
     .Call(C_dtatools_datasig, specification, threads)
+}
+
+# The readers' `datasig = TRUE` attach step lives outside their bodies, where
+# the parameter of the same name would shadow the function.
+.attach_datasig <- function(data, threads) {
+    attr(data, "datasig") <- datasig(data, threads = threads)
+    data
 }

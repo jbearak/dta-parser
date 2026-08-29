@@ -18,8 +18,8 @@ pub use profile::{
     ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
 };
 pub use read::{
-    read_arrow_file, read_arrow_file_from, summarize_arrow_file, ArrowColumnSummary,
-    ArrowFileSummary, ArrowReadColumn, ArrowReadOptions, ArrowReadResult,
+    arrow_stored_signature, read_arrow_file, read_arrow_file_from, summarize_arrow_file,
+    ArrowColumnSummary, ArrowFileSummary, ArrowReadColumn, ArrowReadOptions, ArrowReadResult,
 };
 pub use write::{
     dataset_signature, save_arrow_file, save_arrow_file_to, ArrowCompression, ArrowWriteColumn,

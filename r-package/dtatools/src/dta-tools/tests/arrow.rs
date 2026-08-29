@@ -12,9 +12,10 @@ use arrow_ipc::writer::FileWriter;
 use arrow_schema::{DataType, Field, Schema};
 
 use dta_tools::arrow::{
-    dataset_signature, read_arrow_file, read_arrow_file_from, save_arrow_file_to, ArrowCompression,
-    ArrowFieldDocument, ArrowMissingEncoding, ArrowProfileError, ArrowRSemantics, ArrowReadOptions,
-    ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_PROFILE_VERSION_KEY,
+    arrow_stored_signature, dataset_signature, read_arrow_file, read_arrow_file_from,
+    save_arrow_file_to, ArrowCompression, ArrowFieldDocument, ArrowMissingEncoding,
+    ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset,
+    DatasetDocument, StataStorage, ARROW_PROFILE_VERSION_KEY,
 };
 use dta_tools::{ValueLabelEntry, ValueLabelTable};
 
@@ -949,4 +950,73 @@ fn dataset_signature_detects_value_order_and_names() {
     )
     .expect("identical signature");
     assert_eq!(base, identical);
+}
+
+#[test]
+fn stored_signature_matches_recomputed_signature() {
+    let rows = 300_usize;
+    let doubles: ArrayRef = Arc::new(Float64Array::from(
+        (0..rows).map(|row| row as f64 / 3.0).collect::<Vec<_>>(),
+    ));
+    let keys = Int32Array::from((0..rows).map(|row| (row % 2) as i32).collect::<Vec<_>>());
+    let values = StringArray::from(vec!["yes", "no"]);
+    let dictionary: ArrayRef =
+        Arc::new(DictionaryArray::try_new(keys, Arc::new(values)).expect("valid dictionary"));
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument {
+            version: 0,
+            label: "stored signature".to_owned(),
+            ..DatasetDocument::default()
+        },
+        columns: vec![
+            ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: Some(field_document(None, None, "double")),
+                array: doubles,
+            },
+            ArrowWriteColumn {
+                name: "k".to_owned(),
+                field: None,
+                array: dictionary,
+            },
+        ],
+    };
+    let recomputed = dataset_signature(&dataset, 64, 1, &mut no_interrupt()).expect("signature");
+
+    let directory =
+        std::env::temp_dir().join(format!("dtatools-stored-signature-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).expect("temp dir");
+    let path = directory.join("signed.arrow");
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    std::fs::write(&path, bytes).expect("file written");
+    let stored = arrow_stored_signature(&path).expect("stored signature");
+    assert_eq!(stored, recomputed);
+
+    // A compressed copy signs identically: the checksums cover uncompressed
+    // buffers.
+    let compressed_path = directory.join("signed-zstd.arrow");
+    let bytes = write_to_vec(&dataset, ArrowCompression::Zstd);
+    std::fs::write(&compressed_path, bytes).expect("file written");
+    assert_eq!(
+        arrow_stored_signature(&compressed_path).expect("compressed signature"),
+        recomputed
+    );
+
+    // A checksums-free file has nothing to derive the signature from.
+    let bare_path = directory.join("bare.arrow");
+    let mut bare = Vec::new();
+    save_arrow_file_to(
+        &mut bare,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        64,
+        1,
+        false,
+        &mut no_interrupt(),
+    )
+    .expect("checksums-free write succeeds");
+    std::fs::write(&bare_path, bare).expect("file written");
+    let error = arrow_stored_signature(&bare_path).expect_err("no checksums to derive from");
+    assert!(error.to_string().contains("without checksums"));
+    std::fs::remove_dir_all(&directory).expect("temp dir removed");
 }

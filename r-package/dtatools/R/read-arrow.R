@@ -45,6 +45,16 @@
 #'   verification, and column conversion. `0` (the default) chooses
 #'   automatically based on the input size and machine; `1` disables
 #'   parallelism.
+#' @param datasig Whether to record the file's [datasig()] signature in the
+#'   result's `datasig` attribute. The signature is derived from the file's
+#'   stored footer checksums and schema documents without rehashing any data,
+#'   so it costs almost nothing and covers the complete file even under
+#'   `col_select`, `skip`, or `n_max` — it is a record of what the whole file
+#'   on disk signs as, not of the projection loaded, and it is never updated
+#'   afterwards. Because it restates what the file declares, pair it with
+#'   `verify = TRUE` (and a full read) when the checksums themselves must be
+#'   validated against the stored bytes. Requires a file written with
+#'   checksums; only file paths are supported.
 #' @return A tibble.
 #' @export
 read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
@@ -53,11 +63,13 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
                        use_numeric_altrep = getOption(
                            "dtatools.numeric_altrep", TRUE
                        ),
-                       threads = getOption("dtatools.threads", 0L)) {
+                       threads = getOption("dtatools.threads", 0L),
+                       datasig = FALSE) {
     selection <- rlang::enquo(col_select)
     row_window <- .normalize_row_window(skip, n_max)
     verify <- .normalize_arrow_flag(verify, "verify")
     profile <- .normalize_arrow_flag(profile, "profile")
+    datasig <- .normalize_arrow_flag(datasig, "datasig")
     use_numeric_altrep <- .normalize_use_numeric_altrep(use_numeric_altrep)
     threads <- .normalize_threads(threads)
 
@@ -100,6 +112,11 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
+    if (datasig) {
+        attr(result, "datasig") <- .Call(
+            C_dtatools_arrow_datasig, source$path
+        )
+    }
     result
 }
 

@@ -72,6 +72,7 @@ extern SEXP dtatools_read_arrow_rust(
     int, char **
 );
 extern SEXP dtatools_arrow_metadata_rust(const char *, char **);
+extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
 
 typedef struct {
     uint32_t *value_ids;
@@ -3116,6 +3117,19 @@ SEXP C_dtatools_arrow_metadata(SEXP path) {
     return result;
 }
 
+SEXP C_dtatools_arrow_datasig(SEXP path) {
+    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
+        STRING_ELT(path, 0) == NA_STRING) {
+        Rf_error("`file` must be one non-missing path");
+    }
+    char *error = NULL;
+    SEXP result = dtatools_arrow_datasig_rust(
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), &error
+    );
+    if (result == NULL) fail_from_rust(error);
+    return result;
+}
+
 static R_xlen_t ephemeral_string_length(SEXP value) {
     return XLENGTH(R_altrep_data1(value));
 }
@@ -3626,6 +3640,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 8},
     {"C_dtatools_arrow_metadata",
      (DL_FUNC) &C_dtatools_arrow_metadata, 1},
+    {"C_dtatools_arrow_datasig",
+     (DL_FUNC) &C_dtatools_arrow_datasig, 1},
     {"C_dtatools_write_path_kind",
      (DL_FUNC) &C_dtatools_write_path_kind, 1},
     {"C_dtatools_write_string_plan",

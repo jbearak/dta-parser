@@ -63,6 +63,13 @@ content. The hashing is parallel and operates on the columns' existing
 backing memory, so recomputation costs roughly what \code{\link[=save_arrow]{save_arrow()}} saves in
 checksum time — well under a second per gigabyte.
 
+To record the disk signature at load time instead of recomputing later,
+pass \code{datasig = TRUE} to \code{\link[=read_dta]{read_dta()}} or \code{\link[=read_arrow]{read_arrow()}}: the reader
+attaches the file's signature as the result's \code{datasig} attribute.
+\code{\link[=read_arrow]{read_arrow()}} derives it from the file's stored footer checksums for
+almost nothing, even under projection; \code{\link[=read_dta]{read_dta()}} hashes the decoded
+columns, so it requires a full read.
+
 The payload definition is versioned internally (currently version 1); any
 future change to it will be documented as producing new signatures.
 }

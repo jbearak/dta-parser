@@ -1159,6 +1159,67 @@ fn r_type_for(field: &Field, document: Option<&ArrowFieldDocument>) -> &'static 
 }
 
 /// Column names and proxy types from the footer, for tidyselect resolution.
+/// Derive the dataset signature from an Arrow file's stored metadata alone:
+/// the schema documents plus the footer checksums document. No data buffers
+/// are read or rehashed, so the result records what the file declares about
+/// its own content; pair it with a verifying read to also validate the
+/// declared checksums against the stored bytes. Identical to
+/// [`super::dataset_signature`] over the same logical dataset.
+pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowProfileError> {
+    let path = path.as_ref();
+    let mut reader = BufReader::new(File::open(path)?);
+    let footer = match read_footer(&mut reader) {
+        Err(ArrowProfileError::NotAnArrowFile(_)) => {
+            return Err(ArrowProfileError::NotAnArrowFile(
+                path.display().to_string(),
+            ))
+        }
+        other => other?,
+    };
+    let profile = parse_profile(&footer, true, false)?.ok_or_else(|| {
+        ArrowProfileError::InvalidFile(
+            "the file carries no dtatools Arrow profile, so it stores no checksums to derive \
+             a signature from"
+                .to_owned(),
+        )
+    })?;
+    let json = footer
+        .custom_metadata
+        .get(ARROW_CHECKSUMS_KEY)
+        .ok_or_else(|| {
+            ArrowProfileError::InvalidFile(
+                "the file was written without checksums, so its signature cannot be derived \
+                 from the footer; read the data and compute it with datasig() instead"
+                    .to_owned(),
+            )
+        })?;
+    let checksums = parse_checksums_document(&profile.version, json)?;
+    if checksums.batches.len() != footer.record_blocks.len() {
+        return Err(super::profile::malformed(
+            &profile.version,
+            "checksums document does not cover every record batch",
+        ));
+    }
+    let mut row_count = 0_u64;
+    for block in &footer.record_blocks {
+        row_count = row_count
+            .checked_add(read_batch_header(&mut reader, *block)?.rows)
+            .ok_or_else(|| invalid("row count overflows"))?;
+    }
+    super::write::signature_from_parts(
+        row_count,
+        footer
+            .schema
+            .fields()
+            .iter()
+            .zip(&profile.fields)
+            .map(|(field, document)| (field.name().as_str(), field.data_type(), document.as_ref())),
+        footer.schema.fields().len(),
+        &profile.dataset,
+        &checksums,
+    )
+}
+
 pub fn summarize_arrow_file(path: impl AsRef<Path>) -> Result<ArrowFileSummary, ArrowProfileError> {
     let path = path.as_ref();
     let mut reader = BufReader::new(File::open(path)?);

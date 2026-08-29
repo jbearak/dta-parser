@@ -149,6 +149,13 @@
 #'   widening when a workload requires a contiguous double data pointer.
 #'   Character-column ALTREP is unaffected.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
+#' @param datasig Whether to record the file's [datasig()] signature in the
+#'   result's `datasig` attribute, as a load-time record of what the file on
+#'   disk signed as; it is never updated afterwards, so it is not a claim
+#'   about the object's current content. Computing it costs one hash pass
+#'   over the decoded columns (no second read of the file) and equals
+#'   `datasig(file)`. Requires reading the complete file: incompatible with
+#'   `col_select`, `skip`, and `n_max`.
 #' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
 #'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
@@ -159,12 +166,29 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      threads = getOption("dtatools.threads", 0L),
                      use_numeric_altrep = getOption(
                          "dtatools.numeric_altrep", TRUE
-                     )) {
-    .read_dta_impl(
-        file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
+                     ),
+                     datasig = FALSE) {
+    selection <- rlang::enquo(col_select)
+    datasig <- .normalize_arrow_flag(datasig, "datasig")
+    if (datasig) .validate_datasig_read(selection, skip, n_max)
+    result <- .read_dta_impl(
+        file, encoding, selection, skip, n_max, .name_repair,
         materialization = "direct", threads = threads,
         use_numeric_altrep = use_numeric_altrep
     )
+    if (datasig) result <- .attach_datasig(result, threads)
+    result
+}
+
+.validate_datasig_read <- function(selection, skip, n_max) {
+    row_window <- .normalize_row_window(skip, n_max)
+    if (!rlang::quo_is_null(selection) || row_window$skip > 0 ||
+        is.finite(row_window$n_max)) {
+        stop(paste(
+            "`datasig` requires reading the complete file;",
+            "drop `col_select`, `skip`, and `n_max`"
+        ), call. = FALSE)
+    }
 }
 
 # Internal A/B baseline. This deliberately retains the former two-stage path

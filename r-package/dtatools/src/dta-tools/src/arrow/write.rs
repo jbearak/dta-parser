@@ -371,23 +371,49 @@ pub fn dataset_signature(
     }
     let checksums = assemble_checksums(slots, batch_count, column_count, &dictionary_columns)?;
 
+    signature_from_parts(
+        row_count as u64,
+        dataset.columns.iter().map(|column| {
+            (
+                column.name.as_str(),
+                column.array.data_type(),
+                column.field.as_ref(),
+            )
+        }),
+        column_count,
+        &dataset.dataset,
+        &checksums,
+    )
+}
+
+/// The canonical signature payload and final digest. Shared by
+/// [`dataset_signature`], which recomputes the checksums from in-memory
+/// arrays, and the read side's stored-footer derivation, so both produce
+/// identical signatures for identical logical datasets.
+pub(crate) fn signature_from_parts<'a>(
+    row_count: u64,
+    columns: impl Iterator<Item = (&'a str, &'a DataType, Option<&'a ArrowFieldDocument>)>,
+    column_count: usize,
+    dataset: &DatasetDocument,
+    checksums: &ChecksumsDocument,
+) -> Result<String, ArrowProfileError> {
     let mut payload = String::new();
     payload.push_str("dtatools-datasig:");
     payload.push_str(DATASIG_PAYLOAD_VERSION);
     payload.push_str(&format!(
         "\nrows:{row_count}\ncolumns:{column_count}\ndataset:"
     ));
-    payload.push_str(&serialize_json(&dataset.dataset)?);
-    for column in &dataset.columns {
+    payload.push_str(&serialize_json(&dataset)?);
+    for (name, data_type, field) in columns {
         payload.push_str("\nname:");
-        payload.push_str(&serialize_json(&column.name)?);
-        payload.push_str(&format!("\ntype:{}\nfield:", column.array.data_type()));
-        if let Some(document) = &column.field {
+        payload.push_str(&serialize_json(&name)?);
+        payload.push_str(&format!("\ntype:{data_type}\nfield:"));
+        if let Some(document) = field {
             payload.push_str(&serialize_json(document)?);
         }
     }
     payload.push_str("\nchecksums:");
-    payload.push_str(&serialize_json(&checksums)?);
+    payload.push_str(&serialize_json(checksums)?);
     let digest = xxh64(payload.as_bytes());
     Ok(format!("{row_count}:{column_count}:{digest:016x}"))
 }

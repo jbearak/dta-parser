@@ -13,7 +13,8 @@ read_arrow(
   profile = TRUE,
   .name_repair = "unique",
   use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
-  threads = getOption("dtatools.threads", 0L)
+  threads = getOption("dtatools.threads", 0L),
+  datasig = FALSE
 )
 }
 \arguments{
@@ -51,6 +52,17 @@ columns should retain their compact Stata storage through ALTREP. Set to
 verification, and column conversion. \code{0} (the default) chooses
 automatically based on the input size and machine; \code{1} disables
 parallelism.}
+
+\item{datasig}{Whether to record the file's \code{\link[=datasig]{datasig()}} signature in the
+result's \code{datasig} attribute. The signature is derived from the file's
+stored footer checksums and schema documents without rehashing any data,
+so it costs almost nothing and covers the complete file even under
+\code{col_select}, \code{skip}, or \code{n_max} — it is a record of what the whole file
+on disk signs as, not of the projection loaded, and it is never updated
+afterwards. Because it restates what the file declares, pair it with
+\code{verify = TRUE} (and a full read) when the checksums themselves must be
+validated against the stored bytes. Requires a file written with
+checksums; only file paths are supported.}
 }
 \value{
 A tibble.
