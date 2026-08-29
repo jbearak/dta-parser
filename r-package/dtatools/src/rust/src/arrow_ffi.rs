@@ -77,6 +77,7 @@ pub struct RArrowColumnDescriptor {
     label_values: *const f64,
     label_texts: Sexp,
     label_count: usize,
+    has_value_labels: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.
     dictstring: *const c_void,
@@ -308,6 +309,9 @@ unsafe fn zero_copy_array<T: ArrowPrimitiveType>(
     values: *const T::Native,
     row_count: usize,
 ) -> ArrayRef {
+    if row_count == 0 {
+        return Arc::new(PrimitiveArray::<T>::from_iter_values(std::iter::empty()));
+    }
     let Some(bytes) = std::ptr::NonNull::new(values.cast_mut().cast::<u8>()) else {
         return Arc::new(PrimitiveArray::<T>::from_iter_values(std::iter::empty()));
     };
@@ -378,9 +382,9 @@ fn encode_profiled_column(
         .try_reserve_exact(values.len())
         .map_err(|_| "could not allocate a profiled column".to_owned())?;
     for (&value, &code) in values.iter().zip(codes) {
-        let source = match missing_from_code(code)? {
-            Some(tag) => DtaWriteNumericValue::Missing(tag),
-            None => {
+        let source = match missing_from_code(code) {
+            Ok(Some(tag)) => DtaWriteNumericValue::Missing(tag),
+            Ok(None) => {
                 let encoded_value = write_numeric_value(value, shift, scale);
                 if dta_write_numeric_value_is_representable(&dta_type, encoded_value) {
                     DtaWriteNumericValue::Value(encoded_value)
@@ -388,6 +392,10 @@ fn encode_profiled_column(
                     replacements += 1;
                     DtaWriteNumericValue::Missing(MissingTag::System)
                 }
+            }
+            Err(_) => {
+                replacements += 1;
+                DtaWriteNumericValue::Missing(MissingTag::System)
             }
         };
         encoded.push(encode_numeric(&dta_type, source));
@@ -527,8 +535,14 @@ unsafe fn value_label_table(
     descriptor: &RArrowColumnDescriptor,
     name: &str,
 ) -> Result<Option<ValueLabelTable>, String> {
-    if descriptor.label_count == 0 {
+    if descriptor.has_value_labels == 0 {
         return Ok(None);
+    }
+    if descriptor.label_count == 0 {
+        return Ok(Some(ValueLabelTable {
+            name: name.to_owned(),
+            entries: Vec::new(),
+        }));
     }
     if descriptor.label_values.is_null() {
         return Err("value-label codes pointer is null".to_owned());
@@ -1514,6 +1528,9 @@ fn classify_read_column(
             _ => ColumnShape::ProfiledEager { storage, temporal },
         });
     }
+    if column.data_type == DataType::Int32 && int32_contains_r_na_sentinel(column)? {
+        return Ok(ColumnShape::SemanticDouble);
+    }
     let class = attributes.class();
     let payload = attributes.document.and_then(|document| document.missing)
         == Some(ArrowMissingEncoding::Payload);
@@ -1560,6 +1577,20 @@ fn classify_read_column(
             ))
         }
     })
+}
+
+fn int32_contains_r_na_sentinel(column: &ArrowReadColumn) -> Result<bool, String> {
+    for chunk in &column.chunks {
+        let values = chunk
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .ok_or_else(|| chunk_error(&column.name))?;
+        if (0..values.len()).any(|index| !values.is_null(index) && values.value(index) == i32::MIN)
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// The pure conversion for one column: raw output pointers plus the
@@ -1853,6 +1884,14 @@ unsafe fn fill_semantic_double(column: &ArrowReadColumn, output: *mut f64) -> Re
             Ok(())
         }),
         DataType::Float32 => for_each_value::<Float32Array>(column, |row, values, index| {
+            *output.add(row) = if values.is_null(index) {
+                R_NaReal
+            } else {
+                f64::from(values.value(index))
+            };
+            Ok(())
+        }),
+        DataType::Int32 => for_each_value::<Int32Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
@@ -2378,14 +2417,17 @@ unsafe fn apply_difftime_attributes(
     Ok(vector)
 }
 
-unsafe fn labelled_double_attributes(
+unsafe fn value_label_attributes(
     vector: Sexp,
     table: &ValueLabelTable,
+    add_haven_class: bool,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     let labels = label_attribute(table, guard)?;
     set_attr(vector, "labels", labels)?;
-    set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
+    if add_haven_class {
+        set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
+    }
     Ok(())
 }
 
@@ -2402,7 +2444,6 @@ unsafe fn apply_double_class(
             let tz = attributes
                 .semantics()
                 .and_then(|semantics| semantics.tz.as_deref())
-                .filter(|tz| !tz.is_empty())
                 .unwrap_or("UTC");
             let timezone = scalar_string(tz, guard)?;
             set_attr(vector, "tzone", timezone)?;
@@ -2413,7 +2454,12 @@ unsafe fn apply_double_class(
         _ => {}
     }
     if let Some(table) = attributes.value_label_table() {
-        labelled_double_attributes(vector, &table, guard)?;
+        value_label_attributes(
+            vector,
+            &table,
+            attributes.class() == Some("haven_labelled"),
+            guard,
+        )?;
     }
     Ok(())
 }
@@ -2501,7 +2547,6 @@ unsafe fn finalize_read_column(
             let tz = attributes
                 .semantics()
                 .and_then(|semantics| semantics.tz.as_deref())
-                .filter(|tz| !tz.is_empty())
                 .or(type_tz)
                 .unwrap_or("UTC");
             let timezone = scalar_string(tz, guard)?;
@@ -2738,4 +2783,59 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
         SET_VECTOR_ELT(result, 1, type_vector);
         Ok(result)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_zero_copy_arrays_ignore_ffi_sentinel_alignment() {
+        let sentinel = std::ptr::NonNull::<u8>::dangling().as_ptr().cast::<i32>();
+        let array = unsafe { zero_copy_array::<Int32Type>(sentinel, 0) };
+        assert_eq!(array.len(), 0);
+        assert_eq!(array.data_type(), &DataType::Int32);
+    }
+
+    #[test]
+    fn invalid_profiled_nans_are_counted_as_replacements() {
+        let values = [f64::NAN];
+        let codes = [256];
+        let (array, replacements) = encode_profiled_column(
+            "x",
+            StataStorage::Double,
+            TemporalKind::None,
+            &values,
+            &codes,
+        )
+        .expect("invalid NaN is representable as a lossy replacement");
+        assert_eq!(replacements, 1);
+        let values = array
+            .as_any()
+            .downcast_ref::<Float64Array>()
+            .expect("double storage");
+        assert_eq!(
+            classify_double_missing_bits(values.value(0).to_bits()),
+            Some(MissingTag::System)
+        );
+    }
+
+    #[test]
+    fn observed_int32_minimum_is_widened_to_double() {
+        let column = ArrowReadColumn {
+            name: "x".to_owned(),
+            data_type: DataType::Int32,
+            nullable: false,
+            field: None,
+            chunks: vec![Arc::new(Int32Array::from(vec![i32::MIN, 7]))],
+        };
+        let attributes = ColumnAttributes {
+            document: None,
+            dataset: None,
+        };
+        assert!(matches!(
+            classify_read_column(&column, &attributes, true).expect("classification"),
+            ColumnShape::SemanticDouble
+        ));
+    }
 }

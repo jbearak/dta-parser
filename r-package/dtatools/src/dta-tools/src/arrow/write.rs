@@ -290,7 +290,6 @@ pub fn dataset_signature(
     }
 
     let column_count = dataset.columns.len();
-    let batch_count = row_count.div_ceil(rows_per_batch);
     let dictionary_columns: Vec<usize> = dataset
         .columns
         .iter()
@@ -298,6 +297,11 @@ pub fn dataset_signature(
         .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
         .map(|(index, _)| index)
         .collect();
+    let batch_count = if row_count == 0 && !dictionary_columns.is_empty() {
+        1
+    } else {
+        row_count.div_ceil(rows_per_batch)
+    };
     let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
     let cells = (row_count as u64).saturating_mul(column_count as u64);
     let threads = hash_thread_count(threads, tasks.len(), cells);
@@ -537,7 +541,6 @@ pub fn save_arrow_file_to<W: Write>(
         None
     } else {
         let column_count = dataset.columns.len();
-        let batch_count = row_count.div_ceil(rows_per_batch);
         let dictionary_columns: Vec<usize> = dataset
             .columns
             .iter()
@@ -545,6 +548,11 @@ pub fn save_arrow_file_to<W: Write>(
             .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
             .map(|(index, _)| index)
             .collect();
+        let batch_count = if row_count == 0 && !dictionary_columns.is_empty() {
+            1
+        } else {
+            row_count.div_ceil(rows_per_batch)
+        };
         let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
         let cells = (row_count as u64).saturating_mul(column_count as u64);
         let threads = hash_thread_count(threads, tasks.len(), cells);
@@ -653,6 +661,27 @@ fn write_batches<W: Write>(
     rows_per_batch: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
+    if row_count == 0
+        && dataset
+            .columns
+            .iter()
+            .any(|column| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
+    {
+        if interrupt() {
+            return Err(ArrowProfileError::Interrupted);
+        }
+        let batch_columns = dataset
+            .columns
+            .iter()
+            .map(|column| column.array.slice(0, 0))
+            .collect();
+        let batch = RecordBatch::try_new(schema.clone(), batch_columns)
+            .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
+        writer
+            .write(&batch)
+            .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
+        return Ok(());
+    }
     let mut row_start = 0_usize;
     while row_start < row_count {
         if interrupt() {

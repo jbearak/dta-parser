@@ -8,7 +8,7 @@ use arrow_array::{
     Int32Array, Int8Array, RecordBatch, StringArray,
 };
 use arrow_ipc::reader::FileReader;
-use arrow_ipc::writer::FileWriter;
+use arrow_ipc::writer::{DictionaryHandling, FileWriter, IpcWriteOptions};
 use arrow_schema::{DataType, Field, Schema};
 
 use dta_tools::arrow::{
@@ -658,17 +658,28 @@ fn unsupported_columns_error_naming_the_column() {
 #[test]
 fn empty_datasets_round_trip() {
     let values: ArrayRef = Arc::new(Int32Array::from(Vec::<i32>::new()));
+    let keys = Int32Array::from(Vec::<i32>::new());
+    let levels = StringArray::from(vec!["unused one", "unused two"]);
+    let factor: ArrayRef =
+        Arc::new(DictionaryArray::try_new(keys, Arc::new(levels)).expect("valid dictionary"));
     let dataset = ArrowWriteDataset {
         dataset: DatasetDocument {
             version: 0,
             label: "empty".to_owned(),
             ..DatasetDocument::default()
         },
-        columns: vec![ArrowWriteColumn {
-            name: "x".to_owned(),
-            field: None,
-            array: values,
-        }],
+        columns: vec![
+            ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: values,
+            },
+            ArrowWriteColumn {
+                name: "f".to_owned(),
+                field: Some(field_document(None, None, "factor")),
+                array: factor,
+            },
+        ],
     };
     let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
     let result = read_arrow_file_from(
@@ -679,10 +690,60 @@ fn empty_datasets_round_trip() {
     .expect("empty file reads");
     assert_eq!(result.row_count, 0);
     assert_eq!(result.columns[0].data_type, DataType::Int32);
+    let factor = result.columns[1].chunks[0]
+        .as_any()
+        .downcast_ref::<DictionaryArray<arrow_array::types::Int32Type>>()
+        .expect("factor stays dictionary encoded");
+    assert_eq!(factor.values().len(), 2);
     assert_eq!(
         result.dataset.expect("dataset document survives").label,
         "empty"
     );
+}
+
+#[test]
+fn delta_dictionaries_are_accumulated() {
+    let data_type = DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8));
+    let schema = Arc::new(Schema::new(vec![Field::new("f", data_type, false)]));
+    let first: ArrayRef = Arc::new(
+        DictionaryArray::try_new(
+            Int32Array::from(vec![0]),
+            Arc::new(StringArray::from(vec!["a"])),
+        )
+        .expect("first dictionary"),
+    );
+    let second: ArrayRef = Arc::new(
+        DictionaryArray::try_new(
+            Int32Array::from(vec![1, 0]),
+            Arc::new(StringArray::from(vec!["a", "b"])),
+        )
+        .expect("grown dictionary"),
+    );
+    let first = RecordBatch::try_new(schema.clone(), vec![first]).expect("first batch");
+    let second = RecordBatch::try_new(schema.clone(), vec![second]).expect("second batch");
+    let options = IpcWriteOptions::default().with_dictionary_handling(DictionaryHandling::Delta);
+    let mut bytes = Vec::new();
+    let mut writer =
+        FileWriter::try_new_with_options(&mut bytes, &schema, options).expect("delta writer opens");
+    writer.write(&first).expect("first batch writes");
+    writer.write(&second).expect("second batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let result = read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &read_all_options(),
+        &mut no_interrupt(),
+    )
+    .expect("delta dictionary file reads");
+    assert_eq!(result.columns[0].chunks.len(), 2);
+    for chunk in &result.columns[0].chunks {
+        let dictionary = chunk
+            .as_any()
+            .downcast_ref::<DictionaryArray<arrow_array::types::Int32Type>>()
+            .expect("dictionary chunk");
+        assert_eq!(dictionary.values().len(), 2);
+    }
 }
 
 #[test]

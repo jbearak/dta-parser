@@ -181,6 +181,7 @@ test_that("readers record the disk signature as a datasig attribute", {
     )
 
     save_arrow(reference, bare_path, checksums = FALSE)
+    expect_identical(datasig(bare_path), signature)
     expect_error(
         read_arrow(bare_path, verify = FALSE, datasig = TRUE),
         "without checksums"

@@ -218,6 +218,7 @@ dependencies = [
  "arrow-data",
  "arrow-ipc",
  "arrow-schema",
+ "arrow-select",
  "encoding_rs",
  "lz4_flex",
  "serde",

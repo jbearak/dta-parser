@@ -222,8 +222,7 @@ save_arrow <- function(data, path,
     )
     format <- .prepare_write_format(column, name, default_format, category)
     values <- column
-    if (identical(category, "datetime") && adjust_tz &&
-        !.is_unmaterialized_numeric_altrep(column)) {
+    if (identical(category, "datetime") && adjust_tz) {
         timezone <- .write_datetime_timezone(column)
         if (!(timezone %in% c("UTC", "GMT"))) {
             values <- .adjust_datetime_write_values(
@@ -295,7 +294,7 @@ save_arrow <- function(data, path,
     list(
         enc2utf8(name), .arrow_write_kinds[[kind]], values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[1L]], value_labels[[2L]]
+        value_labels[[1L]], value_labels[[2L]], value_labels[[3L]]
     )
 }
 

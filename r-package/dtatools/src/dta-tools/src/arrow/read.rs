@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
 use arrow_array::{make_array, ArrayRef};
-use arrow_buffer::Buffer;
+use arrow_buffer::{Buffer, MutableBuffer};
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
 use arrow_schema::{DataType, Field, Schema};
@@ -444,11 +444,11 @@ fn read_ipc_buffer<R: Read + Seek>(
                 .map_err(|_| invalid("could not allocate an Arrow buffer"))?;
             bytes.resize(expected_length, 0);
             read_exact_at(reader, read_start, &mut bytes)?;
-            Ok(Buffer::from(bytes))
+            Ok(buffer_from_bytes(bytes))
         }
         Some(codec) => {
             if stored_length == 0 && expected_length == 0 {
-                return Ok(Buffer::from(Vec::<u8>::new()));
+                return Ok(buffer_from_bytes(Vec::new()));
             }
             let mut raw = Vec::new();
             raw.try_reserve_exact(stored_length)
@@ -464,7 +464,7 @@ fn read_ipc_buffer<R: Read + Seek>(
                 if payload.len() != expected_length {
                     return Err(invalid("uncompressed buffer length mismatch"));
                 }
-                return Ok(Buffer::from(payload.to_vec()));
+                return Ok(buffer_from_bytes(payload.to_vec()));
             }
             let declared =
                 usize::try_from(declared).map_err(|_| invalid("bad compressed length"))?;
@@ -496,8 +496,16 @@ fn read_ipc_buffer<R: Read + Seek>(
             if decompressed.len() != declared {
                 return Err(invalid("decompressed buffer length mismatch"));
             }
-            Ok(Buffer::from(decompressed))
+            Ok(buffer_from_bytes(decompressed))
         }
+    }
+}
+
+fn buffer_from_bytes(bytes: Vec<u8>) -> Buffer {
+    if bytes.is_empty() {
+        Buffer::from(MutableBuffer::new(0))
+    } else {
+        Buffer::from(bytes)
     }
 }
 
@@ -690,9 +698,7 @@ fn read_dictionaries<R: Read + Seek>(
         let batch = message
             .header_as_dictionary_batch()
             .ok_or_else(|| invalid("bad dictionary batch"))?;
-        if batch.isDelta() {
-            return Err(invalid("delta dictionaries are not supported"));
-        }
+        let is_delta = batch.isDelta();
         let id = batch.id();
         if !needed_ids.contains(&id) {
             continue;
@@ -722,6 +728,16 @@ fn read_dictionaries<R: Read + Seek>(
             value_type,
             None,
         )?;
+        let values = if is_delta {
+            let previous = dictionaries
+                .get(&id)
+                .ok_or_else(|| invalid("delta dictionary has no preceding dictionary"))?;
+            let previous = make_array(previous.clone());
+            arrow_select::concat::concat(&[previous.as_ref(), values.as_ref()])
+                .map_err(|error| invalid(format!("invalid delta dictionary: {error}")))?
+        } else {
+            values
+        };
         dictionaries.insert(id, values.to_data());
     }
     for id in needed_ids {
@@ -846,6 +862,16 @@ fn prepare_read<R: Read + Seek>(
         seen_rows = seen_rows
             .checked_add(header.rows)
             .ok_or_else(|| invalid("row count overflow"))?;
+        if header.rows == 0 {
+            plans.push(BlockPlan {
+                batch_index,
+                block: *block,
+                header,
+                slice_offset: 0,
+                slice_length: 0,
+            });
+            continue;
+        }
         // The requested window is [row_start, row_start + limit).
         let select_start = options.row_start.max(batch_start);
         let select_end = seen_rows.min(options.row_start.saturating_add(limit));
@@ -903,7 +929,15 @@ fn decode_planned_column<R: Read + Seek>(
     }
     if let Some(profile) = context.profile {
         if let Some(checksums) = &profile.checksums {
-            let expected = checksums.batches[plan.batch_index]
+            let expected = checksums
+                .batches
+                .get(plan.batch_index)
+                .ok_or_else(|| {
+                    super::profile::malformed(
+                        &profile.version,
+                        "checksums document is missing a record batch",
+                    )
+                })?
                 .columns
                 .get(field_index)
                 .ok_or_else(|| {
@@ -1263,6 +1297,9 @@ fn r_type_for(field: &Field, document: Option<&ArrowFieldDocument>) -> &'static 
             "raw" => "raw",
             _ => "double",
         };
+    }
+    if document.and_then(|document| document.storage).is_some() {
+        return "double";
     }
     match field.data_type() {
         DataType::Boolean => "logical",

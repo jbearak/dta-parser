@@ -45,6 +45,29 @@ test_that("standard R columns round-trip with full fidelity", {
     expect_identical(typeof(actual$b), "raw")
 })
 
+test_that("empty data and default POSIXct timezones round-trip", {
+    empty <- tibble::tibble(
+        n = integer(),
+        x = double(),
+        f = factor(character(), levels = c("used later", "also unused"))
+    )
+    empty_path <- arrow_tempfile()
+    save_arrow(empty, empty_path)
+    expect_identical(read_arrow(empty_path), empty)
+    expect_identical(datasig(empty_path), datasig(empty))
+
+    local_time <- structure(
+        1577880000,
+        class = c("POSIXct", "POSIXt"),
+        tzone = ""
+    )
+    local <- tibble::tibble(when = local_time)
+    local_path <- arrow_tempfile()
+    save_arrow(local, local_path)
+    expect_identical(read_arrow(local_path), local)
+    expect_identical(datasig(local_path), datasig(local))
+})
+
 test_that("compression variants round-trip identically", {
     data <- standard_arrow_fixture()
     for (compression in c("uncompressed", "lz4", "zstd")) {
@@ -242,6 +265,52 @@ test_that("compact ALTREP columns are written without materializing", {
     expect_identical(stata_storage_type(actual$v), "int")
 })
 
+test_that("compact datetime timezone adjustment matches eager writing", {
+    raw <- c(1, 999, 1001)
+    observed <- raw / 1000 - 315619200
+    datetimes <- dtatools:::.construct_stata_numeric(
+        observed, NULL, "long", temporal = 2L
+    )
+    prototype <- structure(
+        double(),
+        format.stata = "%tc",
+        tzone = "UTC",
+        class = c("stata_temporal", "stata_datetime", "POSIXct", "POSIXt")
+    )
+    datetimes <- dtatools:::.attach_stata_temporal(
+        datetimes, prototype, "long"
+    )
+    source <- structure(
+        list(dt = datetimes),
+        class = "data.frame",
+        row.names = .set_row_names(length(datetimes))
+    )
+    dta_path <- tempfile(fileext = ".dta")
+    compact_path <- arrow_tempfile()
+    eager_path <- arrow_tempfile()
+    on.exit(unlink(dta_path), add = TRUE)
+    save_dta(source, dta_path)
+
+    compact <- read_dta(dta_path)
+    attr(compact$dt, "tzone") <- "America/New_York"
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$dt))
+    eager <- compact
+    eager$dt <- dtatools:::.force_altrep_materialization(eager$dt)
+
+    expect_warning(
+        save_arrow(compact, compact_path, adjust_tz = TRUE),
+        class = "dtatools_write_attribute_drop_warning"
+    )
+    expect_warning(
+        save_arrow(eager, eager_path, adjust_tz = TRUE),
+        class = "dtatools_write_attribute_drop_warning"
+    )
+    expect_identical(
+        readBin(compact_path, "raw", file.size(compact_path)),
+        readBin(eager_path, "raw", file.size(eager_path))
+    )
+})
+
 test_that("a DTA fixture survives a semantic Arrow round-trip", {
     data <- read_dta(fixture("auto_v118.dta"))
     path <- arrow_tempfile()
@@ -286,6 +355,85 @@ test_that("haven labelled doubles round-trip with their labels", {
     expect_identical(var_label(actual$status), "interview status")
     expect_identical(missing_tag(actual$status), missing_tag(data$status))
     expect_s3_class(actual$status, "haven_labelled")
+})
+
+test_that("temporal classes and empty value-label tables round-trip", {
+    day <- as.Date(c("2020-01-01", NA))
+    attr(day, "labels") <- c(new_year = as.double(day[[1L]]))
+    timestamp <- as.POSIXct(c("2020-01-01 12:00:00", NA), tz = "UTC")
+    attr(timestamp, "labels") <- c(noon = as.double(timestamp[[1L]]))
+    elapsed <- as.difftime(c(1, NA), units = "hours")
+    attr(elapsed, "labels") <- c(one_hour = 1)
+    empty_labels <- setNames(double(), character())
+    labelled <- labelled_for_test(c(1, 2), labels = empty_labels)
+    stata <- stata_long(c(1, 2))
+    attr(stata, "labels") <- empty_labels
+    data <- tibble::tibble(
+        day = day,
+        timestamp = timestamp,
+        elapsed = elapsed,
+        labelled = labelled,
+        stata = stata
+    )
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    actual <- read_arrow(path)
+    expect_s3_class(actual$day, "Date")
+    expect_s3_class(actual$timestamp, "POSIXct")
+    expect_s3_class(actual$elapsed, "difftime")
+    for (name in names(data)) {
+        expect_identical(
+            attr(actual[[name]], "labels", exact = TRUE),
+            attr(data[[name]], "labels", exact = TRUE),
+            info = name
+        )
+    }
+    expect_s3_class(actual$labelled, "haven_labelled")
+    expect_s3_class(actual$stata, "haven_labelled")
+    expect_identical(datasig(actual), datasig(data))
+})
+
+test_that("profiled storage uses its materialized R type for selection", {
+    data <- tibble::tibble(
+        b = stata_byte(1), i = stata_int(1), l = stata_long(1),
+        f = stata_float(1), d = stata_double(1),
+        ordinary_integer = 1L, ordinary_double = 1
+    )
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    expect_identical(
+        names(read_arrow(path, col_select = tidyselect::where(is.integer))),
+        "ordinary_integer"
+    )
+    expect_identical(
+        names(read_arrow(path, col_select = tidyselect::where(is.double))),
+        c("b", "i", "l", "f", "d", "ordinary_double")
+    )
+})
+
+test_that("invalid NaNs in Stata storage become system missing", {
+    values <- c(1, NaN, tagged_nan_for_test("?"))
+    attr(values, "stata.storage") <- "double"
+    class(values) <- dtatools:::.stata_storage_class("double")
+    data <- tibble::tibble(x = values)
+    path <- arrow_tempfile()
+
+    expect_warning(
+        save_arrow(data, path),
+        "Converted unrepresentable numeric values to Stata system missing in `x` (2)",
+        fixed = TRUE,
+        class = "dtatools_write_numeric_replacement_warning"
+    )
+    expect_identical(
+        missing_tag(read_arrow(path)$x), rep(NA_character_, 3L)
+    )
+    expect_error(
+        datasig(data),
+        "cannot compute datasig after lossy numeric replacements in `x` (2)",
+        fixed = TRUE
+    )
 })
 
 test_that("value labels on profiled columns round-trip", {
