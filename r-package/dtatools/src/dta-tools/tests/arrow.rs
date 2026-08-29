@@ -13,10 +13,10 @@ use arrow_schema::{DataType, Field, Schema};
 
 use dta_tools::arrow::{
     arrow_stored_signature, dataset_signature, read_arrow_file, read_arrow_file_from,
-    save_arrow_file_to, ArrowCompression, ArrowFieldDocument, ArrowMissingEncoding,
-    ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset,
-    DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION_KEY,
-    ARROW_ROWS_PER_BATCH,
+    save_arrow_file, save_arrow_file_to, ArrowCompression, ArrowFieldDocument,
+    ArrowMissingEncoding, ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn,
+    ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_FIELD_KEY,
+    ARROW_PROFILE_VERSION_KEY, ARROW_ROWS_PER_BATCH,
 };
 use dta_tools::{ValueLabelEntry, ValueLabelTable};
 
@@ -797,18 +797,21 @@ fn profiled_files_without_checksums_are_malformed_when_verifying() {
 #[test]
 fn dangling_value_label_references_are_malformed() {
     let values: ArrayRef = Arc::new(Float64Array::from(vec![1.0, 2.0]));
-    let dataset = ArrowWriteDataset {
-        dataset: DatasetDocument::default(),
-        columns: vec![ArrowWriteColumn {
-            name: "status".to_owned(),
-            field: Some(ArrowFieldDocument {
-                value_labels: Some("missing_table".to_owned()),
-                ..ArrowFieldDocument::default()
-            }),
-            array: values,
-        }],
-    };
-    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    let mut field = Field::new("status", DataType::Float64, true);
+    field.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"value_labels":"missing_table"}"#.to_owned(),
+    )]));
+    let schema = Arc::new(Schema::new(vec![field]).with_metadata(HashMap::from([(
+        ARROW_PROFILE_VERSION_KEY.to_owned(),
+        "0".to_owned(),
+    )])));
+    let batch = RecordBatch::try_new(schema.clone(), vec![values]).expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
 
     let error = read_arrow_file_from(
         &mut Cursor::new(&bytes),
@@ -823,6 +826,134 @@ fn dangling_value_label_references_are_malformed() {
         ),
         other => panic!("expected a malformed-profile error, got {other}"),
     }
+}
+
+#[test]
+fn writer_rejects_dangling_value_label_references_before_output() {
+    let values: ArrayRef = Arc::new(Float64Array::from(vec![1.0, 2.0]));
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "status".to_owned(),
+            field: Some(ArrowFieldDocument {
+                value_labels: Some("missing_table".to_owned()),
+                ..ArrowFieldDocument::default()
+            }),
+            array: values,
+        }],
+    };
+    let mut bytes = Vec::new();
+    let error = save_arrow_file_to(
+        &mut bytes,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        ARROW_ROWS_PER_BATCH,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("the writer rejects a dangling value-label reference");
+    match error {
+        ArrowProfileError::MalformedProfile { detail, .. } => assert_eq!(
+            detail,
+            "field `status` refers to missing value-label table `missing_table`"
+        ),
+        other => panic!("expected a malformed-profile error, got {other}"),
+    }
+    assert!(bytes.is_empty());
+}
+
+#[test]
+fn writer_rejects_incompatible_field_documents_before_output() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "status".to_owned(),
+            field: Some(ArrowFieldDocument {
+                storage: Some(StataStorage::Byte),
+                missing: Some(ArrowMissingEncoding::Sentinel),
+                ..ArrowFieldDocument::default()
+            }),
+            array: Arc::new(Int32Array::from(vec![1, 2])),
+        }],
+    };
+    let mut bytes = Vec::new();
+    let error = save_arrow_file_to(
+        &mut bytes,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        ARROW_ROWS_PER_BATCH,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("the writer rejects incompatible field metadata");
+    assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+    assert!(error.to_string().contains("field `status`"));
+    assert!(bytes.is_empty());
+}
+
+#[test]
+fn writer_rejects_unsupported_dataset_documents_before_output() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument {
+            version: 99,
+            ..DatasetDocument::default()
+        },
+        columns: Vec::new(),
+    };
+    let mut bytes = Vec::new();
+    let error = save_arrow_file_to(
+        &mut bytes,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        ARROW_ROWS_PER_BATCH,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("the writer rejects unsupported dataset metadata");
+    assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+    assert!(error.to_string().contains("dataset document version 99"));
+    assert!(bytes.is_empty());
+}
+
+#[test]
+fn path_writer_preserves_an_existing_file_when_metadata_is_invalid() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "status".to_owned(),
+            field: Some(ArrowFieldDocument {
+                storage: Some(StataStorage::Byte),
+                missing: Some(ArrowMissingEncoding::Sentinel),
+                ..ArrowFieldDocument::default()
+            }),
+            array: Arc::new(Int32Array::from(vec![1, 2])),
+        }],
+    };
+    let path = std::env::temp_dir().join(format!(
+        "dtatools-invalid-arrow-writer-{}.arrow",
+        std::process::id()
+    ));
+    std::fs::write(&path, b"existing contents").expect("write existing file");
+
+    let error = save_arrow_file(
+        &path,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        ARROW_ROWS_PER_BATCH,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("the path writer validates before replacing its target");
+    assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+    assert_eq!(
+        std::fs::read(&path).expect("read existing file"),
+        b"existing contents"
+    );
+    std::fs::remove_file(path).expect("remove test file");
 }
 
 #[test]

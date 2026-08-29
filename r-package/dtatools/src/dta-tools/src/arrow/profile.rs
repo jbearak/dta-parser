@@ -203,6 +203,14 @@ pub(crate) fn parse_dataset_document(
     };
     let document: DatasetDocument = serde_json::from_str(json)
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
+    validate_dataset_document(version, &document)?;
+    Ok(document)
+}
+
+pub(crate) fn validate_dataset_document(
+    version: &str,
+    document: &DatasetDocument,
+) -> Result<(), ArrowProfileError> {
     if document.version != DOCUMENT_VERSION {
         return Err(malformed(
             version,
@@ -219,9 +227,17 @@ pub(crate) fn parse_dataset_document(
                     ),
                 ));
             }
+            if entry.tag == Some(MissingTag::System) {
+                return Err(malformed(
+                    version,
+                    format!(
+                        "value-label table `{table}` entry {index} uses system missing `.`; only nonmissing values and extended missing tags `.a` through `.z` are valid"
+                    ),
+                ));
+            }
         }
     }
-    Ok(document)
+    Ok(())
 }
 
 pub(crate) fn parse_field_document(
@@ -235,16 +251,6 @@ pub(crate) fn parse_field_document(
             format!("invalid field document on `{}`: {error}", field.name()),
         )
     })?;
-    if document.version != DOCUMENT_VERSION {
-        return Err(malformed(
-            version,
-            format!(
-                "field document version {} on `{}`",
-                document.version,
-                field.name()
-            ),
-        ));
-    }
     validate_field_document(version, field, &document)?;
     Ok(document)
 }
@@ -384,11 +390,21 @@ fn supports_value_labels(data_type: &DataType) -> bool {
         )
 }
 
-fn validate_field_document(
+pub(crate) fn validate_field_document(
     version: &str,
     field: &Field,
     document: &ArrowFieldDocument,
 ) -> Result<(), ArrowProfileError> {
+    if document.version != DOCUMENT_VERSION {
+        return Err(malformed(
+            version,
+            format!(
+                "field document version {} on `{}`",
+                document.version,
+                field.name()
+            ),
+        ));
+    }
     if let Some(storage) = document.storage {
         let expected_type = storage_type(storage);
         if field.data_type() != &expected_type {
@@ -493,6 +509,27 @@ fn validate_field_document(
     Ok(())
 }
 
+pub(crate) fn validate_value_label_reference(
+    version: &str,
+    field: &Field,
+    document: &ArrowFieldDocument,
+    dataset: &DatasetDocument,
+) -> Result<(), ArrowProfileError> {
+    let Some(table) = document.value_labels.as_deref() else {
+        return Ok(());
+    };
+    if dataset.value_labels.contains_key(table) {
+        return Ok(());
+    }
+    Err(malformed(
+        version,
+        format!(
+            "field `{}` refers to missing value-label table `{table}`",
+            field.name()
+        ),
+    ))
+}
+
 pub(crate) fn parse_checksums_document(
     version: &str,
     json: &str,
@@ -531,6 +568,17 @@ mod tests {
                 .to_string()
                 .contains("exactly one of `value` or `tag`"));
         }
+    }
+
+    #[test]
+    fn value_label_entries_reject_system_missing() {
+        let error = parse_dataset_document(
+            "0",
+            Some(r#"{"version":0,"value_labels":{"x":[{"tag":".","label":"missing"}]}}"#),
+        )
+        .expect_err("system missing is not a valid value-label code");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+        assert!(error.to_string().contains("system missing"));
     }
 
     #[test]

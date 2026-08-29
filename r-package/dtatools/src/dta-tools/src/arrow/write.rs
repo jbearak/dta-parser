@@ -17,9 +17,10 @@ use arrow_schema::{DataType, Field, Schema};
 
 use super::checksum::{canonical_array_hashes, xxh64};
 use super::profile::{
-    checksum_to_hex, ArrowFieldDocument, BatchChecksums, ChecksumsDocument, DatasetDocument,
-    ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION,
-    ARROW_PROFILE_VERSION_KEY, DOCUMENT_VERSION,
+    checksum_to_hex, validate_dataset_document, validate_field_document,
+    validate_value_label_reference, ArrowFieldDocument, BatchChecksums, ChecksumsDocument,
+    DatasetDocument, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY,
+    ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY, DOCUMENT_VERSION,
 };
 use super::ArrowProfileError;
 
@@ -431,6 +432,55 @@ fn serialize_json<T: serde::Serialize>(value: &T) -> Result<String, ArrowProfile
     serde_json::to_string(value).map_err(|error| ArrowProfileError::Invalid(error.to_string()))
 }
 
+fn validated_fields(
+    dataset: &ArrowWriteDataset,
+    rows_per_batch: usize,
+) -> Result<(usize, Vec<Field>), ArrowProfileError> {
+    validate_rows_per_batch(rows_per_batch)?;
+    validate_dataset_document(ARROW_PROFILE_VERSION, &dataset.dataset)?;
+    let row_count = dataset
+        .columns
+        .first()
+        .map_or(0, |column| column.array.len());
+    let mut fields = Vec::with_capacity(dataset.columns.len());
+    for column in &dataset.columns {
+        if column.array.len() != row_count {
+            return Err(ArrowProfileError::Invalid(format!(
+                "column `{}` has {} rows; expected {row_count}",
+                column.name,
+                column.array.len()
+            )));
+        }
+        let data_type = column.array.data_type();
+        if !supported_write_type(data_type) {
+            return Err(ArrowProfileError::UnsupportedColumn {
+                column: column.name.clone(),
+                data_type: data_type.to_string(),
+            });
+        }
+        // Raw Stata missing storage never uses Arrow nulls, so profiled
+        // columns are declared non-nullable.
+        let nullable = column
+            .field
+            .as_ref()
+            .is_none_or(|document| document.missing.is_none());
+        let mut field = Field::new(column.name.clone(), data_type.clone(), nullable);
+        if let Some(document) = &column.field {
+            validate_field_document(ARROW_PROFILE_VERSION, &field, document)?;
+            validate_value_label_reference(
+                ARROW_PROFILE_VERSION,
+                &field,
+                document,
+                &dataset.dataset,
+            )?;
+            let json = serialize_json(document)?;
+            field.set_metadata(HashMap::from([(ARROW_FIELD_KEY.to_owned(), json)]));
+        }
+        fields.push(field);
+    }
+    Ok((row_count, fields))
+}
+
 /// Save a dataset as a dtatools Arrow profile file at `path`, replacing any
 /// existing file. Callers that need atomic replacement write to a sibling
 /// temporary path and rename, as the R adapter does.
@@ -443,6 +493,7 @@ pub fn save_arrow_file(
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
+    validated_fields(dataset, rows_per_batch)?;
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
     save_arrow_file_to(
@@ -475,42 +526,7 @@ pub fn save_arrow_file_to<W: Write>(
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    validate_rows_per_batch(rows_per_batch)?;
-    let row_count = dataset
-        .columns
-        .first()
-        .map_or(0, |column| column.array.len());
-
-    let mut fields = Vec::with_capacity(dataset.columns.len());
-    for column in &dataset.columns {
-        if column.array.len() != row_count {
-            return Err(ArrowProfileError::Invalid(format!(
-                "column `{}` has {} rows; expected {row_count}",
-                column.name,
-                column.array.len()
-            )));
-        }
-        let data_type = column.array.data_type();
-        if !supported_write_type(data_type) {
-            return Err(ArrowProfileError::UnsupportedColumn {
-                column: column.name.clone(),
-                data_type: data_type.to_string(),
-            });
-        }
-        // Raw Stata missing storage never uses Arrow nulls, so profiled
-        // columns are declared non-nullable.
-        let nullable = column
-            .field
-            .as_ref()
-            .is_none_or(|document| document.missing.is_none());
-        let mut field = Field::new(column.name.clone(), data_type.clone(), nullable);
-        if let Some(document) = &column.field {
-            let json = serde_json::to_string(document)
-                .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
-            field.set_metadata(HashMap::from([(ARROW_FIELD_KEY.to_owned(), json)]));
-        }
-        fields.push(field);
-    }
+    let (row_count, fields) = validated_fields(dataset, rows_per_batch)?;
 
     let mut schema_metadata = HashMap::new();
     schema_metadata.insert(
