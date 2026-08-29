@@ -171,13 +171,12 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     selection <- rlang::enquo(col_select)
     datasig <- .normalize_arrow_flag(datasig, "datasig")
     if (datasig) .validate_datasig_read(selection, skip, n_max)
-    result <- .read_dta_impl(
+    .read_dta_impl(
         file, encoding, selection, skip, n_max, .name_repair,
         materialization = "direct", threads = threads,
-        use_numeric_altrep = use_numeric_altrep
+        use_numeric_altrep = use_numeric_altrep,
+        record_datasig = datasig
     )
-    if (datasig) result <- .attach_datasig(result, threads)
-    result
 }
 
 .validate_datasig_read <- function(selection, skip, n_max) {
@@ -199,7 +198,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .read_dta_impl(
         file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
         materialization = "rust-vectors", threads = 1L,
-        use_numeric_altrep = FALSE
+        use_numeric_altrep = FALSE, record_datasig = FALSE
     )
 }
 
@@ -238,7 +237,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, materialization, threads,
-                           use_numeric_altrep) {
+                           use_numeric_altrep, record_datasig) {
     encoding <- .validate_dta_encoding(encoding)
     row_window <- .normalize_row_window(skip, n_max)
     threads <- .normalize_threads(threads)
@@ -279,11 +278,16 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         names(native) <- selected_names
     }
 
+    disk_signature <- if (record_datasig) {
+        datasig(native, threads = threads)
+    }
+
     dataset_label <- attr(native, "label", exact = TRUE)
     dataset_notes <- attr(native, "notes", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
+    if (record_datasig) attr(result, "datasig") <- disk_signature
     result
 }
 

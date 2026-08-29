@@ -64,7 +64,9 @@ written directly without widening to doubles, and tagged missing codes
 \code{.a} through \code{.z} survive bit-exactly. haven \code{labelled} double columns are
 accepted and round-trip with their \code{labels} attribute. Values a declared
 Stata storage type cannot represent become Stata system missing with one
-aggregated warning per conversion category.
+aggregated warning per conversion category. Attributes outside the profile's
+documented set are dropped with one warning naming each affected column and
+attribute.
 
 Unlike \code{\link[=save_dta]{save_dta()}}, factor class and orderedness, \code{POSIXct} timezones,
 and \code{difftime} units are preserved on read.

@@ -20,7 +20,9 @@
 #' `.a` through `.z` survive bit-exactly. haven `labelled` double columns are
 #' accepted and round-trip with their `labels` attribute. Values a declared
 #' Stata storage type cannot represent become Stata system missing with one
-#' aggregated warning per conversion category.
+#' aggregated warning per conversion category. Attributes outside the profile's
+#' documented set are dropped with one warning naming each affected column and
+#' attribute.
 #'
 #' Unlike [save_dta()], factor class and orderedness, `POSIXct` timezones,
 #' and `difftime` units are preserved on read.
@@ -71,6 +73,7 @@ save_arrow <- function(data, path,
     compression <- .arrow_write_compression(compression)
     specification <- .prepare_arrow_write(data, label, adjust_tz)
     destination <- resolved_path$path
+    write_warnings <- attr(specification, "write_warnings", exact = TRUE)
 
     temporary <- tempfile(
         pattern = paste0(".", basename(destination), "-dtatools-"),
@@ -90,12 +93,12 @@ save_arrow <- function(data, path,
             )
         }
     )
-    write_warnings <- .dta_write_count_warnings(
+    write_warnings <- c(write_warnings, .dta_write_count_warnings(
         numeric_replacements,
         names(data),
         "Converted unrepresentable numeric values to Stata system missing",
         "dtatools_write_numeric_replacement_warning"
-    )
+    ))
     for (write_warning in write_warnings) {
         .dta_write_warn(write_warning$message, write_warning$class)
     }
@@ -296,6 +299,51 @@ save_arrow <- function(data, path,
     )
 }
 
+.arrow_known_column_attributes <- function(kind) {
+    common <- c("label", "format.stata")
+    switch(kind,
+        factor = c(common, "levels", "class"),
+        date = c(common, "labels", "class"),
+        datetime = c(common, "labels", "class", "tzone"),
+        difftime = c(common, "labels", "class", "units"),
+        stata = c(common, "labels", "stata.storage", "class"),
+        double = c(common, "labels", "class"),
+        common
+    )
+}
+
+.arrow_dropped_attribute_warnings <- function(data, kinds) {
+    details <- character()
+    dataset_attributes <- setdiff(
+        names(attributes(data)),
+        c("names", "row.names", "class", "label", "notes")
+    )
+    if (length(dataset_attributes)) {
+        details <- sprintf(
+            "the data frame (%s)", paste(dataset_attributes, collapse = ", ")
+        )
+    }
+    for (index in seq_along(data)) {
+        dropped <- setdiff(
+            names(attributes(data[[index]])),
+            .arrow_known_column_attributes(kinds[[index]])
+        )
+        if (length(dropped)) {
+            details <- c(details, sprintf(
+                "`%s` (%s)", names(data)[[index]], paste(dropped, collapse = ", ")
+            ))
+        }
+    }
+    if (!length(details)) return(list())
+    list(.dta_write_warning(
+        sprintf(
+            "Dropped attributes the Arrow profile does not represent: %s",
+            paste(details, collapse = "; ")
+        ),
+        "dtatools_write_attribute_drop_warning"
+    ))
+}
+
 .prepare_arrow_write <- function(data, label, adjust_tz) {
     if (!is.data.frame(data)) {
         .dta_write_abort("`data` must be a data frame or tibble",
@@ -338,5 +386,8 @@ save_arrow <- function(data, path,
         .prepare_arrow_write_column, data, data_names, kinds,
         MoreArgs = list(adjust_tz = adjust_tz)
     )
-    list(label, notes, unname(columns))
+    specification <- list(label, notes, unname(columns))
+    attr(specification, "write_warnings") <-
+        .arrow_dropped_attribute_warnings(data, kinds)
+    specification
 }

@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
 use arrow_array::{make_array, ArrayRef};
-use arrow_buffer::{Buffer, MutableBuffer};
+use arrow_buffer::Buffer;
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
 use arrow_schema::{DataType, Field, Schema};
@@ -183,9 +183,10 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
     if footer_length == 0 || footer_length > file_length - 10 - 8 {
         return Err(invalid("footer length is out of bounds"));
     }
+    let footer_start = file_length - 10 - footer_length;
     let mut footer_bytes =
         vec![0_u8; usize::try_from(footer_length).map_err(|_| { invalid("footer is too large") })?];
-    read_exact_at(reader, file_length - 10 - footer_length, &mut footer_bytes)?;
+    read_exact_at(reader, footer_start, &mut footer_bytes)?;
     let footer =
         root_as_footer(&footer_bytes).map_err(|error| invalid(format!("bad footer: {error}")))?;
 
@@ -226,13 +227,22 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
     }
 
     let block_info = |block: &arrow_ipc::Block| -> Result<BlockInfo, ArrowProfileError> {
-        Ok(BlockInfo {
+        let info = BlockInfo {
             offset: u64::try_from(block.offset()).map_err(|_| invalid("negative block offset"))?,
             metadata_length: u32::try_from(block.metaDataLength())
                 .map_err(|_| invalid("negative block metadata length"))?,
             body_length: u64::try_from(block.bodyLength())
                 .map_err(|_| invalid("negative block body length"))?,
-        })
+        };
+        let block_end = info
+            .offset
+            .checked_add(u64::from(info.metadata_length))
+            .and_then(|end| end.checked_add(info.body_length))
+            .ok_or_else(|| invalid("IPC block extent overflows"))?;
+        if info.offset < 8 || block_end > footer_start {
+            return Err(invalid("IPC block extends outside the file body"));
+        }
+        Ok(info)
     };
     let record_blocks = footer
         .recordBatches()
@@ -410,6 +420,7 @@ fn read_ipc_buffer<R: Read + Seek>(
     body_length: u64,
     entry: (u64, u64),
     compression: Option<Compression>,
+    expected_length: usize,
 ) -> Result<Buffer, ArrowProfileError> {
     let (offset, length) = entry;
     if offset
@@ -418,50 +429,141 @@ fn read_ipc_buffer<R: Read + Seek>(
     {
         return Err(invalid("buffer extends past the record batch body"));
     }
-    if length == 0 {
-        return Ok(Buffer::from(MutableBuffer::new(0)));
-    }
-    let length = usize::try_from(length).map_err(|_| invalid("buffer is too large"))?;
+    let stored_length = usize::try_from(length).map_err(|_| invalid("buffer is too large"))?;
+    let read_start = body_start
+        .checked_add(offset)
+        .ok_or_else(|| invalid("buffer offset overflows"))?;
     match compression {
         None => {
-            let mut buffer = MutableBuffer::from_len_zeroed(length);
-            read_exact_at(reader, body_start + offset, buffer.as_slice_mut())?;
-            Ok(Buffer::from(buffer))
+            if stored_length != expected_length {
+                return Err(invalid("buffer length does not match its field layout"));
+            }
+            let mut bytes = Vec::new();
+            bytes
+                .try_reserve_exact(expected_length)
+                .map_err(|_| invalid("could not allocate an Arrow buffer"))?;
+            bytes.resize(expected_length, 0);
+            read_exact_at(reader, read_start, &mut bytes)?;
+            Ok(Buffer::from(bytes))
         }
         Some(codec) => {
-            let mut raw = vec![0_u8; length];
-            read_exact_at(reader, body_start + offset, &mut raw)?;
+            if stored_length == 0 && expected_length == 0 {
+                return Ok(Buffer::from(Vec::<u8>::new()));
+            }
+            let mut raw = Vec::new();
+            raw.try_reserve_exact(stored_length)
+                .map_err(|_| invalid("could not allocate a compressed Arrow buffer"))?;
+            raw.resize(stored_length, 0);
+            read_exact_at(reader, read_start, &mut raw)?;
             if raw.len() < 8 {
                 return Err(invalid("compressed buffer is too short"));
             }
             let declared = i64::from_le_bytes(raw[..8].try_into().expect("8 bytes"));
             let payload = &raw[8..];
             if declared == -1 {
-                let mut buffer = MutableBuffer::from_len_zeroed(payload.len());
-                buffer.as_slice_mut().copy_from_slice(payload);
-                return Ok(Buffer::from(buffer));
+                if payload.len() != expected_length {
+                    return Err(invalid("uncompressed buffer length mismatch"));
+                }
+                return Ok(Buffer::from(payload.to_vec()));
             }
             let declared =
                 usize::try_from(declared).map_err(|_| invalid("bad compressed length"))?;
-            let decompressed = match codec {
+            if declared != expected_length {
+                return Err(invalid("declared decompressed buffer length mismatch"));
+            }
+            let read_limit = u64::try_from(expected_length)
+                .ok()
+                .and_then(|length| length.checked_add(1))
+                .ok_or_else(|| invalid("decompressed buffer is too large"))?;
+            let mut decompressed = Vec::new();
+            match codec {
                 Compression::Lz4 => {
-                    let mut output = Vec::with_capacity(declared);
-                    let mut decoder = lz4_flex::frame::FrameDecoder::new(payload);
+                    let decoder = lz4_flex::frame::FrameDecoder::new(payload);
                     decoder
-                        .read_to_end(&mut output)
+                        .take(read_limit)
+                        .read_to_end(&mut decompressed)
                         .map_err(|error| invalid(format!("LZ4 decompression failed: {error}")))?;
-                    output
                 }
-                Compression::Zstd => zstd::stream::decode_all(payload)
-                    .map_err(|error| invalid(format!("zstd decompression failed: {error}")))?,
-            };
+                Compression::Zstd => {
+                    let decoder = zstd::stream::Decoder::new(payload)
+                        .map_err(|error| invalid(format!("zstd decompression failed: {error}")))?;
+                    decoder
+                        .take(read_limit)
+                        .read_to_end(&mut decompressed)
+                        .map_err(|error| invalid(format!("zstd decompression failed: {error}")))?;
+                }
+            }
             if decompressed.len() != declared {
                 return Err(invalid("decompressed buffer length mismatch"));
             }
-            let mut buffer = MutableBuffer::from_len_zeroed(decompressed.len());
-            buffer.as_slice_mut().copy_from_slice(&decompressed);
-            Ok(Buffer::from(buffer))
+            Ok(Buffer::from(decompressed))
         }
+    }
+}
+
+fn checked_buffer_length(
+    rows: usize,
+    extra: usize,
+    width: usize,
+) -> Result<usize, ArrowProfileError> {
+    rows.checked_add(extra)
+        .and_then(|values| values.checked_mul(width))
+        .ok_or_else(|| invalid("Arrow buffer length overflows"))
+}
+
+fn string_values_length(offsets: &Buffer, width: usize) -> Result<usize, ArrowProfileError> {
+    let bytes = offsets.as_slice();
+    let tail = bytes
+        .get(
+            bytes
+                .len()
+                .checked_sub(width)
+                .ok_or_else(|| invalid("string offsets are empty"))?..,
+        )
+        .ok_or_else(|| invalid("string offsets are truncated"))?;
+    match width {
+        4 => usize::try_from(i32::from_le_bytes(tail.try_into().expect("four bytes")))
+            .map_err(|_| invalid("negative string offset")),
+        8 => usize::try_from(i64::from_le_bytes(tail.try_into().expect("eight bytes")))
+            .map_err(|_| invalid("negative or oversized string offset")),
+        _ => unreachable!("supported string offsets are 32- or 64-bit"),
+    }
+}
+
+fn expected_data_buffer_length(
+    data_type: &DataType,
+    index: usize,
+    rows: usize,
+    decoded: &[Buffer],
+) -> Result<usize, ArrowProfileError> {
+    match data_type {
+        DataType::Boolean if index == 0 => Ok(rows.div_ceil(8)),
+        DataType::Utf8 | DataType::LargeUtf8 => {
+            let width = if matches!(data_type, DataType::Utf8) {
+                4
+            } else {
+                8
+            };
+            match index {
+                0 => checked_buffer_length(rows, 1, width),
+                1 => string_values_length(
+                    decoded
+                        .first()
+                        .ok_or_else(|| invalid("string values precede their offsets"))?,
+                    width,
+                ),
+                _ => Err(invalid("unexpected string buffer")),
+            }
+        }
+        DataType::Dictionary(key, _) if index == 0 => key
+            .primitive_width()
+            .ok_or_else(|| invalid("unsupported dictionary key type"))
+            .and_then(|width| checked_buffer_length(rows, 0, width)),
+        data_type if index == 0 => data_type
+            .primitive_width()
+            .ok_or_else(|| invalid("unsupported fixed-width buffer"))
+            .and_then(|width| checked_buffer_length(rows, 0, width)),
+        _ => Err(invalid("unexpected field buffer")),
     }
 }
 
@@ -485,13 +587,21 @@ fn decode_field_array<R: Read + Seek>(
         .ok_or_else(|| invalid("record batch header is missing buffers"))?;
     let rows = usize::try_from(rows).map_err(|_| invalid("batch is too large"))?;
 
-    let validity = if null_count > 0 && entries[0].1 > 0 {
+    if null_count > rows as u64 {
+        return Err(invalid("null count exceeds the field length"));
+    }
+
+    let validity = if null_count > 0 {
+        if entries[0].1 == 0 {
+            return Err(invalid("null field has no validity buffer"));
+        }
         Some(read_ipc_buffer(
             reader,
             body_start,
             body_length,
             entries[0],
             header.compression,
+            rows.div_ceil(8),
         )?)
     } else {
         None
@@ -506,14 +616,19 @@ fn decode_field_array<R: Read + Seek>(
         .len(rows)
         .null_count(null_count)
         .null_bit_buffer(validity);
-    for entry in &entries[1..] {
-        builder = builder.add_buffer(read_ipc_buffer(
+    let mut decoded = Vec::with_capacity(entries.len().saturating_sub(1));
+    for (index, entry) in entries[1..].iter().enumerate() {
+        let expected_length = expected_data_buffer_length(data_type, index, rows, &decoded)?;
+        let buffer = read_ipc_buffer(
             reader,
             body_start,
             body_length,
             *entry,
             header.compression,
-        )?);
+            expected_length,
+        )?;
+        decoded.push(buffer.clone());
+        builder = builder.add_buffer(buffer);
     }
     if let Some(dictionary) = dictionary {
         builder = builder.add_child_data(dictionary.clone());
@@ -1220,7 +1335,10 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
     )
 }
 
-pub fn summarize_arrow_file(path: impl AsRef<Path>) -> Result<ArrowFileSummary, ArrowProfileError> {
+pub fn summarize_arrow_file(
+    path: impl AsRef<Path>,
+    apply_profile: bool,
+) -> Result<ArrowFileSummary, ArrowProfileError> {
     let path = path.as_ref();
     let mut reader = BufReader::new(File::open(path)?);
     let footer = match read_footer(&mut reader) {
@@ -1231,7 +1349,7 @@ pub fn summarize_arrow_file(path: impl AsRef<Path>) -> Result<ArrowFileSummary, 
         }
         other => other?,
     };
-    let profile = parse_profile(&footer, true, false)?;
+    let profile = parse_profile(&footer, apply_profile, false)?;
     let columns = footer
         .schema
         .fields()
@@ -1248,4 +1366,39 @@ pub fn summarize_arrow_file(path: impl AsRef<Path>) -> Result<ArrowFileSummary, 
         })
         .collect();
     Ok(ArrowFileSummary { columns })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[test]
+    fn oversized_uncompressed_buffer_is_rejected_before_allocation() {
+        let mut reader = Cursor::new([0_u8; 1]);
+        let error = read_ipc_buffer(&mut reader, 0, 1_u64 << 40, (0, 1_u64 << 40), None, 4)
+            .expect_err("the field layout bounds the allocation");
+        assert!(error
+            .to_string()
+            .contains("buffer length does not match its field layout"));
+    }
+
+    #[test]
+    fn oversized_compressed_declaration_is_rejected_before_decompression() {
+        let declared = (1_i64 << 40).to_le_bytes();
+        let mut reader = Cursor::new(declared);
+        let error = read_ipc_buffer(
+            &mut reader,
+            0,
+            declared.len() as u64,
+            (0, declared.len() as u64),
+            Some(Compression::Zstd),
+            4,
+        )
+        .expect_err("the field layout bounds decompression");
+        assert!(error
+            .to_string()
+            .contains("declared decompressed buffer length mismatch"));
+    }
 }

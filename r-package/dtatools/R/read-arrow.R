@@ -81,7 +81,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
     } else {
-        metadata <- .arrow_metadata(source$path)
+        metadata <- .arrow_metadata(source$path, profile)
         selection_proxy <- stats::setNames(
             lapply(metadata$types, .arrow_selection_proxy),
             metadata$names
@@ -120,8 +120,8 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     result
 }
 
-.arrow_metadata <- function(file) {
-    metadata <- .Call(C_dtatools_arrow_metadata, file)
+.arrow_metadata <- function(file, profile = TRUE) {
+    metadata <- .Call(C_dtatools_arrow_metadata, file, profile)
     list(names = metadata[[1L]], types = metadata[[2L]])
 }
 

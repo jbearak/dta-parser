@@ -260,14 +260,16 @@ test_that("a DTA fixture survives a semantic Arrow round-trip", {
 })
 
 test_that("tagged NaN payloads on bare doubles survive bit-exactly", {
-    values <- c(1.5, tagged_nan_for_test("q"), NA_real_)
+    values <- c(1.5, NaN, tagged_nan_for_test("q"), NA_real_)
     data <- tibble::tibble(x = values)
     path <- arrow_tempfile()
     save_arrow(data, path)
 
     actual <- read_arrow(path)
     expect_identical(writeBin(actual$x, raw()), writeBin(values, raw()))
-    expect_identical(missing_tag(actual$x), c(NA_character_, "q", NA))
+    expect_identical(
+        missing_tag(actual$x), c(NA_character_, NA_character_, "q", NA)
+    )
 })
 
 test_that("haven labelled doubles round-trip with their labels", {
@@ -377,6 +379,8 @@ test_that("newer profile versions are a hard error with an escape hatch", {
     )
     plain <- read_arrow(path, profile = FALSE)
     expect_null(attr(plain$sv, "stata.storage", exact = TRUE))
+    selected <- read_arrow(path, col_select = sv, profile = FALSE)
+    expect_identical(selected, plain)
 })
 
 test_that("profile = FALSE reads raw storage arrays without Stata semantics", {
@@ -458,6 +462,26 @@ test_that("unrepresentable values in declared storage warn and count", {
     expect_identical(missing_tag(actual$narrow), c(NA_character_, NA))
 })
 
+test_that("save_arrow reports attributes the profile drops", {
+    data <- tibble::tibble(x = c(1, 2))
+    attr(data, "provenance") <- "raw/source.csv"
+    attr(data$x, "units.custom") <- "widgets"
+    path <- arrow_tempfile()
+
+    expect_warning(
+        save_arrow(data, path),
+        paste0(
+            "Dropped attributes the Arrow profile does not represent: ",
+            "the data frame (provenance); `x` (units.custom)"
+        ),
+        fixed = TRUE,
+        class = "dtatools_write_attribute_drop_warning"
+    )
+    actual <- read_arrow(path)
+    expect_null(attr(actual, "provenance", exact = TRUE))
+    expect_null(attr(actual$x, "units.custom", exact = TRUE))
+})
+
 test_that("dta_merge accepts .arrow paths in either position", {
     master <- tibble::tibble(
         id = stata_byte(c(1, NA_real_, tagged_missing("a"))),
@@ -504,9 +528,10 @@ test_that("the arrow package is an independent oracle for written files", {
     skip_if_not_installed("arrow")
     data <- tibble::tibble(
         lgl = c(TRUE, NA, FALSE),
-        num = c(1.5, NA, -2),
+        num = c(1.5, NaN, -2),
         s = c("a", NA, "c"),
-        sv = stata_byte(c(3, NA, tagged_missing("a")))
+        sv = stata_byte(c(3, NA, tagged_missing("a"))),
+        elapsed = as.difftime(c(1.5, NA, -2), units = "hours")
     )
     path <- arrow_tempfile()
     save_arrow(data, path)
@@ -515,6 +540,10 @@ test_that("the arrow package is an independent oracle for written files", {
     expect_identical(oracle$lgl, data$lgl)
     expect_identical(oracle$num, data$num)
     expect_identical(oracle$s, data$s)
+    expect_identical(
+        as.numeric(oracle$elapsed, units = "secs"),
+        c(5.4e3, NA, -7.2e3)
+    )
     # Raw Stata missing storage is visible to plain Arrow readers as the
     # profile's sentinel integers.
     expect_identical(as.integer(oracle$sv), c(3L, 101L, 102L))

@@ -86,10 +86,3 @@ datasig <- function(data, threads = getOption("dtatools.threads", 0L)) {
     )
     .Call(C_dtatools_datasig, specification, threads)
 }
-
-# The readers' `datasig = TRUE` attach step lives outside their bodies, where
-# the parameter of the same name would shadow the function.
-.attach_datasig <- function(data, threads) {
-    attr(data, "datasig") <- datasig(data, threads = threads)
-    data
-}

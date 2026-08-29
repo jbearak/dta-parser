@@ -101,6 +101,15 @@ test_that("datasig validates its inputs", {
         datasig(tibble::tibble(x = 1), threads = -1L),
         "threads"
     )
+
+    narrow <- c(1, 5e6)
+    attr(narrow, "stata.storage") <- "int"
+    class(narrow) <- dtatools:::.stata_storage_class("int")
+    expect_error(
+        datasig(tibble::tibble(narrow = narrow)),
+        "cannot compute datasig after lossy numeric replacements in `narrow` (1)",
+        fixed = TRUE
+    )
 })
 
 test_that("datasig agrees between serial and parallel hashing", {
@@ -134,6 +143,9 @@ test_that("readers record the disk signature as a datasig attribute", {
 
     loaded <- read_dta(dta_path, datasig = TRUE)
     expect_identical(attr(loaded, "datasig", exact = TRUE), signature)
+    repaired <- read_dta(dta_path, .name_repair = toupper, datasig = TRUE)
+    expect_identical(names(repaired), c("X", "G"))
+    expect_identical(attr(repaired, "datasig", exact = TRUE), signature)
     expect_identical(
         attr(read_arrow(arrow_path, datasig = TRUE), "datasig", exact = TRUE),
         signature

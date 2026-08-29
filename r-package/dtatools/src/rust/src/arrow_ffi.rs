@@ -203,9 +203,10 @@ unsafe fn int_slice<'a>(
     ))
 }
 
-/// Classify every value of an R double column, rejecting invalid NaNs.
-/// Pure: callable from any thread.
-fn classify_doubles(values: &[f64], name: &str) -> Result<(Vec<c_int>, bool), String> {
+/// Classify every value of an R double column. Ordinary and noncanonical NaN
+/// payloads remain observed floating-point values; R NA and canonical tagged
+/// NAs receive their missing codes. Pure: callable from any thread.
+fn classify_doubles(values: &[f64], _name: &str) -> Result<(Vec<c_int>, bool), String> {
     let mut codes = Vec::new();
     codes
         .try_reserve_exact(values.len())
@@ -213,12 +214,7 @@ fn classify_doubles(values: &[f64], name: &str) -> Result<(Vec<c_int>, bool), St
     let mut has_tags = false;
     for &value in values {
         let code = direct_r_missing_code(value);
-        if code > c_int::from(b'z') {
-            return Err(format!(
-                "column `{name}` contains an unsupported NaN payload"
-            ));
-        }
-        has_tags |= code >= c_int::from(b'a');
+        has_tags |= (c_int::from(b'a')..=c_int::from(b'z')).contains(&code);
         codes.push(code);
     }
     Ok((codes, has_tags))
@@ -814,7 +810,7 @@ unsafe fn encode_column(
                         timestamp_or_fallback(values, &codes, document, &column.tz)
                     }
                     RArrowKind::Difftime => {
-                        duration_or_fallback(values, &codes, document, &column.units)
+                        duration_or_fallback(values, &codes, document, &column.units)?
                     }
                     _ => unreachable!("double kinds"),
                 }
@@ -1104,18 +1100,22 @@ fn duration_or_fallback(
     codes: &[c_int],
     mut document: ArrowFieldDocument,
     units: &str,
-) -> (Option<ArrowFieldDocument>, ArrayRef, u64) {
+) -> Result<(Option<ArrowFieldDocument>, ArrayRef, u64), String> {
     document.r = r_semantics("difftime");
     if let Some(semantics) = document.r.as_mut() {
         semantics.units = Some(units.to_owned());
     }
+    let seconds_per_unit = difftime_seconds_per_unit(units)?;
     let to_nanos = |value: f64| -> Option<i64> {
-        let scaled = value * 1_000_000_000.0;
+        let scaled = value * seconds_per_unit * 1_000_000_000.0;
         if !scaled.is_finite() {
             return None;
         }
         let rounded = scaled.round();
-        if rounded < -9.2e18 || rounded > 9.2e18 || rounded / 1_000_000_000.0 != value {
+        if rounded < -9.2e18
+            || rounded > 9.2e18
+            || rounded / 1_000_000_000.0 / seconds_per_unit != value
+        {
             return None;
         }
         Some(rounded as i64)
@@ -1138,7 +1138,18 @@ fn duration_or_fallback(
                 .map(|(&value, &code)| (code != 0).then_some(value)),
         ))
     };
-    (Some(document), array, 0)
+    Ok((Some(document), array, 0))
+}
+
+fn difftime_seconds_per_unit(units: &str) -> Result<f64, String> {
+    match units {
+        "secs" => Ok(1.0),
+        "mins" => Ok(60.0),
+        "hours" => Ok(3_600.0),
+        "days" => Ok(86_400.0),
+        "weeks" => Ok(604_800.0),
+        _ => Err(format!("unsupported difftime units `{units}`")),
+    }
 }
 
 /// Shared write-driver front half: parse the dataset documents, extract every
@@ -1241,7 +1252,7 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
         };
         let requested_threads =
             usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
-        let (dataset, _replacements) = assemble_write_dataset(
+        let (dataset, replacements) = assemble_write_dataset(
             dataset_label,
             notes,
             notes_count,
@@ -1249,6 +1260,19 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
             row_count,
             requested_threads,
         )?;
+        if replacements.iter().any(|&count| count > 0) {
+            let details = dataset
+                .columns
+                .iter()
+                .zip(&replacements)
+                .filter(|(_, count)| **count > 0)
+                .map(|(column, count)| format!("`{}` ({count})", column.name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(format!(
+                "cannot compute datasig after lossy numeric replacements in {details}"
+            ));
+        }
         let signature = dataset_signature(
             &dataset,
             ARROW_ROWS_PER_BATCH,
@@ -1468,7 +1492,9 @@ enum ColumnShape {
     Factor,
     Date32,
     Timestamp,
-    Duration,
+    Duration {
+        seconds_per_unit: f64,
+    },
     PayloadDouble,
     SemanticDouble,
 }
@@ -1507,7 +1533,19 @@ fn classify_read_column(
         DataType::Dictionary(_, _) => ColumnShape::Factor,
         DataType::Date32 => ColumnShape::Date32,
         DataType::Timestamp(_, _) => ColumnShape::Timestamp,
-        DataType::Duration(_) => ColumnShape::Duration,
+        DataType::Duration(_) => ColumnShape::Duration {
+            seconds_per_unit: match attributes.class() {
+                Some("difftime") => {
+                    let units = attributes
+                        .semantics()
+                        .and_then(|semantics| semantics.units.as_deref())
+                        .filter(|units| !units.is_empty())
+                        .unwrap_or("secs");
+                    difftime_seconds_per_unit(units)?
+                }
+                _ => 1.0,
+            },
+        },
         DataType::Float64 if payload => ColumnShape::PayloadDouble,
         DataType::Float32
         | DataType::Float64
@@ -1566,6 +1604,7 @@ enum ColumnFill {
     },
     Duration {
         output: *mut f64,
+        seconds_per_unit: f64,
     },
     PayloadDouble {
         output: *mut f64,
@@ -1691,10 +1730,11 @@ unsafe fn plan_read_column(
             };
             (vector, None, Some(fill))
         }
-        ColumnShape::Duration => {
+        ColumnShape::Duration { seconds_per_unit } => {
             let vector = guard.alloc(REALSXP, length)?;
             let fill = ColumnFill::Duration {
                 output: REAL(vector),
+                seconds_per_unit: *seconds_per_unit,
             };
             (vector, None, Some(fill))
         }
@@ -2100,7 +2140,11 @@ unsafe fn fill_timestamp(column: &ArrowReadColumn, output: *mut f64) -> Result<(
     Ok(())
 }
 
-unsafe fn fill_duration(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
+unsafe fn fill_duration(
+    column: &ArrowReadColumn,
+    output: *mut f64,
+    seconds_per_unit: f64,
+) -> Result<(), String> {
     let DataType::Duration(unit) = &column.data_type else {
         return Err(chunk_error(&column.name));
     };
@@ -2111,7 +2155,7 @@ unsafe fn fill_duration(column: &ArrowReadColumn, output: *mut f64) -> Result<()
                 *output.add(row) = if values.is_null(index) {
                     R_NaReal
                 } else {
-                    values.value(index) as f64 / scale
+                    values.value(index) as f64 / scale / seconds_per_unit
                 };
                 Ok(())
             })?
@@ -2185,8 +2229,11 @@ unsafe fn fill_read_column(
             fill_timestamp(column, *output)?;
             Ok(FillOutcome::Plain)
         }
-        ColumnFill::Duration { output } => {
-            fill_duration(column, *output)?;
+        ColumnFill::Duration {
+            output,
+            seconds_per_unit,
+        } => {
+            fill_duration(column, *output, *seconds_per_unit)?;
             Ok(FillOutcome::Plain)
         }
         ColumnFill::PayloadDouble { output } => {
@@ -2461,7 +2508,7 @@ unsafe fn finalize_read_column(
             set_attr(vector, "tzone", timezone)?;
             attach_simple_attributes(vector, &attributes, guard)?;
         }
-        ColumnShape::Duration => {
+        ColumnShape::Duration { .. } => {
             apply_difftime_attributes(vector, &attributes, guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
         }
@@ -2666,11 +2713,13 @@ pub unsafe extern "C" fn dtatools_arrow_datasig_rust(
 /// initialized R runtime.
 pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
     path: *const c_char,
+    apply_profile: c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, ptr::null_mut(), || {
         let path = required_c_string(path, "the input path")?;
-        let summary = summarize_arrow_file(&path).map_err(|error| error.to_string())?;
+        let summary =
+            summarize_arrow_file(&path, apply_profile != 0).map_err(|error| error.to_string())?;
         let mut guard = ProtectGuard::new();
         let result = guard.alloc(VECSXP, 2)?;
         let names: Vec<String> = summary

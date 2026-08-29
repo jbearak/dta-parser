@@ -71,7 +71,7 @@ extern SEXP dtatools_read_arrow_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
     int, char **
 );
-extern SEXP dtatools_arrow_metadata_rust(const char *, char **);
+extern SEXP dtatools_arrow_metadata_rust(const char *, int, char **);
 extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
 
 typedef struct {
@@ -3104,14 +3104,18 @@ SEXP C_dtatools_read_arrow(
     return result;
 }
 
-SEXP C_dtatools_arrow_metadata(SEXP path) {
+SEXP C_dtatools_arrow_metadata(SEXP path, SEXP profile) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
         STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
     }
+    if (TYPEOF(profile) != LGLSXP || XLENGTH(profile) != 1 ||
+        LOGICAL(profile)[0] == NA_LOGICAL) {
+        Rf_error("internal Arrow profile selector must be logical");
+    }
     char *error = NULL;
     SEXP result = dtatools_arrow_metadata_rust(
-        Rf_translateCharUTF8(STRING_ELT(path, 0)), &error
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), LOGICAL(profile)[0], &error
     );
     if (result == NULL) fail_from_rust(error);
     return result;
@@ -3639,7 +3643,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_datasig", (DL_FUNC) &C_dtatools_datasig, 2},
     {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 8},
     {"C_dtatools_arrow_metadata",
-     (DL_FUNC) &C_dtatools_arrow_metadata, 1},
+     (DL_FUNC) &C_dtatools_arrow_metadata, 2},
     {"C_dtatools_arrow_datasig",
      (DL_FUNC) &C_dtatools_arrow_datasig, 1},
     {"C_dtatools_write_path_kind",
