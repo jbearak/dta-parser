@@ -115,6 +115,14 @@ _Avoid_: byte-identical round-trip, lossless copy
 The profiled-column encoding in which system and extended missing codes are stored as Stata's own reserved values rather than Arrow nulls, so a profile-aware reader restores them exactly while a generic Arrow reader sees them as ordinary values.
 _Avoid_: null encoding, missing bucket
 
+**Data signature**:
+An order-sensitive content signature of a dataset's read model: observation and variable counts, variable names and order, storage types, labels, display formats, notes, and values in row order. Containers holding the same read model sign identically.
+_Avoid_: Stata datasignature, file checksum
+
+**Load-time signature record**:
+The data signature of the complete file on disk, recorded at read time on request and never updated afterwards. It is not a claim about the loaded object's current content.
+_Avoid_: cached signature, object signature
+
 **Lossy export conversion**:
 A reported replacement required when an R value has no representation in the selected Stata storage. Numeric values become system missing, character missing values become empty strings, and factor classes become value-labelled `long` variables.
 _Avoid_: Silent coercion, semantic round-trip
