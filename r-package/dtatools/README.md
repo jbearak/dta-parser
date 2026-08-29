@@ -54,7 +54,7 @@ character materialization through ALTREP. `read_arrow()` is faster because the
 Arrow file already stores each column contiguously in its Stata storage width,
 so reading is mostly parallel column copies rather than row-major decoding.
 Checksum verification is on by default and accounts for only a few percent;
-converting the India file with `save_arrow()` took 6.5 seconds once. See the
+converting the India file with `save_arrow()` took 1.4 seconds once. See the
 [dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
 for conversion times, file sizes, and methodology.
 
@@ -101,7 +101,7 @@ type:
 | --- | ---: | ---: |
 | Stata `save` | 0.013 seconds | 0.130 seconds |
 | `save_dta()` | 0.023 seconds | 0.152 seconds |
-| `save_arrow()` | 0.424 seconds | 1.862 seconds |
+| `save_arrow()` | 0.034 seconds | 0.247 seconds |
 | `haven::write_dta()` | 1.238 seconds | 9.048 seconds |
 
 Haven took 53.8 times as long as dtatools at 100 MB and 59.5 times as long at
@@ -110,9 +110,9 @@ Haven took 53.8 times as long as dtatools at 100 MB and 59.5 times as long at
 dtatools preserved the declared numeric storage types. Haven preserved values
 and the metadata represented by its read model but widened all 30 numeric
 columns to `double`. `save_arrow()` received the identical input but writes
-Arrow IPC rather than DTA; it is slower here because the DTA writer streams
-compact columns directly while the Arrow writer materializes strings and
-computes checksums.
+Arrow IPC rather than DTA; it exports compact columns and dictionary strings
+without copying or materializing them, so the small gap to `save_dta()` is
+the checksum hashing and the slightly larger output.
 
 The secondary benchmark gives dtatools and haven the same ordinary R data
 frame, without Stata storage or labelling metadata:
@@ -120,7 +120,7 @@ frame, without Stata storage or labelling metadata:
 | Writer | 100 MB | 1 GB |
 | --- | ---: | ---: |
 | `save_dta()` | 0.193 seconds | 1.927 seconds |
-| `save_arrow()` | 0.126 seconds | 1.033 seconds |
+| `save_arrow()` | 0.104 seconds | 0.906 seconds |
 | `haven::write_dta()` | 0.495 seconds | 4.195 seconds |
 
 `save_dta()` was 61.0% faster than haven at 100 MB and 54.1% faster at 1 GB.
