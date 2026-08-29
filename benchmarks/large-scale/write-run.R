@@ -294,21 +294,9 @@ stable_provenance <- cbind(data.frame(
 validate_write_result_matrix(
     raw, datasets$dataset, writers, iterations, "synthetic write"
 )
-if ("stata" %in% writers && length(r_writers)) {
-    pairs <- split(raw, interaction(
-        raw$dataset, raw$iteration, drop = TRUE
-    ))
-    exact_pair <- vapply(pairs, function(pair) {
-        ordered_writers <- pair$writer[order(pair$writer_order)]
-        nrow(pair) == length(writers) &&
-            length(unique(pair$input_sha256)) == 1L &&
-            identical(ordered_writers[[1L]], "stata") &&
-            setequal(ordered_writers[-1L], r_writers)
-    }, logical(1L))
-    if (!all(exact_pair)) {
-        stop("R writers did not consume each exact timed Stata output")
-    }
-}
+validate_primary_write_inputs(
+    raw, datasets$dataset, writers, stable_provenance, "synthetic write"
+)
 if (!identical(
     write_runtime_binding(
         rscript, packages = c("haven", "processx"), stata = stata

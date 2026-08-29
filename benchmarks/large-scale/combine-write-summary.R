@@ -173,6 +173,9 @@ validate_bundle <- function(
         stop(description, " provenance has unexpected writers")
     }
     validate_write_result_matrix(raw, datasets, writers, iterations, description)
+    validate_primary_write_inputs(
+        raw, datasets, writers, provenance, description
+    )
     validate_summary_matrix(summary, writers, iterations, description)
     expected_summary <- summarize_write_results(
         raw, datasets, writers, "input_bytes"

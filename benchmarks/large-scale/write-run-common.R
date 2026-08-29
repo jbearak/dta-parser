@@ -175,6 +175,45 @@ validate_write_result_matrix <- function(raw, datasets, writers, iterations,
     invisible(NULL)
 }
 
+validate_primary_write_inputs <- function(
+    raw, datasets, writers, provenance, description
+) {
+    required <- c("dataset_sha256", "input_sha256")
+    provenance_fields <- paste0("dataset_", datasets, "_sha256")
+    if (!all(required %in% names(raw)) ||
+        !all(provenance_fields %in% names(provenance))) {
+        stop(description, " is missing primary input identity fields")
+    }
+    expected_hashes <- as.character(
+        unlist(provenance[1L, provenance_fields], use.names = FALSE)
+    )
+    names(expected_hashes) <- datasets
+    valid_dataset_hashes <- vapply(datasets, function(dataset) {
+        observed <- unique(as.character(
+            raw$dataset_sha256[raw$dataset == dataset]
+        ))
+        identical(observed, expected_hashes[[dataset]])
+    }, logical(1L))
+    if (!all(valid_dataset_hashes)) {
+        stop(description, " dataset hashes do not match provenance")
+    }
+
+    r_writers <- setdiff(writers, "stata")
+    if (!"stata" %in% writers || !length(r_writers)) return(invisible(NULL))
+    groups <- split(raw, interaction(raw$dataset, raw$iteration, drop = TRUE))
+    exact_pair <- vapply(groups, function(group) {
+        ordered_writers <- group$writer[order(group$writer_order)]
+        nrow(group) == length(writers) &&
+            length(unique(group$input_sha256)) == 1L &&
+            identical(ordered_writers[[1L]], "stata") &&
+            setequal(ordered_writers[-1L], r_writers)
+    }, logical(1L))
+    if (!all(exact_pair)) {
+        stop(description, " R writers did not consume each exact timed Stata output")
+    }
+    invisible(NULL)
+}
+
 summarize_write_results <- function(raw, datasets, writers, fields) {
     groups <- split(raw, interaction(raw$dataset, raw$writer, drop = TRUE))
     summary <- do.call(rbind, lapply(groups, function(group) {
