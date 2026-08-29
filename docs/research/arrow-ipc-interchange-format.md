@@ -63,6 +63,8 @@ Settled 2026-08-29; the sections below give the reasoning.
    `col_select`, `skip`, and `n_max`, and projected reads must cost I/O
    proportional to the selected columns' buffers.
 6. **Bounded record batches** with a benchmark-pinned default rows-per-batch.
+   The prototype writes 65,536 rows per batch; the value is provisional until
+   the read/write benchmarks pin it.
 7. **Compression default is `"uncompressed"`**, fixed; `"lz4"` and `"zstd"`
    are explicit options; readers auto-detect.
 8. **Durability**: a long-horizon stability promise for frozen profile
@@ -213,8 +215,13 @@ followed by `read_arrow()` restores the class-level semantics — factor levels,
 orderedness, and unused levels; `POSIXct` timezone; `difftime` units; the
 integer-versus-double distinction; `raw` as bytes. Attributes the profile does
 not recognize are dropped with a report, mirroring the reported lossy export
-conversions of the DTA writer. Whether haven `labelled` columns are supported
-input or an error is decided during the prototype.
+conversions of the DTA writer. Decided during the prototype: haven `labelled`
+bare double columns are supported input. They are written as Float64 with the
+NaN-payload missing convention plus a value-label table and an
+`r.class = "haven_labelled"` field document, and they read back with their
+`labels` attribute and haven classes. This matches `save_dta()`, which already
+accepts them, and costs nothing beyond the value-label machinery the profile
+carries anyway.
 
 `read_arrow()` must read both dtatools-profiled IPC files and ordinary IPC
 files whose fields use the supported Arrow types. It restores dtatools classes
