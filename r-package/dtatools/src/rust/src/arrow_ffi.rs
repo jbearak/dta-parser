@@ -137,7 +137,13 @@ unsafe fn required_c_string(value: *const c_char, what: &str) -> Result<String, 
 }
 
 fn native_arrow_interrupted(message: &str) -> bool {
-    matches!(message, "interrupted" | "DTA read interrupted")
+    matches!(
+        message,
+        "interrupted"
+            | "DTA read interrupted"
+            | "Arrow read interrupted"
+            | "Arrow write interrupted"
+    )
 }
 
 unsafe fn arrow_boundary<T, F>(
@@ -2952,6 +2958,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             columns: projection,
             row_start,
             row_count,
+            max_output_rows: Some(crate::R_DATA_FRAME_MAX_ROWS),
             verify: verify != 0,
             profile: profile != 0,
             threads: requested,
@@ -3216,6 +3223,8 @@ mod tests {
     fn native_interrupts_and_large_string_offsets_are_classified() {
         assert!(native_arrow_interrupted("interrupted"));
         assert!(native_arrow_interrupted("DTA read interrupted"));
+        assert!(native_arrow_interrupted("Arrow read interrupted"));
+        assert!(native_arrow_interrupted("Arrow write interrupted"));
         assert!(!native_arrow_interrupted("could not read the input"));
         assert!(!uses_large_string_offsets(i32::MAX as usize));
         assert!(uses_large_string_offsets(i32::MAX as usize + 1));

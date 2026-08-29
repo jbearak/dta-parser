@@ -41,6 +41,9 @@ pub struct ArrowReadOptions {
     pub row_start: u64,
     /// Maximum rows to return, or `None` for all remaining rows.
     pub row_count: Option<u64>,
+    /// Reject a selected window larger than this before decoding IPC bodies.
+    /// `None` leaves the output size unconstrained.
+    pub max_output_rows: Option<u64>,
     /// Verify the checksums of every buffer the read touches.
     pub verify: bool,
     /// Apply `dtatools:*` profile metadata. `false` is the escape hatch that
@@ -922,45 +925,6 @@ fn prepare_read<R: Read + Seek>(
             .collect::<Result<_, _>>()?,
     };
 
-    let needed_ids: Vec<i64> = selected
-        .iter()
-        .filter_map(|&index| footer.layouts[index].dictionary_id)
-        .collect();
-    let dictionaries = read_dictionaries(reader, &footer, &needed_ids)?;
-
-    // Verify each projected dictionary's values once, before any batch.
-    if let Some(profile) = &profile {
-        if let Some(checksums) = &profile.checksums {
-            for &index in &selected {
-                let Some(id) = footer.layouts[index].dictionary_id else {
-                    continue;
-                };
-                let expected = checksums
-                    .dictionaries
-                    .get(&index.to_string())
-                    .ok_or_else(|| {
-                        super::profile::malformed(
-                            &profile.version,
-                            "checksums document is missing a dictionary entry",
-                        )
-                    })?;
-                let values = make_array(dictionaries[&id].clone());
-                verify_hashes(
-                    &values,
-                    expected,
-                    footer.schema.field(index).name(),
-                    usize::MAX,
-                )
-                .map_err(|error| match error {
-                    ArrowProfileError::ChecksumMismatch { column, .. } => {
-                        ArrowProfileError::ChecksumMismatch { column, batch: 0 }
-                    }
-                    other => other,
-                })?;
-            }
-        }
-    }
-
     // Batch headers are small; reading them all up front fixes each block's
     // slice of the requested window so block bodies can decode in any order.
     let limit = options.row_count.unwrap_or(u64::MAX);
@@ -1005,6 +969,55 @@ fn prepare_read<R: Read + Seek>(
                 .map_err(|_| invalid("batch is too large"))?,
         });
         produced += select_end - select_start;
+    }
+
+    if let Some(maximum) = options.max_output_rows {
+        if produced > maximum {
+            return Err(invalid(format!(
+                "selected row window contains {produced} rows; the maximum is {maximum}"
+            )));
+        }
+    }
+
+    // Only decode dictionary bodies after the selected output size is known
+    // to be safe for the caller.
+    let needed_ids: Vec<i64> = selected
+        .iter()
+        .filter_map(|&index| footer.layouts[index].dictionary_id)
+        .collect();
+    let dictionaries = read_dictionaries(reader, &footer, &needed_ids)?;
+
+    // Verify each projected dictionary's values once, before any batch.
+    if let Some(profile) = &profile {
+        if let Some(checksums) = &profile.checksums {
+            for &index in &selected {
+                let Some(id) = footer.layouts[index].dictionary_id else {
+                    continue;
+                };
+                let expected = checksums
+                    .dictionaries
+                    .get(&index.to_string())
+                    .ok_or_else(|| {
+                        super::profile::malformed(
+                            &profile.version,
+                            "checksums document is missing a dictionary entry",
+                        )
+                    })?;
+                let values = make_array(dictionaries[&id].clone());
+                verify_hashes(
+                    &values,
+                    expected,
+                    footer.schema.field(index).name(),
+                    usize::MAX,
+                )
+                .map_err(|error| match error {
+                    ArrowProfileError::ChecksumMismatch { column, .. } => {
+                        ArrowProfileError::ChecksumMismatch { column, batch: 0 }
+                    }
+                    other => other,
+                })?;
+            }
+        }
     }
 
     Ok(PreparedRead {

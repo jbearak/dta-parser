@@ -16,6 +16,7 @@ use dta_tools::arrow::{
     save_arrow_file_to, ArrowCompression, ArrowFieldDocument, ArrowMissingEncoding,
     ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset,
     DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION_KEY,
+    ARROW_ROWS_PER_BATCH,
 };
 use dta_tools::{ValueLabelEntry, ValueLabelTable};
 
@@ -28,10 +29,48 @@ fn read_all_options() -> ArrowReadOptions {
         columns: None,
         row_start: 0,
         row_count: None,
+        max_output_rows: None,
         verify: true,
         profile: true,
         threads: 1,
     }
+}
+
+#[test]
+fn row_limit_is_checked_before_body_decode() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "x".to_owned(),
+            field: None,
+            array: Arc::new(Int32Array::from(vec![1, 2])),
+        }],
+    };
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    let mut full_reader = CountingReader {
+        inner: Cursor::new(&bytes),
+        bytes_read: Cell::new(0),
+    };
+    read_arrow_file_from(&mut full_reader, &read_all_options(), &mut no_interrupt())
+        .expect("unlimited read succeeds");
+
+    let mut limited_reader = CountingReader {
+        inner: Cursor::new(&bytes),
+        bytes_read: Cell::new(0),
+    };
+    let error = read_arrow_file_from(
+        &mut limited_reader,
+        &ArrowReadOptions {
+            max_output_rows: Some(1),
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("oversized selection is rejected");
+    assert!(error
+        .to_string()
+        .contains("selected row window contains 2 rows"));
+    assert!(limited_reader.bytes_read.get() < full_reader.bytes_read.get());
 }
 
 fn write_to_vec(dataset: &ArrowWriteDataset, compression: ArrowCompression) -> Vec<u8> {
@@ -40,7 +79,7 @@ fn write_to_vec(dataset: &ArrowWriteDataset, compression: ArrowCompression) -> V
         &mut bytes,
         dataset,
         compression,
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -335,7 +374,7 @@ fn projection_reads_io_proportional_to_selected_columns() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        1024,
+        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -806,7 +845,7 @@ fn unsupported_columns_error_naming_the_column() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -911,8 +950,8 @@ fn delta_dictionaries_are_accumulated() {
 
 #[test]
 fn parallel_decoding_matches_serial() {
-    // 1,000 rows over 64-row batches give every worker several blocks.
-    let rows = 1_000_usize;
+    // Two canonical batches give the workers independent decode blocks.
+    let rows = ARROW_ROWS_PER_BATCH + 1_000;
     let doubles: ArrayRef = Arc::new(Float64Array::from(
         (0..rows).map(|row| row as f64 / 3.0).collect::<Vec<_>>(),
     ));
@@ -1003,9 +1042,9 @@ fn non_arrow_input_is_rejected() {
 
 #[test]
 fn parallel_checksum_hashing_matches_serial() {
-    // 1,000 rows over 64-row batches give every worker several hash tasks,
+    // Two canonical batches give every worker several hash tasks,
     // and the dictionary column exercises the dictionary-values task.
-    let rows = 1_000_usize;
+    let rows = ARROW_ROWS_PER_BATCH + 1_000;
     let doubles: ArrayRef = Arc::new(Float64Array::from(
         (0..rows).map(|row| row as f64 / 7.0).collect::<Vec<_>>(),
     ));
@@ -1034,7 +1073,7 @@ fn parallel_checksum_hashing_matches_serial() {
         &mut serial,
         &dataset,
         ArrowCompression::Uncompressed,
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1045,7 +1084,7 @@ fn parallel_checksum_hashing_matches_serial() {
         &mut parallel,
         &dataset,
         ArrowCompression::Uncompressed,
-        64,
+        ARROW_ROWS_PER_BATCH,
         4,
         true,
         &mut no_interrupt(),
@@ -1073,7 +1112,7 @@ fn checksum_free_writes_round_trip_without_verification() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         false,
         &mut no_interrupt(),
@@ -1125,18 +1164,49 @@ fn signature_dataset(values: Vec<f64>, name: &str) -> ArrowWriteDataset {
 
 #[test]
 fn dataset_signature_is_stable_across_thread_counts() {
-    let values: Vec<f64> = (0..1_000).map(|row| row as f64 / 7.0).collect();
+    let rows = ARROW_ROWS_PER_BATCH + 1_000;
+    let values: Vec<f64> = (0..rows).map(|row| row as f64 / 7.0).collect();
     let serial = dataset_signature(
         &signature_dataset(values.clone(), "x"),
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
     .expect("serial signature");
-    let parallel = dataset_signature(&signature_dataset(values, "x"), 64, 4, &mut no_interrupt())
-        .expect("parallel signature");
+    let parallel = dataset_signature(
+        &signature_dataset(values, "x"),
+        ARROW_ROWS_PER_BATCH,
+        4,
+        &mut no_interrupt(),
+    )
+    .expect("parallel signature");
     assert_eq!(serial, parallel);
-    assert!(serial.starts_with("1000:1:"), "unexpected form: {serial}");
+    assert!(
+        serial.starts_with(&format!("{rows}:1:")),
+        "unexpected form: {serial}"
+    );
+}
+
+#[test]
+fn noncanonical_signature_batch_sizes_are_rejected() {
+    let dataset = signature_dataset(vec![1.0, 2.0, 3.0], "x");
+    let error = dataset_signature(&dataset, 64, 1, &mut no_interrupt())
+        .expect_err("signatures require the canonical batch size");
+    assert!(error.to_string().contains("65,536"));
+
+    let mut bytes = Vec::new();
+    let error = save_arrow_file_to(
+        &mut bytes,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        64,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("profile writes require the canonical batch size");
+    assert!(error.to_string().contains("65,536"));
+    assert!(bytes.is_empty());
 }
 
 #[test]
@@ -1145,14 +1215,14 @@ fn dataset_signature_detects_value_order_and_names() {
     // within one column.
     let base = dataset_signature(
         &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
     .expect("base signature");
     let swapped = dataset_signature(
         &signature_dataset(vec![2.0, 1.0, 3.0], "x"),
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
@@ -1160,7 +1230,7 @@ fn dataset_signature_detects_value_order_and_names() {
     assert_ne!(base, swapped);
     let renamed = dataset_signature(
         &signature_dataset(vec![1.0, 2.0, 3.0], "y"),
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
@@ -1168,7 +1238,7 @@ fn dataset_signature_detects_value_order_and_names() {
     assert_ne!(base, renamed);
     let identical = dataset_signature(
         &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
@@ -1205,7 +1275,8 @@ fn stored_signature_matches_recomputed_signature() {
             },
         ],
     };
-    let recomputed = dataset_signature(&dataset, 64, 1, &mut no_interrupt()).expect("signature");
+    let recomputed = dataset_signature(&dataset, ARROW_ROWS_PER_BATCH, 1, &mut no_interrupt())
+        .expect("signature");
 
     let directory =
         std::env::temp_dir().join(format!("dtatools-stored-signature-{}", std::process::id()));
@@ -1233,7 +1304,7 @@ fn stored_signature_matches_recomputed_signature() {
         &mut bare,
         &dataset,
         ArrowCompression::Uncompressed,
-        64,
+        ARROW_ROWS_PER_BATCH,
         1,
         false,
         &mut no_interrupt(),

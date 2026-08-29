@@ -23,9 +23,18 @@ use super::profile::{
 };
 use super::ArrowProfileError;
 
-/// Rows per record batch. Provisional until pinned by benchmark; a multiple
-/// of 64 so sliced validity and boolean bitmaps stay byte-aligned.
+/// Canonical rows per record batch, pinned by benchmark. The multiple of 64
+/// keeps sliced validity and boolean bitmaps byte-aligned.
 pub const ARROW_ROWS_PER_BATCH: usize = 65_536;
+
+fn validate_rows_per_batch(rows_per_batch: usize) -> Result<(), ArrowProfileError> {
+    if rows_per_batch != ARROW_ROWS_PER_BATCH {
+        return Err(ArrowProfileError::Invalid(format!(
+            "rows per record batch must use the canonical 65,536 rows, not {rows_per_batch}"
+        )));
+    }
+    Ok(())
+}
 
 /// The IPC body compression to apply. The default is uncompressed; readers
 /// detect the codec from the file.
@@ -263,11 +272,7 @@ pub fn dataset_signature(
     threads: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<String, ArrowProfileError> {
-    if !rows_per_batch.is_multiple_of(64) || rows_per_batch == 0 {
-        return Err(ArrowProfileError::Invalid(
-            "rows per record batch must be a positive multiple of 64".to_owned(),
-        ));
-    }
+    validate_rows_per_batch(rows_per_batch)?;
     let row_count = dataset
         .columns
         .first()
@@ -470,11 +475,7 @@ pub fn save_arrow_file_to<W: Write>(
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    if !rows_per_batch.is_multiple_of(64) || rows_per_batch == 0 {
-        return Err(ArrowProfileError::Invalid(
-            "rows per record batch must be a positive multiple of 64".to_owned(),
-        ));
-    }
+    validate_rows_per_batch(rows_per_batch)?;
     let row_count = dataset
         .columns
         .first()
