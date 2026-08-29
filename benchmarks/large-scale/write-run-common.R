@@ -115,6 +115,13 @@ write_result_tuple <- function(data) {
 
 validate_write_result_matrix <- function(raw, datasets, writers, iterations,
                                          description) {
+    required <- c(
+        "dataset", "writer", "iteration", "writer_order", "rows", "columns",
+        "elapsed_seconds", "peak_rss_bytes", "output_bytes"
+    )
+    if (!all(required %in% names(raw))) {
+        stop(description, " results are missing required measurement fields")
+    }
     expected <- expand.grid(
         dataset = datasets, writer = writers,
         iteration = seq_len(iterations), stringsAsFactors = FALSE
@@ -122,6 +129,48 @@ validate_write_result_matrix <- function(raw, datasets, writers, iterations,
     if (anyDuplicated(write_result_tuple(raw)) ||
         !setequal(write_result_tuple(raw), write_result_tuple(expected))) {
         stop(description, " results are not the exact expected matrix")
+    }
+
+    positive_number <- function(field, whole = FALSE) {
+        value <- suppressWarnings(as.numeric(raw[[field]]))
+        invalid <- !is.finite(value) | value <= 0
+        if (whole) invalid <- invalid | value != floor(value)
+        if (any(invalid)) {
+            stop(description, " results have invalid ", field)
+        }
+    }
+    positive_number("iteration", whole = TRUE)
+    positive_number("writer_order", whole = TRUE)
+    positive_number("rows", whole = TRUE)
+    positive_number("columns", whole = TRUE)
+    positive_number("elapsed_seconds")
+    byte_fields <- grep("_bytes$", names(raw), value = TRUE)
+    for (field in byte_fields) positive_number(field, whole = TRUE)
+
+    groups <- split(raw, interaction(raw$dataset, raw$iteration, drop = TRUE))
+    valid_order <- vapply(groups, function(group) {
+        identical(
+            sort(as.integer(group$writer_order)),
+            seq_along(writers)
+        )
+    }, logical(1L))
+    if (!all(valid_order)) {
+        stop(description, " results have invalid writer order metadata")
+    }
+    shapes <- split(raw, raw$dataset)
+    valid_shape <- vapply(shapes, function(group) {
+        length(unique(group$rows)) == 1L &&
+            length(unique(group$columns)) == 1L
+    }, logical(1L))
+    if (!all(valid_shape)) {
+        stop(description, " results have inconsistent row or column metadata")
+    }
+    hash_fields <- grep("_sha256$", names(raw), value = TRUE)
+    for (field in hash_fields) {
+        value <- as.character(raw[[field]])
+        if (anyNA(value) || any(!grepl("^[0-9a-f]{64}$", value))) {
+            stop(description, " results have invalid ", field)
+        }
     }
     invisible(NULL)
 }

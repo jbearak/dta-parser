@@ -18,6 +18,7 @@ sys.source(
     file.path(script_dir, "..", "benchmark-common.R"),
     envir = environment()
 )
+sys.source(file.path(script_dir, "provenance.R"), envir = environment())
 sys.source(file.path(script_dir, "write-run-common.R"), envir = environment())
 
 read_table <- function(path) {
@@ -26,15 +27,45 @@ read_table <- function(path) {
         check.names = FALSE, stringsAsFactors = FALSE
     )
 }
+read_provenance <- function(path) {
+    read.delim(
+        normalizePath(path, winslash = "/", mustWork = TRUE),
+        check.names = FALSE, stringsAsFactors = FALSE,
+        colClasses = "character", na.strings = character()
+    )
+}
 current_raw <- read_table(args[[1L]])
 current_summary <- read_table(args[[2L]])
-current_provenance <- read_table(args[[3L]])
+current_provenance <- read_provenance(args[[3L]])
 current_validation <- read_table(args[[4L]])
 reference_raw <- read_table(args[[5L]])
 reference_summary <- read_table(args[[6L]])
-reference_provenance <- read_table(args[[7L]])
+reference_provenance <- read_provenance(args[[7L]])
 reference_validation <- read_table(args[[8L]])
 output <- normalizePath(args[[9L]], winslash = "/", mustWork = FALSE)
+
+validate_provenance <- function(provenance, description) {
+    required <- c("provenance_id", "created_at_utc", "build_provenance_id")
+    if (nrow(provenance) != 1L || anyDuplicated(names(provenance)) ||
+        !all(required %in% names(provenance))) {
+        stop(description, " provenance is not a single complete record")
+    }
+    benchmark_assert_provenance_fields(provenance)
+    stable_fields <- setdiff(
+        names(provenance), c("provenance_id", "created_at_utc")
+    )
+    expected_id <- benchmark_provenance_id(provenance[stable_fields])
+    if (!identical(as.character(provenance$provenance_id[[1L]]), expected_id)) {
+        stop(description, " provenance ID does not match its stable fields")
+    }
+    if (!grepl(
+        "^[0-9a-f]{64}$", as.character(provenance$build_provenance_id[[1L]])
+    )) {
+        stop(description, " build provenance ID is invalid")
+    }
+}
+validate_provenance(current_provenance, "current write")
+validate_provenance(reference_provenance, "reference write")
 
 contract_fields <- c(
     "workload", "fixture_storage_schema", "fixture_creator",
