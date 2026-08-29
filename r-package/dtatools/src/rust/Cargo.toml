@@ -11,6 +11,8 @@ crate-type = ["staticlib"]
 
 [dependencies]
 ahash = { version = "0.8", default-features = false, features = ["std"] }
+arrow-array = "59.2.0"
+arrow-schema = "59.2.0"
 dta-tools = { path = "../dta-tools" }
 
 [profile.release]

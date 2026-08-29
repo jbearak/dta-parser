@@ -276,8 +276,9 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     as.integer(value)
 }
 
-.resolve_dta_source <- function(file) {
-    file <- .resolve_implicit_dta_read_path(file)
+.resolve_dta_source <- function(file, fileext = ".dta",
+                                implicit_extension = TRUE) {
+    if (implicit_extension) file <- .resolve_implicit_dta_read_path(file)
     caller_supplied_source <- inherits(file, "source")
     caller_path <- .caller_dta_source_path(file)
     datasource <- readr::datasource(file)
@@ -310,7 +311,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     if (identical(source_type, "source_raw")) {
-        path <- tempfile(pattern = "dtatools-", fileext = ".dta")
+        path <- tempfile(pattern = "dtatools-", fileext = fileext)
         complete <- FALSE
         on.exit(if (!complete) unlink(path), add = TRUE)
         writeBin(datasource[[1L]], path)
