@@ -273,27 +273,7 @@ pub fn dataset_signature(
     threads: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<String, ArrowProfileError> {
-    validate_rows_per_batch(rows_per_batch)?;
-    let row_count = dataset
-        .columns
-        .first()
-        .map_or(0, |column| column.array.len());
-    for column in &dataset.columns {
-        if column.array.len() != row_count {
-            return Err(ArrowProfileError::Invalid(format!(
-                "column `{}` has {} rows; expected {row_count}",
-                column.name,
-                column.array.len()
-            )));
-        }
-        let data_type = column.array.data_type();
-        if !supported_write_type(data_type) {
-            return Err(ArrowProfileError::UnsupportedColumn {
-                column: column.name.clone(),
-                data_type: data_type.to_string(),
-            });
-        }
-    }
+    let (row_count, _) = validated_fields(dataset, rows_per_batch)?;
 
     let column_count = dataset.columns.len();
     let dictionary_columns: Vec<usize> = dataset

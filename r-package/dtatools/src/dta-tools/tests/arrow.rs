@@ -8,15 +8,16 @@ use arrow_array::{
     Int32Array, Int64Array, Int8Array, RecordBatch, StringArray,
 };
 use arrow_ipc::reader::FileReader;
+use arrow_ipc::root_as_footer;
 use arrow_ipc::writer::{DictionaryHandling, FileWriter, IpcWriteOptions};
 use arrow_schema::{DataType, Field, Schema};
 
 use dta_tools::arrow::{
     arrow_stored_signature, dataset_signature, read_arrow_file, read_arrow_file_from,
-    save_arrow_file, save_arrow_file_to, ArrowCompression, ArrowFieldDocument,
-    ArrowMissingEncoding, ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn,
-    ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_FIELD_KEY,
-    ARROW_PROFILE_VERSION_KEY, ARROW_ROWS_PER_BATCH,
+    save_arrow_file, save_arrow_file_to, summarize_arrow_file, ArrowCompression,
+    ArrowFieldDocument, ArrowMissingEncoding, ArrowProfileError, ArrowRSemantics, ArrowReadOptions,
+    ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY,
+    ARROW_FIELD_KEY, ARROW_PROFILE_VERSION_KEY, ARROW_ROWS_PER_BATCH,
 };
 use dta_tools::{ValueLabelEntry, ValueLabelTable};
 
@@ -611,6 +612,66 @@ fn plain_arrow_files_read_without_stata_semantics() {
 }
 
 #[test]
+fn profiled_integer_metadata_does_not_decode_column_bodies() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "x".to_owned(),
+            field: Some(ArrowFieldDocument {
+                r: Some(ArrowRSemantics {
+                    class: "integer".to_owned(),
+                    ..ArrowRSemantics::default()
+                }),
+                ..ArrowFieldDocument::default()
+            }),
+            array: Arc::new(Int32Array::from(vec![7; 10_000])),
+        }],
+    };
+    let mut bytes = Vec::new();
+    save_arrow_file_to(
+        &mut bytes,
+        &dataset,
+        ArrowCompression::Zstd,
+        ARROW_ROWS_PER_BATCH,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect("write compressed integer file");
+    let footer_length = u32::from_le_bytes(
+        bytes[bytes.len() - 10..bytes.len() - 6]
+            .try_into()
+            .expect("footer length"),
+    ) as usize;
+    let footer_start = bytes.len() - 10 - footer_length;
+    let footer = root_as_footer(&bytes[footer_start..]).expect("valid footer");
+    let block = footer.recordBatches().expect("record batches").get(0);
+    let body_start = block.offset() as usize + block.metaDataLength() as usize;
+    let body_end = body_start + block.bodyLength() as usize;
+    bytes[body_start..body_end].fill(0);
+    let path = std::env::temp_dir().join(format!(
+        "dtatools-profiled-integer-summary-{}.arrow",
+        std::process::id()
+    ));
+    std::fs::write(&path, bytes).expect("write corrupted file");
+
+    read_arrow_file(
+        &path,
+        &ArrowReadOptions {
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("the compressed integer body is corrupt");
+
+    let summary = summarize_arrow_file(&path, true, &mut no_interrupt())
+        .expect("profiled integer metadata does not read the corrupted body");
+    assert_eq!(summary.columns[0].r_type, "integer");
+    std::fs::remove_file(path).expect("remove test file");
+}
+
+#[test]
 fn plain_dictionary_columns_accept_all_signed_key_widths() {
     let values: ArrayRef = Arc::new(StringArray::from(vec!["low", "high"]));
     let arrays: Vec<ArrayRef> = vec![
@@ -916,6 +977,9 @@ fn writer_rejects_unsupported_dataset_documents_before_output() {
     assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
     assert!(error.to_string().contains("dataset document version 99"));
     assert!(bytes.is_empty());
+    let error = dataset_signature(&dataset, ARROW_ROWS_PER_BATCH, 1, &mut no_interrupt())
+        .expect_err("the signature boundary rejects unsupported dataset metadata");
+    assert!(error.to_string().contains("dataset document version 99"));
 }
 
 #[test]

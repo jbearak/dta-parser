@@ -981,8 +981,9 @@ unsafe fn encode_column(
                         .map(|&value| (value != R_NaInt).then_some(value)),
                 ))
             };
-            let document = with_labels(base_document);
-            (needs_document(&document).then_some(document), array, 0)
+            let mut document = with_labels(base_document);
+            document.r = r_semantics("integer");
+            (Some(document), array, 0)
         }
         ColumnInput::DoubleLike { values } => {
             let values = std::slice::from_raw_parts(*values, row_count);
@@ -1746,6 +1747,12 @@ fn classify_read_column(
         });
     }
     if column.data_type == DataType::Int32 && int32_contains_r_na_sentinel(column)? {
+        if attributes.class() == Some("integer") {
+            return Err(format!(
+                "column `{}` declares R integer semantics but contains a non-null Int32 minimum value",
+                column.name
+            ));
+        }
         return Ok(ColumnShape::SemanticDouble);
     }
     let class = attributes.class();
@@ -3190,6 +3197,20 @@ mod tests {
             classify_read_column(&column, &attributes, true).expect("classification"),
             ColumnShape::SemanticDouble
         ));
+
+        let document = ArrowFieldDocument {
+            r: r_semantics("integer"),
+            ..ArrowFieldDocument::default()
+        };
+        let profiled = ColumnAttributes {
+            document: Some(&document),
+            dataset: None,
+        };
+        let error = match classify_read_column(&column, &profiled, true) {
+            Err(error) => error,
+            Ok(_) => panic!("profiled integers cannot contain R's NA sentinel as a value"),
+        };
+        assert!(error.contains("declares R integer semantics"));
     }
 
     #[test]

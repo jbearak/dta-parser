@@ -1744,12 +1744,14 @@ pub fn summarize_arrow_file(
         .iter()
         .enumerate()
         .filter(|(index, field)| {
+            let document = profile
+                .as_ref()
+                .and_then(|profile| profile.fields[*index].as_ref());
             field.data_type() == &DataType::Int32
-                && profile
-                    .as_ref()
-                    .and_then(|profile| profile.fields[*index].as_ref())
-                    .and_then(|document| document.storage)
-                    .is_none()
+                && document.and_then(|document| document.storage).is_none()
+                && document
+                    .and_then(|document| document.r.as_ref())
+                    .is_none_or(|semantics| semantics.class != "integer")
         })
         .map(|(index, _)| {
             u32::try_from(index)
