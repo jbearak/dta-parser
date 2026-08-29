@@ -119,6 +119,16 @@ save_arrow <- function(data, path,
     compression
 }
 
+.arrow_utf8 <- function(value, what) {
+    if (any(Encoding(value) == "bytes")) {
+        .dta_write_abort(sprintf(
+            "%s cannot contain strings with `bytes` encoding; Arrow Utf8 requires Unicode text",
+            what
+        ))
+    }
+    enc2utf8(value)
+}
+
 # Kind codes shared with C_dtatools_save_arrow and the native bridge.
 .arrow_write_kinds <- c(
     logical = 0L, integer = 1L, double = 2L, character = 3L, raw = 4L,
@@ -247,9 +257,12 @@ save_arrow <- function(data, path,
 }
 
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz) {
-    variable_label <- .write_text(
-        attr(column, "label", exact = TRUE),
-        sprintf("variable label for `%s`", name)
+    variable_label <- .arrow_utf8(
+        .write_text(
+            attr(column, "label", exact = TRUE),
+            sprintf("variable label for `%s`", name)
+        ),
+        sprintf("Variable label for `%s`", name)
     )
     levels <- character()
     ordered <- FALSE
@@ -261,6 +274,9 @@ save_arrow <- function(data, path,
     value_labels <- list(double(), character(), FALSE)
     if (kind %in% c("double", "date", "datetime", "difftime", "stata")) {
         value_labels <- .prepare_write_value_labels(column, name)
+        value_labels[[2L]] <- .arrow_utf8(
+            value_labels[[2L]], sprintf("Value-label text for `%s`", name)
+        )
     } else if (!is.null(attr(column, "labels", exact = TRUE))) {
         .dta_write_abort(sprintf(
             "Column `%s` cannot carry numeric value labels", name
@@ -281,13 +297,17 @@ save_arrow <- function(data, path,
                     "Factor column `%s` has a missing level", name
                 ))
             }
-            levels <- enc2utf8(levels)
+            levels <- .arrow_utf8(
+                levels, sprintf("Factor levels for `%s`", name)
+            )
             ordered <- is.ordered(column)
         } else if (identical(kind, "character")) {
             # Unmaterialized dictionary-string columns are already UTF-8 and
             # export natively; enc2utf8() would materialize every CHARSXP.
             if (!.is_unmaterialized_dictstring(column)) {
-                values <- enc2utf8(column)
+                values <- .arrow_utf8(
+                    column, sprintf("Character column `%s`", name)
+                )
             }
         } else if (identical(kind, "date")) {
             values <- as.double(column)
@@ -300,8 +320,13 @@ save_arrow <- function(data, path,
         }
     }
 
+    format <- .arrow_utf8(format, sprintf("Display format for `%s`", name))
+    tz <- .arrow_utf8(tz, sprintf("Timezone for `%s`", name))
+    units <- .arrow_utf8(units, sprintf("Difftime units for `%s`", name))
+
     list(
-        enc2utf8(name), .arrow_write_kinds[[kind]], values, levels, ordered,
+        .arrow_utf8(name, "Column names"), .arrow_write_kinds[[kind]],
+        values, levels, ordered,
         variable_label, format, storage_code, tz, units,
         value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
         inherits(column, "haven_labelled")
@@ -380,13 +405,13 @@ save_arrow <- function(data, path,
             "Unsupported columns: %s", paste(details, collapse = ", ")
         ))
     }
-    label <- .write_text(label, "label")
+    label <- .arrow_utf8(.write_text(label, "label"), "Dataset label")
     notes <- attr(data, "notes", exact = TRUE)
     if (is.null(notes)) notes <- character()
     if (!is.character(notes) || anyNA(notes)) {
         .dta_write_abort("The data frame's `notes` attribute must be NULL or a character vector")
     }
-    notes <- enc2utf8(notes)
+    notes <- .arrow_utf8(notes, "Dataset notes")
     if (length(notes) > 9999L || any(nchar(notes, type = "bytes") > 67784L)) {
         .dta_write_abort("Dataset notes exceed Stata's count or UTF-8 byte limits")
     }

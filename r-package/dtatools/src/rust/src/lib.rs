@@ -2073,7 +2073,9 @@ unsafe fn fill_string_region(
             result.push(None);
         } else {
             let slice = std::slice::from_raw_parts(bytes.cast::<u8>(), byte_length);
-            result.push(Some(String::from_utf8_lossy(slice).into_owned()));
+            let value =
+                std::str::from_utf8(slice).map_err(|_| format!("{what} contains invalid UTF-8"))?;
+            result.push(Some(value.to_owned()));
         }
     }
     Ok(result)

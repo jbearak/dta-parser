@@ -354,6 +354,32 @@ test_that("tagged NaN payloads on bare doubles survive bit-exactly", {
     )
 })
 
+test_that("byte-encoded strings are rejected instead of replaced", {
+    values <- lapply(c(0xff, 0xfe), function(byte) {
+        value <- rawToChar(as.raw(byte))
+        Encoding(value) <- "bytes"
+        value
+    })
+
+    for (value in values) {
+        data <- tibble::tibble(x = value)
+        path <- arrow_tempfile()
+        expect_error(
+            save_arrow(data, path),
+            "Character column `x` cannot contain strings with `bytes` encoding",
+            fixed = TRUE,
+            class = "dtatools_write_validation_error"
+        )
+        expect_false(file.exists(path))
+        expect_error(
+            datasig(data),
+            "Character column `x` cannot contain strings with `bytes` encoding",
+            fixed = TRUE,
+            class = "dtatools_write_validation_error"
+        )
+    }
+})
+
 test_that("haven labelled doubles round-trip with their labels", {
     data <- tibble::tibble(status = labelled_for_test(
         c(1, 2, tagged_missing("r")),
@@ -764,4 +790,40 @@ test_that("plain Arrow files never acquire Stata semantics", {
     expect_identical(actual$s, data$s)
     expect_null(attr(actual$n, "stata.storage", exact = TRUE))
     expect_null(attr(actual, "label", exact = TRUE))
+})
+
+test_that("wide Arrow integers are rejected instead of rounded", {
+    skip_if_not_installed("arrow")
+    skip_if_not_installed("bit64")
+    boundary <- bit64::as.integer64("9007199254740992")
+    too_wide <- bit64::as.integer64("9007199254740993")
+
+    for (type in list(arrow::int64(), arrow::uint64())) {
+        boundary_path <- arrow_tempfile()
+        arrow::write_ipc_file(
+            arrow::arrow_table(
+                x = arrow::Array$create(boundary, type = type)
+            ),
+            boundary_path
+        )
+        expect_identical(read_arrow(boundary_path)$x, 2^53)
+
+        wide_path <- arrow_tempfile()
+        arrow::write_ipc_file(
+            arrow::arrow_table(
+                x = arrow::Array$create(too_wide, type = type)
+            ),
+            wide_path
+        )
+        expect_error(
+            read_arrow(wide_path),
+            "cannot be represented exactly as an R double",
+            fixed = TRUE
+        )
+        expect_error(
+            datasig(wide_path),
+            "cannot be represented exactly as an R double",
+            fixed = TRUE
+        )
+    }
 })

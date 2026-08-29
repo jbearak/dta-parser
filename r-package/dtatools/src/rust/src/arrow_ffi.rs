@@ -1908,7 +1908,7 @@ unsafe fn fill_semantic_double(column: &ArrowReadColumn, output: *mut f64) -> Re
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                values.value(index) as f64
+                exact_i64_as_r_double(values.value(index), &column.name)?
             };
             Ok(())
         }),
@@ -1932,11 +1932,33 @@ unsafe fn fill_semantic_double(column: &ArrowReadColumn, output: *mut f64) -> Re
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                values.value(index) as f64
+                exact_u64_as_r_double(values.value(index), &column.name)?
             };
             Ok(())
         }),
         _ => Err(chunk_error(&column.name)),
+    }
+}
+
+fn exact_i64_as_r_double(value: i64, column: &str) -> Result<f64, String> {
+    let converted = value as f64;
+    if converted as i128 == value as i128 {
+        Ok(converted)
+    } else {
+        Err(format!(
+            "column `{column}` contains Int64 value {value} that cannot be represented exactly as an R double"
+        ))
+    }
+}
+
+fn exact_u64_as_r_double(value: u64, column: &str) -> Result<f64, String> {
+    let converted = value as f64;
+    if converted as u128 == value as u128 {
+        Ok(converted)
+    } else {
+        Err(format!(
+            "column `{column}` contains UInt64 value {value} that cannot be represented exactly as an R double"
+        ))
     }
 }
 
@@ -2840,5 +2862,32 @@ mod tests {
             classify_read_column(&column, &attributes, true).expect("classification"),
             ColumnShape::SemanticDouble
         ));
+    }
+
+    #[test]
+    fn wide_integers_must_fit_exactly_in_r_doubles() {
+        const CONSECUTIVE_INTEGER_LIMIT: i64 = 9_007_199_254_740_992;
+        assert_eq!(
+            exact_i64_as_r_double(CONSECUTIVE_INTEGER_LIMIT, "x").expect("boundary is exact"),
+            CONSECUTIVE_INTEGER_LIMIT as f64
+        );
+        assert_eq!(
+            exact_i64_as_r_double(-CONSECUTIVE_INTEGER_LIMIT, "x")
+                .expect("negative boundary is exact"),
+            -(CONSECUTIVE_INTEGER_LIMIT as f64)
+        );
+        assert!(exact_i64_as_r_double(CONSECUTIVE_INTEGER_LIMIT + 1, "x").is_err());
+        assert!(exact_i64_as_r_double(-CONSECUTIVE_INTEGER_LIMIT - 1, "x").is_err());
+        assert!(exact_i64_as_r_double(CONSECUTIVE_INTEGER_LIMIT * 2, "x").is_ok());
+        assert!(exact_i64_as_r_double(i64::MIN, "x").is_ok());
+        assert!(exact_i64_as_r_double(i64::MAX, "x").is_err());
+        assert_eq!(
+            exact_u64_as_r_double(CONSECUTIVE_INTEGER_LIMIT as u64, "x")
+                .expect("unsigned boundary is exact"),
+            CONSECUTIVE_INTEGER_LIMIT as f64
+        );
+        assert!(exact_u64_as_r_double(CONSECUTIVE_INTEGER_LIMIT as u64 + 1, "x").is_err());
+        assert!(exact_u64_as_r_double(CONSECUTIVE_INTEGER_LIMIT as u64 * 2, "x").is_ok());
+        assert!(exact_u64_as_r_double(u64::MAX, "x").is_err());
     }
 }

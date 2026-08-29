@@ -50,16 +50,24 @@ pub struct DatasetDocument {
 impl DatasetDocument {
     pub fn value_label_table(&self, name: &str) -> Option<ValueLabelTable> {
         let entries = self.value_labels.get(name)?;
-        Some(ValueLabelTable {
-            name: name.to_owned(),
-            entries: entries
-                .iter()
-                .map(|entry| ValueLabelEntry {
-                    value: entry.value.unwrap_or(0),
-                    missing_tag: entry.tag,
+        let entries = entries
+            .iter()
+            .map(|entry| {
+                let (value, missing_tag) = match (entry.value, entry.tag) {
+                    (Some(value), None) => (value, None),
+                    (None, Some(tag)) => (0, Some(tag)),
+                    _ => return None,
+                };
+                Some(ValueLabelEntry {
+                    value,
+                    missing_tag,
                     label: entry.label.clone(),
                 })
-                .collect(),
+            })
+            .collect::<Option<Vec<_>>>()?;
+        Some(ValueLabelTable {
+            name: name.to_owned(),
+            entries,
         })
     }
 
@@ -196,6 +204,18 @@ pub(crate) fn parse_dataset_document(
             format!("dataset document version {}", document.version),
         ));
     }
+    for (table, entries) in &document.value_labels {
+        for (index, entry) in entries.iter().enumerate() {
+            if entry.value.is_some() == entry.tag.is_some() {
+                return Err(malformed(
+                    version,
+                    format!(
+                        "value-label table `{table}` entry {index} must contain exactly one of `value` or `tag`"
+                    ),
+                ));
+            }
+        }
+    }
     Ok(document)
 }
 
@@ -241,4 +261,24 @@ pub(crate) fn parse_checksums_document(
         ));
     }
     Ok(document)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn value_label_entries_require_exactly_one_code() {
+        for json in [
+            r#"{"version":0,"value_labels":{"x":[{"label":"missing"}]}}"#,
+            r#"{"version":0,"value_labels":{"x":[{"value":1,"tag":".a","label":"both"}]}}"#,
+        ] {
+            let error = parse_dataset_document("0", Some(json))
+                .expect_err("malformed value-label entry is rejected");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error
+                .to_string()
+                .contains("exactly one of `value` or `tag`"));
+        }
+    }
 }
