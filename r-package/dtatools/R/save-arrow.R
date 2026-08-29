@@ -276,6 +276,9 @@ save_arrow <- function(data, path,
         value_labels <- .prepare_write_value_labels(
             column, name, allow_legacy_codes = TRUE
         )
+        # The shared validator accepts integer and double code vectors. The
+        # Arrow native descriptor has one f64 representation for both.
+        value_labels[[1L]] <- as.double(value_labels[[1L]])
         value_labels[[2L]] <- .arrow_utf8(
             value_labels[[2L]], sprintf("Value-label text for `%s`", name)
         )

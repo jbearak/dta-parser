@@ -594,6 +594,18 @@ test_that("value labels on profiled columns round-trip", {
     expect_identical(stata_storage_type(actual$vote), "long")
 })
 
+test_that("integer-coded value labels work in Arrow and datasig", {
+    labelled <- set_value_labels(c(1, 2), .labels = c(one = 1L, two = 2L))
+    expect_type(val_labels(labelled), "integer")
+    data <- tibble::tibble(x = labelled)
+    path <- arrow_tempfile()
+
+    save_arrow(data, path)
+    actual <- read_arrow(path)
+    expect_identical(val_labels(actual$x), c(one = 1, two = 2))
+    expect_identical(datasig(actual), datasig(data))
+})
+
 test_that("display formats round-trip on profiled columns", {
     column <- stata_double(c(1.5, 2.5))
     attr(column, "format.stata") <- "%9.2f"
