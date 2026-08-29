@@ -302,7 +302,7 @@ fn parse_profile(
         let document = field
             .metadata()
             .get(ARROW_FIELD_KEY)
-            .map(|json| parse_field_document(version, field.name(), json))
+            .map(|json| parse_field_document(version, field, json))
             .transpose()?;
         fields.push(document);
     }

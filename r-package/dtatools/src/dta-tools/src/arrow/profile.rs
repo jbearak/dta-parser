@@ -3,6 +3,7 @@
 
 use std::collections::BTreeMap;
 
+use arrow_schema::{DataType, Field};
 use serde::{Deserialize, Serialize};
 
 use super::ArrowProfileError;
@@ -221,25 +222,256 @@ pub(crate) fn parse_dataset_document(
 
 pub(crate) fn parse_field_document(
     version: &str,
-    field_name: &str,
+    field: &Field,
     json: &str,
 ) -> Result<ArrowFieldDocument, ArrowProfileError> {
     let document: ArrowFieldDocument = serde_json::from_str(json).map_err(|error| {
         malformed(
             version,
-            format!("invalid field document on `{field_name}`: {error}"),
+            format!("invalid field document on `{}`: {error}", field.name()),
         )
     })?;
     if document.version != DOCUMENT_VERSION {
         return Err(malformed(
             version,
             format!(
-                "field document version {} on `{field_name}`",
-                document.version
+                "field document version {} on `{}`",
+                document.version,
+                field.name()
             ),
         ));
     }
+    validate_field_document(version, field, &document)?;
     Ok(document)
+}
+
+fn field_malformed(
+    version: &str,
+    field: &Field,
+    detail: impl std::fmt::Display,
+) -> ArrowProfileError {
+    malformed(version, format!("field `{}` {detail}", field.name()))
+}
+
+fn storage_type(storage: StataStorage) -> DataType {
+    match storage {
+        StataStorage::Byte => DataType::Int8,
+        StataStorage::Int => DataType::Int16,
+        StataStorage::Long => DataType::Int32,
+        StataStorage::Float => DataType::Float32,
+        StataStorage::Double => DataType::Float64,
+    }
+}
+
+fn storage_missing(storage: StataStorage) -> ArrowMissingEncoding {
+    match storage {
+        StataStorage::Byte | StataStorage::Int | StataStorage::Long => {
+            ArrowMissingEncoding::Sentinel
+        }
+        StataStorage::Float | StataStorage::Double => ArrowMissingEncoding::Payload,
+    }
+}
+
+fn factor_type(data_type: &DataType) -> bool {
+    matches!(
+        data_type,
+        DataType::Dictionary(key, value)
+            if key.as_ref() == &DataType::Int32
+                && matches!(value.as_ref(), DataType::Utf8 | DataType::LargeUtf8)
+    )
+}
+
+fn semantic_double_type(data_type: &DataType) -> bool {
+    matches!(
+        data_type,
+        DataType::Float32
+            | DataType::Float64
+            | DataType::Int64
+            | DataType::UInt16
+            | DataType::UInt32
+            | DataType::UInt64
+    )
+}
+
+fn class_matches_type(class: &str, data_type: &DataType) -> Option<bool> {
+    Some(match class {
+        "logical" => data_type == &DataType::Boolean,
+        "integer" => matches!(
+            data_type,
+            DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::UInt8
+        ),
+        "double" => semantic_double_type(data_type),
+        "character" => matches!(data_type, DataType::Utf8 | DataType::LargeUtf8),
+        "factor" => factor_type(data_type),
+        "raw" => data_type == &DataType::UInt8,
+        "Date" => matches!(data_type, DataType::Date32 | DataType::Float64),
+        "POSIXct" => matches!(data_type, DataType::Timestamp(_, _) | DataType::Float64),
+        "difftime" => matches!(data_type, DataType::Duration(_) | DataType::Float64),
+        "haven_labelled" => data_type == &DataType::Float64,
+        _ => return None,
+    })
+}
+
+fn validate_r_semantics(
+    version: &str,
+    field: &Field,
+    semantics: &ArrowRSemantics,
+) -> Result<(), ArrowProfileError> {
+    let Some(compatible) = class_matches_type(&semantics.class, field.data_type()) else {
+        return Err(field_malformed(
+            version,
+            field,
+            format!("declares unsupported R class `{}`", semantics.class),
+        ));
+    };
+    if !compatible {
+        return Err(field_malformed(
+            version,
+            field,
+            format!(
+                "declares R class `{}` incompatible with Arrow type {}",
+                semantics.class,
+                field.data_type()
+            ),
+        ));
+    }
+    if semantics.ordered.is_some() && semantics.class != "factor" {
+        return Err(field_malformed(
+            version,
+            field,
+            "declares `r.ordered` without factor semantics",
+        ));
+    }
+    if semantics.tz.is_some() && semantics.class != "POSIXct" {
+        return Err(field_malformed(
+            version,
+            field,
+            "declares `r.tz` without POSIXct semantics",
+        ));
+    }
+    if semantics.units.is_some() && semantics.class != "difftime" {
+        return Err(field_malformed(
+            version,
+            field,
+            "declares `r.units` without difftime semantics",
+        ));
+    }
+    if semantics.class == "difftime" {
+        let valid_units = semantics
+            .units
+            .as_deref()
+            .is_none_or(|units| matches!(units, "secs" | "mins" | "hours" | "days" | "weeks"));
+        if !valid_units {
+            return Err(field_malformed(
+                version,
+                field,
+                "declares unsupported difftime units",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn supports_value_labels(data_type: &DataType) -> bool {
+    semantic_double_type(data_type)
+        || matches!(
+            data_type,
+            DataType::Date32 | DataType::Timestamp(_, _) | DataType::Duration(_)
+        )
+}
+
+fn validate_field_document(
+    version: &str,
+    field: &Field,
+    document: &ArrowFieldDocument,
+) -> Result<(), ArrowProfileError> {
+    if let Some(storage) = document.storage {
+        let expected_type = storage_type(storage);
+        if field.data_type() != &expected_type {
+            return Err(field_malformed(
+                version,
+                field,
+                format!(
+                    "declares Stata storage incompatible with Arrow type {}",
+                    field.data_type()
+                ),
+            ));
+        }
+        if document.missing != Some(storage_missing(storage)) {
+            return Err(field_malformed(
+                version,
+                field,
+                "declares a missing encoding incompatible with its Stata storage",
+            ));
+        }
+        if field.is_nullable() {
+            return Err(field_malformed(
+                version,
+                field,
+                "declares raw Stata missing storage on a nullable Arrow field",
+            ));
+        }
+        if let Some(semantics) = &document.r {
+            let valid = semantics.class == "stata_numeric"
+                && semantics.ordered.is_none()
+                && semantics.tz.is_none()
+                && semantics.units.is_none();
+            if !valid {
+                return Err(field_malformed(
+                    version,
+                    field,
+                    "declares R semantics incompatible with its Stata storage",
+                ));
+            }
+        }
+        return Ok(());
+    }
+
+    match document.missing {
+        Some(ArrowMissingEncoding::Sentinel) => {
+            return Err(field_malformed(
+                version,
+                field,
+                "declares sentinel missing encoding without Stata storage",
+            ));
+        }
+        Some(ArrowMissingEncoding::Payload) => {
+            if field.data_type() != &DataType::Float64 || field.is_nullable() {
+                return Err(field_malformed(
+                    version,
+                    field,
+                    "declares payload missing encoding on an incompatible Arrow field",
+                ));
+            }
+            let payload_class = document.r.as_ref().map(|r| r.class.as_str());
+            if !matches!(
+                payload_class,
+                Some("double" | "haven_labelled" | "Date" | "POSIXct" | "difftime")
+            ) {
+                return Err(field_malformed(
+                    version,
+                    field,
+                    "declares payload missing encoding without compatible R semantics",
+                ));
+            }
+        }
+        None => {}
+    }
+
+    if let Some(semantics) = &document.r {
+        validate_r_semantics(version, field, semantics)?;
+    }
+    if document.value_labels.is_some() && !supports_value_labels(field.data_type()) {
+        return Err(field_malformed(
+            version,
+            field,
+            format!(
+                "declares value labels incompatible with Arrow type {}",
+                field.data_type()
+            ),
+        ));
+    }
+    Ok(())
 }
 
 pub(crate) fn parse_checksums_document(
@@ -279,6 +511,68 @@ mod tests {
             assert!(error
                 .to_string()
                 .contains("exactly one of `value` or `tag`"));
+        }
+    }
+
+    #[test]
+    fn field_semantics_must_match_the_arrow_field() {
+        let cases = [
+            (
+                Field::new("day", DataType::Int32, true),
+                r#"{"version":0,"r":{"class":"Date"}}"#,
+            ),
+            (
+                Field::new("byte", DataType::Int32, false),
+                r#"{"version":0,"storage":"byte","missing":"sentinel"}"#,
+            ),
+            (
+                Field::new("payload", DataType::Float64, true),
+                r#"{"version":0,"missing":"payload","r":{"class":"double"}}"#,
+            ),
+            (
+                Field::new("mystery", DataType::Float64, true),
+                r#"{"version":0,"r":{"class":"mystery"}}"#,
+            ),
+        ];
+        for (field, json) in cases {
+            let error = parse_field_document("0", &field, json)
+                .expect_err("incompatible field semantics are rejected");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains(field.name()));
+        }
+    }
+
+    #[test]
+    fn writer_field_semantics_are_accepted() {
+        let cases = [
+            (
+                Field::new("raw", DataType::UInt8, true),
+                r#"{"version":0,"r":{"class":"raw"}}"#,
+            ),
+            (
+                Field::new(
+                    "factor",
+                    DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8)),
+                    true,
+                ),
+                r#"{"version":0,"r":{"class":"factor","ordered":true}}"#,
+            ),
+            (
+                Field::new(
+                    "time",
+                    DataType::Timestamp(arrow_schema::TimeUnit::Microsecond, Some("UTC".into())),
+                    true,
+                ),
+                r#"{"version":0,"r":{"class":"POSIXct","tz":"UTC"}}"#,
+            ),
+            (
+                Field::new("stata", DataType::Int8, false),
+                r#"{"version":0,"storage":"byte","missing":"sentinel"}"#,
+            ),
+        ];
+        for (field, json) in cases {
+            parse_field_document("0", &field, json)
+                .expect("writer-compatible field semantics are accepted");
         }
     }
 }

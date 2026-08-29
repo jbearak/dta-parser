@@ -15,7 +15,7 @@ use dta_tools::arrow::{
     arrow_stored_signature, dataset_signature, read_arrow_file, read_arrow_file_from,
     save_arrow_file_to, ArrowCompression, ArrowFieldDocument, ArrowMissingEncoding,
     ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset,
-    DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_PROFILE_VERSION_KEY,
+    DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION_KEY,
 };
 use dta_tools::{ValueLabelEntry, ValueLabelTable};
 
@@ -173,7 +173,7 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
                 name: "f".to_owned(),
                 field: Some(field_document(
                     Some(StataStorage::Float),
-                    Some(ArrowMissingEncoding::Sentinel),
+                    Some(ArrowMissingEncoding::Payload),
                     "stata_numeric",
                 )),
                 array: stata_float.clone(),
@@ -597,6 +597,47 @@ fn newer_profile_versions_are_a_hard_error_with_an_escape_hatch() {
         .expect("profile = FALSE reads the raw storage");
     assert_eq!(result.profile_version, None);
     assert_eq!(result.row_count, 3);
+}
+
+#[test]
+fn incompatible_field_semantics_are_malformed_with_an_escape_hatch() {
+    let mut field = Field::new("day", DataType::Int32, true);
+    field.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"r":{"class":"Date"}}"#.to_owned(),
+    )]));
+    let schema = Arc::new(Schema::new(vec![field]).with_metadata(HashMap::from([(
+        ARROW_PROFILE_VERSION_KEY.to_owned(),
+        "0".to_owned(),
+    )])));
+    let values: ArrayRef = Arc::new(Int32Array::from(vec![1, 2, 3]));
+    let batch = RecordBatch::try_new(schema.clone(), vec![values]).expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let options = ArrowReadOptions {
+        verify: false,
+        ..read_all_options()
+    };
+    let error = read_arrow_file_from(&mut Cursor::new(&bytes), &options, &mut no_interrupt())
+        .expect_err("incompatible field semantics are rejected");
+    assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+    assert!(error
+        .to_string()
+        .contains("incompatible with Arrow type Int32"));
+
+    let raw_options = ArrowReadOptions {
+        profile: false,
+        verify: false,
+        ..read_all_options()
+    };
+    let result = read_arrow_file_from(&mut Cursor::new(bytes), &raw_options, &mut no_interrupt())
+        .expect("profile = FALSE reads the raw field");
+    assert_eq!(result.profile_version, None);
+    assert_eq!(result.columns[0].data_type, DataType::Int32);
 }
 
 #[test]

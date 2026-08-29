@@ -409,6 +409,7 @@ test_that("label-free haven labelled doubles retain their class", {
 })
 
 test_that("temporal classes and empty value-label tables round-trip", {
+    skip_if_not_installed("arrow")
     day <- as.Date(c("2020-01-01", NA))
     attr(day, "labels") <- c(new_year = as.double(day[[1L]]))
     timestamp <- as.POSIXct(c("2020-01-01 12:00:00", NA), tz = "UTC")
@@ -430,9 +431,13 @@ test_that("temporal classes and empty value-label tables round-trip", {
     save_arrow(data, path)
 
     actual <- read_arrow(path)
+    oracle <- arrow::read_ipc_file(path)
     expect_s3_class(actual$day, "Date")
     expect_s3_class(actual$timestamp, "POSIXct")
     expect_s3_class(actual$elapsed, "difftime")
+    expect_s3_class(oracle$day, "Date")
+    expect_s3_class(oracle$timestamp, "POSIXct")
+    expect_s3_class(oracle$elapsed, "difftime")
     for (name in names(data)) {
         expect_identical(
             attr(actual[[name]], "labels", exact = TRUE),
@@ -823,6 +828,28 @@ test_that("wide Arrow integers are rejected instead of rounded", {
         expect_error(
             datasig(wide_path),
             "cannot be represented exactly as an R double",
+            fixed = TRUE
+        )
+    }
+})
+
+test_that("wide Arrow temporal counts are rejected instead of rounded", {
+    skip_if_not_installed("arrow")
+    skip_if_not_installed("bit64")
+    count <- bit64::as.integer64("1700000000000000001")
+
+    for (type in list(arrow::timestamp("ns"), arrow::duration("ns"))) {
+        path <- arrow_tempfile()
+        values <- arrow::Array$create(count, type = arrow::int64())$cast(type)
+        arrow::write_ipc_file(arrow::arrow_table(x = values), path)
+        expect_error(
+            read_arrow(path),
+            "cannot be represented exactly in R",
+            fixed = TRUE
+        )
+        expect_error(
+            datasig(path),
+            "cannot be represented exactly in R",
             fixed = TRUE
         )
     }

@@ -807,7 +807,8 @@ unsafe fn encode_column(
             } else if class == "haven_labelled" {
                 document.r = r_semantics(class);
             }
-            if has_tags || column.value_labels.is_some() {
+            let payload_labels = kind == RArrowKind::Double && column.value_labels.is_some();
+            if has_tags || payload_labels {
                 // Tagged NAs and haven labels need bit-exact NaN payloads.
                 let (mut field, array) = payload_double_column(values, document, class);
                 if let Some(semantics) = field.as_mut().and_then(|document| document.r.as_mut()) {
@@ -2180,6 +2181,24 @@ fn timestamp_scale(unit: &TimeUnit) -> f64 {
     }
 }
 
+fn exact_temporal_as_r_double(
+    value: i64,
+    scale: f64,
+    seconds_per_unit: f64,
+    column: &str,
+    data_type: &DataType,
+) -> Result<f64, String> {
+    let converted = value as f64 / scale / seconds_per_unit;
+    let restored = converted * seconds_per_unit * scale;
+    if restored.is_finite() && restored.fract() == 0.0 && restored as i128 == value as i128 {
+        Ok(converted)
+    } else {
+        Err(format!(
+            "column `{column}` contains {data_type} value {value} that cannot be represented exactly in R"
+        ))
+    }
+}
+
 unsafe fn fill_timestamp(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
     let DataType::Timestamp(unit, _) = &column.data_type else {
         return Err(chunk_error(&column.name));
@@ -2191,7 +2210,13 @@ unsafe fn fill_timestamp(column: &ArrowReadColumn, output: *mut f64) -> Result<(
                 *output.add(row) = if values.is_null(index) {
                     R_NaReal
                 } else {
-                    values.value(index) as f64 / scale
+                    exact_temporal_as_r_double(
+                        values.value(index),
+                        scale,
+                        1.0,
+                        &column.name,
+                        &column.data_type,
+                    )?
                 };
                 Ok(())
             })?
@@ -2221,7 +2246,13 @@ unsafe fn fill_duration(
                 *output.add(row) = if values.is_null(index) {
                     R_NaReal
                 } else {
-                    values.value(index) as f64 / scale / seconds_per_unit
+                    exact_temporal_as_r_double(
+                        values.value(index),
+                        scale,
+                        seconds_per_unit,
+                        &column.name,
+                        &column.data_type,
+                    )?
                 };
                 Ok(())
             })?
@@ -2562,6 +2593,9 @@ unsafe fn finalize_read_column(
         ColumnShape::Date32 => {
             set_class(vector, &["Date"], guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
+            if let Some(table) = attributes.value_label_table() {
+                value_label_attributes(vector, &table, false, guard)?;
+            }
         }
         ColumnShape::Timestamp => {
             set_class(vector, &["POSIXct", "POSIXt"], guard)?;
@@ -2577,10 +2611,16 @@ unsafe fn finalize_read_column(
             let timezone = scalar_string(tz, guard)?;
             set_attr(vector, "tzone", timezone)?;
             attach_simple_attributes(vector, &attributes, guard)?;
+            if let Some(table) = attributes.value_label_table() {
+                value_label_attributes(vector, &table, false, guard)?;
+            }
         }
         ColumnShape::Duration { .. } => {
             apply_difftime_attributes(vector, &attributes, guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
+            if let Some(table) = attributes.value_label_table() {
+                value_label_attributes(vector, &table, false, guard)?;
+            }
         }
         ColumnShape::PayloadDouble | ColumnShape::SemanticDouble => {
             apply_double_class(vector, &attributes, guard)?;
@@ -2889,5 +2929,34 @@ mod tests {
         assert!(exact_u64_as_r_double(CONSECUTIVE_INTEGER_LIMIT as u64 + 1, "x").is_err());
         assert!(exact_u64_as_r_double(CONSECUTIVE_INTEGER_LIMIT as u64 * 2, "x").is_ok());
         assert!(exact_u64_as_r_double(u64::MAX, "x").is_err());
+    }
+
+    #[test]
+    fn temporal_counts_must_round_trip_through_r_doubles() {
+        let nanos = DataType::Timestamp(TimeUnit::Nanosecond, Some("UTC".into()));
+        assert_eq!(
+            exact_temporal_as_r_double(1, 1_000_000_000.0, 1.0, "x", &nanos)
+                .expect("one nanosecond round-trips"),
+            1e-9
+        );
+        assert!(exact_temporal_as_r_double(
+            1_700_000_000_000_000_001,
+            1_000_000_000.0,
+            1.0,
+            "x",
+            &nanos,
+        )
+        .is_err());
+        assert_eq!(
+            exact_temporal_as_r_double(
+                3_600_000_000_000,
+                1_000_000_000.0,
+                3_600.0,
+                "elapsed",
+                &DataType::Duration(TimeUnit::Nanosecond),
+            )
+            .expect("one hour round-trips"),
+            1.0
+        );
     }
 }
