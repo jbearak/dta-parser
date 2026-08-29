@@ -10,15 +10,16 @@ reference_run=${2:-}
 
 require_positive_integer "$iterations" "iterations"
 if [ -z "$reference_run" ]; then
-    if [ ! -f "$target_dir/CURRENT" ]; then
+    if [ ! -f "$target_dir/PRIMARY_WRITE_CURRENT" ]; then
         printf '%s\n' "pass the prior complete run directory" >&2
         exit 2
     fi
-    IFS= read -r reference_relative < "$target_dir/CURRENT"
+    IFS= read -r reference_relative < "$target_dir/PRIMARY_WRITE_CURRENT"
     reference_run="$target_dir/$reference_relative"
 fi
 reference_run=$(CDPATH= cd -- "$reference_run" && pwd)
-for file in write-raw.tsv write-summary.tsv write-provenance.tsv; do
+for file in write-raw.tsv write-summary.tsv write-provenance.tsv \
+    write-validation.tsv; do
     if [ ! -f "$reference_run/$file" ]; then
         printf 'reference run is missing %s\n' "$file" >&2
         exit 2
@@ -53,11 +54,15 @@ Rscript --vanilla "$script_dir/write-run.R" \
     "$iterations"
 cp "$reference_run/write-provenance.tsv" \
     "$run_stage/reference-write-provenance.tsv"
+cp "$reference_run/write-validation.tsv" \
+    "$run_stage/reference-write-validation.tsv"
 Rscript --vanilla "$script_dir/combine-write-summary.R" \
     "$run_stage/write-raw.tsv" "$run_stage/write-summary.tsv" \
-    "$run_stage/write-provenance.tsv" "$reference_run/write-raw.tsv" \
+    "$run_stage/write-provenance.tsv" "$run_stage/write-validation.tsv" \
+    "$reference_run/write-raw.tsv" \
     "$reference_run/write-summary.tsv" \
     "$reference_run/write-provenance.tsv" \
+    "$reference_run/write-validation.tsv" \
     "$run_stage/comparison-summary.tsv"
 
 publish_benchmark_run \

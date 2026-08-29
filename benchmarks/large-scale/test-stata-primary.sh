@@ -40,22 +40,30 @@ fi
 DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
 R_PROFILE_USER=/dev/null Rscript --vanilla \
     "$script_dir/write-worker.R" dtatools stata-storage \
-    "$work_dir/input.dta" "$work_dir/output.dta" > "$work_dir/worker.tsv"
+    "$work_dir/input.dta" "$work_dir/dtatools-output.dta" \
+    > "$work_dir/dtatools-worker.tsv"
 if ! grep -Eq '^SYNTHETIC_WRITE[[:space:]]+dtatools[[:space:]]+ok' \
-    "$work_dir/worker.tsv"; then
+    "$work_dir/dtatools-worker.tsv"; then
     printf '%s\n' "dtatools did not load and save the Stata-generated file" >&2
     exit 1
 fi
 
 DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
-R_PROFILE_USER=/dev/null Rscript --vanilla -e '
-    arguments <- commandArgs(TRUE)
-    sys.source(arguments[[3L]], envir = environment())
-    benchmark_activate_library("dtatools")
-    before <- dtatools::read_dta(arguments[[1L]], use_numeric_altrep = FALSE)
-    after <- dtatools::read_dta(arguments[[2L]], use_numeric_altrep = FALSE)
-    stopifnot(identical(before, after))
-' "$work_dir/input.dta" "$work_dir/output.dta" \
-    "$script_dir/../benchmark-common.R"
+R_PROFILE_USER=/dev/null Rscript --vanilla \
+    "$script_dir/write-worker.R" haven stata-storage \
+    "$work_dir/input.dta" "$work_dir/haven-output.dta" \
+    > "$work_dir/haven-worker.tsv"
+if ! grep -Eq '^SYNTHETIC_WRITE[[:space:]]+haven[[:space:]]+ok' \
+    "$work_dir/haven-worker.tsv"; then
+    printf '%s\n' "Haven did not load and save the Stata-generated file" >&2
+    exit 1
+fi
+
+for writer in dtatools haven; do
+    DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
+    R_PROFILE_USER=/dev/null Rscript --vanilla \
+        "$script_dir/validate-write-output.R" "$writer" \
+        "$work_dir/input.dta" "$work_dir/${writer}-output.dta"
+done
 
 printf '%s\n' "Stata-first primary write workflow: PASS"

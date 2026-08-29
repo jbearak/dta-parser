@@ -1,12 +1,13 @@
 args <- commandArgs(trailingOnly = TRUE)
 valid_mode <- length(args) == 4L && (
-    identical(args[1:2], c("dtatools", "stata-storage")) ||
+    (args[[1L]] %in% c("dtatools", "haven") &&
+     identical(args[[2L]], "stata-storage")) ||
     (args[[1L]] %in% c("dtatools", "haven") &&
      identical(args[[2L]], "standard-r"))
 )
 if (!valid_mode) {
     stop(paste(
-        "usage: write-worker.R dtatools stata-storage INPUT_DTA OUTPUT_DTA;",
+        "usage: write-worker.R dtatools|haven stata-storage INPUT_DTA OUTPUT_DTA;",
         "or write-worker.R dtatools|haven standard-r ROWS OUTPUT_DTA"
     ))
 }

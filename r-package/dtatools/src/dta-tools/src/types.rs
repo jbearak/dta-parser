@@ -112,7 +112,8 @@ impl DtaType {
         }
     }
 
-    pub(crate) const fn storage_width(&self) -> u32 {
+    /// Return this type's width in an observation row.
+    pub const fn storage_width(&self) -> u32 {
         match self {
             Self::Byte => 1,
             Self::Int => 2,

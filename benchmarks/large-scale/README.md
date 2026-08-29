@@ -15,15 +15,16 @@ outside timed regions. There are no timing assertions or CI gates.
 
 The same run has two synthetic write benchmarks. In every primary iteration, a
 fresh Stata process generates the data in memory and times its first `save`.
-dtatools then loads and saves that exact Stata output. This rules out timing an
-unchanged-file save after `use`. The 40 columns cover every numeric Stata
-storage type: 4 `byte`, 4 `int`,
-9 `long`, 4 `float`, and 9 `double` columns, plus 10 fixed-width strings. Four
+Each fresh R writer process then loads that exact output with dtatools before
+either dtatools or Haven saves the resulting Stata-class object. This rules out
+timing an unchanged-file save after `use`. The 40 columns cover every numeric
+Stata storage type: 4 `byte`, 4 `int`, 9 `long`, 4 `float`, and 9 `double`
+columns, plus 10 fixed-width strings. Four
 of the longs have value labels; two doubles are Stata dates and two are Stata
-datetimes. the dtatools package's reader retains those storage declarations, while Stata
-creates them directly with storage-qualified `generate` commands. The canonical
-100 MB and 1 GB inputs used by the read benchmarks come from the same Stata
-generator.
+datetimes. The dtatools reader retains those storage declarations, while Stata
+creates them directly with storage-qualified `generate` commands. The
+canonical 100 MB and 1 GB inputs used by the read benchmarks come from the
+same Stata generator.
 
 The secondary benchmark compares dtatools with Haven on the exact same
 freshly constructed ordinary R data frame. Its 40 columns are 11 doubles, 11
@@ -31,18 +32,24 @@ integers, 4 logicals, 2 `Date` columns, 2 UTC `POSIXct` columns, and 10 characte
 columns. They have no Stata storage, format, label, or value-label attributes.
 Its checked-in row counts are independent of the primary DTA fixture, so a
 change to the primary storage mix cannot silently change the secondary workload.
-Stata is excluded because it cannot receive an in-memory R data frame, and
-Haven is excluded from the primary matrix because its reader widens Stata
-numeric storage into ordinary R vectors.
+Stata is excluded because it cannot receive an in-memory R data frame. The
+primary R writer order rotates after Stata's first save.
 
 Every writer runs in a fresh process. Stata's primary operation timer covers
-only its first `save`; the dtatools package's starts after it reads Stata's output. The
-secondary timer starts after the R input has been constructed. Peak RSS
-covers the whole fresh process because the in-memory input is part of the write
-workload. Stata necessarily precedes dtatools in each primary pair; writer order
-rotates in the independent secondary matrix. Raw primary rows retain the exact
-paired input SHA-256 in addition to elapsed time, peak RSS, and output size. The
-default is seven iterations per writer and size.
+only its first `save`; each R writer's timer starts after dtatools reads Stata's
+output. The secondary timer starts after the R input has been constructed. Peak
+RSS covers the whole fresh process because the in-memory input is part of the
+write workload. Stata necessarily precedes both R writers; their order rotates
+in the primary matrix, independently of the rotating secondary order. Raw
+primary rows retain the exact shared input SHA-256 in addition to elapsed time,
+peak RSS, and output size. After all timing completes, an untimed fresh-process
+write validates each R writer at both scales before publication. dtatools must
+preserve its read model and each declared numeric storage type. Haven must
+preserve the values and metadata in its own read model, and its expected
+widening of all numeric storage to `double` is recorded separately. Exact
+fixed-string widths are not exposed by either read model and are not part of
+this validation. Those rows are retained in `write-validation.tsv`. The default
+is seven iterations per writer and size.
 
 The [2026-08-28 write report](results-2026-08-28.md) records the latest complete
 seven-iteration comparison. The [2026-08-27 report](results-2026-08-27.md) is
@@ -106,7 +113,7 @@ benchmarks/large-scale/benchmark.sh 1 1
 ```
 
 After a complete comparison, rerun only the primary dtatools writes while
-retaining the selected run's Stata measurements:
+retaining the selected run's Haven and Stata measurements:
 
 ```sh
 benchmarks/large-scale/dtatools-write-only.sh 7
@@ -114,9 +121,9 @@ benchmarks/large-scale/dtatools-write-only.sh 7
 
 The dtatools-only runner rebuilds the current package, verifies the primary
 synthetic hashes against the fixed reference rows, and publishes both its raw
-measurements and a combined dtatools/Stata comparison beneath
+measurements and a combined Stata/dtatools/Haven comparison beneath
 `target/large-scale/dtatools-write-runs/`. Pass a complete run directory as
-the second argument to override `target/large-scale/CURRENT`.
+the second argument to override `target/large-scale/PRIMARY_WRITE_CURRENT`.
 
 Run only the complete paired primary matrix with:
 
@@ -125,10 +132,9 @@ benchmarks/large-scale/primary-write-only.sh 7
 ```
 
 This runner rebuilds dtatools, asks Stata to publish a complete immutable
-synthetic-input generation, and
-publishes the paired Stata/dtatools results under
-`target/large-scale/primary-write-runs/`. It runs neither the read benchmark nor
-the large corpus suite.
+synthetic-input generation, and publishes the dtatools, Haven, and Stata results
+under `target/large-scale/primary-write-runs/`. It runs neither the read
+benchmark nor the large corpus suite.
 
 Run only the secondary ordinary-R matrix with:
 
@@ -155,10 +161,10 @@ The default raw report has 1,212 rows:
 2 sizes × 2 workloads × 3 implementations × 101 iterations
 ```
 
-The primary `write-raw.tsv` has 28 rows by default:
+The primary `write-raw.tsv` has 42 rows by default:
 
 ```text
-2 sizes × 2 writers × 7 iterations
+2 sizes × 3 writers × 7 iterations
 ```
 
 The secondary `r-write-raw.tsv` also has 28 rows:

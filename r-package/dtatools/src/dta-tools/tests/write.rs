@@ -73,6 +73,68 @@ impl DtaWriteObservationSource for AdaptedObservationSource {
     }
 }
 
+struct BulkObservationSource {
+    calls: Cell<usize>,
+}
+
+impl DtaWriteObservationSource for BulkObservationSource {
+    fn append_observation_rows(
+        &self,
+        buffer: &mut Vec<u8>,
+        start: u64,
+        end: u64,
+    ) -> Result<bool, DtaWriteError> {
+        self.calls.set(self.calls.get() + 1);
+        for value in &ADAPTED_NUMERIC_VALUES[start as usize..end as usize] {
+            let raw = match value {
+                DtaWriteNumericValue::Value(value) => *value as i32,
+                DtaWriteNumericValue::Missing(MissingTag::System) => 2_147_483_621,
+                DtaWriteNumericValue::Missing(_) => unreachable!("test data has system missing"),
+            };
+            buffer.extend_from_slice(&raw.to_le_bytes());
+        }
+        Ok(true)
+    }
+
+    fn numeric_value(
+        &self,
+        _column: usize,
+        _row: u64,
+    ) -> Result<DtaWriteNumericValue, DtaWriteError> {
+        unreachable!("the bulk test source must bypass scalar values")
+    }
+
+    fn string_value(&self, _column: usize, _row: u64) -> Result<Cow<'_, str>, DtaWriteError> {
+        unreachable!("the bulk test source is numeric")
+    }
+}
+
+struct WrongLengthBulkObservationSource;
+
+impl DtaWriteObservationSource for WrongLengthBulkObservationSource {
+    fn append_observation_rows(
+        &self,
+        buffer: &mut Vec<u8>,
+        _start: u64,
+        _end: u64,
+    ) -> Result<bool, DtaWriteError> {
+        buffer.push(0);
+        Ok(true)
+    }
+
+    fn numeric_value(
+        &self,
+        _column: usize,
+        _row: u64,
+    ) -> Result<DtaWriteNumericValue, DtaWriteError> {
+        unreachable!("the malformed bulk source reports that it handled the rows")
+    }
+
+    fn string_value(&self, _column: usize, _row: u64) -> Result<Cow<'_, str>, DtaWriteError> {
+        unreachable!("the malformed bulk source is numeric")
+    }
+}
+
 struct InterruptingStrlSource {
     value: String,
     interrupt_at: usize,
@@ -283,6 +345,21 @@ fn prevalidated_adapter_avoids_a_redundant_value_pass() {
     assert_eq!(source.calls.get(), 0);
     assert_eq!(adapted.into_inner(), checked);
 
+    let bulk_source = BulkObservationSource {
+        calls: Cell::new(0),
+    };
+    let mut bulk = Cursor::new(Vec::new());
+    write_prevalidated_dta_with_observation_source_to(
+        &mut bulk,
+        &data,
+        &DtaWriteOptions::default(),
+        &bulk_source,
+        3,
+    )
+    .unwrap();
+    assert_eq!(bulk_source.calls.get(), 1);
+    assert_eq!(bulk.into_inner(), checked);
+
     let row_count_error = write_prevalidated_dta_with_observation_source_to(
         &mut Cursor::new(Vec::new()),
         &data,
@@ -311,6 +388,33 @@ fn prevalidated_adapter_avoids_a_redundant_value_pass() {
         DtaWriteError::InvalidVariable { .. }
     ));
     assert_eq!(source.calls.get(), 0);
+}
+
+#[test]
+fn prevalidated_bulk_sources_must_return_complete_rows() {
+    let values = [DtaWriteNumericValue::Value(0.0)];
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Long,
+            format: "%12.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+    let error = write_prevalidated_dta_with_observation_source_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+        &WrongLengthBulkObservationSource,
+        1,
+    )
+    .unwrap_err();
+    assert!(matches!(error, DtaWriteError::Source { .. }));
 }
 
 #[test]

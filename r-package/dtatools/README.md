@@ -69,13 +69,21 @@ for the synthetic comparisons, per-method bounds, and limitations.
 
 ### Synthetic write benchmarks
 
-The primary synthetic benchmark gives dtatools the exact output from Stata's
-first save of an in-memory fixture covering every numeric Stata storage type:
+The primary synthetic benchmark gives dtatools and haven the exact output from
+Stata's first save of an in-memory fixture covering every numeric Stata storage
+type:
 
-| Scale | dtatools | Stata | Comparison |
+| Scale | Stata | dtatools | haven |
 | --- | ---: | ---: | ---: |
-| 100 MB | 0.119 seconds | 0.014 seconds | 8.50 times Stata |
-| 1 GB | 1.225 seconds | 0.131 seconds | 9.35 times Stata |
+| 100 MB | 0.013 seconds | 0.023 seconds | 1.235 seconds |
+| 1 GB | 0.130 seconds | 0.150 seconds | 9.045 seconds |
+
+Haven took 53.7 times as long as dtatools at 100 MB and 60.3 times as long at
+1 GB on these Stata-class inputs. dtatools took 1.77 times Stata's median at
+100 MB and 1.15 times at 1 GB.
+dtatools preserved the declared numeric storage types. Haven preserved values
+and the metadata represented by its read model but widened all 30 numeric
+columns to `double`.
 
 The secondary benchmark gives dtatools and haven the same ordinary R data
 frame, without Stata storage or labelling metadata:

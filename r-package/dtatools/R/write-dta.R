@@ -28,10 +28,10 @@
 #' Only local, uncompressed files are supported. The complete input is validated
 #' before native serialization starts. Output streams to a sibling temporary
 #' file and atomically replaces the destination only after the file is closed;
-#' an existing destination therefore survives validation, I/O, and interruption
-#' failures. Symbolic-link, directory, and other non-regular destinations are
-#' rejected. Output is
-#' always little-endian.
+#' an existing destination therefore survives validation, interruption, and I/O
+#' failures reported before replacement. Delayed close or writeback failures and
+#' crash durability are not covered. Symbolic-link, directory, and other
+#' non-regular destinations are rejected. Output is always little-endian.
 #'
 #' @param data A data frame or tibble.
 #' @param path Local output path. If the final filename has no extension,

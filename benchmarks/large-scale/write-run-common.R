@@ -115,6 +115,13 @@ write_result_tuple <- function(data) {
 
 validate_write_result_matrix <- function(raw, datasets, writers, iterations,
                                          description) {
+    required <- c(
+        "dataset", "writer", "iteration", "writer_order", "rows", "columns",
+        "elapsed_seconds", "peak_rss_bytes", "output_bytes"
+    )
+    if (!all(required %in% names(raw))) {
+        stop(description, " results are missing required measurement fields")
+    }
     expected <- expand.grid(
         dataset = datasets, writer = writers,
         iteration = seq_len(iterations), stringsAsFactors = FALSE
@@ -122,6 +129,99 @@ validate_write_result_matrix <- function(raw, datasets, writers, iterations,
     if (anyDuplicated(write_result_tuple(raw)) ||
         !setequal(write_result_tuple(raw), write_result_tuple(expected))) {
         stop(description, " results are not the exact expected matrix")
+    }
+
+    positive_number <- function(field, whole = FALSE) {
+        value <- suppressWarnings(as.numeric(raw[[field]]))
+        invalid <- !is.finite(value) | value <= 0
+        if (whole) invalid <- invalid | value != floor(value)
+        if (any(invalid)) {
+            stop(description, " results have invalid ", field)
+        }
+    }
+    positive_number("iteration", whole = TRUE)
+    positive_number("writer_order", whole = TRUE)
+    positive_number("rows", whole = TRUE)
+    positive_number("columns", whole = TRUE)
+    positive_number("elapsed_seconds")
+    byte_fields <- grep("_bytes$", names(raw), value = TRUE)
+    for (field in byte_fields) positive_number(field, whole = TRUE)
+
+    groups <- split(raw, interaction(raw$dataset, raw$iteration, drop = TRUE))
+    valid_order <- vapply(groups, function(group) {
+        identical(
+            sort(as.integer(group$writer_order)),
+            seq_along(writers)
+        )
+    }, logical(1L))
+    if (!all(valid_order)) {
+        stop(description, " results have invalid writer order metadata")
+    }
+    shapes <- split(raw, raw$dataset)
+    valid_shape <- vapply(shapes, function(group) {
+        length(unique(group$rows)) == 1L &&
+            length(unique(group$columns)) == 1L
+    }, logical(1L))
+    if (!all(valid_shape)) {
+        stop(description, " results have inconsistent row or column metadata")
+    }
+    hash_fields <- grep("_sha256$", names(raw), value = TRUE)
+    for (field in hash_fields) {
+        value <- as.character(raw[[field]])
+        if (anyNA(value) || any(!grepl("^[0-9a-f]{64}$", value))) {
+            stop(description, " results have invalid ", field)
+        }
+    }
+    invisible(NULL)
+}
+
+validate_primary_write_inputs <- function(
+    raw, datasets, writers, provenance, description
+) {
+    required <- c("dataset_sha256", "input_sha256")
+    provenance_fields <- paste0("dataset_", datasets, "_sha256")
+    if (!all(required %in% names(raw)) ||
+        !all(provenance_fields %in% names(provenance))) {
+        stop(description, " is missing primary input identity fields")
+    }
+    expected_hashes <- as.character(
+        unlist(provenance[1L, provenance_fields], use.names = FALSE)
+    )
+    names(expected_hashes) <- datasets
+    valid_dataset_hashes <- vapply(datasets, function(dataset) {
+        observed <- unique(as.character(
+            raw$dataset_sha256[raw$dataset == dataset]
+        ))
+        identical(observed, expected_hashes[[dataset]])
+    }, logical(1L))
+    if (!all(valid_dataset_hashes)) {
+        stop(description, " dataset hashes do not match provenance")
+    }
+
+    r_writers <- setdiff(writers, "stata")
+    if (!"stata" %in% writers) {
+        valid_inputs <- vapply(datasets, function(dataset) {
+            observed <- unique(as.character(
+                raw$input_sha256[raw$dataset == dataset]
+            ))
+            identical(observed, expected_hashes[[dataset]])
+        }, logical(1L))
+        if (!all(valid_inputs)) {
+            stop(description, " inputs do not match their canonical datasets")
+        }
+        return(invisible(NULL))
+    }
+    if (!length(r_writers)) return(invisible(NULL))
+    groups <- split(raw, interaction(raw$dataset, raw$iteration, drop = TRUE))
+    exact_pair <- vapply(groups, function(group) {
+        ordered_writers <- group$writer[order(group$writer_order)]
+        nrow(group) == length(writers) &&
+            length(unique(group$input_sha256)) == 1L &&
+            identical(ordered_writers[[1L]], "stata") &&
+            setequal(ordered_writers[-1L], r_writers)
+    }, logical(1L))
+    if (!all(exact_pair)) {
+        stop(description, " R writers did not consume each exact timed Stata output")
     }
     invisible(NULL)
 }

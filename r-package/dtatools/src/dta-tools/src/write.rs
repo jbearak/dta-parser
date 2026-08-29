@@ -21,7 +21,7 @@ const MAX_NOTES: usize = 9_999;
 const MAX_NOTE_BYTES: usize = 67_784;
 const MAX_STRL_BYTES: usize = 2_000_000_000;
 const WRITE_INTERRUPT_BYTES: usize = 8 * 1024 * 1024;
-const OBSERVATION_BUFFER_BYTES: usize = WRITE_INTERRUPT_BYTES;
+const OBSERVATION_BUFFER_BYTES: usize = 64 * 1024 * 1024;
 const ZERO_BLOCK: [u8; 8 * 1024] = [0; 8 * 1024];
 
 /// A numeric value supplied to the DTA writer.
@@ -78,8 +78,9 @@ pub trait DtaWriteColumnSource {
 
 /// Dataset-wide observation access for adapters with optimized native storage.
 ///
-/// The common writer retains row ordering, buffering, storage encoding, and
-/// error handling while adapters vary only how they retrieve each value.
+/// The common writer retains row ordering, bounded buffering, and error
+/// handling. The hidden bulk seam is reserved for trusted in-tree adapters
+/// that already own the final DTA storage encoding.
 pub trait DtaWriteObservationSource {
     fn begin_row(&self, _row: u64) -> Result<(), DtaWriteError> {
         Ok(())
@@ -87,6 +88,24 @@ pub trait DtaWriteObservationSource {
 
     fn check_interrupt(&self) -> Result<(), DtaWriteError> {
         Ok(())
+    }
+
+    /// Append a contiguous range of complete, row-major observations encoded
+    /// as final DTA bytes, including little-endian numerics and zero-padded
+    /// fixed strings.
+    ///
+    /// The implementation must append exactly `(end - start) * row_width`
+    /// bytes. The common writer checks that byte count but cannot validate the
+    /// encoded cells. Returning `false` leaves `buffer` unchanged and asks the
+    /// common writer to use the scalar methods below.
+    #[doc(hidden)]
+    fn append_observation_rows(
+        &self,
+        _buffer: &mut Vec<u8>,
+        _start: u64,
+        _end: u64,
+    ) -> Result<bool, DtaWriteError> {
+        Ok(false)
     }
 
     fn raw_numeric_value(
@@ -984,8 +1003,13 @@ fn append_raw_numeric(buffer: &mut Vec<u8>, value: DtaWriteRawNumericValue) {
     }
 }
 
-fn append_numeric(buffer: &mut Vec<u8>, dta_type: &DtaType, value: DtaWriteNumericValue) {
-    let value = match (dta_type, value) {
+#[doc(hidden)]
+/// Encode one validated numeric value in the requested numeric DTA storage.
+///
+/// `dta_type` must be `Byte`, `Int`, `Long`, `Float`, or `Double`. Validation
+/// must already have established that nonmissing values fit that storage.
+pub fn encode_numeric(dta_type: &DtaType, value: DtaWriteNumericValue) -> DtaWriteRawNumericValue {
+    match (dta_type, value) {
         (DtaType::Byte, DtaWriteNumericValue::Value(value)) => {
             DtaWriteRawNumericValue::Byte(value as i8)
         }
@@ -1017,8 +1041,11 @@ fn append_numeric(buffer: &mut Vec<u8>, dta_type: &DtaType, value: DtaWriteNumer
             DtaWriteRawNumericValue::Double(f64::from_bits(tag.double_bits()))
         }
         _ => unreachable!("validated numeric storage type"),
-    };
-    append_raw_numeric(buffer, value);
+    }
+}
+
+fn append_numeric(buffer: &mut Vec<u8>, dta_type: &DtaType, value: DtaWriteNumericValue) {
+    append_raw_numeric(buffer, encode_numeric(dta_type, value));
 }
 
 #[derive(Debug)]
@@ -1472,19 +1499,40 @@ fn write_observations<W: Write, S: DtaWriteObservationSource + ?Sized>(
         .checked_mul(buffered_rows)
         .ok_or(DtaWriteError::Overflow("observation buffer"))?;
     let mut buffer = Vec::with_capacity(buffer_capacity);
-    for row in 0..row_count {
-        source.begin_row(row)?;
-        for column_index in 0..data.columns.len() {
-            append_observation_value(&mut buffer, data, source, version, strls, column_index, row)?;
+    let mut start = 0_u64;
+    while start < row_count {
+        let end = row_count.min(start + rows_per_buffer as u64);
+        if !source.append_observation_rows(&mut buffer, start, end)? {
+            for row in start..end {
+                source.begin_row(row)?;
+                for column_index in 0..data.columns.len() {
+                    append_observation_value(
+                        &mut buffer,
+                        data,
+                        source,
+                        version,
+                        strls,
+                        column_index,
+                        row,
+                    )?;
+                }
+            }
         }
-        if (row + 1) % rows_per_buffer as u64 == 0 {
-            writer.write_all(&buffer)?;
-            buffer.clear();
-            source.check_interrupt()?;
+        let expected = usize::try_from(end - start)
+            .ok()
+            .and_then(|rows| rows.checked_mul(row_width))
+            .ok_or(DtaWriteError::Overflow("observation buffer"))?;
+        if buffer.len() != expected {
+            return Err(DtaWriteError::Source {
+                column: "<dataset>".into(),
+                row: start,
+                message: "bulk observation source returned the wrong byte count".into(),
+            });
         }
-    }
-    if !buffer.is_empty() {
         writer.write_all(&buffer)?;
+        buffer.clear();
+        source.check_interrupt()?;
+        start = end;
     }
     Ok(())
 }

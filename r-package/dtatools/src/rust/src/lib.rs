@@ -14,12 +14,13 @@ use ahash::AHashMap;
 use dta_tools::{
     classify_byte_missing_for_version, classify_float_missing_bits_for_version,
     classify_int_missing_for_version, classify_long_missing_for_version,
-    dta_write_numeric_value_is_representable, write_prevalidated_dta_with_observation_source_to,
-    ColumnValues, DtaColumnSink, DtaData, DtaError, DtaFile, DtaMetadata, DtaSink, DtaType,
-    DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError,
-    DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
-    DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag, ParallelDtaSink,
-    ReadOptions, TextEncoding, ValueLabelTable, VariableInfo,
+    dta_write_numeric_value_is_representable, encode_numeric,
+    write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
+    DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteColumn, DtaWriteColumnSource,
+    DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNumericValue,
+    DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel,
+    FormatVersion, MissingTag, ParallelDtaSink, ReadOptions, TextEncoding, ValueLabelTable,
+    VariableInfo,
 };
 
 type Sexp = *mut c_void;
@@ -33,6 +34,7 @@ const RAWSXP: c_int = 24;
 const CE_UTF8: c_int = 1;
 const INTERRUPT_STRIDE: usize = 16_384;
 const WRITE_CALLBACK_REGION_BYTES: usize = 8 * 1024 * 1024;
+const DIRECT_OBSERVATION_BYTES_PER_WORKER: usize = 512 * 1024;
 const R_DATA_FRAME_MAX_ROWS: u64 = c_int::MAX as u64;
 const SECONDS_1960_TO_1970: f64 = 315_619_200.0;
 const DAYS_1960_TO_1970: f64 = 3_653.0;
@@ -2268,6 +2270,32 @@ impl DirectCompactValue {
     }
 }
 
+unsafe fn write_raw_numeric_to_ptr(output: *mut u8, value: DtaWriteRawNumericValue) {
+    match value {
+        DtaWriteRawNumericValue::Byte(value) => ptr::write(output, value as u8),
+        DtaWriteRawNumericValue::Int(value) => {
+            ptr::copy_nonoverlapping(value.to_le_bytes().as_ptr(), output, size_of::<i16>())
+        }
+        DtaWriteRawNumericValue::Long(value) => {
+            ptr::copy_nonoverlapping(value.to_le_bytes().as_ptr(), output, size_of::<i32>())
+        }
+        DtaWriteRawNumericValue::Float(value) => ptr::copy_nonoverlapping(
+            value.to_bits().to_le_bytes().as_ptr(),
+            output,
+            size_of::<f32>(),
+        ),
+        DtaWriteRawNumericValue::Double(value) => ptr::copy_nonoverlapping(
+            value.to_bits().to_le_bytes().as_ptr(),
+            output,
+            size_of::<f64>(),
+        ),
+    }
+}
+
+fn write_type_width(dta_type: &DtaType) -> usize {
+    dta_type.storage_width() as usize
+}
+
 unsafe fn direct_compact_at(
     source: &RWriteSource<'_>,
     index: usize,
@@ -2635,6 +2663,129 @@ struct RWriteObservationSource<'data, 'source> {
     sources: &'data [RWriteSource<'source>],
 }
 
+fn r_write_source_result<T>(
+    column: &DtaWriteColumn<'_>,
+    row: u64,
+    result: Result<T, RWriteError>,
+) -> Result<T, DtaWriteError> {
+    result.map_err(|error| match error {
+        RWriteError::Interrupted => DtaWriteError::Interrupted,
+        RWriteError::Message(message) => DtaWriteError::Source {
+            column: column.name.to_string(),
+            row,
+            message,
+        },
+    })
+}
+
+#[derive(Clone, Copy)]
+struct DirectObservationRegion {
+    output: usize,
+    start: u64,
+    start_index: usize,
+    rows: usize,
+    row_width: usize,
+}
+
+unsafe fn encode_direct_observation_column(
+    column: &DtaWriteColumn<'_>,
+    source: &RWriteSource<'_>,
+    region: DirectObservationRegion,
+    column_offset: usize,
+) -> Result<(), DtaWriteError> {
+    let DirectObservationRegion {
+        output,
+        start,
+        start_index,
+        rows,
+        row_width,
+    } = region;
+    let output = output as *mut u8;
+    match column.dta_type {
+        DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
+            if source.raw_numeric {
+                let mut replacements = 0_u64;
+                for offset in 0..rows {
+                    let row_index = start_index + offset;
+                    let destination = output.add(offset * row_width + column_offset);
+                    let (value, missing) = direct_compact_at(source, row_index)
+                        .expect("raw numeric source is compact");
+                    let valid = missing.is_some() || (!value.is_nan() && value.is_representable());
+                    if valid {
+                        write_raw_numeric_to_ptr(destination, value.raw());
+                    } else {
+                        replacements += 1;
+                        write_raw_numeric_to_ptr(
+                            destination,
+                            encode_numeric(
+                                &column.dta_type,
+                                DtaWriteNumericValue::Missing(MissingTag::System),
+                            ),
+                        );
+                    }
+                }
+                source
+                    .numeric_replacements
+                    .set(source.numeric_replacements.get() + replacements);
+                return Ok(());
+            }
+            for offset in 0..rows {
+                let row = start + offset as u64;
+                let value = r_write_source_result(
+                    column,
+                    row,
+                    source.numeric_value_at(row, &column.dta_type),
+                )?;
+                write_raw_numeric_to_ptr(
+                    output.add(offset * row_width + column_offset),
+                    encode_numeric(&column.dta_type, value),
+                );
+            }
+        }
+        DtaType::FixedString(width) => {
+            let data = &*source
+                .descriptor
+                .direct_string_data
+                .cast::<DictStringData>();
+            for offset in 0..rows {
+                let row_index = start_index + offset;
+                if row_index >= data.length {
+                    return Err(DtaWriteError::Source {
+                        column: column.name.to_string(),
+                        row: start + offset as u64,
+                        message: "R row index is outside the string dictionary".into(),
+                    });
+                }
+                let id = ptr::read(data.value_ids.add(row_index));
+                let &(value, length) =
+                    data.value_views
+                        .get(id as usize)
+                        .ok_or_else(|| DtaWriteError::Source {
+                            column: column.name.to_string(),
+                            row: start + offset as u64,
+                            message: "R string dictionary contains an invalid value ID".into(),
+                        })?;
+                if length > usize::from(width) {
+                    return Err(DtaWriteError::InvalidValue {
+                        column: column.name.to_string(),
+                        row: start + offset as u64,
+                        message: format!(
+                            "string must contain at most {width} UTF-8 bytes and no NUL"
+                        ),
+                    });
+                }
+                ptr::copy_nonoverlapping(
+                    value,
+                    output.add(offset * row_width + column_offset),
+                    length,
+                );
+            }
+        }
+        DtaType::StrL => unreachable!("strL disables the direct observation path"),
+    }
+    Ok(())
+}
+
 impl RWriteObservationSource<'_, '_> {
     fn source_result<T>(
         &self,
@@ -2642,14 +2793,142 @@ impl RWriteObservationSource<'_, '_> {
         row: u64,
         result: Result<T, RWriteError>,
     ) -> Result<T, DtaWriteError> {
-        result.map_err(|error| match error {
-            RWriteError::Interrupted => DtaWriteError::Interrupted,
-            RWriteError::Message(message) => DtaWriteError::Source {
-                column: self.data.columns[column_index].name.to_string(),
-                row,
-                message,
-            },
-        })
+        r_write_source_result(&self.data.columns[column_index], row, result)
+    }
+
+    fn has_direct_observations(&self) -> bool {
+        self.data
+            .columns
+            .iter()
+            .zip(self.sources)
+            .all(|(column, source)| match column.dta_type {
+                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
+                    !source.descriptor.direct_numeric_values.is_null()
+                }
+                DtaType::FixedString(_) => !source.descriptor.direct_string_data.is_null(),
+                DtaType::StrL => false,
+            })
+    }
+
+    fn append_direct_observation_rows(
+        &self,
+        buffer: &mut Vec<u8>,
+        start: u64,
+        end: u64,
+        available_parallelism: usize,
+    ) -> Result<usize, DtaWriteError> {
+        let start_index =
+            usize::try_from(start).map_err(|_| DtaWriteError::Overflow("row index"))?;
+        let rows = usize::try_from(end - start)
+            .map_err(|_| DtaWriteError::Overflow("observation row count"))?;
+        let row_width = self
+            .data
+            .columns
+            .iter()
+            .try_fold(0_usize, |width, column| {
+                width
+                    .checked_add(write_type_width(&column.dta_type))
+                    .ok_or(DtaWriteError::Overflow("observation width"))
+            })?;
+        let region_bytes = rows
+            .checked_mul(row_width)
+            .ok_or(DtaWriteError::Overflow("observation buffer"))?;
+        let buffer_start = buffer.len();
+        buffer.resize(
+            buffer_start
+                .checked_add(region_bytes)
+                .ok_or(DtaWriteError::Overflow("observation buffer"))?,
+            0,
+        );
+        let output = unsafe { buffer.as_mut_ptr().add(buffer_start) };
+        let mut offsets = Vec::with_capacity(self.data.columns.len());
+        let mut offset = 0_usize;
+        for column in &self.data.columns {
+            offsets.push(offset);
+            offset += write_type_width(&column.dta_type);
+        }
+
+        let useful_for_size = region_bytes
+            .div_ceil(DIRECT_OBSERVATION_BYTES_PER_WORKER)
+            .max(1);
+        let workers = available_parallelism
+            .max(1)
+            .min(self.data.columns.len())
+            .min(useful_for_size);
+        if workers <= 1 {
+            let region = DirectObservationRegion {
+                output: output as usize,
+                start,
+                start_index,
+                rows,
+                row_width,
+            };
+            for (index, (column, source)) in self.data.columns.iter().zip(self.sources).enumerate()
+            {
+                unsafe {
+                    encode_direct_observation_column(column, source, region, offsets[index])
+                }?;
+            }
+            return Ok(workers);
+        }
+
+        let mut ordered = (0..self.data.columns.len()).collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|&index| {
+            std::cmp::Reverse(write_type_width(&self.data.columns[index].dta_type))
+        });
+        let mut assignments = vec![Vec::<usize>::new(); workers];
+        let mut assigned_widths = vec![0_usize; workers];
+        for index in ordered {
+            let worker = assigned_widths
+                .iter()
+                .enumerate()
+                .min_by_key(|&(_, width)| width)
+                .map(|(index, _)| index)
+                .expect("there is at least one direct observation worker");
+            assignments[worker].push(index);
+            assigned_widths[worker] += write_type_width(&self.data.columns[index].dta_type);
+        }
+
+        let columns_address = self.data.columns.as_ptr() as usize;
+        let sources_address = self.sources.as_ptr() as usize;
+        let region = DirectObservationRegion {
+            output: output as usize,
+            start,
+            start_index,
+            rows,
+            row_width,
+        };
+        std::thread::scope(|scope| -> Result<(), DtaWriteError> {
+            let mut handles = Vec::with_capacity(workers);
+            for assignment in assignments {
+                let offsets = &offsets;
+                handles.push(scope.spawn(move || -> Result<(), DtaWriteError> {
+                    // The main R thread exposed the source buffers before spawning
+                    // and keeps their protected owners live. Workers only read
+                    // those buffers; each column's source state and output byte
+                    // ranges belong to one worker, and no worker calls the R API.
+                    for index in assignment {
+                        let column =
+                            unsafe { &*(columns_address as *const DtaWriteColumn<'_>).add(index) };
+                        let source =
+                            unsafe { &*(sources_address as *const RWriteSource<'_>).add(index) };
+                        unsafe {
+                            encode_direct_observation_column(column, source, region, offsets[index])
+                        }?;
+                    }
+                    Ok(())
+                }));
+            }
+            for handle in handles {
+                handle.join().map_err(|_| DtaWriteError::Source {
+                    column: "<dataset>".into(),
+                    row: start,
+                    message: "direct observation worker panicked".into(),
+                })??;
+            }
+            Ok(())
+        })?;
+        Ok(workers)
     }
 }
 
@@ -2668,6 +2947,20 @@ impl DtaWriteObservationSource for RWriteObservationSource<'_, '_> {
         } else {
             Ok(())
         }
+    }
+
+    fn append_observation_rows(
+        &self,
+        buffer: &mut Vec<u8>,
+        start: u64,
+        end: u64,
+    ) -> Result<bool, DtaWriteError> {
+        if !self.has_direct_observations() {
+            return Ok(false);
+        }
+        let available = std::thread::available_parallelism().map_or(1, usize::from);
+        self.append_direct_observation_rows(buffer, start, end, available)?;
+        Ok(true)
     }
 
     fn raw_numeric_value(
@@ -2919,8 +3212,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     let file = writer
         .into_inner()
         .map_err(|error| format!("could not flush DTA output: {}", error.error()))?;
-    file.sync_all()
-        .map_err(|error| format!("could not synchronize DTA output: {error}"))?;
+    drop(file);
     for (index, source) in sources.iter().enumerate() {
         ptr::write(
             numeric_replacements.add(index),
@@ -3020,11 +3312,110 @@ pub unsafe extern "C" fn dtatools_free_error(error: *mut c_char) {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+    use std::ffi::{c_char, c_int, c_void};
+    use std::ptr;
+
+    use ahash::AHashMap;
+    use dta_tools::{DtaType, DtaWriteColumn, DtaWriteColumnValues, DtaWriteData};
+
     use super::{
-        direct_r_missing_code, observed_value, selected_row_count, temporal_kind,
-        validate_r_row_count, write_callback_status, write_numeric_value, RWriteError,
+        direct_r_missing_code, dtatools_dictstring_free, observed_value, selected_row_count,
+        temporal_kind, validate_r_row_count, write_callback_status, write_numeric_value,
+        DictStringData, RWriteColumnDescriptor, RWriteError, RWriteObservationSource, RWriteSource,
         TemporalKind, WriteCallbackErrorBuffer, R_DATA_FRAME_MAX_ROWS,
     };
+
+    #[no_mangle]
+    unsafe extern "C" fn dtatools_write_numeric_region(
+        _reader: *const c_void,
+        _start: usize,
+        _length: usize,
+        _values: *mut f64,
+        _missing_codes: *mut c_int,
+        _error_message: *mut c_char,
+        _error_capacity: usize,
+    ) -> c_int {
+        0
+    }
+
+    fn direct_numeric_descriptor(
+        dta_type: c_int,
+        values: *const c_void,
+        kind: c_int,
+        shift: f64,
+        scale: f64,
+    ) -> RWriteColumnDescriptor {
+        RWriteColumnDescriptor {
+            name: ptr::null(),
+            dta_type,
+            format: ptr::null(),
+            label: ptr::null(),
+            numeric_values: ptr::null(),
+            string_values: ptr::null_mut(),
+            label_values: ptr::null(),
+            label_texts: ptr::null_mut(),
+            label_count: 0,
+            has_value_labels: 0,
+            numeric_shift: shift,
+            numeric_scale: scale,
+            direct_numeric_values: values,
+            direct_numeric_kind: kind,
+            direct_numeric_format_version: 118,
+            direct_numeric_temporal: 0,
+            direct_numeric_no_na: 0,
+            direct_string_data: ptr::null_mut(),
+        }
+    }
+
+    fn direct_string_descriptor(width: c_int, data: *mut c_void) -> RWriteColumnDescriptor {
+        let mut descriptor = direct_numeric_descriptor(width + 4, ptr::null(), 0, 0.0, 1.0);
+        descriptor.direct_string_data = data;
+        descriptor
+    }
+
+    fn encode_direct_test_rows(
+        descriptors: &[RWriteColumnDescriptor],
+        dta_types: &[DtaType],
+        row_count: usize,
+        available_parallelism: usize,
+    ) -> (Vec<u8>, Vec<u64>, usize) {
+        let sources = descriptors
+            .iter()
+            .map(|descriptor| RWriteSource::new(descriptor, row_count as u64, 1, 1).unwrap())
+            .collect::<Vec<_>>();
+        let columns = dta_types
+            .iter()
+            .enumerate()
+            .map(|(index, dta_type)| DtaWriteColumn {
+                name: Cow::Owned(format!("x{index}")),
+                dta_type: dta_type.clone(),
+                format: Cow::Borrowed(""),
+                label: Cow::Borrowed(""),
+                has_value_labels: false,
+                value_labels: Vec::new(),
+                values: DtaWriteColumnValues::Source(&sources[index]),
+            })
+            .collect();
+        let data = DtaWriteData {
+            dataset_label: Cow::Borrowed(""),
+            notes: Vec::new(),
+            columns,
+        };
+        let observation_source = RWriteObservationSource {
+            data: &data,
+            sources: &sources,
+        };
+        let mut output = Vec::new();
+        let workers = observation_source
+            .append_direct_observation_rows(&mut output, 0, row_count as u64, available_parallelism)
+            .unwrap();
+        let replacements = sources
+            .iter()
+            .map(|source| source.numeric_replacements.get())
+            .collect();
+        (output, replacements, workers)
+    }
 
     #[test]
     fn temporal_formats_match_haven_prefix_rules() {
@@ -3101,5 +3492,91 @@ mod tests {
             validate_r_row_count(R_DATA_FRAME_MAX_ROWS + 1, 1, None).unwrap(),
             R_DATA_FRAME_MAX_ROWS
         );
+    }
+
+    #[test]
+    fn threaded_direct_observation_encoding_matches_the_serial_path() {
+        const ROWS: usize = 48_000;
+
+        let ordinary_integers = (0..ROWS)
+            .map(|index| {
+                if index.is_multiple_of(17) {
+                    c_int::MIN
+                } else {
+                    index as c_int - 24_000
+                }
+            })
+            .collect::<Vec<_>>();
+        let ordinary_doubles = (0..ROWS)
+            .map(|index| {
+                if index.is_multiple_of(19) {
+                    f64::NAN
+                } else {
+                    index as f64 / 10.0
+                }
+            })
+            .collect::<Vec<_>>();
+        let compact_bytes = (0..ROWS)
+            .map(|index| [-5_i8, 100, -128, 101][index % 4])
+            .collect::<Vec<_>>();
+        let compact_ints = (0..ROWS)
+            .map(|index| [-30_000_i16, 30_000, i16::MIN, 32_741][index % 4])
+            .collect::<Vec<_>>();
+        let compact_longs = (0..ROWS)
+            .map(|index| [-1_000_000_i32, 1_000_000, i32::MIN, 2_147_483_621][index % 4])
+            .collect::<Vec<_>>();
+        let compact_floats = (0..ROWS)
+            .map(|index| {
+                [
+                    1.5_f32,
+                    -2.25,
+                    f32::from_bits(0x7fc0_0001),
+                    f32::from_bits(0x7f00_0000),
+                ][index % 4]
+            })
+            .collect::<Vec<_>>();
+
+        let mut dictionary = AHashMap::new();
+        dictionary.insert("alpha".to_owned(), 0_u32);
+        dictionary.insert("beta".to_owned(), 1_u32);
+        let mut views = vec![(ptr::null(), 0); dictionary.len()];
+        for (value, &id) in &dictionary {
+            views[id as usize] = (value.as_ptr(), value.len());
+        }
+        let ids = (0..ROWS).map(|index| (index % 2) as u32).collect();
+        let dictionary_data = Box::into_raw(Box::new(DictStringData::new(ids, dictionary, views)));
+
+        let descriptors = vec![
+            direct_numeric_descriptor(2, ordinary_integers.as_ptr().cast(), 1, 0.0, 1.0),
+            direct_numeric_descriptor(4, ordinary_doubles.as_ptr().cast(), 2, 5.0, 10.0),
+            direct_numeric_descriptor(0, compact_bytes.as_ptr().cast(), 3, 0.0, 1.0),
+            direct_numeric_descriptor(1, compact_ints.as_ptr().cast(), 4, 0.0, 1.0),
+            direct_numeric_descriptor(2, compact_longs.as_ptr().cast(), 5, 0.0, 1.0),
+            direct_numeric_descriptor(3, compact_floats.as_ptr().cast(), 6, 0.0, 1.0),
+            direct_string_descriptor(8, dictionary_data.cast()),
+        ];
+        let dta_types = vec![
+            DtaType::Long,
+            DtaType::Double,
+            DtaType::Byte,
+            DtaType::Int,
+            DtaType::Long,
+            DtaType::Float,
+            DtaType::FixedString(8),
+        ];
+
+        let (serial, serial_replacements, serial_workers) =
+            encode_direct_test_rows(&descriptors, &dta_types, ROWS, 1);
+        let (threaded, threaded_replacements, threaded_workers) =
+            encode_direct_test_rows(&descriptors, &dta_types, ROWS, 2);
+
+        assert!(serial.len() > 512 * 1024);
+        assert_eq!(serial_workers, 1);
+        assert_eq!(threaded_workers, 2);
+        assert_eq!(threaded, serial);
+        assert_eq!(threaded_replacements, serial_replacements);
+        assert!(threaded_replacements.iter().any(|&count| count > 0));
+
+        unsafe { dtatools_dictstring_free(dictionary_data.cast()) };
     }
 }
