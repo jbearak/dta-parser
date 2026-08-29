@@ -101,7 +101,8 @@ type:
 | --- | ---: | ---: |
 | Stata `save` | 0.013 seconds | 0.130 seconds |
 | `save_dta()` | 0.023 seconds | 0.152 seconds |
-| `save_arrow()` | 0.034 seconds | 0.247 seconds |
+| `save_arrow()` | 0.037 seconds | 0.254 seconds |
+| `save_arrow(checksums = FALSE)` | 0.031 seconds | 0.235 seconds |
 | `haven::write_dta()` | 1.238 seconds | 9.048 seconds |
 
 Haven took 53.8 times as long as dtatools at 100 MB and 59.5 times as long at
@@ -111,8 +112,10 @@ dtatools preserved the declared numeric storage types. Haven preserved values
 and the metadata represented by its read model but widened all 30 numeric
 columns to `double`. `save_arrow()` received the identical input but writes
 Arrow IPC rather than DTA; it exports compact columns and dictionary strings
-without copying or materializing them, so the small gap to `save_dta()` is
-the checksum hashing and the slightly larger output.
+without copying or materializing them. Checksums cost only the step between
+the two `save_arrow()` rows — the hashing runs on worker threads that overlap
+the write — so the small remaining gap to `save_dta()` is mostly the larger
+Arrow output.
 
 The secondary benchmark gives dtatools and haven the same ordinary R data
 frame, without Stata storage or labelling metadata:
@@ -120,7 +123,7 @@ frame, without Stata storage or labelling metadata:
 | Writer | 100 MB | 1 GB |
 | --- | ---: | ---: |
 | `save_dta()` | 0.193 seconds | 1.927 seconds |
-| `save_arrow()` | 0.104 seconds | 0.906 seconds |
+| `save_arrow()` | 0.105 seconds | 0.897 seconds |
 | `haven::write_dta()` | 0.495 seconds | 4.195 seconds |
 
 `save_dta()` was 61.0% faster than haven at 100 MB and 54.1% faster at 1 GB.
