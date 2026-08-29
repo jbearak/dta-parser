@@ -34,7 +34,7 @@ output <- normalizePath(args[[7L]], winslash = "/", mustWork = FALSE)
 
 contract_fields <- c(
     "workload", "fixture_storage_schema", "fixture_creator",
-    "fixture_generator_sha256", "stata_save_state", "dtatools_input"
+    "fixture_generator_sha256", "stata_save_state", "r_writer_input"
 )
 if (nrow(current_provenance) != 1L || nrow(reference_provenance) != 1L ||
     !all(contract_fields %in% names(current_provenance)) ||
@@ -48,14 +48,14 @@ if (!identical(unique(current_raw$writer), "dtatools") ||
     !identical(unique(current_summary$writer), "dtatools")) {
     stop("current write results must contain only dtatools")
 }
-fixed_writers <- "stata"
+fixed_writers <- c("haven", "stata")
 fixed_raw <- reference_raw[reference_raw$writer %in% fixed_writers, , drop = FALSE]
 fixed_summary <- reference_summary[
     reference_summary$writer %in% fixed_writers, , drop = FALSE
 ]
 if (!setequal(unique(fixed_raw$writer), fixed_writers) ||
     !setequal(unique(fixed_summary$writer), fixed_writers)) {
-    stop("reference write results must contain Stata")
+    stop("reference write results must contain Haven and Stata")
 }
 
 dataset_key <- function(data) paste(data$dataset, data$dataset_sha256, sep = "\r")
@@ -74,7 +74,7 @@ if (!identical(current_shape, reference_shape)) {
 current_summary$measurement <- "current-dtatools"
 fixed_summary$measurement <- "fixed-reference"
 combined <- rbind(current_summary, fixed_summary)
-writer_order <- c("dtatools", "stata")
+writer_order <- c("dtatools", "haven", "stata")
 dataset_order <- c("100mb", "1gb")
 combined <- combined[
     order(match(combined$dataset, dataset_order),

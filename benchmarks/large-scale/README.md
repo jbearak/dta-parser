@@ -106,7 +106,7 @@ benchmarks/large-scale/benchmark.sh 1 1
 ```
 
 After a complete comparison, rerun only the primary dtatools writes while
-retaining the selected run's Stata measurements:
+retaining the selected run's Haven and Stata measurements:
 
 ```sh
 benchmarks/large-scale/dtatools-write-only.sh 7
@@ -125,10 +125,9 @@ benchmarks/large-scale/primary-write-only.sh 7
 ```
 
 This runner rebuilds dtatools, asks Stata to publish a complete immutable
-synthetic-input generation, and
-publishes the paired Stata/dtatools results under
-`target/large-scale/primary-write-runs/`. It runs neither the read benchmark nor
-the large corpus suite.
+synthetic-input generation, and publishes the dtatools, Haven, and Stata results
+under `target/large-scale/primary-write-runs/`. It runs neither the read
+benchmark nor the large corpus suite.
 
 Run only the secondary ordinary-R matrix with:
 
@@ -155,10 +154,10 @@ The default raw report has 1,212 rows:
 2 sizes × 2 workloads × 3 implementations × 101 iterations
 ```
 
-The primary `write-raw.tsv` has 28 rows by default:
+The primary `write-raw.tsv` has 42 rows by default:
 
 ```text
-2 sizes × 2 writers × 7 iterations
+2 sizes × 3 writers × 7 iterations
 ```
 
 The secondary `r-write-raw.tsv` also has 28 rows:

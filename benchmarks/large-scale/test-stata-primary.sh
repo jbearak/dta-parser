@@ -40,22 +40,38 @@ fi
 DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
 R_PROFILE_USER=/dev/null Rscript --vanilla \
     "$script_dir/write-worker.R" dtatools stata-storage \
-    "$work_dir/input.dta" "$work_dir/output.dta" > "$work_dir/worker.tsv"
+    "$work_dir/input.dta" "$work_dir/dtatools-output.dta" \
+    > "$work_dir/dtatools-worker.tsv"
 if ! grep -Eq '^SYNTHETIC_WRITE[[:space:]]+dtatools[[:space:]]+ok' \
-    "$work_dir/worker.tsv"; then
+    "$work_dir/dtatools-worker.tsv"; then
     printf '%s\n' "dtatools did not load and save the Stata-generated file" >&2
+    exit 1
+fi
+
+DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
+R_PROFILE_USER=/dev/null Rscript --vanilla \
+    "$script_dir/write-worker.R" haven stata-storage \
+    "$work_dir/input.dta" "$work_dir/haven-output.dta" \
+    > "$work_dir/haven-worker.tsv"
+if ! grep -Eq '^SYNTHETIC_WRITE[[:space:]]+haven[[:space:]]+ok' \
+    "$work_dir/haven-worker.tsv"; then
+    printf '%s\n' "Haven did not load and save the Stata-generated file" >&2
     exit 1
 fi
 
 DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
 R_PROFILE_USER=/dev/null Rscript --vanilla -e '
     arguments <- commandArgs(TRUE)
-    sys.source(arguments[[3L]], envir = environment())
-    benchmark_activate_library("dtatools")
+    sys.source(arguments[[4L]], envir = environment())
+    benchmark_activate_library(c("dtatools", "haven"))
     before <- dtatools::read_dta(arguments[[1L]], use_numeric_altrep = FALSE)
     after <- dtatools::read_dta(arguments[[2L]], use_numeric_altrep = FALSE)
     stopifnot(identical(before, after))
-' "$work_dir/input.dta" "$work_dir/output.dta" \
+    haven_before <- haven::read_dta(arguments[[1L]])
+    haven_after <- haven::read_dta(arguments[[3L]])
+    stopifnot(identical(haven_before, haven_after))
+' "$work_dir/input.dta" "$work_dir/dtatools-output.dta" \
+    "$work_dir/haven-output.dta" \
     "$script_dir/../benchmark-common.R"
 
 printf '%s\n' "Stata-first primary write workflow: PASS"

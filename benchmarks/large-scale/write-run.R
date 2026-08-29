@@ -22,7 +22,7 @@ context <- initialize_write_runner(
     input_scope = "target",
     input_name = "datasets.tsv",
     artifact_description = "synthetic write",
-    required_packages = c("dtatools", "processx")
+    required_packages = c("dtatools", "haven", "processx")
 )
 manifest_path <- context$input_path
 outputs <- context$outputs
@@ -40,12 +40,13 @@ stata_generator_sha256 <- benchmark_file_sha256(stata_generator)
 writer_selection <- Sys.getenv("DTATOOLS_WRITE_WRITERS")
 writers <- if (nzchar(writer_selection)) {
     strsplit(writer_selection, ",", fixed = TRUE)[[1L]]
-} else c("dtatools", "stata")
-allowed_writers <- c("dtatools", "stata")
+} else c("dtatools", "haven", "stata")
+allowed_writers <- c("dtatools", "haven", "stata")
 if (!length(writers) || any(!writers %in% allowed_writers) ||
     anyDuplicated(writers)) {
     stop("DTATOOLS_WRITE_WRITERS must select unique supported writers")
 }
+r_writers <- writers[writers != "stata"]
 
 datasets <- read_stata_fixture_manifest(
     manifest_path, stata_generator_sha256
@@ -58,7 +59,7 @@ if ("stata" %in% writers) {
     stata <- find_stata()
 }
 runtime_binding <- write_runtime_binding(
-    rscript, packages = "processx", stata = stata
+    rscript, packages = c("haven", "processx"), stata = stata
 )
 benchmark_environment <- c(
     DTATOOLS_BENCH_LIB = benchmark_library,
@@ -128,21 +129,32 @@ measure_iteration <- function(dataset, iteration) {
         if (!file.symlink(dataset$path, input)) stop("could not create input alias")
         input_sha256 <- dataset$sha256
     }
-    if ("dtatools" %in% writers) {
-        process <- run_timed_process(
-            rscript,
-            c("--vanilla", file.path(script_dir, "write-worker.R"),
-              "dtatools", "stata-storage", input,
-              file.path(work_dir, "output.dta")),
-            work_dir, benchmark_environment
-        )
-        fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
-        results[[length(results) + 1L]] <- measurement_row(
-            dataset, input_sha256, "dtatools", iteration,
-            if ("stata" %in% writers) 2L else 1L,
-            fields, process$stderr
-        )
-        message(dataset$dataset, " dtatools ", iteration, "/", iterations)
+    if (length(r_writers)) {
+        shift <- (match(dataset$dataset, datasets$dataset) + iteration - 2L) %%
+            length(r_writers)
+        order <- r_writers[c(
+            seq.int(shift + 1L, length(r_writers)),
+            if (shift) seq_len(shift) else integer()
+        )]
+        for (index in seq_along(order)) {
+            writer <- order[[index]]
+            process <- run_timed_process(
+                rscript,
+                c("--vanilla", file.path(script_dir, "write-worker.R"),
+                  writer, "stata-storage", input,
+                  file.path(work_dir, paste0(writer, "-output.dta"))),
+                work_dir, benchmark_environment
+            )
+            fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
+            results[[length(results) + 1L]] <- measurement_row(
+                dataset, input_sha256, writer, iteration,
+                index + as.integer("stata" %in% writers),
+                fields, process$stderr
+            )
+            message(
+                dataset$dataset, " ", writer, " ", iteration, "/", iterations
+            )
+        }
     }
     results
 }
@@ -185,20 +197,23 @@ stable_provenance <- cbind(data.frame(
     dataset_100mb_sha256 = datasets$sha256[[1L]],
     dataset_1gb_sha256 = datasets$sha256[[2L]],
     iterations = iterations,
-    workload = "stata-first-save-to-dtatools-roundtrip",
+    workload = "stata-first-save-to-r-writers",
     fixture_storage_schema = stata_fixture_schema,
     fixture_creator = "stata-first-save",
     fixture_generator_sha256 = stata_generator_sha256,
     stata_save_state = "first-save-after-generate",
-    dtatools_input = "exact-stata-first-save-output",
-    execution_order = if (setequal(writers, c("dtatools", "stata"))) {
-        "stata-before-dtatools"
+    r_writer_input = "exact-stata-first-save-output-read-by-dtatools",
+    execution_order = if ("stata" %in% writers && length(r_writers)) {
+        "stata-then-rotating-r-writers"
+    } else if (length(r_writers) > 1L) {
+        "rotating-r-writers"
     } else paste0(writers, "-only"),
     writers = paste(writers, collapse = ","),
     r_version = R.version.string,
     r_platform = R.version$platform,
     dtatools_version = as.character(utils::packageVersion("dtatools")),
     dtatools_path = normalizePath(find.package("dtatools"), winslash = "/"),
+    haven_version = as.character(utils::packageVersion("haven")),
     os_version = unname(Sys.info()[["version"]]),
     machine = unname(Sys.info()[["machine"]]),
     stringsAsFactors = FALSE, check.names = FALSE
@@ -206,23 +221,25 @@ stable_provenance <- cbind(data.frame(
 validate_write_result_matrix(
     raw, datasets$dataset, writers, iterations, "synthetic write"
 )
-if (setequal(writers, c("dtatools", "stata"))) {
+if ("stata" %in% writers && length(r_writers)) {
     pairs <- split(raw, interaction(
         raw$dataset, raw$iteration, drop = TRUE
     ))
     exact_pair <- vapply(pairs, function(pair) {
-        nrow(pair) == 2L && length(unique(pair$input_sha256)) == 1L &&
-            identical(
-                pair$writer[order(pair$writer_order)],
-                c("stata", "dtatools")
-            )
+        ordered_writers <- pair$writer[order(pair$writer_order)]
+        nrow(pair) == length(writers) &&
+            length(unique(pair$input_sha256)) == 1L &&
+            identical(ordered_writers[[1L]], "stata") &&
+            setequal(ordered_writers[-1L], r_writers)
     }, logical(1L))
     if (!all(exact_pair)) {
-        stop("dtatools did not consume each exact timed Stata output")
+        stop("R writers did not consume each exact timed Stata output")
     }
 }
 if (!identical(
-    write_runtime_binding(rscript, packages = "processx", stata = stata),
+    write_runtime_binding(
+        rscript, packages = c("haven", "processx"), stata = stata
+    ),
     runtime_binding
 )) {
     stop("benchmark runtime changed during synthetic writes")

@@ -2293,13 +2293,7 @@ unsafe fn write_raw_numeric_to_ptr(output: *mut u8, value: DtaWriteRawNumericVal
 }
 
 fn write_type_width(dta_type: &DtaType) -> usize {
-    match dta_type {
-        DtaType::Byte => 1,
-        DtaType::Int => 2,
-        DtaType::Long | DtaType::Float => 4,
-        DtaType::Double | DtaType::StrL => 8,
-        DtaType::FixedString(width) => usize::from(*width),
-    }
+    dta_type.storage_width() as usize
 }
 
 unsafe fn direct_compact_at(
