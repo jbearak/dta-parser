@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use arrow_array::{
     Array, ArrayRef, BooleanArray, DictionaryArray, Float32Array, Float64Array, Int16Array,
-    Int32Array, Int8Array, RecordBatch, StringArray,
+    Int32Array, Int64Array, Int8Array, RecordBatch, StringArray,
 };
 use arrow_ipc::reader::FileReader;
 use arrow_ipc::writer::{DictionaryHandling, FileWriter, IpcWriteOptions};
@@ -571,6 +571,63 @@ fn plain_arrow_files_read_without_stata_semantics() {
 }
 
 #[test]
+fn plain_dictionary_columns_accept_all_signed_key_widths() {
+    let values: ArrayRef = Arc::new(StringArray::from(vec!["low", "high"]));
+    let arrays: Vec<ArrayRef> = vec![
+        Arc::new(
+            DictionaryArray::try_new(
+                Int8Array::from(vec![Some(0), Some(1), None]),
+                values.clone(),
+            )
+            .expect("int8 dictionary"),
+        ),
+        Arc::new(
+            DictionaryArray::try_new(
+                Int16Array::from(vec![Some(0), Some(1), None]),
+                values.clone(),
+            )
+            .expect("int16 dictionary"),
+        ),
+        Arc::new(
+            DictionaryArray::try_new(
+                Int32Array::from(vec![Some(0), Some(1), None]),
+                values.clone(),
+            )
+            .expect("int32 dictionary"),
+        ),
+        Arc::new(
+            DictionaryArray::try_new(Int64Array::from(vec![Some(0), Some(1), None]), values)
+                .expect("int64 dictionary"),
+        ),
+    ];
+    let schema = Arc::new(Schema::new(
+        arrays
+            .iter()
+            .enumerate()
+            .map(|(index, array)| Field::new(format!("f{index}"), array.data_type().clone(), true))
+            .collect::<Vec<_>>(),
+    ));
+    let batch = RecordBatch::try_new(schema.clone(), arrays).expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let result = read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &read_all_options(),
+        &mut no_interrupt(),
+    )
+    .expect("signed dictionary key widths read");
+    assert_eq!(result.columns.len(), 4);
+    for column in result.columns {
+        assert_eq!(column.chunks[0].len(), 3);
+        assert_eq!(column.chunks[0].null_count(), 1);
+    }
+}
+
+#[test]
 fn newer_profile_versions_are_a_hard_error_with_an_escape_hatch() {
     let bytes = plain_arrow_file(HashMap::from([(
         ARROW_PROFILE_VERSION_KEY.to_owned(),
@@ -638,6 +695,39 @@ fn incompatible_field_semantics_are_malformed_with_an_escape_hatch() {
         .expect("profile = FALSE reads the raw field");
     assert_eq!(result.profile_version, None);
     assert_eq!(result.columns[0].data_type, DataType::Int32);
+}
+
+#[test]
+fn nonnullable_profile_fields_reject_nulls() {
+    let mut field = Field::new("x", DataType::Int8, false);
+    field.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"storage":"byte","missing":"sentinel","r":{"class":"stata_numeric"}}"#
+            .to_owned(),
+    )]));
+    let schema = Arc::new(Schema::new(vec![field]).with_metadata(HashMap::from([(
+        ARROW_PROFILE_VERSION_KEY.to_owned(),
+        "0".to_owned(),
+    )])));
+    let values: ArrayRef = Arc::new(Int8Array::from(vec![Some(1), None]));
+    // Nullability does not affect the physical array layout, so this satisfies
+    // RecordBatch::new_unchecked's type, length, and column-count contracts.
+    let batch = unsafe { RecordBatch::new_unchecked(schema.clone(), vec![values], 2) };
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("malformed batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let options = ArrowReadOptions {
+        verify: false,
+        ..read_all_options()
+    };
+    let error = read_arrow_file_from(&mut Cursor::new(bytes), &options, &mut no_interrupt())
+        .expect_err("nulls in a nonnullable profile field are rejected");
+    assert!(error
+        .to_string()
+        .contains("non-nullable field contains nulls"));
 }
 
 #[test]

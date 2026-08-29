@@ -26,14 +26,15 @@ use dta_tools::{
 
 use arrow_array::builder::{BooleanBuilder, Int32Builder, StringBuilder};
 use arrow_array::types::{
-    ArrowPrimitiveType, Float32Type, Float64Type, Int16Type, Int32Type, Int8Type, UInt8Type,
+    ArrowDictionaryKeyType, ArrowPrimitiveType, Float32Type, Float64Type, Int16Type, Int32Type,
+    Int64Type, Int8Type, UInt8Type,
 };
 use arrow_array::{
     Array, ArrayRef, BooleanArray, Date32Array, DictionaryArray, DurationNanosecondArray,
     Float32Array, Float64Array, Int16Array, Int32Array, Int64Array, Int8Array, PrimitiveArray,
     StringArray, TimestampMicrosecondArray, UInt16Array, UInt32Array, UInt64Array, UInt8Array,
 };
-use arrow_buffer::{Buffer, ScalarBuffer};
+use arrow_buffer::{ArrowNativeType, Buffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
@@ -2101,70 +2102,104 @@ unsafe fn character_vector(
     Ok(vector)
 }
 
+fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<String>, String> {
+    match values.data_type() {
+        DataType::Utf8 => {
+            let values = values
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .ok_or_else(|| chunk_error(column))?;
+            (0..values.len())
+                .map(|index| {
+                    if values.is_null(index) {
+                        Err(format!("column `{column}` has a null factor level"))
+                    } else {
+                        Ok(values.value(index).to_owned())
+                    }
+                })
+                .collect()
+        }
+        DataType::LargeUtf8 => {
+            let values = values
+                .as_any()
+                .downcast_ref::<arrow_array::LargeStringArray>()
+                .ok_or_else(|| chunk_error(column))?;
+            (0..values.len())
+                .map(|index| {
+                    if values.is_null(index) {
+                        Err(format!("column `{column}` has a null factor level"))
+                    } else {
+                        Ok(values.value(index).to_owned())
+                    }
+                })
+                .collect()
+        }
+        _ => Err(chunk_error(column)),
+    }
+}
+
+unsafe fn fill_factor_chunk<K: ArrowDictionaryKeyType>(
+    chunk: &ArrayRef,
+    output: *mut c_int,
+    row: &mut usize,
+    levels: &mut Option<Vec<String>>,
+    column: &str,
+) -> Result<(), String> {
+    let dictionary = chunk
+        .as_any()
+        .downcast_ref::<DictionaryArray<K>>()
+        .ok_or_else(|| chunk_error(column))?;
+    let chunk_levels = factor_levels(dictionary.values(), column)?;
+    match levels {
+        None => *levels = Some(chunk_levels),
+        Some(existing) if *existing == chunk_levels => {}
+        Some(_) => {
+            return Err(format!(
+                "column `{column}` has chunks with different dictionaries"
+            ))
+        }
+    }
+    let keys = dictionary.keys();
+    for index in 0..keys.len() {
+        *output.add(*row) = if keys.is_null(index) {
+            R_NaInt
+        } else {
+            let key = keys.value(index).as_usize();
+            if key >= dictionary.values().len() {
+                return Err(format!("column `{column}` has an invalid factor code"));
+            }
+            c_int::try_from(key + 1)
+                .map_err(|_| format!("column `{column}` has too many factor levels"))?
+        };
+        *row += 1;
+    }
+    Ok(())
+}
+
 unsafe fn fill_factor_codes(
     column: &ArrowReadColumn,
     output: *mut c_int,
 ) -> Result<Vec<String>, String> {
     let mut levels: Option<Vec<String>> = None;
     let mut row = 0_usize;
+    let DataType::Dictionary(key, _) = &column.data_type else {
+        return Err(chunk_error(&column.name));
+    };
     for chunk in &column.chunks {
-        let dictionary = chunk
-            .as_any()
-            .downcast_ref::<DictionaryArray<arrow_array::types::Int32Type>>()
-            .ok_or_else(|| chunk_error(&column.name))?;
-        let chunk_levels: Vec<String> = match dictionary.values().data_type() {
-            DataType::Utf8 => {
-                let values = dictionary
-                    .values()
-                    .as_any()
-                    .downcast_ref::<StringArray>()
-                    .ok_or_else(|| chunk_error(&column.name))?;
-                (0..values.len())
-                    .map(|index| {
-                        if values.is_null(index) {
-                            Err(format!("column `{}` has a null factor level", column.name))
-                        } else {
-                            Ok(values.value(index).to_owned())
-                        }
-                    })
-                    .collect::<Result<_, _>>()?
+        match key.as_ref() {
+            DataType::Int8 => {
+                fill_factor_chunk::<Int8Type>(chunk, output, &mut row, &mut levels, &column.name)?
             }
-            DataType::LargeUtf8 => {
-                let values = dictionary
-                    .values()
-                    .as_any()
-                    .downcast_ref::<arrow_array::LargeStringArray>()
-                    .ok_or_else(|| chunk_error(&column.name))?;
-                (0..values.len())
-                    .map(|index| {
-                        if values.is_null(index) {
-                            Err(format!("column `{}` has a null factor level", column.name))
-                        } else {
-                            Ok(values.value(index).to_owned())
-                        }
-                    })
-                    .collect::<Result<_, _>>()?
+            DataType::Int16 => {
+                fill_factor_chunk::<Int16Type>(chunk, output, &mut row, &mut levels, &column.name)?
+            }
+            DataType::Int32 => {
+                fill_factor_chunk::<Int32Type>(chunk, output, &mut row, &mut levels, &column.name)?
+            }
+            DataType::Int64 => {
+                fill_factor_chunk::<Int64Type>(chunk, output, &mut row, &mut levels, &column.name)?
             }
             _ => return Err(chunk_error(&column.name)),
-        };
-        match &levels {
-            None => levels = Some(chunk_levels),
-            Some(existing) if *existing == chunk_levels => {}
-            Some(_) => {
-                return Err(format!(
-                    "column `{}` has chunks with different dictionaries",
-                    column.name
-                ))
-            }
-        }
-        let keys = dictionary.keys();
-        for index in 0..keys.len() {
-            *output.add(row) = if keys.is_null(index) {
-                R_NaInt
-            } else {
-                keys.value(index) + 1
-            };
-            row += 1;
         }
     }
     Ok(levels.unwrap_or_default())

@@ -786,13 +786,18 @@ test_that("the arrow package is an independent oracle for written files", {
 
 test_that("plain Arrow files never acquire Stata semantics", {
     skip_if_not_installed("arrow")
-    data <- tibble::tibble(n = c(1L, NA, 3L), s = c("a", "b", NA))
+    data <- tibble::tibble(
+        n = c(1L, NA, 3L),
+        s = c("a", "b", NA),
+        f = factor(c("low", "high", NA), levels = c("low", "high"))
+    )
     path <- arrow_tempfile()
     arrow::write_ipc_file(data, path, compression = "uncompressed")
 
     actual <- read_arrow(path)
     expect_identical(actual$n, data$n)
     expect_identical(actual$s, data$s)
+    expect_identical(actual$f, data$f)
     expect_null(attr(actual$n, "stata.storage", exact = TRUE))
     expect_null(attr(actual, "label", exact = TRUE))
 })

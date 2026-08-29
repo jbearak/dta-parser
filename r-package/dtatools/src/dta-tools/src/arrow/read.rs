@@ -14,7 +14,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-use arrow_array::{make_array, ArrayRef, DictionaryArray, Int32Array};
+use arrow_array::types::{ArrowDictionaryKeyType, Int16Type, Int32Type, Int64Type, Int8Type};
+use arrow_array::{make_array, ArrayRef, DictionaryArray, PrimitiveArray};
 use arrow_buffer::{Buffer, MutableBuffer};
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
@@ -148,9 +149,13 @@ fn buffer_count_for(data_type: &DataType) -> Option<usize> {
         | DataType::Timestamp(_, _)
         | DataType::Duration(_) => Some(2),
         DataType::Utf8 | DataType::LargeUtf8 => Some(3),
-        DataType::Dictionary(key, value) => (matches!(key.as_ref(), DataType::Int32)
-            && matches!(value.as_ref(), DataType::Utf8 | DataType::LargeUtf8))
-        .then_some(2),
+        DataType::Dictionary(key, value) => {
+            (matches!(
+                key.as_ref(),
+                DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int64
+            ) && matches!(value.as_ref(), DataType::Utf8 | DataType::LargeUtf8))
+            .then_some(2)
+        }
         _ => None,
     }
 }
@@ -601,6 +606,7 @@ fn decode_field_array<R: Read + Seek>(
     header: &BatchHeader,
     layout: &FieldLayout,
     data_type: &DataType,
+    nullable: bool,
     dictionary: Option<&ArrayData>,
 ) -> Result<ArrayRef, ArrowProfileError> {
     let (rows, null_count) = *header
@@ -615,6 +621,9 @@ fn decode_field_array<R: Read + Seek>(
 
     if null_count > rows as u64 {
         return Err(invalid("null count exceeds the field length"));
+    }
+    if null_count > 0 && !nullable {
+        return Err(invalid("non-nullable field contains nulls"));
     }
 
     let validity = if null_count > 0 {
@@ -744,6 +753,7 @@ fn read_dictionaries<R: Read + Seek>(
             &header,
             &layout,
             value_type,
+            true,
             None,
         )?;
         let values = if is_delta {
@@ -940,6 +950,7 @@ fn decode_planned_column<R: Read + Seek>(
         &plan.header,
         layout,
         field.data_type(),
+        field.is_nullable(),
         dictionary,
     )?;
     if array.len() as u64 != plan.header.rows {
@@ -1198,6 +1209,31 @@ fn decode_blocks_parallel(
     Ok(())
 }
 
+fn empty_dictionary<K: ArrowDictionaryKeyType>(
+    values: ArrayRef,
+) -> Result<ArrayRef, ArrowProfileError> {
+    let keys = PrimitiveArray::<K>::from_iter_values(std::iter::empty());
+    DictionaryArray::try_new(keys, values)
+        .map(|array| Arc::new(array) as ArrayRef)
+        .map_err(|error| invalid(format!("invalid dictionary: {error}")))
+}
+
+fn empty_dictionary_for(
+    data_type: &DataType,
+    values: ArrayRef,
+) -> Result<ArrayRef, ArrowProfileError> {
+    let DataType::Dictionary(key, _) = data_type else {
+        return Err(invalid("dictionary layout has a non-dictionary field"));
+    };
+    match key.as_ref() {
+        DataType::Int8 => empty_dictionary::<Int8Type>(values),
+        DataType::Int16 => empty_dictionary::<Int16Type>(values),
+        DataType::Int32 => empty_dictionary::<Int32Type>(values),
+        DataType::Int64 => empty_dictionary::<Int64Type>(values),
+        _ => Err(invalid("unsupported dictionary key type")),
+    }
+}
+
 fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, ArrowProfileError> {
     prepared
         .selected
@@ -1211,10 +1247,7 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
                         let values = prepared.dictionaries.get(&id).ok_or_else(|| {
                             invalid("a dictionary-encoded column has no dictionary")
                         })?;
-                        let keys = Int32Array::from(Vec::<i32>::new());
-                        let dictionary = DictionaryArray::try_new(keys, make_array(values.clone()))
-                            .map_err(|error| invalid(format!("invalid dictionary: {error}")))?;
-                        Ok(Arc::new(dictionary) as ArrayRef)
+                        empty_dictionary_for(field.data_type(), make_array(values.clone()))
                     })
                     .transpose()?
                     .into_iter()
@@ -1417,6 +1450,15 @@ fn validate_stored_checksum_coverage<R: Read + Seek>(
                 .ok_or_else(|| invalid("record batch is missing a field node"))?;
             if length != header.rows {
                 return Err(invalid("field length does not match the batch length"));
+            }
+            if null_count > 0 && !field.is_nullable() {
+                return Err(super::profile::malformed(
+                    version,
+                    format!(
+                        "non-nullable field `{}` contains nulls in record batch {batch_index}",
+                        field.name()
+                    ),
+                ));
             }
             if header
                 .buffers
