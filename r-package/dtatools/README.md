@@ -75,12 +75,12 @@ type:
 
 | Scale | Stata | dtatools | haven |
 | --- | ---: | ---: | ---: |
-| 100 MB | 0.013 seconds | 0.023 seconds | 1.226 seconds |
-| 1 GB | 0.130 seconds | 0.151 seconds | 9.059 seconds |
+| 100 MB | 0.013 seconds | 0.023 seconds | 1.232 seconds |
+| 1 GB | 0.131 seconds | 0.150 seconds | 9.052 seconds |
 
-Haven took 53.3 times as long as dtatools at 100 MB and 60.0 times as long at
+Haven took 53.6 times as long as dtatools at 100 MB and 60.3 times as long at
 1 GB on these Stata-class inputs. dtatools took 1.77 times Stata's median at
-100 MB and 1.16 times at 1 GB.
+100 MB and 1.15 times at 1 GB.
 
 The secondary benchmark gives dtatools and haven the same ordinary R data
 frame, without Stata storage or labelling metadata:
