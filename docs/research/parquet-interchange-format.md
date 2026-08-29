@@ -1,5 +1,12 @@
 # Parquet as a migration and interchange format
 
+> **Deferred.** Arrow IPC was chosen first as the dtatools native format
+> because full-table read and write time is the first priority; see
+> [arrow-ipc-interchange-format.md](./arrow-ipc-interchange-format.md).
+> Revisit this document for the planned `read_parquet()` and `save_parquet()`
+> interchange functions, where generic-reader compatibility and file size
+> matter more than latency.
+
 Research date: 2026-08-28
 
 ## Conclusion

@@ -1,7 +1,9 @@
 # dta-tools
 
 dta-tools provides TypeScript and R libraries for reading and writing Stata DTA
-files and for working with Stata-specific values and metadata in memory.
+files and for working with Stata-specific values and metadata in memory. The R
+and Rust libraries are named `dtatools`; the TypeScript library keeps its
+published npm name `dtaparser`.
 
 ## R package language
 
@@ -96,6 +98,22 @@ _Avoid_: Frameset, alias-variable dataset
 **Semantic DTA round-trip**:
 After any reported export conversions, writing and reading a dataset preserves its represented values, storage types, missing codes, display formats, labels, and notes. It does not require byte-identical output or preserve source details absent from the in-memory model.
 _Avoid_: Byte-identical round-trip, source-file reproduction
+
+**dtatools Arrow profile**:
+The versioned metadata contract under which dtatools writes and reads Arrow IPC files, carrying the labels, display formats, storage declarations, notes, and missing codes that plain Arrow does not express.
+_Avoid_: Arrow schema, Feather metadata
+
+**Frozen profile version**:
+A dtatools Arrow profile version covered by the stability promise: readable by every future package version. The experimental profile version carries no such promise.
+_Avoid_: format release, draft profile
+
+**Semantic Arrow round-trip**:
+Saving and reading a dataset under the dtatools Arrow profile preserves its values, R classes, storage types, missing codes, labels, display formats, and notes. Attributes the profile does not recognize are dropped with a report.
+_Avoid_: byte-identical round-trip, lossless copy
+
+**Raw Stata missing storage**:
+The profiled-column encoding in which system and extended missing codes are stored as Stata's own reserved values rather than Arrow nulls, so a profile-aware reader restores them exactly while a generic Arrow reader sees them as ordinary values.
+_Avoid_: null encoding, missing bucket
 
 **Lossy export conversion**:
 A reported replacement required when an R value has no representation in the selected Stata storage. Numeric values become system missing, character missing values become empty strings, and factor classes become value-labelled `long` variables.
