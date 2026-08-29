@@ -27,6 +27,7 @@ pub(crate) const DOCUMENT_VERSION: u32 = 0;
 /// One value-label mapping inside the dataset document: either a nonmissing
 /// Stata `long` code or an extended missing tag, with its label text.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArrowValueLabelEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<i32>,
@@ -38,6 +39,7 @@ pub struct ArrowValueLabelEntry {
 /// The `dtatools:dataset` schema document: dataset label, ordered notes, and
 /// the registry of value-label tables keyed by Stata label-table name.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DatasetDocument {
     pub version: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -132,6 +134,7 @@ pub enum ArrowMissingEncoding {
 /// Portable R semantics for one field: the R class the reader restores, with
 /// the class-specific details standard Arrow types do not carry.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArrowRSemantics {
     pub class: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -144,6 +147,7 @@ pub struct ArrowRSemantics {
 
 /// The `dtatools:field` document on one Arrow field.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArrowFieldDocument {
     pub version: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -167,6 +171,7 @@ pub struct ArrowFieldDocument {
 /// Per-buffer xxHash64 checksums, in canonical buffer order, for every column
 /// of every record batch and for each dictionary field's values.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ChecksumsDocument {
     pub version: u32,
     pub algorithm: String,
@@ -176,6 +181,7 @@ pub struct ChecksumsDocument {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct BatchChecksums {
     pub columns: Vec<Vec<String>>,
 }
@@ -579,6 +585,46 @@ mod tests {
         .expect_err("system missing is not a valid value-label code");
         assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
         assert!(error.to_string().contains("system missing"));
+    }
+
+    #[test]
+    fn dataset_documents_reject_unknown_keys() {
+        for json in [
+            r#"{"version":0,"lable":"typo"}"#,
+            r#"{"version":0,"value_labels":{"x":[{"value":1,"label":"one","lable":"typo"}]}}"#,
+        ] {
+            let error = parse_dataset_document("0", Some(json))
+                .expect_err("unknown dataset keys are rejected");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("unknown field"));
+        }
+    }
+
+    #[test]
+    fn field_documents_reject_unknown_keys() {
+        let field = Field::new("x", DataType::Int32, true);
+        for json in [
+            r#"{"version":0,"lable":"typo"}"#,
+            r#"{"version":0,"r":{"class":"integer","ordred":true}}"#,
+        ] {
+            let error = parse_field_document("0", &field, json)
+                .expect_err("unknown field-document keys are rejected");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("unknown field"));
+        }
+    }
+
+    #[test]
+    fn checksum_documents_reject_unknown_keys() {
+        for json in [
+            r#"{"version":0,"algorithm":"xxh64","batches":[],"batchs":[]}"#,
+            r#"{"version":0,"algorithm":"xxh64","batches":[{"columns":[],"colums":[]}]}"#,
+        ] {
+            let error = parse_checksums_document("0", json)
+                .expect_err("unknown checksum keys are rejected");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("unknown field"));
+        }
     }
 
     #[test]

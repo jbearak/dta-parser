@@ -1547,6 +1547,11 @@ fn validate_stored_checksum_coverage<R: Read + Seek>(
     }
 
     let field_count = footer.schema.fields().len();
+    let canonical_rows = super::write::ARROW_ROWS_PER_BATCH as u64;
+    let has_dictionary = footer
+        .layouts
+        .iter()
+        .any(|layout| layout.dictionary_id.is_some());
     let mut row_count = 0_u64;
     for (batch_index, (block, batch_checksums)) in footer
         .record_blocks
@@ -1563,6 +1568,23 @@ fn validate_stored_checksum_coverage<R: Read + Seek>(
             ));
         }
         let header = read_batch_header(reader, *block)?;
+        let final_batch = batch_index + 1 == checksums.batches.len();
+        let canonical_geometry = if header.rows == 0 {
+            final_batch && batch_index == 0 && has_dictionary
+        } else if final_batch {
+            header.rows <= canonical_rows
+        } else {
+            header.rows == canonical_rows
+        };
+        if !canonical_geometry {
+            return Err(super::profile::malformed(
+                version,
+                format!(
+                    "record batch {batch_index} has {} rows instead of the canonical record-batch geometry",
+                    header.rows
+                ),
+            ));
+        }
         row_count = row_count
             .checked_add(header.rows)
             .ok_or_else(|| invalid("row count overflows"))?;

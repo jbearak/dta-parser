@@ -1645,3 +1645,36 @@ fn stored_signatures_require_complete_checksum_coverage() {
 
     std::fs::remove_dir_all(&directory).expect("temp dir removed");
 }
+
+#[test]
+fn stored_signatures_reject_noncanonical_batch_boundaries() {
+    let profile = HashMap::from([(ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned())]);
+    let schema =
+        Arc::new(Schema::new(vec![Field::new("x", DataType::Int32, false)]).with_metadata(profile));
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    for start in [0_i32, 50_000] {
+        let values: ArrayRef = Arc::new(Int32Array::from_iter_values(start..start + 50_000));
+        let batch = RecordBatch::try_new(schema.clone(), vec![values]).expect("valid batch");
+        writer.write(&batch).expect("batch writes");
+    }
+    writer.write_metadata(
+        ARROW_CHECKSUMS_KEY,
+        r#"{"version":0,"algorithm":"xxh64","batches":[{"columns":[["0000000000000000"]]},{"columns":[["0000000000000000"]]}]}"#,
+    );
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let directory = std::env::temp_dir().join(format!(
+        "dtatools-noncanonical-signature-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).expect("temp dir");
+    let path = directory.join("noncanonical.arrow");
+    std::fs::write(&path, bytes).expect("file written");
+    let error = arrow_stored_signature(&path).expect_err("batch geometry is noncanonical");
+    assert!(error
+        .to_string()
+        .contains("canonical record-batch geometry"));
+    std::fs::remove_dir_all(&directory).expect("temp dir removed");
+}
