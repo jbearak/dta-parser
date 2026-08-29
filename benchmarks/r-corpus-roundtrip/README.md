@@ -1,6 +1,6 @@
 # R corpus write qualification and benchmark
 
-This manual workflow qualifies `dtatools::write_dta()` against every DTA file
+This manual workflow qualifies `dtatools::save_dta()` against every DTA file
 in the DHS, MICS, and NSFG directories beneath `/opt/aww_cache`, then compares
 its write performance with Stata. It refuses CI and requires Stata/MP 18 or
 later, haven, and processx. The complete workflow requires Stata/MP because its

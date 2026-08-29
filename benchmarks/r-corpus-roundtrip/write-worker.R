@@ -18,7 +18,7 @@ data <- dtatools::read_dta(input)
 gc()
 started <- proc.time()[["elapsed"]]
 status <- tryCatch({
-    suppressWarnings(dtatools::write_dta(data, output, version = 19L))
+    suppressWarnings(dtatools::save_dta(data, output, version = 19L))
     "ok"
 }, error = function(condition) {
     message("dtatools write worker: ", conditionMessage(condition))

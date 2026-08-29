@@ -35,7 +35,7 @@
 #' Metadata beyond Stata 19's documented limits is stored unchanged in R with
 #' one aggregated warning: 80 Unicode characters for dataset and variable
 #' labels, 65,536 entries per value-label table, and 32,000 UTF-8 bytes per
-#' value-label text. `write_dta()` rejects over-limit metadata rather than
+#' value-label text. `save_dta()` rejects over-limit metadata rather than
 #' truncating it.
 #'
 #' Adding a value-label table to an ordinary numeric vector adds the

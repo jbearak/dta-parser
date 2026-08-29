@@ -586,8 +586,8 @@ test_that("master and using accept DTA file paths in any combination", {
     master_path <- tempfile(fileext = ".dta")
     using_path <- tempfile(fileext = ".dta")
     on.exit(unlink(c(master_path, using_path)), add = TRUE)
-    write_dta(master, master_path)
-    write_dta(using, using_path)
+    save_dta(master, master_path)
+    save_dta(using, using_path)
 
     from_frames <- dta_merge(master, using, by = "id",
                                relationship = "1:1")

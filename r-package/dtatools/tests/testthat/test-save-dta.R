@@ -1,4 +1,4 @@
-test_that("write_dta writes a typed release-118 dataset and returns its input invisibly", {
+test_that("save_dta writes a typed release-118 dataset and returns its input invisibly", {
     data <- data.frame(
         answer = stata_byte(c(-5, tagged_missing("a"))),
         stringsAsFactors = FALSE
@@ -8,7 +8,7 @@ test_that("write_dta writes a typed release-118 dataset and returns its input in
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_identical(expect_invisible(write_dta(data, path)), data)
+    expect_identical(expect_invisible(save_dta(data, path)), data)
     expect_true(file.exists(path))
 
     actual <- read_dta(path, use_numeric_altrep = FALSE)
@@ -28,7 +28,7 @@ test_that("dataset labels over 80 characters leave destinations unchanged", {
     on.exit(unlink(path), add = TRUE)
 
     expect_error(
-        write_dta(data, path),
+        save_dta(data, path),
         "`label` has 81 Unicode characters; Stata's limit is 80",
         class = "dtatools_write_validation_error",
         fixed = TRUE
@@ -47,7 +47,7 @@ test_that("unsupported target versions leave destinations unchanged", {
         info <- sprintf("Stata %d", version)
 
         expect_error(
-            write_dta(data, path, version = version),
+            save_dta(data, path, version = version),
             "`version` must be 18 or 19",
             class = "dtatools_write_argument_error",
             fixed = TRUE,
@@ -73,7 +73,7 @@ test_that("Stata 18 rejects release-119-width datasets", {
     on.exit(unlink(path), add = TRUE)
 
     expect_error(
-        write_dta(data, path, version = 18L),
+        save_dta(data, path, version = 18L),
         "Stata 18's 32,767-variable limit",
         class = "dtatools_write_validation_error",
         fixed = TRUE
@@ -86,7 +86,7 @@ test_that("bare logical columns write as Stata bytes", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)
     expect_identical(stata_storage_type(actual$flag), "byte")
     expect_identical(as.double(actual$flag), c(1, 0, NA_real_))
@@ -106,11 +106,11 @@ test_that("compact reader storage and materialized fallbacks write identically",
         narrow = stata_byte(c(-5, 100, tagged_missing("b"))),
         text = c("alpha", "beta", "alpha")
     )
-    expect_silent(write_dta(source, source_path))
+    expect_silent(save_dta(source, source_path))
     compact <- read_dta(source_path)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$narrow))
 
-    expect_silent(write_dta(compact, direct_path))
+    expect_silent(save_dta(compact, direct_path))
     materialized <- compact
     materialized[] <- lapply(
         materialized, dtatools:::.force_altrep_materialization
@@ -118,7 +118,7 @@ test_that("compact reader storage and materialized fallbacks write identically",
     expect_false(
         dtatools:::.is_unmaterialized_numeric_altrep(materialized$narrow)
     )
-    expect_silent(write_dta(materialized, materialized_path))
+    expect_silent(save_dta(materialized, materialized_path))
     expect_identical(
         readBin(direct_path, "raw", n = file.info(direct_path)$size),
         readBin(
@@ -128,7 +128,7 @@ test_that("compact reader storage and materialized fallbacks write identically",
 
     changed_numeric <- compact["narrow"]
     changed_numeric$narrow[[2L]] <- 99
-    expect_silent(write_dta(changed_numeric, numeric_path))
+    expect_silent(save_dta(changed_numeric, numeric_path))
     expect_identical(
         as.double(read_dta(numeric_path, use_numeric_altrep = FALSE)$narrow),
         c(-5, 99, tagged_missing("b"))
@@ -137,7 +137,7 @@ test_that("compact reader storage and materialized fallbacks write identically",
     changed_string <- compact["text"]
     changed_string$text[[2L]] <- NA_character_
     expect_warning(
-        write_dta(changed_string, string_path),
+        save_dta(changed_string, string_path),
         class = "dtatools_write_character_missing_warning"
     )
     expect_identical(
@@ -170,7 +170,7 @@ test_that("compact datetimes preserve millisecond integer storage", {
     on.exit(unlink(c(direct_path, materialized_path)), add = TRUE)
 
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$dt))
-    expect_silent(write_dta(compact, direct_path))
+    expect_silent(save_dta(compact, direct_path))
     materialized <- compact
     materialized$dt <- dtatools:::.force_altrep_materialization(
         materialized$dt
@@ -178,7 +178,7 @@ test_that("compact datetimes preserve millisecond integer storage", {
     expect_false(
         dtatools:::.is_unmaterialized_numeric_altrep(materialized$dt)
     )
-    expect_silent(write_dta(materialized, materialized_path))
+    expect_silent(save_dta(materialized, materialized_path))
 
     direct <- read_dta(direct_path, use_numeric_altrep = FALSE)$dt
     fallback <- read_dta(materialized_path, use_numeric_altrep = FALSE)$dt
@@ -230,11 +230,11 @@ test_that("malformed compact numerics follow materialized write semantics", {
     )))
 
     direct_warning <- expect_warning(
-        write_dta(direct, direct_path),
+        save_dta(direct, direct_path),
         class = "dtatools_write_numeric_replacement_warning"
     )
     materialized_warning <- expect_warning(
-        write_dta(materialized, materialized_path),
+        save_dta(materialized, materialized_path),
         class = "dtatools_write_numeric_replacement_warning"
     )
     expect_identical(
@@ -272,7 +272,7 @@ test_that("legacy compact numerics are revalidated for modern missing ranges", {
     output <- tempfile(fileext = ".dta")
     on.exit(unlink(output), add = TRUE)
     expect_warning(
-        write_dta(legacy, output),
+        save_dta(legacy, output),
         class = "dtatools_write_numeric_replacement_warning"
     )
     expect_identical(
@@ -293,7 +293,7 @@ test_that("character missing values become empty strings and long values use str
     on.exit(unlink(path), add = TRUE)
 
     expect_warning(
-        write_dta(data, path, strl_threshold = 4L),
+        save_dta(data, path, strl_threshold = 4L),
         class = "dtatools_write_character_missing_warning"
     )
     actual <- read_dta(path)
@@ -322,7 +322,7 @@ test_that("ordered and unordered factors become labelled long integers", {
     on.exit(unlink(path), add = TRUE)
 
     expect_warning(
-        write_dta(data, path),
+        save_dta(data, path),
         class = "dtatools_write_factor_warning"
     )
     actual <- read_dta(path, use_numeric_altrep = FALSE)
@@ -347,7 +347,7 @@ test_that("R system-missing payload variants remain system missing", {
     expect_true(is.na(payload_variant))
     old_options <- options(warn = 2L)
     on.exit(options(old_options), add = TRUE)
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)$x
     expect_true(all(is.na(actual)))
     expect_true(all(is.na(missing_tag(actual))))
@@ -378,7 +378,7 @@ test_that("unrepresentable numerics become system missing in one aggregated warn
     on.exit(unlink(path), add = TRUE)
 
     warning <- expect_warning(
-        write_dta(data, path),
+        save_dta(data, path),
         class = "dtatools_write_numeric_replacement_warning"
     )
     expect_match(conditionMessage(warning), "`narrow` (4)", fixed = TRUE)
@@ -403,8 +403,8 @@ test_that("Date and POSIXct columns use Stata epochs and both timezone modes", {
     instant_path <- tempfile(fileext = ".dta")
     on.exit(unlink(c(wall_path, instant_path)), add = TRUE)
 
-    expect_silent(write_dta(data, wall_path, adjust_tz = TRUE))
-    expect_silent(write_dta(data, instant_path, adjust_tz = FALSE))
+    expect_silent(save_dta(data, wall_path, adjust_tz = TRUE))
+    expect_silent(save_dta(data, instant_path, adjust_tz = FALSE))
     wall <- read_dta(wall_path, use_numeric_altrep = FALSE)
     instant <- read_dta(instant_path, use_numeric_altrep = FALSE)
 
@@ -441,7 +441,7 @@ test_that("timezone adjustment retains invalid datetimes for native warnings", {
     on.exit(unlink(path), add = TRUE)
 
     warning <- expect_warning(
-        write_dta(data.frame(times = times), path, adjust_tz = TRUE),
+        save_dta(data.frame(times = times), path, adjust_tz = TRUE),
         class = "dtatools_write_numeric_replacement_warning"
     )
     expect_match(conditionMessage(warning), "`times` (2)", fixed = TRUE)
@@ -466,7 +466,7 @@ test_that("timezone adjustment retains extreme finite datetimes for native warni
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
     warning <- expect_warning(
-        write_dta(data.frame(times = times), path, adjust_tz = TRUE),
+        save_dta(data.frame(times = times), path, adjust_tz = TRUE),
         class = "dtatools_write_numeric_replacement_warning"
     )
     expect_match(conditionMessage(warning), "`times` (1)", fixed = TRUE)
@@ -485,7 +485,7 @@ test_that("value labels and ordered dataset notes round-trip", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)
     expect_identical(attr(actual, "notes", exact = TRUE), c("first", "", "third"))
     expect_identical(
@@ -504,7 +504,7 @@ test_that("empty value-label text from source metadata round-trips", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)$x
     expect_identical(attr(actual, "labels", exact = TRUE),
                      stats::setNames(c(1201, 1213), c("", "")))
@@ -521,7 +521,7 @@ test_that("an attached empty value-label table round-trips", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data.frame(x = x), path))
+    expect_silent(save_dta(data.frame(x = x), path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)$x
     expect_identical(
         attr(actual, "labels", exact = TRUE),
@@ -543,7 +543,7 @@ test_that("duplicate value-label keys from source metadata round-trip stably", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data.frame(x = x), path))
+    expect_silent(save_dta(data.frame(x = x), path))
     actual <- attr(read_dta(path)$x, "labels", exact = TRUE)
     expect_identical(names(actual), c("Refused", "Not ascertained", "Don't know"))
     expect_identical(unname(missing_tag(actual)), c("a", "a", "b"))
@@ -564,7 +564,7 @@ test_that("value-label text limits count UTF-8 bytes before touching the destina
     on.exit(unlink(path), add = TRUE)
 
     expect_error(
-        write_dta(data, path),
+        save_dta(data, path),
         class = "dtatools_write_validation_error"
     )
     expect_identical(readBin(path, "raw", n = file.info(path)$size), sentinel)
@@ -579,7 +579,7 @@ test_that("warnings promoted to errors leave an existing destination unchanged",
     previous <- options(warn = 2)
     on.exit(options(previous), add = TRUE)
 
-    expect_error(write_dta(data, path), "factor columns", ignore.case = TRUE)
+    expect_error(save_dta(data, path), "factor columns", ignore.case = TRUE)
     expect_identical(readBin(path, "raw", n = file.info(path)$size), sentinel)
 })
 
@@ -607,7 +607,7 @@ test_that("writes preserve existing Unix destination permissions", {
     Sys.chmod(path, mode = "0600")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data.frame(x = 1L), path))
+    expect_silent(save_dta(data.frame(x = 1L), path))
     expect_identical(file.info(path)$mode, as.octmode("0600"))
 })
 
@@ -618,7 +618,7 @@ test_that("new Unix destinations use normal creation permissions", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data.frame(x = 1L), path))
+    expect_silent(save_dta(data.frame(x = 1L), path))
     expect_identical(file.info(path)$mode, as.octmode("0640"))
 })
 
@@ -634,7 +634,7 @@ test_that("existing FIFO destinations are rejected without replacement", {
     expect_equal(system2(file_test, c("-p", shQuote(path))), 0L)
 
     expect_error(
-        write_dta(data.frame(x = 1L), path),
+        save_dta(data.frame(x = 1L), path),
         class = "dtatools_write_path_error"
     )
     expect_equal(system2(file_test, c("-p", shQuote(path))), 0L)
@@ -647,7 +647,7 @@ test_that("extensionless output appends .dta with one classed warning", {
     on.exit(unlink(c(base, path)), add = TRUE)
 
     expect_warning(
-        write_dta(data, base),
+        save_dta(data, base),
         class = "dtatools_write_extension_warning"
     )
     expect_false(file.exists(base))
@@ -664,7 +664,7 @@ test_that("unsupported columns are reported together with their classes", {
     on.exit(unlink(path), add = TRUE)
 
     error <- expect_error(
-        write_dta(data, path),
+        save_dta(data, path),
         class = "dtatools_write_validation_error"
     )
     message <- conditionMessage(error)
@@ -685,7 +685,7 @@ test_that("dependency-free haven_labelled-compatible vectors are supported", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)$x
     expect_identical(as.double(actual), c(1, 2, tagged_missing("a")))
     expect_identical(val_labels(actual), c(One = 1, Two = 2))
@@ -709,7 +709,7 @@ test_that("Stata reserved variable names are rejected", {
         data <- stats::setNames(data.frame(1), name)
         path <- tempfile(fileext = ".dta")
         expect_error(
-            write_dta(data, path),
+            save_dta(data, path),
             class = "dtatools_write_validation_error",
             info = name
         )
@@ -722,7 +722,7 @@ test_that("zero-row data frames with columns are supported", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path)
     expect_identical(dim(actual), c(0L, 2L))
     expect_identical(names(actual), names(data))
@@ -753,7 +753,7 @@ test_that("malformed and storage-incompatible explicit display formats fail", {
     for (name in names(cases)) {
         path <- tempfile(fileext = ".dta")
         expect_error(
-            write_dta(data.frame(x = cases[[name]]), path),
+            save_dta(data.frame(x = cases[[name]]), path),
             "format",
             info = name
         )
@@ -778,7 +778,7 @@ test_that("documented numeric display formats are preserved", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)
     expect_identical(
         vapply(
@@ -819,7 +819,7 @@ test_that("documented string and temporal display formats are preserved", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)
     expect_identical(
         vapply(
@@ -854,7 +854,7 @@ test_that("generic ALTSTRING columns are materialized before native writing", {
     for (threshold in c(2045L, 1L)) {
         path <- tempfile(fileext = ".dta")
         on.exit(unlink(path), add = TRUE)
-        expect_silent(write_dta(
+        expect_silent(save_dta(
             data.frame(text = values), path, strl_threshold = threshold
         ))
         expect_identical(
@@ -908,7 +908,7 @@ test_that("numeric Stata calendar formats that remain numeric are preserved", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path))
+    expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)$x
     expect_identical(as.double(actual), c(0, 1, NA_real_))
     expect_identical(attr(actual, "format.stata", exact = TRUE), "%tmcY_m")

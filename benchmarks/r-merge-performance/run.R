@@ -77,8 +77,8 @@ using <- tibble::new_tibble(c(
     }), sprintf("u%d", seq_len(48L)))
 ), nrow = n_using)
 
-write_dta(master, master_path)
-write_dta(using, using_path)
+save_dta(master, master_path)
+save_dta(using, using_path)
 rm(master, using)
 invisible(gc())
 

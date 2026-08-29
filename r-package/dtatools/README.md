@@ -11,7 +11,7 @@ declared Stata storage type.
 | Function | Purpose |
 | --- | --- |
 | `read_dta()` | Read a DTA file into a tibble with labels, display formats, notes, tagged missing values, and compact numeric columns. |
-| `write_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
+| `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
 | `dta_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
@@ -180,7 +180,7 @@ cars <- read_dta("auto") # reads auto.dta
 ## Write a file
 
 ```r
-write_dta(cars, "cars.dta")
+save_dta(cars, "cars.dta")
 ```
 
 The writer targets Stata 18 or 19 and emits release 118 for ordinary datasets
@@ -303,7 +303,7 @@ Use the installed help for exact behavior and examples:
 
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
-?write_dta # standalone Stata 18/19 output, conversions, and metadata
+?save_dta # standalone Stata 18/19 output, conversions, and metadata
 ?dta_merge # Stata-identity merges with relationship checks and _merge
 ?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags

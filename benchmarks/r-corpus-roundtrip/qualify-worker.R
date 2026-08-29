@@ -115,7 +115,7 @@ result <- tryCatch({
     before <- dtatools::read_dta(input)
     warning_classes <- character()
     withCallingHandlers(
-        dtatools::write_dta(before, output, version = 19L),
+        dtatools::save_dta(before, output, version = 19L),
         warning = function(condition) {
             warning_classes <<- union(warning_classes, class(condition))
             invokeRestart("muffleWarning")

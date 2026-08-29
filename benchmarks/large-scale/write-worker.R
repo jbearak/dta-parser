@@ -68,7 +68,7 @@ options(warn = 2)
 started <- proc.time()[["elapsed"]]
 status <- tryCatch({
     if (writer == "dtatools") {
-        dtatools::write_dta(data, output, version = 19L)
+        dtatools::save_dta(data, output, version = 19L)
     } else {
         haven::write_dta(data, output, version = 15L)
     }

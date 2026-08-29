@@ -84,7 +84,7 @@ The helpers target the documented Stata 19 metadata limits:
 | Entries in one value-label table | 65,536 |
 | Text for one value-label entry | 32,000 UTF-8 bytes |
 
-An over-limit value is stored unchanged in R. A call emits one standard, suppressible warning that summarizes every affected column and limit. `write_dta()` supports Stata 18/19 and rejects metadata outside those limits instead of truncating it.
+An over-limit value is stored unchanged in R. A call emits one standard, suppressible warning that summarizes every affected column and limit. `save_dta()` supports Stata 18/19 and rejects metadata outside those limits instead of truncating it.
 
 ## Classes, attributes, and compact columns
 

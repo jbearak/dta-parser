@@ -9,7 +9,7 @@ test_that("haven opens dtatools output with matching values and metadata", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
 
-    expect_silent(write_dta(data, path, strl_threshold = 4L))
+    expect_silent(save_dta(data, path, strl_threshold = 4L))
     actual <- without_haven_note_count(haven::read_dta(path))
     expect_identical(attr(actual, "label", exact = TRUE), "haven compatibility")
     expect_identical(attr(actual, "notes", exact = TRUE), attr(data, "notes"))

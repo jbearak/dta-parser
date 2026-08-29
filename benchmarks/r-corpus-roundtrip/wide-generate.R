@@ -15,4 +15,4 @@ data <- setNames(
     as.data.frame(rep(list(1L), 32768L), optional = TRUE),
     paste0("x", seq_len(32768L))
 )
-dtatools::write_dta(data, args[[1L]], version = 19L)
+dtatools::save_dta(data, args[[1L]], version = 19L)

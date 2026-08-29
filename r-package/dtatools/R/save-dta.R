@@ -46,11 +46,11 @@
 #' @examples
 #' path <- tempfile(fileext = ".dta")
 #' data <- data.frame(answer = stata_byte(c(1, tagged_missing("a"))))
-#' write_dta(data, path)
+#' save_dta(data, path)
 #' read_dta(path)
 #' unlink(path)
 #' @export
-write_dta <- function(data, path, version = 19L,
+save_dta <- function(data, path, version = 19L,
                       label = attr(data, "label", exact = TRUE),
                       strl_threshold = 2045L, adjust_tz = TRUE) {
     resolved_path <- .resolve_dta_write_path(path)
