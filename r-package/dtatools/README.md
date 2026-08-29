@@ -74,7 +74,7 @@ first save of an in-memory fixture covering every numeric Stata storage type:
 
 | Scale | dtatools | Stata | Comparison |
 | --- | ---: | ---: | ---: |
-| 100 MB | about 0.02 seconds | about 0.01 seconds | about 1.6 times Stata |
+| 100 MB | about 0.02 seconds | about 0.01 seconds | under 2 times Stata |
 | 1 GB | about 0.15 seconds | about 0.13 seconds | about 1.2 times Stata |
 
 The secondary benchmark gives dtatools and haven the same ordinary R data

@@ -2808,11 +2808,9 @@ impl RWriteObservationSource<'_, '_> {
             .iter()
             .zip(self.sources)
             .all(|(column, source)| match column.dta_type {
-                DtaType::Byte
-                | DtaType::Int
-                | DtaType::Long
-                | DtaType::Float
-                | DtaType::Double => !source.descriptor.direct_numeric_values.is_null(),
+                DtaType::Byte | DtaType::Int | DtaType::Long | DtaType::Float | DtaType::Double => {
+                    !source.descriptor.direct_numeric_values.is_null()
+                }
                 DtaType::FixedString(_) => !source.descriptor.direct_string_data.is_null(),
                 DtaType::StrL => false,
             })
@@ -2911,9 +2909,10 @@ impl RWriteObservationSource<'_, '_> {
             for assignment in assignments {
                 let offsets = &offsets;
                 handles.push(scope.spawn(move || -> Result<(), DtaWriteError> {
-                    // Every worker owns distinct columns and therefore distinct
-                    // source Cells and output byte ranges. Direct sources expose
-                    // immutable Rust-owned storage, so no worker calls the R API.
+                    // The main R thread exposed the source buffers before spawning
+                    // and keeps their protected owners live. Workers only read
+                    // those buffers; each column's source state and output byte
+                    // ranges belong to one worker, and no worker calls the R API.
                     for index in assignment {
                         let column =
                             unsafe { &*(columns_address as *const DtaWriteColumn<'_>).add(index) };
@@ -3324,15 +3323,13 @@ mod tests {
     use std::ptr;
 
     use ahash::AHashMap;
-    use dta_tools::{
-        DtaType, DtaWriteColumn, DtaWriteColumnValues, DtaWriteData,
-    };
+    use dta_tools::{DtaType, DtaWriteColumn, DtaWriteColumnValues, DtaWriteData};
 
     use super::{
         direct_r_missing_code, dtatools_dictstring_free, observed_value, selected_row_count,
         temporal_kind, validate_r_row_count, write_callback_status, write_numeric_value,
-        DictStringData, RWriteColumnDescriptor, RWriteObservationSource, RWriteSource,
-        RWriteError, TemporalKind, WriteCallbackErrorBuffer, R_DATA_FRAME_MAX_ROWS,
+        DictStringData, RWriteColumnDescriptor, RWriteError, RWriteObservationSource, RWriteSource,
+        TemporalKind, WriteCallbackErrorBuffer, R_DATA_FRAME_MAX_ROWS,
     };
 
     #[no_mangle]
@@ -3377,12 +3374,8 @@ mod tests {
         }
     }
 
-    fn direct_string_descriptor(
-        width: c_int,
-        data: *mut c_void,
-    ) -> RWriteColumnDescriptor {
-        let mut descriptor =
-            direct_numeric_descriptor(width + 4, ptr::null(), 0, 0.0, 1.0);
+    fn direct_string_descriptor(width: c_int, data: *mut c_void) -> RWriteColumnDescriptor {
+        let mut descriptor = direct_numeric_descriptor(width + 4, ptr::null(), 0, 0.0, 1.0);
         descriptor.direct_string_data = data;
         descriptor
     }
@@ -3421,12 +3414,7 @@ mod tests {
         };
         let mut output = Vec::new();
         let workers = observation_source
-            .append_direct_observation_rows(
-                &mut output,
-                0,
-                row_count as u64,
-                available_parallelism,
-            )
+            .append_direct_observation_rows(&mut output, 0, row_count as u64, available_parallelism)
             .unwrap();
         let replacements = sources
             .iter()
@@ -3562,27 +3550,11 @@ mod tests {
             views[id as usize] = (value.as_ptr(), value.len());
         }
         let ids = (0..ROWS).map(|index| (index % 2) as u32).collect();
-        let dictionary_data = Box::into_raw(Box::new(DictStringData::new(
-            ids,
-            dictionary,
-            views,
-        )));
+        let dictionary_data = Box::into_raw(Box::new(DictStringData::new(ids, dictionary, views)));
 
         let descriptors = vec![
-            direct_numeric_descriptor(
-                2,
-                ordinary_integers.as_ptr().cast(),
-                1,
-                0.0,
-                1.0,
-            ),
-            direct_numeric_descriptor(
-                4,
-                ordinary_doubles.as_ptr().cast(),
-                2,
-                5.0,
-                10.0,
-            ),
+            direct_numeric_descriptor(2, ordinary_integers.as_ptr().cast(), 1, 0.0, 1.0),
+            direct_numeric_descriptor(4, ordinary_doubles.as_ptr().cast(), 2, 5.0, 10.0),
             direct_numeric_descriptor(0, compact_bytes.as_ptr().cast(), 3, 0.0, 1.0),
             direct_numeric_descriptor(1, compact_ints.as_ptr().cast(), 4, 0.0, 1.0),
             direct_numeric_descriptor(2, compact_longs.as_ptr().cast(), 5, 0.0, 1.0),
