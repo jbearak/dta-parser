@@ -1094,7 +1094,11 @@ unsafe fn profiled_column_vector(
             })?,
             StataStorage::Float => for_each_value::<Float32Array>(column, |row, values, index| {
                 let value = values.value(index);
-                no_na &= !value.is_nan();
+                no_na &= classify_float_missing_bits_for_version(
+                    value.to_bits(),
+                    FormatVersion::V118,
+                )
+                .is_none();
                 data.values
                     .add(row * 4)
                     .cast::<f32>()
