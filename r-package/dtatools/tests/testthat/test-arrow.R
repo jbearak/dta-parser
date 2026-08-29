@@ -942,6 +942,43 @@ test_that("plain Int32 selection predicates match the returned R type", {
     )
 })
 
+test_that("Arrow selection scans ambiguous Int32 values only for predicates", {
+    scans <- logical()
+    local_mocked_bindings(
+        .arrow_metadata = function(file, profile = TRUE,
+                                   scan_ambiguous_int32 = FALSE,
+                                   skip = 0, n_max = Inf) {
+            scans <<- c(scans, scan_ambiguous_int32)
+            list(
+                names = c("x", "y"),
+                types = if (scan_ambiguous_int32) {
+                    c("double", "character")
+                } else {
+                    c("integer", "character")
+                }
+            )
+        },
+        .package = "dtatools"
+    )
+
+    named <- dtatools:::.arrow_column_selection(
+        rlang::quo(y), "unused.arrow", TRUE,
+        list(skip = 0, n_max = Inf)
+    )
+    expect_identical(named$indices, 1L)
+    expect_identical(named$names, "y")
+    expect_identical(scans, FALSE)
+
+    scans <- logical()
+    predicate <- dtatools:::.arrow_column_selection(
+        rlang::quo(tidyselect::where(is.double)), "unused.arrow", TRUE,
+        list(skip = 0, n_max = Inf)
+    )
+    expect_identical(predicate$indices, 0L)
+    expect_identical(predicate$names, "x")
+    expect_identical(scans, c(FALSE, TRUE))
+})
+
 test_that("wide Arrow integers are rejected instead of rounded", {
     skip_if_not_installed("arrow")
     skip_if_not_installed("bit64")

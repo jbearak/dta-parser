@@ -1733,6 +1733,9 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
 pub fn summarize_arrow_file(
     path: impl AsRef<Path>,
     apply_profile: bool,
+    scan_ambiguous_int32: bool,
+    row_start: u64,
+    row_count: Option<u64>,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<ArrowFileSummary, ArrowProfileError> {
     let path = path.as_ref();
@@ -1746,26 +1749,30 @@ pub fn summarize_arrow_file(
         other => other?,
     };
     let profile = parse_profile(&footer, apply_profile, false)?;
-    let ambiguous_int32: Vec<u32> = footer
-        .schema
-        .fields()
-        .iter()
-        .enumerate()
-        .filter(|(index, field)| {
-            let document = profile
-                .as_ref()
-                .and_then(|profile| profile.fields[*index].as_ref());
-            field.data_type() == &DataType::Int32
-                && document.and_then(|document| document.storage).is_none()
-                && document
-                    .and_then(|document| document.r.as_ref())
-                    .is_none_or(|semantics| semantics.class != "integer")
-        })
-        .map(|(index, _)| {
-            u32::try_from(index)
-                .map_err(|_| invalid("an Arrow file has too many columns to summarize"))
-        })
-        .collect::<Result<_, _>>()?;
+    let ambiguous_int32: Vec<u32> = if scan_ambiguous_int32 {
+        footer
+            .schema
+            .fields()
+            .iter()
+            .enumerate()
+            .filter(|(index, field)| {
+                let document = profile
+                    .as_ref()
+                    .and_then(|profile| profile.fields[*index].as_ref());
+                field.data_type() == &DataType::Int32
+                    && document.and_then(|document| document.storage).is_none()
+                    && document
+                        .and_then(|document| document.r.as_ref())
+                        .is_none_or(|semantics| semantics.class != "integer")
+            })
+            .map(|(index, _)| {
+                u32::try_from(index)
+                    .map_err(|_| invalid("an Arrow file has too many columns to summarize"))
+            })
+            .collect::<Result<_, _>>()?
+    } else {
+        Vec::new()
+    };
     let mut int32_requires_double = vec![false; footer.schema.fields().len()];
     if !ambiguous_int32.is_empty() {
         let mut scan_reader = BufReader::new(File::open(path)?);
@@ -1773,8 +1780,8 @@ pub fn summarize_arrow_file(
             &mut scan_reader,
             &ArrowReadOptions {
                 columns: Some(ambiguous_int32.clone()),
-                row_start: 0,
-                row_count: None,
+                row_start,
+                row_count,
                 max_output_rows: None,
                 verify: false,
                 profile: apply_profile,

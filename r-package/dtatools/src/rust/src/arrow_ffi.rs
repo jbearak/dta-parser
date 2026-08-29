@@ -3099,13 +3099,24 @@ pub unsafe extern "C" fn dtatools_arrow_datasig_rust(
 pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
     path: *const c_char,
     apply_profile: c_int,
+    scan_ambiguous_int32: c_int,
+    skip: f64,
+    n_max: f64,
     interrupted: *mut c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
     arrow_boundary(interrupted, error, ptr::null_mut(), || {
         let path = required_c_string(path, "the input path")?;
-        let summary = summarize_arrow_file(&path, apply_profile != 0, &mut coarse_interrupt)
-            .map_err(|error| error.to_string())?;
+        let (row_start, row_count) = row_window(skip, n_max);
+        let summary = summarize_arrow_file(
+            &path,
+            apply_profile != 0,
+            scan_ambiguous_int32 != 0,
+            row_start,
+            row_count,
+            &mut coarse_interrupt,
+        )
+        .map_err(|error| error.to_string())?;
         let mut guard = ProtectGuard::new();
         let result = guard.alloc(VECSXP, 2)?;
         let names: Vec<String> = summary

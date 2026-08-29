@@ -665,9 +665,76 @@ fn profiled_integer_metadata_does_not_decode_column_bodies() {
     )
     .expect_err("the compressed integer body is corrupt");
 
-    let summary = summarize_arrow_file(&path, true, &mut no_interrupt())
+    let summary = summarize_arrow_file(&path, true, true, 0, None, &mut no_interrupt())
         .expect("profiled integer metadata does not read the corrupted body");
     assert_eq!(summary.columns[0].r_type, "integer");
+    std::fs::remove_file(path).expect("remove test file");
+}
+
+#[test]
+fn schema_only_plain_integer_metadata_does_not_decode_column_bodies() {
+    let schema = Arc::new(Schema::new(vec![Field::new("x", DataType::Int32, false)]));
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![Arc::new(Int32Array::from(vec![7; 10_000]))],
+    )
+    .expect("valid batch");
+    let options = IpcWriteOptions::default()
+        .try_with_compression(Some(arrow_ipc::CompressionType::ZSTD))
+        .expect("supported compression");
+    let mut bytes = Vec::new();
+    let mut writer =
+        FileWriter::try_new_with_options(&mut bytes, &schema, options).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let footer_length = u32::from_le_bytes(
+        bytes[bytes.len() - 10..bytes.len() - 6]
+            .try_into()
+            .expect("footer length"),
+    ) as usize;
+    let footer_start = bytes.len() - 10 - footer_length;
+    let footer = root_as_footer(&bytes[footer_start..]).expect("valid footer");
+    let block = footer.recordBatches().expect("record batches").get(0);
+    let body_start = block.offset() as usize + block.metaDataLength() as usize;
+    let body_end = body_start + block.bodyLength() as usize;
+    bytes[body_start..body_end].fill(0);
+    let path = std::env::temp_dir().join(format!(
+        "dtatools-plain-integer-schema-summary-{}.arrow",
+        std::process::id()
+    ));
+    std::fs::write(&path, bytes).expect("write corrupted file");
+
+    read_arrow_file(
+        &path,
+        &ArrowReadOptions {
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("the compressed integer body is corrupt");
+
+    let summary = summarize_arrow_file(&path, true, false, 0, None, &mut no_interrupt())
+        .expect("schema-only metadata does not read the corrupted body");
+    assert_eq!(summary.columns[0].r_type, "integer");
+    assert!(summarize_arrow_file(&path, true, true, 0, None, &mut no_interrupt()).is_err());
+    let empty_summary = summarize_arrow_file(&path, true, true, 0, Some(0), &mut no_interrupt())
+        .expect("an empty row window does not read the corrupt integer body");
+    assert_eq!(empty_summary.columns[0].r_type, "integer");
+    let empty = read_arrow_file(
+        &path,
+        &ArrowReadOptions {
+            columns: Some(Vec::new()),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("an empty projection does not read the corrupted body");
+    assert!(empty.columns.is_empty());
+    assert_eq!(empty.row_count, 10_000);
     std::fs::remove_file(path).expect("remove test file");
 }
 

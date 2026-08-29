@@ -81,15 +81,11 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
     } else {
-        metadata <- .arrow_metadata(source$path, profile)
-        selection_proxy <- stats::setNames(
-            lapply(metadata$types, .arrow_selection_proxy),
-            metadata$names
+        selected <- .arrow_column_selection(
+            selection, source$path, profile, row_window
         )
-        selected <- tidyselect::eval_select(selection, selection_proxy)
-        selected <- selected[!duplicated(unname(selected))]
-        column_indices <- as.integer(unname(selected) - 1L)
-        selected_names <- names(selected)
+        column_indices <- selected$indices
+        selected_names <- selected$names
     }
 
     native <- .Call(
@@ -120,9 +116,51 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     result
 }
 
-.arrow_metadata <- function(file, profile = TRUE) {
-    metadata <- .Call(C_dtatools_arrow_metadata, file, profile)
+.arrow_metadata <- function(file, profile = TRUE,
+                            scan_ambiguous_int32 = FALSE,
+                            skip = 0, n_max = Inf) {
+    metadata <- .Call(
+        C_dtatools_arrow_metadata, file, profile, scan_ambiguous_int32,
+        skip, n_max
+    )
     list(names = metadata[[1L]], types = metadata[[2L]])
+}
+
+.arrow_column_selection <- function(selection, file, profile, row_window) {
+    metadata <- .arrow_metadata(
+        file, profile, scan_ambiguous_int32 = FALSE,
+        skip = row_window$skip, n_max = row_window$n_max
+    )
+    selection_proxy <- stats::setNames(
+        lapply(metadata$types, .arrow_selection_proxy),
+        metadata$names
+    )
+    needs_predicates <- FALSE
+    selected <- tryCatch(
+        tidyselect::eval_select(
+            selection, selection_proxy, allow_predicates = FALSE
+        ),
+        tidyselect_error_predicates_unsupported = function(error) {
+            needs_predicates <<- TRUE
+            NULL
+        }
+    )
+    if (needs_predicates) {
+        metadata <- .arrow_metadata(
+            file, profile, scan_ambiguous_int32 = TRUE,
+            skip = row_window$skip, n_max = row_window$n_max
+        )
+        selection_proxy <- stats::setNames(
+            lapply(metadata$types, .arrow_selection_proxy),
+            metadata$names
+        )
+        selected <- tidyselect::eval_select(selection, selection_proxy)
+    }
+    selected <- selected[!duplicated(unname(selected))]
+    list(
+        indices = as.integer(unname(selected) - 1L),
+        names = names(selected)
+    )
 }
 
 .arrow_selection_proxy <- function(type) {
