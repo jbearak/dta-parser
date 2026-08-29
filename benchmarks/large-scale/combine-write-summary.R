@@ -1,8 +1,9 @@
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 7L) {
+if (length(args) != 9L) {
     stop(paste(
-        "usage: combine-write-summary.R CURRENT_RAW CURRENT_SUMMARY CURRENT_PROVENANCE",
-        "REFERENCE_RAW REFERENCE_SUMMARY REFERENCE_PROVENANCE OUTPUT"
+        "usage: combine-write-summary.R CURRENT_RAW CURRENT_SUMMARY",
+        "CURRENT_PROVENANCE CURRENT_VALIDATION REFERENCE_RAW",
+        "REFERENCE_SUMMARY REFERENCE_PROVENANCE REFERENCE_VALIDATION OUTPUT"
     ))
 }
 
@@ -17,6 +18,7 @@ sys.source(
     file.path(script_dir, "..", "benchmark-common.R"),
     envir = environment()
 )
+sys.source(file.path(script_dir, "write-run-common.R"), envir = environment())
 
 read_table <- function(path) {
     read.delim(
@@ -27,10 +29,12 @@ read_table <- function(path) {
 current_raw <- read_table(args[[1L]])
 current_summary <- read_table(args[[2L]])
 current_provenance <- read_table(args[[3L]])
-reference_raw <- read_table(args[[4L]])
-reference_summary <- read_table(args[[5L]])
-reference_provenance <- read_table(args[[6L]])
-output <- normalizePath(args[[7L]], winslash = "/", mustWork = FALSE)
+current_validation <- read_table(args[[4L]])
+reference_raw <- read_table(args[[5L]])
+reference_summary <- read_table(args[[6L]])
+reference_provenance <- read_table(args[[7L]])
+reference_validation <- read_table(args[[8L]])
+output <- normalizePath(args[[9L]], winslash = "/", mustWork = FALSE)
 
 contract_fields <- c(
     "workload", "fixture_storage_schema", "fixture_creator",
@@ -45,10 +49,125 @@ if (nrow(current_provenance) != 1L || nrow(reference_provenance) != 1L ||
     stop("current and reference writes do not share the primary workload contract")
 }
 
-if (!identical(unique(current_raw$writer), "dtatools") ||
-    !identical(unique(current_summary$writer), "dtatools")) {
-    stop("current write results must contain only dtatools")
+datasets <- c("100mb", "1gb")
+parse_iterations <- function(provenance, description) {
+    text <- as.character(provenance$iterations)
+    value <- suppressWarnings(as.integer(text))
+    if (length(text) != 1L || is.na(value) || value < 1L ||
+        !identical(as.character(value), text)) {
+        stop(description, " provenance has invalid iterations")
+    }
+    value
 }
+summary_key <- function(data) paste(data$dataset, data$writer, sep = "\r")
+validate_summary_matrix <- function(data, writers, iterations, description) {
+    required <- c(
+        "dataset", "writer", "iterations", "input_bytes",
+        "median_seconds", "p05_seconds", "p95_seconds",
+        "median_peak_rss_bytes", "median_output_bytes",
+        "provenance_id", "build_provenance_id"
+    )
+    expected <- expand.grid(
+        dataset = datasets, writer = writers, stringsAsFactors = FALSE
+    )
+    if (!all(required %in% names(data)) || anyDuplicated(summary_key(data)) ||
+        !setequal(summary_key(data), summary_key(expected)) ||
+        any(data$iterations != iterations)) {
+        stop(description, " summary is not the exact expected matrix")
+    }
+}
+validate_binding <- function(data, provenance, description) {
+    required <- c("provenance_id", "build_provenance_id")
+    if (!all(required %in% names(data)) ||
+        !identical(unique(data$provenance_id), provenance$provenance_id) ||
+        !identical(
+            unique(data$build_provenance_id),
+            provenance$build_provenance_id
+        )) {
+        stop(description, " is not bound to its provenance")
+    }
+}
+validate_validation_matrix <- function(
+    data, raw, writers, provenance, description
+) {
+    required <- c(
+        "dataset", "dataset_sha256", "writer", "rows", "columns",
+        "output_bytes", "parity_status", "storage_status",
+        "input_storage_schema", "output_storage_schema",
+        "provenance_id", "build_provenance_id"
+    )
+    expected <- expand.grid(
+        dataset = datasets, writer = writers, stringsAsFactors = FALSE
+    )
+    if (!all(required %in% names(data)) ||
+        anyDuplicated(summary_key(data)) ||
+        !setequal(summary_key(data), summary_key(expected))) {
+        stop(description, " validation is not the exact expected matrix")
+    }
+    validate_binding(data, provenance, paste(description, "validation"))
+    fixture_schema <- provenance$fixture_storage_schema[[1L]]
+    widened_schema <- "byte=0,int=0,long=0,float=0,double=30,string=10"
+    for (index in seq_len(nrow(data))) {
+        row <- data[index, , drop = FALSE]
+        matching <- raw[
+            raw$dataset == row$dataset & raw$writer == row$writer,
+            , drop = FALSE
+        ]
+        if (!nrow(matching) ||
+            !identical(unique(matching$dataset_sha256), row$dataset_sha256) ||
+            !identical(unique(matching$rows), row$rows) ||
+            !identical(unique(matching$columns), row$columns) ||
+            !identical(unique(matching$output_bytes), row$output_bytes) ||
+            row$input_storage_schema != fixture_schema) {
+            stop(description, " validation does not match its timed rows")
+        }
+        if (row$writer == "dtatools") {
+            valid <- row$parity_status == "semantic-dta-identical" &&
+                row$storage_status == "preserved" &&
+                row$output_storage_schema == fixture_schema
+        } else {
+            valid <- row$parity_status == "haven-model-identical" &&
+                row$storage_status == "numeric-storage-widened-to-double" &&
+                row$output_storage_schema == widened_schema
+        }
+        if (!valid) stop(description, " validation status is invalid")
+    }
+}
+validate_bundle <- function(
+    raw, summary, validation, provenance, writers, validation_writers,
+    description
+) {
+    iterations <- parse_iterations(provenance, description)
+    if (!identical(provenance$writers, paste(writers, collapse = ","))) {
+        stop(description, " provenance has unexpected writers")
+    }
+    validate_write_result_matrix(raw, datasets, writers, iterations, description)
+    validate_summary_matrix(summary, writers, iterations, description)
+    expected_summary <- summarize_write_results(
+        raw, datasets, writers, "input_bytes"
+    )
+    rownames(summary) <- NULL
+    rownames(expected_summary) <- NULL
+    if (!identical(summary, expected_summary)) {
+        stop(description, " summary does not match its raw results")
+    }
+    validate_binding(raw, provenance, paste(description, "raw results"))
+    validate_binding(summary, provenance, paste(description, "summary"))
+    validate_validation_matrix(
+        validation, raw, validation_writers, provenance, description
+    )
+}
+validate_bundle(
+    current_raw, current_summary, current_validation, current_provenance,
+    "dtatools", "dtatools", "current write"
+)
+reference_writers <- c("dtatools", "haven", "stata")
+validate_bundle(
+    reference_raw, reference_summary, reference_validation,
+    reference_provenance, reference_writers, c("dtatools", "haven"),
+    "reference write"
+)
+
 fixed_writers <- c("haven", "stata")
 fixed_raw <- reference_raw[reference_raw$writer %in% fixed_writers, , drop = FALSE]
 fixed_summary <- reference_summary[

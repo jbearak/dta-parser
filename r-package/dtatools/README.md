@@ -81,6 +81,9 @@ type:
 Haven took 53.6 times as long as dtatools at 100 MB and 60.3 times as long at
 1 GB on these Stata-class inputs. dtatools took 1.77 times Stata's median at
 100 MB and 1.15 times at 1 GB.
+dtatools preserved the declared numeric storage types. Haven preserved values
+and the metadata represented by its read model but widened all 30 numeric
+columns to `double`.
 
 The secondary benchmark gives dtatools and haven the same ordinary R data
 frame, without Stata storage or labelling metadata:

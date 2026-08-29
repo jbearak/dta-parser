@@ -194,13 +194,15 @@ validate_full_scale_output <- function(dataset, writer) {
         error_on_status = FALSE, echo = FALSE
     )
     validation_fields <- parse_fields(validation$stdout, "WRITE_VALIDATION")
-    expected <- c(
+    expected_prefix <- c(
         writer, "ok", as.character(dataset$rows),
         as.character(stata_fixture_columns)
     )
-    if (!identical(validation_fields, expected) || validation$status != 0L) {
+    if (length(validation_fields) != 8L ||
+        !identical(validation_fields[1:4], expected_prefix) ||
+        validation$status != 0L) {
         stop(
-            writer, " full-scale semantic validation failed: ",
+            writer, " full-scale output validation failed: ",
             validation$stderr
         )
     }
@@ -209,7 +211,11 @@ validate_full_scale_output <- function(dataset, writer) {
         dataset = dataset$dataset, dataset_sha256 = dataset$sha256,
         writer = writer, rows = measurement$rows,
         columns = measurement$columns, output_bytes = measurement$bytes,
-        semantic_status = "identical", stringsAsFactors = FALSE
+        parity_status = validation_fields[[5L]],
+        storage_status = validation_fields[[6L]],
+        input_storage_schema = validation_fields[[7L]],
+        output_storage_schema = validation_fields[[8L]],
+        stringsAsFactors = FALSE
     )
 }
 
@@ -266,7 +272,10 @@ stable_provenance <- cbind(data.frame(
     fixture_generator_sha256 = stata_generator_sha256,
     stata_save_state = "first-save-after-generate",
     r_writer_input = "exact-stata-first-save-output-read-by-dtatools",
-    full_scale_validation = "untimed-semantic-roundtrip-each-r-writer-and-size",
+    full_scale_validation = paste(
+        "untimed-dtatools-semantic-and-haven-model-parity",
+        "with-storage-schema-each-size"
+    ),
     execution_order = if ("stata" %in% writers && length(r_writers)) {
         "stata-then-rotating-r-writers"
     } else if (length(r_writers) > 1L) {
