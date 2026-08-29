@@ -273,7 +273,9 @@ save_arrow <- function(data, path,
 
     value_labels <- list(double(), character(), FALSE)
     if (kind %in% c("double", "date", "datetime", "difftime", "stata")) {
-        value_labels <- .prepare_write_value_labels(column, name)
+        value_labels <- .prepare_write_value_labels(
+            column, name, allow_legacy_codes = TRUE
+        )
         value_labels[[2L]] <- .arrow_utf8(
             value_labels[[2L]], sprintf("Value-label text for `%s`", name)
         )

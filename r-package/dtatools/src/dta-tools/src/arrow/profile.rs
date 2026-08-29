@@ -7,7 +7,7 @@ use arrow_schema::{DataType, Field};
 use serde::{Deserialize, Serialize};
 
 use super::ArrowProfileError;
-use crate::{DtaType, MissingTag, ValueLabelEntry, ValueLabelTable};
+use crate::{DtaType, FormatVersion, MissingTag, ValueLabelEntry, ValueLabelTable};
 
 /// The profile version this build writes. Version "0" is experimental and
 /// carries no stability promise; see ADR 0010.
@@ -156,6 +156,10 @@ pub struct ArrowFieldDocument {
     pub value_labels: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub missing: Option<ArrowMissingEncoding>,
+    /// Release whose compact missing range applies. Omitted when the profile's
+    /// modern missing layout represents the column exactly.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub missing_release: Option<FormatVersion>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r: Option<ArrowRSemantics>,
 }
@@ -404,6 +408,13 @@ fn validate_field_document(
                 "declares a missing encoding incompatible with its Stata storage",
             ));
         }
+        if document.missing_release.is_some() && storage == StataStorage::Double {
+            return Err(field_malformed(
+                version,
+                field,
+                "declares a source missing release for double storage",
+            ));
+        }
         if field.is_nullable() {
             return Err(field_malformed(
                 version,
@@ -425,6 +436,14 @@ fn validate_field_document(
             }
         }
         return Ok(());
+    }
+
+    if document.missing_release.is_some() {
+        return Err(field_malformed(
+            version,
+            field,
+            "declares a source missing release without Stata storage",
+        ));
     }
 
     match document.missing {

@@ -368,6 +368,55 @@ test_that("a DTA fixture survives a semantic Arrow round-trip", {
     }
 })
 
+test_that("legacy integer tails and value-label codes survive Arrow", {
+    dta_path <- fixture("synthetic_v111.dta")
+    data <- read_dta(dta_path)
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    for (use_numeric_altrep in c(TRUE, FALSE)) {
+        actual <- read_arrow(path, use_numeric_altrep = use_numeric_altrep)
+        for (name in c("b", "i", "l")) {
+            expect_identical(
+                as.double(actual[[name]]), as.double(data[[name]]),
+                info = paste(name, use_numeric_altrep)
+            )
+            expect_identical(
+                missing_tag(actual[[name]]), missing_tag(data[[name]]),
+                info = paste(name, use_numeric_altrep)
+            )
+            expect_identical(
+                attr(actual[[name]], "labels", exact = TRUE),
+                attr(data[[name]], "labels", exact = TRUE),
+                info = paste(name, use_numeric_altrep)
+            )
+        }
+        expect_identical(datasig(actual), datasig(data))
+    }
+
+    signature <- datasig(data)
+    expect_identical(datasig(dta_path), signature)
+    expect_identical(datasig(path), signature)
+    expect_identical(
+        attr(read_dta(dta_path, datasig = TRUE), "datasig", exact = TRUE),
+        signature
+    )
+    expect_identical(
+        attr(
+            read_dta(
+                dta_path, datasig = TRUE, use_numeric_altrep = FALSE
+            ),
+            "datasig", exact = TRUE
+        ),
+        signature
+    )
+
+    eager <- read_arrow(path, use_numeric_altrep = FALSE)
+    eager_path <- arrow_tempfile()
+    save_arrow(eager, eager_path)
+    expect_identical(datasig(eager_path), signature)
+})
+
 test_that("tagged NaN payloads on bare doubles survive bit-exactly", {
     values <- c(1.5, NaN, tagged_nan_for_test("q"), NA_real_)
     data <- tibble::tibble(x = values)

@@ -319,6 +319,14 @@ Stata storage form:
   near-memcpy from the compact ALTREP backing, no bitmap or tag buffer is
   built, and the file is as small as the in-memory data.
 
+Stata's compact missing ranges differ between older and modern DTA releases.
+The writer normalizes a legacy column to the modern layout when that conversion
+is lossless. If an observed value would collide with a modern missing sentinel,
+it instead keeps the legacy layout and records its canonical release in the
+field document. The reader then applies that layout's missing ranges,
+preserving the tail value. Value-label entries separately identify observed
+values and tagged missings, so they remain unambiguous across layouts.
+
 Semantically, R `NA` and Stata `.` are the same value throughout dtatools.
 Only the physical encoding differs by column provenance: an ordinary
 (non-profiled) R column stores `NA` as a standard Arrow null; a profiled
@@ -360,8 +368,9 @@ dtatools:checksums = <versioned JSON document in the file footer>
 The dataset document contains the dataset label, ordered notes, and a registry
 of value-label tables keyed by Stata label-table name. Field documents contain
 the variable label, value-label-table name, Stata display format, original
-storage declaration, missing-value encoding, and portable R semantics. JSON is
-inspectable across languages and avoids embedding language-native serialized
+storage declaration, missing-value encoding, a release discriminator when a
+legacy missing layout must be retained, and portable R semantics. JSON
+is inspectable across languages and avoids embedding language-native serialized
 objects in extension metadata. [Arrow's security guidance](https://arrow.apache.org/docs/format/Security.html#extension-types)
 recommends a robust metadata serialization rather than native object
 serialization.

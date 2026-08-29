@@ -411,7 +411,8 @@ save_dta <- function(data, path, version = 19L,
     )
 }
 
-.prepare_write_value_labels <- function(column, name) {
+.prepare_write_value_labels <- function(column, name,
+                                        allow_legacy_codes = FALSE) {
     labels <- attr(column, "labels", exact = TRUE)
     if (is.null(labels)) return(list(double(), character(), FALSE))
     argument <- sprintf("labels for `%s`", name)
@@ -429,13 +430,31 @@ save_dta <- function(data, path, version = 19L,
             "`%s` must have non-missing text for every code", argument
         ))
     }
-    if (any(!.stata_value_label_code_info(labels)$valid)) {
+    valid <- if (allow_legacy_codes) {
+        missing_codes <- .tab_missing_codes(labels)
+        tagged <- !is.na(missing_codes) &
+            missing_codes >= utf8ToInt("a") &
+            missing_codes <= utf8ToInt("z")
+        observed <- is.na(missing_codes) & is.finite(labels) &
+            labels == floor(labels) &
+            labels >= -(.Machine$integer.max + 1) &
+            labels <= .Machine$integer.max
+        tagged | observed
+    } else {
+        .stata_value_label_code_info(labels)$valid
+    }
+    if (any(!valid)) {
+        range <- if (allow_legacy_codes) {
+            "signed 32-bit integers"
+        } else {
+            "nonmissing integers in Stata's long range"
+        }
         .dta_write_abort(sprintf(
             paste0(
-                "`%s` codes must be nonmissing integers in Stata's long ",
-                "range or extended missings `.a` through `.z`"
+                "`%s` codes must be %s or extended missings ",
+                "`.a` through `.z`"
             ),
-            argument
+            argument, range
         ))
     }
     violations <- .value_label_limit_violations(

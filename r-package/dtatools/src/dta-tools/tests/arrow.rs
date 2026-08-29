@@ -61,6 +61,7 @@ fn field_document(
         storage,
         value_labels: None,
         missing,
+        missing_release: None,
         r: Some(ArrowRSemantics {
             class: class.to_owned(),
             ordered: None,

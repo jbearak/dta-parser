@@ -431,9 +431,10 @@ fn encode_profiled_column(
     temporal: TemporalKind,
     values: &[f64],
     codes: &[c_int],
-) -> Result<(ArrayRef, u64), String> {
+) -> Result<(ArrayRef, u64, Option<FormatVersion>), String> {
     let dta_type = storage.dta_type();
     let (shift, scale) = temporal_shift_scale(temporal);
+    let legacy_layout = eager_legacy_layout_conflicts(storage, shift, scale, values, codes);
     let mut replacements = 0_u64;
     let mut encoded = Vec::new();
     encoded
@@ -441,10 +442,18 @@ fn encode_profiled_column(
         .map_err(|_| "could not allocate a profiled column".to_owned())?;
     for (&value, &code) in values.iter().zip(codes) {
         let source = match missing_from_code(code) {
+            Ok(Some(tag)) if legacy_layout && tag != MissingTag::System => {
+                return Err(format!(
+                    "column `{name}` cannot combine legacy tail values with extended missing `{tag}`"
+                ));
+            }
             Ok(Some(tag)) => DtaWriteNumericValue::Missing(tag),
             Ok(None) => {
                 let encoded_value = write_numeric_value(value, shift, scale);
-                if dta_write_numeric_value_is_representable(&dta_type, encoded_value) {
+                if dta_write_numeric_value_is_representable(&dta_type, encoded_value)
+                    || (legacy_layout
+                        && legacy_observed_value_is_representable(storage, encoded_value))
+                {
                     DtaWriteNumericValue::Value(encoded_value)
                 } else {
                     replacements += 1;
@@ -456,7 +465,13 @@ fn encode_profiled_column(
                 DtaWriteNumericValue::Missing(MissingTag::System)
             }
         };
-        encoded.push(encode_numeric(&dta_type, source));
+        encoded.push(
+            if legacy_layout && source == DtaWriteNumericValue::Missing(MissingTag::System) {
+                legacy_system_missing(storage)
+            } else {
+                encode_numeric(&dta_type, source)
+            },
+        );
     }
     let array: ArrayRef =
         match storage {
@@ -492,18 +507,91 @@ fn encode_profiled_column(
             ))),
         };
     let _ = name;
-    Ok((array, replacements))
+    Ok((
+        array,
+        replacements,
+        legacy_layout.then_some(FormatVersion::V111),
+    ))
 }
 
-/// Copy a compact ALTREP backing into an Arrow array, normalizing legacy
-/// missing encodings to the modern sentinels the profile stores.
+fn legacy_system_missing(storage: StataStorage) -> DtaWriteRawNumericValue {
+    match storage {
+        StataStorage::Byte => DtaWriteRawNumericValue::Byte(i8::MAX),
+        StataStorage::Int => DtaWriteRawNumericValue::Int(i16::MAX),
+        StataStorage::Long => DtaWriteRawNumericValue::Long(i32::MAX),
+        StataStorage::Float => {
+            DtaWriteRawNumericValue::Float(f32::from_bits(MissingTag::System.float_bits()))
+        }
+        StataStorage::Double => {
+            DtaWriteRawNumericValue::Double(f64::from_bits(MissingTag::System.double_bits()))
+        }
+    }
+}
+
+fn legacy_observed_value_is_representable(storage: StataStorage, value: f64) -> bool {
+    if !value.is_finite() || value.fract() != 0.0 {
+        return false;
+    }
+    match storage {
+        StataStorage::Byte
+            if (f64::from(-MissingTag::Z.byte_value())..=f64::from(i8::MAX - 1))
+                .contains(&value) =>
+        {
+            classify_byte_missing_for_version(value as i8, FormatVersion::V111).is_none()
+        }
+        StataStorage::Int
+            if (f64::from(-MissingTag::Z.int_value())..=f64::from(i16::MAX - 1))
+                .contains(&value) =>
+        {
+            classify_int_missing_for_version(value as i16, FormatVersion::V111).is_none()
+        }
+        StataStorage::Long
+            if (f64::from(-MissingTag::Z.long_value())..=f64::from(i32::MAX - 1))
+                .contains(&value) =>
+        {
+            classify_long_missing_for_version(value as i32, FormatVersion::V111).is_none()
+        }
+        _ => false,
+    }
+}
+
+fn eager_legacy_layout_conflicts(
+    storage: StataStorage,
+    shift: f64,
+    scale: f64,
+    values: &[f64],
+    codes: &[c_int],
+) -> bool {
+    values.iter().zip(codes).any(|(&value, &code)| {
+        missing_from_code(code).ok() == Some(None) && {
+            let encoded = write_numeric_value(value, shift, scale);
+            legacy_observed_value_is_representable(storage, encoded)
+                && !dta_write_numeric_value_is_representable(&storage.dta_type(), encoded)
+        }
+    })
+}
+
+fn legacy_layout_conflicts<T: Copy>(
+    values: &[T],
+    version: FormatVersion,
+    classify: impl Fn(T, FormatVersion) -> Option<MissingTag>,
+) -> bool {
+    values.iter().any(|&value| {
+        classify(value, version).is_none() && classify(value, FormatVersion::V118).is_some()
+    })
+}
+
+/// Copy a compact ALTREP backing into an Arrow array. Legacy missing values
+/// are normalized to the modern layout unless an observed value would collide
+/// with a modern sentinel; those columns retain the legacy layout and record
+/// its canonical release in the field document.
 /// Pure: callable from any thread.
 unsafe fn compact_profiled_column(
     base: *const c_void,
     kind: NumericKind,
     version: FormatVersion,
     row_count: usize,
-) -> Result<(ArrayRef, StataStorage), String> {
+) -> Result<(ArrayRef, StataStorage, Option<FormatVersion>), String> {
     // Modern formats already store the sentinels the profile uses, so the
     // per-value normalization below is the identity map and the R-owned
     // backing can be aliased directly (see `zero_copy_array`).
@@ -530,7 +618,50 @@ unsafe fn compact_profiled_column(
                 StataStorage::Float,
             ),
         };
-        return Ok((array, storage));
+        return Ok((array, storage, None));
+    }
+    let layout_conflicts = match kind {
+        NumericKind::Byte => legacy_layout_conflicts(
+            std::slice::from_raw_parts(base.cast::<i8>(), row_count),
+            version,
+            classify_byte_missing_for_version,
+        ),
+        NumericKind::Int => legacy_layout_conflicts(
+            std::slice::from_raw_parts(base.cast::<i16>(), row_count),
+            version,
+            classify_int_missing_for_version,
+        ),
+        NumericKind::Long => legacy_layout_conflicts(
+            std::slice::from_raw_parts(base.cast::<i32>(), row_count),
+            version,
+            classify_long_missing_for_version,
+        ),
+        NumericKind::Float => legacy_layout_conflicts(
+            std::slice::from_raw_parts(base.cast::<f32>(), row_count),
+            version,
+            |value, format| classify_float_missing_bits_for_version(value.to_bits(), format),
+        ),
+    };
+    if layout_conflicts {
+        let (array, storage): (ArrayRef, StataStorage) = match kind {
+            NumericKind::Byte => (
+                zero_copy_array::<Int8Type>(base.cast::<i8>(), row_count),
+                StataStorage::Byte,
+            ),
+            NumericKind::Int => (
+                zero_copy_array::<Int16Type>(base.cast::<i16>(), row_count),
+                StataStorage::Int,
+            ),
+            NumericKind::Long => (
+                zero_copy_array::<Int32Type>(base.cast::<i32>(), row_count),
+                StataStorage::Long,
+            ),
+            NumericKind::Float => (
+                zero_copy_array::<Float32Type>(base.cast::<f32>(), row_count),
+                StataStorage::Float,
+            ),
+        };
+        return Ok((array, storage, Some(FormatVersion::V111)));
     }
     let (array, storage): (ArrayRef, StataStorage) = match kind {
         NumericKind::Byte => {
@@ -586,7 +717,7 @@ unsafe fn compact_profiled_column(
             )
         }
     };
-    Ok((array, storage))
+    Ok((array, storage, None))
 }
 
 unsafe fn value_label_table(
@@ -632,8 +763,9 @@ unsafe fn value_label_table(
                         "column `{name}` has a non-integer value-label code"
                     ));
                 }
+                let value = code as i32;
                 ValueLabelEntry {
-                    value: code as i32,
+                    value,
                     missing_tag: None,
                     label,
                 }
@@ -715,6 +847,17 @@ unsafe fn extract_column(
     let format = optional_c_string(descriptor.format, "a display format")?;
     let tz = optional_c_string(descriptor.tz, "a time zone")?;
     let units = optional_c_string(descriptor.units, "difftime units")?;
+    let compact_version =
+        if kind == RArrowKind::StataNumeric && !descriptor.compact_values.is_null() {
+            Some(
+                u16::try_from(descriptor.compact_format_version)
+                    .ok()
+                    .and_then(|value| FormatVersion::try_from(value).ok())
+                    .ok_or_else(|| "invalid compact numeric format version".to_owned())?,
+            )
+        } else {
+            None
+        };
     let value_labels = value_label_table(descriptor, &name)?;
 
     let input = match kind {
@@ -761,14 +904,11 @@ unsafe fn extract_column(
                     storage,
                 }
             } else {
-                let version = u16::try_from(descriptor.compact_format_version)
-                    .ok()
-                    .and_then(|value| FormatVersion::try_from(value).ok())
-                    .ok_or_else(|| "invalid compact numeric format version".to_owned())?;
                 ColumnInput::ProfiledCompact {
                     values: descriptor.compact_values,
                     kind: NumericKind::try_from(descriptor.compact_kind)?,
-                    version,
+                    version: compact_version
+                        .ok_or_else(|| "compact numeric version is missing".to_owned())?,
                 }
             }
         }
@@ -951,11 +1091,12 @@ unsafe fn encode_column(
             let values = std::slice::from_raw_parts(*values, row_count);
             let (codes, _) = classify_doubles(values, name)?;
             let temporal = temporal_kind(&column.format);
-            let (array, replacements) =
+            let (array, replacements, missing_release) =
                 encode_profiled_column(name, *storage, temporal, values, &codes)?;
             let mut document = with_labels(base_document);
             document.storage = Some(*storage);
             document.missing = Some(field_missing_for_storage(*storage));
+            document.missing_release = missing_release;
             (Some(document), array, replacements)
         }
         ColumnInput::ProfiledCompact {
@@ -963,10 +1104,12 @@ unsafe fn encode_column(
             kind,
             version,
         } => {
-            let (array, storage) = compact_profiled_column(*values, *kind, *version, row_count)?;
+            let (array, storage, missing_release) =
+                compact_profiled_column(*values, *kind, *version, row_count)?;
             let mut document = with_labels(base_document);
             document.storage = Some(storage);
             document.missing = Some(field_missing_for_storage(storage));
+            document.missing_release = missing_release;
             (Some(document), array, 0)
         }
     })
@@ -1558,10 +1701,12 @@ enum ColumnShape {
     },
     ProfiledCompact {
         storage: StataStorage,
+        version: FormatVersion,
     },
     ProfiledEager {
         storage: StataStorage,
         temporal: TemporalKind,
+        version: FormatVersion,
     },
     Logical,
     Integer,
@@ -1588,10 +1733,18 @@ fn classify_read_column(
     // mapping wholesale; raw Stata missing storage drives it.
     if let Some(storage) = attributes.document.and_then(|document| document.storage) {
         let temporal = temporal_kind(attributes.format());
+        let version = attributes
+            .document
+            .and_then(|document| document.missing_release)
+            .unwrap_or(FormatVersion::V118);
         return Ok(match storage {
             StataStorage::Double => ColumnShape::ProfiledDouble { temporal },
-            _ if numeric_altrep => ColumnShape::ProfiledCompact { storage },
-            _ => ColumnShape::ProfiledEager { storage, temporal },
+            _ if numeric_altrep => ColumnShape::ProfiledCompact { storage, version },
+            _ => ColumnShape::ProfiledEager {
+                storage,
+                temporal,
+                version,
+            },
         });
     }
     if column.data_type == DataType::Int32 && int32_contains_r_na_sentinel(column)? {
@@ -1672,11 +1825,13 @@ enum ColumnFill {
     ProfiledCompact {
         values: *mut u8,
         kind: NumericKind,
+        version: FormatVersion,
     },
     ProfiledEager {
         output: *mut f64,
         storage: StataStorage,
         temporal: TemporalKind,
+        version: FormatVersion,
     },
     Logical {
         output: *mut c_int,
@@ -1753,27 +1908,33 @@ unsafe fn plan_read_column(
             };
             (vector, None, Some(fill))
         }
-        ColumnShape::ProfiledCompact { storage } => {
+        ColumnShape::ProfiledCompact { storage, version } => {
             let data = numeric_altrep_storage(
                 storage.dta_type(),
                 row_count,
                 temporal_kind(attributes.format()),
-                FormatVersion::V118,
+                *version,
                 guard,
             )
             .map_err(|error| error.to_string())?;
             let fill = ColumnFill::ProfiledCompact {
                 values: data.values,
                 kind: data.kind,
+                version: *version,
             };
             (ptr::null_mut(), Some(data), Some(fill))
         }
-        ColumnShape::ProfiledEager { storage, temporal } => {
+        ColumnShape::ProfiledEager {
+            storage,
+            temporal,
+            version,
+        } => {
             let vector = guard.alloc(REALSXP, length)?;
             let fill = ColumnFill::ProfiledEager {
                 output: REAL(vector),
                 storage: *storage,
                 temporal: *temporal,
+                version: *version,
             };
             (vector, None, Some(fill))
         }
@@ -1862,31 +2023,31 @@ unsafe fn fill_profiled_compact(
     column: &ArrowReadColumn,
     values: *mut u8,
     kind: NumericKind,
+    version: FormatVersion,
 ) -> Result<bool, String> {
     let mut no_na = true;
     match kind {
         NumericKind::Byte => for_each_value::<Int8Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_byte_missing_for_version(value, FormatVersion::V118).is_none();
+            no_na &= classify_byte_missing_for_version(value, version).is_none();
             values.add(row).cast::<i8>().write_unaligned(value);
             Ok(())
         })?,
         NumericKind::Int => for_each_value::<Int16Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_int_missing_for_version(value, FormatVersion::V118).is_none();
+            no_na &= classify_int_missing_for_version(value, version).is_none();
             values.add(row * 2).cast::<i16>().write_unaligned(value);
             Ok(())
         })?,
         NumericKind::Long => for_each_value::<Int32Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_long_missing_for_version(value, FormatVersion::V118).is_none();
+            no_na &= classify_long_missing_for_version(value, version).is_none();
             values.add(row * 4).cast::<i32>().write_unaligned(value);
             Ok(())
         })?,
         NumericKind::Float => for_each_value::<Float32Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_float_missing_bits_for_version(value.to_bits(), FormatVersion::V118)
-                .is_none();
+            no_na &= classify_float_missing_bits_for_version(value.to_bits(), version).is_none();
             values.add(row * 4).cast::<f32>().write_unaligned(value);
             Ok(())
         })?,
@@ -1899,11 +2060,12 @@ unsafe fn fill_profiled_eager(
     output: *mut f64,
     storage: StataStorage,
     temporal: TemporalKind,
+    version: FormatVersion,
 ) -> Result<(), String> {
     match storage {
         StataStorage::Byte => for_each_value::<Int8Array>(column, |row, values, index| {
             let value = values.value(index);
-            *output.add(row) = match classify_byte_missing_for_version(value, FormatVersion::V118) {
+            *output.add(row) = match classify_byte_missing_for_version(value, version) {
                 Some(tag) => r_missing(tag),
                 None => observed_value(f64::from(value), temporal),
             };
@@ -1911,7 +2073,7 @@ unsafe fn fill_profiled_eager(
         }),
         StataStorage::Int => for_each_value::<Int16Array>(column, |row, values, index| {
             let value = values.value(index);
-            *output.add(row) = match classify_int_missing_for_version(value, FormatVersion::V118) {
+            *output.add(row) = match classify_int_missing_for_version(value, version) {
                 Some(tag) => r_missing(tag),
                 None => observed_value(f64::from(value), temporal),
             };
@@ -1919,7 +2081,7 @@ unsafe fn fill_profiled_eager(
         }),
         StataStorage::Long => for_each_value::<Int32Array>(column, |row, values, index| {
             let value = values.value(index);
-            *output.add(row) = match classify_long_missing_for_version(value, FormatVersion::V118) {
+            *output.add(row) = match classify_long_missing_for_version(value, version) {
                 Some(tag) => r_missing(tag),
                 None => observed_value(f64::from(value), temporal),
             };
@@ -1928,8 +2090,7 @@ unsafe fn fill_profiled_eager(
         StataStorage::Float => for_each_value::<Float32Array>(column, |row, values, index| {
             let value = values.value(index);
             *output.add(row) =
-                match classify_float_missing_bits_for_version(value.to_bits(), FormatVersion::V118)
-                {
+                match classify_float_missing_bits_for_version(value.to_bits(), version) {
                     Some(tag) => r_missing(tag),
                     None => observed_value(f64::from(value), temporal),
                 };
@@ -2382,15 +2543,20 @@ unsafe fn fill_read_column(
             })?;
             Ok(FillOutcome::Plain)
         }
-        ColumnFill::ProfiledCompact { values, kind } => Ok(FillOutcome::NoNa(
-            fill_profiled_compact(column, *values, *kind)?,
-        )),
+        ColumnFill::ProfiledCompact {
+            values,
+            kind,
+            version,
+        } => Ok(FillOutcome::NoNa(fill_profiled_compact(
+            column, *values, *kind, *version,
+        )?)),
         ColumnFill::ProfiledEager {
             output,
             storage,
             temporal,
+            version,
         } => {
-            fill_profiled_eager(column, *output, *storage, *temporal)?;
+            fill_profiled_eager(column, *output, *storage, *temporal, *version)?;
             Ok(FillOutcome::Plain)
         }
         ColumnFill::Logical { output } => {
@@ -2962,7 +3128,7 @@ mod tests {
     fn invalid_profiled_nans_are_counted_as_replacements() {
         let values = [f64::NAN];
         let codes = [256];
-        let (array, replacements) = encode_profiled_column(
+        let (array, replacements, missing_release) = encode_profiled_column(
             "x",
             StataStorage::Double,
             TemporalKind::None,
@@ -2971,6 +3137,7 @@ mod tests {
         )
         .expect("invalid NaN is representable as a lossy replacement");
         assert_eq!(replacements, 1);
+        assert_eq!(missing_release, None);
         let values = array
             .as_any()
             .downcast_ref::<Float64Array>()
@@ -2979,6 +3146,23 @@ mod tests {
             classify_double_missing_bits(values.value(0).to_bits()),
             Some(MissingTag::System)
         );
+    }
+
+    #[test]
+    fn eager_legacy_tail_values_select_the_legacy_missing_layout() {
+        let values = [101.0, 102.0, -128.0, 0.0];
+        let codes = [-1, -1, -1, 0];
+        let (array, replacements, missing_release) =
+            encode_profiled_column("x", StataStorage::Byte, TemporalKind::None, &values, &codes)
+                .expect("legacy observed values and system missing are lossless");
+
+        assert_eq!(replacements, 1);
+        assert_eq!(missing_release, Some(FormatVersion::V111));
+        let values = array
+            .as_any()
+            .downcast_ref::<Int8Array>()
+            .expect("byte storage");
+        assert_eq!(values.values(), &[101, 102, 127, 127]);
     }
 
     #[test]
