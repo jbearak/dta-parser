@@ -12,9 +12,9 @@ use arrow_ipc::writer::FileWriter;
 use arrow_schema::{DataType, Field, Schema};
 
 use dta_tools::arrow::{
-    read_arrow_file_from, save_arrow_file_to, ArrowCompression, ArrowFieldDocument,
-    ArrowMissingEncoding, ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn,
-    ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_PROFILE_VERSION_KEY,
+    read_arrow_file, read_arrow_file_from, save_arrow_file_to, ArrowCompression,
+    ArrowFieldDocument, ArrowMissingEncoding, ArrowProfileError, ArrowRSemantics, ArrowReadOptions,
+    ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_PROFILE_VERSION_KEY,
 };
 use dta_tools::{ValueLabelEntry, ValueLabelTable};
 
@@ -29,6 +29,7 @@ fn read_all_options() -> ArrowReadOptions {
         row_count: None,
         verify: true,
         profile: true,
+        threads: 1,
     }
 }
 
@@ -103,9 +104,8 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
     ]));
     let keys = Int32Array::from(vec![Some(0), Some(1), None, Some(0)]);
     let values = StringArray::from(vec!["low", "high"]);
-    let factor: ArrayRef = Arc::new(
-        DictionaryArray::try_new(keys, Arc::new(values)).expect("valid dictionary"),
-    );
+    let factor: ArrayRef =
+        Arc::new(DictionaryArray::try_new(keys, Arc::new(values)).expect("valid dictionary"));
     // Profiled columns in raw Stata missing storage: sentinel integers, no
     // validity bitmap.
     let stata_byte: ArrayRef = Arc::new(Int8Array::from(vec![1, 101, 102, 127]));
@@ -233,7 +233,8 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
 
 #[test]
 fn nan_payloads_survive_bit_exactly() {
-    let tagged = |letter: u32| f64::from_bits(0x7ff0_0000_0000_07a2_u64 | (u64::from(letter) << 32));
+    let tagged =
+        |letter: u32| f64::from_bits(0x7ff0_0000_0000_07a2_u64 | (u64::from(letter) << 32));
     let doubles: ArrayRef = Arc::new(Float64Array::from(vec![
         1.25,
         tagged(1),
@@ -297,15 +298,13 @@ impl Seek for CountingReader<'_> {
 #[test]
 fn projection_reads_io_proportional_to_selected_columns() {
     let rows = 4096_usize;
-    let wide: Vec<Option<String>> = (0..rows)
-        .map(|row| Some(format!("{row:0>512}")))
-        .collect();
+    let wide: Vec<Option<String>> = (0..rows).map(|row| Some(format!("{row:0>512}"))).collect();
     let wide: ArrayRef = Arc::new(StringArray::from(
-        wide.iter().map(|value| value.as_deref()).collect::<Vec<_>>(),
+        wide.iter()
+            .map(|value| value.as_deref())
+            .collect::<Vec<_>>(),
     ));
-    let narrow: ArrayRef = Arc::new(Int32Array::from(
-        (0..rows as i32).collect::<Vec<_>>(),
-    ));
+    let narrow: ArrayRef = Arc::new(Int32Array::from((0..rows as i32).collect::<Vec<_>>()));
     let dataset = ArrowWriteDataset {
         dataset: DatasetDocument::default(),
         columns: vec![
@@ -378,12 +377,8 @@ fn skip_and_limit_slice_across_batch_boundaries() {
         row_count: Some(100),
         ..read_all_options()
     };
-    let result = read_arrow_file_from(
-        &mut Cursor::new(&bytes),
-        &options,
-        &mut no_interrupt(),
-    )
-    .expect("read succeeds");
+    let result = read_arrow_file_from(&mut Cursor::new(&bytes), &options, &mut no_interrupt())
+        .expect("read succeeds");
     assert_eq!(result.row_count, 100);
     let read = concat_chunks(&result.columns[0].chunks);
     let expected: ArrayRef = Arc::new(Int32Array::from((70..170).collect::<Vec<_>>()));
@@ -394,12 +389,8 @@ fn skip_and_limit_slice_across_batch_boundaries() {
         row_start: 500,
         ..read_all_options()
     };
-    let empty = read_arrow_file_from(
-        &mut Cursor::new(&bytes),
-        &past_the_end,
-        &mut no_interrupt(),
-    )
-    .expect("read succeeds");
+    let empty = read_arrow_file_from(&mut Cursor::new(&bytes), &past_the_end, &mut no_interrupt())
+        .expect("read succeeds");
     assert_eq!(empty.row_count, 0);
     assert!(empty.columns[0].chunks.is_empty());
     assert_eq!(empty.columns[0].data_type, DataType::Int32);
@@ -445,12 +436,8 @@ fn corrupted_buffers_fail_verification_by_default() {
         verify: false,
         ..read_all_options()
     };
-    let result = read_arrow_file_from(
-        &mut Cursor::new(&bytes),
-        &options,
-        &mut no_interrupt(),
-    )
-    .expect("unverified read succeeds");
+    let result = read_arrow_file_from(&mut Cursor::new(&bytes), &options, &mut no_interrupt())
+        .expect("unverified read succeeds");
     let read = concat_chunks(&result.columns[0].chunks);
     let read = read
         .as_any()
@@ -546,8 +533,7 @@ fn plain_arrow_file(metadata: HashMap<String, String>) -> Vec<u8> {
         ])
         .with_metadata(metadata),
     );
-    let batch =
-        RecordBatch::try_new(schema.clone(), vec![values, strings]).expect("valid batch");
+    let batch = RecordBatch::try_new(schema.clone(), vec![values, strings]).expect("valid batch");
     let mut bytes = Vec::new();
     let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
     writer.write(&batch).expect("batch writes");
@@ -596,12 +582,8 @@ fn newer_profile_versions_are_a_hard_error_with_an_escape_hatch() {
         verify: false,
         ..read_all_options()
     };
-    let result = read_arrow_file_from(
-        &mut Cursor::new(&bytes),
-        &options,
-        &mut no_interrupt(),
-    )
-    .expect("profile = FALSE reads the raw storage");
+    let result = read_arrow_file_from(&mut Cursor::new(&bytes), &options, &mut no_interrupt())
+        .expect("profile = FALSE reads the raw storage");
     assert_eq!(result.profile_version, None);
     assert_eq!(result.row_count, 3);
 }
@@ -625,20 +607,18 @@ fn profiled_files_without_checksums_are_malformed_when_verifying() {
         verify: false,
         ..read_all_options()
     };
-    let result = read_arrow_file_from(
-        &mut Cursor::new(&bytes),
-        &options,
-        &mut no_interrupt(),
-    )
-    .expect("unverified read succeeds");
+    let result = read_arrow_file_from(&mut Cursor::new(&bytes), &options, &mut no_interrupt())
+        .expect("unverified read succeeds");
     assert_eq!(result.profile_version.as_deref(), Some("0"));
 }
 
 #[test]
 fn unsupported_columns_error_naming_the_column() {
-    let list = arrow_array::ListArray::from_iter_primitive::<arrow_array::types::Int32Type, _, _>(
-        vec![Some(vec![Some(1), Some(2)]), Some(vec![Some(3)])],
-    );
+    let list =
+        arrow_array::ListArray::from_iter_primitive::<arrow_array::types::Int32Type, _, _>(vec![
+            Some(vec![Some(1), Some(2)]),
+            Some(vec![Some(3)]),
+        ]);
     let dataset = ArrowWriteDataset {
         dataset: DatasetDocument::default(),
         columns: vec![ArrowWriteColumn {
@@ -690,6 +670,87 @@ fn empty_datasets_round_trip() {
         result.dataset.expect("dataset document survives").label,
         "empty"
     );
+}
+
+#[test]
+fn parallel_decoding_matches_serial() {
+    // 1,000 rows over 64-row batches give every worker several blocks.
+    let rows = 1_000_usize;
+    let doubles: ArrayRef = Arc::new(Float64Array::from(
+        (0..rows).map(|row| row as f64 / 3.0).collect::<Vec<_>>(),
+    ));
+    let strings: ArrayRef = Arc::new(StringArray::from(
+        (0..rows)
+            .map(|row| format!("value {}", row % 17))
+            .collect::<Vec<_>>(),
+    ));
+    let integers: ArrayRef = Arc::new(Int32Array::from(
+        (0..rows).map(|row| row as i32).collect::<Vec<_>>(),
+    ));
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![
+            ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: doubles,
+            },
+            ArrowWriteColumn {
+                name: "s".to_owned(),
+                field: None,
+                array: strings,
+            },
+            ArrowWriteColumn {
+                name: "n".to_owned(),
+                field: None,
+                array: integers,
+            },
+        ],
+    };
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    let path = std::env::temp_dir().join(format!(
+        "dtatools-parallel-decode-{}.arrow",
+        std::process::id()
+    ));
+    std::fs::write(&path, &bytes).expect("temp file writes");
+
+    let serial = read_arrow_file(&path, &read_all_options(), &mut no_interrupt())
+        .expect("serial read succeeds");
+    let parallel = read_arrow_file(
+        &path,
+        &ArrowReadOptions {
+            threads: 4,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("parallel read succeeds");
+    let windowed = read_arrow_file(
+        &path,
+        &ArrowReadOptions {
+            threads: 4,
+            row_start: 100,
+            row_count: Some(500),
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("windowed parallel read succeeds");
+    std::fs::remove_file(&path).ok();
+
+    assert_eq!(parallel.row_count, serial.row_count);
+    for (left, right) in parallel.columns.iter().zip(&serial.columns) {
+        assert_eq!(left.name, right.name);
+        let left_values = concat_chunks(&left.chunks);
+        let right_values = concat_chunks(&right.chunks);
+        assert_eq!(&left_values, &right_values, "column `{}`", left.name);
+    }
+    assert_eq!(windowed.row_count, 500);
+    for (column, full) in windowed.columns.iter().zip(&serial.columns) {
+        let expected = concat_chunks(&full.chunks).slice(100, 500);
+        let values = concat_chunks(&column.chunks);
+        assert_eq!(&values, &expected, "windowed column `{}`", column.name);
+    }
 }
 
 #[test]

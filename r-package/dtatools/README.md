@@ -45,15 +45,16 @@ the same files:
 
 | Input | `read_dta()` on `.dta` | `read_arrow()` on `.arrow` |
 | --- | ---: | ---: |
-| Synthetic 100 MB, 40 columns | 0.048 seconds | 0.296 seconds |
-| Synthetic 1 GB, 40 columns | 0.184 seconds | 1.448 seconds |
-| India 2021 DHS women, 5.2 GB, 5,972 columns | 1.608 seconds | 4.423 seconds |
+| Synthetic 100 MB, 40 columns | 0.048 seconds | 0.028 seconds |
+| Synthetic 1 GB, 40 columns | 0.184 seconds | 0.097 seconds |
+| India 2021 DHS women, 5.2 GB, 5,972 columns | 1.608 seconds | 0.416 seconds |
 
-`read_dta()` stays faster because it decodes with multicore workers and defers
-numeric and character materialization through ALTREP, while `read_arrow()` is
-single-threaded and materializes string columns eagerly. Checksum verification
-is on by default and accounts for only a few percent; converting the India
-file with `save_arrow()` took 6.5 seconds once. See the
+Both readers decode with automatic multicore workers and defer numeric and
+character materialization through ALTREP. `read_arrow()` is faster because the
+Arrow file already stores each column contiguously in its Stata storage width,
+so reading is mostly parallel column copies rather than row-major decoding.
+Checksum verification is on by default and accounts for only a few percent;
+converting the India file with `save_arrow()` took 6.5 seconds once. See the
 [dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
 for conversion times, file sizes, and methodology.
 

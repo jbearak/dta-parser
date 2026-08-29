@@ -12,7 +12,8 @@ read_arrow(
   verify = TRUE,
   profile = TRUE,
   .name_repair = "unique",
-  use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE)
+  use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
+  threads = getOption("dtatools.threads", 0L)
 )
 }
 \arguments{
@@ -45,6 +46,11 @@ metadata.}
 \item{use_numeric_altrep}{Whether profiled byte, int, long, and float
 columns should retain their compact Stata storage through ALTREP. Set to
 \code{FALSE} to create eager R double vectors while reading.}
+
+\item{threads}{Number of threads for record-batch decoding, checksum
+verification, and column conversion. \code{0} (the default) chooses
+automatically based on the input size and machine; \code{1} disables
+parallelism.}
 }
 \value{
 A tibble.

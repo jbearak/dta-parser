@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::thread;
 
 use arrow_array::{make_array, ArrayRef};
 use arrow_buffer::{Buffer, MutableBuffer};
@@ -20,8 +22,8 @@ use arrow_schema::{DataType, Field, Schema};
 use super::checksum::canonical_array_hashes;
 use super::profile::{
     checksum_to_hex, parse_checksums_document, parse_dataset_document, parse_field_document,
-    ArrowFieldDocument, ChecksumsDocument, DatasetDocument, ARROW_CHECKSUMS_KEY,
-    ARROW_DATASET_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
+    ArrowFieldDocument, ChecksumsDocument, DatasetDocument, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY,
+    ARROW_FIELD_KEY, ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
 };
 use super::ArrowProfileError;
 
@@ -42,6 +44,11 @@ pub struct ArrowReadOptions {
     /// Apply `dtatools:*` profile metadata. `false` is the escape hatch that
     /// reads the raw storage arrays as plain Arrow data.
     pub profile: bool,
+    /// Decoder threads for path-backed reads: zero selects an automatic
+    /// count for sufficiently large selections, one forces serial decoding,
+    /// and larger values cap the worker count. Reads from a generic seekable
+    /// source are always serial.
+    pub threads: usize,
 }
 
 /// One decoded output column: its Arrow chunks in row order plus the parsed
@@ -172,14 +179,12 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
     if &tail[4..] != FILE_MAGIC {
         return Err(ArrowProfileError::NotAnArrowFile("the input".to_owned()));
     }
-    let footer_length =
-        u64::from(u32::from_le_bytes(tail[..4].try_into().expect("4 bytes")));
+    let footer_length = u64::from(u32::from_le_bytes(tail[..4].try_into().expect("4 bytes")));
     if footer_length == 0 || footer_length > file_length - 10 - 8 {
         return Err(invalid("footer length is out of bounds"));
     }
-    let mut footer_bytes = vec![0_u8; usize::try_from(footer_length).map_err(|_| {
-        invalid("footer is too large")
-    })?];
+    let mut footer_bytes =
+        vec![0_u8; usize::try_from(footer_length).map_err(|_| { invalid("footer is too large") })?];
     read_exact_at(reader, file_length - 10 - footer_length, &mut footer_bytes)?;
     let footer =
         root_as_footer(&footer_bytes).map_err(|error| invalid(format!("bad footer: {error}")))?;
@@ -203,7 +208,12 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
             }
         })?;
         let dictionary_id = (index < fb_fields.len())
-            .then(|| fb_fields.get(index).dictionary().map(|encoding| encoding.id()))
+            .then(|| {
+                fb_fields
+                    .get(index)
+                    .dictionary()
+                    .map(|encoding| encoding.id())
+            })
             .flatten();
         // The supported types are all flat, so each field is one node.
         layouts.push(FieldLayout {
@@ -286,9 +296,12 @@ fn parse_profile(
         fields.push(document);
     }
     let checksums = if verify {
-        let json = footer.custom_metadata.get(ARROW_CHECKSUMS_KEY).ok_or_else(|| {
-            super::profile::malformed(version, "missing checksums document".to_owned())
-        })?;
+        let json = footer
+            .custom_metadata
+            .get(ARROW_CHECKSUMS_KEY)
+            .ok_or_else(|| {
+                super::profile::malformed(version, "missing checksums document".to_owned())
+            })?;
         let document = parse_checksums_document(version, json)?;
         if document.batches.len() != footer.record_blocks.len() {
             return Err(super::profile::malformed(
@@ -394,7 +407,10 @@ fn read_ipc_buffer<R: Read + Seek>(
     compression: Option<Compression>,
 ) -> Result<Buffer, ArrowProfileError> {
     let (offset, length) = entry;
-    if offset.checked_add(length).is_none_or(|end| end > body_length) {
+    if offset
+        .checked_add(length)
+        .is_none_or(|end| end > body_length)
+    {
         return Err(invalid("buffer extends past the record batch body"));
     }
     if length == 0 {
@@ -596,28 +612,46 @@ fn read_dictionaries<R: Read + Seek>(
     Ok(dictionaries)
 }
 
-/// Read a dtatools Arrow profile file or a plain Arrow IPC file.
-pub fn read_arrow_file(
-    path: impl AsRef<Path>,
-    options: &ArrowReadOptions,
-    interrupt: &mut dyn FnMut() -> bool,
-) -> Result<ArrowReadResult, ArrowProfileError> {
-    let path = path.as_ref();
-    let mut reader = BufReader::new(File::open(path)?);
-    read_arrow_file_from(&mut reader, options, interrupt).map_err(|error| match error {
-        ArrowProfileError::NotAnArrowFile(_) => {
-            ArrowProfileError::NotAnArrowFile(path.display().to_string())
-        }
-        other => other,
-    })
+// Automatic-parallelism thresholds, matching the DTA reader's policy: small
+// selections stay serial, and automatic counts leave headroom on very wide
+// machines.
+const MIN_PARALLEL_DECODE_BYTES: u64 = 16 * 1024 * 1024;
+const MIN_PARALLEL_DECODE_CELLS: u64 = 1_000_000;
+const MAX_AUTOMATIC_DECODE_THREADS: usize = 8;
+
+/// One record batch that overlaps the requested row window: its parsed
+/// header plus the slice of its rows to return.
+struct BlockPlan {
+    batch_index: usize,
+    block: BlockInfo,
+    header: BatchHeader,
+    slice_offset: usize,
+    slice_length: usize,
 }
 
-/// Read from any seekable source.
-pub fn read_arrow_file_from<R: Read + Seek>(
+/// Everything a decode needs that is shared across blocks and columns.
+struct DecodeContext<'a> {
+    footer: &'a Footer,
+    profile: Option<&'a Profile>,
+    selected: &'a [usize],
+    dictionaries: &'a HashMap<i64, ArrayData>,
+}
+
+/// The footer-derived state of one read, before any batch body is decoded.
+struct PreparedRead {
+    footer: Footer,
+    profile: Option<Profile>,
+    selected: Vec<usize>,
+    dictionaries: HashMap<i64, ArrayData>,
+    plans: Vec<BlockPlan>,
+    produced: u64,
+}
+
+fn prepare_read<R: Read + Seek>(
     reader: &mut R,
     options: &ArrowReadOptions,
     interrupt: &mut dyn FnMut() -> bool,
-) -> Result<ArrowReadResult, ArrowProfileError> {
+) -> Result<PreparedRead, ArrowProfileError> {
     let footer = read_footer(reader)?;
     let profile = parse_profile(&footer, options.profile, options.verify)?;
 
@@ -648,14 +682,15 @@ pub fn read_arrow_file_from<R: Read + Seek>(
                 let Some(id) = footer.layouts[index].dictionary_id else {
                     continue;
                 };
-                let expected = checksums.dictionaries.get(&index.to_string()).ok_or_else(
-                    || {
+                let expected = checksums
+                    .dictionaries
+                    .get(&index.to_string())
+                    .ok_or_else(|| {
                         super::profile::malformed(
                             &profile.version,
                             "checksums document is missing a dictionary entry",
                         )
-                    },
-                )?;
+                    })?;
                 let values = make_array(dictionaries[&id].clone());
                 verify_hashes(
                     &values,
@@ -673,23 +708,10 @@ pub fn read_arrow_file_from<R: Read + Seek>(
         }
     }
 
-    let mut columns: Vec<ArrowReadColumn> = selected
-        .iter()
-        .map(|&index| {
-            let field: &Field = footer.schema.field(index);
-            ArrowReadColumn {
-                name: field.name().clone(),
-                data_type: field.data_type().clone(),
-                nullable: field.is_nullable(),
-                field: profile
-                    .as_ref()
-                    .and_then(|profile| profile.fields[index].clone()),
-                chunks: Vec::new(),
-            }
-        })
-        .collect();
-
+    // Batch headers are small; reading them all up front fixes each block's
+    // slice of the requested window so block bodies can decode in any order.
     let limit = options.row_count.unwrap_or(u64::MAX);
+    let mut plans = Vec::new();
     let mut produced = 0_u64;
     let mut seen_rows = 0_u64;
     for (batch_index, block) in footer.record_blocks.iter().enumerate() {
@@ -710,59 +732,401 @@ pub fn read_arrow_file_from<R: Read + Seek>(
         if select_start >= select_end {
             continue;
         }
-        let body_start = block.offset + u64::from(block.metadata_length);
-        for (output_index, &field_index) in selected.iter().enumerate() {
-            let field = footer.schema.field(field_index);
-            let layout = &footer.layouts[field_index];
-            let dictionary = layout
-                .dictionary_id
-                .and_then(|id| dictionaries.get(&id));
-            let array = decode_field_array(
-                reader,
-                body_start,
-                block.body_length,
-                &header,
-                layout,
-                field.data_type(),
-                dictionary,
-            )?;
-            if array.len() as u64 != header.rows {
-                return Err(invalid("field length does not match the batch length"));
-            }
-            if let Some(profile) = &profile {
-                if let Some(checksums) = &profile.checksums {
-                    let expected = checksums.batches[batch_index]
-                        .columns
-                        .get(field_index)
-                        .ok_or_else(|| {
-                            super::profile::malformed(
-                                &profile.version,
-                                "checksums document is missing a column entry",
-                            )
-                        })?;
-                    verify_hashes(&array, expected, field.name(), batch_index)?;
-                }
-            }
-            let slice_offset = usize::try_from(select_start - batch_start)
-                .map_err(|_| invalid("batch is too large"))?;
-            let slice_length = usize::try_from(select_end - select_start)
-                .map_err(|_| invalid("batch is too large"))?;
-            let chunk = if slice_offset == 0 && slice_length == array.len() {
-                array
-            } else {
-                array.slice(slice_offset, slice_length)
-            };
-            columns[output_index].chunks.push(chunk);
-        }
+        plans.push(BlockPlan {
+            batch_index,
+            block: *block,
+            header,
+            slice_offset: usize::try_from(select_start - batch_start)
+                .map_err(|_| invalid("batch is too large"))?,
+            slice_length: usize::try_from(select_end - select_start)
+                .map_err(|_| invalid("batch is too large"))?,
+        });
         produced += select_end - select_start;
     }
 
-    Ok(ArrowReadResult {
-        profile_version: profile.as_ref().map(|profile| profile.version.clone()),
-        dataset: profile.map(|profile| profile.dataset),
-        row_count: produced,
-        columns,
+    Ok(PreparedRead {
+        footer,
+        profile,
+        selected,
+        dictionaries,
+        plans,
+        produced,
     })
+}
+
+/// Decode one selected column of one planned block, verify it when the
+/// profile carries checksums, and slice it to the requested window.
+fn decode_planned_column<R: Read + Seek>(
+    reader: &mut R,
+    context: &DecodeContext<'_>,
+    plan: &BlockPlan,
+    output_index: usize,
+) -> Result<ArrayRef, ArrowProfileError> {
+    let field_index = context.selected[output_index];
+    let field = context.footer.schema.field(field_index);
+    let layout = &context.footer.layouts[field_index];
+    let dictionary = layout
+        .dictionary_id
+        .and_then(|id| context.dictionaries.get(&id));
+    let body_start = plan.block.offset + u64::from(plan.block.metadata_length);
+    let array = decode_field_array(
+        reader,
+        body_start,
+        plan.block.body_length,
+        &plan.header,
+        layout,
+        field.data_type(),
+        dictionary,
+    )?;
+    if array.len() as u64 != plan.header.rows {
+        return Err(invalid("field length does not match the batch length"));
+    }
+    if let Some(profile) = context.profile {
+        if let Some(checksums) = &profile.checksums {
+            let expected = checksums.batches[plan.batch_index]
+                .columns
+                .get(field_index)
+                .ok_or_else(|| {
+                    super::profile::malformed(
+                        &profile.version,
+                        "checksums document is missing a column entry",
+                    )
+                })?;
+            verify_hashes(&array, expected, field.name(), plan.batch_index)?;
+        }
+    }
+    Ok(
+        if plan.slice_offset == 0 && plan.slice_length == array.len() {
+            array
+        } else {
+            array.slice(plan.slice_offset, plan.slice_length)
+        },
+    )
+}
+
+fn decode_blocks_serial<R: Read + Seek>(
+    reader: &mut R,
+    context: &DecodeContext<'_>,
+    plans: &[BlockPlan],
+    columns: &mut [ArrowReadColumn],
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
+    for plan in plans {
+        if interrupt() {
+            return Err(ArrowProfileError::Interrupted);
+        }
+        for (output_index, column) in columns.iter_mut().enumerate() {
+            let chunk = decode_planned_column(reader, context, plan, output_index)?;
+            column.chunks.push(chunk);
+        }
+    }
+    Ok(())
+}
+
+/// The selected buffer bytes of every planned block, before decompression.
+fn planned_selected_bytes(context: &DecodeContext<'_>, plans: &[BlockPlan]) -> u64 {
+    let mut bytes = 0_u64;
+    for plan in plans {
+        for &field_index in context.selected {
+            let layout = &context.footer.layouts[field_index];
+            if let Some(entries) = plan
+                .header
+                .buffers
+                .get(layout.buffer..layout.buffer + layout.buffer_count)
+            {
+                bytes = bytes.saturating_add(entries.iter().map(|&(_, length)| length).sum());
+            }
+        }
+    }
+    bytes
+}
+
+/// Resolve the decode worker count. Zero requests an automatic count, which
+/// stays serial for small selections.
+fn decode_thread_count(
+    requested: usize,
+    context: &DecodeContext<'_>,
+    plans: &[BlockPlan],
+    produced: u64,
+) -> usize {
+    if requested == 1 || plans.is_empty() || context.selected.is_empty() {
+        return 1;
+    }
+    let bytes = planned_selected_bytes(context, plans);
+    let cells = produced.saturating_mul(context.selected.len() as u64);
+    if requested == 0 && bytes < MIN_PARALLEL_DECODE_BYTES && cells < MIN_PARALLEL_DECODE_CELLS {
+        return 1;
+    }
+    let available = thread::available_parallelism().map_or(1, usize::from);
+    let threads = if requested == 0 {
+        available.min(MAX_AUTOMATIC_DECODE_THREADS)
+    } else {
+        requested.min(available)
+    };
+    threads
+        .min(plans.len().saturating_mul(context.selected.len()))
+        .max(1)
+}
+
+/// One parallel work unit: a contiguous range of selected columns within one
+/// planned block.
+struct DecodeTask {
+    plan: usize,
+    outputs: std::ops::Range<usize>,
+}
+
+fn decode_tasks(plans: &[BlockPlan], output_count: usize, threads: usize) -> Vec<DecodeTask> {
+    // Split columns so both narrow-but-deep and wide-but-shallow selections
+    // produce enough tasks to occupy every worker.
+    let target_groups = (threads * 4).div_ceil(plans.len().max(1)).max(1);
+    let group_count = target_groups.min(output_count.max(1));
+    let group_size = output_count.div_ceil(group_count).max(1);
+    let mut tasks = Vec::with_capacity(plans.len() * group_count);
+    for plan in 0..plans.len() {
+        let mut start = 0_usize;
+        while start < output_count {
+            let end = (start + group_size).min(output_count);
+            tasks.push(DecodeTask {
+                plan,
+                outputs: start..end,
+            });
+            start = end;
+        }
+    }
+    tasks
+}
+
+/// Claim tasks from the shared queue and decode them with a private reader.
+/// `poll` runs between tasks; on the coordinating thread it checks R
+/// interrupts, on workers it only observes the shared cancel flag.
+fn decode_task_loop<R: Read + Seek>(
+    reader: &mut R,
+    context: &DecodeContext<'_>,
+    plans: &[BlockPlan],
+    tasks: &[DecodeTask],
+    next: &AtomicUsize,
+    cancelled: &AtomicBool,
+    mut poll: impl FnMut() -> bool,
+) -> Result<Vec<(usize, Vec<ArrayRef>)>, ArrowProfileError> {
+    let mut results = Vec::new();
+    loop {
+        if poll() {
+            cancelled.store(true, Ordering::Relaxed);
+            return Err(ArrowProfileError::Interrupted);
+        }
+        if cancelled.load(Ordering::Relaxed) {
+            return Ok(results);
+        }
+        let task_index = next.fetch_add(1, Ordering::Relaxed);
+        let Some(task) = tasks.get(task_index) else {
+            return Ok(results);
+        };
+        let plan = &plans[task.plan];
+        let mut chunks = Vec::with_capacity(task.outputs.len());
+        for output_index in task.outputs.clone() {
+            match decode_planned_column(reader, context, plan, output_index) {
+                Ok(chunk) => chunks.push(chunk),
+                Err(error) => {
+                    cancelled.store(true, Ordering::Relaxed);
+                    return Err(error);
+                }
+            }
+        }
+        results.push((task_index, chunks));
+    }
+}
+
+/// Decode planned blocks with `threads` workers, each reading through its own
+/// file handle. The calling thread participates and is the only one that
+/// polls `interrupt`.
+fn decode_blocks_parallel(
+    path: &Path,
+    context: &DecodeContext<'_>,
+    plans: &[BlockPlan],
+    columns: &mut [ArrowReadColumn],
+    threads: usize,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
+    let output_count = context.selected.len();
+    let tasks = decode_tasks(plans, output_count, threads);
+    let next = AtomicUsize::new(0);
+    let cancelled = AtomicBool::new(false);
+
+    let mut worker_files = Vec::with_capacity(threads.saturating_sub(1));
+    for _ in 1..threads {
+        worker_files.push(File::open(path)?);
+    }
+
+    let (own_result, worker_results) = thread::scope(|scope| {
+        let handles: Vec<_> = worker_files
+            .into_iter()
+            .map(|file| {
+                let next = &next;
+                let cancelled = &cancelled;
+                let tasks = &tasks;
+                scope.spawn(move || {
+                    let mut reader = BufReader::new(file);
+                    decode_task_loop(&mut reader, context, plans, tasks, next, cancelled, || {
+                        false
+                    })
+                })
+            })
+            .collect();
+        let own = File::open(path)
+            .map_err(ArrowProfileError::from)
+            .and_then(|file| {
+                let mut reader = BufReader::new(file);
+                decode_task_loop(
+                    &mut reader,
+                    context,
+                    plans,
+                    &tasks,
+                    &next,
+                    &cancelled,
+                    &mut *interrupt,
+                )
+            });
+        if own.is_err() {
+            cancelled.store(true, Ordering::Relaxed);
+        }
+        let worker_results: Vec<_> = handles
+            .into_iter()
+            .map(|handle| match handle.join() {
+                Ok(result) => result,
+                Err(_) => Err(invalid("a decode worker panicked")),
+            })
+            .collect();
+        (own, worker_results)
+    });
+
+    let mut task_chunks: Vec<Option<Vec<ArrayRef>>> = (0..tasks.len()).map(|_| None).collect();
+    let mut store = |results: Vec<(usize, Vec<ArrayRef>)>| {
+        for (task_index, chunks) in results {
+            task_chunks[task_index] = Some(chunks);
+        }
+    };
+    // Surface the coordinating thread's error (interrupts included) first,
+    // then any worker error.
+    store(own_result?);
+    for result in worker_results {
+        store(result?);
+    }
+
+    for (task_index, task) in tasks.iter().enumerate() {
+        let chunks = task_chunks[task_index]
+            .take()
+            .ok_or_else(|| invalid("a decode task produced no result"))?;
+        if chunks.len() != task.outputs.len() {
+            return Err(invalid("a decode task produced a partial result"));
+        }
+        for (chunk, output_index) in chunks.into_iter().zip(task.outputs.clone()) {
+            columns[output_index].chunks.push(chunk);
+        }
+    }
+    Ok(())
+}
+
+fn columns_skeleton(prepared: &PreparedRead) -> Vec<ArrowReadColumn> {
+    prepared
+        .selected
+        .iter()
+        .map(|&index| {
+            let field: &Field = prepared.footer.schema.field(index);
+            ArrowReadColumn {
+                name: field.name().clone(),
+                data_type: field.data_type().clone(),
+                nullable: field.is_nullable(),
+                field: prepared
+                    .profile
+                    .as_ref()
+                    .and_then(|profile| profile.fields[index].clone()),
+                chunks: Vec::new(),
+            }
+        })
+        .collect()
+}
+
+fn finish_result(prepared: PreparedRead, columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+    ArrowReadResult {
+        profile_version: prepared
+            .profile
+            .as_ref()
+            .map(|profile| profile.version.clone()),
+        dataset: prepared.profile.map(|profile| profile.dataset),
+        row_count: prepared.produced,
+        columns,
+    }
+}
+
+/// Read a dtatools Arrow profile file or a plain Arrow IPC file. Batch
+/// bodies decode (and verify) in parallel when `options.threads` allows it.
+pub fn read_arrow_file(
+    path: impl AsRef<Path>,
+    options: &ArrowReadOptions,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<ArrowReadResult, ArrowProfileError> {
+    let path = path.as_ref();
+    let mut read = || -> Result<ArrowReadResult, ArrowProfileError> {
+        let mut reader = BufReader::new(File::open(path)?);
+        let prepared = prepare_read(&mut reader, options, interrupt)?;
+        let mut columns = columns_skeleton(&prepared);
+        let context = DecodeContext {
+            footer: &prepared.footer,
+            profile: prepared.profile.as_ref(),
+            selected: &prepared.selected,
+            dictionaries: &prepared.dictionaries,
+        };
+        let threads = decode_thread_count(
+            options.threads,
+            &context,
+            &prepared.plans,
+            prepared.produced,
+        );
+        if threads > 1 {
+            decode_blocks_parallel(
+                path,
+                &context,
+                &prepared.plans,
+                &mut columns,
+                threads,
+                interrupt,
+            )?;
+        } else {
+            decode_blocks_serial(
+                &mut reader,
+                &context,
+                &prepared.plans,
+                &mut columns,
+                interrupt,
+            )?;
+        }
+        Ok(finish_result(prepared, columns))
+    };
+    read().map_err(|error| match error {
+        ArrowProfileError::NotAnArrowFile(_) => {
+            ArrowProfileError::NotAnArrowFile(path.display().to_string())
+        }
+        other => other,
+    })
+}
+
+/// Read from any seekable source. Always serial: parallel decoding needs
+/// independent file handles, which only the path entry point can open.
+pub fn read_arrow_file_from<R: Read + Seek>(
+    reader: &mut R,
+    options: &ArrowReadOptions,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<ArrowReadResult, ArrowProfileError> {
+    let prepared = prepare_read(reader, options, interrupt)?;
+    let mut columns = columns_skeleton(&prepared);
+    let context = DecodeContext {
+        footer: &prepared.footer,
+        profile: prepared.profile.as_ref(),
+        selected: &prepared.selected,
+        dictionaries: &prepared.dictionaries,
+    };
+    decode_blocks_serial(reader, &context, &prepared.plans, &mut columns, interrupt)?;
+    Ok(finish_result(prepared, columns))
 }
 
 /// The R type family used to build tidyselect proxies for one field.
@@ -795,7 +1159,9 @@ pub fn summarize_arrow_file(path: impl AsRef<Path>) -> Result<ArrowFileSummary, 
     let mut reader = BufReader::new(File::open(path)?);
     let footer = match read_footer(&mut reader) {
         Err(ArrowProfileError::NotAnArrowFile(_)) => {
-            return Err(ArrowProfileError::NotAnArrowFile(path.display().to_string()))
+            return Err(ArrowProfileError::NotAnArrowFile(
+                path.display().to_string(),
+            ))
         }
         other => other?,
     };

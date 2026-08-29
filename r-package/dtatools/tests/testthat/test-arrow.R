@@ -110,6 +110,51 @@ test_that("profiled columns read back as compact ALTREP by default", {
     expect_identical(missing_tag(eager$b), missing_tag(data$b))
 })
 
+test_that("string columns without missing values defer through ALTREP", {
+    data <- tibble::tibble(
+        s = rep(c("alpha", "beta", "", "éè"), 25L),
+        m = rep(c("kept", NA, "also kept", "kept"), 25L)
+    )
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    actual <- read_arrow(path)
+    expect_true(dtatools:::.is_altrep(actual$s))
+    # The dictionary-string ALTREP class cannot represent NA_character_, so
+    # null-bearing columns materialize eagerly.
+    expect_false(dtatools:::.is_altrep(actual$m))
+    expect_identical(actual, data)
+})
+
+test_that("multithreaded Arrow reads match single-threaded reads", {
+    data <- standard_arrow_fixture()
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    serial <- read_arrow(path, threads = 1L)
+    parallel <- read_arrow(path, threads = 4L)
+    expect_identical(parallel, serial)
+    expect_identical(serial, data)
+
+    eager <- read_arrow(path, threads = 4L, use_numeric_altrep = FALSE)
+    expect_identical(eager, read_arrow(path, threads = 1L,
+                                       use_numeric_altrep = FALSE))
+})
+
+test_that("read_arrow validates threads", {
+    data <- tibble::tibble(x = 1)
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    expect_error(read_arrow(path, threads = -1),
+                 "non-negative whole number")
+    expect_error(read_arrow(path, threads = 1.5),
+                 "non-negative whole number")
+    expect_error(read_arrow(path, threads = NA_integer_),
+                 "non-negative whole number")
+    expect_identical(read_arrow(path, threads = 2L), data)
+})
+
 test_that("compact ALTREP columns are written without materializing", {
     dta <- tempfile(fileext = ".dta")
     path <- arrow_tempfile()

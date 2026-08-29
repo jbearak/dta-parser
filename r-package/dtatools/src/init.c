@@ -63,7 +63,7 @@ extern SEXP dtatools_save_arrow_rust(
 );
 extern SEXP dtatools_read_arrow_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
-    char **
+    int, char **
 );
 extern SEXP dtatools_arrow_metadata_rust(const char *, char **);
 
@@ -2972,7 +2972,7 @@ SEXP C_dtatools_save_arrow(SEXP specification, SEXP path, SEXP compression) {
 
 SEXP C_dtatools_read_arrow(
     SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
-    SEXP numeric_altrep
+    SEXP numeric_altrep, SEXP threads
 ) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
         STRING_ELT(path, 0) == NA_STRING) {
@@ -2996,6 +2996,10 @@ SEXP C_dtatools_read_arrow(
         LOGICAL(numeric_altrep)[0] == NA_LOGICAL) {
         Rf_error("internal numeric ALTREP selector must be logical");
     }
+    if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
+        INTEGER(threads)[0] < 0) {
+        Rf_error("internal thread count must be one non-negative integer");
+    }
     char *error = NULL;
     SEXP result = dtatools_read_arrow_rust(
         Rf_translateCharUTF8(STRING_ELT(path, 0)),
@@ -3007,6 +3011,7 @@ SEXP C_dtatools_read_arrow(
         LOGICAL(verify)[0],
         LOGICAL(profile)[0],
         LOGICAL(numeric_altrep)[0],
+        INTEGER(threads)[0],
         &error
     );
     if (result == NULL) fail_from_rust(error);
@@ -3526,7 +3531,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 3},
-    {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 7},
+    {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 8},
     {"C_dtatools_arrow_metadata",
      (DL_FUNC) &C_dtatools_arrow_metadata, 1},
     {"C_dtatools_write_path_kind",

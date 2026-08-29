@@ -6,20 +6,21 @@
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_void};
 use std::ptr;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::thread;
 
 use dta_tools::arrow::{
-    read_arrow_file, save_arrow_file, summarize_arrow_file, ArrowCompression,
-    ArrowFieldDocument, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn,
-    ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage,
-    ARROW_ROWS_PER_BATCH,
+    read_arrow_file, save_arrow_file, summarize_arrow_file, ArrowCompression, ArrowFieldDocument,
+    ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn, ArrowReadOptions, ArrowWriteColumn,
+    ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_ROWS_PER_BATCH,
 };
 use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
     classify_float_missing_bits_for_version, classify_int_missing_for_version,
     classify_long_missing_for_version, dta_write_numeric_value_is_representable, encode_numeric,
-    DtaWriteNumericValue, DtaWriteRawNumericValue, FormatVersion, MissingTag,
-    ValueLabelEntry, ValueLabelTable, VariableInfo,
+    DtaWriteNumericValue, DtaWriteRawNumericValue, FormatVersion, MissingTag, ValueLabelEntry,
+    ValueLabelTable, VariableInfo,
 };
 
 use arrow_array::builder::{BooleanBuilder, Int32Builder, StringBuilder};
@@ -31,14 +32,13 @@ use arrow_array::{
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
-    attach_variable_attributes, boundary, check_interrupt, coarse_interrupt,
-    direct_r_missing_code, fill_string_region, label_attribute, missing_from_code,
-    numeric_altrep_storage, observed_value, poll_interrupt, r_char, r_missing, scalar_string,
-    set_attr, set_class, set_symbol_attr, string_vector, temporal_kind, write_numeric_value,
-    NumericKind, ProtectGuard, RLen, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP,
-    LGLSXP, LOGICAL, REAL, REALSXP, R_ClassSymbol, R_NaInt, R_NaReal, R_NaString,
-    R_NamesSymbol, R_RowNamesSymbol, SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT,
-    STRSXP, VECSXP,
+    attach_variable_attributes, boundary, check_interrupt, coarse_interrupt, direct_r_missing_code,
+    fill_string_region, label_attribute, missing_from_code, numeric_altrep_storage, observed_value,
+    poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
+    string_vector, temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen,
+    RNumericData, RStringData, R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol,
+    R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL,
+    REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
 };
 
 /// One column handed from C for `save_arrow()`. Field meanings depend on
@@ -204,10 +204,7 @@ unsafe fn int_slice<'a>(
 }
 
 /// Classify every value of an R double column, rejecting invalid NaNs.
-fn classify_doubles(
-    values: &[f64],
-    name: &str,
-) -> Result<(Vec<c_int>, bool), String> {
+fn classify_doubles(values: &[f64], name: &str) -> Result<(Vec<c_int>, bool), String> {
     let mut codes = Vec::new();
     codes
         .try_reserve_exact(values.len())
@@ -247,10 +244,7 @@ fn r_semantics(class: &str) -> Option<ArrowRSemantics> {
     })
 }
 
-fn base_field_document(
-    label: &str,
-    format: &str,
-) -> ArrowFieldDocument {
+fn base_field_document(label: &str, format: &str) -> ArrowFieldDocument {
     ArrowFieldDocument {
         version: 0,
         label: label.to_owned(),
@@ -322,38 +316,39 @@ fn encode_profiled_column(
         };
         encoded.push(encode_numeric(&dta_type, source));
     }
-    let array: ArrayRef = match storage {
-        StataStorage::Byte => Arc::new(Int8Array::from_iter_values(encoded.iter().map(
-            |value| match value {
-                DtaWriteRawNumericValue::Byte(value) => *value,
-                _ => unreachable!("byte column encodes bytes"),
-            },
-        ))),
-        StataStorage::Int => Arc::new(Int16Array::from_iter_values(encoded.iter().map(
-            |value| match value {
-                DtaWriteRawNumericValue::Int(value) => *value,
-                _ => unreachable!("int column encodes ints"),
-            },
-        ))),
-        StataStorage::Long => Arc::new(Int32Array::from_iter_values(encoded.iter().map(
-            |value| match value {
-                DtaWriteRawNumericValue::Long(value) => *value,
-                _ => unreachable!("long column encodes longs"),
-            },
-        ))),
-        StataStorage::Float => Arc::new(Float32Array::from_iter_values(encoded.iter().map(
-            |value| match value {
-                DtaWriteRawNumericValue::Float(value) => *value,
-                _ => unreachable!("float column encodes floats"),
-            },
-        ))),
-        StataStorage::Double => Arc::new(Float64Array::from_iter_values(encoded.iter().map(
-            |value| match value {
-                DtaWriteRawNumericValue::Double(value) => *value,
-                _ => unreachable!("double column encodes doubles"),
-            },
-        ))),
-    };
+    let array: ArrayRef =
+        match storage {
+            StataStorage::Byte => Arc::new(Int8Array::from_iter_values(encoded.iter().map(
+                |value| match value {
+                    DtaWriteRawNumericValue::Byte(value) => *value,
+                    _ => unreachable!("byte column encodes bytes"),
+                },
+            ))),
+            StataStorage::Int => Arc::new(Int16Array::from_iter_values(encoded.iter().map(
+                |value| match value {
+                    DtaWriteRawNumericValue::Int(value) => *value,
+                    _ => unreachable!("int column encodes ints"),
+                },
+            ))),
+            StataStorage::Long => Arc::new(Int32Array::from_iter_values(encoded.iter().map(
+                |value| match value {
+                    DtaWriteRawNumericValue::Long(value) => *value,
+                    _ => unreachable!("long column encodes longs"),
+                },
+            ))),
+            StataStorage::Float => Arc::new(Float32Array::from_iter_values(encoded.iter().map(
+                |value| match value {
+                    DtaWriteRawNumericValue::Float(value) => *value,
+                    _ => unreachable!("float column encodes floats"),
+                },
+            ))),
+            StataStorage::Double => Arc::new(Float64Array::from_iter_values(encoded.iter().map(
+                |value| match value {
+                    DtaWriteRawNumericValue::Double(value) => *value,
+                    _ => unreachable!("double column encodes doubles"),
+                },
+            ))),
+        };
     let _ = name;
     Ok((array, replacements))
 }
@@ -467,8 +462,7 @@ unsafe fn value_label_table(
                 label,
             },
             None => {
-                if code.fract() != 0.0 || code < f64::from(i32::MIN) || code > f64::from(i32::MAX)
-                {
+                if code.fract() != 0.0 || code < f64::from(i32::MIN) || code > f64::from(i32::MAX) {
                     return Err(format!(
                         "column `{name}` has a non-integer value-label code"
                     ));
@@ -501,9 +495,7 @@ unsafe fn plan_column(
     let value_labels = value_label_table(descriptor, &name)?;
 
     let base_document = base_field_document(&label, &format);
-    let needs_document = |document: &ArrowFieldDocument| {
-        *document != ArrowFieldDocument::default()
-    };
+    let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
     let with_labels = |mut document: ArrowFieldDocument| {
         if value_labels.is_some() {
             document.value_labels = Some(name.clone());
@@ -570,9 +562,7 @@ unsafe fn plan_column(
             if has_tags || value_labels.is_some() {
                 // Tagged NAs and haven labels need bit-exact NaN payloads.
                 let (mut field, array) = payload_double_column(values, document, class);
-                if let Some(semantics) =
-                    field.as_mut().and_then(|document| document.r.as_mut())
-                {
+                if let Some(semantics) = field.as_mut().and_then(|document| document.r.as_mut()) {
                     if kind == RArrowKind::Datetime {
                         semantics.tz = Some(tz.clone());
                     } else if kind == RArrowKind::Difftime {
@@ -584,19 +574,11 @@ unsafe fn plan_column(
                 match kind {
                     RArrowKind::Double => {
                         let array = semantic_double_array(values, &codes);
-                        (
-                            needs_document(&document).then_some(document),
-                            array,
-                            0,
-                        )
+                        (needs_document(&document).then_some(document), array, 0)
                     }
                     RArrowKind::Date => date32_or_fallback(values, &codes, document),
-                    RArrowKind::Datetime => {
-                        timestamp_or_fallback(values, &codes, document, &tz)
-                    }
-                    RArrowKind::Difftime => {
-                        duration_or_fallback(values, &codes, document, &units)
-                    }
+                    RArrowKind::Datetime => timestamp_or_fallback(values, &codes, document, &tz),
+                    RArrowKind::Difftime => duration_or_fallback(values, &codes, document, &units),
                     _ => unreachable!("double kinds"),
                 }
             }
@@ -614,8 +596,7 @@ unsafe fn plan_column(
             if descriptor.values.is_null() {
                 return Err("native Arrow column data pointer is null".to_owned());
             }
-            let values =
-                std::slice::from_raw_parts(descriptor.values.cast::<u8>(), row_count);
+            let values = std::slice::from_raw_parts(descriptor.values.cast::<u8>(), row_count);
             let array = UInt8Array::from_iter_values(values.iter().copied());
             let mut document = with_labels(base_document);
             document.r = r_semantics("raw");
@@ -623,11 +604,8 @@ unsafe fn plan_column(
         }
         RArrowKind::Factor => {
             let codes = int_slice(descriptor, row_count)?;
-            let levels = read_strings(
-                descriptor.strings,
-                descriptor.string_count,
-                "factor levels",
-            )?;
+            let levels =
+                read_strings(descriptor.strings, descriptor.string_count, "factor levels")?;
             let mut builder = Int32Builder::with_capacity(row_count);
             for (index, &code) in codes.iter().enumerate() {
                 poll_interrupt(index)?;
@@ -663,22 +641,19 @@ unsafe fn plan_column(
         }
         RArrowKind::StataNumeric => {
             let storage = storage_from_code(descriptor.storage)?;
-            let (array, storage, temporal, replacements) =
-                if descriptor.compact_values.is_null() {
-                    let storage = storage.ok_or_else(|| {
-                        format!("column `{name}` has no declared Stata storage")
-                    })?;
-                    let values = double_slice(descriptor, row_count)?;
-                    let (codes, _) = classify_doubles(values, &name)?;
-                    let temporal = temporal_kind(&format);
-                    let (array, replacements) =
-                        encode_profiled_column(&name, storage, temporal, values, &codes)?;
-                    (array, storage, temporal, replacements)
-                } else {
-                    let (array, storage, temporal) =
-                        compact_profiled_column(descriptor, row_count)?;
-                    (array, storage, temporal, 0)
-                };
+            let (array, storage, temporal, replacements) = if descriptor.compact_values.is_null() {
+                let storage = storage
+                    .ok_or_else(|| format!("column `{name}` has no declared Stata storage"))?;
+                let values = double_slice(descriptor, row_count)?;
+                let (codes, _) = classify_doubles(values, &name)?;
+                let temporal = temporal_kind(&format);
+                let (array, replacements) =
+                    encode_profiled_column(&name, storage, temporal, values, &codes)?;
+                (array, storage, temporal, replacements)
+            } else {
+                let (array, storage, temporal) = compact_profiled_column(descriptor, row_count)?;
+                (array, storage, temporal, 0)
+            };
             let _ = temporal;
             let mut document = with_labels(base_document);
             document.storage = Some(storage);
@@ -757,12 +732,10 @@ fn timestamp_or_fallback(
         .zip(codes)
         .all(|(&value, &code)| code == 0 || to_micros(value).is_some());
     if exact {
-        let array = TimestampMicrosecondArray::from_iter(values.iter().zip(codes).map(
-            |(&value, &code)| {
-                (code != 0)
-                    .then(|| to_micros(value).expect("checked above"))
-            },
-        ));
+        let array =
+            TimestampMicrosecondArray::from_iter(values.iter().zip(codes).map(
+                |(&value, &code)| (code != 0).then(|| to_micros(value).expect("checked above")),
+            ));
         let array = if tz.is_empty() {
             array.with_timezone_utc()
         } else {
@@ -991,9 +964,11 @@ unsafe fn attach_simple_attributes(
 
 /// The synthesized VariableInfo used to reuse the DTA attribute logic for
 /// profiled columns.
-fn profiled_variable(name: &str, attributes: &ColumnAttributes<'_>, storage: StataStorage)
-    -> VariableInfo
-{
+fn profiled_variable(
+    name: &str,
+    attributes: &ColumnAttributes<'_>,
+    storage: StataStorage,
+) -> VariableInfo {
     VariableInfo {
         name: name.to_owned(),
         dta_type: storage.dta_type(),
@@ -1013,7 +988,9 @@ fn chunk_error(name: &str) -> String {
     format!("column `{name}` has chunks of an unexpected Arrow type")
 }
 
-/// Iterate every (chunk, local index) pair of a column in row order.
+/// Iterate every (chunk, local index) pair of a column in row order. Never
+/// polls interrupts: fill closures may run off the R thread, so the
+/// coordinating thread polls between fill units instead.
 fn for_each_value<T: Array + 'static>(
     column: &ArrowReadColumn,
     mut visit: impl FnMut(usize, &T, usize) -> Result<(), String>,
@@ -1025,7 +1002,6 @@ fn for_each_value<T: Array + 'static>(
             .downcast_ref::<T>()
             .ok_or_else(|| chunk_error(&column.name))?;
         for index in 0..typed.len() {
-            poll_interrupt(row)?;
             visit(row, typed, index)?;
             row += 1;
         }
@@ -1033,114 +1009,350 @@ fn for_each_value<T: Array + 'static>(
     Ok(())
 }
 
-unsafe fn profiled_column_vector(
+/// How one Arrow column becomes an R vector. The shape drives all three
+/// phases of a read: the R storage the main thread allocates, the pure
+/// conversion that may run on a worker thread, and the ALTREP wrapping and
+/// attribute attachment the main thread applies afterwards.
+enum ColumnShape {
+    ProfiledDouble {
+        temporal: TemporalKind,
+    },
+    ProfiledCompact {
+        storage: StataStorage,
+    },
+    ProfiledEager {
+        storage: StataStorage,
+        temporal: TemporalKind,
+    },
+    Logical,
+    Integer,
+    Raw,
+    Strings {
+        has_nulls: bool,
+    },
+    Factor,
+    Date32,
+    Timestamp,
+    Duration,
+    PayloadDouble,
+    SemanticDouble,
+}
+
+fn classify_read_column(
     column: &ArrowReadColumn,
     attributes: &ColumnAttributes<'_>,
-    storage: StataStorage,
-    row_count: usize,
     numeric_altrep: bool,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    let temporal = temporal_kind(attributes.format());
-    if storage == StataStorage::Double {
-        // Raw Stata missing storage for doubles: classify the stored bits.
-        let vector = guard.alloc(REALSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-        let output = REAL(vector);
-        for_each_value::<Float64Array>(column, |row, values, index| {
-            let value = values.value(index);
-            *output.add(row) = match classify_double_missing_bits(value.to_bits()) {
-                Some(tag) => r_missing(tag),
-                None => observed_value(value, temporal),
-            };
-            Ok(())
-        })?;
-        return Ok(vector);
+) -> Result<ColumnShape, String> {
+    // Profiled columns with declared Stata storage reuse the DTA value
+    // mapping wholesale; raw Stata missing storage drives it.
+    if let Some(storage) = attributes.document.and_then(|document| document.storage) {
+        let temporal = temporal_kind(attributes.format());
+        return Ok(match storage {
+            StataStorage::Double => ColumnShape::ProfiledDouble { temporal },
+            _ if numeric_altrep => ColumnShape::ProfiledCompact { storage },
+            _ => ColumnShape::ProfiledEager { storage, temporal },
+        });
     }
-
-    if numeric_altrep {
-        let mut data = numeric_altrep_storage(
-            storage.dta_type(),
-            row_count,
-            temporal,
-            FormatVersion::V118,
-            guard,
-        )
-        .map_err(|error| error.to_string())?;
-        let mut no_na = true;
-        match storage {
-            StataStorage::Byte => for_each_value::<Int8Array>(column, |row, values, index| {
-                let value = values.value(index);
-                no_na &= classify_byte_missing_for_version(value, FormatVersion::V118).is_none();
-                data.values.add(row).cast::<i8>().write_unaligned(value);
-                Ok(())
-            })?,
-            StataStorage::Int => for_each_value::<Int16Array>(column, |row, values, index| {
-                let value = values.value(index);
-                no_na &= classify_int_missing_for_version(value, FormatVersion::V118).is_none();
-                data.values
-                    .add(row * 2)
-                    .cast::<i16>()
-                    .write_unaligned(value);
-                Ok(())
-            })?,
-            StataStorage::Long => for_each_value::<Int32Array>(column, |row, values, index| {
-                let value = values.value(index);
-                no_na &= classify_long_missing_for_version(value, FormatVersion::V118).is_none();
-                data.values
-                    .add(row * 4)
-                    .cast::<i32>()
-                    .write_unaligned(value);
-                Ok(())
-            })?,
-            StataStorage::Float => for_each_value::<Float32Array>(column, |row, values, index| {
-                let value = values.value(index);
-                no_na &= classify_float_missing_bits_for_version(
-                    value.to_bits(),
-                    FormatVersion::V118,
-                )
-                .is_none();
-                data.values
-                    .add(row * 4)
-                    .cast::<f32>()
-                    .write_unaligned(value);
-                Ok(())
-            })?,
-            StataStorage::Double => unreachable!("handled above"),
+    let class = attributes.class();
+    let payload = attributes.document.and_then(|document| document.missing)
+        == Some(ArrowMissingEncoding::Payload);
+    Ok(match &column.data_type {
+        DataType::Boolean => ColumnShape::Logical,
+        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::UInt8
+            if class != Some("raw") =>
+        {
+            ColumnShape::Integer
         }
-        data.no_na = no_na;
-        return guard.numeric(data);
-    }
+        DataType::UInt8 => ColumnShape::Raw,
+        DataType::Utf8 | DataType::LargeUtf8 => ColumnShape::Strings {
+            // The dictionary-string ALTREP class cannot represent
+            // `NA_character_`, so null-bearing columns materialize eagerly.
+            has_nulls: column.chunks.iter().any(|chunk| chunk.null_count() > 0),
+        },
+        DataType::Dictionary(_, _) => ColumnShape::Factor,
+        DataType::Date32 => ColumnShape::Date32,
+        DataType::Timestamp(_, _) => ColumnShape::Timestamp,
+        DataType::Duration(_) => ColumnShape::Duration,
+        DataType::Float64 if payload => ColumnShape::PayloadDouble,
+        DataType::Float32
+        | DataType::Float64
+        | DataType::Int64
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64 => ColumnShape::SemanticDouble,
+        other => {
+            return Err(format!(
+                "column `{}` has unsupported Arrow type {other}",
+                column.name
+            ))
+        }
+    })
+}
 
-    let vector = guard.alloc(REALSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = REAL(vector);
+/// The pure conversion for one column: raw output pointers plus the
+/// parameters the fill loop needs. The R vectors these pointers address were
+/// allocated and protected on the main thread before any worker starts, and
+/// fill code never calls the R API, so moving a fill to a worker thread and
+/// sharing it by reference is sound.
+enum ColumnFill {
+    ProfiledDouble {
+        output: *mut f64,
+        temporal: TemporalKind,
+    },
+    ProfiledCompact {
+        values: *mut u8,
+        kind: NumericKind,
+    },
+    ProfiledEager {
+        output: *mut f64,
+        storage: StataStorage,
+        temporal: TemporalKind,
+    },
+    Logical {
+        output: *mut c_int,
+    },
+    Integer {
+        output: *mut c_int,
+    },
+    Raw {
+        output: *mut u8,
+    },
+    DictStrings {
+        expected_rows: usize,
+    },
+    FactorCodes {
+        output: *mut c_int,
+    },
+    Date32 {
+        output: *mut f64,
+    },
+    Timestamp {
+        output: *mut f64,
+    },
+    Duration {
+        output: *mut f64,
+    },
+    PayloadDouble {
+        output: *mut f64,
+    },
+    SemanticDouble {
+        output: *mut f64,
+    },
+}
+
+unsafe impl Send for ColumnFill {}
+unsafe impl Sync for ColumnFill {}
+
+/// What a fill hands back to the main thread for finalization.
+enum FillOutcome {
+    Plain,
+    NoNa(bool),
+    Strings(RStringData),
+    Levels(Vec<String>),
+}
+
+unsafe impl Send for FillOutcome {}
+
+/// One planned output column: its shape, the eagerly allocated R vector when
+/// the shape has one, the compact ALTREP backing when it does not, and the
+/// fill left to run. Eager string columns have no fill; the main thread
+/// materializes them during finalization.
+struct PlannedColumn {
+    shape: ColumnShape,
+    vector: Sexp,
+    compact: Option<RNumericData>,
+    fill: Option<ColumnFill>,
+}
+
+unsafe fn plan_read_column(
+    column: &ArrowReadColumn,
+    shape: ColumnShape,
+    attributes: &ColumnAttributes<'_>,
+    row_count: usize,
+    guard: &mut ProtectGuard,
+) -> Result<PlannedColumn, String> {
+    let length = RLen::try_from(row_count).map_err(|_| "too long".to_owned())?;
+    let _ = column;
+    let (vector, compact, fill) = match &shape {
+        ColumnShape::ProfiledDouble { temporal } => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::ProfiledDouble {
+                output: REAL(vector),
+                temporal: *temporal,
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::ProfiledCompact { storage } => {
+            let data = numeric_altrep_storage(
+                storage.dta_type(),
+                row_count,
+                temporal_kind(attributes.format()),
+                FormatVersion::V118,
+                guard,
+            )
+            .map_err(|error| error.to_string())?;
+            let fill = ColumnFill::ProfiledCompact {
+                values: data.values,
+                kind: data.kind,
+            };
+            (ptr::null_mut(), Some(data), Some(fill))
+        }
+        ColumnShape::ProfiledEager { storage, temporal } => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::ProfiledEager {
+                output: REAL(vector),
+                storage: *storage,
+                temporal: *temporal,
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::Logical => {
+            let vector = guard.alloc(LGLSXP, length)?;
+            let fill = ColumnFill::Logical {
+                output: LOGICAL(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::Integer => {
+            let vector = guard.alloc(INTSXP, length)?;
+            let fill = ColumnFill::Integer {
+                output: INTEGER(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::Raw => {
+            let vector = guard.alloc(crate::RAWSXP, length)?;
+            let fill = ColumnFill::Raw {
+                output: crate::RAW(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::Strings { has_nulls: false } => (
+            ptr::null_mut(),
+            None,
+            Some(ColumnFill::DictStrings {
+                expected_rows: row_count,
+            }),
+        ),
+        ColumnShape::Strings { has_nulls: true } => (ptr::null_mut(), None, None),
+        ColumnShape::Factor => {
+            let vector = guard.alloc(INTSXP, length)?;
+            let fill = ColumnFill::FactorCodes {
+                output: INTEGER(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::Date32 => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::Date32 {
+                output: REAL(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::Timestamp => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::Timestamp {
+                output: REAL(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::Duration => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::Duration {
+                output: REAL(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::PayloadDouble => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::PayloadDouble {
+                output: REAL(vector),
+            };
+            (vector, None, Some(fill))
+        }
+        ColumnShape::SemanticDouble => {
+            let vector = guard.alloc(REALSXP, length)?;
+            let fill = ColumnFill::SemanticDouble {
+                output: REAL(vector),
+            };
+            (vector, None, Some(fill))
+        }
+    };
+    Ok(PlannedColumn {
+        shape,
+        vector,
+        compact,
+        fill,
+    })
+}
+
+unsafe fn fill_profiled_compact(
+    column: &ArrowReadColumn,
+    values: *mut u8,
+    kind: NumericKind,
+) -> Result<bool, String> {
+    let mut no_na = true;
+    match kind {
+        NumericKind::Byte => for_each_value::<Int8Array>(column, |row, array, index| {
+            let value = array.value(index);
+            no_na &= classify_byte_missing_for_version(value, FormatVersion::V118).is_none();
+            values.add(row).cast::<i8>().write_unaligned(value);
+            Ok(())
+        })?,
+        NumericKind::Int => for_each_value::<Int16Array>(column, |row, array, index| {
+            let value = array.value(index);
+            no_na &= classify_int_missing_for_version(value, FormatVersion::V118).is_none();
+            values.add(row * 2).cast::<i16>().write_unaligned(value);
+            Ok(())
+        })?,
+        NumericKind::Long => for_each_value::<Int32Array>(column, |row, array, index| {
+            let value = array.value(index);
+            no_na &= classify_long_missing_for_version(value, FormatVersion::V118).is_none();
+            values.add(row * 4).cast::<i32>().write_unaligned(value);
+            Ok(())
+        })?,
+        NumericKind::Float => for_each_value::<Float32Array>(column, |row, array, index| {
+            let value = array.value(index);
+            no_na &= classify_float_missing_bits_for_version(value.to_bits(), FormatVersion::V118)
+                .is_none();
+            values.add(row * 4).cast::<f32>().write_unaligned(value);
+            Ok(())
+        })?,
+    }
+    Ok(no_na)
+}
+
+unsafe fn fill_profiled_eager(
+    column: &ArrowReadColumn,
+    output: *mut f64,
+    storage: StataStorage,
+    temporal: TemporalKind,
+) -> Result<(), String> {
     match storage {
         StataStorage::Byte => for_each_value::<Int8Array>(column, |row, values, index| {
             let value = values.value(index);
-            *output.add(row) = match classify_byte_missing_for_version(value, FormatVersion::V118)
-            {
+            *output.add(row) = match classify_byte_missing_for_version(value, FormatVersion::V118) {
                 Some(tag) => r_missing(tag),
                 None => observed_value(f64::from(value), temporal),
             };
             Ok(())
-        })?,
+        }),
         StataStorage::Int => for_each_value::<Int16Array>(column, |row, values, index| {
             let value = values.value(index);
-            *output.add(row) = match classify_int_missing_for_version(value, FormatVersion::V118)
-            {
+            *output.add(row) = match classify_int_missing_for_version(value, FormatVersion::V118) {
                 Some(tag) => r_missing(tag),
                 None => observed_value(f64::from(value), temporal),
             };
             Ok(())
-        })?,
+        }),
         StataStorage::Long => for_each_value::<Int32Array>(column, |row, values, index| {
             let value = values.value(index);
-            *output.add(row) = match classify_long_missing_for_version(value, FormatVersion::V118)
-            {
+            *output.add(row) = match classify_long_missing_for_version(value, FormatVersion::V118) {
                 Some(tag) => r_missing(tag),
                 None => observed_value(f64::from(value), temporal),
             };
             Ok(())
-        })?,
+        }),
         StataStorage::Float => for_each_value::<Float32Array>(column, |row, values, index| {
             let value = values.value(index);
             *output.add(row) =
@@ -1150,99 +1362,66 @@ unsafe fn profiled_column_vector(
                     None => observed_value(f64::from(value), temporal),
                 };
             Ok(())
-        })?,
-        StataStorage::Double => unreachable!("handled above"),
+        }),
+        StataStorage::Double => Err(chunk_error(&column.name)),
     }
-    Ok(vector)
 }
 
-unsafe fn double_vector_from<F>(
-    column: &ArrowReadColumn,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-    convert: F,
-) -> Result<Sexp, String>
-where
-    F: Fn(f64) -> f64,
-{
-    let vector = guard.alloc(REALSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = REAL(vector);
+unsafe fn fill_semantic_double(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
     match column.data_type {
         DataType::Float64 => for_each_value::<Float64Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                convert(values.value(index))
+                values.value(index)
             };
             Ok(())
-        })?,
+        }),
         DataType::Float32 => for_each_value::<Float32Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                convert(f64::from(values.value(index)))
+                f64::from(values.value(index))
             };
             Ok(())
-        })?,
+        }),
         DataType::Int64 => for_each_value::<Int64Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                convert(values.value(index) as f64)
+                values.value(index) as f64
             };
             Ok(())
-        })?,
+        }),
         DataType::UInt16 => for_each_value::<UInt16Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                convert(f64::from(values.value(index)))
+                f64::from(values.value(index))
             };
             Ok(())
-        })?,
+        }),
         DataType::UInt32 => for_each_value::<UInt32Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                convert(f64::from(values.value(index)))
+                f64::from(values.value(index))
             };
             Ok(())
-        })?,
+        }),
         DataType::UInt64 => for_each_value::<UInt64Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaReal
             } else {
-                convert(values.value(index) as f64)
+                values.value(index) as f64
             };
             Ok(())
-        })?,
-        _ => return Err(chunk_error(&column.name)),
+        }),
+        _ => Err(chunk_error(&column.name)),
     }
-    Ok(vector)
 }
 
-unsafe fn payload_double_vector(
-    column: &ArrowReadColumn,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    let vector = guard.alloc(REALSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = REAL(vector);
-    for_each_value::<Float64Array>(column, |row, values, index| {
-        // Bit-exact: tagged NAs and NaN payloads pass through unchanged.
-        *output.add(row) = values.value(index);
-        Ok(())
-    })?;
-    Ok(vector)
-}
-
-unsafe fn integer_vector(
-    column: &ArrowReadColumn,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    let vector = guard.alloc(INTSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = INTEGER(vector);
+unsafe fn fill_integer(column: &ArrowReadColumn, output: *mut c_int) -> Result<(), String> {
     match column.data_type {
         DataType::Int32 => for_each_value::<Int32Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
@@ -1251,7 +1430,7 @@ unsafe fn integer_vector(
                 values.value(index)
             };
             Ok(())
-        })?,
+        }),
         DataType::Int8 => for_each_value::<Int8Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaInt
@@ -1259,7 +1438,7 @@ unsafe fn integer_vector(
                 c_int::from(values.value(index))
             };
             Ok(())
-        })?,
+        }),
         DataType::Int16 => for_each_value::<Int16Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaInt
@@ -1267,7 +1446,7 @@ unsafe fn integer_vector(
                 c_int::from(values.value(index))
             };
             Ok(())
-        })?,
+        }),
         DataType::UInt8 => for_each_value::<UInt8Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaInt
@@ -1275,19 +1454,12 @@ unsafe fn integer_vector(
                 c_int::from(values.value(index))
             };
             Ok(())
-        })?,
-        _ => return Err(chunk_error(&column.name)),
+        }),
+        _ => Err(chunk_error(&column.name)),
     }
-    Ok(vector)
 }
 
-unsafe fn logical_vector(
-    column: &ArrowReadColumn,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    let vector = guard.alloc(LGLSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = LOGICAL(vector);
+unsafe fn fill_logical(column: &ArrowReadColumn, output: *mut c_int) -> Result<(), String> {
     for_each_value::<BooleanArray>(column, |row, values, index| {
         *output.add(row) = if values.is_null(index) {
             R_NaInt
@@ -1295,10 +1467,66 @@ unsafe fn logical_vector(
             c_int::from(values.value(index))
         };
         Ok(())
-    })?;
-    Ok(vector)
+    })
 }
 
+unsafe fn fill_raw(column: &ArrowReadColumn, output: *mut u8) -> Result<(), String> {
+    for_each_value::<UInt8Array>(column, |row, values, index| {
+        if values.is_null(index) {
+            return Err(format!(
+                "column `{}` maps to an R raw vector but contains nulls",
+                column.name
+            ));
+        }
+        *output.add(row) = values.value(index);
+        Ok(())
+    })
+}
+
+unsafe fn fill_payload_double(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
+    for_each_value::<Float64Array>(column, |row, values, index| {
+        // Bit-exact: tagged NAs and NaN payloads pass through unchanged.
+        *output.add(row) = values.value(index);
+        Ok(())
+    })
+}
+
+unsafe fn fill_date32(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
+    for_each_value::<Date32Array>(column, |row, values, index| {
+        *output.add(row) = if values.is_null(index) {
+            R_NaReal
+        } else {
+            f64::from(values.value(index))
+        };
+        Ok(())
+    })
+}
+
+/// Deduplicate a null-free string column into the dictionary that backs the
+/// deferred string ALTREP class.
+fn fill_dict_strings(
+    column: &ArrowReadColumn,
+    expected_rows: usize,
+) -> Result<RStringData, String> {
+    let mut data = RStringData::new(expected_rows).map_err(|error| error.to_string())?;
+    match column.data_type {
+        DataType::Utf8 => for_each_value::<StringArray>(column, |row, values, index| {
+            data.push(row, values.value(index))
+                .map_err(|error| error.to_string())
+        })?,
+        DataType::LargeUtf8 => {
+            for_each_value::<arrow_array::LargeStringArray>(column, |row, values, index| {
+                data.push(row, values.value(index))
+                    .map_err(|error| error.to_string())
+            })?
+        }
+        _ => return Err(chunk_error(&column.name)),
+    }
+    Ok(data)
+}
+
+/// Eager string materialization for columns holding `NA_character_`. Main
+/// thread only: it creates CHARSXPs, so it may poll interrupts.
 unsafe fn character_vector(
     column: &ArrowReadColumn,
     row_count: usize,
@@ -1307,6 +1535,7 @@ unsafe fn character_vector(
     let vector = guard.alloc(STRSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
     match column.data_type {
         DataType::Utf8 => for_each_value::<StringArray>(column, |row, values, index| {
+            poll_interrupt(row)?;
             if values.is_null(index) {
                 SET_STRING_ELT(vector, row as RLen, R_NaString);
             } else {
@@ -1316,6 +1545,7 @@ unsafe fn character_vector(
         })?,
         DataType::LargeUtf8 => {
             for_each_value::<arrow_array::LargeStringArray>(column, |row, values, index| {
+                poll_interrupt(row)?;
                 if values.is_null(index) {
                     SET_STRING_ELT(vector, row as RLen, R_NaString);
                 } else {
@@ -1329,37 +1559,10 @@ unsafe fn character_vector(
     Ok(vector)
 }
 
-unsafe fn raw_vector(
+unsafe fn fill_factor_codes(
     column: &ArrowReadColumn,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    let vector = guard.alloc(
-        crate::RAWSXP,
-        RLen::try_from(row_count).map_err(|_| "too long")?,
-    )?;
-    let output = crate::RAW(vector);
-    for_each_value::<UInt8Array>(column, |row, values, index| {
-        if values.is_null(index) {
-            return Err(format!(
-                "column `{}` maps to an R raw vector but contains nulls",
-                column.name
-            ));
-        }
-        *output.add(row) = values.value(index);
-        Ok(())
-    })?;
-    Ok(vector)
-}
-
-unsafe fn factor_vector(
-    column: &ArrowReadColumn,
-    attributes: &ColumnAttributes<'_>,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    let vector = guard.alloc(INTSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = INTEGER(vector);
+    output: *mut c_int,
+) -> Result<Vec<String>, String> {
     let mut levels: Option<Vec<String>> = None;
     let mut row = 0_usize;
     for chunk in &column.chunks {
@@ -1377,10 +1580,7 @@ unsafe fn factor_vector(
                 (0..values.len())
                     .map(|index| {
                         if values.is_null(index) {
-                            Err(format!(
-                                "column `{}` has a null factor level",
-                                column.name
-                            ))
+                            Err(format!("column `{}` has a null factor level", column.name))
                         } else {
                             Ok(values.value(index).to_owned())
                         }
@@ -1396,10 +1596,7 @@ unsafe fn factor_vector(
                 (0..values.len())
                     .map(|index| {
                         if values.is_null(index) {
-                            Err(format!(
-                                "column `{}` has a null factor level",
-                                column.name
-                            ))
+                            Err(format!("column `{}` has a null factor level", column.name))
                         } else {
                             Ok(values.value(index).to_owned())
                         }
@@ -1420,7 +1617,6 @@ unsafe fn factor_vector(
         }
         let keys = dictionary.keys();
         for index in 0..keys.len() {
-            poll_interrupt(row)?;
             *output.add(row) = if keys.is_null(index) {
                 R_NaInt
             } else {
@@ -1429,19 +1625,7 @@ unsafe fn factor_vector(
             row += 1;
         }
     }
-    let levels = levels.unwrap_or_default();
-    let level_vector = string_vector(&levels, guard)?;
-    set_attr(vector, "levels", level_vector)?;
-    let ordered = attributes
-        .semantics()
-        .and_then(|semantics| semantics.ordered)
-        .unwrap_or(false);
-    if ordered {
-        set_class(vector, &["ordered", "factor"], guard)?;
-    } else {
-        set_class(vector, &["factor"], guard)?;
-    }
-    Ok(vector)
+    Ok(levels.unwrap_or_default())
 }
 
 const MICROS_PER_SECOND: f64 = 1_000_000.0;
@@ -1455,18 +1639,11 @@ fn timestamp_scale(unit: &TimeUnit) -> f64 {
     }
 }
 
-unsafe fn timestamp_vector(
-    column: &ArrowReadColumn,
-    attributes: &ColumnAttributes<'_>,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    let DataType::Timestamp(unit, type_tz) = &column.data_type else {
+unsafe fn fill_timestamp(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
+    let DataType::Timestamp(unit, _) = &column.data_type else {
         return Err(chunk_error(&column.name));
     };
     let scale = timestamp_scale(unit);
-    let vector = guard.alloc(REALSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = REAL(vector);
     macro_rules! fill {
         ($array:ty) => {
             for_each_value::<$array>(column, |row, values, index| {
@@ -1485,30 +1662,14 @@ unsafe fn timestamp_vector(
         TimeUnit::Microsecond => fill!(TimestampMicrosecondArray),
         TimeUnit::Nanosecond => fill!(arrow_array::TimestampNanosecondArray),
     }
-    set_class(vector, &["POSIXct", "POSIXt"], guard)?;
-    let tz = attributes
-        .semantics()
-        .and_then(|semantics| semantics.tz.as_deref())
-        .filter(|tz| !tz.is_empty())
-        .or(type_tz.as_deref())
-        .unwrap_or("UTC");
-    let timezone = scalar_string(tz, guard)?;
-    set_attr(vector, "tzone", timezone)?;
-    Ok(vector)
+    Ok(())
 }
 
-unsafe fn duration_vector(
-    column: &ArrowReadColumn,
-    attributes: &ColumnAttributes<'_>,
-    row_count: usize,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
+unsafe fn fill_duration(column: &ArrowReadColumn, output: *mut f64) -> Result<(), String> {
     let DataType::Duration(unit) = &column.data_type else {
         return Err(chunk_error(&column.name));
     };
     let scale = timestamp_scale(unit);
-    let vector = guard.alloc(REALSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-    let output = REAL(vector);
     macro_rules! fill {
         ($array:ty) => {
             for_each_value::<$array>(column, |row, values, index| {
@@ -1527,7 +1688,196 @@ unsafe fn duration_vector(
         TimeUnit::Microsecond => fill!(arrow_array::DurationMicrosecondArray),
         TimeUnit::Nanosecond => fill!(DurationNanosecondArray),
     }
-    apply_difftime_attributes(vector, attributes, guard)
+    Ok(())
+}
+
+/// Run one column's pure conversion. Callable from any thread: it writes
+/// through pre-allocated pointers and builds Rust-owned dictionaries, never
+/// touching the R API.
+unsafe fn fill_read_column(
+    column: &ArrowReadColumn,
+    fill: &ColumnFill,
+) -> Result<FillOutcome, String> {
+    match fill {
+        ColumnFill::ProfiledDouble { output, temporal } => {
+            let (output, temporal) = (*output, *temporal);
+            // Raw Stata missing storage for doubles: classify the stored bits.
+            for_each_value::<Float64Array>(column, |row, values, index| {
+                let value = values.value(index);
+                *output.add(row) = match classify_double_missing_bits(value.to_bits()) {
+                    Some(tag) => r_missing(tag),
+                    None => observed_value(value, temporal),
+                };
+                Ok(())
+            })?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::ProfiledCompact { values, kind } => Ok(FillOutcome::NoNa(
+            fill_profiled_compact(column, *values, *kind)?,
+        )),
+        ColumnFill::ProfiledEager {
+            output,
+            storage,
+            temporal,
+        } => {
+            fill_profiled_eager(column, *output, *storage, *temporal)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::Logical { output } => {
+            fill_logical(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::Integer { output } => {
+            fill_integer(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::Raw { output } => {
+            fill_raw(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::DictStrings { expected_rows } => Ok(FillOutcome::Strings(fill_dict_strings(
+            column,
+            *expected_rows,
+        )?)),
+        ColumnFill::FactorCodes { output } => {
+            Ok(FillOutcome::Levels(fill_factor_codes(column, *output)?))
+        }
+        ColumnFill::Date32 { output } => {
+            fill_date32(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::Timestamp { output } => {
+            fill_timestamp(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::Duration { output } => {
+            fill_duration(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::PayloadDouble { output } => {
+            fill_payload_double(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+        ColumnFill::SemanticDouble { output } => {
+            fill_semantic_double(column, *output)?;
+            Ok(FillOutcome::Plain)
+        }
+    }
+}
+
+// Automatic-parallelism thresholds for the fill phase, matching the DTA
+// reader's policy.
+const MIN_PARALLEL_FILL_CELLS: u64 = 1_000_000;
+const MAX_AUTOMATIC_FILL_THREADS: usize = 8;
+
+fn fill_thread_count(requested: usize, task_count: usize, row_count: usize) -> usize {
+    if requested == 1 || task_count < 2 {
+        return 1;
+    }
+    let cells = (row_count as u64).saturating_mul(task_count as u64);
+    if requested == 0 && cells < MIN_PARALLEL_FILL_CELLS {
+        return 1;
+    }
+    let available = thread::available_parallelism().map_or(1, usize::from);
+    let threads = if requested == 0 {
+        available.min(MAX_AUTOMATIC_FILL_THREADS)
+    } else {
+        requested.min(available)
+    };
+    threads.min(task_count).max(1)
+}
+
+/// Claim fill tasks from the shared queue. `poll` runs between tasks; on the
+/// R thread it checks interrupts, on workers it only observes the cancel
+/// flag set by the other loops.
+fn fill_task_loop(
+    columns: &[ArrowReadColumn],
+    tasks: &[(usize, ColumnFill)],
+    next: &AtomicUsize,
+    cancelled: &AtomicBool,
+    mut poll: impl FnMut() -> bool,
+) -> Result<Vec<(usize, FillOutcome)>, String> {
+    let mut results = Vec::new();
+    loop {
+        if poll() {
+            cancelled.store(true, Ordering::Relaxed);
+            return Err("Arrow read interrupted".to_owned());
+        }
+        if cancelled.load(Ordering::Relaxed) {
+            return Ok(results);
+        }
+        let task_index = next.fetch_add(1, Ordering::Relaxed);
+        let Some((column_index, fill)) = tasks.get(task_index) else {
+            return Ok(results);
+        };
+        match unsafe { fill_read_column(&columns[*column_index], fill) } {
+            Ok(outcome) => results.push((*column_index, outcome)),
+            Err(error) => {
+                cancelled.store(true, Ordering::Relaxed);
+                return Err(error);
+            }
+        }
+    }
+}
+
+/// Run every planned fill, in parallel when `threads` allows it. The R
+/// thread participates in the queue and is the only one polling interrupts.
+fn run_column_fills(
+    columns: &[ArrowReadColumn],
+    fills: Vec<Option<ColumnFill>>,
+    threads: usize,
+) -> Result<Vec<FillOutcome>, String> {
+    let mut outcomes: Vec<FillOutcome> = fills.iter().map(|_| FillOutcome::Plain).collect();
+    if threads <= 1 {
+        for (index, fill) in fills.into_iter().enumerate() {
+            let Some(fill) = fill else { continue };
+            check_interrupt()?;
+            outcomes[index] = unsafe { fill_read_column(&columns[index], &fill) }?;
+        }
+        return Ok(outcomes);
+    }
+    let tasks: Vec<(usize, ColumnFill)> = fills
+        .into_iter()
+        .enumerate()
+        .filter_map(|(index, fill)| fill.map(|fill| (index, fill)))
+        .collect();
+    let next = AtomicUsize::new(0);
+    let cancelled = AtomicBool::new(false);
+    let (own_result, worker_results) = thread::scope(|scope| {
+        let handles: Vec<_> = (1..threads)
+            .map(|_| {
+                let tasks = &tasks;
+                let next = &next;
+                let cancelled = &cancelled;
+                scope.spawn(move || fill_task_loop(columns, tasks, next, cancelled, || false))
+            })
+            .collect();
+        let own = fill_task_loop(columns, &tasks, &next, &cancelled, coarse_interrupt);
+        if own.is_err() {
+            cancelled.store(true, Ordering::Relaxed);
+        }
+        let worker_results: Vec<_> = handles
+            .into_iter()
+            .map(|handle| {
+                handle
+                    .join()
+                    .unwrap_or_else(|_| Err("an Arrow fill worker panicked".to_owned()))
+            })
+            .collect();
+        (own, worker_results)
+    });
+    let mut store = |results: Vec<(usize, FillOutcome)>| {
+        for (index, outcome) in results {
+            outcomes[index] = outcome;
+        }
+    };
+    // Surface the R thread's error (interrupts included) first, then any
+    // worker error.
+    store(own_result?);
+    for result in worker_results {
+        store(result?);
+    }
+    Ok(outcomes)
 }
 
 unsafe fn apply_difftime_attributes(
@@ -1557,142 +1907,141 @@ unsafe fn labelled_double_attributes(
     Ok(())
 }
 
-unsafe fn build_read_column(
+/// The declared-class attributes shared by payload and semantic doubles.
+unsafe fn apply_double_class(
+    vector: Sexp,
+    attributes: &ColumnAttributes<'_>,
+    guard: &mut ProtectGuard,
+) -> Result<(), String> {
+    match attributes.class() {
+        Some("Date") => set_class(vector, &["Date"], guard)?,
+        Some("POSIXct") => {
+            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
+            let tz = attributes
+                .semantics()
+                .and_then(|semantics| semantics.tz.as_deref())
+                .filter(|tz| !tz.is_empty())
+                .unwrap_or("UTC");
+            let timezone = scalar_string(tz, guard)?;
+            set_attr(vector, "tzone", timezone)?;
+        }
+        Some("difftime") => {
+            apply_difftime_attributes(vector, attributes, guard)?;
+        }
+        _ => {}
+    }
+    if let Some(table) = attributes.value_label_table() {
+        labelled_double_attributes(vector, &table, guard)?;
+    }
+    Ok(())
+}
+
+/// Turn one filled plan into the final R vector: wrap compact numerics and
+/// deferred strings in their ALTREP classes, materialize null-bearing string
+/// columns eagerly, and attach classes and attributes. R main thread only.
+unsafe fn finalize_read_column(
     column: &ArrowReadColumn,
+    plan: PlannedColumn,
+    outcome: FillOutcome,
     dataset: Option<&DatasetDocument>,
     profiled: bool,
     row_count: usize,
-    numeric_altrep: bool,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
     let attributes = ColumnAttributes {
-        document: if profiled { column.field.as_ref() } else { None },
+        document: if profiled {
+            column.field.as_ref()
+        } else {
+            None
+        },
         dataset: if profiled { dataset } else { None },
     };
-
-    // Profiled columns with declared Stata storage reuse the DTA attribute
-    // logic wholesale; raw Stata missing storage drives the value mapping.
-    if let Some(storage) = attributes.document.and_then(|document| document.storage) {
-        let vector = profiled_column_vector(
-            column,
-            &attributes,
-            storage,
-            row_count,
-            numeric_altrep,
-            guard,
-        )?;
-        let variable = profiled_variable(&column.name, &attributes, storage);
-        let table = attributes.value_label_table();
-        attach_variable_attributes(vector, &variable, table.as_ref(), guard)?;
-        return Ok(vector);
-    }
-
-    let class = attributes.class();
-    let payload = attributes
-        .document
-        .and_then(|document| document.missing)
-        == Some(ArrowMissingEncoding::Payload);
-
-    let vector = match &column.data_type {
-        DataType::Boolean => logical_vector(column, row_count, guard)?,
-        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::UInt8
-            if class != Some("raw") =>
-        {
-            integer_vector(column, row_count, guard)?
+    let mismatch = || format!("column `{}` produced a mismatched fill result", column.name);
+    let vector = match &plan.shape {
+        ColumnShape::ProfiledCompact { .. } => {
+            let FillOutcome::NoNa(no_na) = outcome else {
+                return Err(mismatch());
+            };
+            let mut data = plan.compact.ok_or_else(mismatch)?;
+            data.no_na = no_na;
+            guard.numeric(data)?
         }
-        DataType::UInt8 => raw_vector(column, row_count, guard)?,
-        DataType::Utf8 | DataType::LargeUtf8 => character_vector(column, row_count, guard)?,
-        DataType::Dictionary(_, _) => {
-            let vector = factor_vector(column, &attributes, row_count, guard)?;
-            attach_simple_attributes(vector, &attributes, guard)?;
-            return Ok(vector);
+        ColumnShape::Strings { has_nulls: false } => {
+            let FillOutcome::Strings(data) = outcome else {
+                return Err(mismatch());
+            };
+            guard.dictstring(data)?
         }
-        DataType::Date32 => {
-            let vector =
-                guard.alloc(REALSXP, RLen::try_from(row_count).map_err(|_| "too long")?)?;
-            let output = REAL(vector);
-            for_each_value::<Date32Array>(column, |row, values, index| {
-                *output.add(row) = if values.is_null(index) {
-                    R_NaReal
-                } else {
-                    f64::from(values.value(index))
-                };
-                Ok(())
-            })?;
-            set_class(vector, &["Date"], guard)?;
-            vector
-        }
-        DataType::Timestamp(_, _) => {
-            let vector = timestamp_vector(column, &attributes, row_count, guard)?;
-            attach_simple_attributes(vector, &attributes, guard)?;
-            return Ok(vector);
-        }
-        DataType::Duration(_) => {
-            let vector = duration_vector(column, &attributes, row_count, guard)?;
-            attach_simple_attributes(vector, &attributes, guard)?;
-            return Ok(vector);
-        }
-        DataType::Float64 if payload => {
-            let vector = payload_double_vector(column, row_count, guard)?;
-            match class {
-                Some("Date") => set_class(vector, &["Date"], guard)?,
-                Some("POSIXct") => {
-                    set_class(vector, &["POSIXct", "POSIXt"], guard)?;
-                    let tz = attributes
-                        .semantics()
-                        .and_then(|semantics| semantics.tz.as_deref())
-                        .filter(|tz| !tz.is_empty())
-                        .unwrap_or("UTC");
-                    let timezone = scalar_string(tz, guard)?;
-                    set_attr(vector, "tzone", timezone)?;
-                }
-                Some("difftime") => {
-                    apply_difftime_attributes(vector, &attributes, guard)?;
-                }
-                _ => {}
+        ColumnShape::Strings { has_nulls: true } => character_vector(column, row_count, guard)?,
+        ColumnShape::Factor => {
+            let FillOutcome::Levels(levels) = outcome else {
+                return Err(mismatch());
+            };
+            let level_vector = string_vector(&levels, guard)?;
+            set_attr(plan.vector, "levels", level_vector)?;
+            let ordered = attributes
+                .semantics()
+                .and_then(|semantics| semantics.ordered)
+                .unwrap_or(false);
+            if ordered {
+                set_class(plan.vector, &["ordered", "factor"], guard)?;
+            } else {
+                set_class(plan.vector, &["factor"], guard)?;
             }
-            if let Some(table) = attributes.value_label_table() {
-                labelled_double_attributes(vector, &table, guard)?;
-            }
-            vector
+            plan.vector
         }
-        DataType::Float32
-        | DataType::Float64
-        | DataType::Int64
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64 => {
-            let vector = double_vector_from(column, row_count, guard, |value| value)?;
-            match class {
-                Some("Date") => set_class(vector, &["Date"], guard)?,
-                Some("POSIXct") => {
-                    set_class(vector, &["POSIXct", "POSIXt"], guard)?;
-                    let tz = attributes
-                        .semantics()
-                        .and_then(|semantics| semantics.tz.as_deref())
-                        .filter(|tz| !tz.is_empty())
-                        .unwrap_or("UTC");
-                    let timezone = scalar_string(tz, guard)?;
-                    set_attr(vector, "tzone", timezone)?;
-                }
-                Some("difftime") => {
-                    apply_difftime_attributes(vector, &attributes, guard)?;
-                }
-                _ => {}
-            }
-            if let Some(table) = attributes.value_label_table() {
-                labelled_double_attributes(vector, &table, guard)?;
-            }
-            vector
-        }
-        other => {
-            return Err(format!(
-                "column `{}` has unsupported Arrow type {other}",
-                column.name
-            ))
-        }
+        _ => plan.vector,
     };
-    attach_simple_attributes(vector, &attributes, guard)?;
+    match &plan.shape {
+        // Profiled columns with declared Stata storage reuse the DTA
+        // attribute logic wholesale.
+        ColumnShape::ProfiledDouble { .. }
+        | ColumnShape::ProfiledCompact { .. }
+        | ColumnShape::ProfiledEager { .. } => {
+            let storage = attributes
+                .document
+                .and_then(|document| document.storage)
+                .ok_or_else(mismatch)?;
+            let variable = profiled_variable(&column.name, &attributes, storage);
+            let table = attributes.value_label_table();
+            attach_variable_attributes(vector, &variable, table.as_ref(), guard)?;
+        }
+        ColumnShape::Date32 => {
+            set_class(vector, &["Date"], guard)?;
+            attach_simple_attributes(vector, &attributes, guard)?;
+        }
+        ColumnShape::Timestamp => {
+            set_class(vector, &["POSIXct", "POSIXt"], guard)?;
+            let type_tz = match &column.data_type {
+                DataType::Timestamp(_, tz) => tz.as_deref(),
+                _ => None,
+            };
+            let tz = attributes
+                .semantics()
+                .and_then(|semantics| semantics.tz.as_deref())
+                .filter(|tz| !tz.is_empty())
+                .or(type_tz)
+                .unwrap_or("UTC");
+            let timezone = scalar_string(tz, guard)?;
+            set_attr(vector, "tzone", timezone)?;
+            attach_simple_attributes(vector, &attributes, guard)?;
+        }
+        ColumnShape::Duration => {
+            apply_difftime_attributes(vector, &attributes, guard)?;
+            attach_simple_attributes(vector, &attributes, guard)?;
+        }
+        ColumnShape::PayloadDouble | ColumnShape::SemanticDouble => {
+            apply_double_class(vector, &attributes, guard)?;
+            attach_simple_attributes(vector, &attributes, guard)?;
+        }
+        ColumnShape::Logical
+        | ColumnShape::Integer
+        | ColumnShape::Raw
+        | ColumnShape::Strings { .. }
+        | ColumnShape::Factor => {
+            attach_simple_attributes(vector, &attributes, guard)?;
+        }
+    }
     Ok(vector)
 }
 
@@ -1717,6 +2066,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     verify: c_int,
     profile: c_int,
     numeric_altrep: c_int,
+    requested_threads: c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, ptr::null_mut(), || {
@@ -1742,12 +2092,15 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             )
         };
         let (row_start, row_count) = row_window(skip, n_max);
+        let requested =
+            usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
         let options = ArrowReadOptions {
             columns: projection,
             row_start,
             row_count,
             verify: verify != 0,
             profile: profile != 0,
+            threads: requested,
         };
         let result = read_arrow_file(&path, &options, &mut coarse_interrupt)
             .map_err(|error| error.to_string())?;
@@ -1763,21 +2116,54 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             RLen::try_from(result.columns.len()).map_err(|_| "too many columns".to_owned())?;
         let frame = result_guard.alloc(VECSXP, column_total)?;
         let names = result_guard.alloc(STRSXP, column_total)?;
-        for (index, column) in result.columns.iter().enumerate() {
+
+        // Plan: allocate every output vector on the R thread so fills can
+        // run anywhere.
+        let mut plans = Vec::with_capacity(result.columns.len());
+        let mut fills = Vec::with_capacity(result.columns.len());
+        for column in &result.columns {
             check_interrupt()?;
-            {
-                let mut column_guard = ProtectGuard::new();
-                let vector = build_read_column(
-                    column,
-                    result.dataset.as_ref(),
-                    profiled,
-                    row_count,
-                    numeric_altrep != 0,
-                    &mut column_guard,
-                )?;
-                SET_VECTOR_ELT(frame, index as RLen, vector);
-                SET_STRING_ELT(names, index as RLen, r_char(&column.name)?);
-            }
+            let attributes = ColumnAttributes {
+                document: if profiled {
+                    column.field.as_ref()
+                } else {
+                    None
+                },
+                dataset: if profiled {
+                    result.dataset.as_ref()
+                } else {
+                    None
+                },
+            };
+            let shape = classify_read_column(column, &attributes, numeric_altrep != 0)?;
+            let mut plan =
+                plan_read_column(column, shape, &attributes, row_count, &mut result_guard)?;
+            fills.push(plan.fill.take());
+            plans.push(plan);
+        }
+
+        // Fill: pure conversions, in parallel when worthwhile.
+        let task_count = fills.iter().filter(|fill| fill.is_some()).count();
+        let threads = fill_thread_count(requested, task_count, row_count);
+        let outcomes = run_column_fills(&result.columns, fills, threads)?;
+
+        // Finalize on the R thread: ALTREP wrapping, classes, attributes.
+        for (index, ((column, plan), outcome)) in
+            result.columns.iter().zip(plans).zip(outcomes).enumerate()
+        {
+            check_interrupt()?;
+            let mut column_guard = ProtectGuard::new();
+            let vector = finalize_read_column(
+                column,
+                plan,
+                outcome,
+                result.dataset.as_ref(),
+                profiled,
+                row_count,
+                &mut column_guard,
+            )?;
+            SET_VECTOR_ELT(frame, index as RLen, vector);
+            SET_STRING_ELT(names, index as RLen, r_char(&column.name)?);
         }
         set_symbol_attr(frame, R_NamesSymbol, names)?;
 
@@ -1787,7 +2173,11 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             *INTEGER(row_names) = R_NaInt;
             *INTEGER(row_names).add(1) = -(row_count as c_int);
             set_symbol_attr(frame, R_RowNamesSymbol, row_names)?;
-            set_class(frame, &["tbl_df", "tbl", "data.frame"], &mut attribute_guard)?;
+            set_class(
+                frame,
+                &["tbl_df", "tbl", "data.frame"],
+                &mut attribute_guard,
+            )?;
         }
         let _ = R_ClassSymbol;
 

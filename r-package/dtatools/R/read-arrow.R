@@ -41,6 +41,10 @@
 #' @param use_numeric_altrep Whether profiled byte, int, long, and float
 #'   columns should retain their compact Stata storage through ALTREP. Set to
 #'   `FALSE` to create eager R double vectors while reading.
+#' @param threads Number of threads for record-batch decoding, checksum
+#'   verification, and column conversion. `0` (the default) chooses
+#'   automatically based on the input size and machine; `1` disables
+#'   parallelism.
 #' @return A tibble.
 #' @export
 read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
@@ -48,12 +52,14 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
                        .name_repair = "unique",
                        use_numeric_altrep = getOption(
                            "dtatools.numeric_altrep", TRUE
-                       )) {
+                       ),
+                       threads = getOption("dtatools.threads", 0L)) {
     selection <- rlang::enquo(col_select)
     row_window <- .normalize_row_window(skip, n_max)
     verify <- .normalize_arrow_read_flag(verify, "verify")
     profile <- .normalize_arrow_read_flag(profile, "profile")
     use_numeric_altrep <- .normalize_use_numeric_altrep(use_numeric_altrep)
+    threads <- .normalize_threads(threads)
 
     source <- .resolve_dta_source(
         file, fileext = ".arrow", implicit_extension = FALSE
@@ -82,7 +88,8 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         row_window$n_max,
         verify,
         profile,
-        use_numeric_altrep
+        use_numeric_altrep,
+        threads
     )
     if (!is.null(column_indices)) {
         names(native) <- selected_names

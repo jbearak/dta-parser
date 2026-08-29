@@ -109,8 +109,10 @@ fn offsets_hashes<O: ArrowNativeType + Into<i64>>(
     }
     let values = data.buffers()[1]
         .as_slice()
-        .get(usize::try_from(first).unwrap_or(usize::MAX)
-            ..usize::try_from(last).unwrap_or(usize::MAX))
+        .get(
+            usize::try_from(first).unwrap_or(usize::MAX)
+                ..usize::try_from(last).unwrap_or(usize::MAX),
+        )
         .ok_or_else(|| ArrowProfileError::Invalid("Arrow string buffer is too short".to_owned()))?;
     hashes.push(xxh64(values));
     Ok(())
