@@ -26,5 +26,6 @@ unicode-general-category = "1.1.0"
 zstd = "0.13"
 
 [dev-dependencies]
+flatbuffers = "25.12.19"
 serde_json = "1.0"
 sha2 = "0.10"

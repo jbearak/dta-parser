@@ -173,6 +173,88 @@ fn read_exact_at<R: Read + Seek>(
     Ok(())
 }
 
+fn valid_time_unit(unit: arrow_ipc::TimeUnit) -> bool {
+    matches!(
+        unit,
+        arrow_ipc::TimeUnit::SECOND
+            | arrow_ipc::TimeUnit::MILLISECOND
+            | arrow_ipc::TimeUnit::MICROSECOND
+            | arrow_ipc::TimeUnit::NANOSECOND
+    )
+}
+
+/// `arrow_ipc::convert::fb_to_schema` assumes every FlatBuffer enum and
+/// parameter is valid and panics otherwise. Validate the flat scalar types
+/// this reader supports before calling it so hostile files remain ordinary
+/// `InvalidFile` errors.
+fn validate_flatbuffer_field(field: arrow_ipc::Field<'_>) -> Result<(), ArrowProfileError> {
+    if let Some(dictionary) = field.dictionary() {
+        let index = dictionary
+            .indexType()
+            .ok_or_else(|| invalid("dictionary encoding has no index type"))?;
+        if !matches!(
+            (index.bitWidth(), index.is_signed()),
+            (8 | 16 | 32 | 64, true)
+        ) {
+            return Err(invalid("unsupported dictionary index type"));
+        }
+        if !matches!(
+            field.type_type(),
+            arrow_ipc::Type::Utf8 | arrow_ipc::Type::LargeUtf8
+        ) {
+            return Err(invalid("unsupported dictionary value type"));
+        }
+    }
+
+    match field.type_type() {
+        arrow_ipc::Type::Bool | arrow_ipc::Type::Utf8 | arrow_ipc::Type::LargeUtf8 => Ok(()),
+        arrow_ipc::Type::Int => {
+            let integer = field
+                .type_as_int()
+                .ok_or_else(|| invalid("integer field has no type parameters"))?;
+            matches!(integer.bitWidth(), 8 | 16 | 32 | 64)
+                .then_some(())
+                .ok_or_else(|| invalid("unsupported integer bit width"))
+        }
+        arrow_ipc::Type::FloatingPoint => {
+            let floating = field
+                .type_as_floating_point()
+                .ok_or_else(|| invalid("floating-point field has no type parameters"))?;
+            matches!(
+                floating.precision(),
+                arrow_ipc::Precision::SINGLE | arrow_ipc::Precision::DOUBLE
+            )
+            .then_some(())
+            .ok_or_else(|| invalid("unsupported floating-point precision"))
+        }
+        arrow_ipc::Type::Date => {
+            let date = field
+                .type_as_date()
+                .ok_or_else(|| invalid("date field has no type parameters"))?;
+            (date.unit() == arrow_ipc::DateUnit::DAY)
+                .then_some(())
+                .ok_or_else(|| invalid("unsupported date unit"))
+        }
+        arrow_ipc::Type::Timestamp => {
+            let timestamp = field
+                .type_as_timestamp()
+                .ok_or_else(|| invalid("timestamp field has no type parameters"))?;
+            valid_time_unit(timestamp.unit())
+                .then_some(())
+                .ok_or_else(|| invalid("unsupported timestamp unit"))
+        }
+        arrow_ipc::Type::Duration => {
+            let duration = field
+                .type_as_duration()
+                .ok_or_else(|| invalid("duration field has no type parameters"))?;
+            valid_time_unit(duration.unit())
+                .then_some(())
+                .ok_or_else(|| invalid("unsupported duration unit"))
+        }
+        other => Err(invalid(format!("unsupported Arrow field type {other:?}"))),
+    }
+}
+
 fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileError> {
     let file_length = reader.seek(SeekFrom::End(0))?;
     let mut head = [0_u8; 6];
@@ -205,11 +287,16 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
     if fb_schema.endianness() != arrow_ipc::Endianness::Little {
         return Err(invalid("big-endian Arrow files are not supported"));
     }
+    let fb_fields = fb_schema
+        .fields()
+        .ok_or_else(|| invalid("footer schema has no fields vector"))?;
+    for field in fb_fields {
+        validate_flatbuffer_field(field)?;
+    }
     let schema = arrow_ipc::convert::fb_to_schema(fb_schema);
 
     let mut layouts = Vec::with_capacity(schema.fields().len());
     let mut buffer = 0_usize;
-    let fb_fields = fb_schema.fields().unwrap_or_default();
     for (index, field) in schema.fields().iter().enumerate() {
         let buffer_count = buffer_count_for(field.data_type()).ok_or_else(|| {
             ArrowProfileError::UnsupportedColumn {
@@ -1645,7 +1732,58 @@ pub fn summarize_arrow_file(
 mod tests {
     use std::io::Cursor;
 
+    use flatbuffers::FlatBufferBuilder;
+
     use super::*;
+
+    #[test]
+    fn malformed_flatbuffer_field_types_are_rejected_without_panicking() {
+        let mut builder = FlatBufferBuilder::new();
+        let name = builder.create_string("broken");
+        let field = arrow_ipc::Field::create(
+            &mut builder,
+            &arrow_ipc::FieldArgs {
+                name: Some(name),
+                type_type: arrow_ipc::Type::NONE,
+                ..Default::default()
+            },
+        );
+        builder.finish(field, None);
+        let field = flatbuffers::root::<arrow_ipc::Field<'_>>(builder.finished_data())
+            .expect("the test field is a valid FlatBuffer");
+
+        let error =
+            validate_flatbuffer_field(field).expect_err("an absent field type must be rejected");
+        assert!(error
+            .to_string()
+            .contains("unsupported Arrow field type NONE"));
+
+        let mut builder = FlatBufferBuilder::new();
+        let name = builder.create_string("broken integer");
+        let integer = arrow_ipc::Int::create(
+            &mut builder,
+            &arrow_ipc::IntArgs {
+                bitWidth: 24,
+                is_signed: true,
+            },
+        );
+        let field = arrow_ipc::Field::create(
+            &mut builder,
+            &arrow_ipc::FieldArgs {
+                name: Some(name),
+                type_type: arrow_ipc::Type::Int,
+                type_: Some(integer.as_union_value()),
+                ..Default::default()
+            },
+        );
+        builder.finish(field, None);
+        let field = flatbuffers::root::<arrow_ipc::Field<'_>>(builder.finished_data())
+            .expect("the test integer field is a valid FlatBuffer");
+
+        let error = validate_flatbuffer_field(field)
+            .expect_err("an invalid integer width must be rejected");
+        assert!(error.to_string().contains("unsupported integer bit width"));
+    }
 
     #[test]
     fn oversized_uncompressed_buffer_is_rejected_before_allocation() {

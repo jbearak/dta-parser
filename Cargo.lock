@@ -258,6 +258,7 @@ dependencies = [
  "arrow-schema",
  "arrow-select",
  "encoding_rs",
+ "flatbuffers",
  "lz4_flex",
  "serde",
  "serde_json",
