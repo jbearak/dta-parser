@@ -12,6 +12,8 @@ declared Stata storage type.
 | --- | --- |
 | `read_dta()` | Read a DTA file into a tibble with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
+| `save_arrow()` | Write a checksummed Arrow IPC copy of a dataset, preserving the same Stata storage types, labels, notes, and missing codes. |
+| `read_arrow()` | Read a dtatools Arrow IPC file back into the tibble `read_dta()` would produce, verifying checksums by default. |
 | `dta_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
@@ -33,6 +35,27 @@ Repository benchmarks compare `dtatools` with haven across a large survey corpus
 Across the full DHS, MICS, and NSFG comparison, `dtatools` was faster on 1,803 of 1,812 files and tied on five. `haven` led on four files between 31 and 66 KB, each by 1 millisecond. `dtatools` was faster on all 1,534 files larger than 1 MB.
 
 These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtatools only. See the [dated corpus report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
+
+### Reading Arrow copies
+
+`save_arrow()` writes a dataset to a checksummed Arrow IPC file, and
+`read_arrow()` restores the exact `read_dta()` read model, including storage
+declarations, labels, and tagged missing values. Warm-cache read medians on
+the same files:
+
+| Input | `read_dta()` on `.dta` | `read_arrow()` on `.arrow` |
+| --- | ---: | ---: |
+| Synthetic 100 MB, 40 columns | 0.048 seconds | 0.296 seconds |
+| Synthetic 1 GB, 40 columns | 0.184 seconds | 1.448 seconds |
+| India 2021 DHS women, 5.2 GB, 5,972 columns | 1.608 seconds | 4.423 seconds |
+
+`read_dta()` stays faster because it decodes with multicore workers and defers
+numeric and character materialization through ALTREP, while `read_arrow()` is
+single-threaded and materializes string columns eagerly. Checksum verification
+is on by default and accounts for only a few percent; converting the India
+file with `save_arrow()` took 6.5 seconds once. See the
+[dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
+for conversion times, file sizes, and methodology.
 
 ### Projected reads across surveys
 
@@ -73,28 +96,45 @@ The primary synthetic benchmark gives dtatools and haven the exact output from
 Stata's first save of an in-memory fixture covering every numeric Stata storage
 type:
 
-| Scale | Stata | dtatools | haven |
-| --- | ---: | ---: | ---: |
-| 100 MB | 0.013 seconds | 0.023 seconds | 1.235 seconds |
-| 1 GB | 0.130 seconds | 0.150 seconds | 9.045 seconds |
+| Writer | 100 MB | 1 GB |
+| --- | ---: | ---: |
+| Stata `save` | 0.013 seconds | 0.130 seconds |
+| `save_dta()` | 0.023 seconds | 0.152 seconds |
+| `save_arrow()` | 0.424 seconds | 1.862 seconds |
+| `haven::write_dta()` | 1.238 seconds | 9.048 seconds |
 
-Haven took 53.7 times as long as dtatools at 100 MB and 60.3 times as long at
+Haven took 53.8 times as long as dtatools at 100 MB and 59.5 times as long at
 1 GB on these Stata-class inputs. dtatools took 1.77 times Stata's median at
-100 MB and 1.15 times at 1 GB.
+100 MB and 1.17 times at 1 GB.
 dtatools preserved the declared numeric storage types. Haven preserved values
 and the metadata represented by its read model but widened all 30 numeric
-columns to `double`.
+columns to `double`. `save_arrow()` received the identical input but writes
+Arrow IPC rather than DTA; it is slower here because the DTA writer streams
+compact columns directly while the Arrow writer materializes strings and
+computes checksums.
 
 The secondary benchmark gives dtatools and haven the same ordinary R data
 frame, without Stata storage or labelling metadata:
 
-| Scale | dtatools | haven | dtatools advantage |
-| --- | ---: | ---: | ---: |
-| 100 MB | 0.183 seconds | 0.439 seconds | 58.3% faster |
-| 1 GB | 1.797 seconds | 4.052 seconds | 55.7% faster |
+| Writer | 100 MB | 1 GB |
+| --- | ---: | ---: |
+| `save_dta()` | 0.193 seconds | 1.927 seconds |
+| `save_arrow()` | 0.126 seconds | 1.033 seconds |
+| `haven::write_dta()` | 0.495 seconds | 4.195 seconds |
+
+`save_dta()` was 61.0% faster than haven at 100 MB and 54.1% faster at 1 GB.
+On ordinary R columns `save_arrow()` is the fastest writer of the three:
+without Stata storage declarations there are no compact columns for the DTA
+fast path to exploit, and the Arrow writer skips DTA-specific work such as
+fixed-width string planning.
 
 These are medians from seven fresh-process runs on the same Apple M4 Max, not
-performance guarantees. See the [dated write report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/large-scale/results-2026-08-28.md) for percentiles, memory and output sizes, source provenance, and the complete methodology.
+performance guarantees. The Stata median in the primary table is reused from
+the [dated write report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/large-scale/results-2026-08-28.md),
+which also covers percentiles, memory and output sizes, and provenance for the
+DTA writers; the refreshed R-writer medians and the `save_arrow()` rows come
+from the
+[dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md).
 
 ### Synthetic merge benchmarks
 
