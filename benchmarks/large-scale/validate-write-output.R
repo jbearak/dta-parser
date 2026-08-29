@@ -37,8 +37,8 @@ output_storage <- storage_schema(output)
 if (writer == "dtatools") {
     before <- dtatools::read_dta(input, use_numeric_altrep = FALSE)
     after <- dtatools::read_dta(output, use_numeric_altrep = FALSE)
-    parity_status <- "semantic-dta-identical"
-    storage_status <- "preserved"
+    parity_status <- "dtatools-model-identical"
+    storage_status <- "declared-numeric-storage-preserved"
     storage_valid <- identical(input_storage$counts, output_storage$counts)
 } else {
     before <- haven::read_dta(input)

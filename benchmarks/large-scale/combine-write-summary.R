@@ -93,7 +93,7 @@ validate_validation_matrix <- function(
     required <- c(
         "dataset", "dataset_sha256", "writer", "rows", "columns",
         "output_bytes", "parity_status", "storage_status",
-        "input_storage_schema", "output_storage_schema",
+        "input_storage_class_counts", "output_storage_class_counts",
         "provenance_id", "build_provenance_id"
     )
     expected <- expand.grid(
@@ -118,17 +118,17 @@ validate_validation_matrix <- function(
             !identical(unique(matching$rows), row$rows) ||
             !identical(unique(matching$columns), row$columns) ||
             !identical(unique(matching$output_bytes), row$output_bytes) ||
-            row$input_storage_schema != fixture_schema) {
+            row$input_storage_class_counts != fixture_schema) {
             stop(description, " validation does not match its timed rows")
         }
         if (row$writer == "dtatools") {
-            valid <- row$parity_status == "semantic-dta-identical" &&
-                row$storage_status == "preserved" &&
-                row$output_storage_schema == fixture_schema
+            valid <- row$parity_status == "dtatools-model-identical" &&
+                row$storage_status == "declared-numeric-storage-preserved" &&
+                row$output_storage_class_counts == fixture_schema
         } else {
             valid <- row$parity_status == "haven-model-identical" &&
                 row$storage_status == "numeric-storage-widened-to-double" &&
-                row$output_storage_schema == widened_schema
+                row$output_storage_class_counts == widened_schema
         }
         if (!valid) stop(description, " validation status is invalid")
     }
@@ -148,7 +148,13 @@ validate_bundle <- function(
     )
     rownames(summary) <- NULL
     rownames(expected_summary) <- NULL
-    if (!identical(summary, expected_summary)) {
+    time_fields <- c("median_seconds", "p05_seconds", "p95_seconds")
+    exact_fields <- setdiff(names(expected_summary), time_fields)
+    times_match <- all(vapply(time_fields, function(field) {
+        all(abs(summary[[field]] - expected_summary[[field]]) <= 1e-12)
+    }, logical(1L)))
+    if (!identical(summary[exact_fields], expected_summary[exact_fields]) ||
+        !times_match) {
         stop(description, " summary does not match its raw results")
     }
     validate_binding(raw, provenance, paste(description, "raw results"))

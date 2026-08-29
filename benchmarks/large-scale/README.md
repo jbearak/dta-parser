@@ -44,10 +44,12 @@ in the primary matrix, independently of the rotating secondary order. Raw
 primary rows retain the exact shared input SHA-256 in addition to elapsed time,
 peak RSS, and output size. After all timing completes, an untimed fresh-process
 write validates each R writer at both scales before publication. dtatools must
-preserve the semantic DTA model, including storage types. Haven must preserve
-the values and metadata in its own read model, and its expected widening of all
-numeric storage to `double` is recorded separately. Those rows are retained in
-`write-validation.tsv`. The default is seven iterations per writer and size.
+preserve its read model and each declared numeric storage type. Haven must
+preserve the values and metadata in its own read model, and its expected
+widening of all numeric storage to `double` is recorded separately. Exact
+fixed-string widths are not exposed by either read model and are not part of
+this validation. Those rows are retained in `write-validation.tsv`. The default
+is seven iterations per writer and size.
 
 The [2026-08-28 write report](results-2026-08-28.md) records the latest complete
 seven-iteration comparison. The [2026-08-27 report](results-2026-08-27.md) is

@@ -213,8 +213,8 @@ validate_full_scale_output <- function(dataset, writer) {
         columns = measurement$columns, output_bytes = measurement$bytes,
         parity_status = validation_fields[[5L]],
         storage_status = validation_fields[[6L]],
-        input_storage_schema = validation_fields[[7L]],
-        output_storage_schema = validation_fields[[8L]],
+        input_storage_class_counts = validation_fields[[7L]],
+        output_storage_class_counts = validation_fields[[8L]],
         stringsAsFactors = FALSE
     )
 }
@@ -273,8 +273,8 @@ stable_provenance <- cbind(data.frame(
     stata_save_state = "first-save-after-generate",
     r_writer_input = "exact-stata-first-save-output-read-by-dtatools",
     full_scale_validation = paste(
-        "untimed-dtatools-semantic-and-haven-model-parity",
-        "with-storage-schema-each-size"
+        "untimed-read-model-parity-and-numeric-storage-class-checks",
+        "each-size"
     ),
     execution_order = if ("stata" %in% writers && length(r_writers)) {
         "stata-then-rotating-r-writers"
