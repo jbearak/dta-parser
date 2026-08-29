@@ -2093,7 +2093,7 @@ struct RWriteSource<'a> {
     numeric_replacements: Cell<u64>,
 }
 
-fn write_dta_type(code: c_int) -> Result<DtaType, String> {
+fn save_dta_type(code: c_int) -> Result<DtaType, String> {
     match code {
         0 => Ok(DtaType::Byte),
         1 => Ok(DtaType::Int),
@@ -3170,7 +3170,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         if !descriptor.numeric_shift.is_finite() || !descriptor.numeric_scale.is_finite() {
             return Err("numeric write transform must be finite".into());
         }
-        let dta_type = write_dta_type(descriptor.dta_type)?;
+        let dta_type = save_dta_type(descriptor.dta_type)?;
         let value_labels = r_value_labels(descriptor)?;
         columns.push(DtaWriteColumn {
             name: Cow::Borrowed(required_c_str(descriptor.name, "variable name")?),

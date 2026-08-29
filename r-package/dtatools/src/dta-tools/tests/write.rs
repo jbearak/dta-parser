@@ -3,7 +3,7 @@ use std::cell::Cell;
 use std::io::{Cursor, Seek, SeekFrom, Write};
 
 use dta_tools::{
-    read_dta, read_dta_with_options, write_dta_to,
+    read_dta, read_dta_with_options, save_dta_to,
     write_prevalidated_dta_with_observation_source_to, ByteOrder, ColumnValues, DtaType,
     DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError,
     DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
@@ -328,7 +328,7 @@ fn prevalidated_adapter_avoids_a_redundant_value_pass() {
     };
 
     let mut checked = Cursor::new(Vec::new());
-    write_dta_to(&mut checked, &data, &DtaWriteOptions::default()).unwrap();
+    save_dta_to(&mut checked, &data, &DtaWriteOptions::default()).unwrap();
     assert_eq!(source.calls.get(), 6);
     let checked = checked.into_inner();
 
@@ -520,7 +520,7 @@ fn rejects_reserved_stata_variable_names() {
                 values: DtaWriteColumnValues::Numeric(&values),
             }],
         };
-        let error = write_dta_to(
+        let error = save_dta_to(
             &mut Cursor::new(Vec::new()),
             &data,
             &DtaWriteOptions::default(),
@@ -546,7 +546,7 @@ fn rejects_reserved_stata_variable_names() {
                 values: DtaWriteColumnValues::Numeric(&values),
             }],
         };
-        write_dta_to(
+        save_dta_to(
             &mut Cursor::new(Vec::new()),
             &data,
             &DtaWriteOptions::default(),
@@ -569,7 +569,7 @@ fn rejects_reserved_stata_variable_names() {
             }],
         };
         assert!(matches!(
-            write_dta_to(
+            save_dta_to(
                 &mut Cursor::new(Vec::new()),
                 &data,
                 &DtaWriteOptions::default()
@@ -610,7 +610,7 @@ fn validates_display_format_grammar_and_storage_compatibility() {
     ] {
         data.columns[0].format = format.into();
         assert!(matches!(
-            write_dta_to(
+            save_dta_to(
                 &mut Cursor::new(Vec::new()),
                 &data,
                 &DtaWriteOptions::default()
@@ -641,7 +641,7 @@ fn validates_display_format_grammar_and_storage_compatibility() {
         "%tg",
     ] {
         data.columns[0].format = format.into();
-        write_dta_to(
+        save_dta_to(
             &mut Cursor::new(Vec::new()),
             &data,
             &DtaWriteOptions::default(),
@@ -654,7 +654,7 @@ fn validates_display_format_grammar_and_storage_compatibility() {
     data.columns[0].values = DtaWriteColumnValues::Strings(&strings);
     data.columns[0].format = "%8.0g".into();
     assert!(matches!(
-        write_dta_to(
+        save_dta_to(
             &mut Cursor::new(Vec::new()),
             &data,
             &DtaWriteOptions::default()
@@ -663,7 +663,7 @@ fn validates_display_format_grammar_and_storage_compatibility() {
     ));
     for format in ["%0009s", "%-2045s"] {
         data.columns[0].format = format.into();
-        write_dta_to(
+        save_dta_to(
             &mut Cursor::new(Vec::new()),
             &data,
             &DtaWriteOptions::default(),
@@ -717,18 +717,18 @@ fn rejects_invalid_destination_streams() {
     };
 
     let mut nonempty = Cursor::new(vec![0; 16]);
-    let error = write_dta_to(&mut nonempty, &data, &DtaWriteOptions::default()).unwrap_err();
+    let error = save_dta_to(&mut nonempty, &data, &DtaWriteOptions::default()).unwrap_err();
     assert!(matches!(error, DtaWriteError::InvalidDestination));
     assert_eq!(nonempty.into_inner(), vec![0; 16]);
 
     let mut nonzero = Cursor::new(Vec::new());
     nonzero.set_position(1);
-    let error = write_dta_to(&mut nonzero, &data, &DtaWriteOptions::default()).unwrap_err();
+    let error = save_dta_to(&mut nonzero, &data, &DtaWriteOptions::default()).unwrap_err();
     assert!(matches!(error, DtaWriteError::InvalidDestination));
     assert!(nonzero.into_inner().is_empty());
 
     let mut append = AppendWriter(Cursor::new(Vec::new()));
-    let error = write_dta_to(&mut append, &data, &DtaWriteOptions::default()).unwrap_err();
+    let error = save_dta_to(&mut append, &data, &DtaWriteOptions::default()).unwrap_err();
     assert!(matches!(error, DtaWriteError::InvalidDestination));
 }
 
@@ -965,7 +965,7 @@ fn writes_a_release_118_dataset_that_the_public_parser_can_read() {
     };
 
     let mut output = Cursor::new(Vec::new());
-    let summary = write_dta_to(&mut output, &data, &options).unwrap();
+    let summary = save_dta_to(&mut output, &data, &options).unwrap();
     let bytes = output.into_inner();
 
     assert_eq!(summary.format_version, FormatVersion::V118);
@@ -1086,7 +1086,7 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
     };
 
     let mut output = Cursor::new(Vec::new());
-    write_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
+    save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
     let parsed = read_dta(&output.into_inner()).unwrap();
     assert_eq!(
         parsed.columns[0].values,
@@ -1163,7 +1163,7 @@ fn writes_an_attached_empty_value_label_table() {
     };
 
     let mut output = Cursor::new(Vec::new());
-    write_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
+    save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
     let parsed = read_dta(&output.into_inner()).unwrap();
     let table = parsed.value_label_table_for_variable(0).unwrap();
     assert!(table.entries.is_empty());
@@ -1201,7 +1201,7 @@ fn release_119_uses_three_variable_bytes_in_strl_pointers() {
     };
 
     let mut output = Cursor::new(Vec::new());
-    let summary = write_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
+    let summary = save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
     assert_eq!(summary.format_version, FormatVersion::V119);
 
     let bytes = output.into_inner();
@@ -1249,7 +1249,7 @@ fn writes_deduplicated_strl_values_and_null_pointers_for_empty_strings() {
     };
 
     let mut output = Cursor::new(Vec::new());
-    write_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
+    save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
     let bytes = output.into_inner();
 
     let parsed = read_dta(&bytes).unwrap();

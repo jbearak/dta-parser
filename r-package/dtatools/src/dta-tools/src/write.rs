@@ -1694,7 +1694,7 @@ fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
     Ok(())
 }
 
-fn write_dta_impl<W, S>(
+fn save_dta_impl<W, S>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
@@ -1781,14 +1781,14 @@ where
 /// seeked positions because the section map is patched after the last section
 /// offset is known; append-only streams are rejected. No output bytes are
 /// written unless the complete input validates successfully.
-pub fn write_dta_to<W: Write + Seek>(
+pub fn save_dta_to<W: Write + Seek>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
 ) -> Result<DtaWriteSummary, DtaWriteError> {
     let row_count = validate_data(data, options)?;
     let source = ColumnObservationSource { data };
-    write_dta_impl(writer, data, options, &source, row_count)
+    save_dta_impl(writer, data, options, &source, row_count)
 }
 
 /// Stream prevalidated data from an adapter-specific observation source.
@@ -1817,7 +1817,7 @@ where
             "prevalidated row count is {row_count} but columns have {column_row_count} rows"
         )));
     }
-    write_dta_impl(writer, data, options, observation_source, row_count)
+    save_dta_impl(writer, data, options, observation_source, row_count)
 }
 
 impl std::fmt::Display for DtaWriteLabelValue {
