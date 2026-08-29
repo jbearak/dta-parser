@@ -906,6 +906,23 @@ test_that("plain Arrow ordered dictionaries remain ordered factors", {
     expect_s3_class(actual$rating, "ordered")
 })
 
+test_that("plain Int32 selection predicates match the returned R type", {
+    skip_if_not_installed("arrow")
+    path <- arrow_tempfile()
+    values <- arrow::Array$create(c(-2147483648, 7), type = arrow::int32())
+    arrow::write_ipc_file(arrow::arrow_table(x = values), path)
+
+    expect_type(read_arrow(path)$x, "double")
+    expect_identical(
+        names(read_arrow(path, col_select = tidyselect::where(is.double))),
+        "x"
+    )
+    expect_identical(
+        names(read_arrow(path, col_select = tidyselect::where(is.integer))),
+        character()
+    )
+})
+
 test_that("wide Arrow integers are rejected instead of rounded", {
     skip_if_not_installed("arrow")
     skip_if_not_installed("bit64")

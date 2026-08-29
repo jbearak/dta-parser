@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::thread;
 
 use arrow_array::types::{ArrowDictionaryKeyType, Int16Type, Int32Type, Int64Type, Int8Type};
-use arrow_array::{make_array, ArrayRef, DictionaryArray, PrimitiveArray};
+use arrow_array::{make_array, Array, ArrayRef, DictionaryArray, Int32Array, PrimitiveArray};
 use arrow_buffer::{Buffer, MutableBuffer};
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
@@ -24,8 +24,9 @@ use arrow_schema::{DataType, Field, Schema};
 use super::checksum::canonical_array_hashes;
 use super::profile::{
     checksum_to_hex, parse_checksums_document, parse_dataset_document, parse_field_document,
-    ArrowFieldDocument, ChecksumsDocument, DatasetDocument, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY,
-    ARROW_FIELD_KEY, ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
+    validate_value_label_reference, ArrowFieldDocument, ChecksumsDocument, DatasetDocument,
+    ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION,
+    ARROW_PROFILE_VERSION_KEY,
 };
 use super::ArrowProfileError;
 
@@ -86,7 +87,8 @@ pub struct ArrowColumnSummary {
     pub r_type: &'static str,
 }
 
-/// Column names and proxy types read from the file footer alone.
+/// Column names and proxy types read from the schema and, when needed, the
+/// values of plain Int32 columns whose R storage depends on their contents.
 pub struct ArrowFileSummary {
     pub columns: Vec<ArrowColumnSummary>,
 }
@@ -403,20 +405,8 @@ fn parse_profile(
         fields.push(document);
     }
     for (field, document) in footer.schema.fields().iter().zip(&fields) {
-        let Some(table) = document
-            .as_ref()
-            .and_then(|document| document.value_labels.as_deref())
-        else {
-            continue;
-        };
-        if !dataset.value_labels.contains_key(table) {
-            return Err(super::profile::malformed(
-                version,
-                format!(
-                    "field `{}` refers to missing value-label table `{table}`",
-                    field.name()
-                ),
-            ));
+        if let Some(document) = document {
+            validate_value_label_reference(version, field, document, &dataset)?;
         }
     }
     let checksums = if verify {
@@ -1456,7 +1446,14 @@ pub fn read_arrow_file_from<R: Read + Seek>(
 }
 
 /// The R type family used to build tidyselect proxies for one field.
-fn r_type_for(field: &Field, document: Option<&ArrowFieldDocument>) -> &'static str {
+fn r_type_for(
+    field: &Field,
+    document: Option<&ArrowFieldDocument>,
+    int32_requires_double: bool,
+) -> &'static str {
+    if document.and_then(|document| document.storage).is_some() || int32_requires_double {
+        return "double";
+    }
     if let Some(class) = document
         .and_then(|document| document.r.as_ref())
         .map(|semantics| semantics.class.as_str())
@@ -1469,9 +1466,6 @@ fn r_type_for(field: &Field, document: Option<&ArrowFieldDocument>) -> &'static 
             "raw" => "raw",
             _ => "double",
         };
-    }
-    if document.and_then(|document| document.storage).is_some() {
-        return "double";
     }
     match field.data_type() {
         DataType::Boolean => "logical",
@@ -1711,6 +1705,7 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
 pub fn summarize_arrow_file(
     path: impl AsRef<Path>,
     apply_profile: bool,
+    interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<ArrowFileSummary, ArrowProfileError> {
     let path = path.as_ref();
     let mut reader = BufReader::new(File::open(path)?);
@@ -1723,6 +1718,71 @@ pub fn summarize_arrow_file(
         other => other?,
     };
     let profile = parse_profile(&footer, apply_profile, false)?;
+    let ambiguous_int32: Vec<u32> = footer
+        .schema
+        .fields()
+        .iter()
+        .enumerate()
+        .filter(|(index, field)| {
+            field.data_type() == &DataType::Int32
+                && profile
+                    .as_ref()
+                    .and_then(|profile| profile.fields[*index].as_ref())
+                    .and_then(|document| document.storage)
+                    .is_none()
+        })
+        .map(|(index, _)| {
+            u32::try_from(index)
+                .map_err(|_| invalid("an Arrow file has too many columns to summarize"))
+        })
+        .collect::<Result<_, _>>()?;
+    let mut int32_requires_double = vec![false; footer.schema.fields().len()];
+    if !ambiguous_int32.is_empty() {
+        let mut scan_reader = BufReader::new(File::open(path)?);
+        let prepared = prepare_read(
+            &mut scan_reader,
+            &ArrowReadOptions {
+                columns: Some(ambiguous_int32.clone()),
+                row_start: 0,
+                row_count: None,
+                max_output_rows: None,
+                verify: false,
+                profile: apply_profile,
+                threads: 1,
+            },
+            interrupt,
+        )?;
+        let context = DecodeContext {
+            footer: &prepared.footer,
+            profile: prepared.profile.as_ref(),
+            selected: &prepared.selected,
+            dictionaries: &prepared.dictionaries,
+        };
+        let mut found = vec![false; ambiguous_int32.len()];
+        for plan in &prepared.plans {
+            if interrupt() {
+                return Err(ArrowProfileError::Interrupted);
+            }
+            for (output_index, found) in found.iter_mut().enumerate() {
+                if *found {
+                    continue;
+                }
+                let chunk = decode_planned_column(&mut scan_reader, &context, plan, output_index)?;
+                let values = chunk
+                    .as_any()
+                    .downcast_ref::<Int32Array>()
+                    .ok_or_else(|| invalid("an Int32 summary decoded a different Arrow type"))?;
+                *found = (0..values.len())
+                    .any(|row| !values.is_null(row) && values.value(row) == i32::MIN);
+            }
+            if found.iter().all(|found| *found) {
+                break;
+            }
+        }
+        for (&index, found) in ambiguous_int32.iter().zip(found) {
+            int32_requires_double[index as usize] = found;
+        }
+    }
     let columns = footer
         .schema
         .fields()
@@ -1735,6 +1795,7 @@ pub fn summarize_arrow_file(
                 profile
                     .as_ref()
                     .and_then(|profile| profile.fields[index].as_ref()),
+                int32_requires_double[index],
             ),
         })
         .collect();

@@ -3087,18 +3087,19 @@ pub unsafe extern "C" fn dtatools_arrow_datasig_rust(
 /// # Safety
 ///
 /// `path` must point to a readable NUL-terminated C byte string for the
-/// duration of this call. If non-null, `error` must point to writable storage
-/// for one C string pointer. The caller must run on R's main thread with an
-/// initialized R runtime.
+/// duration of this call. `interrupted` must point to writable status storage.
+/// If non-null, `error` must point to writable storage for one C string pointer.
+/// The caller must run on R's main thread with an initialized R runtime.
 pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
     path: *const c_char,
     apply_profile: c_int,
+    interrupted: *mut c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
-    boundary(error, ptr::null_mut(), || {
+    arrow_boundary(interrupted, error, ptr::null_mut(), || {
         let path = required_c_string(path, "the input path")?;
-        let summary =
-            summarize_arrow_file(&path, apply_profile != 0).map_err(|error| error.to_string())?;
+        let summary = summarize_arrow_file(&path, apply_profile != 0, &mut coarse_interrupt)
+            .map_err(|error| error.to_string())?;
         let mut guard = ProtectGuard::new();
         let result = guard.alloc(VECSXP, 2)?;
         let names: Vec<String> = summary

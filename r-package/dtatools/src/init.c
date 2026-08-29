@@ -73,7 +73,7 @@ extern SEXP dtatools_read_arrow_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
     int, int *, char **
 );
-extern SEXP dtatools_arrow_metadata_rust(const char *, int, char **);
+extern SEXP dtatools_arrow_metadata_rust(const char *, int, int *, char **);
 extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
 
 typedef struct {
@@ -3145,11 +3145,19 @@ SEXP C_dtatools_arrow_metadata(SEXP path, SEXP profile) {
         LOGICAL(profile)[0] == NA_LOGICAL) {
         Rf_error("internal Arrow profile selector must be logical");
     }
-    char *error = NULL;
+    int interrupted = 0;
+    char *rust_error = NULL;
     SEXP result = dtatools_arrow_metadata_rust(
-        Rf_translateCharUTF8(STRING_ELT(path, 0)), LOGICAL(profile)[0], &error
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), LOGICAL(profile)[0],
+        &interrupted, &rust_error
     );
-    if (result == NULL) fail_from_rust(error);
+    if (result == NULL) {
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow read interrupted");
+        }
+        fail_from_rust(rust_error);
+    }
     return result;
 }
 
