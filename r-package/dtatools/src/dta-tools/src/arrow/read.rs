@@ -204,6 +204,15 @@ fn valid_time_unit(unit: arrow_ipc::TimeUnit) -> bool {
     )
 }
 
+fn validate_ipc_endianness(endianness: arrow_ipc::Endianness) -> Result<(), ArrowProfileError> {
+    if !endianness.equals_to_target_endianness() {
+        return Err(invalid(
+            "Arrow IPC endianness does not match this host; byte-swapping is not supported",
+        ));
+    }
+    Ok(())
+}
+
 /// `arrow_ipc::convert::fb_to_schema` assumes every FlatBuffer enum and
 /// parameter is valid and panics otherwise. Validate the flat scalar types
 /// this reader supports before calling it so hostile files remain ordinary
@@ -304,9 +313,7 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
     let fb_schema = footer
         .schema()
         .ok_or_else(|| invalid("footer has no schema"))?;
-    if fb_schema.endianness() != arrow_ipc::Endianness::Little {
-        return Err(invalid("big-endian Arrow files are not supported"));
-    }
+    validate_ipc_endianness(fb_schema.endianness())?;
     let fb_fields = fb_schema
         .fields()
         .ok_or_else(|| invalid("footer schema has no fields vector"))?;
@@ -506,7 +513,8 @@ fn batch_header_from(batch: arrow_ipc::RecordBatch<'_>) -> Result<BatchHeader, A
                     Ok((
                         u64::try_from(node.length())
                             .map_err(|_| invalid("negative field length"))?,
-                        u64::try_from(node.null_count().max(0)).expect("clamped"),
+                        u64::try_from(node.null_count())
+                            .map_err(|_| invalid("negative field null count"))?,
                     ))
                 })
                 .collect::<Result<Vec<_>, ArrowProfileError>>()
@@ -1837,6 +1845,51 @@ mod tests {
         let error = metadata_buffer(MAX_IPC_METADATA_BYTES + 1, "record batch")
             .expect_err("oversized metadata is rejected before allocation");
         assert!(error.to_string().contains("64 MiB safety limit"));
+    }
+
+    #[test]
+    fn negative_field_null_counts_are_rejected() {
+        let mut builder = FlatBufferBuilder::new();
+        let nodes = builder.create_vector(&[arrow_ipc::FieldNode::new(1, -1)]);
+        let buffers =
+            builder.create_vector(&[arrow_ipc::Buffer::new(0, 0), arrow_ipc::Buffer::new(0, 4)]);
+        let batch = arrow_ipc::RecordBatch::create(
+            &mut builder,
+            &arrow_ipc::RecordBatchArgs {
+                length: 1,
+                nodes: Some(nodes),
+                buffers: Some(buffers),
+                ..Default::default()
+            },
+        );
+        builder.finish(batch, None);
+        let batch = flatbuffers::root::<arrow_ipc::RecordBatch<'_>>(builder.finished_data())
+            .expect("the test batch is a valid FlatBuffer");
+
+        let error = match batch_header_from(batch) {
+            Err(error) => error,
+            Ok(_) => panic!("negative null count must be rejected"),
+        };
+        assert!(error.to_string().contains("negative field null count"));
+    }
+
+    #[test]
+    fn ipc_endianness_validation_follows_the_target_host() {
+        let matching = if cfg!(target_endian = "little") {
+            arrow_ipc::Endianness::Little
+        } else {
+            arrow_ipc::Endianness::Big
+        };
+        let mismatched = if cfg!(target_endian = "little") {
+            arrow_ipc::Endianness::Big
+        } else {
+            arrow_ipc::Endianness::Little
+        };
+
+        validate_ipc_endianness(matching).expect("matching endianness is supported");
+        let error = validate_ipc_endianness(mismatched)
+            .expect_err("mismatched endianness must be rejected");
+        assert!(error.to_string().contains("does not match this host"));
     }
 
     #[test]
