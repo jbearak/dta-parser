@@ -222,6 +222,15 @@ save_arrow <- function(data, path,
     )
     format <- .prepare_write_format(column, name, default_format, category)
     values <- column
+    temporal <- switch(category,
+        date = .stata_temporal_date,
+        datetime = .stata_temporal_datetime,
+        .stata_temporal_none
+    )
+    if (.is_unmaterialized_numeric_altrep(values) &&
+        !.compact_stata_storage_matches(values, storage, temporal)) {
+        values <- .force_altrep_materialization(values)
+    }
     if (identical(category, "datetime") && adjust_tz) {
         timezone <- .write_datetime_timezone(column)
         if (!(timezone %in% c("UTC", "GMT"))) {
@@ -294,7 +303,8 @@ save_arrow <- function(data, path,
     list(
         enc2utf8(name), .arrow_write_kinds[[kind]], values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[1L]], value_labels[[2L]], value_labels[[3L]]
+        value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
+        inherits(column, "haven_labelled")
     )
 }
 

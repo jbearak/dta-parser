@@ -370,6 +370,18 @@ test_that("haven labelled doubles round-trip with their labels", {
     expect_s3_class(actual$status, "haven_labelled")
 })
 
+test_that("label-free haven labelled doubles retain their class", {
+    data <- tibble::tibble(status = labelled_for_test(c(1, 2)))
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    actual <- read_arrow(path)
+    expect_identical(actual$status, data$status)
+    expect_null(attr(actual$status, "labels", exact = TRUE))
+    expect_s3_class(actual$status, "haven_labelled")
+    expect_identical(datasig(actual), datasig(data))
+})
+
 test_that("temporal classes and empty value-label tables round-trip", {
     day <- as.Date(c("2020-01-01", NA))
     attr(day, "labels") <- c(new_year = as.double(day[[1L]]))
@@ -424,6 +436,20 @@ test_that("profiled storage uses its materialized R type for selection", {
         names(read_arrow(path, col_select = tidyselect::where(is.double))),
         c("b", "i", "l", "f", "d", "ordinary_double")
     )
+})
+
+test_that("declared Stata storage overrides mismatched compact backing", {
+    value <- stata_byte(c(1, 2, NA))
+    attr(value, "stata.storage") <- "int"
+    class(value) <- dtatools:::.stata_storage_class("int")
+    data <- tibble::tibble(x = value)
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    actual <- read_arrow(path)
+    expect_identical(stata_storage_type(actual$x), "int")
+    expect_identical(as.double(actual$x), as.double(data$x))
+    expect_identical(datasig(actual), datasig(data))
 })
 
 test_that("invalid NaNs in Stata storage become system missing", {

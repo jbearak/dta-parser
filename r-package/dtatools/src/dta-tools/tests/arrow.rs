@@ -624,6 +624,37 @@ fn profiled_files_without_checksums_are_malformed_when_verifying() {
 }
 
 #[test]
+fn dangling_value_label_references_are_malformed() {
+    let values: ArrayRef = Arc::new(Float64Array::from(vec![1.0, 2.0]));
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "status".to_owned(),
+            field: Some(ArrowFieldDocument {
+                value_labels: Some("missing_table".to_owned()),
+                ..ArrowFieldDocument::default()
+            }),
+            array: values,
+        }],
+    };
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+
+    let error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &read_all_options(),
+        &mut no_interrupt(),
+    )
+    .expect_err("dangling value-label reference is rejected");
+    match error {
+        ArrowProfileError::MalformedProfile { detail, .. } => assert_eq!(
+            detail,
+            "field `status` refers to missing value-label table `missing_table`"
+        ),
+        other => panic!("expected a malformed-profile error, got {other}"),
+    }
+}
+
+#[test]
 fn unsupported_columns_error_naming_the_column() {
     let list =
         arrow_array::ListArray::from_iter_primitive::<arrow_array::types::Int32Type, _, _>(vec![

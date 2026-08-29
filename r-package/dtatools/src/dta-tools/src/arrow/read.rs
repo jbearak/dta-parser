@@ -306,6 +306,23 @@ fn parse_profile(
             .transpose()?;
         fields.push(document);
     }
+    for (field, document) in footer.schema.fields().iter().zip(&fields) {
+        let Some(table) = document
+            .as_ref()
+            .and_then(|document| document.value_labels.as_deref())
+        else {
+            continue;
+        };
+        if !dataset.value_labels.contains_key(table) {
+            return Err(super::profile::malformed(
+                version,
+                format!(
+                    "field `{}` refers to missing value-label table `{table}`",
+                    field.name()
+                ),
+            ));
+        }
+    }
     let checksums = if verify {
         let json = footer
             .custom_metadata

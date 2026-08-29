@@ -78,6 +78,7 @@ pub struct RArrowColumnDescriptor {
     label_texts: Sexp,
     label_count: usize,
     has_value_labels: c_int,
+    haven_labelled: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.
     dictstring: *const c_void,
@@ -636,6 +637,7 @@ struct ExtractedColumn {
     tz: String,
     units: String,
     ordered: bool,
+    haven_labelled: bool,
     value_labels: Option<ValueLabelTable>,
     input: ColumnInput,
     row_count: usize,
@@ -723,6 +725,7 @@ unsafe fn extract_column(
         tz,
         units,
         ordered: descriptor.ordered != 0,
+        haven_labelled: descriptor.haven_labelled != 0,
         value_labels,
         input,
         row_count,
@@ -783,7 +786,7 @@ unsafe fn encode_column(
             let (codes, has_tags) = classify_doubles(values, name)?;
             let kind = column.kind;
             let class = match kind {
-                RArrowKind::Double if column.value_labels.is_some() => "haven_labelled",
+                RArrowKind::Double if column.haven_labelled => "haven_labelled",
                 RArrowKind::Double => "double",
                 RArrowKind::Date => "Date",
                 RArrowKind::Datetime => "POSIXct",
@@ -801,6 +804,8 @@ unsafe fn encode_column(
                 if let Some(semantics) = document.r.as_mut() {
                     semantics.units = Some(column.units.clone());
                 }
+            } else if class == "haven_labelled" {
+                document.r = r_semantics(class);
             }
             if has_tags || column.value_labels.is_some() {
                 // Tagged NAs and haven labels need bit-exact NaN payloads.
@@ -2438,6 +2443,9 @@ unsafe fn apply_double_class(
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     match attributes.class() {
+        Some("haven_labelled") => {
+            set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
+        }
         Some("Date") => set_class(vector, &["Date"], guard)?,
         Some("POSIXct") => {
             set_class(vector, &["POSIXct", "POSIXt"], guard)?;
@@ -2454,12 +2462,7 @@ unsafe fn apply_double_class(
         _ => {}
     }
     if let Some(table) = attributes.value_label_table() {
-        value_label_attributes(
-            vector,
-            &table,
-            attributes.class() == Some("haven_labelled"),
-            guard,
-        )?;
+        value_label_attributes(vector, &table, false, guard)?;
     }
     Ok(())
 }
