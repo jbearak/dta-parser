@@ -45,6 +45,19 @@ test_that("standard R columns round-trip with full fidelity", {
     expect_identical(typeof(actual$b), "raw")
 })
 
+test_that("Arrow field names are not restricted to Stata syntax", {
+    long_name <- paste(rep("long", 12L), collapse = "_")
+    data <- tibble::new_tibble(setNames(
+        list(1:2, c("x", "y"), c(3.5, 4.5)),
+        c("a b", "if", long_name)
+    ), nrow = 2L)
+    path <- arrow_tempfile()
+
+    save_arrow(data, path)
+    expect_identical(read_arrow(path), data)
+    expect_identical(datasig(path), datasig(data))
+})
+
 test_that("empty data and default POSIXct timezones round-trip", {
     empty <- tibble::tibble(
         n = integer(),
@@ -484,6 +497,23 @@ test_that("column projection, skip, and n_max select the requested window", {
     expect_identical(names(empty), c("a", "b", "c"))
 })
 
+test_that("zero-row selections preserve factor levels", {
+    data <- tibble::tibble(
+        f = factor(c("a", "b"), levels = c("a", "b", "unused"), ordered = TRUE)
+    )
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    for (empty in list(
+        read_arrow(path, n_max = 0),
+        read_arrow(path, skip = 100)
+    )) {
+        expect_identical(empty$f, data$f[integer()])
+        expect_identical(levels(empty$f), levels(data$f))
+        expect_true(is.ordered(empty$f))
+    }
+})
+
 test_that("corrupted buffers fail checksum verification by default", {
     marker <- 74088.140625
     data <- tibble::tibble(nm = c(1017.75, marker, 9.5))
@@ -562,10 +592,10 @@ test_that("write validation failures leave existing destinations unchanged", {
     sentinel <- charToRaw("existing destination")
     writeBin(sentinel, path)
 
-    expect_error(
-        save_arrow(tibble::tibble(`if` = 1), path),
-        class = "dtatools_write_validation_error"
-    )
+    invalid <- data.frame(x = 1, y = 2)
+    names(invalid) <- c("x", "x")
+    expect_error(save_arrow(invalid, path),
+                 class = "dtatools_write_validation_error")
     expect_identical(readBin(path, "raw", n = file.info(path)$size), sentinel)
 })
 

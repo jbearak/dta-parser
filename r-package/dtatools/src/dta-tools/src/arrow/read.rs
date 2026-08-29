@@ -11,9 +11,10 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::thread;
 
-use arrow_array::{make_array, ArrayRef};
+use arrow_array::{make_array, ArrayRef, DictionaryArray, Int32Array};
 use arrow_buffer::{Buffer, MutableBuffer};
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
@@ -1180,13 +1181,31 @@ fn decode_blocks_parallel(
     Ok(())
 }
 
-fn columns_skeleton(prepared: &PreparedRead) -> Vec<ArrowReadColumn> {
+fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, ArrowProfileError> {
     prepared
         .selected
         .iter()
         .map(|&index| {
             let field: &Field = prepared.footer.schema.field(index);
-            ArrowReadColumn {
+            let chunks = if prepared.plans.is_empty() {
+                prepared.footer.layouts[index]
+                    .dictionary_id
+                    .map(|id| -> Result<ArrayRef, ArrowProfileError> {
+                        let values = prepared.dictionaries.get(&id).ok_or_else(|| {
+                            invalid("a dictionary-encoded column has no dictionary")
+                        })?;
+                        let keys = Int32Array::from(Vec::<i32>::new());
+                        let dictionary = DictionaryArray::try_new(keys, make_array(values.clone()))
+                            .map_err(|error| invalid(format!("invalid dictionary: {error}")))?;
+                        Ok(Arc::new(dictionary) as ArrayRef)
+                    })
+                    .transpose()?
+                    .into_iter()
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            Ok(ArrowReadColumn {
                 name: field.name().clone(),
                 data_type: field.data_type().clone(),
                 nullable: field.is_nullable(),
@@ -1194,8 +1213,8 @@ fn columns_skeleton(prepared: &PreparedRead) -> Vec<ArrowReadColumn> {
                     .profile
                     .as_ref()
                     .and_then(|profile| profile.fields[index].clone()),
-                chunks: Vec::new(),
-            }
+                chunks,
+            })
         })
         .collect()
 }
@@ -1223,7 +1242,7 @@ pub fn read_arrow_file(
     let mut read = || -> Result<ArrowReadResult, ArrowProfileError> {
         let mut reader = BufReader::new(File::open(path)?);
         let prepared = prepare_read(&mut reader, options, interrupt)?;
-        let mut columns = columns_skeleton(&prepared);
+        let mut columns = columns_skeleton(&prepared)?;
         let context = DecodeContext {
             footer: &prepared.footer,
             profile: prepared.profile.as_ref(),
@@ -1272,7 +1291,7 @@ pub fn read_arrow_file_from<R: Read + Seek>(
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<ArrowReadResult, ArrowProfileError> {
     let prepared = prepare_read(reader, options, interrupt)?;
-    let mut columns = columns_skeleton(&prepared);
+    let mut columns = columns_skeleton(&prepared)?;
     let context = DecodeContext {
         footer: &prepared.footer,
         profile: prepared.profile.as_ref(),
@@ -1310,7 +1329,172 @@ fn r_type_for(field: &Field, document: Option<&ArrowFieldDocument>) -> &'static 
     }
 }
 
-/// Column names and proxy types from the footer, for tidyselect resolution.
+fn checksum_hash_count(data_type: &DataType, null_count: u64) -> Result<usize, ArrowProfileError> {
+    let ipc_buffers = buffer_count_for(data_type)
+        .ok_or_else(|| invalid(format!("unsupported Arrow type {data_type}")))?;
+    Ok(ipc_buffers - 1 + usize::from(null_count > 0))
+}
+
+fn validate_checksum_hashes(
+    version: &str,
+    hashes: &[String],
+    expected: usize,
+    location: &str,
+) -> Result<(), ArrowProfileError> {
+    let valid_hex = hashes.iter().all(|hash| {
+        hash.len() == 16
+            && hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    });
+    if hashes.len() != expected || !valid_hex {
+        return Err(super::profile::malformed(
+            version,
+            format!("checksums document does not cover every buffer of {location}"),
+        ));
+    }
+    Ok(())
+}
+
+/// Validate that the stored checksums cover the full schema, using only IPC
+/// batch headers. Return the file row count while those headers are in hand.
+fn validate_stored_checksum_coverage<R: Read + Seek>(
+    reader: &mut R,
+    footer: &Footer,
+    version: &str,
+    checksums: &ChecksumsDocument,
+) -> Result<u64, ArrowProfileError> {
+    if checksums.batches.len() != footer.record_blocks.len() {
+        return Err(super::profile::malformed(
+            version,
+            "checksums document does not cover every record batch",
+        ));
+    }
+
+    let field_count = footer.schema.fields().len();
+    let mut row_count = 0_u64;
+    for (batch_index, (block, batch_checksums)) in footer
+        .record_blocks
+        .iter()
+        .zip(&checksums.batches)
+        .enumerate()
+    {
+        if batch_checksums.columns.len() != field_count {
+            return Err(super::profile::malformed(
+                version,
+                format!(
+                    "checksums document does not cover every column of record batch {batch_index}"
+                ),
+            ));
+        }
+        let header = read_batch_header(reader, *block)?;
+        row_count = row_count
+            .checked_add(header.rows)
+            .ok_or_else(|| invalid("row count overflows"))?;
+        for (field_index, hashes) in batch_checksums.columns.iter().enumerate() {
+            let field = footer.schema.field(field_index);
+            let layout = &footer.layouts[field_index];
+            let &(length, null_count) = header
+                .nodes
+                .get(layout.node)
+                .ok_or_else(|| invalid("record batch is missing a field node"))?;
+            if length != header.rows {
+                return Err(invalid("field length does not match the batch length"));
+            }
+            if header
+                .buffers
+                .get(layout.buffer..layout.buffer + layout.buffer_count)
+                .is_none()
+            {
+                return Err(invalid("record batch is missing field buffers"));
+            }
+            validate_checksum_hashes(
+                version,
+                hashes,
+                checksum_hash_count(field.data_type(), null_count)?,
+                &format!("column `{}`, record batch {batch_index}", field.name()),
+            )?;
+        }
+    }
+
+    let mut dictionary_types = HashMap::<i64, &DataType>::new();
+    let mut dictionary_columns = Vec::new();
+    for (index, (field, layout)) in footer
+        .schema
+        .fields()
+        .iter()
+        .zip(&footer.layouts)
+        .enumerate()
+    {
+        let Some(id) = layout.dictionary_id else {
+            continue;
+        };
+        let DataType::Dictionary(_, value_type) = field.data_type() else {
+            return Err(invalid("dictionary layout has a non-dictionary field"));
+        };
+        if let Some(existing) = dictionary_types.insert(id, value_type.as_ref()) {
+            if existing != value_type.as_ref() {
+                return Err(invalid("one dictionary id has conflicting value types"));
+            }
+        }
+        dictionary_columns.push((index, id, field.name().as_str()));
+    }
+    if checksums.dictionaries.len() != dictionary_columns.len()
+        || dictionary_columns
+            .iter()
+            .any(|(index, _, _)| !checksums.dictionaries.contains_key(&index.to_string()))
+    {
+        return Err(super::profile::malformed(
+            version,
+            "checksums document does not cover every dictionary column",
+        ));
+    }
+
+    let mut dictionary_nulls = HashMap::<i64, bool>::new();
+    for block in &footer.dictionary_blocks {
+        let mut bytes = vec![0_u8; block.metadata_length as usize];
+        read_exact_at(reader, block.offset, &mut bytes)?;
+        let message = parse_message_header(&bytes)?;
+        let batch = message
+            .header_as_dictionary_batch()
+            .ok_or_else(|| invalid("dictionary block does not contain a dictionary"))?;
+        let id = batch.id();
+        if !dictionary_types.contains_key(&id) {
+            continue;
+        }
+        let header = batch_header_from(
+            batch
+                .data()
+                .ok_or_else(|| invalid("dictionary batch has no data"))?,
+        )?;
+        let &(_, null_count) = header
+            .nodes
+            .first()
+            .ok_or_else(|| invalid("dictionary batch is missing a field node"))?;
+        if batch.isDelta() {
+            let has_nulls = dictionary_nulls
+                .get_mut(&id)
+                .ok_or_else(|| invalid("delta dictionary has no preceding dictionary"))?;
+            *has_nulls |= null_count > 0;
+        } else {
+            dictionary_nulls.insert(id, null_count > 0);
+        }
+    }
+    for (index, id, name) in dictionary_columns {
+        let has_nulls = dictionary_nulls
+            .get(&id)
+            .ok_or_else(|| invalid("a dictionary-encoded column has no dictionary"))?;
+        let hashes = &checksums.dictionaries[&index.to_string()];
+        validate_checksum_hashes(
+            version,
+            hashes,
+            checksum_hash_count(dictionary_types[&id], u64::from(*has_nulls))?,
+            &format!("dictionary column `{name}`"),
+        )?;
+    }
+    Ok(row_count)
+}
+
 /// Derive the dataset signature from an Arrow file's stored metadata alone:
 /// the schema documents plus the footer checksums document. No data buffers
 /// are read or rehashed, so the result records what the file declares about
@@ -1346,18 +1530,8 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
             )
         })?;
     let checksums = parse_checksums_document(&profile.version, json)?;
-    if checksums.batches.len() != footer.record_blocks.len() {
-        return Err(super::profile::malformed(
-            &profile.version,
-            "checksums document does not cover every record batch",
-        ));
-    }
-    let mut row_count = 0_u64;
-    for block in &footer.record_blocks {
-        row_count = row_count
-            .checked_add(read_batch_header(&mut reader, *block)?.rows)
-            .ok_or_else(|| invalid("row count overflows"))?;
-    }
+    let row_count =
+        validate_stored_checksum_coverage(&mut reader, &footer, &profile.version, &checksums)?;
     super::write::signature_from_parts(
         row_count,
         footer

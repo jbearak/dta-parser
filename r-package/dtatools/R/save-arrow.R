@@ -354,11 +354,10 @@ save_arrow <- function(data, path,
     adjust_tz <- .write_scalar_logical(adjust_tz, "adjust_tz")
     data_names <- names(data)
     if (is.null(data_names) || anyDuplicated(data_names) ||
-        !all(.valid_stata_names(data_names))) {
-        .dta_write_abort(paste0(
-            "Column names must be unique, nonempty valid Stata names with ",
-            "at most 32 Unicode characters"
-        ))
+        anyNA(data_names) || any(data_names == "")) {
+        .dta_write_abort(
+            "Column names must be unique, non-missing, and nonempty"
+        )
     }
     kinds <- vapply(data, .arrow_write_column_kind, character(1))
     supported <- !is.na(kinds)

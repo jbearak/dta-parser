@@ -15,7 +15,7 @@ use dta_tools::arrow::{
     arrow_stored_signature, dataset_signature, read_arrow_file, read_arrow_file_from,
     save_arrow_file_to, ArrowCompression, ArrowFieldDocument, ArrowMissingEncoding,
     ArrowProfileError, ArrowRSemantics, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset,
-    DatasetDocument, StataStorage, ARROW_PROFILE_VERSION_KEY,
+    DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_PROFILE_VERSION_KEY,
 };
 use dta_tools::{ValueLabelEntry, ValueLabelTable};
 
@@ -1079,5 +1079,73 @@ fn stored_signature_matches_recomputed_signature() {
     std::fs::write(&bare_path, bare).expect("file written");
     let error = arrow_stored_signature(&bare_path).expect_err("no checksums to derive from");
     assert!(error.to_string().contains("without checksums"));
+    std::fs::remove_dir_all(&directory).expect("temp dir removed");
+}
+
+fn profile_file_with_checksums(
+    schema: Arc<Schema>,
+    columns: Vec<ArrayRef>,
+    checksums: &str,
+) -> Vec<u8> {
+    let batch = RecordBatch::try_new(schema.clone(), columns).expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.write_metadata(ARROW_CHECKSUMS_KEY, checksums);
+    writer.finish().expect("writer finishes");
+    drop(writer);
+    bytes
+}
+
+#[test]
+fn stored_signatures_require_complete_checksum_coverage() {
+    let profile = HashMap::from([(ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned())]);
+    let schema = Arc::new(
+        Schema::new(vec![
+            Field::new("x", DataType::Int32, false),
+            Field::new("y", DataType::Int32, false),
+        ])
+        .with_metadata(profile.clone()),
+    );
+    let bytes = profile_file_with_checksums(
+        schema,
+        vec![
+            Arc::new(Int32Array::from(vec![1])),
+            Arc::new(Int32Array::from(vec![2])),
+        ],
+        r#"{"version":0,"algorithm":"xxh64","batches":[{"columns":[["0000000000000000"]]}]}"#,
+    );
+    let directory = std::env::temp_dir().join(format!(
+        "dtatools-incomplete-signature-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).expect("temp dir");
+    let columns_path = directory.join("columns.arrow");
+    std::fs::write(&columns_path, bytes).expect("file written");
+    let error = arrow_stored_signature(&columns_path).expect_err("one column is omitted");
+    assert!(error.to_string().contains("does not cover every column"));
+
+    let data_type = DataType::Dictionary(Box::new(DataType::Int32), Box::new(DataType::Utf8));
+    let schema =
+        Arc::new(Schema::new(vec![Field::new("f", data_type, false)]).with_metadata(profile));
+    let dictionary: ArrayRef = Arc::new(
+        DictionaryArray::try_new(
+            Int32Array::from(vec![0]),
+            Arc::new(StringArray::from(vec!["a", "unused"])),
+        )
+        .expect("valid dictionary"),
+    );
+    let bytes = profile_file_with_checksums(
+        schema,
+        vec![dictionary],
+        r#"{"version":0,"algorithm":"xxh64","batches":[{"columns":[["0000000000000000"]]}]}"#,
+    );
+    let dictionary_path = directory.join("dictionary.arrow");
+    std::fs::write(&dictionary_path, bytes).expect("file written");
+    let error = arrow_stored_signature(&dictionary_path).expect_err("dictionary is omitted");
+    assert!(error
+        .to_string()
+        .contains("does not cover every dictionary column"));
+
     std::fs::remove_dir_all(&directory).expect("temp dir removed");
 }
