@@ -55,11 +55,13 @@ typedef struct {
     const double *label_values;
     SEXP label_texts;
     size_t label_count;
+    /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
+    const void *dictstring;
 } dtatools_arrow_column;
 
 extern SEXP dtatools_save_arrow_rust(
     const char *, const char *, SEXP, size_t, const dtatools_arrow_column *,
-    size_t, size_t, const char *, char **
+    size_t, size_t, const char *, int, char **
 );
 extern SEXP dtatools_read_arrow_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
@@ -2862,13 +2864,18 @@ static void arrow_write_column_descriptor(
         }
         descriptor->values = REAL(values);
         break;
-    case 3: /* character */
+    case 3: { /* character */
         if (TYPEOF(values) != STRSXP) {
             Rf_error("internal Arrow character column has the wrong type");
         }
         descriptor->strings = values;
         descriptor->string_count = row_count;
+        SEXP dictionary_source = unmaterialized_dictstring_source(values);
+        if (dictionary_source != R_NilValue) {
+            descriptor->dictstring = dictstring_storage(dictionary_source);
+        }
         break;
+    }
     case 4: /* raw */
         if (TYPEOF(values) != RAWSXP) {
             Rf_error("internal Arrow raw column has the wrong type");
@@ -2906,9 +2913,15 @@ static void arrow_write_column_descriptor(
     (void) index;
 }
 
-SEXP C_dtatools_save_arrow(SEXP specification, SEXP path, SEXP compression) {
+SEXP C_dtatools_save_arrow(
+    SEXP specification, SEXP path, SEXP compression, SEXP threads
+) {
     if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 3) {
         Rf_error("internal Arrow specification must be a three-element list");
+    }
+    if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
+        INTEGER(threads)[0] < 0) {
+        Rf_error("internal thread count must be one non-negative integer");
     }
     SEXP notes = VECTOR_ELT(specification, 1);
     SEXP columns = VECTOR_ELT(specification, 2);
@@ -2960,7 +2973,7 @@ SEXP C_dtatools_save_arrow(SEXP specification, SEXP path, SEXP compression) {
     SEXP result = dtatools_save_arrow_rust(
         output_path, dataset_label, rooted_notes,
         (size_t) XLENGTH(rooted_notes), descriptors, column_count, row_count,
-        compression_label, &rust_error
+        compression_label, INTEGER(threads)[0], &rust_error
     );
     if (result == NULL) {
         UNPROTECT(1);
@@ -3252,6 +3265,12 @@ SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value) {
     return Rf_ScalarLogical(0);
 }
 
+SEXP C_dtatools_is_unmaterialized_dictstring(SEXP value) {
+    return Rf_ScalarLogical(
+        unmaterialized_dictstring_source(value) != R_NilValue
+    );
+}
+
 SEXP C_dtatools_numeric_storage_matches(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -3530,7 +3549,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 4},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
-    {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 3},
+    {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 4},
     {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 8},
     {"C_dtatools_arrow_metadata",
      (DL_FUNC) &C_dtatools_arrow_metadata, 1},
@@ -3552,6 +3571,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
+    {"C_dtatools_is_unmaterialized_dictstring",
+     (DL_FUNC) &C_dtatools_is_unmaterialized_dictstring, 1},
     {"C_dtatools_numeric_storage_matches",
      (DL_FUNC) &C_dtatools_numeric_storage_matches, 3},
     {"C_dtatools_force_altrep_materialization",

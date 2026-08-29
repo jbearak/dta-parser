@@ -141,6 +141,34 @@ test_that("multithreaded Arrow reads match single-threaded reads", {
                                        use_numeric_altrep = FALSE))
 })
 
+test_that("multithreaded Arrow writes match single-threaded writes", {
+    data <- standard_arrow_fixture()
+    serial_path <- arrow_tempfile()
+    parallel_path <- arrow_tempfile()
+    save_arrow(data, serial_path, threads = 1L)
+    save_arrow(data, parallel_path, threads = 4L)
+
+    expect_identical(
+        readBin(serial_path, "raw", file.size(serial_path)),
+        readBin(parallel_path, "raw", file.size(parallel_path))
+    )
+    expect_identical(read_arrow(parallel_path), data)
+})
+
+test_that("save_arrow validates threads", {
+    data <- tibble::tibble(x = 1)
+    path <- arrow_tempfile()
+
+    expect_error(save_arrow(data, path, threads = -1),
+                 "non-negative whole number")
+    expect_error(save_arrow(data, path, threads = 1.5),
+                 "non-negative whole number")
+    expect_error(save_arrow(data, path, threads = NA_integer_),
+                 "non-negative whole number")
+    save_arrow(data, path, threads = 2L)
+    expect_identical(read_arrow(path), data)
+})
+
 test_that("read_arrow validates threads", {
     data <- tibble::tibble(x = 1)
     path <- arrow_tempfile()
@@ -153,6 +181,34 @@ test_that("read_arrow validates threads", {
     expect_error(read_arrow(path, threads = NA_integer_),
                  "non-negative whole number")
     expect_identical(read_arrow(path, threads = 2L), data)
+})
+
+test_that("deferred string columns are written without materializing", {
+    dta <- tempfile(fileext = ".dta")
+    deferred_path <- arrow_tempfile()
+    eager_path <- arrow_tempfile()
+    on.exit(unlink(dta), add = TRUE)
+    save_dta(tibble::tibble(s = c("alpha", "beta", "alpha", "", "éè")), dta)
+
+    imported <- read_dta(dta)
+    expect_true(dtatools:::.is_unmaterialized_dictstring(imported$s))
+    save_arrow(imported, deferred_path)
+    expect_true(dtatools:::.is_unmaterialized_dictstring(imported$s))
+
+    materialized <- imported
+    eager_column <- c(as.character(imported$s))
+    attributes(eager_column) <- attributes(imported$s)
+    materialized$s <- eager_column
+    expect_false(dtatools:::.is_unmaterialized_dictstring(materialized$s))
+    save_arrow(materialized, eager_path)
+
+    # The native dictionary export and the eager path produce identical files.
+    expect_identical(
+        readBin(deferred_path, "raw", file.size(deferred_path)),
+        readBin(eager_path, "raw", file.size(eager_path))
+    )
+    expect_identical(as.character(read_arrow(deferred_path)$s),
+                     as.character(materialized$s))
 })
 
 test_that("compact ALTREP columns are written without materializing", {

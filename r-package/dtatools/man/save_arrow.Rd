@@ -9,7 +9,8 @@ save_arrow(
   path,
   compression = c("uncompressed", "lz4", "zstd"),
   label = attr(data, "label", exact = TRUE),
-  adjust_tz = TRUE
+  adjust_tz = TRUE,
+  threads = getOption("dtatools.threads", 0L)
 )
 }
 \arguments{
@@ -27,6 +28,10 @@ save_arrow(
 whether to preserve displayed clock time (\code{TRUE}) or the underlying UTC
 instant (\code{FALSE}), matching \code{\link[=save_dta]{save_dta()}}. Standard \code{POSIXct} columns are
 unaffected: Arrow timestamps store the instant and the timezone.}
+
+\item{threads}{Number of threads used to encode columns into Arrow
+buffers. \code{0} (the default) selects a thread count automatically; \code{1}
+forces serial encoding. Defaults to the \code{dtatools.threads} option.}
 }
 \value{
 \code{data}, invisibly.

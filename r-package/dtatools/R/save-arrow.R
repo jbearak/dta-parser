@@ -40,6 +40,9 @@
 #'   whether to preserve displayed clock time (`TRUE`) or the underlying UTC
 #'   instant (`FALSE`), matching [save_dta()]. Standard `POSIXct` columns are
 #'   unaffected: Arrow timestamps store the instant and the timezone.
+#' @param threads Number of threads used to encode columns into Arrow
+#'   buffers. `0` (the default) selects a thread count automatically; `1`
+#'   forces serial encoding. Defaults to the `dtatools.threads` option.
 #' @return `data`, invisibly.
 #' @examples
 #' path <- tempfile(fileext = ".arrow")
@@ -51,7 +54,9 @@
 save_arrow <- function(data, path,
                        compression = c("uncompressed", "lz4", "zstd"),
                        label = attr(data, "label", exact = TRUE),
-                       adjust_tz = TRUE) {
+                       adjust_tz = TRUE,
+                       threads = getOption("dtatools.threads", 0L)) {
+    threads <- .normalize_threads(threads)
     resolved_path <- .resolve_dta_write_path(path, "arrow")
     for (write_warning in resolved_path$warnings) {
         .dta_write_warn(write_warning$message, write_warning$class)
@@ -66,7 +71,10 @@ save_arrow <- function(data, path,
     )
     on.exit(if (file.exists(temporary)) unlink(temporary), add = TRUE)
     numeric_replacements <- tryCatch(
-        .Call(C_dtatools_save_arrow, specification, temporary, compression),
+        .Call(
+            C_dtatools_save_arrow, specification, temporary, compression,
+            threads
+        ),
         error = function(condition) {
             if (inherits(condition, "interrupt")) stop(condition)
             .dta_write_abort(
@@ -258,7 +266,11 @@ save_arrow <- function(data, path,
             levels <- enc2utf8(levels)
             ordered <- is.ordered(column)
         } else if (identical(kind, "character")) {
-            values <- enc2utf8(column)
+            # Unmaterialized dictionary-string columns are already UTF-8 and
+            # export natively; enc2utf8() would materialize every CHARSXP.
+            if (!.is_unmaterialized_dictstring(column)) {
+                values <- enc2utf8(column)
+            }
         } else if (identical(kind, "date")) {
             values <- as.double(column)
         } else if (identical(kind, "datetime")) {

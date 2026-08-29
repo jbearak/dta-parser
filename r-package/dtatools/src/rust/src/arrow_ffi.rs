@@ -72,6 +72,9 @@ pub struct RArrowColumnDescriptor {
     label_values: *const f64,
     label_texts: Sexp,
     label_count: usize,
+    /// Unmaterialized dictionary-string payload (`DictStringData`), or null
+    /// for eager character columns.
+    dictstring: *const c_void,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -169,14 +172,6 @@ fn field_missing_for_storage(storage: StataStorage) -> ArrowMissingEncoding {
     }
 }
 
-struct ColumnPlan {
-    name: String,
-    field: Option<ArrowFieldDocument>,
-    array: ArrayRef,
-    replacements: u64,
-    value_labels: Option<ValueLabelTable>,
-}
-
 unsafe fn double_slice<'a>(
     descriptor: &RArrowColumnDescriptor,
     row_count: usize,
@@ -204,14 +199,14 @@ unsafe fn int_slice<'a>(
 }
 
 /// Classify every value of an R double column, rejecting invalid NaNs.
+/// Pure: callable from any thread.
 fn classify_doubles(values: &[f64], name: &str) -> Result<(Vec<c_int>, bool), String> {
     let mut codes = Vec::new();
     codes
         .try_reserve_exact(values.len())
         .map_err(|_| "could not allocate native missing codes".to_owned())?;
     let mut has_tags = false;
-    for (index, &value) in values.iter().enumerate() {
-        poll_interrupt(index)?;
+    for &value in values {
         let code = direct_r_missing_code(value);
         if code > c_int::from(b'z') {
             return Err(format!(
@@ -233,6 +228,53 @@ fn string_array(values: &[Option<String>]) -> ArrayRef {
         }
     }
     Arc::new(builder.finish())
+}
+
+/// Build the Arrow string array straight from an unmaterialized
+/// dictionary-string payload, creating no CHARSXPs. Dictionary payloads hold
+/// UTF-8 and cannot represent `NA_character_`, so the array has no nulls and
+/// is byte-identical to the eager path's output.
+///
+/// # Safety
+///
+/// `data` must stay live for the duration of the call; the ALTREP vector that
+/// owns it is protected by the caller's column specification.
+unsafe fn dictstring_array(
+    data: &crate::DictStringData,
+    row_count: usize,
+    name: &str,
+) -> Result<ArrayRef, String> {
+    if data.length != row_count {
+        return Err(format!(
+            "column `{name}` has {} dictionary rows; expected {row_count}",
+            data.length
+        ));
+    }
+    let ids = std::slice::from_raw_parts(data.value_ids, data.length);
+    let mut total_bytes = 0_usize;
+    for &id in ids {
+        let (_, length) = data
+            .value_views
+            .get(id as usize)
+            .ok_or_else(|| format!("column `{name}` has an invalid dictionary index"))?;
+        total_bytes = total_bytes
+            .checked_add(*length)
+            .ok_or_else(|| format!("column `{name}` overflows the Arrow string buffer"))?;
+    }
+    if i32::try_from(total_bytes).is_err() {
+        return Err(format!(
+            "column `{name}` holds more string bytes than an Arrow string column can carry"
+        ));
+    }
+    let mut builder = StringBuilder::with_capacity(row_count, total_bytes);
+    for &id in ids {
+        let &(bytes, length) = &data.value_views[id as usize];
+        let view = std::slice::from_raw_parts(bytes, length);
+        let value = std::str::from_utf8(view)
+            .map_err(|_| format!("column `{name}` holds invalid UTF-8"))?;
+        builder.append_value(value);
+    }
+    Ok(Arc::new(builder.finish()))
 }
 
 fn r_semantics(class: &str) -> Option<ArrowRSemantics> {
@@ -286,6 +328,7 @@ fn temporal_shift_scale(temporal: TemporalKind) -> (f64, f64) {
 }
 
 /// Encode one eager profiled column into raw Stata missing storage.
+/// Pure: callable from any thread.
 fn encode_profiled_column(
     name: &str,
     storage: StataStorage,
@@ -300,8 +343,7 @@ fn encode_profiled_column(
     encoded
         .try_reserve_exact(values.len())
         .map_err(|_| "could not allocate a profiled column".to_owned())?;
-    for (index, (&value, &code)) in values.iter().zip(codes).enumerate() {
-        poll_interrupt(index)?;
+    for (&value, &code) in values.iter().zip(codes) {
         let source = match missing_from_code(code)? {
             Some(tag) => DtaWriteNumericValue::Missing(tag),
             None => {
@@ -355,25 +397,17 @@ fn encode_profiled_column(
 
 /// Copy a compact ALTREP backing into an Arrow array, normalizing legacy
 /// missing encodings to the modern sentinels the profile stores.
+/// Pure: callable from any thread.
 unsafe fn compact_profiled_column(
-    descriptor: &RArrowColumnDescriptor,
+    base: *const c_void,
+    kind: NumericKind,
+    version: FormatVersion,
     row_count: usize,
-) -> Result<(ArrayRef, StataStorage, TemporalKind), String> {
-    let kind = NumericKind::try_from(descriptor.compact_kind)?;
-    let temporal = TemporalKind::try_from(descriptor.compact_temporal)?;
-    let version = u16::try_from(descriptor.compact_format_version)
-        .ok()
-        .and_then(|value| FormatVersion::try_from(value).ok())
-        .ok_or_else(|| "invalid compact numeric format version".to_owned())?;
-    if descriptor.compact_values.is_null() {
-        return Err("compact numeric backing pointer is null".to_owned());
-    }
-    let base = descriptor.compact_values;
+) -> Result<(ArrayRef, StataStorage), String> {
     let (array, storage): (ArrayRef, StataStorage) = match kind {
         NumericKind::Byte => {
             let values = std::slice::from_raw_parts(base.cast::<i8>(), row_count);
-            let normalized = values.iter().enumerate().map(|(index, &value)| {
-                let _ = poll_interrupt(index);
+            let normalized = values.iter().map(|&value| {
                 match classify_byte_missing_for_version(value, version) {
                     Some(tag) => tag.byte_value(),
                     None => value,
@@ -386,8 +420,7 @@ unsafe fn compact_profiled_column(
         }
         NumericKind::Int => {
             let values = std::slice::from_raw_parts(base.cast::<i16>(), row_count);
-            let normalized = values.iter().enumerate().map(|(index, &value)| {
-                let _ = poll_interrupt(index);
+            let normalized = values.iter().map(|&value| {
                 match classify_int_missing_for_version(value, version) {
                     Some(tag) => tag.int_value(),
                     None => value,
@@ -400,8 +433,7 @@ unsafe fn compact_profiled_column(
         }
         NumericKind::Long => {
             let values = std::slice::from_raw_parts(base.cast::<i32>(), row_count);
-            let normalized = values.iter().enumerate().map(|(index, &value)| {
-                let _ = poll_interrupt(index);
+            let normalized = values.iter().map(|&value| {
                 match classify_long_missing_for_version(value, version) {
                     Some(tag) => tag.long_value(),
                     None => value,
@@ -414,8 +446,7 @@ unsafe fn compact_profiled_column(
         }
         NumericKind::Float => {
             let values = std::slice::from_raw_parts(base.cast::<f32>(), row_count);
-            let normalized = values.iter().enumerate().map(|(index, &value)| {
-                let _ = poll_interrupt(index);
+            let normalized = values.iter().map(|&value| {
                 match classify_float_missing_bits_for_version(value.to_bits(), version) {
                     Some(tag) => f32::from_bits(tag.float_bits()),
                     None => value,
@@ -427,7 +458,7 @@ unsafe fn compact_profiled_column(
             )
         }
     };
-    Ok((array, storage, temporal))
+    Ok((array, storage))
 }
 
 unsafe fn value_label_table(
@@ -482,10 +513,67 @@ unsafe fn value_label_table(
     }))
 }
 
-unsafe fn plan_column(
+/// Everything one column's encoding needs, captured on the R thread. The raw
+/// pointers address R vector data that the caller's column specification
+/// keeps protected for the duration of the save call, and `encode_column`
+/// never calls the R API, so encoding may run on a worker thread.
+enum ColumnInput {
+    Logical {
+        values: *const c_int,
+    },
+    Integer {
+        values: *const c_int,
+    },
+    /// Double, Date, Datetime, and Difftime columns; `kind` disambiguates.
+    DoubleLike {
+        values: *const f64,
+    },
+    CharacterEager {
+        values: Vec<Option<String>>,
+    },
+    CharacterDict {
+        data: *const c_void,
+    },
+    Raw {
+        values: *const u8,
+    },
+    Factor {
+        codes: *const c_int,
+        levels: Vec<Option<String>>,
+    },
+    ProfiledEager {
+        values: *const f64,
+        storage: StataStorage,
+    },
+    ProfiledCompact {
+        values: *const c_void,
+        kind: NumericKind,
+        version: FormatVersion,
+    },
+}
+
+struct ExtractedColumn {
+    name: String,
+    kind: RArrowKind,
+    label: String,
+    format: String,
+    tz: String,
+    units: String,
+    ordered: bool,
+    value_labels: Option<ValueLabelTable>,
+    input: ColumnInput,
+    row_count: usize,
+}
+
+unsafe impl Send for ExtractedColumn {}
+unsafe impl Sync for ExtractedColumn {}
+
+/// Pull one column's inputs out of R on the main thread: strings become
+/// owned values, everything else a validated raw pointer.
+unsafe fn extract_column(
     descriptor: &RArrowColumnDescriptor,
     row_count: usize,
-) -> Result<ColumnPlan, String> {
+) -> Result<ExtractedColumn, String> {
     let name = required_c_string(descriptor.name, "a column name")?;
     let kind = RArrowKind::try_from(descriptor.kind)?;
     let label = optional_c_string(descriptor.label, "a variable label")?;
@@ -494,21 +582,98 @@ unsafe fn plan_column(
     let units = optional_c_string(descriptor.units, "difftime units")?;
     let value_labels = value_label_table(descriptor, &name)?;
 
-    let base_document = base_field_document(&label, &format);
+    let input = match kind {
+        RArrowKind::Logical => ColumnInput::Logical {
+            values: int_slice(descriptor, row_count)?.as_ptr(),
+        },
+        RArrowKind::Integer => ColumnInput::Integer {
+            values: int_slice(descriptor, row_count)?.as_ptr(),
+        },
+        RArrowKind::Double | RArrowKind::Date | RArrowKind::Datetime | RArrowKind::Difftime => {
+            ColumnInput::DoubleLike {
+                values: double_slice(descriptor, row_count)?.as_ptr(),
+            }
+        }
+        RArrowKind::Character => {
+            if descriptor.dictstring.is_null() {
+                ColumnInput::CharacterEager {
+                    values: read_strings(descriptor.strings, row_count, "character values")?,
+                }
+            } else {
+                ColumnInput::CharacterDict {
+                    data: descriptor.dictstring,
+                }
+            }
+        }
+        RArrowKind::Raw => {
+            if descriptor.values.is_null() {
+                return Err("native Arrow column data pointer is null".to_owned());
+            }
+            ColumnInput::Raw {
+                values: descriptor.values.cast::<u8>(),
+            }
+        }
+        RArrowKind::Factor => ColumnInput::Factor {
+            codes: int_slice(descriptor, row_count)?.as_ptr(),
+            levels: read_strings(descriptor.strings, descriptor.string_count, "factor levels")?,
+        },
+        RArrowKind::StataNumeric => {
+            if descriptor.compact_values.is_null() {
+                let storage = storage_from_code(descriptor.storage)?
+                    .ok_or_else(|| format!("column `{name}` has no declared Stata storage"))?;
+                ColumnInput::ProfiledEager {
+                    values: double_slice(descriptor, row_count)?.as_ptr(),
+                    storage,
+                }
+            } else {
+                let version = u16::try_from(descriptor.compact_format_version)
+                    .ok()
+                    .and_then(|value| FormatVersion::try_from(value).ok())
+                    .ok_or_else(|| "invalid compact numeric format version".to_owned())?;
+                ColumnInput::ProfiledCompact {
+                    values: descriptor.compact_values,
+                    kind: NumericKind::try_from(descriptor.compact_kind)?,
+                    version,
+                }
+            }
+        }
+    };
+
+    Ok(ExtractedColumn {
+        name,
+        kind,
+        label,
+        format,
+        tz,
+        units,
+        ordered: descriptor.ordered != 0,
+        value_labels,
+        input,
+        row_count,
+    })
+}
+
+/// Encode one extracted column into its Arrow array and field document.
+/// Pure: never calls the R API, so it may run on a worker thread.
+unsafe fn encode_column(
+    column: &ExtractedColumn,
+) -> Result<(Option<ArrowFieldDocument>, ArrayRef, u64), String> {
+    let name = &column.name;
+    let row_count = column.row_count;
+    let base_document = base_field_document(&column.label, &column.format);
     let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
     let with_labels = |mut document: ArrowFieldDocument| {
-        if value_labels.is_some() {
+        if column.value_labels.is_some() {
             document.value_labels = Some(name.clone());
         }
         document
     };
 
-    let (field, array, replacements): (Option<ArrowFieldDocument>, ArrayRef, u64) = match kind {
-        RArrowKind::Logical => {
-            let values = int_slice(descriptor, row_count)?;
+    Ok(match &column.input {
+        ColumnInput::Logical { values } => {
+            let values = std::slice::from_raw_parts(*values, row_count);
             let mut builder = BooleanBuilder::with_capacity(row_count);
-            for (index, &value) in values.iter().enumerate() {
-                poll_interrupt(index)?;
+            for &value in values {
                 if value == R_NaInt {
                     builder.append_null();
                 } else {
@@ -518,12 +683,12 @@ unsafe fn plan_column(
             let document = with_labels(base_document);
             (
                 needs_document(&document).then_some(document),
-                Arc::new(builder.finish()),
+                Arc::new(builder.finish()) as ArrayRef,
                 0,
             )
         }
-        RArrowKind::Integer => {
-            let values = int_slice(descriptor, row_count)?;
+        ColumnInput::Integer { values } => {
+            let values = std::slice::from_raw_parts(*values, row_count);
             let array = Int32Array::from_iter(
                 values
                     .iter()
@@ -536,11 +701,12 @@ unsafe fn plan_column(
                 0,
             )
         }
-        RArrowKind::Double | RArrowKind::Date | RArrowKind::Datetime | RArrowKind::Difftime => {
-            let values = double_slice(descriptor, row_count)?;
-            let (codes, has_tags) = classify_doubles(values, &name)?;
+        ColumnInput::DoubleLike { values } => {
+            let values = std::slice::from_raw_parts(*values, row_count);
+            let (codes, has_tags) = classify_doubles(values, name)?;
+            let kind = column.kind;
             let class = match kind {
-                RArrowKind::Double if value_labels.is_some() => "haven_labelled",
+                RArrowKind::Double if column.value_labels.is_some() => "haven_labelled",
                 RArrowKind::Double => "double",
                 RArrowKind::Date => "Date",
                 RArrowKind::Datetime => "POSIXct",
@@ -551,22 +717,22 @@ unsafe fn plan_column(
             if kind == RArrowKind::Datetime {
                 document.r = r_semantics(class);
                 if let Some(semantics) = document.r.as_mut() {
-                    semantics.tz = Some(tz.clone());
+                    semantics.tz = Some(column.tz.clone());
                 }
             } else if kind == RArrowKind::Difftime {
                 document.r = r_semantics(class);
                 if let Some(semantics) = document.r.as_mut() {
-                    semantics.units = Some(units.clone());
+                    semantics.units = Some(column.units.clone());
                 }
             }
-            if has_tags || value_labels.is_some() {
+            if has_tags || column.value_labels.is_some() {
                 // Tagged NAs and haven labels need bit-exact NaN payloads.
                 let (mut field, array) = payload_double_column(values, document, class);
                 if let Some(semantics) = field.as_mut().and_then(|document| document.r.as_mut()) {
                     if kind == RArrowKind::Datetime {
-                        semantics.tz = Some(tz.clone());
+                        semantics.tz = Some(column.tz.clone());
                     } else if kind == RArrowKind::Difftime {
-                        semantics.units = Some(units.clone());
+                        semantics.units = Some(column.units.clone());
                     }
                 }
                 (field, array, 0)
@@ -577,38 +743,41 @@ unsafe fn plan_column(
                         (needs_document(&document).then_some(document), array, 0)
                     }
                     RArrowKind::Date => date32_or_fallback(values, &codes, document),
-                    RArrowKind::Datetime => timestamp_or_fallback(values, &codes, document, &tz),
-                    RArrowKind::Difftime => duration_or_fallback(values, &codes, document, &units),
+                    RArrowKind::Datetime => {
+                        timestamp_or_fallback(values, &codes, document, &column.tz)
+                    }
+                    RArrowKind::Difftime => {
+                        duration_or_fallback(values, &codes, document, &column.units)
+                    }
                     _ => unreachable!("double kinds"),
                 }
             }
         }
-        RArrowKind::Character => {
-            let values = read_strings(descriptor.strings, row_count, "character values")?;
+        ColumnInput::CharacterEager { values } => {
             let document = with_labels(base_document);
             (
                 needs_document(&document).then_some(document),
-                string_array(&values),
+                string_array(values),
                 0,
             )
         }
-        RArrowKind::Raw => {
-            if descriptor.values.is_null() {
-                return Err("native Arrow column data pointer is null".to_owned());
-            }
-            let values = std::slice::from_raw_parts(descriptor.values.cast::<u8>(), row_count);
+        ColumnInput::CharacterDict { data } => {
+            let data = &*data.cast::<crate::DictStringData>();
+            let array = dictstring_array(data, row_count, name)?;
+            let document = with_labels(base_document);
+            (needs_document(&document).then_some(document), array, 0)
+        }
+        ColumnInput::Raw { values } => {
+            let values = std::slice::from_raw_parts(*values, row_count);
             let array = UInt8Array::from_iter_values(values.iter().copied());
             let mut document = with_labels(base_document);
             document.r = r_semantics("raw");
             (Some(document), Arc::new(array), 0)
         }
-        RArrowKind::Factor => {
-            let codes = int_slice(descriptor, row_count)?;
-            let levels =
-                read_strings(descriptor.strings, descriptor.string_count, "factor levels")?;
+        ColumnInput::Factor { codes, levels } => {
+            let codes = std::slice::from_raw_parts(*codes, row_count);
             let mut builder = Int32Builder::with_capacity(row_count);
-            for (index, &code) in codes.iter().enumerate() {
-                poll_interrupt(index)?;
+            for &code in codes {
                 if code == R_NaInt {
                     builder.append_null();
                 } else if code >= 1 && (code as usize) <= levels.len() {
@@ -633,42 +802,147 @@ unsafe fn plan_column(
             let mut document = with_labels(base_document);
             document.r = Some(ArrowRSemantics {
                 class: "factor".to_owned(),
-                ordered: Some(descriptor.ordered != 0),
+                ordered: Some(column.ordered),
                 tz: None,
                 units: None,
             });
             (Some(document), Arc::new(array), 0)
         }
-        RArrowKind::StataNumeric => {
-            let storage = storage_from_code(descriptor.storage)?;
-            let (array, storage, temporal, replacements) = if descriptor.compact_values.is_null() {
-                let storage = storage
-                    .ok_or_else(|| format!("column `{name}` has no declared Stata storage"))?;
-                let values = double_slice(descriptor, row_count)?;
-                let (codes, _) = classify_doubles(values, &name)?;
-                let temporal = temporal_kind(&format);
-                let (array, replacements) =
-                    encode_profiled_column(&name, storage, temporal, values, &codes)?;
-                (array, storage, temporal, replacements)
-            } else {
-                let (array, storage, temporal) = compact_profiled_column(descriptor, row_count)?;
-                (array, storage, temporal, 0)
-            };
-            let _ = temporal;
+        ColumnInput::ProfiledEager { values, storage } => {
+            let values = std::slice::from_raw_parts(*values, row_count);
+            let (codes, _) = classify_doubles(values, name)?;
+            let temporal = temporal_kind(&column.format);
+            let (array, replacements) =
+                encode_profiled_column(name, *storage, temporal, values, &codes)?;
+            let mut document = with_labels(base_document);
+            document.storage = Some(*storage);
+            document.missing = Some(field_missing_for_storage(*storage));
+            (Some(document), array, replacements)
+        }
+        ColumnInput::ProfiledCompact {
+            values,
+            kind,
+            version,
+        } => {
+            let (array, storage) = compact_profiled_column(*values, *kind, *version, row_count)?;
             let mut document = with_labels(base_document);
             document.storage = Some(storage);
             document.missing = Some(field_missing_for_storage(storage));
-            (Some(document), array, replacements)
+            (Some(document), array, 0)
+        }
+    })
+}
+
+// Automatic-parallelism thresholds for the encode phase, matching the fill
+// phase's policy.
+const MIN_PARALLEL_ENCODE_CELLS: u64 = 1_000_000;
+const MAX_AUTOMATIC_ENCODE_THREADS: usize = 8;
+
+fn encode_thread_count(requested: usize, task_count: usize, row_count: usize) -> usize {
+    if requested == 1 || task_count < 2 {
+        return 1;
+    }
+    let cells = (row_count as u64).saturating_mul(task_count as u64);
+    if requested == 0 && cells < MIN_PARALLEL_ENCODE_CELLS {
+        return 1;
+    }
+    let available = thread::available_parallelism().map_or(1, usize::from);
+    let threads = if requested == 0 {
+        available.min(MAX_AUTOMATIC_ENCODE_THREADS)
+    } else {
+        requested.min(available)
+    };
+    threads.min(task_count).max(1)
+}
+
+type EncodedColumn = (Option<ArrowFieldDocument>, ArrayRef, u64);
+
+/// Claim encode tasks from the shared queue. `poll` runs between tasks; on
+/// the R thread it checks interrupts, on workers it only observes the cancel
+/// flag set by the other loops.
+fn encode_task_loop(
+    columns: &[ExtractedColumn],
+    next: &AtomicUsize,
+    cancelled: &AtomicBool,
+    mut poll: impl FnMut() -> bool,
+) -> Result<Vec<(usize, EncodedColumn)>, String> {
+    let mut results = Vec::new();
+    loop {
+        if poll() {
+            cancelled.store(true, Ordering::Relaxed);
+            return Err("Arrow write interrupted".to_owned());
+        }
+        if cancelled.load(Ordering::Relaxed) {
+            return Ok(results);
+        }
+        let index = next.fetch_add(1, Ordering::Relaxed);
+        let Some(column) = columns.get(index) else {
+            return Ok(results);
+        };
+        match unsafe { encode_column(column) } {
+            Ok(encoded) => results.push((index, encoded)),
+            Err(error) => {
+                cancelled.store(true, Ordering::Relaxed);
+                return Err(error);
+            }
+        }
+    }
+}
+
+/// Encode every extracted column, in parallel when `threads` allows it. The
+/// R thread participates in the queue and is the only interrupt poller.
+fn run_column_encodes(
+    columns: &[ExtractedColumn],
+    threads: usize,
+) -> Result<Vec<EncodedColumn>, String> {
+    if threads <= 1 {
+        let mut encoded = Vec::with_capacity(columns.len());
+        for column in columns {
+            check_interrupt()?;
+            encoded.push(unsafe { encode_column(column) }?);
+        }
+        return Ok(encoded);
+    }
+    let next = AtomicUsize::new(0);
+    let cancelled = AtomicBool::new(false);
+    let (own_result, worker_results) = thread::scope(|scope| {
+        let handles: Vec<_> = (1..threads)
+            .map(|_| {
+                let next = &next;
+                let cancelled = &cancelled;
+                scope.spawn(move || encode_task_loop(columns, next, cancelled, || false))
+            })
+            .collect();
+        let own = encode_task_loop(columns, &next, &cancelled, coarse_interrupt);
+        if own.is_err() {
+            cancelled.store(true, Ordering::Relaxed);
+        }
+        let worker_results: Vec<_> = handles
+            .into_iter()
+            .map(|handle| {
+                handle
+                    .join()
+                    .unwrap_or_else(|_| Err("an Arrow encode worker panicked".to_owned()))
+            })
+            .collect();
+        (own, worker_results)
+    });
+    let mut slots: Vec<Option<EncodedColumn>> = columns.iter().map(|_| None).collect();
+    let mut store = |results: Vec<(usize, EncodedColumn)>| {
+        for (index, encoded) in results {
+            slots[index] = Some(encoded);
         }
     };
-
-    Ok(ColumnPlan {
-        name,
-        field,
-        array,
-        replacements,
-        value_labels,
-    })
+    // Surface the R thread's error (interrupts included) first, then any
+    // worker error.
+    store(own_result?);
+    for result in worker_results {
+        store(result?);
+    }
+    slots
+        .into_iter()
+        .map(|slot| slot.ok_or_else(|| "an encode task produced no result".to_owned()))
+        .collect()
 }
 
 /// Date32 when every value is a whole day in range; Float64 fallback with the
@@ -823,6 +1097,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
     column_count: usize,
     row_count: usize,
     compression: *const c_char,
+    requested_threads: c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, ptr::null_mut(), || {
@@ -852,6 +1127,20 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
                 .collect::<Result<_, _>>()?;
         }
 
+        let mut extracted = Vec::new();
+        extracted
+            .try_reserve_exact(column_count)
+            .map_err(|_| "could not allocate column inputs".to_owned())?;
+        for descriptor in descriptors {
+            check_interrupt()?;
+            extracted.push(extract_column(descriptor, row_count)?);
+        }
+
+        let requested_threads =
+            usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
+        let threads = encode_thread_count(requested_threads, column_count, row_count);
+        let encoded = run_column_encodes(&extracted, threads)?;
+
         let mut write_columns = Vec::new();
         write_columns
             .try_reserve_exact(column_count)
@@ -860,17 +1149,15 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
         replacements
             .try_reserve_exact(column_count)
             .map_err(|_| "could not allocate replacement counts".to_owned())?;
-        for descriptor in descriptors {
-            check_interrupt()?;
-            let plan = plan_column(descriptor, row_count)?;
-            if let Some(table) = &plan.value_labels {
+        for (column, (field, array, replaced)) in extracted.into_iter().zip(encoded) {
+            if let Some(table) = &column.value_labels {
                 dataset.insert_value_label_table(table);
             }
-            replacements.push(plan.replacements);
+            replacements.push(replaced);
             write_columns.push(ArrowWriteColumn {
-                name: plan.name,
-                field: plan.field,
-                array: plan.array,
+                name: column.name,
+                field,
+                array,
             });
         }
 
