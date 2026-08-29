@@ -10,11 +10,11 @@ reference_run=${2:-}
 
 require_positive_integer "$iterations" "iterations"
 if [ -z "$reference_run" ]; then
-    if [ ! -f "$target_dir/CURRENT" ]; then
+    if [ ! -f "$target_dir/PRIMARY_WRITE_CURRENT" ]; then
         printf '%s\n' "pass the prior complete run directory" >&2
         exit 2
     fi
-    IFS= read -r reference_relative < "$target_dir/CURRENT"
+    IFS= read -r reference_relative < "$target_dir/PRIMARY_WRITE_CURRENT"
     reference_run="$target_dir/$reference_relative"
 fi
 reference_run=$(CDPATH= cd -- "$reference_run" && pwd)

@@ -159,6 +159,60 @@ measure_iteration <- function(dataset, iteration) {
     results
 }
 
+validate_full_scale_output <- function(dataset, writer) {
+    work_dir <- tempfile(
+        pattern = paste0("synthetic-write-validation-", dataset$dataset, "-"),
+        tmpdir = output_parent
+    )
+    dir.create(work_dir)
+    on.exit(unlink(work_dir, recursive = TRUE, force = TRUE), add = TRUE)
+    output <- file.path(work_dir, paste0(writer, "-output.dta"))
+    process <- processx::run(
+        rscript,
+        c("--vanilla", file.path(script_dir, "write-worker.R"),
+          writer, "stata-storage", dataset$path, output),
+        wd = work_dir, env = benchmark_environment,
+        error_on_status = FALSE, echo = FALSE
+    )
+    fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
+    measurement <- tryCatch(
+        parse_fixture_write_result(fields, writer),
+        error = function(condition) {
+            stop(conditionMessage(condition), ": ", process$stderr)
+        }
+    )
+    if (measurement$rows != dataset$rows ||
+        measurement$columns != stata_fixture_columns ||
+        measurement$bytes <= 0 || !file.exists(output)) {
+        stop(writer, " full-scale validation write returned invalid output")
+    }
+    validation <- processx::run(
+        rscript,
+        c("--vanilla", file.path(script_dir, "validate-write-output.R"),
+          writer, dataset$path, output),
+        wd = work_dir, env = benchmark_environment,
+        error_on_status = FALSE, echo = FALSE
+    )
+    validation_fields <- parse_fields(validation$stdout, "WRITE_VALIDATION")
+    expected <- c(
+        writer, "ok", as.character(dataset$rows),
+        as.character(stata_fixture_columns)
+    )
+    if (!identical(validation_fields, expected) || validation$status != 0L) {
+        stop(
+            writer, " full-scale semantic validation failed: ",
+            validation$stderr
+        )
+    }
+    message(dataset$dataset, " ", writer, " full-scale validation")
+    data.frame(
+        dataset = dataset$dataset, dataset_sha256 = dataset$sha256,
+        writer = writer, rows = measurement$rows,
+        columns = measurement$columns, output_bytes = measurement$bytes,
+        semantic_status = "identical", stringsAsFactors = FALSE
+    )
+}
+
 rows <- vector("list", nrow(datasets) * iterations * length(writers))
 row_index <- 0L
 for (dataset_index in seq_len(nrow(datasets))) {
@@ -172,6 +226,15 @@ for (dataset_index in seq_len(nrow(datasets))) {
     }
 }
 raw <- do.call(rbind, rows)
+
+validation <- if (length(r_writers)) {
+    do.call(rbind, lapply(seq_len(nrow(datasets)), function(dataset_index) {
+        dataset <- datasets[dataset_index, , drop = FALSE]
+        do.call(rbind, lapply(r_writers, function(writer) {
+            validate_full_scale_output(dataset, writer)
+        }))
+    }))
+} else data.frame()
 
 final_build <- verify_benchmark_provenance(
     checkout_root, benchmark_library, build_provenance_path
@@ -203,6 +266,7 @@ stable_provenance <- cbind(data.frame(
     fixture_generator_sha256 = stata_generator_sha256,
     stata_save_state = "first-save-after-generate",
     r_writer_input = "exact-stata-first-save-output-read-by-dtatools",
+    full_scale_validation = "untimed-semantic-roundtrip-each-r-writer-and-size",
     execution_order = if ("stata" %in% writers && length(r_writers)) {
         "stata-then-rotating-r-writers"
     } else if (length(r_writers) > 1L) {
@@ -243,6 +307,14 @@ if (!identical(
     runtime_binding
 )) {
     stop("benchmark runtime changed during synthetic writes")
+}
+
+if (nrow(validation)) {
+    validation$provenance_id <- benchmark_provenance_id(stable_provenance)
+    validation$build_provenance_id <- stable_provenance$build_provenance_id
+    atomic_tsv(
+        validation, file.path(output_parent, "write-validation.tsv")
+    )
 }
 
 finalize_write_results(

@@ -34,7 +34,8 @@ output <- normalizePath(args[[7L]], winslash = "/", mustWork = FALSE)
 
 contract_fields <- c(
     "workload", "fixture_storage_schema", "fixture_creator",
-    "fixture_generator_sha256", "stata_save_state", "r_writer_input"
+    "fixture_generator_sha256", "stata_save_state", "r_writer_input",
+    "full_scale_validation"
 )
 if (nrow(current_provenance) != 1L || nrow(reference_provenance) != 1L ||
     !all(contract_fields %in% names(current_provenance)) ||
