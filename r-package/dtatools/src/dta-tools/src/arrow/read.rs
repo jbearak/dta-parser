@@ -32,6 +32,22 @@ use super::ArrowProfileError;
 
 const FILE_MAGIC: &[u8; 6] = b"ARROW1";
 const CONTINUATION_MARKER: [u8; 4] = [0xff, 0xff, 0xff, 0xff];
+const MAX_IPC_METADATA_BYTES: u64 = 64 * 1024 * 1024;
+
+fn metadata_buffer(length: u64, location: &str) -> Result<Vec<u8>, ArrowProfileError> {
+    if length > MAX_IPC_METADATA_BYTES {
+        return Err(invalid(format!(
+            "{location} metadata length exceeds the 64 MiB safety limit"
+        )));
+    }
+    let length = usize::try_from(length).map_err(|_| invalid("metadata length is too large"))?;
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(length)
+        .map_err(|_| invalid(format!("could not allocate {location} metadata buffer")))?;
+    bytes.resize(length, 0);
+    Ok(bytes)
+}
 
 /// Selection and safety options for one Arrow read.
 #[derive(Debug, Clone, Default)]
@@ -280,8 +296,7 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
         return Err(invalid("footer length is out of bounds"));
     }
     let footer_start = file_length - 10 - footer_length;
-    let mut footer_bytes =
-        vec![0_u8; usize::try_from(footer_length).map_err(|_| { invalid("footer is too large") })?];
+    let mut footer_bytes = metadata_buffer(footer_length, "footer")?;
     read_exact_at(reader, footer_start, &mut footer_bytes)?;
     let footer =
         root_as_footer(&footer_bytes).map_err(|error| invalid(format!("bad footer: {error}")))?;
@@ -333,6 +348,11 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
             body_length: u64::try_from(block.bodyLength())
                 .map_err(|_| invalid("negative block body length"))?,
         };
+        if u64::from(info.metadata_length) > MAX_IPC_METADATA_BYTES {
+            return Err(invalid(
+                "IPC block metadata length exceeds the 64 MiB safety limit",
+            ));
+        }
         let block_end = info
             .offset
             .checked_add(u64::from(info.metadata_length))
@@ -455,7 +475,7 @@ fn read_batch_header<R: Read + Seek>(
     reader: &mut R,
     block: BlockInfo,
 ) -> Result<BatchHeader, ArrowProfileError> {
-    let mut bytes = vec![0_u8; block.metadata_length as usize];
+    let mut bytes = metadata_buffer(u64::from(block.metadata_length), "record batch")?;
     read_exact_at(reader, block.offset, &mut bytes)?;
     let message = parse_message_header(&bytes)?;
     let batch = message
@@ -797,7 +817,7 @@ fn read_dictionaries<R: Read + Seek>(
         })
         .collect();
     for block in &footer.dictionary_blocks {
-        let mut bytes = vec![0_u8; block.metadata_length as usize];
+        let mut bytes = metadata_buffer(u64::from(block.metadata_length), "dictionary batch")?;
         read_exact_at(reader, block.offset, &mut bytes)?;
         let message = parse_message_header(&bytes)?;
         if message.header_type() != MessageHeader::DictionaryBatch {
@@ -1608,7 +1628,7 @@ fn validate_stored_checksum_coverage<R: Read + Seek>(
 
     let mut dictionary_nulls = HashMap::<i64, bool>::new();
     for block in &footer.dictionary_blocks {
-        let mut bytes = vec![0_u8; block.metadata_length as usize];
+        let mut bytes = metadata_buffer(u64::from(block.metadata_length), "dictionary batch")?;
         read_exact_at(reader, block.offset, &mut bytes)?;
         let message = parse_message_header(&bytes)?;
         let batch = message
@@ -1809,6 +1829,13 @@ mod tests {
     use flatbuffers::FlatBufferBuilder;
 
     use super::*;
+
+    #[test]
+    fn ipc_metadata_allocations_are_bounded() {
+        let error = metadata_buffer(MAX_IPC_METADATA_BYTES + 1, "record batch")
+            .expect_err("oversized metadata is rejected before allocation");
+        assert!(error.to_string().contains("64 MiB safety limit"));
+    }
 
     #[test]
     fn malformed_flatbuffer_field_types_are_rejected_without_panicking() {
