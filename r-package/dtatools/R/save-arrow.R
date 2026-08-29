@@ -297,11 +297,6 @@ save_arrow <- function(data, path,
         format <- .prepare_arrow_write_format(column, name, kind)
         if (identical(kind, "factor")) {
             levels <- levels(column)
-            if (anyNA(levels)) {
-                .dta_write_abort(sprintf(
-                    "Factor column `%s` has a missing level", name
-                ))
-            }
             levels <- .arrow_utf8(
                 levels, sprintf("Factor levels for `%s`", name)
             )

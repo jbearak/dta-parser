@@ -2563,7 +2563,9 @@ static const char *write_scalar_string(SEXP value, const char *name) {
     return Rf_translateCharUTF8(STRING_ELT(value, 0));
 }
 
-static SEXP write_utf8_strings(SEXP values, const char *name) {
+static SEXP write_utf8_strings(
+    SEXP values, const char *name, int allow_missing
+) {
     if (TYPEOF(values) != STRSXP) {
         Rf_error("internal `%s` must be character", name);
     }
@@ -2572,6 +2574,11 @@ static SEXP write_utf8_strings(SEXP values, const char *name) {
     for (R_xlen_t index = 0; index < length; index++) {
         SEXP element = PROTECT(STRING_ELT(values, index));
         if (element == NA_STRING) {
+            if (allow_missing) {
+                SET_STRING_ELT(normalized, index, NA_STRING);
+                UNPROTECT(1);
+                continue;
+            }
             UNPROTECT(2);
             Rf_error("internal `%s` contains a missing string", name);
         }
@@ -2588,7 +2595,16 @@ static SEXP write_utf8_strings(SEXP values, const char *name) {
 static SEXP write_rooted_strings(
     SEXP roots, R_xlen_t index, SEXP values, const char *name
 ) {
-    SEXP normalized = PROTECT(write_utf8_strings(values, name));
+    SEXP normalized = PROTECT(write_utf8_strings(values, name, 0));
+    SET_VECTOR_ELT(roots, index, normalized);
+    UNPROTECT(1);
+    return normalized;
+}
+
+static SEXP write_rooted_optional_strings(
+    SEXP roots, R_xlen_t index, SEXP values, const char *name
+) {
+    SEXP normalized = PROTECT(write_utf8_strings(values, name, 1));
     SET_VECTOR_ELT(roots, index, normalized);
     UNPROTECT(1);
     return normalized;
@@ -2904,7 +2920,7 @@ static void arrow_write_column_descriptor(
             Rf_error("internal Arrow factor column has the wrong type");
         }
         descriptor->values = INTEGER(values);
-        descriptor->strings = write_rooted_strings(
+        descriptor->strings = write_rooted_optional_strings(
             string_roots, (*root_index)++, levels, "factor levels"
         );
         descriptor->string_count = (size_t) XLENGTH(levels);

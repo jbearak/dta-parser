@@ -906,6 +906,25 @@ test_that("plain Arrow ordered dictionaries remain ordered factors", {
     expect_s3_class(actual$rating, "ordered")
 })
 
+test_that("NA-valued factor levels survive profiled and plain Arrow", {
+    skip_if_not_installed("arrow")
+    expected <- factor(c("a", NA, "a"), exclude = NULL)
+
+    profiled_path <- arrow_tempfile()
+    data <- tibble::tibble(x = expected)
+    save_arrow(data, profiled_path)
+    expect_identical(read_arrow(profiled_path)$x, expected)
+    expect_identical(arrow::read_ipc_file(profiled_path)$x, expected)
+    expect_identical(datasig(profiled_path), datasig(data))
+
+    plain_path <- arrow_tempfile()
+    values <- arrow::DictionaryArray$create(
+        c(0L, 1L, 0L), c("a", NA_character_)
+    )
+    arrow::write_ipc_file(arrow::arrow_table(x = values), plain_path)
+    expect_identical(read_arrow(plain_path)$x, expected)
+})
+
 test_that("plain Int32 selection predicates match the returned R type", {
     skip_if_not_installed("arrow")
     path <- arrow_tempfile()

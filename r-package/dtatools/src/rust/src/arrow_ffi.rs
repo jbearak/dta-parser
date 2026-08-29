@@ -1073,16 +1073,8 @@ unsafe fn encode_column(
                     ));
                 }
             }
-            let level_values: Vec<&str> = levels
-                .iter()
-                .map(|value| {
-                    value
-                        .as_deref()
-                        .ok_or_else(|| format!("column `{name}` has a missing factor level"))
-                })
-                .collect::<Result<_, _>>()?;
-            let values = StringArray::from(level_values);
-            let array = DictionaryArray::try_new(builder.finish(), Arc::new(values))
+            let values = string_array(levels, name)?;
+            let array = DictionaryArray::try_new(builder.finish(), values)
                 .map_err(|error| error.to_string())?;
             let mut document = with_labels(base_document);
             document.r = Some(ArrowRSemantics {
@@ -1880,7 +1872,7 @@ enum FillOutcome {
     Plain,
     NoNa(bool),
     Strings(RStringData),
-    Levels(Vec<String>),
+    Levels(Vec<Option<String>>),
 }
 
 unsafe impl Send for FillOutcome {}
@@ -2328,7 +2320,7 @@ unsafe fn character_vector(
     Ok(vector)
 }
 
-fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<String>, String> {
+fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<Option<String>>, String> {
     match values.data_type() {
         DataType::Utf8 => {
             let values = values
@@ -2336,13 +2328,7 @@ fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<String>, String>
                 .downcast_ref::<StringArray>()
                 .ok_or_else(|| chunk_error(column))?;
             (0..values.len())
-                .map(|index| {
-                    if values.is_null(index) {
-                        Err(format!("column `{column}` has a null factor level"))
-                    } else {
-                        Ok(values.value(index).to_owned())
-                    }
-                })
+                .map(|index| Ok((!values.is_null(index)).then(|| values.value(index).to_owned())))
                 .collect()
         }
         DataType::LargeUtf8 => {
@@ -2351,24 +2337,37 @@ fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<String>, String>
                 .downcast_ref::<arrow_array::LargeStringArray>()
                 .ok_or_else(|| chunk_error(column))?;
             (0..values.len())
-                .map(|index| {
-                    if values.is_null(index) {
-                        Err(format!("column `{column}` has a null factor level"))
-                    } else {
-                        Ok(values.value(index).to_owned())
-                    }
-                })
+                .map(|index| Ok((!values.is_null(index)).then(|| values.value(index).to_owned())))
                 .collect()
         }
         _ => Err(chunk_error(column)),
     }
 }
 
+unsafe fn optional_string_vector(
+    values: &[Option<String>],
+    guard: &mut ProtectGuard,
+) -> Result<Sexp, String> {
+    let vector = guard.alloc(
+        STRSXP,
+        RLen::try_from(values.len()).map_err(|_| "R vector is too long".to_owned())?,
+    )?;
+    for (index, value) in values.iter().enumerate() {
+        poll_interrupt(index)?;
+        let value = match value {
+            Some(value) => r_char(value)?,
+            None => R_NaString,
+        };
+        SET_STRING_ELT(vector, index as RLen, value);
+    }
+    Ok(vector)
+}
+
 unsafe fn fill_factor_chunk<K: ArrowDictionaryKeyType>(
     chunk: &ArrayRef,
     output: *mut c_int,
     row: &mut usize,
-    levels: &mut Option<Vec<String>>,
+    levels: &mut Option<Vec<Option<String>>>,
     column: &str,
 ) -> Result<(), String> {
     let dictionary = chunk
@@ -2405,8 +2404,8 @@ unsafe fn fill_factor_chunk<K: ArrowDictionaryKeyType>(
 unsafe fn fill_factor_codes(
     column: &ArrowReadColumn,
     output: *mut c_int,
-) -> Result<Vec<String>, String> {
-    let mut levels: Option<Vec<String>> = None;
+) -> Result<Vec<Option<String>>, String> {
+    let mut levels: Option<Vec<Option<String>>> = None;
     let mut row = 0_usize;
     let DataType::Dictionary(key, _) = &column.data_type else {
         return Err(chunk_error(&column.name));
@@ -2827,7 +2826,7 @@ unsafe fn finalize_read_column(
             let FillOutcome::Levels(levels) = outcome else {
                 return Err(mismatch());
             };
-            let level_vector = string_vector(&levels, guard)?;
+            let level_vector = optional_string_vector(&levels, guard)?;
             set_attr(plan.vector, "levels", level_vector)?;
             let ordered = attributes
                 .semantics()
