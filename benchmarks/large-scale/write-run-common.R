@@ -199,7 +199,19 @@ validate_primary_write_inputs <- function(
     }
 
     r_writers <- setdiff(writers, "stata")
-    if (!"stata" %in% writers || !length(r_writers)) return(invisible(NULL))
+    if (!"stata" %in% writers) {
+        valid_inputs <- vapply(datasets, function(dataset) {
+            observed <- unique(as.character(
+                raw$input_sha256[raw$dataset == dataset]
+            ))
+            identical(observed, expected_hashes[[dataset]])
+        }, logical(1L))
+        if (!all(valid_inputs)) {
+            stop(description, " inputs do not match their canonical datasets")
+        }
+        return(invisible(NULL))
+    }
+    if (!length(r_writers)) return(invisible(NULL))
     groups <- split(raw, interaction(raw$dataset, raw$iteration, drop = TRUE))
     exact_pair <- vapply(groups, function(group) {
         ordered_writers <- group$writer[order(group$writer_order)]
