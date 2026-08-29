@@ -8,7 +8,7 @@ name: Publish to npm
 #   Package page → Settings → "Trusted Publisher" → add a GitHub Actions
 #   publisher with:
 #     - Organization or user: jbearak
-#     - Repository:           dta-parser
+#     - Repository:           dta-tools
 #     - Workflow filename:    publish.yml
 #     - Environment:          release   (must match the job's environment)
 #   That links this exact workflow to the package; GitHub's OIDC token is

@@ -47,7 +47,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dta-parser"
+name = "dta-tools"
 version = "0.6.0"
 dependencies = [
  "encoding_rs",

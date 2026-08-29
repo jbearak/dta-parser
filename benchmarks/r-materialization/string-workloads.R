@@ -11,24 +11,24 @@ stopifnot(is.finite(iterations), iterations >= 1L)
 script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
 script_path <- normalizePath(sub("^--file=", "", script_argument), winslash = "/")
 checkout_root <- normalizePath(file.path(dirname(script_path), "..", ".."), winslash = "/")
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
+benchmark_library <- Sys.getenv("DTATOOLS_BENCH_LIB")
 if (!nzchar(benchmark_library)) {
-    stop("set DTAPARSER_BENCH_LIB to a library containing dtaparser built from this checkout")
+    stop("set DTATOOLS_BENCH_LIB to a library containing dtatools built from this checkout")
 }
 benchmark_library <- normalizePath(benchmark_library, winslash = "/")
 if (!startsWith(benchmark_library, paste0(checkout_root, "/"))) {
-    stop("DTAPARSER_BENCH_LIB must point to a library inside this checkout")
+    stop("DTATOOLS_BENCH_LIB must point to a library inside this checkout")
 }
 .libPaths(c(benchmark_library, .libPaths()))
-if (!requireNamespace("dtaparser", quietly = TRUE)) {
-    stop("DTAPARSER_BENCH_LIB does not contain a loadable dtaparser installation")
+if (!requireNamespace("dtatools", quietly = TRUE)) {
+    stop("DTATOOLS_BENCH_LIB does not contain a loadable dtatools installation")
 }
-loaded_library <- normalizePath(dirname(find.package("dtaparser")), winslash = "/")
+loaded_library <- normalizePath(dirname(find.package("dtatools")), winslash = "/")
 if (!identical(loaded_library, benchmark_library)) {
-    stop("dtaparser was not loaded from DTAPARSER_BENCH_LIB")
+    stop("dtatools was not loaded from DTATOOLS_BENCH_LIB")
 }
 
-reference <- dtaparser:::.read_dta_rust_vectors(path)
+reference <- dtatools:::.read_dta_rust_vectors(path)
 character_columns <- names(reference)[vapply(reference, is.character, logical(1))]
 numeric_columns <- names(reference)[vapply(reference, is.numeric, logical(1))]
 subset_rows <- if (nrow(reference) == 0L) {
@@ -78,7 +78,7 @@ for (iteration in seq_len(iterations)) {
     for (workload in order) {
         invisible(gc())
         started <- proc.time()[["elapsed"]]
-        result <- dtaparser::read_dta(path)
+        result <- dtatools::read_dta(path)
         checksum <- consume(result, workload)
         elapsed <- proc.time()[["elapsed"]] - started
         stopifnot(

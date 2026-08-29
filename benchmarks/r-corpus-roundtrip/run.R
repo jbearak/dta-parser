@@ -18,13 +18,13 @@ source(file.path(script_dir, "common.R"), local = TRUE)
 
 benchmark_library <- benchmark_library_path()
 installed_package <- benchmark_installed_package_path(benchmark_library)
-source_tarball <- Sys.getenv("DTAPARSER_SOURCE_TARBALL")
-if (!nzchar(source_tarball)) stop("DTAPARSER_SOURCE_TARBALL is required")
+source_tarball <- Sys.getenv("DTATOOLS_SOURCE_TARBALL")
+if (!nzchar(source_tarball)) stop("DTATOOLS_SOURCE_TARBALL is required")
 source_tarball <- normalizePath(source_tarball, winslash = "/", mustWork = TRUE)
-source_sha256 <- Sys.getenv("DTAPARSER_SOURCE_SHA256")
+source_sha256 <- Sys.getenv("DTATOOLS_SOURCE_SHA256")
 if (!grepl("^[0-9a-f]{64}$", source_sha256) ||
     !identical(benchmark_file_sha256(source_tarball), source_sha256)) {
-    stop("DTAPARSER_SOURCE_SHA256 must bind the installed source package")
+    stop("DTATOOLS_SOURCE_SHA256 must bind the installed source package")
 }
 
 rscript <- normalizePath(Sys.which("Rscript"), winslash = "/", mustWork = TRUE)
@@ -35,7 +35,7 @@ run_process <- function(
     command, arguments, working_directory = NULL, timed = FALSE
 ) {
     environment <- c(
-        DTAPARSER_BENCH_LIB = benchmark_library,
+        DTATOOLS_BENCH_LIB = benchmark_library,
         R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
     )
     if (timed) {
@@ -76,7 +76,7 @@ require_stata_mp()
 
 source_inventory_path <- file.path(output_dir, "corpus-inventory.tsv")
 force_inventory <- identical(
-    Sys.getenv("DTAPARSER_ROUNDTRIP_VERIFY_INVENTORY"), "1"
+    Sys.getenv("DTATOOLS_ROUNDTRIP_VERIFY_INVENTORY"), "1"
 )
 if (file.exists(source_inventory_path) && !force_inventory) {
     inventory <- roundtrip_cached_inventory(
@@ -258,7 +258,7 @@ if (identical(mode, "qualify")) {
                 c("--vanilla", file.path(script_dir, "qualify-worker.R"), input, output)
             )
             marker <- parse_marker(
-                process$stdout, "DTAPARSER_ROUNDTRIP",
+                process$stdout, "DTATOOLS_ROUNDTRIP",
                 c("status", "rows", "columns", "output_bytes"),
                 failure_status = "r-worker-error"
             )
@@ -398,7 +398,7 @@ work_root <- file.path(output_dir, "benchmark-work")
 dir.create(work_root, recursive = TRUE, showWarnings = FALSE)
 
 wide_id <- "synthetic-wide-32768"
-wide_keys <- paste(wide_id, c("dtaparser", "stata"), sep = "\037")
+wide_keys <- paste(wide_id, c("dtatools", "stata"), sep = "\037")
 wide_completed <- vapply(
     wide_keys,
     function(key) key_set_contains(completed, key),
@@ -472,8 +472,8 @@ selected <- rbind(selected, data.frame(
     stringsAsFactors = FALSE
 ))
 
-measure_dtaparser <- function(item, order_index) {
-    work_dir <- file.path(work_root, paste0(item$id, "-dtaparser"))
+measure_dtatools <- function(item, order_index) {
+    work_dir <- file.path(work_root, paste0(item$id, "-dtatools"))
     dir.create(work_dir, recursive = TRUE, showWarnings = FALSE)
     on.exit(unlink(work_dir, recursive = TRUE, force = TRUE), add = TRUE)
     output <- file.path(work_dir, "output.dta")
@@ -482,11 +482,11 @@ measure_dtaparser <- function(item, order_index) {
         c("--vanilla", file.path(script_dir, "write-worker.R"), item$path, output),
         timed = TRUE
     )
-    marker <- parse_marker(process$stdout, "DTAPARSER_WRITE", c("status", "elapsed", "bytes"))
+    marker <- parse_marker(process$stdout, "DTATOOLS_WRITE", c("status", "elapsed", "bytes"))
     data.frame(
         corpus = item$corpus, id = item$id, release = item$release,
         input_sha256 = item$sha256,
-        writer = "dtaparser", writer_order = order_index,
+        writer = "dtatools", writer_order = order_index,
         status = marker$status,
         elapsed_seconds = as.numeric(marker$elapsed),
         rss_bytes = parse_memory(process$stderr),
@@ -530,7 +530,7 @@ measure_stata <- function(item, order_index) {
 
 for (index in seq_len(nrow(selected))) {
     item <- selected[index, , drop = FALSE]
-    writers <- if (index %% 2L) c("dtaparser", "stata") else c("stata", "dtaparser")
+    writers <- if (index %% 2L) c("dtatools", "stata") else c("stata", "dtatools")
     keys <- paste(item$id, writers, sep = "\037")
     pending <- !vapply(
         keys, function(key) key_set_contains(completed, key), logical(1L)
@@ -546,8 +546,8 @@ for (index in seq_len(nrow(selected))) {
         for (writer_index in seq_along(writers)) {
             if (!pending[[writer_index]]) next
             writer <- writers[[writer_index]]
-            row <- if (writer == "dtaparser") {
-                measure_dtaparser(item, writer_index)
+            row <- if (writer == "dtatools") {
+                measure_dtatools(item, writer_index)
             } else measure_stata(item, writer_index)
             append_tsv(row, benchmark_path)
             key_set_add(completed, keys[[writer_index]])
@@ -559,7 +559,7 @@ for (index in seq_len(nrow(selected))) {
 
 raw <- read.delim(benchmark_path, check.names = FALSE, stringsAsFactors = FALSE)
 roundtrip_validate_benchmark_matrix(
-    raw, selected, c("dtaparser", "stata")
+    raw, selected, c("dtatools", "stata")
 )
 summary <- aggregate(
     cbind(elapsed_seconds, output_bytes) ~ corpus + release + writer,

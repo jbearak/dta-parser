@@ -25,10 +25,10 @@ fi
 
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
-cp -R r-package/dtaparser "$temporary/dtaparser"
-version=$(sed -n 's/^Version: //p' "$temporary/dtaparser/DESCRIPTION")
-tarball="dtaparser_${version}.tar.gz"
-(cd "$temporary" && R CMD build dtaparser)
+cp -R r-package/dtatools "$temporary/dtatools"
+version=$(sed -n 's/^Version: //p' "$temporary/dtatools/DESCRIPTION")
+tarball="dtatools_${version}.tar.gz"
+(cd "$temporary" && R CMD build dtatools)
 scripts/check-r-package-archive.sh "$temporary/$tarball"
 (cd "$temporary" && R CMD check --no-manual "$tarball")
 echo "R package conformance: PASS (current source built and checked with offline Cargo archive)"

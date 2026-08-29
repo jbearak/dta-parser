@@ -1,0 +1,7 @@
+src/Makevars
+src/Makevars.win
+src/*.o
+src/*.so
+src/dta-tools/target/
+src/rust/target/
+src/rust/v/

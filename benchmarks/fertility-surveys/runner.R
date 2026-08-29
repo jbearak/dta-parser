@@ -449,7 +449,7 @@ fertility_output_expected_releases <- c(
 fertility_output_expected_levels <- c(survey = 1218L, aggregate = 8L)
 
 fertility_output_terminal_classifications <- function() c(
-    "pass", "direct-vs-rust-mismatch", "dtaparser-only-error",
+    "pass", "direct-vs-rust-mismatch", "dtatools-only-error",
     "haven-only-error", "shared-reader-error", "metadata-mismatch",
     "value-mismatch", "tag-mismatch", "date-mismatch", "encoding-mismatch",
     "row-termination-mismatch", "known-intentional-divergence"
@@ -721,7 +721,7 @@ fertility_process_item <- function(item, checkpoint_path, framework_id,
 
 fertility_should_retry <- function(checkpoint) {
     checkpoint$classification %in% c(
-        "timeout", "crash", "dtaparser-only-error", "haven-only-error",
+        "timeout", "crash", "dtatools-only-error", "haven-only-error",
         "shared-reader-error", "memory-limit", "unresolved"
     )
 }
@@ -823,7 +823,7 @@ fertility_result_frame <- function(checkpoints) {
 
 fertility_classifications <- function() c(
     "pass", "expected-unsupported-111", "inventory-hash-error",
-    "direct-vs-rust-mismatch", "dtaparser-only-error", "haven-only-error",
+    "direct-vs-rust-mismatch", "dtatools-only-error", "haven-only-error",
     "shared-reader-error", "metadata-mismatch", "value-mismatch", "tag-mismatch",
     "date-mismatch", "encoding-mismatch", "row-termination-mismatch",
     "known-intentional-divergence", "timeout", "memory-limit", "crash", "unresolved"
@@ -2723,7 +2723,7 @@ fertility_mark_tile_input_changed <- function(result) {
 
 fertility_tile_should_retry <- function(checkpoint) {
     checkpoint$classification %in% c(
-        "timeout", "crash", "dtaparser-only-error", "haven-only-error",
+        "timeout", "crash", "dtatools-only-error", "haven-only-error",
         "shared-reader-error", "memory-limit", "unresolved", "input-changed"
     )
 }
@@ -2829,7 +2829,7 @@ fertility_aggregate_classification <- function(
     if (any(classes == "memory-limit")) return("memory-limit")
     if (any(classes == "crash")) return("crash")
     if (!execution_complete || any(classes == "unresolved")) return("unresolved")
-    for (classification in c("shared-reader-error", "dtaparser-only-error",
+    for (classification in c("shared-reader-error", "dtatools-only-error",
                              "haven-only-error")) {
         if (classification %in% classes) return(classification)
     }
@@ -2930,7 +2930,7 @@ fertility_validate_tile_execution <- function(
         }, integer(1)))), seq_along(batches)
     )) return(FALSE)
     reader_errors <- c(
-        "shared-reader-error", "dtaparser-only-error", "haven-only-error"
+        "shared-reader-error", "dtatools-only-error", "haven-only-error"
     )
     for (batch in seq_along(batches)) {
         current <- value_tiles[vapply(

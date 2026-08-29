@@ -25,29 +25,29 @@ sys.source(
 )
 benchmark_library <- benchmark_library_path()
 if (!startsWith(benchmark_library, paste0(checkout_root, "/"))) {
-    stop("DTAPARSER_BENCH_LIB must point to a library inside this checkout")
+    stop("DTATOOLS_BENCH_LIB must point to a library inside this checkout")
 }
 sys.source(file.path(dirname(script_path), "provenance.R"), envir = environment())
 sys.source(file.path(dirname(script_path), "haven-parity.R"), envir = environment())
 sys.source(file.path(dirname(script_path), "stata-fixture.R"), envir = environment())
 provenance_path <- file.path(
-    benchmark_library, "dtaparser-benchmark-provenance.tsv"
+    benchmark_library, "dtatools-benchmark-provenance.tsv"
 )
 provenance <- verify_benchmark_provenance(
     checkout_root, benchmark_library, provenance_path
 )
 runtime_packages <- c(
-    "dtaparser", "haven", "tidyselect", "readr", "rlang", "tibble"
+    "dtatools", "haven", "tidyselect", "readr", "rlang", "tibble"
 )
 benchmark_activate_library(
     runtime_packages,
     benchmark_library = benchmark_library
 )
 if (!identical(
-    as.character(utils::packageVersion("dtaparser")),
+    as.character(utils::packageVersion("dtatools")),
     as.character(provenance$package_version[[1L]])
 )) {
-    stop("installed dtaparser version does not match benchmark provenance")
+    stop("installed dtatools version does not match benchmark provenance")
 }
 
 canonical_target <- normalizePath(
@@ -163,7 +163,7 @@ projection <- c(
     "id", "income", "age", "region", "interview_date", "case_code",
     "occupation", "description"
 )
-columns <- names(dtaparser::read_dta(datasets$path[[1L]], n_max = 0))
+columns <- names(dtatools::read_dta(datasets$path[[1L]], n_max = 0))
 stopifnot(all(projection %in% columns))
 datasets$columns <- length(columns)
 runtime_provenance <- collect_runtime_provenance(
@@ -176,18 +176,18 @@ read_one <- function(implementation, workload, path, skip = 0, n_max = Inf) {
     full <- identical(workload, "full")
     if (identical(implementation, "direct-r")) {
         if (full) {
-            dtaparser::read_dta(path, skip = skip, n_max = n_max)
+            dtatools::read_dta(path, skip = skip, n_max = n_max)
         } else {
-            dtaparser::read_dta(
+            dtatools::read_dta(
                 path, col_select = tidyselect::all_of(projection),
                 skip = skip, n_max = n_max
             )
         }
     } else if (identical(implementation, "rust-vectors")) {
         if (full) {
-            dtaparser:::.read_dta_rust_vectors(path, skip = skip, n_max = n_max)
+            dtatools:::.read_dta_rust_vectors(path, skip = skip, n_max = n_max)
         } else {
-            dtaparser:::.read_dta_rust_vectors(
+            dtatools:::.read_dta_rust_vectors(
                 path, col_select = tidyselect::all_of(projection),
                 skip = skip, n_max = n_max
             )

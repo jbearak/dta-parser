@@ -29,7 +29,7 @@ export TMPDIR
 TMPDIR=$(mktemp -d "$state/tmp/run.XXXXXX")
 trap 'rm -rf "$TMPDIR"' EXIT HUP INT TERM
 
-build_id=$(Rscript --vanilla - "$checkout/r-package/dtaparser" "$script_dir" <<'RS'
+build_id=$(Rscript --vanilla - "$checkout/r-package/dtatools" "$script_dir" <<'RS'
 args <- commandArgs(TRUE)
 files <- c(
     list.files(args[[1L]], all.files = TRUE, full.names = TRUE, recursive = TRUE,
@@ -49,15 +49,15 @@ RS
 
 build="$state/builds/$build_id"
 library="$build/library"
-package="$library/dtaparser"
+package="$library/dtatools"
 if ! test -d "$package"; then
     stage="$TMPDIR/build"
     staged_library="$TMPDIR/library"
     mkdir -p "$stage" "$staged_library"
-    cp -R "$checkout/r-package/dtaparser" "$stage/dtaparser"
-    version=$(sed -n 's/^Version: //p' "$stage/dtaparser/DESCRIPTION")
-    (cd "$stage" && R CMD build dtaparser >/dev/null)
-    R CMD INSTALL --library="$staged_library" "$stage/dtaparser_${version}.tar.gz"
+    cp -R "$checkout/r-package/dtatools" "$stage/dtatools"
+    version=$(sed -n 's/^Version: //p' "$stage/dtatools/DESCRIPTION")
+    (cd "$stage" && R CMD build dtatools >/dev/null)
+    R CMD INSTALL --library="$staged_library" "$stage/dtatools_${version}.tar.gz"
     mkdir -p "$build"
     mv "$staged_library" "$library"
     chmod -R u=rwX,go= "$build"

@@ -1,7 +1,0 @@
-RUST_TARGET_DIR = rust/target/@RUST_NAMESPACE@
-RUST_LIB = $(RUST_TARGET_DIR)/release/libdtaparser_r.a
-RUST_BUILD_TARGET =
-
-PKG_LIBS = $(RUST_LIB) @RUST_SYSTEM_LIBS@
-
-include Makevars.rust

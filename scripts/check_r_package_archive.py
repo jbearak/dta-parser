@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the contents and member types of a dtaparser R source archive."""
+"""Validate the contents and member types of a dtatools R source archive."""
 
 from __future__ import annotations
 
@@ -17,21 +17,21 @@ from archive_safety import (
 
 
 REQUIRED_FILES = {
-    "dtaparser/src/dta-parser/Cargo.toml",
-    "dtaparser/src/dta-parser/src/lib.rs",
-    "dtaparser/src/rust/Cargo.toml",
-    "dtaparser/src/rust/Cargo.lock",
-    "dtaparser/src/rust/vendor.tar.gz",
-    "dtaparser/src/Makevars.rust",
-    "dtaparser/tools/configure-rust.sh",
-    "dtaparser/tools/rust-source-hash.R",
+    "dtatools/src/dta-tools/Cargo.toml",
+    "dtatools/src/dta-tools/src/lib.rs",
+    "dtatools/src/rust/Cargo.toml",
+    "dtatools/src/rust/Cargo.lock",
+    "dtatools/src/rust/vendor.tar.gz",
+    "dtatools/src/Makevars.rust",
+    "dtatools/tools/configure-rust.sh",
+    "dtatools/tools/rust-source-hash.R",
 }
 EXCLUDED_PATH = re.compile(
     r"/target(?:/|$)"
-    r"|^dtaparser/src/rust/v(?:/|$)"
-    r"|^dtaparser/src/dta-parser/(?:tests|examples)(?:/|$)"
-    r"|^dtaparser/src/Makevars(?:\.win)?$"
-    r"|/vendor/dta-parser"
+    r"|^dtatools/src/rust/v(?:/|$)"
+    r"|^dtatools/src/dta-tools/(?:tests|examples)(?:/|$)"
+    r"|^dtatools/src/Makevars(?:\.win)?$"
+    r"|/vendor/dta-tools"
 )
 
 
@@ -44,7 +44,7 @@ def normalized_member_name(member: tarfile.TarInfo) -> tuple[str, PurePosixPath]
     path = canonical_relative_path(name)
     if (
         path is None
-        or (name != "dtaparser" and not name.startswith("dtaparser/"))
+        or (name != "dtatools" and not name.startswith("dtatools/"))
     ):
         raise ArchiveError(f"R package archive has an unsafe path: {member.name}")
     return name, path

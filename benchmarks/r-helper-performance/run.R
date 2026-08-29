@@ -22,30 +22,30 @@ rows <- parse_positive_integer(
     5000000L
 )
 
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
+benchmark_library <- Sys.getenv("DTATOOLS_BENCH_LIB")
 if (!nzchar(benchmark_library)) {
     stop(
-        "set DTAPARSER_BENCH_LIB to an isolated library containing dtaparser",
+        "set DTATOOLS_BENCH_LIB to an isolated library containing dtatools",
         call. = FALSE
     )
 }
 benchmark_library <- normalizePath(benchmark_library, winslash = "/")
 .libPaths(c(benchmark_library, .libPaths()))
 
-required <- c("dtaparser", "foreign", "haven")
+required <- c("dtatools", "foreign", "haven")
 missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing) > 0L) {
     stop("Missing benchmark dependencies: ", paste(missing, collapse = ", "),
          call. = FALSE)
 }
 loaded_library <- normalizePath(
-    dirname(find.package("dtaparser")), winslash = "/"
+    dirname(find.package("dtatools")), winslash = "/"
 )
 if (!identical(loaded_library, benchmark_library)) {
-    stop("dtaparser was not loaded from DTAPARSER_BENCH_LIB", call. = FALSE)
+    stop("dtatools was not loaded from DTATOOLS_BENCH_LIB", call. = FALSE)
 }
 
-workspace <- tempfile("dtaparser-helper-benchmark-")
+workspace <- tempfile("dtatools-helper-benchmark-")
 dir.create(workspace)
 on.exit(unlink(workspace, recursive = TRUE), add = TRUE)
 fixture <- file.path(workspace, "labelled-integers.dta")
@@ -59,13 +59,13 @@ foreign::write.dta(
 )
 
 fresh_source <- function() {
-    source <- dtaparser::read_dta(fixture)$x
-    stopifnot(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+    source <- dtatools::read_dta(fixture)$x
+    stopifnot(dtatools:::.is_unmaterialized_numeric_altrep(source))
     source
 }
 
 ours_source <- fresh_source()
-ours_factor <- dtaparser::factor_from_labels(
+ours_factor <- dtatools::factor_from_labels(
     ours_source,
     drop_unused = TRUE
 )
@@ -74,19 +74,19 @@ haven_factor <- haven::as_factor(haven_source)
 stopifnot(
     identical(as.character(ours_factor), as.character(haven_factor)),
     identical(levels(ours_factor), levels(haven_factor)),
-    dtaparser:::.is_unmaterialized_numeric_altrep(ours_source),
-    !dtaparser:::.is_unmaterialized_numeric_altrep(haven_source)
+    dtatools:::.is_unmaterialized_numeric_altrep(ours_source),
+    !dtatools:::.is_unmaterialized_numeric_altrep(haven_source)
 )
 
 ours_source <- fresh_source()
-ours_table <- dtaparser::tab(ours_source)
+ours_table <- dtatools::tab(ours_source)
 haven_source <- fresh_source()
 haven_table <- table(haven::as_factor(haven_source))
 stopifnot(
     identical(as.vector(ours_table), as.vector(haven_table)),
     identical(dimnames(ours_table)[[1L]], dimnames(haven_table)[[1L]]),
-    dtaparser:::.is_unmaterialized_numeric_altrep(ours_source),
-    !dtaparser:::.is_unmaterialized_numeric_altrep(haven_source)
+    dtatools:::.is_unmaterialized_numeric_altrep(ours_source),
+    !dtatools:::.is_unmaterialized_numeric_altrep(haven_source)
 )
 
 time_case <- function(operation) {
@@ -103,10 +103,10 @@ time_case <- function(operation) {
 
 timings <- list(
     factor_from_labels = time_case(function(source) {
-        dtaparser::factor_from_labels(source, drop_unused = TRUE)
+        dtatools::factor_from_labels(source, drop_unused = TRUE)
     }),
     haven_as_factor = time_case(haven::as_factor),
-    tab = time_case(dtaparser::tab),
+    tab = time_case(dtatools::tab),
     table_haven_factor = time_case(function(source) {
         table(haven::as_factor(source))
     })
@@ -129,7 +129,7 @@ extract_memory_value <- function(lines, label) {
 }
 
 measure_memory <- function(operation) {
-    output <- tempfile("dtaparser-helper-memory-")
+    output <- tempfile("dtatools-helper-memory-")
     on.exit(unlink(output), add = TRUE)
     status <- system2(
         "/usr/bin/time",
@@ -197,7 +197,7 @@ summary <- data.frame(
     row.names = NULL
 )
 
-cat("dtaparser ", as.character(utils::packageVersion("dtaparser")), "\n",
+cat("dtatools ", as.character(utils::packageVersion("dtatools")), "\n",
     "haven ", as.character(utils::packageVersion("haven")), "\n",
     "R ", as.character(getRversion()), "\n",
     "platform ", R.version$platform, "\n",

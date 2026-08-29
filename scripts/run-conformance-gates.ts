@@ -40,7 +40,7 @@ function run(arguments_: string[]): string {
 const listedByBinary = new Map<string, string[]>();
 for (const binary of new Set(gates.map(gate => gate.binary))) {
     const output = run([
-        'cargo', 'test', '-p', 'dta-parser', '--locked',
+        'cargo', 'test', '-p', 'dta-tools', '--locked',
         '--test', binary, '--', '--list',
     ]);
     const listed = output
@@ -58,7 +58,7 @@ for (const gate of gates) {
         );
     }
     const output = run([
-        'cargo', 'test', '-p', 'dta-parser', '--locked',
+        'cargo', 'test', '-p', 'dta-tools', '--locked',
         '--test', gate.binary, gate.test, '--', '--exact', '--nocapture',
     ]);
     const resultLines = output.match(

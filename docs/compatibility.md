@@ -67,7 +67,7 @@ Releases 105 through 111 encode one system-missing value per numeric storage typ
 | Rust | Original numeric storage plus a parallel `MissingTag` classification |
 | R | `NA_real_` for `.` and haven-compatible tagged-NA payloads for `.a` through `.z` |
 
-R exposes Stata byte, int, and long columns as doubles because R integers have only one missing representation. Under the hood, dtaparser uses R's ALTREP mechanism to retain the smaller Stata width until R requests a full double vector.
+R exposes Stata byte, int, and long columns as doubles because R integers have only one missing representation. Under the hood, dtatools uses R's ALTREP mechanism to retain the smaller Stata width until R requests a full double vector.
 
 ## Interface differences
 
@@ -84,9 +84,9 @@ The TypeScript package has portable buffer and Node filesystem entrypoints. The 
 
 ## R row-window behavior
 
-`dtaparser::read_dta()` follows haven's useful `n_max` convention while rejecting ambiguous numeric coercions before opening the file.
+`dtatools::read_dta()` follows haven's useful `n_max` convention while rejecting ambiguous numeric coercions before opening the file.
 
-| Input | dtaparser behavior | haven 2.5.5 behavior |
+| Input | dtatools behavior | haven 2.5.5 behavior |
 | --- | --- | --- |
 | Fractional non-negative `n_max` | Error | Truncates |
 | `NaN` `n_max` | Error | Reads all rows |

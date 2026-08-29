@@ -20,7 +20,7 @@ const FIXTURE_DIR = path.resolve(
     __dirname, '../../../../tests/fixtures/dta'
 );
 const V111_FIXTURE = path.resolve(
-    __dirname, '../../../../r-package/dtaparser/src/dta-parser/tests/data/synthetic-v111.dta'
+    __dirname, '../../../../r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta'
 );
 
 let my_file: DtaFile | null = null;

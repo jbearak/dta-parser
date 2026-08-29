@@ -133,8 +133,8 @@ def build(layout: Layout) -> bytes:
 
 def default_outputs(layout: Layout) -> tuple[Path, ...]:
     return (
-        ROOT / f"r-package/dtaparser/src/dta-parser/tests/data/synthetic-v{layout.release}.dta",
-        ROOT / f"r-package/dtaparser/inst/extdata/synthetic_v{layout.release}.dta",
+        ROOT / f"r-package/dtatools/src/dta-tools/tests/data/synthetic-v{layout.release}.dta",
+        ROOT / f"r-package/dtatools/inst/extdata/synthetic_v{layout.release}.dta",
     )
 
 

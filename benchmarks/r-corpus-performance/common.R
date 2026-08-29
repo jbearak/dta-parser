@@ -16,12 +16,12 @@ corpus_pair_results <- function(raw, inventory) {
         stop("raw results contain duplicate reader measurements")
     }
 
-    direct <- raw[raw$reader == "dtaparser", , drop = FALSE]
+    direct <- raw[raw$reader == "dtatools", , drop = FALSE]
     haven <- raw[raw$reader == "haven", , drop = FALSE]
     stata <- raw[raw$reader == "stata", , drop = FALSE]
     paired <- merge(
         direct, haven, by = c("corpus", "id"),
-        suffixes = c("_dtaparser", "_haven")
+        suffixes = c("_dtatools", "_haven")
     )
     paired <- merge(paired, stata, by = c("corpus", "id"))
     stata_columns <- c(
@@ -32,12 +32,12 @@ corpus_pair_results <- function(raw, inventory) {
         names(paired)[names(paired) %in% stata_columns], "_stata"
     )
     paired <- paired[
-        paired$status_dtaparser == "ok" & paired$status_haven == "ok" &
+        paired$status_dtatools == "ok" & paired$status_haven == "ok" &
             paired$status_stata == "ok" &
-            paired$rows_dtaparser == paired$rows_haven &
-            paired$columns_dtaparser == paired$columns_haven &
-            paired$rows_dtaparser == paired$rows_stata &
-            paired$columns_dtaparser == paired$columns_stata,
+            paired$rows_dtatools == paired$rows_haven &
+            paired$columns_dtatools == paired$columns_haven &
+            paired$rows_dtatools == paired$rows_stata &
+            paired$columns_dtatools == paired$columns_stata,
         , drop = FALSE
     ]
     merge(
@@ -51,10 +51,10 @@ corpus_summary_row <- function(corpus, release, all_files, common) {
     sum_or_na <- function(values) if (has_common) sum(values) else NA_real_
     max_or_na <- function(values) if (has_common) max(values) else NA_real_
 
-    direct_seconds <- sum_or_na(common$elapsed_seconds_dtaparser)
+    direct_seconds <- sum_or_na(common$elapsed_seconds_dtatools)
     haven_seconds <- sum_or_na(common$elapsed_seconds_haven)
     stata_seconds <- sum_or_na(common$elapsed_seconds_stata)
-    direct_rss <- max_or_na(common$rss_bytes_dtaparser)
+    direct_rss <- max_or_na(common$rss_bytes_dtatools)
     haven_rss <- max_or_na(common$rss_bytes_haven)
     stata_rss <- max_or_na(common$rss_bytes_stata)
     data.frame(
@@ -63,12 +63,12 @@ corpus_summary_row <- function(corpus, release, all_files, common) {
         files = nrow(common),
         excluded_files = nrow(all_files) - nrow(common),
         input_gb = if (has_common) sum(common$bytes) / 1e9 else 0,
-        dtaparser_seconds = direct_seconds,
+        dtatools_seconds = direct_seconds,
         haven_seconds = haven_seconds,
         stata_seconds = stata_seconds,
-        dtaparser_to_haven_time_ratio = direct_seconds / haven_seconds,
-        dtaparser_to_stata_time_ratio = direct_seconds / stata_seconds,
-        dtaparser_peak_rss_gb = direct_rss / 1e9,
+        dtatools_to_haven_time_ratio = direct_seconds / haven_seconds,
+        dtatools_to_stata_time_ratio = direct_seconds / stata_seconds,
+        dtatools_peak_rss_gb = direct_rss / 1e9,
         haven_peak_rss_gb = haven_rss / 1e9,
         stata_peak_rss_gb = stata_rss / 1e9,
         vs_haven_rss_reduction = 1 - direct_rss / haven_rss,
@@ -81,8 +81,8 @@ corpus_performance_summary <- function(inventory, paired, corpus_names) {
     inventory_required <- c("corpus", "id", "release")
     paired_required <- c(
         "corpus", "id", "release", "bytes",
-        "elapsed_seconds_dtaparser", "elapsed_seconds_haven",
-        "elapsed_seconds_stata", "rss_bytes_dtaparser", "rss_bytes_haven",
+        "elapsed_seconds_dtatools", "elapsed_seconds_haven",
+        "elapsed_seconds_stata", "rss_bytes_dtatools", "rss_bytes_haven",
         "rss_bytes_stata"
     )
     if (!all(inventory_required %in% names(inventory))) {

@@ -10,7 +10,7 @@ Install the package version under test into an isolated library, identify that
 library explicitly, and run:
 
 ```sh
-export DTAPARSER_BENCH_LIB=/path/to/isolated-library
+export DTATOOLS_BENCH_LIB=/path/to/isolated-library
 Rscript --vanilla benchmarks/r-helper-performance/run.R 12 5000000
 ```
 
@@ -20,7 +20,7 @@ and source materialization outside the timed region. On macOS it also runs
 every operation in a fresh process under `/usr/bin/time -l`, reporting maximum
 resident set size and peak memory footprint. It has no timing or memory
 thresholds; results are evidence, not a release gate.
-The runner refuses to use dtaparser from any other library, and the memory
+The runner refuses to use dtatools from any other library, and the memory
 workers inherit the same guard. Other platforms run the elapsed-time and
 structural materialization checks and report `NA` for the macOS memory fields.
 

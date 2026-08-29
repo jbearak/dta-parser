@@ -22,9 +22,9 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-build_dtaparser_library "$checkout_root" "$script_dir" "$build_dir"
+build_dtatools_library "$checkout_root" "$script_dir" "$build_dir"
 
-export DTAPARSER_BENCH_LIB="$library"
+export DTATOOLS_BENCH_LIB="$library"
 Rscript --vanilla "$script_dir/generate-stata-fixtures.R" \
     "$script_dir/stata-write-sizes.tsv" "$manifest"
 mkdir -p "$run_stage"

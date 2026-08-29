@@ -1,0 +1,37 @@
+Package: dtatools
+Title: Fast Reader and Writer for Stata DTA Files
+Version: 0.6.0
+Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"),
+    email = "jonathan@bearak.net")
+Description: Reads Stata DTA files into tibbles with a Rust parser, multicore
+    decoding, and compact in-memory representations for numeric and character
+    columns. Its read interface follows 'haven' while retaining dataset labels,
+    variable labels, display formats, value labels, temporal classes, and Stata
+    tagged missing values. It writes standalone Stata 18 and 19 datasets through
+    a streaming Rust writer. It also provides merges under Stata missing-code
+    identity, label-aware tabulation, and tag-preserving recoding.
+License: GPL-3
+URL: https://github.com/jbearak/dta-tools
+BugReports: https://github.com/jbearak/dta-tools/issues
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    dplyr (>= 1.1.0),
+    readr (>= 2.2.0),
+    rlang,
+    stats,
+    tibble,
+    tidyselect,
+    utils,
+    vctrs
+Suggests:
+    callr,
+    httpuv,
+    testthat (>= 3.1.7)
+Config/testthat/edition: 3
+SystemRequirements: Cargo and Rust >= 1.98.0; on Windows, the Rust target matching
+    R (x86_64-pc-windows-gnu for x86_64 R or
+    aarch64-pc-windows-gnullvm for aarch64 R)
+NeedsCompilation: yes
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

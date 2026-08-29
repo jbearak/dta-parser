@@ -8,8 +8,8 @@ import struct
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS = (
-    ROOT / "r-package/dtaparser/src/dta-parser/tests/data/synthetic-v111.dta",
-    ROOT / "r-package/dtaparser/inst/extdata/synthetic_v111.dta",
+    ROOT / "r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta",
+    ROOT / "r-package/dtatools/inst/extdata/synthetic_v111.dta",
 )
 
 

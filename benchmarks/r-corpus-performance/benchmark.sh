@@ -32,16 +32,16 @@ mkdir -p "$build_dir" "$library"
 
 (
     cd "$build_dir"
-    R CMD build "$checkout/r-package/dtaparser"
+    R CMD build "$checkout/r-package/dtatools"
 )
-set -- "$build_dir"/dtaparser_*.tar.gz
+set -- "$build_dir"/dtatools_*.tar.gz
 if test "$#" -ne 1 || ! test -f "$1"; then
-    echo "expected exactly one dtaparser source package" >&2
+    echo "expected exactly one dtatools source package" >&2
     exit 1
 fi
 R CMD INSTALL --library="$library" "$1"
 
-export DTAPARSER_BENCH_LIB="$library"
+export DTATOOLS_BENCH_LIB="$library"
 export R_ENVIRON_USER=/dev/null
 export R_PROFILE_USER=/dev/null
 if test -n "$max_files"; then

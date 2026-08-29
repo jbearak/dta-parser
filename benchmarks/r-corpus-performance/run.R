@@ -103,12 +103,12 @@ measure_r <- function(item, reader, order_index) {
         rscript,
         c("--vanilla", worker_path, reader, item$path),
         environment = c(
-            DTAPARSER_BENCH_LIB = benchmark_library,
+            DTATOOLS_BENCH_LIB = benchmark_library,
             R_ENVIRON_USER = "/dev/null",
             R_PROFILE_USER = "/dev/null"
         )
     )
-    fields <- parse_fields(process$stdout, "DTAPARSER_BENCH")
+    fields <- parse_fields(process$stdout, "DTATOOLS_BENCH")
     valid <- length(fields) == 4L
     memory <- parse_memory_metrics(process$stderr)
     data.frame(
@@ -196,9 +196,9 @@ completed <- if (file.exists(raw_path)) {
     new_key_set()
 }
 reader_orders <- list(
-    c("dtaparser", "haven", "stata"),
-    c("haven", "stata", "dtaparser"),
-    c("stata", "dtaparser", "haven")
+    c("dtatools", "haven", "stata"),
+    c("haven", "stata", "dtatools"),
+    c("stata", "dtatools", "haven")
 )
 for (index in seq_len(nrow(inventory))) {
     item <- inventory[index, , drop = FALSE]

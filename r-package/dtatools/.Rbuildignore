@@ -1,0 +1,6 @@
+^src/dta-tools/(examples|target|tests)$
+^src/rust/target$
+^src/rust/v$
+^src/Makevars$
+^src/Makevars\.win$
+^\.DS_Store$

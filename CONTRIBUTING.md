@@ -1,6 +1,8 @@
 # Contributing
 
-This repository contains two independent DTA parsers and an R binding around the Rust parser. Run checks for the code you change, then run the shared conformance gate when parsing behavior changes.
+This repository contains an independent TypeScript parser, a Rust read/write
+core, and an R package built on that Rust core. Run checks for the code you
+change, then run the shared conformance gate when parsing behavior changes.
 
 ## Requirements
 
@@ -10,21 +12,21 @@ This repository contains two independent DTA parsers and an R binding around the
 - R 4.1.0 or newer for the R package
 - Python 3.11 or newer for repository archive checks
 
-R package dependencies are listed in [`DESCRIPTION`](r-package/dtaparser/DESCRIPTION). Stata is needed only for the benchmark modules that explicitly call it.
+R package dependencies are listed in [`DESCRIPTION`](r-package/dtatools/DESCRIPTION). Stata is needed only for the benchmark modules that explicitly call it.
 
 ## Repository layout
 
 | Path | Purpose |
 | --- | --- |
 | [`typescript/dta-parser`](typescript/dta-parser) | TypeScript source, tests, distribution, and npm metadata |
-| [`r-package/dtaparser`](r-package/dtaparser) | R source package and native bridge |
-| [`r-package/dtaparser/src/dta-parser`](r-package/dtaparser/src/dta-parser) | Canonical Rust parser used by the R package |
+| [`r-package/dtatools`](r-package/dtatools) | R source package and native bridge |
+| [`r-package/dtatools/src/dta-tools`](r-package/dtatools/src/dta-tools) | Canonical Rust read/write core used by the R package |
 | [`tests/fixtures/dta`](tests/fixtures/dta) | Shared immutable DTA fixtures |
 | [`conformance`](conformance) | Cross-implementation case inventory |
 | [`scripts`](scripts) | Conformance, packaging, release, and Cargo vendor checks |
 | [`benchmarks`](benchmarks) | Benchmark runners, methodology, and dated reports |
 
-The Rust parser lives inside the R source package so `R CMD build` includes its source without copying a second first-party tree. The separate `src/rust` crate is the R bridge. It builds from a locked offline archive containing only third-party Cargo dependencies.
+The Rust core lives inside the R source package so `R CMD build` includes its source without copying a second first-party tree. The separate `src/rust` crate is the R bridge. It builds from a locked offline archive containing only third-party Cargo dependencies.
 
 ## TypeScript
 
@@ -51,20 +53,20 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --all-targets --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --locked --no-deps
-cargo package -p dta-parser --locked --allow-dirty
+cargo package -p dta-tools --locked --allow-dirty
 ```
 
-Use `cargo test -p dta-parser --locked --test fuzz_smoke -- --nocapture` for the deterministic fixture-seeded fuzz smoke test.
+Use `cargo test -p dta-tools --locked --test fuzz_smoke -- --nocapture` for the deterministic fixture-seeded fuzz smoke test.
 
 ## R
 
 Install the dependencies declared in `DESCRIPTION`, then build and check the source archive from the repository root:
 
 ```sh
-dtaparser_version="$(sed -n 's/^Version: //p' r-package/dtaparser/DESCRIPTION)"
-dtaparser_tarball="dtaparser_${dtaparser_version}.tar.gz"
-R CMD build r-package/dtaparser
-R CMD check --no-manual "$dtaparser_tarball"
+dtatools_version="$(sed -n 's/^Version: //p' r-package/dtatools/DESCRIPTION)"
+dtatools_tarball="dtatools_${dtatools_version}.tar.gz"
+R CMD build r-package/dtatools
+R CMD check --no-manual "$dtatools_tarball"
 ```
 
 The package builds its Rust bridge with `--locked --offline`. When Cargo dependencies change, rebuild and verify the archive:

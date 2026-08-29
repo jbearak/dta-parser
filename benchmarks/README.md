@@ -7,7 +7,7 @@ before collecting results:
 ```sh
 scripts/conformance.sh
 cargo test --workspace --locked
-DTA_BENCH_ITERATIONS=100 cargo run --release -p dta-parser --example bench
+DTA_BENCH_ITERATIONS=100 cargo run --release -p dta-tools --example bench
 DTA_BENCH_ITERATIONS=100 bun benchmarks/typescript.ts
 Rscript benchmarks/r-benchmark.R 100
 ```
@@ -42,7 +42,7 @@ does not expose stable internal timers, so a finer native R split would require
 instrumenting production code and is deliberately not claimed here.
 
 The [`large-scale/`](large-scale/) harness separately compares the public
-dta-parser reader, the retained internal Rust-vector collector, and haven on
+dta-tools reader, the retained internal Rust-vector collector, and haven on
 deterministic 100 MB and 1 GB files. It runs full and projected-eight-column
 workloads for 101 iterations by default and writes all generated artifacts below
 ignored `target/large-scale/`. See its README for the checkout-local package
@@ -50,7 +50,7 @@ library guard, correctness checks, orchestration command, and output matrix.
 
 The manual [`r-corpus-performance/`](r-corpus-performance/) suite loads every
 common-readable DHS, MICS, and NSFG DTA file beneath `/opt/aww_cache` through
-dta-parser, haven, and Stata in fresh processes. It aggregates elapsed time and
+dta-tools, haven, and Stata in fresh processes. It aggregates elapsed time and
 maximum per-file peak RSS by corpus and stored DTA release while keeping paths
 and raw results private.
 Its [2026-08-24 report](r-corpus-performance/results-2026-08-24.md) records the
@@ -68,7 +68,7 @@ plus Haven and Stata-open checks, and only then benchmarks writes against Stata.
 Its [2026-08-27 report](r-corpus-roundtrip/results-2026-08-27.md) records the
 complete qualification and aggregate write results. The controlled synthetic
 [write report](large-scale/results-2026-08-27.md) adds repeated Haven, Stata,
-and dtaparser timing and peak-RSS comparisons.
+and dtatools timing and peak-RSS comparisons.
 
 The report-only [`r-helper-performance/`](r-helper-performance/) benchmark
 compares label factorization and one-way tabulation with Haven on a generated
@@ -90,7 +90,7 @@ safeguards.
 
 The independent [`aww-cache-differential/`](aww-cache-differential/) workflow
 recursively compares every regular DTA file beneath `/opt/aww_cache` through the
-public dtaparser and haven readers. It uses bounded resumable tiles and invokes
+public dtatools and haven readers. It uses bounded resumable tiles and invokes
 Stata only to adjudicate actual disagreements:
 
 ```sh

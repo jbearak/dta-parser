@@ -22,7 +22,7 @@ context <- initialize_write_runner(
     input_scope = "target",
     input_name = "datasets.tsv",
     artifact_description = "synthetic write",
-    required_packages = c("dtaparser", "processx")
+    required_packages = c("dtatools", "haven", "processx")
 )
 manifest_path <- context$input_path
 outputs <- context$outputs
@@ -37,15 +37,16 @@ output_parent <- context$output_parent
 stata_generator <- file.path(script_dir, "stata-generate-fixture.do")
 stata_generator_sha256 <- benchmark_file_sha256(stata_generator)
 
-writer_selection <- Sys.getenv("DTAPARSER_WRITE_WRITERS")
+writer_selection <- Sys.getenv("DTATOOLS_WRITE_WRITERS")
 writers <- if (nzchar(writer_selection)) {
     strsplit(writer_selection, ",", fixed = TRUE)[[1L]]
-} else c("dtaparser", "stata")
-allowed_writers <- c("dtaparser", "stata")
+} else c("dtatools", "haven", "stata")
+allowed_writers <- c("dtatools", "haven", "stata")
 if (!length(writers) || any(!writers %in% allowed_writers) ||
     anyDuplicated(writers)) {
-    stop("DTAPARSER_WRITE_WRITERS must select unique supported writers")
+    stop("DTATOOLS_WRITE_WRITERS must select unique supported writers")
 }
+r_writers <- writers[writers != "stata"]
 
 datasets <- read_stata_fixture_manifest(
     manifest_path, stata_generator_sha256
@@ -58,10 +59,10 @@ if ("stata" %in% writers) {
     stata <- find_stata()
 }
 runtime_binding <- write_runtime_binding(
-    rscript, packages = "processx", stata = stata
+    rscript, packages = c("haven", "processx"), stata = stata
 )
 benchmark_environment <- c(
-    DTAPARSER_BENCH_LIB = benchmark_library,
+    DTATOOLS_BENCH_LIB = benchmark_library,
     R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null"
 )
 
@@ -128,23 +129,94 @@ measure_iteration <- function(dataset, iteration) {
         if (!file.symlink(dataset$path, input)) stop("could not create input alias")
         input_sha256 <- dataset$sha256
     }
-    if ("dtaparser" %in% writers) {
-        process <- run_timed_process(
-            rscript,
-            c("--vanilla", file.path(script_dir, "write-worker.R"),
-              "dtaparser", "stata-storage", input,
-              file.path(work_dir, "output.dta")),
-            work_dir, benchmark_environment
-        )
-        fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
-        results[[length(results) + 1L]] <- measurement_row(
-            dataset, input_sha256, "dtaparser", iteration,
-            if ("stata" %in% writers) 2L else 1L,
-            fields, process$stderr
-        )
-        message(dataset$dataset, " dtaparser ", iteration, "/", iterations)
+    if (length(r_writers)) {
+        shift <- (match(dataset$dataset, datasets$dataset) + iteration - 2L) %%
+            length(r_writers)
+        order <- r_writers[c(
+            seq.int(shift + 1L, length(r_writers)),
+            if (shift) seq_len(shift) else integer()
+        )]
+        for (index in seq_along(order)) {
+            writer <- order[[index]]
+            process <- run_timed_process(
+                rscript,
+                c("--vanilla", file.path(script_dir, "write-worker.R"),
+                  writer, "stata-storage", input,
+                  file.path(work_dir, paste0(writer, "-output.dta"))),
+                work_dir, benchmark_environment
+            )
+            fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
+            results[[length(results) + 1L]] <- measurement_row(
+                dataset, input_sha256, writer, iteration,
+                index + as.integer("stata" %in% writers),
+                fields, process$stderr
+            )
+            message(
+                dataset$dataset, " ", writer, " ", iteration, "/", iterations
+            )
+        }
     }
     results
+}
+
+validate_full_scale_output <- function(dataset, writer) {
+    work_dir <- tempfile(
+        pattern = paste0("synthetic-write-validation-", dataset$dataset, "-"),
+        tmpdir = output_parent
+    )
+    dir.create(work_dir)
+    on.exit(unlink(work_dir, recursive = TRUE, force = TRUE), add = TRUE)
+    output <- file.path(work_dir, paste0(writer, "-output.dta"))
+    process <- processx::run(
+        rscript,
+        c("--vanilla", file.path(script_dir, "write-worker.R"),
+          writer, "stata-storage", dataset$path, output),
+        wd = work_dir, env = benchmark_environment,
+        error_on_status = FALSE, echo = FALSE
+    )
+    fields <- parse_fields(process$stdout, "SYNTHETIC_WRITE")
+    measurement <- tryCatch(
+        parse_fixture_write_result(fields, writer),
+        error = function(condition) {
+            stop(conditionMessage(condition), ": ", process$stderr)
+        }
+    )
+    if (measurement$rows != dataset$rows ||
+        measurement$columns != stata_fixture_columns ||
+        measurement$bytes <= 0 || !file.exists(output)) {
+        stop(writer, " full-scale validation write returned invalid output")
+    }
+    validation <- processx::run(
+        rscript,
+        c("--vanilla", file.path(script_dir, "validate-write-output.R"),
+          writer, dataset$path, output),
+        wd = work_dir, env = benchmark_environment,
+        error_on_status = FALSE, echo = FALSE
+    )
+    validation_fields <- parse_fields(validation$stdout, "WRITE_VALIDATION")
+    expected_prefix <- c(
+        writer, "ok", as.character(dataset$rows),
+        as.character(stata_fixture_columns)
+    )
+    if (length(validation_fields) != 8L ||
+        !identical(validation_fields[1:4], expected_prefix) ||
+        validation$status != 0L) {
+        stop(
+            writer, " full-scale output validation failed: ",
+            validation$stderr
+        )
+    }
+    message(dataset$dataset, " ", writer, " full-scale validation")
+    data.frame(
+        dataset = dataset$dataset, dataset_sha256 = dataset$sha256,
+        writer = writer, rows = measurement$rows,
+        columns = measurement$columns, output_bytes = measurement$bytes,
+        parity_status = validation_fields[[5L]],
+        storage_status = validation_fields[[6L]],
+        input_storage_class_counts = validation_fields[[7L]],
+        output_storage_class_counts = validation_fields[[8L]],
+        stringsAsFactors = FALSE
+    )
 }
 
 rows <- vector("list", nrow(datasets) * iterations * length(writers))
@@ -160,6 +232,15 @@ for (dataset_index in seq_len(nrow(datasets))) {
     }
 }
 raw <- do.call(rbind, rows)
+
+validation <- if (length(r_writers)) {
+    do.call(rbind, lapply(seq_len(nrow(datasets)), function(dataset_index) {
+        dataset <- datasets[dataset_index, , drop = FALSE]
+        do.call(rbind, lapply(r_writers, function(writer) {
+            validate_full_scale_output(dataset, writer)
+        }))
+    }))
+} else data.frame()
 
 final_build <- verify_benchmark_provenance(
     checkout_root, benchmark_library, build_provenance_path
@@ -185,20 +266,27 @@ stable_provenance <- cbind(data.frame(
     dataset_100mb_sha256 = datasets$sha256[[1L]],
     dataset_1gb_sha256 = datasets$sha256[[2L]],
     iterations = iterations,
-    workload = "stata-first-save-to-dtaparser-roundtrip",
+    workload = "stata-first-save-to-r-writers",
     fixture_storage_schema = stata_fixture_schema,
     fixture_creator = "stata-first-save",
     fixture_generator_sha256 = stata_generator_sha256,
     stata_save_state = "first-save-after-generate",
-    dtaparser_input = "exact-stata-first-save-output",
-    execution_order = if (setequal(writers, c("dtaparser", "stata"))) {
-        "stata-before-dtaparser"
+    r_writer_input = "exact-stata-first-save-output-read-by-dtatools",
+    full_scale_validation = paste(
+        "untimed-read-model-parity-and-numeric-storage-class-checks",
+        "each-size"
+    ),
+    execution_order = if ("stata" %in% writers && length(r_writers)) {
+        "stata-then-rotating-r-writers"
+    } else if (length(r_writers) > 1L) {
+        "rotating-r-writers"
     } else paste0(writers, "-only"),
     writers = paste(writers, collapse = ","),
     r_version = R.version.string,
     r_platform = R.version$platform,
-    dtaparser_version = as.character(utils::packageVersion("dtaparser")),
-    dtaparser_path = normalizePath(find.package("dtaparser"), winslash = "/"),
+    dtatools_version = as.character(utils::packageVersion("dtatools")),
+    dtatools_path = normalizePath(find.package("dtatools"), winslash = "/"),
+    haven_version = as.character(utils::packageVersion("haven")),
     os_version = unname(Sys.info()[["version"]]),
     machine = unname(Sys.info()[["machine"]]),
     stringsAsFactors = FALSE, check.names = FALSE
@@ -206,26 +294,24 @@ stable_provenance <- cbind(data.frame(
 validate_write_result_matrix(
     raw, datasets$dataset, writers, iterations, "synthetic write"
 )
-if (setequal(writers, c("dtaparser", "stata"))) {
-    pairs <- split(raw, interaction(
-        raw$dataset, raw$iteration, drop = TRUE
-    ))
-    exact_pair <- vapply(pairs, function(pair) {
-        nrow(pair) == 2L && length(unique(pair$input_sha256)) == 1L &&
-            identical(
-                pair$writer[order(pair$writer_order)],
-                c("stata", "dtaparser")
-            )
-    }, logical(1L))
-    if (!all(exact_pair)) {
-        stop("dtaparser did not consume each exact timed Stata output")
-    }
-}
+validate_primary_write_inputs(
+    raw, datasets$dataset, writers, stable_provenance, "synthetic write"
+)
 if (!identical(
-    write_runtime_binding(rscript, packages = "processx", stata = stata),
+    write_runtime_binding(
+        rscript, packages = c("haven", "processx"), stata = stata
+    ),
     runtime_binding
 )) {
     stop("benchmark runtime changed during synthetic writes")
+}
+
+if (nrow(validation)) {
+    validation$provenance_id <- benchmark_provenance_id(stable_provenance)
+    validation$build_provenance_id <- stable_provenance$build_provenance_id
+    atomic_tsv(
+        validation, file.path(output_parent, "write-validation.tsv")
+    )
 }
 
 finalize_write_results(

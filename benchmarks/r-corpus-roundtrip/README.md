@@ -1,6 +1,6 @@
 # R corpus write qualification and benchmark
 
-This manual workflow qualifies `dtaparser::write_dta()` against every DTA file
+This manual workflow qualifies `dtatools::save_dta()` against every DTA file
 in the DHS, MICS, and NSFG directories beneath `/opt/aww_cache`, then compares
 its write performance with Stata. It refuses CI and requires Stata/MP 18 or
 later, haven, and processx. The complete workflow requires Stata/MP because its
@@ -8,7 +8,7 @@ later, haven, and processx. The complete workflow requires Stata/MP because its
 early capability probe fails before corpus work when `maxvar 120000` is not
 available.
 
-Qualification uses a fresh R process for each input. It reads with dtaparser,
+Qualification uses a fresh R process for each input. It reads with dtatools,
 writes a Stata 18/19 standalone file, reads that output again, and checks the
 values, storage declarations, tagged missing codes, formats, labels, and notes.
 Haven must report the same dimensions, and Stata 18 must open each output with
@@ -44,11 +44,11 @@ benchmarks/r-corpus-roundtrip/benchmark.sh 2
 ```
 
 Results remain private beneath `target/r-corpus-roundtrip/`. Set
-`DTAPARSER_ROUNDTRIP_RUN_DIR` to an existing run directory to resume its exact
+`DTATOOLS_ROUNDTRIP_RUN_DIR` to an existing run directory to resume its exact
 installed package, source tarball, and hash-bound inventory. The retained
 public-style reports contain no input paths, labels, or values.
 
 The aggregate-only [2026-08-28 report](results-2026-08-28.md) records the
-latest complete qualification against dtaparser 0.6.0 under the documented
+latest complete qualification against dtatools 0.6.0 under the documented
 Stata/MP 18 executable scope. The [2026-08-27 report](results-2026-08-27.md)
 remains the historical first complete qualification and write comparison.

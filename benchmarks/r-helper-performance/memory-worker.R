@@ -9,30 +9,30 @@ if (length(arguments) != 2L || !arguments[[2L]] %in% operations) {
     )
 }
 
-benchmark_library <- Sys.getenv("DTAPARSER_BENCH_LIB")
+benchmark_library <- Sys.getenv("DTATOOLS_BENCH_LIB")
 if (!nzchar(benchmark_library)) {
-    stop("DTAPARSER_BENCH_LIB is required", call. = FALSE)
+    stop("DTATOOLS_BENCH_LIB is required", call. = FALSE)
 }
 .libPaths(c(normalizePath(benchmark_library), .libPaths()))
 
 fixture <- normalizePath(arguments[[1L]])
 operation <- arguments[[2L]]
-source <- dtaparser::read_dta(fixture)$x
-stopifnot(dtaparser:::.is_unmaterialized_numeric_altrep(source))
+source <- dtatools::read_dta(fixture)$x
+stopifnot(dtatools:::.is_unmaterialized_numeric_altrep(source))
 
 result <- switch(operation,
-    factor_from_labels = dtaparser::factor_from_labels(
+    factor_from_labels = dtatools::factor_from_labels(
         source,
         drop_unused = TRUE
     ),
     haven_as_factor = haven::as_factor(source),
-    tab = dtaparser::tab(source),
+    tab = dtatools::tab(source),
     table_haven_factor = table(haven::as_factor(source))
 )
 stopifnot(length(result) > 0L)
 cat(
     "source_materialized ",
-    !dtaparser:::.is_unmaterialized_numeric_altrep(source),
+    !dtatools:::.is_unmaterialized_numeric_altrep(source),
     "\n",
     sep = ""
 )

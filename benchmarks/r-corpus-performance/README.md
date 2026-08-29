@@ -1,6 +1,6 @@
 # R corpus performance benchmark
 
-This local, report-only suite compares `dtaparser::read_dta()`,
+This local, report-only suite compares `dtatools::read_dta()`,
 `haven::read_dta()`, and Stata's `use` across every regular `.dta` file beneath
 the DHS, MICS, and NSFG directories in `/opt/aww_cache`. It does not follow
 symlinks and refuses to run in CI. Each reader loads each file in a fresh
@@ -15,7 +15,7 @@ the private raw results but are excluded symmetrically. The inventory reads
 only the DTA signature to record the on-disk release. The summary reports one
 row per corpus and release plus an `all` subtotal for each corpus. Every row
 contains the common-readable file count and exclusion count, total elapsed time
-over that common file set, dta-parser/comparator time ratios, and the maximum
+over that common file set, dta-tools/comparator time ratios, and the maximum
 per-file peak RSS observed for each reader. Unrecognized or
 unreadable signatures remain accounted for as `unknown` inventory groups. The
 report never publishes private paths or data values.

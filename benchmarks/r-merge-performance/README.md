@@ -8,7 +8,7 @@ Install the package under test into an isolated library, then run from the
 repository root:
 
 ```sh
-export DTAPARSER_BENCH_LIB=/path/to/isolated-library
+export DTATOOLS_BENCH_LIB=/path/to/isolated-library
 Rscript --vanilla benchmarks/r-merge-performance/run.R 9 5
 ```
 

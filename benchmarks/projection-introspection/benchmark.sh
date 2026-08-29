@@ -16,15 +16,15 @@ library="$build_dir/library"
 trap 'rm -rf "$build_dir"' EXIT HUP INT TERM
 mkdir -p "$build_dir" "$library" "$run_dir"
 
-(cd "$build_dir" && R CMD build "$checkout_root/r-package/dtaparser")
-set -- "$build_dir"/dtaparser_*.tar.gz
+(cd "$build_dir" && R CMD build "$checkout_root/r-package/dtatools")
+set -- "$build_dir"/dtatools_*.tar.gz
 if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
-    printf '%s\n' 'expected one dtaparser source tarball' >&2
+    printf '%s\n' 'expected one dtatools source tarball' >&2
     exit 1
 fi
 R CMD INSTALL --library="$library" "$1"
-DTAPARSER_BENCH_LIB="$library"
-export DTAPARSER_BENCH_LIB
+DTATOOLS_BENCH_LIB="$library"
+export DTATOOLS_BENCH_LIB
 R_ENVIRON_USER=/dev/null
 R_PROFILE_USER=/dev/null
 export R_ENVIRON_USER R_PROFILE_USER

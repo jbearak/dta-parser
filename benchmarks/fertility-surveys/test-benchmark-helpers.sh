@@ -55,7 +55,7 @@ run_benchmark_rejection() {
     shift 2
     set +e
     CI= GITHUB_ACTIONS= GITHUB_RUN_ID= GITHUB_WORKFLOW= \
-        DTAPARSER_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA \
+        DTATOOLS_FERTILITY_CORPUS=I_UNDERSTAND_THIS_READS_PROPRIETARY_DATA \
         /bin/sh "$benchmark_script" "$@" \
         >"$test_root/$run_benchmark_rejection_name.out" 2>&1
     run_benchmark_rejection_status=$?
@@ -77,7 +77,7 @@ run_environment_rejection() {
     set +e
     CI=$run_environment_rejection_ci \
         GITHUB_ACTIONS= GITHUB_RUN_ID= GITHUB_WORKFLOW= \
-        DTAPARSER_FERTILITY_CORPUS=$run_environment_rejection_opt_in \
+        DTATOOLS_FERTILITY_CORPUS=$run_environment_rejection_opt_in \
         /bin/sh "$benchmark_script" --inventory-only \
         >"$test_root/$run_environment_rejection_name.out" 2>&1
     run_environment_rejection_status=$?

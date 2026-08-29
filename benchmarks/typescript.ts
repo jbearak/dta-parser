@@ -296,7 +296,7 @@ const my_strl_pointer_offset =
     + my_large_strl_metadata.variables[my_strl_column].byte_offset;
 
 const my_temp_dir = mkdtempSync(
-    path.join(tmpdir(), 'dta-parser-typescript-benchmark-')
+    path.join(tmpdir(), 'dta-tools-typescript-benchmark-')
 );
 const my_sight_path = path.join(my_temp_dir, 'sight-100k.dta');
 const my_strl_path = path.join(my_temp_dir, 'sight-large-strl.dta');

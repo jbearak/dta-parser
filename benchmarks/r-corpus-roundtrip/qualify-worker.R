@@ -8,7 +8,7 @@ script_dir <- dirname(normalizePath(
     sub("^--file=", "", script_argument), winslash = "/"
 ))
 source(file.path(script_dir, "common.R"), local = TRUE)
-benchmark_activate_library(c("dtaparser", "haven"))
+benchmark_activate_library(c("dtatools", "haven"))
 
 input <- normalizePath(args[[1L]], winslash = "/", mustWork = TRUE)
 output <- args[[2L]]
@@ -16,7 +16,7 @@ output <- args[[2L]]
 label_table <- function(value) {
     labels <- attr(value, "labels", exact = TRUE)
     if (is.null(labels)) return(NULL)
-    tags <- dtaparser::missing_tag(labels)
+    tags <- dtatools::missing_tag(labels)
     keys <- ifelse(
         is.na(tags),
         paste0("number:", format(labels, scientific = FALSE, trim = TRUE)),
@@ -46,7 +46,7 @@ column_difference <- function(before, after) {
         return(NULL)
     }
     if (!identical(
-        dtaparser::missing_tag(before), dtaparser::missing_tag(after)
+        dtatools::missing_tag(before), dtatools::missing_tag(after)
     )) return("missing codes")
     if (!identical(as.double(before), as.double(after))) return("numeric values")
     NULL
@@ -74,16 +74,16 @@ dataset_difference <- function(before, after) {
 
 expected_after_reported_conversions <- function(before, warning_classes) {
     conversion_classes <- intersect(warning_classes, c(
-        "dtaparser_write_factor_warning",
-        "dtaparser_write_character_missing_warning",
-        "dtaparser_write_numeric_replacement_warning"
+        "dtatools_write_factor_warning",
+        "dtatools_write_character_missing_warning",
+        "dtatools_write_numeric_replacement_warning"
     ))
     unexpected <- setdiff(conversion_classes,
-                          "dtaparser_write_numeric_replacement_warning")
+                          "dtatools_write_numeric_replacement_warning")
     if (length(unexpected)) {
         stop("imported DTA source required an unexpected export conversion")
     }
-    if (!("dtaparser_write_numeric_replacement_warning" %in% warning_classes)) {
+    if (!("dtatools_write_numeric_replacement_warning" %in% warning_classes)) {
         return(before)
     }
 
@@ -91,13 +91,13 @@ expected_after_reported_conversions <- function(before, warning_classes) {
     for (index in seq_along(before)) {
         column <- before[[index]]
         if (!is.numeric(column) || is.factor(column)) next
-        kind <- dtaparser:::.write_column_kind(column)
+        kind <- dtatools:::.write_column_kind(column)
         plan <- suppressWarnings(
-            dtaparser:::.prepare_dta_write_numeric(
+            dtatools:::.prepare_dta_write_numeric(
                 column, names(before)[[index]], kind, TRUE
             )
         )
-        replaced <- dtaparser:::.dta_write_numeric_replacement_mask(
+        replaced <- dtatools:::.dta_write_numeric_replacement_mask(
             plan
         )
         if (!any(replaced)) next
@@ -112,10 +112,10 @@ expected_after_reported_conversions <- function(before, warning_classes) {
 status <- "worker-error"
 rows <- columns <- output_bytes <- NA_real_
 result <- tryCatch({
-    before <- dtaparser::read_dta(input)
+    before <- dtatools::read_dta(input)
     warning_classes <- character()
     withCallingHandlers(
-        dtaparser::write_dta(before, output, version = 19L),
+        dtatools::save_dta(before, output, version = 19L),
         warning = function(condition) {
             warning_classes <<- union(warning_classes, class(condition))
             invokeRestart("muffleWarning")
@@ -124,7 +124,7 @@ result <- tryCatch({
     if (!identical(corpus_dta_release(output), 118L)) {
         stop("ordinary corpus output did not use DTA release 118")
     }
-    after <- dtaparser::read_dta(output)
+    after <- dtatools::read_dta(output)
     expected <- expected_after_reported_conversions(before, warning_classes)
     difference <- dataset_difference(expected, after)
     if (!is.null(difference)) {
@@ -147,7 +147,7 @@ result <- tryCatch({
 })
 
 cat(sprintf(
-    "DTAPARSER_ROUNDTRIP\t%s\t%s\t%s\t%s\n",
+    "DTATOOLS_ROUNDTRIP\t%s\t%s\t%s\t%s\n",
     status, rows, columns, output_bytes
 ))
 if (!result) quit(status = 1L)

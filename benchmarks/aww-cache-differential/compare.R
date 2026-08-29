@@ -1,19 +1,19 @@
 aww_empty_disputes <- function() data.frame(
     kind = character(), category = character(), reader = character(),
     column = integer(), row = numeric(), skip = numeric(), n_max = integer(),
-    attribute = character(), dtaparser = I(list()), haven = I(list()),
+    attribute = character(), dtatools = I(list()), haven = I(list()),
     stringsAsFactors = FALSE
 )
 
 aww_dispute <- function(kind, category, reader = "both",
                         column = NA_integer_, row = NA_real_,
                         skip = NA_real_, n_max = NA_integer_, attribute = "",
-                        dtaparser = NULL, haven = NULL) {
+                        dtatools = NULL, haven = NULL) {
     data.frame(
         kind = kind, category = category, reader = reader,
         column = as.integer(column), row = as.double(row),
         skip = as.double(skip), n_max = as.integer(n_max), attribute = attribute,
-        dtaparser = I(list(dtaparser)), haven = I(list(haven)),
+        dtatools = I(list(dtatools)), haven = I(list(haven)),
         stringsAsFactors = FALSE
     )
 }
@@ -66,7 +66,7 @@ aww_compare_indexed_attribute <- function(left, right, key, category, column) {
         aww_dispute(
             "metadata", category, column = column,
             attribute = paste0(key, ":", index),
-            dtaparser = aww_simplify_private(actual),
+            dtatools = aww_simplify_private(actual),
             haven = aww_simplify_private(expected)
         )
     }))
@@ -89,7 +89,7 @@ aww_compare_attributes <- function(left, right, column = NA_integer_, frame = FA
         }
         aww_dispute(
             "metadata", category, column = column, attribute = key,
-            dtaparser = aww_simplify_private(left_attributes[[key]]),
+            dtatools = aww_simplify_private(left_attributes[[key]]),
             haven = aww_simplify_private(right_attributes[[key]])
         )
     }))
@@ -101,7 +101,7 @@ aww_compare_metadata <- function(left, right, column_offset = 0L,
     if (compare_dimensions && !identical(ncol(left), ncol(right))) {
         parts[[length(parts) + 1L]] <- aww_dispute(
             "metadata", "dimension", attribute = "ncol",
-            dtaparser = ncol(left), haven = ncol(right)
+            dtatools = ncol(left), haven = ncol(right)
         )
     }
     count <- max(length(names(left)), length(names(right)))
@@ -111,7 +111,7 @@ aww_compare_metadata <- function(left, right, column_offset = 0L,
         if (!identical(actual, expected)) {
             parts[[length(parts) + 1L]] <- aww_dispute(
                 "metadata", "name", column = column_offset + local_column,
-                attribute = "name", dtaparser = actual, haven = expected
+                attribute = "name", dtatools = actual, haven = expected
             )
         }
     }
@@ -124,7 +124,7 @@ aww_compare_metadata <- function(left, right, column_offset = 0L,
         if (!identical(typeof(left[[local_column]]), typeof(right[[local_column]]))) {
             parts[[length(parts) + 1L]] <- aww_dispute(
                 "metadata", "storage", column = column, attribute = "typeof",
-                dtaparser = typeof(left[[local_column]]), haven = typeof(right[[local_column]])
+                dtatools = typeof(left[[local_column]]), haven = typeof(right[[local_column]])
             )
         }
         parts[[length(parts) + 1L]] <- aww_compare_attributes(
@@ -182,7 +182,7 @@ aww_compare_values <- function(left, right, column_offset, row_offset,
         parts[[length(parts) + 1L]] <- aww_dispute(
             "metadata", "dimension", row = row_offset + 1,
             skip = row_offset, n_max = n_max, attribute = "tile-nrow",
-            dtaparser = nrow(left), haven = nrow(right)
+            dtatools = nrow(left), haven = nrow(right)
         )
     }
     if (!identical(names(left), names(right))) {
@@ -193,7 +193,7 @@ aww_compare_values <- function(left, right, column_offset, row_offset,
             if (!identical(actual, expected)) {
                 parts[[length(parts) + 1L]] <- aww_dispute(
                     "metadata", "name", column = column_offset + local_column,
-                    attribute = "projection", dtaparser = actual, haven = expected
+                    attribute = "projection", dtatools = actual, haven = expected
                 )
             }
         }
@@ -240,7 +240,7 @@ aww_compare_values <- function(left, right, column_offset, row_offset,
                 "cell", category,
                 column = column_offset + local_column,
                 row = row_offset + index,
-                dtaparser = list(kind = actual_kind[[index]], value = aww_simplify_private(actual[index])),
+                dtatools = list(kind = actual_kind[[index]], value = aww_simplify_private(actual[index])),
                 haven = list(kind = expected_kind[[index]], value = aww_simplify_private(expected[index]))
             )
         }

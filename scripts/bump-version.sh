@@ -34,14 +34,14 @@ fi
 
 BUMP_TYPE="${1:-patch}"
 PACKAGE_JSON="$REPO_ROOT/typescript/dta-parser/package.json"
-DESCRIPTION="$REPO_ROOT/r-package/dtaparser/DESCRIPTION"
+DESCRIPTION="$REPO_ROOT/r-package/dtatools/DESCRIPTION"
 VERSION_FILES=(
     Cargo.lock
     typescript/dta-parser/package.json
-    r-package/dtaparser/DESCRIPTION
-    r-package/dtaparser/src/dta-parser/Cargo.toml
-    r-package/dtaparser/src/rust/Cargo.toml
-    r-package/dtaparser/src/rust/Cargo.lock
+    r-package/dtatools/DESCRIPTION
+    r-package/dtatools/src/dta-tools/Cargo.toml
+    r-package/dtatools/src/rust/Cargo.toml
+    r-package/dtatools/src/rust/Cargo.lock
 )
 VERSION_CHANGES_STARTED=false
 
@@ -143,9 +143,9 @@ node - "$NEW_VERSION" <<'NODE'
 const fs = require("fs");
 const version = process.argv[2];
 const replacements = [
-  ["r-package/dtaparser/DESCRIPTION", /^Version: .*$/m, `Version: ${version}`],
-  ["r-package/dtaparser/src/dta-parser/Cargo.toml", /^version = ".*"$/m, `version = "${version}"`],
-  ["r-package/dtaparser/src/rust/Cargo.toml", /^version = ".*"$/m, `version = "${version}"`],
+  ["r-package/dtatools/DESCRIPTION", /^Version: .*$/m, `Version: ${version}`],
+  ["r-package/dtatools/src/dta-tools/Cargo.toml", /^version = ".*"$/m, `version = "${version}"`],
+  ["r-package/dtatools/src/rust/Cargo.toml", /^version = ".*"$/m, `version = "${version}"`],
 ];
 for (const [file, pattern, replacement] of replacements) {
   const input = fs.readFileSync(file, "utf8");
@@ -159,8 +159,8 @@ node - "$NEW_VERSION" <<'NODE'
 const fs = require("fs");
 const version = process.argv[2];
 const lockfiles = [
-  ["Cargo.lock", ["dta-parser"]],
-  ["r-package/dtaparser/src/rust/Cargo.lock", ["dta-parser", "dtaparser-r"]],
+  ["Cargo.lock", ["dta-tools"]],
+  ["r-package/dtatools/src/rust/Cargo.lock", ["dta-tools", "dtatools-r"]],
 ];
 for (const [file, packageNames] of lockfiles) {
   let lock = fs.readFileSync(file, "utf8");

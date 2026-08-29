@@ -21,7 +21,7 @@ context <- initialize_write_runner(
     input_scope = "script",
     input_name = "standard-r-write-sizes.tsv",
     artifact_description = "standard-R write",
-    required_packages = c("dtaparser", "haven", "processx")
+    required_packages = c("dtatools", "haven", "processx")
 )
 sizes_path <- context$input_path
 outputs <- context$outputs
@@ -58,12 +58,12 @@ if (any(!is.finite(datasets$target_output_bytes) |
 }
 
 rscript <- Sys.which("Rscript")
-writers <- c("dtaparser", "haven")
+writers <- c("dtatools", "haven")
 runtime_binding <- write_runtime_binding(
     rscript, packages = c("haven", "processx")
 )
 benchmark_environment <- c(
-    DTAPARSER_BENCH_LIB = benchmark_library,
+    DTATOOLS_BENCH_LIB = benchmark_library,
     R_ENVIRON_USER = "/dev/null", R_PROFILE_USER = "/dev/null", TZ = "UTC"
 )
 
@@ -154,8 +154,8 @@ stable_provenance <- cbind(data.frame(
     writers = paste(writers, collapse = ","),
     r_version = R.version.string,
     r_platform = R.version$platform,
-    dtaparser_version = as.character(utils::packageVersion("dtaparser")),
-    dtaparser_path = normalizePath(find.package("dtaparser"), winslash = "/"),
+    dtatools_version = as.character(utils::packageVersion("dtatools")),
+    dtatools_path = normalizePath(find.package("dtatools"), winslash = "/"),
     haven_version = as.character(utils::packageVersion("haven")),
     os_version = unname(Sys.info()[["version"]]),
     machine = unname(Sys.info()[["machine"]]),

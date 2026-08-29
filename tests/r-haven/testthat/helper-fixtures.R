@@ -1,14 +1,14 @@
-root <- Sys.getenv("DTA_PARSER_ROOT", unset = NA_character_)
+root <- Sys.getenv("DTA_TOOLS_ROOT", unset = NA_character_)
 if (is.na(root)) {
-    stop("DTA_PARSER_ROOT must identify the repository checkout", call. = FALSE)
+    stop("DTA_TOOLS_ROOT must identify the repository checkout", call. = FALSE)
 }
 source(file.path(
-    root, "r-package", "dtaparser", "tests", "testthat", "helper-fixtures.R"
+    root, "r-package", "dtatools", "tests", "testthat", "helper-fixtures.R"
 ))
 
 load_test_helpers <- function(file, names) {
     expressions <- parse(file.path(
-        root, "r-package", "dtaparser", "tests", "testthat", file
+        root, "r-package", "dtatools", "tests", "testthat", file
     ))
     found <- character()
     for (expression in expressions) {

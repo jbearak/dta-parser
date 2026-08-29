@@ -27,9 +27,9 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-build_dtaparser_library "$checkout_root" "$script_dir" "$build_dir"
+build_dtatools_library "$checkout_root" "$script_dir" "$build_dir"
 
-export DTAPARSER_BENCH_LIB="$library"
+export DTATOOLS_BENCH_LIB="$library"
 mkdir -p "$run_stage"
 Rscript --vanilla "$script_dir/standard-r-write-run.R" \
     "$sizes" "$run_stage/r-write-raw.tsv" \

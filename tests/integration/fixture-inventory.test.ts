@@ -64,12 +64,12 @@ describe('DTA fixture inventory', () => {
                     path.join(generated, `synthetic-v${release}.dta`)
                 );
                 const rust = fs.readFileSync(path.join(
-                    root, 'r-package', 'dtaparser', 'src', 'dta-parser',
+                    root, 'r-package', 'dtatools', 'src', 'dta-tools',
                     'tests', 'data',
                     `synthetic-v${release}.dta`
                 ));
                 const r = fs.readFileSync(path.join(
-                    root, 'r-package', 'dtaparser', 'inst', 'extdata',
+                    root, 'r-package', 'dtatools', 'inst', 'extdata',
                     `synthetic_v${release}.dta`
                 ));
                 expect(rust.equals(expected)).toBe(true);

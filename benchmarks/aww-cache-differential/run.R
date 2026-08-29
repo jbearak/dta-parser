@@ -41,7 +41,7 @@ aww_run_worker <- function(item, tile, options, package_library, package_path) {
         list(
             schema_version = aww_schema_version, tile = tile,
             elapsed_seconds = NA_real_, reader_errors = list(supervisor = conditionMessage(error)),
-            reader_rows = c(dtaparser = NA_integer_, haven = NA_integer_),
+            reader_rows = c(dtatools = NA_integer_, haven = NA_integer_),
             classification = classification, disputes = aww_empty_disputes()
         )
     })
@@ -151,17 +151,17 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
     base$tiles <- 1L
     base$resumed <- as.integer(isTRUE(shape_result$resumed))
     base$disputes <- shape_result$disputes
-    if (shape_result$classification %in% c("dtaparser-error", "haven-error", "shared-reader-error")) {
+    if (shape_result$classification %in% c("dtatools-error", "haven-error", "shared-reader-error")) {
         base$disputes <- aww_dispute(
             "reader_error", "reader-error", attribute = shape_result$classification,
-            dtaparser = shape_result$reader_errors$dtaparser,
+            dtatools = shape_result$reader_errors$dtatools,
             haven = shape_result$reader_errors$haven
         )
         probe <- aww_stata_open(item, options, run_dir, aww_script_dir)
         base$adjudication <- probe
         if (identical(probe, "open")) {
             base$ownership <- switch(shape_result$classification,
-                "dtaparser-error" = "dtaparser-wrong",
+                "dtatools-error" = "dtatools-wrong",
                 "haven-error" = "haven-wrong",
                 "shared-reader-error" = "both-wrong"
             )
@@ -235,7 +235,7 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
         column_count <- min(options$columns, metadata$columns - column_start + 1L)
         rows_per_tile <- aww_memory_rows(max(1L, column_count), options)
         skip <- 0
-        terminated <- c(dtaparser = NA_real_, haven = NA_real_)
+        terminated <- c(dtatools = NA_real_, haven = NA_real_)
         repeat {
             tile <- list(
                 id = aww_tile_id(
@@ -255,10 +255,10 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
                 terminal_failure <- failed_result$classification
                 break
             }
-            reader_coverage <- lapply(c("dtaparser", "haven"), function(reader) {
+            reader_coverage <- lapply(c("dtatools", "haven"), function(reader) {
                 aww_leaf_reader_rows(leaves, tile, reader)
             })
-            names(reader_coverage) <- c("dtaparser", "haven")
+            names(reader_coverage) <- c("dtatools", "haven")
             reader_totals <- vapply(reader_coverage, `[[`, numeric(1), "rows")
             for (reader in names(reader_coverage)) {
                 coverage <- reader_coverage[[reader]]
@@ -270,7 +270,7 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
                                 "metadata", "dimension", reader = reader,
                                 row = skip + 1, skip = skip, n_max = rows_per_tile,
                                 attribute = "tile-nrow",
-                                dtaparser = if (identical(reader, "dtaparser")) partition_rows else NULL,
+                                dtatools = if (identical(reader, "dtatools")) partition_rows else NULL,
                                 haven = if (identical(reader, "haven")) partition_rows else NULL
                             )
                         ))
@@ -288,7 +288,7 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
                     aww_dispute("metadata", "dimension", row = skip + 1,
                                 skip = skip, n_max = rows_per_tile,
                                 attribute = "tile-nrow",
-                                dtaparser = reader_totals[["dtaparser"]],
+                                dtatools = reader_totals[["dtatools"]],
                                 haven = reader_totals[["haven"]])
                 ))
             }
@@ -323,7 +323,7 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
                             "metadata", "dimension", reader = reader,
                             row = skip + 1, skip = skip, n_max = rows_per_tile,
                             attribute = "row-bound-exceeded",
-                            dtaparser = if (identical(reader, "dtaparser")) lower_bound else NULL,
+                            dtatools = if (identical(reader, "dtatools")) lower_bound else NULL,
                             haven = if (identical(reader, "haven")) lower_bound else NULL
                         )
                     ))
@@ -337,7 +337,7 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
     }
     if (length(observed_rows)) {
         observed <- do.call(rbind, observed_rows)
-        for (reader in c("dtaparser", "haven")) {
+        for (reader in c("dtatools", "haven")) {
             mismatches <- which(
                 !is.na(observed[, reader]) & observed[, reader] != metadata$rows
             )
@@ -348,17 +348,17 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
                     aww_dispute(
                         "metadata", "dimension", reader = reader,
                         attribute = "observed-row-count",
-                        dtaparser = if (identical(reader, "dtaparser")) observed_value else NULL,
+                        dtatools = if (identical(reader, "dtatools")) observed_value else NULL,
                         haven = if (identical(reader, "haven")) observed_value else NULL
                     )
                 ))
-                if (identical(reader, "dtaparser")) {
+                if (identical(reader, "dtatools")) {
                     base$disputes <- aww_bind_disputes(list(
                         base$disputes,
                         aww_dispute(
-                            "metadata", "dimension", reader = "dtaparser",
+                            "metadata", "dimension", reader = "dtatools",
                             attribute = "declared-row-count",
-                            dtaparser = metadata$rows
+                            dtatools = metadata$rows
                         )
                     ))
                 }
@@ -369,20 +369,20 @@ aww_file <- function(item, options, package_library, package_path, run_dir, conf
     base$resumed <- base$resumed + sum(vapply(all_results, function(result) isTRUE(result$resumed), logical(1)))
     base$disputes <- aww_bind_disputes(c(list(base$disputes), lapply(all_results, `[[`, "disputes")))
     if (!is.null(terminal_failure)) {
-        if (terminal_failure %in% c("dtaparser-error", "haven-error", "shared-reader-error")) {
+        if (terminal_failure %in% c("dtatools-error", "haven-error", "shared-reader-error")) {
             base$disputes <- aww_bind_disputes(list(
                 base$disputes,
                 aww_dispute("reader_error", "reader-error",
                             row = failed_result$tile$skip + 1,
                             attribute = terminal_failure,
-                            dtaparser = failed_result$reader_errors$dtaparser,
+                            dtatools = failed_result$reader_errors$dtatools,
                             haven = failed_result$reader_errors$haven)
             ))
             probe <- aww_stata_open(item, options, run_dir, aww_script_dir)
             base$adjudication <- probe
             if (identical(probe, "open")) {
                 base$ownership <- switch(terminal_failure,
-                    "dtaparser-error" = "dtaparser-wrong",
+                    "dtatools-error" = "dtatools-wrong",
                     "haven-error" = "haven-wrong",
                     "shared-reader-error" = "both-wrong"
                 )
@@ -448,7 +448,7 @@ aww_write_results <- function(results, path) {
         tiles = result$tiles,
         resumed = result$resumed,
         disputes = nrow(result$disputes),
-        dtaparser_wrong = sum(result$ownership == "dtaparser-wrong"),
+        dtatools_wrong = sum(result$ownership == "dtatools-wrong"),
         haven_wrong = sum(result$ownership == "haven-wrong"),
         both_wrong = sum(result$ownership == "both-wrong"),
         representation_only = sum(result$ownership == "representation-only"),
@@ -458,7 +458,7 @@ aww_write_results <- function(results, path) {
     ))) else data.frame(
         id = character(), relative_path = character(), release = integer(),
         rows = numeric(), columns = integer(), status = character(), tiles = integer(),
-        resumed = integer(), disputes = integer(), dtaparser_wrong = integer(),
+        resumed = integer(), disputes = integer(), dtatools_wrong = integer(),
         haven_wrong = integer(), both_wrong = integer(), representation_only = integer(),
         unresolved = integer(), elapsed_seconds = numeric(), stringsAsFactors = FALSE
     )
@@ -477,7 +477,7 @@ aww_report <- function(frame, inventory, options, config_id, build_id, haven_ver
         sprintf("Run: %s", config_id),
         sprintf("Root: %s", options$root),
         sprintf("Inventory: %s files; %.0f bytes", format(nrow(inventory), big.mark = ","), sum(inventory$size)),
-        sprintf("Readers: dtaparser build %s; haven %s", substr(build_id, 1L, 12L), haven_version),
+        sprintf("Readers: dtatools build %s; haven %s", substr(build_id, 1L, 12L), haven_version),
         sprintf("Coverage: %s files completed; %s tiles (%s resumed)", nrow(frame), sum(frame$tiles), sum(frame$resumed)),
         "",
         "File outcomes:"
@@ -486,7 +486,7 @@ aww_report <- function(frame, inventory, options, config_id, build_id, haven_ver
     lines <- c(lines,
         "",
         sprintf("Disputes: %d", sum(frame$disputes)),
-        sprintf("  dtaparser wrong: %d", sum(frame$dtaparser_wrong)),
+        sprintf("  dtatools wrong: %d", sum(frame$dtatools_wrong)),
         sprintf("  haven wrong: %d", sum(frame$haven_wrong)),
         sprintf("  both wrong: %d", sum(frame$both_wrong)),
         sprintf("  representation only: %d", sum(frame$representation_only)),
@@ -559,7 +559,7 @@ main <- function() {
     writeLines(report)
     incomplete <- any(frame$status %in% c(
         "unresolved", "unreadable", "empty-or-corrupt", "unsupported-release",
-        "dtaparser-error", "haven-error", "shared-reader-error", "timeout",
+        "dtatools-error", "haven-error", "shared-reader-error", "timeout",
         "worker-crash", "memory-limit", "input-changed", "row-termination-mismatch"
     ))
     invisible(if (incomplete) 1L else 0L)

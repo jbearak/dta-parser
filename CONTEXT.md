@@ -1,6 +1,7 @@
-# dta-parser
+# dta-tools
 
-dta-parser provides TypeScript and R libraries that read Stata DTA files without collapsing labels, display formats, long strings, or Stata missing codes.
+dta-tools provides TypeScript and R libraries for reading and writing Stata DTA
+files and for working with Stata-specific values and metadata in memory.
 
 ## R package language
 
@@ -17,7 +18,7 @@ A read-mostly in-memory backing that stores a numeric column at its Stata storag
 _Avoid_: ALTREP column, packed vector
 
 **Stata import**:
-Reading a Stata DTA file into R. Use dtaparser for this operation, including in projects that use haven for file writing or other statistical formats.
+Reading a Stata DTA file into R. Use dtatools for this operation, including in projects that use haven for file writing or other statistical formats.
 _Avoid_: Default Stata reader, Haven replacement
 
 **Haven-compatible read**:

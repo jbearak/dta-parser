@@ -25,7 +25,7 @@ SPEC.loader.exec_module(vendor)
 class VendorFixture:
     def __init__(self, root: Path) -> None:
         self.root = root
-        self.rust = root / "r-package/dtaparser/src/rust"
+        self.rust = root / "r-package/dtatools/src/rust"
         self.archive = self.rust / "vendor.tar.gz"
         self.integrity = self.rust / "vendor.sha256"
         self.lock = self.rust / "Cargo.lock"
@@ -35,7 +35,7 @@ class VendorFixture:
 version = 3
 
 [[package]]
-name = "dtaparser-r"
+name = "dtatools-r"
 version = "0.1.0"
 
 [[package]]

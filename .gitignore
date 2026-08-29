@@ -2,5 +2,8 @@ node_modules
 target
 __pycache__/
 *.pyc
+/dtatools.Rcheck/
+/dtatools_*.tar.gz
+# Local artifacts produced before the package rename.
 /dtaparser.Rcheck/
 /dtaparser_*.tar.gz

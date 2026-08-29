@@ -13,25 +13,25 @@ require_positive_integer() (
     fi
 )
 
-build_dtaparser_library() (
+build_dtatools_library() (
     checkout_root=$1
     script_dir=$2
     build_dir=$3
     library="$build_dir/library"
-    provenance="$library/dtaparser-benchmark-provenance.tsv"
+    provenance="$library/dtatools-benchmark-provenance.tsv"
 
     source_before=$(Rscript --vanilla -e \
-        'source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]); cat(benchmark_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtaparser"))' \
+        'source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]); cat(benchmark_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtatools"))' \
         "$script_dir/../benchmark-common.R" \
         "$script_dir/provenance.R" "$checkout_root")
     mkdir -p "$build_dir"
     (
         cd "$build_dir"
-        R CMD build "$checkout_root/r-package/dtaparser"
+        R CMD build "$checkout_root/r-package/dtatools"
     )
-    set -- "$build_dir"/dtaparser_*.tar.gz
+    set -- "$build_dir"/dtatools_*.tar.gz
     if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
-        printf '%s\n' "expected exactly one dtaparser source tarball" >&2
+        printf '%s\n' "expected exactly one dtatools source tarball" >&2
         exit 1
     fi
     tarball=$1
@@ -43,7 +43,7 @@ build_dtaparser_library() (
     mkdir -p "$library"
     R CMD INSTALL --library="$library" "$tarball"
     source_after=$(Rscript --vanilla -e \
-        'source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]); cat(benchmark_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtaparser"))' \
+        'source(commandArgs(TRUE)[[1L]]); source(commandArgs(TRUE)[[2L]]); cat(benchmark_tree_digest(commandArgs(TRUE)[[3L]], "r-package/dtatools"))' \
         "$script_dir/../benchmark-common.R" \
         "$script_dir/provenance.R" "$checkout_root")
     if [ "$source_before" != "$source_after" ]; then
@@ -63,7 +63,7 @@ publish_benchmark_run() (
     provenance=$3
     runs_name=$4
     current_name=$5
-    build_provenance="$DTAPARSER_BENCH_LIB/dtaparser-benchmark-provenance.tsv"
+    build_provenance="$DTATOOLS_BENCH_LIB/dtatools-benchmark-provenance.tsv"
 
     cp "$build_provenance" "$run_stage/build-provenance.tsv"
     provenance_id=$(Rscript --vanilla -e \

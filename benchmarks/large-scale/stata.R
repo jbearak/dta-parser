@@ -40,7 +40,7 @@ stata <- find_stata()
 
 rows <- vector("list", iterations)
 for (iteration in seq_len(iterations)) {
-    work_dir <- tempfile(pattern = "dtaparser-stata-")
+    work_dir <- tempfile(pattern = "dtatools-stata-")
     dir.create(work_dir)
     on.exit(unlink(work_dir, recursive = TRUE, force = TRUE), add = TRUE)
     if (!file.symlink(path, file.path(work_dir, "input.dta"))) {

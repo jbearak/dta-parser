@@ -2,10 +2,10 @@
 set -eu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-benchmark_library=${DTAPARSER_BENCH_LIB:-}
+benchmark_library=${DTATOOLS_BENCH_LIB:-}
 
-if [ -z "$benchmark_library" ] || [ ! -d "$benchmark_library/dtaparser" ]; then
-    printf '%s\n' "set DTAPARSER_BENCH_LIB to a library containing dtaparser" >&2
+if [ -z "$benchmark_library" ] || [ ! -d "$benchmark_library/dtatools" ]; then
+    printf '%s\n' "set DTATOOLS_BENCH_LIB to a library containing dtatools" >&2
     exit 2
 fi
 if test -z "${STATA_BIN:-}" && test -x /Applications/Stata/StataMP.app/Contents/MacOS/stata-mp; then
@@ -21,7 +21,7 @@ if grep -Eq '^[[:space:]]*(use|sysuse|webuse)[[:space:]]' \
     exit 1
 fi
 
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/dtaparser-stata-primary.XXXXXX")
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/dtatools-stata-primary.XXXXXX")
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
 cp "$script_dir/stata-generate-fixture.do" "$work_dir/"
 (
@@ -37,25 +37,33 @@ if [ "$fields" != "stata ok 1000 40" ]; then
     exit 1
 fi
 
-DTAPARSER_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
+DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
 R_PROFILE_USER=/dev/null Rscript --vanilla \
-    "$script_dir/write-worker.R" dtaparser stata-storage \
-    "$work_dir/input.dta" "$work_dir/output.dta" > "$work_dir/worker.tsv"
-if ! grep -Eq '^SYNTHETIC_WRITE[[:space:]]+dtaparser[[:space:]]+ok' \
-    "$work_dir/worker.tsv"; then
-    printf '%s\n' "dtaparser did not load and save the Stata-generated file" >&2
+    "$script_dir/write-worker.R" dtatools stata-storage \
+    "$work_dir/input.dta" "$work_dir/dtatools-output.dta" \
+    > "$work_dir/dtatools-worker.tsv"
+if ! grep -Eq '^SYNTHETIC_WRITE[[:space:]]+dtatools[[:space:]]+ok' \
+    "$work_dir/dtatools-worker.tsv"; then
+    printf '%s\n' "dtatools did not load and save the Stata-generated file" >&2
     exit 1
 fi
 
-DTAPARSER_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
-R_PROFILE_USER=/dev/null Rscript --vanilla -e '
-    arguments <- commandArgs(TRUE)
-    sys.source(arguments[[3L]], envir = environment())
-    benchmark_activate_library("dtaparser")
-    before <- dtaparser::read_dta(arguments[[1L]], use_numeric_altrep = FALSE)
-    after <- dtaparser::read_dta(arguments[[2L]], use_numeric_altrep = FALSE)
-    stopifnot(identical(before, after))
-' "$work_dir/input.dta" "$work_dir/output.dta" \
-    "$script_dir/../benchmark-common.R"
+DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
+R_PROFILE_USER=/dev/null Rscript --vanilla \
+    "$script_dir/write-worker.R" haven stata-storage \
+    "$work_dir/input.dta" "$work_dir/haven-output.dta" \
+    > "$work_dir/haven-worker.tsv"
+if ! grep -Eq '^SYNTHETIC_WRITE[[:space:]]+haven[[:space:]]+ok' \
+    "$work_dir/haven-worker.tsv"; then
+    printf '%s\n' "Haven did not load and save the Stata-generated file" >&2
+    exit 1
+fi
+
+for writer in dtatools haven; do
+    DTATOOLS_BENCH_LIB="$benchmark_library" R_ENVIRON_USER=/dev/null \
+    R_PROFILE_USER=/dev/null Rscript --vanilla \
+        "$script_dir/validate-write-output.R" "$writer" \
+        "$work_dir/input.dta" "$work_dir/${writer}-output.dta"
+done
 
 printf '%s\n' "Stata-first primary write workflow: PASS"
