@@ -35,7 +35,7 @@ fn read_all_options() -> ArrowReadOptions {
 
 fn write_to_vec(dataset: &ArrowWriteDataset, compression: ArrowCompression) -> Vec<u8> {
     let mut bytes = Vec::new();
-    save_arrow_file_to(&mut bytes, dataset, compression, 64, &mut no_interrupt())
+    save_arrow_file_to(&mut bytes, dataset, compression, 64, 1, &mut no_interrupt())
         .expect("write succeeds");
     bytes
 }
@@ -326,6 +326,7 @@ fn projection_reads_io_proportional_to_selected_columns() {
         &dataset,
         ArrowCompression::Uncompressed,
         1024,
+        1,
         &mut no_interrupt(),
     )
     .expect("write succeeds");
@@ -633,6 +634,7 @@ fn unsupported_columns_error_naming_the_column() {
         &dataset,
         ArrowCompression::Uncompressed,
         64,
+        1,
         &mut no_interrupt(),
     )
     .expect_err("nested columns are unsupported");
@@ -762,4 +764,55 @@ fn non_arrow_input_is_rejected() {
     )
     .expect_err("garbage is rejected");
     assert!(matches!(error, ArrowProfileError::NotAnArrowFile(_)));
+}
+
+#[test]
+fn parallel_checksum_hashing_matches_serial() {
+    // 1,000 rows over 64-row batches give every worker several hash tasks,
+    // and the dictionary column exercises the dictionary-values task.
+    let rows = 1_000_usize;
+    let doubles: ArrayRef = Arc::new(Float64Array::from(
+        (0..rows).map(|row| row as f64 / 7.0).collect::<Vec<_>>(),
+    ));
+    let keys = Int32Array::from((0..rows).map(|row| (row % 3) as i32).collect::<Vec<_>>());
+    let values = StringArray::from(vec!["one", "two", "three"]);
+    let dictionary: ArrayRef =
+        Arc::new(DictionaryArray::try_new(keys, Arc::new(values)).expect("valid dictionary"));
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![
+            ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: doubles,
+            },
+            ArrowWriteColumn {
+                name: "k".to_owned(),
+                field: None,
+                array: dictionary,
+            },
+        ],
+    };
+
+    let mut serial = Vec::new();
+    save_arrow_file_to(
+        &mut serial,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        64,
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("serial write succeeds");
+    let mut parallel = Vec::new();
+    save_arrow_file_to(
+        &mut parallel,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        64,
+        4,
+        &mut no_interrupt(),
+    )
+    .expect("parallel write succeeds");
+    assert_eq!(serial, parallel, "thread count must not change the bytes");
 }

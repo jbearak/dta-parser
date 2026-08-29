@@ -1170,6 +1170,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             &dataset,
             compression,
             ARROW_ROWS_PER_BATCH,
+            requested_threads,
             &mut coarse_interrupt,
         )
         .map_err(|error| error.to_string())?;
