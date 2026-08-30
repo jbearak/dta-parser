@@ -958,6 +958,23 @@ test_that("plain Int32 selection predicates match the returned R type", {
     )
 })
 
+test_that("plain UInt16 columns use R integer storage", {
+    skip_if_not_installed("arrow")
+    path <- arrow_tempfile()
+    values <- arrow::Array$create(c(0, 65535, NA), type = arrow::uint16())
+    arrow::write_ipc_file(arrow::arrow_table(x = values), path)
+
+    expect_identical(read_arrow(path)$x, c(0L, 65535L, NA_integer_))
+    expect_identical(
+        names(read_arrow(path, col_select = tidyselect::where(is.integer))),
+        "x"
+    )
+    expect_identical(
+        names(read_arrow(path, col_select = tidyselect::where(is.double))),
+        character()
+    )
+})
+
 test_that("Arrow selection scans ambiguous Int32 values only for predicates", {
     scans <- logical()
     local_mocked_bindings(

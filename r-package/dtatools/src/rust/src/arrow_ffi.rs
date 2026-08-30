@@ -1802,7 +1802,7 @@ fn classify_read_column(
         == Some(ArrowMissingEncoding::Payload);
     Ok(match &column.data_type {
         DataType::Boolean => ColumnShape::Logical,
-        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::UInt8
+        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::UInt8 | DataType::UInt16
             if class != Some("raw") =>
         {
             ColumnShape::Integer
@@ -1833,7 +1833,6 @@ fn classify_read_column(
         DataType::Float32
         | DataType::Float64
         | DataType::Int64
-        | DataType::UInt16
         | DataType::UInt32
         | DataType::UInt64 => ColumnShape::SemanticDouble,
         other => {
@@ -2258,6 +2257,14 @@ unsafe fn fill_integer(column: &ArrowReadColumn, output: *mut c_int) -> Result<(
             Ok(())
         }),
         DataType::UInt8 => for_each_value::<UInt8Array>(column, |row, values, index| {
+            *output.add(row) = if values.is_null(index) {
+                R_NaInt
+            } else {
+                c_int::from(values.value(index))
+            };
+            Ok(())
+        }),
+        DataType::UInt16 => for_each_value::<UInt16Array>(column, |row, values, index| {
             *output.add(row) = if values.is_null(index) {
                 R_NaInt
             } else {

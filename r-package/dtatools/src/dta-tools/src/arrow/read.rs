@@ -1586,7 +1586,9 @@ fn r_type_for(
     }
     match field.data_type() {
         DataType::Boolean => "logical",
-        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::UInt8 => "integer",
+        DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::UInt8 | DataType::UInt16 => {
+            "integer"
+        }
         DataType::Utf8 | DataType::LargeUtf8 => "character",
         DataType::Dictionary(_, _) => "factor",
         _ => "double",
