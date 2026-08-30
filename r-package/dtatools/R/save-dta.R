@@ -54,6 +54,7 @@
 save_dta <- function(data, path, version = 19L,
                       label = attr(data, "label", exact = TRUE),
                       strl_threshold = 2045L, adjust_tz = TRUE) {
+    data <- .reference_snapshot(data)
     resolved_path <- .resolve_dta_write_path(path)
     for (write_warning in resolved_path$warnings) {
         .dta_write_warn(write_warning$message, write_warning$class)

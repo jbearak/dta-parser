@@ -35,6 +35,7 @@ extern void dtatools_dictstring_free(void *);
 extern int dtatools_dictstring_bytes(
     void *, uint32_t, const char **, int *
 );
+extern void *dtatools_dictstring_clone(const void *);
 
 typedef struct {
     const char *name;
@@ -3482,6 +3483,233 @@ SEXP C_dtatools_metadata_copy(SEXP value) {
     return Rf_shallow_duplicate(value);
 }
 
+SEXP C_dtatools_mark_reference_data(
+    SEXP data, SEXP state, SEXP classes
+) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(state) != ENVSXP ||
+        TYPEOF(classes) != STRSXP || XLENGTH(classes) == 0) {
+        Rf_error("invalid reference-data state");
+    }
+    Rf_setAttrib(data, Rf_install(".dtatools_ref_state"), state);
+    Rf_setAttrib(data, R_ClassSymbol, classes);
+    return data;
+}
+
+static SEXP dictstring_compact_copy(SEXP value) {
+    SEXP source = unmaterialized_dictstring_source(value);
+    if (source == R_NilValue) return R_NilValue;
+    dictstring_data *source_data = dictstring_storage(source);
+    void *copy = dtatools_dictstring_clone(source_data);
+    if (copy == NULL) {
+        Rf_error("could not copy compact dictionary-string storage");
+    }
+
+    SEXP source_cache = dictstring_cache(source);
+    SEXP cache = PROTECT(Rf_allocVector(VECSXP, XLENGTH(source_cache)));
+    SEXP external = PROTECT(R_MakeExternalPtr(copy, R_NilValue, cache));
+    R_RegisterCFinalizerEx(external, dictstring_finalize, TRUE);
+    SEXP result = PROTECT(R_new_altrep(
+        dtatools_dictstring_class, external, R_NilValue
+    ));
+    DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(3);
+    return result;
+}
+
+SEXP C_dtatools_deep_copy_column(SEXP value) {
+    numeric_data *numeric = unmaterialized_numeric_storage(value);
+    if (numeric != NULL) {
+        SEXP result = PROTECT(numeric_compact_copy(numeric));
+        DUPLICATE_ATTRIB(result, value);
+        UNPROTECT(1);
+        return result;
+    }
+    SEXP dictionary = dictstring_compact_copy(value);
+    if (dictionary != R_NilValue) return dictionary;
+    return Rf_duplicate(value);
+}
+
+static double compact_patch_encoded_value(double value, int temporal) {
+    if (temporal == 1) return value + 3653.0;
+    if (temporal == 2) {
+        double source = (value + 315619200.0) * 1000.0;
+        double rounded = round(source);
+        double decoded = rounded / 1000.0 - 315619200.0;
+        return R_FINITE(source) && decoded == value ? rounded : source;
+    }
+    return value;
+}
+
+static void validate_compact_patch_value(
+    const numeric_data *target, double value, int missing_code
+) {
+    if (missing_code >= 0) {
+        if (missing_code == 256 ||
+            (missing_code != 0 &&
+             (missing_code < 'a' || missing_code > 'z'))) {
+            Rf_error(
+                "replacement values cannot contain `NaN` or unsupported missing tags"
+            );
+        }
+        if (target->format_version <= 111 && missing_code != 0) {
+            Rf_error(
+                "this legacy compact column cannot store extended missing values"
+            );
+        }
+        return;
+    }
+    unsigned char encoded[4] = {0};
+    write_numeric_observed(
+        encoded, 0, target->kind,
+        compact_patch_encoded_value(value, target->temporal)
+    );
+}
+
+static void write_compact_patch_value(
+    numeric_data *target, size_t row, double value, int missing_code
+) {
+    unsigned char *output = (unsigned char *) target->values;
+    if (missing_code >= 0) {
+        int offset = missing_code == 0 ? 0 : missing_code - 'a' + 1;
+        if (target->format_version <= 111) {
+            write_numeric_system_missing_raw(
+                output, (R_xlen_t) row, target->kind,
+                target->format_version
+            );
+        } else {
+            write_numeric_missing(
+                output, (R_xlen_t) row, target->kind, offset
+            );
+        }
+        return;
+    }
+    write_numeric_observed(
+        output, (R_xlen_t) row, target->kind,
+        compact_patch_encoded_value(value, target->temporal)
+    );
+}
+
+static numeric_data *detach_compact_patch_target(SEXP value) {
+    if (ALTREP(value) &&
+        R_altrep_inherits(value, dtatools_numeric_class) &&
+        R_altrep_data2(value) == R_NilValue) {
+        return numeric_storage(value);
+    }
+    if (!ALTREP(value) ||
+        !R_altrep_inherits(value, dtatools_metadata_real_class) ||
+        R_altrep_data2(value) != R_NilValue) {
+        return NULL;
+    }
+    numeric_data *source = unmaterialized_numeric_storage(value);
+    if (source == NULL) return NULL;
+    SEXP detached = PROTECT(numeric_compact_copy(source));
+    R_set_altrep_data1(value, detached);
+    R_set_altrep_data2(value, R_NilValue);
+    numeric_data *result = numeric_storage(detached);
+    UNPROTECT(1);
+    return result;
+}
+
+static int compact_storage_has_missing(const numeric_data *data) {
+    for (size_t index = 0; index < data->length; index++) {
+        if (numeric_missing_offset_at(data, index) >= 0) return 1;
+    }
+    return 0;
+}
+
+SEXP C_dtatools_patch_vector(
+    SEXP target, SEXP rows, SEXP replacement
+) {
+    if (TYPEOF(rows) != INTSXP || XLENGTH(rows) != XLENGTH(replacement)) {
+        Rf_error("invalid reference replacement plan");
+    }
+    R_xlen_t target_length = XLENGTH(target);
+    R_xlen_t count = XLENGTH(rows);
+    for (R_xlen_t index = 0; index < count; index++) {
+        int row = INTEGER(rows)[index];
+        if (row == NA_INTEGER || row <= 0 ||
+            (R_xlen_t) row > target_length) {
+            Rf_error("invalid reference replacement row");
+        }
+    }
+
+    numeric_data *compact = unmaterialized_numeric_storage(target);
+    if (compact != NULL) {
+        numeric_reader reader = numeric_reader_create(replacement, count);
+        int replacement_has_missing = 0;
+        for (R_xlen_t index = 0; index < count; index++) {
+            int missing_code;
+            double value = numeric_reader_at(&reader, index, &missing_code);
+            validate_compact_patch_value(compact, value, missing_code);
+            if (missing_code >= 0) replacement_has_missing = 1;
+        }
+
+        int target_had_no_missing = compact->no_na;
+        compact = detach_compact_patch_target(target);
+        if (compact == NULL) {
+            Rf_error("compact replacement target became unavailable");
+        }
+        for (R_xlen_t index = 0; index < count; index++) {
+            int missing_code;
+            double value = numeric_reader_at(&reader, index, &missing_code);
+            write_compact_patch_value(
+                compact, (size_t) INTEGER(rows)[index] - 1,
+                value, missing_code
+            );
+        }
+        if (replacement_has_missing) {
+            compact->no_na = 0;
+        } else if (target_had_no_missing) {
+            compact->no_na = 1;
+        } else {
+            compact->no_na = !compact_storage_has_missing(compact);
+        }
+        return Rf_ScalarLogical(1);
+    }
+
+    if (TYPEOF(target) != TYPEOF(replacement)) {
+        Rf_error("replacement storage does not match its target");
+    }
+    switch (TYPEOF(target)) {
+    case REALSXP: {
+#if R_VERSION >= R_Version(4, 6, 0)
+        double *output = (double *) DATAPTR_RW(target);
+#else
+        double *output = REAL(target);
+#endif
+        for (R_xlen_t index = 0; index < count; index++) {
+            output[INTEGER(rows)[index] - 1] = REAL_ELT(replacement, index);
+        }
+        break;
+    }
+    case INTSXP: {
+        int *output = INTEGER(target);
+        for (R_xlen_t index = 0; index < count; index++) {
+            output[INTEGER(rows)[index] - 1] = INTEGER_ELT(replacement, index);
+        }
+        break;
+    }
+    case LGLSXP: {
+        int *output = LOGICAL(target);
+        for (R_xlen_t index = 0; index < count; index++) {
+            output[INTEGER(rows)[index] - 1] = LOGICAL_ELT(replacement, index);
+        }
+        break;
+    }
+    case STRSXP:
+        for (R_xlen_t index = 0; index < count; index++) {
+            SET_STRING_ELT(
+                target, INTEGER(rows)[index] - 1,
+                STRING_ELT(replacement, index)
+            );
+        }
+        break;
+    default:
+        Rf_error("unsupported reference replacement storage");
+    }
+    return Rf_ScalarLogical(0);
+}
+
 SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value) {
     while (ALTREP(value)) {
         if (R_altrep_inherits(value, dtatools_numeric_class)) {
@@ -3983,6 +4211,12 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
+    {"C_dtatools_mark_reference_data",
+     (DL_FUNC) &C_dtatools_mark_reference_data, 3},
+    {"C_dtatools_deep_copy_column",
+     (DL_FUNC) &C_dtatools_deep_copy_column, 1},
+    {"C_dtatools_patch_vector",
+     (DL_FUNC) &C_dtatools_patch_vector, 3},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
     {"C_dtatools_is_unmaterialized_dictstring",

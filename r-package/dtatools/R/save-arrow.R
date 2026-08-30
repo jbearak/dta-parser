@@ -72,6 +72,7 @@ save_arrow <- function(data, path,
                        adjust_tz = TRUE,
                        threads = getOption("dtatools.threads", 0L),
                        checksums = TRUE) {
+    data <- .reference_snapshot(data)
     threads <- .normalize_threads(threads)
     checksums <- .normalize_arrow_flag(checksums, "checksums")
     resolved_path <- .resolve_dta_write_path(path, "arrow")

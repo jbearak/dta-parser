@@ -369,6 +369,31 @@ pub unsafe extern "C" fn dtatools_dictstring_bytes(
 }
 
 #[no_mangle]
+/// Clone a live dictionary-string payload for an independent R ALTREP vector.
+///
+/// # Safety
+///
+/// `data` must point to a live `DictStringData`. The caller owns the returned
+/// pointer and must transfer it to R or release it with
+/// `dtatools_dictstring_free`.
+pub unsafe extern "C" fn dtatools_dictstring_clone(data: *const c_void) -> *mut c_void {
+    if data.is_null() {
+        return ptr::null_mut();
+    }
+    let source = &*data.cast::<DictStringData>();
+    let ids = std::slice::from_raw_parts(source.value_ids, source.length).to_vec();
+    let values = source._values.clone();
+    let mut views = vec![(ptr::null(), 0); values.len()];
+    for (value, &id) in &values {
+        let Some(slot) = views.get_mut(id as usize) else {
+            return ptr::null_mut();
+        };
+        *slot = (value.as_ptr(), value.len());
+    }
+    Box::into_raw(Box::new(DictStringData::new(ids, values, views))).cast::<c_void>()
+}
+
+#[no_mangle]
 /// Release dictionary indices previously transferred to an R ALTREP vector.
 ///
 /// # Safety
