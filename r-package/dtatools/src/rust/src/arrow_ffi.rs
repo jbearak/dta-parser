@@ -2932,6 +2932,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     profile: c_int,
     numeric_altrep: c_int,
     requested_threads: c_int,
+    record_signature: c_int,
     interrupted: *mut c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
@@ -2967,6 +2968,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             max_output_rows: Some(crate::R_DATA_FRAME_MAX_ROWS),
             verify: verify != 0,
             profile: profile != 0,
+            record_signature: record_signature != 0,
             threads: requested,
         };
         let result = read_arrow_file(&path, &options, &mut coarse_interrupt)
@@ -3059,6 +3061,11 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 let notes = string_vector(&dataset.notes, &mut guard)?;
                 set_attr(frame, "notes", notes)?;
             }
+        }
+        if let Some(signature) = &result.stored_signature {
+            let mut guard = ProtectGuard::new();
+            let signature = scalar_string(signature, &mut guard)?;
+            set_attr(frame, "datasig", signature)?;
         }
         Ok(frame)
     })

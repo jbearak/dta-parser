@@ -71,7 +71,7 @@ extern SEXP dtatools_datasig_rust(
 );
 extern SEXP dtatools_read_arrow_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
-    int, int *, char **
+    int, int, int *, char **
 );
 extern SEXP dtatools_arrow_metadata_rust(
     const char *, int, int, double, double, int *, char **
@@ -3100,7 +3100,7 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
 
 SEXP C_dtatools_read_arrow(
     SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
-    SEXP numeric_altrep, SEXP threads
+    SEXP numeric_altrep, SEXP threads, SEXP datasig
 ) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
         STRING_ELT(path, 0) == NA_STRING) {
@@ -3124,6 +3124,10 @@ SEXP C_dtatools_read_arrow(
         LOGICAL(numeric_altrep)[0] == NA_LOGICAL) {
         Rf_error("internal numeric ALTREP selector must be logical");
     }
+    if (TYPEOF(datasig) != LGLSXP || XLENGTH(datasig) != 1 ||
+        LOGICAL(datasig)[0] == NA_LOGICAL) {
+        Rf_error("internal data signature selector must be logical");
+    }
     if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
         INTEGER(threads)[0] < 0) {
         Rf_error("internal thread count must be one non-negative integer");
@@ -3141,6 +3145,7 @@ SEXP C_dtatools_read_arrow(
         LOGICAL(profile)[0],
         LOGICAL(numeric_altrep)[0],
         INTEGER(threads)[0],
+        LOGICAL(datasig)[0],
         &interrupted,
         &rust_error
     );
@@ -3711,7 +3716,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},
     {"C_dtatools_datasig", (DL_FUNC) &C_dtatools_datasig, 2},
-    {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 8},
+    {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 9},
     {"C_dtatools_arrow_metadata",
      (DL_FUNC) &C_dtatools_arrow_metadata, 5},
     {"C_dtatools_arrow_datasig",

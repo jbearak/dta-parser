@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufReader, Read, Seek, SeekFrom};
+use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -66,6 +66,9 @@ pub struct ArrowReadOptions {
     /// Apply `dtatools:*` profile metadata. `false` is the escape hatch that
     /// reads the raw storage arrays as plain Arrow data.
     pub profile: bool,
+    /// Derive the complete file's stored signature from this read's open file
+    /// snapshot and return it with the decoded selection.
+    pub record_signature: bool,
     /// Decoder threads for path-backed reads: zero selects an automatic
     /// count for sufficiently large selections, one forces serial decoding,
     /// and larger values cap the worker count. Reads from a generic seekable
@@ -95,6 +98,7 @@ pub struct ArrowReadResult {
     pub dataset: Option<DatasetDocument>,
     pub row_count: u64,
     pub columns: Vec<ArrowReadColumn>,
+    pub stored_signature: Option<String>,
 }
 
 /// One column's name and the R type family used for selection proxies.
@@ -192,6 +196,61 @@ fn read_exact_at<R: Read + Seek>(
     reader.seek(SeekFrom::Start(offset))?;
     reader.read_exact(buffer)?;
     Ok(())
+}
+
+/// A cloned file handle with an independent logical cursor. `File::try_clone`
+/// can share the operating system cursor with the original handle, so each
+/// parallel decoder uses positioned reads instead.
+struct PositionedFile {
+    file: File,
+    position: u64,
+}
+
+impl PositionedFile {
+    fn new(file: File) -> Self {
+        Self { file, position: 0 }
+    }
+}
+
+#[cfg(unix)]
+fn file_read_at(file: &File, buffer: &mut [u8], offset: u64) -> io::Result<usize> {
+    use std::os::unix::fs::FileExt;
+    file.read_at(buffer, offset)
+}
+
+#[cfg(windows)]
+fn file_read_at(file: &File, buffer: &mut [u8], offset: u64) -> io::Result<usize> {
+    use std::os::windows::fs::FileExt;
+    file.seek_read(buffer, offset)
+}
+
+impl Read for PositionedFile {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        let read = file_read_at(&self.file, buffer, self.position)?;
+        self.position = self
+            .position
+            .checked_add(read as u64)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "file offset overflow"))?;
+        Ok(read)
+    }
+}
+
+impl Seek for PositionedFile {
+    fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+        let next = match position {
+            SeekFrom::Start(offset) => i128::from(offset),
+            SeekFrom::Current(offset) => i128::from(self.position) + i128::from(offset),
+            SeekFrom::End(offset) => i128::from(self.file.metadata()?.len()) + i128::from(offset),
+        };
+        if !(0..=i128::from(u64::MAX)).contains(&next) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "invalid file seek",
+            ));
+        }
+        self.position = next as u64;
+        Ok(self.position)
+    }
 }
 
 fn valid_time_unit(unit: arrow_ipc::TimeUnit) -> bool {
@@ -919,6 +978,7 @@ struct PreparedRead {
     dictionaries: HashMap<i64, ArrayData>,
     plans: Vec<BlockPlan>,
     produced: u64,
+    stored_signature: Option<String>,
 }
 
 fn prepare_read<R: Read + Seek>(
@@ -927,6 +987,10 @@ fn prepare_read<R: Read + Seek>(
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<PreparedRead, ArrowProfileError> {
     let footer = read_footer(reader)?;
+    let stored_signature = options
+        .record_signature
+        .then(|| stored_signature_from_footer(reader, &footer))
+        .transpose()?;
     let profile = parse_profile(&footer, options.profile, options.verify)?;
 
     let field_count = footer.schema.fields().len();
@@ -1045,6 +1109,7 @@ fn prepare_read<R: Read + Seek>(
         dictionaries,
         plans,
         produced,
+        stored_signature,
     })
 }
 
@@ -1243,7 +1308,7 @@ fn decode_task_loop<R: Read + Seek>(
 /// file handle. The calling thread participates and is the only one that
 /// polls `interrupt`.
 fn decode_blocks_parallel(
-    path: &Path,
+    source: &File,
     context: &DecodeContext<'_>,
     plans: &[BlockPlan],
     columns: &mut [ArrowReadColumn],
@@ -1257,7 +1322,7 @@ fn decode_blocks_parallel(
 
     let mut worker_files = Vec::with_capacity(threads.saturating_sub(1));
     for _ in 1..threads {
-        worker_files.push(File::open(path)?);
+        worker_files.push(PositionedFile::new(source.try_clone()?));
     }
 
     let (own_result, worker_results) = thread::scope(|scope| {
@@ -1275,10 +1340,11 @@ fn decode_blocks_parallel(
                 })
             })
             .collect();
-        let own = File::open(path)
+        let own = source
+            .try_clone()
             .map_err(ArrowProfileError::from)
             .and_then(|file| {
-                let mut reader = BufReader::new(file);
+                let mut reader = BufReader::new(PositionedFile::new(file));
                 decode_task_loop(
                     &mut reader,
                     context,
@@ -1399,6 +1465,7 @@ fn finish_result(prepared: PreparedRead, columns: Vec<ArrowReadColumn>) -> Arrow
         dataset: prepared.profile.map(|profile| profile.dataset),
         row_count: prepared.produced,
         columns,
+        stored_signature: prepared.stored_signature,
     }
 }
 
@@ -1428,7 +1495,7 @@ pub fn read_arrow_file(
         );
         if threads > 1 {
             decode_blocks_parallel(
-                path,
+                reader.get_ref(),
                 &context,
                 &prepared.plans,
                 &mut columns,
@@ -1701,24 +1768,11 @@ fn validate_stored_checksum_coverage<R: Read + Seek>(
     Ok(row_count)
 }
 
-/// Derive the dataset signature from an Arrow file's stored metadata alone:
-/// the schema documents plus the footer checksums document. No data buffers
-/// are read or rehashed, so the result records what the file declares about
-/// its own content; pair it with a verifying read to also validate the
-/// declared checksums against the stored bytes. Identical to
-/// [`super::dataset_signature`] over the same logical dataset.
-pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowProfileError> {
-    let path = path.as_ref();
-    let mut reader = BufReader::new(File::open(path)?);
-    let footer = match read_footer(&mut reader) {
-        Err(ArrowProfileError::NotAnArrowFile(_)) => {
-            return Err(ArrowProfileError::NotAnArrowFile(
-                path.display().to_string(),
-            ))
-        }
-        other => other?,
-    };
-    let profile = parse_profile(&footer, true, false)?.ok_or_else(|| {
+fn stored_signature_from_footer<R: Read + Seek>(
+    reader: &mut R,
+    footer: &Footer,
+) -> Result<String, ArrowProfileError> {
+    let profile = parse_profile(footer, true, false)?.ok_or_else(|| {
         ArrowProfileError::InvalidFile(
             "the file carries no dtatools Arrow profile, so it stores no checksums to derive \
              a signature from"
@@ -1737,7 +1791,7 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
         })?;
     let checksums = parse_checksums_document(&profile.version, json)?;
     let row_count =
-        validate_stored_checksum_coverage(&mut reader, &footer, &profile.version, &checksums)?;
+        validate_stored_checksum_coverage(reader, footer, &profile.version, &checksums)?;
     super::write::signature_from_parts(
         row_count,
         footer
@@ -1750,6 +1804,26 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
         &profile.dataset,
         &checksums,
     )
+}
+
+/// Derive the dataset signature from an Arrow file's stored metadata alone:
+/// the schema documents plus the footer checksums document. No data buffers
+/// are read or rehashed, so the result records what the file declares about
+/// its own content; pair it with a verifying read to also validate the
+/// declared checksums against the stored bytes. Identical to
+/// [`super::dataset_signature`] over the same logical dataset.
+pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowProfileError> {
+    let path = path.as_ref();
+    let mut reader = BufReader::new(File::open(path)?);
+    let footer = match read_footer(&mut reader) {
+        Err(ArrowProfileError::NotAnArrowFile(_)) => {
+            return Err(ArrowProfileError::NotAnArrowFile(
+                path.display().to_string(),
+            ))
+        }
+        other => other?,
+    };
+    stored_signature_from_footer(&mut reader, &footer)
 }
 
 pub fn summarize_arrow_file(
@@ -1807,6 +1881,7 @@ pub fn summarize_arrow_file(
                 max_output_rows: None,
                 verify: false,
                 profile: apply_profile,
+                record_signature: false,
                 threads: 1,
             },
             interrupt,
@@ -1865,9 +1940,88 @@ pub fn summarize_arrow_file(
 mod tests {
     use std::io::Cursor;
 
+    use arrow_array::Int32Array;
     use flatbuffers::FlatBufferBuilder;
 
     use super::*;
+    use crate::arrow::{
+        save_arrow_file, ArrowCompression, ArrowWriteColumn, ArrowWriteDataset,
+        ARROW_ROWS_PER_BATCH,
+    };
+
+    #[cfg(unix)]
+    #[test]
+    fn parallel_decode_uses_the_prepared_file_snapshot() {
+        let directory =
+            std::env::temp_dir().join(format!("dtatools-arrow-snapshot-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).expect("temp directory");
+        let path = directory.join("source.arrow");
+        let replacement = directory.join("replacement.arrow");
+        let write = |path: &Path, first: i32| {
+            let dataset = ArrowWriteDataset {
+                dataset: DatasetDocument::default(),
+                columns: vec![
+                    ArrowWriteColumn {
+                        name: "x".to_owned(),
+                        field: None,
+                        array: Arc::new(Int32Array::from(vec![first, first + 1])),
+                    },
+                    ArrowWriteColumn {
+                        name: "y".to_owned(),
+                        field: None,
+                        array: Arc::new(Int32Array::from(vec![first + 2, first + 3])),
+                    },
+                ],
+            };
+            save_arrow_file(
+                path,
+                &dataset,
+                ArrowCompression::Uncompressed,
+                ARROW_ROWS_PER_BATCH,
+                1,
+                true,
+                &mut || false,
+            )
+            .expect("fixture writes");
+        };
+        write(&path, 1);
+        write(&replacement, 101);
+
+        let mut reader = BufReader::new(File::open(&path).expect("source opens"));
+        let options = ArrowReadOptions {
+            verify: false,
+            threads: 2,
+            ..ArrowReadOptions::default()
+        };
+        let prepared =
+            prepare_read(&mut reader, &options, &mut || false).expect("source metadata reads");
+        std::fs::rename(&replacement, &path).expect("path is atomically replaced");
+        let mut columns = columns_skeleton(&prepared).expect("column skeletons");
+        {
+            let context = DecodeContext {
+                footer: &prepared.footer,
+                profile: prepared.profile.as_ref(),
+                selected: &prepared.selected,
+                dictionaries: &prepared.dictionaries,
+            };
+            decode_blocks_parallel(
+                reader.get_ref(),
+                &context,
+                &prepared.plans,
+                &mut columns,
+                2,
+                &mut || false,
+            )
+            .expect("parallel decode succeeds");
+        }
+        let result = finish_result(prepared, columns);
+        let values = result.columns[0].chunks[0]
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .expect("Int32 result");
+        assert_eq!(values.values(), &[1, 2]);
+        std::fs::remove_dir_all(directory).expect("temp directory removed");
+    }
 
     #[test]
     fn ipc_metadata_allocations_are_bounded() {

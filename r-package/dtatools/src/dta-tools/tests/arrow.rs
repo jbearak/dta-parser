@@ -33,6 +33,7 @@ fn read_all_options() -> ArrowReadOptions {
         max_output_rows: None,
         verify: true,
         profile: true,
+        record_signature: false,
         threads: 1,
     }
 }
@@ -1548,6 +1549,19 @@ fn stored_signature_matches_recomputed_signature() {
     std::fs::write(&path, bytes).expect("file written");
     let stored = arrow_stored_signature(&path).expect("stored signature");
     assert_eq!(stored, recomputed);
+    let result = read_arrow_file(
+        &path,
+        &ArrowReadOptions {
+            record_signature: true,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("read with a stored signature");
+    assert_eq!(
+        result.stored_signature.as_deref(),
+        Some(recomputed.as_str())
+    );
 
     // A compressed copy signs identically: the checksums cover uncompressed
     // buffers.

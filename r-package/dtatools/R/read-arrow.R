@@ -97,7 +97,8 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         verify,
         profile,
         use_numeric_altrep,
-        threads
+        threads,
+        datasig
     )
     if (!is.null(column_indices)) {
         names(native) <- selected_names
@@ -105,14 +106,11 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
 
     dataset_label <- attr(native, "label", exact = TRUE)
     dataset_notes <- attr(native, "notes", exact = TRUE)
+    disk_signature <- attr(native, "datasig", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
-    if (datasig) {
-        attr(result, "datasig") <- .Call(
-            C_dtatools_arrow_datasig, source$path
-        )
-    }
+    if (!is.null(disk_signature)) attr(result, "datasig") <- disk_signature
     result
 }
 
