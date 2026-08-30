@@ -3722,9 +3722,29 @@ static void validate_is_missing_argument(SEXP value, R_xlen_t argument) {
 static int numeric_reader_is_missing_at(
     const numeric_reader *reader, R_xlen_t index
 ) {
-    int missing_code;
-    (void) numeric_reader_at(reader, index, &missing_code);
-    return missing_code != -1;
+    if (reader->storage != NULL) {
+        numeric_data *data = reader->storage;
+        if (data->kind == NUMERIC_FLOAT) {
+            float value = numeric_float_raw_at(data, (size_t) index);
+            return float_missing_offset(value, data->format_version) >= 0 ||
+                isnan(value);
+        }
+        return numeric_missing_offset_at(data, (size_t) index) >= 0;
+    }
+
+    if (reader->type == INTSXP || reader->type == LGLSXP) {
+        int value = reader->integer_values == NULL
+            ? (reader->type == LGLSXP
+                ? LOGICAL_ELT(reader->value, index)
+                : INTEGER_ELT(reader->value, index))
+            : reader->integer_values[index];
+        return value == NA_INTEGER;
+    }
+
+    double value = reader->real_values == NULL
+        ? REAL_ELT(reader->value, index)
+        : reader->real_values[index];
+    return ISNAN(value);
 }
 
 SEXP C_dtatools_is_missing(SEXP values) {
