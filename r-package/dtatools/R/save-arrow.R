@@ -180,9 +180,10 @@ save_arrow <- function(data, path,
         return(NA_character_)
     }
     if (identical(typeof(column), "double")) {
-        if (is.null(classes) || all(classes %in% c(
-            "haven_labelled", "vctrs_vctr", "double"
-        ))) return("double")
+        if (is.null(classes) || (
+            inherits(column, "haven_labelled") &&
+            all(classes %in% c("haven_labelled", "vctrs_vctr", "double"))
+        )) return("double")
         return(NA_character_)
     }
     NA_character_

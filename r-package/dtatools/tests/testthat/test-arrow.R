@@ -741,6 +741,17 @@ test_that("unsupported columns are an error naming the column", {
         class = "dtatools_write_validation_error"
     )
     expect_false(file.exists(path))
+
+    generic_vctr <- tibble::tibble(
+        generic = vctrs::new_vctr(c(1, 2))
+    )
+    expect_error(
+        save_arrow(generic_vctr, path),
+        "Unsupported columns: `generic` (vctrs_vctr)",
+        fixed = TRUE,
+        class = "dtatools_write_validation_error"
+    )
+    expect_false(file.exists(path))
 })
 
 test_that("write validation failures leave existing destinations unchanged", {
