@@ -51,6 +51,10 @@ stopifnot(
         roundtrip_select_verification(ordered_fixture, "id", "tie")$id,
         "tie"
     ),
+    identical(
+        roundtrip_select_verification(ordered_fixture, "from", "2")$relative_path,
+        c("b.dta", "z.dta")
+    ),
     nrow(roundtrip_select_verification(ordered_fixture, "full")) == 3L
 )
 limits <- roundtrip_verification_limits("16", "96")
@@ -79,7 +83,11 @@ invalid_selection <- tryCatch(
     roundtrip_select_verification(ordered_fixture, "smallest", "0"),
     error = identity
 )
-stopifnot(inherits(invalid_selection, "error"))
+invalid_from <- tryCatch(
+    roundtrip_select_verification(ordered_fixture, "from", "4"),
+    error = identity
+)
+stopifnot(inherits(invalid_selection, "error"), inherits(invalid_from, "error"))
 invalid_hash <- tryCatch(
     benchmark_validate_sha256("not-a-hash", 1L, "test file"),
     error = identity

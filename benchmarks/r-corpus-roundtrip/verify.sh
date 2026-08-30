@@ -14,9 +14,10 @@ if test -n "${CI:-}${GITHUB_ACTIONS:-}${GITHUB_RUN_ID:-}${GITHUB_WORKFLOW:-}"; t
 fi
 case "$selection" in
     full) test -z "$argument" || { echo "full takes no argument" >&2; exit 2; } ;;
+    from) test -n "$argument" || { echo "from requires an ordered position" >&2; exit 2; } ;;
     smallest) test -n "$argument" || { echo "smallest requires a count" >&2; exit 2; } ;;
     id) test -n "$argument" || { echo "id requires a stable corpus ID" >&2; exit 2; } ;;
-    *) echo "usage: verify.sh [full | smallest COUNT | id STABLE_ID]" >&2; exit 2 ;;
+    *) echo "usage: verify.sh [full | from POSITION | smallest COUNT | id STABLE_ID]" >&2; exit 2 ;;
 esac
 
 run_root="$checkout/target/r-corpus-roundtrip-verification"

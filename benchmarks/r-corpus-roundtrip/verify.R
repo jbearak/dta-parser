@@ -1,6 +1,6 @@
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 3L || length(args) > 4L) {
-    stop("usage: verify.R CACHE_ROOT OUTPUT_DIR full|smallest|id [ARGUMENT]")
+    stop("usage: verify.R CACHE_ROOT OUTPUT_DIR full|from|smallest|id [ARGUMENT]")
 }
 if (!requireNamespace("processx", quietly = TRUE)) stop("processx is required")
 
@@ -63,7 +63,9 @@ parse_stata <- function(path, kind) {
 work_root <- file.path(output_dir, "work")
 dir.create(work_root, recursive = TRUE, showWarnings = FALSE)
 results_path <- file.path(output_dir, "verification.tsv")
+partial_results_path <- file.path(output_dir, "verification.partial.tsv")
 if (file.exists(results_path)) unlink(results_path)
+if (file.exists(partial_results_path)) unlink(partial_results_path)
 
 result_row <- function(item, status, stage, output = "", category = "",
                        variable = "", observation = "") {
@@ -144,7 +146,7 @@ verify_one <- function(index) {
 }
 
 limits <- roundtrip_verification_limits()
-if (selection != "full") limits$jobs <- 1L
+if (!selection %in% c("full", "from")) limits$jobs <- 1L
 waves <- roundtrip_verification_waves(
     selected$bytes, limits$jobs, limits$memory_bytes
 )
@@ -179,6 +181,9 @@ for (wave_number in seq_along(waves)) {
         row
     }, wave_rows, indices)
     rows[indices] <- wave_rows
+    checkpoint <- do.call(rbind, rows[seq_len(max(indices))])
+    rownames(checkpoint) <- NULL
+    atomic_tsv(checkpoint, partial_results_path)
     completed <- completed + length(indices)
     failures <- sum(vapply(wave_rows, function(row) {
         !identical(row$status[[1L]], "pass") &&
@@ -192,6 +197,7 @@ for (wave_number in seq_along(waves)) {
 results <- do.call(rbind, rows)
 rownames(results) <- NULL
 atomic_tsv(results, results_path)
+unlink(partial_results_path)
 failure_count <- sum(results$status == "failure")
 if (failure_count > 0L) {
     stop(

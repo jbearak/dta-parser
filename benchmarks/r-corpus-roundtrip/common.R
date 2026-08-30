@@ -54,6 +54,15 @@ roundtrip_verification_waves <- function(
 roundtrip_select_verification <- function(inventory, selection, argument = "") {
     ordered <- roundtrip_order_smallest(inventory)
     if (identical(selection, "full")) return(ordered)
+    if (identical(selection, "from")) {
+        position <- suppressWarnings(as.integer(argument))
+        if (length(position) != 1L || is.na(position) || position < 1L ||
+            position > nrow(ordered) ||
+            !identical(as.character(position), argument)) {
+            stop("from position must identify an ordered corpus row")
+        }
+        return(ordered[seq.int(position, nrow(ordered)), , drop = FALSE])
+    }
     if (identical(selection, "smallest")) {
         count <- suppressWarnings(as.integer(argument))
         if (length(count) != 1L || is.na(count) || count < 1L ||
@@ -67,7 +76,7 @@ roundtrip_select_verification <- function(inventory, selection, argument = "") {
         if (nrow(selected) != 1L) stop("stable corpus ID was not found")
         return(selected)
     }
-    stop("verification selection must be full, smallest, or id")
+    stop("verification selection must be full, from, smallest, or id")
 }
 
 roundtrip_stable_id <- function(corpus, relative_path, sha256) {

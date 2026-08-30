@@ -90,6 +90,17 @@ size. This leaves headroom on a 128 GiB host and narrows concurrency for the
 largest inputs. Override the limits with `DTATOOLS_VERIFY_JOBS` and
 `DTATOOLS_VERIFY_MEMORY_GIB`. Each Stata comparison uses one processor.
 
+After every wave, the runner atomically writes `verification.partial.tsv` so
+an interrupted run has a durable ordered checkpoint. To investigate the
+unverified tail after an interruption, restart at its one-based ordered corpus
+position:
+
+```sh
+benchmarks/r-corpus-roundtrip/verify.sh from 1617
+```
+
+This recovery mode does not replace the final uninterrupted full-run gate.
+
 Passing work directories are deleted. Every failure is retained beneath
 `target/r-corpus-roundtrip-verification/`, and the ordered `verification.tsv`
 contains only corpus IDs and compact comparison locations, never source paths,
