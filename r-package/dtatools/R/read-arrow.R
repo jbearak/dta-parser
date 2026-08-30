@@ -1,13 +1,17 @@
-#' Read a dtatools Arrow profile file
+#' Read a dtatools `.arrow` dataset
 #'
-#' Reads an Arrow IPC file written by [save_arrow()] through the native Rust
-#' reader, restoring the Stata semantics recorded by the dtatools Arrow
-#' profile: storage declarations with compact ALTREP backing, raw Stata
-#' missing storage (system missing and tagged codes `.a` through `.z`,
-#' bit-exactly), labels, display formats, notes, and value-label tables.
-#' Standard R semantics that [save_dta()] cannot round-trip are restored too:
-#' factor levels and orderedness, `POSIXct` timezones, `difftime` units, and
-#' the integer-versus-double distinction.
+#' Reads a standalone `.arrow` dataset written by [save_arrow()], restoring its
+#' supported Stata-specific and ordinary R column classes and metadata. These
+#' include storage declarations with compact ALTREP backing, raw Stata missing
+#' storage (system missing and tagged codes `.a` through `.z`, bit-exactly),
+#' labels, display formats, notes, value-label tables, factor levels and
+#' orderedness, ordinary `POSIXct` timezones, `difftime` units, and the
+#' integer-versus-double distinction.
+#'
+#' Apache Arrow stores tabular data by column in a standard binary layout. The
+#' on-disk format uses Arrow's IPC (interprocess communication) file format to
+#' exchange that data between programs. The native Rust reader applies the
+#' additional dtatools profile metadata.
 #'
 #' Plain Arrow IPC files written by other tools are read as ordinary R
 #' columns; they never acquire Stata semantics. Files carrying a newer
@@ -29,10 +33,10 @@
 #'   no larger than `2^53`.
 #' @param n_max Maximum rows to read. `NA`, either infinity, and negative
 #'   finite values read all remaining rows.
-#' @param verify Whether to verify the profile's per-buffer xxHash64
-#'   checksums while reading. Verification is on by default and detects
-#'   corrupted buffers; it applies only to files carrying the dtatools Arrow
-#'   profile.
+#' @param verify Whether to check each data buffer's stored xxHash64
+#'   fingerprint while reading. Verification is on by default and detects
+#'   accidental file corruption; it applies only to files carrying the
+#'   dtatools Arrow profile.
 #' @param profile Whether to apply dtatools Arrow profile metadata. Setting
 #'   `FALSE` reads the file as plain Arrow data with standard semantics only,
 #'   which also disables checksum verification: the checksums are profile

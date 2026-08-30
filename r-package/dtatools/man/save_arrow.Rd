@@ -2,7 +2,7 @@
 % Please edit documentation in R/save-arrow.R
 \name{save_arrow}
 \alias{save_arrow}
-\title{Write a dtatools Arrow profile file}
+\title{Write a standalone dtatools \code{.arrow} dataset}
 \usage{
 save_arrow(
   data,
@@ -28,29 +28,38 @@ save_arrow(
 \item{adjust_tz}{For \code{POSIXct} columns with a \code{stata.storage} declaration,
 whether to preserve displayed clock time (\code{TRUE}) or the underlying UTC
 instant (\code{FALSE}), matching \code{\link[=save_dta]{save_dta()}}. Standard \code{POSIXct} columns are
-unaffected: Arrow timestamps store the instant and the timezone.}
+unaffected: Arrow timestamps store the instant and the timezone. A
+Stata-backed column's \code{tzone} is used for this conversion but is not stored;
+reading it restores UTC, matching a DTA round-trip.}
 
 \item{threads}{Number of threads used to encode columns into Arrow
 buffers. \code{0} (the default) selects a thread count automatically; \code{1}
 forces serial encoding. Defaults to the \code{dtatools.threads} option.}
 
-\item{checksums}{Whether to embed per-buffer xxHash64 checksums in the
-file footer (the default). Files written with \code{checksums = FALSE} are
-slightly smaller and faster to write, but \code{\link[=read_arrow]{read_arrow()}} can only read
-them with \code{verify = FALSE}.}
+\item{checksums}{Whether to store an xxHash64 fingerprint for each data
+buffer (the default). \code{\link[=read_arrow]{read_arrow()}} checks these fingerprints to detect
+accidental file corruption. Files written with \code{checksums = FALSE} are
+slightly smaller and faster to write, but \code{\link[=read_arrow]{read_arrow()}} can only read them
+with \code{verify = FALSE}.}
 }
 \value{
 \code{data}, invisibly.
 }
 \description{
-Writes a data frame to the Arrow IPC file format carrying the dtatools
-Arrow profile, experimental profile version \code{"0"}, which carries no
-cross-version stability promise yet. The file is a valid Arrow IPC
-file that any Arrow reader can open; profile metadata additionally records
-the Stata semantics needed for a semantic Arrow round-trip through
-\code{\link[=read_arrow]{read_arrow()}}: storage declarations, raw Stata missing storage (sentinel
-integers and tagged NaN payloads), display formats, labels, notes, and
-value-label tables, plus per-buffer checksums.
+Writes a data frame to one standalone \code{.arrow} file. This is a separate
+output choice from \code{\link[=save_dta]{save_dta()}}, and it can preserve a mix of supported
+Stata-specific columns and ordinary R column classes.
+}
+\details{
+Apache Arrow stores tabular data by column in a standard binary layout. This
+format uses Arrow's IPC (interprocess communication) file format to exchange
+that data between programs. Compatible Arrow IPC readers can access the
+standard storage arrays, but only profile-aware readers restore the added
+dtatools semantics. The profile records storage declarations, raw Stata
+missing storage (sentinel integers and tagged NaN payloads), display formats,
+labels, notes, value-label tables, and the R semantics that standard Arrow
+types alone do not express. Experimental profile version \code{"0"} carries no
+cross-version stability promise yet.
 }
 \section{Conversions and metadata}{
 
@@ -68,8 +77,8 @@ aggregated warning per conversion category. Attributes outside the profile's
 documented set are dropped with one warning naming each affected column and
 attribute.
 
-Unlike \code{\link[=save_dta]{save_dta()}}, factor class and orderedness, \code{POSIXct} timezones,
-and \code{difftime} units are preserved on read.
+Unlike \code{\link[=save_dta]{save_dta()}}, factor class and orderedness, \code{POSIXct} timezones on
+ordinary R columns, and \code{difftime} units are preserved on read.
 }
 
 \section{Output safety}{

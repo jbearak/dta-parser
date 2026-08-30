@@ -99,8 +99,12 @@ _Avoid_: Frameset, alias-variable dataset
 After any reported export conversions, writing and reading a dataset preserves its represented values, storage types, missing codes, display formats, labels, and notes. It does not require byte-identical output or preserve source details absent from the in-memory model.
 _Avoid_: Byte-identical round-trip, source-file reproduction
 
+**Standalone `.arrow` dataset**:
+A dataset written by `save_arrow()` in the dtatools format built on Apache Arrow. It may mix supported Stata-specific columns with ordinary R column classes and is an alternative to a `.dta` dataset, not its automatic companion.
+_Avoid_: Arrow copy, DTA sidecar, checksummed Arrow IPC copy
+
 **dtatools Arrow profile**:
-The versioned metadata contract under which dtatools writes and reads Arrow IPC files, carrying the labels, display formats, storage declarations, notes, and missing codes that plain Arrow does not express.
+The versioned metadata contract under which dtatools writes and reads `.arrow` datasets. It adds the metadata needed to preserve supported Stata and R semantics that standard Arrow types alone do not express.
 _Avoid_: Arrow schema, Feather metadata
 
 **Frozen profile version**:

@@ -360,6 +360,7 @@ test_that("compact datetime timezone adjustment matches eager writing", {
         readBin(compact_path, "raw", file.size(compact_path)),
         readBin(eager_path, "raw", file.size(eager_path))
     )
+    expect_identical(attr(read_arrow(compact_path)$dt, "tzone"), "UTC")
 })
 
 test_that("a DTA fixture survives a semantic Arrow round-trip", {

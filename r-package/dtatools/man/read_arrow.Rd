@@ -2,7 +2,7 @@
 % Please edit documentation in R/read-arrow.R
 \name{read_arrow}
 \alias{read_arrow}
-\title{Read a dtatools Arrow profile file}
+\title{Read a dtatools \code{.arrow} dataset}
 \usage{
 read_arrow(
   file,
@@ -32,10 +32,10 @@ no larger than \code{2^53}.}
 \item{n_max}{Maximum rows to read. \code{NA}, either infinity, and negative
 finite values read all remaining rows.}
 
-\item{verify}{Whether to verify the profile's per-buffer xxHash64
-checksums while reading. Verification is on by default and detects
-corrupted buffers; it applies only to files carrying the dtatools Arrow
-profile.}
+\item{verify}{Whether to check each data buffer's stored xxHash64
+fingerprint while reading. Verification is on by default and detects
+accidental file corruption; it applies only to files carrying the
+dtatools Arrow profile.}
 
 \item{profile}{Whether to apply dtatools Arrow profile metadata. Setting
 \code{FALSE} reads the file as plain Arrow data with standard semantics only,
@@ -68,16 +68,20 @@ checksums; only file paths are supported.}
 A tibble.
 }
 \description{
-Reads an Arrow IPC file written by \code{\link[=save_arrow]{save_arrow()}} through the native Rust
-reader, restoring the Stata semantics recorded by the dtatools Arrow
-profile: storage declarations with compact ALTREP backing, raw Stata
-missing storage (system missing and tagged codes \code{.a} through \code{.z},
-bit-exactly), labels, display formats, notes, and value-label tables.
-Standard R semantics that \code{\link[=save_dta]{save_dta()}} cannot round-trip are restored too:
-factor levels and orderedness, \code{POSIXct} timezones, \code{difftime} units, and
-the integer-versus-double distinction.
+Reads a standalone \code{.arrow} dataset written by \code{\link[=save_arrow]{save_arrow()}}, restoring its
+supported Stata-specific and ordinary R column classes and metadata. These
+include storage declarations with compact ALTREP backing, raw Stata missing
+storage (system missing and tagged codes \code{.a} through \code{.z}, bit-exactly),
+labels, display formats, notes, value-label tables, factor levels and
+orderedness, ordinary \code{POSIXct} timezones, \code{difftime} units, and the
+integer-versus-double distinction.
 }
 \details{
+Apache Arrow stores tabular data by column in a standard binary layout. The
+on-disk format uses Arrow's IPC (interprocess communication) file format to
+exchange that data between programs. The native Rust reader applies the
+additional dtatools profile metadata.
+
 Plain Arrow IPC files written by other tools are read as ordinary R
 columns; they never acquire Stata semantics. Files carrying a newer
 profile version than this package understands are a hard error naming that

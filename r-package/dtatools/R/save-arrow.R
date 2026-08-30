@@ -1,13 +1,18 @@
-#' Write a dtatools Arrow profile file
+#' Write a standalone dtatools `.arrow` dataset
 #'
-#' Writes a data frame to the Arrow IPC file format carrying the dtatools
-#' Arrow profile, experimental profile version `"0"`, which carries no
-#' cross-version stability promise yet. The file is a valid Arrow IPC
-#' file that any Arrow reader can open; profile metadata additionally records
-#' the Stata semantics needed for a semantic Arrow round-trip through
-#' [read_arrow()]: storage declarations, raw Stata missing storage (sentinel
-#' integers and tagged NaN payloads), display formats, labels, notes, and
-#' value-label tables, plus per-buffer checksums.
+#' Writes a data frame to one standalone `.arrow` file. This is a separate
+#' output choice from [save_dta()], and it can preserve a mix of supported
+#' Stata-specific columns and ordinary R column classes.
+#'
+#' Apache Arrow stores tabular data by column in a standard binary layout. This
+#' format uses Arrow's IPC (interprocess communication) file format to exchange
+#' that data between programs. Compatible Arrow IPC readers can access the
+#' standard storage arrays, but only profile-aware readers restore the added
+#' dtatools semantics. The profile records storage declarations, raw Stata
+#' missing storage (sentinel integers and tagged NaN payloads), display formats,
+#' labels, notes, value-label tables, and the R semantics that standard Arrow
+#' types alone do not express. Experimental profile version `"0"` carries no
+#' cross-version stability promise yet.
 #'
 #' @section Conversions and metadata:
 #' Bare logical, integer, double, character, raw, and factor columns become
@@ -24,8 +29,8 @@
 #' documented set are dropped with one warning naming each affected column and
 #' attribute.
 #'
-#' Unlike [save_dta()], factor class and orderedness, `POSIXct` timezones,
-#' and `difftime` units are preserved on read.
+#' Unlike [save_dta()], factor class and orderedness, `POSIXct` timezones on
+#' ordinary R columns, and `difftime` units are preserved on read.
 #'
 #' @section Output safety:
 #' Only local files are supported. The complete input is validated before
@@ -42,14 +47,17 @@
 #' @param adjust_tz For `POSIXct` columns with a `stata.storage` declaration,
 #'   whether to preserve displayed clock time (`TRUE`) or the underlying UTC
 #'   instant (`FALSE`), matching [save_dta()]. Standard `POSIXct` columns are
-#'   unaffected: Arrow timestamps store the instant and the timezone.
+#'   unaffected: Arrow timestamps store the instant and the timezone. A
+#'   Stata-backed column's `tzone` is used for this conversion but is not stored;
+#'   reading it restores UTC, matching a DTA round-trip.
 #' @param threads Number of threads used to encode columns into Arrow
 #'   buffers. `0` (the default) selects a thread count automatically; `1`
 #'   forces serial encoding. Defaults to the `dtatools.threads` option.
-#' @param checksums Whether to embed per-buffer xxHash64 checksums in the
-#'   file footer (the default). Files written with `checksums = FALSE` are
-#'   slightly smaller and faster to write, but [read_arrow()] can only read
-#'   them with `verify = FALSE`.
+#' @param checksums Whether to store an xxHash64 fingerprint for each data
+#'   buffer (the default). [read_arrow()] checks these fingerprints to detect
+#'   accidental file corruption. Files written with `checksums = FALSE` are
+#'   slightly smaller and faster to write, but [read_arrow()] can only read them
+#'   with `verify = FALSE`.
 #' @return `data`, invisibly.
 #' @examples
 #' path <- tempfile(fileext = ".arrow")

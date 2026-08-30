@@ -3,8 +3,12 @@
 `dta-tools` provides TypeScript and R libraries for working with Stata `.dta`
 files. Both readers cover Stata 5 through 19 and preserve labels, long strings,
 display formats, and Stata missing values. The R package also writes standalone
-Stata 18/19 datasets and checksummed Arrow IPC copies, and supplies Stata-aware
-metadata, storage, recoding, tabulation, merge, and data-signature operations.
+Stata 18/19 `.dta` datasets or standalone `.arrow` datasets; callers choose one
+format for each save. The `.arrow` format preserves supported ordinary R column
+classes alongside Stata storage types and metadata, so one data frame can mix R
+and Stata columns without flattening them to one set of column types. The R
+package also supplies Stata-aware metadata, storage, recoding, tabulation,
+merge, and data-signature operations.
 
 ## Choose a library
 
