@@ -52,6 +52,15 @@ test_that("data masks, formulas, and alias calls use the right environments", {
     expect_identical(as.double(data$from_column), c(10, 20, 30))
     gen(data, from_environment, .env$constant)
     expect_identical(as.double(data$from_environment), rep(100, 3))
+    gen(data, inline_formula_environment, ~ .env$constant)
+    expect_identical(
+        as.double(data$inline_formula_environment),
+        rep(100, 3)
+    )
+    cutoff <- 2L
+    selection_data <- data.frame(x = 1:3)
+    replace_values(selection_data, x, 0L, where = ~ x >= .env$cutoff)
+    expect_identical(selection_data$x, c(1L, 0L, 0L))
 
     local_repl <- function(data) {
         offset <- 7L
@@ -117,6 +126,22 @@ test_that("validation errors leave an unmarked dataset unchanged", {
     }
 })
 
+test_that("evaluation interrupts leave the dataset unchanged", {
+    data <- data.frame(x = 1:3)
+    before <- serialize(data, NULL)
+    condition <- rlang::catch_cnd(
+        replace_values(data, x, rlang::interrupt())
+    )
+    expect_s3_class(condition, "interrupt")
+    expect_identical(serialize(data, NULL), before)
+
+    condition <- rlang::catch_cnd(
+        gen(data, y, 1, where = rlang::interrupt())
+    )
+    expect_s3_class(condition, "interrupt")
+    expect_identical(serialize(data, NULL), before)
+})
+
 test_that("compact replacement patches every storage without materializing", {
     constructors <- list(
         byte = stata_byte,
@@ -171,6 +196,11 @@ test_that("compact replacement updates the missing-value cache", {
     replace_values(data, x, 2, where = 2)
     expect_false(anyNA(data$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
+
+    late_missing <- data.frame(x = stata_byte(c(1, 2, NA_real_)))
+    replace_values(late_missing, x, 9, where = 1)
+    expect_true(anyNA(late_missing$x))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(late_missing$x))
 })
 
 test_that("DTA-loaded compact and temporal columns use native patching", {
@@ -286,11 +316,19 @@ test_that("copy_data isolates every mutable column backing", {
         string = c("a", "b", "c")
     )
     attr(data, "label") <- "source"
+    attr(data, "notes") <- c("first note", "second note")
+    attr(data, "characteristics") <- list(source = "survey")
     attr(data$compact, "label") <- "compact label"
     isolated <- copy_data(data)
 
     expect_s3_class(isolated, "data.frame")
+    expect_false(inherits(isolated, "dtatools_ref_data"))
     expect_identical(attr(isolated, "label"), "source")
+    expect_identical(attr(isolated, "notes"), c("first note", "second note"))
+    expect_identical(
+        attr(isolated, "characteristics"),
+        list(source = "survey")
+    )
     expect_identical(attr(isolated$compact, "label"), "compact label")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(isolated$compact))
 
@@ -356,11 +394,80 @@ test_that("generated variables participate in package writes", {
     data <- data.frame(x = stata_byte(1:3))
     gen(data, y, stata_int(x * 10))
     path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
-    save_dta(data, path)
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(c(path, arrow_path)), add = TRUE)
+    expect_identical(save_dta(data, path), data)
     actual <- read_dta(path)
     expect_identical(names(actual), c("x", "y"))
     expect_identical(as.double(actual$y), c(10, 20, 30))
+
+    expect_warning(
+        arrow_result <- save_arrow(data, arrow_path),
+        NA
+    )
+    expect_identical(arrow_result, data)
+    arrow_actual <- read_arrow(arrow_path)
+    expect_identical(names(arrow_actual), c("x", "y"))
+    expect_identical(as.double(arrow_actual$y), c(10, 20, 30))
+})
+
+test_that("reference data preserves base and tibble access semantics", {
+    frame <- data.frame(x = 1:3, y = 4:6)
+    row.names(frame) <- c("a", "b", "c")
+    gen(frame, z, x + y)
+    expected_x <- data.frame(x = 1:3, row.names = c("a", "b", "c"))
+    expect_identical(frame[1], expected_x)
+    rows <- frame[1:2, ]
+    expect_identical(rows$x, 1:2)
+    expect_identical(rows$y, 4:5)
+    expect_identical(as.double(rows$z), c(5, 7))
+    expect_identical(row.names(rows), c("a", "b"))
+    expect_identical(frame[, "x"], 1:3)
+    expect_identical(as.double(frame[2, "z"]), 7)
+    expect_identical(
+        as.double(frame[, "z", drop = FALSE]$z),
+        c(5, 7, 9)
+    )
+
+    tbl <- tibble::tibble(x = 1:3)
+    gen(tbl, y, x * 2)
+    expect_s3_class(tbl[, "x"], "tbl_df")
+    expect_identical(names(tibble::as_tibble(tbl)), c("x", "y"))
+    expect_identical(names(dplyr::mutate(tbl, z = y + 1)), c("x", "y", "z"))
+    expect_identical(names(dplyr::select(tbl, y)), "y")
+    combined <- dplyr::bind_rows(
+        tibble::as_tibble(tbl), tibble::as_tibble(tbl)
+    )
+    expect_equal(dim(combined), c(6L, 2L))
+})
+
+test_that("ordinary assignments and metadata helpers materialize current state", {
+    data <- data.frame(x = 1:3)
+    alias <- data
+    gen(data, y, x + 1)
+
+    data$x <- 4:6
+    expect_false(inherits(data, "dtatools_ref_data"))
+    expect_identical(data$x, 4:6)
+    expect_identical(as.double(data$y), c(2, 3, 4))
+    expect_identical(alias$x, 1:3)
+
+    gen(alias, z, y + 1)
+    labelled <- set_variable_labels(alias, x = "X", y = "Y", z = "Z")
+    labelled <- set_value_labels(labelled, x = c(One = 1))
+    expect_false(inherits(labelled, "dtatools_ref_data"))
+    expect_identical(var_label(labelled), list(x = "X", y = "Y", z = "Z"))
+    expect_identical(val_labels(labelled$x), c(One = 1))
+
+    dataset_label(alias) <- "updated"
+    isolated <- copy_data(alias)
+    expect_identical(dataset_label(isolated), "updated")
+    expect_identical(names(isolated), c("x", "y", "z"))
+
+    renamed <- alias
+    names(renamed) <- c("a", "b", "c")
+    expect_false(inherits(renamed, "dtatools_ref_data"))
+    expect_identical(names(renamed), c("a", "b", "c"))
 })
 
 test_that("sparse compact replacement and generation keep existing payloads", {

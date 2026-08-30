@@ -54,7 +54,8 @@
 save_dta <- function(data, path, version = 19L,
                       label = attr(data, "label", exact = TRUE),
                       strl_threshold = 2045L, adjust_tz = TRUE) {
-    data <- .reference_snapshot(data)
+    original_data <- data
+    write_data <- .reference_snapshot(data)
     resolved_path <- .resolve_dta_write_path(path)
     for (write_warning in resolved_path$warnings) {
         .dta_write_warn(write_warning$message, write_warning$class)
@@ -63,7 +64,7 @@ save_dta <- function(data, path, version = 19L,
         version, "version", allowed = c(18L, 19L)
     )
     specification <- .prepare_dta_write(
-        data, label, strl_threshold, adjust_tz, version
+        write_data, label, strl_threshold, adjust_tz, version
     )
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
@@ -85,7 +86,7 @@ save_dta <- function(data, path, version = 19L,
     )
     write_warnings <- c(write_warnings, .dta_write_count_warnings(
         numeric_replacements,
-        names(data),
+        names(write_data),
         "Converted unrepresentable numeric values to Stata system missing",
         "dtatools_write_numeric_replacement_warning"
     ))
@@ -94,7 +95,7 @@ save_dta <- function(data, path, version = 19L,
     }
 
     .commit_dta_write(temporary, destination)
-    invisible(data)
+    invisible(original_data)
 }
 
 .commit_dta_write <- function(temporary, destination) {

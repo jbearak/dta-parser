@@ -3499,15 +3499,15 @@ static SEXP dictstring_compact_copy(SEXP value) {
     SEXP source = unmaterialized_dictstring_source(value);
     if (source == R_NilValue) return R_NilValue;
     dictstring_data *source_data = dictstring_storage(source);
+    SEXP source_cache = dictstring_cache(source);
+    SEXP cache = PROTECT(Rf_allocVector(VECSXP, XLENGTH(source_cache)));
+    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, cache));
+    R_RegisterCFinalizerEx(external, dictstring_finalize, TRUE);
     void *copy = dtatools_dictstring_clone(source_data);
     if (copy == NULL) {
         Rf_error("could not copy compact dictionary-string storage");
     }
-
-    SEXP source_cache = dictstring_cache(source);
-    SEXP cache = PROTECT(Rf_allocVector(VECSXP, XLENGTH(source_cache)));
-    SEXP external = PROTECT(R_MakeExternalPtr(copy, R_NilValue, cache));
-    R_RegisterCFinalizerEx(external, dictstring_finalize, TRUE);
+    R_SetExternalPtrAddr(external, copy);
     SEXP result = PROTECT(R_new_altrep(
         dtatools_dictstring_class, external, R_NilValue
     ));
@@ -3637,11 +3637,17 @@ SEXP C_dtatools_patch_vector(
     if (compact != NULL) {
         numeric_reader reader = numeric_reader_create(replacement, count);
         int replacement_has_missing = 0;
+        int selected_target_has_missing = 0;
         for (R_xlen_t index = 0; index < count; index++) {
             int missing_code;
             double value = numeric_reader_at(&reader, index, &missing_code);
             validate_compact_patch_value(compact, value, missing_code);
             if (missing_code >= 0) replacement_has_missing = 1;
+            if (numeric_missing_offset_at(
+                    compact, (R_xlen_t) INTEGER(rows)[index] - 1
+                ) >= 0) {
+                selected_target_has_missing = 1;
+            }
         }
 
         int target_had_no_missing = compact->no_na;
@@ -3661,6 +3667,8 @@ SEXP C_dtatools_patch_vector(
             compact->no_na = 0;
         } else if (target_had_no_missing) {
             compact->no_na = 1;
+        } else if (!selected_target_has_missing) {
+            compact->no_na = 0;
         } else {
             compact->no_na = !compact_storage_has_missing(compact);
         }

@@ -37,8 +37,16 @@ supplied dataset, invisibly, so assignment is neither needed nor advised.
 Ordinary aliases observe later generation and replacement. Use
 \code{copy_data()} when an independent dataset is required.
 The first mutation attaches package-owned reference state to the same
-data-frame or tibble object. This lets \code{gen()} grow the visible column set
-without searching for or rebinding a name in the caller.
+data-frame or tibble object. Existing columns remain in the data frame;
+generated columns live in the attached state until an ordinary R assignment
+materializes a complete copy. This lets \code{gen()} grow the visible column set
+without searching for or rebinding a name in the caller. Base subsetting,
+tibble conversion, package writers, and metadata helpers operate on the
+complete visible dataset. Consumers that bypass S3 methods and inspect a
+data frame's internal column-pointer array do not see generated columns;
+pass \code{as.data.frame(data)} or \code{tibble::as_tibble(data)} to such a consumer.
+\code{unclass()} and direct inspection of internal attributes are likewise not
+supported ways to access generated columns.
 }
 \details{
 \code{variable} must be one unquoted name. Tidy-evaluation injection is supported,
@@ -86,9 +94,11 @@ Missing report \tab Command output \tab No printed report \cr
 }
 
 Compact \code{byte}, \code{int}, \code{long}, and \code{float} columns are patched in their
-native storage after validation. The operation allocates work proportional
-to the selected rows and does not create a full R double copy. Ordinary and
-materialized numeric columns and character columns are patched in their
+native storage after validation. A direct compact target allocates work
+proportional to the selected rows and does not create a full R double copy.
+A metadata proxy first detaches by copying its compact native payload so an
+independent source remains unchanged; it still avoids a full R double copy.
+Ordinary and materialized numeric columns and character columns are patched in their
 existing R representation. Replacing a dictionary-backed string materializes
 that target character column, but does not copy the data frame. \code{copy_data()}
 keeps unmaterialized compact numeric and dictionary-string columns compact.

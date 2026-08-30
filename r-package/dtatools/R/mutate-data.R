@@ -6,8 +6,16 @@
 #' Ordinary aliases observe later generation and replacement. Use
 #' `copy_data()` when an independent dataset is required.
 #' The first mutation attaches package-owned reference state to the same
-#' data-frame or tibble object. This lets `gen()` grow the visible column set
-#' without searching for or rebinding a name in the caller.
+#' data-frame or tibble object. Existing columns remain in the data frame;
+#' generated columns live in the attached state until an ordinary R assignment
+#' materializes a complete copy. This lets `gen()` grow the visible column set
+#' without searching for or rebinding a name in the caller. Base subsetting,
+#' tibble conversion, package writers, and metadata helpers operate on the
+#' complete visible dataset. Consumers that bypass S3 methods and inspect a
+#' data frame's internal column-pointer array do not see generated columns;
+#' pass `as.data.frame(data)` or `tibble::as_tibble(data)` to such a consumer.
+#' `unclass()` and direct inspection of internal attributes are likewise not
+#' supported ways to access generated columns.
 #'
 #' `variable` must be one unquoted name. Tidy-evaluation injection is supported,
 #' so `gen(data, !!rlang::sym(name), value)` handles a name stored in a string.
@@ -54,9 +62,11 @@
 #' }
 #'
 #' Compact `byte`, `int`, `long`, and `float` columns are patched in their
-#' native storage after validation. The operation allocates work proportional
-#' to the selected rows and does not create a full R double copy. Ordinary and
-#' materialized numeric columns and character columns are patched in their
+#' native storage after validation. A direct compact target allocates work
+#' proportional to the selected rows and does not create a full R double copy.
+#' A metadata proxy first detaches by copying its compact native payload so an
+#' independent source remains unchanged; it still avoids a full R double copy.
+#' Ordinary and materialized numeric columns and character columns are patched in their
 #' existing R representation. Replacing a dictionary-backed string materializes
 #' that target character column, but does not copy the data frame. `copy_data()`
 #' keeps unmaterialized compact numeric and dictionary-string columns compact.
@@ -104,38 +114,44 @@ gen <- function(data, variable, values, where = NULL) {
 }
 
 .plain_data_columns <- function(data) {
-    unname(lapply(seq_len(base::length(data)), function(index) data[[index]]))
+    physical <- unclass(data)
+    unname(lapply(seq_along(physical), function(index) physical[[index]]))
 }
 
 .data_columns <- function(data) {
     state <- .reference_state(data)
-    if (!is.null(state)) return(state$columns)
     columns <- .plain_data_columns(data)
-    names(columns) <- base::names(data)
+    names(columns) <- attr(data, "names", exact = TRUE)
+    if (!is.null(state)) columns <- c(columns, state$generated)
     columns
 }
 
-.new_reference_state <- function(data, columns = .data_columns(data)) {
+.new_reference_state <- function(data) {
     state <- new.env(parent = emptyenv())
-    state$columns <- columns
+    state$generated <- list()
     state$nrow <- base::nrow(data)
-    state$attributes <- attributes(data)
-    state$attributes$.dtatools_ref_state <- NULL
-    state$attributes$class <- class(data)
+    state$classes <- class(data)
     state
 }
 
 .mark_reference_data <- function(data, state) {
-    classes <- unique(c("dtatools_ref_data", state$attributes$class))
+    classes <- unique(c("dtatools_ref_data", state$classes))
     .Call(C_dtatools_mark_reference_data, data, state, classes)
 }
 
 .reference_snapshot <- function(data) {
     state <- .reference_state(data)
     if (is.null(state)) return(data)
-    result <- state$columns
-    attributes(result) <- state$attributes
-    names(result) <- names(state$columns)
+    result <- .data_columns(data)
+    source_attributes <- attributes(data)
+    source_attributes$.dtatools_ref_state <- NULL
+    source_attributes$class <- state$classes
+    source_attributes$names <- names(result)
+    automatic_rows <- .row_names_info(data, 1L) < 0L
+    attributes(result) <- source_attributes
+    if (automatic_rows) {
+        attr(result, "row.names") <- .set_row_names(state$nrow)
+    }
     result
 }
 
@@ -190,6 +206,18 @@ gen <- function(data, variable, values, where = NULL) {
 .eval_mutation_expression <- function(quo, columns, argument) {
     if (rlang::quo_is_missing(quo)) {
         stop(sprintf("`%s` is required", argument), call. = FALSE)
+    }
+    expression <- rlang::quo_get_expr(quo)
+    if (is.call(expression) && identical(expression[[1L]], quote(`~`))) {
+        if (length(expression) != 2L) {
+            stop(sprintf("`%s` formulas must be one-sided", argument),
+                 call. = FALSE)
+        }
+        return(rlang::eval_tidy(
+            expression[[2L]],
+            data = columns,
+            env = rlang::quo_get_env(quo)
+        ))
     }
     value <- rlang::eval_tidy(quo, data = columns)
     formula <- .formula_expression(value, argument)
@@ -262,6 +290,28 @@ gen <- function(data, variable, values, where = NULL) {
     invisible(NULL)
 }
 
+.validate_string_storage <- function(values, storage, operation) {
+    lengths <- nchar(enc2utf8(values), type = "bytes", allowNA = TRUE)
+    lengths[is.na(lengths)] <- 0L
+    maximum <- if (length(lengths) == 0L) 0L else max(lengths)
+    if (maximum > 2000000000) {
+        stop(sprintf(
+            "A %s string exceeds Stata's 2,000,000,000-byte limit",
+            operation
+        ), call. = FALSE)
+    }
+    if (!is.null(storage) && !identical(storage, "strL")) {
+        width <- suppressWarnings(as.integer(sub("^str", "", storage)))
+        if (is.na(width) || width < 1L || width > 2045L || maximum > width) {
+            stop(sprintf(
+                "%s values do not fit their declared Stata string storage",
+                tools::toTitleCase(operation)
+            ), call. = FALSE)
+        }
+    }
+    list(maximum = maximum, storage = storage)
+}
+
 .cast_replacement <- function(values, target) {
     .validate_numeric_values(values)
     if (is.factor(target) || !is.null(dim(target)) ||
@@ -272,21 +322,7 @@ gen <- function(data, variable, values, where = NULL) {
     result <- vctrs::vec_cast(values, vctrs::vec_ptype(target))
     if (typeof(target) == "character") {
         storage <- attr(target, "stata.string.storage", exact = TRUE)
-        lengths <- nchar(enc2utf8(result), type = "bytes", allowNA = TRUE)
-        lengths[is.na(lengths)] <- 0L
-        maximum <- if (length(lengths) == 0L) 0L else max(lengths)
-        if (maximum > 2000000000) {
-            stop("A replacement string exceeds Stata's 2,000,000,000-byte limit",
-                 call. = FALSE)
-        }
-        if (!is.null(storage) && !identical(storage, "strL")) {
-            width <- suppressWarnings(as.integer(sub("^str", "", storage)))
-            if (is.na(width) || width < 1L || width > 2045L ||
-                maximum > width) {
-                stop("Replacement values do not fit the target's Stata string storage",
-                     call. = FALSE)
-            }
-        }
+        .validate_string_storage(result, storage, "replacement")
     }
     .validate_numeric_values(result)
     result
@@ -304,12 +340,9 @@ gen <- function(data, variable, values, where = NULL) {
     state <- .reference_state(data)
     if (generate) {
         column <- .generated_column(values, rows, original$nrow)
-        columns <- c(original$columns, stats::setNames(list(column), target$name))
-        if (is.null(state)) state <- .new_reference_state(data, columns)
-        else {
-            state$columns <- columns
-            state$attributes$names <- names(columns)
-        }
+        if (is.null(state)) state <- .new_reference_state(data)
+        generated <- state$generated
+        generated[[target$name]] <- column
     } else {
         column <- original$columns[[target$location]]
         replacement <- .cast_replacement(values, column)
@@ -319,6 +352,7 @@ gen <- function(data, variable, values, where = NULL) {
     if (!generate && length(rows) > 0L) {
         .Call(C_dtatools_patch_vector, column, as.integer(rows), replacement)
     }
+    if (generate) state$generated <- generated
     if (is.null(.reference_state(data))) .mark_reference_data(data, state)
     invisible(data)
 }
@@ -347,23 +381,12 @@ gen <- function(data, variable, values, where = NULL) {
     output <- rep("", row_count)
     if (length(rows) > 0L) output[rows] <- values
     output[is.na(output)] <- ""
-    lengths <- nchar(enc2utf8(output), type = "bytes", allowNA = TRUE)
-    lengths[is.na(lengths)] <- 0L
-    maximum <- if (length(lengths) == 0L) 0L else max(lengths)
-    if (maximum > 2000000000) {
-        stop("A generated string exceeds Stata's 2,000,000,000-byte limit",
-             call. = FALSE)
-    }
+    sizing <- .validate_string_storage(output, NULL, "generated")
+    maximum <- sizing$maximum
     inferred <- if (maximum > 2045L) "strL" else paste0("str", max(1L, maximum))
     declared <- attr(values, "stata.string.storage", exact = TRUE)
     storage <- if (is.null(declared)) inferred else declared
-    if (!identical(storage, "strL")) {
-        width <- suppressWarnings(as.integer(sub("^str", "", storage)))
-        if (is.na(width) || width < 1L || width > 2045L || maximum > width) {
-            stop("Generated values do not fit their declared Stata string storage",
-                 call. = FALSE)
-        }
-    }
+    .validate_string_storage(output, storage, "generated")
     result <- .metadata_copy(output)
     source_attributes <- attributes(values)
     source_attributes$names <- NULL
@@ -402,14 +425,12 @@ copy_data <- function(data) {
     result <- lapply(columns, identity)
     names(result) <- names(columns)
     attributes(result) <- attributes(snapshot)
-    state <- .new_reference_state(result, columns)
-    .mark_reference_data(result, state)
     result
 }
 
 #' @export
 `$.dtatools_ref_data` <- function(x, name) {
-    .reference_state(x)$columns[[name]]
+    .data_columns(x)[[name]]
 }
 
 #' @export
@@ -418,28 +439,27 @@ copy_data <- function(data) {
 }
 
 #' @export
-`[.dtatools_ref_data` <- function(x, i, j, ..., drop = FALSE) {
-    value <- .reference_snapshot(x)
-    if (missing(i) && missing(j)) return(value[])
-    if (missing(i)) return(value[, j, ..., drop = drop])
-    if (missing(j)) return(value[i])
-    value[i, j, ..., drop = drop]
+`[.dtatools_ref_data` <- function(x, i, j, ..., drop) {
+    call <- sys.call()
+    call[[1L]] <- quote(`[`)
+    call[[2L]] <- .reference_snapshot(x)
+    eval(call, parent.frame())
 }
 
 #' @export
 names.dtatools_ref_data <- function(x) {
-    names(.reference_state(x)$columns)
+    names(.data_columns(x))
 }
 
 #' @export
 length.dtatools_ref_data <- function(x) {
-    length(.reference_state(x)$columns)
+    length(.data_columns(x))
 }
 
 #' @export
 dim.dtatools_ref_data <- function(x) {
     state <- .reference_state(x)
-    c(state$nrow, length(state$columns))
+    c(state$nrow, length(.data_columns(x)))
 }
 
 #' @export
@@ -454,11 +474,82 @@ as.data.frame.dtatools_ref_data <- function(x, ...) {
 
 #' @export
 as.list.dtatools_ref_data <- function(x, ...) {
-    as.list(.reference_state(x)$columns, ...)
+    as.list(.data_columns(x), ...)
 }
 
 #' @export
 print.dtatools_ref_data <- function(x, ...) {
     print(.reference_snapshot(x), ...)
     invisible(x)
+}
+
+# Ordinary R replacement has a caller binding to receive its result. Materialize
+# the complete visible dataset first, then preserve normal copy-on-modify
+# behavior instead of changing shared reference state as a side effect.
+#' @export
+`$<-.dtatools_ref_data` <- function(x, name, value) {
+    result <- .reference_snapshot(x)
+    result[[name]] <- value
+    result
+}
+
+#' @export
+`[[<-.dtatools_ref_data` <- function(x, i, ..., value) {
+    result <- .reference_snapshot(x)
+    result[[i, ...]] <- value
+    result
+}
+
+#' @export
+`[<-.dtatools_ref_data` <- function(x, i, j, ..., value) {
+    call <- sys.call()
+    call[[1L]] <- quote(`[<-`)
+    call[[2L]] <- .reference_snapshot(x)
+    eval(call, parent.frame())
+}
+
+#' @export
+`names<-.dtatools_ref_data` <- function(x, value) {
+    result <- .reference_snapshot(x)
+    names(result) <- value
+    result
+}
+
+#' @export
+`dimnames<-.dtatools_ref_data` <- function(x, value) {
+    result <- .reference_snapshot(x)
+    dimnames(result) <- value
+    result
+}
+
+#' @export
+`row.names<-.dtatools_ref_data` <- function(x, value) {
+    result <- .reference_snapshot(x)
+    row.names(result) <- value
+    result
+}
+
+#' @export
+as_tibble.dtatools_ref_data <- function(x, ...) {
+    tibble::as_tibble(.reference_snapshot(x), ...)
+}
+
+#' @export
+vec_proxy.dtatools_ref_data <- function(x, ...) {
+    vctrs::vec_proxy(.reference_snapshot(x), ...)
+}
+
+#' @export
+vec_restore.dtatools_ref_data <- function(x, to, ...) {
+    vctrs::vec_restore(x, .reference_snapshot(to), ...)
+}
+
+#' @export
+dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
+    dplyr::dplyr_reconstruct(data, .reference_snapshot(template))
+}
+
+#' @export
+select.dtatools_ref_data <- function(.data, ...) {
+    dplyr::select(.reference_snapshot(.data), ...)
 }
