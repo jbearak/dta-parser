@@ -3747,6 +3747,15 @@ static int numeric_reader_is_missing_at(
     return ISNAN(value);
 }
 
+static int is_missing_value_at(
+    SEXP value, const numeric_reader *reader, R_xlen_t index
+) {
+    if (TYPEOF(value) == STRSXP) {
+        return stata_expression_string_is_missing(STRING_ELT(value, index));
+    }
+    return numeric_reader_is_missing_at(reader, index);
+}
+
 SEXP C_dtatools_is_missing(SEXP values) {
     if (TYPEOF(values) != VECSXP) {
         Rf_error("internal `is_missing()` arguments must be a list");
@@ -3784,33 +3793,46 @@ SEXP C_dtatools_is_missing(SEXP values) {
          argument < argument_count && unresolved > 0;
          argument++) {
         SEXP value = VECTOR_ELT(values, argument);
-        R_xlen_t size = XLENGTH(value);
-        if (size == 0) continue;
+        if (XLENGTH(value) != 1) continue;
+        R_CheckUserInterrupt();
 
-        int type = TYPEOF(value);
         numeric_reader reader = {0};
-        if (type != STRSXP) reader = numeric_reader_create(value, size);
-
-        if (size == 1) {
-            R_CheckUserInterrupt();
-            int missing = type == STRSXP
-                ? stata_expression_string_is_missing(STRING_ELT(value, 0))
-                : numeric_reader_is_missing_at(&reader, 0);
-            if (!missing) continue;
-            for (R_xlen_t index = 0; index < common_size; index++) {
-                if ((index & 16383) == 0) R_CheckUserInterrupt();
-                output[index] = 1;
-            }
-            unresolved = 0;
-            break;
+        numeric_reader *reader_pointer = NULL;
+        if (TYPEOF(value) != STRSXP) {
+            reader = numeric_reader_create(value, 1);
+            reader_pointer = &reader;
         }
+        if (!is_missing_value_at(value, reader_pointer, 0)) continue;
 
         for (R_xlen_t index = 0; index < common_size; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
+            output[index] = 1;
+        }
+        unresolved = 0;
+    }
+
+    for (R_xlen_t argument = 0;
+         argument < argument_count && unresolved > 0;
+         argument++) {
+        SEXP value = VECTOR_ELT(values, argument);
+        R_xlen_t size = XLENGTH(value);
+        if (size <= 1) continue;
+
+        numeric_reader reader = {0};
+        numeric_reader *reader_pointer = NULL;
+        if (TYPEOF(value) != STRSXP) {
+            reader = numeric_reader_create(value, size);
+            reader_pointer = &reader;
+        }
+
+        for (R_xlen_t index = 0;
+             index < common_size && unresolved > 0;
+             index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
             if (output[index]) continue;
-            int missing = type == STRSXP
-                ? stata_expression_string_is_missing(STRING_ELT(value, index))
-                : numeric_reader_is_missing_at(&reader, index);
+            int missing = is_missing_value_at(
+                value, reader_pointer, index
+            );
             output[index] = missing;
             if (missing) unresolved--;
         }
