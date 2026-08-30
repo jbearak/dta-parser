@@ -76,13 +76,18 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     source <- .resolve_dta_source(
         file, fileext = ".arrow", implicit_extension = FALSE
     )
-    on.exit(.cleanup_dta_source(source), add = TRUE)
+    snapshot <- NULL
+    on.exit({
+        if (!is.null(snapshot)) .Call(C_dtatools_close_arrow, snapshot)
+        .cleanup_dta_source(source)
+    }, add = TRUE)
+    snapshot <- .Call(C_dtatools_open_arrow, source$path)
 
     if (rlang::quo_is_null(selection)) {
         column_indices <- NULL
     } else {
         selected <- .arrow_column_selection(
-            selection, source$path, profile, row_window
+            selection, snapshot, profile, row_window
         )
         column_indices <- selected$indices
         selected_names <- selected$names
@@ -90,7 +95,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
 
     native <- .Call(
         C_dtatools_read_arrow,
-        source$path,
+        snapshot,
         column_indices,
         row_window$skip,
         row_window$n_max,
@@ -114,19 +119,19 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     result
 }
 
-.arrow_metadata <- function(file, profile = TRUE,
+.arrow_metadata <- function(snapshot, profile = TRUE,
                             scan_ambiguous_int32 = FALSE,
                             skip = 0, n_max = Inf) {
     metadata <- .Call(
-        C_dtatools_arrow_metadata, file, profile, scan_ambiguous_int32,
+        C_dtatools_arrow_metadata, snapshot, profile, scan_ambiguous_int32,
         skip, n_max
     )
     list(names = metadata[[1L]], types = metadata[[2L]])
 }
 
-.arrow_column_selection <- function(selection, file, profile, row_window) {
+.arrow_column_selection <- function(selection, snapshot, profile, row_window) {
     metadata <- .arrow_metadata(
-        file, profile, scan_ambiguous_int32 = FALSE,
+        snapshot, profile, scan_ambiguous_int32 = FALSE,
         skip = row_window$skip, n_max = row_window$n_max
     )
     selection_proxy <- stats::setNames(
@@ -145,7 +150,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     )
     if (needs_predicates) {
         metadata <- .arrow_metadata(
-            file, profile, scan_ambiguous_int32 = TRUE,
+            snapshot, profile, scan_ambiguous_int32 = TRUE,
             skip = row_window$skip, n_max = row_window$n_max
         )
         selection_proxy <- stats::setNames(

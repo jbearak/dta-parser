@@ -11,10 +11,10 @@ use std::sync::Arc;
 use std::thread;
 
 use dta_tools::arrow::{
-    arrow_stored_signature, dataset_signature, read_arrow_file, save_arrow_file,
-    summarize_arrow_file, ArrowCompression, ArrowFieldDocument, ArrowMissingEncoding,
-    ArrowRSemantics, ArrowReadColumn, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset,
-    DatasetDocument, StataStorage, ARROW_ROWS_PER_BATCH,
+    arrow_stored_signature, dataset_signature, save_arrow_file, ArrowCompression,
+    ArrowFieldDocument, ArrowFileSnapshot, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn,
+    ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage,
+    ARROW_ROWS_PER_BATCH,
 };
 use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
@@ -1584,6 +1584,48 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
 // Reading
 // ---------------------------------------------------------------------------
 
+#[no_mangle]
+/// Open an Arrow file once so metadata selection and decoding share its file
+/// identity even if another process replaces the path.
+///
+/// # Safety
+///
+/// `path` must point to a readable NUL-terminated C byte string for the
+/// duration of this call. If non-null, `error` must point to writable storage
+/// for one C string pointer.
+pub unsafe extern "C" fn dtatools_open_arrow_rust(
+    path: *const c_char,
+    error: *mut *mut c_char,
+) -> *mut c_void {
+    boundary(error, ptr::null_mut(), || {
+        let path = required_c_string(path, "the input path")?;
+        let snapshot = ArrowFileSnapshot::open(&path).map_err(|error| error.to_string())?;
+        Ok(Box::into_raw(Box::new(snapshot)).cast::<c_void>())
+    })
+}
+
+#[no_mangle]
+/// Release an Arrow snapshot returned by [`dtatools_open_arrow_rust`].
+///
+/// # Safety
+///
+/// A non-null `snapshot` must be an owned pointer returned by
+/// [`dtatools_open_arrow_rust`] that has not already been released.
+pub unsafe extern "C" fn dtatools_close_arrow_rust(snapshot: *mut c_void) {
+    if !snapshot.is_null() {
+        drop(Box::from_raw(snapshot.cast::<ArrowFileSnapshot>()));
+    }
+}
+
+unsafe fn required_arrow_snapshot<'a>(
+    snapshot: *const c_void,
+) -> Result<&'a ArrowFileSnapshot, String> {
+    snapshot
+        .cast::<ArrowFileSnapshot>()
+        .as_ref()
+        .ok_or_else(|| "Arrow file snapshot is null".to_owned())
+}
+
 fn row_window(skip: f64, n_max: f64) -> (u64, Option<u64>) {
     let start = if skip.is_finite() && skip > 0.0 {
         skip as u64
@@ -2915,14 +2957,14 @@ unsafe fn finalize_read_column(
 ///
 /// # Safety
 ///
-/// `path` must point to a readable NUL-terminated C byte string for the
-/// duration of this call. Unless `all_columns` is nonzero, `columns` must
+/// `snapshot` must point to a live [`ArrowFileSnapshot`]. Unless `all_columns`
+/// is nonzero, `columns` must
 /// address `column_count` readable integers. `interrupted` must point to
 /// writable status storage. If non-null, `error` must point to writable
 /// storage for one C string pointer. The caller must run on R's main thread
 /// with an initialized R runtime.
 pub unsafe extern "C" fn dtatools_read_arrow_rust(
-    path: *const c_char,
+    snapshot: *const c_void,
     columns: *const c_int,
     column_count: usize,
     all_columns: c_int,
@@ -2937,7 +2979,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     error: *mut *mut c_char,
 ) -> Sexp {
     arrow_boundary(interrupted, error, ptr::null_mut(), || {
-        let path = required_c_string(path, "the input path")?;
+        let snapshot = required_arrow_snapshot(snapshot)?;
         let projection = if all_columns != 0 {
             None
         } else {
@@ -2971,7 +3013,8 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             record_signature: record_signature != 0,
             threads: requested,
         };
-        let result = read_arrow_file(&path, &options, &mut coarse_interrupt)
+        let result = snapshot
+            .read(&options, &mut coarse_interrupt)
             .map_err(|error| error.to_string())?;
         let profiled = result.profile_version.is_some();
         let row_count = usize::try_from(result.row_count)
@@ -3099,12 +3142,12 @@ pub unsafe extern "C" fn dtatools_arrow_datasig_rust(
 ///
 /// # Safety
 ///
-/// `path` must point to a readable NUL-terminated C byte string for the
-/// duration of this call. `interrupted` must point to writable status storage.
+/// `snapshot` must point to a live [`ArrowFileSnapshot`]. `interrupted` must
+/// point to writable status storage.
 /// If non-null, `error` must point to writable storage for one C string pointer.
 /// The caller must run on R's main thread with an initialized R runtime.
 pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
-    path: *const c_char,
+    snapshot: *const c_void,
     apply_profile: c_int,
     scan_ambiguous_int32: c_int,
     skip: f64,
@@ -3113,17 +3156,17 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
     error: *mut *mut c_char,
 ) -> Sexp {
     arrow_boundary(interrupted, error, ptr::null_mut(), || {
-        let path = required_c_string(path, "the input path")?;
+        let snapshot = required_arrow_snapshot(snapshot)?;
         let (row_start, row_count) = row_window(skip, n_max);
-        let summary = summarize_arrow_file(
-            &path,
-            apply_profile != 0,
-            scan_ambiguous_int32 != 0,
-            row_start,
-            row_count,
-            &mut coarse_interrupt,
-        )
-        .map_err(|error| error.to_string())?;
+        let summary = snapshot
+            .summarize(
+                apply_profile != 0,
+                scan_ambiguous_int32 != 0,
+                row_start,
+                row_count,
+                &mut coarse_interrupt,
+            )
+            .map_err(|error| error.to_string())?;
         let mut guard = ProtectGuard::new();
         let result = guard.alloc(VECSXP, 2)?;
         let names: Vec<String> = summary

@@ -19,7 +19,8 @@ pub use profile::{
 };
 pub use read::{
     arrow_stored_signature, read_arrow_file, read_arrow_file_from, summarize_arrow_file,
-    ArrowColumnSummary, ArrowFileSummary, ArrowReadColumn, ArrowReadOptions, ArrowReadResult,
+    ArrowColumnSummary, ArrowFileSnapshot, ArrowFileSummary, ArrowReadColumn, ArrowReadOptions,
+    ArrowReadResult,
 };
 pub use write::{
     dataset_signature, save_arrow_file, save_arrow_file_to, ArrowCompression, ArrowWriteColumn,

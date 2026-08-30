@@ -995,6 +995,25 @@ test_that("Arrow selection scans ambiguous Int32 values only for predicates", {
     expect_identical(scans, c(FALSE, TRUE))
 })
 
+test_that("Arrow selection and decoding share one file snapshot", {
+    skip_on_os("windows")
+    original <- tibble::tibble(old_a = 1:2, old_b = c("a", "b"))
+    replacement <- tibble::tibble(
+        new_x = c(TRUE, FALSE),
+        new_y = c(10, 20)
+    )
+    path <- arrow_tempfile()
+    replacement_path <- arrow_tempfile()
+    save_arrow(original, path)
+    save_arrow(replacement, replacement_path)
+
+    actual <- read_arrow(path, col_select = {
+        expect_true(file.rename(replacement_path, path))
+        tidyselect::everything()
+    })
+    expect_identical(actual, original)
+})
+
 test_that("wide Arrow integers are rejected instead of rounded", {
     skip_if_not_installed("arrow")
     skip_if_not_installed("bit64")

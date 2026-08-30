@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -111,6 +111,12 @@ pub struct ArrowColumnSummary {
 /// values of plain Int32 columns whose R storage depends on their contents.
 pub struct ArrowFileSummary {
     pub columns: Vec<ArrowColumnSummary>,
+}
+
+/// One open Arrow file whose identity remains stable if its path is replaced.
+pub struct ArrowFileSnapshot {
+    path: PathBuf,
+    file: File,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1476,49 +1482,65 @@ pub fn read_arrow_file(
     options: &ArrowReadOptions,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<ArrowReadResult, ArrowProfileError> {
-    let path = path.as_ref();
-    let mut read = || -> Result<ArrowReadResult, ArrowProfileError> {
-        let mut reader = BufReader::new(File::open(path)?);
-        let prepared = prepare_read(&mut reader, options, interrupt)?;
-        let mut columns = columns_skeleton(&prepared)?;
-        let context = DecodeContext {
-            footer: &prepared.footer,
-            profile: prepared.profile.as_ref(),
-            selected: &prepared.selected,
-            dictionaries: &prepared.dictionaries,
+    ArrowFileSnapshot::open(path)?.read(options, interrupt)
+}
+
+impl ArrowFileSnapshot {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, ArrowProfileError> {
+        let path = path.as_ref().to_owned();
+        let file = File::open(&path)?;
+        Ok(Self { path, file })
+    }
+
+    /// Read from the file identity captured by [`Self::open`].
+    pub fn read(
+        &self,
+        options: &ArrowReadOptions,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowReadResult, ArrowProfileError> {
+        let mut read = || -> Result<ArrowReadResult, ArrowProfileError> {
+            let mut reader = BufReader::new(self.file.try_clone()?);
+            let prepared = prepare_read(&mut reader, options, interrupt)?;
+            let mut columns = columns_skeleton(&prepared)?;
+            let context = DecodeContext {
+                footer: &prepared.footer,
+                profile: prepared.profile.as_ref(),
+                selected: &prepared.selected,
+                dictionaries: &prepared.dictionaries,
+            };
+            let threads = decode_thread_count(
+                options.threads,
+                &context,
+                &prepared.plans,
+                prepared.produced,
+            );
+            if threads > 1 {
+                decode_blocks_parallel(
+                    reader.get_ref(),
+                    &context,
+                    &prepared.plans,
+                    &mut columns,
+                    threads,
+                    interrupt,
+                )?;
+            } else {
+                decode_blocks_serial(
+                    &mut reader,
+                    &context,
+                    &prepared.plans,
+                    &mut columns,
+                    interrupt,
+                )?;
+            }
+            Ok(finish_result(prepared, columns))
         };
-        let threads = decode_thread_count(
-            options.threads,
-            &context,
-            &prepared.plans,
-            prepared.produced,
-        );
-        if threads > 1 {
-            decode_blocks_parallel(
-                reader.get_ref(),
-                &context,
-                &prepared.plans,
-                &mut columns,
-                threads,
-                interrupt,
-            )?;
-        } else {
-            decode_blocks_serial(
-                &mut reader,
-                &context,
-                &prepared.plans,
-                &mut columns,
-                interrupt,
-            )?;
-        }
-        Ok(finish_result(prepared, columns))
-    };
-    read().map_err(|error| match error {
-        ArrowProfileError::NotAnArrowFile(_) => {
-            ArrowProfileError::NotAnArrowFile(path.display().to_string())
-        }
-        other => other,
-    })
+        read().map_err(|error| match error {
+            ArrowProfileError::NotAnArrowFile(_) => {
+                ArrowProfileError::NotAnArrowFile(self.path.display().to_string())
+            }
+            other => other,
+        })
+    }
 }
 
 /// Read from any seekable source. Always serial: parallel decoding needs
@@ -1834,106 +1856,126 @@ pub fn summarize_arrow_file(
     row_count: Option<u64>,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<ArrowFileSummary, ArrowProfileError> {
-    let path = path.as_ref();
-    let mut reader = BufReader::new(File::open(path)?);
-    let footer = match read_footer(&mut reader) {
-        Err(ArrowProfileError::NotAnArrowFile(_)) => {
-            return Err(ArrowProfileError::NotAnArrowFile(
-                path.display().to_string(),
-            ))
+    ArrowFileSnapshot::open(path)?.summarize(
+        apply_profile,
+        scan_ambiguous_int32,
+        row_start,
+        row_count,
+        interrupt,
+    )
+}
+
+impl ArrowFileSnapshot {
+    /// Read selection metadata from this snapshot, scanning ambiguous Int32
+    /// values only when a tidyselect predicate needs their concrete R type.
+    pub fn summarize(
+        &self,
+        apply_profile: bool,
+        scan_ambiguous_int32: bool,
+        row_start: u64,
+        row_count: Option<u64>,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowFileSummary, ArrowProfileError> {
+        let mut reader = BufReader::new(self.file.try_clone()?);
+        let footer = match read_footer(&mut reader) {
+            Err(ArrowProfileError::NotAnArrowFile(_)) => {
+                return Err(ArrowProfileError::NotAnArrowFile(
+                    self.path.display().to_string(),
+                ))
+            }
+            other => other?,
+        };
+        let profile = parse_profile(&footer, apply_profile, false)?;
+        let ambiguous_int32: Vec<u32> = if scan_ambiguous_int32 {
+            footer
+                .schema
+                .fields()
+                .iter()
+                .enumerate()
+                .filter(|(index, field)| {
+                    let document = profile
+                        .as_ref()
+                        .and_then(|profile| profile.fields[*index].as_ref());
+                    field.data_type() == &DataType::Int32
+                        && document.and_then(|document| document.storage).is_none()
+                        && document
+                            .and_then(|document| document.r.as_ref())
+                            .is_none_or(|semantics| semantics.class != "integer")
+                })
+                .map(|(index, _)| {
+                    u32::try_from(index)
+                        .map_err(|_| invalid("an Arrow file has too many columns to summarize"))
+                })
+                .collect::<Result<_, _>>()?
+        } else {
+            Vec::new()
+        };
+        let mut int32_requires_double = vec![false; footer.schema.fields().len()];
+        if !ambiguous_int32.is_empty() {
+            let mut scan_reader = BufReader::new(self.file.try_clone()?);
+            let prepared = prepare_read(
+                &mut scan_reader,
+                &ArrowReadOptions {
+                    columns: Some(ambiguous_int32.clone()),
+                    row_start,
+                    row_count,
+                    max_output_rows: None,
+                    verify: false,
+                    profile: apply_profile,
+                    record_signature: false,
+                    threads: 1,
+                },
+                interrupt,
+            )?;
+            let context = DecodeContext {
+                footer: &prepared.footer,
+                profile: prepared.profile.as_ref(),
+                selected: &prepared.selected,
+                dictionaries: &prepared.dictionaries,
+            };
+            let mut found = vec![false; ambiguous_int32.len()];
+            for plan in &prepared.plans {
+                if interrupt() {
+                    return Err(ArrowProfileError::Interrupted);
+                }
+                for (output_index, found) in found.iter_mut().enumerate() {
+                    if *found {
+                        continue;
+                    }
+                    let chunk =
+                        decode_planned_column(&mut scan_reader, &context, plan, output_index)?;
+                    let values = chunk.as_any().downcast_ref::<Int32Array>().ok_or_else(|| {
+                        invalid("an Int32 summary decoded a different Arrow type")
+                    })?;
+                    *found = (0..values.len())
+                        .any(|row| !values.is_null(row) && values.value(row) == i32::MIN);
+                }
+                if found.iter().all(|found| *found) {
+                    break;
+                }
+            }
+            for (&index, found) in ambiguous_int32.iter().zip(found) {
+                int32_requires_double[index as usize] = found;
+            }
         }
-        other => other?,
-    };
-    let profile = parse_profile(&footer, apply_profile, false)?;
-    let ambiguous_int32: Vec<u32> = if scan_ambiguous_int32 {
-        footer
+        let columns = footer
             .schema
             .fields()
             .iter()
             .enumerate()
-            .filter(|(index, field)| {
-                let document = profile
-                    .as_ref()
-                    .and_then(|profile| profile.fields[*index].as_ref());
-                field.data_type() == &DataType::Int32
-                    && document.and_then(|document| document.storage).is_none()
-                    && document
-                        .and_then(|document| document.r.as_ref())
-                        .is_none_or(|semantics| semantics.class != "integer")
+            .map(|(index, field)| ArrowColumnSummary {
+                name: field.name().clone(),
+                r_type: r_type_for(
+                    field,
+                    profile
+                        .as_ref()
+                        .and_then(|profile| profile.fields[index].as_ref()),
+                    int32_requires_double[index],
+                ),
             })
-            .map(|(index, _)| {
-                u32::try_from(index)
-                    .map_err(|_| invalid("an Arrow file has too many columns to summarize"))
-            })
-            .collect::<Result<_, _>>()?
-    } else {
-        Vec::new()
-    };
-    let mut int32_requires_double = vec![false; footer.schema.fields().len()];
-    if !ambiguous_int32.is_empty() {
-        let mut scan_reader = BufReader::new(File::open(path)?);
-        let prepared = prepare_read(
-            &mut scan_reader,
-            &ArrowReadOptions {
-                columns: Some(ambiguous_int32.clone()),
-                row_start,
-                row_count,
-                max_output_rows: None,
-                verify: false,
-                profile: apply_profile,
-                record_signature: false,
-                threads: 1,
-            },
-            interrupt,
-        )?;
-        let context = DecodeContext {
-            footer: &prepared.footer,
-            profile: prepared.profile.as_ref(),
-            selected: &prepared.selected,
-            dictionaries: &prepared.dictionaries,
-        };
-        let mut found = vec![false; ambiguous_int32.len()];
-        for plan in &prepared.plans {
-            if interrupt() {
-                return Err(ArrowProfileError::Interrupted);
-            }
-            for (output_index, found) in found.iter_mut().enumerate() {
-                if *found {
-                    continue;
-                }
-                let chunk = decode_planned_column(&mut scan_reader, &context, plan, output_index)?;
-                let values = chunk
-                    .as_any()
-                    .downcast_ref::<Int32Array>()
-                    .ok_or_else(|| invalid("an Int32 summary decoded a different Arrow type"))?;
-                *found = (0..values.len())
-                    .any(|row| !values.is_null(row) && values.value(row) == i32::MIN);
-            }
-            if found.iter().all(|found| *found) {
-                break;
-            }
-        }
-        for (&index, found) in ambiguous_int32.iter().zip(found) {
-            int32_requires_double[index as usize] = found;
-        }
+            .collect();
+        Ok(ArrowFileSummary { columns })
     }
-    let columns = footer
-        .schema
-        .fields()
-        .iter()
-        .enumerate()
-        .map(|(index, field)| ArrowColumnSummary {
-            name: field.name().clone(),
-            r_type: r_type_for(
-                field,
-                profile
-                    .as_ref()
-                    .and_then(|profile| profile.fields[index].as_ref()),
-                int32_requires_double[index],
-            ),
-        })
-        .collect();
-    Ok(ArrowFileSummary { columns })
 }
 
 #[cfg(test)]

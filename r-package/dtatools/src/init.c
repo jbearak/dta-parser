@@ -69,12 +69,14 @@ extern SEXP dtatools_datasig_rust(
     const char *, SEXP, size_t, const dtatools_arrow_column *, size_t, size_t,
     int, int *, char **
 );
+extern void *dtatools_open_arrow_rust(const char *, char **);
+extern void dtatools_close_arrow_rust(void *);
 extern SEXP dtatools_read_arrow_rust(
-    const char *, const int *, size_t, int, double, double, int, int, int,
+    const void *, const int *, size_t, int, double, double, int, int, int,
     int, int, int *, char **
 );
 extern SEXP dtatools_arrow_metadata_rust(
-    const char *, int, int, double, double, int *, char **
+    const void *, int, int, double, double, int *, char **
 );
 extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
 
@@ -3098,14 +3100,61 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
     return result;
 }
 
-SEXP C_dtatools_read_arrow(
-    SEXP path, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
-    SEXP numeric_altrep, SEXP threads, SEXP datasig
-) {
+static SEXP dtatools_arrow_snapshot_tag = NULL;
+
+static void arrow_snapshot_finalize(SEXP external) {
+    void *snapshot = R_ExternalPtrAddr(external);
+    if (snapshot != NULL) {
+        dtatools_close_arrow_rust(snapshot);
+        R_ClearExternalPtr(external);
+    }
+}
+
+static void *arrow_snapshot_pointer(SEXP external) {
+    if (TYPEOF(external) != EXTPTRSXP ||
+        dtatools_arrow_snapshot_tag == NULL ||
+        R_ExternalPtrTag(external) != dtatools_arrow_snapshot_tag) {
+        Rf_error("internal Arrow file snapshot is invalid");
+    }
+    void *snapshot = R_ExternalPtrAddr(external);
+    if (snapshot == NULL) {
+        Rf_error("internal Arrow file snapshot is closed");
+    }
+    return snapshot;
+}
+
+SEXP C_dtatools_open_arrow(SEXP path) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
         STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
     }
+    char *rust_error = NULL;
+    void *snapshot = dtatools_open_arrow_rust(
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), &rust_error
+    );
+    if (snapshot == NULL) fail_from_rust(rust_error);
+    if (dtatools_arrow_snapshot_tag == NULL) {
+        dtatools_arrow_snapshot_tag = Rf_install("dtatools_arrow_snapshot");
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(
+        snapshot, dtatools_arrow_snapshot_tag, R_NilValue
+    ));
+    R_RegisterCFinalizerEx(external, arrow_snapshot_finalize, TRUE);
+    UNPROTECT(1);
+    return external;
+}
+
+SEXP C_dtatools_close_arrow(SEXP snapshot) {
+    (void) arrow_snapshot_pointer(snapshot);
+    arrow_snapshot_finalize(snapshot);
+    return R_NilValue;
+}
+
+SEXP C_dtatools_read_arrow(
+    SEXP snapshot, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
+    SEXP numeric_altrep, SEXP threads, SEXP datasig
+) {
+    void *snapshot_pointer = arrow_snapshot_pointer(snapshot);
     int all_columns = Rf_isNull(columns);
     if (!all_columns && TYPEOF(columns) != INTSXP) {
         Rf_error("internal column selection must be integer");
@@ -3135,7 +3184,7 @@ SEXP C_dtatools_read_arrow(
     int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_read_arrow_rust(
-        Rf_translateCharUTF8(STRING_ELT(path, 0)),
+        snapshot_pointer,
         all_columns ? NULL : INTEGER(columns),
         all_columns ? 0 : (size_t) XLENGTH(columns),
         all_columns,
@@ -3160,13 +3209,10 @@ SEXP C_dtatools_read_arrow(
 }
 
 SEXP C_dtatools_arrow_metadata(
-    SEXP path, SEXP profile, SEXP scan_ambiguous_int32,
+    SEXP snapshot, SEXP profile, SEXP scan_ambiguous_int32,
     SEXP skip, SEXP n_max
 ) {
-    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
-        STRING_ELT(path, 0) == NA_STRING) {
-        Rf_error("`file` must be one non-missing path");
-    }
+    void *snapshot_pointer = arrow_snapshot_pointer(snapshot);
     if (TYPEOF(profile) != LGLSXP || XLENGTH(profile) != 1 ||
         LOGICAL(profile)[0] == NA_LOGICAL ||
         TYPEOF(scan_ambiguous_int32) != LGLSXP ||
@@ -3181,7 +3227,7 @@ SEXP C_dtatools_arrow_metadata(
     int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_arrow_metadata_rust(
-        Rf_translateCharUTF8(STRING_ELT(path, 0)), LOGICAL(profile)[0],
+        snapshot_pointer, LOGICAL(profile)[0],
         LOGICAL(scan_ambiguous_int32)[0],
         REAL(skip)[0], REAL(n_max)[0],
         &interrupted, &rust_error
@@ -3716,6 +3762,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},
     {"C_dtatools_datasig", (DL_FUNC) &C_dtatools_datasig, 2},
+    {"C_dtatools_open_arrow", (DL_FUNC) &C_dtatools_open_arrow, 1},
+    {"C_dtatools_close_arrow", (DL_FUNC) &C_dtatools_close_arrow, 1},
     {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 9},
     {"C_dtatools_arrow_metadata",
      (DL_FUNC) &C_dtatools_arrow_metadata, 5},
