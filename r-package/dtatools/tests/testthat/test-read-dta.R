@@ -12,9 +12,10 @@ replace_first_byte <- function(bytes, text, replacement) {
 test_that("read_dta extends the haven-compatible public signature", {
     expected <- c(
         "file", "encoding", "col_select", "skip", "n_max", ".name_repair",
-        "threads", "use_numeric_altrep"
+        "threads", "use_numeric_altrep", "datasig"
     )
     expect_identical(names(formals(read_dta)), expected)
+    expect_false(formals(read_dta)$datasig)
     expect_null(formals(read_dta)$encoding)
     expect_null(formals(read_dta)$col_select)
     expect_identical(formals(read_dta)$skip, 0)

@@ -149,6 +149,13 @@
 #'   widening when a workload requires a contiguous double data pointer.
 #'   Character-column ALTREP is unaffected.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
+#' @param datasig Whether to record the file's [datasig()] signature in the
+#'   result's `datasig` attribute, as a load-time record of what the file on
+#'   disk signed as; it is never updated afterwards, so it is not a claim
+#'   about the object's current content. Computing it costs one hash pass
+#'   over the decoded columns (no second read of the file) and equals
+#'   `datasig(file)`. Requires reading the complete file: incompatible with
+#'   `col_select`, `skip`, and `n_max`.
 #' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
 #'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
@@ -159,12 +166,28 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      threads = getOption("dtatools.threads", 0L),
                      use_numeric_altrep = getOption(
                          "dtatools.numeric_altrep", TRUE
-                     )) {
+                     ),
+                     datasig = FALSE) {
+    selection <- rlang::enquo(col_select)
+    datasig <- .normalize_arrow_flag(datasig, "datasig")
+    if (datasig) .validate_datasig_read(selection, skip, n_max)
     .read_dta_impl(
-        file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
+        file, encoding, selection, skip, n_max, .name_repair,
         materialization = "direct", threads = threads,
-        use_numeric_altrep = use_numeric_altrep
+        use_numeric_altrep = use_numeric_altrep,
+        record_datasig = datasig
     )
+}
+
+.validate_datasig_read <- function(selection, skip, n_max) {
+    row_window <- .normalize_row_window(skip, n_max)
+    if (!rlang::quo_is_null(selection) || row_window$skip > 0 ||
+        is.finite(row_window$n_max)) {
+        stop(paste(
+            "`datasig` requires reading the complete file;",
+            "drop `col_select`, `skip`, and `n_max`"
+        ), call. = FALSE)
+    }
 }
 
 # Internal A/B baseline. This deliberately retains the former two-stage path
@@ -175,7 +198,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .read_dta_impl(
         file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
         materialization = "rust-vectors", threads = 1L,
-        use_numeric_altrep = FALSE
+        use_numeric_altrep = FALSE, record_datasig = FALSE
     )
 }
 
@@ -190,6 +213,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .is_unmaterialized_numeric_altrep <- function(value) {
     .Call(C_dtatools_is_unmaterialized_numeric_altrep, value)
+}
+
+.is_unmaterialized_dictstring <- function(value) {
+    .Call(C_dtatools_is_unmaterialized_dictstring, value)
 }
 
 .force_altrep_materialization <- function(value) {
@@ -210,7 +237,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, materialization, threads,
-                           use_numeric_altrep) {
+                           use_numeric_altrep, record_datasig) {
     encoding <- .validate_dta_encoding(encoding)
     row_window <- .normalize_row_window(skip, n_max)
     threads <- .normalize_threads(threads)
@@ -251,11 +278,16 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         names(native) <- selected_names
     }
 
+    disk_signature <- if (record_datasig) {
+        datasig(native, threads = threads)
+    }
+
     dataset_label <- attr(native, "label", exact = TRUE)
     dataset_notes <- attr(native, "notes", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
+    if (record_datasig) attr(result, "datasig") <- disk_signature
     result
 }
 
@@ -276,8 +308,9 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     as.integer(value)
 }
 
-.resolve_dta_source <- function(file) {
-    file <- .resolve_implicit_dta_read_path(file)
+.resolve_dta_source <- function(file, fileext = ".dta",
+                                implicit_extension = TRUE) {
+    if (implicit_extension) file <- .resolve_implicit_dta_read_path(file)
     caller_supplied_source <- inherits(file, "source")
     caller_path <- .caller_dta_source_path(file)
     datasource <- readr::datasource(file)
@@ -310,7 +343,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     if (identical(source_type, "source_raw")) {
-        path <- tempfile(pattern = "dtatools-", fileext = ".dta")
+        path <- tempfile(pattern = "dtatools-", fileext = fileext)
         complete <- FALSE
         on.exit(if (!complete) unlink(path), add = TRUE)
         writeBin(datasource[[1L]], path)
@@ -326,6 +359,12 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         !grepl("^[[:alpha:]][[:alnum:]+.-]*://", file)
     if (!local_scalar || nzchar(tools::file_ext(basename(file)))) return(file)
     paste0(file, ".dta")
+}
+
+.data_source_file_extension <- function(file) {
+    is_url <- grepl("^[[:alpha:]][[:alnum:]+.-]*://", file)
+    path <- if (is_url) sub("[?#].*$", "", file) else file
+    tolower(tools::file_ext(basename(path)))
 }
 
 .caller_dta_source_path <- function(file) {

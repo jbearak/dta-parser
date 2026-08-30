@@ -7,15 +7,16 @@
 dta_merge(x, y, by, relationship, keep = c("x", "y", "match"), assert = NULL)
 }
 \arguments{
-\item{x, y}{Data frames to merge, or DTA file paths read with
-\code{\link[=read_dta]{read_dta()}}, in any combination. \code{x} supplies the retained values for
+\item{x, y}{Data frames to merge, or file paths read with \code{\link[=read_dta]{read_dta()}} or
+\code{\link[=read_arrow]{read_arrow()}}, in any combination. \code{x} supplies the retained values for
 overlapping variables and the dataset label and notes. Passing paths
 mirrors Stata's \verb{merge ... using filename} and keeps only the merged
-result in the caller's workspace; a path accepts anything \code{read_dta()}'s
-\code{file} argument accepts as one string, including the implicit \code{.dta}
-extension. Read with \code{\link[=read_dta]{read_dta()}} first when a merge needs non-default
-read arguments. Data-frame inputs must have unique, non-missing, nonempty
-column names.}
+result in the caller's workspace. A path ending in \code{.arrow} is read with
+\code{\link[=read_arrow]{read_arrow()}}; any other path, including an extensionless one with the
+implicit \code{.dta} extension, accepts anything \code{read_dta()}'s \code{file}
+argument accepts as one string. Read the file first when a merge needs
+non-default read arguments. Data-frame inputs must have unique,
+non-missing, nonempty column names.}
 
 \item{by}{A character vector naming key columns present in both inputs.}
 

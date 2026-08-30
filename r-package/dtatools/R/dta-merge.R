@@ -42,15 +42,16 @@
 #' result keeps `x` rows in their original order followed by unmatched `y`
 #' rows in theirs. Sort afterward if key order matters.
 #'
-#' @param x,y Data frames to merge, or DTA file paths read with
-#'   [read_dta()], in any combination. `x` supplies the retained values for
+#' @param x,y Data frames to merge, or file paths read with [read_dta()] or
+#'   [read_arrow()], in any combination. `x` supplies the retained values for
 #'   overlapping variables and the dataset label and notes. Passing paths
 #'   mirrors Stata's `merge ... using filename` and keeps only the merged
-#'   result in the caller's workspace; a path accepts anything `read_dta()`'s
-#'   `file` argument accepts as one string, including the implicit `.dta`
-#'   extension. Read with [read_dta()] first when a merge needs non-default
-#'   read arguments. Data-frame inputs must have unique, non-missing, nonempty
-#'   column names.
+#'   result in the caller's workspace. A path ending in `.arrow` is read with
+#'   [read_arrow()]; any other path, including an extensionless one with the
+#'   implicit `.dta` extension, accepts anything `read_dta()`'s `file`
+#'   argument accepts as one string. Read the file first when a merge needs
+#'   non-default read arguments. Data-frame inputs must have unique,
+#'   non-missing, nonempty column names.
 #' @param by A character vector naming key columns present in both inputs.
 #' @param relationship The declared key multiplicity: `"1:1"`, `"m:1"`, or
 #'   `"1:m"`. Required.
@@ -228,10 +229,13 @@ dta_merge <- function(x, y, by, relationship,
 .resolve_merge_input <- function(value, side) {
     if (is.data.frame(value)) return(value)
     if (is.character(value) && length(value) == 1L && !is.na(value)) {
+        extension <- .data_source_file_extension(value)
+        if (identical(extension, "arrow")) return(read_arrow(value))
         return(read_dta(value))
     }
-    stop(sprintf("`%s` must be a data frame or one DTA file path", side),
-         call. = FALSE)
+    stop(sprintf(
+        "`%s` must be a data frame or one DTA or Arrow file path", side
+    ), call. = FALSE)
 }
 
 .validate_merge_input_names <- function(data, side) {

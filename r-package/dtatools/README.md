@@ -12,7 +12,10 @@ declared Stata storage type.
 | --- | --- |
 | `read_dta()` | Read a DTA file into a tibble with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
-| `dta_merge()` | Merge two datasets, or DTA files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
+| `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |
+| `dta_merge()` | Merge two datasets, or `.dta`/`.arrow` files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `datasig()` | Order-sensitive content signature of a data frame or a `.dta` or `.arrow` file, for verifying that source data has not changed. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
@@ -33,6 +36,40 @@ Repository benchmarks compare `dtatools` with haven across a large survey corpus
 Across the full DHS, MICS, and NSFG comparison, `dtatools` was faster on 1,803 of 1,812 files and tied on five. `haven` led on four files between 31 and 66 KB, each by 1 millisecond. `dtatools` was faster on all 1,534 files larger than 1 MB.
 
 These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtatools only. See the [dated corpus report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
+
+### Using `.arrow` dataset files
+
+Call `save_dta()` to write one `.dta` file or `save_arrow()` to write one
+`.arrow` file. Each call writes only the selected format. A `.arrow` dataset
+can mix Stata-specific columns with supported ordinary R `logical`, `integer`,
+`double`, `character`, `raw`, `factor`, `Date`, `POSIXct`, and `difftime`
+columns. dtatools preserves the class-specific details and profile metadata
+documented by `save_arrow()`.
+
+Apache Arrow stores tabular data by column in a standard binary layout. A
+`.arrow` dataset uses Arrow's IPC (interprocess communication) file format to
+exchange that data between programs. dtatools adds metadata for Stata and R
+semantics plus a small fingerprint for each data buffer. `read_arrow()` checks
+those fingerprints by default to detect accidental file corruption. The
+dtatools profile is experimental (version `"0"`) and carries no cross-version
+stability promise yet.
+
+Warm-cache read medians on the same files:
+
+| Input | `read_dta()` on `.dta` | `read_arrow()` on `.arrow` |
+| --- | ---: | ---: |
+| Synthetic 100 MB, 40 columns | 0.048 seconds | 0.028 seconds |
+| Synthetic 1 GB, 40 columns | 0.184 seconds | 0.097 seconds |
+| India 2021 DHS women, 5.2 GB, 5,972 columns | 1.608 seconds | 0.416 seconds |
+
+Both readers decode with automatic multicore workers and defer numeric and
+character materialization through ALTREP. `read_arrow()` is faster because the
+`.arrow` file already stores each column contiguously in its Stata storage width,
+so reading is mostly parallel column copies rather than row-major decoding.
+Checksum verification is on by default and accounts for only a few percent;
+converting the India file with `save_arrow()` took 1.4 seconds once. See the
+[dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
+for conversion times, file sizes, and methodology.
 
 ### Projected reads across surveys
 
@@ -73,28 +110,48 @@ The primary synthetic benchmark gives dtatools and haven the exact output from
 Stata's first save of an in-memory fixture covering every numeric Stata storage
 type:
 
-| Scale | Stata | dtatools | haven |
-| --- | ---: | ---: | ---: |
-| 100 MB | 0.013 seconds | 0.023 seconds | 1.235 seconds |
-| 1 GB | 0.130 seconds | 0.150 seconds | 9.045 seconds |
+| Writer | 100 MB | 1 GB |
+| --- | ---: | ---: |
+| Stata `save` | 0.013 seconds | 0.130 seconds |
+| `save_dta()` | 0.023 seconds | 0.152 seconds |
+| `save_arrow()` | 0.037 seconds | 0.254 seconds |
+| `save_arrow(checksums = FALSE)` | 0.031 seconds | 0.235 seconds |
+| `haven::write_dta()` | 1.238 seconds | 9.048 seconds |
 
-Haven took 53.7 times as long as dtatools at 100 MB and 60.3 times as long at
+Haven took 53.8 times as long as dtatools at 100 MB and 59.5 times as long at
 1 GB on these Stata-class inputs. dtatools took 1.77 times Stata's median at
-100 MB and 1.15 times at 1 GB.
+100 MB and 1.17 times at 1 GB.
 dtatools preserved the declared numeric storage types. Haven preserved values
 and the metadata represented by its read model but widened all 30 numeric
-columns to `double`.
+columns to `double`. `save_arrow()` received the identical input but writes
+Arrow IPC rather than DTA; it exports compact columns and dictionary strings
+without copying or materializing them. Checksums cost only the step between
+the two `save_arrow()` rows — the hashing runs on worker threads that overlap
+the write — so the small remaining gap to `save_dta()` is mostly the larger
+Arrow output.
 
 The secondary benchmark gives dtatools and haven the same ordinary R data
 frame, without Stata storage or labelling metadata:
 
-| Scale | dtatools | haven | dtatools advantage |
-| --- | ---: | ---: | ---: |
-| 100 MB | 0.183 seconds | 0.439 seconds | 58.3% faster |
-| 1 GB | 1.797 seconds | 4.052 seconds | 55.7% faster |
+| Writer | 100 MB | 1 GB |
+| --- | ---: | ---: |
+| `save_dta()` | 0.193 seconds | 1.927 seconds |
+| `save_arrow()` | 0.105 seconds | 0.897 seconds |
+| `haven::write_dta()` | 0.495 seconds | 4.195 seconds |
+
+`save_dta()` was 61.0% faster than haven at 100 MB and 54.1% faster at 1 GB.
+On ordinary R columns `save_arrow()` is the fastest writer of the three:
+without Stata storage declarations there are no compact columns for the DTA
+fast path to exploit, and the Arrow writer skips DTA-specific work such as
+fixed-width string planning.
 
 These are medians from seven fresh-process runs on the same Apple M4 Max, not
-performance guarantees. See the [dated write report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/large-scale/results-2026-08-28.md) for percentiles, memory and output sizes, source provenance, and the complete methodology.
+performance guarantees. The Stata median in the primary table is reused from
+the [dated write report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/large-scale/results-2026-08-28.md),
+which also covers percentiles, memory and output sizes, and provenance for the
+DTA writers; the refreshed R-writer medians and the `save_arrow()` rows come
+from the
+[dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md).
 
 ### Synthetic merge benchmarks
 
@@ -216,10 +273,39 @@ the relationship declaration (`"1:1"`, `"m:1"`, or `"1:m"`), coalesces key
 storage types and labels, follows Stata's master-wins rule for overlapping
 variables (with a warning naming them, where Stata is silent), and generates
 the value-labelled `_merge` indicator. `keep` and
-`assert` mirror Stata's options, and either input may be a DTA file path so
-only the merged result occupies memory. See
+`assert` mirror Stata's options, and either input may be a `.dta` or `.arrow` file
+path so only the merged result occupies memory; the
+[dated input-source report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/dta-merge/results-2026-08-29.md)
+shows a from-file merge costs its read plus the merge itself. See
 [the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence
 behind these differences.
+
+## Verify source data
+
+```r
+datasig("survey.dta")
+
+loaded <- read_dta("survey.dta", datasig = TRUE)
+attr(loaded, "datasig")
+```
+
+`datasig()` computes an order-sensitive content signature of a data frame or
+a `.dta` or `.arrow` file, shaped `rows:columns:digest`. It covers variable names
+and order, storage types, labels, display formats, notes, and every value in
+row order, so it detects changes Stata's `datasignature` misses: values
+swapped within a variable, reordered observations, and values exchanged
+between same-type variables. A `.dta` file, a corresponding `.arrow` file at
+any compression, and their loaded read models all sign identically, so a
+signature recorded in a tracked table verifies a raw source file regardless
+of container.
+
+`datasig()` always recomputes from current content. Both readers accept
+`datasig = TRUE` to also record the file's signature as a load-time
+attribute: `read_arrow()` derives it from the stored footer checksums in
+milliseconds, even under column projection, while `read_dta()` hashes the
+decoded columns and requires a complete read. The signature shares the
+experimental Arrow profile's stability caveat: recorded signatures may need
+re-baselining until the profile freezes.
 
 ## Data returned to R
 
@@ -304,7 +390,10 @@ Use the installed help for exact behavior and examples:
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
 ?save_dta # standalone Stata 18/19 output, conversions, and metadata
+?save_arrow # write a standalone .arrow dataset with supported Stata and R classes
+?read_arrow # read a .arrow dataset and check it for file corruption
 ?dta_merge # Stata-identity merges with relationship checks and _merge
+?datasig   # order-sensitive data signatures for files and data frames
 ?stata_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values

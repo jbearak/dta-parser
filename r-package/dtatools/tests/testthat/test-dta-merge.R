@@ -618,6 +618,81 @@ test_that("master and using accept DTA file paths in any combination", {
     )
 })
 
+test_that("every x and y source combination merges identically", {
+    master <- tibble::tibble(
+        id = stata_byte(c(1, 2, NA_real_, tagged_missing("a"), 5)),
+        score = stata_int(c(10, 20, 30, 40, 50)),
+        city = c("ny", "la", "", "sf", "dc")
+    )
+    using <- tibble::tibble(
+        id = stata_byte(c(2, tagged_missing("a"), 7, NA_real_, 6)),
+        group = c("g1", "g2", "g3", "g4", "g5")
+    )
+
+    # Five representations of the same content: a .dta path, an .arrow
+    # path, the read_dta() read model (compact ALTREP numerics and deferred
+    # strings), bare R vectors (tagged payloads survive as.double()), and a
+    # frame mixing read-model and bare columns.
+    make_sources <- function(data) {
+        dta_path <- tempfile(fileext = ".dta")
+        arrow_path <- tempfile(fileext = ".arrow")
+        save_dta(data, dta_path)
+        save_arrow(data, arrow_path)
+        stata_memory <- read_dta(dta_path)
+        r_memory <- tibble::as_tibble(data_values(data))
+        mixed <- stata_memory
+        for (index in seq_along(mixed)) {
+            if (index %% 2L == 0L) mixed[[index]] <- r_memory[[index]]
+        }
+        list(dta = dta_path, arrow = arrow_path, stata = stata_memory,
+             r = r_memory, mixed = mixed)
+    }
+
+    x_sources <- make_sources(master)
+    y_sources <- make_sources(using)
+    on.exit(unlink(c(x_sources$dta, x_sources$arrow,
+                     y_sources$dta, y_sources$arrow)), add = TRUE)
+    reference <- dta_merge(master, using, by = "id", relationship = "1:1")
+    expect_identical(as.double(reference$`_merge`), c(1, 3, 3, 3, 1, 2, 2))
+
+    for (x_name in names(x_sources)) {
+        for (y_name in names(y_sources)) {
+            result <- dta_merge(
+                x_sources[[x_name]], y_sources[[y_name]],
+                by = "id", relationship = "1:1"
+            )
+            info <- sprintf("x = %s, y = %s", x_name, y_name)
+            expect_identical(names(result), names(reference), info = info)
+            expect_identical(data_values(result), data_values(reference),
+                             info = info)
+            expect_identical(missing_tag(result$id),
+                             missing_tag(reference$id), info = info)
+        }
+    }
+})
+
+test_that("Arrow URLs with query strings dispatch to read_arrow", {
+    expected <- tibble::tibble(id = 1L)
+    seen <- character()
+    local_mocked_bindings(
+        read_arrow = function(file, ...) {
+            seen <<- c(seen, file)
+            expected
+        },
+        read_dta = function(...) stop("dispatched to read_dta"),
+        .package = "dtatools"
+    )
+    url <- paste0(
+        "https://example.test/data.arrow?",
+        "X-Amz-Signature=0123456789abcdef"
+    )
+
+    actual <- dtatools:::.resolve_merge_input(url, "x")
+
+    expect_identical(actual, expected)
+    expect_identical(seen, url)
+})
+
 test_that("multiple keys match jointly under missing-code identity", {
     master <- tibble::tibble(
         region = c(1, 1, 2),

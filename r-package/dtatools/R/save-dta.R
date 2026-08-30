@@ -91,6 +91,11 @@ save_dta <- function(data, path, version = 19L,
         .dta_write_warn(write_warning$message, write_warning$class)
     }
 
+    .commit_dta_write(temporary, destination)
+    invisible(data)
+}
+
+.commit_dta_write <- function(temporary, destination) {
     destination_kind <- .validate_dta_write_destination(destination)
     mode <- if (destination_kind == 1L) {
         file.info(destination)$mode
@@ -103,17 +108,17 @@ save_dta <- function(data, path, version = 19L,
     if (!is.null(mode) && !is.na(mode) &&
         !isTRUE(Sys.chmod(temporary, mode = mode))) {
         .dta_write_abort(sprintf(
-            "Could not set permissions on the completed DTA file `%s`",
+            "Could not set permissions on the completed file `%s`",
             destination
         ), "dtatools_write_path_error")
     }
     if (!file.rename(temporary, destination)) {
         .dta_write_abort(sprintf(
-            "Could not atomically replace `%s` with the completed DTA file",
+            "Could not atomically replace `%s` with the completed file",
             destination
         ), "dtatools_write_path_error")
     }
-    invisible(data)
+    invisible(NULL)
 }
 
 .dta_write_abort <- function(message, subclass = "dtatools_write_validation_error") {
@@ -406,7 +411,8 @@ save_dta <- function(data, path, version = 19L,
     )
 }
 
-.prepare_write_value_labels <- function(column, name) {
+.prepare_write_value_labels <- function(column, name,
+                                        allow_legacy_codes = FALSE) {
     labels <- attr(column, "labels", exact = TRUE)
     if (is.null(labels)) return(list(double(), character(), FALSE))
     argument <- sprintf("labels for `%s`", name)
@@ -424,13 +430,31 @@ save_dta <- function(data, path, version = 19L,
             "`%s` must have non-missing text for every code", argument
         ))
     }
-    if (any(!.stata_value_label_code_info(labels)$valid)) {
+    valid <- if (allow_legacy_codes) {
+        missing_codes <- .tab_missing_codes(labels)
+        tagged <- !is.na(missing_codes) &
+            missing_codes >= utf8ToInt("a") &
+            missing_codes <= utf8ToInt("z")
+        observed <- is.na(missing_codes) & is.finite(labels) &
+            labels == floor(labels) &
+            labels >= -(.Machine$integer.max + 1) &
+            labels <= .Machine$integer.max
+        tagged | observed
+    } else {
+        .stata_value_label_code_info(labels)$valid
+    }
+    if (any(!valid)) {
+        range <- if (allow_legacy_codes) {
+            "signed 32-bit integers"
+        } else {
+            "nonmissing integers in Stata's long range"
+        }
         .dta_write_abort(sprintf(
             paste0(
-                "`%s` codes must be nonmissing integers in Stata's long ",
-                "range or extended missings `.a` through `.z`"
+                "`%s` codes must be %s or extended missings ",
+                "`.a` through `.z`"
             ),
-            argument
+            argument, range
         ))
     }
     violations <- .value_label_limit_violations(
@@ -787,7 +811,7 @@ save_dta <- function(data, path, version = 19L,
     kind
 }
 
-.resolve_dta_write_path <- function(path) {
+.resolve_dta_write_path <- function(path, default_extension = "dta") {
     if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
         .dta_write_abort("`path` must be one nonempty local filename",
                          "dtatools_write_path_error")
@@ -796,13 +820,13 @@ save_dta <- function(data, path, version = 19L,
     write_warnings <- list()
     extension <- tolower(tools::file_ext(basename(path)))
     if (extension %in% c("gz", "bz2", "xz", "zip")) {
-        .dta_write_abort(
-            "Compressed output paths are not supported; write an ordinary `.dta` file",
-            "dtatools_write_path_error"
-        )
+        .dta_write_abort(sprintf(
+            "Compressed output paths are not supported; write an ordinary `.%s` file",
+            default_extension
+        ), "dtatools_write_path_error")
     }
     if (!nzchar(extension)) {
-        path <- paste0(path, ".dta")
+        path <- paste0(path, ".", default_extension)
         write_warnings <- list(.dta_write_warning(
             sprintf("`path` has no extension; writing `%s`", path),
             "dtatools_write_extension_warning"

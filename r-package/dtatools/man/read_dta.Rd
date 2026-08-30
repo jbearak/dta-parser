@@ -5,7 +5,8 @@
 read_dta(file, encoding = NULL, col_select = NULL, skip = 0,
   n_max = Inf, .name_repair = "unique",
   threads = getOption("dtatools.threads", 0L),
-  use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE))
+  use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
+  datasig = FALSE)
 }
 \arguments{
 \item{file}{A path, URL, raw vector, or binary connection. Local and remote
@@ -41,6 +42,13 @@ their compact Stata storage through ALTREP. Set to \code{FALSE} to create eager
 R double vectors during decoding, which uses more memory but avoids later
 widening when a workload requires a contiguous double data pointer.
 Character-column ALTREP is unaffected.}
+\item{datasig}{Whether to record the file's \code{\link{datasig}} signature in
+the result's \code{datasig} attribute, as a load-time record of what the file
+on disk signed as; it is never updated afterwards, so it is not a claim about
+the object's current content. Computing it costs one hash pass over the
+decoded columns (no second read of the file) and equals \code{datasig(file)}.
+Requires reading the complete file: incompatible with \code{col_select},
+\code{skip}, and \code{n_max}.}
 }
 \value{A tibble containing native numeric and character vectors. Numeric
 columns carry their declared Stata storage type. Byte, int, long, and float

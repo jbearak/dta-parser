@@ -23,10 +23,13 @@ use dta_tools::{
     VariableInfo,
 };
 
+mod arrow_ffi;
+
 type Sexp = *mut c_void;
 type RLen = isize;
 
 const INTSXP: c_int = 13;
+const LGLSXP: c_int = 10;
 const REALSXP: c_int = 14;
 const STRSXP: c_int = 16;
 const VECSXP: c_int = 19;
@@ -43,9 +46,11 @@ extern "C" {
     fn SET_STRING_ELT(vector: Sexp, index: RLen, value: Sexp);
     fn SET_VECTOR_ELT(vector: Sexp, index: RLen, value: Sexp) -> Sexp;
     fn INTEGER(vector: Sexp) -> *mut c_int;
+    fn LOGICAL(vector: Sexp) -> *mut c_int;
     fn REAL(vector: Sexp) -> *mut f64;
     fn RAW(vector: Sexp) -> *mut u8;
 
+    static mut R_NaString: Sexp;
     static mut R_NamesSymbol: Sexp;
     static mut R_ClassSymbol: Sexp;
     static mut R_RowNamesSymbol: Sexp;
@@ -2023,6 +2028,57 @@ fn write_callback_status(
             error.message().unwrap_or_else(|| fallback.to_owned()),
         )),
     }
+}
+
+/// Read one region of a protected STRSXP into owned strings through the
+/// string region callback. `None` marks `NA_character_`.
+unsafe fn fill_string_region(
+    values: Sexp,
+    start: usize,
+    length: usize,
+    what: &str,
+) -> Result<Vec<Option<String>>, String> {
+    if values.is_null() {
+        return Err(format!("{what} vector is null"));
+    }
+    let mut strings: Vec<*const c_char> = vec![ptr::null(); length];
+    let mut lengths: Vec<usize> = vec![0; length];
+    let mut error = WriteCallbackErrorBuffer::new();
+    let error_capacity = error.capacity();
+    let status = dtatools_write_string_region(
+        values,
+        start,
+        length,
+        ptr::null_mut(),
+        strings.as_mut_ptr(),
+        lengths.as_mut_ptr(),
+        error.as_mut_ptr(),
+        error_capacity,
+    );
+    match status {
+        value if value > 0 => {}
+        -1 => return Err("interrupted".to_owned()),
+        _ => {
+            return Err(error
+                .message()
+                .unwrap_or_else(|| format!("could not read {what} from R")))
+        }
+    }
+    let mut result = Vec::new();
+    result
+        .try_reserve_exact(length)
+        .map_err(|_| format!("could not allocate {what}"))?;
+    for (&bytes, &byte_length) in strings.iter().zip(&lengths) {
+        if bytes.is_null() {
+            result.push(None);
+        } else {
+            let slice = std::slice::from_raw_parts(bytes.cast::<u8>(), byte_length);
+            let value =
+                std::str::from_utf8(slice).map_err(|_| format!("{what} contains invalid UTF-8"))?;
+            result.push(Some(value.to_owned()));
+        }
+    }
+    Ok(result)
 }
 
 #[derive(Default)]

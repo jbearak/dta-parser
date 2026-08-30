@@ -37,6 +37,50 @@ extern int dtatools_dictstring_bytes(
 );
 
 typedef struct {
+    const char *name;
+    int kind;
+    const char *label;
+    const char *format;
+    int storage;
+    int ordered;
+    const char *tz;
+    const char *units;
+    const void *values;
+    SEXP strings;
+    size_t string_count;
+    const void *compact_values;
+    int compact_kind;
+    int compact_format_version;
+    int compact_temporal;
+    const double *label_values;
+    SEXP label_texts;
+    size_t label_count;
+    int has_value_labels;
+    int haven_labelled;
+    /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
+    const void *dictstring;
+} dtatools_arrow_column;
+
+extern SEXP dtatools_save_arrow_rust(
+    const char *, const char *, SEXP, size_t, const dtatools_arrow_column *,
+    size_t, size_t, const char *, int, int, int *, char **
+);
+extern SEXP dtatools_datasig_rust(
+    const char *, SEXP, size_t, const dtatools_arrow_column *, size_t, size_t,
+    int, int *, char **
+);
+extern void *dtatools_open_arrow_rust(const char *, char **);
+extern void dtatools_close_arrow_rust(void *);
+extern SEXP dtatools_read_arrow_rust(
+    const void *, const int *, size_t, int, double, double, int, int, int,
+    int, int, int *, char **
+);
+extern SEXP dtatools_arrow_metadata_rust(
+    const void *, int, int, double, double, int *, char **
+);
+extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
+
+typedef struct {
     uint32_t *value_ids;
     size_t length;
 } dictstring_data;
@@ -2523,7 +2567,9 @@ static const char *write_scalar_string(SEXP value, const char *name) {
     return Rf_translateCharUTF8(STRING_ELT(value, 0));
 }
 
-static SEXP write_utf8_strings(SEXP values, const char *name) {
+static SEXP write_utf8_strings(
+    SEXP values, const char *name, int allow_missing
+) {
     if (TYPEOF(values) != STRSXP) {
         Rf_error("internal `%s` must be character", name);
     }
@@ -2532,6 +2578,11 @@ static SEXP write_utf8_strings(SEXP values, const char *name) {
     for (R_xlen_t index = 0; index < length; index++) {
         SEXP element = PROTECT(STRING_ELT(values, index));
         if (element == NA_STRING) {
+            if (allow_missing) {
+                SET_STRING_ELT(normalized, index, NA_STRING);
+                UNPROTECT(1);
+                continue;
+            }
             UNPROTECT(2);
             Rf_error("internal `%s` contains a missing string", name);
         }
@@ -2548,7 +2599,16 @@ static SEXP write_utf8_strings(SEXP values, const char *name) {
 static SEXP write_rooted_strings(
     SEXP roots, R_xlen_t index, SEXP values, const char *name
 ) {
-    SEXP normalized = PROTECT(write_utf8_strings(values, name));
+    SEXP normalized = PROTECT(write_utf8_strings(values, name, 0));
+    SET_VECTOR_ELT(roots, index, normalized);
+    UNPROTECT(1);
+    return normalized;
+}
+
+static SEXP write_rooted_optional_strings(
+    SEXP roots, R_xlen_t index, SEXP values, const char *name
+) {
+    SEXP normalized = PROTECT(write_utf8_strings(values, name, 1));
     SET_VECTOR_ELT(roots, index, normalized);
     UNPROTECT(1);
     return normalized;
@@ -2562,6 +2622,16 @@ static const char *write_rooted_scalar_string(
     }
     SEXP normalized = write_rooted_strings(roots, index, value, name);
     return CHAR(STRING_ELT(normalized, 0));
+}
+
+static const char *write_rooted_nullable_scalar_string(
+    SEXP roots, R_xlen_t index, SEXP value, const char *name
+) {
+    if (Rf_isNull(value)) {
+        SET_VECTOR_ELT(roots, index, R_NilValue);
+        return NULL;
+    }
+    return write_rooted_scalar_string(roots, index, value, name);
 }
 
 SEXP C_dtatools_write_path_kind(SEXP path) {
@@ -2751,6 +2821,448 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     if (!ok) fail_from_rust(rust_error);
     UNPROTECT(2);
     return numeric_replacements;
+}
+
+/* One Arrow write column: a fourteen-element list built by
+ * .prepare_arrow_write(): name, kind, values, levels, ordered, label, format,
+ * storage, tz, units, label_values, label_texts, has_value_labels,
+ * haven_labelled. Character data must already be UTF-8; the R layer normalizes
+ * with enc2utf8(). */
+static void arrow_write_column_descriptor(
+    SEXP column, size_t index, size_t row_count, SEXP string_roots,
+    R_xlen_t *root_index, dtatools_arrow_column *descriptor
+) {
+    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 14) {
+        Rf_error("internal Arrow column must be a fourteen-element list");
+    }
+    SEXP kind_value = VECTOR_ELT(column, 1);
+    SEXP values = VECTOR_ELT(column, 2);
+    SEXP levels = VECTOR_ELT(column, 3);
+    SEXP ordered = VECTOR_ELT(column, 4);
+    SEXP storage = VECTOR_ELT(column, 7);
+    SEXP label_values = VECTOR_ELT(column, 10);
+    SEXP label_texts = VECTOR_ELT(column, 11);
+    SEXP has_value_labels = VECTOR_ELT(column, 12);
+    SEXP haven_labelled = VECTOR_ELT(column, 13);
+    if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1 ||
+        TYPEOF(ordered) != LGLSXP || XLENGTH(ordered) != 1 ||
+        TYPEOF(storage) != INTSXP || XLENGTH(storage) != 1 ||
+        TYPEOF(label_values) != REALSXP || TYPEOF(label_texts) != STRSXP ||
+        XLENGTH(label_values) != XLENGTH(label_texts) ||
+        TYPEOF(has_value_labels) != LGLSXP ||
+        XLENGTH(has_value_labels) != 1 ||
+        LOGICAL(has_value_labels)[0] == NA_LOGICAL ||
+        TYPEOF(haven_labelled) != LGLSXP || XLENGTH(haven_labelled) != 1 ||
+        LOGICAL(haven_labelled)[0] == NA_LOGICAL) {
+        Rf_error("invalid internal Arrow column metadata");
+    }
+    if ((size_t) XLENGTH(values) != row_count) {
+        Rf_error("internal Arrow columns have different lengths");
+    }
+
+    memset(descriptor, 0, sizeof(*descriptor));
+    descriptor->kind = INTEGER(kind_value)[0];
+    descriptor->storage = INTEGER(storage)[0];
+    descriptor->ordered = LOGICAL(ordered)[0] == 1;
+    descriptor->strings = R_NilValue;
+    descriptor->name = write_rooted_scalar_string(
+        string_roots, (*root_index)++, VECTOR_ELT(column, 0), "name"
+    );
+    descriptor->label = write_rooted_scalar_string(
+        string_roots, (*root_index)++, VECTOR_ELT(column, 5), "variable label"
+    );
+    descriptor->format = write_rooted_scalar_string(
+        string_roots, (*root_index)++, VECTOR_ELT(column, 6), "format"
+    );
+    descriptor->tz = write_rooted_nullable_scalar_string(
+        string_roots, (*root_index)++, VECTOR_ELT(column, 8), "time zone"
+    );
+    descriptor->units = write_rooted_scalar_string(
+        string_roots, (*root_index)++, VECTOR_ELT(column, 9), "units"
+    );
+    descriptor->label_texts = write_rooted_strings(
+        string_roots, (*root_index)++, label_texts, "value-label text"
+    );
+    descriptor->label_count = (size_t) XLENGTH(label_values);
+    descriptor->has_value_labels = LOGICAL(has_value_labels)[0];
+    descriptor->haven_labelled = LOGICAL(haven_labelled)[0];
+    descriptor->label_values =
+        descriptor->label_count > 0 ? REAL(label_values) : NULL;
+
+    switch (descriptor->kind) {
+    case 0: /* logical */
+        if (TYPEOF(values) != LGLSXP) {
+            Rf_error("internal Arrow logical column has the wrong type");
+        }
+        descriptor->values = LOGICAL(values);
+        break;
+    case 1: /* integer */
+        if (TYPEOF(values) != INTSXP) {
+            Rf_error("internal Arrow integer column has the wrong type");
+        }
+        descriptor->values = INTEGER(values);
+        break;
+    case 2: /* double */
+    case 6: /* date */
+    case 7: /* datetime */
+    case 8: /* difftime */
+        if (TYPEOF(values) != REALSXP) {
+            Rf_error("internal Arrow double column has the wrong type");
+        }
+        descriptor->values = REAL(values);
+        break;
+    case 3: { /* character */
+        if (TYPEOF(values) != STRSXP) {
+            Rf_error("internal Arrow character column has the wrong type");
+        }
+        descriptor->strings = values;
+        descriptor->string_count = row_count;
+        SEXP dictionary_source = unmaterialized_dictstring_source(values);
+        if (dictionary_source != R_NilValue) {
+            descriptor->dictstring = dictstring_storage(dictionary_source);
+        }
+        break;
+    }
+    case 4: /* raw */
+        if (TYPEOF(values) != RAWSXP) {
+            Rf_error("internal Arrow raw column has the wrong type");
+        }
+        descriptor->values = RAW(values);
+        break;
+    case 5: /* factor */
+        if (TYPEOF(values) != INTSXP || TYPEOF(levels) != STRSXP) {
+            Rf_error("internal Arrow factor column has the wrong type");
+        }
+        descriptor->values = INTEGER(values);
+        descriptor->strings = write_rooted_optional_strings(
+            string_roots, (*root_index)++, levels, "factor levels"
+        );
+        descriptor->string_count = (size_t) XLENGTH(levels);
+        break;
+    case 9: { /* profiled Stata numeric */
+        numeric_data *compact = unmaterialized_numeric_storage(values);
+        if (compact != NULL) {
+            descriptor->compact_values = compact->values;
+            descriptor->compact_kind = compact->kind;
+            descriptor->compact_format_version = compact->format_version;
+            descriptor->compact_temporal = compact->temporal;
+        } else {
+            if (TYPEOF(values) != REALSXP) {
+                Rf_error("internal Arrow Stata column has the wrong type");
+            }
+            descriptor->values = REAL(values);
+        }
+        break;
+    }
+    default:
+        Rf_error("invalid internal Arrow column kind");
+    }
+    (void) index;
+}
+
+SEXP C_dtatools_save_arrow(
+    SEXP specification, SEXP path, SEXP compression, SEXP threads,
+    SEXP checksums
+) {
+    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 3) {
+        Rf_error("internal Arrow specification must be a three-element list");
+    }
+    if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
+        INTEGER(threads)[0] < 0) {
+        Rf_error("internal thread count must be one non-negative integer");
+    }
+    if (TYPEOF(checksums) != LGLSXP || XLENGTH(checksums) != 1 ||
+        LOGICAL(checksums)[0] == NA_LOGICAL) {
+        Rf_error("internal checksums flag must be TRUE or FALSE");
+    }
+    SEXP notes = VECTOR_ELT(specification, 1);
+    SEXP columns = VECTOR_ELT(specification, 2);
+    if (TYPEOF(notes) != STRSXP || TYPEOF(columns) != VECSXP) {
+        Rf_error("invalid internal Arrow specification");
+    }
+
+    size_t column_count = (size_t) XLENGTH(columns);
+    if (column_count > ((size_t) R_XLEN_T_MAX - 4) / 8) {
+        Rf_error("too many internal Arrow columns");
+    }
+    SEXP string_roots = PROTECT(Rf_allocVector(
+        VECSXP, (R_xlen_t) (4 + 8 * column_count)
+    ));
+    R_xlen_t root_index = 0;
+    const char *output_path = write_rooted_scalar_string(
+        string_roots, root_index++, path, "path"
+    );
+    const char *compression_label = write_rooted_scalar_string(
+        string_roots, root_index++, compression, "compression"
+    );
+    const char *dataset_label = write_rooted_scalar_string(
+        string_roots, root_index++, VECTOR_ELT(specification, 0),
+        "dataset label"
+    );
+    SEXP rooted_notes = write_rooted_strings(
+        string_roots, root_index++, notes, "dataset notes"
+    );
+
+    size_t row_count = 0;
+    if (column_count > 0) {
+        SEXP first = VECTOR_ELT(columns, 0);
+        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 14) {
+            Rf_error("internal Arrow column must be a fourteen-element list");
+        }
+        row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
+    }
+    dtatools_arrow_column *descriptors = (dtatools_arrow_column *) R_alloc(
+        (R_SIZE_T) column_count, (int) sizeof(dtatools_arrow_column)
+    );
+    for (size_t index = 0; index < column_count; index++) {
+        arrow_write_column_descriptor(
+            VECTOR_ELT(columns, (R_xlen_t) index), index, row_count,
+            string_roots, &root_index, &descriptors[index]
+        );
+    }
+
+    int interrupted = 0;
+    char *rust_error = NULL;
+    SEXP result = dtatools_save_arrow_rust(
+        output_path, dataset_label, rooted_notes,
+        (size_t) XLENGTH(rooted_notes), descriptors, column_count, row_count,
+        compression_label, INTEGER(threads)[0], LOGICAL(checksums)[0],
+        &interrupted,
+        &rust_error
+    );
+    if (result == NULL) {
+        UNPROTECT(1);
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow write interrupted");
+        }
+        fail_from_rust(rust_error);
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
+    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 3) {
+        Rf_error("internal Arrow specification must be a three-element list");
+    }
+    if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
+        INTEGER(threads)[0] < 0) {
+        Rf_error("internal thread count must be one non-negative integer");
+    }
+    SEXP notes = VECTOR_ELT(specification, 1);
+    SEXP columns = VECTOR_ELT(specification, 2);
+    if (TYPEOF(notes) != STRSXP || TYPEOF(columns) != VECSXP) {
+        Rf_error("invalid internal Arrow specification");
+    }
+
+    size_t column_count = (size_t) XLENGTH(columns);
+    if (column_count > ((size_t) R_XLEN_T_MAX - 2) / 8) {
+        Rf_error("too many internal Arrow columns");
+    }
+    SEXP string_roots = PROTECT(Rf_allocVector(
+        VECSXP, (R_xlen_t) (2 + 8 * column_count)
+    ));
+    R_xlen_t root_index = 0;
+    const char *dataset_label = write_rooted_scalar_string(
+        string_roots, root_index++, VECTOR_ELT(specification, 0),
+        "dataset label"
+    );
+    SEXP rooted_notes = write_rooted_strings(
+        string_roots, root_index++, notes, "dataset notes"
+    );
+
+    size_t row_count = 0;
+    if (column_count > 0) {
+        SEXP first = VECTOR_ELT(columns, 0);
+        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 14) {
+            Rf_error("internal Arrow column must be a fourteen-element list");
+        }
+        row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
+    }
+    dtatools_arrow_column *descriptors = (dtatools_arrow_column *) R_alloc(
+        (R_SIZE_T) column_count, (int) sizeof(dtatools_arrow_column)
+    );
+    for (size_t index = 0; index < column_count; index++) {
+        arrow_write_column_descriptor(
+            VECTOR_ELT(columns, (R_xlen_t) index), index, row_count,
+            string_roots, &root_index, &descriptors[index]
+        );
+    }
+
+    int interrupted = 0;
+    char *rust_error = NULL;
+    SEXP result = dtatools_datasig_rust(
+        dataset_label, rooted_notes, (size_t) XLENGTH(rooted_notes),
+        descriptors, column_count, row_count, INTEGER(threads)[0],
+        &interrupted,
+        &rust_error
+    );
+    if (result == NULL) {
+        UNPROTECT(1);
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow signature interrupted");
+        }
+        fail_from_rust(rust_error);
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+static SEXP dtatools_arrow_snapshot_tag = NULL;
+
+static void arrow_snapshot_finalize(SEXP external) {
+    void *snapshot = R_ExternalPtrAddr(external);
+    if (snapshot != NULL) {
+        dtatools_close_arrow_rust(snapshot);
+        R_ClearExternalPtr(external);
+    }
+}
+
+static void *arrow_snapshot_pointer(SEXP external) {
+    if (TYPEOF(external) != EXTPTRSXP ||
+        dtatools_arrow_snapshot_tag == NULL ||
+        R_ExternalPtrTag(external) != dtatools_arrow_snapshot_tag) {
+        Rf_error("internal Arrow file snapshot is invalid");
+    }
+    void *snapshot = R_ExternalPtrAddr(external);
+    if (snapshot == NULL) {
+        Rf_error("internal Arrow file snapshot is closed");
+    }
+    return snapshot;
+}
+
+SEXP C_dtatools_open_arrow(SEXP path) {
+    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
+        STRING_ELT(path, 0) == NA_STRING) {
+        Rf_error("`file` must be one non-missing path");
+    }
+    char *rust_error = NULL;
+    void *snapshot = dtatools_open_arrow_rust(
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), &rust_error
+    );
+    if (snapshot == NULL) fail_from_rust(rust_error);
+    if (dtatools_arrow_snapshot_tag == NULL) {
+        dtatools_arrow_snapshot_tag = Rf_install("dtatools_arrow_snapshot");
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(
+        snapshot, dtatools_arrow_snapshot_tag, R_NilValue
+    ));
+    R_RegisterCFinalizerEx(external, arrow_snapshot_finalize, TRUE);
+    UNPROTECT(1);
+    return external;
+}
+
+SEXP C_dtatools_close_arrow(SEXP snapshot) {
+    (void) arrow_snapshot_pointer(snapshot);
+    arrow_snapshot_finalize(snapshot);
+    return R_NilValue;
+}
+
+SEXP C_dtatools_read_arrow(
+    SEXP snapshot, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
+    SEXP numeric_altrep, SEXP threads, SEXP datasig
+) {
+    void *snapshot_pointer = arrow_snapshot_pointer(snapshot);
+    int all_columns = Rf_isNull(columns);
+    if (!all_columns && TYPEOF(columns) != INTSXP) {
+        Rf_error("internal column selection must be integer");
+    }
+    if (TYPEOF(skip) != REALSXP || XLENGTH(skip) != 1 ||
+        TYPEOF(n_max) != REALSXP || XLENGTH(n_max) != 1) {
+        Rf_error("internal row bounds must be numeric scalars");
+    }
+    if (TYPEOF(verify) != LGLSXP || XLENGTH(verify) != 1 ||
+        LOGICAL(verify)[0] == NA_LOGICAL ||
+        TYPEOF(profile) != LGLSXP || XLENGTH(profile) != 1 ||
+        LOGICAL(profile)[0] == NA_LOGICAL) {
+        Rf_error("internal Arrow read flags must be logical");
+    }
+    if (TYPEOF(numeric_altrep) != LGLSXP || XLENGTH(numeric_altrep) != 1 ||
+        LOGICAL(numeric_altrep)[0] == NA_LOGICAL) {
+        Rf_error("internal numeric ALTREP selector must be logical");
+    }
+    if (TYPEOF(datasig) != LGLSXP || XLENGTH(datasig) != 1 ||
+        LOGICAL(datasig)[0] == NA_LOGICAL) {
+        Rf_error("internal data signature selector must be logical");
+    }
+    if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
+        INTEGER(threads)[0] < 0) {
+        Rf_error("internal thread count must be one non-negative integer");
+    }
+    int interrupted = 0;
+    char *rust_error = NULL;
+    SEXP result = dtatools_read_arrow_rust(
+        snapshot_pointer,
+        all_columns ? NULL : INTEGER(columns),
+        all_columns ? 0 : (size_t) XLENGTH(columns),
+        all_columns,
+        REAL(skip)[0],
+        REAL(n_max)[0],
+        LOGICAL(verify)[0],
+        LOGICAL(profile)[0],
+        LOGICAL(numeric_altrep)[0],
+        INTEGER(threads)[0],
+        LOGICAL(datasig)[0],
+        &interrupted,
+        &rust_error
+    );
+    if (result == NULL) {
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow read interrupted");
+        }
+        fail_from_rust(rust_error);
+    }
+    return result;
+}
+
+SEXP C_dtatools_arrow_metadata(
+    SEXP snapshot, SEXP profile, SEXP scan_ambiguous_int32,
+    SEXP skip, SEXP n_max
+) {
+    void *snapshot_pointer = arrow_snapshot_pointer(snapshot);
+    if (TYPEOF(profile) != LGLSXP || XLENGTH(profile) != 1 ||
+        LOGICAL(profile)[0] == NA_LOGICAL ||
+        TYPEOF(scan_ambiguous_int32) != LGLSXP ||
+        XLENGTH(scan_ambiguous_int32) != 1 ||
+        LOGICAL(scan_ambiguous_int32)[0] == NA_LOGICAL) {
+        Rf_error("internal Arrow metadata selectors must be logical");
+    }
+    if (TYPEOF(skip) != REALSXP || XLENGTH(skip) != 1 ||
+        TYPEOF(n_max) != REALSXP || XLENGTH(n_max) != 1) {
+        Rf_error("internal Arrow metadata row bounds must be numeric scalars");
+    }
+    int interrupted = 0;
+    char *rust_error = NULL;
+    SEXP result = dtatools_arrow_metadata_rust(
+        snapshot_pointer, LOGICAL(profile)[0],
+        LOGICAL(scan_ambiguous_int32)[0],
+        REAL(skip)[0], REAL(n_max)[0],
+        &interrupted, &rust_error
+    );
+    if (result == NULL) {
+        if (interrupted) {
+            Rf_onintr();
+            Rf_error("Arrow read interrupted");
+        }
+        fail_from_rust(rust_error);
+    }
+    return result;
+}
+
+SEXP C_dtatools_arrow_datasig(SEXP path) {
+    if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 ||
+        STRING_ELT(path, 0) == NA_STRING) {
+        Rf_error("`file` must be one non-missing path");
+    }
+    char *error = NULL;
+    SEXP result = dtatools_arrow_datasig_rust(
+        Rf_translateCharUTF8(STRING_ELT(path, 0)), &error
+    );
+    if (result == NULL) fail_from_rust(error);
+    return result;
 }
 
 static R_xlen_t ephemeral_string_length(SEXP value) {
@@ -2972,6 +3484,12 @@ SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value) {
         value = R_altrep_data1(value);
     }
     return Rf_ScalarLogical(0);
+}
+
+SEXP C_dtatools_is_unmaterialized_dictstring(SEXP value) {
+    return Rf_ScalarLogical(
+        unmaterialized_dictstring_source(value) != R_NilValue
+    );
 }
 
 SEXP C_dtatools_numeric_storage_matches(
@@ -3252,6 +3770,15 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 4},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
+    {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},
+    {"C_dtatools_datasig", (DL_FUNC) &C_dtatools_datasig, 2},
+    {"C_dtatools_open_arrow", (DL_FUNC) &C_dtatools_open_arrow, 1},
+    {"C_dtatools_close_arrow", (DL_FUNC) &C_dtatools_close_arrow, 1},
+    {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 9},
+    {"C_dtatools_arrow_metadata",
+     (DL_FUNC) &C_dtatools_arrow_metadata, 5},
+    {"C_dtatools_arrow_datasig",
+     (DL_FUNC) &C_dtatools_arrow_datasig, 1},
     {"C_dtatools_write_path_kind",
      (DL_FUNC) &C_dtatools_write_path_kind, 1},
     {"C_dtatools_write_string_plan",
@@ -3270,6 +3797,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
+    {"C_dtatools_is_unmaterialized_dictstring",
+     (DL_FUNC) &C_dtatools_is_unmaterialized_dictstring, 1},
     {"C_dtatools_numeric_storage_matches",
      (DL_FUNC) &C_dtatools_numeric_storage_matches, 3},
     {"C_dtatools_force_altrep_materialization",

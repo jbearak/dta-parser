@@ -100,23 +100,23 @@ impl MissingTag {
         self as u8
     }
 
-    pub(crate) const fn byte_value(self) -> i8 {
+    pub const fn byte_value(self) -> i8 {
         BYTE_MISSING_DOT + self.offset() as i8
     }
 
-    pub(crate) const fn int_value(self) -> i16 {
+    pub const fn int_value(self) -> i16 {
         INT_MISSING_DOT + self.offset() as i16
     }
 
-    pub(crate) const fn long_value(self) -> i32 {
+    pub const fn long_value(self) -> i32 {
         LONG_MISSING_DOT + self.offset() as i32
     }
 
-    pub(crate) const fn float_bits(self) -> u32 {
+    pub const fn float_bits(self) -> u32 {
         FLOAT_MISSING_DOT_BITS + self.offset() as u32 * FLOAT_MISSING_STEP_BITS
     }
 
-    pub(crate) const fn double_bits(self) -> u64 {
+    pub const fn double_bits(self) -> u64 {
         DOUBLE_MISSING_DOT_BITS + self.offset() as u64 * DOUBLE_MISSING_STEP_BITS
     }
 }
