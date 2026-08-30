@@ -99,6 +99,7 @@ fn field_document(
         label: format!("label for a {class} column"),
         format: String::new(),
         storage,
+        string_storage: None,
         value_labels: None,
         missing,
         missing_release: None,

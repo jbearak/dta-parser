@@ -1550,10 +1550,13 @@ fn write_strls<W: Write, S: DtaWriteObservationSource + ?Sized>(
         .max()
         .unwrap_or(0);
     for word_index in 0..word_count {
-        let mut rows = plans.iter().filter_map(|plan| {
-            plan.as_ref()
-                .and_then(|plan| plan.canonical.get(word_index).copied())
-        }).fold(0, |left, right| left | right);
+        let mut rows = plans
+            .iter()
+            .filter_map(|plan| {
+                plan.as_ref()
+                    .and_then(|plan| plan.canonical.get(word_index).copied())
+            })
+            .fold(0, |left, right| left | right);
         while rows != 0 {
             let bit = rows.trailing_zeros() as usize;
             let row_index = word_index
