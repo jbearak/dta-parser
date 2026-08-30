@@ -16,9 +16,10 @@
 #' undetected. This signature is a function of the values in row order:
 #' sorting the data, swapping two values within a column, or swapping values
 #' between columns all change it. The two commands therefore answer different
-#' questions; this one answers "is this file bit-for-bit the dataset I
-#' recorded?", which is the integrity question for raw data under a
-#' reproducible pipeline.
+#' questions; this one asks whether the canonical dataset content matches what
+#' was recorded. It is not a byte-for-byte checksum of the file: equivalent
+#' `.dta` and `.arrow` containers can sign identically. xxHash64 is designed to
+#' catch accidental changes, not provide a cryptographic tamper check.
 #'
 #' @section Container independence:
 #' The signature is a function of the logical dataset, not the container it

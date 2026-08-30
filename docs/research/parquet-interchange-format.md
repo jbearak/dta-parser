@@ -33,7 +33,7 @@ ignore that metadata. The honest product claim would therefore be:
 
 > A versioned dtatools format built on Parquet, with exact dtatools round trips.
 
-Parquet may plausibly meet or exceed `read_dta()`/`write_dta()` for some
+Parquet may plausibly meet or exceed `read_dta()`/`save_dta()` for some
 workloads, especially projected reads, repeated or low-cardinality columns,
 compressed storage, and parallel decode. No relative performance claim is
 justified before a like-for-like benchmark. DTA's row-major layout and this
@@ -277,7 +277,7 @@ metadata control while sharing the Rust core.
 ### What must be benchmarked
 
 No existing repository result compares Parquet with `read_dta()` or
-`write_dta()`. The repository's current reports concern DTA implementations and
+`save_dta()`. The repository's current reports concern DTA implementations and
 must not be extrapolated across formats. A useful qualification should first
 verify semantic equality, then measure:
 
@@ -291,7 +291,7 @@ verify semantic equality, then measure:
 * elapsed time, peak RSS, output bytes, and materialization behavior;
 * single-thread and matched-thread-count configurations.
 
-The comparison should include `dtaparser::read_dta()`/`write_dta()`, Arrow R's
+The comparison should include `dtatools::read_dta()`/`dtatools::save_dta()`, Arrow R's
 Parquet path, and a direct Rust/`arrow-rs` path if built. It should use the same
 logical table and projection, exclude one-time package loading only if excluded
 for all contenders, pin codec/row-group settings, and report CPU count. The
