@@ -444,6 +444,13 @@ fn validated_fields(
             .field
             .as_ref()
             .is_none_or(|document| document.missing.is_none());
+        if !nullable && column.array.null_count() > 0 {
+            return Err(ArrowProfileError::Invalid(format!(
+                "profiled column `{}` is non-nullable but contains {} nulls",
+                column.name,
+                column.array.null_count()
+            )));
+        }
         let mut field = Field::new(column.name.clone(), data_type.clone(), nullable);
         if let Some(document) = &column.field {
             validate_field_document(ARROW_PROFILE_VERSION, &field, document)?;

@@ -1089,6 +1089,44 @@ fn path_writer_preserves_an_existing_file_when_metadata_is_invalid() {
 }
 
 #[test]
+fn path_writer_preserves_an_existing_file_when_profiled_data_contains_nulls() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "status".to_owned(),
+            field: Some(ArrowFieldDocument {
+                storage: Some(StataStorage::Byte),
+                missing: Some(ArrowMissingEncoding::Sentinel),
+                ..ArrowFieldDocument::default()
+            }),
+            array: Arc::new(Int8Array::from(vec![Some(1), None])),
+        }],
+    };
+    let path = std::env::temp_dir().join(format!(
+        "dtatools-null-arrow-writer-{}.arrow",
+        std::process::id()
+    ));
+    std::fs::write(&path, b"existing contents").expect("write existing file");
+
+    let error = save_arrow_file(
+        &path,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        ARROW_ROWS_PER_BATCH,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("the path writer validates profiled nulls before replacing its target");
+    assert!(error.to_string().contains("non-nullable"));
+    assert_eq!(
+        std::fs::read(&path).expect("read existing file"),
+        b"existing contents"
+    );
+    std::fs::remove_file(path).expect("remove test file");
+}
+
+#[test]
 fn unsupported_columns_error_naming_the_column() {
     let list =
         arrow_array::ListArray::from_iter_primitive::<arrow_array::types::Int32Type, _, _>(vec![
