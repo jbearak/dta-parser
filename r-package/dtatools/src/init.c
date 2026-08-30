@@ -2624,6 +2624,16 @@ static const char *write_rooted_scalar_string(
     return CHAR(STRING_ELT(normalized, 0));
 }
 
+static const char *write_rooted_nullable_scalar_string(
+    SEXP roots, R_xlen_t index, SEXP value, const char *name
+) {
+    if (Rf_isNull(value)) {
+        SET_VECTOR_ELT(roots, index, R_NilValue);
+        return NULL;
+    }
+    return write_rooted_scalar_string(roots, index, value, name);
+}
+
 SEXP C_dtatools_write_path_kind(SEXP path) {
     const char *output_path = write_scalar_string(path, "path");
     char *rust_error = NULL;
@@ -2864,7 +2874,7 @@ static void arrow_write_column_descriptor(
     descriptor->format = write_rooted_scalar_string(
         string_roots, (*root_index)++, VECTOR_ELT(column, 6), "format"
     );
-    descriptor->tz = write_rooted_scalar_string(
+    descriptor->tz = write_rooted_nullable_scalar_string(
         string_roots, (*root_index)++, VECTOR_ELT(column, 8), "time zone"
     );
     descriptor->units = write_rooted_scalar_string(

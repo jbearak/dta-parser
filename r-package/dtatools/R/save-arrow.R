@@ -199,6 +199,12 @@ save_arrow <- function(data, path,
     units
 }
 
+.arrow_write_datetime_timezone <- function(column) {
+    timezone <- attr(column, "tzone", exact = TRUE)
+    if (is.null(timezone)) return(NULL)
+    .write_datetime_timezone(column)
+}
+
 .prepare_arrow_write_format <- function(column, name, kind) {
     if (is.null(attr(column, "format.stata", exact = TRUE))) return("")
     category <- switch(kind,
@@ -266,7 +272,7 @@ save_arrow <- function(data, path,
     )
     levels <- character()
     ordered <- FALSE
-    tz <- ""
+    tz <- NULL
     units <- ""
     storage_code <- -1L
     values <- column
@@ -312,7 +318,7 @@ save_arrow <- function(data, path,
         } else if (identical(kind, "date")) {
             values <- as.double(column)
         } else if (identical(kind, "datetime")) {
-            tz <- .write_datetime_timezone(column)
+            tz <- .arrow_write_datetime_timezone(column)
             values <- as.double(column)
         } else if (identical(kind, "difftime")) {
             units <- .arrow_write_difftime_units(column, name)
@@ -321,7 +327,9 @@ save_arrow <- function(data, path,
     }
 
     format <- .arrow_utf8(format, sprintf("Display format for `%s`", name))
-    tz <- .arrow_utf8(tz, sprintf("Timezone for `%s`", name))
+    if (!is.null(tz)) {
+        tz <- .arrow_utf8(tz, sprintf("Timezone for `%s`", name))
+    }
     units <- .arrow_utf8(units, sprintf("Difftime units for `%s`", name))
 
     list(

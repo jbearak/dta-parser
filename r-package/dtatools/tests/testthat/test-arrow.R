@@ -79,6 +79,17 @@ test_that("empty data and default POSIXct timezones round-trip", {
     save_arrow(local, local_path)
     expect_identical(read_arrow(local_path), local)
     expect_identical(datasig(local_path), datasig(local))
+
+    implicit_time <- structure(
+        1577880000,
+        class = c("POSIXct", "POSIXt")
+    )
+    implicit <- tibble::tibble(when = implicit_time)
+    implicit_path <- arrow_tempfile()
+    save_arrow(implicit, implicit_path)
+    actual <- read_arrow(implicit_path)
+    expect_identical(actual, implicit)
+    expect_null(attr(actual$when, "tzone", exact = TRUE))
 })
 
 test_that("compression variants round-trip identically", {

@@ -829,7 +829,7 @@ struct ExtractedColumn {
     kind: RArrowKind,
     label: String,
     format: String,
-    tz: String,
+    tz: Option<String>,
     units: String,
     ordered: bool,
     haven_labelled: bool,
@@ -851,7 +851,11 @@ unsafe fn extract_column(
     let kind = RArrowKind::try_from(descriptor.kind)?;
     let label = optional_c_string(descriptor.label, "a variable label")?;
     let format = optional_c_string(descriptor.format, "a display format")?;
-    let tz = optional_c_string(descriptor.tz, "a time zone")?;
+    let tz = if descriptor.tz.is_null() {
+        None
+    } else {
+        Some(required_c_string(descriptor.tz, "a time zone")?)
+    };
     let units = optional_c_string(descriptor.units, "difftime units")?;
     let compact_version =
         if kind == RArrowKind::StataNumeric && !descriptor.compact_values.is_null() {
@@ -1001,7 +1005,7 @@ unsafe fn encode_column(
             if kind == RArrowKind::Datetime {
                 document.r = r_semantics(class);
                 if let Some(semantics) = document.r.as_mut() {
-                    semantics.tz = Some(column.tz.clone());
+                    semantics.tz.clone_from(&column.tz);
                 }
             } else if kind == RArrowKind::Difftime {
                 document.r = r_semantics(class);
@@ -1017,7 +1021,7 @@ unsafe fn encode_column(
                 let (mut field, array) = payload_double_column(values, document, class);
                 if let Some(semantics) = field.as_mut().and_then(|document| document.r.as_mut()) {
                     if kind == RArrowKind::Datetime {
-                        semantics.tz = Some(column.tz.clone());
+                        semantics.tz.clone_from(&column.tz);
                     } else if kind == RArrowKind::Difftime {
                         semantics.units = Some(column.units.clone());
                     }
@@ -1031,7 +1035,7 @@ unsafe fn encode_column(
                     }
                     RArrowKind::Date => date32_or_fallback(values, &codes, document),
                     RArrowKind::Datetime => {
-                        timestamp_or_fallback(values, &codes, document, &column.tz)
+                        timestamp_or_fallback(values, &codes, document, column.tz.as_deref())
                     }
                     RArrowKind::Difftime => {
                         duration_or_fallback(values, &codes, document, &column.units)?
@@ -1269,7 +1273,7 @@ fn timestamp_or_fallback(
     values: &[f64],
     codes: &[c_int],
     mut document: ArrowFieldDocument,
-    tz: &str,
+    tz: Option<&str>,
 ) -> (Option<ArrowFieldDocument>, ArrayRef, u64) {
     let to_micros = |value: f64| -> Option<i64> {
         let scaled = value * 1_000_000.0;
@@ -1291,16 +1295,16 @@ fn timestamp_or_fallback(
             TimestampMicrosecondArray::from_iter(values.iter().zip(codes).map(
                 |(&value, &code)| (code != 0).then(|| to_micros(value).expect("checked above")),
             ));
-        let array = if tz.is_empty() {
-            array.with_timezone_utc()
-        } else {
-            array.with_timezone(tz)
+        let array = match tz {
+            None => array,
+            Some("") => array.with_timezone_utc(),
+            Some(tz) => array.with_timezone(tz),
         };
         (needs_document_or_none(document), Arc::new(array), 0)
     } else {
         document.r = r_semantics("POSIXct");
         if let Some(semantics) = document.r.as_mut() {
-            semantics.tz = Some(tz.to_owned());
+            semantics.tz = tz.map(str::to_owned);
         }
         let array: ArrayRef = Arc::new(Float64Array::from_iter(
             values
@@ -2823,12 +2827,13 @@ unsafe fn apply_double_class(
         Some("Date") => set_class(vector, &["Date"], guard)?,
         Some("POSIXct") => {
             set_class(vector, &["POSIXct", "POSIXt"], guard)?;
-            let tz = attributes
+            if let Some(tz) = attributes
                 .semantics()
                 .and_then(|semantics| semantics.tz.as_deref())
-                .unwrap_or("UTC");
-            let timezone = scalar_string(tz, guard)?;
-            set_attr(vector, "tzone", timezone)?;
+            {
+                let timezone = scalar_string(tz, guard)?;
+                set_attr(vector, "tzone", timezone)?;
+            }
         }
         Some("difftime") => {
             apply_difftime_attributes(vector, attributes, guard)?;
@@ -2924,13 +2929,17 @@ unsafe fn finalize_read_column(
                 DataType::Timestamp(_, tz) => tz.as_deref(),
                 _ => None,
             };
-            let tz = attributes
-                .semantics()
-                .and_then(|semantics| semantics.tz.as_deref())
-                .or(type_tz)
-                .unwrap_or("UTC");
-            let timezone = scalar_string(tz, guard)?;
-            set_attr(vector, "tzone", timezone)?;
+            let tz = if attributes.class() == Some("POSIXct") {
+                attributes
+                    .semantics()
+                    .and_then(|semantics| semantics.tz.as_deref())
+            } else {
+                Some(type_tz.unwrap_or("UTC"))
+            };
+            if let Some(tz) = tz {
+                let timezone = scalar_string(tz, guard)?;
+                set_attr(vector, "tzone", timezone)?;
+            }
             attach_simple_attributes(vector, &attributes, guard)?;
             if let Some(table) = attributes.value_label_table() {
                 value_label_attributes(vector, &table, false, guard)?;
