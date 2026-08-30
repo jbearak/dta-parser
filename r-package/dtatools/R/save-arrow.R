@@ -348,9 +348,18 @@ save_arrow <- function(data, path,
 
 .arrow_dropped_attribute_warnings <- function(data, kinds) {
     details <- character()
+    known_dataset_attributes <- c("names", "label", "notes")
+    if (.row_names_info(data, type = 1L) <= 0L) {
+        known_dataset_attributes <- c(known_dataset_attributes, "row.names")
+    }
+    dataset_class <- attr(data, "class", exact = TRUE)
+    if (identical(dataset_class, "data.frame") ||
+        identical(dataset_class, c("tbl_df", "tbl", "data.frame"))) {
+        known_dataset_attributes <- c(known_dataset_attributes, "class")
+    }
     dataset_attributes <- setdiff(
         names(attributes(data)),
-        c("names", "row.names", "class", "label", "notes")
+        known_dataset_attributes
     )
     if (length(dataset_attributes)) {
         details <- sprintf(

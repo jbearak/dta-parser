@@ -805,6 +805,22 @@ test_that("save_arrow reports attributes the profile drops", {
     expect_null(attr(actual$x, "units.custom", exact = TRUE))
 })
 
+test_that("save_arrow reports custom row metadata the profile drops", {
+    data <- data.frame(x = c(1, 2), row.names = c("alice", "bob"))
+    class(data) <- c("tracked_data", "data.frame")
+    path <- arrow_tempfile()
+
+    expect_warning(
+        save_arrow(data, path),
+        "the data frame (class, row.names)",
+        fixed = TRUE,
+        class = "dtatools_write_attribute_drop_warning"
+    )
+    actual <- read_arrow(path)
+    expect_identical(attr(actual, "row.names", exact = TRUE), 1:2)
+    expect_identical(class(actual), c("tbl_df", "tbl", "data.frame"))
+})
+
 test_that("dta_merge accepts .arrow paths in either position", {
     master <- tibble::tibble(
         id = stata_byte(c(1, NA_real_, tagged_missing("a"))),
