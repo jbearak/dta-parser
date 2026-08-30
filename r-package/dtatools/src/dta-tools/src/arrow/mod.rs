@@ -32,7 +32,7 @@ use thiserror::Error;
 /// Failure while reading or writing a dtatools Arrow profile file.
 #[derive(Debug, Error)]
 pub enum ArrowProfileError {
-    #[error("could not read the Arrow file: {0}")]
+    #[error("Arrow file I/O error: {0}")]
     Io(#[from] std::io::Error),
     #[error("{0} is not an Arrow IPC file (missing ARROW1 magic bytes; the IPC stream variant is not supported)")]
     NotAnArrowFile(String),

@@ -15,7 +15,6 @@ use dta_tools::arrow::{
     arrow_stored_signature, dataset_signature, save_arrow_file, ArrowCompression,
     ArrowFieldDocument, ArrowFileSnapshot, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn,
     ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage,
-    ARROW_ROWS_PER_BATCH,
 };
 use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
@@ -1498,13 +1497,8 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
                 "cannot compute datasig after lossy numeric replacements in {details}"
             ));
         }
-        let signature = dataset_signature(
-            &dataset,
-            ARROW_ROWS_PER_BATCH,
-            requested_threads,
-            &mut coarse_interrupt,
-        )
-        .map_err(|error| error.to_string())?;
+        let signature = dataset_signature(&dataset, requested_threads, &mut coarse_interrupt)
+            .map_err(|error| error.to_string())?;
         let mut guard = ProtectGuard::new();
         scalar_string(&signature, &mut guard)
     })
@@ -1566,7 +1560,6 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             &path,
             &dataset,
             compression,
-            ARROW_ROWS_PER_BATCH,
             requested_threads,
             checksums != 0,
             &mut coarse_interrupt,

@@ -2076,10 +2076,7 @@ mod tests {
     use flatbuffers::FlatBufferBuilder;
 
     use super::*;
-    use crate::arrow::{
-        save_arrow_file, ArrowCompression, ArrowWriteColumn, ArrowWriteDataset,
-        ARROW_ROWS_PER_BATCH,
-    };
+    use crate::arrow::{save_arrow_file, ArrowCompression, ArrowWriteColumn, ArrowWriteDataset};
 
     #[cfg(unix)]
     #[test]
@@ -2109,7 +2106,6 @@ mod tests {
                 path,
                 &dataset,
                 ArrowCompression::Uncompressed,
-                ARROW_ROWS_PER_BATCH,
                 1,
                 true,
                 &mut || false,

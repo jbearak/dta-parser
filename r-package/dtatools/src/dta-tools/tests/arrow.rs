@@ -81,7 +81,6 @@ fn write_to_vec(dataset: &ArrowWriteDataset, compression: ArrowCompression) -> V
         &mut bytes,
         dataset,
         compression,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -376,7 +375,6 @@ fn projection_reads_io_proportional_to_selected_columns() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -633,7 +631,6 @@ fn profiled_integer_metadata_does_not_decode_column_bodies() {
         &mut bytes,
         &dataset,
         ArrowCompression::Zstd,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -976,7 +973,6 @@ fn writer_rejects_dangling_value_label_references_before_output() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1011,7 +1007,6 @@ fn writer_rejects_incompatible_field_documents_before_output() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1036,7 +1031,6 @@ fn writer_rejects_unsupported_dataset_documents_before_output() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1045,7 +1039,7 @@ fn writer_rejects_unsupported_dataset_documents_before_output() {
     assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
     assert!(error.to_string().contains("dataset document version 99"));
     assert!(bytes.is_empty());
-    let error = dataset_signature(&dataset, ARROW_ROWS_PER_BATCH, 1, &mut no_interrupt())
+    let error = dataset_signature(&dataset, 1, &mut no_interrupt())
         .expect_err("the signature boundary rejects unsupported dataset metadata");
     assert!(error.to_string().contains("dataset document version 99"));
 }
@@ -1074,7 +1068,6 @@ fn path_writer_preserves_an_existing_file_when_metadata_is_invalid() {
         &path,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1112,7 +1105,6 @@ fn path_writer_preserves_an_existing_file_when_profiled_data_contains_nulls() {
         &path,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1124,6 +1116,39 @@ fn path_writer_preserves_an_existing_file_when_profiled_data_contains_nulls() {
         b"existing contents"
     );
     std::fs::remove_file(path).expect("remove test file");
+}
+
+#[test]
+fn path_writer_reports_write_failures_as_file_io_errors() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![ArrowWriteColumn {
+            name: "x".to_owned(),
+            field: None,
+            array: Arc::new(Int32Array::from(vec![1, 2])),
+        }],
+    };
+    let path = std::env::temp_dir().join(format!(
+        "dtatools-arrow-writer-io-error-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&path).expect("create directory target");
+
+    let error = save_arrow_file(
+        &path,
+        &dataset,
+        ArrowCompression::Uncompressed,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("a directory cannot be opened as an Arrow output file");
+    std::fs::remove_dir(&path).expect("remove directory target");
+
+    assert!(
+        error.to_string().starts_with("Arrow file I/O error:"),
+        "unexpected error: {error}"
+    );
 }
 
 #[test]
@@ -1146,7 +1171,6 @@ fn unsupported_columns_error_naming_the_column() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1316,6 +1340,7 @@ fn parallel_decoding_matches_serial() {
     std::fs::remove_file(&path).ok();
 
     assert_eq!(parallel.row_count, serial.row_count);
+    assert_eq!(parallel.columns.len(), serial.columns.len());
     for (left, right) in parallel.columns.iter().zip(&serial.columns) {
         assert_eq!(left.name, right.name);
         let left_values = concat_chunks(&left.chunks);
@@ -1323,6 +1348,7 @@ fn parallel_decoding_matches_serial() {
         assert_eq!(&left_values, &right_values, "column `{}`", left.name);
     }
     assert_eq!(windowed.row_count, 500);
+    assert_eq!(windowed.columns.len(), serial.columns.len());
     for (column, full) in windowed.columns.iter().zip(&serial.columns) {
         let expected = concat_chunks(&full.chunks).slice(100, 500);
         let values = concat_chunks(&column.chunks);
@@ -1374,7 +1400,6 @@ fn parallel_checksum_hashing_matches_serial() {
         &mut serial,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         true,
         &mut no_interrupt(),
@@ -1385,7 +1410,6 @@ fn parallel_checksum_hashing_matches_serial() {
         &mut parallel,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         4,
         true,
         &mut no_interrupt(),
@@ -1413,7 +1437,6 @@ fn checksum_free_writes_round_trip_without_verification() {
         &mut bytes,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         false,
         &mut no_interrupt(),
@@ -1469,18 +1492,12 @@ fn dataset_signature_is_stable_across_thread_counts() {
     let values: Vec<f64> = (0..rows).map(|row| row as f64 / 7.0).collect();
     let serial = dataset_signature(
         &signature_dataset(values.clone(), "x"),
-        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
     .expect("serial signature");
-    let parallel = dataset_signature(
-        &signature_dataset(values, "x"),
-        ARROW_ROWS_PER_BATCH,
-        4,
-        &mut no_interrupt(),
-    )
-    .expect("parallel signature");
+    let parallel = dataset_signature(&signature_dataset(values, "x"), 4, &mut no_interrupt())
+        .expect("parallel signature");
     assert_eq!(serial, parallel);
     assert!(
         serial.starts_with(&format!("{rows}:1:")),
@@ -1489,41 +1506,17 @@ fn dataset_signature_is_stable_across_thread_counts() {
 }
 
 #[test]
-fn noncanonical_signature_batch_sizes_are_rejected() {
-    let dataset = signature_dataset(vec![1.0, 2.0, 3.0], "x");
-    let error = dataset_signature(&dataset, 64, 1, &mut no_interrupt())
-        .expect_err("signatures require the canonical batch size");
-    assert!(error.to_string().contains("65,536"));
-
-    let mut bytes = Vec::new();
-    let error = save_arrow_file_to(
-        &mut bytes,
-        &dataset,
-        ArrowCompression::Uncompressed,
-        64,
-        1,
-        true,
-        &mut no_interrupt(),
-    )
-    .expect_err("profile writes require the canonical batch size");
-    assert!(error.to_string().contains("65,536"));
-    assert!(bytes.is_empty());
-}
-
-#[test]
 fn dataset_signature_detects_value_order_and_names() {
     // The failure mode Stata's datasignature misses: two values swapped
     // within one column.
     let base = dataset_signature(
         &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
-        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
     .expect("base signature");
     let swapped = dataset_signature(
         &signature_dataset(vec![2.0, 1.0, 3.0], "x"),
-        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
@@ -1531,7 +1524,6 @@ fn dataset_signature_detects_value_order_and_names() {
     assert_ne!(base, swapped);
     let renamed = dataset_signature(
         &signature_dataset(vec![1.0, 2.0, 3.0], "y"),
-        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
@@ -1539,7 +1531,6 @@ fn dataset_signature_detects_value_order_and_names() {
     assert_ne!(base, renamed);
     let identical = dataset_signature(
         &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
-        ARROW_ROWS_PER_BATCH,
         1,
         &mut no_interrupt(),
     )
@@ -1576,8 +1567,7 @@ fn stored_signature_matches_recomputed_signature() {
             },
         ],
     };
-    let recomputed = dataset_signature(&dataset, ARROW_ROWS_PER_BATCH, 1, &mut no_interrupt())
-        .expect("signature");
+    let recomputed = dataset_signature(&dataset, 1, &mut no_interrupt()).expect("signature");
 
     let directory =
         std::env::temp_dir().join(format!("dtatools-stored-signature-{}", std::process::id()));
@@ -1618,7 +1608,6 @@ fn stored_signature_matches_recomputed_signature() {
         &mut bare,
         &dataset,
         ArrowCompression::Uncompressed,
-        ARROW_ROWS_PER_BATCH,
         1,
         false,
         &mut no_interrupt(),

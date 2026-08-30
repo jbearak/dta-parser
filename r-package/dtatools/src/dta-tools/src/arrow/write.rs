@@ -28,15 +28,6 @@ use super::ArrowProfileError;
 /// keeps sliced validity and boolean bitmaps byte-aligned.
 pub const ARROW_ROWS_PER_BATCH: usize = 65_536;
 
-fn validate_rows_per_batch(rows_per_batch: usize) -> Result<(), ArrowProfileError> {
-    if rows_per_batch != ARROW_ROWS_PER_BATCH {
-        return Err(ArrowProfileError::Invalid(format!(
-            "rows per record batch must use the canonical 65,536 rows, not {rows_per_batch}"
-        )));
-    }
-    Ok(())
-}
-
 /// The IPC body compression to apply. The default is uncompressed; readers
 /// detect the codec from the file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,13 +131,12 @@ enum HashTask {
 fn run_hash_task(
     dataset: &ArrowWriteDataset,
     row_count: usize,
-    rows_per_batch: usize,
     task: &HashTask,
 ) -> Result<Vec<String>, ArrowProfileError> {
     let hashes = match task {
         HashTask::Batch { batch, column } => {
-            let row_start = batch * rows_per_batch;
-            let batch_rows = rows_per_batch.min(row_count - row_start);
+            let row_start = batch * ARROW_ROWS_PER_BATCH;
+            let batch_rows = ARROW_ROWS_PER_BATCH.min(row_count - row_start);
             let slice = dataset.columns[*column].array.slice(row_start, batch_rows);
             canonical_array_hashes(slice.as_ref())?
         }
@@ -171,7 +161,6 @@ fn run_hash_task(
 fn hash_task_loop(
     dataset: &ArrowWriteDataset,
     row_count: usize,
-    rows_per_batch: usize,
     tasks: &[HashTask],
     next: &AtomicUsize,
     cancelled: &AtomicBool,
@@ -190,7 +179,7 @@ fn hash_task_loop(
         let Some(task) = tasks.get(index) else {
             return Ok(results);
         };
-        match run_hash_task(dataset, row_count, rows_per_batch, task) {
+        match run_hash_task(dataset, row_count, task) {
             Ok(hashes) => results.push((index, hashes)),
             Err(error) => {
                 cancelled.store(true, Ordering::Relaxed);
@@ -269,11 +258,10 @@ const DATASIG_PAYLOAD_VERSION: &str = "1";
 /// memory or after a `.dta` or `.arrow` round trip signs identically.
 pub fn dataset_signature(
     dataset: &ArrowWriteDataset,
-    rows_per_batch: usize,
     threads: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<String, ArrowProfileError> {
-    let (row_count, _) = validated_fields(dataset, rows_per_batch)?;
+    let (row_count, _) = validated_fields(dataset)?;
 
     let column_count = dataset.columns.len();
     let dictionary_columns: Vec<usize> = dataset
@@ -286,7 +274,7 @@ pub fn dataset_signature(
     let batch_count = if row_count == 0 && !dictionary_columns.is_empty() {
         1
     } else {
-        row_count.div_ceil(rows_per_batch)
+        row_count.div_ceil(ARROW_ROWS_PER_BATCH)
     };
     let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
     let cells = (row_count as u64).saturating_mul(column_count as u64);
@@ -298,7 +286,6 @@ pub fn dataset_signature(
         completed.push(hash_task_loop(
             dataset,
             row_count,
-            rows_per_batch,
             &tasks,
             &next,
             &cancelled,
@@ -315,22 +302,13 @@ pub fn dataset_signature(
                     let cancelled = &cancelled;
                     let tasks = &tasks;
                     scope.spawn(move || {
-                        hash_task_loop(
-                            dataset,
-                            row_count,
-                            rows_per_batch,
-                            tasks,
-                            next,
-                            cancelled,
-                            || false,
-                        )
+                        hash_task_loop(dataset, row_count, tasks, next, cancelled, || false)
                     })
                 })
                 .collect();
             let own_result = hash_task_loop(
                 dataset,
                 row_count,
-                rows_per_batch,
                 &tasks,
                 &next,
                 &cancelled,
@@ -412,11 +390,7 @@ fn serialize_json<T: serde::Serialize>(value: &T) -> Result<String, ArrowProfile
     serde_json::to_string(value).map_err(|error| ArrowProfileError::Invalid(error.to_string()))
 }
 
-fn validated_fields(
-    dataset: &ArrowWriteDataset,
-    rows_per_batch: usize,
-) -> Result<(usize, Vec<Field>), ArrowProfileError> {
-    validate_rows_per_batch(rows_per_batch)?;
+fn validated_fields(dataset: &ArrowWriteDataset) -> Result<(usize, Vec<Field>), ArrowProfileError> {
     validate_dataset_document(ARROW_PROFILE_VERSION, &dataset.dataset)?;
     let row_count = dataset
         .columns
@@ -475,19 +449,17 @@ pub fn save_arrow_file(
     path: impl AsRef<Path>,
     dataset: &ArrowWriteDataset,
     compression: ArrowCompression,
-    rows_per_batch: usize,
     threads: usize,
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    validated_fields(dataset, rows_per_batch)?;
+    validated_fields(dataset)?;
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
     save_arrow_file_to(
         &mut writer,
         dataset,
         compression,
-        rows_per_batch,
         threads,
         checksums,
         interrupt,
@@ -508,12 +480,11 @@ pub fn save_arrow_file_to<W: Write>(
     output: W,
     dataset: &ArrowWriteDataset,
     compression: ArrowCompression,
-    rows_per_batch: usize,
     threads: usize,
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    let (row_count, fields) = validated_fields(dataset, rows_per_batch)?;
+    let (row_count, fields) = validated_fields(dataset)?;
 
     let mut schema_metadata = HashMap::new();
     schema_metadata.insert(
@@ -534,14 +505,7 @@ pub fn save_arrow_file_to<W: Write>(
         .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?;
 
     let checksum_document = if !checksums {
-        write_batches(
-            &mut writer,
-            &schema,
-            dataset,
-            row_count,
-            rows_per_batch,
-            interrupt,
-        )?;
+        write_batches(&mut writer, &schema, dataset, row_count, interrupt)?;
         None
     } else {
         let column_count = dataset.columns.len();
@@ -555,7 +519,7 @@ pub fn save_arrow_file_to<W: Write>(
         let batch_count = if row_count == 0 && !dictionary_columns.is_empty() {
             1
         } else {
-            row_count.div_ceil(rows_per_batch)
+            row_count.div_ceil(ARROW_ROWS_PER_BATCH)
         };
         let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
         let cells = (row_count as u64).saturating_mul(column_count as u64);
@@ -566,16 +530,9 @@ pub fn save_arrow_file_to<W: Write>(
                 if interrupt() {
                     return Err(ArrowProfileError::Interrupted);
                 }
-                slots[index] = Some(run_hash_task(dataset, row_count, rows_per_batch, task)?);
+                slots[index] = Some(run_hash_task(dataset, row_count, task)?);
             }
-            write_batches(
-                &mut writer,
-                &schema,
-                dataset,
-                row_count,
-                rows_per_batch,
-                interrupt,
-            )?;
+            write_batches(&mut writer, &schema, dataset, row_count, interrupt)?;
         } else {
             // Hash on workers while this thread streams the batches to the
             // output, so the checksum pass hides behind the write pass. This
@@ -590,26 +547,12 @@ pub fn save_arrow_file_to<W: Write>(
                         let cancelled = &cancelled;
                         let tasks = &tasks;
                         scope.spawn(move || {
-                            hash_task_loop(
-                                dataset,
-                                row_count,
-                                rows_per_batch,
-                                tasks,
-                                next,
-                                cancelled,
-                                || false,
-                            )
+                            hash_task_loop(dataset, row_count, tasks, next, cancelled, || false)
                         })
                     })
                     .collect();
-                let write_result = write_batches(
-                    &mut writer,
-                    &schema,
-                    dataset,
-                    row_count,
-                    rows_per_batch,
-                    interrupt,
-                );
+                let write_result =
+                    write_batches(&mut writer, &schema, dataset, row_count, interrupt);
                 if write_result.is_err() {
                     cancelled.store(true, Ordering::Relaxed);
                 }
@@ -662,7 +605,6 @@ fn write_batches<W: Write>(
     schema: &Arc<Schema>,
     dataset: &ArrowWriteDataset,
     row_count: usize,
-    rows_per_batch: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
     if row_count == 0
@@ -691,7 +633,7 @@ fn write_batches<W: Write>(
         if interrupt() {
             return Err(ArrowProfileError::Interrupted);
         }
-        let batch_rows = rows_per_batch.min(row_count - row_start);
+        let batch_rows = ARROW_ROWS_PER_BATCH.min(row_count - row_start);
         let mut batch_columns = Vec::with_capacity(dataset.columns.len());
         for column in &dataset.columns {
             batch_columns.push(column.array.slice(row_start, batch_rows));
