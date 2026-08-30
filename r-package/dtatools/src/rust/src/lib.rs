@@ -657,6 +657,15 @@ unsafe fn attach_variable_attributes(
         let format = scalar_string(&variable.format, guard)?;
         set_attr(vector, "format.stata", format)?;
     }
+    let string_storage = match variable.dta_type {
+        DtaType::FixedString(width) => Some(format!("str{width}")),
+        DtaType::StrL => Some("strL".to_owned()),
+        _ => None,
+    };
+    if let Some(string_storage) = string_storage {
+        let value = scalar_string(&string_storage, guard)?;
+        set_attr(vector, "stata.string.storage", value)?;
+    }
     if let Some(table) = table {
         let labels = label_attribute(table, guard)?;
         set_attr(vector, "labels", labels)?;
@@ -2164,6 +2173,56 @@ fn save_dta_type(code: c_int) -> Result<DtaType, String> {
     }
 }
 
+fn wider_numeric_type(dta_type: &DtaType) -> Option<DtaType> {
+    match dta_type {
+        DtaType::Byte => Some(DtaType::Int),
+        DtaType::Int => Some(DtaType::Long),
+        DtaType::Long | DtaType::Float => Some(DtaType::Double),
+        DtaType::Double | DtaType::FixedString(_) | DtaType::StrL => None,
+    }
+}
+
+fn legacy_source_output_type(
+    source: &RWriteSource<'_>,
+    mut dta_type: DtaType,
+) -> Result<DtaType, String> {
+    if !source.direct_numeric_kind.is_compact()
+        || source.direct_numeric_version.is_none_or(|version| {
+            !matches!(
+                version,
+                FormatVersion::V105
+                    | FormatVersion::V108
+                    | FormatVersion::V110
+                    | FormatVersion::V111
+            )
+        })
+    {
+        return Ok(dta_type);
+    }
+
+    for index in 0..source.row_count {
+        let index = usize::try_from(index).map_err(|_| "R row index is too large".to_owned())?;
+        let Some((value, missing_code)) = (unsafe { direct_numeric_at(source, index) })? else {
+            return Ok(dta_type);
+        };
+        if missing_code != -1 {
+            continue;
+        }
+        let value = write_numeric_value(
+            value,
+            source.descriptor.numeric_shift,
+            source.descriptor.numeric_scale,
+        );
+        while !dta_write_numeric_value_is_representable(&dta_type, value) {
+            let Some(wider) = wider_numeric_type(&dta_type) else {
+                break;
+            };
+            dta_type = wider;
+        }
+    }
+    Ok(dta_type)
+}
+
 fn direct_numeric_is_output_encoded(
     descriptor: &RWriteColumnDescriptor,
     kind: DirectNumericKind,
@@ -3226,7 +3285,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         if !descriptor.numeric_shift.is_finite() || !descriptor.numeric_scale.is_finite() {
             return Err("numeric write transform must be finite".into());
         }
-        let dta_type = save_dta_type(descriptor.dta_type)?;
+        let dta_type = legacy_source_output_type(source, save_dta_type(descriptor.dta_type)?)?;
         let value_labels = r_value_labels(descriptor)?;
         columns.push(DtaWriteColumn {
             name: Cow::Borrowed(required_c_str(descriptor.name, "variable name")?),

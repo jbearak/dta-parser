@@ -28,6 +28,58 @@ stopifnot(
     any(inventory$sha256 == benchmark_file_sha256(fixture)),
     !anyDuplicated(inventory$id)
 )
+ordered_fixture <- inventory
+ordered_fixture$bytes <- c(20, 10)
+ordered_fixture$relative_path <- c("z.dta", "a.dta")
+ordered_fixture <- rbind(
+    ordered_fixture,
+    transform(ordered_fixture[1L, ], id = "tie", bytes = 10,
+              relative_path = "b.dta")
+)
+stopifnot(
+    identical(
+        roundtrip_order_smallest(ordered_fixture)$relative_path,
+        c("a.dta", "b.dta", "z.dta")
+    ),
+    identical(
+        roundtrip_select_verification(
+            ordered_fixture, "smallest", "2"
+        )$relative_path,
+        c("a.dta", "b.dta")
+    ),
+    identical(
+        roundtrip_select_verification(ordered_fixture, "id", "tie")$id,
+        "tie"
+    ),
+    nrow(roundtrip_select_verification(ordered_fixture, "full")) == 3L
+)
+limits <- roundtrip_verification_limits("16", "96")
+stopifnot(
+    identical(limits$jobs, 16L),
+    identical(limits$memory_bytes, 96 * 1024^3),
+    identical(
+        roundtrip_verification_waves(
+            c(1, 1, 40), jobs = 2L, memory_bytes = 100,
+            expansion = 2, minimum_bytes = 1
+        ),
+        list(c(1L, 2L), 3L)
+    ),
+    identical(
+        roundtrip_verification_waves(
+            c(30, 30, 30), jobs = 16L, memory_bytes = 100,
+            expansion = 2, minimum_bytes = 1
+        ),
+        list(1L, 2L, 3L)
+    )
+)
+invalid_jobs <- tryCatch(roundtrip_verification_limits("0", "96"), error = identity)
+invalid_memory <- tryCatch(roundtrip_verification_limits("16", "nope"), error = identity)
+stopifnot(inherits(invalid_jobs, "error"), inherits(invalid_memory, "error"))
+invalid_selection <- tryCatch(
+    roundtrip_select_verification(ordered_fixture, "smallest", "0"),
+    error = identity
+)
+stopifnot(inherits(invalid_selection, "error"))
 invalid_hash <- tryCatch(
     benchmark_validate_sha256("not-a-hash", 1L, "test file"),
     error = identity

@@ -640,7 +640,21 @@ save_dta <- function(data, path, version = 19L,
         plan <- .Call(C_dtatools_write_string_plan, column)
         maximum <- plan[[1L]]
         values <- plan[[3L]]
-        fixed <- maximum <= strl_threshold && maximum <= 2045L
+        declared <- attr(column, "stata.string.storage", exact = TRUE)
+        if (!is.null(declared) && (!is.character(declared) ||
+            length(declared) != 1L || is.na(declared) ||
+            !grepl("^(strL|str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5]))$", declared))) {
+            .dta_write_abort(sprintf(
+                "Column `%s` has an invalid `stata.string.storage` declaration",
+                name
+            ))
+        }
+        declared_width <- if (!is.null(declared) && declared != "strL") {
+            as.integer(sub("^str", "", declared))
+        } else NULL
+        if (!is.null(declared_width)) maximum <- max(maximum, declared_width)
+        fixed <- !identical(declared, "strL") &&
+            maximum <= strl_threshold && maximum <= 2045L
         width <- max(1L, maximum)
         type_code <- if (fixed) width + 4L else 2050L
         storage <- if (fixed) "fixed" else "strL"

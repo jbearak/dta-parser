@@ -42,6 +42,7 @@ typedef struct {
     const char *label;
     const char *format;
     int storage;
+    int string_storage;
     int ordered;
     const char *tz;
     const char *units;
@@ -2823,17 +2824,17 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     return numeric_replacements;
 }
 
-/* One Arrow write column: a fourteen-element list built by
+/* One Arrow write column: a fifteen-element list built by
  * .prepare_arrow_write(): name, kind, values, levels, ordered, label, format,
  * storage, tz, units, label_values, label_texts, has_value_labels,
- * haven_labelled. Character data must already be UTF-8; the R layer normalizes
+ * haven_labelled, string_storage. Character data must already be UTF-8; the R layer normalizes
  * with enc2utf8(). */
 static void arrow_write_column_descriptor(
     SEXP column, size_t index, size_t row_count, SEXP string_roots,
     R_xlen_t *root_index, dtatools_arrow_column *descriptor
 ) {
-    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 14) {
-        Rf_error("internal Arrow column must be a fourteen-element list");
+    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 15) {
+        Rf_error("internal Arrow column must be a fifteen-element list");
     }
     SEXP kind_value = VECTOR_ELT(column, 1);
     SEXP values = VECTOR_ELT(column, 2);
@@ -2844,6 +2845,7 @@ static void arrow_write_column_descriptor(
     SEXP label_texts = VECTOR_ELT(column, 11);
     SEXP has_value_labels = VECTOR_ELT(column, 12);
     SEXP haven_labelled = VECTOR_ELT(column, 13);
+    SEXP string_storage = VECTOR_ELT(column, 14);
     if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1 ||
         TYPEOF(ordered) != LGLSXP || XLENGTH(ordered) != 1 ||
         TYPEOF(storage) != INTSXP || XLENGTH(storage) != 1 ||
@@ -2853,7 +2855,8 @@ static void arrow_write_column_descriptor(
         XLENGTH(has_value_labels) != 1 ||
         LOGICAL(has_value_labels)[0] == NA_LOGICAL ||
         TYPEOF(haven_labelled) != LGLSXP || XLENGTH(haven_labelled) != 1 ||
-        LOGICAL(haven_labelled)[0] == NA_LOGICAL) {
+        LOGICAL(haven_labelled)[0] == NA_LOGICAL ||
+        TYPEOF(string_storage) != INTSXP || XLENGTH(string_storage) != 1) {
         Rf_error("invalid internal Arrow column metadata");
     }
     if ((size_t) XLENGTH(values) != row_count) {
@@ -2863,6 +2866,7 @@ static void arrow_write_column_descriptor(
     memset(descriptor, 0, sizeof(*descriptor));
     descriptor->kind = INTEGER(kind_value)[0];
     descriptor->storage = INTEGER(storage)[0];
+    descriptor->string_storage = INTEGER(string_storage)[0];
     descriptor->ordered = LOGICAL(ordered)[0] == 1;
     descriptor->strings = R_NilValue;
     descriptor->name = write_rooted_scalar_string(
@@ -3006,8 +3010,8 @@ SEXP C_dtatools_save_arrow(
     size_t row_count = 0;
     if (column_count > 0) {
         SEXP first = VECTOR_ELT(columns, 0);
-        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 14) {
-            Rf_error("internal Arrow column must be a fourteen-element list");
+        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 15) {
+            Rf_error("internal Arrow column must be a fifteen-element list");
         }
         row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
     }
@@ -3075,8 +3079,8 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
     size_t row_count = 0;
     if (column_count > 0) {
         SEXP first = VECTOR_ELT(columns, 0);
-        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 14) {
-            Rf_error("internal Arrow column must be a fourteen-element list");
+        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 15) {
+            Rf_error("internal Arrow column must be a fifteen-element list");
         }
         row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
     }

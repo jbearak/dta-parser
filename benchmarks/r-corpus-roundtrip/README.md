@@ -52,3 +52,47 @@ The aggregate-only [2026-08-28 report](results-2026-08-28.md) records the
 latest complete qualification against dtatools 0.6.0 under the documented
 Stata/MP 18 executable scope. The [2026-08-27 report](results-2026-08-27.md)
 remains the historical first complete qualification and write comparison.
+
+## Exact Stata verification
+
+`verify.sh` runs the stricter correctness loop. For each source it
+writes a direct DTA copy, an Arrow copy, and a DTA copy read back from Arrow.
+Stata compares the original with both DTA outputs. The comparison covers
+dimensions, variable order and names, storage types, display formats, dataset
+and variable labels, value-label assignments and definitions, notes, and every
+stored value. Notes means the dataset notes represented by the package; Stata
+variable notes are arbitrary variable characteristics and are outside the
+package's documented read model.
+
+Start with the smallest files:
+
+```sh
+benchmarks/r-corpus-roundtrip/verify.sh smallest 10
+```
+
+Run one previously failing file until it passes completely:
+
+```sh
+benchmarks/r-corpus-roundtrip/verify.sh id DHS-0123456789abcdef01234567
+```
+
+Only then restart the full size-ordered loop:
+
+```sh
+benchmarks/r-corpus-roundtrip/verify.sh full
+```
+
+Full verification uses up to 16 independent dataset processes and completes
+every selected dataset before reporting failures. Work is admitted in
+smallest-first, size-aware waves: the default estimated-memory ceiling is 96
+GiB, and each dataset reserves the larger of 512 MiB or 16 times its source
+size. This leaves headroom on a 128 GiB host and narrows concurrency for the
+largest inputs. Override the limits with `DTATOOLS_VERIFY_JOBS` and
+`DTATOOLS_VERIFY_MEMORY_GIB`. Each Stata comparison uses one processor.
+
+Passing work directories are deleted. Every failure is retained beneath
+`target/r-corpus-roundtrip-verification/`, and the ordered `verification.tsv`
+contains only corpus IDs and compact comparison locations, never source paths,
+labels, or values. Single-ID and smallest-file runs remain serial. Each
+invocation builds and installs the current checkout afresh, so a single-ID
+recheck cannot accidentally use the package that produced the prior failure.

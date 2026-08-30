@@ -156,6 +156,9 @@ pub struct ArrowFieldDocument {
     pub format: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage: Option<StataStorage>,
+    /// Declared DTA string storage: `str1` through `str2045`, or `strL`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub string_storage: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_labels: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
