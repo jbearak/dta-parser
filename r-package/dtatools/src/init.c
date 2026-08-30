@@ -221,6 +221,10 @@ static int is_tagged_na_value(double value) {
     return tagged_na_tag_value(value) != 0;
 }
 
+static int stata_expression_string_is_missing(SEXP value) {
+    return value == NA_STRING || LENGTH(value) == 0;
+}
+
 static int stata_missing_tag_value(double value) {
     int tag = tagged_na_tag_value(value);
     return tag >= 'a' && tag <= 'z' ? tag : 0;
@@ -3668,6 +3672,186 @@ SEXP C_dtatools_is_tagged_missing(SEXP value, SEXP tag) {
     return result;
 }
 
+static int is_missing_supported_class(SEXP value) {
+    if (!Rf_isObject(value)) return 1;
+    if (Rf_inherits(value, "factor")) return 0;
+
+    switch (TYPEOF(value)) {
+    case LGLSXP:
+    case INTSXP:
+    case REALSXP:
+        return Rf_inherits(value, "stata_numeric") ||
+            Rf_inherits(value, "stata_temporal") ||
+            Rf_inherits(value, "Date") ||
+            Rf_inherits(value, "POSIXct") ||
+            Rf_inherits(value, "haven_labelled");
+    case STRSXP:
+        return Rf_inherits(value, "haven_labelled");
+    default:
+        return 0;
+    }
+}
+
+static int is_missing_supported_type(SEXP value) {
+    int type = TYPEOF(value);
+    return type == LGLSXP || type == INTSXP || type == REALSXP ||
+        type == STRSXP;
+}
+
+static void validate_is_missing_argument(SEXP value, R_xlen_t argument) {
+    if (Rf_getAttrib(value, R_DimSymbol) != R_NilValue) {
+        Rf_error(
+            "Argument %lld to `is_missing()` must be a vector, not a matrix or array",
+            (long long) argument
+        );
+    }
+    if (!is_missing_supported_type(value)) {
+        Rf_error(
+            "Argument %lld to `is_missing()` must be a logical, numeric, or character vector",
+            (long long) argument
+        );
+    }
+    if (!is_missing_supported_class(value)) {
+        Rf_error(
+            "Argument %lld to `is_missing()` has an unsupported class",
+            (long long) argument
+        );
+    }
+}
+
+static int numeric_reader_is_missing_at(
+    const numeric_reader *reader, R_xlen_t index
+) {
+    if (reader->storage != NULL) {
+        numeric_data *data = reader->storage;
+        if (data->kind == NUMERIC_FLOAT) {
+            float value = numeric_float_raw_at(data, (size_t) index);
+            return float_missing_offset(value, data->format_version) >= 0 ||
+                isnan(value);
+        }
+        return numeric_missing_offset_at(data, (size_t) index) >= 0;
+    }
+
+    if (reader->type == INTSXP || reader->type == LGLSXP) {
+        int value = reader->integer_values == NULL
+            ? (reader->type == LGLSXP
+                ? LOGICAL_ELT(reader->value, index)
+                : INTEGER_ELT(reader->value, index))
+            : reader->integer_values[index];
+        return value == NA_INTEGER;
+    }
+
+    double value = reader->real_values == NULL
+        ? REAL_ELT(reader->value, index)
+        : reader->real_values[index];
+    return ISNAN(value);
+}
+
+static int is_missing_value_at(
+    SEXP value, const numeric_reader *reader, R_xlen_t index
+) {
+    if (TYPEOF(value) == STRSXP) {
+        return stata_expression_string_is_missing(STRING_ELT(value, index));
+    }
+    return numeric_reader_is_missing_at(reader, index);
+}
+
+SEXP C_dtatools_is_missing(SEXP values) {
+    if (TYPEOF(values) != VECSXP) {
+        Rf_error("internal `is_missing()` arguments must be a list");
+    }
+    R_xlen_t argument_count = XLENGTH(values);
+    if (argument_count == 0) {
+        Rf_error("`is_missing()` requires at least one argument");
+    }
+
+    R_xlen_t common_size = 1;
+    R_xlen_t common_argument = 0;
+    for (R_xlen_t argument = 0; argument < argument_count; argument++) {
+        SEXP value = VECTOR_ELT(values, argument);
+        validate_is_missing_argument(value, argument + 1);
+        R_xlen_t size = XLENGTH(value);
+        if (size == 1) continue;
+        if (common_argument == 0) {
+            common_size = size;
+            common_argument = argument + 1;
+        } else if (size != common_size) {
+            Rf_error(
+                "Argument %lld to `is_missing()` has size %lld, which is incompatible with argument %lld of size %lld; only size-one recycling is allowed",
+                (long long) (argument + 1), (long long) size,
+                (long long) common_argument, (long long) common_size
+            );
+        }
+    }
+
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, common_size));
+    int *output = LOGICAL(result);
+    memset(output, 0, (size_t) common_size * sizeof(int));
+    R_xlen_t unresolved = common_size;
+
+    for (R_xlen_t argument = 0;
+         argument < argument_count && unresolved > 0;
+         argument++) {
+        SEXP value = VECTOR_ELT(values, argument);
+        if (XLENGTH(value) != 1) continue;
+        R_CheckUserInterrupt();
+
+        numeric_reader reader = {0};
+        numeric_reader *reader_pointer = NULL;
+        if (TYPEOF(value) != STRSXP) {
+            reader = numeric_reader_create(value, 1);
+            reader_pointer = &reader;
+        }
+        if (!is_missing_value_at(value, reader_pointer, 0)) continue;
+
+        for (R_xlen_t index = 0; index < common_size; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            output[index] = 1;
+        }
+        unresolved = 0;
+    }
+
+    for (R_xlen_t argument = 0;
+         argument < argument_count && unresolved > 0;
+         argument++) {
+        SEXP value = VECTOR_ELT(values, argument);
+        R_xlen_t size = XLENGTH(value);
+        if (size <= 1) continue;
+
+        numeric_reader reader = {0};
+        numeric_reader *reader_pointer = NULL;
+        if (TYPEOF(value) != STRSXP) {
+            reader = numeric_reader_create(value, size);
+            reader_pointer = &reader;
+        }
+
+        for (R_xlen_t index = 0;
+             index < common_size && unresolved > 0;
+             index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            if (output[index]) continue;
+            int missing = is_missing_value_at(
+                value, reader_pointer, index
+            );
+            output[index] = missing;
+            if (missing) unresolved--;
+        }
+    }
+
+    for (R_xlen_t argument = 0; argument < argument_count; argument++) {
+        SEXP value = VECTOR_ELT(values, argument);
+        if (XLENGTH(value) != common_size) continue;
+        SEXP names = Rf_getAttrib(value, R_NamesSymbol);
+        if (names != R_NilValue) {
+            Rf_setAttrib(result, R_NamesSymbol, names);
+            break;
+        }
+    }
+
+    UNPROTECT(1);
+    return result;
+}
+
 SEXP C_dtatools_missing_tag(SEXP value) {
     if ((TYPEOF(value) != REALSXP && TYPEOF(value) != INTSXP) ||
         Rf_inherits(value, "factor")) {
@@ -3819,6 +4003,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_missing_tag", (DL_FUNC) &C_dtatools_missing_tag, 1},
     {"C_dtatools_is_tagged_missing",
      (DL_FUNC) &C_dtatools_is_tagged_missing, 2},
+    {"C_dtatools_is_missing", (DL_FUNC) &C_dtatools_is_missing, 1},
     {"C_dtatools_factorize_numeric",
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",
