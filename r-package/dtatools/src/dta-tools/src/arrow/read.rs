@@ -33,6 +33,7 @@ use super::ArrowProfileError;
 const FILE_MAGIC: &[u8; 6] = b"ARROW1";
 const CONTINUATION_MARKER: [u8; 4] = [0xff, 0xff, 0xff, 0xff];
 const MAX_IPC_METADATA_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_PARTIAL_BATCH_DECODE_BYTES: u64 = 256 * 1024 * 1024;
 
 fn metadata_buffer(length: u64, location: &str) -> Result<Vec<u8>, ArrowProfileError> {
     if length > MAX_IPC_METADATA_BYTES {
@@ -698,6 +699,78 @@ fn read_ipc_buffer<R: Read + Seek>(
     }
 }
 
+fn ipc_buffer_allocation_bytes<R: Read + Seek>(
+    reader: &mut R,
+    body_start: u64,
+    body_length: u64,
+    entry: (u64, u64),
+    compression: Option<Compression>,
+) -> Result<u64, ArrowProfileError> {
+    let (offset, stored_length) = entry;
+    if offset
+        .checked_add(stored_length)
+        .is_none_or(|end| end > body_length)
+    {
+        return Err(invalid("buffer extends past the record batch body"));
+    }
+    let Some(_) = compression else {
+        return Ok(stored_length);
+    };
+    if stored_length == 0 {
+        return Ok(0);
+    }
+    if stored_length < 8 {
+        return Err(invalid("compressed buffer is too short"));
+    }
+    let read_start = body_start
+        .checked_add(offset)
+        .ok_or_else(|| invalid("buffer offset overflows"))?;
+    let mut prefix = [0_u8; 8];
+    read_exact_at(reader, read_start, &mut prefix)?;
+    let declared = i64::from_le_bytes(prefix);
+    let decoded_length = if declared == -1 {
+        stored_length - 8
+    } else {
+        u64::try_from(declared).map_err(|_| invalid("bad compressed length"))?
+    };
+    stored_length
+        .checked_add(decoded_length)
+        .ok_or_else(|| invalid("Arrow buffer allocation size overflows"))
+}
+
+fn validate_partial_batch_decode_limit<'a, R: Read + Seek>(
+    reader: &mut R,
+    body_start: u64,
+    body_length: u64,
+    header: &BatchHeader,
+    layouts: impl IntoIterator<Item = &'a FieldLayout>,
+) -> Result<(), ArrowProfileError> {
+    let mut allocation_bytes = 0_u64;
+    for layout in layouts {
+        let entries = header
+            .buffers
+            .get(layout.buffer..layout.buffer + layout.buffer_count)
+            .ok_or_else(|| invalid("record batch header is missing buffers"))?;
+        for &entry in entries {
+            allocation_bytes = allocation_bytes
+                .checked_add(ipc_buffer_allocation_bytes(
+                    reader,
+                    body_start,
+                    body_length,
+                    entry,
+                    header.compression,
+                )?)
+                .ok_or_else(|| invalid("partial record batch allocation size overflows"))?;
+            if allocation_bytes > MAX_PARTIAL_BATCH_DECODE_BYTES {
+                return Err(invalid(format!(
+                    "partial record batch requires decoding {allocation_bytes} bytes; the safety limit is 256 MiB"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn buffer_from_bytes(bytes: Vec<u8>) -> Buffer {
     if bytes.is_empty() {
         Buffer::from(MutableBuffer::new(0))
@@ -1047,14 +1120,29 @@ fn prepare_read<R: Read + Seek>(
         if select_start >= select_end {
             continue;
         }
+        let slice_offset = usize::try_from(select_start - batch_start)
+            .map_err(|_| invalid("batch is too large"))?;
+        let slice_length = usize::try_from(select_end - select_start)
+            .map_err(|_| invalid("batch is too large"))?;
+        if slice_offset != 0 || slice_length as u64 != header.rows {
+            let body_start = block
+                .offset
+                .checked_add(u64::from(block.metadata_length))
+                .ok_or_else(|| invalid("record batch body offset overflows"))?;
+            validate_partial_batch_decode_limit(
+                reader,
+                body_start,
+                block.body_length,
+                &header,
+                selected.iter().map(|&index| &footer.layouts[index]),
+            )?;
+        }
         plans.push(BlockPlan {
             batch_index,
             block: *block,
             header,
-            slice_offset: usize::try_from(select_start - batch_start)
-                .map_err(|_| invalid("batch is too large"))?,
-            slice_length: usize::try_from(select_end - select_start)
-                .map_err(|_| invalid("batch is too large"))?,
+            slice_offset,
+            slice_length,
         });
         produced += select_end - select_start;
     }
@@ -2072,6 +2160,30 @@ mod tests {
         let error = metadata_buffer(MAX_IPC_METADATA_BYTES + 1, "record batch")
             .expect_err("oversized metadata is rejected before allocation");
         assert!(error.to_string().contains("64 MiB safety limit"));
+    }
+
+    #[test]
+    fn partial_batch_allocations_are_bounded_before_decode() {
+        let mut reader = Cursor::new((i64::from(300 * 1024 * 1024)).to_le_bytes());
+        let header = BatchHeader {
+            rows: 100_000_000,
+            compression: Some(Compression::Zstd),
+            nodes: vec![(100_000_000, 0)],
+            buffers: vec![(0, 0), (0, 8)],
+        };
+        let layout = FieldLayout {
+            node: 0,
+            buffer: 0,
+            buffer_count: 2,
+            dictionary_id: None,
+            dictionary_ordered: false,
+        };
+
+        let error = validate_partial_batch_decode_limit(&mut reader, 0, 8, &header, [&layout])
+            .expect_err("a small row window must not allocate an oversized batch");
+        assert!(error
+            .to_string()
+            .contains("partial record batch requires decoding"));
     }
 
     #[test]
