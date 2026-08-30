@@ -3778,8 +3778,11 @@ SEXP C_dtatools_is_missing(SEXP values) {
     SEXP result = PROTECT(Rf_allocVector(LGLSXP, common_size));
     int *output = LOGICAL(result);
     memset(output, 0, (size_t) common_size * sizeof(int));
+    R_xlen_t unresolved = common_size;
 
-    for (R_xlen_t argument = 0; argument < argument_count; argument++) {
+    for (R_xlen_t argument = 0;
+         argument < argument_count && unresolved > 0;
+         argument++) {
         SEXP value = VECTOR_ELT(values, argument);
         R_xlen_t size = XLENGTH(value);
         if (size == 0) continue;
@@ -3798,15 +3801,18 @@ SEXP C_dtatools_is_missing(SEXP values) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
                 output[index] = 1;
             }
+            unresolved = 0;
             break;
         }
 
         for (R_xlen_t index = 0; index < common_size; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             if (output[index]) continue;
-            output[index] = type == STRSXP
+            int missing = type == STRSXP
                 ? stata_expression_string_is_missing(STRING_ELT(value, index))
                 : numeric_reader_is_missing_at(&reader, index);
+            output[index] = missing;
+            if (missing) unresolved--;
         }
     }
 
