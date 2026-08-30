@@ -123,6 +123,22 @@ test_that("is_missing inspects compact DTA numerics without materializing", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(values))
 })
 
+test_that("compact non-Stata float NaNs match eager R missing semantics", {
+    path <- fixture_with_all_numeric_missing_codes("missing_values_v118.dta")
+    on.exit(unlink(path), add = TRUE)
+    patch_numeric_fixture_row(
+        path,
+        row = 0L,
+        values = list(x_float = .raw_little_integer(0x7fc00001, 4L))
+    )
+    compact <- read_dta(path, col_select = x_float, n_max = 1L)$x_float
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact))
+
+    expect_identical(is_missing(compact), TRUE)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact))
+    expect_identical(is_missing(compact), is_missing(as.double(compact)))
+})
+
 test_that("is_missing matches compact and eager Arrow numerics", {
     data <- tibble::tibble(
         value = stata_int(c(1, NA_real_, tagged_missing("m"), 2))
@@ -154,18 +170,40 @@ test_that("is_missing works in bare and stored data-mask expressions", {
         rlang::eval_tidy(rlang::f_rhs(stored), data, env = environment(stored)),
         c(TRUE, TRUE, FALSE, FALSE)
     )
+})
 
-    # Translations of fertility-surveys' `egen total(!mi(...)), by(...)`
-    # and `egen total(!missing(...)), by(...)` expression shapes.
-    count_observed <- function(value, group) {
-        unname(ave(!is_missing(value), group, FUN = sum))
+test_that("fertility-surveys egen total expressions translate exactly", {
+    group_total <- function(value, group) {
+        unname(ave(as.integer(value), group, FUN = sum))
     }
-    expect_identical(
-        count_observed(data$bh_line_number, data$woman),
-        c(1L, 1L, 1L, 1L)
+
+    # fertility_surveys d39ecc4, dhs/bh_vars/bh_birth_order.do:
+    # total(!mi(bidx)) and total(!mi(cm_birth) & !mi(bidx)), by wm_id.
+    dhs <- data.frame(
+        wm_id = c(10, 10, 10, 20, 20, 20),
+        bidx = c(1, 2, tagged_missing("a"), 1, NA_real_, 3),
+        cm_birth = c(700, NA_real_, 680, 800, 790, tagged_missing("z"))
     )
     expect_identical(
-        count_observed(data$birth_order, data$woman),
-        c(2L, 2L, 0L, 0L)
+        group_total(!is_missing(dhs$bidx), dhs$wm_id),
+        c(2L, 2L, 2L, 2L, 2L, 2L)
+    )
+    expect_identical(
+        group_total(
+            !is_missing(dhs$cm_birth) & !is_missing(dhs$bidx),
+            dhs$wm_id
+        ),
+        c(1L, 1L, 1L, 1L, 1L, 1L)
+    )
+
+    # fertility_surveys 77645fe, mics/bh_vars/cm_lastbirth.do:
+    # total(!missing(bh_line_number)), by id.
+    mics <- data.frame(
+        id = c(1, 1, 1, 2, 2),
+        bh_line_number = c(1, "", "3", NA_character_, "2")
+    )
+    expect_identical(
+        group_total(!is_missing(mics$bh_line_number), mics$id),
+        c(2L, 2L, 2L, 1L, 1L)
     )
 })

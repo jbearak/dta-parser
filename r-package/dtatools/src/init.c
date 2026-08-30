@@ -221,14 +221,6 @@ static int is_tagged_na_value(double value) {
     return tagged_na_tag_value(value) != 0;
 }
 
-static int stata_expression_real_is_missing(double value) {
-    return ISNAN(value);
-}
-
-static int stata_expression_integer_is_missing(int value) {
-    return value == NA_INTEGER;
-}
-
 static int stata_expression_string_is_missing(SEXP value) {
     return value == NA_STRING || LENGTH(value) == 0;
 }
@@ -3727,16 +3719,12 @@ static void validate_is_missing_argument(SEXP value, R_xlen_t argument) {
     }
 }
 
-static int is_missing_numeric_at(
-    SEXP value, numeric_data *storage, const double *real_values,
-    R_xlen_t index
+static int numeric_reader_is_missing_at(
+    const numeric_reader *reader, R_xlen_t index
 ) {
-    if (storage != NULL) {
-        return numeric_missing_offset_at(storage, (size_t) index) >= 0;
-    }
-    double element = real_values == NULL
-        ? REAL_ELT(value, index) : real_values[index];
-    return stata_expression_real_is_missing(element);
+    int missing_code;
+    (void) numeric_reader_at(reader, index, &missing_code);
+    return missing_code != -1;
 }
 
 SEXP C_dtatools_is_missing(SEXP values) {
@@ -3777,47 +3765,28 @@ SEXP C_dtatools_is_missing(SEXP values) {
         if (size == 0) continue;
 
         int type = TYPEOF(value);
-        numeric_data *storage = type == REALSXP
-            ? unmaterialized_numeric_storage(value) : NULL;
-        if (storage != NULL && (R_xlen_t) storage->length != size) {
-            Rf_error(
-                "dtatools numeric storage length does not match vector length"
-            );
+        numeric_reader reader = {0};
+        if (type != STRSXP) reader = numeric_reader_create(value, size);
+
+        if (size == 1) {
+            R_CheckUserInterrupt();
+            int missing = type == STRSXP
+                ? stata_expression_string_is_missing(STRING_ELT(value, 0))
+                : numeric_reader_is_missing_at(&reader, 0);
+            if (!missing) continue;
+            for (R_xlen_t index = 0; index < common_size; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                output[index] = 1;
+            }
+            break;
         }
-        const double *real_values = type == REALSXP && storage == NULL
-            ? (const double *) DATAPTR_OR_NULL(value) : NULL;
-        const int *integer_values =
-            (type == INTSXP || type == LGLSXP)
-            ? (const int *) DATAPTR_OR_NULL(value) : NULL;
 
         for (R_xlen_t index = 0; index < common_size; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             if (output[index]) continue;
-            R_xlen_t source = size == 1 ? 0 : index;
-            switch (type) {
-            case REALSXP:
-                output[index] = is_missing_numeric_at(
-                    value, storage, real_values, source
-                );
-                break;
-            case INTSXP:
-            case LGLSXP: {
-                int element = integer_values == NULL
-                    ? (type == LGLSXP
-                        ? LOGICAL_ELT(value, source)
-                        : INTEGER_ELT(value, source))
-                    : integer_values[source];
-                output[index] = stata_expression_integer_is_missing(element);
-                break;
-            }
-            case STRSXP:
-                output[index] = stata_expression_string_is_missing(
-                    STRING_ELT(value, source)
-                );
-                break;
-            default:
-                Rf_error("internal `is_missing()` type validation failed");
-            }
+            output[index] = type == STRSXP
+                ? stata_expression_string_is_missing(STRING_ELT(value, index))
+                : numeric_reader_is_missing_at(&reader, index);
         }
     }
 
