@@ -68,7 +68,7 @@ datasig <- function(data, threads = getOption("dtatools.threads", 0L)) {
     threads <- .normalize_threads(threads)
     if (!is.data.frame(data)) {
         if (is.character(data) && length(data) == 1L && !is.na(data)) {
-            extension <- tolower(tools::file_ext(basename(data)))
+            extension <- .data_source_file_extension(data)
             data <- if (identical(extension, "arrow")) {
                 # The data are rehashed below, so footer verification is not
                 # needed and checksum-free profile files remain signable.

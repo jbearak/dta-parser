@@ -361,6 +361,12 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     paste0(file, ".dta")
 }
 
+.data_source_file_extension <- function(file) {
+    is_url <- grepl("^[[:alpha:]][[:alnum:]+.-]*://", file)
+    path <- if (is_url) sub("[?#].*$", "", file) else file
+    tolower(tools::file_ext(basename(path)))
+}
+
 .caller_dta_source_path <- function(file) {
     path <- NULL
     if (is.character(file) && length(file) == 1L && !is.na(file) &&

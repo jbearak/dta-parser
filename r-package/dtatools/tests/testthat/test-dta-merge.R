@@ -671,6 +671,28 @@ test_that("every x and y source combination merges identically", {
     }
 })
 
+test_that("Arrow URLs with query strings dispatch to read_arrow", {
+    expected <- tibble::tibble(id = 1L)
+    seen <- character()
+    local_mocked_bindings(
+        read_arrow = function(file, ...) {
+            seen <<- c(seen, file)
+            expected
+        },
+        read_dta = function(...) stop("dispatched to read_dta"),
+        .package = "dtatools"
+    )
+    url <- paste0(
+        "https://example.test/data.arrow?",
+        "X-Amz-Signature=0123456789abcdef"
+    )
+
+    actual <- dtatools:::.resolve_merge_input(url, "x")
+
+    expect_identical(actual, expected)
+    expect_identical(seen, url)
+})
+
 test_that("multiple keys match jointly under missing-code identity", {
     master <- tibble::tibble(
         region = c(1, 1, 2),

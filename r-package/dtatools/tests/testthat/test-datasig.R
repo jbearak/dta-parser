@@ -112,6 +112,25 @@ test_that("datasig validates its inputs", {
     )
 })
 
+test_that("datasig recognizes Arrow URLs with fragments", {
+    data <- tibble::tibble(x = 1:3)
+    expected <- datasig(data)
+    seen <- character()
+    local_mocked_bindings(
+        read_arrow = function(file, verify, ...) {
+            seen <<- c(seen, file)
+            expect_false(verify)
+            data
+        },
+        read_dta = function(...) stop("dispatched to read_dta"),
+        .package = "dtatools"
+    )
+    url <- "https://example.test/data.arrow#download"
+
+    expect_identical(datasig(url), expected)
+    expect_identical(seen, url)
+})
+
 test_that("datasig agrees between serial and parallel hashing", {
     rows <- 200000L
     data <- tibble::tibble(

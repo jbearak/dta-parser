@@ -229,7 +229,7 @@ dta_merge <- function(x, y, by, relationship,
 .resolve_merge_input <- function(value, side) {
     if (is.data.frame(value)) return(value)
     if (is.character(value) && length(value) == 1L && !is.na(value)) {
-        extension <- tolower(tools::file_ext(basename(value)))
+        extension <- .data_source_file_extension(value)
         if (identical(extension, "arrow")) return(read_arrow(value))
         return(read_dta(value))
     }
