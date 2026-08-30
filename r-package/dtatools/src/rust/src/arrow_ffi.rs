@@ -3,6 +3,7 @@
 //! the DTA entry points. The C layer validates R types and passes direct data
 //! pointers; character data crosses through the string region callback.
 
+use std::collections::HashSet;
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_void};
 use std::ptr;
@@ -2381,7 +2382,7 @@ unsafe fn character_vector(
 }
 
 fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<Option<String>>, String> {
-    match values.data_type() {
+    let levels: Vec<Option<String>> = match values.data_type() {
         DataType::Utf8 => {
             let values = values
                 .as_any()
@@ -2401,7 +2402,12 @@ fn factor_levels(values: &ArrayRef, column: &str) -> Result<Vec<Option<String>>,
                 .collect()
         }
         _ => Err(chunk_error(column)),
+    }?;
+    let mut unique = HashSet::with_capacity(levels.len());
+    if levels.iter().any(|level| !unique.insert(level.as_deref())) {
+        return Err(format!("column `{column}` has a duplicate factor level"));
     }
+    Ok(levels)
 }
 
 unsafe fn optional_string_vector(
@@ -3213,6 +3219,14 @@ mod tests {
         let array = unsafe { zero_copy_array::<Int32Type>(sentinel, 0) };
         assert_eq!(array.len(), 0);
         assert_eq!(array.data_type(), &DataType::Int32);
+    }
+
+    #[test]
+    fn duplicate_dictionary_values_cannot_become_factor_levels() {
+        let values: ArrayRef = Arc::new(StringArray::from(vec!["same", "same"]));
+        let error = factor_levels(&values, "x")
+            .expect_err("duplicate Arrow dictionary values must not become R factor levels");
+        assert!(error.contains("duplicate factor level"));
     }
 
     #[test]

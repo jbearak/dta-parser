@@ -963,6 +963,17 @@ test_that("NA-valued factor levels survive profiled and plain Arrow", {
     expect_identical(read_arrow(plain_path)$x, expected)
 })
 
+test_that("plain Arrow dictionaries cannot create duplicate factor levels", {
+    skip_if_not_installed("arrow")
+    path <- arrow_tempfile()
+    values <- arrow::DictionaryArray$create(
+        c(0L, 1L, 0L), c("same", "same")
+    )
+    arrow::write_ipc_file(arrow::arrow_table(x = values), path)
+
+    expect_error(read_arrow(path), "duplicate factor level")
+})
+
 test_that("plain Int32 selection predicates match the returned R type", {
     skip_if_not_installed("arrow")
     path <- arrow_tempfile()
