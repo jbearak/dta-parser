@@ -1117,12 +1117,74 @@ struct DecodeContext<'a> {
 struct PreparedRead {
     footer: Footer,
     profile: Option<Profile>,
+    value_label_reference_counts: HashMap<String, usize>,
     selected: Vec<usize>,
     dictionaries: HashMap<i64, ArrayData>,
     plans: Vec<BlockPlan>,
     produced: u64,
     stored_signature: Option<String>,
+}
+
+fn plan_value_labels(
+    profile: &mut Option<Profile>,
+    selected: &[usize],
     projected: bool,
+) -> HashMap<String, usize> {
+    let Some(profile) = profile.as_mut() else {
+        return HashMap::new();
+    };
+    let selected_names = selected
+        .iter()
+        .filter_map(|&index| profile.fields.get(index)?.value_labels.as_deref())
+        .collect::<HashSet<_>>();
+    let mut counts = selected_names
+        .iter()
+        .map(|&name| (name.to_owned(), 0_usize))
+        .collect::<HashMap<_, _>>();
+    if !selected_names.is_empty() {
+        let ProfileFields::Full(fields) = &profile.fields else {
+            unreachable!("value-label planning requires a full field profile")
+        };
+        for field in fields.iter().flatten() {
+            if let Some(name) = &field.value_labels {
+                if let Some(count) = counts.get_mut(name.as_str()) {
+                    *count += 1;
+                }
+            }
+        }
+    }
+    if projected {
+        profile
+            .dataset
+            .value_labels
+            .retain(|name, _| selected_names.contains(name.as_str()));
+        let selected_indices = selected.iter().copied().collect::<HashSet<_>>();
+        if let ProfileFields::Full(fields) = &mut profile.fields {
+            for (index, field) in fields.iter_mut().enumerate() {
+                if !selected_indices.contains(&index) {
+                    *field = None;
+                }
+            }
+        }
+        if let Some(checksums) = profile.checksums.as_mut() {
+            for batch in &mut checksums.batches {
+                for (index, column) in batch.columns.iter_mut().enumerate() {
+                    if !selected_indices.contains(&index) {
+                        column.clear();
+                        column.shrink_to_fit();
+                    }
+                }
+            }
+            let selected_keys = selected_indices
+                .iter()
+                .map(usize::to_string)
+                .collect::<HashSet<_>>();
+            checksums
+                .dictionaries
+                .retain(|index, _| selected_keys.contains(index));
+        }
+    }
+    counts
 }
 
 fn prepare_read<R: Read + Seek>(
@@ -1152,16 +1214,11 @@ fn prepare_read<R: Read + Seek>(
     // Reuse that full parse for the ordinary profiled read rather than
     // parsing the same potentially large footer documents twice.
     let signature_profile = options.record_signature && options.profile;
-    let selected_profile_fields = if signature_profile {
-        None
-    } else {
-        options.columns.as_ref().map(|_| selected.as_slice())
-    };
     let mut profile = parse_profile(
         &mut footer,
         options.profile,
         options.verify || signature_profile,
-        selected_profile_fields,
+        None,
     )?;
     let stored_signature = if options.record_signature {
         Some(if let Some(profile) = &profile {
@@ -1185,6 +1242,8 @@ fn prepare_read<R: Read + Seek>(
     {
         discard_private_profile_json(&mut footer);
     }
+    let value_label_reference_counts =
+        plan_value_labels(&mut profile, &selected, options.columns.is_some());
 
     // Batch headers are small; reading them all up front fixes each block's
     // slice of the requested window so block bodies can decode in any order.
@@ -1299,12 +1358,12 @@ fn prepare_read<R: Read + Seek>(
     Ok(PreparedRead {
         footer,
         profile,
+        value_label_reference_counts,
         selected,
         dictionaries,
         plans,
         produced,
         stored_signature,
-        projected: options.columns.is_some(),
     })
 }
 
@@ -1649,40 +1708,6 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
 }
 
 fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
-    let mut value_label_reference_counts = HashMap::new();
-    let selected_value_labels = columns
-        .iter()
-        .filter_map(|column| column.field.as_ref()?.value_labels.as_deref())
-        .collect::<HashSet<_>>();
-    if let Some(profile) = &mut prepared.profile {
-        let mut count_reference = |field: &ArrowFieldDocument| {
-            if let Some(name) = &field.value_labels {
-                if selected_value_labels.contains(name.as_str()) {
-                    *value_label_reference_counts
-                        .entry(name.clone())
-                        .or_insert(0) += 1;
-                }
-            }
-        };
-        match &profile.fields {
-            ProfileFields::Full(fields) => {
-                for field in fields.iter().flatten() {
-                    count_reference(field);
-                }
-            }
-            ProfileFields::Projected(fields) => {
-                for field in fields.values() {
-                    count_reference(field);
-                }
-            }
-        }
-        if prepared.projected {
-            profile
-                .dataset
-                .value_labels
-                .retain(|name, _| selected_value_labels.contains(name.as_str()));
-        }
-    }
     let (profile_version, dataset) = if let Some(mut profile) = prepared.profile.take() {
         let mut remaining = HashMap::with_capacity(prepared.selected.len());
         for &index in &prepared.selected {
@@ -1706,7 +1731,7 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
     ArrowReadResult {
         profile_version,
         dataset,
-        value_label_reference_counts,
+        value_label_reference_counts: prepared.value_label_reference_counts,
         row_count: prepared.produced,
         columns,
         stored_signature: prepared.stored_signature,
@@ -2287,6 +2312,14 @@ mod tests {
         };
         let prepared =
             prepare_read(&mut reader, &options, &mut || false).expect("source metadata reads");
+        assert!(prepared.footer.schema.metadata().is_empty());
+        assert!(prepared
+            .footer
+            .schema
+            .fields()
+            .iter()
+            .all(|field| field.metadata().is_empty()));
+        assert!(prepared.footer.custom_metadata.is_empty());
         std::fs::rename(&replacement, &path).expect("path is atomically replaced");
         let mut columns = columns_skeleton(&prepared).expect("column skeletons");
         {

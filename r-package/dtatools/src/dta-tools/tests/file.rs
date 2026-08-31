@@ -849,6 +849,16 @@ fn projected_reads_clone_only_selected_value_label_tables() {
     assert_eq!(parallel.value_label_tables.len(), 1);
     assert_eq!(parallel.value_label_tables[0].name, "rep_lbl");
 
+    let (reader, trace) = TracedReader::new(bytes.clone());
+    let mut file = DtaFile::from_reader(reader).unwrap();
+    file.read_with_options(&options(0, None, vec![1])).unwrap();
+    let reads_after_projection = trace.borrow().reads.len();
+    assert_eq!(file.value_label_tables().unwrap().len(), 3);
+    assert!(
+        trace.borrow().reads.len() > reads_after_projection,
+        "a projected read must not retain the complete registry cache"
+    );
+
     let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
     let empty = file
         .read_with_options(&options(0, None, Vec::new()))

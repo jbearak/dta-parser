@@ -462,7 +462,7 @@ save_dta <- function(data, path, version = 19L,
     } else {
         attr(column, "labels", exact = TRUE)
     }
-    if (is.null(labels)) return(list(double(), character(), FALSE))
+    if (is.null(labels)) return(list(double(), character()))
     argument <- sprintf("labels for `%s`", name)
     label_text <- names(labels)
     valid <- if (allow_legacy_codes) {
@@ -498,7 +498,7 @@ save_dta <- function(data, path, version = 19L,
     if (length(violations)) {
         .dta_write_abort(paste(violations, collapse = "; "))
     }
-    list(unname(labels), enc2utf8(label_text), TRUE)
+    list(unname(labels), enc2utf8(label_text))
 }
 
 .value_label_mappings_identical <- function(left, right,
@@ -874,7 +874,6 @@ save_dta <- function(data, path, version = 19L,
 }
 
 .new_dta_write_column <- function(name, type_code, format, label, values,
-                                  has_value_labels = FALSE,
                                   numeric_shift = 0,
                                   numeric_scale = 1,
                                   value_label_index = -1L,
@@ -882,13 +881,12 @@ save_dta <- function(data, path, version = 19L,
                                   stata_metadata) {
     result <- stats::setNames(list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
-        values, has_value_labels,
-        numeric_shift, numeric_scale, as.integer(value_label_index),
+        values, numeric_shift, numeric_scale, as.integer(value_label_index),
         stata_metadata
     ), c(
         "name", "type_code", "format", "label", "values",
-        "has_value_labels", "numeric_shift", "numeric_scale",
-        "value_label_index", "stata_metadata"
+        "numeric_shift", "numeric_scale", "value_label_index",
+        "stata_metadata"
     ))
     if (!is.null(character_missing)) {
         attr(result, "character_missing") <- character_missing
@@ -913,7 +911,7 @@ save_dta <- function(data, path, version = 19L,
                 "Factor column `%s` has an empty or missing level", name
             ))
         }
-        value_labels <- .cached_write_value_labels(
+        .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() {
                 violations <- .value_label_limit_violations(
@@ -922,9 +920,7 @@ save_dta <- function(data, path, version = 19L,
                 if (length(violations)) {
                     .dta_write_abort(paste(violations, collapse = "; "))
                 }
-                list(
-                    as.double(seq_along(levels)), enc2utf8(levels), TRUE
-                )
+                list(as.double(seq_along(levels)), enc2utf8(levels))
             }
         )
         format <- .prepare_write_format(
@@ -932,7 +928,6 @@ save_dta <- function(data, path, version = 19L,
         )
         return(.new_dta_write_column(
             name, 2L, format, variable_label, column,
-            has_value_labels = value_labels[[3L]],
             value_label_index = value_label_index,
             stata_metadata = stata_metadata
         ))
@@ -991,9 +986,7 @@ save_dta <- function(data, path, version = 19L,
         )
     }
     labels <- .validate_write_value_label_structure(column, name)
-    value_labels <- if (is.null(labels)) {
-        list(double(), character(), FALSE)
-    } else {
+    if (!is.null(labels)) {
         .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() .prepare_write_value_labels(
@@ -1004,7 +997,6 @@ save_dta <- function(data, path, version = 19L,
     .new_dta_write_column(
         name, match(numeric$storage, .stata_storage) - 1L,
         format, variable_label, numeric$values,
-        has_value_labels = value_labels[[3L]],
         numeric_shift = numeric$shift,
         numeric_scale = numeric$scale,
         value_label_index = value_label_index,

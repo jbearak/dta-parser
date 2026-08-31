@@ -308,12 +308,11 @@ save_arrow <- function(data, path,
     write_kind <- kind
     haven_labelled <- inherits(column, "haven_labelled")
 
-    value_labels <- list(double(), character(), FALSE)
     if (kind %in% c(
         "integer", "double", "date", "datetime", "difftime", "stata"
     ) && value_label_index >= 0L) {
         .validate_write_value_label_structure(column, name)
-        value_labels <- .cached_write_value_labels(
+        .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() {
                 prepared <- .prepare_write_value_labels(
@@ -398,13 +397,12 @@ save_arrow <- function(data, path,
         .arrow_utf8(name, "Column names"), .arrow_write_kinds[[write_kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[3L]], haven_labelled, string_storage,
-        as.integer(value_label_index),
+        haven_labelled, string_storage, as.integer(value_label_index),
         .stata_metadata_payload(notes, characteristics)
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
-        "storage", "tz", "units", "has_value_labels", "haven_labelled",
-        "string_storage", "value_label_index", "stata_metadata"
+        "storage", "tz", "units", "haven_labelled", "string_storage",
+        "value_label_index", "stata_metadata"
     ))
 }
 

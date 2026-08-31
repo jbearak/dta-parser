@@ -1074,10 +1074,10 @@ unsafe fn attach_variable_attribute_view(
     Ok(())
 }
 
-fn value_label_reference_counts<'a>(
-    metadata: &'a DtaMetadata,
+fn value_label_reference_counts(
+    metadata: &DtaMetadata,
     selected: impl IntoIterator<Item = usize>,
-) -> AHashMap<&'a str, usize> {
+) -> AHashMap<&str, usize> {
     let mut counts = AHashMap::new();
     for index in selected {
         if let Some(variable) = metadata.variables.get(index) {
@@ -2457,7 +2457,6 @@ pub struct RWriteColumnDescriptor {
     numeric_values: *const c_void,
     string_values: Sexp,
     stata_metadata: Sexp,
-    has_value_labels: c_int,
     value_label_index: c_int,
     numeric_shift: f64,
     numeric_scale: f64,
@@ -3806,10 +3805,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         let dta_type = legacy_source_output_type(source, save_dta_type(descriptor.dta_type)?)?;
         let (variable_notes, variable_characteristics) =
             parse_stata_metadata_sexp_borrowed(descriptor.stata_metadata)?;
-        let value_label_index = if descriptor.has_value_labels == 0 {
-            if descriptor.value_label_index != -1 {
-                return Err("unlabelled column has a value-label table index".into());
-            }
+        let value_label_index = if descriptor.value_label_index == -1 {
             None
         } else {
             let index = usize::try_from(descriptor.value_label_index)
@@ -3825,7 +3821,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
             dta_type,
             format: Cow::Borrowed(required_c_str(descriptor.format, "display format")?),
             label: Cow::Borrowed(required_c_str(descriptor.label, "variable label")?),
-            has_value_labels: descriptor.has_value_labels != 0,
+            has_value_labels: value_label_index.is_some(),
             value_labels: Vec::new(),
             notes: variable_notes,
             characteristics: variable_characteristics,
@@ -4016,7 +4012,6 @@ mod tests {
             numeric_values: ptr::null(),
             string_values: ptr::null_mut(),
             stata_metadata: ptr::null_mut(),
-            has_value_labels: 0,
             value_label_index: -1,
             numeric_shift: shift,
             numeric_scale: scale,

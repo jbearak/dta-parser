@@ -79,7 +79,6 @@ pub struct RArrowColumnDescriptor {
     compact_format_version: c_int,
     compact_temporal: c_int,
     stata_metadata: Sexp,
-    has_value_labels: c_int,
     value_label_index: c_int,
     haven_labelled: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
@@ -890,12 +889,7 @@ unsafe fn extract_column(
             None
         };
     let (notes, characteristics) = parse_stata_metadata_sexp(descriptor.stata_metadata)?;
-    let value_label_index = if descriptor.has_value_labels == 0 {
-        if descriptor.value_label_index != -1 {
-            return Err(format!(
-                "column `{name}` has a value-label table index without labels"
-            ));
-        }
+    let value_label_index = if descriptor.value_label_index == -1 {
         None
     } else {
         let index = usize::try_from(descriptor.value_label_index)

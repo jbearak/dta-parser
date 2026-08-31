@@ -192,73 +192,23 @@ trait DtaWriteValueLabelSource {
     }
 }
 
+impl DtaWriteValueLabelSource for () {}
+
 struct AdapterValueLabels<'a, 'labels> {
     names: &'a [&'labels str],
     tables: &'a [Vec<DtaWriteValueLabel<'labels>>],
     indices: &'a [Option<usize>],
 }
 
-struct AdapterObservationSource<'a, 'labels, S: ?Sized> {
-    source: &'a S,
-    value_labels: Option<AdapterValueLabels<'a, 'labels>>,
-}
-
-impl<S: DtaWriteObservationSource + ?Sized> DtaWriteObservationSource
-    for AdapterObservationSource<'_, '_, S>
-{
-    fn begin_row(&self, row: u64) -> Result<(), DtaWriteError> {
-        self.source.begin_row(row)
-    }
-
-    fn check_interrupt(&self) -> Result<(), DtaWriteError> {
-        self.source.check_interrupt()
-    }
-
-    fn append_observation_rows(
-        &self,
-        buffer: &mut Vec<u8>,
-        start: u64,
-        end: u64,
-    ) -> Result<bool, DtaWriteError> {
-        self.source.append_observation_rows(buffer, start, end)
-    }
-
-    fn raw_numeric_value(
-        &self,
-        column: usize,
-        row: u64,
-    ) -> Result<Option<DtaWriteRawNumericValue>, DtaWriteError> {
-        self.source.raw_numeric_value(column, row)
-    }
-
-    fn numeric_value(
-        &self,
-        column: usize,
-        row: u64,
-    ) -> Result<DtaWriteNumericValue, DtaWriteError> {
-        self.source.numeric_value(column, row)
-    }
-
-    fn string_id(&self, column: usize, row: u64) -> Result<Option<u64>, DtaWriteError> {
-        self.source.string_id(column, row)
-    }
-
-    fn string_value(&self, column: usize, row: u64) -> Result<Cow<'_, str>, DtaWriteError> {
-        self.source.string_value(column, row)
-    }
-}
-
-impl<S: ?Sized> DtaWriteValueLabelSource for AdapterObservationSource<'_, '_, S> {
+impl DtaWriteValueLabelSource for AdapterValueLabels<'_, '_> {
     fn value_label_name(&self, column: usize) -> Option<&str> {
-        let registry = self.value_labels.as_ref()?;
-        let table_index = registry.indices.get(column).copied().flatten()?;
-        registry.names.get(table_index).copied()
+        let table_index = self.indices.get(column).copied().flatten()?;
+        self.names.get(table_index).copied()
     }
 
     fn value_labels(&self, column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
-        let registry = self.value_labels.as_ref()?;
-        let table_index = registry.indices.get(column).copied().flatten()?;
-        registry.tables.get(table_index).map(Vec::as_slice)
+        let table_index = self.indices.get(column).copied().flatten()?;
+        self.tables.get(table_index).map(Vec::as_slice)
     }
 }
 
@@ -397,8 +347,6 @@ impl DtaWriteObservationSource for ColumnObservationSource<'_, '_> {
         column.values.string_value(&column.name, row)
     }
 }
-
-impl DtaWriteValueLabelSource for ColumnObservationSource<'_, '_> {}
 
 /// Options shared by native adapters.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -1134,16 +1082,18 @@ fn write_header<W: Write>(
     Ok(())
 }
 
-fn write_metadata_sections<W, S>(
+fn write_metadata_sections<W, S, L>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     version: FormatVersion,
     offsets: &mut SectionOffsets,
-    source: &S,
+    observation_source: &S,
+    value_label_source: &L,
 ) -> Result<(), DtaWriteError>
 where
     W: Write + Seek,
-    S: DtaWriteObservationSource + DtaWriteValueLabelSource + ?Sized,
+    S: DtaWriteObservationSource + ?Sized,
+    L: DtaWriteValueLabelSource + ?Sized,
 {
     offsets.variable_types = position(writer)?;
     write_tag(writer, b"<variable_types>")?;
@@ -1151,7 +1101,7 @@ where
         writer.write_all(&column.dta_type.modern_code().to_le_bytes())?;
     }
     write_tag(writer, b"</variable_types>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.varnames = position(writer)?;
     write_tag(writer, b"<varnames>")?;
@@ -1159,7 +1109,7 @@ where
         write_field(writer, &column.name, WRITE_FIELD_WIDTHS.varname)?;
     }
     write_tag(writer, b"</varnames>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.sortlist = position(writer)?;
     write_tag(writer, b"<sortlist>")?;
@@ -1172,7 +1122,7 @@ where
         .ok_or(DtaWriteError::Overflow("sortlist"))?;
     write_zeros(writer, sort_bytes)?;
     write_tag(writer, b"</sortlist>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.formats = position(writer)?;
     write_tag(writer, b"<formats>")?;
@@ -1180,20 +1130,20 @@ where
         write_field(writer, &column.format, WRITE_FIELD_WIDTHS.format)?;
     }
     write_tag(writer, b"</formats>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.value_label_names = position(writer)?;
     write_tag(writer, b"<value_label_names>")?;
     for (column_index, column) in data.columns.iter().enumerate() {
         let name = if column.has_value_labels {
-            output_value_label_name(data, source, column_index)
+            output_value_label_name(data, value_label_source, column_index)
         } else {
             ""
         };
         write_field(writer, name, WRITE_FIELD_WIDTHS.value_label_name)?;
     }
     write_tag(writer, b"</value_label_names>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.variable_labels = position(writer)?;
     write_tag(writer, b"<variable_labels>")?;
@@ -1201,7 +1151,7 @@ where
         write_field(writer, &column.label, WRITE_FIELD_WIDTHS.variable_label)?;
     }
     write_tag(writer, b"</variable_labels>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.characteristics = position(writer)?;
     write_tag(writer, b"<characteristics>")?;
@@ -1218,7 +1168,7 @@ where
             if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES
                 || records_since_interrupt >= WRITE_INTERRUPT_RECORDS
             {
-                source.check_interrupt()?;
+                observation_source.check_interrupt()?;
                 bytes_since_interrupt = 0;
                 records_since_interrupt = 0;
             }
@@ -1252,7 +1202,7 @@ where
         write_scope(writer, &column.name, &column.notes, &column.characteristics)?;
     }
     write_tag(writer, b"</characteristics>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
     Ok(())
 }
 
@@ -1893,25 +1843,28 @@ fn write_strls<W: Write, S: DtaWriteObservationSource + ?Sized>(
     Ok(())
 }
 
-fn write_value_labels<
-    W: Write,
-    S: DtaWriteObservationSource + DtaWriteValueLabelSource + ?Sized,
->(
+fn write_value_labels<W, S, L>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
-    source: &S,
-) -> Result<(), DtaWriteError> {
+    observation_source: &S,
+    value_label_source: &L,
+) -> Result<(), DtaWriteError>
+where
+    W: Write,
+    S: DtaWriteObservationSource + ?Sized,
+    L: DtaWriteValueLabelSource + ?Sized,
+{
     write_tag(writer, b"<value_labels>")?;
     let mut written = HashSet::new();
     for (column_index, column) in data.columns.iter().enumerate() {
         if !column.has_value_labels {
             continue;
         }
-        let table_name = output_value_label_name(data, source, column_index);
+        let table_name = output_value_label_name(data, value_label_source, column_index);
         if !written.insert(table_name) {
             continue;
         }
-        let mut entries = output_value_labels(data, source, column_index)
+        let mut entries = output_value_labels(data, value_label_source, column_index)
             .iter()
             .map(|entry| Ok((label_raw_value(entry.value)?, entry.label.as_ref())))
             .collect::<Result<Vec<_>, &'static str>>()
@@ -1973,34 +1926,36 @@ fn write_value_labels<
                 writer.write_all(chunk)?;
                 bytes_since_interrupt += chunk.len();
                 if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES {
-                    source.check_interrupt()?;
+                    observation_source.check_interrupt()?;
                     bytes_since_interrupt = 0;
                 }
             }
             writer.write_all(&[0])?;
             bytes_since_interrupt += 1;
             if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES {
-                source.check_interrupt()?;
+                observation_source.check_interrupt()?;
                 bytes_since_interrupt = 0;
             }
         }
         write_tag(writer, b"</lbl>")?;
-        source.check_interrupt()?;
+        observation_source.check_interrupt()?;
     }
     write_tag(writer, b"</value_labels>")?;
     Ok(())
 }
 
-fn save_dta_impl<W, S>(
+fn save_dta_impl<W, S, L>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
     observation_source: &S,
+    value_label_source: &L,
     row_count: u64,
 ) -> Result<DtaWriteSummary, DtaWriteError>
 where
     W: Write + Seek,
-    S: DtaWriteObservationSource + DtaWriteValueLabelSource + ?Sized,
+    S: DtaWriteObservationSource + ?Sized,
+    L: DtaWriteValueLabelSource + ?Sized,
 {
     validate_destination(writer)?;
     let version = if data.columns.len() <= RELEASE_118_MAX_VARIABLES {
@@ -2025,7 +1980,14 @@ where
     }
     write_tag(writer, b"</map>")?;
 
-    write_metadata_sections(writer, data, version, &mut offsets, observation_source)?;
+    write_metadata_sections(
+        writer,
+        data,
+        version,
+        &mut offsets,
+        observation_source,
+        value_label_source,
+    )?;
     offsets.data = position(writer)?;
     write_tag(writer, b"<data>")?;
     write_observations(
@@ -2042,7 +2004,7 @@ where
     offsets.strls = position(writer)?;
     write_strls(writer, data, observation_source, &strls)?;
     offsets.value_labels = position(writer)?;
-    write_value_labels(writer, data, observation_source)?;
+    write_value_labels(writer, data, observation_source, value_label_source)?;
     observation_source.check_interrupt()?;
     offsets.stata_data_close = position(writer)?;
     write_tag(writer, b"</stata_dta>")?;
@@ -2085,7 +2047,7 @@ pub fn save_dta_to<W: Write + Seek>(
 ) -> Result<DtaWriteSummary, DtaWriteError> {
     let source = ColumnObservationSource { data };
     let row_count = validate_data(data, options)?;
-    save_dta_impl(writer, data, options, &source, row_count)
+    save_dta_impl(writer, data, options, &source, &(), row_count)
 }
 
 /// Stream prevalidated data from an adapter-specific observation source.
@@ -2114,17 +2076,14 @@ where
             "prevalidated row count is {row_count} but columns have {column_row_count} rows"
         )));
     }
-    let source = AdapterObservationSource {
-        source: observation_source,
-        value_labels: None,
-    };
-    save_dta_impl(writer, data, options, &source, row_count)
+    save_dta_impl(writer, data, options, observation_source, &(), row_count)
 }
 
 /// Private Rust-ABI seam used only by the in-repository R adapter. Keeping the
 /// symbol out of the Rust module API prevents the public writer from becoming
 /// an authoring API for named/shared value-label registries.
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub(crate) unsafe extern "Rust" fn dtatools_internal_write_prevalidated_dta_with_value_labels(
     writer: *mut BufWriter<File>,
     data: *const DtaWriteData<'static>,
@@ -2170,16 +2129,20 @@ pub(crate) unsafe extern "Rust" fn dtatools_internal_write_prevalidated_dta_with
             "value-label table registry is inconsistent".to_owned(),
         ));
     }
-    let source = AdapterObservationSource {
-        source: observation_source,
-        value_labels: Some(AdapterValueLabels {
-            names: value_label_names,
-            tables: value_label_tables,
-            indices: value_label_indices,
-        }),
+    let value_label_source = AdapterValueLabels {
+        names: value_label_names,
+        tables: value_label_tables,
+        indices: value_label_indices,
     };
-    validate_value_label_names(data, &source)?;
-    save_dta_impl(writer, data, options, &source, row_count)
+    validate_value_label_names(data, &value_label_source)?;
+    save_dta_impl(
+        writer,
+        data,
+        options,
+        observation_source,
+        &value_label_source,
+        row_count,
+    )
 }
 
 impl std::fmt::Display for DtaWriteLabelValue {
