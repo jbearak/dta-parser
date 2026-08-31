@@ -277,16 +277,10 @@ gen <- function(data, variable, values, where = NULL) {
     size <- vctrs::vec_size(values)
     selected <- .mutation_selected_count(rows, row_count)
     if (size == row_count) {
-        slice_rows <- if (inherits(rows, "stata_numeric")) {
-            .stata_data(rows)
-        } else {
-            rows
-        }
-        return(if (is.null(rows)) {
-            values
-        } else {
-            vctrs::vec_slice(values, slice_rows)
-        })
+        # Native patch and generation plans gather full-dataset values by row.
+        # Keeping that distinction here also avoids exposing compact position
+        # vectors as full double indices in R slicing.
+        return(values)
     }
     if (size == selected) return(values)
     if (size == 1L) return(values)
@@ -463,23 +457,17 @@ gen <- function(data, variable, values, where = NULL) {
 }
 
 .generated_character <- function(values, rows, row_count) {
-    output <- rep("", row_count)
-    if (is.null(rows)) output[] <- values else output[rows] <- values
-    output[is.na(output)] <- ""
-    sizing <- .validate_string_storage(output, NULL, "generated")
-    maximum <- sizing$maximum
-    inferred <- if (maximum > 2045L) "strL" else paste0("str", max(1L, maximum))
     declared <- attr(values, "stata.string.storage", exact = TRUE)
-    storage <- if (is.null(declared)) inferred else declared
-    .validate_string_storage(output, storage, "generated")
-    result <- .metadata_copy(output)
     source_attributes <- attributes(values)
     source_attributes$names <- NULL
-    for (name in names(source_attributes)) {
-        attr(result, name) <- source_attributes[[name]]
+    source_attributes$stata.string.storage <- NULL
+    if (is.null(source_attributes)) {
+        source_attributes <- structure(list(), names = character())
     }
-    attr(result, "stata.string.storage") <- storage
-    result
+    .Call(
+        C_dtatools_generate_character, values, rows,
+        as.double(row_count), declared, source_attributes
+    )
 }
 
 .generated_column <- function(values, rows, row_count) {

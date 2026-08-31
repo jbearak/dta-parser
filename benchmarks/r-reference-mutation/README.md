@@ -26,12 +26,18 @@ Full-length integer and compact-byte replacements then verify that the patcher
 consumes source vectors directly instead of constructing a double or a second
 encoded column. Their targets keep native rollback bytes outside the R heap so
 an interrupt can restore the original payload without materializing it.
+The full-length integer case also runs through a compact position sequence.
+The native patcher must gather each source value by its selected row without
+turning that sequence into a full R double index.
 The run then generates a five-million-row compact byte column from one scalar.
 It fails if the largest R allocation reaches the size of a full double column,
 and uses `tracemem()` to check that neither existing column payload was copied.
 Full-length integer and compact-byte generation cases apply the same allocation
 limit and catch coercion or validation temporaries that scalar generation cannot
-expose.
+expose. The integer case also uses a compact position sequence and limits total
+profiled allocation to less than one double column. Finally, scalar character
+generation may allocate its result vector once, but cannot allocate a second
+full-length character-vector header.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

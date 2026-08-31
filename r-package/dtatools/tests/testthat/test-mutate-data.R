@@ -165,10 +165,35 @@ test_that("where has documented logical and position semantics", {
                  "has size")
 })
 
+test_that("full-dataset values are gathered by selected row", {
+    rows <- stata_long(c(5, 2, 5))
+    values <- 11:15
+
+    replaced <- data.frame(x = stata_byte(1:5))
+    replace_values(replaced, x, values, where = rows)
+    expect_identical(as.double(replaced$x), c(1, 12, 3, 4, 15))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(replaced$x))
+
+    generated <- data.frame(x = 1:5)
+    gen(generated, y, values, where = rows)
+    expect_identical(as.double(generated$y), c(NA, 12, NA, NA, 15))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(generated$y))
+
+    strings <- data.frame(x = 1:5)
+    string_values <- structure(letters[1:5], label = "letters")
+    gen(strings, y, string_values, where = stata_long(c(3, 1)))
+    expect_identical(as.character(strings$y), c("a", "", "c", "", ""))
+    expect_identical(attr(strings$y, "label"), "letters")
+    expect_identical(attr(strings$y, "stata.string.storage"), "str1")
+})
+
 test_that("native mutation writers reject untrusted row plans", {
     namespace <- asNamespace("dtatools")
     patch <- get("C_dtatools_patch_vector", namespace)
     generate <- get("C_dtatools_generate_numeric", namespace)
+    generate_character <- get(
+        "C_dtatools_generate_character", namespace
+    )
     generated_attributes <- attributes(stata_byte(double()))
 
     target <- stata_byte(1:3)
@@ -182,6 +207,14 @@ test_that("native mutation writers reject untrusted row plans", {
     )
     expect_error(
         .Call(generate, 9, 4L, 3, 0L, 0L, generated_attributes),
+        "mutation row"
+    )
+    expect_error(
+        .Call(generate_character, "x", 0L, 3, NULL, NULL),
+        "mutation row"
+    )
+    expect_error(
+        .Call(generate_character, "x", 4L, 3, NULL, NULL),
         "mutation row"
     )
 })
@@ -268,14 +301,55 @@ test_that("native write interrupts roll back values and compact state", {
             }
             list(
                 compact = interrupt_patch(TRUE),
-                ordinary = interrupt_patch(FALSE)
+                ordinary = interrupt_patch(FALSE),
+                dictionary = local({
+                    size <- 10000000L
+                    path <- tempfile(fileext = ".arrow")
+                    on.exit(unlink(path), add = TRUE)
+                    save_arrow(data.frame(
+                        target = rep(c("a", "b"), length.out = size)
+                    ), path)
+                    data <- read_arrow(path)
+                    parent <- Sys.getpid()
+                    signal <- parallel::mcparallel({
+                        Sys.sleep(0.22)
+                        tools::pskill(parent, tools::SIGINT)
+                    }, silent = TRUE)
+                    condition <- tryCatch(
+                        {
+                            replace_values(data, target, "changed")
+                            NULL
+                        },
+                        condition = identity
+                    )
+                    tryCatch(
+                        suppressWarnings(parallel::mccollect(signal)),
+                        condition = function(...) NULL
+                    )
+                    sample <- tryCatch(
+                        as.character(data$target[c(1L, size / 2L, size)]),
+                        condition = identity
+                    )
+                    list(
+                        interrupted = inherits(condition, "interrupt"),
+                        compact = dtatools:::.is_unmaterialized_dictstring(
+                            data$target
+                        ),
+                        readable = !inherits(sample, "condition"),
+                        sample = if (inherits(sample, "condition")) {
+                            character()
+                        } else {
+                            sample
+                        }
+                    )
+                })
             )
         },
         libpath = .libPaths(),
         timeout = 120
     )
 
-    for (case in result) {
+    for (case in result[c("compact", "ordinary")]) {
         expect_true(case$interrupted)
         expect_true(case$compact)
         expect_true(case$no_missing)
@@ -283,6 +357,10 @@ test_that("native write interrupts roll back values and compact state", {
         expect_identical(case$minimum, 1)
         expect_identical(case$maximum, 1)
     }
+    expect_true(result$dictionary$interrupted)
+    expect_true(result$dictionary$compact)
+    expect_true(result$dictionary$readable)
+    expect_identical(result$dictionary$sample, c("a", "b", "b"))
 })
 
 test_that("compact replacement patches every storage without materializing", {
@@ -532,6 +610,21 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     gen(data, string, c("a", "long", "z"), where = eligible)
     expect_identical(as.vector(data$string), c("a", "", "z"))
     expect_identical(attr(data$string, "stata.string.storage"), "str1")
+
+    strings <- data.frame(x = 1:3)
+    authored_string <- structure(
+        c("one", NA_character_, "three"),
+        label = "Authored string",
+        stata.string.storage = "str5"
+    )
+    gen(strings, y, authored_string, where = stata_long(c(3, 1, 3)))
+    expect_identical(as.character(strings$y), c("one", "", "three"))
+    expect_identical(attr(strings$y, "label"), "Authored string")
+    expect_identical(attr(strings$y, "stata.string.storage"), "str5")
+
+    too_narrow <- structure("wide", stata.string.storage = "str2")
+    expect_error(gen(strings, too_wide, too_narrow), "do not fit")
+    expect_false("too_wide" %in% names(strings))
 
     wide <- paste(rep("x", 2046), collapse = "")
     gen(data, long_string, wide)
