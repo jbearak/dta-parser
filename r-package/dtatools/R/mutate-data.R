@@ -172,21 +172,34 @@ gen <- function(data, variable, values, where = NULL) {
     result
 }
 
-.data_column_at <- function(data, index, state, data_names) {
-    if (is.null(state) || index <= state$physical_count) {
-        return(.subset2(data, index))
-    }
-    state$columns[[data_names[[index]]]]
+.column_access <- function(data) {
+    state <- .reference_state(data)
+    list(
+        data = data,
+        state = state,
+        names = if (is.null(state)) {
+            attr(data, "names", exact = TRUE)
+        } else {
+            .reference_names(data)
+        }
+    )
 }
 
-.set_data_column_at <- function(
-    data, index, column, state, data_names
-) {
-    if (!is.null(state)) {
-        state$columns[[data_names[[index]]]] <- column
-        if (index > state$physical_count) return(invisible(NULL))
+.data_column_at <- function(access, index) {
+    if (is.null(access$state) || index <= access$state$physical_count) {
+        return(.subset2(access$data, index))
     }
-    .Call(C_dtatools_set_data_column, data, as.integer(index), column)
+    access$state$columns[[access$names[[index]]]]
+}
+
+.set_data_column_at <- function(access, index, column) {
+    if (!is.null(access$state)) {
+        access$state$columns[[access$names[[index]]]] <- column
+        if (index > access$state$physical_count) return(invisible(NULL))
+    }
+    .Call(
+        C_dtatools_set_data_column, access$data, as.integer(index), column
+    )
     invisible(NULL)
 }
 

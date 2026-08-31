@@ -431,7 +431,7 @@ test_that("native write interrupts roll back values and compact state", {
                 if (mutate_proxy) {
                     alias <- source
                     data <- source
-                    data$target <- set_var_labels(
+                    data$target <- `var_label<-`(
                         source$target, "Target"
                     )
                     shared <- TRUE
@@ -439,7 +439,7 @@ test_that("native write interrupts roll back values and compact state", {
                     data <- source
                     alias <- if (shared) {
                         result <- source
-                        result$target <- set_var_labels(
+                        result$target <- `var_label<-`(
                             source$target, "Alias"
                         )
                         result

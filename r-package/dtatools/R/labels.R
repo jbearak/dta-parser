@@ -148,7 +148,7 @@ dataset_label <- function(data) {
     if (is.na(value) || identical(value, "")) NULL else value
 }
 
-.validate_column_updates <- function(data, value, normalize, argument) {
+.validate_column_updates <- function(data_names, value, normalize, argument) {
     if (!is.list(value)) {
         stop(sprintf("`%s` must be a named list or NULL", argument),
              call. = FALSE)
@@ -164,7 +164,7 @@ dataset_label <- function(data) {
         stop(sprintf("`%s` must not contain duplicate column names", argument),
              call. = FALSE)
     }
-    unknown <- setdiff(update_names, names(data))
+    unknown <- setdiff(update_names, data_names)
     if (length(unknown) > 0L) {
         stop(sprintf(
             "Unknown column%s: %s",
@@ -172,8 +172,8 @@ dataset_label <- function(data) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
-    duplicated_data_names <- unique(names(data)[
-        duplicated(names(data)) | duplicated(names(data), fromLast = TRUE)
+    duplicated_data_names <- unique(data_names[
+        duplicated(data_names) | duplicated(data_names, fromLast = TRUE)
     ])
     ambiguous <- intersect(update_names, duplicated_data_names)
     if (length(ambiguous) > 0L) {
@@ -384,41 +384,34 @@ dataset_label <- function(data) {
 }
 
 .label_replacement_data <- function(data) {
-    if (is.null(.reference_state(data))) {
-        .metadata_copy(data)
-    } else {
-        .reference_snapshot(data)
+    result <- .metadata_copy(.reference_snapshot(data))
+    access <- .column_access(result)
+    for (index in seq_along(access$names)) {
+        .set_data_column_at(
+            access, index, .metadata_copy(.data_column_at(access, index))
+        )
     }
+    result
 }
 
-.apply_variable_label_updates <- function(data, updates) {
+.apply_variable_label_updates <- function(access, updates) {
     .warn_stata_metadata_limits(
         .text_label_violations(updates, "variable label for")
     )
-    data_names <- names(data)
-    state <- .reference_state(data)
-    locations <- match(names(updates), data_names)
+    locations <- match(names(updates), access$names)
     for (index in seq_along(updates)) {
         location <- locations[[index]]
-        column <- .metadata_copy(.data_column_at(
-            data, location, state, data_names
-        ))
+        column <- .metadata_copy(.data_column_at(access, location))
         attr(column, "label") <- updates[[index]]
-        .set_data_column_at(
-            data, location, column, state, data_names
-        )
+        .set_data_column_at(access, location, column)
     }
-    invisible(data)
+    invisible(access$data)
 }
 
-.apply_value_label_updates <- function(data, updates) {
-    data_names <- names(data)
-    state <- .reference_state(data)
-    locations <- match(names(updates), data_names)
+.apply_value_label_updates <- function(access, updates) {
+    locations <- match(names(updates), access$names)
     for (index in seq_along(updates)) {
-        column <- .data_column_at(
-            data, locations[[index]], state, data_names
-        )
+        column <- .data_column_at(access, locations[[index]])
         .validate_value_label_target(
             column, updates[[index]], paste0("x$", names(updates)[[index]])
         )
@@ -426,18 +419,14 @@ dataset_label <- function(data) {
     .warn_stata_metadata_limits(.value_label_violations(updates))
     for (index in seq_along(updates)) {
         location <- locations[[index]]
-        column <- .metadata_copy(.data_column_at(
-            data, location, state, data_names
-        ))
+        column <- .metadata_copy(.data_column_at(access, location))
         attr(column, "labels") <- updates[[index]]
         column <- .apply_haven_labelled_class(
             column, !is.null(updates[[index]])
         )
-        .set_data_column_at(
-            data, location, column, state, data_names
-        )
+        .set_data_column_at(access, location, column)
     }
-    invisible(data)
+    invisible(access$data)
 }
 
 #' @rdname var_label
@@ -446,24 +435,19 @@ dataset_label <- function(data) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
         x <- .label_replacement_data(x)
+        access <- .column_access(x)
         if (is.null(value)) {
-            data_names <- names(x)
-            state <- .reference_state(x)
-            for (index in seq_along(data_names)) {
-                column <- .metadata_copy(.data_column_at(
-                    x, index, state, data_names
-                ))
+            for (index in seq_along(access$names)) {
+                column <- .metadata_copy(.data_column_at(access, index))
                 attr(column, "label") <- NULL
-                .set_data_column_at(
-                    x, index, column, state, data_names
-                )
+                .set_data_column_at(access, index, column)
             }
             return(invisible(x))
         }
         updates <- .validate_column_updates(
-            x, value, .normalize_text_label, "value"
+            access$names, value, .normalize_text_label, "value"
         )
-        return(.apply_variable_label_updates(x, updates))
+        return(.apply_variable_label_updates(access, updates))
     }
 
     value <- .normalize_text_label(value)
@@ -485,6 +469,7 @@ dataset_label <- function(data) {
     .warn_stata_metadata_limits(
         .text_label_violations(value, "dataset label")
     )
+    data <- .label_replacement_data(data)
     attr(data, "label") <- value
     data
 }
@@ -495,25 +480,20 @@ dataset_label <- function(data) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
         x <- .label_replacement_data(x)
+        access <- .column_access(x)
         if (is.null(value)) {
-            data_names <- names(x)
-            state <- .reference_state(x)
-            for (index in seq_along(data_names)) {
-                column <- .metadata_copy(.data_column_at(
-                    x, index, state, data_names
-                ))
+            for (index in seq_along(access$names)) {
+                column <- .metadata_copy(.data_column_at(access, index))
                 attr(column, "labels") <- NULL
                 column <- .apply_haven_labelled_class(column, FALSE)
-                .set_data_column_at(
-                    x, index, column, state, data_names
-                )
+                .set_data_column_at(access, index, column)
             }
             return(invisible(x))
         }
         updates <- .validate_column_updates(
-            x, value, .normalize_value_labels, "value"
+            access$names, value, .normalize_value_labels, "value"
         )
-        return(.apply_value_label_updates(x, updates))
+        return(.apply_value_label_updates(access, updates))
     }
 
     value <- .normalize_value_labels(value)
@@ -531,11 +511,12 @@ set_var_label <- function(data, variable, label) {
         stop("`data` must be a data frame", call. = FALSE)
     }
     name <- .unquoted_variable_name(rlang::enquo(variable))
+    access <- .column_access(data)
     updates <- .validate_column_updates(
-        data, stats::setNames(list(label), name),
+        access$names, stats::setNames(list(label), name),
         .normalize_text_label, "label"
     )
-    .apply_variable_label_updates(data, updates)
+    .apply_variable_label_updates(access, updates)
 }
 
 #' @rdname var_label
@@ -565,10 +546,11 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
     }
 
     updates <- c(if (is.null(.labels)) list() else .labels, dots)
+    access <- .column_access(.data)
     updates <- .validate_column_updates(
-        .data, updates, .normalize_text_label, "labels"
+        access$names, updates, .normalize_text_label, "labels"
     )
-    .apply_variable_label_updates(.data, updates)
+    .apply_variable_label_updates(access, updates)
 }
 
 #' @rdname var_label
@@ -598,8 +580,9 @@ set_val_labels <- function(.data, ..., .labels = NULL) {
     }
 
     updates <- c(if (is.null(.labels)) list() else .labels, dots)
+    access <- .column_access(.data)
     updates <- .validate_column_updates(
-        .data, updates, .normalize_value_labels, "labels"
+        access$names, updates, .normalize_value_labels, "labels"
     )
-    .apply_value_label_updates(.data, updates)
+    .apply_value_label_updates(access, updates)
 }
