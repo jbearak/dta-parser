@@ -29,6 +29,17 @@ Run the public, corpus-free harness test with:
 Rscript --vanilla benchmarks/r-corpus-roundtrip/test-framework.R
 ```
 
+After installing the checkout-local R package, run the public Stata comparator
+tests with:
+
+```sh
+Rscript --vanilla benchmarks/r-corpus-roundtrip/test-stata-comparator.R
+```
+
+This checks releases 115, 117, and 118, deliberate one-property mismatches,
+and a 20 MB, 1,000-variable performance fixture. The default performance limit
+is 2.5 seconds; `DTATOOLS_COMPARATOR_MAX_SECONDS` may set a host-specific limit.
+
 Run the complete qualification and benchmark from the checkout root:
 
 ```sh
