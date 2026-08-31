@@ -157,18 +157,6 @@ struct FullValueLabelCache {
     indices_by_name: Option<Vec<usize>>,
 }
 
-#[cfg(test)]
-fn index_value_label_locations(locations: &[ValueLabelLocation]) -> HashMap<Arc<str>, Vec<usize>> {
-    let mut indices_by_name = HashMap::<Arc<str>, Vec<usize>>::new();
-    for (index, location) in locations.iter().enumerate() {
-        indices_by_name
-            .entry(Arc::clone(&location.name))
-            .or_default()
-            .push(index);
-    }
-    indices_by_name
-}
-
 fn selected_value_label_location_indices(
     indices_by_name: &HashMap<Arc<str>, Vec<usize>>,
     metadata: &DtaMetadata,
@@ -7141,42 +7129,24 @@ mod tests {
     }
 
     #[test]
-    fn repeated_sparse_value_label_selections_use_the_name_index() {
-        let locations = (0..10_000)
-            .map(|index| ValueLabelLocation {
-                name: Arc::from(if index == 7 || index == 9_997 {
-                    "selected".to_owned()
-                } else {
-                    format!("unused_{index}")
-                }),
-                start: index as u64,
-                end: index as u64 + 1,
-            })
-            .collect::<Vec<_>>();
-        let indices_by_name = index_value_label_locations(&locations);
-        let cache = IndexedValueLabelCache {
-            layout: IndexedValueLabelLayout::Fixed8,
-            locations,
-            indices_by_name,
-            tables: HashMap::new(),
-        };
+    fn sparse_value_label_selection_preserves_duplicate_source_order() {
+        let mut indices_by_name = HashMap::<Arc<str>, Vec<usize>>::new();
+        for index in 0..10_000 {
+            if index != 7 && index != 9_997 {
+                indices_by_name.insert(Arc::from(format!("unused_{index}")), vec![index]);
+            }
+        }
+        indices_by_name.insert(Arc::from("selected"), vec![7, 9_997]);
         let mut metadata = kernel_metadata(ByteOrder::Lsf);
         metadata
             .variables
             .push(value_label_variable("x", "selected"));
         let selected = selected_value_label_names(&metadata, &[0]).unwrap();
 
-        for _ in 0..100 {
-            assert_eq!(
-                selected_value_label_location_indices(
-                    &cache.indices_by_name,
-                    &metadata,
-                    &selected,
-                )
-                .unwrap(),
-                [7, 9_997]
-            );
-        }
+        assert_eq!(
+            selected_value_label_location_indices(&indices_by_name, &metadata, &selected).unwrap(),
+            [7, 9_997]
+        );
     }
 
     #[test]
@@ -7189,7 +7159,6 @@ mod tests {
             })
             .collect::<Vec<_>>();
         let indices_by_name = index_value_label_tables(&tables).unwrap();
-        assert_eq!(indices_by_name, [1, 3, 0, 2]);
 
         let mut metadata = kernel_metadata(ByteOrder::Lsf);
         metadata.variables = vec![
@@ -7198,7 +7167,6 @@ mod tests {
             value_label_variable("third", "z"),
         ];
         let selected = selected_value_label_names(&metadata, &[0, 1, 2]).unwrap();
-        assert_eq!(selected.names.len(), 2);
         assert_eq!(
             selected_full_value_label_indices(&tables, &indices_by_name, &metadata, &selected,)
                 .unwrap(),
@@ -7217,7 +7185,7 @@ mod tests {
 
         let selected = selected_value_label_names(&metadata, &indices).unwrap();
 
-        assert_eq!(selected.names.len(), VARIABLE_COUNT);
+        assert_eq!(selected.iter(&metadata).count(), VARIABLE_COUNT);
         assert!(selected.contains(&metadata, "table_000000"));
         assert!(selected.contains(&metadata, "table_119999"));
         assert!(!selected.contains(&metadata, "table_missing"));

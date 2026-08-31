@@ -272,6 +272,64 @@ impl ProfileFields {
 thread_local! {
     static PROFILE_FIELD_LOOKUP_COUNT: std::cell::Cell<usize> =
         const { std::cell::Cell::new(0) };
+    static PROFILE_SELECTED_RAW_JSON_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+    static PROFILE_SELECTED_RAW_JSON_BYTES: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+    static PROFILE_OWNED_VALUE_LABEL_NAME_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+}
+
+fn owned_value_label_name(name: &str) -> String {
+    #[cfg(test)]
+    PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(|count| count.set(count.get() + 1));
+    name.to_owned()
+}
+
+fn projected_value_label_names(documents: &ProfileFields) -> HashSet<String> {
+    let mut names = HashSet::new();
+    documents.for_each(|document| {
+        let Some(reference) = document.value_labels.as_deref() else {
+            return;
+        };
+        if !names.contains(reference) {
+            names.insert(owned_value_label_name(reference));
+        }
+    });
+    names
+}
+
+fn profile_value_label_reference_counts(
+    documents: &ProfileFields,
+    projected_names: Option<HashSet<String>>,
+) -> HashMap<String, usize> {
+    if let Some(names) = projected_names {
+        let mut counts = HashMap::with_capacity(names.len());
+        counts.extend(names.into_iter().map(|name| (name, 0_usize)));
+        documents.for_each(|document| {
+            let Some(reference) = document.value_labels.as_deref() else {
+                return;
+            };
+            let count = counts
+                .get_mut(reference)
+                .expect("the projection-name set came from the stored documents");
+            *count = (*count + 1).min(2);
+        });
+        counts
+    } else {
+        let mut counts = HashMap::<String, usize>::new();
+        documents.for_each(|document| {
+            let Some(reference) = document.value_labels.as_deref() else {
+                return;
+            };
+            if let Some(count) = counts.get_mut(reference) {
+                *count = (*count + 1).min(2);
+            } else {
+                counts.insert(owned_value_label_name(reference), 1_usize);
+            }
+        });
+        counts
+    }
 }
 
 fn invalid(detail: impl Into<String>) -> ArrowProfileError {
@@ -597,18 +655,24 @@ fn parse_profile(
     let owned_fields = std::mem::take(&mut footer.schema.fields);
     let mut fields: Vec<Arc<Field>> = owned_fields.iter().cloned().collect();
     drop(owned_fields);
-    let mut field_json = Vec::with_capacity(fields.len());
+    let mut field_json = selected.map(|_| Vec::with_capacity(fields.len()));
     for (index, field) in fields.iter_mut().enumerate() {
         let field = Arc::make_mut(field);
         let json = field.metadata_mut().remove(ARROW_FIELD_KEY);
-        field_json.push(json);
         if selected_fields
             .as_ref()
             .is_some_and(|selected| !selected.contains(&index))
         {
+            field_json
+                .as_mut()
+                .expect("projected reads retain unselected raw field documents")
+                .push(json);
             continue;
         }
-        let document = field_json[index]
+        if let Some(field_json) = &mut field_json {
+            field_json.push(None);
+        }
+        let document = json
             .as_deref()
             .map(|json| parse_field_document(&version, field, json))
             .transpose()?;
@@ -616,72 +680,85 @@ fn parse_profile(
             documents.insert(index, document);
         }
     }
+    #[cfg(test)]
+    {
+        let selected_raw_json = field_json.iter().flat_map(|json| {
+            json.iter()
+                .enumerate()
+                .filter(|(index, _)| {
+                    selected_fields
+                        .as_ref()
+                        .is_none_or(|selected| selected.contains(index))
+                })
+                .filter_map(|(_, json)| json.as_deref())
+        });
+        let (count, bytes) = selected_raw_json.fold((0_usize, 0_usize), |state, json| {
+            (state.0 + 1, state.1.saturating_add(json.len()))
+        });
+        PROFILE_SELECTED_RAW_JSON_COUNT.with(|retained| retained.set(count));
+        PROFILE_SELECTED_RAW_JSON_BYTES.with(|retained| retained.set(bytes));
+    }
     footer.schema.fields = fields.into();
 
-    let mut selected_value_labels = HashSet::new();
-    let mut value_label_reference_counts = HashMap::new();
-    documents.for_each(|document| {
-        let Some(reference) = document.value_labels.as_ref() else {
-            return;
-        };
-        selected_value_labels.insert(reference.clone());
-        let count = value_label_reference_counts
-            .entry(reference.clone())
-            .or_insert(0_usize);
-        *count = (*count + 1).min(2);
-    });
+    let selected_value_labels = selected.map(|_| projected_value_label_names(&documents));
     let dataset_json = footer.schema.metadata.remove(ARROW_DATASET_KEY);
     let dataset = parse_dataset_document_selected(
         &version,
         dataset_json.as_deref(),
-        selected.map(|_| &selected_value_labels),
+        selected_value_labels.as_ref(),
     )?;
+    drop(dataset_json);
+    let mut value_label_reference_counts =
+        profile_value_label_reference_counts(&documents, selected_value_labels);
     documents.try_for_each_indexed(|index, document| {
         validate_value_label_reference(&version, footer.schema.field(index), document, &dataset)
     })?;
-    let mut unresolved_value_labels = value_label_reference_counts
-        .iter()
-        .filter(|(_, count)| **count < 2)
-        .map(|(name, _)| name.clone())
-        .collect::<HashSet<_>>();
-    for (index, json) in field_json.iter().enumerate() {
-        if unresolved_value_labels.is_empty() {
-            break;
-        }
-        if documents.get(index).is_some() {
-            continue;
-        }
-        let Some(target) = raw_value_label_reference(json.as_deref(), &unresolved_value_labels)
-        else {
-            continue;
-        };
-        let Ok(document) = parse_field_document(
-            &version,
-            footer.schema.field(index),
-            json.as_deref().expect("a raw reference came from JSON"),
-        ) else {
-            continue;
-        };
-        let Some(reference) = document.value_labels.as_deref() else {
-            continue;
-        };
-        if reference != target
-            || validate_value_label_reference(
-                &version,
-                footer.schema.field(index),
-                &document,
-                &dataset,
-            )
-            .is_err()
-        {
-            continue;
-        }
-        if let Some(count) = value_label_reference_counts.get_mut(reference) {
-            *count = (*count + 1).min(2);
-            if *count == 2 {
-                unresolved_value_labels.remove(reference);
+    let mut unresolved_value_labels = selected.map_or(0, |_| {
+        value_label_reference_counts
+            .values()
+            .filter(|count| **count < 2)
+            .count()
+    });
+    if let Some(mut field_json) = field_json {
+        for (index, json) in field_json.iter_mut().enumerate() {
+            if unresolved_value_labels == 0 {
+                break;
+            }
+            let Some(json) = json.take() else {
+                continue;
+            };
+            let Some(target) =
+                raw_value_label_reference(Some(json.as_str()), &value_label_reference_counts)
+            else {
+                continue;
+            };
+            let Ok(document) =
+                parse_field_document(&version, footer.schema.field(index), json.as_str())
+            else {
+                continue;
+            };
+            let Some(reference) = document.value_labels.as_deref() else {
+                continue;
+            };
+            if reference != target
+                || validate_value_label_reference(
+                    &version,
+                    footer.schema.field(index),
+                    &document,
+                    &dataset,
+                )
+                .is_err()
+            {
+                continue;
+            }
+            if let Some(count) = value_label_reference_counts.get_mut(reference) {
+                *count = (*count + 1).min(2);
+                if *count == 2 {
+                    unresolved_value_labels -= 1;
+                }
             }
         }
+        drop(field_json);
     }
     let checksums_json = footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
     let checksums = if verify {
@@ -741,7 +818,7 @@ struct RawValueLabelReference<'a> {
 
 fn raw_value_label_reference<'a>(
     json: Option<&str>,
-    selected: &'a HashSet<String>,
+    selected: &'a HashMap<String, usize>,
 ) -> Option<&'a str> {
     #[cfg(test)]
     RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(count.get() + 1));
@@ -761,7 +838,8 @@ fn raw_value_label_reference<'a>(
         raw.r,
     );
     let name: Cow<'_, str> = serde_json::from_str(raw.value_labels?.get()).ok()?;
-    selected.get(name.as_ref()).map(String::as_str)
+    let (stored, count) = selected.get_key_value(name.as_ref())?;
+    (*count < 2).then_some(stored.as_str())
 }
 
 #[cfg(test)]
@@ -2580,6 +2658,61 @@ mod tests {
     }
 
     #[test]
+    fn parsed_profile_releases_raw_fields_and_owns_each_reference_key_once() {
+        let fields = (0..3)
+            .map(|index| {
+                let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+                field.set_metadata(HashMap::from([(
+                    ARROW_FIELD_KEY.to_owned(),
+                    format!(r#"{{"version":0,"value_labels":"table_{index}"}}"#),
+                )]));
+                field
+            })
+            .collect::<Vec<_>>();
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"value_labels":{"table_0":[],"table_1":[],"table_2":[]}}"#
+                    .to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        PROFILE_SELECTED_RAW_JSON_COUNT.with(|count| count.set(0));
+        PROFILE_SELECTED_RAW_JSON_BYTES.with(|bytes| bytes.set(0));
+        PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(|count| count.set(0));
+        parse_profile(&mut footer, true, false, None)
+            .expect("full profile is valid")
+            .expect("profile is present");
+
+        assert_eq!(
+            PROFILE_SELECTED_RAW_JSON_COUNT.with(std::cell::Cell::get),
+            0,
+            "decoded field documents must not retain their raw JSON strings"
+        );
+        assert_eq!(
+            PROFILE_SELECTED_RAW_JSON_BYTES.with(std::cell::Cell::get),
+            0,
+            "decoded field documents must release the raw JSON payload"
+        );
+        assert_eq!(
+            PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(std::cell::Cell::get),
+            3,
+            "the result count map is the only owner added for distinct references"
+        );
+    }
+
+    #[test]
     fn projected_profile_is_sparse_and_validates_only_selected_field_documents() {
         let field_count = 120_000;
         let selected = field_count - 1;
@@ -2621,6 +2754,8 @@ mod tests {
         };
 
         PROFILE_FIELD_LOOKUP_COUNT.with(|count| count.set(0));
+        PROFILE_SELECTED_RAW_JSON_COUNT.with(|count| count.set(0));
+        PROFILE_SELECTED_RAW_JSON_BYTES.with(|bytes| bytes.set(0));
         let profile = parse_profile(&mut footer, true, false, Some(&[selected, selected]))
             .expect("projected profile is valid")
             .expect("profile is present");
@@ -2633,6 +2768,16 @@ mod tests {
         assert!(
             lookups <= 1,
             "projected validation must visit the one stored document, not {lookups} schema slots"
+        );
+        assert_eq!(
+            PROFILE_SELECTED_RAW_JSON_COUNT.with(std::cell::Cell::get),
+            0,
+            "the selected wide-schema document must retain no raw JSON"
+        );
+        assert_eq!(
+            PROFILE_SELECTED_RAW_JSON_BYTES.with(std::cell::Cell::get),
+            0,
+            "the selected wide-schema JSON payload must be released"
         );
         assert_eq!(profile.dataset.label, "wide");
         assert!(!footer
@@ -2679,6 +2824,41 @@ mod tests {
         assert_eq!(
             visited,
             vec![(7, "first".to_owned()), (last, String::new())]
+        );
+    }
+
+    #[test]
+    fn wide_profile_reference_state_owns_one_key_per_distinct_name() {
+        let field_count = 120_000;
+        let mut documents = ProfileFields::new(field_count, None);
+        for index in 0..field_count {
+            documents.insert(
+                index,
+                ArrowFieldDocument {
+                    value_labels: Some(format!("table_{index:06}")),
+                    ..ArrowFieldDocument::default()
+                },
+            );
+        }
+
+        PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(|count| count.set(0));
+        let counts = profile_value_label_reference_counts(&documents, None);
+        assert_eq!(counts.len(), field_count);
+        assert_eq!(
+            PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(std::cell::Cell::get),
+            field_count,
+            "a full read must build only its result count-map keys"
+        );
+        drop(counts);
+
+        PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(|count| count.set(0));
+        let projected = projected_value_label_names(&documents);
+        let counts = profile_value_label_reference_counts(&documents, Some(projected));
+        assert_eq!(counts.len(), field_count);
+        assert_eq!(
+            PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(std::cell::Cell::get),
+            field_count,
+            "projection-filter keys must move into the result count map"
         );
     }
 
