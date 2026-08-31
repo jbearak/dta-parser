@@ -70,9 +70,10 @@ unchanged and allocate less than two megabytes in total, preventing cache space
 from scaling with either source length or dictionary cardinality.
 Full generation and replacement from the same source are timed against ordinary
 character-vector baselines. A transaction-private cache is permitted only when
-the dictionary cardinality is no larger than the number of values read; these
-cases catch repeated decoding while the sparse allocation limit prevents the
-cache from scaling to an unselected dictionary.
+the read count is at least four times the dictionary cardinality, enough reuse
+to amortize its allocation. Separate scalar and near-unique dictionary cases
+prevent the cache from scaling to unused or single-use entries, while the sparse
+allocation limit prevents it from scaling to an unselected dictionary.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

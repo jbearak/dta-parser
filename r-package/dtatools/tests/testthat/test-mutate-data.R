@@ -1254,6 +1254,18 @@ test_that("metadata helpers remain isolated from later source patches", {
     )
     expect_identical(as.character(generated$text), c("wide", "x", "wide"))
 
+    scalar_values <- read_arrow(wide_path, n_max = 1)$text
+    scalar_cache <- dtatools:::.dictstring_cached_count(scalar_values)
+    scalar_generated <- data.frame(anchor = 1:3)
+    gen(scalar_generated, text, .env$scalar_values)
+    scalar_replaced <- data.frame(text = rep("", 3))
+    replace_values(scalar_replaced, text, .env$scalar_values)
+    expect_identical(
+        dtatools:::.dictstring_cached_count(scalar_values), scalar_cache
+    )
+    expect_identical(as.character(scalar_generated$text), rep("wide", 3))
+    expect_identical(as.character(scalar_replaced$text), rep("wide", 3))
+
     narrow_generated_values <- dtatools:::.metadata_copy(
         read_arrow(wide_path)$text
     )

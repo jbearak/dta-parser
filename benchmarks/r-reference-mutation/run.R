@@ -457,11 +457,50 @@ save_arrow(data.frame(
     text = rep(dictionary_values, length.out = rows)
 ), dictionary_path)
 dictionary_data <- read_arrow(dictionary_path)
+scalar_dictionary_source <- read_arrow(
+    dictionary_path, n_max = 1
+)$text
 unlink(dictionary_path)
 stopifnot(dtatools:::.is_unmaterialized_dictstring(dictionary_data$text))
 dictionary_alias <- set_variable_labels(dictionary_data, text = "Alias")
 dictionary_cache_before <- dtatools:::.dictstring_cached_count(
     dictionary_alias$text
+)
+scalar_dictionary_cache <- dtatools:::.dictstring_cached_count(
+    scalar_dictionary_source
+)
+scalar_dictionary_generation_data <- data.frame(
+    anchor = stata_byte(.size = rows)
+)
+scalar_dictionary_generation_profile <- profile_memory(
+    gen(
+        scalar_dictionary_generation_data, generated,
+        .env$scalar_dictionary_source
+    ),
+    "dtatools-reference-scalar-dictionary-source-generation-"
+)
+scalar_dictionary_generation_time <-
+    scalar_dictionary_generation_profile$elapsed
+total_scalar_dictionary_generation_allocation <-
+    scalar_dictionary_generation_profile$total
+largest_scalar_dictionary_generation_allocation <-
+    scalar_dictionary_generation_profile$largest
+stopifnot(
+    identical(
+        dtatools:::.dictstring_cached_count(scalar_dictionary_source),
+        scalar_dictionary_cache
+    ),
+    identical(
+        as.character(
+            scalar_dictionary_generation_data$generated[c(1L, rows)]
+        ),
+        rep(dictionary_values[[1L]], 2)
+    ),
+    largest_scalar_dictionary_generation_allocation <=
+        full_double_bytes * 1.01,
+    total_scalar_dictionary_generation_allocation <
+        full_double_bytes * 1.01,
+    scalar_dictionary_generation_time < character_generation_time * 2
 )
 dictionary_generation_data <- data.frame(
     anchor = stata_byte(.size = rows)
@@ -529,8 +568,66 @@ stopifnot(
         ordinary_source_replacement_time * 3
 )
 rm(
-    dictionary_generation_data, ordinary_source_target,
+    scalar_dictionary_generation_data, dictionary_generation_data,
+    ordinary_source_target,
     dictionary_source_target
+)
+
+near_unique_rows <- min(rows, 1000000L)
+near_unique_values <- sprintf("unique-%07d", seq_len(near_unique_rows))
+near_unique_ordinary_data <- data.frame(
+    anchor = stata_byte(.size = near_unique_rows)
+)
+near_unique_ordinary_profile <- profile_memory(
+    gen(
+        near_unique_ordinary_data, generated,
+        .env$near_unique_values
+    ),
+    "dtatools-reference-near-unique-ordinary-generation-"
+)
+near_unique_ordinary_time <- near_unique_ordinary_profile$elapsed
+near_unique_path <- tempfile(fileext = ".arrow")
+save_arrow(data.frame(text = near_unique_values), near_unique_path)
+near_unique_source <- read_arrow(near_unique_path)$text
+unlink(near_unique_path)
+stopifnot(dtatools:::.is_unmaterialized_dictstring(near_unique_source))
+near_unique_cache <- dtatools:::.dictstring_cached_count(near_unique_source)
+near_unique_dictionary_data <- data.frame(
+    anchor = stata_byte(.size = near_unique_rows)
+)
+near_unique_dictionary_profile <- profile_memory(
+    gen(
+        near_unique_dictionary_data, generated,
+        .env$near_unique_source
+    ),
+    "dtatools-reference-near-unique-dictionary-generation-"
+)
+near_unique_dictionary_time <- near_unique_dictionary_profile$elapsed
+total_near_unique_dictionary_allocation <-
+    near_unique_dictionary_profile$total
+largest_near_unique_dictionary_allocation <-
+    near_unique_dictionary_profile$largest
+near_unique_result_bytes <- as.double(near_unique_rows) * 8
+stopifnot(
+    identical(
+        dtatools:::.dictstring_cached_count(near_unique_source),
+        near_unique_cache
+    ),
+    identical(
+        as.character(
+            near_unique_dictionary_data$generated[c(1L, near_unique_rows)]
+        ),
+        near_unique_values[c(1L, near_unique_rows)]
+    ),
+    largest_near_unique_dictionary_allocation <=
+        near_unique_result_bytes * 1.01,
+    total_near_unique_dictionary_allocation <
+        near_unique_result_bytes * 1.1,
+    near_unique_dictionary_time < max(0.1, near_unique_ordinary_time * 8)
+)
+rm(
+    near_unique_values, near_unique_ordinary_data,
+    near_unique_dictionary_data
 )
 fill_repetitions <- 5L
 character_fill_time <- system.time(
@@ -852,6 +949,18 @@ cat(sprintf(
     dictionary_generation_time
 ))
 cat(sprintf(
+    "scalar_dictionary_source_generation_seconds\t%.6f\n",
+    scalar_dictionary_generation_time
+))
+cat(sprintf(
+    "scalar_dictionary_source_generation_total_profiled_allocation_bytes\t%.0f\n",
+    total_scalar_dictionary_generation_allocation
+))
+cat(sprintf(
+    "scalar_dictionary_source_generation_largest_allocation_bytes\t%.0f\n",
+    largest_scalar_dictionary_generation_allocation
+))
+cat(sprintf(
     "dictionary_source_generation_total_profiled_allocation_bytes\t%.0f\n",
     total_dictionary_generation_allocation
 ))
@@ -874,6 +983,22 @@ cat(sprintf(
 cat(sprintf(
     "dictionary_source_full_replacement_largest_allocation_bytes\t%.0f\n",
     largest_dictionary_source_allocation
+))
+cat(sprintf(
+    "near_unique_ordinary_generation_seconds\t%.6f\n",
+    near_unique_ordinary_time
+))
+cat(sprintf(
+    "near_unique_dictionary_generation_seconds\t%.6f\n",
+    near_unique_dictionary_time
+))
+cat(sprintf(
+    "near_unique_dictionary_generation_total_profiled_allocation_bytes\t%.0f\n",
+    total_near_unique_dictionary_allocation
+))
+cat(sprintf(
+    "near_unique_dictionary_generation_largest_allocation_bytes\t%.0f\n",
+    largest_near_unique_dictionary_allocation
 ))
 cat(sprintf(
     "sparse_dictionary_source_replacement_seconds\t%.6f\n",

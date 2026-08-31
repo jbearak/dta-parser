@@ -2447,6 +2447,7 @@ typedef struct {
     SEXP source;
     SEXP cache;
     SEXP private_cache;
+    SEXP scalar;
     dictstring_data *data;
 } reference_string_reader;
 
@@ -2456,7 +2457,7 @@ static SEXP reference_string_reader_private_cache(
     SEXP source = unmaterialized_dictstring_source(values);
     if (source == R_NilValue) return R_NilValue;
     R_xlen_t cardinality = XLENGTH(dictstring_cache(source));
-    return cardinality > 0 && cardinality <= read_count
+    return cardinality > 0 && cardinality <= read_count / 4
         ? Rf_allocVector(VECSXP, cardinality) : R_NilValue;
 }
 
@@ -2468,6 +2469,7 @@ static reference_string_reader reference_string_reader_create(
         .source = unmaterialized_dictstring_source(values),
         .cache = R_NilValue,
         .private_cache = private_cache,
+        .scalar = R_NilValue,
         .data = NULL
     };
     if (reader.source != R_NilValue) {
@@ -2480,6 +2482,7 @@ static reference_string_reader reference_string_reader_create(
 static SEXP reference_string_reader_at(
     const reference_string_reader *reader, R_xlen_t index
 ) {
+    if (reader->scalar != R_NilValue) return reader->scalar;
     if (reader->source == R_NilValue) {
         return STRING_ELT(reader->values, index);
     }
@@ -4874,29 +4877,41 @@ static SEXP patch_vector(
     );
     SEXP replacement_reader_cache = PROTECT(
         type == STRSXP
-            ? reference_string_reader_private_cache(replacement, count)
+            ? reference_string_reader_private_cache(
+                replacement,
+                value_plan.mode == REFERENCE_VALUES_SCALAR ? 1 : count
+            )
             : R_NilValue
     );
+    reference_string_reader replacement_reader =
+        reference_string_reader_create(
+            replacement, replacement_reader_cache
+        );
+    SEXP replacement_scalar = PROTECT(
+        type == STRSXP &&
+            value_plan.mode == REFERENCE_VALUES_SCALAR
+            ? reference_string_reader_at(&replacement_reader, 0)
+            : R_NilValue
+    );
+    replacement_reader.scalar = replacement_scalar;
     SEXP continuation = PROTECT(R_MakeUnwindCont());
     unsigned char *undo = NULL;
     if (rollback_required && type != STRSXP) {
         if ((size_t) count > SIZE_MAX / width) {
-            UNPROTECT(5);
+            UNPROTECT(6);
             Rf_error("reference replacement plan is too large");
         }
         size_t bytes = (size_t) count * width;
         undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
         if (undo == NULL) {
-            UNPROTECT(5);
+            UNPROTECT(6);
             Rf_error("could not allocate reference replacement rollback data");
         }
     }
     vector_patch_transaction transaction = {
         .target = target,
         .replacement = replacement,
-        .replacement_reader = reference_string_reader_create(
-            replacement, replacement_reader_cache
-        ),
+        .replacement_reader = replacement_reader,
         .saved_data1 = VECTOR_ELT(saved_state, 0),
         .saved_data2 = VECTOR_ELT(saved_state, 1),
         .string_undo = string_undo,
@@ -4936,7 +4951,7 @@ static SEXP patch_vector(
             dictstring_finalize(external);
         }
     }
-    UNPROTECT(5);
+    UNPROTECT(6);
     return result;
 }
 
@@ -5138,7 +5153,11 @@ SEXP C_dtatools_generate_character(
     );
     int declared_width = generated_string_declared_width(declared);
     SEXP reader_cache = PROTECT(
-        reference_string_reader_private_cache(values, count)
+        reference_string_reader_private_cache(
+            values,
+            value_plan.mode == REFERENCE_VALUES_SCALAR && count > 0
+                ? 1 : count
+        )
     );
     reference_string_reader reader = reference_string_reader_create(
         values, reader_cache
