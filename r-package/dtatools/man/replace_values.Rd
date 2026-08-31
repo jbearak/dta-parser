@@ -75,7 +75,9 @@ formula environment as its fallback. Two-sided formulas are rejected.
 dataset row count; missing logical values do not select a row. Numeric row
 positions must be positive, finite, whole, and in range. Zero, negative,
 missing, and out-of-range positions are errors. Duplicate positions are
-accepted and the last replacement for a row wins. \code{values} must have size
+accepted and the last replacement for a row wins. Numeric positions are
+snapshotted before writing, including when \code{where} returns the target column
+or another column sharing its payload. \code{values} must have size
 one, the selected-row count, or the full dataset row count. Full-length
 values are indexed by the selected row positions.
 
@@ -113,6 +115,8 @@ Missing report \tab Command output \tab No printed report \cr
 Compact \code{byte}, \code{int}, \code{long}, and \code{float} columns are patched in their
 native storage after validation. A direct compact target allocates work
 proportional to the selected rows and does not create a full R double copy.
+Newly generated compact columns retain exclusive ownership, so their first
+replacement uses the same direct path without detaching a full native copy.
 The native path keeps compact rollback bytes until the write commits so an
 interrupt restores the original payload and missing-value cache.
 A metadata proxy first detaches by copying its compact native payload so an

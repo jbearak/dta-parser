@@ -186,7 +186,8 @@ enum {
     NUMERIC_BYTE = 0,
     NUMERIC_INT = 1,
     NUMERIC_LONG = 2,
-    NUMERIC_FLOAT = 3
+    NUMERIC_FLOAT = 3,
+    NUMERIC_DOUBLE = 4
 };
 
 static void numeric_finalize(SEXP external) {
@@ -3957,10 +3958,12 @@ typedef struct {
     SEXP value;
     const int *integer_values;
     numeric_reader real_reader;
+    R_xlen_t *snapshot;
     int real;
+    int snapshot_required;
 } reference_rows;
 
-static R_xlen_t reference_row_at(
+static R_xlen_t reference_live_row_at(
     const reference_rows *rows, R_xlen_t index
 ) {
     if (rows->real) {
@@ -3981,6 +3984,13 @@ static R_xlen_t reference_row_at(
         Rf_error("invalid reference mutation row");
     }
     return (R_xlen_t) value;
+}
+
+static R_xlen_t reference_row_at(
+    const reference_rows *rows, R_xlen_t index
+) {
+    return rows->snapshot == NULL
+        ? reference_live_row_at(rows, index) : rows->snapshot[index];
 }
 
 static reference_rows reference_rows_create(
@@ -4005,6 +4015,45 @@ static reference_rows reference_rows_create(
         if (row > limit) Rf_error("invalid reference mutation row");
     }
     return rows;
+}
+
+static int reference_rows_alias_target(SEXP rows, SEXP target) {
+    if (rows == R_NilValue) return 0;
+    if (rows == target) return 1;
+
+    numeric_data *row_storage = unmaterialized_numeric_storage(rows);
+    numeric_data *target_storage = unmaterialized_numeric_storage(target);
+    if (row_storage != NULL && row_storage == target_storage) return 1;
+
+    const void *row_values = DATAPTR_OR_NULL(rows);
+    const void *target_values = DATAPTR_OR_NULL(target);
+    return row_values != NULL && row_values == target_values;
+}
+
+static void snapshot_reference_rows(reference_rows *rows) {
+    if (!rows->snapshot_required || rows->snapshot != NULL ||
+        rows->value == R_NilValue) {
+        return;
+    }
+    R_xlen_t length = XLENGTH(rows->value);
+    if ((size_t) length > SIZE_MAX / sizeof(R_xlen_t)) {
+        Rf_error("reference mutation row plan is too large");
+    }
+    rows->snapshot = (R_xlen_t *) malloc(
+        length == 0 ? 1 : (size_t) length * sizeof(R_xlen_t)
+    );
+    if (rows->snapshot == NULL) {
+        Rf_error("could not snapshot the reference mutation row plan");
+    }
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        rows->snapshot[index] = reference_live_row_at(rows, index);
+    }
+}
+
+static void release_reference_rows(reference_rows *rows) {
+    free(rows->snapshot);
+    rows->snapshot = NULL;
 }
 
 static R_xlen_t reference_patch_row(
@@ -4100,7 +4149,7 @@ typedef struct {
     SEXP target;
     SEXP saved_data1;
     SEXP saved_data2;
-    const reference_rows *rows;
+    reference_rows *rows;
     const compact_replacement_plan *replacement;
     numeric_data *compact;
     unsigned char *undo;
@@ -4146,6 +4195,7 @@ static void restore_compact_patch(compact_patch_transaction *transaction) {
 static SEXP apply_compact_patch_transaction(void *data) {
     compact_patch_transaction *transaction =
         (compact_patch_transaction *) data;
+    snapshot_reference_rows(transaction->rows);
     R_xlen_t count = transaction->replacement->count;
     if (transaction->rows->value == R_NilValue) {
         if (transaction->undo_bytes > 0) {
@@ -4193,6 +4243,7 @@ static void cleanup_compact_patch_transaction(
     if (jump && transaction->journal_complete) {
         restore_compact_patch(transaction);
     }
+    release_reference_rows(transaction->rows);
     free(transaction->undo);
     transaction->undo = NULL;
 }
@@ -4203,7 +4254,7 @@ typedef struct {
     SEXP saved_data1;
     SEXP saved_data2;
     SEXP string_undo;
-    const reference_rows *rows;
+    reference_rows *rows;
     unsigned char *undo;
     size_t width;
     R_xlen_t count;
@@ -4271,6 +4322,7 @@ static void restore_vector_patch(vector_patch_transaction *transaction) {
 static SEXP apply_vector_patch_transaction(void *data) {
     vector_patch_transaction *transaction =
         (vector_patch_transaction *) data;
+    snapshot_reference_rows(transaction->rows);
     for (R_xlen_t index = 0; index < transaction->count; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t row = reference_patch_row(transaction->rows, index);
@@ -4368,6 +4420,7 @@ static void cleanup_vector_patch_transaction(
          transaction->writes_completed > 0)) {
         restore_vector_patch(transaction);
     }
+    release_reference_rows(transaction->rows);
     free(transaction->undo);
     transaction->undo = NULL;
 }
@@ -4387,6 +4440,7 @@ SEXP C_dtatools_patch_vector(
         Rf_error("invalid reference replacement plan");
     }
     reference_rows row_plan = reference_rows_create(rows, target_length);
+    row_plan.snapshot_required = reference_rows_alias_target(rows, target);
 
     numeric_data *compact = unmaterialized_numeric_storage(target);
     if (compact != NULL) {
@@ -4489,9 +4543,89 @@ SEXP C_dtatools_patch_vector(
     return result;
 }
 
+static double generated_double_value(
+    const numeric_reader *reader, R_xlen_t index, int temporal
+) {
+    int missing_code;
+    double value = numeric_reader_at(reader, index, &missing_code);
+    if (missing_code >= 0) {
+        if (missing_code == 0) return NA_REAL;
+        if (missing_code >= 'a' && missing_code <= 'z') {
+            return numeric_missing_value(missing_code - 'a' + 1);
+        }
+        Rf_error(
+            "generated values cannot contain `NaN` or unsupported missing tags"
+        );
+    }
+    double encoded = compact_patch_encoded_value(value, temporal);
+    if (!R_FINITE(encoded) || fabs(encoded) > DBL_MAX / 2.0) {
+        Rf_error("No Stata double storage can represent the generated value");
+    }
+    return value;
+}
+
+static SEXP generate_double_numeric(
+    SEXP values, const reference_rows *rows, size_t row_count,
+    R_xlen_t count, int temporal
+) {
+    numeric_reader reader = numeric_reader_create(values, XLENGTH(values));
+    SEXP result = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) row_count));
+    double *output = REAL(result);
+    if (rows->value != R_NilValue) {
+        for (size_t index = 0; index < row_count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            output[index] = NA_REAL;
+        }
+    }
+
+    R_xlen_t value_count = XLENGTH(values);
+    if (value_count == 1) {
+        double value = generated_double_value(&reader, 0, temporal);
+        if (rows->value == R_NilValue) {
+            for (size_t index = 0; index < row_count; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                output[index] = value;
+            }
+        } else {
+            for (R_xlen_t index = 0; index < count; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                output[reference_patch_row(rows, index)] = value;
+            }
+        }
+    } else {
+        for (R_xlen_t index = 0; index < count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            R_xlen_t row = rows->value == R_NilValue
+                ? index : reference_patch_row(rows, index);
+            output[row] = generated_double_value(&reader, index, temporal);
+        }
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+static void set_generated_attributes(SEXP value, SEXP attributes) {
+    if (TYPEOF(attributes) != VECSXP) {
+        Rf_error("invalid generated-column attributes");
+    }
+    SEXP names = Rf_getAttrib(attributes, R_NamesSymbol);
+    if (TYPEOF(names) != STRSXP || XLENGTH(names) != XLENGTH(attributes)) {
+        Rf_error("invalid generated-column attributes");
+    }
+    for (R_xlen_t index = 0; index < XLENGTH(attributes); index++) {
+        SEXP name = STRING_ELT(names, index);
+        if (name == NA_STRING || LENGTH(name) == 0) {
+            Rf_error("invalid generated-column attribute name");
+        }
+        Rf_setAttrib(
+            value, Rf_installChar(name), VECTOR_ELT(attributes, index)
+        );
+    }
+}
+
 SEXP C_dtatools_generate_numeric(
     SEXP values, SEXP rows, SEXP row_count_value,
-    SEXP kind_value, SEXP temporal_value
+    SEXP kind_value, SEXP temporal_value, SEXP attributes
 ) {
     if (rows != R_NilValue &&
         TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP) {
@@ -4507,7 +4641,7 @@ SEXP C_dtatools_generate_numeric(
     size_t row_count = (size_t) row_count_double;
     int kind = Rf_asInteger(kind_value);
     int temporal = Rf_asInteger(temporal_value);
-    if (kind < NUMERIC_BYTE || kind > NUMERIC_FLOAT ||
+    if (kind < NUMERIC_BYTE || kind > NUMERIC_DOUBLE ||
         temporal < 0 || temporal > 2) {
         Rf_error("invalid reference generation storage");
     }
@@ -4522,6 +4656,15 @@ SEXP C_dtatools_generate_numeric(
     reference_rows row_plan = reference_rows_create(
         rows, (R_xlen_t) row_count
     );
+
+    if (kind == NUMERIC_DOUBLE) {
+        SEXP result = PROTECT(generate_double_numeric(
+            values, &row_plan, row_count, count, temporal
+        ));
+        set_generated_attributes(result, attributes);
+        UNPROTECT(1);
+        return result;
+    }
 
     numeric_data plan = {
         NULL, row_count, kind, temporal, 119,
@@ -4547,10 +4690,11 @@ SEXP C_dtatools_generate_numeric(
     }
     apply_compact_replacement(&plan, &row_plan, &replacement_plan);
 
-    SEXP result = numeric_from_backing(
+    SEXP result = PROTECT(numeric_from_backing(
         backing, row_count, kind, temporal, 119, plan.missing_count
-    );
-    UNPROTECT(1);
+    ));
+    set_generated_attributes(result, attributes);
+    UNPROTECT(2);
     return result;
 }
 
@@ -5074,7 +5218,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_patch_vector",
      (DL_FUNC) &C_dtatools_patch_vector, 3},
     {"C_dtatools_generate_numeric",
-     (DL_FUNC) &C_dtatools_generate_numeric, 5},
+     (DL_FUNC) &C_dtatools_generate_numeric, 6},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
     {"C_dtatools_is_unmaterialized_dictstring",

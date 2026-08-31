@@ -98,6 +98,12 @@ stopifnot(
 )
 
 explicit_rows <- stata_long(seq_len(rows))
+integer_explicit_rows <- seq_len(rows)
+integer_explicit_plan_time <- system.time(
+    for (iteration in seq_len(3L)) {
+        replace_values(data, compact, 2, where = integer_explicit_rows)
+    }
+)[["elapsed"]] / 3
 explicit_profile <- tempfile(
     "dtatools-reference-explicit-plan-", fileext = ".out"
 )
@@ -117,7 +123,7 @@ explicit_plan_allocation <- sum(
     explicit_allocations[is.finite(explicit_allocations)]
 )
 stopifnot(
-    explicit_plan_time < 0.15,
+    explicit_plan_time < max(0.02, integer_explicit_plan_time * 4),
     explicit_plan_allocation < compact_byte_bytes
 )
 
@@ -334,6 +340,86 @@ stopifnot(
         compact_generation_data$generated
     )
 )
+
+first_generated_patch_profile <- tempfile(
+    "dtatools-reference-first-generated-patch-", fileext = ".out"
+)
+Rprofmem(first_generated_patch_profile, threshold = 1000)
+replace_values(integer_generation_data, generated, 1, where = rows)
+Rprofmem(NULL)
+first_generated_patch_records <- readLines(
+    first_generated_patch_profile, warn = FALSE
+)
+unlink(first_generated_patch_profile)
+first_generated_patch_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", first_generated_patch_records
+)))
+recorded_first_generated_patch <- first_generated_patch_allocations[
+    is.finite(first_generated_patch_allocations)
+]
+largest_first_generated_patch_allocation <- if (
+    length(recorded_first_generated_patch) == 0L
+) {
+    0
+} else {
+    max(recorded_first_generated_patch)
+}
+stopifnot(
+    dtatools:::.metadata_proxy_depth(
+        integer_generation_data$generated
+    ) == 0L,
+    dtatools:::.is_unmaterialized_numeric_altrep(
+        integer_generation_data$generated
+    ),
+    largest_first_generated_patch_allocation < compact_byte_bytes
+)
+
+temporal_generation_values <- as.POSIXct(
+    "2000-01-01", tz = "UTC"
+) + seq_len(rows)
+temporal_generation_data <- data.frame(anchor = stata_byte(.size = rows))
+temporal_generation_profile <- tempfile(
+    "dtatools-reference-temporal-generation-", fileext = ".out"
+)
+Rprofmem(temporal_generation_profile, threshold = 1000)
+temporal_generation_time <- system.time(
+    gen(
+        temporal_generation_data, generated,
+        temporal_generation_values
+    )
+)[["elapsed"]]
+Rprofmem(NULL)
+temporal_generation_records <- readLines(
+    temporal_generation_profile, warn = FALSE
+)
+unlink(temporal_generation_profile)
+temporal_generation_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", temporal_generation_records
+)))
+recorded_temporal_generation <- temporal_generation_allocations[
+    is.finite(temporal_generation_allocations)
+]
+total_temporal_generation_allocation <- sum(recorded_temporal_generation)
+largest_temporal_generation_allocation <- if (
+    length(recorded_temporal_generation) == 0L
+) {
+    0
+} else {
+    max(recorded_temporal_generation)
+}
+stopifnot(
+    identical(
+        as.double(temporal_generation_data$generated),
+        as.double(temporal_generation_values)
+    ),
+    inherits(temporal_generation_data$generated, "stata_datetime"),
+    identical(
+        stata_storage_type(temporal_generation_data$generated), "double"
+    ),
+    largest_temporal_generation_allocation <= full_double_bytes * 1.01,
+    total_temporal_generation_allocation < full_double_bytes * 2,
+    temporal_generation_time < 0.5
+)
 untracemem(integer_generation_data$anchor)
 untracemem(data$compact)
 untracemem(data$untouched)
@@ -353,6 +439,10 @@ cat(sprintf(
     logical_plan_allocation
 ))
 cat(sprintf("explicit_plan_seconds\t%.6f\n", explicit_plan_time))
+cat(sprintf(
+    "integer_explicit_plan_seconds\t%.6f\n",
+    integer_explicit_plan_time
+))
 cat(sprintf(
     "explicit_plan_profiled_allocation_bytes\t%.0f\n",
     explicit_plan_allocation
@@ -403,6 +493,22 @@ cat(sprintf(
 cat(sprintf(
     "compact_vector_generation_largest_allocation_bytes\t%.0f\n",
     largest_compact_generation_allocation
+))
+cat(sprintf(
+    "first_generated_patch_largest_allocation_bytes\t%.0f\n",
+    largest_first_generated_patch_allocation
+))
+cat(sprintf(
+    "temporal_generation_seconds\t%.6f\n",
+    temporal_generation_time
+))
+cat(sprintf(
+    "temporal_generation_total_profiled_allocation_bytes\t%.0f\n",
+    total_temporal_generation_allocation
+))
+cat(sprintf(
+    "temporal_generation_largest_allocation_bytes\t%.0f\n",
+    largest_temporal_generation_allocation
 ))
 cat(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
 cat(sprintf("full_double_bytes\t%.0f\n", full_double_bytes))

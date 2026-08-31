@@ -43,7 +43,9 @@
 #' dataset row count; missing logical values do not select a row. Numeric row
 #' positions must be positive, finite, whole, and in range. Zero, negative,
 #' missing, and out-of-range positions are errors. Duplicate positions are
-#' accepted and the last replacement for a row wins. `values` must have size
+#' accepted and the last replacement for a row wins. Numeric positions are
+#' snapshotted before writing, including when `where` returns the target column
+#' or another column sharing its payload. `values` must have size
 #' one, the selected-row count, or the full dataset row count. Full-length
 #' values are indexed by the selected row positions.
 #'
@@ -81,6 +83,8 @@
 #' Compact `byte`, `int`, `long`, and `float` columns are patched in their
 #' native storage after validation. A direct compact target allocates work
 #' proportional to the selected rows and does not create a full R double copy.
+#' Newly generated compact columns retain exclusive ownership, so their first
+#' replacement uses the same direct path without detaching a full native copy.
 #' The native path keeps compact rollback bytes until the write commits so an
 #' interrupt restores the original payload and missing-value cache.
 #' A metadata proxy first detaches by copying its compact native payload so an
@@ -441,34 +445,44 @@ gen <- function(data, variable, values, where = NULL) {
     source <- if (inherits(values, "stata_numeric") &&
         !identical(storage, "double")) {
         values
-    } else if (!temporal && !identical(storage, "double")) {
+    } else {
         # The native reader consumes logical, integer, and double vectors
         # directly. Preserve their storage to avoid a full double temporary.
         vctrs::vec_data(values)
-    } else {
-        as.double(vctrs::vec_data(values))
     }
     temporal_code <- if (temporal) .stata_temporal_code(prototype) else 0L
-    if (identical(storage, "double")) {
-        output <- rep(NA_real_, row_count)
-        if (is.null(rows)) output[] <- source else output[rows] <- source
-        result <- .construct_stata_numeric(
-            output, NULL, storage, temporal = temporal_code
-        )
+    kind <- match(storage, c("byte", "int", "long", "float", "double")) - 1L
+    generated_attributes <- if (temporal) {
+        .generated_stata_temporal_attributes(prototype, storage)
     } else {
-        kind <- match(storage, c("byte", "int", "long", "float")) - 1L
-        result <- .Call(
-            C_dtatools_generate_numeric, source, rows,
-            as.double(row_count), as.integer(kind), as.integer(temporal_code)
-        )
+        .generated_stata_attributes(values, storage)
     }
-    if (temporal) {
-        return(.attach_stata_temporal(result, prototype, storage))
-    }
-    result <- .restore_stata_metadata(result, values, storage)
-    .apply_haven_labelled_class(
-        result, !is.null(attr(result, "labels", exact = TRUE))
+    .Call(
+        C_dtatools_generate_numeric, source, rows,
+        as.double(row_count), as.integer(kind), as.integer(temporal_code),
+        generated_attributes
     )
+}
+
+.generated_stata_attributes <- function(prototype, storage) {
+    desired <- attributes(prototype)
+    desired$names <- NULL
+    desired$stata.storage <- storage
+    classes <- .stata_classes_from(prototype, storage)
+    if (!is.null(desired$labels) && !"haven_labelled" %in% classes) {
+        location <- match("vctrs_vctr", classes)
+        classes <- append(classes, "haven_labelled", after = location - 1L)
+    }
+    desired$class <- classes
+    desired
+}
+
+.generated_stata_temporal_attributes <- function(prototype, storage) {
+    desired <- attributes(prototype)
+    desired$names <- NULL
+    desired$stata.storage <- storage
+    desired$class <- class(prototype)
+    desired
 }
 
 .generated_character <- function(values, rows, row_count) {

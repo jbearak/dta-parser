@@ -101,6 +101,19 @@ test_that("values and selection see the unchanged dataset", {
 
     gen(data, created, source * 2)
     expect_identical(as.double(data$created), c(22, 24, 26, 28))
+
+    for (constructor in list(identity, stata_byte)) {
+        target <- constructor(c(2L, 1L, 1L))
+        direct <- data.frame(x = target)
+        replace_values(direct, x, 9, where = x)
+        expect_identical(as.double(direct$x), c(9, 9, 1))
+
+        target <- constructor(c(2L, 1L, 1L))
+        aliased <- data.frame(x = target, selector = target)
+        replace_values(aliased, x, 7, where = selector)
+        expect_identical(as.double(aliased$x), c(7, 7, 1))
+        expect_identical(as.double(aliased$selector), c(7, 7, 1))
+    }
 })
 
 test_that("where has documented logical and position semantics", {
@@ -156,6 +169,7 @@ test_that("native mutation writers reject untrusted row plans", {
     namespace <- asNamespace("dtatools")
     patch <- get("C_dtatools_patch_vector", namespace)
     generate <- get("C_dtatools_generate_numeric", namespace)
+    generated_attributes <- attributes(stata_byte(double()))
 
     target <- stata_byte(1:3)
     expect_error(.Call(patch, target, 0L, 9), "mutation row")
@@ -163,11 +177,11 @@ test_that("native mutation writers reject untrusted row plans", {
     expect_identical(as.double(target), c(1, 2, 3))
 
     expect_error(
-        .Call(generate, 9, 0L, 3, 0L, 0L),
+        .Call(generate, 9, 0L, 3, 0L, 0L, generated_attributes),
         "mutation row"
     )
     expect_error(
-        .Call(generate, 9, 4L, 3, 0L, 0L),
+        .Call(generate, 9, 4L, 3, 0L, 0L, generated_attributes),
         "mutation row"
     )
 })
@@ -206,6 +220,69 @@ test_that("evaluation interrupts leave the dataset unchanged", {
     )
     expect_s3_class(condition, "interrupt")
     expect_identical(serialize(data, NULL), before)
+})
+
+test_that("native write interrupts roll back values and compact state", {
+    skip_on_os("windows")
+    skip_if_not_installed("callr")
+
+    result <- callr::r(
+        function() {
+            library(dtatools)
+            interrupt_patch <- function(compact) {
+                size <- 20000000L
+                target <- if (compact) {
+                    stata_float(rep.int(1L, size))
+                } else {
+                    rep(1, size)
+                }
+                data <- data.frame(target = target)
+                parent <- Sys.getpid()
+                signal <- parallel::mcparallel({
+                    Sys.sleep(if (compact) 0.02 else 0.03)
+                    tools::pskill(parent, tools::SIGINT)
+                }, silent = TRUE)
+                condition <- tryCatch(
+                    {
+                        replace_values(data, target, 2)
+                        NULL
+                    },
+                    condition = identity
+                )
+                tryCatch(
+                    suppressWarnings(parallel::mccollect(signal)),
+                    condition = function(...) NULL
+                )
+                list(
+                    interrupted = inherits(condition, "interrupt"),
+                    compact = !compact ||
+                        dtatools:::.is_unmaterialized_numeric_altrep(
+                            data$target
+                        ),
+                    no_missing = !anyNA(data$target),
+                    sum = as.double(sum(data$target)),
+                    minimum = as.double(min(data$target)),
+                    maximum = as.double(max(data$target)),
+                    size = size
+                )
+            }
+            list(
+                compact = interrupt_patch(TRUE),
+                ordinary = interrupt_patch(FALSE)
+            )
+        },
+        libpath = .libPaths(),
+        timeout = 120
+    )
+
+    for (case in result) {
+        expect_true(case$interrupted)
+        expect_true(case$compact)
+        expect_true(case$no_missing)
+        expect_identical(case$sum, as.double(case$size))
+        expect_identical(case$minimum, 1)
+        expect_identical(case$maximum, 1)
+    }
 })
 
 test_that("compact replacement patches every storage without materializing", {
@@ -394,6 +471,10 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     temporal <- data.frame(x = 1:3)
     gen(temporal, date, dates)
     gen(temporal, datetime, datetimes)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(temporal$date))
+    expect_identical(dtatools:::.metadata_proxy_depth(temporal$date), 0L)
+    replace_values(temporal, date, dates[[1L]], where = 1L)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(temporal$date))
     expect_identical(as.double(temporal$date), as.double(dates))
     expect_identical(as.double(temporal$datetime), as.double(datetimes))
     expect_s3_class(temporal$date, "stata_date")
@@ -407,6 +488,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$y))
     expect_identical(stata_storage_type(compact_source$y), "byte")
     expect_identical(as.double(compact_source$y), c(1, 2, 3))
+
+    integer_source <- data.frame(x = 1:3)
+    gen(integer_source, y, x)
+    expect_identical(dtatools:::.metadata_proxy_depth(integer_source$y), 0L)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(integer_source$y))
+    replace_values(integer_source, y, 4, where = 1L)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(integer_source$y))
+    expect_identical(as.double(integer_source$y), c(4, 2, 3))
 
     labelled <- stata_byte(c(1, 2, 3))
     attr(labelled, "label") <- "Generated label"
