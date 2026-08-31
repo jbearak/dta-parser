@@ -108,7 +108,6 @@ struct NumericData {
     kind: c_int,
     temporal: c_int,
     format_version: c_int,
-    no_na: c_int,
     missing_count: usize,
 }
 
@@ -120,7 +119,6 @@ impl NumericData {
             kind: data.kind as c_int,
             temporal: data.temporal as c_int,
             format_version: c_int::from(data.format_version.as_u16()),
-            no_na: c_int::from(data.no_na),
             missing_count: data.missing_count,
         }
     }
@@ -165,7 +163,6 @@ struct RNumericData {
     kind: NumericKind,
     temporal: TemporalKind,
     format_version: FormatVersion,
-    no_na: bool,
     missing_count: usize,
 }
 
@@ -210,7 +207,6 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
         kind: kind as c_int,
         temporal: temporal as c_int,
         format_version: 119,
-        no_na: c_int::from(missing_count == 0),
         missing_count,
     }))
     .cast::<c_void>()
@@ -227,6 +223,7 @@ pub struct NumericGatherColumn {
     missing_count: usize,
     kind: c_int,
     format_version: c_int,
+    source_has_missing: c_int,
 }
 
 unsafe fn gathered_numeric_is_missing(column: NumericGatherColumn, value: *const u8) -> bool {
@@ -289,7 +286,10 @@ unsafe fn gather_numeric_column(
                 column.width,
             );
         }
-        if column.missing_count != 0 && gathered_numeric_is_missing(column, target) {
+        if column.missing_count != 0
+            && (source.is_null()
+                || (column.source_has_missing != 0 && gathered_numeric_is_missing(column, target)))
+        {
             missing_count += 1;
         }
     }
@@ -1079,7 +1079,6 @@ unsafe fn numeric_altrep_storage(
         kind,
         temporal,
         format_version,
-        no_na: true,
         missing_count: 0,
     })
 }
@@ -1219,7 +1218,6 @@ impl RNumericData {
             kind: self.kind,
             temporal: self.temporal,
             format_version: self.format_version,
-            no_na: true,
             missing_count: 0,
         };
         std::mem::replace(self, replacement)
@@ -1241,7 +1239,6 @@ impl RNumericData {
         if row >= self.length {
             return Err(Self::row_error(row, self.length));
         }
-        self.no_na &= no_na;
         if !no_na {
             self.missing_count += 1;
         }

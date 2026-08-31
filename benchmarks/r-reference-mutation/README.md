@@ -8,7 +8,10 @@ Rscript benchmarks/r-reference-mutation/run.R
 
 The workload times repeated one-row changes in a five-million-row compact Stata
 byte column. It fails if the direct target materializes or if R reports one
-allocation as large as the native byte payload. A second timing keeps an
+allocation as large as the native byte payload. It compares the same patch on a
+50,000-row column and enforces an absolute latency ceiling, so a hidden
+full-column scan cannot pass because every large-column timing regressed
+together. A second timing keeps an
 unselected missing value at the end of the target to catch accidental
 full-column cache scans. The run fails when that path is materially slower than
 the direct sparse update. A third timing alternates clearing and restoring the

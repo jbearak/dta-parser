@@ -18,6 +18,27 @@ test_that("reference mutation exports one coherent API", {
     expect_false(inherits(data, "dtatools_ref_data"))
 })
 
+test_that("matrix columns use data-frame row sizes", {
+    make_frame <- function() {
+        data.frame(x = 1:3, matrix = I(matrix(1:6, nrow = 3)))
+    }
+
+    replaced <- make_frame()
+    replace_values(replaced, x, 9L, where = 1)
+    expect_identical(replaced$x, c(9L, 2L, 3L))
+    expect_identical(replaced$matrix, I(matrix(1:6, nrow = 3)))
+
+    generated <- make_frame()
+    gen(generated, y, x * 2)
+    expect_identical(as.double(generated$y), c(2, 4, 6))
+    expect_identical(generated$matrix, I(matrix(1:6, nrow = 3)))
+
+    original <- make_frame()
+    copied <- copy_data(original)
+    expect_identical(copied, original)
+    expect_identical(dim(copied$matrix), c(3L, 2L))
+})
+
 test_that("targets are bare names and support tidy injection", {
     data <- data.frame(x = 1:2)
     expect_error(replace_values(data, "x", 0), "unquoted")
@@ -474,6 +495,18 @@ test_that("detached metadata payloads do not retain former proxy owners", {
     }
     expect_true(finalized$done)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(downstream))
+})
+
+test_that("downstream metadata proxies revoke exclusive patch ownership", {
+    first <- data.frame(x = dtatools:::.metadata_copy(stata_byte(1:3)))
+    replace_values(first, x, 4, where = 1)
+    second <- data.frame(x = dtatools:::.metadata_copy(first$x))
+
+    replace_values(first, x, 7, where = 1)
+
+    expect_identical(as.double(first$x), c(7, 2, 3))
+    expect_identical(as.double(second$x), c(4, 2, 3))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(second$x))
 })
 
 test_that("copy_data keeps Arrow dictionary strings independent and compact", {

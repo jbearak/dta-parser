@@ -120,7 +120,6 @@ typedef struct {
     int kind;
     int temporal;
     int format_version;
-    int no_na;
     size_t missing_count;
 } numeric_data;
 
@@ -133,6 +132,7 @@ typedef struct {
     uintptr_t missing_count;
     int kind;
     int format_version;
+    int source_has_missing;
 } numeric_gather_column;
 
 enum {
@@ -309,7 +309,7 @@ static double numeric_observed_value(double value, int temporal) {
     static void numeric_##NAME##_region(                                      \
         const numeric_data *data, size_t index, size_t length, double *output \
     ) {                                                                       \
-        if (data->no_na) {                                                     \
+        if (data->missing_count == 0) {                                       \
             for (size_t offset = 0; offset < length; offset++) {              \
                 if ((offset & 16383) == 0) R_CheckUserInterrupt();            \
                 TYPE raw = numeric_##NAME##_raw_at(data, index + offset);     \
@@ -331,7 +331,7 @@ static double numeric_observed_value(double value, int temporal) {
         const numeric_data *data, Rboolean na_rm                              \
     ) {                                                                       \
         long double sum = 0.0;                                                \
-        if (data->no_na) {                                                     \
+        if (data->missing_count == 0) {                                       \
             for (size_t index = 0; index < data->length; index++) {           \
                 if ((index & 16383) == 0) R_CheckUserInterrupt();             \
                 TYPE raw = numeric_##NAME##_raw_at(data, index);              \
@@ -352,7 +352,7 @@ static double numeric_observed_value(double value, int temporal) {
     ) {                                                                       \
         double current = 0.0;                                                 \
         int updated = 0;                                                      \
-        if (data->no_na) {                                                     \
+        if (data->missing_count == 0) {                                       \
             if (data->length == 0) return 0;                                  \
             TYPE raw = numeric_##NAME##_raw_at(data, 0);                     \
             current = numeric_observed_value(                                \
@@ -1331,7 +1331,7 @@ static int numeric_no_na(SEXP value) {
         }
         return 1;
     }
-    return numeric_storage(value)->no_na;
+    return numeric_storage(value)->missing_count == 0;
 }
 
 static SEXP numeric_sum(SEXP value, Rboolean na_rm) {
@@ -1381,7 +1381,6 @@ static SEXP numeric_from_backing(
     numeric->format_version = format_version;
     if (missing_count == SIZE_MAX) {
         numeric->missing_count = numeric_count_missing(numeric);
-        numeric->no_na = numeric->missing_count == 0;
     }
     SEXP result = PROTECT(R_new_altrep(
         dtatools_numeric_class, external, R_NilValue
@@ -1443,7 +1442,7 @@ static SEXP numeric_serialized_state(SEXP value) {
     INTEGER(metadata)[0] = data->kind;
     INTEGER(metadata)[1] = data->temporal;
     INTEGER(metadata)[2] = data->format_version;
-    INTEGER(metadata)[3] = data->no_na;
+    INTEGER(metadata)[3] = data->missing_count == 0;
     INTEGER(metadata)[4] = 2;
     SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
     SET_VECTOR_ELT(state, 0, backing);
@@ -1923,12 +1922,17 @@ SEXP C_dtatools_gather_numeric_columns(
                 &numeric_storage(gathered)->missing_count;
             column->kind = x_source.compact->kind;
             column->format_version = x_source.compact->format_version;
+            column->source_has_missing =
+                x_source.compact->missing_count != 0 ||
+                (y != R_NilValue && y_source.compact != NULL &&
+                 y_source.compact->missing_count != 0);
         } else {
             double missing = NA_REAL;
             memcpy(column->missing, &missing, sizeof(missing));
             column->missing_count = (uintptr_t) 0;
             column->kind = 0;
             column->format_version = 0;
+            column->source_has_missing = 0;
         }
         SHALLOW_DUPLICATE_ATTRIB(gathered, x_value);
         SET_VECTOR_ELT(result, index, gathered);
@@ -1941,13 +1945,6 @@ SEXP C_dtatools_gather_numeric_columns(
             (size_t) XLENGTH(x_rows)
         )) {
         Rf_error("parallel compact numeric gather failed");
-    }
-    for (R_xlen_t index = 0; index < column_count; index++) {
-        numeric_data *storage = unmaterialized_numeric_storage(
-            VECTOR_ELT(result, index)
-        );
-        if (storage == NULL) continue;
-        storage->no_na = storage->missing_count == 0;
     }
     R_CheckUserInterrupt();
     UNPROTECT(1);
@@ -2826,7 +2823,8 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
                 descriptor->direct_numeric_format_version =
                     reader->storage->format_version;
                 descriptor->direct_numeric_temporal = reader->storage->temporal;
-                descriptor->direct_numeric_no_na = reader->storage->no_na;
+                descriptor->direct_numeric_no_na =
+                    reader->storage->missing_count == 0;
             } else if (reader->integer_values != NULL) {
                 descriptor->direct_numeric_values = reader->integer_values;
                 descriptor->direct_numeric_kind = WRITE_NUMERIC_INTEGER;
@@ -3529,7 +3527,17 @@ static SEXP metadata_proxy(SEXP value, R_altrep_class_t proxy_class) {
     SEXP source = value;
     while (ALTREP(source) && R_altrep_inherits(source, proxy_class) &&
            R_altrep_data2(source) == R_NilValue) {
-        source = metadata_proxy_source(source);
+        SEXP owner = metadata_proxy_owner(source);
+        SEXP next = metadata_proxy_source(source);
+        if (owner != R_NilValue && ALTREP(next) &&
+            R_altrep_inherits(next, dtatools_numeric_class) &&
+            R_altrep_data2(next) == R_NilValue &&
+            R_ExternalPtrTag(R_altrep_data1(next)) == owner) {
+            /* A second proxy now shares this payload. Revoke the first
+               proxy's exclusive-write claim so its next patch detaches. */
+            R_SetExternalPtrTag(R_altrep_data1(next), R_NilValue);
+        }
+        source = next;
     }
     SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
     SET_VECTOR_ELT(state, 0, source);
@@ -3711,10 +3719,12 @@ SEXP C_dtatools_patch_vector(
         !(count == 0 && replacement_count == 0)) {
         Rf_error("invalid reference replacement plan");
     }
-    for (R_xlen_t index = 0; index < count; index++) {
-        R_xlen_t row = reference_patch_row(rows, index);
-        if (row < 0 || row >= target_length) {
-            Rf_error("invalid reference replacement row");
+    if (rows != R_NilValue) {
+        for (R_xlen_t index = 0; index < count; index++) {
+            R_xlen_t row = reference_patch_row(rows, index);
+            if (row < 0 || row >= target_length) {
+                Rf_error("invalid reference replacement row");
+            }
         }
     }
 
@@ -3751,7 +3761,6 @@ SEXP C_dtatools_patch_vector(
                 compact, row, value, missing_code
             );
         }
-        compact->no_na = compact->missing_count == 0;
         return Rf_ScalarLogical(1);
     }
 
@@ -3837,15 +3846,17 @@ SEXP C_dtatools_generate_numeric(
         !(count == 0 && value_count == 0)) {
         Rf_error("invalid reference generation plan");
     }
-    for (R_xlen_t index = 0; index < count; index++) {
-        R_xlen_t row = reference_patch_row(rows, index);
-        if (row < 0 || (size_t) row >= row_count) {
-            Rf_error("invalid reference generation row");
+    if (rows != R_NilValue) {
+        for (R_xlen_t index = 0; index < count; index++) {
+            R_xlen_t row = reference_patch_row(rows, index);
+            if (row < 0 || (size_t) row >= row_count) {
+                Rf_error("invalid reference generation row");
+            }
         }
     }
 
     numeric_data plan = {
-        NULL, row_count, kind, temporal, 119, 0,
+        NULL, row_count, kind, temporal, 119,
         rows == R_NilValue ? 0 : row_count
     };
     numeric_reader reader = numeric_reader_create(values, value_count);

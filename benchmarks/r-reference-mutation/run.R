@@ -3,11 +3,18 @@
 suppressPackageStartupMessages(library(dtatools))
 
 rows <- 5000000L
+small_rows <- 50000L
 repetitions <- 100L
 warmup <- data.frame(compact = stata_byte(1:2))
 for (iteration in seq_len(5L)) {
     replace_values(warmup, compact, 2, where = 1)
 }
+small <- data.frame(compact = stata_byte(rep(1, small_rows)))
+small_replacement_time <- system.time(
+    for (iteration in seq_len(repetitions)) {
+        replace_values(small, compact, 2, where = small_rows)
+    }
+)[["elapsed"]] / repetitions
 data <- data.frame(
     compact = stata_byte(rep(1, rows)),
     untouched = runif(rows)
@@ -26,13 +33,20 @@ Rprofmem(NULL)
 records <- readLines(profile, warn = FALSE)
 unlink(profile)
 allocation <- suppressWarnings(as.numeric(sub(" .*", "", records)))
-largest_allocation <- max(allocation, na.rm = TRUE)
+recorded_allocation <- allocation[is.finite(allocation)]
+largest_allocation <- if (length(recorded_allocation) == 0L) {
+    0
+} else {
+    max(recorded_allocation)
+}
 full_double_bytes <- as.double(rows) * 8
 compact_byte_bytes <- as.double(rows)
 
 stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
     largest_allocation < compact_byte_bytes,
+    replacement_time < 0.002,
+    replacement_time < max(0.0005, small_replacement_time * 10),
     identical(tracemem(data$untouched), untouched_trace)
 )
 
@@ -132,6 +146,7 @@ untracemem(data$untouched)
 
 cat(sprintf("rows\t%d\n", rows))
 cat(sprintf("repetitions\t%d\n", repetitions))
+cat(sprintf("small_sparse_replacement_seconds\t%.6f\n", small_replacement_time))
 cat(sprintf("sparse_replacement_seconds\t%.6f\n", replacement_time))
 cat(sprintf("late_missing_sparse_seconds\t%.6f\n", late_missing_time))
 cat(sprintf("missing_cycle_seconds\t%.6f\n", missing_cycle_time))

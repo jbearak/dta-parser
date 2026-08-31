@@ -2896,7 +2896,6 @@ unsafe fn finalize_read_column(
                 return Err(mismatch());
             };
             let mut data = plan.compact.ok_or_else(mismatch)?;
-            data.no_na = missing_count == 0;
             data.missing_count = missing_count;
             guard.numeric(data)?
         }

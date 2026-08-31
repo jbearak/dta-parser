@@ -183,7 +183,7 @@ gen <- function(data, variable, values, where = NULL) {
              call. = FALSE)
     }
     columns <- .data_columns(data)
-    sizes <- lengths(columns)
+    sizes <- vapply(columns, NROW, numeric(1))
     row_count <- nrow(data)
     if (any(sizes != row_count)) {
         stop("`data` has columns with inconsistent row counts",
@@ -349,7 +349,17 @@ gen <- function(data, variable, values, where = NULL) {
         stop("The target column has an unsupported replacement type",
              call. = FALSE)
     }
-    result <- vctrs::vec_cast(values, vctrs::vec_ptype(target))
+    # Build Stata prototypes from metadata rather than proxying the target.
+    # A real metadata copy must revoke exclusive patch ownership; this internal
+    # cast must not.
+    prototype <- if (inherits(target, "stata_temporal")) {
+        .stata_temporal_ptype(stata_storage_type(target), target)
+    } else if (inherits(target, "stata_numeric")) {
+        .stata_ptype(stata_storage_type(target), target)
+    } else {
+        target[integer()]
+    }
+    result <- vctrs::vec_cast(values, prototype)
     if (typeof(target) == "character") {
         storage <- attr(target, "stata.string.storage", exact = TRUE)
         .validate_string_storage(result, storage, "replacement")
