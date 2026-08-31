@@ -424,7 +424,7 @@ test_that("native metadata envelopes validate counts before allocation", {
     marker <- paste0(intToUtf8(30L), "dtatools:stata-metadata:1")
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
-    specification <- function(metadata) list("", metadata, list(), "")
+    specification <- function(metadata) list("", metadata, list(), "", list())
 
     expect_error(
         .Call(
@@ -458,11 +458,11 @@ test_that("empty write metadata uses one native sentinel at high column counts",
     arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
     expect_null(dta[[2L]])
     expect_true(all(vapply(dta[[3L]], function(column) {
-        is.null(column[[11L]])
+        is.null(column[["stata_metadata"]])
     }, logical(1))))
     expect_null(arrow[[2L]])
     expect_true(all(vapply(arrow[[3L]], function(column) {
-        is.null(column[[16L]])
+        is.null(column[["stata_metadata"]])
     }, logical(1))))
 
     paths <- c(

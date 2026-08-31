@@ -256,7 +256,8 @@ test_that("shared write mappings use one prepared vector", {
         names(dta[[3L]][[1L]]),
         c(
             "name", "type_code", "format", "label", "values",
-            "numeric_shift", "numeric_scale", "value_label_index"
+            "numeric_shift", "numeric_scale", "value_label_index",
+            "stata_metadata"
         )
     )
     expect_identical(
@@ -264,7 +265,7 @@ test_that("shared write mappings use one prepared vector", {
         c(
             "name", "kind", "values", "levels", "ordered", "label",
             "format", "storage", "tz", "units", "haven_labelled",
-            "string_storage", "value_label_index"
+            "string_storage", "value_label_index", "stata_metadata"
         )
     )
     expect_length(dta[[5L]], 1L)
