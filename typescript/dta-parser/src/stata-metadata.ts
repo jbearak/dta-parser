@@ -13,7 +13,10 @@ function noteNumber(name: string): number | null {
     const match = NOTE_NAME.exec(name);
     if (match === null) return null;
     const number = Number(match[1]);
-    return Number.isInteger(number) && number >= 1 && number <= 9999
+    return Number.isInteger(number)
+        && number >= 1
+        && number <= 9999
+        && match[1] === String(number)
         ? number : null;
 }
 

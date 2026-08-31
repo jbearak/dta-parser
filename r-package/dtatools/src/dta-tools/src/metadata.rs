@@ -316,46 +316,26 @@ fn validate_sortlist(
     ensure_map_offset("formats", cursor, offsets.formats)
 }
 
-fn parse_characteristics(
+fn walk_characteristic_records<F>(
     bytes: &[u8],
-    version: FormatVersion,
+    start: usize,
+    data: usize,
     byte_order: ByteOrder,
+    names_length: usize,
     offsets: &SectionOffsets,
-    encoding: TextEncoding,
-    variables: &[VariableInfo],
-) -> Result<Option<CharacteristicCollector>, DtaError> {
-    let start = offset_to_usize(offsets.characteristics, "characteristics")?;
-    if bytes.len() == start {
-        return Ok(None);
-    }
-    let data = offset_to_usize(offsets.data, "data")?;
-    let width = if version == FormatVersion::V117 {
-        33
-    } else {
-        129
-    };
-    let names_length = checked_mul(width, 2, "characteristic names length")?;
-    // The map fixes the section boundary, so verify its terminator before a
-    // malformed section can accumulate decoded characteristic values.
-    let close_start = data
-        .checked_sub(CHARACTERISTICS_CLOSE.len())
-        .ok_or(DtaError::ArithmeticOverflow("characteristics closing tag"))?;
-    expect_at(
-        bytes,
-        close_start,
-        CHARACTERISTICS_CLOSE,
-        "</characteristics>",
-    )?;
+    mut visit: F,
+) -> Result<(), DtaError>
+where
+    F: FnMut(usize, &[u8]) -> Result<(), DtaError>,
+{
     let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
-    let mut collector = None;
-    let mut variable_indexes = VariableTargetIndexes::new(variables);
     loop {
         if bytes.get(cursor..cursor.saturating_add(CHARACTERISTICS_CLOSE.len()))
             == Some(CHARACTERISTICS_CLOSE)
         {
             cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
             ensure_map_offset("data", cursor, offsets.data)?;
-            return Ok(collector);
+            return Ok(());
         }
 
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
@@ -390,30 +370,81 @@ fn parse_characteristics(
             });
         }
         let payload = slice_at(bytes, cursor, payload_length, "characteristic payload")?;
-        let (variable, remainder) = payload.split_at(width);
-        let (characteristic, value) = remainder.split_at(width);
-        validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
-        let value = validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
-        let target = encoding.decode(field_bytes(variable));
-        let name = encoding.decode(field_bytes(characteristic));
-        if let Some(accepted) = classify_characteristic(&target, name, cursor + width, |target| {
-            variable_indexes.resolve(target)
-        })? {
-            collector
-                .get_or_insert_with(CharacteristicCollector::default)
-                .push(accepted, encoding.decode(value));
-        }
-        cursor = payload_end;
-        cursor = expect_at(bytes, cursor, CHARACTERISTIC_CLOSE, "</ch>")?;
-        if cursor > data {
-            return Err(DtaError::MapOffsetMismatch {
-                section: "data",
-                expected: offsets.data,
-                actual: u64::try_from(cursor)
-                    .map_err(|_| DtaError::ArithmeticOverflow("characteristics end"))?,
-            });
-        }
+        visit(cursor, payload)?;
+        cursor = expect_at(bytes, payload_end, CHARACTERISTIC_CLOSE, "</ch>")?;
     }
+}
+
+fn parse_characteristics(
+    bytes: &[u8],
+    version: FormatVersion,
+    byte_order: ByteOrder,
+    offsets: &SectionOffsets,
+    encoding: TextEncoding,
+    variables: &[VariableInfo],
+) -> Result<Option<CharacteristicCollector>, DtaError> {
+    let start = offset_to_usize(offsets.characteristics, "characteristics")?;
+    if bytes.len() == start {
+        return Ok(None);
+    }
+    let data = offset_to_usize(offsets.data, "data")?;
+    let width = if version == FormatVersion::V117 {
+        33
+    } else {
+        129
+    };
+    let names_length = checked_mul(width, 2, "characteristic names length")?;
+    let close_start = data
+        .checked_sub(CHARACTERISTICS_CLOSE.len())
+        .ok_or(DtaError::ArithmeticOverflow("characteristics closing tag"))?;
+    expect_at(
+        bytes,
+        close_start,
+        CHARACTERISTICS_CLOSE,
+        "</characteristics>",
+    )?;
+    // Validate every record boundary before decoding any values. The section
+    // map alone cannot distinguish a real terminator from tag bytes forged in
+    // the final record payload.
+    walk_characteristic_records(
+        bytes,
+        start,
+        data,
+        byte_order,
+        names_length,
+        offsets,
+        |_, _| Ok(()),
+    )?;
+    let mut collector = None;
+    let mut variable_indexes = VariableTargetIndexes::new(variables);
+    walk_characteristic_records(
+        bytes,
+        start,
+        data,
+        byte_order,
+        names_length,
+        offsets,
+        |cursor, payload| {
+            let (variable, remainder) = payload.split_at(width);
+            let (characteristic, value) = remainder.split_at(width);
+            validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
+            let value =
+                validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
+            let target = encoding.decode(field_bytes(variable));
+            let name = encoding.decode(field_bytes(characteristic));
+            if let Some(accepted) =
+                classify_characteristic(&target, name, cursor + width, |target| {
+                    variable_indexes.resolve(target)
+                })?
+            {
+                collector
+                    .get_or_insert_with(CharacteristicCollector::default)
+                    .push(accepted, encoding.decode(value));
+            }
+            Ok(())
+        },
+    )?;
+    Ok(collector)
 }
 
 pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {
@@ -608,6 +639,48 @@ mod tests {
             ),
             Err(DtaError::UnexpectedTag {
                 expected: "</characteristics>",
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn forged_modern_terminator_is_framed_before_values_are_decoded() {
+        let width = 129;
+        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let payload_length = width * 2 + value_length;
+        let mut bytes = CHARACTERISTICS_OPEN.to_vec();
+        bytes.extend_from_slice(CHARACTERISTIC_OPEN);
+        bytes.extend_from_slice(&(payload_length as u32).to_le_bytes());
+        let mut names = vec![0; width * 2];
+        names[..4].copy_from_slice(b"_dta");
+        names[width..width + 6].copy_from_slice(b"source");
+        bytes.extend_from_slice(&names);
+        bytes.extend(std::iter::repeat_n(b'x', value_length));
+        bytes.extend_from_slice(CHARACTERISTIC_CLOSE);
+
+        let forged_length = width * 2 + CHARACTERISTICS_CLOSE.len();
+        bytes.extend_from_slice(CHARACTERISTIC_OPEN);
+        bytes.extend_from_slice(&(forged_length as u32).to_le_bytes());
+        bytes.extend(std::iter::repeat_n(0, width * 2));
+        bytes.extend_from_slice(CHARACTERISTICS_CLOSE);
+        let offsets = SectionOffsets {
+            characteristics: 0,
+            data: bytes.len() as u64,
+            ..SectionOffsets::default()
+        };
+
+        assert!(matches!(
+            parse_characteristics(
+                &bytes,
+                FormatVersion::V118,
+                ByteOrder::Lsf,
+                &offsets,
+                TextEncoding::Utf8,
+                &[],
+            ),
+            Err(DtaError::Truncated {
+                context: "characteristic payload",
                 ..
             })
         ));

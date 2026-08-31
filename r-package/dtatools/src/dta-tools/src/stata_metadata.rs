@@ -46,7 +46,7 @@ pub(crate) fn validate_raw_value_bytes<'a>(
 
 pub(crate) fn note_index(name: &[u8]) -> Option<u32> {
     let index = name.strip_prefix(b"note")?;
-    if index.is_empty() || !index.iter().all(u8::is_ascii_digit) {
+    if index.is_empty() || index.first() == Some(&b'0') || !index.iter().all(u8::is_ascii_digit) {
         return None;
     }
     let index = std::str::from_utf8(index).ok()?.parse().ok()?;
@@ -307,6 +307,7 @@ mod tests {
         let records = [
             ("_dta", "note3", "three"),
             ("_dta", "note1", ""),
+            ("_dta", "note01", "reserved"),
             ("_dta", "source", "old"),
             ("_dta", "source", "new"),
             ("_dta", "note0", "9"),

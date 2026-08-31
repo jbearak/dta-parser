@@ -10,20 +10,6 @@ use serde::{
 };
 use serde_json::value::RawValue;
 
-#[cfg(test)]
-thread_local! {
-    static FULL_DOCUMENT_PARSE_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
-}
-
-fn parse_full_document<'a, T>(json: &'a str) -> Result<T, serde_json::Error>
-where
-    T: Deserialize<'a>,
-{
-    #[cfg(test)]
-    FULL_DOCUMENT_PARSE_COUNT.with(|count| count.set(count.get() + 1));
-    serde_json::from_str(json)
-}
-
 use super::ArrowProfileError;
 use crate::{
     DtaType, FormatVersion, MissingTag, StataCharacteristic, StataNote, ValueLabelEntry,
@@ -238,8 +224,8 @@ struct RawDatasetDocument<'a> {
     label: String,
     #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
     notes: Vec<&'a RawValue>,
-    #[serde(default, borrow)]
-    characteristics: Vec<RawCharacteristic<'a>>,
+    #[serde(default, deserialize_with = "deserialize_raw_characteristics")]
+    characteristics: Vec<StataCharacteristic>,
     #[serde(default)]
     value_labels: BTreeMap<String, Vec<ArrowValueLabelEntry>>,
 }
@@ -254,8 +240,8 @@ struct RawArrowFieldDocument<'a> {
     format: String,
     #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
     notes: Vec<&'a RawValue>,
-    #[serde(default, borrow)]
-    characteristics: Vec<RawCharacteristic<'a>>,
+    #[serde(default, deserialize_with = "deserialize_raw_characteristics")]
+    characteristics: Vec<StataCharacteristic>,
     #[serde(default)]
     storage: Option<StataStorage>,
     #[serde(default)]
@@ -355,11 +341,76 @@ where
     deserializer.deserialize_seq(RawNotesVisitor)
 }
 
-fn validate_notes_and_characteristics(
+fn deserialize_raw_characteristics<'de, D>(
+    deserializer: D,
+) -> Result<Vec<StataCharacteristic>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct CharacteristicsVisitor;
+
+    impl<'de> Visitor<'de> for CharacteristicsVisitor {
+        type Value = Vec<StataCharacteristic>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("an array of bounded Stata characteristics")
+        }
+
+        fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let mut decoded = Vec::new();
+            let mut names = std::collections::HashSet::new();
+            while let Some(raw) = sequence.next_element::<RawCharacteristic<'de>>()? {
+                if raw_string_exceeds_limit(
+                    raw.name,
+                    crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
+                ) {
+                    return Err(serde::de::Error::custom(format!(
+                        "characteristic name exceeds the {}-byte Stata metadata limit",
+                        crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES
+                    )));
+                }
+                if raw_string_exceeds_limit(
+                    raw.value,
+                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
+                ) {
+                    return Err(serde::de::Error::custom(format!(
+                        "characteristic value exceeds the {}-byte Stata metadata limit",
+                        crate::stata_metadata::MAX_METADATA_VALUE_BYTES
+                    )));
+                }
+                let characteristic = StataCharacteristic {
+                    name: serde_json::from_str(raw.name.get()).map_err(serde::de::Error::custom)?,
+                    value: serde_json::from_str(raw.value.get())
+                        .map_err(serde::de::Error::custom)?,
+                };
+                if !crate::stata_metadata::valid_characteristic(
+                    &characteristic.name,
+                    &characteristic.value,
+                ) || names.contains(&characteristic.name)
+                {
+                    return Err(serde::de::Error::custom(
+                        "characteristics contain an invalid, duplicate, or reserved name",
+                    ));
+                }
+                decoded.try_reserve(1).map_err(serde::de::Error::custom)?;
+                names.try_reserve(1).map_err(serde::de::Error::custom)?;
+                names.insert(characteristic.name.clone());
+                decoded.push(characteristic);
+            }
+            Ok(decoded)
+        }
+    }
+
+    deserializer.deserialize_seq(CharacteristicsVisitor)
+}
+
+fn validate_notes(
     version: &str,
     context: &str,
     notes: &[StataNote],
-    characteristics: &[StataCharacteristic],
 ) -> Result<(), ArrowProfileError> {
     let mut previous = 0;
     for note in notes {
@@ -373,6 +424,14 @@ fn validate_notes_and_characteristics(
         }
         previous = note.number;
     }
+    Ok(())
+}
+
+fn validate_characteristics(
+    version: &str,
+    context: &str,
+    characteristics: &[StataCharacteristic],
+) -> Result<(), ArrowProfileError> {
     let mut names = std::collections::HashSet::with_capacity(characteristics.len());
     for characteristic in characteristics {
         if !crate::stata_metadata::valid_characteristic(&characteristic.name, &characteristic.value)
@@ -458,13 +517,27 @@ fn decoded_json_string_length(raw: &RawValue) -> Option<usize> {
     (index == end).then_some(length)
 }
 
+fn raw_string_exceeds_limit(raw: &RawValue, limit: usize) -> bool {
+    let bytes = raw.get().as_bytes();
+    if bytes.len() >= 2
+        && bytes.first() == Some(&b'"')
+        && bytes.last() == Some(&b'"')
+        && bytes.len() - 2 <= limit
+    {
+        // JSON escapes never expand beyond their encoded representation, so
+        // a bounded interior is also bounded after decoding.
+        return false;
+    }
+    decoded_json_string_length(raw).is_some_and(|length| length > limit)
+}
+
 fn validate_raw_string_length(
     version: &str,
     context: &str,
     raw: &RawValue,
     limit: usize,
 ) -> Result<(), ArrowProfileError> {
-    if decoded_json_string_length(raw).is_some_and(|length| length > limit) {
+    if raw_string_exceeds_limit(raw, limit) {
         return Err(malformed(
             version,
             format!("{context} exceeds the {limit}-byte Stata metadata limit"),
@@ -534,49 +607,13 @@ fn decode_raw_notes(
     Ok(decoded)
 }
 
-fn decode_raw_characteristics(
-    version: &str,
-    context: &str,
-    invalid_document_context: &str,
-    characteristics: Vec<RawCharacteristic<'_>>,
-) -> Result<Vec<StataCharacteristic>, ArrowProfileError> {
-    let name_context = format!("{context} characteristic name");
-    let value_context = format!("{context} characteristic value");
-    characteristics
-        .into_iter()
-        .map(|characteristic| {
-            Ok(StataCharacteristic {
-                name: decode_raw_metadata_string(
-                    version,
-                    &name_context,
-                    invalid_document_context,
-                    characteristic.name,
-                    crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
-                )?,
-                value: decode_raw_metadata_string(
-                    version,
-                    &value_context,
-                    invalid_document_context,
-                    characteristic.value,
-                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
-                )?,
-            })
-        })
-        .collect()
-}
-
 impl RawDatasetDocument<'_> {
     fn decode(self, version: &str) -> Result<DatasetDocument, ArrowProfileError> {
         Ok(DatasetDocument {
             version: self.version,
             label: self.label,
             notes: decode_raw_notes(version, "dataset", "dataset document", self.notes)?,
-            characteristics: decode_raw_characteristics(
-                version,
-                "dataset",
-                "dataset document",
-                self.characteristics,
-            )?,
+            characteristics: self.characteristics,
             value_labels: self.value_labels,
         })
     }
@@ -590,12 +627,7 @@ impl RawArrowFieldDocument<'_> {
             label: self.label,
             format: self.format,
             notes: decode_raw_notes(version, "field", &invalid_context, self.notes)?,
-            characteristics: decode_raw_characteristics(
-                version,
-                "field",
-                &invalid_context,
-                self.characteristics,
-            )?,
+            characteristics: self.characteristics,
             storage: self.storage,
             string_storage: self.string_storage,
             value_labels: self.value_labels,
@@ -645,10 +677,10 @@ pub(crate) fn parse_dataset_document(
             ..DatasetDocument::default()
         });
     };
-    let raw: RawDatasetDocument<'_> = parse_full_document(json)
+    let raw: RawDatasetDocument<'_> = serde_json::from_str(json)
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
     let document = raw.decode(version)?;
-    validate_dataset_document(version, &document)?;
+    validate_dataset_document_inner(version, &document, false)?;
     Ok(document)
 }
 
@@ -656,18 +688,24 @@ pub(crate) fn validate_dataset_document(
     version: &str,
     document: &DatasetDocument,
 ) -> Result<(), ArrowProfileError> {
+    validate_dataset_document_inner(version, document, true)
+}
+
+fn validate_dataset_document_inner(
+    version: &str,
+    document: &DatasetDocument,
+    check_characteristics: bool,
+) -> Result<(), ArrowProfileError> {
     if document.version != DOCUMENT_VERSION {
         return Err(malformed(
             version,
             format!("dataset document version {}", document.version),
         ));
     }
-    validate_notes_and_characteristics(
-        version,
-        "dataset",
-        &document.notes,
-        &document.characteristics,
-    )?;
+    validate_notes(version, "dataset", &document.notes)?;
+    if check_characteristics {
+        validate_characteristics(version, "dataset", &document.characteristics)?;
+    }
     for (table, entries) in &document.value_labels {
         for (index, entry) in entries.iter().enumerate() {
             if entry.value.is_some() == entry.tag.is_some() {
@@ -696,14 +734,14 @@ pub(crate) fn parse_field_document(
     field: &Field,
     json: &str,
 ) -> Result<ArrowFieldDocument, ArrowProfileError> {
-    let raw: RawArrowFieldDocument<'_> = parse_full_document(json).map_err(|error| {
+    let raw: RawArrowFieldDocument<'_> = serde_json::from_str(json).map_err(|error| {
         malformed(
             version,
             format!("invalid field document on `{}`: {error}", field.name()),
         )
     })?;
     let document = raw.decode(version, field)?;
-    validate_field_document(version, field, &document)?;
+    validate_field_document_inner(version, field, &document, false)?;
     Ok(document)
 }
 
@@ -847,6 +885,15 @@ pub(crate) fn validate_field_document(
     field: &Field,
     document: &ArrowFieldDocument,
 ) -> Result<(), ArrowProfileError> {
+    validate_field_document_inner(version, field, document, true)
+}
+
+fn validate_field_document_inner(
+    version: &str,
+    field: &Field,
+    document: &ArrowFieldDocument,
+    check_characteristics: bool,
+) -> Result<(), ArrowProfileError> {
     if document.version != DOCUMENT_VERSION {
         return Err(malformed(
             version,
@@ -886,12 +933,11 @@ pub(crate) fn validate_field_document(
             ));
         }
     }
-    validate_notes_and_characteristics(
-        version,
-        &format!("field `{}`", field.name()),
-        &document.notes,
-        &document.characteristics,
-    )?;
+    let context = format!("field `{}`", field.name());
+    validate_notes(version, &context, &document.notes)?;
+    if check_characteristics {
+        validate_characteristics(version, &context, &document.characteristics)?;
+    }
     if let Some(storage) = document.storage {
         let expected_type = storage_type(storage);
         if field.data_type() != &expected_type {
@@ -1113,25 +1159,18 @@ mod tests {
     }
 
     #[test]
-    fn arrow_metadata_uses_one_full_document_parse() {
-        FULL_DOCUMENT_PARSE_COUNT.with(|count| count.set(0));
-        parse_dataset_document(
+    fn invalid_characteristic_stops_before_later_json_is_parsed() {
+        let error = parse_dataset_document(
             "0",
-            Some(
-                r#"{"version":0,"notes":[{"number":1,"text":"note"}],"characteristics":[{"name":"source","value":"fixture"}]}"#,
-            ),
+            Some(r#"{"version":0,"characteristics":[{"name":"","value":""},invalid]}"#),
         )
-        .expect("valid dataset document");
-        FULL_DOCUMENT_PARSE_COUNT.with(|count| assert_eq!(count.get(), 1));
-
-        FULL_DOCUMENT_PARSE_COUNT.with(|count| count.set(0));
-        parse_field_document(
-            "0",
-            &Field::new("x", DataType::Int32, true),
-            r#"{"version":0,"notes":[{"number":1,"text":"note"}],"characteristics":[{"name":"source","value":"fixture"}]}"#,
-        )
-        .expect("valid field document");
-        FULL_DOCUMENT_PARSE_COUNT.with(|count| assert_eq!(count.get(), 1));
+        .expect_err("the first invalid characteristic stops the sequence");
+        assert!(
+            error
+                .to_string()
+                .contains("invalid, duplicate, or reserved name"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]

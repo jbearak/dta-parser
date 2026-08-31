@@ -122,14 +122,12 @@ function scan_expansion_fields(
     buffer_length: number,
     format_version: LegacyFormatVersion,
     decoder: DtaTextDecoder,
-    dataset: Pick<DtaMetadata, 'notes' | 'characteristics'>,
-    variables: VariableInfo[]
+    collector: StataMetadataCollector | null
 ): number {
     let pos = start;
     const bytes = bytes_from_view(view);
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
-    const collector = new StataMetadataCollector(dataset, variables);
 
     while (pos + my_header_size <= buffer_length) {
         const my_data_type = view.getUint8(pos);
@@ -140,7 +138,6 @@ function scan_expansion_fields(
         pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
-            collector.finish();
             return pos;
         }
 
@@ -151,7 +148,9 @@ function scan_expansion_fields(
             throw new Error('Truncated legacy expansion field');
         }
 
-        if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
+        if (collector !== null
+            && my_data_type === 1
+            && my_len >= 2 * layout.varname_width) {
             const my_variable = read_fixed_string(
                 bytes, pos, layout.varname_width, decoder
             );
@@ -364,11 +363,18 @@ export function parse_legacy_metadata(
     const characteristics: DtaMetadata['characteristics'] = [];
     // -- expansion fields --
     const my_expansion_offset = pos;
-    const my_data_offset = scan_expansion_fields(
+    scan_expansion_fields(
         view, little_endian, pos, buffer.byteLength,
-        format_version, my_decoder,
+        format_version, my_decoder, null
+    );
+    const collector = new StataMetadataCollector(
         { notes, characteristics }, the_variables
     );
+    const my_data_offset = scan_expansion_fields(
+        view, little_endian, pos, buffer.byteLength,
+        format_version, my_decoder, collector
+    );
+    collector.finish();
 
     // 9. Compute value labels offset (BigInt to avoid
     //    overflow for large legacy files)

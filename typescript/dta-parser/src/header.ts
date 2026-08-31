@@ -155,15 +155,14 @@ function tag_at(bytes: Uint8Array, offset: number, tag: Uint8Array): boolean {
     return true;
 }
 
-function parse_characteristics(
+function scan_characteristics(
     bytes: Uint8Array,
     view: DataView,
     little_endian: boolean,
     section_offsets: SectionOffsets,
     field_width: number,
     decoder: DtaTextDecoder,
-    dataset: Pick<DtaMetadata, 'notes' | 'characteristics'>,
-    variables: VariableInfo[]
+    collector: StataMetadataCollector | null
 ): void {
     let pos = section_offsets.characteristics;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
@@ -171,14 +170,12 @@ function parse_characteristics(
     }
     pos += TAG_CHARACTERISTICS_OPEN.length;
     const names_length = field_width * 2;
-    const collector = new StataMetadataCollector(dataset, variables);
     while (pos < section_offsets.data) {
         if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
             pos += TAG_CHARACTERISTICS_CLOSE.length;
             if (pos !== section_offsets.data) {
                 throw new Error('Characteristics section does not end at the mapped data offset');
             }
-            collector.finish();
             return;
         }
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
@@ -194,16 +191,18 @@ function parse_characteristics(
             || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
             throw new Error('Truncated characteristic payload');
         }
-        const target = read_fixed_string(bytes, pos, field_width, decoder);
-        const name = read_fixed_string(
-            bytes, pos + field_width, field_width, decoder
-        );
-        const valueLength = length - names_length;
-        const valueStart = pos + names_length;
-        const valueEnd = stataMetadataValueEnd(bytes, valueStart, valueLength);
-        collector.pushLazy(target, name, () => {
-            return decoder.decode(bytes.subarray(valueStart, valueEnd));
-        });
+        if (collector !== null) {
+            const target = read_fixed_string(bytes, pos, field_width, decoder);
+            const name = read_fixed_string(
+                bytes, pos + field_width, field_width, decoder
+            );
+            const valueLength = length - names_length;
+            const valueStart = pos + names_length;
+            const valueEnd = stataMetadataValueEnd(bytes, valueStart, valueLength);
+            collector.pushLazy(target, name, () => {
+                return decoder.decode(bytes.subarray(valueStart, valueEnd));
+            });
+        }
         pos += length;
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
             throw new Error('Missing </ch> tag');
@@ -211,6 +210,26 @@ function parse_characteristics(
         pos += TAG_CHARACTERISTIC_CLOSE.length;
     }
     throw new Error('Missing </characteristics> tag');
+}
+
+function parse_characteristics(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    section_offsets: SectionOffsets,
+    field_width: number,
+    decoder: DtaTextDecoder,
+    dataset: Pick<DtaMetadata, 'notes' | 'characteristics'>,
+    variables: VariableInfo[]
+): void {
+    scan_characteristics(
+        bytes, view, little_endian, section_offsets, field_width, decoder, null
+    );
+    const collector = new StataMetadataCollector(dataset, variables);
+    scan_characteristics(
+        bytes, view, little_endian, section_offsets, field_width, decoder, collector
+    );
+    collector.finish();
 }
 
 // -----------------------------------------------------------

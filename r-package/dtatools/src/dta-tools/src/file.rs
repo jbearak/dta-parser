@@ -2194,6 +2194,53 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
         Ok(())
     }
 
+    fn read_exact_into(
+        &mut self,
+        length: usize,
+        output: &mut Vec<u8>,
+        context: &'static str,
+    ) -> Result<(), DtaError> {
+        let target = checked_add_u64(
+            self.position,
+            u64::try_from(length)
+                .map_err(|_| DtaError::ArithmeticOverflow("metadata read length"))?,
+            "metadata read length",
+        )?;
+        if target > self.end {
+            return Err(DtaError::Io {
+                context,
+                offset: self.position,
+                kind: ErrorKind::UnexpectedEof,
+            });
+        }
+        read_exact_at_into(
+            self.reader,
+            self.position,
+            length,
+            self.scratch,
+            output,
+            context,
+        )?;
+        self.position = target;
+        self.buffer.clear();
+        self.buffer_start = target;
+        Ok(())
+    }
+
+    fn read_with_mode(
+        &mut self,
+        length: usize,
+        output: &mut Vec<u8>,
+        context: &'static str,
+        read_ahead: bool,
+    ) -> Result<(), DtaError> {
+        if read_ahead {
+            self.read_into(length, output, context)
+        } else {
+            self.read_exact_into(length, output, context)
+        }
+    }
+
     fn advance(&mut self, length: usize, context: &'static str) -> Result<(), DtaError> {
         let target = checked_add_u64(
             self.position,
@@ -2705,6 +2752,100 @@ fn validate_modern_sortlist<R: Read + Seek>(
     ensure_absolute("formats", after_close, header.section_offsets.formats)
 }
 
+struct ModernCharacteristicScan {
+    start: u64,
+    end: u64,
+    byte_order: ByteOrder,
+    names_length: usize,
+    adaptive_read_ahead: bool,
+}
+
+fn walk_modern_characteristic_records<R, F>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    scan: ModernCharacteristicScan,
+    mut visit: F,
+) -> Result<(), DtaError>
+where
+    R: Read + Seek,
+    F: FnMut(&mut BufferedSectionReader<'_, R>, u64, usize) -> Result<(), DtaError>,
+{
+    let mut section = BufferedSectionReader::new(reader, scratch, scan.start, scan.end);
+    let mut record = Vec::new();
+    let mut read_ahead = !scan.adaptive_read_ahead;
+    loop {
+        let record_offset = section.position();
+        section.read_with_mode(4, &mut record, "reading characteristic tag", read_ahead)?;
+        if record == b"</ch" {
+            section.read_with_mode(
+                b"aracteristics>".len(),
+                &mut record,
+                "reading </characteristics>",
+                read_ahead,
+            )?;
+            if record != b"aracteristics>" {
+                return Err(DtaError::UnexpectedTag {
+                    expected: "</characteristics>",
+                    offset: error_offset(record_offset),
+                });
+            }
+            ensure_absolute("data", section.position(), scan.end)?;
+            return Ok(());
+        }
+        if record != b"<ch>" {
+            return Err(DtaError::UnexpectedTag {
+                expected: "<ch> or </characteristics>",
+                offset: error_offset(record_offset),
+            });
+        }
+        section.read_with_mode(4, &mut record, "reading characteristic length", read_ahead)?;
+        let payload_length = usize::try_from(read_u32(
+            &record,
+            0,
+            scan.byte_order,
+            "characteristic length",
+        )?)
+        .map_err(|_| DtaError::ArithmeticOverflow("characteristic length"))?;
+        let payload_offset = section.position();
+        if payload_length < scan.names_length {
+            return Err(DtaError::Truncated {
+                context: "characteristic names",
+                offset: error_offset(payload_offset),
+                needed: scan.names_length,
+                available: payload_length,
+            });
+        }
+        let close = checked_add_u64(
+            payload_offset,
+            u64::try_from(payload_length)
+                .map_err(|_| DtaError::ArithmeticOverflow("characteristic payload length"))?,
+            "characteristic payload",
+        )?;
+        let after_close = checked_add_u64(close, 5, "characteristic closing tag")?;
+        if after_close > scan.end {
+            return Err(DtaError::Truncated {
+                context: "characteristic payload",
+                offset: error_offset(payload_offset),
+                needed: payload_length.saturating_add(5),
+                available: usize::try_from(scan.end.saturating_sub(payload_offset))
+                    .unwrap_or(usize::MAX),
+            });
+        }
+        visit(&mut section, payload_offset, payload_length)?;
+        debug_assert_eq!(section.position(), close);
+        read_ahead = !scan.adaptive_read_ahead
+            || payload_length < METADATA_SECTION_BUFFER_BYTES.saturating_div(2);
+        section.read_with_mode(5, &mut record, "reading </ch>", read_ahead)?;
+        if record != b"</ch>" {
+            return Err(DtaError::UnexpectedTag {
+                expected: "</ch>",
+                offset: error_offset(close),
+            });
+        }
+        debug_assert_eq!(section.position(), after_close);
+    }
+}
+
 fn read_modern_characteristics<R: Read + Seek>(
     reader: &mut R,
     header: &FileModernHeaderMap,
@@ -2740,104 +2881,134 @@ fn read_modern_characteristics<R: Read + Seek>(
         "<characteristics>",
         scratch,
     )?;
-    let mut section =
-        BufferedSectionReader::new(reader, scratch, cursor, header.section_offsets.data);
+    walk_modern_characteristic_records(
+        reader,
+        scratch,
+        ModernCharacteristicScan {
+            start: cursor,
+            end: header.section_offsets.data,
+            byte_order: header.byte_order,
+            names_length,
+            adaptive_read_ahead: true,
+        },
+        |section, _, payload_length| section.advance(payload_length, "characteristic payload"),
+    )?;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(variables);
     let mut record = Vec::new();
-    loop {
-        let record_offset = section.position();
-        section.read_into(4, &mut record, "reading characteristic tag")?;
-        if record == b"</ch" {
-            section.read_into(
-                b"aracteristics>".len(),
-                &mut record,
-                "reading </characteristics>",
-            )?;
-            if record != b"aracteristics>" {
-                return Err(DtaError::UnexpectedTag {
-                    expected: "</characteristics>",
-                    offset: error_offset(record_offset),
-                });
+    walk_modern_characteristic_records(
+        reader,
+        scratch,
+        ModernCharacteristicScan {
+            start: cursor,
+            end: header.section_offsets.data,
+            byte_order: header.byte_order,
+            names_length,
+            adaptive_read_ahead: false,
+        },
+        |section, payload_offset, payload_length| {
+            section.read_into(names_length, &mut record, "reading characteristic names")?;
+            let target = encoding.decode(field_bytes(&record[..width]));
+            let name = encoding.decode(field_bytes(&record[width..]));
+            let value_length = payload_length - names_length;
+            let accepted = classify_characteristic(
+                &target,
+                name,
+                error_offset(payload_offset.saturating_add(width as u64)),
+                |target| variable_indexes.resolve(target),
+            );
+            match accepted {
+                Ok(Some(accepted)) => {
+                    let value = section.decode_field(
+                        value_length,
+                        encoding,
+                        "reading characteristic value",
+                    )?;
+                    collector
+                        .get_or_insert_with(CharacteristicCollector::default)
+                        .push(accepted, value);
+                }
+                Ok(None) => section.validate_field(value_length, "characteristic value")?,
+                Err(error) => {
+                    section.validate_field(value_length, "characteristic value")?;
+                    return Err(error);
+                }
             }
-            ensure_absolute("data", section.position(), header.section_offsets.data)?;
-            return Ok(collector);
-        }
-        if record != b"<ch>" {
-            return Err(DtaError::UnexpectedTag {
-                expected: "<ch> or </characteristics>",
-                offset: error_offset(record_offset),
-            });
-        }
-        section.read_into(4, &mut record, "reading characteristic length")?;
-        let payload_length = usize::try_from(read_u32(
-            &record,
-            0,
-            header.byte_order,
-            "characteristic length",
+            Ok(())
+        },
+    )?;
+    Ok(collector)
+}
+
+struct LegacyExpansionRecord {
+    data_type: u8,
+    payload_offset: u64,
+    payload_length: usize,
+}
+
+fn read_legacy_expansion_record<R: Read + Seek>(
+    section: &mut BufferedSectionReader<'_, R>,
+    header: &mut Vec<u8>,
+    byte_order: ByteOrder,
+    layout: LegacyLayout,
+    read_ahead: bool,
+) -> Result<Option<LegacyExpansionRecord>, DtaError> {
+    let header_offset = section.position();
+    section.read_with_mode(
+        layout.expansion_header_width(),
+        header,
+        "reading legacy expansion field",
+        read_ahead,
+    )?;
+    let data_type = header[0];
+    let length = if layout.expansion_length_width == 2 {
+        i32::from(read_i16(
+            header,
+            1,
+            byte_order,
+            "legacy expansion-field length",
         )?)
-        .map_err(|_| DtaError::ArithmeticOverflow("characteristic length"))?;
-        let payload_offset = section.position();
-        if payload_length < names_length {
-            return Err(DtaError::Truncated {
-                context: "characteristic names",
-                offset: error_offset(payload_offset),
-                needed: names_length,
-                available: payload_length,
-            });
-        }
-        let close = checked_add_u64(
-            payload_offset,
-            u64::try_from(payload_length)
-                .map_err(|_| DtaError::ArithmeticOverflow("characteristic payload length"))?,
-            "characteristic payload",
-        )?;
-        let after_close = checked_add_u64(close, 5, "characteristic closing tag")?;
-        if after_close > header.section_offsets.data {
-            return Err(DtaError::Truncated {
-                context: "characteristic payload",
-                offset: error_offset(payload_offset),
-                needed: payload_length.saturating_add(5),
-                available: usize::try_from(
-                    header.section_offsets.data.saturating_sub(payload_offset),
-                )
-                .unwrap_or(usize::MAX),
-            });
-        }
-        section.read_into(names_length, &mut record, "reading characteristic names")?;
-        let target = encoding.decode(field_bytes(&record[..width]));
-        let name = encoding.decode(field_bytes(&record[width..]));
-        let value_length = payload_length - names_length;
-        let accepted = classify_characteristic(
-            &target,
-            name,
-            error_offset(payload_offset.saturating_add(width as u64)),
-            |target| variable_indexes.resolve(target),
-        );
-        match accepted {
-            Ok(Some(accepted)) => {
-                let value =
-                    section.decode_field(value_length, encoding, "reading characteristic value")?;
-                collector
-                    .get_or_insert_with(CharacteristicCollector::default)
-                    .push(accepted, value);
-            }
-            Ok(None) => section.validate_field(value_length, "characteristic value")?,
-            Err(error) => {
-                section.validate_field(value_length, "characteristic value")?;
-                return Err(error);
-            }
-        }
-        debug_assert_eq!(section.position(), close);
-        section.read_into(5, &mut record, "reading </ch>")?;
-        if record != b"</ch>" {
-            return Err(DtaError::UnexpectedTag {
-                expected: "</ch>",
-                offset: error_offset(close),
-            });
-        }
-        debug_assert_eq!(section.position(), after_close);
+    } else {
+        read_i32(header, 1, byte_order, "legacy expansion-field length")?
+    };
+    if data_type == 0 && length == 0 {
+        return Ok(None);
     }
+    if length < 0 {
+        return Err(DtaError::NegativeExpansionLength {
+            value: length,
+            offset: error_offset(header_offset.saturating_add(1)),
+        });
+    }
+    if data_type == 0 {
+        return Err(DtaError::InvalidExpansionTerminator {
+            value: length,
+            offset: error_offset(header_offset),
+        });
+    }
+    let payload_offset = section.position();
+    let payload_length = usize::try_from(length)
+        .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?;
+    let payload_end = checked_add_u64(
+        payload_offset,
+        u64::try_from(payload_length)
+            .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?,
+        "legacy expansion payload",
+    )?;
+    if payload_end > section.end {
+        return Err(DtaError::Truncated {
+            context: "legacy expansion-field payload",
+            offset: error_offset(payload_offset),
+            needed: payload_length,
+            available: usize::try_from(section.end.saturating_sub(payload_offset))
+                .unwrap_or(usize::MAX),
+        });
+    }
+    Ok(Some(LegacyExpansionRecord {
+        data_type,
+        payload_offset,
+        payload_length,
+    }))
 }
 
 fn validate_legacy_expansion_framing<R: Read + Seek>(
@@ -2852,42 +3023,20 @@ fn validate_legacy_expansion_framing<R: Read + Seek>(
     // before the collection pass allocates decoded values.
     let mut header = Vec::new();
     let mut section = BufferedSectionReader::new(reader, scratch, start, file_length);
+    let mut read_ahead = false;
     loop {
-        let header_offset = section.position();
-        section.read_into(
-            layout.expansion_header_width(),
+        let Some(record) = read_legacy_expansion_record(
+            &mut section,
             &mut header,
-            "reading legacy expansion field",
-        )?;
-        let data_type = header[0];
-        let length = if layout.expansion_length_width == 2 {
-            i32::from(read_i16(
-                &header,
-                1,
-                byte_order,
-                "legacy expansion-field length",
-            )?)
-        } else {
-            read_i32(&header, 1, byte_order, "legacy expansion-field length")?
-        };
-        if data_type == 0 && length == 0 {
+            byte_order,
+            layout,
+            read_ahead,
+        )?
+        else {
             return Ok(());
-        }
-        if length < 0 {
-            return Err(DtaError::NegativeExpansionLength {
-                value: length,
-                offset: error_offset(header_offset.saturating_add(1)),
-            });
-        }
-        if data_type == 0 {
-            return Err(DtaError::InvalidExpansionTerminator {
-                value: length,
-                offset: error_offset(header_offset),
-            });
-        }
-        let payload_length = usize::try_from(length)
-            .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?;
-        section.advance(payload_length, "legacy expansion-field payload")?;
+        };
+        section.advance(record.payload_length, "legacy expansion-field payload")?;
+        read_ahead = record.payload_length < METADATA_SECTION_BUFFER_BYTES.saturating_div(2);
     }
 }
 
@@ -3393,58 +3542,16 @@ fn read_legacy_metadata<R: Read + Seek>(
     let mut variable_indexes = VariableTargetIndexes::new(&variables);
     let mut expansion = Vec::new();
     let mut section = BufferedSectionReader::new(reader, scratch, fixed_end, file_length);
-    loop {
-        let header_offset = section.position();
-        section.read_into(
-            layout.expansion_header_width(),
-            &mut expansion,
-            "reading legacy expansion field",
-        )?;
-        let data_type = expansion[0];
-        let length = if layout.expansion_length_width == 2 {
-            i32::from(read_i16(
-                &expansion,
-                1,
-                byte_order,
-                "legacy expansion-field length",
-            )?)
-        } else {
-            read_i32(&expansion, 1, byte_order, "legacy expansion-field length")?
-        };
-        if data_type == 0 && length == 0 {
-            break;
-        }
-        if length < 0 {
-            return Err(DtaError::NegativeExpansionLength {
-                value: length,
-                offset: error_offset(header_offset.saturating_add(1)),
-            });
-        }
-        if data_type == 0 {
-            return Err(DtaError::InvalidExpansionTerminator {
-                value: length,
-                offset: error_offset(header_offset),
-            });
-        }
-        let payload_offset = section.position();
-        let payload_length = usize::try_from(length)
-            .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?;
+    while let Some(record) =
+        read_legacy_expansion_record(&mut section, &mut expansion, byte_order, layout, true)?
+    {
         let payload_end = checked_add_u64(
-            payload_offset,
-            u64::try_from(payload_length)
+            record.payload_offset,
+            u64::try_from(record.payload_length)
                 .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?,
             "legacy expansion payload",
         )?;
-        if payload_end > file_length {
-            return Err(DtaError::Truncated {
-                context: "legacy expansion-field payload",
-                offset: error_offset(payload_offset),
-                needed: payload_length,
-                available: usize::try_from(file_length.saturating_sub(payload_offset))
-                    .unwrap_or(usize::MAX),
-            });
-        }
-        if data_type == 1 && payload_length >= 2 * layout.varname_width {
+        if record.data_type == 1 && record.payload_length >= 2 * layout.varname_width {
             section.read_into(
                 2 * layout.varname_width,
                 &mut expansion,
@@ -3452,11 +3559,15 @@ fn read_legacy_metadata<R: Read + Seek>(
             )?;
             let target = encoding.decode(field_bytes(&expansion[..layout.varname_width]));
             let name = encoding.decode(field_bytes(&expansion[layout.varname_width..]));
-            let value_length = payload_length - 2 * layout.varname_width;
+            let value_length = record.payload_length - 2 * layout.varname_width;
             let accepted = classify_characteristic(
                 &target,
                 name,
-                error_offset(payload_offset.saturating_add(layout.varname_width as u64)),
+                error_offset(
+                    record
+                        .payload_offset
+                        .saturating_add(layout.varname_width as u64),
+                ),
                 |target| variable_indexes.resolve(target),
             );
             match accepted {
@@ -3477,7 +3588,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                 }
             }
         } else {
-            section.advance(payload_length, "legacy expansion-field payload")?;
+            section.advance(record.payload_length, "legacy expansion-field payload")?;
         }
         debug_assert_eq!(section.position(), payload_end);
     }
@@ -4731,7 +4842,38 @@ fn resolve_parallel_file_strls<R: Read + Seek, F: FnMut() -> bool, C: DtaColumnS
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
+    use std::io::{Cursor, Result as IoResult};
+
+    struct CountingReader {
+        inner: Cursor<Vec<u8>>,
+        bytes_read: usize,
+        read_calls: usize,
+    }
+
+    impl CountingReader {
+        fn new(bytes: Vec<u8>) -> Self {
+            Self {
+                inner: Cursor::new(bytes),
+                bytes_read: 0,
+                read_calls: 0,
+            }
+        }
+    }
+
+    impl Read for CountingReader {
+        fn read(&mut self, output: &mut [u8]) -> IoResult<usize> {
+            let count = self.inner.read(output)?;
+            self.bytes_read += count;
+            self.read_calls += 1;
+            Ok(count)
+        }
+    }
+
+    impl Seek for CountingReader {
+        fn seek(&mut self, position: SeekFrom) -> IoResult<u64> {
+            self.inner.seek(position)
+        }
+    }
 
     fn unterminated_characteristic_record(width: usize, byte_order: ByteOrder) -> Vec<u8> {
         let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
@@ -4785,6 +4927,42 @@ mod tests {
     }
 
     #[test]
+    fn file_metadata_rejects_forged_modern_terminator_before_value_decode() {
+        let width = 129;
+        let mut bytes = unterminated_characteristic_record(width, ByteOrder::Lsf);
+        let forged_length = width * 2 + b"</characteristics>".len();
+        bytes.extend_from_slice(b"<ch>");
+        bytes.extend_from_slice(&(forged_length as u32).to_le_bytes());
+        bytes.extend(std::iter::repeat_n(0, width * 2));
+        bytes.extend_from_slice(b"</characteristics>");
+        let header = FileModernHeaderMap {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: String::new(),
+            section_offsets: SectionOffsets {
+                characteristics: 0,
+                data: bytes.len() as u64,
+                ..SectionOffsets::default()
+            },
+        };
+        assert!(matches!(
+            read_modern_characteristics(
+                &mut Cursor::new(bytes),
+                &header,
+                TextEncoding::Utf8,
+                &mut Scratch::new(1024),
+                &[],
+            ),
+            Err(DtaError::Truncated {
+                context: "characteristic payload",
+                ..
+            })
+        ));
+    }
+
+    #[test]
     fn file_metadata_frames_legacy_expansions_without_decoding_values() {
         let layout = LegacyLayout::for_version(FormatVersion::V115);
         let modern = unterminated_characteristic_record(layout.varname_width, ByteOrder::Lsf);
@@ -4809,6 +4987,53 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn legacy_framing_reads_only_headers_around_large_payloads() {
+        let layout = LegacyLayout::for_version(FormatVersion::V115);
+        let payload_length = METADATA_SECTION_BUFFER_BYTES + 1024;
+        let mut bytes = Vec::new();
+        for _ in 0..8 {
+            bytes.push(2);
+            bytes.extend_from_slice(&(payload_length as i32).to_le_bytes());
+            bytes.extend(std::iter::repeat_n(0, payload_length));
+        }
+        bytes.extend_from_slice(&[0; 5]);
+        let file_length = bytes.len() as u64;
+        let mut reader = CountingReader::new(bytes);
+        validate_legacy_expansion_framing(
+            &mut reader,
+            &mut Scratch::new(1024 * 1024),
+            0,
+            file_length,
+            ByteOrder::Lsf,
+            layout,
+        )
+        .expect("large payload framing");
+        assert_eq!(reader.bytes_read, 45);
+    }
+
+    #[test]
+    fn legacy_framing_reads_dense_small_headers_in_blocks() {
+        let layout = LegacyLayout::for_version(FormatVersion::V115);
+        let mut bytes = Vec::new();
+        for _ in 0..10_000 {
+            bytes.extend_from_slice(&[2, 0, 0, 0, 0]);
+        }
+        bytes.extend_from_slice(&[0; 5]);
+        let file_length = bytes.len() as u64;
+        let mut reader = CountingReader::new(bytes);
+        validate_legacy_expansion_framing(
+            &mut reader,
+            &mut Scratch::new(1024 * 1024),
+            0,
+            file_length,
+            ByteOrder::Lsf,
+            layout,
+        )
+        .expect("dense expansion framing");
+        assert!(reader.read_calls <= 3, "{} reads", reader.read_calls);
     }
 
     fn kernel_metadata(byte_order: ByteOrder) -> DtaMetadata {

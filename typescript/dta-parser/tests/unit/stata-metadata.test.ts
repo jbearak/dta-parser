@@ -126,6 +126,7 @@ describe('DTA characteristic recovery', () => {
         applyCharacteristicRecords([
             { target: '_dta', name: 'note3', value: 'three' },
             { target: '_dta', name: 'note1', value: '' },
+            { target: '_dta', name: 'note01', value: 'reserved' },
             { target: '_dta', name: 'source', value: 'old' },
             { target: '_dta', name: 'source', value: 'new' },
             { target: '_dta', name: 'note0', value: '9' },

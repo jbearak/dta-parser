@@ -472,6 +472,63 @@ describe('parse_metadata', () => {
             )).toThrow('Invalid on-disk Stata characteristic name');
         });
 
+        it('frames forged modern terminators before decoding values', () => {
+            const original = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                original.buffer.slice(
+                    original.byteOffset,
+                    original.byteOffset + original.byteLength
+                )
+            );
+            const width = 129;
+            const valueLength = 67_786;
+            const firstPayload = Buffer.alloc(2 * width + valueLength, 0x78);
+            firstPayload.fill(0, 0, 2 * width);
+            firstPayload.write('_dta', 0, 'ascii');
+            firstPayload.write('source', width, 'ascii');
+            const firstHeader = Buffer.alloc(8);
+            firstHeader.write('<ch>', 0, 'ascii');
+            firstHeader.writeUInt32LE(firstPayload.length, 4);
+            const forgedPayload = Buffer.alloc(
+                2 * width + Buffer.byteLength('</characteristics>')
+            );
+            forgedPayload.write('</characteristics>', 2 * width, 'ascii');
+            const forgedHeader = Buffer.alloc(8);
+            forgedHeader.write('<ch>', 0, 'ascii');
+            forgedHeader.writeUInt32LE(forgedPayload.length, 4);
+            const section = Buffer.concat([
+                Buffer.from('<characteristics>'),
+                firstHeader,
+                firstPayload,
+                Buffer.from('</ch>'),
+                forgedHeader,
+                forgedPayload,
+            ]);
+            const oldLength = metadata.section_offsets.data
+                - metadata.section_offsets.characteristics;
+            const delta = section.length - oldLength;
+            const malformed = Buffer.concat([
+                original.subarray(0, metadata.section_offsets.characteristics),
+                section,
+                original.subarray(metadata.section_offsets.data),
+            ]);
+            const mapPayload = metadata.section_offsets.map
+                + Buffer.byteLength('<map>');
+            for (let index = 9; index < 14; index++) {
+                const offset = mapPayload + index * 8;
+                malformed.writeBigUInt64LE(
+                    malformed.readBigUInt64LE(offset) + BigInt(delta), offset
+                );
+            }
+
+            expect(() => parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            )).toThrow('Truncated characteristic payload');
+        });
+
         it('throws on truncated buffer', () => {
             const my_buf = new ArrayBuffer(10);
             expect(() => parse_metadata(my_buf)).toThrow();

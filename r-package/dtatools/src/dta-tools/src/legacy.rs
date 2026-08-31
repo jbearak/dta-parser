@@ -218,10 +218,58 @@ fn scan_expansion_fields_ordered(
     layout: LegacyLayout,
     variables: &[VariableInfo],
 ) -> Result<(usize, Option<CharacteristicCollector>), DtaError> {
-    validate_expansion_field_framing(bytes, start, byte_order, layout)?;
-    let mut cursor = start;
+    walk_expansion_fields(bytes, start, byte_order, layout, |_, _, _| Ok(()))?;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(variables);
+    let data_offset = walk_expansion_fields(
+        bytes,
+        start,
+        byte_order,
+        layout,
+        |data_type, cursor, payload| {
+            if data_type == 1 && payload.len() >= 2 * layout.varname_width {
+                let (variable, remainder) = payload.split_at(layout.varname_width);
+                let (characteristic, value) = remainder.split_at(layout.varname_width);
+                validate_raw_value_length(
+                    value.len(),
+                    cursor + 2 * layout.varname_width,
+                    "legacy characteristic value",
+                )?;
+                let value = validate_raw_value_bytes(
+                    value,
+                    cursor + 2 * layout.varname_width,
+                    "legacy characteristic value",
+                )?;
+                let target = encoding.decode(field_bytes(variable));
+                let name = encoding.decode(field_bytes(characteristic));
+                if let Some(accepted) = classify_characteristic(
+                    &target,
+                    name,
+                    cursor + layout.varname_width,
+                    |target| variable_indexes.resolve(target),
+                )? {
+                    collector
+                        .get_or_insert_with(CharacteristicCollector::default)
+                        .push(accepted, encoding.decode(value));
+                }
+            }
+            Ok(())
+        },
+    )?;
+    Ok((data_offset, collector))
+}
+
+fn walk_expansion_fields<F>(
+    bytes: &[u8],
+    start: usize,
+    byte_order: ByteOrder,
+    layout: LegacyLayout,
+    mut visit: F,
+) -> Result<usize, DtaError>
+where
+    F: FnMut(u8, usize, &[u8]) -> Result<(), DtaError>,
+{
+    let mut cursor = start;
     loop {
         let data_type = slice_at(bytes, cursor, 1, "legacy expansion-field type")?[0];
         let length_offset = checked_add(cursor, 1, "legacy expansion-field length")?;
@@ -241,12 +289,11 @@ fn scan_expansion_fields_ordered(
             )?
         };
         if data_type == 0 && value == 0 {
-            let data_offset = checked_add(
+            return checked_add(
                 cursor,
                 layout.expansion_header_width(),
                 "legacy expansion-field terminator",
-            )?;
-            return Ok((data_offset, collector));
+            );
         }
         if value < 0 {
             return Err(DtaError::NegativeExpansionLength {
@@ -268,90 +315,7 @@ fn scan_expansion_fields_ordered(
             "legacy expansion-field header",
         )?;
         let payload = slice_at(bytes, cursor, length, "legacy expansion-field payload")?;
-        if data_type == 1 && payload.len() >= 2 * layout.varname_width {
-            let (variable, remainder) = payload.split_at(layout.varname_width);
-            let (characteristic, value) = remainder.split_at(layout.varname_width);
-            validate_raw_value_length(
-                value.len(),
-                cursor + 2 * layout.varname_width,
-                "legacy characteristic value",
-            )?;
-            let value = validate_raw_value_bytes(
-                value,
-                cursor + 2 * layout.varname_width,
-                "legacy characteristic value",
-            )?;
-            let target = encoding.decode(field_bytes(variable));
-            let name = encoding.decode(field_bytes(characteristic));
-            if let Some(accepted) =
-                classify_characteristic(&target, name, cursor + layout.varname_width, |target| {
-                    variable_indexes.resolve(target)
-                })?
-            {
-                collector
-                    .get_or_insert_with(CharacteristicCollector::default)
-                    .push(accepted, encoding.decode(value));
-            }
-        }
-        cursor = checked_add(cursor, length, "legacy expansion-field payload")?;
-    }
-}
-
-fn validate_expansion_field_framing(
-    bytes: &[u8],
-    start: usize,
-    byte_order: ByteOrder,
-    layout: LegacyLayout,
-) -> Result<(), DtaError> {
-    // Legacy files have no section map. Scan to the sentinel without decoding
-    // payloads, then let the caller make a second pass to collect metadata.
-    let mut cursor = start;
-    loop {
-        let data_type = slice_at(bytes, cursor, 1, "legacy expansion-field type")?[0];
-        let length_offset = checked_add(cursor, 1, "legacy expansion-field length")?;
-        let value = if layout.expansion_length_width == 2 {
-            i32::from(read_i16(
-                bytes,
-                length_offset,
-                byte_order,
-                "legacy expansion-field length",
-            )?)
-        } else {
-            read_i32(
-                bytes,
-                length_offset,
-                byte_order,
-                "legacy expansion-field length",
-            )?
-        };
-        if data_type == 0 && value == 0 {
-            checked_add(
-                cursor,
-                layout.expansion_header_width(),
-                "legacy expansion-field terminator",
-            )?;
-            return Ok(());
-        }
-        if value < 0 {
-            return Err(DtaError::NegativeExpansionLength {
-                value,
-                offset: length_offset,
-            });
-        }
-        if data_type == 0 {
-            return Err(DtaError::InvalidExpansionTerminator {
-                value,
-                offset: cursor,
-            });
-        }
-        let length = usize::try_from(value)
-            .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion-field length"))?;
-        cursor = checked_add(
-            cursor,
-            layout.expansion_header_width(),
-            "legacy expansion-field header",
-        )?;
-        slice_at(bytes, cursor, length, "legacy expansion-field payload")?;
+        visit(data_type, cursor, payload)?;
         cursor = checked_add(cursor, length, "legacy expansion-field payload")?;
     }
 }
