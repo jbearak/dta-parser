@@ -62,16 +62,55 @@ struct ValueLabelLocation {
 }
 
 #[derive(Debug)]
-struct ProjectedValueLabelCache {
+struct IndexedValueLabelCache {
     layout: IndexedValueLabelLayout,
     locations: Vec<ValueLabelLocation>,
-    tables: Vec<Option<ValueLabelTable>>,
+    tables: HashMap<usize, ValueLabelTable>,
 }
 
-struct ValueLabelStreamingOptions<'a> {
-    selected: Option<&'a HashSet<String>>,
-    range: Option<(u64, u64)>,
-    locations: Option<&'a mut Vec<ValueLabelLocation>>,
+#[derive(Debug)]
+enum ValueLabelCache {
+    Empty,
+    Indexed(IndexedValueLabelCache),
+    Full(Vec<ValueLabelTable>),
+}
+
+enum ValueLabelStreamingMode<'a> {
+    Full,
+    Projected {
+        selected: &'a HashSet<String>,
+        locations: &'a mut Vec<ValueLabelLocation>,
+    },
+    Indexed {
+        range: (u64, u64),
+    },
+}
+
+impl ValueLabelStreamingMode<'_> {
+    fn section_range(&self, full: (u64, u64)) -> (u64, u64) {
+        match self {
+            Self::Indexed { range } => *range,
+            Self::Full | Self::Projected { .. } => full,
+        }
+    }
+
+    fn scans_section(&self) -> bool {
+        !matches!(self, Self::Indexed { .. })
+    }
+
+    fn retains(&self, name: &str) -> bool {
+        match self {
+            Self::Projected { selected, .. } => selected.contains(name),
+            Self::Full | Self::Indexed { .. } => true,
+        }
+    }
+
+    fn locations(&mut self) -> Option<&mut Vec<ValueLabelLocation>> {
+        match self {
+            Self::Projected { locations, .. } => Some(locations),
+            Self::Full | Self::Indexed { .. } => None,
+        }
+    }
 }
 
 const DEFAULT_MAX_BUFFER_BYTES: usize = 8 * 1024 * 1024;
@@ -1165,8 +1204,7 @@ pub struct DtaFile<R: Read + Seek> {
     metadata: DtaMetadata,
     file_length: u64,
     scratch: Scratch,
-    value_label_tables: Option<Vec<ValueLabelTable>>,
-    projected_value_labels: Option<ProjectedValueLabelCache>,
+    value_labels: ValueLabelCache,
     text_encoding: TextEncoding,
 }
 
@@ -1263,8 +1301,7 @@ impl<R: Read + Seek> DtaFile<R> {
             metadata,
             file_length,
             scratch,
-            value_label_tables: None,
-            projected_value_labels: None,
+            value_labels: ValueLabelCache::Empty,
             text_encoding,
         })
     }
@@ -1284,10 +1321,10 @@ impl<R: Read + Seek> DtaFile<R> {
     pub fn value_label_tables(&mut self) -> Result<&[ValueLabelTable], DtaError> {
         let mut never_cancel = || false;
         self.ensure_value_labels(&mut never_cancel)?;
-        Ok(self
-            .value_label_tables
-            .as_deref()
-            .expect("value-label cache was initialized"))
+        match &self.value_labels {
+            ValueLabelCache::Full(tables) => Ok(tables),
+            _ => unreachable!("value-label cache was initialized"),
+        }
     }
 
     /// Read all rows and columns.
@@ -2043,23 +2080,27 @@ impl<R: Read + Seek> DtaFile<R> {
     where
         F: FnMut() -> bool,
     {
-        if self.value_label_tables.is_some() {
-            return Ok(());
-        }
-        if self.projected_value_labels.is_some() {
-            self.populate_indexed_value_labels(None, should_interrupt)?;
-            let cache = self
-                .projected_value_labels
-                .take()
-                .expect("projected value-label index was initialized");
-            self.value_label_tables = Some(
-                cache
-                    .tables
-                    .into_iter()
-                    .map(|table| table.expect("indexed value-label table was loaded"))
-                    .collect(),
-            );
-            return Ok(());
+        match &self.value_labels {
+            ValueLabelCache::Full(_) => return Ok(()),
+            ValueLabelCache::Indexed(_) => {
+                self.populate_indexed_value_labels(None, should_interrupt)?;
+                let cache = std::mem::replace(&mut self.value_labels, ValueLabelCache::Empty);
+                let ValueLabelCache::Indexed(mut cache) = cache else {
+                    unreachable!("indexed value-label cache changed during promotion")
+                };
+                let mut tables = Vec::with_capacity(cache.locations.len());
+                for index in 0..cache.locations.len() {
+                    tables.push(
+                        cache
+                            .tables
+                            .remove(&index)
+                            .expect("indexed value-label table was loaded"),
+                    );
+                }
+                self.value_labels = ValueLabelCache::Full(tables);
+                return Ok(());
+            }
+            ValueLabelCache::Empty => {}
         }
         check_cancel(should_interrupt)?;
         let (tables, _) = read_value_labels_streaming(
@@ -2068,11 +2109,10 @@ impl<R: Read + Seek> DtaFile<R> {
             &mut self.scratch,
             should_interrupt,
             self.text_encoding,
-            None,
-            None,
+            ValueLabelStreamingMode::Full,
         )?;
         check_cancel(should_interrupt)?;
-        self.value_label_tables = Some(tables);
+        self.value_labels = ValueLabelCache::Full(tables);
         Ok(())
     }
 
@@ -2084,12 +2124,15 @@ impl<R: Read + Seek> DtaFile<R> {
     where
         F: FnMut() -> bool,
     {
-        if let Some(tables) = self.value_label_tables.as_deref() {
-            return Ok(clone_selected_value_label_tables(tables, selected));
-        }
-        if self.projected_value_labels.is_some() {
-            self.populate_indexed_value_labels(Some(selected), should_interrupt)?;
-            return Ok(self.clone_indexed_value_labels(Some(selected)));
+        match &self.value_labels {
+            ValueLabelCache::Full(tables) => {
+                return Ok(clone_selected_value_label_tables(tables, selected));
+            }
+            ValueLabelCache::Indexed(_) => {
+                self.populate_indexed_value_labels(Some(selected), should_interrupt)?;
+                return Ok(self.clone_indexed_value_labels(selected));
+            }
+            ValueLabelCache::Empty => {}
         }
         check_cancel(should_interrupt)?;
         let mut locations = Vec::new();
@@ -2099,19 +2142,21 @@ impl<R: Read + Seek> DtaFile<R> {
             &mut self.scratch,
             should_interrupt,
             self.text_encoding,
-            Some(selected),
-            Some(&mut locations),
+            ValueLabelStreamingMode::Projected {
+                selected,
+                locations: &mut locations,
+            },
         )?;
         check_cancel(should_interrupt)?;
         let mut retained = tables.iter().cloned();
-        let mut cached = (0..locations.len()).map(|_| None).collect::<Vec<_>>();
+        let mut cached = HashMap::with_capacity(tables.len());
         for (index, location) in locations.iter().enumerate() {
             if selected.contains(&location.name) {
-                cached[index] = Some(retained.next().expect("selected table was retained"));
+                cached.insert(index, retained.next().expect("selected table was retained"));
             }
         }
         debug_assert!(retained.next().is_none());
-        self.projected_value_labels = Some(ProjectedValueLabelCache {
+        self.value_labels = ValueLabelCache::Indexed(IndexedValueLabelCache {
             layout,
             locations,
             tables: cached,
@@ -2133,11 +2178,10 @@ impl<R: Read + Seek> DtaFile<R> {
             self.read_projected_value_labels(&selected, should_interrupt)
         } else {
             self.ensure_value_labels(should_interrupt)?;
-            Ok(self
-                .value_label_tables
-                .as_deref()
-                .expect("value-label cache was initialized")
-                .to_vec())
+            let ValueLabelCache::Full(tables) = &self.value_labels else {
+                unreachable!("value-label cache was initialized")
+            };
+            Ok(tables.clone())
         }
     }
 
@@ -2149,25 +2193,27 @@ impl<R: Read + Seek> DtaFile<R> {
     where
         F: FnMut() -> bool,
     {
-        let cache = self
-            .projected_value_labels
-            .as_ref()
-            .expect("projected value-label index was initialized");
+        let ValueLabelCache::Indexed(cache) = &self.value_labels else {
+            unreachable!("indexed value-label cache was initialized")
+        };
         let missing = cache
             .locations
             .iter()
             .enumerate()
             .filter(|(index, location)| {
                 selected.is_none_or(|selected| selected.contains(&location.name))
-                    && cache.tables[*index].is_none()
+                    && !cache.tables.contains_key(index)
             })
-            .map(|(index, location)| (index, location.clone()))
+            .map(|(index, _)| index)
             .collect::<Vec<_>>();
         let layout = cache.layout;
 
         let mut decoded = Vec::with_capacity(missing.len());
-        for (index, location) in missing {
+        for index in missing {
             check_cancel(should_interrupt)?;
+            let ValueLabelCache::Indexed(cache) = &self.value_labels else {
+                unreachable!("indexed value-label cache was initialized")
+            };
             let table = read_indexed_value_label_table(
                 &mut self.reader,
                 &self.metadata,
@@ -2175,40 +2221,34 @@ impl<R: Read + Seek> DtaFile<R> {
                 should_interrupt,
                 self.text_encoding,
                 layout,
-                &location,
+                &cache.locations[index],
             )?;
             decoded.push((index, table));
         }
         check_cancel(should_interrupt)?;
 
-        let cache = self
-            .projected_value_labels
-            .as_mut()
-            .expect("projected value-label index was initialized");
+        let ValueLabelCache::Indexed(cache) = &mut self.value_labels else {
+            unreachable!("indexed value-label cache was initialized")
+        };
         for (index, table) in decoded {
-            cache.tables[index] = Some(table);
+            cache.tables.insert(index, table);
         }
         Ok(())
     }
 
-    fn clone_indexed_value_labels(
-        &self,
-        selected: Option<&HashSet<String>>,
-    ) -> Vec<ValueLabelTable> {
-        let cache = self
-            .projected_value_labels
-            .as_ref()
-            .expect("projected value-label index was initialized");
+    fn clone_indexed_value_labels(&self, selected: &HashSet<String>) -> Vec<ValueLabelTable> {
+        let ValueLabelCache::Indexed(cache) = &self.value_labels else {
+            unreachable!("indexed value-label cache was initialized")
+        };
         cache
             .locations
             .iter()
             .enumerate()
-            .filter(|(_, location)| {
-                selected.is_none_or(|selected| selected.contains(&location.name))
-            })
+            .filter(|(_, location)| selected.contains(&location.name))
             .map(|(index, _)| {
-                cache.tables[index]
-                    .as_ref()
+                cache
+                    .tables
+                    .get(&index)
                     .expect("selected value-label table was cached")
                     .clone()
             })
@@ -4247,26 +4287,22 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     encoding: TextEncoding,
-    options: ValueLabelStreamingOptions<'_>,
+    mut mode: ValueLabelStreamingMode<'_>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     const NAME_WIDTH: usize = 9;
     const PADDING_WIDTH: usize = 1;
     const LABEL_WIDTH: usize = 8;
 
-    let ValueLabelStreamingOptions {
-        selected,
-        range,
-        mut locations,
-    } = options;
-    let (mut cursor, section_end) = range.unwrap_or((
+    let (mut cursor, section_end) = mode.section_range((
         metadata.section_offsets.value_labels,
         metadata.section_offsets.end_of_file,
     ));
+    let section_scan = mode.scans_section();
     let mut tables = Vec::new();
     let mut known_nonzero = None;
     while cursor < section_end {
         check_cancel(should_interrupt)?;
-        if range.is_none()
+        if section_scan
             && remaining_is_zero_padding(
                 reader,
                 cursor,
@@ -4304,7 +4340,7 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             should_interrupt,
             "reading legacy value-label table name",
         )?;
-        let retain = selected.is_none_or(|selected| selected.contains(&name));
+        let retain = mode.retains(&name);
         cursor = checked_add_u64(cursor, NAME_WIDTH as u64, "legacy value-label table name")?;
         read_exact_at(
             reader,
@@ -4416,7 +4452,7 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 entries,
             });
         }
-        if let Some(locations) = locations.as_deref_mut() {
+        if let Some(locations) = mode.locations() {
             locations.push(ValueLabelLocation {
                 name,
                 start: table_start,
@@ -4426,7 +4462,7 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         cursor = table_end;
     }
     ensure_absolute(
-        if range.is_some() {
+        if !section_scan {
             "value-label table"
         } else {
             "end_of_file"
@@ -4444,7 +4480,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     should_interrupt: &mut F,
     encoding: TextEncoding,
     legacy_name_width: usize,
-    options: ValueLabelStreamingOptions<'_>,
+    mut mode: ValueLabelStreamingMode<'_>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     const RESERVED_WIDTH: usize = 3;
     let modern = metadata.format_version.is_modern();
@@ -4458,20 +4494,15 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         u16::try_from(legacy_name_width)
             .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
     };
-    let ValueLabelStreamingOptions {
-        selected,
-        range,
-        mut locations,
-    } = options;
-    let (mut cursor, section_end) = range.unwrap_or((
-        metadata.section_offsets.value_labels,
-        if modern {
-            metadata.section_offsets.stata_data_close
-        } else {
-            metadata.section_offsets.end_of_file
-        },
-    ));
-    if modern && range.is_none() {
+    let section_end = if modern {
+        metadata.section_offsets.stata_data_close
+    } else {
+        metadata.section_offsets.end_of_file
+    };
+    let (mut cursor, section_end) =
+        mode.section_range((metadata.section_offsets.value_labels, section_end));
+    let section_scan = mode.scans_section();
+    if modern && section_scan {
         cursor = expect_file_tag(reader, cursor, b"<value_labels>", "<value_labels>", scratch)?;
     }
     let mut tables = Vec::new();
@@ -4479,7 +4510,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
 
     while cursor < section_end {
         check_cancel(should_interrupt)?;
-        if range.is_none()
+        if section_scan
             && !modern
             && remaining_is_zero_padding(
                 reader,
@@ -4502,7 +4533,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 scratch,
                 "reading value-label table marker",
             )?;
-            if marker != b"<lbl>" && range.is_none() {
+            if marker != b"<lbl>" && section_scan {
                 cursor = expect_file_tag(
                     reader,
                     cursor,
@@ -4548,7 +4579,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             should_interrupt,
             "reading value-label table name",
         )?;
-        let retain = selected.is_none_or(|selected| selected.contains(&name));
+        let retain = mode.retains(&name);
         if modern && !found_name_nul {
             return Err(DtaError::MissingNulTerminator {
                 context: "value-label table name",
@@ -4754,7 +4785,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 entries,
             });
         }
-        if let Some(locations) = locations.as_deref_mut() {
+        if let Some(locations) = mode.locations() {
             locations.push(ValueLabelLocation {
                 name,
                 start: table_start,
@@ -4764,7 +4795,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     }
 
     ensure_absolute(
-        if range.is_some() {
+        if !section_scan {
             "value-label table"
         } else if modern {
             "stata_data_close"
@@ -4774,7 +4805,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         cursor,
         section_end,
     )?;
-    if modern && range.is_none() {
+    if modern && section_scan {
         cursor = expect_file_tag(reader, cursor, b"</stata_dta>", "</stata_dta>", scratch)?;
         ensure_absolute("end_of_file", cursor, metadata.section_offsets.end_of_file)?;
     }
@@ -4838,8 +4869,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     encoding: TextEncoding,
-    selected: Option<&HashSet<String>>,
-    locations: Option<&mut Vec<ValueLabelLocation>>,
+    mode: ValueLabelStreamingMode<'_>,
 ) -> Result<(Vec<ValueLabelTable>, IndexedValueLabelLayout), DtaError> {
     let layout = if metadata.format_version.is_modern() {
         IndexedValueLabelLayout::OffsetTable {
@@ -4862,11 +4892,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             scratch,
             should_interrupt,
             encoding,
-            ValueLabelStreamingOptions {
-                selected,
-                range: None,
-                locations,
-            },
+            mode,
         ),
         IndexedValueLabelLayout::OffsetTable { legacy_name_width } => {
             read_offset_value_labels_streaming(
@@ -4876,11 +4902,7 @@ fn read_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 should_interrupt,
                 encoding,
                 legacy_name_width,
-                ValueLabelStreamingOptions {
-                    selected,
-                    range: None,
-                    locations,
-                },
+                mode,
             )
         }
     }?;
@@ -4896,7 +4918,7 @@ fn read_indexed_value_label_table<R: Read + Seek, F: FnMut() -> bool>(
     layout: IndexedValueLabelLayout,
     location: &ValueLabelLocation,
 ) -> Result<ValueLabelTable, DtaError> {
-    let range = Some((location.start, location.end));
+    let range = (location.start, location.end);
     let mut tables = match layout {
         IndexedValueLabelLayout::Fixed8 => read_fixed8_value_labels_streaming(
             reader,
@@ -4904,11 +4926,7 @@ fn read_indexed_value_label_table<R: Read + Seek, F: FnMut() -> bool>(
             scratch,
             should_interrupt,
             encoding,
-            ValueLabelStreamingOptions {
-                selected: None,
-                range,
-                locations: None,
-            },
+            ValueLabelStreamingMode::Indexed { range },
         )?,
         IndexedValueLabelLayout::OffsetTable { legacy_name_width } => {
             read_offset_value_labels_streaming(
@@ -4918,11 +4936,7 @@ fn read_indexed_value_label_table<R: Read + Seek, F: FnMut() -> bool>(
                 should_interrupt,
                 encoding,
                 legacy_name_width,
-                ValueLabelStreamingOptions {
-                    selected: None,
-                    range,
-                    locations: None,
-                },
+                ValueLabelStreamingMode::Indexed { range },
             )?
         }
     };

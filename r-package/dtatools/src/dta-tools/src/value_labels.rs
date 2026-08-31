@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::endian::{
     checked_add, checked_mul, expect_at, offset_to_usize, read_i16, read_i32, read_u16, slice_at,
 };
@@ -699,4 +701,3 @@ pub(crate) fn parse_value_labels_section(
     )?;
     Ok(tables)
 }
-use std::collections::HashSet;
