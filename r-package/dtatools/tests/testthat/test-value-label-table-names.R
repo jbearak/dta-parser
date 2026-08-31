@@ -239,9 +239,19 @@ test_that("shared write mappings use one prepared vector", {
         first = named_labelled(1, labels, "large_shared"),
         second = named_labelled(2, labels, "large_shared")
     )
+    validation_count <- 0L
+    original_validation <- dtatools:::.validate_write_value_label_structure
+    local_mocked_bindings(
+        .validate_write_value_label_structure = function(column, name) {
+            validation_count <<- validation_count + 1L
+            original_validation(column, name)
+        },
+        .package = "dtatools"
+    )
 
     dta <- dtatools:::.prepare_dta_write(data, NULL, 2045L, TRUE)
     arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
+    expect_identical(validation_count, 2L)
     expect_identical(
         names(dta[[3L]][[1L]]),
         c(

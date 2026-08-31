@@ -918,6 +918,36 @@ fn projected_reads_clone_only_selected_value_label_tables() {
 }
 
 #[test]
+fn projected_cache_does_not_retain_unreferenced_registry_locations() {
+    let mut bytes = fixture("value_labels_v118.dta");
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    let names_start =
+        metadata.section_offsets.value_label_names as usize + b"<value_label_names>".len();
+    let names_end = names_start + metadata.variables.len() * 129;
+    bytes[names_start..names_end].fill(0);
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    assert!(metadata
+        .variables
+        .iter()
+        .all(|variable| variable.value_label_name.is_empty()));
+
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader(reader).unwrap();
+    let projected = file
+        .read_with_options(&options(0, None, Vec::new()))
+        .unwrap();
+    assert!(projected.value_label_tables.is_empty());
+
+    trace.borrow_mut().reads.clear();
+    assert_eq!(file.value_label_tables().unwrap().len(), 3);
+    assert!(trace
+        .borrow()
+        .reads
+        .iter()
+        .any(|(offset, _)| *offset == metadata.section_offsets.value_labels));
+}
+
+#[test]
 fn repeated_projections_reuse_the_validated_value_label_index() {
     let bytes = fixture("value_labels_v118.dta");
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
@@ -994,13 +1024,56 @@ fn projected_slice_and_file_validate_unselected_utf8_label_offsets() {
     let read_options = options(0, None, vec![2]);
 
     let slice_error = read_dta_with_options(&bytes, &read_options).unwrap_err();
-    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
     let file_error = file.read_with_options(&read_options).unwrap_err();
     assert_eq!(file_error, slice_error);
     assert!(matches!(
         file_error,
         DtaError::InvalidValueLabelTextOffset { entry_index: 0, .. }
     ));
+
+    assert!(entry_count >= 2);
+    let text_length = i32::from_le_bytes(
+        bytes[payload_start + 4..payload_start + 8]
+            .try_into()
+            .unwrap(),
+    );
+    bytes[offsets_start + 4..offsets_start + 8].copy_from_slice(&text_length.to_le_bytes());
+    let slice_error = read_dta_with_options(&bytes, &read_options).unwrap_err();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
+    let file_error = file.read_with_options(&read_options).unwrap_err();
+    assert_eq!(file_error, slice_error);
+    assert!(matches!(
+        file_error,
+        DtaError::InvalidValueLabelTextOffset { entry_index: 0, .. }
+    ));
+    let slice_error = read_dta(&bytes).unwrap_err();
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let file_error = file.read().unwrap_err();
+    assert_eq!(file_error, slice_error);
+    assert!(matches!(
+        file_error,
+        DtaError::InvalidValueLabelTextOffset { entry_index: 0, .. }
+    ));
+}
+
+#[test]
+fn large_unselected_value_label_offsets_use_bounded_staging() {
+    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader_with_options(
+        reader,
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    let projected = file
+        .read_with_options(&options(0, None, Vec::new()))
+        .unwrap();
+    assert!(projected.value_label_tables.is_empty());
+    assert!(file.max_scratch_bytes_used() <= 1024);
+    assert!(trace.borrow().max_request <= 1024);
 }
 
 #[test]

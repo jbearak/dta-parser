@@ -311,13 +311,12 @@ save_arrow <- function(data, path,
     if (kind %in% c(
         "integer", "double", "date", "datetime", "difftime", "stata"
     ) && value_label_index >= 0L) {
-        .validate_write_value_label_structure(column, name)
+        .validate_write_value_label_shape(column, name)
         .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() {
                 prepared <- .prepare_write_value_labels(
-                    column, name, allow_legacy_codes = TRUE,
-                    validate_structure = FALSE
+                    column, name, allow_legacy_codes = TRUE
                 )
                 # The Arrow native descriptor has one f64 representation for
                 # integer and double label codes.

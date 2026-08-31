@@ -433,7 +433,7 @@ save_dta <- function(data, path, version = 19L,
     )
 }
 
-.validate_write_value_label_structure <- function(column, name) {
+.validate_write_value_label_shape <- function(column, name) {
     labels <- attr(column, "labels", exact = TRUE)
     if (is.null(labels)) return(NULL)
     argument <- sprintf("labels for `%s`", name)
@@ -445,8 +445,19 @@ save_dta <- function(data, path, version = 19L,
         ))
     }
     label_text <- names(labels)
-    if (is.null(label_text) || length(label_text) != length(labels) ||
-        anyNA(label_text)) {
+    if (is.null(label_text) || length(label_text) != length(labels)) {
+        .dta_write_abort(sprintf(
+            "`%s` must have non-missing text for every code", argument
+        ))
+    }
+    labels
+}
+
+.validate_write_value_label_structure <- function(column, name) {
+    labels <- .validate_write_value_label_shape(column, name)
+    if (is.null(labels)) return(NULL)
+    if (anyNA(names(labels))) {
+        argument <- sprintf("labels for `%s`", name)
         .dta_write_abort(sprintf(
             "`%s` must have non-missing text for every code", argument
         ))
@@ -906,11 +917,17 @@ save_dta <- function(data, path, version = 19L,
     )
     if (identical(kind, "factor")) {
         levels <- levels(column)
-        if (anyNA(levels) || any(!nzchar(levels))) {
-            .dta_write_abort(sprintf(
-                "Factor column `%s` has an empty or missing level", name
-            ))
-        }
+        .cached_write_value_labels(
+            value_label_cache, paste0("factor:", value_label_index),
+            function() {
+                if (anyNA(levels) || any(!nzchar(levels))) {
+                    .dta_write_abort(sprintf(
+                        "Factor column `%s` has an empty or missing level", name
+                    ))
+                }
+                TRUE
+            }
+        )
         .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() {
@@ -985,12 +1002,12 @@ save_dta <- function(data, path, version = 19L,
             column, name, default_format, numeric$temporal
         )
     }
-    labels <- .validate_write_value_label_structure(column, name)
+    labels <- .validate_write_value_label_shape(column, name)
     if (!is.null(labels)) {
         .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() .prepare_write_value_labels(
-                column, name, validate_structure = FALSE
+                column, name
             )
         )
     }
