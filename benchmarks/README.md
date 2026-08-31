@@ -1,7 +1,7 @@
 # Reproducible benchmarks
 
-These report-only microbenchmarks use checked fixtures and fixed iteration
-counts. They intentionally have no timing assertions. Run correctness gates
+Most microbenchmarks in this directory report timings without asserting them.
+They use checked fixtures and fixed iteration counts. Run correctness gates
 before collecting results:
 
 ```sh
@@ -11,6 +11,11 @@ DTA_BENCH_ITERATIONS=100 cargo run --release -p dta-tools --example bench
 DTA_BENCH_ITERATIONS=100 bun benchmarks/typescript.ts
 Rscript benchmarks/r-benchmark.R 100
 ```
+
+[`r-reference-mutation/`](r-reference-mutation/) is an assertion-based
+regression gate for the R package's reference mutation paths. Its exact
+allocation, traversal, aliasing, and timing limits fail the run when a compact
+path regresses.
 
 `DTA_BENCH_ITERATIONS` uses the same grammar in the Rust and TypeScript
 benchmarks: `0` or a non-zero ASCII digit followed by ASCII digits. Leading

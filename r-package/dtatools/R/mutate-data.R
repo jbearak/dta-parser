@@ -617,7 +617,7 @@ gen <- function(data, variable, values, where = NULL) {
     }
     contents <- if (typeof(value) %in%
         c("list", "expression", "pairlist", "language")) {
-        as.list(value)
+        lapply(seq_along(value), function(index) .subset2(value, index))
     } else {
         list()
     }

@@ -496,11 +496,14 @@ stopifnot(
 )
 
 full_character_values <- rep(c("x", "wide"), length.out = rows)
-full_character_fill_time <- system.time(
-    for (iteration in seq_len(5L)) {
+full_character_timing_repetitions <- 5L
+full_character_fill_time <- median(vapply(
+    seq_len(full_character_timing_repetitions),
+    function(iteration) system.time({
         full_character_fill <- full_character_values[]
-    }
-)[["elapsed"]] / 5
+    })[["elapsed"]],
+    double(1)
+))
 full_character_data <- data.frame(
     anchor = stata_byte(rep(1, rows))
 )
@@ -508,7 +511,16 @@ full_character_profile <- profile_memory(
     gen(full_character_data, generated, .env$full_character_values),
     "dtatools-reference-full-character-generation-"
 )
-full_character_generation_time <- full_character_profile$elapsed
+full_character_generation_time <- median(vapply(
+    seq_len(full_character_timing_repetitions),
+    function(iteration) {
+        timed_data <- data.frame(anchor = stata_byte(.size = rows))
+        system.time(
+            gen(timed_data, generated, .env$full_character_values)
+        )[["elapsed"]]
+    },
+    double(1)
+))
 total_full_character_generation_allocation <- full_character_profile$total
 largest_full_character_generation_allocation <- full_character_profile$largest
 stopifnot(
@@ -525,7 +537,7 @@ stopifnot(
     total_full_character_generation_allocation <
         full_double_bytes * 1.5,
     full_character_generation_time <
-        character_generation_time + full_character_fill_time * 1.75
+        max(0.05, full_character_fill_time * 3.75)
 )
 
 sparse_character_data <- data.frame(

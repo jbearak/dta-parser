@@ -5232,6 +5232,7 @@ SEXP C_dtatools_generate_character(
         ? 0 : generated_string_width(scalar_value);
     if (rows != R_NilValue &&
         value_plan.mode != REFERENCE_VALUES_SCALAR) {
+        int needs_normalization = 0;
         /* R initializes string vectors with blank strings. Visit selected rows
            in reverse so each final, last-write-wins value is decoded once.
            NA_STRING marks a selected blank, distinguishing it from an
@@ -5246,25 +5247,22 @@ SEXP C_dtatools_generate_character(
             );
             SEXP value = reference_string_reader_at(&reader, value_index);
             SEXP normalized = value == NA_STRING ? empty : value;
+            if (normalized == empty) needs_normalization = 1;
             SET_STRING_ELT(
                 result, row, normalized == empty ? NA_STRING : normalized
             );
             size_t width = generated_string_width(normalized);
             if (width > maximum) maximum = width;
         }
-        for (R_xlen_t index = 0; index < row_count; index++) {
-            if ((index & 16383) == 0) R_CheckUserInterrupt();
-            if (STRING_ELT(result, index) == NA_STRING) {
-                SET_STRING_ELT(result, index, empty);
+        if (needs_normalization) {
+            for (R_xlen_t index = 0; index < row_count; index++) {
+                if ((index & 16383) == 0) R_CheckUserInterrupt();
+                if (STRING_ELT(result, index) == NA_STRING) {
+                    SET_STRING_ELT(result, index, empty);
+                }
             }
         }
     } else {
-        if (rows != R_NilValue) {
-            for (R_xlen_t index = 0; index < row_count; index++) {
-                if ((index & 16383) == 0) R_CheckUserInterrupt();
-                SET_STRING_ELT(result, index, empty);
-            }
-        }
         for (R_xlen_t index = 0; index < count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             R_xlen_t row = rows == R_NilValue

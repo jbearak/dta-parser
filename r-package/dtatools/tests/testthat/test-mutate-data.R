@@ -1156,6 +1156,23 @@ test_that("copy_data isolates every mutable column backing", {
         copy_data(reference_column),
         "cannot isolate environments"
     )
+
+    as.list.hidden_reference <- function(x, ...) list()
+    hidden_list <- structure(
+        list(embedded_environment), class = "hidden_reference"
+    )
+    hidden_list_column <- data.frame(value = I(list(hidden_list)))
+    expect_error(
+        copy_data(hidden_list_column),
+        "cannot isolate environments"
+    )
+
+    hidden_call <- structure(reference_call, class = "hidden_reference")
+    hidden_call_column <- data.frame(value = I(list(hidden_call)))
+    expect_error(
+        copy_data(hidden_call_column),
+        "cannot isolate environments"
+    )
 })
 
 test_that("subsets, metadata proxies, and serialized data stay isolated", {

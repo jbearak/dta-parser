@@ -57,10 +57,11 @@ an independent `stata_float()` construction, so validation and encoding cannot
 return to separate full-vector passes. Scalar, full-vector, and sparse character
 generation may allocate their result vector once, but cannot
 allocate a second full-length character-vector header. The full-vector case is
-bounded by scalar generation plus an independent character-vector copy, so a
-second traversal of the replacement values cannot pass the timing gate. The
-sparse case is bounded by scalar generation plus half that copy time, catching
-a separate dataset-sized result scan.
+timed five times against five independent character-vector copies. The median
+must stay below a stable absolute floor and 3.75 copy passes, so a second
+traversal of the replacement values cannot pass the gate. The sparse case is
+bounded by scalar generation plus half the median copy time, catching a
+separate dataset-sized result scan.
 
 A shared, 250,000-value dictionary then undergoes a complete scalar overwrite.
 The replacement may allocate one character result, but it must not decode the
