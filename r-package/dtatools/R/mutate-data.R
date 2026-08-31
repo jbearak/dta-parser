@@ -101,10 +101,10 @@
 #' Ordinary and materialized numeric columns and character columns are patched in their
 #' existing R representation. Replacing a dictionary-backed string materializes
 #' that target character column, but does not copy the data frame.
-#' Dictionary-backed replacement values are validated and decoded through a
-#' transaction-private cache, so an error or interrupt does not populate a
-#' shared source cache. `copy_data()` keeps unmaterialized compact numeric and
-#' dictionary-string columns compact.
+#' Dictionary-backed replacement values are validated through a read-only
+#' native reader, so a successful mutation, error, or interrupt does not
+#' populate a shared source cache. `copy_data()` keeps unmaterialized compact
+#' numeric and dictionary-string columns compact.
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
@@ -318,28 +318,6 @@ gen <- function(data, variable, values, where = NULL) {
     invisible(NULL)
 }
 
-.validate_string_storage <- function(values, storage, operation) {
-    lengths <- nchar(enc2utf8(values), type = "bytes", allowNA = TRUE)
-    lengths[is.na(lengths)] <- 0L
-    maximum <- if (length(lengths) == 0L) 0L else max(lengths)
-    if (maximum > 2000000000) {
-        stop(sprintf(
-            "A %s string exceeds Stata's 2,000,000,000-byte limit",
-            operation
-        ), call. = FALSE)
-    }
-    if (!is.null(storage) && !identical(storage, "strL")) {
-        width <- suppressWarnings(as.integer(sub("^str", "", storage)))
-        if (is.na(width) || width < 1L || width > 2045L || maximum > width) {
-            stop(sprintf(
-                "%s values do not fit their declared Stata string storage",
-                tools::toTitleCase(operation)
-            ), call. = FALSE)
-        }
-    }
-    list(maximum = maximum, storage = storage)
-}
-
 .cast_replacement <- function(values, target, rows, value_mode) {
     if (is.factor(target) || !is.null(dim(target)) ||
         !(typeof(target) %in% c("logical", "integer", "double", "character"))) {
@@ -365,9 +343,8 @@ gen <- function(data, variable, values, where = NULL) {
     }
     if (typeof(target) == "character" &&
         .is_unmaterialized_dictstring(values)) {
-        # Dictionary-backed values are validated and decoded through a
-        # transaction-private cache. R-level string operations would populate
-        # a shared source cache before the mutation can commit.
+        # Native reads leave the shared source cache unchanged. R-level string
+        # operations would populate it before the mutation can commit.
         return(values)
     }
     # Fallback casts and string-width checks apply only to selected values.
@@ -392,10 +369,6 @@ gen <- function(data, variable, values, where = NULL) {
         target[integer()]
     }
     result <- vctrs::vec_cast(values, prototype)
-    if (typeof(target) == "character") {
-        storage <- attr(target, "stata.string.storage", exact = TRUE)
-        .validate_string_storage(result, storage, "replacement")
-    }
     .validate_numeric_values(result)
     result
 }

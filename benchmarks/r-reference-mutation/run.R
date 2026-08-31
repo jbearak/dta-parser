@@ -381,6 +381,11 @@ stopifnot(
 )
 
 full_character_values <- rep(c("x", "wide"), length.out = rows)
+full_character_fill_time <- system.time(
+    for (iteration in seq_len(5L)) {
+        full_character_fill <- full_character_values[]
+    }
+)[["elapsed"]] / 5
 full_character_data <- data.frame(
     anchor = stata_byte(rep(1, rows))
 )
@@ -404,7 +409,8 @@ stopifnot(
         full_double_bytes * 1.01,
     total_full_character_generation_allocation <
         full_double_bytes * 1.5,
-    full_character_generation_time < 0.2
+    full_character_generation_time <
+        character_generation_time + full_character_fill_time * 1.75
 )
 
 sparse_character_data <- data.frame(
@@ -432,7 +438,8 @@ stopifnot(
         full_double_bytes * 1.01,
     total_sparse_character_generation_allocation <
         full_double_bytes * 1.5,
-    sparse_character_generation_time < 0.2
+    sparse_character_generation_time <
+        character_generation_time + full_character_fill_time * 0.5
 )
 
 dictionary_path <- tempfile(fileext = ".arrow")
@@ -474,6 +481,38 @@ stopifnot(
     largest_dictionary_replacement_allocation <= full_double_bytes * 1.01,
     total_dictionary_replacement_allocation < full_double_bytes * 1.5,
     dictionary_replacement_time < max(0.03, character_fill_time * 4)
+)
+
+sparse_dictionary_data <- data.frame(text = rep.int("", rows))
+sparse_dictionary_cache <- dtatools:::.dictstring_cached_count(
+    dictionary_alias$text
+)
+sparse_dictionary_profile <- profile_memory(
+    replace_values(
+        sparse_dictionary_data, text, .env$dictionary_alias$text,
+        where = rows
+    ),
+    "dtatools-reference-sparse-dictionary-source-"
+)
+sparse_dictionary_replacement_time <- sparse_dictionary_profile$elapsed
+total_sparse_dictionary_allocation <- sparse_dictionary_profile$total
+largest_sparse_dictionary_allocation <- sparse_dictionary_profile$largest
+sparse_dictionary_expected <- dictionary_values[[
+    ((rows - 1L) %% dictionary_cardinality) + 1L
+]]
+stopifnot(
+    identical(sparse_dictionary_data$text[[1L]], ""),
+    identical(
+        sparse_dictionary_data$text[[rows]], sparse_dictionary_expected
+    ),
+    dtatools:::.is_unmaterialized_dictstring(dictionary_alias$text),
+    identical(
+        dtatools:::.dictstring_cached_count(dictionary_alias$text),
+        sparse_dictionary_cache
+    ),
+    largest_sparse_dictionary_allocation < 1000000,
+    total_sparse_dictionary_allocation < 2000000,
+    sparse_dictionary_replacement_time < max(0.02, character_fill_time * 2)
 )
 
 integer_fill_time <- system.time(
@@ -689,6 +728,10 @@ cat(sprintf(
     full_character_generation_time
 ))
 cat(sprintf(
+    "full_character_fill_seconds\t%.6f\n",
+    full_character_fill_time
+))
+cat(sprintf(
     "full_character_generation_total_profiled_allocation_bytes\t%.0f\n",
     total_full_character_generation_allocation
 ))
@@ -722,6 +765,18 @@ cat(sprintf(
     largest_dictionary_replacement_allocation
 ))
 cat(sprintf("dictionary_cardinality\t%d\n", dictionary_cardinality))
+cat(sprintf(
+    "sparse_dictionary_source_replacement_seconds\t%.6f\n",
+    sparse_dictionary_replacement_time
+))
+cat(sprintf(
+    "sparse_dictionary_source_total_profiled_allocation_bytes\t%.0f\n",
+    total_sparse_dictionary_allocation
+))
+cat(sprintf(
+    "sparse_dictionary_source_largest_allocation_bytes\t%.0f\n",
+    largest_sparse_dictionary_allocation
+))
 cat(sprintf(
     "generic_altrep_replacement_seconds\t%.6f\n",
     generic_altrep_replacement_time

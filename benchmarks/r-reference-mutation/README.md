@@ -44,9 +44,11 @@ limit and catch coercion or validation temporaries that scalar generation cannot
 expose. The integer case also uses a compact position sequence and limits total
 profiled allocation to less than one double column. Scalar, full-vector, and
 sparse character generation may allocate their result vector once, but cannot
-allocate a second full-length character-vector header. The full-vector case
-catches a second traversal of the replacement values during storage-width
-inference; the sparse case catches a separate dataset-sized result scan.
+allocate a second full-length character-vector header. The full-vector case is
+bounded by scalar generation plus an independent character-vector copy, so a
+second traversal of the replacement values cannot pass the timing gate. The
+sparse case is bounded by scalar generation plus half that copy time, catching
+a separate dataset-sized result scan.
 
 A shared, 250,000-value dictionary then undergoes a complete scalar overwrite.
 The replacement may allocate one character result, but it must not decode the
@@ -60,6 +62,10 @@ installs it into dataset aliases, leaves the former standalone column alias
 unchanged, and verifies the detached result's aggregate semantics. A one-row
 variant covers the sparse detachment path and likewise permits only one result
 allocation.
+One row is also replaced from a five-million-row dictionary-backed values
+vector with 250,000 distinct strings. That path must leave the source cache
+unchanged and allocate less than two megabytes in total, preventing cache space
+from scaling with either source length or dictionary cardinality.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

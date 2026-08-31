@@ -2442,6 +2442,52 @@ static SEXP dictstring_cached_value(
     return cached;
 }
 
+typedef struct {
+    SEXP values;
+    SEXP source;
+    SEXP cache;
+    dictstring_data *data;
+} reference_string_reader;
+
+static reference_string_reader reference_string_reader_create(SEXP values) {
+    reference_string_reader reader = {
+        .values = values,
+        .source = unmaterialized_dictstring_source(values),
+        .cache = R_NilValue,
+        .data = NULL
+    };
+    if (reader.source != R_NilValue) {
+        reader.cache = dictstring_cache(reader.source);
+        reader.data = dictstring_storage(reader.source);
+    }
+    return reader;
+}
+
+static SEXP reference_string_reader_at(
+    const reference_string_reader *reader, R_xlen_t index
+) {
+    if (reader->source == R_NilValue) {
+        return STRING_ELT(reader->values, index);
+    }
+    if (index < 0 || (size_t) index >= reader->data->length) {
+        Rf_error("invalid reference string plan");
+    }
+    uint32_t id = reader->data->value_ids[index];
+    if ((R_xlen_t) id >= XLENGTH(reader->cache)) {
+        Rf_error("invalid dtatools string-dictionary index");
+    }
+    SEXP cached = VECTOR_ELT(reader->cache, (R_xlen_t) id);
+    if (cached != R_NilValue) return cached;
+
+    const char *bytes = NULL;
+    int length = 0;
+    if (!dtatools_dictstring_bytes(reader->data, id, &bytes, &length) ||
+        bytes == NULL || length < 0) {
+        Rf_error("invalid dtatools string-dictionary value");
+    }
+    return Rf_mkCharLenCE(bytes, length, CE_UTF8);
+}
+
 static R_xlen_t dictstring_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return XLENGTH(materialized);
@@ -4380,8 +4426,7 @@ static void cleanup_compact_patch_transaction(
 typedef struct {
     SEXP target;
     SEXP replacement;
-    SEXP replacement_dictstring_source;
-    SEXP replacement_dictstring_cache;
+    reference_string_reader replacement_reader;
     SEXP saved_data1;
     SEXP saved_data2;
     SEXP string_undo;
@@ -4402,25 +4447,35 @@ typedef struct {
 static SEXP vector_patch_replacement_string(
     const vector_patch_transaction *transaction, R_xlen_t index
 ) {
-    if (transaction->replacement_dictstring_source == R_NilValue) {
-        return STRING_ELT(transaction->replacement, index);
-    }
-    dictstring_data *source = dictstring_storage(
-        transaction->replacement_dictstring_source
+    return reference_string_reader_at(
+        &transaction->replacement_reader, index
     );
-    if (index < 0 || (size_t) index >= source->length) {
-        Rf_error("invalid reference replacement plan");
+}
+
+static void validate_vector_patch_replacement_string(
+    const vector_patch_transaction *transaction, SEXP value
+) {
+    size_t width = reference_string_width(value, "replacement");
+    if (transaction->replacement_string_width > 0 &&
+        width > (size_t) transaction->replacement_string_width) {
+        Rf_error(
+            "Replacement values do not fit their declared Stata string storage"
+        );
     }
-    return dictstring_cached_value(
-        source, transaction->replacement_dictstring_cache,
-        source->value_ids[index]
-    );
 }
 
 static void validate_vector_patch_replacement_strings(
     const vector_patch_transaction *transaction
 ) {
-    if (transaction->replacement_dictstring_source == R_NilValue) return;
+    if (transaction->type != STRSXP || transaction->values.count == 0) {
+        return;
+    }
+    if (transaction->values.mode == REFERENCE_VALUES_SCALAR) {
+        validate_vector_patch_replacement_string(
+            transaction, vector_patch_replacement_string(transaction, 0)
+        );
+        return;
+    }
     for (R_xlen_t index = 0;
          index < transaction->values.count; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -4428,18 +4483,10 @@ static void validate_vector_patch_replacement_strings(
         R_xlen_t replacement_index = reference_value_index(
             &transaction->values, index, row
         );
-        size_t width = reference_string_width(
-            vector_patch_replacement_string(
-                transaction, replacement_index
-            ),
-            "replacement"
+        validate_vector_patch_replacement_string(
+            transaction,
+            vector_patch_replacement_string(transaction, replacement_index)
         );
-        if (transaction->replacement_string_width > 0 &&
-            width > (size_t) transaction->replacement_string_width) {
-            Rf_error(
-                "Replacement values do not fit their declared Stata string storage"
-            );
-        }
     }
 }
 
@@ -4512,6 +4559,11 @@ static SEXP apply_vector_patch_transaction(void *data) {
         transaction->rows->value == R_NilValue;
     if (!full_dictionary_overwrite) {
         validate_vector_patch_replacement_strings(transaction);
+    } else if (transaction->values.count > 0 &&
+               transaction->values.mode == REFERENCE_VALUES_SCALAR) {
+        validate_vector_patch_replacement_string(
+            transaction, vector_patch_replacement_string(transaction, 0)
+        );
     }
     if (transaction->rollback_required &&
         (transaction->type != STRSXP ||
@@ -4569,17 +4621,10 @@ static SEXP apply_vector_patch_transaction(void *data) {
             SEXP value = vector_patch_replacement_string(
                 transaction, replacement_index
             );
-            if (transaction->replacement_dictstring_source != R_NilValue) {
-                size_t width = reference_string_width(
-                    value, "replacement"
+            if (transaction->values.mode != REFERENCE_VALUES_SCALAR) {
+                validate_vector_patch_replacement_string(
+                    transaction, value
                 );
-                if (transaction->replacement_string_width > 0 &&
-                    width >
-                        (size_t) transaction->replacement_string_width) {
-                    Rf_error(
-                        "Replacement values do not fit their declared Stata string storage"
-                    );
-                }
             }
             SET_STRING_ELT(materialized, index, value);
         }
@@ -4777,48 +4822,39 @@ static SEXP patch_vector(
             )
             : R_NilValue
     );
-    SEXP replacement_private_cache = PROTECT(
-        replacement_dictstring_source != R_NilValue
-            ? Rf_allocVector(
-                VECSXP,
-                XLENGTH(dictstring_cache(replacement_dictstring_source))
-            )
-            : R_NilValue
-    );
     SEXP continuation = PROTECT(R_MakeUnwindCont());
     unsigned char *undo = NULL;
     if (rollback_required && type != STRSXP) {
         if ((size_t) count > SIZE_MAX / width) {
-            UNPROTECT(5);
+            UNPROTECT(4);
             Rf_error("reference replacement plan is too large");
         }
         size_t bytes = (size_t) count * width;
         undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
         if (undo == NULL) {
-            UNPROTECT(5);
+            UNPROTECT(4);
             Rf_error("could not allocate reference replacement rollback data");
         }
     }
     vector_patch_transaction transaction = {
-        target,
-        replacement,
-        replacement_dictstring_source,
-        replacement_private_cache,
-        VECTOR_ELT(saved_state, 0),
-        VECTOR_ELT(saved_state, 1),
-        string_undo,
-        private_cache,
-        dictstring_source,
-        &row_plan,
-        undo,
-        width,
-        value_plan,
-        0,
-        type,
-        0,
-        delayed_dictstring_finalize,
-        rollback_required,
-        type == STRSXP
+        .target = target,
+        .replacement = replacement,
+        .replacement_reader = reference_string_reader_create(replacement),
+        .saved_data1 = VECTOR_ELT(saved_state, 0),
+        .saved_data2 = VECTOR_ELT(saved_state, 1),
+        .string_undo = string_undo,
+        .dictstring_private_cache = private_cache,
+        .dictstring_source = dictstring_source,
+        .rows = &row_plan,
+        .undo = undo,
+        .width = width,
+        .values = value_plan,
+        .writes_completed = 0,
+        .type = type,
+        .journal_complete = 0,
+        .delayed_dictstring_finalize = delayed_dictstring_finalize,
+        .rollback_required = rollback_required,
+        .replacement_string_width = type == STRSXP
             ? string_declared_width(
                 Rf_getAttrib(
                     target, Rf_install("stata.string.storage")
@@ -4843,7 +4879,7 @@ static SEXP patch_vector(
             dictstring_finalize(external);
         }
     }
-    UNPROTECT(5);
+    UNPROTECT(4);
     return result;
 }
 
@@ -5040,14 +5076,16 @@ SEXP C_dtatools_generate_character(
         "invalid reference string generation plan"
     );
     int declared_width = generated_string_declared_width(declared);
+    reference_string_reader reader = reference_string_reader_create(values);
 
+    SEXP scalar_value = PROTECT(
+        count > 0 && value_plan.mode == REFERENCE_VALUES_SCALAR
+            ? reference_string_reader_at(&reader, 0) : R_NilValue
+    );
     SEXP result = PROTECT(Rf_allocVector(STRSXP, row_count));
     SEXP empty = PROTECT(Rf_mkChar(""));
-    size_t maximum = 0;
-    if (rows == R_NilValue && row_count > 0 &&
-        value_plan.mode == REFERENCE_VALUES_SCALAR) {
-        maximum = generated_string_width(STRING_ELT(values, 0));
-    }
+    size_t maximum = scalar_value == R_NilValue
+        ? 0 : generated_string_width(scalar_value);
     if (rows != R_NilValue) {
         for (R_xlen_t index = 0; index < row_count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -5061,16 +5099,17 @@ SEXP C_dtatools_generate_character(
         R_xlen_t value_index = reference_value_index(
             &value_plan, index, row
         );
-        SEXP value = STRING_ELT(values, value_index);
+        SEXP value = value_plan.mode == REFERENCE_VALUES_SCALAR
+            ? scalar_value : reference_string_reader_at(&reader, value_index);
         SET_STRING_ELT(result, row, value == NA_STRING ? empty : value);
-        if (rows == R_NilValue &&
-            value_plan.mode != REFERENCE_VALUES_SCALAR) {
+        if (value_plan.mode != REFERENCE_VALUES_SCALAR) {
             size_t width = generated_string_width(value);
             if (width > maximum) maximum = width;
         }
     }
-
-    if (rows != R_NilValue) {
+    if (rows != R_NilValue &&
+        value_plan.mode != REFERENCE_VALUES_SCALAR) {
+        maximum = 0;
         for (R_xlen_t index = 0; index < count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             R_xlen_t row = reference_patch_row(&row_plan, index);
@@ -5102,7 +5141,7 @@ SEXP C_dtatools_generate_character(
     Rf_setAttrib(
         result, Rf_install("stata.string.storage"), storage_value
     );
-    UNPROTECT(3);
+    UNPROTECT(4);
     return result;
 }
 

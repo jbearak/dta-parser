@@ -592,11 +592,52 @@ test_that("native generation interrupts leave reference state unchanged", {
                     )
                 )
             }
+            interrupt_dictionary_generation <- function() {
+                size <- 10000000L
+                path <- tempfile(fileext = ".arrow")
+                on.exit(unlink(path), add = TRUE)
+                dictionary <- sprintf("value-%05d", 1:10000)
+                save_arrow(data.frame(
+                    source = rep(dictionary, length.out = size)
+                ), path)
+                source <- read_arrow(path)$source
+                data <- data.frame(anchor = stata_byte(.size = size))
+                before <- serialize(data, NULL)
+                cache_before <- dtatools:::.dictstring_cached_count(source)
+                parent <- Sys.getpid()
+                signal <- parallel::mcparallel({
+                    Sys.sleep(0.02)
+                    tools::pskill(parent, tools::SIGINT)
+                }, silent = TRUE)
+                condition <- tryCatch(
+                    {
+                        gen(data, created, .env$source)
+                        NULL
+                    },
+                    condition = identity
+                )
+                tryCatch(
+                    suppressWarnings(parallel::mccollect(signal)),
+                    condition = function(...) NULL
+                )
+                list(
+                    interrupted = inherits(condition, "interrupt"),
+                    unchanged = identical(serialize(data, NULL), before),
+                    names = identical(names(data), "anchor"),
+                    reference = !inherits(data, "dtatools_ref_data"),
+                    source_compact =
+                        dtatools:::.is_unmaterialized_dictstring(source),
+                    cache_before = cache_before,
+                    cache_after =
+                        dtatools:::.dictstring_cached_count(source)
+                )
+            }
             list(
                 numeric_first = interrupt_generation(FALSE, FALSE),
                 numeric_existing = interrupt_generation(FALSE, TRUE),
                 character_first = interrupt_generation(TRUE, FALSE),
-                character_existing = interrupt_generation(TRUE, TRUE)
+                character_existing = interrupt_generation(TRUE, TRUE),
+                dictionary = interrupt_dictionary_generation()
             )
         },
         libpath = .libPaths(),
@@ -609,6 +650,11 @@ test_that("native generation interrupts leave reference state unchanged", {
         expect_true(case$names)
         expect_true(case$reference)
     }
+    expect_true(result$dictionary$source_compact)
+    expect_identical(
+        result$dictionary$cache_after,
+        result$dictionary$cache_before
+    )
 })
 
 test_that("generic ALTREP detachment interrupts before installation", {
@@ -1180,6 +1226,37 @@ test_that("metadata helpers remain isolated from later source patches", {
     expect_identical(as.character(narrow$text), c("a", "x", "c"))
     expect_identical(
         dtatools:::.dictstring_cached_count(dictionary_values), values_cache
+    )
+
+    generated_values <- read_arrow(wide_path)$text
+    generated_cache <- dtatools:::.dictstring_cached_count(generated_values)
+    generated <- data.frame(anchor = 1:3)
+    gen(generated, text, .env$generated_values)
+    expect_identical(
+        dtatools:::.dictstring_cached_count(generated_values),
+        generated_cache
+    )
+    expect_identical(as.character(generated$text), c("wide", "x", "wide"))
+
+    narrow_generated_values <- dtatools:::.metadata_copy(
+        read_arrow(wide_path)$text
+    )
+    attr(narrow_generated_values, "stata.string.storage") <- "str1"
+    expect_true(dtatools:::.is_unmaterialized_dictstring(
+        narrow_generated_values
+    ))
+    narrow_generated_cache <- dtatools:::.dictstring_cached_count(
+        narrow_generated_values
+    )
+    before_generated <- serialize(generated, NULL)
+    expect_error(
+        gen(generated, rejected, .env$narrow_generated_values),
+        "do not fit"
+    )
+    expect_identical(serialize(generated, NULL), before_generated)
+    expect_identical(
+        dtatools:::.dictstring_cached_count(narrow_generated_values),
+        narrow_generated_cache
     )
 })
 
