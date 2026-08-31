@@ -2658,7 +2658,8 @@ var MODERN_MAP_READ_SIZE = 128 * 1024;
 var LEGACY_SCAN_BLOCK_SIZE = 64 * 1024;
 var LEGACY_SCAN_SMALL_PAYLOAD = LEGACY_SCAN_BLOCK_SIZE / 8;
 var MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
-var MAX_MODERN_METADATA_SIZE = 64 * 1024 * 1024;
+var MODERN_METADATA_EXTRA_BYTES = 64 * 1024 * 1024;
+var MAX_MODERN_VARIABLES = 12e4;
 var MAX_READ_RETRIES = 2;
 var DATA_TAG_LENGTH2 = "<data>".length;
 var DEFAULT_CHUNK_ROWS = 65536;
@@ -3253,8 +3254,15 @@ function read_modern_metadata(fd, file_size, options) {
     throw error;
   }
   const metadata_size = header.section_offsets.data;
-  if (metadata_size > MAX_MODERN_METADATA_SIZE) {
-    throw new Error("Modern metadata exceeds 64 MiB safety limit");
+  if (header.nvar > MAX_MODERN_VARIABLES) {
+    throw new Error(
+      `Modern dataset exceeds the ${MAX_MODERN_VARIABLES}-variable limit`
+    );
+  }
+  const fixed_bytes_per_variable = 2 + 4 + header.widths.varname + header.widths.format + header.widths.value_label_name + header.widths.variable_label;
+  const metadata_limit = MODERN_METADATA_EXTRA_BYTES + header.nvar * fixed_bytes_per_variable;
+  if (metadata_size > metadata_limit) {
+    throw new Error("Modern metadata exceeds its dimensioned safety limit");
   }
   if (metadata_size > file_size) {
     throw new Error("Truncated modern metadata");

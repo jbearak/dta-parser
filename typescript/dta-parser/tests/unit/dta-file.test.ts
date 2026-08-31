@@ -25,6 +25,114 @@ const V111_FIXTURE = path.resolve(
     __dirname, '../../../../r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta'
 );
 
+function wideV119MetadataFixture(nvar: number): Buffer {
+    const headerPrefix = Buffer.from(
+        '<stata_dta><header><release>119</release>'
+        + '<byteorder>LSF</byteorder><K>',
+        'ascii'
+    );
+    const headerSuffix = Buffer.from(
+        '</K><N>\0\0\0\0\0\0\0\0</N><label>\0\0</label>'
+        + '<timestamp>\0</timestamp></header>',
+        'ascii'
+    );
+    const headerLength = headerPrefix.length + 4 + headerSuffix.length;
+    const sectionLengths = [
+        '<map>'.length + 14 * 8 + '</map>'.length,
+        '<variable_types>'.length + nvar * 2 + '</variable_types>'.length,
+        '<varnames>'.length + nvar * 129 + '</varnames>'.length,
+        '<sortlist>'.length + (nvar + 1) * 4 + '</sortlist>'.length,
+        '<formats>'.length + nvar * 57 + '</formats>'.length,
+        '<value_label_names>'.length + nvar * 129
+            + '</value_label_names>'.length,
+        '<variable_labels>'.length + nvar * 321
+            + '</variable_labels>'.length,
+        '<characteristics></characteristics>'.length,
+        '<data></data>'.length,
+        '<strls></strls>'.length,
+        '<value_labels></value_labels>'.length,
+        '</stata_dta>'.length,
+    ];
+    const totalLength = headerLength
+        + sectionLengths.reduce((sum, length) => sum + length, 0);
+    const output = Buffer.alloc(totalLength);
+    let position = 0;
+    const writeAscii = (value: string): void => {
+        position += output.write(value, position, 'ascii');
+    };
+
+    headerPrefix.copy(output, position);
+    position += headerPrefix.length;
+    output.writeUInt32LE(nvar, position);
+    position += 4;
+    headerSuffix.copy(output, position);
+    position += headerSuffix.length;
+
+    const offsets = new Array<number>(14).fill(0);
+    offsets[1] = position;
+    writeAscii('<map>');
+    const mapPayload = position;
+    position += 14 * 8;
+    writeAscii('</map>');
+
+    offsets[2] = position;
+    writeAscii('<variable_types>');
+    for (let index = 0; index < nvar; index++) {
+        output.writeUInt16LE(65_530, position + index * 2);
+    }
+    position += nvar * 2;
+    writeAscii('</variable_types>');
+
+    offsets[3] = position;
+    writeAscii('<varnames>');
+    for (let index = 0; index < nvar; index++) {
+        output.write(`v${index}`, position + index * 129, 'ascii');
+    }
+    position += nvar * 129;
+    writeAscii('</varnames>');
+
+    offsets[4] = position;
+    writeAscii('<sortlist>');
+    position += (nvar + 1) * 4;
+    writeAscii('</sortlist>');
+
+    offsets[5] = position;
+    writeAscii('<formats>');
+    for (let index = 0; index < nvar; index++) {
+        output.write('%8.0g', position + index * 57, 'ascii');
+    }
+    position += nvar * 57;
+    writeAscii('</formats>');
+
+    offsets[6] = position;
+    writeAscii('<value_label_names>');
+    position += nvar * 129;
+    writeAscii('</value_label_names>');
+
+    offsets[7] = position;
+    writeAscii('<variable_labels>');
+    position += nvar * 321;
+    writeAscii('</variable_labels>');
+
+    offsets[8] = position;
+    writeAscii('<characteristics></characteristics>');
+    offsets[9] = position;
+    writeAscii('<data></data>');
+    offsets[10] = position;
+    writeAscii('<strls></strls>');
+    offsets[11] = position;
+    writeAscii('<value_labels></value_labels>');
+    offsets[12] = position;
+    writeAscii('</stata_dta>');
+    offsets[13] = position;
+
+    expect(position).toBe(output.length);
+    for (let index = 0; index < offsets.length; index++) {
+        output.writeBigUInt64LE(BigInt(offsets[index]), mapPayload + index * 8);
+    }
+    return output;
+}
+
 let my_file: DtaFile | null = null;
 
 afterEach(() => {
@@ -623,7 +731,7 @@ describe('DtaFile', () => {
             try {
                 fs.writeFileSync(filePath, original);
                 await expect(DtaFile.open(filePath)).rejects.toThrow(
-                    'Modern metadata exceeds 64 MiB safety limit'
+                    'Modern metadata exceeds its dimensioned safety limit'
                 );
                 const prefixReads = readSpy.mock.calls
                     .map(call => call[3] as number)
@@ -631,6 +739,23 @@ describe('DtaFile', () => {
                 expect(prefixReads).toEqual([original.length]);
             } finally {
                 readSpy.mockRestore();
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('opens release-119 fixed metadata at the 120,000-variable limit', async () => {
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v119-wide-'));
+            const filePath = path.join(directory, 'wide-metadata.dta');
+            try {
+                fs.writeFileSync(filePath, wideV119MetadataFixture(120_000));
+                expect(fs.statSync(filePath).size).toBeGreaterThan(64 * 1024 * 1024);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.nvar).toBe(120_000);
+                expect(my_file.nobs).toBe(0);
+                expect(my_file.variables[119_999].name).toBe('v119999');
+            } finally {
+                my_file?.close();
+                my_file = null;
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });
