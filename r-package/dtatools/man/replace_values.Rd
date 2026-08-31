@@ -37,7 +37,12 @@ supplied dataset, invisibly, so assignment is neither needed nor advised.
 Aliases of the dataset or the same target vector observe later generation
 and replacement. This includes column-only subsets that share their column
 payload. Row subsets have new payloads and remain independent. Use
-\code{copy_data()} when isolation is required.
+\code{copy_data()} when isolation is required. Generic ALTREP columns created by
+base R or another package are detached to ordinary vectors before
+replacement because their private caches cannot be invalidated safely.
+Aliases to the same dataset object observe the installed vector. A
+standalone alias to the former generic ALTREP column, including one held by
+a previously created subset, remains unchanged.
 \code{gen()} attaches package-owned reference state to the same data-frame or
 tibble object. Existing columns remain in the data frame;
 generated columns live in the attached state until an ordinary R assignment

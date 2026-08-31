@@ -3844,6 +3844,64 @@ SEXP C_dtatools_deep_copy_column(SEXP value) {
     return Rf_duplicate(value);
 }
 
+static int reference_mutable_altrep(SEXP value) {
+    return ALTREP(value) &&
+        (R_altrep_inherits(value, dtatools_numeric_class) ||
+         R_altrep_inherits(value, dtatools_dictstring_class) ||
+         R_altrep_inherits(value, dtatools_metadata_real_class) ||
+         R_altrep_inherits(value, dtatools_metadata_string_class));
+}
+
+SEXP C_dtatools_is_reference_mutable_altrep(SEXP value) {
+    return Rf_ScalarLogical(reference_mutable_altrep(value));
+}
+
+SEXP C_dtatools_plain_column_copy(SEXP value) {
+    int type = TYPEOF(value);
+    if (type != REALSXP && type != INTSXP &&
+        type != LGLSXP && type != STRSXP) {
+        Rf_error("unsupported generic ALTREP replacement storage");
+    }
+    R_xlen_t length = XLENGTH(value);
+    SEXP result = PROTECT(Rf_allocVector(type, length));
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        switch (type) {
+        case REALSXP:
+            REAL(result)[index] = REAL_ELT(value, index);
+            break;
+        case INTSXP:
+            INTEGER(result)[index] = INTEGER_ELT(value, index);
+            break;
+        case LGLSXP:
+            LOGICAL(result)[index] = LOGICAL_ELT(value, index);
+            break;
+        case STRSXP:
+            SET_STRING_ELT(result, index, STRING_ELT(value, index));
+            break;
+        }
+    }
+    DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP C_dtatools_replace_data_column(
+    SEXP data, SEXP location, SEXP column
+) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(location) != INTSXP ||
+        XLENGTH(location) != 1) {
+        Rf_error("invalid generic ALTREP replacement target");
+    }
+    int index = INTEGER_ELT(location, 0);
+    if (index == NA_INTEGER || index < 1 ||
+        (R_xlen_t) index > XLENGTH(data)) {
+        Rf_error("invalid generic ALTREP replacement target");
+    }
+    SET_VECTOR_ELT(data, (R_xlen_t) index - 1, column);
+    return data;
+}
+
 static double compact_patch_encoded_value(double value, int temporal) {
     if (temporal == 1) return value + 3653.0;
     if (temporal == 2) {
@@ -4459,7 +4517,17 @@ static SEXP apply_vector_patch_transaction(void *data) {
     }
     transaction->journal_complete = 1;
 
-    if (transaction->delayed_dictstring_finalize) {
+    if (transaction->dictstring_source != R_NilValue &&
+        transaction->rows->value == R_NilValue) {
+        SEXP materialized = PROTECT(Rf_allocVector(
+            STRSXP, transaction->values.count
+        ));
+        R_set_altrep_data2(transaction->target, materialized);
+        if (!transaction->delayed_dictstring_finalize) {
+            R_set_altrep_data1(transaction->target, R_NilValue);
+        }
+        UNPROTECT(1);
+    } else if (transaction->delayed_dictstring_finalize) {
         (void) dictstring_materialize_for_patch(
             transaction->target, transaction->dictstring_private_cache
         );
@@ -4542,6 +4610,9 @@ SEXP C_dtatools_patch_vector(
         TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP) {
         Rf_error("invalid reference replacement plan");
     }
+    if (ALTREP(target) && !reference_mutable_altrep(target)) {
+        Rf_error("generic ALTREP targets must be detached before replacement");
+    }
     R_xlen_t target_length = XLENGTH(target);
     R_xlen_t count = rows == R_NilValue ? target_length : XLENGTH(rows);
     reference_rows row_plan = reference_patch_rows_create(
@@ -4622,7 +4693,7 @@ SEXP C_dtatools_patch_vector(
             ? Rf_allocVector(STRSXP, count) : R_NilValue
     );
     SEXP private_cache = PROTECT(
-        dictstring_source != R_NilValue
+        dictstring_source != R_NilValue && rows != R_NilValue
             ? Rf_allocVector(
                 VECSXP, XLENGTH(dictstring_cache(dictstring_source))
             )
@@ -4665,7 +4736,15 @@ SEXP C_dtatools_patch_vector(
         continuation
     );
     if (delayed_dictstring_finalize) {
-        dictstring_finalize(R_altrep_data1(target));
+        SEXP external = R_altrep_data1(target);
+        if (rows == R_NilValue) {
+            if (!compact_payload_is_shared(external)) {
+                dictstring_finalize(external);
+            }
+            R_set_altrep_data1(target, R_NilValue);
+        } else {
+            dictstring_finalize(external);
+        }
     }
     UNPROTECT(4);
     return result;
@@ -4783,6 +4862,16 @@ static int generated_string_declared_width(SEXP declared) {
     return width;
 }
 
+static size_t generated_string_width(SEXP value) {
+    if (value == NA_STRING) return 0;
+    const char *bytes = Rf_translateCharUTF8(value);
+    size_t width = strlen(bytes);
+    if (width > (size_t) 2000000000) {
+        Rf_error("A generated string exceeds Stata's 2,000,000,000-byte limit");
+    }
+    return width;
+}
+
 SEXP C_dtatools_generate_character(
     SEXP values, SEXP rows, SEXP row_count_value,
     SEXP declared, SEXP attributes
@@ -4827,14 +4916,20 @@ SEXP C_dtatools_generate_character(
     }
 
     size_t maximum = 0;
-    for (R_xlen_t index = 0; index < row_count; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        const char *value = Rf_translateCharUTF8(STRING_ELT(result, index));
-        size_t length = strlen(value);
-        if (length > maximum) maximum = length;
-    }
-    if (maximum > (size_t) 2000000000) {
-        Rf_error("A generated string exceeds Stata's 2,000,000,000-byte limit");
+    if (rows == R_NilValue) {
+        R_xlen_t width_count = row_count == 0 ? 0 : value_plan.value_count;
+        for (R_xlen_t index = 0; index < width_count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            size_t width = generated_string_width(STRING_ELT(values, index));
+            if (width > maximum) maximum = width;
+        }
+    } else {
+        for (R_xlen_t index = 0; index < count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            R_xlen_t row = reference_patch_row(&row_plan, index);
+            size_t width = generated_string_width(STRING_ELT(result, row));
+            if (width > maximum) maximum = width;
+        }
     }
     if (declared_width > 0 && maximum > (size_t) declared_width) {
         Rf_error("Generated values do not fit their declared Stata string storage");
@@ -5469,6 +5564,12 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},
     {"C_dtatools_deep_copy_column",
      (DL_FUNC) &C_dtatools_deep_copy_column, 1},
+    {"C_dtatools_is_reference_mutable_altrep",
+     (DL_FUNC) &C_dtatools_is_reference_mutable_altrep, 1},
+    {"C_dtatools_plain_column_copy",
+     (DL_FUNC) &C_dtatools_plain_column_copy, 1},
+    {"C_dtatools_replace_data_column",
+     (DL_FUNC) &C_dtatools_replace_data_column, 3},
     {"C_dtatools_mutation_rows",
      (DL_FUNC) &C_dtatools_mutation_rows, 2},
     {"C_dtatools_patch_vector",

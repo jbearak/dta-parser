@@ -6,7 +6,12 @@
 #' Aliases of the dataset or the same target vector observe later generation
 #' and replacement. This includes column-only subsets that share their column
 #' payload. Row subsets have new payloads and remain independent. Use
-#' `copy_data()` when isolation is required.
+#' `copy_data()` when isolation is required. Generic ALTREP columns created by
+#' base R or another package are detached to ordinary vectors before
+#' replacement because their private caches cannot be invalidated safely.
+#' Aliases to the same dataset object observe the installed vector. A
+#' standalone alias to the former generic ALTREP column, including one held by
+#' a previously created subset, remains unchanged.
 #' `gen()` attaches package-owned reference state to the same data-frame or
 #' tibble object. Existing columns remain in the data frame;
 #' generated columns live in the attached state until an ordinary R assignment
@@ -409,10 +414,21 @@ gen <- function(data, variable, values, where = NULL) {
         if (.mutation_selected_count(rows, original$nrow) == 0L) {
             return(invisible(data))
         }
+        detached_altrep <- .is_altrep(column) &&
+            !.is_reference_mutable_altrep(column)
+        if (detached_altrep) {
+            column <- .Call(C_dtatools_plain_column_copy, column)
+        }
     }
 
     if (!generate) {
         .Call(C_dtatools_patch_vector, column, rows, replacement)
+        if (detached_altrep) {
+            .Call(
+                C_dtatools_replace_data_column,
+                data, as.integer(target$location), column
+            )
+        }
     }
     if (generate) {
         state$generated <- generated

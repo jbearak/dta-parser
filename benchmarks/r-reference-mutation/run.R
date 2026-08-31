@@ -380,9 +380,41 @@ stopifnot(
     character_generation_time < 0.5
 )
 
+sparse_character_data <- data.frame(
+    anchor = stata_byte(rep(1, rows))
+)
+sparse_character_profile <- profile_memory(
+    gen(sparse_character_data, generated, "wide", where = rows),
+    "dtatools-reference-sparse-character-generation-"
+)
+sparse_character_generation_time <- sparse_character_profile$elapsed
+total_sparse_character_generation_allocation <-
+    sparse_character_profile$total
+largest_sparse_character_generation_allocation <-
+    sparse_character_profile$largest
+stopifnot(
+    identical(
+        as.character(sparse_character_data$generated[c(1L, rows)]),
+        c("", "wide")
+    ),
+    identical(
+        attr(sparse_character_data$generated, "stata.string.storage"),
+        "str4"
+    ),
+    largest_sparse_character_generation_allocation <=
+        full_double_bytes * 1.01,
+    total_sparse_character_generation_allocation <
+        full_double_bytes * 1.5,
+    sparse_character_generation_time < 0.2
+)
+
 dictionary_path <- tempfile(fileext = ".arrow")
+dictionary_cardinality <- min(rows, 250000L)
+dictionary_values <- sprintf(
+    "value-%06d", seq_len(dictionary_cardinality)
+)
 save_arrow(data.frame(
-    text = rep(c("a", "b"), length.out = rows)
+    text = rep(dictionary_values, length.out = rows)
 ), dictionary_path)
 dictionary_data <- read_arrow(dictionary_path)
 unlink(dictionary_path)
@@ -401,7 +433,28 @@ stopifnot(
     ),
     largest_dictionary_replacement_allocation <= full_double_bytes * 1.01,
     total_dictionary_replacement_allocation < full_double_bytes * 1.5,
-    dictionary_replacement_time < 1
+    dictionary_replacement_time < 0.1
+)
+
+generic_altrep_data <- data.frame(value = seq_len(rows))
+generic_altrep_alias <- generic_altrep_data
+generic_altrep_column_alias <- generic_altrep_data$value
+generic_altrep_profile <- profile_memory(
+    replace_values(generic_altrep_data, value, 2L),
+    "dtatools-reference-generic-altrep-replacement-"
+)
+generic_altrep_replacement_time <- generic_altrep_profile$elapsed
+largest_generic_altrep_allocation <- generic_altrep_profile$largest
+integer_bytes <- as.double(rows) * 4
+stopifnot(
+    !dtatools:::.is_altrep(generic_altrep_data$value),
+    identical(range(generic_altrep_data$value), c(2L, 2L)),
+    identical(generic_altrep_alias$value, generic_altrep_data$value),
+    identical(
+        range(generic_altrep_column_alias), c(1L, rows)
+    ),
+    largest_generic_altrep_allocation <= integer_bytes * 1.01,
+    generic_altrep_replacement_time < 0.3
 )
 untracemem(integer_generation_data$anchor)
 untracemem(data$compact)
@@ -555,6 +608,18 @@ cat(sprintf(
     largest_character_generation_allocation
 ))
 cat(sprintf(
+    "sparse_character_generation_seconds\t%.6f\n",
+    sparse_character_generation_time
+))
+cat(sprintf(
+    "sparse_character_generation_total_profiled_allocation_bytes\t%.0f\n",
+    total_sparse_character_generation_allocation
+))
+cat(sprintf(
+    "sparse_character_generation_largest_allocation_bytes\t%.0f\n",
+    largest_sparse_character_generation_allocation
+))
+cat(sprintf(
     "dictionary_replacement_seconds\t%.6f\n",
     dictionary_replacement_time
 ))
@@ -566,7 +631,17 @@ cat(sprintf(
     "dictionary_replacement_largest_allocation_bytes\t%.0f\n",
     largest_dictionary_replacement_allocation
 ))
+cat(sprintf("dictionary_cardinality\t%d\n", dictionary_cardinality))
+cat(sprintf(
+    "generic_altrep_replacement_seconds\t%.6f\n",
+    generic_altrep_replacement_time
+))
+cat(sprintf(
+    "generic_altrep_replacement_largest_allocation_bytes\t%.0f\n",
+    largest_generic_altrep_allocation
+))
 cat(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
+cat(sprintf("integer_bytes\t%.0f\n", integer_bytes))
 cat(sprintf("full_double_bytes\t%.0f\n", full_double_bytes))
 cat(sprintf("generation_seconds\t%.3f\n", generation_time))
 cat("existing_payload_copy_detected\tfalse\n")

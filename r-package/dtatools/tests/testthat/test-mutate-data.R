@@ -581,6 +581,52 @@ test_that("native generation interrupts leave reference state unchanged", {
     }
 })
 
+test_that("generic ALTREP detachment interrupts before installation", {
+    skip_on_os("windows")
+    skip_if_not_installed("callr")
+
+    result <- callr::r(
+        function() {
+            library(dtatools)
+            size <- 20000000L
+            data <- data.frame(x = seq_len(size))
+            before <- serialize(data, NULL)
+            parent <- Sys.getpid()
+            signal <- parallel::mcparallel({
+                Sys.sleep(0.01)
+                tools::pskill(parent, tools::SIGINT)
+            }, silent = TRUE)
+            condition <- tryCatch(
+                {
+                    replace_values(data, x, 2L)
+                    NULL
+                },
+                condition = identity
+            )
+            tryCatch(
+                suppressWarnings(parallel::mccollect(signal)),
+                condition = function(...) NULL
+            )
+            list(
+                interrupted = inherits(condition, "interrupt"),
+                unchanged = identical(serialize(data, NULL), before),
+                altrep = dtatools:::.is_altrep(data$x),
+                range = range(data$x),
+                sum = sum(data$x),
+                size = size
+            )
+        },
+        libpath = .libPaths(),
+        timeout = 120
+    )
+
+    expect_true(result$interrupted)
+    expect_true(result$unchanged)
+    expect_true(result$altrep)
+    expect_identical(result$range, c(1L, result$size))
+    expect_equal(result$sum, result$size * (result$size + 1) / 2)
+})
+
 test_that("compact replacement patches every storage without materializing", {
     constructors <- list(
         byte = stata_byte,
@@ -742,6 +788,32 @@ test_that("ordinary, materialized, temporal, and character columns mutate", {
     expect_identical(serialize(fixed, NULL), before)
 })
 
+test_that("base numeric ALTREP columns remain internally consistent", {
+    columns <- list(
+        integer = seq_len(1000L),
+        double = as.double(seq_len(1000L))
+    )
+    for (name in names(columns)) {
+        data <- data.frame(x = columns[[name]])
+        data_alias <- data
+        column_alias <- data$x
+        subset_alias <- data["x"]
+        expect_true(dtatools:::.is_altrep(data$x), info = name)
+        replacement <- if (name == "integer") 2L else 2
+        replace_values(data, x, replacement)
+        expect_identical(range(data$x), c(replacement, replacement), info = name)
+        expect_equal(sum(data$x), 2000, info = name)
+        expect_identical(data_alias$x, data$x, info = name)
+        expect_identical(column_alias, columns[[name]], info = name)
+        expect_identical(subset_alias$x, columns[[name]], info = name)
+        restored <- unserialize(serialize(data, NULL))
+        expect_identical(
+            range(restored$x), c(replacement, replacement), info = name
+        )
+        expect_equal(sum(restored$x), 2000, info = name)
+    }
+})
+
 test_that("gen appends one variable with Stata missing and storage rules", {
     data <- tibble::tibble(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE))
     alias <- data
@@ -839,6 +911,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(as.character(strings$y), c("one", "", "three"))
     expect_identical(attr(strings$y, "label"), "Authored string")
     expect_identical(attr(strings$y, "stata.string.storage"), "str5")
+
+    duplicate <- data.frame(x = 1:3)
+    gen(
+        duplicate, y, c("overwritten", "x"),
+        where = c(1, 1)
+    )
+    expect_identical(as.character(duplicate$y), c("x", "", ""))
+    expect_identical(attr(duplicate$y, "stata.string.storage"), "str1")
 
     too_narrow <- structure("wide", stata.string.storage = "str2")
     expect_error(gen(strings, too_wide, too_narrow), "do not fit")
@@ -998,6 +1078,15 @@ test_that("metadata helpers remain isolated from later source patches", {
     expect_identical(as.character(string_source$text), c("changed", "b", "a"))
     expect_true(dtatools:::.is_unmaterialized_dictstring(string_copy$text))
     expect_identical(as.character(string_copy$text), c("a", "b", "a"))
+
+    full_source <- read_arrow(path)
+    full_copy <- set_variable_labels(full_source, text = "Copy")
+    replace_values(full_source, text, "changed")
+    expect_identical(
+        as.character(full_source$text), rep("changed", 3)
+    )
+    expect_true(dtatools:::.is_unmaterialized_dictstring(full_copy$text))
+    expect_identical(as.character(full_copy$text), c("a", "b", "a"))
 })
 
 test_that("writable access detaches shared materialized payloads", {
