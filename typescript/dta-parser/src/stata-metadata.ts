@@ -31,9 +31,10 @@ function reservedCharacteristicName(name: string): boolean {
         || name.startsWith('_lang_l_');
 }
 
-/** Whether a raw key can be represented by the canonical public metadata. */
-export function isRetainedStataCharacteristicName(name: string): boolean {
-    return noteNumber(name) !== null || !reservedCharacteristicName(name);
+function validCharacteristicNameShape(name: string): boolean {
+    return /^[_\p{L}][_\p{L}\p{N}]*$/u.test(name)
+        && codePointLengthAtMost(name, 32)
+        && utf8LengthAtMost(name, 128);
 }
 
 interface ScopeIndexes {
@@ -95,8 +96,11 @@ export class StataMetadataCollector {
     private classify(
         target: string, name: string
     ): AcceptedStataCharacteristic | null {
+        if (!validCharacteristicNameShape(name)) {
+            throw new Error('Invalid on-disk Stata characteristic name');
+        }
         const number = noteNumber(name);
-        if (!isRetainedStataCharacteristicName(name)) return null;
+        if (number === null && reservedCharacteristicName(name)) return null;
         const scopeIndex = this.targetIndex(target);
         if (scopeIndex === undefined) return null;
         return { scopeIndex, name, noteNumber: number };
@@ -172,18 +176,28 @@ function codePointLengthAtMost(value: string, limit: number): boolean {
 }
 
 function utf8LengthAtMost(value: string, limit: number): boolean {
-    const output = new Uint8Array(limit + 1);
+    const output = new Uint8Array(Math.min(limit + 1, value.length * 3));
     const encoded = TEXT_ENCODER.encodeInto(value, output);
     return encoded.read === value.length && encoded.written <= limit;
 }
 
 function validCharacteristicName(name: string): void {
-    if (!/^[_\p{L}][_\p{L}\p{N}]*$/u.test(name)
-        || !codePointLengthAtMost(name, 32)
-        || !utf8LengthAtMost(name, 128)
-        || reservedCharacteristicName(name)) {
+    if (!validCharacteristicNameShape(name) || reservedCharacteristicName(name)) {
         throw new Error('Invalid or reserved Stata characteristic name');
     }
+}
+
+/** Return the canonical content end within a bounded raw metadata value. */
+export function stataMetadataValueEnd(
+    bytes: Uint8Array, start: number, length: number
+): number {
+    const limit = start + length;
+    let end = start;
+    while (end < limit && bytes[end] !== 0) end++;
+    if (end - start > MAX_STATA_METADATA_VALUE_BYTES) {
+        throw new Error('Characteristic value exceeds the 67,784-byte limit');
+    }
+    return end;
 }
 
 function validMetadataValue(value: string): void {

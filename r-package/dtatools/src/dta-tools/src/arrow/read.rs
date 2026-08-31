@@ -533,6 +533,24 @@ fn parse_profile(
     }))
 }
 
+fn discard_private_profile_json(footer: &mut Footer) {
+    let mut schema_metadata = footer.schema.metadata().clone();
+    schema_metadata.remove(ARROW_PROFILE_VERSION_KEY);
+    schema_metadata.remove(ARROW_DATASET_KEY);
+    let fields: Vec<Arc<Field>> = footer
+        .schema
+        .fields()
+        .iter()
+        .map(|field| {
+            let mut metadata = field.metadata().clone();
+            metadata.remove(ARROW_FIELD_KEY);
+            Arc::new(field.as_ref().clone().with_metadata(metadata))
+        })
+        .collect();
+    footer.schema = Schema::new_with_metadata(fields, schema_metadata);
+    footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
+}
+
 fn parse_message_header(bytes: &[u8]) -> Result<arrow_ipc::Message<'_>, ArrowProfileError> {
     let flatbuffer = if bytes.len() >= 8 && bytes[..4] == CONTINUATION_MARKER {
         &bytes[8..]
@@ -1065,12 +1083,16 @@ fn prepare_read<R: Read + Seek>(
     options: &ArrowReadOptions,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<PreparedRead, ArrowProfileError> {
-    let footer = read_footer(reader)?;
+    let mut footer = read_footer(reader)?;
     let stored_signature = options
         .record_signature
         .then(|| stored_signature_from_footer(reader, &footer))
         .transpose()?;
-    let profile = parse_profile(&footer, options.profile, options.verify)?;
+    let carries_profile = footer
+        .schema
+        .metadata()
+        .contains_key(ARROW_PROFILE_VERSION_KEY);
+    let mut profile = parse_profile(&footer, options.profile, options.verify)?;
 
     let field_count = footer.schema.fields().len();
     let selected: Vec<usize> = match &options.columns {
@@ -1085,6 +1107,22 @@ fn prepare_read<R: Read + Seek>(
             })
             .collect::<Result<_, _>>()?,
     };
+    if options.columns.is_some() {
+        if let Some(profile) = profile.as_mut() {
+            let mut retained = vec![false; field_count];
+            for &index in &selected {
+                retained[index] = true;
+            }
+            for (index, field) in profile.fields.iter_mut().enumerate() {
+                if !retained[index] {
+                    *field = None;
+                }
+            }
+        }
+    }
+    if carries_profile {
+        discard_private_profile_json(&mut footer);
+    }
 
     // Batch headers are small; reading them all up front fixes each block's
     // slice of the requested window so block bodies can decode in any order.
@@ -1540,23 +1578,37 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
                 data_type: field.data_type().clone(),
                 nullable: field.is_nullable(),
                 dictionary_ordered: prepared.footer.layouts[index].dictionary_ordered,
-                field: prepared
-                    .profile
-                    .as_ref()
-                    .and_then(|profile| profile.fields[index].clone()),
+                field: None,
                 chunks,
             })
         })
         .collect()
 }
 
-fn finish_result(prepared: PreparedRead, columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+    let (profile_version, dataset) = if let Some(mut profile) = prepared.profile.take() {
+        let mut remaining = HashMap::with_capacity(prepared.selected.len());
+        for &index in &prepared.selected {
+            *remaining.entry(index).or_insert(0_usize) += 1;
+        }
+        for (&index, column) in prepared.selected.iter().zip(&mut columns) {
+            let count = remaining
+                .get_mut(&index)
+                .expect("selected field occurrence was counted");
+            *count -= 1;
+            column.field = if *count == 0 {
+                profile.fields[index].take()
+            } else {
+                profile.fields[index].clone()
+            };
+        }
+        (Some(profile.version), Some(profile.dataset))
+    } else {
+        (None, None)
+    };
     ArrowReadResult {
-        profile_version: prepared
-            .profile
-            .as_ref()
-            .map(|profile| profile.version.clone()),
-        dataset: prepared.profile.map(|profile| profile.dataset),
+        profile_version,
+        dataset,
         row_count: prepared.produced,
         columns,
         stored_signature: prepared.stored_signature,

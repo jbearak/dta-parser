@@ -5,7 +5,7 @@ use unicode_general_category::{get_general_category, GeneralCategory};
 use crate::{DtaError, StataCharacteristic, StataNote, VariableInfo};
 
 pub(crate) const MAX_NOTE_NUMBER: u32 = 9_999;
-pub(crate) const MAX_METADATA_VALUE_BYTES: usize = 67_784;
+pub const MAX_METADATA_VALUE_BYTES: usize = 67_784;
 pub(crate) const MAX_CHARACTERISTIC_NAME_BYTES: usize = 128;
 
 pub(crate) fn validate_raw_value_length(
@@ -19,6 +19,26 @@ pub(crate) fn validate_raw_value_length(
             offset,
             length: length_with_optional_nul,
             limit: MAX_METADATA_VALUE_BYTES + 1,
+        });
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_raw_value_bytes(
+    bytes: &[u8],
+    offset: usize,
+    context: &'static str,
+) -> Result<(), DtaError> {
+    let length = bytes
+        .iter()
+        .position(|byte| *byte == 0)
+        .unwrap_or(bytes.len());
+    if length > MAX_METADATA_VALUE_BYTES {
+        return Err(DtaError::MetadataValueTooLong {
+            context,
+            offset,
+            length,
+            limit: MAX_METADATA_VALUE_BYTES,
         });
     }
     Ok(())
@@ -78,20 +98,23 @@ pub(crate) fn valid_stata_name_syntax(name: &str, maximum_characters: usize) -> 
         && name.chars().count() <= maximum_characters
 }
 
-pub(crate) fn valid_metadata_value(value: &str) -> bool {
+pub fn valid_metadata_value(value: &str) -> bool {
     !value.contains('\0') && value.len() <= MAX_METADATA_VALUE_BYTES
 }
 
-pub(crate) fn valid_note(number: u32, text: &str) -> bool {
+pub fn valid_note(number: u32, text: &str) -> bool {
     (1..=MAX_NOTE_NUMBER).contains(&number) && valid_metadata_value(text)
 }
 
-pub(crate) fn valid_characteristic(name: &str, value: &str) -> bool {
+pub fn valid_characteristic_name(name: &str) -> bool {
     valid_stata_name_syntax(name, 32)
         && name.len() <= MAX_CHARACTERISTIC_NAME_BYTES
         && !is_reserved_note_name(name.as_bytes())
         && !is_structural_characteristic(name)
-        && valid_metadata_value(value)
+}
+
+pub fn valid_characteristic(name: &str, value: &str) -> bool {
+    valid_characteristic_name(name) && valid_metadata_value(value)
 }
 
 struct PendingCharacteristic {
@@ -191,21 +214,28 @@ impl<'a> VariableTargetIndexes<'a> {
 pub(crate) fn classify_characteristic(
     target: &str,
     name: String,
+    offset: usize,
     resolve_variable: impl FnOnce(&str) -> Option<usize>,
-) -> Option<AcceptedCharacteristic> {
+) -> Result<Option<AcceptedCharacteristic>, DtaError> {
+    if !valid_stata_name_syntax(&name, 32) || name.len() > MAX_CHARACTERISTIC_NAME_BYTES {
+        return Err(DtaError::InvalidCharacteristicName { name, offset });
+    }
     let key = if let Some(number) = note_index(name.as_bytes()) {
         MetadataKey::Note(number)
     } else if is_reserved_note_name(name.as_bytes()) || is_structural_characteristic(&name) {
-        return None;
+        return Ok(None);
     } else {
         MetadataKey::Characteristic(name)
     };
     let target_index = if target == "_dta" {
         None
     } else {
-        Some(resolve_variable(target)?)
+        let Some(index) = resolve_variable(target) else {
+            return Ok(None);
+        };
+        Some(index)
     };
-    Some(AcceptedCharacteristic { target_index, key })
+    Ok(Some(AcceptedCharacteristic { target_index, key }))
 }
 
 /// Folds raw DTA characteristic records into their canonical scopes.
@@ -292,9 +322,11 @@ mod tests {
         let mut collector = CharacteristicCollector::default();
         let mut variable_indexes = VariableTargetIndexes::new(&variables);
         for (target, name, value) in records {
-            if let Some(accepted) = classify_characteristic(target, name.into(), |target| {
+            if let Some(accepted) = classify_characteristic(target, name.into(), 0, |target| {
                 variable_indexes.resolve(target)
-            }) {
+            })
+            .expect("valid raw characteristic")
+            {
                 collector.push(accepted, value.into());
             }
         }
@@ -358,9 +390,10 @@ mod tests {
         let mut variables = vec![variable.clone(), variable];
         let mut collector = CharacteristicCollector::default();
         let mut variable_indexes = VariableTargetIndexes::new(&variables);
-        let accepted = classify_characteristic("x", "role".into(), |target| {
+        let accepted = classify_characteristic("x", "role".into(), 0, |target| {
             variable_indexes.resolve(target)
         })
+        .expect("valid raw characteristic")
         .expect("the duplicate target resolves");
         collector.push(accepted, "id".into());
         drop(variable_indexes);
@@ -372,14 +405,16 @@ mod tests {
 
     #[test]
     fn dataset_and_structural_records_do_not_build_variable_indexes() {
-        let dataset = classify_characteristic("_dta", "source".into(), |_| {
+        let dataset = classify_characteristic("_dta", "source".into(), 0, |_| {
             panic!("dataset metadata must not resolve variable names")
-        });
+        })
+        .expect("valid raw characteristic");
         assert!(dataset.is_some());
 
-        let structural = classify_characteristic("x", "_lang_v_en".into(), |_| {
+        let structural = classify_characteristic("x", "_lang_v_en".into(), 0, |_| {
             panic!("structural metadata must not resolve variable names")
-        });
+        })
+        .expect("valid structural characteristic");
         assert!(structural.is_none());
     }
 }

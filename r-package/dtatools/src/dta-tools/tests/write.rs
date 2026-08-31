@@ -602,6 +602,43 @@ fn rejects_reserved_stata_variable_names() {
 }
 
 #[test]
+fn rejects_metadata_on_variable_named_dta_before_writing() {
+    let values = [DtaWriteNumericValue::Value(1.0)];
+    let mut data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "_dta".into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: vec!["cannot be encoded".into()],
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+
+    for use_characteristic in [false, true] {
+        if use_characteristic {
+            data.columns[0].notes.clear();
+            data.columns[0]
+                .characteristics
+                .push(DtaWriteCharacteristic {
+                    name: "role".into(),
+                    value: "id".into(),
+                });
+        }
+        let mut output = Cursor::new(Vec::new());
+        let error = save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap_err();
+        assert!(matches!(error, DtaWriteError::InvalidVariable { .. }));
+        assert!(output.into_inner().is_empty());
+    }
+}
+
+#[test]
 fn validates_display_format_grammar_and_storage_compatibility() {
     let numeric = [DtaWriteNumericValue::Value(1.0)];
     let mut data = DtaWriteData {
@@ -1135,16 +1172,22 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
     );
 
     let metadata = parse_metadata(&bytes).unwrap();
-    let record = metadata.section_offsets.characteristics as usize + b"<characteristics><ch>".len();
+    let first_record =
+        metadata.section_offsets.characteristics as usize + b"<characteristics><ch>".len();
+    let first_payload =
+        u32::from_le_bytes(bytes[first_record..first_record + 4].try_into().unwrap()) as usize;
+    let record = first_record + 4 + first_payload + b"</ch><ch>".len();
     let old_payload_length =
         u32::from_le_bytes(bytes[record..record + 4].try_into().unwrap()) as usize;
     let names_length = 2 * 129;
-    let desired_value_length = 67_786;
+    let desired_value_length = 67_785;
     let extra = desired_value_length - (old_payload_length - names_length);
     let close = record + 4 + old_payload_length;
-    let mut oversized = bytes.clone();
-    oversized.splice(close..close, vec![b'x'; extra]);
-    oversized[record..record + 4].copy_from_slice(
+    let mut exact_value = vec![b'x'; desired_value_length];
+    *exact_value.last_mut().unwrap() = 0;
+    let mut exact_with_nul = bytes.clone();
+    exact_with_nul.splice(record + 4 + names_length..close, exact_value);
+    exact_with_nul[record..record + 4].copy_from_slice(
         &u32::try_from(old_payload_length + extra)
             .unwrap()
             .to_le_bytes(),
@@ -1152,10 +1195,17 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
     let map_payload = metadata.section_offsets.map as usize + b"<map>".len();
     for index in 9..14 {
         let offset = map_payload + index * 8;
-        let old = u64::from_le_bytes(oversized[offset..offset + 8].try_into().unwrap());
-        oversized[offset..offset + 8]
+        let old = u64::from_le_bytes(exact_with_nul[offset..offset + 8].try_into().unwrap());
+        exact_with_nul[offset..offset + 8]
             .copy_from_slice(&(old + u64::try_from(extra).unwrap()).to_le_bytes());
     }
+    assert_eq!(parse_metadata(&exact_with_nul).unwrap().notes.len(), 2);
+    DtaFile::from_reader(Cursor::new(exact_with_nul.clone())).unwrap();
+
+    let mut oversized = exact_with_nul;
+    let final_value_byte = record + 4 + names_length + desired_value_length - 1;
+    assert_eq!(oversized[final_value_byte], 0);
+    oversized[final_value_byte] = b'x';
     assert!(matches!(
         parse_metadata(&oversized),
         Err(DtaError::MetadataValueTooLong { .. })
@@ -1163,6 +1213,19 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
     assert!(matches!(
         DtaFile::from_reader(Cursor::new(oversized)),
         Err(DtaError::MetadataValueTooLong { .. })
+    ));
+
+    let mut invalid_raw_name = bytes.clone();
+    let name = record + 4 + 129;
+    invalid_raw_name[name..name + 129].fill(0);
+    invalid_raw_name[name..name + 4].copy_from_slice(b"2bad");
+    assert!(matches!(
+        parse_metadata(&invalid_raw_name),
+        Err(DtaError::InvalidCharacteristicName { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_raw_name)),
+        Err(DtaError::InvalidCharacteristicName { .. })
     ));
 
     for invalid_name in [

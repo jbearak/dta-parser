@@ -31,7 +31,7 @@ import {
 } from './text-encoding';
 import {
     MAX_STATA_METADATA_VALUE_BYTES,
-    isRetainedStataCharacteristicName,
+    stataMetadataValueEnd,
     StataMetadataCollector,
 } from './stata-metadata';
 
@@ -172,14 +172,14 @@ function parse_characteristics(
     }
     pos += TAG_CHARACTERISTICS_OPEN.length;
     const names_length = field_width * 2;
-    let collector: StataMetadataCollector | null = null;
+    const collector = new StataMetadataCollector(dataset, variables);
     while (pos < section_offsets.data) {
         if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
             pos += TAG_CHARACTERISTICS_CLOSE.length;
             if (pos !== section_offsets.data) {
                 throw new Error('Characteristics section does not end at the mapped data offset');
             }
-            collector?.finish();
+            collector.finish();
             return;
         }
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
@@ -203,12 +203,11 @@ function parse_characteristics(
         if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
             throw new Error('Characteristic value exceeds the 67,784-byte limit');
         }
-        if (isRetainedStataCharacteristicName(name)) {
-            collector ??= new StataMetadataCollector(dataset, variables);
-            collector.pushLazy(target, name, () => read_fixed_string(
-                bytes, pos + names_length, valueLength, decoder
-            ));
-        }
+        collector.pushLazy(target, name, () => {
+            const start = pos + names_length;
+            const end = stataMetadataValueEnd(bytes, start, valueLength);
+            return decoder.decode(bytes.subarray(start, end));
+        });
         pos += length;
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
             throw new Error('Missing </ch> tag');
@@ -505,14 +504,6 @@ export function parse_modern_metadata_header(
         dataset_label,
         section_offsets,
     };
-}
-
-/** Return the mapped byte boundary needed for a complete modern metadata read. */
-export function modern_metadata_buffer_size(
-    buffer: ArrayBuffer,
-    options: TextEncodingOptions = {}
-): number {
-    return parse_modern_metadata_header(buffer, options).section_offsets.data;
 }
 
 // -----------------------------------------------------------

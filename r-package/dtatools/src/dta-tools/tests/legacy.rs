@@ -678,6 +678,56 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
 }
 
 #[test]
+fn legacy_metadata_bounds_and_raw_names_have_file_parity() {
+    let bytes = synthetic_v113_msf();
+    let expansion = parse_metadata(&bytes)
+        .unwrap()
+        .section_offsets
+        .characteristics as usize;
+    let header_width = 5;
+    let names_width = 66;
+    let old_payload =
+        i32::from_be_bytes(bytes[expansion + 1..expansion + 5].try_into().unwrap()) as usize;
+    let old_value = old_payload - names_width;
+    let desired_value = 67_785;
+    let extra = desired_value - old_value;
+    let payload_end = expansion + header_width + old_payload;
+
+    let mut exact_with_nul = bytes.clone();
+    exact_with_nul.splice(payload_end - 1..payload_end - 1, vec![b'x'; extra]);
+    exact_with_nul[expansion + 1..expansion + 5]
+        .copy_from_slice(&i32::try_from(old_payload + extra).unwrap().to_be_bytes());
+    parse_metadata(&exact_with_nul).unwrap();
+    DtaFile::from_reader(Cursor::new(exact_with_nul.clone())).unwrap();
+
+    let mut oversized = exact_with_nul;
+    let final_value_byte = expansion + header_width + names_width + desired_value - 1;
+    assert_eq!(oversized[final_value_byte], 0);
+    oversized[final_value_byte] = b'x';
+    assert!(matches!(
+        parse_metadata(&oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+
+    let mut invalid_raw_name = bytes;
+    let name = expansion + header_width + 33;
+    invalid_raw_name[name..name + 33].fill(0);
+    invalid_raw_name[name..name + 4].copy_from_slice(b"2bad");
+    assert!(matches!(
+        parse_metadata(&invalid_raw_name),
+        Err(DtaError::InvalidCharacteristicName { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_raw_name)),
+        Err(DtaError::InvalidCharacteristicName { .. })
+    ));
+}
+
+#[test]
 fn decodes_big_endian_release_111_observations_notes_and_labels() {
     let mut bytes = synthetic_legacy_msf(111);
     let data_offset = parse_metadata(&bytes).unwrap().section_offsets.data as usize;

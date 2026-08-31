@@ -51,6 +51,10 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
     expect_error(add_stata_note(data, NULL), "non-missing")
     expect_error(set_stata_note(data, 1, strrep("x", 67785L)), "67,784-byte")
     expect_error(
+        set_stata_characteristic(data, "source", strrep("x", 67785L)),
+        "67,784-byte"
+    )
+    expect_error(
         set_stata_characteristic(data, "note1", "collision"),
         "cannot be a numeric `note\\*` key"
     )
@@ -86,11 +90,23 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
         stata_characteristics(malformed_variable, "x"),
         "malformed Stata characteristic metadata"
     )
+    oversized_notes <- data
+    attr(oversized_notes, "notes") <- strrep("x", 67785L)
+    attr(oversized_notes, "stata.note.numbers") <- 1L
+    expect_error(stata_notes(oversized_notes), "malformed Stata note metadata")
+    oversized_characteristics <- data
+    attr(oversized_characteristics, "stata.characteristics") <- c(
+        source = strrep("x", 67785L)
+    )
+    expect_error(
+        stata_characteristics(oversized_characteristics),
+        "malformed Stata characteristic metadata"
+    )
     expect_error(stata_notes(data, "missing"), "does not exist")
     expect_identical(attributes(data), attributes(data.frame(x = 1)))
 })
 
-test_that("DTA and Arrow writers reject over-limit characteristic values safely", {
+test_that("writers reject manually attached over-limit metadata safely", {
     data <- data.frame(x = 1)
     expect_error(
         set_stata_characteristic(data, "source", strrep("x", 67785L)),
@@ -101,9 +117,30 @@ test_that("DTA and Arrow writers reject over-limit characteristic values safely"
         path <- tempfile(fileext = paste0(".", extension))
         writeBin(charToRaw("existing"), path)
         save <- if (extension == "dta") save_dta else save_arrow
-        expect_error(save(data, path), class = "dtatools_write_error")
+        expect_error(save(data, path), "malformed Stata characteristic metadata")
         expect_identical(readBin(path, "raw", n = 8L), charToRaw("existing"))
         unlink(path)
+    }
+})
+
+test_that("Arrow retains `_dta` variable metadata that DTA cannot represent", {
+    data <- data.frame(`_dta` = 1, check.names = FALSE)
+    data <- set_stata_note(data, 1, "variable note", variable = "_dta")
+    arrow <- tempfile(fileext = ".arrow")
+    dta <- tempfile(fileext = ".dta")
+    on.exit(unlink(c(arrow, dta)), add = TRUE)
+
+    save_arrow(data, arrow)
+    from_arrow <- read_arrow(arrow)
+    expect_identical(stata_notes(from_arrow, "_dta"), c(`1` = "variable note"))
+    for (value in list(data, from_arrow)) {
+        writeBin(charToRaw("existing"), dta)
+        expect_error(
+            save_dta(value, dta),
+            "variable named `_dta`",
+            class = "dtatools_write_error"
+        )
+        expect_identical(readBin(dta, "raw", n = 8L), charToRaw("existing"))
     }
 })
 

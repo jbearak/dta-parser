@@ -18,6 +18,11 @@ are not user characteristics. Authoring APIs reject every structural family,
 so a record cannot be accepted on write and then disappear from the public
 model on read.
 
+Raw characteristic names that are not valid Stata names are malformed input
+and cause the read to fail. The 67,784-byte value limit counts content through
+the first optional NUL terminator; the terminator itself does not consume the
+limit.
+
 The DTA writer accepts note numbers 1 through 9,999. It rejects duplicate or
 reserved keys, NUL characters, over-limit values, and characteristic names
 that are not valid Stata names. It never truncates metadata. Modern releases
@@ -46,6 +51,11 @@ Passing `NULL` removes that key. `drop_stata_notes()` and
 `renumber_stata_notes()` closes gaps explicitly; reading, writing, and the
 other setters do not renumber. Every mutation helper returns a changed copy,
 unlike Stata commands that modify the current dataset.
+
+`_dta` is also a valid variable name, but DTA uses that same target spelling
+for dataset metadata. Arrow can retain notes and characteristics on a variable
+named `_dta`; a DTA write rejects that variable metadata instead of silently
+changing its scope to the dataset.
 
 ## Rust
 

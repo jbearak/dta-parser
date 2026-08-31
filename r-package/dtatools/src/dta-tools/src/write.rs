@@ -673,6 +673,14 @@ fn validate_structure(
 
     let mut names = HashSet::with_capacity(data.columns.len());
     for column in &data.columns {
+        if column.name == "_dta" && (!column.notes.is_empty() || !column.characteristics.is_empty())
+        {
+            return Err(DtaWriteError::InvalidVariable {
+                column: column.name.to_string(),
+                message: "notes and characteristics on a variable named `_dta` cannot be represented in DTA"
+                    .into(),
+            });
+        }
         if !column.notes.is_empty() {
             validate_notes(&column.notes, &format!("variable `{}`", column.name))?;
         }

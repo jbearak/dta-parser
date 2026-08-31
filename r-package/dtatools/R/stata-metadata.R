@@ -15,6 +15,10 @@
 #' language by returning the changed object instead of modifying a dataset in
 #' place.
 #'
+#' Arrow can retain metadata on a variable named `_dta`. DTA reserves that
+#' target spelling for dataset metadata, so `save_dta()` rejects notes or
+#' characteristics on such a variable rather than changing their scope.
+#'
 #' @param x A data frame or vector carrying Stata metadata.
 #' @param variable `NULL` for dataset or vector metadata, or one column name or
 #'   one-based position in a data frame.
@@ -44,7 +48,8 @@ stata_notes <- function(x, variable = NULL) {
     valid <- is.character(notes) && !anyNA(notes) &&
         is.numeric(numbers) && length(numbers) == length(notes) &&
         !anyNA(numbers) && all(numbers == floor(numbers)) &&
-        all(numbers >= 1 & numbers <= 9999) && !anyDuplicated(numbers)
+        all(numbers >= 1 & numbers <= 9999) && !anyDuplicated(numbers) &&
+        all(vapply(notes, .valid_stata_metadata_value, logical(1)))
     if (!valid) {
         stop("The object contains malformed Stata note metadata", call. = FALSE)
     }
@@ -65,20 +70,15 @@ stata_note <- function(x, number, variable = NULL) {
 #' @export
 set_stata_note <- function(x, number, value, variable = NULL) {
     number <- .stata_note_number(number)
-    if (!is.null(value) && (!is.character(value) || length(value) != 1L || is.na(value))) {
-        stop("`value` must be one non-missing string or NULL", call. = FALSE)
-    }
-    if (!is.null(value) && nchar(enc2utf8(value), type = "bytes") > 67784L) {
-        stop("`value` exceeds Stata's 67,784-byte metadata limit", call. = FALSE)
-    }
+    value <- .stata_metadata_value(value)
     notes <- stata_notes(x, variable)
     key <- as.character(number)
     if (is.null(value)) {
         notes <- notes[names(notes) != key]
     } else if (key %in% names(notes)) {
-        notes[[match(key, names(notes))]] <- enc2utf8(value)
+        notes[[match(key, names(notes))]] <- value
     } else {
-        notes <- c(notes, stats::setNames(enc2utf8(value), key))
+        notes <- c(notes, stats::setNames(value, key))
         notes <- notes[order(as.integer(names(notes)))]
     }
     .stata_set_notes(x, variable, notes)
@@ -133,6 +133,8 @@ stata_characteristics <- function(x, variable = NULL) {
         all(vapply(
             names(characteristics), .valid_stata_characteristic_name,
             logical(1)
+        )) && all(vapply(
+            characteristics, .valid_stata_metadata_value, logical(1)
         ))
     if (!valid) {
         stop("The object contains malformed Stata characteristic metadata", call. = FALSE)
@@ -153,20 +155,15 @@ stata_characteristic <- function(x, name, variable = NULL) {
 #' @export
 set_stata_characteristic <- function(x, name, value, variable = NULL) {
     name <- .stata_characteristic_name(name)
-    if (!is.null(value) && (!is.character(value) || length(value) != 1L || is.na(value))) {
-        stop("`value` must be one non-missing string or NULL", call. = FALSE)
-    }
-    if (!is.null(value) && nchar(enc2utf8(value), type = "bytes") > 67784L) {
-        stop("`value` exceeds Stata's 67,784-byte metadata limit", call. = FALSE)
-    }
+    value <- .stata_metadata_value(value)
     characteristics <- stata_characteristics(x, variable)
     match <- match(name, names(characteristics))
     if (is.null(value)) {
         if (!is.na(match)) characteristics <- characteristics[-match]
     } else if (is.na(match)) {
-        characteristics <- c(characteristics, stats::setNames(enc2utf8(value), name))
+        characteristics <- c(characteristics, stats::setNames(value, name))
     } else {
-        characteristics[[match]] <- enc2utf8(value)
+        characteristics[[match]] <- value
     }
     .stata_set_characteristics(x, variable, characteristics)
 }
@@ -192,6 +189,27 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
         is.finite(number) && number == floor(number) && number >= 1 && number <= 9999
     if (!valid) stop("A note number must be one whole number from 1 through 9,999", call. = FALSE)
     as.integer(number)
+}
+
+.valid_stata_metadata_value <- function(value) {
+    is.character(value) && length(value) == 1L && !is.na(value) &&
+        nchar(value, type = "chars") <= 67784L &&
+        nchar(enc2utf8(value), type = "bytes") <= 67784L
+}
+
+.stata_metadata_value <- function(value) {
+    if (is.null(value)) return(NULL)
+    if (!is.character(value) || length(value) != 1L || is.na(value)) {
+        stop("`value` must be one non-missing string or NULL", call. = FALSE)
+    }
+    if (nchar(value, type = "chars") > 67784L) {
+        stop("`value` exceeds Stata's 67,784-byte metadata limit", call. = FALSE)
+    }
+    value <- enc2utf8(value)
+    if (nchar(value, type = "bytes") > 67784L) {
+        stop("`value` exceeds Stata's 67,784-byte metadata limit", call. = FALSE)
+    }
+    value
 }
 
 .stata_characteristic_name <- function(name) {

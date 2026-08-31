@@ -405,7 +405,7 @@ describe('DtaFile', () => {
             }
         });
 
-        it('rejects characteristic values above the Stata metadata limit', async () => {
+        it('counts legacy metadata bytes through the first NUL', async () => {
             const original = fs.readFileSync(V111_FIXTURE);
             const arrayBuffer = original.buffer.slice(
                 original.byteOffset,
@@ -417,13 +417,13 @@ describe('DtaFile', () => {
             const names = original.subarray(expansion + 5, expansion + 5 + 66);
             const payload = Buffer.concat([
                 names,
-                Buffer.alloc(67_785, 0x78),
+                Buffer.alloc(67_784, 0x78),
                 Buffer.from([0]),
             ]);
             const header = Buffer.alloc(5);
             header[0] = 1;
             header.writeInt32LE(payload.length, 1);
-            const oversized = Buffer.concat([
+            const exactWithNul = Buffer.concat([
                 original.subarray(0, expansion),
                 header,
                 payload,
@@ -432,8 +432,38 @@ describe('DtaFile', () => {
             const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
             const filePath = path.join(directory, 'over-limit-note.dta');
             try {
+                fs.writeFileSync(filePath, exactWithNul);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.metadata.notes).not.toHaveLength(0);
+
+                const oversized = Buffer.from(exactWithNul);
+                const finalValueByte = expansion + 5 + 66 + 67_785 - 1;
+                expect(oversized[finalValueByte]).toBe(0);
+                oversized[finalValueByte] = 0x78;
                 fs.writeFileSync(filePath, oversized);
                 await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
+            } finally {
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('rejects invalid raw legacy characteristic names', async () => {
+            const malformed = Buffer.from(fs.readFileSync(V111_FIXTURE));
+            const arrayBuffer = malformed.buffer.slice(
+                malformed.byteOffset,
+                malformed.byteOffset + malformed.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, malformed.length);
+            const name = metadata.section_offsets.characteristics + 5 + 33;
+            malformed.fill(0, name, name + 33);
+            malformed.write('2bad', name, 'ascii');
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'invalid-name.dta');
+            try {
+                fs.writeFileSync(filePath, malformed);
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Invalid on-disk Stata characteristic name'
+                );
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });
             }

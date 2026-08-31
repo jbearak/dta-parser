@@ -373,8 +373,8 @@ function noteNumber(name) {
 function reservedCharacteristicName(name) {
   return NOTE_NAME.test(name) || name === "_lang_list" || name === "_lang_c" || name.startsWith("_lang_v_") || name.startsWith("_lang_l_");
 }
-function isRetainedStataCharacteristicName(name) {
-  return noteNumber(name) !== null || !reservedCharacteristicName(name);
+function validCharacteristicNameShape(name) {
+  return /^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) && codePointLengthAtMost(name, 32) && utf8LengthAtMost(name, 128);
 }
 var StataMetadataCollector = class {
   dataset;
@@ -414,8 +414,11 @@ var StataMetadataCollector = class {
     return indexes;
   }
   classify(target, name) {
+    if (!validCharacteristicNameShape(name)) {
+      throw new Error("Invalid on-disk Stata characteristic name");
+    }
     const number = noteNumber(name);
-    if (!isRetainedStataCharacteristicName(name)) return null;
+    if (number === null && reservedCharacteristicName(name)) return null;
     const scopeIndex = this.targetIndex(target);
     if (scopeIndex === void 0) return null;
     return { scopeIndex, name, noteNumber: number };
@@ -472,14 +475,23 @@ function codePointLengthAtMost(value, limit) {
   return true;
 }
 function utf8LengthAtMost(value, limit) {
-  const output = new Uint8Array(limit + 1);
+  const output = new Uint8Array(Math.min(limit + 1, value.length * 3));
   const encoded = TEXT_ENCODER.encodeInto(value, output);
   return encoded.read === value.length && encoded.written <= limit;
 }
 function validCharacteristicName(name) {
-  if (!/^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) || !codePointLengthAtMost(name, 32) || !utf8LengthAtMost(name, 128) || reservedCharacteristicName(name)) {
+  if (!validCharacteristicNameShape(name) || reservedCharacteristicName(name)) {
     throw new Error("Invalid or reserved Stata characteristic name");
   }
+}
+function stataMetadataValueEnd(bytes, start, length) {
+  const limit = start + length;
+  let end = start;
+  while (end < limit && bytes[end] !== 0) end++;
+  if (end - start > MAX_STATA_METADATA_VALUE_BYTES) {
+    throw new Error("Characteristic value exceeds the 67,784-byte limit");
+  }
+  return end;
 }
 function validMetadataValue(value) {
   if (typeof value !== "string" || value.includes("\0") || !utf8LengthAtMost(value, MAX_STATA_METADATA_VALUE_BYTES)) {
@@ -644,14 +656,14 @@ function parse_characteristics(bytes, view, little_endian, section_offsets, fiel
   }
   pos += TAG_CHARACTERISTICS_OPEN.length;
   const names_length = field_width * 2;
-  let collector = null;
+  const collector = new StataMetadataCollector(dataset, variables);
   while (pos < section_offsets.data) {
     if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
       pos += TAG_CHARACTERISTICS_CLOSE.length;
       if (pos !== section_offsets.data) {
         throw new Error("Characteristics section does not end at the mapped data offset");
       }
-      collector?.finish();
+      collector.finish();
       return;
     }
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
@@ -677,15 +689,11 @@ function parse_characteristics(bytes, view, little_endian, section_offsets, fiel
     if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
       throw new Error("Characteristic value exceeds the 67,784-byte limit");
     }
-    if (isRetainedStataCharacteristicName(name)) {
-      collector ??= new StataMetadataCollector(dataset, variables);
-      collector.pushLazy(target, name, () => read_fixed_string(
-        bytes,
-        pos + names_length,
-        valueLength,
-        decoder
-      ));
-    }
+    collector.pushLazy(target, name, () => {
+      const start = pos + names_length;
+      const end = stataMetadataValueEnd(bytes, start, valueLength);
+      return decoder.decode(bytes.subarray(start, end));
+    });
     pos += length;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
       throw new Error("Missing </ch> tag");
@@ -1207,13 +1215,13 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
   const bytes = bytes_from_view(view);
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
-  let collector = null;
+  const collector = new StataMetadataCollector(dataset, variables);
   while (pos + my_header_size <= buffer_length) {
     const my_data_type = view.getUint8(pos);
     const my_len = layout.expansion_length_width === 2 ? view.getInt16(pos + 1, little_endian) : view.getInt32(pos + 1, little_endian);
     pos += my_header_size;
     if (my_data_type === 0 && my_len === 0) {
-      collector?.finish();
+      collector.finish();
       return pos;
     }
     if (my_data_type === 0 || my_len < 0) {
@@ -1239,19 +1247,19 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
       if (my_value_length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
         throw new Error("Characteristic value exceeds the 67,784-byte limit");
       }
-      if (isRetainedStataCharacteristicName(my_characteristic)) {
-        collector ??= new StataMetadataCollector(dataset, variables);
-        collector.pushLazy(
-          my_variable,
-          my_characteristic,
-          () => read_fixed_string2(
+      collector.pushLazy(
+        my_variable,
+        my_characteristic,
+        () => {
+          const start2 = pos + 2 * layout.varname_width;
+          const end = stataMetadataValueEnd(
             bytes,
-            pos + 2 * layout.varname_width,
-            my_value_length,
-            decoder
-          )
-        );
-      }
+            start2,
+            my_value_length
+          );
+          return decoder.decode(bytes.subarray(start2, end));
+        }
+      );
     }
     pos += my_len;
   }

@@ -4,8 +4,8 @@ use crate::endian::{
 };
 use crate::legacy::parse_legacy_metadata;
 use crate::stata_metadata::{
-    classify_characteristic, validate_raw_value_length, CharacteristicCollector,
-    VariableTargetIndexes,
+    classify_characteristic, validate_raw_value_bytes, validate_raw_value_length,
+    CharacteristicCollector, VariableTargetIndexes,
 };
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
@@ -384,9 +384,10 @@ fn parse_characteristics(
         validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
         let target = encoding.decode(field_bytes(variable));
         let name = encoding.decode(field_bytes(characteristic));
-        if let Some(accepted) =
-            classify_characteristic(&target, name, |target| variable_indexes.resolve(target))
-        {
+        if let Some(accepted) = classify_characteristic(&target, name, cursor + width, |target| {
+            variable_indexes.resolve(target)
+        })? {
+            validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
             collector
                 .get_or_insert_with(CharacteristicCollector::default)
                 .push(accepted, encoding.decode(field_bytes(value)));

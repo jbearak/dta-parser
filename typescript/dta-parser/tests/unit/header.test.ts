@@ -391,7 +391,7 @@ describe('parse_metadata', () => {
     // ----- Error handling -----
 
     describe('error handling', () => {
-        it('rejects modern characteristic values above the Stata limit', () => {
+        it('counts modern metadata bytes through the first NUL', () => {
             const original = Buffer.from(load_fixture('auto_v118.dta'));
             const metadata = parse_metadata(
                 original.buffer.slice(
@@ -399,32 +399,67 @@ describe('parse_metadata', () => {
                     original.byteOffset + original.byteLength
                 )
             );
-            const record = metadata.section_offsets.characteristics
+            const firstRecord = metadata.section_offsets.characteristics
                 + Buffer.byteLength('<characteristics><ch>');
+            const record = firstRecord;
             const oldLength = original.readUInt32LE(record);
-            const desiredValueLength = 67_786;
+            const desiredValueLength = 67_785;
             const extra = desiredValueLength - (oldLength - 2 * 129);
             const close = record + 4 + oldLength;
-            const oversized = Buffer.concat([
-                original.subarray(0, close),
-                Buffer.alloc(extra, 0x78),
+            const exactValue = Buffer.alloc(desiredValueLength, 0x78);
+            exactValue[exactValue.length - 1] = 0;
+            const exactWithNul = Buffer.concat([
+                original.subarray(0, record + 4 + 2 * 129),
+                exactValue,
                 original.subarray(close),
             ]);
-            oversized.writeUInt32LE(oldLength + extra, record);
+            exactWithNul.writeUInt32LE(oldLength + extra, record);
             const mapPayload = metadata.section_offsets.map
                 + Buffer.byteLength('<map>');
             for (let index = 9; index < 14; index++) {
                 const offset = mapPayload + index * 8;
-                oversized.writeBigUInt64LE(
-                    oversized.readBigUInt64LE(offset) + BigInt(extra), offset
+                exactWithNul.writeBigUInt64LE(
+                    exactWithNul.readBigUInt64LE(offset) + BigInt(extra), offset
                 );
             }
+            const exactBuffer = exactWithNul.buffer.slice(
+                exactWithNul.byteOffset,
+                exactWithNul.byteOffset + exactWithNul.byteLength
+            );
+            expect(() => parse_metadata(exactBuffer)).not.toThrow();
+
+            const oversized = Buffer.from(exactWithNul);
+            const finalValueByte = record + 4 + 2 * 129
+                + desiredValueLength - 1;
+            expect(oversized[finalValueByte]).toBe(0);
+            oversized[finalValueByte] = 0x78;
             expect(() => parse_metadata(
                 oversized.buffer.slice(
                     oversized.byteOffset,
                     oversized.byteOffset + oversized.byteLength
                 )
             )).toThrow('67,784-byte limit');
+        });
+
+        it('rejects invalid raw modern characteristic names', () => {
+            const malformed = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            );
+            const record = metadata.section_offsets.characteristics
+                + Buffer.byteLength('<characteristics><ch>');
+            const name = record + 4 + 129;
+            malformed.fill(0, name, name + 129);
+            malformed.write('2bad', name, 'ascii');
+            expect(() => parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            )).toThrow('Invalid on-disk Stata characteristic name');
         });
 
         it('throws on truncated buffer', () => {

@@ -36,8 +36,6 @@ export interface ModernMetadataHeader {
 }
 /** Parse the reusable header and section-map state from a modern prefix. */
 export declare function parse_modern_metadata_header(buffer: ArrayBuffer, options?: TextEncodingOptions): ModernMetadataHeader;
-/** Return the mapped byte boundary needed for a complete modern metadata read. */
-export declare function modern_metadata_buffer_size(buffer: ArrayBuffer, options?: TextEncodingOptions): number;
 export declare function parse_metadata(buffer: ArrayBuffer, options?: TextEncodingOptions): DtaMetadata;
 /** Parse variable metadata using header state already obtained from a prefix. */
 export declare function parse_metadata_from_header(buffer: ArrayBuffer, header: ModernMetadataHeader): DtaMetadata;

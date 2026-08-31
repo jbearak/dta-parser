@@ -15,6 +15,7 @@ use dta_tools::{
     classify_byte_missing_for_version, classify_float_missing_bits_for_version,
     classify_int_missing_for_version, classify_long_missing_for_version,
     dta_write_numeric_value_is_representable, encode_numeric,
+    valid_characteristic, valid_note,
     write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
     DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
@@ -135,7 +136,11 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
         let number = field(cursor)?
             .parse::<u32>()
             .map_err(|_| "invalid internal note number".to_owned())?;
-        notes.push(note(number, field(cursor + 1)?));
+        let text = field(cursor + 1)?;
+        if !valid_note(number, text) {
+            return Err("invalid internal Stata note metadata".to_owned());
+        }
+        notes.push(note(number, text));
         cursor += 2;
     }
     let characteristic_count = parse_metadata_count(field(cursor)?, "characteristic")?;
@@ -145,7 +150,12 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
         .try_reserve_exact(characteristic_count)
         .map_err(|_| "could not allocate characteristic metadata".to_owned())?;
     for _ in 0..characteristic_count {
-        characteristics.push(characteristic(field(cursor)?, field(cursor + 1)?));
+        let name = field(cursor)?;
+        let value = field(cursor + 1)?;
+        if !valid_characteristic(name, value) {
+            return Err("invalid internal Stata characteristic metadata".to_owned());
+        }
+        characteristics.push(characteristic(name, value));
         cursor += 2;
     }
     Ok((notes, characteristics))

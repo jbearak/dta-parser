@@ -72,6 +72,10 @@ highest existing number, matching Stata's next-number behavior.
 consecutive numbers beginning at \code{start}. R differs from Stata's command
 language by returning the changed object instead of modifying a dataset in
 place.
+
+Arrow can retain metadata on a variable named erb{_dta}. DTA reserves that
+target spelling for dataset metadata, so code{save_dta()} rejects notes or
+characteristics on such a variable rather than changing their scope.
 }
 \examples{
 survey <- data.frame(age = c(20, 30))

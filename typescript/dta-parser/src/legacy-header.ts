@@ -42,7 +42,7 @@ import {
 } from './text-encoding';
 import {
     MAX_STATA_METADATA_VALUE_BYTES,
-    isRetainedStataCharacteristicName,
+    stataMetadataValueEnd,
     StataMetadataCollector,
 } from './stata-metadata';
 
@@ -130,7 +130,7 @@ function scan_expansion_fields(
     const bytes = bytes_from_view(view);
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
-    let collector: StataMetadataCollector | null = null;
+    const collector = new StataMetadataCollector(dataset, variables);
 
     while (pos + my_header_size <= buffer_length) {
         const my_data_type = view.getUint8(pos);
@@ -141,7 +141,7 @@ function scan_expansion_fields(
         pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
-            collector?.finish();
+            collector.finish();
             return pos;
         }
 
@@ -164,19 +164,17 @@ function scan_expansion_fields(
             if (my_value_length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
                 throw new Error('Characteristic value exceeds the 67,784-byte limit');
             }
-            if (isRetainedStataCharacteristicName(my_characteristic)) {
-                collector ??= new StataMetadataCollector(dataset, variables);
-                collector.pushLazy(
-                    my_variable,
-                    my_characteristic,
-                    () => read_fixed_string(
-                        bytes,
-                        pos + 2 * layout.varname_width,
-                        my_value_length,
-                        decoder
-                    )
-                );
-            }
+            collector.pushLazy(
+                my_variable,
+                my_characteristic,
+                () => {
+                    const start = pos + 2 * layout.varname_width;
+                    const end = stataMetadataValueEnd(
+                        bytes, start, my_value_length
+                    );
+                    return decoder.decode(bytes.subarray(start, end));
+                }
+            );
         }
 
         pos += my_len;
