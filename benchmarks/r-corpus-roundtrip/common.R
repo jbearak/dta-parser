@@ -2,6 +2,83 @@ source(file.path(script_dir, "..", "benchmark-common.R"), local = TRUE)
 
 roundtrip_corpora <- c("DHS", "MICS", "NSFG")
 
+roundtrip_order_smallest <- function(inventory) {
+    inventory[
+        order(inventory$bytes, inventory$relative_path, method = "radix"),
+        ,
+        drop = FALSE
+    ]
+}
+
+roundtrip_verification_limits <- function(
+    jobs = Sys.getenv("DTATOOLS_VERIFY_JOBS", "16"),
+    memory_gib = Sys.getenv("DTATOOLS_VERIFY_MEMORY_GIB", "96")
+) {
+    jobs <- suppressWarnings(as.integer(jobs))
+    memory_gib <- suppressWarnings(as.numeric(memory_gib))
+    if (length(jobs) != 1L || is.na(jobs) || jobs < 1L) {
+        stop("DTATOOLS_VERIFY_JOBS must be a positive integer")
+    }
+    if (length(memory_gib) != 1L || is.na(memory_gib) ||
+        !is.finite(memory_gib) || memory_gib <= 0) {
+        stop("DTATOOLS_VERIFY_MEMORY_GIB must be a positive number")
+    }
+    list(jobs = jobs, memory_bytes = memory_gib * 1024^3)
+}
+
+roundtrip_verification_waves <- function(
+    bytes, jobs, memory_bytes,
+    expansion = 16, minimum_bytes = 512 * 1024^2
+) {
+    if (!length(bytes)) return(list())
+    estimates <- pmax(minimum_bytes, expansion * as.double(bytes))
+    waves <- list()
+    current <- integer()
+    current_memory <- 0
+    for (index in seq_along(estimates)) {
+        estimate <- estimates[[index]]
+        exceeds <- length(current) >= jobs ||
+            (length(current) > 0L && current_memory + estimate > memory_bytes)
+        if (exceeds) {
+            waves[[length(waves) + 1L]] <- current
+            current <- integer()
+            current_memory <- 0
+        }
+        current <- c(current, index)
+        current_memory <- current_memory + estimate
+    }
+    if (length(current)) waves[[length(waves) + 1L]] <- current
+    waves
+}
+
+roundtrip_select_verification <- function(inventory, selection, argument = "") {
+    ordered <- roundtrip_order_smallest(inventory)
+    if (identical(selection, "full")) return(ordered)
+    if (identical(selection, "from")) {
+        position <- suppressWarnings(as.integer(argument))
+        if (length(position) != 1L || is.na(position) || position < 1L ||
+            position > nrow(ordered) ||
+            !identical(as.character(position), argument)) {
+            stop("from position must identify an ordered corpus row")
+        }
+        return(ordered[seq.int(position, nrow(ordered)), , drop = FALSE])
+    }
+    if (identical(selection, "smallest")) {
+        count <- suppressWarnings(as.integer(argument))
+        if (length(count) != 1L || is.na(count) || count < 1L ||
+            !identical(as.character(count), argument)) {
+            stop("smallest count must be a positive integer")
+        }
+        return(utils::head(ordered, count))
+    }
+    if (identical(selection, "id")) {
+        selected <- inventory[inventory$id == argument, , drop = FALSE]
+        if (nrow(selected) != 1L) stop("stable corpus ID was not found")
+        return(selected)
+    }
+    stop("verification selection must be full, from, smallest, or id")
+}
+
 roundtrip_stable_id <- function(corpus, relative_path, sha256) {
     digest <- tools::sha256sum(bytes = charToRaw(paste(
         corpus, relative_path, sha256, sep = "\037"

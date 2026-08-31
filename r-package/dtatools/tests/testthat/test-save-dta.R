@@ -265,20 +265,26 @@ test_that("malformed compact numerics follow materialized write semantics", {
     )
 })
 
-test_that("legacy compact numerics are revalidated for modern missing ranges", {
+test_that("legacy compact numerics widen around modern missing ranges", {
     legacy_path <- fixture("synthetic_v111.dta")
     legacy <- read_dta(legacy_path, col_select = "i")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(legacy$i))
-    output <- tempfile(fileext = ".dta")
-    on.exit(unlink(output), add = TRUE)
-    expect_warning(
-        save_dta(legacy, output),
-        class = "dtatools_write_numeric_replacement_warning"
+    direct_output <- tempfile(fileext = ".dta")
+    arrow_output <- tempfile(fileext = ".arrow")
+    via_arrow_output <- tempfile(fileext = ".dta")
+    on.exit(unlink(c(direct_output, arrow_output, via_arrow_output)), add = TRUE)
+
+    expect_silent(save_dta(legacy, direct_output))
+    expect_silent(save_arrow(legacy, arrow_output))
+    expect_silent(
+        save_dta(read_arrow(arrow_output), via_arrow_output)
     )
-    expect_identical(
-        as.double(read_dta(output, use_numeric_altrep = FALSE)$i),
-        c(321, NA, NA, NA)
-    )
+    for (output in c(direct_output, via_arrow_output)) {
+        actual <- read_dta(output, use_numeric_altrep = FALSE)$i
+        expect_identical(stata_storage_type(actual), "long")
+        expect_identical(as.double(actual), as.double(legacy$i))
+        expect_identical(missing_tag(actual), missing_tag(legacy$i))
+    }
 })
 
 test_that("character missing values become empty strings and long values use strL", {
@@ -311,6 +317,66 @@ test_that("character missing values become empty strings and long values use str
         data, NULL, 4L, TRUE
     )
     expect_identical(specification[[3L]][[1L]][[7L]], data$short)
+})
+
+test_that("fixed strings retain declared storage through Arrow", {
+    data <- data.frame(caseid = "12345")
+    attr(data$caseid, "format.stata") <- "%12s"
+    attr(data$caseid, "stata.string.storage") <- "str12"
+    direct <- tempfile(fileext = ".dta")
+    arrow <- tempfile(fileext = ".arrow")
+    via_arrow <- tempfile(fileext = ".dta")
+    on.exit(unlink(c(direct, arrow, via_arrow)), add = TRUE)
+
+    expect_silent(save_dta(data, direct))
+    expect_silent(save_arrow(data, arrow))
+    expect_silent(save_dta(read_arrow(arrow), via_arrow))
+    for (path in c(direct, via_arrow)) {
+        bytes <- readBin(path, "raw", n = file.info(path)$size)
+        tag <- charToRaw("<variable_types>")
+        start <- grepRaw(tag, bytes, fixed = TRUE)[[1L]] + length(tag)
+        expect_identical(
+            readBin(bytes[start + 0:1], integer(), n = 1L, size = 2L,
+                    endian = "little"),
+            12L
+        )
+        actual <- read_dta(path)
+        expect_identical(as.character(actual$caseid), "12345")
+        expect_identical(
+            attr(actual$caseid, "stata.string.storage", exact = TRUE),
+            "str12"
+        )
+    }
+})
+
+test_that("multiple strL columns write interleaved observations", {
+    data <- data.frame(
+        first = c("", "first-two", "first-three"),
+        second = c("second-one", "", "second-three")
+    )
+    attr(data$first, "stata.string.storage") <- "strL"
+    attr(data$second, "stata.string.storage") <- "strL"
+    direct <- tempfile(fileext = ".dta")
+    arrow <- tempfile(fileext = ".arrow")
+    via_arrow <- tempfile(fileext = ".dta")
+    on.exit(unlink(c(direct, arrow, via_arrow)), add = TRUE)
+
+    expect_silent(save_dta(data, direct))
+    expect_silent(save_arrow(data, arrow))
+    expect_silent(save_dta(read_arrow(arrow), via_arrow))
+    for (path in c(direct, via_arrow)) {
+        actual <- read_dta(path)
+        expect_identical(
+            unname(lapply(actual, as.character)),
+            list(c("", "first-two", "first-three"),
+                 c("second-one", "", "second-three"))
+        )
+        expect_identical(
+            vapply(actual, attr, character(1), "stata.string.storage",
+                   exact = TRUE),
+            c(first = "strL", second = "strL")
+        )
+    }
 })
 
 test_that("ordered and unordered factors become labelled long integers", {
@@ -541,12 +607,18 @@ test_that("duplicate value-label keys from source metadata round-trip stably", {
         "stata_numeric", "stata_byte", "haven_labelled", "vctrs_vctr", "double"
     )
     path <- tempfile(fileext = ".dta")
-    on.exit(unlink(path), add = TRUE)
+    arrow <- tempfile(fileext = ".arrow")
+    via_arrow <- tempfile(fileext = ".dta")
+    on.exit(unlink(c(path, arrow, via_arrow)), add = TRUE)
 
     expect_silent(save_dta(data.frame(x = x), path))
-    actual <- attr(read_dta(path)$x, "labels", exact = TRUE)
-    expect_identical(names(actual), c("Refused", "Not ascertained", "Don't know"))
-    expect_identical(unname(missing_tag(actual)), c("a", "a", "b"))
+    expect_silent(save_arrow(data.frame(x = x), arrow))
+    expect_silent(save_dta(read_arrow(arrow), via_arrow))
+    for (output in c(path, via_arrow)) {
+        actual <- attr(read_dta(output)$x, "labels", exact = TRUE)
+        expect_identical(names(actual), c("Refused", "Not ascertained", "Don't know"))
+        expect_identical(unname(missing_tag(actual)), c("a", "a", "b"))
+    }
 })
 
 test_that("value-label text limits count UTF-8 bytes before touching the destination", {

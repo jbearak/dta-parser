@@ -284,6 +284,7 @@ save_arrow <- function(data, path,
     tz <- NULL
     units <- ""
     storage_code <- -1L
+    string_storage <- -1L
     values <- column
 
     value_labels <- list(double(), character(), FALSE)
@@ -317,6 +318,19 @@ save_arrow <- function(data, path,
             )
             ordered <- is.ordered(column)
         } else if (identical(kind, "character")) {
+            declared <- attr(column, "stata.string.storage", exact = TRUE)
+            if (!is.null(declared)) {
+                if (!is.character(declared) || length(declared) != 1L ||
+                    is.na(declared) ||
+                    !grepl("^(strL|str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5]))$", declared)) {
+                    .dta_write_abort(sprintf(
+                        "Column `%s` has an invalid `stata.string.storage` declaration",
+                        name
+                    ))
+                }
+                string_storage <- if (declared == "strL") 0L else
+                    as.integer(sub("^str", "", declared))
+            }
             # Unmaterialized dictionary-string columns are already UTF-8 and
             # export natively; enc2utf8() would materialize every CHARSXP.
             if (!.is_unmaterialized_dictstring(column)) {
@@ -346,12 +360,12 @@ save_arrow <- function(data, path,
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
         value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
-        inherits(column, "haven_labelled")
+        inherits(column, "haven_labelled"), string_storage
     )
 }
 
 .arrow_known_column_attributes <- function(kind) {
-    common <- c("label", "format.stata")
+    common <- c("label", "format.stata", "stata.string.storage")
     switch(kind,
         factor = c(common, "levels", "class"),
         date = c(common, "labels", "class"),

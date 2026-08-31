@@ -59,6 +59,8 @@ pub struct RArrowColumnDescriptor {
     format: *const c_char,
     /// -1 none; 0 byte, 1 int, 2 long, 3 float, 4 double (kind 9 only).
     storage: c_int,
+    /// -1 none; 0 strL; 1..=2045 fixed-string byte width.
+    string_storage: c_int,
     ordered: c_int,
     tz: *const c_char,
     units: *const c_char,
@@ -834,6 +836,7 @@ struct ExtractedColumn {
     ordered: bool,
     haven_labelled: bool,
     value_labels: Option<ValueLabelTable>,
+    string_storage: Option<String>,
     input: ColumnInput,
     row_count: usize,
 }
@@ -869,6 +872,12 @@ unsafe fn extract_column(
             None
         };
     let value_labels = value_label_table(descriptor, &name)?;
+    let string_storage = match descriptor.string_storage {
+        -1 => None,
+        0 => Some("strL".to_owned()),
+        1..=2045 => Some(format!("str{}", descriptor.string_storage)),
+        _ => return Err(format!("column `{name}` has invalid string storage")),
+    };
 
     let input = match kind {
         RArrowKind::Logical => ColumnInput::Logical {
@@ -934,6 +943,7 @@ unsafe fn extract_column(
         ordered: descriptor.ordered != 0,
         haven_labelled: descriptor.haven_labelled != 0,
         value_labels,
+        string_storage,
         input,
         row_count,
     })
@@ -1045,7 +1055,8 @@ unsafe fn encode_column(
             }
         }
         ColumnInput::CharacterEager { values } => {
-            let document = with_labels(base_document);
+            let mut document = with_labels(base_document);
+            document.string_storage.clone_from(&column.string_storage);
             (
                 needs_document(&document).then_some(document),
                 string_array(values, name)?,
@@ -1055,7 +1066,8 @@ unsafe fn encode_column(
         ColumnInput::CharacterDict { data } => {
             let data = &*data.cast::<crate::DictStringData>();
             let array = dictstring_array(data, row_count, name)?;
-            let document = with_labels(base_document);
+            let mut document = with_labels(base_document);
+            document.string_storage.clone_from(&column.string_storage);
             (needs_document(&document).then_some(document), array, 0)
         }
         ColumnInput::Raw { values } => {
@@ -1679,6 +1691,13 @@ unsafe fn attach_simple_attributes(
     if !attributes.format().is_empty() {
         let format = scalar_string(attributes.format(), guard)?;
         set_attr(vector, "format.stata", format)?;
+    }
+    if let Some(storage) = attributes
+        .document
+        .and_then(|document| document.string_storage.as_deref())
+    {
+        let storage = scalar_string(storage, guard)?;
+        set_attr(vector, "stata.string.storage", storage)?;
     }
     Ok(())
 }

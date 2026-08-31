@@ -1544,19 +1544,31 @@ fn write_strls<W: Write, S: DtaWriteObservationSource + ?Sized>(
     plans: &[Option<Box<StrlColumnPlan>>],
 ) -> Result<(), DtaWriteError> {
     write_tag(writer, b"<strls>")?;
-    for (column_index, plan) in plans.iter().enumerate() {
-        let Some(plan) = plan else {
-            continue;
-        };
-        let column_name = &data.columns[column_index].name;
-        for (word_index, &canonical_word) in plan.canonical.iter().enumerate() {
-            let mut remaining = canonical_word;
-            while remaining != 0 {
-                let bit = remaining.trailing_zeros() as usize;
-                let row_index = word_index
-                    .checked_mul(64)
-                    .and_then(|value| value.checked_add(bit))
-                    .ok_or(DtaWriteError::Overflow("GSO observation"))?;
+    let word_count = plans
+        .iter()
+        .filter_map(|plan| plan.as_ref().map(|plan| plan.canonical.len()))
+        .max()
+        .unwrap_or(0);
+    for word_index in 0..word_count {
+        let mut rows = plans
+            .iter()
+            .filter_map(|plan| {
+                plan.as_ref()
+                    .and_then(|plan| plan.canonical.get(word_index).copied())
+            })
+            .fold(0, |left, right| left | right);
+        while rows != 0 {
+            let bit = rows.trailing_zeros() as usize;
+            let row_index = word_index
+                .checked_mul(64)
+                .and_then(|value| value.checked_add(bit))
+                .ok_or(DtaWriteError::Overflow("GSO observation"))?;
+            for (column_index, plan) in plans.iter().enumerate() {
+                let Some(plan) = plan else { continue };
+                if plan.canonical[word_index] & (1_u64 << bit) == 0 {
+                    continue;
+                }
+                let column_name = &data.columns[column_index].name;
                 let row = u64::try_from(row_index)
                     .map_err(|_| DtaWriteError::Overflow("GSO observation"))?;
                 source.begin_row(row)?;
@@ -1595,8 +1607,8 @@ fn write_strls<W: Write, S: DtaWriteObservationSource + ?Sized>(
                     source.check_interrupt()?;
                 }
                 writer.write_all(&[0])?;
-                remaining &= remaining - 1;
             }
+            rows &= rows - 1;
         }
     }
     write_tag(writer, b"</strls>")?;
