@@ -49,7 +49,11 @@
 #'
 #' `gen()` appends one variable and does not implement Stata's `before()` or
 #' `after()` placement. A declared `stata_*()` result keeps its numeric storage;
-#' otherwise logical, integer, and double results use Stata `float` storage.
+#' otherwise logical, integer, double, and `Date` results use Stata `float`
+#' storage. Ordinary `POSIXct` results use Stata `double` storage so their
+#' millisecond datetime representation is not rounded. `Date` and `POSIXct`
+#' results retain their temporal class and receive the corresponding Stata
+#' temporal declaration.
 #' Character results keep a valid declared `stata.string.storage`. Otherwise,
 #' they use the smallest `str1` through `str2045` width that fits, or `strL`
 #' above 2,045 UTF-8 bytes. Numeric rows excluded by `where` contain
@@ -65,7 +69,7 @@
 #' \tabular{lll}{
 #' Topic \tab Stata \tab dtatools \cr
 #' Existing name \tab Error \tab Error before mutation \cr
-#' Numeric default \tab `float`, or `double` after `set type` \tab Always `float` \cr
+#' Numeric default \tab `float`, or `double` after `set type` \tab `float`; `POSIXct` uses `double` \cr
 #' Explicit storage \tab Type prefix \tab `stata_*()` value expression \cr
 #' Strings \tab Smallest fitting `str#` or `strL` \tab Declared width, otherwise smallest UTF-8-byte width or `strL` \cr
 #' Rows outside `if` \tab Numeric `.` or string `""` \tab Same \cr
@@ -77,6 +81,8 @@
 #' Compact `byte`, `int`, `long`, and `float` columns are patched in their
 #' native storage after validation. A direct compact target allocates work
 #' proportional to the selected rows and does not create a full R double copy.
+#' The native path keeps compact rollback bytes until the write commits so an
+#' interrupt restores the original payload and missing-value cache.
 #' A metadata proxy first detaches by copying its compact native payload so an
 #' independent source remains unchanged; it still avoids a full R double copy.
 #' Ordinary and materialized numeric columns and character columns are patched in their
@@ -267,7 +273,16 @@ gen <- function(data, variable, values, where = NULL) {
     size <- vctrs::vec_size(values)
     selected <- .mutation_selected_count(rows, row_count)
     if (size == row_count) {
-        return(if (is.null(rows)) values else vctrs::vec_slice(values, rows))
+        slice_rows <- if (inherits(rows, "stata_numeric")) {
+            .stata_data(rows)
+        } else {
+            rows
+        }
+        return(if (is.null(rows)) {
+            values
+        } else {
+            vctrs::vec_slice(values, slice_rows)
+        })
     }
     if (size == selected) return(values)
     if (size == 1L) return(values)
@@ -320,12 +335,29 @@ gen <- function(data, variable, values, where = NULL) {
 }
 
 .cast_replacement <- function(values, target) {
-    .validate_numeric_values(values)
     if (is.factor(target) || !is.null(dim(target)) ||
         !(typeof(target) %in% c("logical", "integer", "double", "character"))) {
         stop("The target column has an unsupported replacement type",
              call. = FALSE)
     }
+    native_numeric <- inherits(target, "stata_numeric") &&
+        !inherits(target, "stata_temporal") &&
+        typeof(values) %in% c("logical", "integer", "double") &&
+        (!is.object(values) || inherits(values, "stata_numeric"))
+    native_temporal <- inherits(target, "stata_temporal") &&
+        ((inherits(target, "stata_date") && inherits(values, "Date")) ||
+         (inherits(target, "stata_datetime") &&
+          inherits(values, "POSIXct")))
+    if (.is_unmaterialized_numeric_altrep(target) &&
+        (native_numeric || native_temporal) &&
+        !is.factor(values) && is.null(dim(values))) {
+        # The native patcher validates and encodes these values directly for
+        # the target's declared storage. Going through vec_cast() would build
+        # a replacement compact column and, for ordinary input, a full double
+        # temporary before decoding it again.
+        return(values)
+    }
+    .validate_numeric_values(values)
     # Build Stata prototypes from metadata rather than proxying the target.
     # A real metadata copy must revoke exclusive patch ownership; this internal
     # cast must not.
@@ -380,15 +412,43 @@ gen <- function(data, variable, values, where = NULL) {
 
 .generated_numeric <- function(values, rows, row_count) {
     declared <- stata_storage_type(values)
-    temporal <- inherits(values, "stata_temporal")
-    storage <- if (is.null(declared)) "float" else declared
+    base_date <- inherits(values, "Date") &&
+        !inherits(values, "stata_temporal")
+    base_datetime <- inherits(values, "POSIXct") &&
+        !inherits(values, "stata_temporal")
+    temporal <- inherits(values, "stata_temporal") ||
+        base_date || base_datetime
+    storage <- if (!is.null(declared)) {
+        declared
+    } else if (base_datetime) {
+        # Stata datetimes are millisecond counts and require double storage to
+        # preserve ordinary POSIXct values.
+        "double"
+    } else {
+        "float"
+    }
+    prototype <- if (base_date) {
+        structure(values, class = unique(c(
+            "stata_temporal", "stata_date", class(values)
+        )))
+    } else if (base_datetime) {
+        structure(values, class = unique(c(
+            "stata_temporal", "stata_datetime", class(values)
+        )))
+    } else {
+        values
+    }
     source <- if (inherits(values, "stata_numeric") &&
         !identical(storage, "double")) {
         values
+    } else if (!temporal && !identical(storage, "double")) {
+        # The native reader consumes logical, integer, and double vectors
+        # directly. Preserve their storage to avoid a full double temporary.
+        vctrs::vec_data(values)
     } else {
         as.double(vctrs::vec_data(values))
     }
-    temporal_code <- if (temporal) .stata_temporal_code(values) else 0L
+    temporal_code <- if (temporal) .stata_temporal_code(prototype) else 0L
     if (identical(storage, "double")) {
         output <- rep(NA_real_, row_count)
         if (is.null(rows)) output[] <- source else output[rows] <- source
@@ -403,7 +463,7 @@ gen <- function(data, variable, values, where = NULL) {
         )
     }
     if (temporal) {
-        return(.attach_stata_temporal(result, values, storage))
+        return(.attach_stata_temporal(result, prototype, storage))
     }
     result <- .restore_stata_metadata(result, values, storage)
     .apply_haven_labelled_class(
@@ -436,7 +496,6 @@ gen <- function(data, variable, values, where = NULL) {
         stop("`gen()` values must be numeric, logical, or character",
              call. = FALSE)
     }
-    .validate_numeric_values(values)
     if (typeof(values) == "character") {
         return(.generated_character(values, rows, row_count))
     }

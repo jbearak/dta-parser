@@ -22,9 +22,16 @@ validation without comparing two paths that share the same implementation.
 The benchmark also profiles a sparse full-length logical selector and a compact
 explicit-position sequence. Both row planners must stay below one compact byte
 payload of profiled allocation, guarding against full-length R temporaries.
+Full-length integer and compact-byte replacements then verify that the patcher
+consumes source vectors directly instead of constructing a double or a second
+encoded column. Their targets keep native rollback bytes outside the R heap so
+an interrupt can restore the original payload without materializing it.
 The run then generates a five-million-row compact byte column from one scalar.
 It fails if the largest R allocation reaches the size of a full double column,
 and uses `tracemem()` to check that neither existing column payload was copied.
+Full-length integer and compact-byte generation cases apply the same allocation
+limit and catch coercion or validation temporaries that scalar generation cannot
+expose.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

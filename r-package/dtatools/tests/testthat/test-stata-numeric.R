@@ -182,6 +182,18 @@ test_that("stored vctrs proxies are isolated from reference mutation", {
     expect_identical(as.double(temporal_proxy), before)
 })
 
+test_that("data-frame coercion preserves vector and explicit row names", {
+    value <- stata_byte(setNames(1:2, c("source-1", "source-2")))
+    implicit <- as.data.frame(value)
+    explicit <- as.data.frame(value, row.names = c("row-1", "row-2"))
+
+    expect_identical(row.names(implicit), c("source-1", "source-2"))
+    expect_identical(row.names(explicit), c("row-1", "row-2"))
+    expect_null(names(implicit[[1L]]))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(implicit[[1L]]))
+    expect_error(as.data.frame(value, row.names = "short"), "length 2")
+})
+
 test_that("lazy public snapshots release stripped source attributes", {
     finalized <- new.env(parent = emptyenv())
     finalized$done <- FALSE

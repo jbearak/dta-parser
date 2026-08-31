@@ -126,11 +126,37 @@ typedef struct {
 
 static SEXP numeric_compact_copy(const numeric_data *data);
 
+/* Compact ALTREP payload ownership lives in the external-pointer tag. A NULL
+   tag is directly writable. A non-NULL tag means an alias exists and ordinary
+   writes must detach. Metadata proxies use a private token as both the tag and
+   their owner claim; R_BaseEnv is the anonymous shared marker. Keep those
+   states behind these helpers rather than spreading tag policy across ALTREP
+   materialization and reference mutation. */
+static int compact_payload_is_shared(SEXP external) {
+    return R_ExternalPtrTag(external) != R_NilValue;
+}
+
+static void compact_payload_mark_shared(SEXP external) {
+    R_SetExternalPtrTag(external, R_BaseEnv);
+}
+
+static int compact_payload_is_owned_by(SEXP external, SEXP owner) {
+    return owner != R_NilValue && R_ExternalPtrTag(external) == owner;
+}
+
+static void compact_payload_claim(SEXP external, SEXP owner) {
+    R_SetExternalPtrTag(external, owner);
+}
+
+static void compact_payload_revoke_claim(SEXP external) {
+    R_SetExternalPtrTag(external, R_NilValue);
+}
+
 static SEXP detach_shared_materialized_payload(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     SEXP external = R_altrep_data1(value);
     if (materialized == R_NilValue || TYPEOF(external) != EXTPTRSXP ||
-        R_ExternalPtrTag(external) == R_NilValue) {
+        !compact_payload_is_shared(external)) {
         return materialized;
     }
 
@@ -631,23 +657,19 @@ SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value) {
     }
 
     numeric_reader reader = numeric_reader_create(value, length);
-    SEXP result = PROTECT(Rf_allocVector(INTSXP, length));
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         int missing_code;
         double row = numeric_reader_at(&reader, index, &missing_code);
         if (missing_code >= 0 || !R_FINITE(row) || row != trunc(row) ||
             row <= 0 || row > row_count || row > (double) INT_MAX) {
-            UNPROTECT(1);
             Rf_error(
                 "`where` row positions must be positive, finite, whole, "
                 "and no greater than the row count"
             );
         }
-        INTEGER(result)[index] = (int) row;
     }
-    UNPROTECT(1);
-    return result;
+    return value;
 }
 
 typedef struct {
@@ -1398,7 +1420,7 @@ static SEXP numeric_materialize(SEXP value, Rboolean writeable) {
             ? detach_shared_materialized_payload(value) : materialized;
     }
     numeric_data *data = numeric_storage(value);
-    if (R_ExternalPtrTag(R_altrep_data1(value)) != R_NilValue) {
+    if (compact_payload_is_shared(R_altrep_data1(value))) {
         SEXP detached = PROTECT(numeric_compact_copy(data));
         R_set_altrep_data1(value, R_altrep_data1(detached));
         data = numeric_storage(value);
@@ -2150,7 +2172,15 @@ static void write_numeric_observed(
     case NUMERIC_BYTE: {
         if (!R_FINITE(value) || value != trunc(value) ||
             value < -127.0 || value > 100.0) {
-            Rf_error("value cannot be represented as Stata byte storage");
+            const char *wider = R_FINITE(value) && value == trunc(value) &&
+                value >= -32767.0 && value <= 32740.0 ? "int" :
+                (R_FINITE(value) && value == trunc(value) &&
+                 value >= -2147483647.0 && value <= 2147483620.0
+                    ? "long" : "double");
+            Rf_error(
+                "Stata byte storage cannot represent the value; "
+                "use `stata_%s()`", wider
+            );
         }
         int8_t encoded = (int8_t) value;
         memcpy(output + (size_t) index * sizeof(encoded), &encoded,
@@ -2160,7 +2190,13 @@ static void write_numeric_observed(
     case NUMERIC_INT: {
         if (!R_FINITE(value) || value != trunc(value) ||
             value < -32767.0 || value > 32740.0) {
-            Rf_error("value cannot be represented as Stata int storage");
+            const char *wider = R_FINITE(value) && value == trunc(value) &&
+                value >= -2147483647.0 && value <= 2147483620.0
+                    ? "long" : "double";
+            Rf_error(
+                "Stata int storage cannot represent the value; "
+                "use `stata_%s()`", wider
+            );
         }
         int16_t encoded = (int16_t) value;
         memcpy(output + (size_t) index * sizeof(encoded), &encoded,
@@ -2170,7 +2206,10 @@ static void write_numeric_observed(
     case NUMERIC_LONG: {
         if (!R_FINITE(value) || value != trunc(value) ||
             value < -2147483647.0 || value > 2147483620.0) {
-            Rf_error("value cannot be represented as Stata long storage");
+            Rf_error(
+                "Stata long storage cannot represent the value; "
+                "use `stata_double()`"
+            );
         }
         int32_t encoded = (int32_t) value;
         memcpy(output + (size_t) index * sizeof(encoded), &encoded,
@@ -2183,7 +2222,10 @@ static void write_numeric_observed(
         memcpy(&maximum, &maximum_bits, sizeof(maximum));
         if (!R_FINITE(value) || value < -(double) maximum ||
             value > (double) maximum) {
-            Rf_error("value cannot be represented as Stata float storage");
+            Rf_error(
+                "Stata float storage cannot represent the value; "
+                "use `stata_double()`"
+            );
         }
         float encoded = (float) value;
         memcpy(output + (size_t) index * sizeof(encoded), &encoded,
@@ -2425,7 +2467,7 @@ static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
             ? detach_shared_materialized_payload(value) : materialized;
     }
 
-    if (R_ExternalPtrTag(R_altrep_data1(value)) != R_NilValue) {
+    if (compact_payload_is_shared(R_altrep_data1(value))) {
         SEXP detached = PROTECT(dictstring_compact_copy(value));
         R_set_altrep_data1(value, R_altrep_data1(detached));
         UNPROTECT(1);
@@ -3652,10 +3694,10 @@ static SEXP metadata_proxy(
         if (isolate && owner != R_NilValue && ALTREP(next) &&
             R_altrep_inherits(next, dtatools_numeric_class) &&
             R_altrep_data2(next) == R_NilValue &&
-            R_ExternalPtrTag(R_altrep_data1(next)) == owner) {
+            compact_payload_is_owned_by(R_altrep_data1(next), owner)) {
             /* A second proxy now shares this payload. Revoke the first
                proxy's exclusive-write claim so its next patch detaches. */
-            R_SetExternalPtrTag(R_altrep_data1(next), R_NilValue);
+            compact_payload_revoke_claim(R_altrep_data1(next));
         }
         source = next;
     }
@@ -3675,7 +3717,7 @@ static SEXP metadata_proxy(
         alias = PROTECT(R_new_altrep(
             dtatools_numeric_class, external, R_altrep_data2(source)
         ));
-        R_SetExternalPtrTag(external, R_BaseEnv);
+        compact_payload_mark_shared(external);
         source = alias;
     } else if (isolate && ALTREP(source) &&
                R_altrep_inherits(source, dtatools_dictstring_class)) {
@@ -3683,7 +3725,7 @@ static SEXP metadata_proxy(
         alias = PROTECT(R_new_altrep(
             dtatools_dictstring_class, external, R_altrep_data2(source)
         ));
-        R_SetExternalPtrTag(external, R_BaseEnv);
+        compact_payload_mark_shared(external);
         source = alias;
     }
     SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
@@ -3869,7 +3911,7 @@ static numeric_data *detach_compact_patch_target(SEXP value) {
         R_altrep_data2(value) == R_NilValue) {
         SEXP external = R_altrep_data1(value);
         numeric_data *source = numeric_storage(value);
-        if (R_ExternalPtrTag(external) == R_NilValue) return source;
+        if (!compact_payload_is_shared(external)) return source;
         SEXP detached = PROTECT(numeric_compact_copy(source));
         R_set_altrep_data1(value, R_altrep_data1(detached));
         numeric_data *result = numeric_storage(value);
@@ -3886,8 +3928,7 @@ static numeric_data *detach_compact_patch_target(SEXP value) {
     if (ALTREP(owned) &&
         R_altrep_inherits(owned, dtatools_numeric_class) &&
         R_altrep_data2(owned) == R_NilValue &&
-        owner != R_NilValue &&
-        R_ExternalPtrTag(R_altrep_data1(owned)) == owner) {
+        compact_payload_is_owned_by(R_altrep_data1(owned), owner)) {
         return numeric_storage(owned);
     }
     numeric_data *source = unmaterialized_numeric_storage(value);
@@ -3896,7 +3937,7 @@ static numeric_data *detach_compact_patch_target(SEXP value) {
     SEXP token = PROTECT(R_MakeExternalPtr(
         NULL, R_NilValue, R_NilValue
     ));
-    R_SetExternalPtrTag(R_altrep_data1(detached), token);
+    compact_payload_claim(R_altrep_data1(detached), token);
     metadata_proxy_set_state(value, detached, token);
     R_set_altrep_data2(value, R_NilValue);
     numeric_data *result = numeric_storage(detached);
@@ -3914,13 +3955,54 @@ static void detach_materialized_patch_target(SEXP value) {
 
 typedef struct {
     SEXP value;
-    const int *values;
+    const int *integer_values;
+    numeric_reader real_reader;
+    int real;
 } reference_rows;
 
-static reference_rows reference_rows_create(SEXP value) {
-    reference_rows rows = {value, NULL};
-    if (value != R_NilValue) {
-        rows.values = (const int *) DATAPTR_OR_NULL(value);
+static R_xlen_t reference_row_at(
+    const reference_rows *rows, R_xlen_t index
+) {
+    if (rows->real) {
+        int missing_code;
+        double value = numeric_reader_at(
+            &rows->real_reader, index, &missing_code
+        );
+        if (missing_code >= 0 || !R_FINITE(value) ||
+            value != trunc(value) || value <= 0 ||
+            value > (double) R_XLEN_T_MAX) {
+            Rf_error("invalid reference mutation row");
+        }
+        return (R_xlen_t) value;
+    }
+    int value = rows->integer_values == NULL
+        ? INTEGER_ELT(rows->value, index) : rows->integer_values[index];
+    if (value == NA_INTEGER || value <= 0) {
+        Rf_error("invalid reference mutation row");
+    }
+    return (R_xlen_t) value;
+}
+
+static reference_rows reference_rows_create(
+    SEXP value, R_xlen_t limit
+) {
+    reference_rows rows;
+    memset(&rows, 0, sizeof(rows));
+    rows.value = value;
+    if (value == R_NilValue) return rows;
+    if (TYPEOF(value) == INTSXP) {
+        rows.integer_values = (const int *) DATAPTR_OR_NULL(value);
+    } else if (TYPEOF(value) == REALSXP) {
+        rows.real_reader = numeric_reader_create(value, XLENGTH(value));
+        rows.real = 1;
+    } else {
+        Rf_error("invalid reference mutation row plan");
+    }
+    R_xlen_t length = XLENGTH(value);
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t row = reference_row_at(&rows, index);
+        if (row > limit) Rf_error("invalid reference mutation row");
     }
     return rows;
 }
@@ -3929,15 +4011,372 @@ static R_xlen_t reference_patch_row(
     const reference_rows *rows, R_xlen_t index
 ) {
     if (rows->value == R_NilValue) return index;
-    int row = rows->values == NULL
-        ? INTEGER_ELT(rows->value, index) : rows->values[index];
-    return (R_xlen_t) row - 1;
+    return reference_row_at(rows, index) - 1;
+}
+
+typedef struct {
+    numeric_reader reader;
+    R_xlen_t count;
+    R_xlen_t value_count;
+    unsigned char scalar_encoded[4];
+    int scalar_missing_code;
+} compact_replacement_plan;
+
+static compact_replacement_plan compact_replacement_plan_create(
+    const numeric_data *target, SEXP values, R_xlen_t count
+) {
+    compact_replacement_plan plan;
+    memset(&plan, 0, sizeof(plan));
+    plan.count = count;
+    plan.value_count = XLENGTH(values);
+    plan.scalar_missing_code = -1;
+    plan.reader = numeric_reader_create(values, plan.value_count);
+    if (plan.value_count == 1) {
+        double value = numeric_reader_at(
+            &plan.reader, 0, &plan.scalar_missing_code
+        );
+        validate_compact_patch_value(
+            target, value, plan.scalar_missing_code
+        );
+        encode_compact_patch_value(
+            target, value, plan.scalar_missing_code,
+            plan.scalar_encoded
+        );
+    } else {
+        for (R_xlen_t index = 0; index < count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            int missing_code;
+            double value = numeric_reader_at(
+                &plan.reader, index, &missing_code
+            );
+            validate_compact_patch_value(target, value, missing_code);
+        }
+    }
+    return plan;
+}
+
+static void apply_compact_replacement(
+    numeric_data *target, const reference_rows *rows,
+    const compact_replacement_plan *replacement
+) {
+    size_t width = numeric_kind_width(target->kind);
+    if (replacement->value_count == 1) {
+        int new_missing = replacement->scalar_missing_code >= 0;
+        if (rows->value == R_NilValue) {
+            fill_encoded_compact_patch_value(
+                target, replacement->scalar_encoded, width
+            );
+            target->missing_count = new_missing ? target->length : 0;
+            return;
+        }
+        for (R_xlen_t index = 0; index < replacement->count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            size_t row = (size_t) reference_patch_row(rows, index);
+            int old_missing = numeric_value_is_missing_at(target, row);
+            if (old_missing && !new_missing) target->missing_count--;
+            if (!old_missing && new_missing) target->missing_count++;
+            write_encoded_compact_patch_value(
+                target, row, replacement->scalar_encoded, width
+            );
+        }
+        return;
+    }
+    for (R_xlen_t index = 0; index < replacement->count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int missing_code;
+        double value = numeric_reader_at(
+            &replacement->reader, index, &missing_code
+        );
+        size_t row = (size_t) reference_patch_row(rows, index);
+        int old_missing = numeric_value_is_missing_at(target, row);
+        int new_missing = missing_code >= 0;
+        if (old_missing && !new_missing) target->missing_count--;
+        if (!old_missing && new_missing) target->missing_count++;
+        write_compact_patch_value(target, row, value, missing_code);
+    }
+}
+
+typedef struct {
+    SEXP target;
+    SEXP saved_data1;
+    SEXP saved_data2;
+    const reference_rows *rows;
+    const compact_replacement_plan *replacement;
+    numeric_data *compact;
+    unsigned char *undo;
+    size_t undo_bytes;
+    size_t width;
+    size_t saved_missing_count;
+    int journal_complete;
+} compact_patch_transaction;
+
+static void restore_compact_patch(compact_patch_transaction *transaction) {
+    if (R_altrep_data1(transaction->target) != transaction->saved_data1 ||
+        R_altrep_data2(transaction->target) != transaction->saved_data2) {
+        R_set_altrep_data1(transaction->target, transaction->saved_data1);
+        R_set_altrep_data2(transaction->target, transaction->saved_data2);
+        return;
+    }
+    if (transaction->compact == NULL || transaction->undo == NULL) return;
+    if (transaction->rows->value == R_NilValue) {
+        if (transaction->undo_bytes > 0) {
+            memcpy(
+                transaction->compact->values,
+                transaction->undo,
+                transaction->undo_bytes
+            );
+        }
+    } else {
+        R_xlen_t count = transaction->replacement->count;
+        for (R_xlen_t index = 0; index < count; index++) {
+            size_t row = (size_t) reference_patch_row(
+                transaction->rows, index
+            );
+            memcpy(
+                (unsigned char *) transaction->compact->values +
+                    row * transaction->width,
+                transaction->undo + (size_t) index * transaction->width,
+                transaction->width
+            );
+        }
+    }
+    transaction->compact->missing_count = transaction->saved_missing_count;
+}
+
+static SEXP apply_compact_patch_transaction(void *data) {
+    compact_patch_transaction *transaction =
+        (compact_patch_transaction *) data;
+    R_xlen_t count = transaction->replacement->count;
+    if (transaction->rows->value == R_NilValue) {
+        if (transaction->undo_bytes > 0) {
+            memcpy(
+                transaction->undo,
+                transaction->compact->values,
+                transaction->undo_bytes
+            );
+        }
+    } else {
+        for (R_xlen_t index = 0; index < count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            size_t row = (size_t) reference_patch_row(
+                transaction->rows, index
+            );
+            memcpy(
+                transaction->undo + (size_t) index * transaction->width,
+                (unsigned char *) transaction->compact->values +
+                    row * transaction->width,
+                transaction->width
+            );
+        }
+    }
+    transaction->journal_complete = 1;
+
+    transaction->compact = detach_compact_patch_target(transaction->target);
+    if (transaction->compact == NULL) {
+        Rf_error("compact replacement target became unavailable");
+    }
+    transaction->saved_missing_count = transaction->compact->missing_count;
+    apply_compact_replacement(
+        transaction->compact,
+        transaction->rows,
+        transaction->replacement
+    );
+    R_CheckUserInterrupt();
+    return Rf_ScalarLogical(1);
+}
+
+static void cleanup_compact_patch_transaction(
+    void *data, Rboolean jump
+) {
+    compact_patch_transaction *transaction =
+        (compact_patch_transaction *) data;
+    if (jump && transaction->journal_complete) {
+        restore_compact_patch(transaction);
+    }
+    free(transaction->undo);
+    transaction->undo = NULL;
+}
+
+typedef struct {
+    SEXP target;
+    SEXP replacement;
+    SEXP saved_data1;
+    SEXP saved_data2;
+    SEXP string_undo;
+    const reference_rows *rows;
+    unsigned char *undo;
+    size_t width;
+    R_xlen_t count;
+    R_xlen_t replacement_count;
+    R_xlen_t writes_completed;
+    int type;
+    int journal_complete;
+} vector_patch_transaction;
+
+static int vector_patch_state_changed(
+    const vector_patch_transaction *transaction
+) {
+    return ALTREP(transaction->target) &&
+        (R_altrep_data1(transaction->target) != transaction->saved_data1 ||
+         R_altrep_data2(transaction->target) != transaction->saved_data2);
+}
+
+static void restore_vector_patch(vector_patch_transaction *transaction) {
+    if (vector_patch_state_changed(transaction)) {
+        R_set_altrep_data1(transaction->target, transaction->saved_data1);
+        R_set_altrep_data2(transaction->target, transaction->saved_data2);
+        return;
+    }
+    double *real_output = transaction->type == REALSXP
+        ? REAL(transaction->target) : NULL;
+    int *integer_output = transaction->type == INTSXP
+        ? INTEGER(transaction->target) : NULL;
+    int *logical_output = transaction->type == LGLSXP
+        ? LOGICAL(transaction->target) : NULL;
+    for (R_xlen_t index = 0;
+         index < transaction->writes_completed; index++) {
+        R_xlen_t row = reference_patch_row(transaction->rows, index);
+        switch (transaction->type) {
+        case REALSXP:
+            memcpy(
+                real_output + row,
+                transaction->undo + (size_t) index * transaction->width,
+                transaction->width
+            );
+            break;
+        case INTSXP:
+            memcpy(
+                integer_output + row,
+                transaction->undo + (size_t) index * transaction->width,
+                transaction->width
+            );
+            break;
+        case LGLSXP:
+            memcpy(
+                logical_output + row,
+                transaction->undo + (size_t) index * transaction->width,
+                transaction->width
+            );
+            break;
+        case STRSXP:
+            SET_STRING_ELT(
+                transaction->target, row,
+                STRING_ELT(transaction->string_undo, index)
+            );
+            break;
+        }
+    }
+}
+
+static SEXP apply_vector_patch_transaction(void *data) {
+    vector_patch_transaction *transaction =
+        (vector_patch_transaction *) data;
+    for (R_xlen_t index = 0; index < transaction->count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t row = reference_patch_row(transaction->rows, index);
+        switch (transaction->type) {
+        case REALSXP: {
+            double value = REAL_ELT(transaction->target, row);
+            memcpy(
+                transaction->undo + (size_t) index * transaction->width,
+                &value, transaction->width
+            );
+            break;
+        }
+        case INTSXP: {
+            int value = INTEGER_ELT(transaction->target, row);
+            memcpy(
+                transaction->undo + (size_t) index * transaction->width,
+                &value, transaction->width
+            );
+            break;
+        }
+        case LGLSXP: {
+            int value = LOGICAL_ELT(transaction->target, row);
+            memcpy(
+                transaction->undo + (size_t) index * transaction->width,
+                &value, transaction->width
+            );
+            break;
+        }
+        case STRSXP:
+            SET_STRING_ELT(
+                transaction->string_undo, index,
+                STRING_ELT(transaction->target, row)
+            );
+            break;
+        }
+    }
+    transaction->journal_complete = 1;
+
+    detach_materialized_patch_target(transaction->target);
+    double *real_output = NULL;
+    int *integer_output = NULL;
+    int *logical_output = NULL;
+    if (transaction->type == REALSXP) {
+#if R_VERSION >= R_Version(4, 6, 0)
+        real_output = (double *) DATAPTR_RW(transaction->target);
+#else
+        real_output = REAL(transaction->target);
+#endif
+    } else if (transaction->type == INTSXP) {
+        integer_output = INTEGER(transaction->target);
+    } else if (transaction->type == LGLSXP) {
+        logical_output = LOGICAL(transaction->target);
+    }
+    for (R_xlen_t index = 0; index < transaction->count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t row = reference_patch_row(transaction->rows, index);
+        R_xlen_t replacement_index = transaction->replacement_count == 1
+            ? 0 : index;
+        switch (transaction->type) {
+        case REALSXP:
+            real_output[row] = REAL_ELT(
+                transaction->replacement, replacement_index
+            );
+            break;
+        case INTSXP:
+            integer_output[row] = INTEGER_ELT(
+                transaction->replacement, replacement_index
+            );
+            break;
+        case LGLSXP:
+            logical_output[row] = LOGICAL_ELT(
+                transaction->replacement, replacement_index
+            );
+            break;
+        case STRSXP:
+            SET_STRING_ELT(
+                transaction->target, row,
+                STRING_ELT(transaction->replacement, replacement_index)
+            );
+            break;
+        }
+        transaction->writes_completed = index + 1;
+    }
+    R_CheckUserInterrupt();
+    return Rf_ScalarLogical(0);
+}
+
+static void cleanup_vector_patch_transaction(
+    void *data, Rboolean jump
+) {
+    vector_patch_transaction *transaction =
+        (vector_patch_transaction *) data;
+    if (jump && transaction->journal_complete &&
+        (vector_patch_state_changed(transaction) ||
+         transaction->writes_completed > 0)) {
+        restore_vector_patch(transaction);
+    }
+    free(transaction->undo);
+    transaction->undo = NULL;
 }
 
 SEXP C_dtatools_patch_vector(
     SEXP target, SEXP rows, SEXP replacement
 ) {
-    if (rows != R_NilValue && TYPEOF(rows) != INTSXP) {
+    if (rows != R_NilValue &&
+        TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP) {
         Rf_error("invalid reference replacement plan");
     }
     R_xlen_t target_length = XLENGTH(target);
@@ -3947,138 +4386,115 @@ SEXP C_dtatools_patch_vector(
         !(count == 0 && replacement_count == 0)) {
         Rf_error("invalid reference replacement plan");
     }
-    reference_rows row_plan = reference_rows_create(rows);
+    reference_rows row_plan = reference_rows_create(rows, target_length);
 
-    detach_materialized_patch_target(target);
     numeric_data *compact = unmaterialized_numeric_storage(target);
     if (compact != NULL) {
-        numeric_reader reader = numeric_reader_create(
-            replacement, replacement_count
-        );
-        unsigned char scalar_encoded[4] = {0};
-        int scalar_missing_code = -1;
-        if (replacement_count == 1) {
-            double value = numeric_reader_at(
-                &reader, 0, &scalar_missing_code
-            );
-            encode_compact_patch_value(
-                compact, value, scalar_missing_code, scalar_encoded
-            );
-        } else {
-            for (R_xlen_t index = 0; index < count; index++) {
-                int missing_code;
-                double value = numeric_reader_at(
-                    &reader, index, &missing_code
-                );
-                validate_compact_patch_value(compact, value, missing_code);
-            }
-        }
-
-        compact = detach_compact_patch_target(target);
-        if (compact == NULL) {
-            Rf_error("compact replacement target became unavailable");
-        }
+        compact_replacement_plan replacement_plan =
+            compact_replacement_plan_create(compact, replacement, count);
         size_t width = numeric_kind_width(compact->kind);
-        if (replacement_count == 1) {
-            int new_missing = scalar_missing_code >= 0;
-            if (rows == R_NilValue) {
-                fill_encoded_compact_patch_value(
-                    compact, scalar_encoded, width
-                );
-                compact->missing_count = new_missing
-                    ? compact->length : 0;
-                return Rf_ScalarLogical(1);
-            }
-            for (R_xlen_t index = 0; index < count; index++) {
-                if ((index & 16383) == 0) R_CheckUserInterrupt();
-                size_t row = (size_t) reference_patch_row(
-                    &row_plan, index
-                );
-                int old_missing = numeric_value_is_missing_at(compact, row);
-                if (old_missing && !new_missing) compact->missing_count--;
-                if (!old_missing && new_missing) compact->missing_count++;
-                write_encoded_compact_patch_value(
-                    compact, row, scalar_encoded, width
-                );
-            }
-            return Rf_ScalarLogical(1);
+        if ((size_t) count > SIZE_MAX / width) {
+            Rf_error("reference replacement plan is too large");
         }
-        for (R_xlen_t index = 0; index < count; index++) {
-            if ((index & 16383) == 0) R_CheckUserInterrupt();
-            int missing_code;
-            double value = numeric_reader_at(
-                &reader, index, &missing_code
-            );
-            size_t row = (size_t) reference_patch_row(&row_plan, index);
-            int old_missing = numeric_value_is_missing_at(compact, row);
-            int new_missing = missing_code >= 0;
-            if (old_missing && !new_missing) compact->missing_count--;
-            if (!old_missing && new_missing) compact->missing_count++;
-            write_compact_patch_value(
-                compact, row, value, missing_code
-            );
+        size_t undo_bytes = (size_t) count * width;
+        SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
+        SET_VECTOR_ELT(saved_state, 0, R_altrep_data1(target));
+        SET_VECTOR_ELT(saved_state, 1, R_altrep_data2(target));
+        SEXP continuation = PROTECT(R_MakeUnwindCont());
+        unsigned char *undo = (unsigned char *) malloc(
+            undo_bytes == 0 ? 1 : undo_bytes
+        );
+        if (undo == NULL) {
+            UNPROTECT(2);
+            Rf_error("could not allocate reference replacement rollback data");
         }
-        return Rf_ScalarLogical(1);
+        compact_patch_transaction transaction = {
+            target,
+            VECTOR_ELT(saved_state, 0),
+            VECTOR_ELT(saved_state, 1),
+            &row_plan,
+            &replacement_plan,
+            compact,
+            undo,
+            undo_bytes,
+            width,
+            compact->missing_count,
+            0
+        };
+        SEXP result = R_UnwindProtect(
+            apply_compact_patch_transaction, &transaction,
+            cleanup_compact_patch_transaction, &transaction,
+            continuation
+        );
+        UNPROTECT(2);
+        return result;
     }
 
     if (TYPEOF(target) != TYPEOF(replacement)) {
         Rf_error("replacement storage does not match its target");
     }
-    switch (TYPEOF(target)) {
-    case REALSXP: {
-#if R_VERSION >= R_Version(4, 6, 0)
-        double *output = (double *) DATAPTR_RW(target);
-#else
-        double *output = REAL(target);
-#endif
-        for (R_xlen_t index = 0; index < count; index++) {
-            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
-            output[reference_patch_row(&row_plan, index)] = REAL_ELT(
-                replacement, replacement_index
-            );
-        }
-        break;
-    }
-    case INTSXP: {
-        int *output = INTEGER(target);
-        for (R_xlen_t index = 0; index < count; index++) {
-            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
-            output[reference_patch_row(&row_plan, index)] = INTEGER_ELT(
-                replacement, replacement_index
-            );
-        }
-        break;
-    }
-    case LGLSXP: {
-        int *output = LOGICAL(target);
-        for (R_xlen_t index = 0; index < count; index++) {
-            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
-            output[reference_patch_row(&row_plan, index)] = LOGICAL_ELT(
-                replacement, replacement_index
-            );
-        }
-        break;
-    }
-    case STRSXP:
-        for (R_xlen_t index = 0; index < count; index++) {
-            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
-            SET_STRING_ELT(
-                target, reference_patch_row(&row_plan, index),
-                STRING_ELT(replacement, replacement_index)
-            );
-        }
-        break;
-    default:
+    int type = TYPEOF(target);
+    if (type != REALSXP && type != INTSXP &&
+        type != LGLSXP && type != STRSXP) {
         Rf_error("unsupported reference replacement storage");
     }
-    return Rf_ScalarLogical(0);
+    size_t width = type == REALSXP ? sizeof(double) : sizeof(int);
+    SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(
+        saved_state, 0,
+        ALTREP(target) ? R_altrep_data1(target) : R_NilValue
+    );
+    SET_VECTOR_ELT(
+        saved_state, 1,
+        ALTREP(target) ? R_altrep_data2(target) : R_NilValue
+    );
+    SEXP string_undo = PROTECT(
+        type == STRSXP ? Rf_allocVector(STRSXP, count) : R_NilValue
+    );
+    SEXP continuation = PROTECT(R_MakeUnwindCont());
+    unsigned char *undo = NULL;
+    if (type != STRSXP) {
+        if ((size_t) count > SIZE_MAX / width) {
+            UNPROTECT(3);
+            Rf_error("reference replacement plan is too large");
+        }
+        size_t bytes = (size_t) count * width;
+        undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
+        if (undo == NULL) {
+            UNPROTECT(3);
+            Rf_error("could not allocate reference replacement rollback data");
+        }
+    }
+    vector_patch_transaction transaction = {
+        target,
+        replacement,
+        VECTOR_ELT(saved_state, 0),
+        VECTOR_ELT(saved_state, 1),
+        string_undo,
+        &row_plan,
+        undo,
+        width,
+        count,
+        replacement_count,
+        0,
+        type,
+        0
+    };
+    SEXP result = R_UnwindProtect(
+        apply_vector_patch_transaction, &transaction,
+        cleanup_vector_patch_transaction, &transaction,
+        continuation
+    );
+    UNPROTECT(3);
+    return result;
 }
 
 SEXP C_dtatools_generate_numeric(
     SEXP values, SEXP rows, SEXP row_count_value,
     SEXP kind_value, SEXP temporal_value
 ) {
-    if (rows != R_NilValue && TYPEOF(rows) != INTSXP) {
+    if (rows != R_NilValue &&
+        TYPEOF(rows) != INTSXP && TYPEOF(rows) != REALSXP) {
         Rf_error("invalid reference generation plan");
     }
     double row_count_double = Rf_asReal(row_count_value);
@@ -4103,29 +4519,16 @@ SEXP C_dtatools_generate_numeric(
         !(count == 0 && value_count == 0)) {
         Rf_error("invalid reference generation plan");
     }
-    reference_rows row_plan = reference_rows_create(rows);
+    reference_rows row_plan = reference_rows_create(
+        rows, (R_xlen_t) row_count
+    );
 
     numeric_data plan = {
         NULL, row_count, kind, temporal, 119,
         rows == R_NilValue ? 0 : row_count
     };
-    numeric_reader reader = numeric_reader_create(values, value_count);
-    unsigned char scalar_encoded[4] = {0};
-    int scalar_missing_code = -1;
-    if (value_count == 1) {
-        double value = numeric_reader_at(
-            &reader, 0, &scalar_missing_code
-        );
-        encode_compact_patch_value(
-            &plan, value, scalar_missing_code, scalar_encoded
-        );
-    } else {
-        for (R_xlen_t index = 0; index < value_count; index++) {
-            int missing_code;
-            double value = numeric_reader_at(&reader, index, &missing_code);
-            validate_compact_patch_value(&plan, value, missing_code);
-        }
-    }
+    compact_replacement_plan replacement_plan =
+        compact_replacement_plan_create(&plan, values, count);
 
     size_t width = numeric_kind_width(kind);
     if (row_count > SIZE_MAX / width ||
@@ -4142,44 +4545,7 @@ SEXP C_dtatools_generate_numeric(
             write_numeric_missing(plan.values, (R_xlen_t) index, kind, 0);
         }
     }
-    if (value_count == 1) {
-        int new_missing = scalar_missing_code >= 0;
-        if (rows == R_NilValue) {
-            fill_encoded_compact_patch_value(
-                &plan, scalar_encoded, width
-            );
-            plan.missing_count = new_missing ? row_count : 0;
-        } else {
-            for (R_xlen_t index = 0; index < count; index++) {
-                if ((index & 16383) == 0) R_CheckUserInterrupt();
-                size_t row = (size_t) reference_patch_row(
-                    &row_plan, index
-                );
-                int old_missing = numeric_value_is_missing_at(&plan, row);
-                if (old_missing && !new_missing) plan.missing_count--;
-                if (!old_missing && new_missing) plan.missing_count++;
-                write_encoded_compact_patch_value(
-                    &plan, row, scalar_encoded, width
-                );
-            }
-        }
-    } else {
-        for (R_xlen_t index = 0; index < count; index++) {
-            if ((index & 16383) == 0) R_CheckUserInterrupt();
-            int missing_code;
-            double value = numeric_reader_at(&reader, index, &missing_code);
-            size_t row = (size_t) reference_patch_row(&row_plan, index);
-            int new_missing = missing_code >= 0;
-            if (rows == R_NilValue) {
-                if (new_missing) plan.missing_count++;
-            } else {
-                int old_missing = numeric_value_is_missing_at(&plan, row);
-                if (old_missing && !new_missing) plan.missing_count--;
-                if (!old_missing && new_missing) plan.missing_count++;
-            }
-            write_compact_patch_value(&plan, row, value, missing_code);
-        }
-    }
+    apply_compact_replacement(&plan, &row_plan, &replacement_plan);
 
     SEXP result = numeric_from_backing(
         backing, row_count, kind, temporal, 119, plan.missing_count

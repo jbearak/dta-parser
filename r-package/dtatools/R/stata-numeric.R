@@ -466,9 +466,26 @@ as.data.frame.stata_numeric <- function(
 ) {
     force(nm)
     if (!is.null(dim(x))) return(NextMethod())
-    columns <- list(x)
+    nrows <- length(x)
+    if (is.null(row.names)) {
+        if (nrows == 0L) {
+            row.names <- character()
+        } else if (length(row.names <- names(x)) != nrows ||
+                   anyDuplicated(row.names)) {
+            row.names <- .set_row_names(nrows)
+        }
+    } else if (!(is.character(row.names) || is.integer(row.names)) ||
+               length(row.names) != nrows) {
+        stop(sprintf(
+            "'row.names' is not a character or integer vector of length %s",
+            nrows
+        ), call. = FALSE)
+    }
+    column <- x
+    if (!is.null(names(column))) names(column) <- NULL
+    columns <- list(column)
     if (!optional) names(columns) <- nm
-    vctrs::new_data_frame(columns, n = length(x))
+    vctrs::new_data_frame(columns, n = nrows, row.names = row.names)
 }
 
 #' @export

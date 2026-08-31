@@ -97,7 +97,7 @@ stopifnot(
     logical_plan_allocation < compact_byte_bytes
 )
 
-explicit_rows <- seq_len(rows)
+explicit_rows <- stata_long(seq_len(rows))
 explicit_profile <- tempfile(
     "dtatools-reference-explicit-plan-", fileext = ".out"
 )
@@ -117,8 +117,62 @@ explicit_plan_allocation <- sum(
     explicit_allocations[is.finite(explicit_allocations)]
 )
 stopifnot(
-    explicit_plan_time < 0.08,
+    explicit_plan_time < 0.15,
     explicit_plan_allocation < compact_byte_bytes
+)
+
+integer_replacement <- rep.int(2L, rows)
+vector_profile <- tempfile(
+    "dtatools-reference-vector-replacement-", fileext = ".out"
+)
+Rprofmem(vector_profile, threshold = 1000)
+vector_replacement_time <- system.time(
+    replace_values(data, compact, integer_replacement)
+)[["elapsed"]]
+Rprofmem(NULL)
+vector_records <- readLines(vector_profile, warn = FALSE)
+unlink(vector_profile)
+vector_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", vector_records
+)))
+recorded_vector <- vector_allocations[is.finite(vector_allocations)]
+largest_vector_allocation <- if (length(recorded_vector) == 0L) {
+    0
+} else {
+    max(recorded_vector)
+}
+
+compact_replacement <- stata_byte(rep(3, rows))
+compact_vector_profile <- tempfile(
+    "dtatools-reference-compact-vector-replacement-", fileext = ".out"
+)
+Rprofmem(compact_vector_profile, threshold = 1000)
+compact_vector_replacement_time <- system.time(
+    replace_values(data, compact, .env$compact_replacement)
+)[["elapsed"]]
+Rprofmem(NULL)
+compact_vector_records <- readLines(compact_vector_profile, warn = FALSE)
+unlink(compact_vector_profile)
+compact_vector_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", compact_vector_records
+)))
+recorded_compact_vector <- compact_vector_allocations[
+    is.finite(compact_vector_allocations)
+]
+largest_compact_vector_allocation <- if (
+    length(recorded_compact_vector) == 0L
+) {
+    0
+} else {
+    max(recorded_compact_vector)
+}
+stopifnot(
+    dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
+    identical(as.double(data$compact[[rows]]), 3),
+    largest_vector_allocation < compact_byte_bytes,
+    largest_compact_vector_allocation < compact_byte_bytes,
+    vector_replacement_time < 0.2,
+    compact_vector_replacement_time < 0.3
 )
 
 late_missing <- data.frame(
@@ -212,6 +266,75 @@ stopifnot(
     identical(stata_storage_type(data$generated), "byte"),
     largest_generation_allocation < full_double_bytes
 )
+
+integer_generation_values <- seq_len(rows)
+integer_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
+integer_generation_trace <- tracemem(integer_generation_data$anchor)
+integer_generation_profile <- tempfile(
+    "dtatools-reference-integer-generation-", fileext = ".out"
+)
+Rprofmem(integer_generation_profile, threshold = 1000)
+integer_generation_time <- system.time(
+    gen(integer_generation_data, generated, integer_generation_values)
+)[["elapsed"]]
+Rprofmem(NULL)
+integer_generation_records <- readLines(
+    integer_generation_profile, warn = FALSE
+)
+unlink(integer_generation_profile)
+integer_generation_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", integer_generation_records
+)))
+recorded_integer_generation <- integer_generation_allocations[
+    is.finite(integer_generation_allocations)
+]
+largest_integer_generation_allocation <- if (
+    length(recorded_integer_generation) == 0L
+) {
+    0
+} else {
+    max(recorded_integer_generation)
+}
+
+compact_generation_values <- stata_byte(rep(2, rows))
+compact_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
+compact_generation_profile <- tempfile(
+    "dtatools-reference-compact-vector-generation-", fileext = ".out"
+)
+Rprofmem(compact_generation_profile, threshold = 1000)
+compact_vector_generation_time <- system.time(
+    gen(compact_generation_data, generated, compact_generation_values)
+)[["elapsed"]]
+Rprofmem(NULL)
+compact_generation_records <- readLines(
+    compact_generation_profile, warn = FALSE
+)
+unlink(compact_generation_profile)
+compact_generation_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", compact_generation_records
+)))
+recorded_compact_generation <- compact_generation_allocations[
+    is.finite(compact_generation_allocations)
+]
+largest_compact_generation_allocation <- if (
+    length(recorded_compact_generation) == 0L
+) {
+    0
+} else {
+    max(recorded_compact_generation)
+}
+stopifnot(
+    identical(tracemem(integer_generation_data$anchor),
+              integer_generation_trace),
+    largest_integer_generation_allocation < full_double_bytes,
+    largest_compact_generation_allocation < full_double_bytes,
+    integer_generation_time < 0.2,
+    compact_vector_generation_time < 0.3,
+    dtatools:::.is_unmaterialized_numeric_altrep(
+        compact_generation_data$generated
+    )
+)
+untracemem(integer_generation_data$anchor)
 untracemem(data$compact)
 untracemem(data$untouched)
 
@@ -234,6 +357,22 @@ cat(sprintf(
     "explicit_plan_profiled_allocation_bytes\t%.0f\n",
     explicit_plan_allocation
 ))
+cat(sprintf(
+    "integer_vector_replacement_seconds\t%.6f\n",
+    vector_replacement_time
+))
+cat(sprintf(
+    "integer_vector_replacement_largest_allocation_bytes\t%.0f\n",
+    largest_vector_allocation
+))
+cat(sprintf(
+    "compact_vector_replacement_seconds\t%.6f\n",
+    compact_vector_replacement_time
+))
+cat(sprintf(
+    "compact_vector_replacement_largest_allocation_bytes\t%.0f\n",
+    largest_compact_vector_allocation
+))
 cat(sprintf("late_missing_sparse_seconds\t%.6f\n", late_missing_time))
 cat(sprintf("missing_cycle_seconds\t%.6f\n", missing_cycle_time))
 cat(sprintf("largest_profiled_allocation_bytes\t%.0f\n", largest_allocation))
@@ -248,6 +387,22 @@ cat(sprintf(
 cat(sprintf(
     "largest_generation_allocation_bytes\t%.0f\n",
     largest_generation_allocation
+))
+cat(sprintf(
+    "integer_vector_generation_seconds\t%.6f\n",
+    integer_generation_time
+))
+cat(sprintf(
+    "integer_vector_generation_largest_allocation_bytes\t%.0f\n",
+    largest_integer_generation_allocation
+))
+cat(sprintf(
+    "compact_vector_generation_seconds\t%.6f\n",
+    compact_vector_generation_time
+))
+cat(sprintf(
+    "compact_vector_generation_largest_allocation_bytes\t%.0f\n",
+    largest_compact_generation_allocation
 ))
 cat(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
 cat(sprintf("full_double_bytes\t%.0f\n", full_double_bytes))

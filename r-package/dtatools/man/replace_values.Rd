@@ -81,7 +81,11 @@ values are indexed by the selected row positions.
 
 \code{gen()} appends one variable and does not implement Stata's \code{before()} or
 \code{after()} placement. A declared \verb{stata_*()} result keeps its numeric storage;
-otherwise logical, integer, and double results use Stata \code{float} storage.
+otherwise logical, integer, double, and \code{Date} results use Stata \code{float}
+storage. Ordinary \code{POSIXct} results use Stata \code{double} storage so their
+millisecond datetime representation is not rounded. \code{Date} and \code{POSIXct}
+results retain their temporal class and receive the corresponding Stata
+temporal declaration.
 Character results keep a valid declared \code{stata.string.storage}. Otherwise,
 they use the smallest \code{str1} through \code{str2045} width that fits, or \code{strL}
 above 2,045 UTF-8 bytes. Numeric rows excluded by \code{where} contain
@@ -97,7 +101,7 @@ The table records the deliberate first-release choices relative to Stata's
 \tabular{lll}{
 Topic \tab Stata \tab dtatools \cr
 Existing name \tab Error \tab Error before mutation \cr
-Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab Always \code{float} \cr
+Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{float}; \code{POSIXct} uses \code{double} \cr
 Explicit storage \tab Type prefix \tab \verb{stata_*()} value expression \cr
 Strings \tab Smallest fitting \code{str#} or \code{strL} \tab Declared width, otherwise smallest UTF-8-byte width or \code{strL} \cr
 Rows outside \code{if} \tab Numeric \code{.} or string \code{""} \tab Same \cr
@@ -109,6 +113,8 @@ Missing report \tab Command output \tab No printed report \cr
 Compact \code{byte}, \code{int}, \code{long}, and \code{float} columns are patched in their
 native storage after validation. A direct compact target allocates work
 proportional to the selected rows and does not create a full R double copy.
+The native path keeps compact rollback bytes until the write commits so an
+interrupt restores the original payload and missing-value cache.
 A metadata proxy first detaches by copying its compact native payload so an
 independent source remains unchanged; it still avoids a full R double copy.
 Ordinary and materialized numeric columns and character columns are patched in their

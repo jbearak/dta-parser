@@ -152,6 +152,26 @@ test_that("where has documented logical and position semantics", {
                  "has size")
 })
 
+test_that("native mutation writers reject untrusted row plans", {
+    namespace <- asNamespace("dtatools")
+    patch <- get("C_dtatools_patch_vector", namespace)
+    generate <- get("C_dtatools_generate_numeric", namespace)
+
+    target <- stata_byte(1:3)
+    expect_error(.Call(patch, target, 0L, 9), "mutation row")
+    expect_error(.Call(patch, target, 4L, 9), "mutation row")
+    expect_identical(as.double(target), c(1, 2, 3))
+
+    expect_error(
+        .Call(generate, 9, 0L, 3, 0L, 0L),
+        "mutation row"
+    )
+    expect_error(
+        .Call(generate, 9, 4L, 3, 0L, 0L),
+        "mutation row"
+    )
+})
+
 test_that("validation errors leave an unmarked dataset unchanged", {
     cases <- list(
         quote(replace_values(data, x, 1:2)),
@@ -299,6 +319,21 @@ test_that("DTA-loaded compact and temporal columns use native patching", {
     replace_values(dated, price, replacement, where = 1)
     expect_identical(as.double(dated$price[[1]]), as.double(replacement))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(dated$price))
+
+    replacements <- replacement + seq_len(nrow(dated))
+    replace_values(dated, price, replacements)
+    expect_identical(as.double(dated$price), as.double(replacements))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(dated$price))
+})
+
+test_that("legacy compact columns reject scalar extended missing values", {
+    data <- read_dta(fixture("synthetic_v111.dta"))
+    before <- serialize(data, NULL)
+    expect_error(
+        replace_values(data, b, tagged_missing("a"), where = 1),
+        "legacy compact column"
+    )
+    expect_identical(serialize(data, NULL), before)
 })
 
 test_that("ordinary, materialized, temporal, and character columns mutate", {
@@ -351,6 +386,20 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     gen(data, declared, stata_int(x))
     expect_identical(stata_storage_type(data$declared), "int")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$declared))
+
+    dates <- as.Date("2020-01-01") + 0:2
+    datetimes <- as.POSIXct(
+        "2020-01-01 00:00:01", tz = "UTC"
+    ) + 0:2
+    temporal <- data.frame(x = 1:3)
+    gen(temporal, date, dates)
+    gen(temporal, datetime, datetimes)
+    expect_identical(as.double(temporal$date), as.double(dates))
+    expect_identical(as.double(temporal$datetime), as.double(datetimes))
+    expect_s3_class(temporal$date, "stata_date")
+    expect_s3_class(temporal$datetime, "stata_datetime")
+    expect_identical(stata_storage_type(temporal$date), "float")
+    expect_identical(stata_storage_type(temporal$datetime), "double")
 
     compact_source <- data.frame(x = stata_byte(1:3))
     gen(compact_source, y, x)
