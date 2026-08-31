@@ -73,6 +73,8 @@
 #' storage. Stata `by`, `[in]`, and `:lblname` authoring are not supported.
 #' Unlike Stata's default `replace`, `replace_values()` never promotes a target
 #' to wider storage. It rejects values that do not fit the declared storage.
+#' Character `NA` replacement values are normalized to `""`, Stata's string
+#' missing value.
 #'
 #' The table records the deliberate first-release choices relative to Stata's
 #' `generate [type] newvar = exp [if] [in]` command.
@@ -104,7 +106,8 @@
 #' Dictionary-backed replacement values are validated through a read-only
 #' native reader, so a successful mutation, error, or interrupt does not
 #' populate a shared source cache. `copy_data()` keeps unmaterialized compact
-#' numeric and dictionary-string columns compact.
+#' numeric and dictionary-string columns compact, and deep-copies dataset
+#' attributes such as names and grouped-tibble metadata.
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
@@ -514,7 +517,11 @@ copy_data <- function(data) {
     })
     names(columns) <- source$names
     snapshot <- .reference_snapshot(data)
-    attributes(columns) <- attributes(snapshot)
+    copied_attributes <- lapply(
+        attributes(snapshot),
+        function(value) .Call(C_dtatools_deep_copy_column, value)
+    )
+    attributes(columns) <- copied_attributes
     columns
 }
 

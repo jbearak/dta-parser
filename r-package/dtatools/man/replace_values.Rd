@@ -105,6 +105,8 @@ Wrap the value expression in a Stata constructor to request explicit numeric
 storage. Stata \code{by}, \verb{[in]}, and \verb{:lblname} authoring are not supported.
 Unlike Stata's default \code{replace}, \code{replace_values()} never promotes a target
 to wider storage. It rejects values that do not fit the declared storage.
+Character \code{NA} replacement values are normalized to \code{""}, Stata's string
+missing value.
 
 The table records the deliberate first-release choices relative to Stata's
 \verb{generate [type] newvar = exp [if] [in]} command.
@@ -136,7 +138,8 @@ that target character column, but does not copy the data frame.
 Dictionary-backed replacement values are validated through a read-only native
 reader, so a successful mutation, error, or interrupt does not populate a
 shared source cache. \code{copy_data()} keeps unmaterialized compact numeric and
-dictionary-string columns compact.
+dictionary-string columns compact, and deep-copies dataset attributes such as
+names and grouped-tibble metadata.
 }
 \examples{
 survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))

@@ -2560,9 +2560,24 @@ static SEXP dictstring_materialized_values(SEXP value, SEXP cache) {
     return materialized;
 }
 
-static SEXP dictstring_materialize_impl(
-    SEXP value, Rboolean writeable, int keep_compact, SEXP private_cache
-) {
+static SEXP dictstring_patch_values(SEXP value, SEXP private_cache) {
+    reference_string_reader reader = reference_string_reader_create(
+        value, private_cache
+    );
+    R_xlen_t length = dictstring_length(value);
+    SEXP materialized = PROTECT(Rf_allocVector(STRSXP, length));
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        SET_STRING_ELT(
+            materialized, index,
+            reference_string_reader_at(&reader, index)
+        );
+    }
+    UNPROTECT(1);
+    return materialized;
+}
+
+static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) {
         return writeable
@@ -2574,21 +2589,23 @@ static SEXP dictstring_materialize_impl(
         R_set_altrep_data1(value, R_altrep_data1(detached));
         UNPROTECT(1);
     }
-    SEXP cache = private_cache == R_NilValue
-        ? dictstring_cache(value) : private_cache;
+    SEXP cache = dictstring_cache(value);
     materialized = PROTECT(dictstring_materialized_values(value, cache));
     R_set_altrep_data2(value, materialized);
-    if (!keep_compact) dictstring_finalize(R_altrep_data1(value));
+    dictstring_finalize(R_altrep_data1(value));
     UNPROTECT(1);
     return materialized;
 }
 
-static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
-    return dictstring_materialize_impl(value, writeable, 0, R_NilValue);
-}
-
 static SEXP dictstring_materialize_for_patch(SEXP value, SEXP private_cache) {
-    return dictstring_materialize_impl(value, TRUE, 1, private_cache);
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized != R_NilValue) {
+        return detach_shared_materialized_payload(value);
+    }
+    materialized = PROTECT(dictstring_patch_values(value, private_cache));
+    R_set_altrep_data2(value, materialized);
+    UNPROTECT(1);
+    return materialized;
 }
 
 static void *dictstring_dataptr(SEXP value, Rboolean writeable) {
@@ -3758,7 +3775,7 @@ static SEXP metadata_string_materialize_for_patch(
     if (materialized != R_NilValue) {
         return detach_shared_materialized_payload(value);
     }
-    materialized = PROTECT(dictstring_materialized_values(
+    materialized = PROTECT(dictstring_patch_values(
         dictionary, private_cache
     ));
     R_set_altrep_data2(value, materialized);
@@ -4462,6 +4479,7 @@ typedef struct {
     SEXP string_undo;
     SEXP dictstring_private_cache;
     SEXP dictstring_source;
+    SEXP replacement_empty;
     reference_rows *rows;
     unsigned char *undo;
     size_t width;
@@ -4477,9 +4495,10 @@ typedef struct {
 static SEXP vector_patch_replacement_string(
     const vector_patch_transaction *transaction, R_xlen_t index
 ) {
-    return reference_string_reader_at(
+    SEXP value = reference_string_reader_at(
         &transaction->replacement_reader, index
     );
+    return value == NA_STRING ? transaction->replacement_empty : value;
 }
 
 static void validate_reference_replacement_string(
@@ -4681,6 +4700,7 @@ static SEXP apply_vector_patch_transaction(void *data) {
     double *real_output = NULL;
     int *integer_output = NULL;
     int *logical_output = NULL;
+    SEXP string_output = R_NilValue;
     if (transaction->type == REALSXP) {
 #if R_VERSION >= R_Version(4, 6, 0)
         real_output = (double *) DATAPTR_RW(transaction->target);
@@ -4691,6 +4711,9 @@ static SEXP apply_vector_patch_transaction(void *data) {
         integer_output = INTEGER(transaction->target);
     } else if (transaction->type == LGLSXP) {
         logical_output = LOGICAL(transaction->target);
+    } else if (transaction->type == STRSXP) {
+        string_output = ALTREP(transaction->target)
+            ? R_altrep_data2(transaction->target) : transaction->target;
     }
     for (R_xlen_t index = transaction->writes_completed;
          index < transaction->values.count; index++) {
@@ -4717,7 +4740,7 @@ static SEXP apply_vector_patch_transaction(void *data) {
             break;
         case STRSXP:
             SET_STRING_ELT(
-                transaction->target, row,
+                string_output, row,
                 vector_patch_replacement_string(
                     transaction, replacement_index
                 )
@@ -4847,7 +4870,8 @@ static SEXP patch_vector(
     SEXP replacement_dictstring_source = type == STRSXP
         ? unmaterialized_dictstring_source(replacement) : R_NilValue;
     if (rows == R_NilValue &&
-        (target == replacement ||
+        ((target == replacement &&
+          (type != STRSXP || dictstring_source != R_NilValue)) ||
          (dictstring_source == target &&
           replacement_dictstring_source == target))) {
         release_reference_rows(&row_plan);
@@ -4870,8 +4894,8 @@ static SEXP patch_vector(
     );
     SEXP private_cache = PROTECT(
         dictstring_source != R_NilValue && rows != R_NilValue
-            ? Rf_allocVector(
-                VECSXP, XLENGTH(dictstring_cache(dictstring_source))
+            ? reference_string_reader_private_cache(
+                dictstring_source, target_length
             )
             : R_NilValue
     );
@@ -4894,17 +4918,20 @@ static SEXP patch_vector(
             : R_NilValue
     );
     replacement_reader.scalar = replacement_scalar;
+    SEXP replacement_empty = PROTECT(
+        type == STRSXP ? Rf_mkChar("") : R_NilValue
+    );
     SEXP continuation = PROTECT(R_MakeUnwindCont());
     unsigned char *undo = NULL;
     if (rollback_required && type != STRSXP) {
         if ((size_t) count > SIZE_MAX / width) {
-            UNPROTECT(6);
+            UNPROTECT(7);
             Rf_error("reference replacement plan is too large");
         }
         size_t bytes = (size_t) count * width;
         undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
         if (undo == NULL) {
-            UNPROTECT(6);
+            UNPROTECT(7);
             Rf_error("could not allocate reference replacement rollback data");
         }
     }
@@ -4917,6 +4944,7 @@ static SEXP patch_vector(
         .string_undo = string_undo,
         .dictstring_private_cache = private_cache,
         .dictstring_source = dictstring_source,
+        .replacement_empty = replacement_empty,
         .rows = &row_plan,
         .undo = undo,
         .width = width,
@@ -4942,16 +4970,12 @@ static SEXP patch_vector(
     );
     if (delayed_dictstring_finalize) {
         SEXP external = R_altrep_data1(target);
-        if (rows == R_NilValue) {
-            if (!compact_payload_is_shared(external)) {
-                dictstring_finalize(external);
-            }
-            R_set_altrep_data1(target, R_NilValue);
-        } else {
+        if (!compact_payload_is_shared(external)) {
             dictstring_finalize(external);
         }
+        R_set_altrep_data1(target, R_NilValue);
     }
-    UNPROTECT(6);
+    UNPROTECT(7);
     return result;
 }
 

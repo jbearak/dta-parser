@@ -57,13 +57,21 @@ The replacement may allocate one character result, but it must not decode the
 old five-million-row payload or duplicate the fresh output because an alias
 retains the compact source. Its timing is bounded relative to an independent
 character-vector fill, so the former decode and duplication path cannot satisfy
-the gate. A base R integer ALTREP sequence is also replaced, with a corresponding
+the gate. Direct and shared near-unique dictionary targets are also patched at
+one row. Each may allocate its unavoidable character result once, but neither
+may allocate a full-cardinality cache, and sharing cannot trigger a private
+clone of the old compact payload. The shared alias must remain compact and
+unchanged.
+
+A base R integer ALTREP sequence is also replaced, with a corresponding
 integer-fill baseline. That path deliberately allocates one ordinary integer
 vector, patches it while it is still private without a rollback journal,
 installs it into dataset aliases, leaves the former standalone column alias
-unchanged, and verifies the detached result's aggregate semantics. A one-row
-variant covers the sparse detachment path and likewise permits only one result
-allocation.
+unchanged, and verifies the detached result's aggregate semantics. The full
+replacement caps total allocation at one result and must remain materially
+faster than the one-row variant, which has to copy the old source. Together
+those gates reject a restored full-source scan. The one-row variant likewise
+permits only one result allocation.
 One row is also replaced from a five-million-row dictionary-backed values
 vector with 250,000 distinct strings. That path must leave the source cache
 unchanged and allocate less than two megabytes in total, preventing cache space

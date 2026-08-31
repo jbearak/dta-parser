@@ -98,7 +98,7 @@ are preserved. Removing the table removes only compatibility classes added
 for the label table and retains unrelated classes.
 
 See the
-\href{https://github.com/jbearak/dta-tools/blob/main/docs/r-label-metadata.md}{R label metadata guide}
+\href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 for the supported call surface and the version-specific comparison with
 \code{labelled}.
 }

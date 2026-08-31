@@ -859,12 +859,17 @@ test_that("ordinary, materialized, temporal, and character columns mutate", {
     replace_values(data, integers, 8L, where = 2)
     replace_values(data, logicals, FALSE, where = 1)
     replace_values(data, strings, "z", where = 3)
+    replace_values(data, strings, NA_character_, where = 1)
     replace_values(data, dates, as.Date("2021-01-01"), where = 2)
     expect_identical(data$doubles, c(1, 4, 3))
     expect_identical(data$integers, c(1L, 8L, 3L))
     expect_identical(data$logicals, c(FALSE, FALSE, TRUE))
-    expect_identical(data$strings, c("a", "b", "z"))
+    expect_identical(data$strings, c("", "b", "z"))
     expect_identical(data$dates[[2]], as.Date("2021-01-01"))
+
+    self_replacement <- data.frame(text = c(NA_character_, "value"))
+    replace_values(self_replacement, text, text)
+    expect_identical(self_replacement$text, c("", "value"))
 
     compact <- stata_int(1:3)
     dtatools:::.force_altrep_materialization(compact)
@@ -1079,6 +1084,28 @@ test_that("copy_data isolates every mutable column backing", {
         as.double(data$generated)[[1]],
         as.double(generated_copy$generated)[[1]]
     ))
+
+    names_alias <- data.frame(name = names(isolated))
+    replace_values(names_alias, name, "changed", where = 1)
+    expect_identical(
+        names(data), c("compact", "ordinary", "string", "generated")
+    )
+    expect_identical(names(isolated), c("changed", "ordinary", "string"))
+
+    grouped <- dplyr::group_by(
+        data.frame(group = c("a", "b"), value = 1:2), group
+    )
+    grouped_copy <- copy_data(grouped)
+    copied_groups <- attr(grouped_copy, "groups", exact = TRUE)
+    replace_values(copied_groups, group, "changed", where = 1)
+    expect_identical(
+        attr(grouped, "groups", exact = TRUE)$group,
+        c("a", "b")
+    )
+    expect_identical(
+        attr(grouped_copy, "groups", exact = TRUE)$group,
+        c("changed", "b")
+    )
 })
 
 test_that("subsets, metadata proxies, and serialized data stay isolated", {
@@ -1177,6 +1204,12 @@ test_that("metadata helpers remain isolated from later source patches", {
     expect_identical(as.character(string_source$text), c("changed", "b", "a"))
     expect_true(dtatools:::.is_unmaterialized_dictstring(string_copy$text))
     expect_identical(as.character(string_copy$text), c("a", "b", "a"))
+
+    missing_source <- read_arrow(path)
+    missing_alias <- set_variable_labels(missing_source, text = "Copy")
+    replace_values(missing_source, text, NA_character_, where = 2)
+    expect_identical(as.character(missing_source$text), c("a", "", "a"))
+    expect_identical(as.character(missing_alias$text), c("a", "b", "a"))
 
     full_source <- read_arrow(path)
     full_copy <- set_variable_labels(full_source, text = "Copy")

@@ -663,9 +663,87 @@ stopifnot(
         near_unique_result_bytes * 1.1,
     near_unique_dictionary_time < max(0.1, near_unique_ordinary_time * 8)
 )
+
+near_unique_target_bytes <- as.double(near_unique_rows) * 8
+direct_sparse_dictionary_target <- copy_data(data.frame(
+    text = near_unique_source
+))
+direct_sparse_dictionary_cache <- dtatools:::.dictstring_cached_count(
+    direct_sparse_dictionary_target$text
+)
+direct_sparse_dictionary_target_profile <- profile_memory(
+    replace_values(
+        direct_sparse_dictionary_target, text, "changed",
+        where = near_unique_rows
+    ),
+    "dtatools-reference-direct-sparse-dictionary-target-"
+)
+direct_sparse_dictionary_target_time <-
+    direct_sparse_dictionary_target_profile$elapsed
+total_direct_sparse_dictionary_target_allocation <-
+    direct_sparse_dictionary_target_profile$total
+largest_direct_sparse_dictionary_target_allocation <-
+    direct_sparse_dictionary_target_profile$largest
+
+shared_sparse_dictionary_target <- copy_data(data.frame(
+    text = near_unique_source
+))
+shared_sparse_dictionary_alias <- set_variable_labels(
+    shared_sparse_dictionary_target, text = "Alias"
+)
+shared_sparse_dictionary_cache <- dtatools:::.dictstring_cached_count(
+    shared_sparse_dictionary_alias$text
+)
+shared_sparse_dictionary_target_profile <- profile_memory(
+    replace_values(
+        shared_sparse_dictionary_target, text, "changed",
+        where = near_unique_rows
+    ),
+    "dtatools-reference-shared-sparse-dictionary-target-"
+)
+shared_sparse_dictionary_target_time <-
+    shared_sparse_dictionary_target_profile$elapsed
+total_shared_sparse_dictionary_target_allocation <-
+    shared_sparse_dictionary_target_profile$total
+largest_shared_sparse_dictionary_target_allocation <-
+    shared_sparse_dictionary_target_profile$largest
+stopifnot(
+    identical(
+        direct_sparse_dictionary_target$text[c(1L, near_unique_rows)],
+        c(near_unique_values[[1L]], "changed")
+    ),
+    identical(
+        shared_sparse_dictionary_target$text[c(1L, near_unique_rows)],
+        c(near_unique_values[[1L]], "changed")
+    ),
+    identical(
+        dtatools:::.dictstring_cached_count(
+            shared_sparse_dictionary_alias$text
+        ),
+        shared_sparse_dictionary_cache
+    ),
+    identical(
+        as.character(
+            shared_sparse_dictionary_alias$text[c(1L, near_unique_rows)]
+        ),
+        near_unique_values[c(1L, near_unique_rows)]
+    ),
+    direct_sparse_dictionary_cache == 0L,
+    largest_direct_sparse_dictionary_target_allocation <=
+        near_unique_target_bytes * 1.01,
+    total_direct_sparse_dictionary_target_allocation <
+        near_unique_target_bytes * 1.1,
+    largest_shared_sparse_dictionary_target_allocation <=
+        near_unique_target_bytes * 1.01,
+    total_shared_sparse_dictionary_target_allocation <
+        near_unique_target_bytes * 1.1,
+    shared_sparse_dictionary_target_time <
+        max(0.1, direct_sparse_dictionary_target_time * 1.5)
+)
 rm(
     near_unique_values, near_unique_ordinary_data,
-    near_unique_dictionary_data
+    near_unique_dictionary_data, direct_sparse_dictionary_target,
+    shared_sparse_dictionary_target, shared_sparse_dictionary_alias
 )
 fill_repetitions <- 5L
 character_fill_time <- system.time(
@@ -741,6 +819,7 @@ generic_altrep_profile <- profile_memory(
     "dtatools-reference-generic-altrep-replacement-"
 )
 generic_altrep_replacement_time <- generic_altrep_profile$elapsed
+total_generic_altrep_allocation <- generic_altrep_profile$total
 largest_generic_altrep_allocation <- generic_altrep_profile$largest
 integer_bytes <- as.double(rows) * 4
 stopifnot(
@@ -751,7 +830,7 @@ stopifnot(
         range(generic_altrep_column_alias), c(1L, rows)
     ),
     largest_generic_altrep_allocation <= integer_bytes * 1.01,
-    generic_altrep_replacement_time < max(0.02, integer_fill_time * 6)
+    total_generic_altrep_allocation < integer_bytes * 1.1
 )
 
 sparse_generic_altrep_data <- data.frame(value = seq_len(rows))
@@ -781,6 +860,8 @@ stopifnot(
     ),
     largest_sparse_generic_altrep_allocation <= integer_bytes * 1.01,
     total_sparse_generic_altrep_allocation < integer_bytes * 1.5,
+    generic_altrep_replacement_time <
+        sparse_generic_altrep_replacement_time * 0.8,
     sparse_generic_altrep_replacement_time <
         max(0.05, integer_fill_time * 20)
 )
@@ -1055,6 +1136,30 @@ cat(sprintf(
     largest_near_unique_dictionary_allocation
 ))
 cat(sprintf(
+    "direct_sparse_dictionary_target_seconds\t%.6f\n",
+    direct_sparse_dictionary_target_time
+))
+cat(sprintf(
+    "direct_sparse_dictionary_target_total_profiled_allocation_bytes\t%.0f\n",
+    total_direct_sparse_dictionary_target_allocation
+))
+cat(sprintf(
+    "direct_sparse_dictionary_target_largest_allocation_bytes\t%.0f\n",
+    largest_direct_sparse_dictionary_target_allocation
+))
+cat(sprintf(
+    "shared_sparse_dictionary_target_seconds\t%.6f\n",
+    shared_sparse_dictionary_target_time
+))
+cat(sprintf(
+    "shared_sparse_dictionary_target_total_profiled_allocation_bytes\t%.0f\n",
+    total_shared_sparse_dictionary_target_allocation
+))
+cat(sprintf(
+    "shared_sparse_dictionary_target_largest_allocation_bytes\t%.0f\n",
+    largest_shared_sparse_dictionary_target_allocation
+))
+cat(sprintf(
     "sparse_dictionary_source_replacement_seconds\t%.6f\n",
     sparse_dictionary_replacement_time
 ))
@@ -1071,6 +1176,10 @@ cat(sprintf(
     generic_altrep_replacement_time
 ))
 cat(sprintf("integer_fill_seconds\t%.6f\n", integer_fill_time))
+cat(sprintf(
+    "generic_altrep_replacement_total_profiled_allocation_bytes\t%.0f\n",
+    total_generic_altrep_allocation
+))
 cat(sprintf(
     "generic_altrep_replacement_largest_allocation_bytes\t%.0f\n",
     largest_generic_altrep_allocation

@@ -11,8 +11,8 @@ Description: Reads Stata DTA files into tibbles with a Rust parser, multicore
     a streaming Rust writer. It also provides merges under Stata missing-code
     identity, label-aware tabulation, and tag-preserving recoding.
 License: GPL-3
-URL: https://github.com/jbearak/dta-tools
-BugReports: https://github.com/jbearak/dta-tools/issues
+URL: https://github.com/jbearak/dta-parser
+BugReports: https://github.com/jbearak/dta-parser/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports:
@@ -26,6 +26,7 @@ Imports:
     vctrs
 Suggests:
     arrow,
+    bit64,
     callr,
     httpuv,
     testthat (>= 3.1.7)
