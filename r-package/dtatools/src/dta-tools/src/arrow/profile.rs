@@ -10,6 +10,20 @@ use serde::{
 };
 use serde_json::value::RawValue;
 
+#[cfg(test)]
+thread_local! {
+    static FULL_DOCUMENT_PARSE_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+fn parse_full_document<'a, T>(json: &'a str) -> Result<T, serde_json::Error>
+where
+    T: Deserialize<'a>,
+{
+    #[cfg(test)]
+    FULL_DOCUMENT_PARSE_COUNT.with(|count| count.set(count.get() + 1));
+    serde_json::from_str(json)
+}
+
 use super::ArrowProfileError;
 use crate::{
     DtaType, FormatVersion, MissingTag, StataCharacteristic, StataNote, ValueLabelEntry,
@@ -199,6 +213,67 @@ enum NoteDocument {
     Numbered(StataNote),
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawNumberedNote<'a> {
+    number: u32,
+    #[serde(borrow)]
+    text: &'a RawValue,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawCharacteristic<'a> {
+    #[serde(borrow)]
+    name: &'a RawValue,
+    #[serde(borrow)]
+    value: &'a RawValue,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawDatasetDocument<'a> {
+    version: u32,
+    #[serde(default)]
+    label: String,
+    #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
+    notes: Vec<&'a RawValue>,
+    #[serde(default, borrow)]
+    characteristics: Vec<RawCharacteristic<'a>>,
+    #[serde(default)]
+    value_labels: BTreeMap<String, Vec<ArrowValueLabelEntry>>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawArrowFieldDocument<'a> {
+    version: u32,
+    #[serde(default)]
+    label: String,
+    #[serde(default)]
+    format: String,
+    #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
+    notes: Vec<&'a RawValue>,
+    #[serde(default, borrow)]
+    characteristics: Vec<RawCharacteristic<'a>>,
+    #[serde(default)]
+    storage: Option<StataStorage>,
+    #[serde(default)]
+    string_storage: Option<String>,
+    #[serde(default)]
+    value_labels: Option<String>,
+    #[serde(default)]
+    missing: Option<ArrowMissingEncoding>,
+    #[serde(default)]
+    missing_release: Option<FormatVersion>,
+    #[serde(default)]
+    r: Option<ArrowRSemantics>,
+}
+
+// The Arrow reader first borrows bounded metadata strings as raw JSON. It
+// then decodes only those fragments, avoiding a second parse of the complete
+// dataset or field document without allocating an oversized decoded string.
+
 fn deserialize_notes<'de, D>(deserializer: D) -> Result<Vec<StataNote>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -243,6 +318,43 @@ where
     deserializer.deserialize_seq(NotesVisitor)
 }
 
+fn deserialize_raw_notes<'de, D>(deserializer: D) -> Result<Vec<&'de RawValue>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct RawNotesVisitor;
+
+    impl<'de> Visitor<'de> for RawNotesVisitor {
+        type Value = Vec<&'de RawValue>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("an array of at most 9,999 Stata notes")
+        }
+
+        fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let maximum = crate::stata_metadata::MAX_NOTE_NUMBER as usize;
+            let mut notes = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(maximum));
+            while notes.len() < maximum {
+                let Some(note) = sequence.next_element::<&'de RawValue>()? else {
+                    return Ok(notes);
+                };
+                notes.push(note);
+            }
+            if sequence.next_element::<serde::de::IgnoredAny>()?.is_some() {
+                return Err(serde::de::Error::custom(
+                    "Stata note arrays may contain at most 9,999 entries",
+                ));
+            }
+            Ok(notes)
+        }
+    }
+
+    deserializer.deserialize_seq(RawNotesVisitor)
+}
+
 fn validate_notes_and_characteristics(
     version: &str,
     context: &str,
@@ -275,28 +387,6 @@ fn validate_notes_and_characteristics(
         }
     }
     Ok(())
-}
-
-#[derive(Deserialize)]
-struct MetadataStringPreflight<'a> {
-    #[serde(default, borrow)]
-    notes: Vec<&'a RawValue>,
-    #[serde(default, borrow)]
-    characteristics: Vec<CharacteristicStringPreflight<'a>>,
-}
-
-#[derive(Deserialize)]
-struct NumberedNoteStringPreflight<'a> {
-    #[serde(default, borrow)]
-    text: Option<&'a RawValue>,
-}
-
-#[derive(Deserialize)]
-struct CharacteristicStringPreflight<'a> {
-    #[serde(default, borrow)]
-    name: Option<&'a RawValue>,
-    #[serde(default, borrow)]
-    value: Option<&'a RawValue>,
 }
 
 fn hex_code_unit(bytes: &[u8]) -> Option<u16> {
@@ -368,7 +458,7 @@ fn decoded_json_string_length(raw: &RawValue) -> Option<usize> {
     (index == end).then_some(length)
 }
 
-fn validate_preflight_string(
+fn validate_raw_string_length(
     version: &str,
     context: &str,
     raw: &RawValue,
@@ -383,46 +473,137 @@ fn validate_preflight_string(
     Ok(())
 }
 
-fn preflight_metadata_strings(
+fn decode_raw_metadata_string(
+    version: &str,
+    string_context: &str,
+    invalid_document_context: &str,
+    raw: &RawValue,
+    limit: usize,
+) -> Result<String, ArrowProfileError> {
+    validate_raw_string_length(version, string_context, raw, limit)?;
+    serde_json::from_str(raw.get()).map_err(|error| {
+        malformed(
+            version,
+            format!("invalid {invalid_document_context}: {error}"),
+        )
+    })
+}
+
+fn decode_raw_notes(
     version: &str,
     context: &str,
-    json: &str,
-) -> Result<(), ArrowProfileError> {
-    let document: MetadataStringPreflight<'_> = serde_json::from_str(json)
-        .map_err(|error| malformed(version, format!("invalid {context} document: {error}")))?;
-    let value_limit = crate::stata_metadata::MAX_METADATA_VALUE_BYTES;
+    invalid_document_context: &str,
+    notes: Vec<&RawValue>,
+) -> Result<Vec<StataNote>, ArrowProfileError> {
+    let mut decoded = Vec::with_capacity(notes.len());
     let note_context = format!("{context} note text");
-    let characteristic_name_context = format!("{context} characteristic name");
-    let characteristic_value_context = format!("{context} characteristic value");
-    for note in document
-        .notes
-        .into_iter()
-        .take(crate::stata_metadata::MAX_NOTE_NUMBER as usize)
-    {
+    for note in notes {
+        let number = u32::try_from(decoded.len() + 1)
+            .map_err(|_| malformed(version, "Stata note count overflows"))?;
         if note.get().starts_with('"') {
-            validate_preflight_string(version, &note_context, note, value_limit)?;
+            decoded.push(StataNote {
+                number,
+                text: decode_raw_metadata_string(
+                    version,
+                    &note_context,
+                    invalid_document_context,
+                    note,
+                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
+                )?,
+            });
         } else {
-            let numbered: NumberedNoteStringPreflight<'_> = serde_json::from_str(note.get())
-                .map_err(|error| malformed(version, format!("invalid {context} note: {error}")))?;
-            if let Some(text) = numbered.text {
-                validate_preflight_string(version, &note_context, text, value_limit)?;
-            }
+            let numbered: RawNumberedNote<'_> =
+                serde_json::from_str(note.get()).map_err(|error| {
+                    malformed(
+                        version,
+                        format!("invalid {invalid_document_context}: {error}"),
+                    )
+                })?;
+            decoded.push(StataNote {
+                number: numbered.number,
+                text: decode_raw_metadata_string(
+                    version,
+                    &note_context,
+                    invalid_document_context,
+                    numbered.text,
+                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
+                )?,
+            });
         }
     }
-    for characteristic in document.characteristics {
-        if let Some(name) = characteristic.name {
-            validate_preflight_string(
+    Ok(decoded)
+}
+
+fn decode_raw_characteristics(
+    version: &str,
+    context: &str,
+    invalid_document_context: &str,
+    characteristics: Vec<RawCharacteristic<'_>>,
+) -> Result<Vec<StataCharacteristic>, ArrowProfileError> {
+    let name_context = format!("{context} characteristic name");
+    let value_context = format!("{context} characteristic value");
+    characteristics
+        .into_iter()
+        .map(|characteristic| {
+            Ok(StataCharacteristic {
+                name: decode_raw_metadata_string(
+                    version,
+                    &name_context,
+                    invalid_document_context,
+                    characteristic.name,
+                    crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
+                )?,
+                value: decode_raw_metadata_string(
+                    version,
+                    &value_context,
+                    invalid_document_context,
+                    characteristic.value,
+                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
+                )?,
+            })
+        })
+        .collect()
+}
+
+impl RawDatasetDocument<'_> {
+    fn decode(self, version: &str) -> Result<DatasetDocument, ArrowProfileError> {
+        Ok(DatasetDocument {
+            version: self.version,
+            label: self.label,
+            notes: decode_raw_notes(version, "dataset", "dataset document", self.notes)?,
+            characteristics: decode_raw_characteristics(
                 version,
-                &characteristic_name_context,
-                name,
-                crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
-            )?;
-        }
-        if let Some(value) = characteristic.value {
-            validate_preflight_string(version, &characteristic_value_context, value, value_limit)?;
-        }
+                "dataset",
+                "dataset document",
+                self.characteristics,
+            )?,
+            value_labels: self.value_labels,
+        })
     }
-    Ok(())
+}
+
+impl RawArrowFieldDocument<'_> {
+    fn decode(self, version: &str, field: &Field) -> Result<ArrowFieldDocument, ArrowProfileError> {
+        let invalid_context = format!("field document on `{}`", field.name());
+        Ok(ArrowFieldDocument {
+            version: self.version,
+            label: self.label,
+            format: self.format,
+            notes: decode_raw_notes(version, "field", &invalid_context, self.notes)?,
+            characteristics: decode_raw_characteristics(
+                version,
+                "field",
+                &invalid_context,
+                self.characteristics,
+            )?,
+            storage: self.storage,
+            string_storage: self.string_storage,
+            value_labels: self.value_labels,
+            missing: self.missing,
+            missing_release: self.missing_release,
+            r: self.r,
+        })
+    }
 }
 
 /// Per-buffer xxHash64 checksums, in canonical buffer order, for every column
@@ -464,9 +645,9 @@ pub(crate) fn parse_dataset_document(
             ..DatasetDocument::default()
         });
     };
-    preflight_metadata_strings(version, "dataset", json)?;
-    let document: DatasetDocument = serde_json::from_str(json)
+    let raw: RawDatasetDocument<'_> = parse_full_document(json)
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
+    let document = raw.decode(version)?;
     validate_dataset_document(version, &document)?;
     Ok(document)
 }
@@ -515,13 +696,13 @@ pub(crate) fn parse_field_document(
     field: &Field,
     json: &str,
 ) -> Result<ArrowFieldDocument, ArrowProfileError> {
-    preflight_metadata_strings(version, "field", json)?;
-    let document: ArrowFieldDocument = serde_json::from_str(json).map_err(|error| {
+    let raw: RawArrowFieldDocument<'_> = parse_full_document(json).map_err(|error| {
         malformed(
             version,
             format!("invalid field document on `{}`: {error}", field.name()),
         )
     })?;
+    let document = raw.decode(version, field)?;
     validate_field_document(version, field, &document)?;
     Ok(document)
 }
@@ -891,6 +1072,8 @@ mod tests {
     fn dataset_documents_reject_unknown_keys() {
         for json in [
             r#"{"version":0,"lable":"typo"}"#,
+            r#"{"version":0,"notes":[{"number":1,"text":"note","extra":true}]}"#,
+            r#"{"version":0,"characteristics":[{"name":"source","value":"fixture","extra":true}]}"#,
             r#"{"version":0,"value_labels":{"x":[{"value":1,"label":"one","lable":"typo"}]}}"#,
         ] {
             let error = parse_dataset_document("0", Some(json))
@@ -920,9 +1103,7 @@ mod tests {
             format!(
                 r#"{{"version":0,"characteristics":[{{"name":"source","value":"{oversized}"}}]}}"#
             ),
-            format!(
-                r#"{{"version":0,"characteristics":[{{"name":"{oversized}","value":"x"}}]}}"#
-            ),
+            format!(r#"{{"version":0,"characteristics":[{{"name":"{oversized}","value":"x"}}]}}"#),
         ] {
             let error = parse_dataset_document("0", Some(&json))
                 .expect_err("oversized metadata strings are rejected before decoding");
@@ -932,7 +1113,29 @@ mod tests {
     }
 
     #[test]
-    fn metadata_string_preflight_counts_decoded_json_bytes() {
+    fn arrow_metadata_uses_one_full_document_parse() {
+        FULL_DOCUMENT_PARSE_COUNT.with(|count| count.set(0));
+        parse_dataset_document(
+            "0",
+            Some(
+                r#"{"version":0,"notes":[{"number":1,"text":"note"}],"characteristics":[{"name":"source","value":"fixture"}]}"#,
+            ),
+        )
+        .expect("valid dataset document");
+        FULL_DOCUMENT_PARSE_COUNT.with(|count| assert_eq!(count.get(), 1));
+
+        FULL_DOCUMENT_PARSE_COUNT.with(|count| count.set(0));
+        parse_field_document(
+            "0",
+            &Field::new("x", DataType::Int32, true),
+            r#"{"version":0,"notes":[{"number":1,"text":"note"}],"characteristics":[{"name":"source","value":"fixture"}]}"#,
+        )
+        .expect("valid field document");
+        FULL_DOCUMENT_PARSE_COUNT.with(|count| assert_eq!(count.get(), 1));
+    }
+
+    #[test]
+    fn metadata_string_bounds_count_decoded_json_bytes() {
         let accepted = r#"\u754c"#.repeat(22_594);
         let json = format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{accepted}"}}]}}"#);
         parse_dataset_document("0", Some(&json)).expect("67,782 decoded bytes fit");

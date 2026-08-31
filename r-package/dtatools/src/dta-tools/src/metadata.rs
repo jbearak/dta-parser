@@ -335,6 +335,17 @@ fn parse_characteristics(
         129
     };
     let names_length = checked_mul(width, 2, "characteristic names length")?;
+    // The map fixes the section boundary, so verify its terminator before a
+    // malformed section can accumulate decoded characteristic values.
+    let close_start = data
+        .checked_sub(CHARACTERISTICS_CLOSE.len())
+        .ok_or(DtaError::ArithmeticOverflow("characteristics closing tag"))?;
+    expect_at(
+        bytes,
+        close_start,
+        CHARACTERISTICS_CLOSE,
+        "</characteristics>",
+    )?;
     let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(variables);
@@ -563,6 +574,44 @@ pub fn parse_metadata_with_encoding(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unterminated_modern_characteristics_are_framed_before_values_are_decoded() {
+        let width = 129;
+        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let payload_length = width * 2 + value_length;
+        let mut bytes = CHARACTERISTICS_OPEN.to_vec();
+        bytes.extend_from_slice(CHARACTERISTIC_OPEN);
+        bytes.extend_from_slice(&(payload_length as u32).to_le_bytes());
+        let mut target = vec![0; width];
+        target[..4].copy_from_slice(b"_dta");
+        bytes.extend_from_slice(&target);
+        let mut name = vec![0; width];
+        name[..6].copy_from_slice(b"source");
+        bytes.extend_from_slice(&name);
+        bytes.extend(std::iter::repeat_n(b'x', value_length));
+        bytes.extend_from_slice(CHARACTERISTIC_CLOSE);
+        let offsets = SectionOffsets {
+            characteristics: 0,
+            data: bytes.len() as u64,
+            ..SectionOffsets::default()
+        };
+
+        assert!(matches!(
+            parse_characteristics(
+                &bytes,
+                FormatVersion::V118,
+                ByteOrder::Lsf,
+                &offsets,
+                TextEncoding::Utf8,
+                &[],
+            ),
+            Err(DtaError::UnexpectedTag {
+                expected: "</characteristics>",
+                ..
+            })
+        ));
+    }
 
     #[test]
     fn enforces_type_boundaries_by_release() {

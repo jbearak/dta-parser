@@ -2720,6 +2720,19 @@ fn read_modern_characteristics<R: Read + Seek>(
     let names_length = width
         .checked_mul(2)
         .ok_or(DtaError::ArithmeticOverflow("characteristic names length"))?;
+    let close_offset = header
+        .section_offsets
+        .data
+        .checked_sub(b"</characteristics>".len() as u64)
+        .ok_or(DtaError::ArithmeticOverflow("characteristics closing tag"))?;
+    let after_close = expect_file_tag(
+        reader,
+        close_offset,
+        b"</characteristics>",
+        "</characteristics>",
+        scratch,
+    )?;
+    ensure_absolute("data", after_close, header.section_offsets.data)?;
     let cursor = expect_file_tag(
         reader,
         header.section_offsets.characteristics,
@@ -2824,6 +2837,57 @@ fn read_modern_characteristics<R: Read + Seek>(
             });
         }
         debug_assert_eq!(section.position(), after_close);
+    }
+}
+
+fn validate_legacy_expansion_framing<R: Read + Seek>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    start: u64,
+    file_length: u64,
+    byte_order: ByteOrder,
+    layout: LegacyLayout,
+) -> Result<(), DtaError> {
+    // Keep malformed unterminated streams bounded by locating the sentinel
+    // before the collection pass allocates decoded values.
+    let mut header = Vec::new();
+    let mut section = BufferedSectionReader::new(reader, scratch, start, file_length);
+    loop {
+        let header_offset = section.position();
+        section.read_into(
+            layout.expansion_header_width(),
+            &mut header,
+            "reading legacy expansion field",
+        )?;
+        let data_type = header[0];
+        let length = if layout.expansion_length_width == 2 {
+            i32::from(read_i16(
+                &header,
+                1,
+                byte_order,
+                "legacy expansion-field length",
+            )?)
+        } else {
+            read_i32(&header, 1, byte_order, "legacy expansion-field length")?
+        };
+        if data_type == 0 && length == 0 {
+            return Ok(());
+        }
+        if length < 0 {
+            return Err(DtaError::NegativeExpansionLength {
+                value: length,
+                offset: error_offset(header_offset.saturating_add(1)),
+            });
+        }
+        if data_type == 0 {
+            return Err(DtaError::InvalidExpansionTerminator {
+                value: length,
+                offset: error_offset(header_offset),
+            });
+        }
+        let payload_length = usize::try_from(length)
+            .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?;
+        section.advance(payload_length, "legacy expansion-field payload")?;
     }
 }
 
@@ -3324,6 +3388,7 @@ fn read_legacy_metadata<R: Read + Seek>(
 
     let fixed_end = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
+    validate_legacy_expansion_framing(reader, scratch, fixed_end, file_length, byte_order, layout)?;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(&variables);
     let mut expansion = Vec::new();
@@ -4667,6 +4732,84 @@ fn resolve_parallel_file_strls<R: Read + Seek, F: FnMut() -> bool, C: DtaColumnS
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    fn unterminated_characteristic_record(width: usize, byte_order: ByteOrder) -> Vec<u8> {
+        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let payload_length = width * 2 + value_length;
+        let mut bytes = b"<characteristics><ch>".to_vec();
+        let length = u32::try_from(payload_length).expect("test payload fits u32");
+        let encoded_length = match byte_order {
+            ByteOrder::Lsf => length.to_le_bytes(),
+            ByteOrder::Msf => length.to_be_bytes(),
+        };
+        bytes.extend_from_slice(&encoded_length);
+        let mut target = vec![0; width];
+        target[..4].copy_from_slice(b"_dta");
+        bytes.extend_from_slice(&target);
+        let mut name = vec![0; width];
+        name[..6].copy_from_slice(b"source");
+        bytes.extend_from_slice(&name);
+        bytes.extend(std::iter::repeat_n(b'x', value_length));
+        bytes.extend_from_slice(b"</ch>");
+        bytes
+    }
+
+    #[test]
+    fn file_metadata_checks_modern_characteristic_terminator_before_value_decode() {
+        let bytes = unterminated_characteristic_record(129, ByteOrder::Lsf);
+        let header = FileModernHeaderMap {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: String::new(),
+            section_offsets: SectionOffsets {
+                characteristics: 0,
+                data: bytes.len() as u64,
+                ..SectionOffsets::default()
+            },
+        };
+        assert!(matches!(
+            read_modern_characteristics(
+                &mut Cursor::new(bytes),
+                &header,
+                TextEncoding::Utf8,
+                &mut Scratch::new(1024),
+                &[],
+            ),
+            Err(DtaError::UnexpectedTag {
+                expected: "</characteristics>",
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn file_metadata_frames_legacy_expansions_without_decoding_values() {
+        let layout = LegacyLayout::for_version(FormatVersion::V115);
+        let modern = unterminated_characteristic_record(layout.varname_width, ByteOrder::Lsf);
+        let names_start = b"<characteristics><ch>".len() + 4;
+        let payload = &modern[names_start..modern.len() - b"</ch>".len()];
+        let mut bytes = vec![1];
+        bytes.extend_from_slice(&(payload.len() as i32).to_le_bytes());
+        bytes.extend_from_slice(payload);
+        let length = bytes.len() as u64;
+        assert!(matches!(
+            validate_legacy_expansion_framing(
+                &mut Cursor::new(bytes),
+                &mut Scratch::new(1024),
+                0,
+                length,
+                ByteOrder::Lsf,
+                layout,
+            ),
+            Err(DtaError::Io {
+                context: "reading legacy expansion field",
+                kind: ErrorKind::UnexpectedEof,
+                ..
+            })
+        ));
+    }
 
     fn kernel_metadata(byte_order: ByteOrder) -> DtaMetadata {
         DtaMetadata {

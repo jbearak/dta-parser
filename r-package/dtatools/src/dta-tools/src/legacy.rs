@@ -218,6 +218,7 @@ fn scan_expansion_fields_ordered(
     layout: LegacyLayout,
     variables: &[VariableInfo],
 ) -> Result<(usize, Option<CharacteristicCollector>), DtaError> {
+    validate_expansion_field_framing(bytes, start, byte_order, layout)?;
     let mut cursor = start;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(variables);
@@ -292,6 +293,65 @@ fn scan_expansion_fields_ordered(
                     .push(accepted, encoding.decode(value));
             }
         }
+        cursor = checked_add(cursor, length, "legacy expansion-field payload")?;
+    }
+}
+
+fn validate_expansion_field_framing(
+    bytes: &[u8],
+    start: usize,
+    byte_order: ByteOrder,
+    layout: LegacyLayout,
+) -> Result<(), DtaError> {
+    // Legacy files have no section map. Scan to the sentinel without decoding
+    // payloads, then let the caller make a second pass to collect metadata.
+    let mut cursor = start;
+    loop {
+        let data_type = slice_at(bytes, cursor, 1, "legacy expansion-field type")?[0];
+        let length_offset = checked_add(cursor, 1, "legacy expansion-field length")?;
+        let value = if layout.expansion_length_width == 2 {
+            i32::from(read_i16(
+                bytes,
+                length_offset,
+                byte_order,
+                "legacy expansion-field length",
+            )?)
+        } else {
+            read_i32(
+                bytes,
+                length_offset,
+                byte_order,
+                "legacy expansion-field length",
+            )?
+        };
+        if data_type == 0 && value == 0 {
+            checked_add(
+                cursor,
+                layout.expansion_header_width(),
+                "legacy expansion-field terminator",
+            )?;
+            return Ok(());
+        }
+        if value < 0 {
+            return Err(DtaError::NegativeExpansionLength {
+                value,
+                offset: length_offset,
+            });
+        }
+        if data_type == 0 {
+            return Err(DtaError::InvalidExpansionTerminator {
+                value,
+                offset: cursor,
+            });
+        }
+        let length = usize::try_from(value)
+            .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion-field length"))?;
+        cursor = checked_add(
+            cursor,
+            layout.expansion_header_width(),
+            "legacy expansion-field header",
+        )?;
+        slice_at(bytes, cursor, length, "legacy expansion-field payload")?;
         cursor = checked_add(cursor, length, "legacy expansion-field payload")?;
     }
 }
@@ -497,6 +557,37 @@ pub(crate) fn parse_legacy_metadata(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unterminated_legacy_characteristics_are_framed_before_values_are_decoded() {
+        let layout = LegacyLayout::for_version(FormatVersion::V115);
+        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let payload_length = layout.varname_width * 2 + value_length;
+        let mut bytes = vec![1];
+        bytes.extend_from_slice(&(payload_length as i32).to_le_bytes());
+        let mut target = vec![0; layout.varname_width];
+        target[..4].copy_from_slice(b"_dta");
+        bytes.extend_from_slice(&target);
+        let mut name = vec![0; layout.varname_width];
+        name[..6].copy_from_slice(b"source");
+        bytes.extend_from_slice(&name);
+        bytes.extend(std::iter::repeat_n(b'x', value_length));
+
+        assert!(matches!(
+            scan_expansion_fields_ordered(
+                &bytes,
+                0,
+                ByteOrder::Lsf,
+                TextEncoding::Utf8,
+                layout,
+                &[],
+            ),
+            Err(DtaError::Truncated {
+                context: "legacy expansion-field type",
+                ..
+            })
+        ));
+    }
 
     #[test]
     fn pre111_string_codes_cover_widths_one_through_128() {
