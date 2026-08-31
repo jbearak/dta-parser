@@ -110,5 +110,8 @@ A field document uses the same `notes` and `characteristics` members alongside
 its variable label, format, storage, value-label, missing-value, and R-semantics
 members. Notes must have unique ascending numbers from 1 through 9,999.
 Characteristic names must be unique, valid Stata names, and not numeric
-`note*` keys. Malformed profile metadata is a hard error unless profile
-handling is explicitly disabled.
+`note*` keys. A full read validates the dataset document and every field
+document. A projected read validates the dataset document and the selected
+fields' documents, then discards unselected fields' private documents without
+parsing them. Malformed metadata that the read consumes is a hard error unless
+profile handling is explicitly disabled.

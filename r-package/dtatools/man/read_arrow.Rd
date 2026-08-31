@@ -24,7 +24,8 @@ paths.}
 
 \item{col_select}{One or more tidyselect expressions. Predicates see each
 column's R type as recorded in the file: logical, integer, double,
-character, factor, or raw.}
+character, factor, or raw. Profile validation covers the selected fields;
+omit this argument to validate every field document.}
 
 \item{skip}{Number of rows to skip. Must be one non-negative whole number
 no larger than \code{2^53}.}
@@ -87,6 +88,9 @@ Plain Arrow IPC files written by other tools are read as ordinary R
 columns; they never acquire Stata semantics. Files carrying a newer
 profile version than this package understands are a hard error naming that
 version; pass \code{profile = FALSE} to read such a file as plain Arrow data.
+A profiled projection validates the dataset document and each selected
+field document. It discards unselected fields' private documents without
+parsing them. A full read validates every field document.
 
 Only the Arrow IPC file variant (\code{.arrow}) is handled, not the IPC stream
 variant. Column projection reads only the selected columns' buffers, and

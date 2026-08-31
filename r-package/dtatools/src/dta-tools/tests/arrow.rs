@@ -1013,7 +1013,7 @@ fn incompatible_field_semantics_are_malformed_with_an_escape_hatch() {
 }
 
 #[test]
-fn projection_does_not_deserialize_unselected_field_documents() {
+fn projection_validates_selected_and_discards_unselected_field_documents() {
     let selected = Field::new("selected", DataType::Int32, true);
     let mut unselected = Field::new("unselected", DataType::Int32, true);
     unselected.set_metadata(HashMap::from([(
@@ -1051,6 +1051,21 @@ fn projection_does_not_deserialize_unselected_field_documents() {
     .expect_err("a full read parses every field document");
     assert!(matches!(
         full_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+
+    let selected_error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![1]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("a projected read parses its selected field document");
+    assert!(matches!(
+        selected_error,
         ArrowProfileError::MalformedProfile { .. }
     ));
 

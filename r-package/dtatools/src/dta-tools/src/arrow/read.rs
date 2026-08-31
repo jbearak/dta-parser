@@ -54,6 +54,9 @@ fn metadata_buffer(length: u64, location: &str) -> Result<Vec<u8>, ArrowProfileE
 #[derive(Debug, Clone, Default)]
 pub struct ArrowReadOptions {
     /// Projected column indices in output order, or `None` for all columns.
+    /// Profiled projections validate the dataset document and the selected
+    /// fields' documents. They discard unselected fields' private profile
+    /// documents without parsing them. A full read validates every field.
     pub columns: Option<Vec<u32>>,
     /// Rows to skip before the first returned row.
     pub row_start: u64,
@@ -2276,7 +2279,7 @@ mod tests {
     }
 
     #[test]
-    fn projected_profile_metadata_is_sparse_and_discards_raw_json() {
+    fn projected_profile_is_sparse_and_validates_only_selected_field_documents() {
         let field_count = 120_000;
         let selected = field_count - 1;
         let mut fields = Vec::with_capacity(field_count);

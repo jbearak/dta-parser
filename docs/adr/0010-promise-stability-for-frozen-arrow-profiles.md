@@ -9,9 +9,11 @@ keep `.arrow` files long-term, so every frozen `dtatools:profile-version`
 remains readable by all future package versions, indefinitely. Reader code for
 a frozen profile is never removed once files with that version exist in the
 wild. The reverse direction stays a hard error: a reader that encounters a
-newer profile version, or malformed profile metadata, refuses with a clear
-message rather than silently degrading a labeled dataset to plain numerics; an
-explicit escape hatch reads the raw storage arrays.
+newer profile version, or malformed profile metadata it consumes, refuses with
+a clear message rather than silently degrading a labeled dataset to plain
+numerics. A projection consumes the dataset and selected field documents and
+discards unselected field documents without parsing them; a full read consumes
+every field document. An explicit escape hatch reads the raw storage arrays.
 
 Because the promise makes each freeze irreversible, the prototype writes
 profile version `"0"`, an experimental marker that carries no promise and that
