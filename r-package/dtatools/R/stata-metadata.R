@@ -24,6 +24,12 @@
 #' that decoded form. Setters and DTA output keep Stata's 67,784-byte target
 #' limit.
 #'
+#' Data frames carrying notes or characteristics use an internal restoration
+#' class. Data-frame-preserving `[` subsets retain dataset metadata and the
+#' metadata of every retained variable for both base data frames and tibbles.
+#' A base subset that drops one column to a vector retains that variable's
+#' metadata; tibbles retain their usual non-dropping behavior.
+#'
 #' @param x A data frame or vector carrying Stata metadata.
 #' @param variable `NULL` for dataset or vector metadata, or one column name or
 #'   one-based position in a data frame.
@@ -221,7 +227,8 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     if (!.valid_stata_characteristic_name(name)) {
         stop(paste0(
             "A characteristic name must be a valid Stata name with at most 32 Unicode ",
-            "characters and cannot be a numeric `note*` key or language-control key"
+            "characters and cannot be a numeric `note*` key, language-control key, ",
+            "or alias structural key"
         ), call. = FALSE)
     }
     enc2utf8(name)
@@ -231,7 +238,9 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     is.character(name) && length(name) == 1L && !is.na(name) &&
         .valid_stata_name_syntax(name, 32L) &&
         nchar(name, type = "bytes") <= 128L && !grepl("^note[0-9]+$", name) &&
-        !(name %in% c("_lang_list", "_lang_c")) &&
+        !(name %in% c(
+            "_lang_list", "_lang_c", "fralias_from", "fralias_varname"
+        )) &&
         !grepl("^_lang_[vl]_", name)
 }
 
@@ -255,10 +264,10 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     target <- .stata_metadata_target(x, variable)
     changed <- .metadata_copy(target$value)
     changed <- update(changed)
-    if (is.null(target$index)) return(changed)
+    if (is.null(target$index)) return(.as_stata_metadata_frame(changed))
     result <- .metadata_copy(x)
     result[[target$index]] <- changed
-    result
+    .as_stata_metadata_frame(result)
 }
 
 .stata_set_notes <- function(x, variable, notes) {
@@ -284,11 +293,67 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
 }
 
 .copy_stata_metadata_attributes <- function(from, to) {
-    for (name in c("notes", "stata.note.numbers", "stata.characteristics")) {
+    for (name in .stata_metadata_attribute_names) {
         value <- attr(from, name, exact = TRUE)
         if (!is.null(value)) attr(to, name) <- value
     }
-    to
+    .as_stata_metadata_frame(to)
+}
+
+.stata_metadata_attribute_names <- c(
+    "notes", "stata.note.numbers", "stata.characteristics"
+)
+
+.has_stata_metadata <- function(value) {
+    any(vapply(.stata_metadata_attribute_names, function(name) {
+        !is.null(attr(value, name, exact = TRUE))
+    }, logical(1)))
+}
+
+.as_stata_metadata_frame <- function(value) {
+    if (!is.data.frame(value)) return(value)
+    marker <- "dtatools_stata_metadata"
+    classes <- setdiff(class(value), marker)
+    has_metadata <- .has_stata_metadata(value) ||
+        any(vapply(value, .has_stata_metadata, logical(1)))
+    class(value) <- if (has_metadata) c(marker, classes) else classes
+    value
+}
+
+#' @export
+`[.dtatools_stata_metadata` <- function(x, i, j, ..., drop) {
+    argument_count <- nargs() - !missing(drop)
+    one_dimensional <- argument_count < 3L
+    indices <- stats::setNames(seq_along(x), names(x))
+    selected <- if (one_dimensional) {
+        if (missing(i)) indices else indices[i]
+    } else if (missing(j)) {
+        indices
+    } else {
+        indices[j]
+    }
+
+    result <- NextMethod("[")
+    if (!is.data.frame(result)) {
+        if (length(selected) == 1L) {
+            result <- .copy_stata_metadata_attributes(
+                x[[unname(selected[[1L]])]], result
+            )
+        }
+        return(result)
+    }
+
+    result <- .copy_stata_metadata_attributes(x, result)
+    if (length(selected) != ncol(result)) {
+        stop("Could not restore Stata metadata after subsetting", call. = FALSE)
+    }
+    for (index in seq_along(result)) {
+        source <- x[[unname(selected[[index]])]]
+        result[[index]] <- .copy_stata_metadata_attributes(
+            source, result[[index]]
+        )
+    }
+    .as_stata_metadata_frame(result)
 }
 
 .stata_metadata_payload <- function(notes, characteristics) {

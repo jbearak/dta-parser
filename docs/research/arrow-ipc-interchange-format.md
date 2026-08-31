@@ -58,10 +58,11 @@ Settled 2026-08-29; the sections below give the reasoning.
    [issue #82](https://github.com/jbearak/dta-parser/issues/82).
 4. **Profile safety**: a newer profile version or malformed profile metadata
    consumed by the read is a hard error, with an explicit escape hatch to read
-   the raw storage arrays. A projection validates the dataset and selected
-   field documents, and discards unselected field documents without parsing
-   them. A full read validates every field. Plain Arrow files never acquire
-   Stata semantics.
+   the raw storage arrays. A predicate-free projection validates the dataset
+   and selected field documents, and discards unselected field documents
+   without parsing them. A profiled predicate summary and a profiled read that records
+   the complete stored signature validate every field, as does a full read.
+   Plain Arrow files never acquire Stata semantics.
 5. **Projection is a v1 requirement**: `read_arrow()` mirrors `read_dta()`'s
    `col_select`, `skip`, and `n_max`, and projected reads must cost I/O
    proportional to the selected columns' buffers.
@@ -387,7 +388,8 @@ portable R semantics. The relevant profile-0 members are:
 ```
 
 Notes must have unique ascending numbers from 1 through 9,999. Characteristics
-must have unique valid Stata names and cannot use numeric `note*` keys. Older
+must have unique valid Stata names and cannot use numeric `note*` keys or the
+language/alias structural keys. Older
 profile-0 string note arrays remain readable as consecutive notes beginning at
 one. Writers omit empty arrays; omission and an explicit empty array have the
 same behavior. JSON is inspectable across languages and avoids embedding
@@ -399,9 +401,12 @@ serialization.
 **Profile-version handling**: a file whose profile version is newer than the
 reader understands is a hard error naming the version and suggesting a package
 upgrade. The reader also rejects any profile document it consumes that fails
-to parse or validate. A projected read consumes the dataset document and the
-selected fields' documents; it discards unselected fields' private documents
-without parsing them. A full read consumes every field document. An explicit
+to parse or validate. A predicate-free projected read consumes the dataset
+document and the selected fields' documents; it discards unselected fields'
+private documents without parsing them. A profiled predicate first consumes a full
+summary, while recording a stored signature with profile handling consumes the
+complete schema; both therefore validate every field document. A full read
+does the same. An explicit
 escape hatch (for example `read_arrow(file, profile = FALSE)`) reads the raw
 storage arrays as plain Arrow data. Silent degradation is not permitted: a
 labeled, tagged-missing dataset must not quietly become plain numerics, which

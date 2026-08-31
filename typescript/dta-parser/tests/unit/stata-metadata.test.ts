@@ -109,6 +109,8 @@ describe('Stata metadata accessors', () => {
         expect(() => setStataCharacteristic(target, '_lang_c', 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, '_lang_v_en', 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, '_lang_l_en', 'bad')).toThrow();
+        expect(() => setStataCharacteristic(target, 'fralias_from', 'bad')).toThrow();
+        expect(() => setStataCharacteristic(target, 'fralias_varname', 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, '2bad', 'bad')).toThrow();
         expect(() => setStataCharacteristic(
             target, 'source', 'x'.repeat(67_785)
@@ -134,6 +136,8 @@ describe('DTA characteristic recovery', () => {
             { target: '_dta', name: '_lang_list', value: 'default' },
             { target: '_dta', name: '_lang_v_en', value: 'English label' },
             { target: 'x', name: '_lang_l_en', value: 'English labels' },
+            { target: '_dta', name: 'fralias_from', value: 'source frame' },
+            { target: 'x', name: 'fralias_varname', value: 'source variable' },
             { target: 'x', name: 'note2', value: 'variable' },
             { target: 'x', name: 'role', value: 'id' },
             { target: 'missing', name: 'source', value: 'ignored' },
@@ -165,6 +169,8 @@ describe('DTA characteristic recovery', () => {
         applyCharacteristicRecords([
             { target: '_dta', name: 'note1', value: 'dataset' },
             { target: 'x', name: '_lang_v_en', value: 'structural' },
+            { target: 'x', name: 'fralias_from', value: 'structural' },
+            { target: 'x', name: 'fralias_varname', value: 'structural' },
         ], dataset, [unreadable]);
         expect(dataset.notes).toEqual([
             { number: 1, text: 'dataset' },

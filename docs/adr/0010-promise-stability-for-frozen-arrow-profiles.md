@@ -11,9 +11,12 @@ a frozen profile is never removed once files with that version exist in the
 wild. The reverse direction stays a hard error: a reader that encounters a
 newer profile version, or malformed profile metadata it consumes, refuses with
 a clear message rather than silently degrading a labeled dataset to plain
-numerics. A projection consumes the dataset and selected field documents and
-discards unselected field documents without parsing them; a full read consumes
-every field document. An explicit escape hatch reads the raw storage arrays.
+numerics. A predicate-free projection consumes the dataset and selected field
+documents and discards unselected field documents without parsing them. A
+profiled predicate first consumes a full summary, and recording a stored
+signature with profile handling consumes the complete schema; both validate
+every field document, as does a full read. An explicit escape hatch reads the
+raw storage arrays.
 
 Because the promise makes each freeze irreversible, the prototype writes
 profile version `"0"`, an experimental marker that carries no promise and that

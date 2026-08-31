@@ -400,8 +400,11 @@ save_arrow <- function(data, path,
         known_dataset_attributes <- c(known_dataset_attributes, "row.names")
     }
     dataset_class <- attr(data, "class", exact = TRUE)
-    if (identical(dataset_class, "data.frame") ||
-        identical(dataset_class, c("tbl_df", "tbl", "data.frame"))) {
+    ordinary_dataset_class <- setdiff(
+        dataset_class, "dtatools_stata_metadata"
+    )
+    if (identical(ordinary_dataset_class, "data.frame") ||
+        identical(ordinary_dataset_class, c("tbl_df", "tbl", "data.frame"))) {
         known_dataset_attributes <- c(known_dataset_attributes, "class")
     }
     dataset_attributes <- setdiff(

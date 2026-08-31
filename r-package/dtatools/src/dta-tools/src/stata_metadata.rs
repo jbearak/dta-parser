@@ -64,8 +64,10 @@ pub(crate) fn is_reserved_note_name(name: &[u8]) -> bool {
 }
 
 pub(crate) fn is_structural_characteristic(name: &str) -> bool {
-    matches!(name, "_lang_list" | "_lang_c")
-        || name.starts_with("_lang_v_")
+    matches!(
+        name,
+        "_lang_list" | "_lang_c" | "fralias_from" | "fralias_varname"
+    ) || name.starts_with("_lang_v_")
         || name.starts_with("_lang_l_")
 }
 
@@ -334,6 +336,8 @@ mod tests {
             ("_dta", "_lang_list", "default"),
             ("_dta", "_lang_v_en", "English label"),
             ("x", "_lang_l_en", "English value label"),
+            ("_dta", "fralias_from", "source frame"),
+            ("x", "fralias_varname", "source variable"),
             ("x", "note2", "variable"),
             ("x", "role", "id"),
             ("missing", "source", "ignored"),
@@ -436,5 +440,13 @@ mod tests {
         })
         .expect("valid structural characteristic");
         assert!(structural.is_none());
+
+        for name in ["fralias_from", "fralias_varname"] {
+            let structural = classify_characteristic("x", name.into(), 0, |_| {
+                panic!("alias metadata must not resolve variable names")
+            })
+            .expect("valid alias metadata");
+            assert!(structural.is_none());
+        }
     }
 }

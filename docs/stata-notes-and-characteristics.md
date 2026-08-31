@@ -14,9 +14,10 @@ the last value wins without moving the key. Records for unknown variables are
 ignored. Stata's `_lang_list` and `_lang_c` records control the active
 metadata language, while `_lang_v_<language>` and `_lang_l_<language>` carry
 alternate dataset/variable labels and value-label attachments. These records
-are not user characteristics. Authoring APIs reject every structural family,
-so a record cannot be accepted on write and then disappear from the public
-model on read.
+are not user characteristics. The alias-variable keys `fralias_from` and
+`fralias_varname` likewise describe Stata's alias structure rather than user
+metadata. Authoring APIs reject every structural family, so a record cannot
+be accepted on write and then disappear from the public model on read.
 
 Raw characteristic names that are not valid Stata names are malformed input
 and cause the read to fail. A DTA source value may contain at most 67,784 raw
@@ -54,6 +55,13 @@ Passing `NULL` removes that key. `drop_stata_notes()` and
 `renumber_stata_notes()` closes gaps explicitly; reading, writing, and the
 other setters do not renumber. Every mutation helper returns a changed copy,
 unlike Stata commands that modify the current dataset.
+
+Frames carrying notes or characteristics have an internal restoration class.
+For both base data frames and tibbles, a data-frame-preserving `[` subset keeps
+dataset metadata and the notes and characteristics of every retained variable.
+A base subset that drops one column to a vector keeps that variable's metadata;
+tibbles retain their normal non-dropping behavior. The preserved subset can be
+passed directly to `save_dta()` or `save_arrow()` without losing metadata.
 
 `_dta` is also a valid variable name, but DTA uses that same target spelling
 for dataset metadata. Arrow can retain notes and characteristics on a variable
@@ -110,8 +118,12 @@ A field document uses the same `notes` and `characteristics` members alongside
 its variable label, format, storage, value-label, missing-value, and R-semantics
 members. Notes must have unique ascending numbers from 1 through 9,999.
 Characteristic names must be unique, valid Stata names, and not numeric
-`note*` keys. A full read validates the dataset document and every field
-document. A projected read validates the dataset document and the selected
-fields' documents, then discards unselected fields' private documents without
-parsing them. Malformed metadata that the read consumes is a hard error unless
-profile handling is explicitly disabled.
+`note*` keys or structural language/alias keys. A full read validates the
+dataset document and every field document. A predicate-free projection
+validates the dataset document and the selected fields' documents, then
+discards unselected fields' private documents without parsing them. A profiled
+tidyselect predicate first reads a full profile summary, and `datasig = TRUE`
+with profile handling enabled parses the full schema, so both validate every
+field document even when the returned data are projected. Malformed metadata
+that the read consumes is a hard error unless profile handling is explicitly
+disabled.

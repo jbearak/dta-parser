@@ -18,9 +18,13 @@
 #' columns; they never acquire Stata semantics. Files carrying a newer
 #' profile version than this package understands are a hard error naming that
 #' version; pass `profile = FALSE` to read such a file as plain Arrow data.
-#' A profiled projection validates the dataset document and each selected
-#' field document. It discards unselected fields' private documents without
-#' parsing them. A full read validates every field document.
+#' A profiled projection resolved without predicates validates the dataset
+#' document and each selected field document, then discards unselected fields'
+#' private documents without parsing them. A tidyselect predicate first builds
+#' a full profiled summary so the predicate sees every column's restored R type;
+#' that summary validates every field document. A full read also validates
+#' every field document. With `profile = TRUE`, `datasig = TRUE` parses every
+#' field document because the stored signature covers the complete schema.
 #'
 #' Only the Arrow IPC file variant (`.arrow`) is handled, not the IPC stream
 #' variant. Column projection reads only the selected columns' buffers, and
@@ -32,8 +36,9 @@
 #'   paths.
 #' @param col_select One or more tidyselect expressions. Predicates see each
 #'   column's R type as recorded in the file: logical, integer, double,
-#'   character, factor, or raw. Profile validation covers the selected fields;
-#'   omit this argument to validate every field document.
+#'   character, factor, or raw. A predicate-free projection validates selected
+#'   field documents; a predicate or an omitted selection validates every field
+#'   document when `profile = TRUE`.
 #' @param skip Number of rows to skip. Must be one non-negative whole number
 #'   no larger than `2^53`.
 #' @param n_max Maximum rows to read. `NA`, either infinity, and negative
@@ -62,8 +67,10 @@
 #'   on disk signs as, not of the projection loaded, and it is never updated
 #'   afterwards. Because it restates what the file declares, pair it with
 #'   `verify = TRUE` (and a full read) when the checksums themselves must be
-#'   validated against the stored bytes. Requires a file written with
-#'   checksums; only file paths are supported.
+#'   validated against the stored bytes. With `profile = TRUE`, requesting the
+#'   signature validates every field document even for a predicate-free
+#'   projection.
+#'   Requires a file written with checksums; only file paths are supported.
 #' @return A tibble.
 #' @export
 read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,

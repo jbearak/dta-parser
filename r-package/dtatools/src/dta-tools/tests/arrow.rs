@@ -1012,6 +1012,13 @@ fn malformed_note_and_characteristic_documents_are_rejected_before_output() {
         },
         DatasetDocument {
             characteristics: vec![StataCharacteristic {
+                name: "fralias_from".to_owned(),
+                value: "reserved".to_owned(),
+            }],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![StataCharacteristic {
                 name: "2invalid".to_owned(),
                 value: "bad".to_owned(),
             }],
@@ -1143,8 +1150,42 @@ fn projection_validates_selected_and_discards_unselected_field_documents() {
         ArrowProfileError::MalformedProfile { .. }
     ));
 
+    let signature_error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            record_signature: true,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("a stored signature parses every field document");
+    assert!(matches!(
+        signature_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+
+    let directory = std::env::temp_dir().join(format!(
+        "dtatools-profile-summary-validation-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).expect("temp dir");
+    let path = directory.join("malformed-unselected.arrow");
+    std::fs::write(&path, &bytes).expect("file written");
+    let summary_error = match summarize_arrow_file(&path, true, true, 0, None, &mut no_interrupt())
+    {
+        Ok(_) => panic!("a profiled predicate summary must parse every field document"),
+        Err(error) => error,
+    };
+    assert!(matches!(
+        summary_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+    std::fs::remove_dir_all(directory).expect("temp dir removed");
+
     let projected = read_arrow_file_from(
-        &mut Cursor::new(bytes),
+        &mut Cursor::new(&bytes),
         &ArrowReadOptions {
             columns: Some(vec![0]),
             verify: false,

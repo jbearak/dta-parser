@@ -318,7 +318,7 @@ function noteNumber(name) {
   return Number.isInteger(number) && number >= 1 && number <= 9999 && match[1] === String(number) ? number : null;
 }
 function reservedCharacteristicName(name) {
-  return NOTE_NAME.test(name) || name === "_lang_list" || name === "_lang_c" || name.startsWith("_lang_v_") || name.startsWith("_lang_l_");
+  return NOTE_NAME.test(name) || name === "_lang_list" || name === "_lang_c" || name === "fralias_from" || name === "fralias_varname" || name.startsWith("_lang_v_") || name.startsWith("_lang_l_");
 }
 function validCharacteristicNameShape(name) {
   return /^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) && codePointLengthAtMost(name, 32) && utf8LengthAtMost(name, 128);

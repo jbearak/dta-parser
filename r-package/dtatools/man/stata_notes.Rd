@@ -81,6 +81,12 @@ Legacy single-byte DTA metadata may expand from at most 67,784 source bytes
 to at most 203,352 UTF-8 bytes when read. Getters and Arrow round trips retain
 that decoded form. Setters and DTA output keep Stata's 67,784-byte target
 limit.
+
+Data frames carrying notes or characteristics use an internal restoration
+class. Data-frame-preserving \code{[} subsets retain dataset metadata and the
+metadata of every retained variable for both base data frames and tibbles.
+A base subset that drops one column to a vector retains that variable's
+metadata; tibbles retain their usual non-dropping behavior.
 }
 \examples{
 survey <- data.frame(age = c(20, 30))

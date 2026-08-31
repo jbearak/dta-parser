@@ -23,7 +23,9 @@ standard_arrow_fixture <- function() {
         dt = as.difftime(c(1.5, NA, -2, 0), units = "hours")
     )
     attr(data, "label") <- "standard fixture"
-    attr(data, "notes") <- c("first note", "second note")
+    data <- set_stata_note(data, 1L, "first note")
+    data <- set_stata_note(data, 2L, "second note")
+    attr(data, "stata.note.numbers") <- NULL
     attr(data$x, "label") <- "a double"
     data
 }
@@ -1052,6 +1054,40 @@ test_that("Arrow selection parses profile metadata only for predicates", {
             c(profile = FALSE, scan = FALSE),
             c(profile = TRUE, scan = TRUE)
         )
+    )
+})
+
+test_that("predicate and datasig projections validate every field document", {
+    marker <- "unselected-profile-corruption-marker"
+    data <- tibble::tibble(selected = 1:2, unselected = 3:4)
+    data <- set_stata_note(data, 1L, marker, variable = "unselected")
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    bytes <- readBin(path, "raw", n = file.size(path))
+    marker_offsets <- grepRaw(
+        charToRaw(marker), bytes, fixed = TRUE, all = TRUE
+    )
+    marker_offset <- tail(marker_offsets, 1L)
+    document_starts <- grepRaw(
+        charToRaw('{"version":0'), bytes[seq_len(marker_offset)],
+        fixed = TRUE, all = TRUE
+    )
+    field_start <- tail(document_starts, 1L)
+    bytes[[field_start]] <- charToRaw("[")
+    writeBin(bytes, path)
+
+    name_only <- read_arrow(path, col_select = selected)
+    expect_identical(names(name_only), "selected")
+    expect_error(
+        read_arrow(path, col_select = tidyselect::where(is.integer)),
+        "malformed.*profile|profile.*malformed",
+        ignore.case = TRUE
+    )
+    expect_error(
+        read_arrow(path, col_select = selected, datasig = TRUE),
+        "malformed.*profile|profile.*malformed",
+        ignore.case = TRUE
     )
 })
 

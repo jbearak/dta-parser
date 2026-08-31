@@ -1335,6 +1335,8 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
         "_lang_c",
         "_lang_v_en",
         "_lang_l_en",
+        "fralias_from",
+        "fralias_varname",
     ] {
         data.characteristics = vec![DtaWriteCharacteristic {
             name: invalid_name.into(),

@@ -74,6 +74,14 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
         set_stata_characteristic(data, "_lang_l_en", "English labels"),
         "language-control key"
     )
+    expect_error(
+        set_stata_characteristic(data, "fralias_from", "source frame"),
+        "structural key"
+    )
+    expect_error(
+        set_stata_characteristic(data, "fralias_varname", "source variable"),
+        "structural key"
+    )
     malformed_dataset <- data
     attr(malformed_dataset, "stata.characteristics") <- c(
         `_lang_c` = "default"
@@ -104,6 +112,83 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
     )
     expect_error(stata_notes(data, "missing"), "does not exist")
     expect_identical(attributes(data), attributes(data.frame(x = 1)))
+})
+
+test_that("base and tibble subsetting preserve Stata metadata", {
+    inputs <- list(
+        base = data.frame(x = 1:2, y = 3:4),
+        tibble = tibble::tibble(x = 1:2, y = 3:4)
+    )
+    for (kind in names(inputs)) {
+        data <- inputs[[kind]]
+        data <- set_stata_note(data, 3, "dataset")
+        data <- set_stata_characteristic(data, "source", "survey")
+        data <- set_stata_note(data, 2, "x note", variable = "x")
+        data <- set_stata_characteristic(data, "role", "id", variable = "x")
+
+        subsets <- list(
+            rows = data[1L, , drop = FALSE],
+            columns = data[c("y", "x")],
+            one_column = data[, "x", drop = FALSE]
+        )
+        for (subset_name in names(subsets)) {
+            subset <- subsets[[subset_name]]
+            expect_identical(
+                stata_notes(subset), c(`3` = "dataset"),
+                info = paste(kind, subset_name)
+            )
+            expect_identical(
+                stata_characteristics(subset), c(source = "survey"),
+                info = paste(kind, subset_name)
+            )
+            if ("x" %in% names(subset)) {
+                expect_identical(
+                    stata_notes(subset, "x"), c(`2` = "x note"),
+                    info = paste(kind, subset_name)
+                )
+                expect_identical(
+                    stata_characteristics(subset, "x"), c(role = "id"),
+                    info = paste(kind, subset_name)
+                )
+            }
+        }
+
+        extracted <- data[, "x"]
+        if (is.data.frame(extracted)) {
+            expect_identical(stata_notes(extracted), c(`3` = "dataset"))
+            expect_identical(
+                stata_notes(extracted, "x"), c(`2` = "x note")
+            )
+        } else {
+            expect_identical(stata_notes(extracted), c(`2` = "x note"))
+            expect_identical(
+                stata_characteristics(extracted), c(role = "id")
+            )
+        }
+
+        for (extension in c("dta", "arrow")) {
+            path <- tempfile(fileext = paste0(".", extension))
+            on.exit(unlink(path), add = TRUE)
+            save <- if (extension == "dta") save_dta else save_arrow
+            read <- if (extension == "dta") read_dta else read_arrow
+            suppressWarnings(save(subsets$rows, path))
+            restored <- read(path)
+            expect_identical(stata_notes(restored), c(`3` = "dataset"))
+            expect_identical(
+                stata_characteristics(restored), c(source = "survey")
+            )
+            expect_identical(stata_notes(restored, "x"), c(`2` = "x note"))
+            expect_identical(
+                stata_characteristics(restored, "x"), c(role = "id")
+            )
+        }
+
+        cleared <- drop_stata_notes(data)
+        cleared <- drop_stata_characteristics(cleared)
+        cleared <- drop_stata_notes(cleared, variable = "x")
+        cleared <- drop_stata_characteristics(cleared, variable = "x")
+        expect_false(inherits(cleared, "dtatools_stata_metadata"))
+    }
 })
 
 test_that("writers reject manually attached over-limit metadata safely", {

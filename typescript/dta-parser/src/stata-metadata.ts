@@ -24,6 +24,8 @@ function reservedCharacteristicName(name: string): boolean {
     return NOTE_NAME.test(name)
         || name === '_lang_list'
         || name === '_lang_c'
+        || name === 'fralias_from'
+        || name === 'fralias_varname'
         || name.startsWith('_lang_v_')
         || name.startsWith('_lang_l_');
 }
