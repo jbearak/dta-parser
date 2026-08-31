@@ -74,6 +74,26 @@ impl DtaWriteObservationSource for AdaptedObservationSource {
     }
 }
 
+struct SharedLabelObservationSource;
+
+impl DtaWriteObservationSource for SharedLabelObservationSource {
+    fn value_label_name(&self, _column: usize) -> Option<&str> {
+        Some("shared_answers")
+    }
+
+    fn numeric_value(
+        &self,
+        column: usize,
+        _row: u64,
+    ) -> Result<DtaWriteNumericValue, DtaWriteError> {
+        Ok(DtaWriteNumericValue::Value(column as f64))
+    }
+
+    fn string_value(&self, _column: usize, _row: u64) -> Result<Cow<'_, str>, DtaWriteError> {
+        unreachable!("shared-label test source is numeric")
+    }
+}
+
 struct BulkObservationSource {
     calls: Cell<usize>,
 }
@@ -1360,6 +1380,95 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
     )
     .expect_err("an explicit zero note number is rejected");
     assert!(matches!(error, DtaWriteError::InvalidDatasetMetadata(_)));
+}
+
+#[test]
+fn adapter_can_write_one_named_value_label_table_for_multiple_variables() {
+    let values = [DtaWriteNumericValue::Value(0.0)];
+    let labels = || {
+        vec![
+            DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Integer(0),
+                label: "No".into(),
+            },
+            DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Integer(1),
+                label: "Yes".into(),
+            },
+        ]
+    };
+    let column = |name: &'static str| DtaWriteColumn {
+        name: name.into(),
+        dta_type: DtaType::Long,
+        format: "%12.0g".into(),
+        label: String::new().into(),
+        has_value_labels: true,
+        value_labels: labels(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        values: DtaWriteColumnValues::Numeric(&values),
+    };
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![column("first"), column("second")],
+    };
+    let mut output = Cursor::new(Vec::new());
+    write_prevalidated_dta_with_observation_source_to(
+        &mut output,
+        &data,
+        &DtaWriteOptions::default(),
+        &SharedLabelObservationSource,
+        1,
+    )
+    .unwrap();
+
+    let parsed = read_dta(&output.into_inner()).unwrap();
+    assert_eq!(parsed.value_label_tables.len(), 1);
+    assert_eq!(parsed.value_label_tables[0].name, "shared_answers");
+    assert!(parsed
+        .metadata
+        .variables
+        .iter()
+        .all(|variable| variable.value_label_name == "shared_answers"));
+}
+
+#[test]
+fn adapter_rejects_different_mappings_for_one_table_name_before_writing() {
+    let values = [DtaWriteNumericValue::Value(0.0)];
+    let column = |name: &'static str, label: &'static str| DtaWriteColumn {
+        name: name.into(),
+        dta_type: DtaType::Long,
+        format: "%12.0g".into(),
+        label: String::new().into(),
+        has_value_labels: true,
+        value_labels: vec![DtaWriteValueLabel {
+            value: DtaWriteLabelValue::Integer(0),
+            label: label.into(),
+        }],
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        values: DtaWriteColumnValues::Numeric(&values),
+    };
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![column("first", "No"), column("second", "Never")],
+    };
+    let mut output = Cursor::new(Vec::new());
+    let error = write_prevalidated_dta_with_observation_source_to(
+        &mut output,
+        &data,
+        &DtaWriteOptions::default(),
+        &SharedLabelObservationSource,
+        1,
+    )
+    .unwrap_err();
+
+    assert!(matches!(error, DtaWriteError::InvalidValueLabels { .. }));
+    assert!(output.get_ref().is_empty());
 }
 
 #[test]

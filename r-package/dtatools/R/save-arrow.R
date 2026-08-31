@@ -29,6 +29,10 @@
 #' aggregated warning per conversion category. Attributes outside the profile's
 #' documented set are dropped with one warning naming each affected column and
 #' attribute.
+#' The recognized `value.label.name` attribute preserves an imported nondefault
+#' or shared Stata table name in the existing dataset registry and field
+#' reference. Columns that claim one name with different mappings produce one
+#' aggregated warning and fall back to separate variable-name tables.
 #'
 #' Unlike [save_dta()], factor class and orderedness, `POSIXct` timezones on
 #' ordinary R columns, and `difftime` units are preserved on read.
@@ -88,6 +92,16 @@ save_arrow <- function(data, path,
     specification <- .prepare_arrow_write(write_data, label, adjust_tz)
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
+    preflight <- vapply(write_warnings, function(write_warning) {
+        identical(
+            write_warning$class,
+            "dtatools_write_value_label_name_conflict_warning"
+        )
+    }, logical(1))
+    for (write_warning in write_warnings[preflight]) {
+        .dta_write_warn(write_warning$message, write_warning$class)
+    }
+    write_warnings <- write_warnings[!preflight]
 
     temporary <- tempfile(
         pattern = paste0(".", basename(destination), "-dtatools-"),
@@ -367,8 +381,8 @@ save_arrow <- function(data, path,
         .arrow_utf8(name, "Column names"), .arrow_write_kinds[[kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[1L]], value_labels[[2L]],
-        value_labels[[3L]],
+        value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
+        .arrow_utf8(name, "Value-label table names"),
         inherits(column, "haven_labelled"), string_storage,
         .stata_metadata_payload(notes, characteristics)
     )
@@ -377,7 +391,8 @@ save_arrow <- function(data, path,
 .arrow_known_column_attributes <- function(kind) {
     common <- c(
         "label", "format.stata", "stata.string.storage",
-        "notes", "stata.note.numbers", "stata.characteristics"
+        "value.label.name", "notes", "stata.note.numbers",
+        "stata.characteristics"
     )
     switch(kind,
         factor = c(common, "levels", "class"),
@@ -472,11 +487,22 @@ save_arrow <- function(data, path,
         .prepare_arrow_write_column, data, data_names, kinds,
         MoreArgs = list(adjust_tz = adjust_tz)
     )
+    value_label_names <- .resolve_write_value_label_names(
+        data, columns, values_index = 11L, text_index = 12L,
+        has_index = 13L
+    )
+    for (index in seq_along(columns)) {
+        columns[[index]][[14L]] <- .arrow_utf8(
+            value_label_names$names[[index]], "Value-label table names"
+        )
+    }
     specification <- list(
         label, .stata_metadata_payload(notes, characteristics),
         unname(columns)
     )
-    attr(specification, "write_warnings") <-
+    attr(specification, "write_warnings") <- c(
+        value_label_names$warnings,
         .arrow_dropped_attribute_warnings(data, kinds)
+    )
     specification
 }

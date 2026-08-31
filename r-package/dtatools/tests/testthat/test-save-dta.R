@@ -492,10 +492,10 @@ test_that("Date and POSIXct columns use Stata epochs and both timezone modes", {
     specification <- dtatools:::.prepare_dta_write(
         data, NULL, 2045L, TRUE
     )
-    expect_identical(specification[[3L]][[1L]][[9L]], 3653)
-    expect_identical(specification[[3L]][[1L]][[10L]], 1)
-    expect_identical(specification[[3L]][[2L]][[9L]], 315619200)
-    expect_identical(specification[[3L]][[2L]][[10L]], 1000)
+    expect_identical(specification[[3L]][[1L]][[10L]], 3653)
+    expect_identical(specification[[3L]][[1L]][[11L]], 1)
+    expect_identical(specification[[3L]][[2L]][[10L]], 315619200)
+    expect_identical(specification[[3L]][[2L]][[11L]], 1000)
 })
 
 test_that("timezone adjustment retains invalid datetimes for native warnings", {

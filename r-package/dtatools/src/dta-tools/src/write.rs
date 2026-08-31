@@ -50,7 +50,8 @@ pub enum DtaWriteLabelValue {
     Missing(MissingTag),
 }
 
-/// One value-label entry. Tables are named after their variables in output.
+/// One value-label entry. The public writer names tables after their variables
+/// unless an internal adapter supplies a preserved source-table name.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DtaWriteValueLabel<'a> {
     pub value: DtaWriteLabelValue,
@@ -136,6 +137,13 @@ pub trait DtaWriteColumnSource {
 /// handling. The hidden bulk seam is reserved for trusted in-tree adapters
 /// that already own the final DTA storage encoding.
 pub trait DtaWriteObservationSource {
+    /// Override the value-label table name for one column. `None` uses the
+    /// variable name, which preserves the public writer's existing behavior.
+    #[doc(hidden)]
+    fn value_label_name(&self, _column: usize) -> Option<&str> {
+        None
+    }
+
     fn begin_row(&self, _row: u64) -> Result<(), DtaWriteError> {
         Ok(())
     }
@@ -821,6 +829,53 @@ fn validate_data(data: &DtaWriteData<'_>, options: &DtaWriteOptions) -> Result<u
     Ok(row_count)
 }
 
+fn output_value_label_name<'a, S: DtaWriteObservationSource + ?Sized>(
+    data: &'a DtaWriteData<'_>,
+    source: &'a S,
+    column_index: usize,
+) -> &'a str {
+    source
+        .value_label_name(column_index)
+        .unwrap_or(data.columns[column_index].name.as_ref())
+}
+
+fn validate_value_label_names<S: DtaWriteObservationSource + ?Sized>(
+    data: &DtaWriteData<'_>,
+    source: &S,
+) -> Result<(), DtaWriteError> {
+    let mut tables: HashMap<&str, &Vec<DtaWriteValueLabel<'_>>> =
+        HashMap::with_capacity(data.columns.len());
+    for (column_index, column) in data.columns.iter().enumerate() {
+        if !column.has_value_labels {
+            continue;
+        }
+        let table_name = output_value_label_name(data, source, column_index);
+        if !valid_stata_name(table_name) {
+            return Err(DtaWriteError::InvalidValueLabels {
+                column: column.name.to_string(),
+                message: format!(
+                    "table name {table_name:?} must be a valid Stata name of at most 32 Unicode characters"
+                ),
+            });
+        }
+        match tables.entry(table_name) {
+            Entry::Vacant(entry) => {
+                entry.insert(&column.value_labels);
+            }
+            Entry::Occupied(entry) if *entry.get() == &column.value_labels => {}
+            Entry::Occupied(_) => {
+                return Err(DtaWriteError::InvalidValueLabels {
+                    column: column.name.to_string(),
+                    message: format!(
+                        "table name {table_name:?} is associated with different mappings"
+                    ),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 fn position<W: Seek>(writer: &mut W) -> Result<u64, DtaWriteError> {
     Ok(writer.stream_position()?)
 }
@@ -1014,9 +1069,9 @@ where
 
     offsets.value_label_names = position(writer)?;
     write_tag(writer, b"<value_label_names>")?;
-    for column in &data.columns {
+    for (column_index, column) in data.columns.iter().enumerate() {
         let name = if column.has_value_labels {
-            column.name.as_ref()
+            output_value_label_name(data, source, column_index)
         } else {
             ""
         };
@@ -1729,8 +1784,13 @@ fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
     source: &S,
 ) -> Result<(), DtaWriteError> {
     write_tag(writer, b"<value_labels>")?;
-    for column in &data.columns {
+    let mut written = HashSet::with_capacity(data.columns.len());
+    for (column_index, column) in data.columns.iter().enumerate() {
         if !column.has_value_labels {
+            continue;
+        }
+        let table_name = output_value_label_name(data, source, column_index);
+        if !written.insert(table_name) {
             continue;
         }
         let mut entries = column
@@ -1766,7 +1826,7 @@ fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
                 .map_err(|_| DtaWriteError::Overflow("value-label table"))?
                 .to_le_bytes(),
         )?;
-        write_field(writer, &column.name, WRITE_FIELD_WIDTHS.varname)?;
+        write_field(writer, table_name, WRITE_FIELD_WIDTHS.varname)?;
         writer.write_all(&[0; 3])?;
         writer.write_all(
             &i32::try_from(entries.len())
@@ -1906,8 +1966,9 @@ pub fn save_dta_to<W: Write + Seek>(
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
 ) -> Result<DtaWriteSummary, DtaWriteError> {
-    let row_count = validate_data(data, options)?;
     let source = ColumnObservationSource { data };
+    let row_count = validate_data(data, options)?;
+    validate_value_label_names(data, &source)?;
     save_dta_impl(writer, data, options, &source, row_count)
 }
 
@@ -1932,6 +1993,7 @@ where
     S: DtaWriteObservationSource + ?Sized,
 {
     let column_row_count = validate_structure(data, options)?;
+    validate_value_label_names(data, observation_source)?;
     if column_row_count != row_count {
         return Err(DtaWriteError::InvalidDatasetMetadata(format!(
             "prevalidated row count is {row_count} but columns have {column_row_count} rows"

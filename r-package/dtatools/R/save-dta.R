@@ -24,6 +24,10 @@
 #' Duplicate value-label keys already present in imported source metadata are
 #' retained in stable order; the package's metadata setters remain stricter for
 #' newly authored tables.
+#' An imported `value.label.name` attribute preserves a nondefault or shared
+#' value-label table name. Columns that claim one name with different mappings
+#' produce one aggregated warning and fall back to separate variable-name
+#' tables. A table-name attribute without a usable `labels` mapping is invalid.
 #'
 #' @section Output safety:
 #' Only local, uncompressed files are supported. The complete input is validated
@@ -69,6 +73,16 @@ save_dta <- function(data, path, version = 19L,
     )
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
+    preflight <- vapply(write_warnings, function(write_warning) {
+        identical(
+            write_warning$class,
+            "dtatools_write_value_label_name_conflict_warning"
+        )
+    }, logical(1))
+    for (write_warning in write_warnings[preflight]) {
+        .dta_write_warn(write_warning$message, write_warning$class)
+    }
+    write_warnings <- write_warnings[!preflight]
 
     temporary <- tempfile(
         pattern = paste0(".", basename(destination), "-dtatools-"),
@@ -470,6 +484,118 @@ save_dta <- function(data, path, version = 19L,
     list(unname(labels), enc2utf8(label_text), TRUE)
 }
 
+.value_label_mapping <- function(column, values_index, text_index) {
+    list(
+        codes = as.double(column[[values_index]]),
+        text = enc2utf8(column[[text_index]])
+    )
+}
+
+.resolve_write_value_label_names <- function(
+    data, columns, values_index = 5L, text_index = 6L, has_index = 8L
+) {
+    column_names <- names(data)
+    usable <- vapply(columns, function(column) {
+        isTRUE(column[[has_index]])
+    }, logical(1))
+    explicit <- lapply(data, attr, which = "value.label.name", exact = TRUE)
+
+    for (index in seq_along(columns)) {
+        table_name <- explicit[[index]]
+        if (is.null(table_name)) next
+        if (!is.character(table_name) || length(table_name) != 1L ||
+            is.na(table_name) || !.valid_stata_names(table_name)) {
+            .dta_write_abort(sprintf(
+                paste0(
+                    "Column `%s` has an invalid `value.label.name`; ",
+                    "it must be one valid Stata name with at most 32 Unicode characters"
+                ),
+                column_names[[index]]
+            ))
+        }
+        if (!usable[[index]]) {
+            .dta_write_abort(sprintf(
+                paste0(
+                    "Column `%s` has `value.label.name` but no usable ",
+                    "`labels` mapping"
+                ),
+                column_names[[index]]
+            ))
+        }
+        explicit[[index]] <- enc2utf8(table_name)
+    }
+
+    requested <- column_names
+    for (index in which(usable)) {
+        if (!is.null(explicit[[index]])) requested[[index]] <- explicit[[index]]
+    }
+    mappings <- lapply(
+        columns, .value_label_mapping,
+        values_index = values_index, text_index = text_index
+    )
+    conflicts <- list()
+    claimants <- split(which(usable), requested[usable])
+    owners <- as.list(stats::setNames(seq_along(column_names), column_names))
+    fallback <- rep(FALSE, length(columns))
+    queue <- names(claimants)
+    next_name <- 1L
+
+    while (next_name <= length(queue)) {
+        table_name <- queue[[next_name]]
+        next_name <- next_name + 1L
+        members <- claimants[[table_name]]
+        if (length(members)) members <- members[!fallback[members]]
+        owner <- owners[[table_name]]
+        if (!is.null(owner) && usable[[owner]] && fallback[[owner]]) {
+            members <- unique(c(members, owner))
+        }
+        if (length(members) < 2L) next
+
+        reference <- mappings[[members[[1L]]]]
+        same <- vapply(
+            members[-1L],
+            function(index) identical(mappings[[index]], reference),
+            logical(1)
+        )
+        if (all(same)) next
+
+        conflicts[[table_name]] <- unique(c(
+            conflicts[[table_name]], column_names[members]
+        ))
+        newly_fallback <- members[
+            !fallback[members] & requested[members] != column_names[members]
+        ]
+        if (length(newly_fallback)) {
+            fallback[newly_fallback] <- TRUE
+            queue <- c(queue, column_names[newly_fallback])
+        }
+    }
+    resolved <- requested
+    resolved[fallback] <- column_names[fallback]
+
+    warnings <- list()
+    if (length(conflicts)) {
+        details <- vapply(names(conflicts), function(table_name) {
+            sprintf(
+                "`%s` (%s)", table_name,
+                paste(sprintf("`%s`", conflicts[[table_name]]), collapse = ", ")
+            )
+        }, character(1))
+        warnings <- list(.dta_write_warning(
+            sprintf(
+                paste0(
+                    "Conflicting value-label table mappings: %s. ",
+                    "Used each affected variable name as its table name instead."
+                ),
+                paste(details, collapse = "; ")
+            ),
+            "dtatools_write_value_label_name_conflict_warning"
+        ))
+    }
+
+    list(names = resolved, warnings = warnings)
+}
+
 .write_datetime_timezone <- function(column) {
     timezone <- attr(column, "tzone", exact = TRUE)
     if (is.null(timezone) || !length(timezone) || is.na(timezone[[1L]])) {
@@ -604,7 +730,7 @@ save_dta <- function(data, path, version = 19L,
     result <- list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
         label_values, label_texts, values, has_value_labels,
-        numeric_shift, numeric_scale, stata_metadata
+        enc2utf8(name), numeric_shift, numeric_scale, stata_metadata
     )
     if (!is.null(character_missing)) {
         attr(result, "character_missing") <- character_missing
@@ -771,6 +897,11 @@ save_dta <- function(data, path, version = 19L,
             adjust_tz = adjust_tz
         )
     )
+    value_label_names <- .resolve_write_value_label_names(data, columns)
+    for (index in seq_along(columns)) {
+        columns[[index]][[9L]] <- value_label_names$names[[index]]
+    }
+    write_warnings <- c(write_warnings, value_label_names$warnings)
     factor_columns <- data_names[kinds == "factor"]
     if (length(factor_columns)) {
         write_warnings <- c(write_warnings, list(.dta_write_warning(

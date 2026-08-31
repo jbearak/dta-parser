@@ -3,7 +3,7 @@
 //! the DTA entry points. The C layer validates R types and passes direct data
 //! pointers; character data crosses through the string region callback.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_void};
 use std::ptr;
@@ -83,6 +83,7 @@ pub struct RArrowColumnDescriptor {
     label_count: usize,
     stata_metadata: Sexp,
     has_value_labels: c_int,
+    value_label_name: *const c_char,
     haven_labelled: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.
@@ -882,7 +883,9 @@ unsafe fn extract_column(
         } else {
             None
         };
-    let value_labels = value_label_table(descriptor, &name)?;
+    let value_label_name =
+        required_c_string(descriptor.value_label_name, "a value-label table name")?;
+    let value_labels = value_label_table(descriptor, &value_label_name)?;
     let (notes, characteristics) = parse_stata_metadata_sexp(descriptor.stata_metadata)?;
     let string_storage = match descriptor.string_storage {
         -1 => None,
@@ -976,8 +979,8 @@ unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, St
     );
     let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
     let with_labels = |mut document: ArrowFieldDocument| {
-        if column.value_labels.is_some() {
-            document.value_labels = Some(name.clone());
+        if let Some(table) = &column.value_labels {
+            document.value_labels = Some(table.name.clone());
         }
         document
     };
@@ -1683,6 +1686,7 @@ fn row_window(skip: f64, n_max: f64) -> (u64, Option<u64>) {
 struct ColumnAttributes<'a> {
     document: Option<&'a ArrowFieldDocument>,
     dataset: Option<&'a DatasetDocument>,
+    value_label_reference_counts: Option<&'a HashMap<String, usize>>,
 }
 
 impl ColumnAttributes<'_> {
@@ -1698,6 +1702,20 @@ impl ColumnAttributes<'_> {
     fn value_label_table(&self) -> Option<ValueLabelTable> {
         let name = self.document?.value_labels.as_deref()?;
         self.dataset?.value_label_table(name)
+    }
+
+    fn preserve_value_label_name(&self, column_name: &str) -> bool {
+        let Some(name) = self
+            .document
+            .and_then(|document| document.value_labels.as_deref())
+        else {
+            return false;
+        };
+        name != column_name
+            || self
+                .value_label_reference_counts
+                .and_then(|counts| counts.get(name))
+                .is_some_and(|&count| count > 1)
     }
 
     fn semantics(&self) -> Option<&ArrowRSemantics> {
@@ -2839,10 +2857,15 @@ unsafe fn value_label_attributes(
     vector: Sexp,
     table: &ValueLabelTable,
     add_haven_class: bool,
+    preserve_value_label_name: bool,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     let labels = label_attribute(table, guard)?;
     set_attr(vector, "labels", labels)?;
+    if preserve_value_label_name {
+        let name = scalar_string(&table.name, guard)?;
+        set_attr(vector, "value.label.name", name)?;
+    }
     if add_haven_class {
         set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
     }
@@ -2852,6 +2875,7 @@ unsafe fn value_label_attributes(
 /// The declared-class attributes shared by payload and semantic doubles.
 unsafe fn apply_double_class(
     vector: Sexp,
+    column_name: &str,
     attributes: &ColumnAttributes<'_>,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
@@ -2876,7 +2900,13 @@ unsafe fn apply_double_class(
         _ => {}
     }
     if let Some(table) = attributes.value_label_table() {
-        value_label_attributes(vector, &table, false, guard)?;
+        value_label_attributes(
+            vector,
+            &table,
+            false,
+            attributes.preserve_value_label_name(column_name),
+            guard,
+        )?;
     }
     Ok(())
 }
@@ -2889,6 +2919,7 @@ unsafe fn finalize_read_column(
     plan: PlannedColumn,
     outcome: FillOutcome,
     dataset: Option<&DatasetDocument>,
+    value_label_reference_counts: &HashMap<String, usize>,
     profiled: bool,
     row_count: usize,
     guard: &mut ProtectGuard,
@@ -2900,6 +2931,7 @@ unsafe fn finalize_read_column(
             None
         },
         dataset: if profiled { dataset } else { None },
+        value_label_reference_counts: profiled.then_some(value_label_reference_counts),
     };
     let mismatch = || format!("column `{}` produced a mismatched fill result", column.name);
     let vector = match &plan.shape {
@@ -2960,6 +2992,7 @@ unsafe fn finalize_read_column(
                     characteristics: &document.characteristics,
                 },
                 table.as_ref(),
+                attributes.preserve_value_label_name(&column.name),
                 guard,
             )?;
         }
@@ -2967,7 +3000,13 @@ unsafe fn finalize_read_column(
             set_class(vector, &["Date"], guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
             if let Some(table) = attributes.value_label_table() {
-                value_label_attributes(vector, &table, false, guard)?;
+                value_label_attributes(
+                    vector,
+                    &table,
+                    false,
+                    attributes.preserve_value_label_name(&column.name),
+                    guard,
+                )?;
             }
         }
         ColumnShape::Timestamp => {
@@ -2989,18 +3028,30 @@ unsafe fn finalize_read_column(
             }
             attach_simple_attributes(vector, &attributes, guard)?;
             if let Some(table) = attributes.value_label_table() {
-                value_label_attributes(vector, &table, false, guard)?;
+                value_label_attributes(
+                    vector,
+                    &table,
+                    false,
+                    attributes.preserve_value_label_name(&column.name),
+                    guard,
+                )?;
             }
         }
         ColumnShape::Duration { .. } => {
             apply_difftime_attributes(vector, &attributes, guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
             if let Some(table) = attributes.value_label_table() {
-                value_label_attributes(vector, &table, false, guard)?;
+                value_label_attributes(
+                    vector,
+                    &table,
+                    false,
+                    attributes.preserve_value_label_name(&column.name),
+                    guard,
+                )?;
             }
         }
         ColumnShape::PayloadDouble | ColumnShape::SemanticDouble => {
-            apply_double_class(vector, &attributes, guard)?;
+            apply_double_class(vector, &column.name, &attributes, guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
         }
         ColumnShape::Logical
@@ -3109,6 +3160,8 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 } else {
                     None
                 },
+                value_label_reference_counts: profiled
+                    .then_some(&result.value_label_reference_counts),
             };
             let shape = classify_read_column(column, &attributes, numeric_altrep != 0)?;
             let mut plan =
@@ -3133,6 +3186,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 plan,
                 outcome,
                 result.dataset.as_ref(),
+                &result.value_label_reference_counts,
                 profiled,
                 row_count,
                 &mut column_guard,
@@ -3352,6 +3406,7 @@ mod tests {
         let attributes = ColumnAttributes {
             document: None,
             dataset: None,
+            value_label_reference_counts: None,
         };
         assert!(matches!(
             classify_read_column(&column, &attributes, true).expect("classification"),
@@ -3365,6 +3420,7 @@ mod tests {
         let profiled = ColumnAttributes {
             document: Some(&document),
             dataset: None,
+            value_label_reference_counts: None,
         };
         let error = match classify_read_column(&column, &profiled, true) {
             Err(error) => error,

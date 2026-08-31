@@ -8,6 +8,10 @@
 #' value-label tables, factor levels and orderedness, ordinary `POSIXct`
 #' timezones, `difftime` units, and the
 #' integer-versus-double distinction.
+#' Imported Stata table identity is restored in the `value.label.name` column
+#' attribute when the table name differs from the field name or several source
+#' fields refer to it. Sharing is determined from the complete source schema,
+#' including fields omitted by projection.
 #'
 #' Apache Arrow stores tabular data by column in a standard binary layout. The
 #' on-disk format uses Arrow's IPC (interprocess communication) file format to

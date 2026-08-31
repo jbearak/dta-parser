@@ -80,6 +80,10 @@ labels, display formats, numbered notes, arbitrary Stata characteristics,
 value-label tables, factor levels and orderedness, ordinary \code{POSIXct}
 timezones, \code{difftime} units, and the
 integer-versus-double distinction.
+Imported Stata table identity is restored in the \code{value.label.name} column
+attribute when the table name differs from the field name or several source
+fields refer to it. Sharing is determined from the complete source schema,
+including fields omitted by projection.
 }
 \details{
 Apache Arrow stores tabular data by column in a standard binary layout. The

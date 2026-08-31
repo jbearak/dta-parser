@@ -453,10 +453,19 @@ as.character.stata_numeric <- function(x, ...) {
     if (is.null(variable_label)) {
         variable_label <- attr(y, "label", exact = TRUE)
     }
+    value_label_name <- attr(x, "value.label.name", exact = TRUE)
+    if (is.null(value_label_name)) {
+        value_label_name <- attr(y, "value.label.name", exact = TRUE)
+    }
 
     result <- .metadata_copy(result)
     attr(result, "labels") <- labels
     attr(result, "label") <- variable_label
+    attr(result, "value.label.name") <- if (is.null(labels)) {
+        NULL
+    } else {
+        value_label_name
+    }
     .apply_haven_labelled_class(result, !is.null(labels))
 }
 

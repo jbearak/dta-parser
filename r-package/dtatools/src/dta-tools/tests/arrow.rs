@@ -404,6 +404,59 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
 }
 
 #[test]
+fn projected_reads_count_value_label_references_from_all_source_fields() {
+    let table = ValueLabelTable {
+        name: "shared_answers".to_owned(),
+        entries: vec![ValueLabelEntry {
+            value: 1,
+            missing_tag: None,
+            label: "yes".to_owned(),
+        }],
+    };
+    let mut document = DatasetDocument::default();
+    document.insert_value_label_table(&table);
+    let labelled_field = || {
+        Some(ArrowFieldDocument {
+            value_labels: Some(table.name.clone()),
+            ..ArrowFieldDocument::default()
+        })
+    };
+    let dataset = ArrowWriteDataset {
+        dataset: document,
+        columns: vec![
+            ArrowWriteColumn {
+                name: "first".to_owned(),
+                field: labelled_field(),
+                array: Arc::new(Float64Array::from(vec![1.0])),
+            },
+            ArrowWriteColumn {
+                name: "second".to_owned(),
+                field: labelled_field(),
+                array: Arc::new(Float64Array::from(vec![1.0])),
+            },
+        ],
+    };
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    let mut cursor = Cursor::new(bytes);
+    let result = read_arrow_file_from(
+        &mut cursor,
+        &ArrowReadOptions {
+            columns: Some(vec![1]),
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("projected read succeeds");
+
+    assert_eq!(result.columns.len(), 1);
+    assert_eq!(result.columns[0].name, "second");
+    assert_eq!(
+        result.value_label_reference_counts.get("shared_answers"),
+        Some(&2)
+    );
+}
+
+#[test]
 fn nan_payloads_survive_bit_exactly() {
     let tagged =
         |letter: u32| f64::from_bits(0x7ff0_0000_0000_07a2_u64 | (u64::from(letter) << 32));

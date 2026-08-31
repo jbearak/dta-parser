@@ -102,6 +102,9 @@ pub struct ArrowReadResult {
     /// and `profile` was requested.
     pub profile_version: Option<String>,
     pub dataset: Option<DatasetDocument>,
+    /// Reference counts from every source field, including fields omitted by
+    /// projection. Readers use these to retain shared table identity.
+    pub value_label_reference_counts: HashMap<String, usize>,
     pub row_count: u64,
     pub columns: Vec<ArrowReadColumn>,
     pub stored_signature: Option<String>,
@@ -1644,6 +1647,28 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
 }
 
 fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+    let mut value_label_reference_counts = HashMap::new();
+    if let Some(profile) = &prepared.profile {
+        let mut count_reference = |field: &ArrowFieldDocument| {
+            if let Some(name) = &field.value_labels {
+                *value_label_reference_counts
+                    .entry(name.clone())
+                    .or_insert(0) += 1;
+            }
+        };
+        match &profile.fields {
+            ProfileFields::Full(fields) => {
+                for field in fields.iter().flatten() {
+                    count_reference(field);
+                }
+            }
+            ProfileFields::Projected(fields) => {
+                for field in fields.values() {
+                    count_reference(field);
+                }
+            }
+        }
+    }
     let (profile_version, dataset) = if let Some(mut profile) = prepared.profile.take() {
         let mut remaining = HashMap::with_capacity(prepared.selected.len());
         for &index in &prepared.selected {
@@ -1667,6 +1692,7 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
     ArrowReadResult {
         profile_version,
         dataset,
+        value_label_reference_counts,
         row_count: prepared.produced,
         columns,
         stored_signature: prepared.stored_signature,

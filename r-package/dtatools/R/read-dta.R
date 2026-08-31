@@ -10,6 +10,10 @@
 #' characteristics, display formats, value labels, `strL` content, and Stata
 #' system/extended missing values are retained. Use [stata_notes()] and
 #' [stata_characteristics()] at dataset or variable scope.
+#' Imported value-label table identity is stored in `value.label.name` when the
+#' table name differs from the source variable name or the source table is
+#' shared. This differs from the variable label in `label` and the code-to-text
+#' mapping in `labels`. Projection checks sharing against all source variables.
 #'
 #' @section Stata missing values:
 #' Stata system missing (`.`) is returned as `NA_real_`; in releases supporting
