@@ -9,7 +9,13 @@
 // Supports format versions 117, 118, and 119.
 // -----------------------------------------------------------
 
-import type { DtaMetadata, DtaReadPlan } from './types';
+import type {
+    DtaMetadata,
+    DtaReadPlan,
+    PackedDtaReadPlan,
+    ReadVariablePlan,
+} from './types';
+import { isPackedDtaReadPlan } from './types';
 import type { ResolvedTextEncoding } from './text-encoding';
 import {
     resolve_text_encoding,
@@ -29,6 +35,15 @@ export interface GsoEntry {
 export interface StrlPointer {
     v: number;
     o: number;
+}
+
+function readVariable(
+    metadata: DtaReadPlan | PackedDtaReadPlan,
+    index: number
+): ReadVariablePlan | undefined {
+    return isPackedDtaReadPlan(metadata)
+        ? metadata.variable(index)
+        : metadata.variables[index];
 }
 
 // -----------------------------------------------------------
@@ -54,15 +69,15 @@ const ASCII_DECODER = new TextDecoder('utf-8');
  */
 export function build_gso_index(
     buffer: ArrayBuffer,
-    metadata: DtaReadPlan,
+    metadata: DtaReadPlan | PackedDtaReadPlan,
     base_offset: number = 0
 ): Map<string, GsoEntry> {
     const my_index = new Map<string, GsoEntry>();
 
     // Quick exit: no strL variables means no GSO entries
-    const my_has_strl = metadata.variables.some(
-        v => v.type === 'strL'
-    );
+    const my_has_strl = isPackedDtaReadPlan(metadata)
+        ? metadata.strl_columns.length > 0
+        : metadata.variables.some(v => v.type === 'strL');
     if (!my_has_strl) return my_index;
 
     const bytes = new Uint8Array(buffer);
@@ -145,7 +160,7 @@ export function build_gso_index(
             pos += 8;
         }
 
-        const my_variable = metadata.variables[my_v - 1];
+        const my_variable = readVariable(metadata, my_v - 1);
         if (
             my_v < 1
             || my_o < 1
@@ -235,7 +250,7 @@ export function resolve_strl(
 
 export function read_strl_pointer(
     view: DataView,
-    metadata: DtaReadPlan,
+    metadata: DtaReadPlan | PackedDtaReadPlan,
     pointer_offset: number
 ): StrlPointer | null {
     const little_endian = metadata.byte_order === 'LSF';
@@ -295,7 +310,7 @@ export function read_strl_pointer(
         return null;
     }
 
-    const my_variable = metadata.variables[my_v - 1];
+    const my_variable = readVariable(metadata, my_v - 1);
     if (
         my_v < 1
         || my_o < 1

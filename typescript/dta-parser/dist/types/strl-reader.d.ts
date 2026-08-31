@@ -1,4 +1,4 @@
-import type { DtaMetadata, DtaReadPlan } from './types';
+import type { DtaMetadata, DtaReadPlan, PackedDtaReadPlan } from './types';
 import type { ResolvedTextEncoding } from './text-encoding';
 export interface GsoEntry {
     content_offset: number;
@@ -16,7 +16,7 @@ export interface StrlPointer {
  * are relative to `buffer`; `base_offset` only maps file coordinates into it.
  * The map is empty when the dataset has no strL variables.
  */
-export declare function build_gso_index(buffer: ArrayBuffer, metadata: DtaReadPlan, base_offset?: number): Map<string, GsoEntry>;
+export declare function build_gso_index(buffer: ArrayBuffer, metadata: DtaReadPlan | PackedDtaReadPlan, base_offset?: number): Map<string, GsoEntry>;
 /**
  * Resolve a strL pointer at the given byte offset in the
  * data section. Returns the string content, or an empty string
@@ -27,6 +27,6 @@ export declare function build_gso_index(buffer: ArrayBuffer, metadata: DtaReadPl
  * 8-byte strL pointer field.
  */
 export declare function resolve_strl(buffer: ArrayBuffer, metadata: DtaMetadata, gso_index: Map<string, GsoEntry>, pointer_offset: number): string;
-export declare function read_strl_pointer(view: DataView, metadata: DtaReadPlan, pointer_offset: number): StrlPointer | null;
+export declare function read_strl_pointer(view: DataView, metadata: DtaReadPlan | PackedDtaReadPlan, pointer_offset: number): StrlPointer | null;
 export declare function decode_gso_entry(bytes: Uint8Array, entry: GsoEntry, encoding?: ResolvedTextEncoding): string;
 //# sourceMappingURL=strl-reader.d.ts.map

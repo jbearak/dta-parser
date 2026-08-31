@@ -191,11 +191,13 @@ impl ScopeMetadata {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 enum MetadataKey {
     Note(u32),
     Characteristic(String),
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct AcceptedCharacteristic {
     target_index: Option<usize>,
     key: MetadataKey,
@@ -213,8 +215,8 @@ pub(crate) enum CharacteristicValueUse {
 }
 
 struct PlannedCharacteristic<L> {
-    ordinal: usize,
-    accepted: AcceptedCharacteristic,
+    first_ordinal: usize,
+    value_ordinal: usize,
     value: L,
 }
 
@@ -222,14 +224,14 @@ struct PlannedCharacteristic<L> {
 /// provide a lazy value locator; this plan owns classification, accepted-only
 /// retention, deferred semantic errors, and source-order decoding.
 pub(crate) struct CharacteristicPlan<L> {
-    accepted: Vec<PlannedCharacteristic<L>>,
+    accepted: HashMap<AcceptedCharacteristic, PlannedCharacteristic<L>>,
     deferred_error: Option<(usize, DtaError)>,
 }
 
 impl<L> Default for CharacteristicPlan<L> {
     fn default() -> Self {
         Self {
-            accepted: Vec::new(),
+            accepted: HashMap::new(),
             deferred_error: None,
         }
     }
@@ -250,9 +252,37 @@ impl<L> CharacteristicPlan<L> {
         R: FnOnce(&str) -> Option<usize>,
         P: FnOnce(CharacteristicValueUse) -> Result<Option<L>, DtaError>,
     {
+        self.push_record_replacing(
+            ordinal,
+            target,
+            name,
+            name_offset,
+            resolve_variable,
+            prepare_value,
+        )
+        .map(drop)
+    }
+
+    /// Adds one fully framed record and returns a superseded lazy value with
+    /// its source ordinal. Streaming adapters validate that value before it is
+    /// discarded, so duplicate compaction does not skip malformed payloads.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn push_record_replacing<R, P>(
+        &mut self,
+        ordinal: usize,
+        target: &str,
+        name: String,
+        name_offset: usize,
+        resolve_variable: R,
+        prepare_value: P,
+    ) -> Result<Option<(usize, L)>, DtaError>
+    where
+        R: FnOnce(&str) -> Option<usize>,
+        P: FnOnce(CharacteristicValueUse) -> Result<Option<L>, DtaError>,
+    {
         if self.deferred_error.is_some() {
             prepare_value(CharacteristicValueUse::Skip)?;
-            return Ok(());
+            return Ok(None);
         }
 
         let classified = classify_characteristic(target, name, name_offset, resolve_variable);
@@ -263,50 +293,96 @@ impl<L> CharacteristicPlan<L> {
         };
         let prepared = prepare_value(value_use);
 
-        match (classified, prepared) {
+        let replaced = match (classified, prepared) {
             (_, Err(error)) => {
                 self.deferred_error = Some((ordinal, error));
+                None
             }
             (Err(error), Ok(_)) => {
                 self.deferred_error = Some((ordinal, error));
+                None
             }
-            (Ok(None), Ok(_)) => {}
+            (Ok(None), Ok(_)) => None,
             (Ok(Some(accepted)), Ok(Some(value))) => {
-                self.accepted.try_reserve(1).map_err(|_| {
-                    DtaError::ArithmeticOverflow("accepted characteristic framing plan")
-                })?;
-                self.accepted.push(PlannedCharacteristic {
-                    ordinal,
-                    accepted,
-                    value,
-                });
+                if let Some(previous) = self.accepted.get_mut(&accepted) {
+                    let replaced = (
+                        previous.value_ordinal,
+                        std::mem::replace(&mut previous.value, value),
+                    );
+                    previous.value_ordinal = ordinal;
+                    Some(replaced)
+                } else {
+                    self.accepted.try_reserve(1).map_err(|_| {
+                        DtaError::ArithmeticOverflow("accepted characteristic framing plan")
+                    })?;
+                    self.accepted.insert(
+                        accepted,
+                        PlannedCharacteristic {
+                            first_ordinal: ordinal,
+                            value_ordinal: ordinal,
+                            value,
+                        },
+                    );
+                    None
+                }
             }
             (Ok(Some(_)), Ok(None)) => {
                 return Err(DtaError::ArithmeticOverflow(
                     "retained characteristic value locator",
                 ));
             }
-        }
-        Ok(())
+        };
+        Ok(replaced)
+    }
+
+    pub(crate) fn defer_value_error(&mut self, ordinal: usize, error: DtaError) {
+        debug_assert!(self.deferred_error.is_none());
+        self.deferred_error = Some((ordinal, error));
     }
 
     pub(crate) fn decode<D>(self, mut decode_value: D) -> Result<CharacteristicCollector, DtaError>
     where
         D: FnMut(L) -> Result<String, DtaError>,
     {
-        let mut collector = CharacteristicCollector::default();
+        struct DecodedCharacteristic {
+            first_ordinal: usize,
+            accepted: AcceptedCharacteristic,
+            value: String,
+        }
+
         let mut deferred_error = self.deferred_error;
-        for record in self.accepted {
+        let mut records = Vec::new();
+        records
+            .try_reserve_exact(self.accepted.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("accepted characteristic decode plan"))?;
+        records.extend(self.accepted);
+        records.sort_unstable_by_key(|(_, record)| record.value_ordinal);
+
+        let mut decoded = Vec::new();
+        decoded
+            .try_reserve_exact(records.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("decoded characteristic plan"))?;
+        for (accepted, record) in records {
             if deferred_error
                 .as_ref()
-                .is_some_and(|(ordinal, _)| *ordinal < record.ordinal)
+                .is_some_and(|(ordinal, _)| *ordinal < record.value_ordinal)
             {
                 return Err(deferred_error.take().expect("deferred error exists").1);
             }
-            collector.push(record.accepted, decode_value(record.value)?);
+            decoded.push(DecodedCharacteristic {
+                first_ordinal: record.first_ordinal,
+                accepted,
+                value: decode_value(record.value)?,
+            });
         }
         if let Some((_, error)) = deferred_error {
             return Err(error);
+        }
+
+        decoded.sort_unstable_by_key(|record| record.first_ordinal);
+        let mut collector = CharacteristicCollector::default();
+        for record in decoded {
+            collector.push(record.accepted, record.value);
         }
         Ok(collector)
     }
@@ -489,6 +565,128 @@ mod tests {
         assert!(matches!(
             plan.decode(|value| Ok(value.to_owned())),
             Err(DtaError::InvalidCharacteristicName { offset: 7, .. })
+        ));
+    }
+
+    #[test]
+    fn characteristic_plan_validates_but_compacts_duplicate_records() {
+        const DUPLICATES: usize = 20_000;
+        let mut plan = CharacteristicPlan::default();
+        let mut prepared = 0_usize;
+        plan.push_record(
+            0,
+            "_dta",
+            "source".into(),
+            0,
+            |_| None,
+            |value_use| {
+                prepared += 1;
+                assert_eq!(value_use, CharacteristicValueUse::Retain);
+                Ok(Some(("source", 0)))
+            },
+        )
+        .unwrap();
+        plan.push_record(
+            1,
+            "_dta",
+            "other".into(),
+            0,
+            |_| None,
+            |value_use| {
+                prepared += 1;
+                assert_eq!(value_use, CharacteristicValueUse::Retain);
+                Ok(Some(("other", 1)))
+            },
+        )
+        .unwrap();
+        for ordinal in 2..DUPLICATES {
+            plan.push_record(
+                ordinal,
+                "_dta",
+                "source".into(),
+                0,
+                |_| None,
+                |value_use| {
+                    prepared += 1;
+                    assert_eq!(value_use, CharacteristicValueUse::Retain);
+                    Ok(Some(("source", ordinal)))
+                },
+            )
+            .unwrap();
+        }
+        assert_eq!(prepared, DUPLICATES);
+        assert_eq!(plan.retained_len(), 2);
+
+        let mut decoded_order = Vec::new();
+        let collector = plan
+            .decode(|(name, value)| {
+                decoded_order.push(name);
+                Ok(value.to_string())
+            })
+            .unwrap();
+        assert_eq!(decoded_order, ["other", "source"]);
+        let mut characteristics = Vec::new();
+        collector.finish(&mut Vec::new(), &mut characteristics, &mut []);
+        assert_eq!(
+            characteristics,
+            vec![
+                StataCharacteristic {
+                    name: "source".into(),
+                    value: (DUPLICATES - 1).to_string(),
+                },
+                StataCharacteristic {
+                    name: "other".into(),
+                    value: "1".into(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn malformed_duplicate_keeps_source_order_and_stops_later_retention() {
+        let mut plan = CharacteristicPlan::default();
+        plan.push_record(
+            0,
+            "_dta",
+            "source".into(),
+            0,
+            |_| None,
+            |_| Ok(Some("first")),
+        )
+        .unwrap();
+        plan.push_record(
+            1,
+            "_dta",
+            "source".into(),
+            0,
+            |_| None,
+            |_| {
+                Err(DtaError::MetadataValueTooLong {
+                    context: "characteristic value",
+                    offset: 10,
+                    length: 2,
+                    limit: 1,
+                })
+            },
+        )
+        .unwrap();
+        plan.push_record(
+            2,
+            "_dta",
+            "later".into(),
+            0,
+            |_| None,
+            |value_use| {
+                assert_eq!(value_use, CharacteristicValueUse::Skip);
+                Ok(None)
+            },
+        )
+        .unwrap();
+
+        assert_eq!(plan.retained_len(), 1);
+        assert!(matches!(
+            plan.decode(|value| Ok(value.to_owned())),
+            Err(DtaError::MetadataValueTooLong { offset: 10, .. })
         ));
     }
 

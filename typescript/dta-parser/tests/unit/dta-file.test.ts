@@ -543,7 +543,7 @@ describe('DtaFile', () => {
             }
         });
 
-        it('bounds accepted legacy values and skips structural payloads', async () => {
+        it('bounds every legacy characteristic value', async () => {
             const original = fs.readFileSync(V111_FIXTURE);
             const arrayBuffer = original.buffer.slice(
                 original.byteOffset,
@@ -586,10 +586,14 @@ describe('DtaFile', () => {
                 reservedOversized.fill(0, name, name + 33);
                 reservedOversized.write('note0', name, 'ascii');
                 fs.writeFileSync(filePath, reservedOversized);
-                const ignored = await DtaFile.open(filePath);
-                expect(ignored.metadata.notes).toEqual([]);
-                expect(ignored.metadata.characteristics).toEqual([]);
-                ignored.close();
+                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
+
+                const unknownTargetOversized = Buffer.from(oversized);
+                const target = expansion + 5;
+                unknownTargetOversized.fill(0, target, target + 33);
+                unknownTargetOversized.write('missing', target, 'ascii');
+                fs.writeFileSync(filePath, unknownTargetOversized);
+                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });
             }
@@ -677,14 +681,14 @@ describe('DtaFile', () => {
                 const bytesRead = readSpy.mock.calls.reduce(
                     (total, call) => total + Number(call[3]), 0
                 );
-                expect(bytesRead).toBeLessThan(dense.length + 128 * 1024);
+                expect(bytesRead).toBeLessThan(2 * dense.length + 128 * 1024);
             } finally {
                 readSpy.mockRestore();
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });
 
-        it('does not reread large legacy expansion payloads while locating data', async () => {
+        it('uses bounded scan reads before loading one legacy metadata prefix', async () => {
             const original = fs.readFileSync(V111_FIXTURE);
             const arrayBuffer = original.buffer.slice(
                 original.byteOffset,
@@ -706,6 +710,10 @@ describe('DtaFile', () => {
                 records.push(header, payload);
             }
             records.push(Buffer.alloc(5));
+            const metadataLength = expansion + records.reduce(
+                (total, record) => total + record.length,
+                0
+            );
             const large = Buffer.concat([
                 original.subarray(0, expansion),
                 ...records,
@@ -718,11 +726,26 @@ describe('DtaFile', () => {
                 fs.writeFileSync(filePath, large);
                 my_file = await DtaFile.open(filePath);
                 expect(my_file.metadata.characteristics).toHaveLength(recordCount);
+                expect(my_file.metadata.section_offsets.data).toBe(metadataLength);
+                const reads = readSpy.mock.calls.map(call => ({
+                    length: Number(call[3]),
+                    position: Number(call[4]),
+                }));
+                expect(reads).toContainEqual({
+                    length: metadataLength,
+                    position: 0,
+                });
+                const scanReads = reads.filter(read =>
+                    read.position >= expansion && read.position < metadataLength
+                );
+                expect(scanReads.length).toBeGreaterThan(0);
+                expect(Math.max(...scanReads.map(read => read.length)))
+                    .toBeLessThanOrEqual(64 * 1024);
                 const bytesRead = readSpy.mock.calls.reduce(
                     (total, call) => total + Number(call[3]),
                     0
                 );
-                expect(bytesRead).toBeLessThan(large.length + 256 * 1024);
+                expect(bytesRead).toBeLessThan(2 * large.length + 256 * 1024);
             } finally {
                 readSpy.mockRestore();
                 fs.rmSync(directory, { recursive: true, force: true });
@@ -794,20 +817,51 @@ describe('DtaFile', () => {
                 const readPlan = (
                     my_file as unknown as {
                         _read_plan: {
-                            variables: readonly Record<string, unknown>[];
+                            variable_count: number;
+                            variable(index: number): {
+                                type: string;
+                                byte_width: number;
+                                byte_offset: number;
+                            } | undefined;
                             section_offsets: Record<string, unknown>;
                         };
                     }
                 )._read_plan;
                 expect(Object.isFrozen(readPlan)).toBeTrue();
-                expect(Object.isFrozen(readPlan.variables)).toBeTrue();
-                expect(Object.isFrozen(readPlan.variables[119_999])).toBeTrue();
-                expect(Object.keys(readPlan.variables[119_999]).sort()).toEqual([
-                    'byte_offset', 'byte_width', 'type',
-                ]);
+                expect(Object.hasOwn(readPlan, 'variables')).toBeFalse();
+                expect(readPlan.variable_count).toBe(120_000);
+                expect(readPlan.variable(119_999)).toEqual({
+                    type: 'byte',
+                    byte_width: 1,
+                    byte_offset: 119_999,
+                });
                 expect(Object.keys(readPlan.section_offsets).sort()).toEqual([
                     'data', 'strls', 'value_labels',
                 ]);
+
+                const firstVariable = my_file.variables[0];
+                const lastVariable = my_file.variables[119_999];
+                const firstNotes = Object.getOwnPropertyDescriptor(
+                    firstVariable, 'notes'
+                );
+                const lastNotes = Object.getOwnPropertyDescriptor(
+                    lastVariable, 'notes'
+                );
+                const firstCharacteristics = Object.getOwnPropertyDescriptor(
+                    firstVariable, 'characteristics'
+                );
+                const lastCharacteristics = Object.getOwnPropertyDescriptor(
+                    lastVariable, 'characteristics'
+                );
+                expect(firstNotes?.get).toBeFunction();
+                expect(firstNotes?.get).toBe(lastNotes?.get);
+                expect(firstCharacteristics?.get).toBeFunction();
+                expect(firstCharacteristics?.get).toBe(lastCharacteristics?.get);
+
+                firstVariable.notes.push({ number: 1, text: 'first only' });
+                firstVariable.characteristics.push({ name: 'source', value: 'x' });
+                expect(lastVariable.notes).toEqual([]);
+                expect(lastVariable.characteristics).toEqual([]);
             } finally {
                 my_file?.close();
                 my_file = null;

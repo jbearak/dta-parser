@@ -290,6 +290,31 @@ export interface DtaReadPlan {
     readonly variables: readonly ReadVariablePlan[];
 }
 
+/** Immutable parallel read geometry used by long-lived file handles. */
+export interface PackedDtaReadPlan {
+    readonly format_version: FormatVersion;
+    readonly text_encoding?: import('./text-encoding').ResolvedTextEncoding;
+    readonly byte_order: 'MSF' | 'LSF';
+    readonly nvar: number;
+    readonly nobs: number;
+    readonly obs_length: number;
+    readonly section_offsets: Readonly<Pick<
+        SectionOffsets, 'data' | 'strls' | 'value_labels'
+    >>;
+    readonly variable_count: number;
+    readonly variable_types: readonly DtaType[];
+    readonly variable_byte_widths: readonly number[];
+    readonly variable_byte_offsets: readonly number[];
+    readonly strl_columns: readonly number[];
+    variable(index: number): ReadVariablePlan | undefined;
+}
+
+export function isPackedDtaReadPlan(
+    metadata: DtaReadPlan | PackedDtaReadPlan
+): metadata is PackedDtaReadPlan {
+    return 'variable_types' in metadata;
+}
+
 /** Per-column fields needed to locate and decode one observation cell. */
 export interface ReadVariablePlan {
     readonly type: DtaType;

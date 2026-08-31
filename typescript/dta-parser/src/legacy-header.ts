@@ -46,6 +46,7 @@ import {
 } from './text-encoding';
 import {
     StataMetadataCollector,
+    withLazyStataMetadata,
 } from './stata-metadata';
 import {
     StataCharacteristicFramePlan,
@@ -337,18 +338,16 @@ export function parse_legacy_metadata(
         const my_code = the_type_codes[i];
         const my_width =
             byte_width_for_legacy_type_code(my_code, format_version);
-        the_variables.push({
+        the_variables.push(withLazyStataMetadata({
             name: the_varnames[i],
             type: legacy_type_code_to_dta_type(my_code, format_version),
             type_code: my_code,
             format: the_formats[i],
             label: the_variable_labels[i],
             value_label_name: the_value_label_names[i],
-            notes: [],
-            characteristics: [],
             byte_width: my_width,
             byte_offset: my_running_offset,
-        });
+        }));
         my_running_offset += my_width;
     }
     const obs_length = my_running_offset;

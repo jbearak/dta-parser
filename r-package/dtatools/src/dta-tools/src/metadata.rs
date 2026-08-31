@@ -322,15 +322,19 @@ struct CharacteristicRecord {
     payload_length: usize,
 }
 
-fn plan_characteristic_records(
+fn walk_characteristic_records<F>(
     bytes: &[u8],
     start: usize,
     data: usize,
     byte_order: ByteOrder,
     names_length: usize,
     offsets: &SectionOffsets,
-) -> Result<Vec<CharacteristicRecord>, DtaError> {
-    let mut records = Vec::new();
+    mut visit: F,
+) -> Result<(), DtaError>
+where
+    F: FnMut(usize, CharacteristicRecord) -> Result<(), DtaError>,
+{
+    let mut ordinal = 0_usize;
     let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
     loop {
         if bytes.get(cursor..cursor.saturating_add(CHARACTERISTICS_CLOSE.len()))
@@ -338,7 +342,7 @@ fn plan_characteristic_records(
         {
             cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
             ensure_map_offset("data", cursor, offsets.data)?;
-            return Ok(records);
+            return Ok(());
         }
 
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
@@ -373,13 +377,16 @@ fn plan_characteristic_records(
             });
         }
         slice_at(bytes, cursor, payload_length, "characteristic payload")?;
-        records
-            .try_reserve(1)
-            .map_err(|_| DtaError::ArithmeticOverflow("characteristic framing plan"))?;
-        records.push(CharacteristicRecord {
-            payload_start: cursor,
-            payload_length,
-        });
+        visit(
+            ordinal,
+            CharacteristicRecord {
+                payload_start: cursor,
+                payload_length,
+            },
+        )?;
+        ordinal = ordinal
+            .checked_add(1)
+            .ok_or(DtaError::ArithmeticOverflow("characteristic record count"))?;
         cursor = expect_at(bytes, payload_end, CHARACTERISTIC_CLOSE, "</ch>")?;
     }
 }
@@ -415,54 +422,73 @@ fn parse_characteristics(
     // Validate every record boundary before decoding any values. The section
     // map alone cannot distinguish a real terminator from tag bytes forged in
     // the final record payload.
-    let records =
-        plan_characteristic_records(bytes, start, data, byte_order, names_length, offsets)?;
+    walk_characteristic_records(
+        bytes,
+        start,
+        data,
+        byte_order,
+        names_length,
+        offsets,
+        |_, _| Ok(()),
+    )?;
     let mut plan = CharacteristicPlan::<&[u8]>::default();
     let mut variable_indexes = VariableTargetIndexes::new(variables);
-    for (ordinal, record) in records.into_iter().enumerate() {
-        let cursor = record.payload_start;
-        let payload = slice_at(
-            bytes,
-            cursor,
-            record.payload_length,
-            "characteristic payload",
-        )?;
-        let (variable, remainder) = payload.split_at(width);
-        let (characteristic, value) = remainder.split_at(width);
-        let target = encoding.decode(field_bytes(variable));
-        let name = encoding.decode(field_bytes(characteristic));
-        plan.push_record(
-            ordinal,
-            &target,
-            name,
-            cursor + width,
-            |target| variable_indexes.resolve(target),
-            |value_use| match value_use {
-                CharacteristicValueUse::Skip => Ok(None),
-                CharacteristicValueUse::Retain => {
-                    validate_raw_value_length(
-                        value.len(),
-                        cursor + names_length,
-                        "characteristic value",
-                    )?;
-                    Ok(Some(validate_raw_value_bytes(
-                        value,
-                        cursor + names_length,
-                        "characteristic value",
-                    )?))
-                }
-                CharacteristicValueUse::Validate => {
-                    validate_raw_value_length(
-                        value.len(),
-                        cursor + names_length,
-                        "characteristic value",
-                    )?;
-                    validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
-                    Ok(None)
-                }
-            },
-        )?;
-    }
+    walk_characteristic_records(
+        bytes,
+        start,
+        data,
+        byte_order,
+        names_length,
+        offsets,
+        |ordinal, record| {
+            let cursor = record.payload_start;
+            let payload = slice_at(
+                bytes,
+                cursor,
+                record.payload_length,
+                "characteristic payload",
+            )?;
+            let (variable, remainder) = payload.split_at(width);
+            let (characteristic, value) = remainder.split_at(width);
+            let target = encoding.decode(field_bytes(variable));
+            let name = encoding.decode(field_bytes(characteristic));
+            plan.push_record(
+                ordinal,
+                &target,
+                name,
+                cursor + width,
+                |target| variable_indexes.resolve(target),
+                |value_use| match value_use {
+                    CharacteristicValueUse::Skip => Ok(None),
+                    CharacteristicValueUse::Retain => {
+                        validate_raw_value_length(
+                            value.len(),
+                            cursor + names_length,
+                            "characteristic value",
+                        )?;
+                        Ok(Some(validate_raw_value_bytes(
+                            value,
+                            cursor + names_length,
+                            "characteristic value",
+                        )?))
+                    }
+                    CharacteristicValueUse::Validate => {
+                        validate_raw_value_length(
+                            value.len(),
+                            cursor + names_length,
+                            "characteristic value",
+                        )?;
+                        validate_raw_value_bytes(
+                            value,
+                            cursor + names_length,
+                            "characteristic value",
+                        )?;
+                        Ok(None)
+                    }
+                },
+            )
+        },
+    )?;
     drop(variable_indexes);
     Ok(Some(plan.decode(|value| Ok(encoding.decode(value)))?))
 }
@@ -625,6 +651,68 @@ pub fn parse_metadata_with_encoding(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::StataCharacteristic;
+
+    fn push_modern_characteristic(
+        bytes: &mut Vec<u8>,
+        width: usize,
+        target: &[u8],
+        name: &[u8],
+        value: &[u8],
+    ) {
+        let payload_length = 2 * width + value.len() + 1;
+        bytes.extend_from_slice(CHARACTERISTIC_OPEN);
+        bytes.extend_from_slice(&(payload_length as u32).to_le_bytes());
+        let mut names = vec![0; 2 * width];
+        names[..target.len()].copy_from_slice(target);
+        names[width..width + name.len()].copy_from_slice(name);
+        bytes.extend_from_slice(&names);
+        bytes.extend_from_slice(value);
+        bytes.push(0);
+        bytes.extend_from_slice(CHARACTERISTIC_CLOSE);
+    }
+
+    #[test]
+    fn in_memory_modern_characteristics_compact_adversarial_duplicates() {
+        const DUPLICATES: usize = 10_000;
+        let width = 129;
+        let mut bytes = CHARACTERISTICS_OPEN.to_vec();
+        for ordinal in 0..DUPLICATES {
+            push_modern_characteristic(
+                &mut bytes,
+                width,
+                b"_dta",
+                b"source",
+                ordinal.to_string().as_bytes(),
+            );
+        }
+        bytes.extend_from_slice(CHARACTERISTICS_CLOSE);
+        let offsets = SectionOffsets {
+            characteristics: 0,
+            data: bytes.len() as u64,
+            ..SectionOffsets::default()
+        };
+
+        let collector = parse_characteristics(
+            &bytes,
+            FormatVersion::V118,
+            ByteOrder::Lsf,
+            &offsets,
+            TextEncoding::Utf8,
+            &[],
+        )
+        .unwrap()
+        .unwrap();
+        let mut characteristics = Vec::new();
+        collector.finish(&mut Vec::new(), &mut characteristics, &mut []);
+        assert_eq!(
+            characteristics,
+            vec![StataCharacteristic {
+                name: "source".into(),
+                value: (DUPLICATES - 1).to_string(),
+            }]
+        );
+    }
 
     #[test]
     fn unterminated_modern_characteristics_are_framed_before_values_are_decoded() {

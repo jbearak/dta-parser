@@ -218,72 +218,81 @@ fn scan_expansion_fields_ordered(
     layout: LegacyLayout,
     variables: &[VariableInfo],
 ) -> Result<(usize, Option<CharacteristicCollector>), DtaError> {
-    let mut characteristic_records = Vec::new();
-    let data_offset = walk_expansion_fields(
+    // Frame the complete expansion section before validating metadata values.
+    // A second bounded pass folds accepted records directly into the compact
+    // characteristic plan instead of retaining one descriptor per record.
+    let data_offset = walk_expansion_fields(bytes, start, byte_order, layout, |_, _, _| Ok(()))?;
+    let mut plan = CharacteristicPlan::<(usize, usize)>::default();
+    let mut variable_indexes = VariableTargetIndexes::new(variables);
+    let mut ordinal = 0_usize;
+    let folded_data_offset = walk_expansion_fields(
         bytes,
         start,
         byte_order,
         layout,
         |data_type, cursor, payload| {
-            if data_type == 1 && payload.len() >= 2 * layout.varname_width {
-                characteristic_records.try_reserve(1).map_err(|_| {
-                    DtaError::ArithmeticOverflow("legacy characteristic framing plan")
-                })?;
-                characteristic_records.push((cursor, payload.len()));
+            if data_type != 1 || payload.len() < 2 * layout.varname_width {
+                return Ok(());
             }
+            let (variable, remainder) = payload.split_at(layout.varname_width);
+            let (characteristic, value) = remainder.split_at(layout.varname_width);
+            let target = encoding.decode(field_bytes(variable));
+            let name = encoding.decode(field_bytes(characteristic));
+            let value_offset = cursor + 2 * layout.varname_width;
+            plan.push_record(
+                ordinal,
+                &target,
+                name,
+                cursor + layout.varname_width,
+                |target| variable_indexes.resolve(target),
+                |value_use| match value_use {
+                    CharacteristicValueUse::Skip => Ok(None),
+                    CharacteristicValueUse::Retain => {
+                        validate_raw_value_length(
+                            value.len(),
+                            value_offset,
+                            "legacy characteristic value",
+                        )?;
+                        let value = validate_raw_value_bytes(
+                            value,
+                            value_offset,
+                            "legacy characteristic value",
+                        )?;
+                        Ok(Some((value_offset, value.len())))
+                    }
+                    CharacteristicValueUse::Validate => {
+                        validate_raw_value_length(
+                            value.len(),
+                            value_offset,
+                            "legacy characteristic value",
+                        )?;
+                        validate_raw_value_bytes(
+                            value,
+                            value_offset,
+                            "legacy characteristic value",
+                        )?;
+                        Ok(None)
+                    }
+                },
+            )?;
+            ordinal = ordinal.checked_add(1).ok_or(DtaError::ArithmeticOverflow(
+                "legacy characteristic record count",
+            ))?;
             Ok(())
         },
     )?;
-    let mut plan = CharacteristicPlan::<&[u8]>::default();
-    let mut variable_indexes = VariableTargetIndexes::new(variables);
-    for (ordinal, (cursor, payload_length)) in characteristic_records.into_iter().enumerate() {
-        let payload = slice_at(
-            bytes,
-            cursor,
-            payload_length,
-            "legacy expansion-field payload",
-        )?;
-        let (variable, remainder) = payload.split_at(layout.varname_width);
-        let (characteristic, value) = remainder.split_at(layout.varname_width);
-        let target = encoding.decode(field_bytes(variable));
-        let name = encoding.decode(field_bytes(characteristic));
-        let value_offset = cursor + 2 * layout.varname_width;
-        plan.push_record(
-            ordinal,
-            &target,
-            name,
-            cursor + layout.varname_width,
-            |target| variable_indexes.resolve(target),
-            |value_use| match value_use {
-                CharacteristicValueUse::Skip => Ok(None),
-                CharacteristicValueUse::Retain => {
-                    validate_raw_value_length(
-                        value.len(),
-                        value_offset,
-                        "legacy characteristic value",
-                    )?;
-                    Ok(Some(validate_raw_value_bytes(
-                        value,
-                        value_offset,
-                        "legacy characteristic value",
-                    )?))
-                }
-                CharacteristicValueUse::Validate => {
-                    validate_raw_value_length(
-                        value.len(),
-                        value_offset,
-                        "legacy characteristic value",
-                    )?;
-                    validate_raw_value_bytes(value, value_offset, "legacy characteristic value")?;
-                    Ok(None)
-                }
-            },
-        )?;
-    }
+    debug_assert_eq!(folded_data_offset, data_offset);
     drop(variable_indexes);
     Ok((
         data_offset,
-        Some(plan.decode(|value| Ok(encoding.decode(value)))?),
+        Some(plan.decode(|(offset, length)| {
+            Ok(encoding.decode(slice_at(
+                bytes,
+                offset,
+                length,
+                "legacy characteristic value",
+            )?))
+        })?),
     ))
 }
 

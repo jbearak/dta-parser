@@ -28,7 +28,25 @@ fn push_big_endian_characteristic(bytes: &mut Vec<u8>, target: &[u8], name: &[u8
     bytes.extend_from_slice(&payload);
 }
 
-fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
+fn push_big_endian_raw_characteristic(
+    bytes: &mut Vec<u8>,
+    target: &[u8],
+    name: &[u8],
+    value: &[u8],
+) {
+    let mut payload = vec![0_u8; 2 * 33];
+    payload[..target.len()].copy_from_slice(target);
+    payload[33..33 + name.len()].copy_from_slice(name);
+    payload.extend_from_slice(value);
+    bytes.push(1);
+    bytes.extend_from_slice(&(payload.len() as i32).to_be_bytes());
+    bytes.extend_from_slice(&payload);
+}
+
+fn synthetic_legacy_msf_with_duplicate_characteristics(
+    version: u8,
+    duplicate_count: usize,
+) -> Vec<u8> {
     let nvar = 2_usize;
     let fixed_end = 109 + nvar + nvar * 33 + (nvar + 1) * 2 + nvar * 12 + nvar * 33 + nvar * 81;
     let mut bytes = vec![0_u8; fixed_end];
@@ -56,6 +74,14 @@ fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
 
     push_big_endian_characteristic(&mut bytes, b"_dta", b"note1", b"Caf\xe9");
     push_big_endian_characteristic(&mut bytes, b"_dta", b"source", b"legacy");
+    for ordinal in 0..duplicate_count {
+        push_big_endian_characteristic(
+            &mut bytes,
+            b"_dta",
+            b"source",
+            ordinal.to_string().as_bytes(),
+        );
+    }
     push_big_endian_characteristic(&mut bytes, b"num", b"note3", b"");
     push_big_endian_characteristic(&mut bytes, b"text", b"role", b"quoted");
     bytes.extend_from_slice(&[0, 0, 0, 0, 0]);
@@ -74,6 +100,10 @@ fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
     bytes.extend_from_slice(&321_i32.to_be_bytes());
     bytes.extend_from_slice(&[0xe9, 0]);
     bytes
+}
+
+fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
+    synthetic_legacy_msf_with_duplicate_characteristics(version, 0)
 }
 
 fn synthetic_v113_msf() -> Vec<u8> {
@@ -675,6 +705,46 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
             .label,
         "é"
     );
+}
+
+#[test]
+fn legacy_slice_and_streaming_parsers_compact_adversarial_duplicates() {
+    const DUPLICATES: usize = 10_000;
+    let bytes = synthetic_legacy_msf_with_duplicate_characteristics(113, DUPLICATES);
+    let expected = (DUPLICATES - 1).to_string();
+
+    let metadata = parse_metadata(&bytes).unwrap();
+    assert_eq!(metadata.characteristics.len(), 1);
+    assert_eq!(metadata.characteristics[0].name, "source");
+    assert_eq!(metadata.characteristics[0].value, expected);
+
+    let file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.metadata().characteristics.len(), 1);
+    assert_eq!(file.metadata().characteristics[0].name, "source");
+    assert_eq!(file.metadata().characteristics[0].value, expected);
+}
+
+#[test]
+fn legacy_slice_and_streaming_parsers_validate_superseded_duplicate_values() {
+    let mut bytes = synthetic_v113_msf();
+    let expansion = parse_metadata(&bytes)
+        .unwrap()
+        .section_offsets
+        .characteristics as usize;
+    let mut duplicates = Vec::new();
+    let invalid_value = vec![b'x'; 67_785];
+    push_big_endian_raw_characteristic(&mut duplicates, b"_dta", b"source", &invalid_value);
+    push_big_endian_characteristic(&mut duplicates, b"_dta", b"source", b"replacement");
+    bytes.splice(expansion..expansion, duplicates);
+
+    assert!(matches!(
+        parse_metadata(&bytes),
+        Err(DtaError::MetadataValueTooLong { length: 67_785, .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(bytes)),
+        Err(DtaError::MetadataValueTooLong { length: 67_785, .. })
+    ));
 }
 
 #[test]

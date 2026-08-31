@@ -12,8 +12,8 @@ use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValue
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::stata_metadata::{
-    validate_raw_value_length, CharacteristicCollector, CharacteristicPlan, CharacteristicValueUse,
-    VariableTargetIndexes, MAX_METADATA_VALUE_BYTES,
+    validate_raw_value_bytes, validate_raw_value_length, CharacteristicCollector,
+    CharacteristicPlan, CharacteristicValueUse, VariableTargetIndexes, MAX_METADATA_VALUE_BYTES,
 };
 use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::value_labels::{frame_offset_value_label_payload, has_legacy_offset_table_framing};
@@ -3071,6 +3071,33 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
         self.consume_field(length, None, context).map(drop)
     }
 
+    fn validate_buffered_field_at(
+        &mut self,
+        offset: u64,
+        length: usize,
+        context: &'static str,
+    ) -> Result<(), DtaError> {
+        validate_raw_value_length(length, error_offset(offset), context)?;
+        if let Some(relative) = offset
+            .checked_sub(self.buffer_start)
+            .and_then(|relative| usize::try_from(relative).ok())
+        {
+            if let Some(bytes) = self.buffer.get(relative..relative.saturating_add(length)) {
+                validate_raw_value_bytes(bytes, error_offset(offset), context)?;
+                return Ok(());
+            }
+        }
+
+        let end = checked_add_u64(
+            offset,
+            u64::try_from(length)
+                .map_err(|_| DtaError::ArithmeticOverflow("metadata value length"))?,
+            "metadata value length",
+        )?;
+        let mut value = BufferedSectionReader::new(self.reader, self.scratch, offset, end);
+        value.validate_field(length, context)
+    }
+
     fn consume_field(
         &mut self,
         length: usize,
@@ -3733,7 +3760,7 @@ fn plan_file_characteristic<R: Read + Seek>(
     section.read_into(names_length, &mut names, names_context)?;
     let target = encoding.decode(field_bytes(&names[..name_width]));
     let name = encoding.decode(field_bytes(&names[name_width..]));
-    plan.push_record(
+    let replaced = plan.push_record_replacing(
         ordinal,
         &target,
         name,
@@ -3768,6 +3795,15 @@ fn plan_file_characteristic<R: Read + Seek>(
             }
         },
     )?;
+    if let Some((replaced_ordinal, replaced)) = replaced {
+        if let Err(error) = section.validate_buffered_field_at(
+            replaced.value_offset,
+            replaced.value_length,
+            replaced.context,
+        ) {
+            plan.defer_value_error(replaced_ordinal, error);
+        }
+    }
     debug_assert_eq!(section.position(), value_end);
     Ok(())
 }
@@ -6498,6 +6534,7 @@ fn resolve_parallel_file_strls<R: Read + Seek, F: FnMut() -> bool, C: DtaColumnS
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::StataCharacteristic;
     use std::io::{Cursor, Result as IoResult};
 
     struct CountingReader {
@@ -7396,6 +7433,141 @@ mod tests {
         .unwrap();
         assert_eq!(plan.retained_len(), 1);
         assert!(!plan.has_deferred_error());
+    }
+
+    #[test]
+    fn streaming_modern_characteristics_validate_and_compact_duplicates() {
+        const DUPLICATES: usize = 10_000;
+        let width = 129_usize;
+        let mut bytes = b"<characteristics>".to_vec();
+        for ordinal in 0..DUPLICATES {
+            let value = format!("{ordinal}\0");
+            let payload_length = 2 * width + value.len();
+            bytes.extend_from_slice(b"<ch>");
+            bytes.extend_from_slice(&(payload_length as u32).to_le_bytes());
+            let mut names = vec![0; 2 * width];
+            names[..4].copy_from_slice(b"_dta");
+            names[width..width + 6].copy_from_slice(b"source");
+            bytes.extend_from_slice(&names);
+            bytes.extend_from_slice(value.as_bytes());
+            bytes.extend_from_slice(b"</ch>");
+        }
+        bytes.extend_from_slice(b"</characteristics>");
+        let header = FileModernHeaderMap {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: FileTextRange {
+                offset: 0,
+                length: 0,
+            },
+            section_offsets: SectionOffsets {
+                characteristics: 0,
+                data: bytes.len() as u64,
+                ..SectionOffsets::default()
+            },
+        };
+        let mut reader = Cursor::new(bytes);
+        let mut scratch = Scratch::new(1024);
+        let mut plan = CharacteristicPlan::default();
+        let mut variable_indexes = VariableTargetIndexes::new(&[]);
+        scan_modern_characteristics(
+            &mut reader,
+            &header,
+            &mut scratch,
+            |section, ordinal, payload_length| {
+                plan_file_characteristic(
+                    &mut plan,
+                    section,
+                    ordinal,
+                    payload_length,
+                    width,
+                    TextEncoding::Utf8,
+                    &mut variable_indexes,
+                    "reading characteristic names",
+                    "characteristic value",
+                )
+            },
+        )
+        .unwrap();
+        assert_eq!(plan.retained_len(), 1);
+        assert!(!plan.has_deferred_error());
+        drop(variable_indexes);
+
+        let collector =
+            decode_file_characteristics(plan, &mut reader, TextEncoding::Utf8, &mut scratch)
+                .unwrap();
+        let mut characteristics = Vec::new();
+        collector.finish(&mut Vec::new(), &mut characteristics, &mut []);
+        assert_eq!(
+            characteristics,
+            vec![StataCharacteristic {
+                name: "source".into(),
+                value: (DUPLICATES - 1).to_string(),
+            }]
+        );
+    }
+
+    #[test]
+    fn streaming_modern_characteristics_validate_superseded_duplicate_values() {
+        let width = 129_usize;
+        let invalid_value = vec![b'x'; MAX_METADATA_VALUE_BYTES + 1];
+        let mut bytes = b"<characteristics>".to_vec();
+        for value in [invalid_value.as_slice(), b"replacement\0".as_slice()] {
+            let payload_length = 2 * width + value.len();
+            bytes.extend_from_slice(b"<ch>");
+            bytes.extend_from_slice(&(payload_length as u32).to_le_bytes());
+            let mut names = vec![0; 2 * width];
+            names[..4].copy_from_slice(b"_dta");
+            names[width..width + 6].copy_from_slice(b"source");
+            bytes.extend_from_slice(&names);
+            bytes.extend_from_slice(value);
+            bytes.extend_from_slice(b"</ch>");
+        }
+        bytes.extend_from_slice(b"</characteristics>");
+        let header = FileModernHeaderMap {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: FileTextRange {
+                offset: 0,
+                length: 0,
+            },
+            section_offsets: SectionOffsets {
+                characteristics: 0,
+                data: bytes.len() as u64,
+                ..SectionOffsets::default()
+            },
+        };
+        let mut plan = CharacteristicPlan::default();
+        let mut variable_indexes = VariableTargetIndexes::new(&[]);
+        scan_modern_characteristics(
+            &mut Cursor::new(bytes),
+            &header,
+            &mut Scratch::new(1024),
+            |section, ordinal, payload_length| {
+                plan_file_characteristic(
+                    &mut plan,
+                    section,
+                    ordinal,
+                    payload_length,
+                    width,
+                    TextEncoding::Utf8,
+                    &mut variable_indexes,
+                    "reading characteristic names",
+                    "characteristic value",
+                )
+            },
+        )
+        .unwrap();
+        assert_eq!(plan.retained_len(), 1);
+        assert!(plan.has_deferred_error());
+        assert!(matches!(
+            plan.decode(|_| Ok(String::new())),
+            Err(DtaError::MetadataValueTooLong { .. })
+        ));
     }
 
     #[test]

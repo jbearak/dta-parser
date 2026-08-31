@@ -36,7 +36,7 @@ import {
 import { parse_value_labels } from './value-labels';
 import type {
     DtaMetadata,
-    DtaReadPlan,
+    PackedDtaReadPlan,
     ParsedDtaMetadata,
     ParsedVariableInfo,
     FormatVersion,
@@ -152,14 +152,23 @@ function normalise_column_indices(
     return the_columns;
 }
 
-function create_read_plan(metadata: DtaMetadata): DtaReadPlan {
-    const variables = Object.freeze(metadata.variables.map(variable => {
-        return Object.freeze({
-            type: variable.type,
-            byte_width: variable.byte_width,
-            byte_offset: variable.byte_offset,
-        });
-    }));
+function create_read_plan(metadata: DtaMetadata): PackedDtaReadPlan {
+    const variable_count = metadata.variables.length;
+    const variable_types = new Array<ParsedVariableInfo['type']>(variable_count);
+    const variable_byte_widths = new Array<number>(variable_count);
+    const variable_byte_offsets = new Array<number>(variable_count);
+    const strl_columns: number[] = [];
+    for (let index = 0; index < variable_count; index++) {
+        const variable = metadata.variables[index];
+        variable_types[index] = variable.type;
+        variable_byte_widths[index] = variable.byte_width;
+        variable_byte_offsets[index] = variable.byte_offset;
+        if (variable.type === 'strL') strl_columns.push(index);
+    }
+    Object.freeze(variable_types);
+    Object.freeze(variable_byte_widths);
+    Object.freeze(variable_byte_offsets);
+    Object.freeze(strl_columns);
     const section_offsets = Object.freeze({
         data: metadata.section_offsets.data,
         strls: metadata.section_offsets.strls,
@@ -173,7 +182,21 @@ function create_read_plan(metadata: DtaMetadata): DtaReadPlan {
         nobs: metadata.nobs,
         obs_length: metadata.obs_length,
         section_offsets,
-        variables,
+        variable_count,
+        variable_types,
+        variable_byte_widths,
+        variable_byte_offsets,
+        strl_columns,
+        variable(index: number) {
+            if (!Number.isInteger(index) || index < 0 || index >= variable_count) {
+                return undefined;
+            }
+            return {
+                type: variable_types[index],
+                byte_width: variable_byte_widths[index],
+                byte_offset: variable_byte_offsets[index],
+            };
+        },
     });
 }
 
@@ -185,7 +208,7 @@ export class DtaFile {
     private _fd: number | null;
     private readonly _metadata: ParsedDtaMetadata;
     /** Private geometry is never exposed through the mutable metadata API. */
-    private readonly _read_plan: DtaReadPlan;
+    private readonly _read_plan: PackedDtaReadPlan;
     // strL (GSO) state, populated lazily by `_ensure_gso()` the first
     // time an strL cell is actually resolved. Files without strL columns,
     // and reads that never touch an strL column, never read or retain the
@@ -202,7 +225,7 @@ export class DtaFile {
     private _closed: boolean;
 
     // Precomputed: column indices of strL variables
-    private readonly _strl_col_indices: number[];
+    private readonly _strl_col_indices: readonly number[];
     // Same set, for O(1) membership tests in per-column reads
     private readonly _strl_col_set: ReadonlySet<number>;
 
@@ -223,19 +246,8 @@ export class DtaFile {
         this._value_label_tables = value_label_tables;
         this._closed = false;
 
-        // Pre-scan for strL column indices
-        const the_indices: number[] = [];
-        for (
-            let i = 0;
-            i < this._read_plan.variables.length;
-            i++
-        ) {
-            if (this._read_plan.variables[i].type === 'strL') {
-                the_indices.push(i);
-            }
-        }
-        this._strl_col_indices = the_indices;
-        this._strl_col_set = new Set(the_indices);
+        this._strl_col_indices = this._read_plan.strl_columns;
+        this._strl_col_set = new Set(this._strl_col_indices);
     }
 
     /**
@@ -703,13 +715,13 @@ export class DtaFile {
 
             // Column index within the row array
             const my_row_col = my_abs_col - col_start;
-            const my_var = this._read_plan
-                .variables[my_abs_col];
+            const byteOffset = this._read_plan
+                .variable_byte_offsets[my_abs_col];
 
             for (let i = 0; i < row_count; i++) {
                 const my_pointer_offset =
                     i * this._read_plan.obs_length
-                    + my_var.byte_offset;
+                    + byteOffset;
                 the_rows[row_start + i][my_row_col] =
                     this._resolve_strl_at(
                         my_view, my_pointer_offset
@@ -734,11 +746,11 @@ export class DtaFile {
     ): void {
         this._ensure_gso();
         const my_view = data_buffer_view(data_buffer);
-        const my_var = this._read_plan.variables[abs_col];
+        const byteOffset = this._read_plan.variable_byte_offsets[abs_col];
         for (let i = 0; i < count; i++) {
             const my_pointer_offset =
                 i * this._read_plan.obs_length
-                + my_var.byte_offset;
+                + byteOffset;
             col_values[base_index + i] =
                 this._resolve_strl_at(
                     my_view, my_pointer_offset
@@ -852,49 +864,35 @@ function read_legacy_metadata(
         throw new Error('Truncated legacy metadata');
     }
 
-    // Retain each expansion block while validating the framing. The final
-    // parser then consumes those same bytes instead of rereading the entire
-    // expanded metadata prefix.
-    const my_fixed_prefix = new Uint8Array(my_expansion_start);
-    my_fixed_prefix.set(my_header_bytes);
-    if (my_expansion_start > my_header_bytes.byteLength) {
-        read_bytes_into(
-            fd,
-            my_fixed_prefix,
-            my_header_bytes.byteLength,
-            my_expansion_start - my_header_bytes.byteLength,
-            my_header_bytes.byteLength
-        );
-    }
-    const the_scan_chunks: Uint8Array[] = [];
-    let my_loaded_end = my_expansion_start;
-    const ensure_scan_bytes = (end: number): void => {
-        while (my_loaded_end < end) {
-            const length = Math.min(
-                LEGACY_SCAN_BLOCK_SIZE,
-                file_size - my_loaded_end
-            );
-            if (length <= 0) {
-                throw new Error('Missing legacy expansion-field terminator');
-            }
-            const chunk = read_bytes(fd, my_loaded_end, length);
-            the_scan_chunks.push(chunk);
-            my_loaded_end += length;
-        }
-    };
+    // A rolling block keeps dense expansion headers cheap to scan without
+    // retaining the entire metadata prefix. Once framing is valid, read that
+    // prefix once into the contiguous buffer required by the legacy parser.
+    const my_scan_buffer = Buffer.allocUnsafe(LEGACY_SCAN_BLOCK_SIZE);
+    let my_scan_start = 0;
+    let my_scan_length = 0;
     const copy_scan_bytes = (
         target: Uint8Array, offset: number, length: number
     ): void => {
-        let copied = 0;
-        while (copied < length) {
-            const relative = offset + copied - my_expansion_start;
-            const chunkIndex = Math.floor(relative / LEGACY_SCAN_BLOCK_SIZE);
-            const chunkOffset = relative % LEGACY_SCAN_BLOCK_SIZE;
-            const chunk = the_scan_chunks[chunkIndex];
-            const count = Math.min(length - copied, chunk.length - chunkOffset);
-            target.set(chunk.subarray(chunkOffset, chunkOffset + count), copied);
-            copied += count;
+        const loaded_end = my_scan_start + my_scan_length;
+        if (offset < my_scan_start || offset + length > loaded_end) {
+            my_scan_start = offset;
+            my_scan_length = Math.min(
+                LEGACY_SCAN_BLOCK_SIZE,
+                file_size - my_scan_start
+            );
+            if (my_scan_length < length) {
+                throw new Error('Missing legacy expansion-field terminator');
+            }
+            read_bytes_into(
+                fd,
+                my_scan_buffer,
+                0,
+                my_scan_length,
+                my_scan_start
+            );
         }
+        const start = offset - my_scan_start;
+        target.set(my_scan_buffer.subarray(start, start + length));
     };
 
     let my_position = my_expansion_start;
@@ -903,7 +901,6 @@ function read_legacy_metadata(
         if (my_position + my_field_header_size > file_size) {
             throw new Error('Missing legacy expansion-field terminator');
         }
-        ensure_scan_bytes(my_position + my_field_header_size);
         copy_scan_bytes(
             my_header_buffer, my_position, my_field_header_size
         );
@@ -930,16 +927,8 @@ function read_legacy_metadata(
         }
     }
 
-    const my_prefix = new Uint8Array(my_position);
-    my_prefix.set(my_fixed_prefix);
-    let my_output = my_expansion_start;
-    for (const chunk of the_scan_chunks) {
-        const count = Math.min(chunk.length, my_position - my_output);
-        if (count <= 0) break;
-        my_prefix.set(chunk.subarray(0, count), my_output);
-        my_output += count;
-    }
-    return parse_legacy_metadata(my_prefix.buffer, file_size, options);
+    const my_prefix = read_range(fd, 0, my_position);
+    return parse_legacy_metadata(my_prefix, file_size, options);
 }
 
 function read_modern_metadata(
@@ -1032,7 +1021,7 @@ function read_value_labels(
 
 function read_data_rows(
     fd: number,
-    metadata: DtaReadPlan,
+    metadata: PackedDtaReadPlan,
     start: number,
     count: number
 ): Uint8Array {

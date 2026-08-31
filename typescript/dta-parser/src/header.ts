@@ -35,6 +35,7 @@ import {
 } from './text-encoding';
 import {
     StataMetadataCollector,
+    withLazyStataMetadata,
 } from './stata-metadata';
 import {
     StataCharacteristicFramePlan,
@@ -667,7 +668,7 @@ export function parse_metadata_from_header(
         const my_width = byte_width_for_type_code(
             my_code, format_version
         );
-        the_variables.push({
+        the_variables.push(withLazyStataMetadata({
             name: the_varnames[i],
             type: type_code_to_dta_type(
                 my_code, format_version
@@ -676,11 +677,9 @@ export function parse_metadata_from_header(
             format: the_formats[i],
             label: the_variable_labels[i],
             value_label_name: the_value_label_names[i],
-            notes: [],
-            characteristics: [],
             byte_width: my_width,
             byte_offset: my_running_offset,
-        });
+        }));
         my_running_offset += my_width;
     }
 

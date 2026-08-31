@@ -217,6 +217,57 @@ test_that("coalesced variables reconcile notes and characteristics x first", {
     expect_identical(stata_characteristics(fallback$id), c(source = "using"))
 })
 
+test_that("explicit empty metadata falls back without a conflict warning", {
+    master_id <- set_stata_note(c("a", "b"), 1, "temporary")
+    master_id <- set_stata_characteristic(master_id, "source", "temporary")
+    attr(master_id, "notes") <- character()
+    attr(master_id, "stata.note.numbers") <- integer()
+    attr(master_id, "stata.characteristics") <- stats::setNames(
+        character(), character()
+    )
+    using_id <- set_stata_note(c("b", "c"), 8, "using note")
+    using_id <- set_stata_characteristic(using_id, "source", "using")
+
+    expect_no_warning(
+        result <- dta_merge(
+            tibble::tibble(id = master_id),
+            tibble::tibble(id = using_id),
+            by = "id", relationship = "1:1"
+        )
+    )
+    expect_identical(stata_notes(result$id), c(`8` = "using note"))
+    expect_identical(stata_characteristics(result$id), c(source = "using"))
+})
+
+test_that("coalesced metadata scanning stays width-linear", {
+    lookups <- new.env(parent = emptyenv())
+    lookups$count <- 0L
+    method_name <- "[[.dtatools_merge_lookup_probe"
+    method <- function(x, index, ...) {
+        if (is.character(index)) {
+            stop("coalesced columns must be resolved before scanning")
+        }
+        lookups$count <- lookups$count + 1L
+        NextMethod()
+    }
+    assign(method_name, method, envir = .GlobalEnv)
+    withr::defer(rm(list = method_name, envir = .GlobalEnv))
+
+    work <- integer()
+    for (width in c(4000L, 8000L)) {
+        data <- structure(
+            rep(list(integer()), width),
+            names = paste0("v", seq_len(width)),
+            row.names = .set_row_names(0L),
+            class = c("dtatools_merge_lookup_probe", "data.frame")
+        )
+        lookups$count <- 0L
+        dtatools:::.warn_coalesced_metadata(data, data, names(data))
+        work <- c(work, lookups$count)
+    }
+    expect_identical(work, c(8000L, 16000L))
+})
+
 test_that("coalesced variables with matching metadata merge silently", {
     master <- tibble::tibble(
         id = set_var_labels(

@@ -321,38 +321,56 @@ dta_merge <- function(x, y, by, relationship,
     labels[order(unname(labels), names(labels))]
 }
 
+.dta_merge_nonempty_metadata <- function(x, y) {
+    x_nonempty <- length(x) > 0L
+    y_nonempty <- length(y) > 0L
+    list(
+        value = if (x_nonempty || !y_nonempty) x else y,
+        conflict = x_nonempty && y_nonempty && !identical(x, y)
+    )
+}
+
+.dta_merge_stata_metadata <- function(x, y) {
+    notes <- .dta_merge_nonempty_metadata(stata_notes(x), stata_notes(y))
+    characteristics <- .dta_merge_nonempty_metadata(
+        stata_characteristics(x), stata_characteristics(y)
+    )
+    list(
+        notes = notes$value,
+        characteristics = characteristics$value,
+        conflict = notes$conflict || characteristics$conflict
+    )
+}
+
 # Coalescing keeps one column per variable, so metadata the two inputs
 # disagree on is silently resolved; Stata says nothing, we warn.
 .warn_coalesced_metadata <- function(x, y, coalesced) {
-    var_label_diff <- character()
-    val_label_diff <- character()
-    stata_metadata_diff <- character()
-    for (name in coalesced) {
-        x_label <- var_label(x[[name]])
-        y_label <- var_label(y[[name]])
+    x_positions <- match(coalesced, names(x))
+    y_positions <- match(coalesced, names(y))
+    var_label_conflict <- logical(length(coalesced))
+    val_label_conflict <- logical(length(coalesced))
+    stata_metadata_conflict <- logical(length(coalesced))
+    for (index in seq_along(coalesced)) {
+        x_column <- x[[x_positions[[index]]]]
+        y_column <- y[[y_positions[[index]]]]
+        x_label <- var_label(x_column)
+        y_label <- var_label(y_column)
         if (!is.null(x_label) && !is.null(y_label) &&
             !identical(x_label, y_label)) {
-            var_label_diff <- c(var_label_diff, name)
+            var_label_conflict[[index]] <- TRUE
         }
         if (!identical(
-            .normalized_value_labels(x[[name]]),
-            .normalized_value_labels(y[[name]])
+            .normalized_value_labels(x_column),
+            .normalized_value_labels(y_column)
         )) {
-            val_label_diff <- c(val_label_diff, name)
+            val_label_conflict[[index]] <- TRUE
         }
-        x_notes <- stata_notes(x[[name]])
-        y_notes <- stata_notes(y[[name]])
-        x_characteristics <- stata_characteristics(x[[name]])
-        y_characteristics <- stata_characteristics(y[[name]])
-        notes_conflict <- length(x_notes) && length(y_notes) &&
-            !identical(x_notes, y_notes)
-        characteristics_conflict <- length(x_characteristics) &&
-            length(y_characteristics) &&
-            !identical(x_characteristics, y_characteristics)
-        if (notes_conflict || characteristics_conflict) {
-            stata_metadata_diff <- c(stata_metadata_diff, name)
-        }
+        stata_metadata_conflict[[index]] <-
+            .dta_merge_stata_metadata(x_column, y_column)$conflict
     }
+    var_label_diff <- coalesced[var_label_conflict]
+    val_label_diff <- coalesced[val_label_conflict]
+    stata_metadata_diff <- coalesced[stata_metadata_conflict]
     if (length(var_label_diff) > 0L) {
         warning(sprintf(
             paste0(
@@ -526,7 +544,31 @@ dta_merge <- function(x, y, by, relationship,
     label <- var_label(x)
     if (is.null(label)) label <- var_label(y)
     if (!identical(var_label(value), label)) var_label(value) <- label
-    .reconcile_stata_metadata_attributes(value, x, y)
+    metadata <- .dta_merge_stata_metadata(x, y)
+    desired <- list(
+        notes = if (length(metadata$notes)) unname(metadata$notes) else NULL,
+        note_numbers = if (length(metadata$notes)) {
+            as.integer(names(metadata$notes))
+        } else NULL,
+        characteristics = if (length(metadata$characteristics)) {
+            metadata$characteristics
+        } else NULL
+    )
+    current <- list(
+        notes = attr(value, "notes", exact = TRUE),
+        note_numbers = attr(value, "stata.note.numbers", exact = TRUE),
+        characteristics = attr(value, "stata.characteristics", exact = TRUE)
+    )
+    if (!identical(current, desired)) {
+        attr(value, "notes") <- desired$notes
+        attr(value, "stata.note.numbers") <- desired$note_numbers
+        attr(value, "stata.characteristics") <- desired$characteristics
+    }
+    if (inherits(value, "stata_numeric") || inherits(value, "stata_temporal")) {
+        value
+    } else {
+        .as_stata_metadata_vector(value)
+    }
 }
 
 .dta_merge_slice <- function(value, rows) {

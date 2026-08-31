@@ -213,7 +213,10 @@ save_arrow <- function(data, path,
     if (identical(typeof(column), "integer")) {
         if (is.null(classes) || (
             inherits(column, "haven_labelled") &&
-            all(classes %in% c("haven_labelled", "vctrs_vctr", "integer"))
+            all(classes %in% c(
+                .stata_metadata_vector_class,
+                "haven_labelled", "vctrs_vctr", "integer"
+            ))
         ) || all(classes %in% .stata_metadata_vector_class
         )) return("integer")
         return(NA_character_)
@@ -221,7 +224,10 @@ save_arrow <- function(data, path,
     if (identical(typeof(column), "double")) {
         if (is.null(classes) || (
             inherits(column, "haven_labelled") &&
-            all(classes %in% c("haven_labelled", "vctrs_vctr", "double"))
+            all(classes %in% c(
+                .stata_metadata_vector_class,
+                "haven_labelled", "vctrs_vctr", "double"
+            ))
         ) || all(classes %in% .stata_metadata_vector_class
         )) return("double")
         return(NA_character_)

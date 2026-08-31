@@ -9,16 +9,17 @@ export interface StataCharacteristicLocator {
 }
 /**
  * Collect accepted locators while callers validate format-specific framing.
- * Classification errors remain deferred until `finish()`, so a later framing
- * error still wins. Values decode only after the enclosing section is valid.
+ * Value-bound and classification errors remain deferred until `finish()`, so
+ * a later framing error still wins. Every value is bounded, but rejected
+ * records retain no descriptor. Values decode after the section is valid.
  */
 export declare class StataCharacteristicFramePlan {
     private readonly bytes;
     private readonly decoder;
     private readonly collector;
     private readonly records;
-    private classificationError;
-    private hasClassificationError;
+    private deferredError;
+    private hasDeferredError;
     constructor(bytes: Uint8Array, decoder: DtaTextDecoder, collector: StataMetadataCollector);
     add(locator: StataCharacteristicLocator): void;
     finish(): void;

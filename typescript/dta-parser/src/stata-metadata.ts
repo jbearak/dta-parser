@@ -10,6 +10,61 @@ const MAX_STATA_METADATA_VALUE_BYTES = 67_784;
 const MAX_DECODED_STATA_METADATA_VALUE_BYTES = 203_352;
 const TEXT_ENCODER = new TextEncoder();
 
+const LAZY_NOTES = new WeakMap<object, StataNote[] | string[]>();
+const LAZY_CHARACTERISTICS = new WeakMap<object, StataCharacteristic[]>();
+
+function lazyNotes(this: object): StataNote[] | string[] {
+    let notes = LAZY_NOTES.get(this);
+    if (notes === undefined) {
+        notes = [];
+        LAZY_NOTES.set(this, notes);
+    }
+    return notes;
+}
+
+function setLazyNotes(this: object, notes: StataNote[] | string[]): void {
+    LAZY_NOTES.set(this, notes);
+}
+
+function lazyCharacteristics(this: object): StataCharacteristic[] {
+    let characteristics = LAZY_CHARACTERISTICS.get(this);
+    if (characteristics === undefined) {
+        characteristics = [];
+        LAZY_CHARACTERISTICS.set(this, characteristics);
+    }
+    return characteristics;
+}
+
+function setLazyCharacteristics(
+    this: object, characteristics: StataCharacteristic[]
+): void {
+    LAZY_CHARACTERISTICS.set(this, characteristics);
+}
+
+/** Add canonical metadata arrays without allocating them until first access. */
+export function withLazyStataMetadata<T extends object>(
+    target: T
+): T & { notes: StataNote[]; characteristics: StataCharacteristic[] } {
+    Object.defineProperties(target, {
+        notes: {
+            configurable: true,
+            enumerable: true,
+            get: lazyNotes,
+            set: setLazyNotes,
+        },
+        characteristics: {
+            configurable: true,
+            enumerable: true,
+            get: lazyCharacteristics,
+            set: setLazyCharacteristics,
+        },
+    });
+    return target as T & {
+        notes: StataNote[];
+        characteristics: StataCharacteristic[];
+    };
+}
+
 function noteNumber(name: string): number | null {
     const match = NOTE_NAME.exec(name);
     if (match === null) return null;

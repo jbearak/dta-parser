@@ -280,6 +280,34 @@ test_that("metadata vector markers remain writable", {
     }
 })
 
+test_that("Arrow writes labelled numeric vectors with Stata metadata", {
+    integer <- 1:2
+    val_labels(integer) <- c(one = 1L, two = 2L)
+    integer <- set_stata_note(integer, 2L, "integer note")
+    integer <- set_stata_characteristic(integer, "source", "integer")
+
+    double <- c(1, 2)
+    val_labels(double) <- c(one = 1, two = 2)
+    double <- set_stata_note(double, 3L, "double note")
+    double <- set_stata_characteristic(double, "source", "double")
+
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(tibble::tibble(integer, double), path)
+    restored <- read_arrow(path)
+
+    expect_identical(stata_notes(restored$integer), c(`2` = "integer note"))
+    expect_identical(
+        stata_characteristics(restored$integer), c(source = "integer")
+    )
+    expect_identical(stata_notes(restored$double), c(`3` = "double note"))
+    expect_identical(
+        stata_characteristics(restored$double), c(source = "double")
+    )
+    expect_equal(val_labels(restored$integer), c(one = 1, two = 2))
+    expect_equal(val_labels(restored$double), c(one = 1, two = 2))
+})
+
 test_that("wide subsets restore only metadata-bearing variables", {
     original <- dtatools:::.copy_stata_metadata_attributes
     calls <- 0L

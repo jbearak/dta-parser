@@ -17,7 +17,7 @@ export interface StataCharacteristicLocator {
 interface FramedStataCharacteristic {
     accepted: AcceptedStataCharacteristic;
     valueStart: number;
-    valueLength: number;
+    valueEnd: number;
 }
 
 function readFixedString(
@@ -34,13 +34,14 @@ function readFixedString(
 
 /**
  * Collect accepted locators while callers validate format-specific framing.
- * Classification errors remain deferred until `finish()`, so a later framing
- * error still wins. Values decode only after the enclosing section is valid.
+ * Value-bound and classification errors remain deferred until `finish()`, so
+ * a later framing error still wins. Every value is bounded, but rejected
+ * records retain no descriptor. Values decode after the section is valid.
  */
 export class StataCharacteristicFramePlan {
     private readonly records: FramedStataCharacteristic[] = [];
-    private classificationError: unknown;
-    private hasClassificationError = false;
+    private deferredError: unknown;
+    private hasDeferredError = false;
 
     constructor(
         private readonly bytes: Uint8Array,
@@ -49,7 +50,19 @@ export class StataCharacteristicFramePlan {
     ) {}
 
     add(locator: StataCharacteristicLocator): void {
-        if (this.hasClassificationError) return;
+        let valueEnd: number;
+        try {
+            valueEnd = stataMetadataValueEnd(
+                this.bytes, locator.valueStart, locator.valueLength
+            );
+        } catch (error) {
+            if (!this.hasDeferredError) {
+                this.deferredError = error;
+                this.hasDeferredError = true;
+            }
+            return;
+        }
+        if (this.hasDeferredError) return;
         const target = readFixedString(
             this.bytes, locator.namesStart, locator.nameWidth, this.decoder
         );
@@ -65,24 +78,21 @@ export class StataCharacteristicFramePlan {
                 this.records.push({
                     accepted,
                     valueStart: locator.valueStart,
-                    valueLength: locator.valueLength,
+                    valueEnd,
                 });
             }
         } catch (error) {
-            this.classificationError = error;
-            this.hasClassificationError = true;
+            this.deferredError = error;
+            this.hasDeferredError = true;
         }
     }
 
     finish(): void {
-        if (this.hasClassificationError) throw this.classificationError;
+        if (this.hasDeferredError) throw this.deferredError;
         for (const record of this.records) {
-            const valueEnd = stataMetadataValueEnd(
-                this.bytes, record.valueStart, record.valueLength
-            );
             this.collector.pushAcceptedLazy(record.accepted, () => {
                 return this.decoder.decode(
-                    this.bytes.subarray(record.valueStart, valueEnd)
+                    this.bytes.subarray(record.valueStart, record.valueEnd)
                 );
             });
         }

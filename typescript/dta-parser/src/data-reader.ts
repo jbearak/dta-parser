@@ -14,11 +14,12 @@ import type {
     DtaMetadata,
     DtaReadPlan,
     FormatVersion,
+    PackedDtaReadPlan,
     ReadVariablePlan,
     Row,
     RowCell,
 } from './types';
-import { is_legacy_format } from './types';
+import { is_legacy_format, isPackedDtaReadPlan } from './types';
 import type { DtaTextDecoder } from './text-encoding';
 import {
     decode_text_range,
@@ -74,7 +75,7 @@ function buffer_views(buffer: DataBuffer): BufferViews {
 }
 
 function decoder_for_metadata(
-    metadata: DtaReadPlan
+    metadata: DtaReadPlan | PackedDtaReadPlan
 ): DtaTextDecoder {
     switch (metadata.text_encoding) {
         case 'utf-8':
@@ -109,14 +110,15 @@ function read_cell(
     view: DataView,
     bytes: Uint8Array,
     offset: number,
-    variable: ReadVariablePlan,
+    variable_type: ReadVariablePlan['type'],
+    byte_width: number,
     little_endian: boolean,
     modern_missing: boolean,
     decoder: DtaTextDecoder,
     format_version: FormatVersion
 ): RowCell {
     let my_missing = -1;
-    switch (variable.type) {
+    switch (variable_type) {
         case 'byte': {
             const my_value = view.getInt8(offset);
             my_missing = byte_missing_offset(
@@ -172,7 +174,7 @@ function read_cell(
             return read_fixed_string(
                 bytes,
                 offset,
-                variable.byte_width,
+                byte_width,
                 decoder
             );
     }
@@ -379,7 +381,7 @@ function decode_single_column_into_rows(
 function read_rows_from_view(
     view: DataView,
     bytes: Uint8Array,
-    metadata: DtaReadPlan,
+    metadata: DtaReadPlan | PackedDtaReadPlan,
     row_base_offset: number,
     start: number,
     count: number,
@@ -409,8 +411,13 @@ function read_rows_from_view(
     const my_decoder = decoder_for_metadata(metadata);
     const the_rows = out ?? new Array<Row>(my_actual_count);
     const my_column_count = my_col_end - my_col_start;
+    const packed = isPackedDtaReadPlan(metadata);
 
     if (my_column_count === 1) {
+        const variable = packed
+            ? metadata.variable(my_col_start)
+            : metadata.variables[my_col_start];
+        if (variable === undefined) return the_rows;
         decode_single_column_into_rows(
             view,
             bytes,
@@ -418,7 +425,7 @@ function read_rows_from_view(
             out_offset,
             my_actual_count,
             row_base_offset,
-            metadata.variables[my_col_start],
+            variable,
             metadata.obs_length,
             little_endian,
             modern_missing,
@@ -437,12 +444,24 @@ function read_rows_from_view(
             my_abs_col < my_col_end;
             my_abs_col++, my_output_col++
         ) {
-            const my_variable = metadata.variables[my_abs_col];
+            const my_variable = packed
+                ? undefined
+                : metadata.variables[my_abs_col];
+            const variableType = packed
+                ? metadata.variable_types[my_abs_col]
+                : my_variable!.type;
+            const byteWidth = packed
+                ? metadata.variable_byte_widths[my_abs_col]
+                : my_variable!.byte_width;
+            const byteOffset = packed
+                ? metadata.variable_byte_offsets[my_abs_col]
+                : my_variable!.byte_offset;
             my_row[my_output_col] = read_cell(
                 view,
                 bytes,
-                my_row_offset + my_variable.byte_offset,
-                my_variable,
+                my_row_offset + byteOffset,
+                variableType,
+                byteWidth,
                 little_endian,
                 modern_missing,
                 my_decoder,
@@ -490,7 +509,7 @@ export function read_rows_from_buffer(
  */
 export function read_rows_from_data_buffer(
     buffer: DataBuffer,
-    metadata: DtaReadPlan,
+    metadata: DtaReadPlan | PackedDtaReadPlan,
     start: number,
     count: number,
     col_start?: number,
@@ -524,7 +543,7 @@ export function read_rows_from_data_buffer(
  */
 export function read_columns_from_data_buffer(
     buffer: DataBuffer,
-    metadata: DtaReadPlan,
+    metadata: DtaReadPlan | PackedDtaReadPlan,
     count: number,
     col_indices: number[],
     out: Map<number, RowCell[]>,
@@ -540,16 +559,21 @@ export function read_columns_from_data_buffer(
     const little_endian = metadata.byte_order === 'LSF';
     const modern_missing = metadata.format_version >= 113;
     const my_decoder = decoder_for_metadata(metadata);
+    const packed = isPackedDtaReadPlan(metadata);
 
     for (const my_col of col_indices) {
         const my_target = out.get(my_col)!;
+        const variable = packed
+            ? metadata.variable(my_col)
+            : metadata.variables[my_col];
+        if (variable === undefined) continue;
         decode_column_into_values(
             view,
             bytes,
             my_target,
             out_offset ?? my_target.length,
             count,
-            metadata.variables[my_col],
+            variable,
             metadata.obs_length,
             little_endian,
             modern_missing,

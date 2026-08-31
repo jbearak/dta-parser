@@ -3,6 +3,11 @@ export interface StataMetadataTarget {
     notes?: StataNote[] | string[];
     characteristics?: StataCharacteristic[];
 }
+/** Add canonical metadata arrays without allocating them until first access. */
+export declare function withLazyStataMetadata<T extends object>(target: T): T & {
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
+};
 export interface AcceptedStataCharacteristic {
     scopeIndex: number;
     name: string;
