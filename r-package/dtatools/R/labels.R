@@ -496,8 +496,8 @@ dataset_label <- function(data) {
     .warn_stata_metadata_limits(
         .text_label_violations(value, "dataset label")
     )
-    attr(data, "label") <- value
-    data
+    .Call(C_dtatools_set_dataset_label, data, value)
+    invisible(data)
 }
 
 #' @rdname var_label

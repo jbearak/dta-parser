@@ -41,8 +41,7 @@ attach_result <- function(order) {
             )
 
             shared <- c(
-                "var_label", "var_label<-", "val_labels", "val_labels<-",
-                "set_var_labels", "set_val_labels"
+                "var_label", "var_label<-", "val_labels", "val_labels<-"
             )
             owner <- vapply(shared, function(name) {
                 resolved <- get(name, mode = "function")
@@ -56,8 +55,19 @@ attach_result <- function(order) {
                     "other"
                 }
             }, character(1))
+            dtatools_only <- c("set_var_labels", "set_val_labels")
+            dtatools_only_owned <- vapply(dtatools_only, function(name) {
+                identical(
+                    get(name, mode = "function"),
+                    getExportedValue("dtatools", name)
+                )
+            }, logical(1))
 
-            list(owner = owner, warnings = warnings)
+            list(
+                owner = owner,
+                dtatools_only_owned = dtatools_only_owned,
+                warnings = warnings
+            )
         },
         args = list(order = order),
         spinner = FALSE
@@ -66,8 +76,12 @@ attach_result <- function(order) {
 
 labelled_first <- attach_result(c("labelled", "dtatools"))
 assert(
-    identical(unname(labelled_first$owner), rep("dtatools", 6L)),
+    identical(unname(labelled_first$owner), rep("dtatools", 4L)),
     "dtatools helpers did not take precedence when dtatools attached last"
+)
+assert(
+    all(labelled_first$dtatools_only_owned),
+    "dtatools-only setters were not available when dtatools attached last"
 )
 assert(
     !any(grepl("attached after dtatools", labelled_first$warnings,
@@ -77,8 +91,12 @@ assert(
 
 dtatools_first <- attach_result(c("dtatools", "labelled"))
 assert(
-    identical(unname(dtatools_first$owner), rep("labelled", 6L)),
+    identical(unname(dtatools_first$owner), rep("labelled", 4L)),
     "Normal R masking did not apply when labelled attached last"
+)
+assert(
+    all(dtatools_first$dtatools_only_owned),
+    "dtatools-only setters were masked when labelled attached last"
 )
 masking_warnings <- grepl(
     "attached after dtatools", dtatools_first$warnings, fixed = TRUE

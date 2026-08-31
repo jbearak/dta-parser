@@ -74,6 +74,18 @@ test_that("dataset_label replacement sets and removes dataset metadata", {
     )
 })
 
+test_that("dataset_label replacement mutates aliases and returns invisibly", {
+    data <- data.frame(x = 1)
+    alias <- data
+
+    result <- withVisible(`dataset_label<-`(data, "Shared dataset"))
+
+    expect_false(result$visible)
+    expect_identical(result$value, data)
+    expect_identical(dataset_label(data), "Shared dataset")
+    expect_identical(dataset_label(alias), "Shared dataset")
+})
+
 test_that("var_label replacement updates named columns and can clear all", {
     data <- data.frame(x = 1, y = 2)
     attr(data$x, "label") <- "Old x"

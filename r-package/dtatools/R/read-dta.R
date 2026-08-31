@@ -89,9 +89,9 @@
 #' @section Labels and missing-code helpers:
 #' Reading DTA files and working with their labels does not require haven or
 #' labelled. Use [var_label()], [val_labels()], [dataset_label()],
-#' [set_var_labels()], and [set_val_labels()] to inspect or change
-#' package-owned Stata metadata without materializing compact numeric columns
-#' or dropping unrelated attributes. For example:
+#' [set_var_label()], [set_var_labels()], and [set_val_labels()] to inspect or
+#' change package-owned Stata metadata without materializing compact numeric
+#' columns or dropping unrelated attributes. For example:
 #' ```
 #' data <- data.frame(status = c(1, 2, 1))
 #' var_label(data$status)

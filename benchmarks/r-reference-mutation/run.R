@@ -642,7 +642,9 @@ scalar_dictionary_source <- read_arrow(
 )$text
 unlink(dictionary_path)
 stopifnot(dtatools:::.is_unmaterialized_dictstring(dictionary_data$text))
-dictionary_alias <- set_var_labels(dictionary_data, text = "Alias")
+dictionary_alias <- set_var_labels(
+    copy_data(dictionary_data), text = "Alias"
+)
 dictionary_cache_before <- dtatools:::.dictstring_cached_count(
     dictionary_alias$text
 )
@@ -881,7 +883,7 @@ shared_sparse_dictionary_target <- copy_data(data.frame(
     text = near_unique_source
 ))
 shared_sparse_dictionary_alias <- set_var_labels(
-    shared_sparse_dictionary_target, text = "Alias"
+    copy_data(shared_sparse_dictionary_target), text = "Alias"
 )
 shared_sparse_dictionary_cache <- dtatools:::.dictstring_cached_count(
     shared_sparse_dictionary_alias$text
