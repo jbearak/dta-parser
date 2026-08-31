@@ -51,11 +51,15 @@ inference; the sparse case catches a separate dataset-sized result scan.
 A shared, 250,000-value dictionary then undergoes a complete scalar overwrite.
 The replacement may allocate one character result, but it must not decode the
 old five-million-row payload or duplicate the fresh output because an alias
-retains the compact source. A base R integer ALTREP sequence is also replaced.
-That path deliberately allocates one ordinary integer vector, patches it while
-it is still private without a rollback journal, installs it into dataset
-aliases, leaves the former standalone column alias unchanged, and verifies the
-detached result's aggregate semantics.
+retains the compact source. Its timing is bounded relative to an independent
+character-vector fill, so the former decode and duplication path cannot satisfy
+the gate. A base R integer ALTREP sequence is also replaced, with a corresponding
+integer-fill baseline. That path deliberately allocates one ordinary integer
+vector, patches it while it is still private without a rollback journal,
+installs it into dataset aliases, leaves the former standalone column alias
+unchanged, and verifies the detached result's aggregate semantics. A one-row
+variant covers the sparse detachment path and likewise permits only one result
+allocation.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

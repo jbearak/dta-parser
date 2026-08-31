@@ -374,8 +374,12 @@ test_that("native write interrupts roll back values and compact state", {
             dictionary_size <- 10000000L
             dictionary_path <- tempfile(fileext = ".arrow")
             on.exit(unlink(dictionary_path), add = TRUE)
+            replacement_dictionary <- sprintf("value-%05d", 1:10000)
             save_arrow(data.frame(
-                target = rep(c("a", "b"), length.out = dictionary_size)
+                target = rep(c("a", "b"), length.out = dictionary_size),
+                replacement = rep(
+                    replacement_dictionary, length.out = dictionary_size
+                )
             ), dictionary_path)
             dictionary_matches <- function(value) {
                 chunk_size <- 250000L
@@ -393,7 +397,9 @@ test_that("native write interrupts roll back values and compact state", {
                     identical(as.character(value[first:last]), expected)
                 }, logical(1)))
             }
-            interrupt_dictionary <- function(shared, mutate_proxy = FALSE) {
+            interrupt_dictionary <- function(
+                shared, mutate_proxy = FALSE, source_values = FALSE
+            ) {
                 source <- read_arrow(dictionary_path)
                 if (mutate_proxy) {
                     alias <- source
@@ -415,6 +421,9 @@ test_that("native write interrupts roll back values and compact state", {
                 } else {
                     cache_before
                 }
+                values_cache_before <- dtatools:::.dictstring_cached_count(
+                    data$replacement
+                )
                 parent <- Sys.getpid()
                 signal <- parallel::mcparallel({
                     Sys.sleep(0.02)
@@ -422,7 +431,11 @@ test_that("native write interrupts roll back values and compact state", {
                 }, silent = TRUE)
                 condition <- tryCatch(
                     {
-                        replace_values(data, target, "changed")
+                        if (source_values) {
+                            replace_values(data, target, replacement)
+                        } else {
+                            replace_values(data, target, "changed")
+                        }
                         NULL
                     },
                     condition = identity
@@ -445,6 +458,14 @@ test_that("native write interrupts roll back values and compact state", {
                     dtatools:::.dictstring_cached_count(alias$target)
                 } else {
                     cache_after
+                }
+                values_compact <- dtatools:::.is_unmaterialized_dictstring(
+                    data$replacement
+                )
+                values_cache_after <- if (values_compact) {
+                    dtatools:::.dictstring_cached_count(data$replacement)
+                } else {
+                    NA_real_
                 }
                 selected <- c(1L, dictionary_size / 2L, dictionary_size)
                 sample <- tryCatch(
@@ -474,6 +495,9 @@ test_that("native write interrupts roll back values and compact state", {
                     alias_compact = alias_compact,
                     alias_cache_before = alias_cache_before,
                     alias_cache_after = alias_cache_after,
+                    values_compact = values_compact,
+                    values_cache_before = values_cache_before,
+                    values_cache_after = values_cache_after,
                     alias_readable = !inherits(alias_sample, "condition"),
                     alias_sample = if (inherits(alias_sample, "condition")) {
                         character()
@@ -489,7 +513,10 @@ test_that("native write interrupts roll back values and compact state", {
                 ordinary = interrupt_patch(FALSE),
                 dictionary = interrupt_dictionary(FALSE),
                 shared_dictionary = interrupt_dictionary(TRUE),
-                proxy_dictionary = interrupt_dictionary(TRUE, TRUE)
+                proxy_dictionary = interrupt_dictionary(TRUE, TRUE),
+                dictionary_values = interrupt_dictionary(
+                    FALSE, source_values = TRUE
+                )
             )
         },
         libpath = .libPaths(),
@@ -505,7 +532,8 @@ test_that("native write interrupts roll back values and compact state", {
         expect_identical(case$maximum, 1)
     }
     for (case in result[c(
-        "dictionary", "shared_dictionary", "proxy_dictionary"
+        "dictionary", "shared_dictionary", "proxy_dictionary",
+        "dictionary_values"
     )]) {
         expect_true(case$interrupted)
         expect_true(case$compact)
@@ -515,6 +543,8 @@ test_that("native write interrupts roll back values and compact state", {
         expect_true(case$payload_matches)
         expect_true(case$alias_compact)
         expect_identical(case$alias_cache_after, case$alias_cache_before)
+        expect_true(case$values_compact)
+        expect_identical(case$values_cache_after, case$values_cache_before)
         expect_true(case$alias_readable)
         expect_identical(case$alias_sample, c("a", "b", "b"))
         expect_true(case$alias_payload_matches)
@@ -1096,20 +1126,60 @@ test_that("metadata helpers remain isolated from later source patches", {
     expect_identical(as.character(full_copy$text), c("a", "b", "a"))
 
     direct_identity <- read_arrow(path)
+    direct_cache <- dtatools:::.dictstring_cached_count(direct_identity$text)
     replace_values(direct_identity, text, text)
+    expect_identical(
+        dtatools:::.dictstring_cached_count(direct_identity$text),
+        direct_cache
+    )
     expect_identical(as.character(direct_identity$text), c("a", "b", "a"))
 
     proxy_identity <- data.frame(
         text = dtatools:::.metadata_copy(read_arrow(path)$text)
     )
+    proxy_cache <- dtatools:::.dictstring_cached_count(proxy_identity$text)
     replace_values(proxy_identity, text, text)
+    expect_identical(
+        dtatools:::.dictstring_cached_count(proxy_identity$text),
+        proxy_cache
+    )
     expect_identical(as.character(proxy_identity$text), c("a", "b", "a"))
 
     dependent_source <- read_arrow(path)
     dependent_proxy <- dtatools:::.metadata_copy(dependent_source$text)
+    dependent_cache <- dtatools:::.dictstring_cached_count(dependent_proxy)
     replace_values(dependent_source, text, .env$dependent_proxy)
     expect_identical(
+        dtatools:::.dictstring_cached_count(dependent_proxy),
+        dependent_cache
+    )
+    expect_identical(
         as.character(dependent_source$text), c("a", "b", "a")
+    )
+
+    wide_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(wide_path), add = TRUE)
+    save_arrow(data.frame(text = c("wide", "x", "wide")), wide_path)
+    dictionary_values <- read_arrow(wide_path)$text
+    values_cache <- dtatools:::.dictstring_cached_count(dictionary_values)
+    narrow <- data.frame(text = structure(
+        c("a", "b", "c"), stata.string.storage = "str1"
+    ))
+    narrow_before <- serialize(narrow, NULL)
+    expect_error(
+        replace_values(narrow, text, .env$dictionary_values),
+        "do not fit"
+    )
+    expect_identical(serialize(narrow, NULL), narrow_before)
+    expect_identical(
+        dtatools:::.dictstring_cached_count(dictionary_values), values_cache
+    )
+    replace_values(
+        narrow, text, .env$dictionary_values, where = 2L
+    )
+    expect_identical(as.character(narrow$text), c("a", "x", "c"))
+    expect_identical(
+        dtatools:::.dictstring_cached_count(dictionary_values), values_cache
     )
 })
 

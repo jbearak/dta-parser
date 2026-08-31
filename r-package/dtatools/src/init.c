@@ -104,6 +104,8 @@ static SEXP metadata_proxy_owner(SEXP value);
 static void metadata_proxy_set_state(SEXP value, SEXP source, SEXP owner);
 static SEXP dictstring_compact_copy(SEXP value);
 static size_t numeric_kind_width(int kind);
+static int string_declared_width(SEXP declared, const char *message);
+static size_t reference_string_width(SEXP value, const char *operation);
 static void write_numeric_missing(
     unsigned char *output, R_xlen_t index, int kind, int offset
 );
@@ -4378,6 +4380,8 @@ static void cleanup_compact_patch_transaction(
 typedef struct {
     SEXP target;
     SEXP replacement;
+    SEXP replacement_dictstring_source;
+    SEXP replacement_dictstring_cache;
     SEXP saved_data1;
     SEXP saved_data2;
     SEXP string_undo;
@@ -4392,7 +4396,52 @@ typedef struct {
     int journal_complete;
     int delayed_dictstring_finalize;
     int rollback_required;
+    int replacement_string_width;
 } vector_patch_transaction;
+
+static SEXP vector_patch_replacement_string(
+    const vector_patch_transaction *transaction, R_xlen_t index
+) {
+    if (transaction->replacement_dictstring_source == R_NilValue) {
+        return STRING_ELT(transaction->replacement, index);
+    }
+    dictstring_data *source = dictstring_storage(
+        transaction->replacement_dictstring_source
+    );
+    if (index < 0 || (size_t) index >= source->length) {
+        Rf_error("invalid reference replacement plan");
+    }
+    return dictstring_cached_value(
+        source, transaction->replacement_dictstring_cache,
+        source->value_ids[index]
+    );
+}
+
+static void validate_vector_patch_replacement_strings(
+    const vector_patch_transaction *transaction
+) {
+    if (transaction->replacement_dictstring_source == R_NilValue) return;
+    for (R_xlen_t index = 0;
+         index < transaction->values.count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t row = reference_patch_row(transaction->rows, index);
+        R_xlen_t replacement_index = reference_value_index(
+            &transaction->values, index, row
+        );
+        size_t width = reference_string_width(
+            vector_patch_replacement_string(
+                transaction, replacement_index
+            ),
+            "replacement"
+        );
+        if (transaction->replacement_string_width > 0 &&
+            width > (size_t) transaction->replacement_string_width) {
+            Rf_error(
+                "Replacement values do not fit their declared Stata string storage"
+            );
+        }
+    }
+}
 
 static int vector_patch_state_changed(
     const vector_patch_transaction *transaction
@@ -4458,6 +4507,12 @@ static SEXP apply_vector_patch_transaction(void *data) {
     vector_patch_transaction *transaction =
         (vector_patch_transaction *) data;
     snapshot_reference_rows(transaction->rows);
+    int full_dictionary_overwrite =
+        transaction->dictstring_source != R_NilValue &&
+        transaction->rows->value == R_NilValue;
+    if (!full_dictionary_overwrite) {
+        validate_vector_patch_replacement_strings(transaction);
+    }
     if (transaction->rollback_required &&
         (transaction->type != STRSXP ||
          transaction->dictstring_source == R_NilValue)) {
@@ -4501,8 +4556,7 @@ static SEXP apply_vector_patch_transaction(void *data) {
     }
     transaction->journal_complete = transaction->rollback_required;
 
-    if (transaction->dictstring_source != R_NilValue &&
-        transaction->rows->value == R_NilValue) {
+    if (full_dictionary_overwrite) {
         SEXP materialized = PROTECT(Rf_allocVector(
             STRSXP, transaction->values.count
         ));
@@ -4512,10 +4566,22 @@ static SEXP apply_vector_patch_transaction(void *data) {
             R_xlen_t replacement_index = reference_value_index(
                 &transaction->values, index, index
             );
-            SET_STRING_ELT(
-                materialized, index,
-                STRING_ELT(transaction->replacement, replacement_index)
+            SEXP value = vector_patch_replacement_string(
+                transaction, replacement_index
             );
+            if (transaction->replacement_dictstring_source != R_NilValue) {
+                size_t width = reference_string_width(
+                    value, "replacement"
+                );
+                if (transaction->replacement_string_width > 0 &&
+                    width >
+                        (size_t) transaction->replacement_string_width) {
+                    Rf_error(
+                        "Replacement values do not fit their declared Stata string storage"
+                    );
+                }
+            }
+            SET_STRING_ELT(materialized, index, value);
         }
         R_CheckUserInterrupt();
         R_set_altrep_data2(transaction->target, materialized);
@@ -4576,7 +4642,9 @@ static SEXP apply_vector_patch_transaction(void *data) {
         case STRSXP:
             SET_STRING_ELT(
                 transaction->target, row,
-                STRING_ELT(transaction->replacement, replacement_index)
+                vector_patch_replacement_string(
+                    transaction, replacement_index
+                )
             );
             break;
         }
@@ -4618,8 +4686,10 @@ static SEXP patch_vector(
     );
 
     numeric_data *compact = unmaterialized_numeric_storage(target);
+    int native_by_row = compact != NULL ||
+        unmaterialized_dictstring_source(replacement) != R_NilValue;
     reference_value_plan value_plan = reference_value_plan_create(
-        replacement, &row_plan, count, target_length, compact != NULL,
+        replacement, &row_plan, count, target_length, native_by_row,
         "invalid reference replacement plan"
     );
     if (compact != NULL) {
@@ -4676,6 +4746,15 @@ static SEXP patch_vector(
     size_t width = type == REALSXP ? sizeof(double) : sizeof(int);
     SEXP dictstring_source = type == STRSXP
         ? unmaterialized_dictstring_source(target) : R_NilValue;
+    SEXP replacement_dictstring_source = type == STRSXP
+        ? unmaterialized_dictstring_source(replacement) : R_NilValue;
+    if (rows == R_NilValue &&
+        (target == replacement ||
+         (dictstring_source == target &&
+          replacement_dictstring_source == target))) {
+        release_reference_rows(&row_plan);
+        return Rf_ScalarLogical(0);
+    }
     int delayed_dictstring_finalize = dictstring_source == target;
     SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
     SET_VECTOR_ELT(
@@ -4698,23 +4777,33 @@ static SEXP patch_vector(
             )
             : R_NilValue
     );
+    SEXP replacement_private_cache = PROTECT(
+        replacement_dictstring_source != R_NilValue
+            ? Rf_allocVector(
+                VECSXP,
+                XLENGTH(dictstring_cache(replacement_dictstring_source))
+            )
+            : R_NilValue
+    );
     SEXP continuation = PROTECT(R_MakeUnwindCont());
     unsigned char *undo = NULL;
     if (rollback_required && type != STRSXP) {
         if ((size_t) count > SIZE_MAX / width) {
-            UNPROTECT(4);
+            UNPROTECT(5);
             Rf_error("reference replacement plan is too large");
         }
         size_t bytes = (size_t) count * width;
         undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
         if (undo == NULL) {
-            UNPROTECT(4);
+            UNPROTECT(5);
             Rf_error("could not allocate reference replacement rollback data");
         }
     }
     vector_patch_transaction transaction = {
         target,
         replacement,
+        replacement_dictstring_source,
+        replacement_private_cache,
         VECTOR_ELT(saved_state, 0),
         VECTOR_ELT(saved_state, 1),
         string_undo,
@@ -4728,7 +4817,15 @@ static SEXP patch_vector(
         type,
         0,
         delayed_dictstring_finalize,
-        rollback_required
+        rollback_required,
+        type == STRSXP
+            ? string_declared_width(
+                Rf_getAttrib(
+                    target, Rf_install("stata.string.storage")
+                ),
+                "Replacement values do not fit their declared Stata string storage"
+            )
+            : -1
     };
     SEXP result = R_UnwindProtect(
         apply_vector_patch_transaction, &transaction,
@@ -4746,7 +4843,7 @@ static SEXP patch_vector(
             dictstring_finalize(external);
         }
     }
-    UNPROTECT(4);
+    UNPROTECT(5);
     return result;
 }
 
@@ -4872,40 +4969,52 @@ static void set_generated_attributes(SEXP value, SEXP attributes) {
     }
 }
 
-static int generated_string_declared_width(SEXP declared) {
+static int string_declared_width(SEXP declared, const char *message) {
     if (declared == R_NilValue) return -1;
     if (TYPEOF(declared) != STRSXP || XLENGTH(declared) != 1 ||
         STRING_ELT(declared, 0) == NA_STRING) {
-        Rf_error("invalid generated string storage");
+        Rf_error("%s", message);
     }
     const char *storage = Rf_translateCharUTF8(STRING_ELT(declared, 0));
     if (strcmp(storage, "strL") == 0) return 0;
     if (strncmp(storage, "str", 3) != 0 || storage[3] == '\0') {
-        Rf_error("Generated values do not fit their declared Stata string storage");
+        Rf_error("%s", message);
     }
     int width = 0;
     for (const char *digit = storage + 3; *digit != '\0'; digit++) {
         if (*digit < '0' || *digit > '9' || width > 2045) {
-            Rf_error(
-                "Generated values do not fit their declared Stata string storage"
-            );
+            Rf_error("%s", message);
         }
         width = width * 10 + (*digit - '0');
     }
     if (width < 1 || width > 2045) {
-        Rf_error("Generated values do not fit their declared Stata string storage");
+        Rf_error("%s", message);
+    }
+    return width;
+}
+
+static int generated_string_declared_width(SEXP declared) {
+    return string_declared_width(
+        declared,
+        "Generated values do not fit their declared Stata string storage"
+    );
+}
+
+static size_t reference_string_width(SEXP value, const char *operation) {
+    if (value == NA_STRING) return 0;
+    const char *bytes = Rf_translateCharUTF8(value);
+    size_t width = strlen(bytes);
+    if (width > (size_t) 2000000000) {
+        Rf_error(
+            "A %s string exceeds Stata's 2,000,000,000-byte limit",
+            operation
+        );
     }
     return width;
 }
 
 static size_t generated_string_width(SEXP value) {
-    if (value == NA_STRING) return 0;
-    const char *bytes = Rf_translateCharUTF8(value);
-    size_t width = strlen(bytes);
-    if (width > (size_t) 2000000000) {
-        Rf_error("A generated string exceeds Stata's 2,000,000,000-byte limit");
-    }
-    return width;
+    return reference_string_width(value, "generated");
 }
 
 SEXP C_dtatools_generate_character(

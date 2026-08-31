@@ -132,8 +132,11 @@ A metadata proxy first detaches by copying its compact native payload so an
 independent source remains unchanged; it still avoids a full R double copy.
 Ordinary and materialized numeric columns and character columns are patched in their
 existing R representation. Replacing a dictionary-backed string materializes
-that target character column, but does not copy the data frame. \code{copy_data()}
-keeps unmaterialized compact numeric and dictionary-string columns compact.
+that target character column, but does not copy the data frame.
+Dictionary-backed replacement values are validated and decoded through a
+transaction-private cache, so an error or interrupt does not populate a
+shared source cache. \code{copy_data()} keeps unmaterialized compact numeric and
+dictionary-string columns compact.
 }
 \examples{
 survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))

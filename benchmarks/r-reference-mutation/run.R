@@ -447,6 +447,12 @@ dictionary_data <- read_arrow(dictionary_path)
 unlink(dictionary_path)
 stopifnot(dtatools:::.is_unmaterialized_dictstring(dictionary_data$text))
 dictionary_alias <- set_variable_labels(dictionary_data, text = "Alias")
+fill_repetitions <- 5L
+character_fill_time <- system.time(
+    for (iteration in seq_len(fill_repetitions)) {
+        fill_result <- rep.int("changed", rows)
+    }
+)[["elapsed"]] / fill_repetitions
 dictionary_profile <- profile_memory(
     replace_values(dictionary_data, text, "changed"),
     "dtatools-reference-dictionary-replacement-"
@@ -467,9 +473,14 @@ stopifnot(
     ),
     largest_dictionary_replacement_allocation <= full_double_bytes * 1.01,
     total_dictionary_replacement_allocation < full_double_bytes * 1.5,
-    dictionary_replacement_time < 0.1
+    dictionary_replacement_time < max(0.03, character_fill_time * 4)
 )
 
+integer_fill_time <- system.time(
+    for (iteration in seq_len(fill_repetitions)) {
+        fill_result <- rep.int(2L, rows)
+    }
+)[["elapsed"]] / fill_repetitions
 generic_altrep_data <- data.frame(value = seq_len(rows))
 generic_altrep_alias <- generic_altrep_data
 generic_altrep_column_alias <- generic_altrep_data$value
@@ -488,8 +499,40 @@ stopifnot(
         range(generic_altrep_column_alias), c(1L, rows)
     ),
     largest_generic_altrep_allocation <= integer_bytes * 1.01,
-    generic_altrep_replacement_time < 0.3
+    generic_altrep_replacement_time < max(0.02, integer_fill_time * 6)
 )
+
+sparse_generic_altrep_data <- data.frame(value = seq_len(rows))
+sparse_generic_altrep_alias <- sparse_generic_altrep_data
+sparse_generic_altrep_column_alias <- sparse_generic_altrep_data$value
+sparse_generic_altrep_profile <- profile_memory(
+    replace_values(sparse_generic_altrep_data, value, 2L, where = rows),
+    "dtatools-reference-sparse-generic-altrep-replacement-"
+)
+sparse_generic_altrep_replacement_time <-
+    sparse_generic_altrep_profile$elapsed
+total_sparse_generic_altrep_allocation <-
+    sparse_generic_altrep_profile$total
+largest_sparse_generic_altrep_allocation <-
+    sparse_generic_altrep_profile$largest
+stopifnot(
+    !dtatools:::.is_altrep(sparse_generic_altrep_data$value),
+    identical(
+        sparse_generic_altrep_data$value[c(1L, rows)], c(1L, 2L)
+    ),
+    identical(
+        sparse_generic_altrep_alias$value,
+        sparse_generic_altrep_data$value
+    ),
+    identical(
+        range(sparse_generic_altrep_column_alias), c(1L, rows)
+    ),
+    largest_sparse_generic_altrep_allocation <= integer_bytes * 1.01,
+    total_sparse_generic_altrep_allocation < integer_bytes * 1.5,
+    sparse_generic_altrep_replacement_time <
+        max(0.05, integer_fill_time * 20)
+)
+rm(fill_result)
 untracemem(integer_generation_data$anchor)
 untracemem(data$compact)
 untracemem(data$untouched)
@@ -669,6 +712,7 @@ cat(sprintf(
     "dictionary_replacement_seconds\t%.6f\n",
     dictionary_replacement_time
 ))
+cat(sprintf("character_fill_seconds\t%.6f\n", character_fill_time))
 cat(sprintf(
     "dictionary_replacement_total_profiled_allocation_bytes\t%.0f\n",
     total_dictionary_replacement_allocation
@@ -682,9 +726,22 @@ cat(sprintf(
     "generic_altrep_replacement_seconds\t%.6f\n",
     generic_altrep_replacement_time
 ))
+cat(sprintf("integer_fill_seconds\t%.6f\n", integer_fill_time))
 cat(sprintf(
     "generic_altrep_replacement_largest_allocation_bytes\t%.0f\n",
     largest_generic_altrep_allocation
+))
+cat(sprintf(
+    "sparse_generic_altrep_replacement_seconds\t%.6f\n",
+    sparse_generic_altrep_replacement_time
+))
+cat(sprintf(
+    "sparse_generic_altrep_total_profiled_allocation_bytes\t%.0f\n",
+    total_sparse_generic_altrep_allocation
+))
+cat(sprintf(
+    "sparse_generic_altrep_largest_allocation_bytes\t%.0f\n",
+    largest_sparse_generic_altrep_allocation
 ))
 cat(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
 cat(sprintf("integer_bytes\t%.0f\n", integer_bytes))

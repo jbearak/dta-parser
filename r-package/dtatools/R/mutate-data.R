@@ -100,8 +100,11 @@
 #' independent source remains unchanged; it still avoids a full R double copy.
 #' Ordinary and materialized numeric columns and character columns are patched in their
 #' existing R representation. Replacing a dictionary-backed string materializes
-#' that target character column, but does not copy the data frame. `copy_data()`
-#' keeps unmaterialized compact numeric and dictionary-string columns compact.
+#' that target character column, but does not copy the data frame.
+#' Dictionary-backed replacement values are validated and decoded through a
+#' transaction-private cache, so an error or interrupt does not populate a
+#' shared source cache. `copy_data()` keeps unmaterialized compact numeric and
+#' dictionary-string columns compact.
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
@@ -358,6 +361,13 @@ gen <- function(data, variable, values, where = NULL) {
         # the target's declared storage. Going through vec_cast() would build
         # a replacement compact column and, for ordinary input, a full double
         # temporary before decoding it again.
+        return(values)
+    }
+    if (typeof(target) == "character" &&
+        .is_unmaterialized_dictstring(values)) {
+        # Dictionary-backed values are validated and decoded through a
+        # transaction-private cache. R-level string operations would populate
+        # a shared source cache before the mutation can commit.
         return(values)
     }
     # Fallback casts and string-width checks apply only to selected values.
