@@ -34,19 +34,27 @@ one-sided formula.}
 \code{gen()} and \code{replace_values()} modify a data frame or tibble by reference.
 \code{repl()} is a direct alias for \code{replace_values()}. The return value is the
 supplied dataset, invisibly, so assignment is neither needed nor advised.
-Ordinary aliases observe later generation and replacement. Use
-\code{copy_data()} when an independent dataset is required.
+Aliases of the dataset or the same target vector observe later generation
+and replacement. This includes column-only subsets that share their column
+payload. Row subsets have new payloads and remain independent. Use
+\code{copy_data()} when isolation is required.
 The first mutation attaches package-owned reference state to the same
 data-frame or tibble object. Existing columns remain in the data frame;
 generated columns live in the attached state until an ordinary R assignment
 materializes a complete copy. This lets \code{gen()} grow the visible column set
 without searching for or rebinding a name in the caller. Base extraction and
 data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
-metadata helpers operate on the complete visible dataset. Consumers that
+metadata helpers operate on the complete visible dataset. The delegated
+dplyr verbs are \code{arrange()}, \code{distinct()}, \code{filter()}, \code{group_by()},
+\code{mutate()}, \code{relocate()}, \code{rename()}, \code{rowwise()}, \code{select()}, \code{slice()},
+\code{summarise()}, \code{transmute()}, and \code{ungroup()}. Consumers that
 bypass S3 methods and inspect a data frame's internal column-pointer array do
 not see generated columns; pass \code{as.data.frame(data)} or
 \code{tibble::as_tibble(data)} to such a consumer. This includes non-generic
-combiners such as \code{dplyr::bind_rows()}.
+combiners such as \code{dplyr::bind_rows()} and other dplyr verbs. Base \code{rbind()}
+and \code{cbind()} delegate when a reference dataset is the first argument; when
+it is later, convert it explicitly because base dispatch has already chosen
+the ordinary data-frame method.
 \code{unclass()} and direct inspection of internal attributes are likewise not
 supported ways to access generated columns.
 }

@@ -3,19 +3,27 @@
 #' `gen()` and `replace_values()` modify a data frame or tibble by reference.
 #' `repl()` is a direct alias for `replace_values()`. The return value is the
 #' supplied dataset, invisibly, so assignment is neither needed nor advised.
-#' Ordinary aliases observe later generation and replacement. Use
-#' `copy_data()` when an independent dataset is required.
+#' Aliases of the dataset or the same target vector observe later generation
+#' and replacement. This includes column-only subsets that share their column
+#' payload. Row subsets have new payloads and remain independent. Use
+#' `copy_data()` when isolation is required.
 #' The first mutation attaches package-owned reference state to the same
 #' data-frame or tibble object. Existing columns remain in the data frame;
 #' generated columns live in the attached state until an ordinary R assignment
 #' materializes a complete copy. This lets `gen()` grow the visible column set
 #' without searching for or rebinding a name in the caller. Base extraction and
 #' data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
-#' metadata helpers operate on the complete visible dataset. Consumers that
+#' metadata helpers operate on the complete visible dataset. The delegated
+#' dplyr verbs are `arrange()`, `distinct()`, `filter()`, `group_by()`,
+#' `mutate()`, `relocate()`, `rename()`, `rowwise()`, `select()`, `slice()`,
+#' `summarise()`, `transmute()`, and `ungroup()`. Consumers that
 #' bypass S3 methods and inspect a data frame's internal column-pointer array do
 #' not see generated columns; pass `as.data.frame(data)` or
 #' `tibble::as_tibble(data)` to such a consumer. This includes non-generic
-#' combiners such as `dplyr::bind_rows()`.
+#' combiners such as `dplyr::bind_rows()` and other dplyr verbs. Base `rbind()`
+#' and `cbind()` delegate when a reference dataset is the first argument; when
+#' it is later, convert it explicitly because base dispatch has already chosen
+#' the ordinary data-frame method.
 #' `unclass()` and direct inspection of internal attributes are likewise not
 #' supported ways to access generated columns.
 #'
@@ -160,6 +168,9 @@ gen <- function(data, variable, values, where = NULL) {
 .as_mutation_data <- function(data) {
     if (!is.data.frame(data)) {
         stop("`data` must be a data frame or tibble", call. = FALSE)
+    }
+    if (inherits(data, "grouped_df") || inherits(data, "rowwise_df")) {
+        stop("`data` must be an ungrouped data frame or tibble", call. = FALSE)
     }
     names <- names(data)
     if (is.null(names) || anyNA(names) || any(names == "") ||
@@ -382,7 +393,10 @@ gen <- function(data, variable, values, where = NULL) {
     if (temporal) {
         return(.attach_stata_temporal(result, values, storage))
     }
-    .restore_stata_metadata(result, values, storage)
+    result <- .restore_stata_metadata(result, values, storage)
+    .apply_haven_labelled_class(
+        result, !is.null(attr(result, "labels", exact = TRUE))
+    )
 }
 
 .generated_character <- function(values, rows, row_count) {
@@ -430,10 +444,8 @@ copy_data <- function(data) {
     })
     names(columns) <- source$names
     snapshot <- .reference_snapshot(data)
-    result <- lapply(columns, identity)
-    names(result) <- names(columns)
-    attributes(result) <- attributes(snapshot)
-    result
+    attributes(columns) <- attributes(snapshot)
+    columns
 }
 
 #' @export
@@ -478,6 +490,11 @@ dimnames.dtatools_ref_data <- function(x) {
 #' @export
 as.data.frame.dtatools_ref_data <- function(x, ...) {
     as.data.frame(.reference_snapshot(x), ...)
+}
+
+#' @export
+as.matrix.dtatools_ref_data <- function(x, ...) {
+    as.matrix(.reference_snapshot(x), ...)
 }
 
 #' @export

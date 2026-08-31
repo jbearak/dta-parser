@@ -17,7 +17,9 @@ the direct sparse update. It then generates a five-million-row column and uses
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the
 copy is no larger than compact storage and never becomes a full R double
-column. Direct targets do not pay that detachment cost.
+column. A second patch must stay below one compact payload, proving the detached
+proxy reuses its private native storage. Direct targets do not pay the initial
+detachment cost.
 
 `Rprofmem()` reports individual R allocations. Native compact backing appears
 as its raw-vector allocation, but the profiler does not measure allocator

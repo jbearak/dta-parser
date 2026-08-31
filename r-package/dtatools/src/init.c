@@ -3601,9 +3601,17 @@ static numeric_data *detach_compact_patch_target(SEXP value) {
         R_altrep_data2(value) != R_NilValue) {
         return NULL;
     }
+    SEXP owned = R_altrep_data1(value);
+    if (ALTREP(owned) &&
+        R_altrep_inherits(owned, dtatools_numeric_class) &&
+        R_altrep_data2(owned) == R_NilValue &&
+        R_ExternalPtrTag(R_altrep_data1(owned)) == value) {
+        return numeric_storage(owned);
+    }
     numeric_data *source = unmaterialized_numeric_storage(value);
     if (source == NULL) return NULL;
     SEXP detached = PROTECT(numeric_compact_copy(source));
+    R_SetExternalPtrTag(R_altrep_data1(detached), value);
     R_set_altrep_data1(value, detached);
     R_set_altrep_data2(value, R_NilValue);
     numeric_data *result = numeric_storage(detached);

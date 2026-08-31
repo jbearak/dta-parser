@@ -313,6 +313,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(var_label(data$authored), "Authored label")
     expect_identical(val_labels(data$authored), c(One = 1))
     expect_identical(attr(data$authored, "format.stata"), "%9.0g")
+    expect_s3_class(data$authored, "haven_labelled")
 
     attributed <- structure(
         c(4, 5, 6),
@@ -395,8 +396,10 @@ test_that("subsets, metadata proxies, and serialized data stay isolated", {
 
     proxy <- data.frame(x = dtatools:::.metadata_copy(source$x))
     replace_values(proxy, x, 8, where = 1)
+    replace_values(proxy, x, 6, where = 2)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(proxy$x))
     expect_identical(as.double(source$x), c(1, 2, 3))
+    expect_identical(as.double(proxy$x), c(8, 6, 3))
 
     restored <- unserialize(serialize(source, NULL))
     replace_values(restored, x, 7, where = 1)
@@ -465,11 +468,14 @@ test_that("reference data preserves base and tibble access semantics", {
         c(5, 7, 9)
     )
     expect_identical(as.double(with(frame, z)), c(5, 7, 9))
+    expect_identical(unname(as.matrix(frame)[, "z"]), c(5, 7, 9))
     expect_identical(as.double(subset(frame, z >= 7)$z), c(7, 9))
     expect_identical(as.double(transform(frame, a = z + 1)$a), c(6, 8, 10))
     expect_identical(as.double(within(frame, a <- z + 1)$a), c(6, 8, 10))
     expect_equal(dim(rbind(frame, frame)), c(6L, 3L))
     expect_equal(dim(cbind(frame, extra = 10:12)), c(3L, 4L))
+    plain <- as.data.frame(frame)
+    expect_equal(dim(rbind(plain, as.data.frame(frame))), c(6L, 3L))
 
     tbl <- tibble::tibble(x = 1:3)
     gen(tbl, y, x * 2)
@@ -499,6 +505,33 @@ test_that("reference data preserves base and tibble access semantics", {
         tibble::as_tibble(tbl), tibble::as_tibble(tbl)
     )
     expect_equal(dim(combined), c(6L, 2L))
+})
+
+test_that("target-vector aliases observe replacement while row subsets isolate", {
+    column <- stata_int(1:3)
+    left <- data.frame(x = column)
+    right <- data.frame(x = column)
+    replace_values(left, x, 9, where = 1)
+    expect_identical(as.double(right$x), c(9, 2, 3))
+
+    column_subset <- left[, "x", drop = FALSE]
+    replace_values(column_subset, x, 8, where = 2)
+    expect_identical(as.double(left$x), c(9, 8, 3))
+
+    row_subset <- left[1:2, , drop = FALSE]
+    replace_values(row_subset, x, 7, where = 1)
+    expect_identical(as.double(left$x), c(9, 8, 3))
+})
+
+test_that("grouped and rowwise inputs fail before reference mutation", {
+    grouped <- dplyr::group_by(tibble::tibble(x = 1:2), x)
+    rowwise <- dplyr::rowwise(tibble::tibble(x = 1:2))
+    for (data in list(grouped, rowwise)) {
+        before <- serialize(data, NULL)
+        expect_error(replace_values(data, x, 1L), "ungrouped")
+        expect_error(gen(data, y, 1L), "ungrouped")
+        expect_identical(serialize(data, NULL), before)
+    }
 })
 
 test_that("ordinary assignments and metadata helpers materialize current state", {

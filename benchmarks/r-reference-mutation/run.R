@@ -60,11 +60,32 @@ proxy_records <- readLines(proxy_profile, warn = FALSE)
 unlink(proxy_profile)
 proxy_allocation <- suppressWarnings(as.numeric(sub(" .*", "", proxy_records)))
 largest_proxy_allocation <- max(proxy_allocation, na.rm = TRUE)
+second_proxy_profile <- tempfile(
+    "dtatools-reference-proxy-second-", fileext = ".out"
+)
+Rprofmem(second_proxy_profile, threshold = 1000)
+replace_values(proxy, compact, 3, where = rows - 1L)
+Rprofmem(NULL)
+second_proxy_records <- readLines(second_proxy_profile, warn = FALSE)
+unlink(second_proxy_profile)
+second_proxy_allocation <- suppressWarnings(as.numeric(sub(
+    " .*", "", second_proxy_records
+)))
+recorded_second_proxy <- second_proxy_allocation[
+    is.finite(second_proxy_allocation)
+]
+largest_second_proxy_allocation <- if (length(recorded_second_proxy) == 0L) {
+    0
+} else {
+    max(recorded_second_proxy)
+}
 stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(proxy$compact),
     identical(as.double(proxy_source[[rows]]), 1),
+    identical(as.double(proxy_source[[rows - 1L]]), 1),
     largest_proxy_allocation >= compact_byte_bytes,
-    largest_proxy_allocation < full_double_bytes
+    largest_proxy_allocation < full_double_bytes,
+    largest_second_proxy_allocation < compact_byte_bytes
 )
 
 compact_trace <- tracemem(data$compact)
@@ -86,6 +107,10 @@ cat(sprintf("largest_profiled_allocation_bytes\t%.0f\n", largest_allocation))
 cat(sprintf(
     "largest_proxy_allocation_bytes\t%.0f\n",
     largest_proxy_allocation
+))
+cat(sprintf(
+    "largest_second_proxy_allocation_bytes\t%.0f\n",
+    largest_second_proxy_allocation
 ))
 cat(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
 cat(sprintf("full_double_bytes\t%.0f\n", full_double_bytes))
