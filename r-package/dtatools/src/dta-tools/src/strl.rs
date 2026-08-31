@@ -341,6 +341,7 @@ mod tests {
             nobs,
             dataset_label: String::new(),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             variables: vec![VariableInfo {
                 name: "long".into(),
                 dta_type: DtaType::StrL,
@@ -348,6 +349,8 @@ mod tests {
                 format: "%9s".into(),
                 label: String::new(),
                 value_label_name: String::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 byte_width: 8,
                 byte_offset: 0,
             }],

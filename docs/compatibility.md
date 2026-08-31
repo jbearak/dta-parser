@@ -28,9 +28,10 @@ does not emit older releases or release 120/121 alias-variable layouts.
 
 Output is always little-endian. This makes files deterministic across writer
 hosts and follows the dominant contemporary DTA representation; byte order has
-no effect on the values Stata exposes. The writer preserves the metadata held
-by the R package, including dataset notes, but does not expose arbitrary Stata
-characteristics.
+no effect on the values Stata exposes. The writer preserves numbered notes and
+arbitrary characteristics at dataset and variable scope. See
+[Stata notes and characteristics](./stata-notes-and-characteristics.md) for the
+public APIs and validation rules.
 
 Local output names with no extension receive `.dta` with a warning. Local
 extensionless reads likewise resolve to the `.dta` path, even when an exact
@@ -43,7 +44,8 @@ Both parsers retain:
 - format release and byte order;
 - dataset and variable metadata;
 - numeric storage types and fixed strings;
-- dataset notes and display formats;
+- numbered dataset and variable notes, arbitrary characteristics, and display
+  formats;
 - value-label tables in source order;
 - `strL` long-string values;
 - row windows and column projections;

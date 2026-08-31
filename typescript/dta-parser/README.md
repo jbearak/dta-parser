@@ -71,7 +71,13 @@ type MissingValue = {
 };
 ```
 
-Metadata includes variables, labels, display formats, notes, value-label tables, and section offsets. `DtaFile` resolves selected `strL` values and validates their object references.
+Metadata includes variables, labels, display formats, numbered notes, arbitrary
+characteristics, value-label tables, and section offsets. Dataset metadata and
+each variable expose `notes: { number, text }[]` and
+`characteristics: { name, value }[]`. List, get, set, add, drop, and renumber
+helpers are exported from the portable entrypoint; mutation helpers change the
+supplied metadata target. `DtaFile` resolves selected `strL` values and validates
+their object references.
 
 Automatic text decoding uses Windows-1252 for pre-Unicode files and UTF-8 for Unicode files. Callers can override it with UTF-8, Windows-1252, or ISO-8859-1. See the repository's [compatibility contract](https://github.com/jbearak/dta-tools/blob/main/docs/compatibility.md) for exact releases and language differences.
 

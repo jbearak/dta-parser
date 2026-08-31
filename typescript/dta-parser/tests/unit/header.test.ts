@@ -110,6 +110,18 @@ describe('parse_metadata', () => {
             );
         });
 
+        it('reads numbered notes and hides structural characteristics', () => {
+            expect(meta.notes).toEqual([{
+                number: 1,
+                text: 'From Consumer Reports with permission',
+            }]);
+            expect(meta.characteristics).toEqual([]);
+            expect(meta.variables.every(
+                variable => variable.notes.length === 0
+                    && variable.characteristics.length === 0
+            )).toBe(true);
+        });
+
         it('computes obs_length as sum of byte widths', () => {
             const my_sum = meta.variables.reduce(
                 (acc, v) => acc + v.byte_width, 0

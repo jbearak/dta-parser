@@ -29,6 +29,10 @@ import {
     resolve_text_encoding,
     text_decoder,
 } from './text-encoding';
+import {
+    applyCharacteristicRecords,
+    type StataCharacteristicRecord,
+} from './stata-metadata';
 
 // -----------------------------------------------------------
 // Constants
@@ -83,6 +87,10 @@ const TAG_VALUE_LABEL_NAMES_OPEN = encode_tag(
 const TAG_VARIABLE_LABELS_OPEN = encode_tag(
     '<variable_labels>'
 );
+const TAG_CHARACTERISTICS_OPEN = encode_tag('<characteristics>');
+const TAG_CHARACTERISTICS_CLOSE = encode_tag('</characteristics>');
+const TAG_CHARACTERISTIC_OPEN = encode_tag('<ch>');
+const TAG_CHARACTERISTIC_CLOSE = encode_tag('</ch>');
 
 // -----------------------------------------------------------
 // Helpers
@@ -137,6 +145,67 @@ function read_fixed_string(
     return decoder.decode(
         bytes.subarray(offset, my_end)
     );
+}
+
+function tag_at(bytes: Uint8Array, offset: number, tag: Uint8Array): boolean {
+    if (offset < 0 || offset + tag.length > bytes.length) return false;
+    for (let i = 0; i < tag.length; i++) {
+        if (bytes[offset + i] !== tag[i]) return false;
+    }
+    return true;
+}
+
+function parse_characteristics(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    section_offsets: SectionOffsets,
+    field_width: number,
+    decoder: DtaTextDecoder
+): StataCharacteristicRecord[] {
+    let pos = section_offsets.characteristics;
+    if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
+        throw new Error('Missing <characteristics> tag');
+    }
+    pos += TAG_CHARACTERISTICS_OPEN.length;
+    const records: StataCharacteristicRecord[] = [];
+    const names_length = field_width * 2;
+    while (pos < section_offsets.data) {
+        if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
+            pos += TAG_CHARACTERISTICS_CLOSE.length;
+            if (pos !== section_offsets.data) {
+                throw new Error('Characteristics section does not end at the mapped data offset');
+            }
+            return records;
+        }
+        if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
+            throw new Error('Invalid characteristic record tag');
+        }
+        pos += TAG_CHARACTERISTIC_OPEN.length;
+        if (pos + 4 > section_offsets.data) {
+            throw new Error('Truncated characteristic length');
+        }
+        const length = view.getUint32(pos, little_endian);
+        pos += 4;
+        if (length < names_length
+            || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
+            throw new Error('Truncated characteristic payload');
+        }
+        const target = read_fixed_string(bytes, pos, field_width, decoder);
+        const name = read_fixed_string(
+            bytes, pos + field_width, field_width, decoder
+        );
+        const value = read_fixed_string(
+            bytes, pos + names_length, length - names_length, decoder
+        );
+        pos += length;
+        if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
+            throw new Error('Missing </ch> tag');
+        }
+        pos += TAG_CHARACTERISTIC_CLOSE.length;
+        records.push({ target, name, value });
+    }
+    throw new Error('Missing </characteristics> tag');
 }
 
 // -----------------------------------------------------------
@@ -562,11 +631,24 @@ export function parse_metadata(
             format: the_formats[i],
             label: the_variable_labels[i],
             value_label_name: the_value_label_names[i],
+            notes: [],
+            characteristics: [],
             byte_width: my_width,
             byte_offset: my_running_offset,
         });
         my_running_offset += my_width;
     }
+
+    const notes: DtaMetadata['notes'] = [];
+    const characteristics: DtaMetadata['characteristics'] = [];
+    applyCharacteristicRecords(
+        parse_characteristics(
+            bytes, view, little_endian, section_offsets,
+            my_widths.varname, my_decoder
+        ),
+        { notes, characteristics },
+        the_variables
+    );
 
     return {
         format_version,
@@ -575,6 +657,8 @@ export function parse_metadata(
         nvar,
         nobs,
         dataset_label,
+        notes,
+        characteristics,
         variables: the_variables,
         section_offsets,
         obs_length: my_running_offset,

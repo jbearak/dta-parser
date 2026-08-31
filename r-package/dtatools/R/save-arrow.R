@@ -10,8 +10,9 @@
 #' standard storage arrays, but only profile-aware readers restore the added
 #' dtatools semantics. The profile records storage declarations, raw Stata
 #' missing storage (sentinel integers and tagged NaN payloads), display formats,
-#' labels, notes, value-label tables, and the R semantics that standard Arrow
-#' types alone do not express. Experimental profile version `"0"` carries no
+#' labels, numbered notes, arbitrary Stata characteristics, value-label tables,
+#' and the R semantics that standard Arrow types alone do not express.
+#' Experimental profile version `"0"` carries no
 #' cross-version stability promise yet.
 #'
 #' @section Conversions and metadata:
@@ -274,6 +275,8 @@ save_arrow <- function(data, path,
 }
 
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz) {
+    characteristics <- stata_characteristics(column)
+    notes <- stata_notes(column)
     variable_label <- .arrow_utf8(
         .write_text(
             attr(column, "label", exact = TRUE),
@@ -361,13 +364,20 @@ save_arrow <- function(data, path,
         .arrow_utf8(name, "Column names"), .arrow_write_kinds[[kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
+        value_labels[[1L]],
+        .stata_metadata_payload(
+            notes, characteristics, prefix = value_labels[[2L]]
+        ),
+        value_labels[[3L]],
         inherits(column, "haven_labelled"), string_storage
     )
 }
 
 .arrow_known_column_attributes <- function(kind) {
-    common <- c("label", "format.stata", "stata.string.storage")
+    common <- c(
+        "label", "format.stata", "stata.string.storage",
+        "notes", "stata.note.numbers", "stata.characteristics"
+    )
     switch(kind,
         factor = c(common, "levels", "class"),
         date = c(common, "labels", "class"),
@@ -381,7 +391,10 @@ save_arrow <- function(data, path,
 
 .arrow_dropped_attribute_warnings <- function(data, kinds) {
     details <- character()
-    known_dataset_attributes <- c("names", "label", "notes")
+    known_dataset_attributes <- c(
+        "names", "label", "notes", "stata.note.numbers",
+        "stata.characteristics"
+    )
     if (.row_names_info(data, type = 1L) <= 0L) {
         known_dataset_attributes <- c(known_dataset_attributes, "row.names")
     }
@@ -448,12 +461,9 @@ save_arrow <- function(data, path,
         ))
     }
     label <- .arrow_utf8(.write_text(label, "label"), "Dataset label")
-    notes <- attr(data, "notes", exact = TRUE)
-    if (is.null(notes)) notes <- character()
-    if (!is.character(notes) || anyNA(notes)) {
-        .dta_write_abort("The data frame's `notes` attribute must be NULL or a character vector")
-    }
-    notes <- .arrow_utf8(notes, "Dataset notes")
+    notes <- stata_notes(data)
+    characteristics <- stata_characteristics(data)
+    notes[] <- .arrow_utf8(unname(notes), "Dataset notes")
     if (length(notes) > 9999L || any(nchar(notes, type = "bytes") > 67784L)) {
         .dta_write_abort("Dataset notes exceed Stata's count or UTF-8 byte limits")
     }
@@ -461,7 +471,10 @@ save_arrow <- function(data, path,
         .prepare_arrow_write_column, data, data_names, kinds,
         MoreArgs = list(adjust_tz = adjust_tz)
     )
-    specification <- list(label, notes, unname(columns))
+    specification <- list(
+        label, .stata_metadata_payload(notes, characteristics),
+        unname(columns)
+    )
     attr(specification, "write_warnings") <-
         .arrow_dropped_attribute_warnings(data, kinds)
     specification

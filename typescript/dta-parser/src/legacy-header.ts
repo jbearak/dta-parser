@@ -40,6 +40,10 @@ import {
     resolve_text_encoding,
     text_decoder,
 } from './text-encoding';
+import {
+    applyCharacteristicRecords,
+    type StataCharacteristicRecord,
+} from './stata-metadata';
 
 // -----------------------------------------------------------
 // Constants
@@ -118,11 +122,11 @@ function scan_expansion_fields(
     buffer_length: number,
     format_version: LegacyFormatVersion,
     decoder: DtaTextDecoder
-): { data_offset: number; notes: string[] } {
+): { data_offset: number; records: StataCharacteristicRecord[] } {
     let pos = start;
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
-    const the_notes: string[] = [];
+    const records: StataCharacteristicRecord[] = [];
 
     while (pos + my_header_size <= buffer_length) {
         const my_data_type = view.getUint8(pos);
@@ -133,7 +137,7 @@ function scan_expansion_fields(
         pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
-            return { data_offset: pos, notes: the_notes };
+            return { data_offset: pos, records };
         }
 
         if (my_data_type === 0 || my_len < 0) {
@@ -151,15 +155,17 @@ function scan_expansion_fields(
                 bytes_from_view(view), pos + layout.varname_width,
                 layout.varname_width, decoder
             );
-            if (my_variable === '_dta' && /^note[0-9]+$/.test(my_characteristic)) {
-                const my_note = read_fixed_string(
-                    bytes_from_view(view),
-                    pos + 2 * layout.varname_width,
-                    my_len - 2 * layout.varname_width,
-                    decoder
-                );
-                if (my_note.length > 0) the_notes.push(my_note);
-            }
+            const my_value = read_fixed_string(
+                bytes_from_view(view),
+                pos + 2 * layout.varname_width,
+                my_len - 2 * layout.varname_width,
+                decoder
+            );
+            records.push({
+                target: my_variable,
+                name: my_characteristic,
+                value: my_value,
+            });
         }
 
         pos += my_len;
@@ -330,7 +336,7 @@ export function parse_legacy_metadata(
 
     // -- expansion fields --
     const my_expansion_offset = pos;
-    const { data_offset: my_data_offset, notes } = scan_expansion_fields(
+    const { data_offset: my_data_offset, records } = scan_expansion_fields(
         view, little_endian, pos, buffer.byteLength,
         format_version, my_decoder
     );
@@ -349,12 +355,19 @@ export function parse_legacy_metadata(
             format: the_formats[i],
             label: the_variable_labels[i],
             value_label_name: the_value_label_names[i],
+            notes: [],
+            characteristics: [],
             byte_width: my_width,
             byte_offset: my_running_offset,
         });
         my_running_offset += my_width;
     }
     const obs_length = my_running_offset;
+    const notes: DtaMetadata['notes'] = [];
+    const characteristics: DtaMetadata['characteristics'] = [];
+    applyCharacteristicRecords(
+        records, { notes, characteristics }, the_variables
+    );
 
     // 9. Compute value labels offset (BigInt to avoid
     //    overflow for large legacy files)
@@ -395,6 +408,7 @@ export function parse_legacy_metadata(
         nobs,
         dataset_label,
         notes,
+        characteristics,
         variables: the_variables,
         section_offsets,
         obs_length,

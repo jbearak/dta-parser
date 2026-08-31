@@ -72,8 +72,9 @@ Reads a standalone \code{.arrow} dataset written by \code{\link[=save_arrow]{sav
 supported Stata-specific and ordinary R column classes and metadata. These
 include storage declarations with compact ALTREP backing, raw Stata missing
 storage (system missing and tagged codes \code{.a} through \code{.z}, bit-exactly),
-labels, display formats, notes, value-label tables, factor levels and
-orderedness, ordinary \code{POSIXct} timezones, \code{difftime} units, and the
+labels, display formats, numbered notes, arbitrary Stata characteristics,
+value-label tables, factor levels and orderedness, ordinary \code{POSIXct}
+timezones, \code{difftime} units, and the
 integer-versus-double distinction.
 }
 \details{

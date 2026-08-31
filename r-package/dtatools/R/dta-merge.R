@@ -36,7 +36,8 @@
 #' Every merge generates a `_merge` variable, a `stata_byte` column using
 #' Stata's `_merge` codes with value labels `x only (1)`, `y only (2)`, and
 #' `matched (3)`. Merging errors if either input already has a `_merge`
-#' column. The result keeps the dataset label and notes from `x`.
+#' column. The result keeps the dataset label, numbered notes, and arbitrary
+#' characteristics from `x`.
 #'
 #' Unlike Stata, which re-sorts the merged dataset by the key variables, the
 #' result keeps `x` rows in their original order followed by unmatched `y`
@@ -44,7 +45,8 @@
 #'
 #' @param x,y Data frames to merge, or file paths read with [read_dta()] or
 #'   [read_arrow()], in any combination. `x` supplies the retained values for
-#'   overlapping variables and the dataset label and notes. Passing paths
+#'   overlapping variables and the dataset label, notes, and characteristics.
+#'   Passing paths
 #'   mirrors Stata's `merge ... using filename` and keeps only the merged
 #'   result in the caller's workspace. A path ending in `.arrow` is read with
 #'   [read_arrow()]; any other path, including an extensionless one with the
@@ -223,6 +225,12 @@ dta_merge <- function(x, y, by, relationship,
     dataset_label(result) <- dataset_label(x)
     notes <- attr(x, "notes", exact = TRUE)
     if (!is.null(notes)) attr(result, "notes") <- notes
+    note_numbers <- attr(x, "stata.note.numbers", exact = TRUE)
+    if (!is.null(note_numbers)) attr(result, "stata.note.numbers") <- note_numbers
+    characteristics <- attr(x, "stata.characteristics", exact = TRUE)
+    if (!is.null(characteristics)) {
+        attr(result, "stata.characteristics") <- characteristics
+    }
     result
 }
 

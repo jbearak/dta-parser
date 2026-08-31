@@ -43,8 +43,8 @@ Stata 19 targets use release 118 through that limit and release 119 above it.
 Bare logical, integer, and double columns use Stata \code{byte}, \code{long}, and
 \code{double} storage. A valid \code{stata.storage} declaration takes precedence.
 Compatible Stata display formats, dataset and variable labels, value labels,
-tagged missing codes, dates, datetimes, long strings, and the data frame's
-\code{notes} attribute are retained.
+tagged missing codes, dates, datetimes, long strings, numbered notes, and
+arbitrary Stata characteristics at dataset and variable scope are retained.
 
 Factors become value-labelled Stata \code{long} variables, in factor-level order.
 Character missing values become empty strings, Stata's string-missing value.
@@ -53,8 +53,9 @@ system missing. Each applicable conversion category produces one aggregated
 warning naming the affected columns and counts.
 
 Metadata outside documented Stata limits, unsupported column classes,
-malformed or storage-incompatible display formats, invalid variable names,
-and arbitrary Stata characteristics are not silently repaired or truncated.
+malformed or storage-incompatible display formats, invalid variable or
+characteristic names, and over-limit notes or characteristics are not
+silently repaired or truncated.
 Duplicate value-label keys already present in imported source metadata are
 retained in stable order; the package's metadata setters remain stricter for
 newly authored tables.

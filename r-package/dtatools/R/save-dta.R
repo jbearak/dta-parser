@@ -8,8 +8,8 @@
 #' Bare logical, integer, and double columns use Stata `byte`, `long`, and
 #' `double` storage. A valid `stata.storage` declaration takes precedence.
 #' Compatible Stata display formats, dataset and variable labels, value labels,
-#' tagged missing codes, dates, datetimes, long strings, and the data frame's
-#' `notes` attribute are retained.
+#' tagged missing codes, dates, datetimes, long strings, numbered notes, and
+#' arbitrary Stata characteristics at dataset and variable scope are retained.
 #'
 #' Factors become value-labelled Stata `long` variables, in factor-level order.
 #' Character missing values become empty strings, Stata's string-missing value.
@@ -18,8 +18,9 @@
 #' warning naming the affected columns and counts.
 #'
 #' Metadata outside documented Stata limits, unsupported column classes,
-#' malformed or storage-incompatible display formats, invalid variable names,
-#' and arbitrary Stata characteristics are not silently repaired or truncated.
+#' malformed or storage-incompatible display formats, invalid variable or
+#' characteristic names, and over-limit notes or characteristics are not
+#' silently repaired or truncated.
 #' Duplicate value-label keys already present in imported source metadata are
 #' retained in stable order; the package's metadata setters remain stricter for
 #' newly authored tables.
@@ -610,6 +611,15 @@ save_dta <- function(data, path, version = 19L,
     result
 }
 
+.dta_write_column_metadata <- function(result, column) {
+    notes <- stata_notes(column)
+    characteristics <- stata_characteristics(column)
+    result[[6L]] <- .stata_metadata_payload(
+        notes, characteristics, prefix = result[[6L]]
+    )
+    result
+}
+
 .prepare_dta_write_column <- function(column, name, kind, strl_threshold,
                                       adjust_tz) {
     variable_label <- .write_text(
@@ -632,12 +642,12 @@ save_dta <- function(data, path, version = 19L,
         format <- .prepare_write_format(
             column, name, .default_stata_format("long"), "numeric"
         )
-        return(.new_dta_write_column(
+        return(.dta_write_column_metadata(.new_dta_write_column(
             name, 2L, format, variable_label, column,
             label_values = as.double(seq_along(levels)),
             label_texts = enc2utf8(levels),
             has_value_labels = TRUE
-        ))
+        ), column))
     }
     if (identical(kind, "character")) {
         plan <- .Call(C_dtatools_write_string_plan, column)
@@ -670,10 +680,10 @@ save_dta <- function(data, path, version = 19L,
                 "Character column `%s` cannot have numeric value labels", name
             ))
         }
-        return(.new_dta_write_column(
+        return(.dta_write_column_metadata(.new_dta_write_column(
             name, type_code, format, variable_label, values,
             character_missing = plan[[2L]]
-        ))
+        ), column))
     }
     numeric <- .prepare_dta_write_numeric(
         column, name, kind, adjust_tz
@@ -692,7 +702,7 @@ save_dta <- function(data, path, version = 19L,
         )
     }
     value_labels <- .prepare_write_value_labels(column, name)
-    .new_dta_write_column(
+    .dta_write_column_metadata(.new_dta_write_column(
         name, match(numeric$storage, .stata_storage) - 1L,
         format, variable_label, numeric$values,
         label_values = value_labels[[1L]],
@@ -700,7 +710,7 @@ save_dta <- function(data, path, version = 19L,
         has_value_labels = value_labels[[3L]],
         numeric_shift = numeric$shift,
         numeric_scale = numeric$scale
-    )
+    ), column)
 }
 
 .write_timestamp <- function(time = Sys.time()) {
@@ -754,12 +764,8 @@ save_dta <- function(data, path, version = 19L,
         ))
     }
     label <- .write_text(label, "label")
-    notes <- attr(data, "notes", exact = TRUE)
-    if (is.null(notes)) notes <- character()
-    if (!is.character(notes) || anyNA(notes)) {
-        .dta_write_abort("The data frame's `notes` attribute must be NULL or a character vector")
-    }
-    notes <- enc2utf8(notes)
+    notes <- stata_notes(data)
+    characteristics <- stata_characteristics(data)
     if (length(notes) > 9999L || any(nchar(notes, type = "bytes") > 67784L)) {
         .dta_write_abort("Dataset notes exceed Stata's count or UTF-8 byte limits")
     }
@@ -793,7 +799,10 @@ save_dta <- function(data, path, version = 19L,
         "Converted character missing values to empty strings",
         "dtatools_write_character_missing_warning"
     ))
-    specification <- list(label, notes, columns, .write_timestamp())
+    specification <- list(
+        label, .stata_metadata_payload(notes, characteristics),
+        columns, .write_timestamp()
+    )
     attr(specification, "write_warnings") <- write_warnings
     specification
 }

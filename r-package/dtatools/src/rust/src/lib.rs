@@ -17,9 +17,10 @@ use dta_tools::{
     dta_write_numeric_value_is_representable, encode_numeric,
     write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
     DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteColumn, DtaWriteColumnSource,
-    DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNumericValue,
-    DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel,
-    FormatVersion, MissingTag, ParallelDtaSink, ReadOptions, TextEncoding, ValueLabelTable,
+    DtaWriteColumnValues, DtaWriteCharacteristic, DtaWriteData, DtaWriteError,
+    DtaWriteLabelValue, DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource,
+    DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag,
+    ParallelDtaSink, ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelTable,
     VariableInfo,
 };
 
@@ -80,6 +81,7 @@ extern "C" {
     ) -> c_int;
     fn dtatools_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtatools_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
+    fn dtatools_string_elt_utf8(values: Sexp, index: usize) -> *const c_char;
     fn dtatools_write_numeric_region(
         reader: *const c_void,
         start: usize,
@@ -99,6 +101,67 @@ extern "C" {
         error_message: *mut c_char,
         error_capacity: usize,
     ) -> c_int;
+}
+
+const STATA_METADATA_MARKER: &str = "\u{1e}dtatools:stata-metadata:1";
+
+fn parse_metadata_count(value: &str, context: &str) -> Result<usize, String> {
+    value
+        .parse::<usize>()
+        .map_err(|_| format!("invalid internal {context} count"))
+}
+
+fn parse_stata_metadata_fields(
+    mut field: impl FnMut(usize) -> Result<String, String>,
+    start: usize,
+) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
+    if field(start)? != STATA_METADATA_MARKER {
+        return Err("invalid internal Stata metadata marker".to_owned());
+    }
+    let note_count = parse_metadata_count(&field(start + 1)?, "note")?;
+    let mut cursor = start + 2;
+    let mut notes = Vec::new();
+    notes
+        .try_reserve_exact(note_count)
+        .map_err(|_| "could not allocate note metadata".to_owned())?;
+    for _ in 0..note_count {
+        let number = field(cursor)?
+            .parse::<u32>()
+            .map_err(|_| "invalid internal note number".to_owned())?;
+        let text = field(cursor + 1)?;
+        notes.push(StataNote { number, text });
+        cursor += 2;
+    }
+    let characteristic_count =
+        parse_metadata_count(&field(cursor)?, "characteristic")?;
+    cursor += 1;
+    let mut characteristics = Vec::new();
+    characteristics
+        .try_reserve_exact(characteristic_count)
+        .map_err(|_| "could not allocate characteristic metadata".to_owned())?;
+    for _ in 0..characteristic_count {
+        characteristics.push(StataCharacteristic {
+            name: field(cursor)?,
+            value: field(cursor + 1)?,
+        });
+        cursor += 2;
+    }
+    Ok((notes, characteristics))
+}
+
+pub(crate) unsafe fn parse_stata_metadata_sexp(
+    values: Sexp,
+    start: usize,
+) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
+    parse_stata_metadata_fields(
+        |index| {
+            required_c_string(
+                dtatools_string_elt_utf8(values, index),
+                "internal Stata metadata field",
+            )
+        },
+        start,
+    )
 }
 
 #[repr(C)]
@@ -657,26 +720,77 @@ unsafe fn r_char(value: &str) -> Result<Sexp, String> {
     Ok(result)
 }
 
-unsafe fn string_vector(values: &[String], guard: &mut ProtectGuard) -> Result<Sexp, String> {
+unsafe fn string_vector_iter<'a>(
+    values: impl ExactSizeIterator<Item = &'a str>,
+    guard: &mut ProtectGuard,
+) -> Result<Sexp, String> {
     let vector = guard.alloc(
         STRSXP,
         RLen::try_from(values.len()).map_err(|_| "R vector is too long".to_owned())?,
     )?;
-    for (index, value) in values.iter().enumerate() {
+    for (index, value) in values.enumerate() {
         poll_interrupt(index)?;
         SET_STRING_ELT(vector, index as RLen, r_char(value)?);
     }
     Ok(vector)
 }
 
+unsafe fn string_vector(values: &[String], guard: &mut ProtectGuard) -> Result<Sexp, String> {
+    string_vector_iter(values.iter().map(String::as_str), guard)
+}
+
 unsafe fn scalar_string(value: &str, guard: &mut ProtectGuard) -> Result<Sexp, String> {
-    string_vector(&[value.to_owned()], guard)
+    string_vector_iter(std::iter::once(value), guard)
 }
 
 unsafe fn scalar_integer(value: c_int, guard: &mut ProtectGuard) -> Result<Sexp, String> {
     let vector = guard.alloc(INTSXP, 1)?;
     *INTEGER(vector) = value;
     Ok(vector)
+}
+
+unsafe fn attach_stata_metadata(
+    object: Sexp,
+    notes: &[StataNote],
+    characteristics: &[StataCharacteristic],
+    guard: &mut ProtectGuard,
+) -> Result<(), String> {
+    if !notes.is_empty() {
+        let values = string_vector_iter(notes.iter().map(|note| note.text.as_str()), guard)?;
+        set_attr(object, "notes", values)?;
+        let consecutive = notes
+            .iter()
+            .enumerate()
+            .all(|(index, note)| note.number == u32::try_from(index + 1).unwrap_or(u32::MAX));
+        if !consecutive {
+            let numbers = guard.alloc(
+                INTSXP,
+                RLen::try_from(notes.len()).map_err(|_| "too many notes".to_owned())?,
+            )?;
+            for (index, note) in notes.iter().enumerate() {
+                *INTEGER(numbers).add(index) =
+                    c_int::try_from(note.number).map_err(|_| "note number is too large")?;
+            }
+            set_attr(object, "stata.note.numbers", numbers)?;
+        }
+    }
+    if !characteristics.is_empty() {
+        let values = string_vector_iter(
+            characteristics
+                .iter()
+                .map(|characteristic| characteristic.value.as_str()),
+            guard,
+        )?;
+        let names = string_vector_iter(
+            characteristics
+                .iter()
+                .map(|characteristic| characteristic.name.as_str()),
+            guard,
+        )?;
+        set_symbol_attr(values, R_NamesSymbol, names)?;
+        set_attr(object, "stata.characteristics", values)?;
+    }
+    Ok(())
 }
 
 unsafe fn set_attr(object: Sexp, name: &str, value: Sexp) -> Result<(), String> {
@@ -736,6 +850,7 @@ unsafe fn attach_variable_attributes(
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     check_interrupt()?;
+    attach_stata_metadata(vector, &variable.notes, &variable.characteristics, guard)?;
     if !variable.label.is_empty() {
         let label = scalar_string(&variable.label, guard)?;
         set_attr(vector, "label", label)?;
@@ -883,12 +998,14 @@ unsafe fn attach_dataset_attributes(result: Sexp, metadata: &DtaMetadata) -> Res
         let label = scalar_string(&metadata.dataset_label, &mut guard)?;
         set_attr(result, "label", label)?;
     }
-    if !metadata.notes.is_empty() {
-        check_interrupt()?;
-        let mut guard = ProtectGuard::new();
-        let notes = string_vector(&metadata.notes, &mut guard)?;
-        set_attr(result, "notes", notes)?;
-    }
+    check_interrupt()?;
+    let mut guard = ProtectGuard::new();
+    attach_stata_metadata(
+        result,
+        &metadata.notes,
+        &metadata.characteristics,
+        &mut guard,
+    )?;
     Ok(())
 }
 
@@ -3318,10 +3435,52 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     } else {
         std::slice::from_raw_parts(notes, note_count)
     };
-    let notes = note_pointers
-        .iter()
-        .map(|note| required_c_str(*note, "dataset note").map(Cow::Borrowed))
-        .collect::<Result<Vec<_>, _>>()?;
+    let (notes, characteristics) = if note_pointers
+        .first()
+        .is_some_and(|pointer| required_c_str(*pointer, "dataset metadata").ok()
+            == Some(STATA_METADATA_MARKER))
+    {
+        let (notes, characteristics) = parse_stata_metadata_fields(
+            |index| {
+                let pointer = note_pointers
+                    .get(index)
+                    .ok_or_else(|| "truncated internal dataset metadata".to_owned())?;
+                required_c_string(*pointer, "dataset metadata")
+            },
+            0,
+        )?;
+        (
+            notes
+                .into_iter()
+                .map(|note| DtaWriteNote {
+                    number: note.number,
+                    text: Cow::Owned(note.text),
+                })
+                .collect(),
+            characteristics
+                .into_iter()
+                .map(|characteristic| DtaWriteCharacteristic {
+                    name: Cow::Owned(characteristic.name),
+                    value: Cow::Owned(characteristic.value),
+                })
+                .collect(),
+        )
+    } else {
+        (
+            note_pointers
+                .iter()
+                .enumerate()
+                .map(|(index, note)| {
+                    Ok::<_, RWriteError>(DtaWriteNote {
+                        number: u32::try_from(index + 1)
+                            .map_err(|_| "dataset note number is too large".to_owned())?,
+                        text: Cow::Borrowed(required_c_str(*note, "dataset note")?),
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+            Vec::new(),
+        )
+    };
     let descriptors = if column_count == 0 {
         &[]
     } else {
@@ -3376,6 +3535,11 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         }
         let dta_type = legacy_source_output_type(source, save_dta_type(descriptor.dta_type)?)?;
         let value_labels = r_value_labels(descriptor)?;
+        let (variable_notes, variable_characteristics) = if descriptor.label_texts.is_null() {
+            (Vec::new(), Vec::new())
+        } else {
+            parse_stata_metadata_sexp(descriptor.label_texts, descriptor.label_count)?
+        };
         columns.push(DtaWriteColumn {
             name: Cow::Borrowed(required_c_str(descriptor.name, "variable name")?),
             dta_type,
@@ -3383,6 +3547,20 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
             label: Cow::Borrowed(required_c_str(descriptor.label, "variable label")?),
             has_value_labels: descriptor.has_value_labels != 0,
             value_labels,
+            notes: variable_notes
+                .into_iter()
+                .map(|note| DtaWriteNote {
+                    number: note.number,
+                    text: Cow::Owned(note.text),
+                })
+                .collect(),
+            characteristics: variable_characteristics
+                .into_iter()
+                .map(|characteristic| DtaWriteCharacteristic {
+                    name: Cow::Owned(characteristic.name),
+                    value: Cow::Owned(characteristic.value),
+                })
+                .collect(),
             values: DtaWriteColumnValues::Source(source),
         });
     }
@@ -3392,6 +3570,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     let data = DtaWriteData {
         dataset_label,
         notes,
+        characteristics,
         columns,
     };
     let observation_source = RWriteObservationSource {
@@ -3598,12 +3777,15 @@ mod tests {
                 label: Cow::Borrowed(""),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Source(&sources[index]),
             })
             .collect();
         let data = DtaWriteData {
             dataset_label: Cow::Borrowed(""),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             columns,
         };
         let observation_source = RWriteObservationSource {

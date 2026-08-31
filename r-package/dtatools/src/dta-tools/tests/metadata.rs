@@ -203,6 +203,7 @@ fn accepts_a_valid_metadata_prefix_but_rejects_required_section_truncation() {
     let prefix = &full[..prefix_end];
     let mut prefix_metadata = metadata;
     prefix_metadata.notes.clear();
+    prefix_metadata.characteristics.clear();
     assert_eq!(parse_metadata(prefix).unwrap(), prefix_metadata);
 
     for length in [0, 1, 40, prefix_end / 2, prefix_end - 1] {

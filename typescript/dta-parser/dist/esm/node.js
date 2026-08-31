@@ -307,6 +307,44 @@ function text_decoder(encoding) {
   }
 }
 
+// src/stata-metadata.ts
+var NOTE_NAME = /^note([0-9]+)$/;
+function noteNumber(name) {
+  const match = NOTE_NAME.exec(name);
+  if (match === null) return null;
+  const number = Number(match[1]);
+  return Number.isInteger(number) && number >= 1 && number <= 9999 ? number : null;
+}
+function upsertNote(notes, number, text) {
+  const existing = notes.find((note) => note.number === number);
+  if (existing === void 0) notes.push({ number, text });
+  else existing.text = text;
+}
+function upsertCharacteristic(characteristics, name, value) {
+  const existing = characteristics.find((item) => item.name === name);
+  if (existing === void 0) characteristics.push({ name, value });
+  else existing.value = value;
+}
+function applyCharacteristicRecords(records, dataset, variables) {
+  const variableByName = new Map(
+    variables.map((variable) => [variable.name, variable])
+  );
+  for (const record of records) {
+    const target = record.target === "_dta" ? dataset : variableByName.get(record.target);
+    if (target === void 0) continue;
+    const number = noteNumber(record.name);
+    if (number !== null) {
+      upsertNote(target.notes, number, record.value);
+    } else if (!NOTE_NAME.test(record.name) && !(record.target === "_dta" && (record.name === "_lang_list" || record.name === "_lang_c"))) {
+      upsertCharacteristic(target.characteristics, record.name, record.value);
+    }
+  }
+  dataset.notes.sort((left, right) => left.number - right.number);
+  for (const variable of variables) {
+    variable.notes.sort((left, right) => left.number - right.number);
+  }
+}
+
 // src/header.ts
 var FIELD_WIDTHS = {
   117: {
@@ -352,6 +390,10 @@ var TAG_VALUE_LABEL_NAMES_OPEN = encode_tag(
 var TAG_VARIABLE_LABELS_OPEN = encode_tag(
   "<variable_labels>"
 );
+var TAG_CHARACTERISTICS_OPEN = encode_tag("<characteristics>");
+var TAG_CHARACTERISTICS_CLOSE = encode_tag("</characteristics>");
+var TAG_CHARACTERISTIC_OPEN = encode_tag("<ch>");
+var TAG_CHARACTERISTIC_CLOSE = encode_tag("</ch>");
 function encode_tag(tag) {
   const my_buf = new Uint8Array(tag.length);
   for (let i = 0; i < tag.length; i++) {
@@ -381,6 +423,63 @@ function read_fixed_string(bytes, offset, field_width, decoder) {
   return decoder.decode(
     bytes.subarray(offset, my_end)
   );
+}
+function tag_at(bytes, offset, tag) {
+  if (offset < 0 || offset + tag.length > bytes.length) return false;
+  for (let i = 0; i < tag.length; i++) {
+    if (bytes[offset + i] !== tag[i]) return false;
+  }
+  return true;
+}
+function parse_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder) {
+  let pos = section_offsets.characteristics;
+  if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
+    throw new Error("Missing <characteristics> tag");
+  }
+  pos += TAG_CHARACTERISTICS_OPEN.length;
+  const records = [];
+  const names_length = field_width * 2;
+  while (pos < section_offsets.data) {
+    if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
+      pos += TAG_CHARACTERISTICS_CLOSE.length;
+      if (pos !== section_offsets.data) {
+        throw new Error("Characteristics section does not end at the mapped data offset");
+      }
+      return records;
+    }
+    if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
+      throw new Error("Invalid characteristic record tag");
+    }
+    pos += TAG_CHARACTERISTIC_OPEN.length;
+    if (pos + 4 > section_offsets.data) {
+      throw new Error("Truncated characteristic length");
+    }
+    const length = view.getUint32(pos, little_endian);
+    pos += 4;
+    if (length < names_length || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
+      throw new Error("Truncated characteristic payload");
+    }
+    const target = read_fixed_string(bytes, pos, field_width, decoder);
+    const name = read_fixed_string(
+      bytes,
+      pos + field_width,
+      field_width,
+      decoder
+    );
+    const value = read_fixed_string(
+      bytes,
+      pos + names_length,
+      length - names_length,
+      decoder
+    );
+    pos += length;
+    if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
+      throw new Error("Missing </ch> tag");
+    }
+    pos += TAG_CHARACTERISTIC_CLOSE.length;
+    records.push({ target, name, value });
+  }
+  throw new Error("Missing </characteristics> tag");
 }
 function detect_format_version(bytes) {
   for (const [my_ver_str, my_sig] of Object.entries(
@@ -730,11 +829,27 @@ function parse_metadata(buffer, options = {}) {
       format: the_formats[i],
       label: the_variable_labels[i],
       value_label_name: the_value_label_names[i],
+      notes: [],
+      characteristics: [],
       byte_width: my_width,
       byte_offset: my_running_offset
     });
     my_running_offset += my_width;
   }
+  const notes = [];
+  const characteristics = [];
+  applyCharacteristicRecords(
+    parse_characteristics(
+      bytes,
+      view,
+      little_endian,
+      section_offsets,
+      my_widths.varname,
+      my_decoder
+    ),
+    { notes, characteristics },
+    the_variables
+  );
   return {
     format_version,
     text_encoding,
@@ -742,6 +857,8 @@ function parse_metadata(buffer, options = {}) {
     nvar,
     nobs,
     dataset_label,
+    notes,
+    characteristics,
     variables: the_variables,
     section_offsets,
     obs_length: my_running_offset
@@ -856,13 +973,13 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
   let pos = start;
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
-  const the_notes = [];
+  const records = [];
   while (pos + my_header_size <= buffer_length) {
     const my_data_type = view.getUint8(pos);
     const my_len = layout.expansion_length_width === 2 ? view.getInt16(pos + 1, little_endian) : view.getInt32(pos + 1, little_endian);
     pos += my_header_size;
     if (my_data_type === 0 && my_len === 0) {
-      return { data_offset: pos, notes: the_notes };
+      return { data_offset: pos, records };
     }
     if (my_data_type === 0 || my_len < 0) {
       throw new Error("Invalid legacy expansion field");
@@ -883,15 +1000,17 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
         layout.varname_width,
         decoder
       );
-      if (my_variable === "_dta" && /^note[0-9]+$/.test(my_characteristic)) {
-        const my_note = read_fixed_string2(
-          bytes_from_view(view),
-          pos + 2 * layout.varname_width,
-          my_len - 2 * layout.varname_width,
-          decoder
-        );
-        if (my_note.length > 0) the_notes.push(my_note);
-      }
+      const my_value = read_fixed_string2(
+        bytes_from_view(view),
+        pos + 2 * layout.varname_width,
+        my_len - 2 * layout.varname_width,
+        decoder
+      );
+      records.push({
+        target: my_variable,
+        name: my_characteristic,
+        value: my_value
+      });
     }
     pos += my_len;
   }
@@ -1003,7 +1122,7 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
   }
   pos += nvar * layout.variable_label_width;
   const my_expansion_offset = pos;
-  const { data_offset: my_data_offset, notes } = scan_expansion_fields(
+  const { data_offset: my_data_offset, records } = scan_expansion_fields(
     view,
     little_endian,
     pos,
@@ -1023,12 +1142,21 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
       format: the_formats[i],
       label: the_variable_labels[i],
       value_label_name: the_value_label_names[i],
+      notes: [],
+      characteristics: [],
       byte_width: my_width,
       byte_offset: my_running_offset
     });
     my_running_offset += my_width;
   }
   const obs_length = my_running_offset;
+  const notes = [];
+  const characteristics = [];
+  applyCharacteristicRecords(
+    records,
+    { notes, characteristics },
+    the_variables
+  );
   const my_value_labels_offset = Number(
     BigInt(my_data_offset) + BigInt(nobs) * BigInt(obs_length)
   );
@@ -1059,6 +1187,7 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     nobs,
     dataset_label,
     notes,
+    characteristics,
     variables: the_variables,
     section_offsets,
     obs_length

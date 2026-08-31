@@ -4,7 +4,9 @@ export { read_rows_from_buffer, read_rows_from_data_buffer, } from './data-reade
 export { build_gso_index, decode_gso_entry, read_strl_pointer, resolve_strl, type GsoEntry, } from './strl-reader';
 export { parse_value_labels } from './value-labels';
 export { apply_display_format } from './display-format';
-export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, } from './types';
+export { addStataNote, dropStataCharacteristics, dropStataNotes, getStataCharacteristic, getStataNote, listStataCharacteristics, listStataNotes, renumberStataNotes, setStataCharacteristic, setStataNote, } from './stata-metadata';
+export type { StataMetadataTarget } from './stata-metadata';
+export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, StataCharacteristic, StataNote, } from './types';
 export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
 export { resolve_text_encoding } from './text-encoding';
 export { is_legacy_format } from './types';

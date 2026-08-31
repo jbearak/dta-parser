@@ -46,6 +46,7 @@ mod tests {
             nobs,
             dataset_label: String::new(),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             variables: Vec::new(),
             section_offsets: SectionOffsets::from_array([0; 14]),
             obs_length: 0,

@@ -32,8 +32,18 @@ export interface VariableInfo {
     format: string;
     label: string;
     value_label_name: string;
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
     byte_width: number;
     byte_offset: number;
+}
+export interface StataNote {
+    number: number;
+    text: string;
+}
+export interface StataCharacteristic {
+    name: string;
+    value: string;
 }
 export type MissingType = '.' | '.a' | '.b' | '.c' | '.d' | '.e' | '.f' | '.g' | '.h' | '.i' | '.j' | '.k' | '.l' | '.m' | '.n' | '.o' | '.p' | '.q' | '.r' | '.s' | '.t' | '.u' | '.v' | '.w' | '.x' | '.y' | '.z';
 export interface MissingValue {
@@ -69,8 +79,8 @@ export interface DtaMetadata {
     nvar: number;
     nobs: number;
     dataset_label: string;
-    /** Legacy dataset note characteristics, when parsed. */
-    notes?: string[];
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
     variables: VariableInfo[];
     section_offsets: SectionOffsets;
     obs_length: number;

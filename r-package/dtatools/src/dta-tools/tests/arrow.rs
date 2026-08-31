@@ -19,7 +19,7 @@ use dta_tools::arrow::{
     ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY,
     ARROW_FIELD_KEY, ARROW_PROFILE_VERSION_KEY, ARROW_ROWS_PER_BATCH,
 };
-use dta_tools::{ValueLabelEntry, ValueLabelTable};
+use dta_tools::{StataCharacteristic, StataNote, ValueLabelEntry, ValueLabelTable};
 
 fn no_interrupt() -> impl FnMut() -> bool {
     || false
@@ -98,6 +98,8 @@ fn field_document(
         version: 0,
         label: format!("label for a {class} column"),
         format: String::new(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
         storage,
         string_storage: None,
         value_labels: None,
@@ -122,7 +124,20 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
     let mut dataset_document = DatasetDocument {
         version: 0,
         label: "test dataset".to_owned(),
-        notes: vec!["first note".to_owned(), "second note".to_owned()],
+        notes: vec![
+            StataNote {
+                number: 1,
+                text: "first note".to_owned(),
+            },
+            StataNote {
+                number: 2,
+                text: "second note".to_owned(),
+            },
+        ],
+        characteristics: vec![StataCharacteristic {
+            name: "source".to_owned(),
+            value: "survey café".to_owned(),
+        }],
         ..DatasetDocument::default()
     };
     dataset_document.insert_value_label_table(&ValueLabelTable {
@@ -195,11 +210,21 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
             },
             ArrowWriteColumn {
                 name: "b".to_owned(),
-                field: Some(field_document(
-                    Some(StataStorage::Byte),
-                    Some(ArrowMissingEncoding::Sentinel),
-                    "stata_numeric",
-                )),
+                field: Some(ArrowFieldDocument {
+                    notes: vec![StataNote {
+                        number: 4,
+                        text: String::new(),
+                    }],
+                    characteristics: vec![StataCharacteristic {
+                        name: "role".to_owned(),
+                        value: "identifier".to_owned(),
+                    }],
+                    ..field_document(
+                        Some(StataStorage::Byte),
+                        Some(ArrowMissingEncoding::Sentinel),
+                        "stata_numeric",
+                    )
+                }),
                 array: stata_byte.clone(),
             },
             ArrowWriteColumn {
@@ -262,6 +287,28 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
             .as_ref()
             .and_then(|document| document.storage),
         Some(StataStorage::Byte)
+    );
+    assert_eq!(
+        result.columns[3]
+            .field
+            .as_ref()
+            .expect("profiled field")
+            .notes,
+        vec![StataNote {
+            number: 4,
+            text: String::new(),
+        }]
+    );
+    assert_eq!(
+        result.columns[3]
+            .field
+            .as_ref()
+            .expect("profiled field")
+            .characteristics,
+        vec![StataCharacteristic {
+            name: "role".to_owned(),
+            value: "identifier".to_owned(),
+        }]
     );
     assert_eq!(
         result.columns[2]
@@ -821,6 +868,107 @@ fn newer_profile_versions_are_a_hard_error_with_an_escape_hatch() {
         .expect("profile = FALSE reads the raw storage");
     assert_eq!(result.profile_version, None);
     assert_eq!(result.row_count, 3);
+}
+
+#[test]
+fn legacy_profile_note_arrays_are_read_as_consecutive_numbered_notes() {
+    let bytes = plain_arrow_file(HashMap::from([
+        (ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned()),
+        (
+            dta_tools::arrow::ARROW_DATASET_KEY.to_owned(),
+            r#"{"version":0,"notes":["first",""]}"#.to_owned(),
+        ),
+    ]));
+    let options = ArrowReadOptions {
+        verify: false,
+        ..read_all_options()
+    };
+    let result = read_arrow_file_from(&mut Cursor::new(bytes), &options, &mut no_interrupt())
+        .expect("the earlier profile-0 note shape remains readable");
+    assert_eq!(
+        result.dataset.expect("dataset document").notes,
+        vec![
+            StataNote {
+                number: 1,
+                text: "first".to_owned(),
+            },
+            StataNote {
+                number: 2,
+                text: String::new(),
+            },
+        ]
+    );
+}
+
+#[test]
+fn malformed_note_and_characteristic_documents_are_rejected_before_output() {
+    let invalid_documents = [
+        DatasetDocument {
+            notes: vec![
+                StataNote {
+                    number: 3,
+                    text: "three".to_owned(),
+                },
+                StataNote {
+                    number: 1,
+                    text: "one".to_owned(),
+                },
+            ],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![
+                StataCharacteristic {
+                    name: "source".to_owned(),
+                    value: "one".to_owned(),
+                },
+                StataCharacteristic {
+                    name: "source".to_owned(),
+                    value: "two".to_owned(),
+                },
+            ],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![StataCharacteristic {
+                name: "note2".to_owned(),
+                value: "reserved".to_owned(),
+            }],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![StataCharacteristic {
+                name: "2invalid".to_owned(),
+                value: "bad".to_owned(),
+            }],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            notes: vec![StataNote {
+                number: 1,
+                text: "x".repeat(67_785),
+            }],
+            ..DatasetDocument::default()
+        },
+    ];
+    for document in invalid_documents {
+        let dataset = ArrowWriteDataset {
+            dataset: document,
+            columns: Vec::new(),
+        };
+        let mut bytes = Vec::new();
+        let error = save_arrow_file_to(
+            &mut bytes,
+            &dataset,
+            ArrowCompression::Uncompressed,
+            1,
+            true,
+            &mut no_interrupt(),
+        )
+        .expect_err("malformed metadata is rejected");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+        assert!(bytes.is_empty());
+    }
 }
 
 #[test]

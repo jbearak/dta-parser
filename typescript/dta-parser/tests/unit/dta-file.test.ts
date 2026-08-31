@@ -367,7 +367,9 @@ describe('DtaFile', () => {
                 original.byteOffset + original.byteLength
             );
             const metadata = parse_legacy_metadata(arrayBuffer, original.length);
-            expect(metadata.notes).toEqual(['Release 111 note']);
+            expect(metadata.notes).toEqual([
+                { number: 1, text: 'Release 111 note' },
+            ]);
             const expansion = metadata.section_offsets.characteristics;
             const oldLength = original.readInt32LE(expansion + 1);
             const names = original.subarray(expansion + 5, expansion + 5 + 66);

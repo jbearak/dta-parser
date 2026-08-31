@@ -17,6 +17,17 @@ fn v111_fixture() -> Vec<u8> {
     synthetic_fixture(111)
 }
 
+fn push_big_endian_characteristic(bytes: &mut Vec<u8>, target: &[u8], name: &[u8], value: &[u8]) {
+    let mut payload = vec![0_u8; 2 * 33];
+    payload[..target.len()].copy_from_slice(target);
+    payload[33..33 + name.len()].copy_from_slice(name);
+    payload.extend_from_slice(value);
+    payload.push(0);
+    bytes.push(1);
+    bytes.extend_from_slice(&(payload.len() as i32).to_be_bytes());
+    bytes.extend_from_slice(&payload);
+}
+
 fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
     let nvar = 2_usize;
     let fixed_end = 109 + nvar + nvar * 33 + (nvar + 1) * 2 + nvar * 12 + nvar * 33 + nvar * 81;
@@ -43,14 +54,10 @@ fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
     bytes[cursor..cursor + 5].copy_from_slice(b"na\xefve");
     bytes[cursor + 81..cursor + 87].copy_from_slice(b"quoted");
 
-    // One dataset note characteristic followed by the exact sentinel.
-    let mut note = vec![0_u8; 2 * 33];
-    note[..4].copy_from_slice(b"_dta");
-    note[33..38].copy_from_slice(b"note1");
-    note.extend_from_slice(b"Caf\xe9\0");
-    bytes.push(1);
-    bytes.extend_from_slice(&(note.len() as i32).to_be_bytes());
-    bytes.extend_from_slice(&note);
+    push_big_endian_characteristic(&mut bytes, b"_dta", b"note1", b"Caf\xe9");
+    push_big_endian_characteristic(&mut bytes, b"_dta", b"source", b"legacy");
+    push_big_endian_characteristic(&mut bytes, b"num", b"note3", b"");
+    push_big_endian_characteristic(&mut bytes, b"text", b"role", b"quoted");
     bytes.extend_from_slice(&[0, 0, 0, 0, 0]);
     bytes.extend_from_slice(&321_i16.to_be_bytes());
     bytes.extend_from_slice(&[0x93, b'h', 0x94, 0]);
@@ -637,6 +644,12 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
     assert_eq!(metadata.byte_order, ByteOrder::Msf);
     assert_eq!(metadata.dataset_label, "Café");
     assert_eq!(metadata.notes, ["Café"]);
+    assert_eq!(metadata.characteristics[0].name, "source");
+    assert_eq!(metadata.characteristics[0].value, "legacy");
+    assert_eq!(metadata.variables[0].notes[0].number, 3);
+    assert_eq!(metadata.variables[0].notes[0].text, "");
+    assert_eq!(metadata.variables[1].characteristics[0].name, "role");
+    assert_eq!(metadata.variables[1].characteristics[0].value, "quoted");
     assert_eq!(metadata.variables[0].label, "naïve");
     let data = read_dta(&bytes).unwrap();
     match &data.columns[0].values {
@@ -666,6 +679,12 @@ fn decodes_big_endian_release_111_observations_notes_and_labels() {
     assert_eq!(data.metadata.format_version, FormatVersion::V111);
     assert_eq!(data.metadata.byte_order, ByteOrder::Msf);
     assert_eq!(data.metadata.notes, ["Café"]);
+    assert_eq!(data.metadata.characteristics[0].value, "legacy");
+    assert_eq!(data.metadata.variables[0].notes[0].number, 3);
+    assert_eq!(
+        data.metadata.variables[1].characteristics[0].value,
+        "quoted"
+    );
     let ColumnValues::Int {
         values,
         missing_tags,

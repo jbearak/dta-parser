@@ -349,7 +349,7 @@ namespaced name and optional metadata; implementations that do not recognize
 the extension can still handle its storage type. The extension complements the
 documented storage layout, it does not replace it.
 
-### Labels, formats, declarations, and notes
+### Labels, formats, declarations, notes, and characteristics
 
 Arrow supplies application-defined key-value metadata on schemas and fields.
 The `ARROW` namespace is reserved, so dtatools uses its own namespace.
@@ -359,19 +359,37 @@ define the underlying mechanism.
 The profile uses:
 
 ```text
-dtatools:profile-version = "0" | "1"
+dtatools:profile-version = "0"
 dtatools:dataset = <versioned JSON document>
 dtatools:field = <versioned JSON document on each Arrow field>
 dtatools:checksums = <versioned JSON document in the file footer>
 ```
 
-The dataset document contains the dataset label, ordered notes, and a registry
-of value-label tables keyed by Stata label-table name. Field documents contain
-the variable label, value-label-table name, Stata display format, original
-storage declaration, missing-value encoding, a release discriminator when a
-legacy missing layout must be retained, and portable R semantics. JSON
-is inspectable across languages and avoids embedding language-native serialized
-objects in extension metadata. [Arrow's security guidance](https://arrow.apache.org/docs/format/Security.html#extension-types)
+The dataset document contains the dataset label, numbered notes, arbitrary
+Stata characteristics, and a registry of value-label tables keyed by Stata
+label-table name. Field documents contain the same variable-scoped note and
+characteristic arrays alongside the variable label, value-label-table name,
+Stata display format, original storage declaration, missing-value encoding, a
+release discriminator when a legacy missing layout must be retained, and
+portable R semantics. The relevant profile-0 members are:
+
+```json
+{
+  "version": 0,
+  "label": "Survey",
+  "notes": [{"number": 3, "text": "Checked"}],
+  "characteristics": [{"name": "source", "value": "baseline"}],
+  "value_labels": {}
+}
+```
+
+Notes must have unique ascending numbers from 1 through 9,999. Characteristics
+must have unique valid Stata names and cannot use numeric `note*` keys. Older
+profile-0 string note arrays remain readable as consecutive notes beginning at
+one. Writers omit empty arrays; omission and an explicit empty array have the
+same behavior. JSON is inspectable across languages and avoids embedding
+language-native serialized objects in extension metadata.
+[Arrow's security guidance](https://arrow.apache.org/docs/format/Security.html#extension-types)
 recommends a robust metadata serialization rather than native object
 serialization.
 
@@ -389,7 +407,7 @@ The consequences are explicit:
   declared frozen profile version, indefinitely;
 * a generic Arrow reader obtains the storage arrays, subject to the
   raw-storage missing-value caveat, and may ignore labels, formats, notes,
-  storage declarations, R semantics, and checksums.
+  characteristics, storage declarations, R semantics, and checksums.
 
 ### Integrity checksums
 

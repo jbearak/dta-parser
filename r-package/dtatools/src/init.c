@@ -2984,6 +2984,14 @@ static SEXP write_rooted_strings(
     return normalized;
 }
 
+const char *dtatools_string_elt_utf8(SEXP values, size_t index) {
+    if (TYPEOF(values) != STRSXP || index >= (size_t) XLENGTH(values) ||
+        STRING_ELT(values, (R_xlen_t) index) == NA_STRING) {
+        return NULL;
+    }
+    return CHAR(STRING_ELT(values, (R_xlen_t) index));
+}
+
 static SEXP write_rooted_optional_strings(
     SEXP roots, R_xlen_t index, SEXP values, const char *name
 ) {
@@ -3106,7 +3114,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         SEXP numeric_shift = VECTOR_ELT(column, 8);
         SEXP numeric_scale = VECTOR_ELT(column, 9);
         if (TYPEOF(label_texts) != STRSXP ||
-            XLENGTH(label_values) != XLENGTH(label_texts) ||
+            XLENGTH(label_values) > XLENGTH(label_texts) ||
             TYPEOF(has_value_labels) != LGLSXP ||
             XLENGTH(has_value_labels) != 1 ||
             LOGICAL(has_value_labels)[0] == NA_LOGICAL ||
@@ -3229,7 +3237,7 @@ static void arrow_write_column_descriptor(
         TYPEOF(ordered) != LGLSXP || XLENGTH(ordered) != 1 ||
         TYPEOF(storage) != INTSXP || XLENGTH(storage) != 1 ||
         TYPEOF(label_values) != REALSXP || TYPEOF(label_texts) != STRSXP ||
-        XLENGTH(label_values) != XLENGTH(label_texts) ||
+        XLENGTH(label_values) > XLENGTH(label_texts) ||
         TYPEOF(has_value_labels) != LGLSXP ||
         XLENGTH(has_value_labels) != 1 ||
         LOGICAL(has_value_labels)[0] == NA_LOGICAL ||

@@ -7,7 +7,10 @@ use arrow_schema::{DataType, Field};
 use serde::{Deserialize, Serialize};
 
 use super::ArrowProfileError;
-use crate::{DtaType, FormatVersion, MissingTag, ValueLabelEntry, ValueLabelTable};
+use crate::{
+    DtaType, FormatVersion, MissingTag, StataCharacteristic, StataNote, ValueLabelEntry,
+    ValueLabelTable,
+};
 
 /// The profile version this build writes. Version "0" is experimental and
 /// carries no stability promise; see ADR 0010.
@@ -44,8 +47,14 @@ pub struct DatasetDocument {
     pub version: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub label: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_notes"
+    )]
+    pub notes: Vec<StataNote>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub notes: Vec<String>,
+    pub characteristics: Vec<StataCharacteristic>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub value_labels: BTreeMap<String, Vec<ArrowValueLabelEntry>>,
 }
@@ -154,6 +163,14 @@ pub struct ArrowFieldDocument {
     pub label: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub format: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_notes"
+    )]
+    pub notes: Vec<StataNote>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub characteristics: Vec<StataCharacteristic>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage: Option<StataStorage>,
     /// Declared DTA string storage: `str1` through `str2045`, or `strL`.
@@ -169,6 +186,72 @@ pub struct ArrowFieldDocument {
     pub missing_release: Option<FormatVersion>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r: Option<ArrowRSemantics>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum NoteDocument {
+    Legacy(String),
+    Numbered(StataNote),
+}
+
+fn deserialize_notes<'de, D>(deserializer: D) -> Result<Vec<StataNote>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Vec::<NoteDocument>::deserialize(deserializer)?
+        .into_iter()
+        .enumerate()
+        .map(|(index, note)| match note {
+            NoteDocument::Legacy(text) => u32::try_from(index + 1)
+                .map(|number| StataNote { number, text })
+                .map_err(serde::de::Error::custom),
+            NoteDocument::Numbered(note) => Ok(note),
+        })
+        .collect()
+}
+
+fn validate_notes_and_characteristics(
+    version: &str,
+    context: &str,
+    notes: &[StataNote],
+    characteristics: &[StataCharacteristic],
+) -> Result<(), ArrowProfileError> {
+    let mut previous = 0;
+    for note in notes {
+        if !(1..=9_999).contains(&note.number)
+            || note.number <= previous
+            || note.text.contains('\0')
+            || note.text.len() > crate::write::MAX_NOTE_BYTES
+        {
+            return Err(malformed(
+                version,
+                format!(
+                    "{context} notes must have unique ascending numbers from 1 through 9999 and valid bounded text"
+                ),
+            ));
+        }
+        previous = note.number;
+    }
+    let mut names = std::collections::HashSet::with_capacity(characteristics.len());
+    for characteristic in characteristics {
+        if !crate::write::valid_stata_name_syntax(&characteristic.name, 32)
+            || characteristic.name.len() > 128
+            || characteristic.name.contains('\0')
+            || characteristic.value.contains('\0')
+            || characteristic.value.len() > crate::write::MAX_NOTE_BYTES
+            || crate::text::is_reserved_note_name(characteristic.name.as_bytes())
+            || !names.insert(characteristic.name.as_str())
+        {
+            return Err(malformed(
+                version,
+                format!(
+                    "{context} characteristics contain an invalid, duplicate, or reserved name"
+                ),
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Per-buffer xxHash64 checksums, in canonical buffer order, for every column
@@ -226,6 +309,12 @@ pub(crate) fn validate_dataset_document(
             format!("dataset document version {}", document.version),
         ));
     }
+    validate_notes_and_characteristics(
+        version,
+        "dataset",
+        &document.notes,
+        &document.characteristics,
+    )?;
     for (table, entries) in &document.value_labels {
         for (index, entry) in entries.iter().enumerate() {
             if entry.value.is_some() == entry.tag.is_some() {
@@ -443,6 +532,12 @@ pub(crate) fn validate_field_document(
             ));
         }
     }
+    validate_notes_and_characteristics(
+        version,
+        &format!("field `{}`", field.name()),
+        &document.notes,
+        &document.characteristics,
+    )?;
     if let Some(storage) = document.storage {
         let expected_type = storage_type(storage);
         if field.data_type() != &expected_type {

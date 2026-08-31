@@ -20,8 +20,8 @@ use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
     classify_float_missing_bits_for_version, classify_int_missing_for_version,
     classify_long_missing_for_version, dta_write_numeric_value_is_representable, encode_numeric,
-    DtaWriteNumericValue, DtaWriteRawNumericValue, FormatVersion, MissingTag, ValueLabelEntry,
-    ValueLabelTable, VariableInfo,
+    DtaWriteNumericValue, DtaWriteRawNumericValue, FormatVersion, MissingTag,
+    StataCharacteristic, StataNote, ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
 
 use arrow_array::builder::{BooleanBuilder, Int32Builder, LargeStringBuilder, StringBuilder};
@@ -38,9 +38,10 @@ use arrow_buffer::{ArrowNativeType, Buffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
-    attach_variable_attributes, boundary, check_interrupt, coarse_interrupt, direct_r_missing_code,
-    fill_string_region, label_attribute, missing_from_code, numeric_altrep_storage, observed_value,
-    poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
+    attach_stata_metadata, attach_variable_attributes, boundary, check_interrupt,
+    coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute,
+    missing_from_code, numeric_altrep_storage, observed_value, poll_interrupt, r_char, r_missing,
+    parse_stata_metadata_sexp, scalar_string, set_attr, set_class, set_symbol_attr,
     string_vector, temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen,
     RNumericData, RStringData, R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol,
     R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL,
@@ -354,11 +355,18 @@ fn r_semantics(class: &str) -> Option<ArrowRSemantics> {
     })
 }
 
-fn base_field_document(label: &str, format: &str) -> ArrowFieldDocument {
+fn base_field_document(
+    label: &str,
+    format: &str,
+    notes: &[StataNote],
+    characteristics: &[StataCharacteristic],
+) -> ArrowFieldDocument {
     ArrowFieldDocument {
         version: 0,
         label: label.to_owned(),
         format: format.to_owned(),
+        notes: notes.to_vec(),
+        characteristics: characteristics.to_vec(),
         ..ArrowFieldDocument::default()
     }
 }
@@ -837,6 +845,8 @@ struct ExtractedColumn {
     haven_labelled: bool,
     value_labels: Option<ValueLabelTable>,
     string_storage: Option<String>,
+    notes: Vec<StataNote>,
+    characteristics: Vec<StataCharacteristic>,
     input: ColumnInput,
     row_count: usize,
 }
@@ -872,6 +882,8 @@ unsafe fn extract_column(
             None
         };
     let value_labels = value_label_table(descriptor, &name)?;
+    let (notes, characteristics) =
+        parse_stata_metadata_sexp(descriptor.label_texts, descriptor.label_count)?;
     let string_storage = match descriptor.string_storage {
         -1 => None,
         0 => Some("strL".to_owned()),
@@ -944,6 +956,8 @@ unsafe fn extract_column(
         haven_labelled: descriptor.haven_labelled != 0,
         value_labels,
         string_storage,
+        notes,
+        characteristics,
         input,
         row_count,
     })
@@ -956,7 +970,12 @@ unsafe fn encode_column(
 ) -> Result<(Option<ArrowFieldDocument>, ArrayRef, u64), String> {
     let name = &column.name;
     let row_count = column.row_count;
-    let base_document = base_field_document(&column.label, &column.format);
+    let base_document = base_field_document(
+        &column.label,
+        &column.format,
+        &column.notes,
+        &column.characteristics,
+    );
     let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
     let with_labels = |mut document: ArrowFieldDocument| {
         if column.value_labels.is_some() {
@@ -1411,11 +1430,7 @@ unsafe fn assemble_write_dataset(
         ..DatasetDocument::default()
     };
     if notes_count > 0 {
-        let notes = read_strings(notes, notes_count, "dataset notes")?;
-        dataset.notes = notes
-            .into_iter()
-            .map(|note| note.ok_or_else(|| "a dataset note is missing".to_owned()))
-            .collect::<Result<_, _>>()?;
+        (dataset.notes, dataset.characteristics) = parse_stata_metadata_sexp(notes, 0)?;
     }
 
     let mut extracted = Vec::new();
@@ -1684,6 +1699,9 @@ unsafe fn attach_simple_attributes(
     attributes: &ColumnAttributes<'_>,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
+    if let Some(document) = attributes.document {
+        attach_stata_metadata(vector, &document.notes, &document.characteristics, guard)?;
+    }
     if !attributes.label().is_empty() {
         let label = scalar_string(attributes.label(), guard)?;
         set_attr(vector, "label", label)?;
@@ -1718,6 +1736,14 @@ fn profiled_variable(
         value_label_name: attributes
             .document
             .and_then(|document| document.value_labels.clone())
+            .unwrap_or_default(),
+        notes: attributes
+            .document
+            .map(|document| document.notes.clone())
+            .unwrap_or_default(),
+        characteristics: attributes
+            .document
+            .map(|document| document.characteristics.clone())
             .unwrap_or_default(),
         byte_width: 0,
         byte_offset: 0,
@@ -3139,11 +3165,13 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 let label = scalar_string(&dataset.label, &mut guard)?;
                 set_attr(frame, "label", label)?;
             }
-            if !dataset.notes.is_empty() {
-                let mut guard = ProtectGuard::new();
-                let notes = string_vector(&dataset.notes, &mut guard)?;
-                set_attr(frame, "notes", notes)?;
-            }
+            let mut guard = ProtectGuard::new();
+            attach_stata_metadata(
+                frame,
+                &dataset.notes,
+                &dataset.characteristics,
+                &mut guard,
+            )?;
         }
         if let Some(signature) = &result.stored_signature {
             let mut guard = ProtectGuard::new();

@@ -6,8 +6,10 @@
 #' Byte, int, long, and float columns retain their compact Stata storage width
 #' until R requests a materialized double vector; source doubles are created
 #' eagerly.
-#' Dataset and variable labels, dataset notes, Stata display formats, value
-#' labels, `strL` content, and Stata system/extended missing values are retained.
+#' Dataset and variable labels, numbered notes, arbitrary Stata
+#' characteristics, display formats, value labels, `strL` content, and Stata
+#' system/extended missing values are retained. Use [stata_notes()] and
+#' [stata_characteristics()] at dataset or variable scope.
 #'
 #' @section Stata missing values:
 #' Stata system missing (`.`) is returned as `NA_real_`; in releases supporting
@@ -292,9 +294,17 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
     dataset_label <- attr(native, "label", exact = TRUE)
     dataset_notes <- attr(native, "notes", exact = TRUE)
+    dataset_note_numbers <- attr(native, "stata.note.numbers", exact = TRUE)
+    dataset_characteristics <- attr(native, "stata.characteristics", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
+    if (!is.null(dataset_note_numbers)) {
+        attr(result, "stata.note.numbers") <- dataset_note_numbers
+    }
+    if (!is.null(dataset_characteristics)) {
+        attr(result, "stata.characteristics") <- dataset_characteristics
+    }
     if (record_datasig) attr(result, "datasig") <- disk_signature
     result
 }

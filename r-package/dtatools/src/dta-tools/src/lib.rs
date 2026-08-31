@@ -77,13 +77,13 @@ pub use missing::{
 pub use text::TextEncoding;
 pub use types::{
     ByteOrder, Column, ColumnValues, DtaData, DtaMetadata, DtaType, FormatVersion, ReadOptions,
-    SectionOffsets, ValueLabelEntry, ValueLabelTable, VariableInfo,
+    SectionOffsets, StataCharacteristic, StataNote, ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
 pub use value_labels::{parse_value_labels, parse_value_labels_with_encoding};
 pub use write::{
     dta_write_numeric_value_is_representable, encode_numeric, save_dta_to,
-    write_prevalidated_dta_with_observation_source_to, DtaWriteColumn, DtaWriteColumnSource,
-    DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNumericValue,
-    DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteSummary,
-    DtaWriteValueLabel,
+    write_prevalidated_dta_with_observation_source_to, DtaWriteCharacteristic, DtaWriteColumn,
+    DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
+    DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
+    DtaWriteRawNumericValue, DtaWriteSummary, DtaWriteValueLabel,
 };

@@ -206,8 +206,20 @@ export interface VariableInfo {
     format: string;           // e.g., "%9.0g", "%20s", "%td"
     label: string;            // variable label
     value_label_name: string; // associated value label table
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
     byte_width: number;       // width in bytes in data section
     byte_offset: number;      // offset within an observation row
+}
+
+export interface StataNote {
+    number: number;
+    text: string;
+}
+
+export interface StataCharacteristic {
+    name: string;
+    value: string;
 }
 
 export type MissingType =
@@ -253,8 +265,8 @@ export interface DtaMetadata {
     nvar: number;
     nobs: number;
     dataset_label: string;
-    /** Legacy dataset note characteristics, when parsed. */
-    notes?: string[];
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
     variables: VariableInfo[];
     section_offsets: SectionOffsets;
     obs_length: number;

@@ -57,8 +57,9 @@ that data between programs. Compatible Arrow IPC readers can access the
 standard storage arrays, but only profile-aware readers restore the added
 dtatools semantics. The profile records storage declarations, raw Stata
 missing storage (sentinel integers and tagged NaN payloads), display formats,
-labels, notes, value-label tables, and the R semantics that standard Arrow
-types alone do not express. Experimental profile version \code{"0"} carries no
+labels, numbered notes, arbitrary Stata characteristics, value-label tables,
+and the R semantics that standard Arrow types alone do not express.
+Experimental profile version \code{"0"} carries no
 cross-version stability promise yet.
 }
 \section{Conversions and metadata}{

@@ -18,7 +18,7 @@ const WRITE_FIELD_WIDTHS: FieldWidths = field_widths(FormatVersion::V118);
 const MAX_VALUE_LABEL_ENTRIES: usize = 65_536;
 const MAX_VALUE_LABEL_TEXT_BYTES: usize = 32_000;
 const MAX_NOTES: usize = 9_999;
-const MAX_NOTE_BYTES: usize = 67_784;
+pub(crate) const MAX_NOTE_BYTES: usize = 67_784;
 const MAX_STRL_BYTES: usize = 2_000_000_000;
 const WRITE_INTERRUPT_BYTES: usize = 8 * 1024 * 1024;
 const OBSERVATION_BUFFER_BYTES: usize = 64 * 1024 * 1024;
@@ -54,6 +54,38 @@ pub enum DtaWriteLabelValue {
 pub struct DtaWriteValueLabel<'a> {
     pub value: DtaWriteLabelValue,
     pub label: Cow<'a, str>,
+}
+
+/// One explicitly numbered note supplied to the DTA writer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DtaWriteNote<'a> {
+    pub number: u32,
+    pub text: Cow<'a, str>,
+}
+
+impl<'a> From<&'a str> for DtaWriteNote<'a> {
+    fn from(text: &'a str) -> Self {
+        Self {
+            number: 0,
+            text: Cow::Borrowed(text),
+        }
+    }
+}
+
+impl From<String> for DtaWriteNote<'static> {
+    fn from(text: String) -> Self {
+        Self {
+            number: 0,
+            text: Cow::Owned(text),
+        }
+    }
+}
+
+/// One user-authored characteristic supplied to the DTA writer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DtaWriteCharacteristic<'a> {
+    pub name: Cow<'a, str>,
+    pub value: Cow<'a, str>,
 }
 
 /// On-demand values for adapters that cannot expose borrowed Rust slices.
@@ -228,6 +260,8 @@ pub struct DtaWriteColumn<'a> {
     /// distinct from the number of entries because Stata permits empty tables.
     pub has_value_labels: bool,
     pub value_labels: Vec<DtaWriteValueLabel<'a>>,
+    pub notes: Vec<DtaWriteNote<'a>>,
+    pub characteristics: Vec<DtaWriteCharacteristic<'a>>,
     pub values: DtaWriteColumnValues<'a>,
 }
 
@@ -235,7 +269,8 @@ pub struct DtaWriteColumn<'a> {
 #[derive(Debug)]
 pub struct DtaWriteData<'a> {
     pub dataset_label: Cow<'a, str>,
-    pub notes: Vec<Cow<'a, str>>,
+    pub notes: Vec<DtaWriteNote<'a>>,
+    pub characteristics: Vec<DtaWriteCharacteristic<'a>>,
     pub columns: Vec<DtaWriteColumn<'a>>,
 }
 
@@ -378,7 +413,7 @@ fn stata_name_number(character: char) -> bool {
     )
 }
 
-fn valid_stata_name_syntax(name: &str, maximum_characters: usize) -> bool {
+pub(crate) fn valid_stata_name_syntax(name: &str, maximum_characters: usize) -> bool {
     let mut characters = name.chars();
     let Some(first) = characters.next() else {
         return false;
@@ -637,27 +672,8 @@ fn validate_structure(
     let row_count = data.columns[0].values.len()?;
     validate_text_field(&data.dataset_label, 80, 320, "dataset label")
         .map_err(DtaWriteError::InvalidDatasetMetadata)?;
-    if data.notes.len() > MAX_NOTES {
-        return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-            "dataset has {} notes; maximum is {MAX_NOTES}",
-            data.notes.len()
-        )));
-    }
-    for (index, note) in data.notes.iter().enumerate() {
-        if note.contains('\0') {
-            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "note {} contains a NUL character",
-                index + 1
-            )));
-        }
-        if note.len() > MAX_NOTE_BYTES {
-            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "note {} has {} UTF-8 bytes; maximum is {MAX_NOTE_BYTES}",
-                index + 1,
-                note.len()
-            )));
-        }
-    }
+    validate_notes(&data.notes, "dataset")?;
+    validate_characteristics(&data.characteristics, "dataset")?;
     if let Some(timestamp) = &options.timestamp {
         if timestamp.contains('\0') || timestamp.len() > u8::MAX as usize {
             return Err(DtaWriteError::InvalidDatasetMetadata(
@@ -668,6 +684,11 @@ fn validate_structure(
 
     let mut names = HashSet::with_capacity(data.columns.len());
     for column in &data.columns {
+        validate_notes(&column.notes, &format!("variable `{}`", column.name))?;
+        validate_characteristics(
+            &column.characteristics,
+            &format!("variable `{}`", column.name),
+        )?;
         if !valid_stata_name(&column.name) {
             return Err(DtaWriteError::InvalidVariable {
                 column: column.name.to_string(),
@@ -836,8 +857,9 @@ fn write_field<W: Write>(writer: &mut W, value: &str, width: usize) -> Result<()
     write_zeros(writer, padding)
 }
 
-fn write_note_characteristic<W: Write>(
+fn write_characteristic<W: Write>(
     writer: &mut W,
+    target: &str,
     name: &str,
     value: &str,
 ) -> Result<(), DtaWriteError> {
@@ -847,17 +869,70 @@ fn write_note_characteristic<W: Write>(
         .checked_mul(2)
         .and_then(|length| length.checked_add(value.len()))
         .and_then(|length| length.checked_add(1))
-        .ok_or(DtaWriteError::Overflow("note characteristic"))?;
+        .ok_or(DtaWriteError::Overflow("characteristic"))?;
     writer.write_all(
         &u32::try_from(payload_length)
-            .map_err(|_| DtaWriteError::Overflow("note characteristic"))?
+            .map_err(|_| DtaWriteError::Overflow("characteristic"))?
             .to_le_bytes(),
     )?;
-    write_field(writer, "_dta", WRITE_FIELD_WIDTHS.varname)?;
+    write_field(writer, target, WRITE_FIELD_WIDTHS.varname)?;
     write_field(writer, name, WRITE_FIELD_WIDTHS.varname)?;
     writer.write_all(value.as_bytes())?;
     writer.write_all(&[0])?;
     write_tag(writer, b"</ch>")?;
+    Ok(())
+}
+
+fn validate_notes(notes: &[DtaWriteNote<'_>], context: &str) -> Result<(), DtaWriteError> {
+    if notes.len() > MAX_NOTES {
+        return Err(DtaWriteError::InvalidDatasetMetadata(format!(
+            "{context} has {} notes; maximum is {MAX_NOTES}",
+            notes.len()
+        )));
+    }
+    let mut numbers = HashSet::with_capacity(notes.len());
+    for (index, note) in notes.iter().enumerate() {
+        let number = if note.number == 0 {
+            u32::try_from(index + 1).expect("note count is bounded")
+        } else {
+            note.number
+        };
+        if !(1..=MAX_NOTES as u32).contains(&number) || !numbers.insert(number) {
+            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
+                "{context} has an invalid or duplicate note number {}",
+                number
+            )));
+        }
+        if note.text.contains('\0') || note.text.len() > MAX_NOTE_BYTES {
+            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
+                "{context} note {} must contain no NUL and at most {MAX_NOTE_BYTES} UTF-8 bytes",
+                number
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_characteristics(
+    characteristics: &[DtaWriteCharacteristic<'_>],
+    context: &str,
+) -> Result<(), DtaWriteError> {
+    let mut names = HashSet::with_capacity(characteristics.len());
+    for characteristic in characteristics {
+        if !valid_stata_name_syntax(&characteristic.name, 32)
+            || characteristic.name.contains('\0')
+            || characteristic.name.len() >= WRITE_FIELD_WIDTHS.varname
+            || characteristic.value.contains('\0')
+            || characteristic.value.len() > MAX_NOTE_BYTES
+            || crate::text::is_reserved_note_name(characteristic.name.as_bytes())
+            || !names.insert(characteristic.name.as_ref())
+        {
+            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
+                "{context} has invalid, duplicate, over-limit, or reserved characteristic `{}`",
+                characteristic.name
+            )));
+        }
+    }
     Ok(())
 }
 
@@ -966,11 +1041,42 @@ where
 
     offsets.characteristics = position(writer)?;
     write_tag(writer, b"<characteristics>")?;
-    if !data.notes.is_empty() {
-        write_note_characteristic(writer, "note0", &data.notes.len().to_string())?;
-    }
-    for (index, note) in data.notes.iter().enumerate() {
-        write_note_characteristic(writer, &format!("note{}", index + 1), note)?;
+    let write_scope = |writer: &mut W,
+                       target: &str,
+                       notes: &[DtaWriteNote<'_>],
+                       characteristics: &[DtaWriteCharacteristic<'_>]|
+     -> Result<(), DtaWriteError> {
+        let note_number = |index: usize, note: &DtaWriteNote<'_>| {
+            if note.number == 0 {
+                u32::try_from(index + 1).expect("note count is validated")
+            } else {
+                note.number
+            }
+        };
+        if let Some(maximum) = notes
+            .iter()
+            .enumerate()
+            .map(|(index, note)| note_number(index, note))
+            .max()
+        {
+            write_characteristic(writer, target, "note0", &maximum.to_string())?;
+        }
+        for (index, note) in notes.iter().enumerate() {
+            write_characteristic(
+                writer,
+                target,
+                &format!("note{}", note_number(index, note)),
+                &note.text,
+            )?;
+        }
+        for characteristic in characteristics {
+            write_characteristic(writer, target, &characteristic.name, &characteristic.value)?;
+        }
+        Ok(())
+    };
+    write_scope(writer, "_dta", &data.notes, &data.characteristics)?;
+    for column in &data.columns {
+        write_scope(writer, &column.name, &column.notes, &column.characteristics)?;
         source.check_interrupt()?;
     }
     write_tag(writer, b"</characteristics>")?;
