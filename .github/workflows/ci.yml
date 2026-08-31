@@ -52,7 +52,7 @@ jobs:
       - run: cargo +${{ matrix.toolchain }} test --workspace --all-targets --locked
       - run: RUSTDOCFLAGS="-D warnings" cargo +${{ matrix.toolchain }} doc --workspace --locked --no-deps
       - run: cargo +${{ matrix.toolchain }} package -p dta-tools --locked
-      - name: Check isolated R bridge offline
+      - name: Test isolated R bridge offline
         if: matrix.toolchain == 'stable'
         working-directory: r-package/dtatools/src
         shell: bash
@@ -61,7 +61,7 @@ jobs:
         run: |
           rustup toolchain install 1.98.0 --profile minimal
           tar -xzf rust/vendor.tar.gz -C rust
-          cargo +1.98.0 check --manifest-path rust/Cargo.toml --config rust/cargo-config.toml --locked --offline
+          cargo +1.98.0 test --manifest-path rust/Cargo.toml --config rust/cargo-config.toml --all-targets --locked --offline
 
   fuzz-smoke:
     name: Deterministic fuzz smoke
