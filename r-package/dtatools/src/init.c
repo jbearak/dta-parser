@@ -9,6 +9,7 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -604,6 +605,8 @@ static double numeric_reader_at(
 
 static double reference_row_reads = 0.0;
 static int reference_row_reads_enabled = 0;
+/* Test control. It disarms itself before raising SIGINT after native writes. */
+static int reference_write_interrupt_enabled = 0;
 
 static void record_reference_row_read(void) {
     if (reference_row_reads_enabled) reference_row_reads += 1.0;
@@ -621,6 +624,24 @@ SEXP C_dtatools_reference_row_reads(SEXP enabled) {
     }
     reference_row_reads_enabled = 0;
     return Rf_ScalarReal(reference_row_reads);
+}
+
+SEXP C_dtatools_inject_reference_write_interrupt(SEXP enabled) {
+    int value = Rf_asLogical(enabled);
+    if (value == NA_LOGICAL) {
+        Rf_error("invalid reference write-interrupt state");
+    }
+    int previous = reference_write_interrupt_enabled;
+    reference_write_interrupt_enabled = value;
+    return Rf_ScalarLogical(previous);
+}
+
+static void maybe_inject_reference_write_interrupt(void) {
+    if (!reference_write_interrupt_enabled) return;
+    reference_write_interrupt_enabled = 0;
+    raise(SIGINT);
+    R_CheckUserInterrupt();
+    Rf_error("failed to inject reference write interrupt");
 }
 
 SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value) {
@@ -4546,6 +4567,7 @@ static SEXP apply_compact_patch_transaction(void *data) {
         transaction->rows,
         transaction->replacement
     );
+    if (count > 0) maybe_inject_reference_write_interrupt();
     R_CheckUserInterrupt();
     return Rf_ScalarLogical(1);
 }
@@ -4841,6 +4863,9 @@ static SEXP apply_vector_patch_transaction(void *data) {
             break;
         }
         transaction->writes_completed = index + 1;
+    }
+    if (transaction->values.count > 0) {
+        maybe_inject_reference_write_interrupt();
     }
     R_CheckUserInterrupt();
     return Rf_ScalarLogical(0);
@@ -6016,6 +6041,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_reference_contents, 1},
     {"C_dtatools_reference_row_reads",
      (DL_FUNC) &C_dtatools_reference_row_reads, 1},
+    {"C_dtatools_inject_reference_write_interrupt",
+     (DL_FUNC) &C_dtatools_inject_reference_write_interrupt, 1},
     {"C_dtatools_mutation_rows",
      (DL_FUNC) &C_dtatools_mutation_rows, 2},
     {"C_dtatools_patch_vector",

@@ -362,29 +362,22 @@ test_that("native write interrupts roll back values and compact state", {
         function() {
             library(dtatools)
             interrupt_patch <- function(compact) {
-                size <- 20000000L
+                size <- 100000L
                 target <- if (compact) {
                     stata_float(rep.int(1L, size))
                 } else {
                     rep(1, size)
                 }
                 data <- data.frame(target = target)
-                parent <- Sys.getpid()
-                signal <- parallel::mcparallel({
-                    Sys.sleep(if (compact) 0.02 else 0.03)
-                    tools::pskill(parent, tools::SIGINT)
-                }, silent = TRUE)
                 condition <- tryCatch(
                     {
+                        dtatools:::.inject_reference_write_interrupt(TRUE)
                         replace_values(data, target, 2)
                         NULL
                     },
                     condition = identity
                 )
-                tryCatch(
-                    suppressWarnings(parallel::mccollect(signal)),
-                    condition = function(...) NULL
-                )
+                dtatools:::.inject_reference_write_interrupt(FALSE)
                 list(
                     interrupted = inherits(condition, "interrupt"),
                     compact = !compact ||
@@ -398,7 +391,7 @@ test_that("native write interrupts roll back values and compact state", {
                     size = size
                 )
             }
-            dictionary_size <- 10000000L
+            dictionary_size <- 100000L
             dictionary_path <- tempfile(fileext = ".arrow")
             on.exit(unlink(dictionary_path), add = TRUE)
             replacement_dictionary <- sprintf("value-%05d", 1:10000)
@@ -409,7 +402,7 @@ test_that("native write interrupts roll back values and compact state", {
                 )
             ), dictionary_path)
             dictionary_matches <- function(value) {
-                chunk_size <- 250000L
+                chunk_size <- 25000L
                 starts <- seq.int(1L, dictionary_size, by = chunk_size)
                 all(vapply(starts, function(first) {
                     last <- min(first + chunk_size - 1L, dictionary_size)
@@ -458,13 +451,9 @@ test_that("native write interrupts roll back values and compact state", {
                 values_cache_before <- dtatools:::.dictstring_cached_count(
                     data$replacement
                 )
-                parent <- Sys.getpid()
-                signal <- parallel::mcparallel({
-                    Sys.sleep(0.02)
-                    tools::pskill(parent, tools::SIGINT)
-                }, silent = TRUE)
                 condition <- tryCatch(
                     {
+                        dtatools:::.inject_reference_write_interrupt(TRUE)
                         if (source_values) {
                             replace_values(data, target, replacement)
                         } else {
@@ -474,10 +463,7 @@ test_that("native write interrupts roll back values and compact state", {
                     },
                     condition = identity
                 )
-                tryCatch(
-                    suppressWarnings(parallel::mccollect(signal)),
-                    condition = function(...) NULL
-                )
+                dtatools:::.inject_reference_write_interrupt(FALSE)
                 compact <- dtatools:::.is_unmaterialized_dictstring(
                     data$target
                 )

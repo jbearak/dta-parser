@@ -665,6 +665,11 @@ gen <- function(data, variable, values, where = NULL) {
     .Call(C_dtatools_reference_row_reads, enabled)
 }
 
+# Test control for exercising transaction cleanup after a completed write.
+.inject_reference_write_interrupt <- function(enabled) {
+    invisible(.Call(C_dtatools_inject_reference_write_interrupt, enabled))
+}
+
 #' @rdname replace_values
 #' @export
 copy_data <- function(data) {
