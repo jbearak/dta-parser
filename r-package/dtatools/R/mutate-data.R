@@ -172,6 +172,24 @@ gen <- function(data, variable, values, where = NULL) {
     result
 }
 
+.data_column_at <- function(data, index, state, data_names) {
+    if (is.null(state) || index <= state$physical_count) {
+        return(.subset2(data, index))
+    }
+    state$columns[[data_names[[index]]]]
+}
+
+.set_data_column_at <- function(
+    data, index, column, state, data_names
+) {
+    if (!is.null(state)) {
+        state$columns[[data_names[[index]]]] <- column
+        if (index > state$physical_count) return(invisible(NULL))
+    }
+    .Call(C_dtatools_set_data_column, data, as.integer(index), column)
+    invisible(NULL)
+}
+
 .data_columns <- function(data) {
     state <- .reference_state(data)
     physical <- .plain_data_columns(data)
@@ -288,7 +306,7 @@ gen <- function(data, variable, values, where = NULL) {
     )
 }
 
-.mutation_name <- function(variable, generate, data) {
+.unquoted_variable_name <- function(variable) {
     if (rlang::quo_is_missing(variable)) {
         stop("`variable` must be one unquoted column name", call. = FALSE)
     }
@@ -296,7 +314,11 @@ gen <- function(data, variable, values, where = NULL) {
     if (!is.symbol(expression) || identical(expression, quote(...))) {
         stop("`variable` must be one unquoted column name", call. = FALSE)
     }
-    name <- as.character(expression)
+    as.character(expression)
+}
+
+.mutation_name <- function(variable, generate, data) {
+    name <- .unquoted_variable_name(variable)
     location <- if (is.null(data$state)) {
         match(name, data$names)
     } else if (exists(name, envir = data$state$locations, inherits = FALSE)) {

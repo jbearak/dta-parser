@@ -52,16 +52,17 @@ column updates for a data frame.}
 }
 \value{
 Getters return the metadata described above. Replacement functions
-and \verb{set_*()} functions return the updated vector or data frame; the
-data-frame forms return it invisibly, because they have already mutated
-it by reference.
+and \verb{set_*()} functions return the updated vector or data frame. Data-frame
+\verb{set_*()} forms return it invisibly because they already mutated it by
+reference.
 }
 \description{
 Dependency-free helpers for dataset labels, variable labels, and numeric
-value-label tables. The variable- and value-label function names and common
-call forms are compatible with \code{labelled}; \code{dataset_label()} is a dtatools
-addition. Validation and mutation follow Stata's metadata model and preserve
-the dtatools package's compact columns and unrelated attributes.
+value-label tables. The getter and replacement names and their common call
+forms are compatible with \code{labelled}; the \verb{set_*()} functions and
+\code{dataset_label()} are dtatools additions. Validation and mutation follow
+Stata's metadata model and preserve the dtatools package's compact columns
+and unrelated attributes.
 }
 \section{Getter results}{
 
@@ -84,12 +85,13 @@ overlapping column updates fail atomically.
 \code{set_var_label()} sets the variable label of one column named without
 quotes, mirroring Stata's \verb{label variable}.
 
-\code{set_var_label()}, \code{set_var_labels()}, \code{set_val_labels()}, and the data-frame
-replacement forms mutate the data frame by reference, as \code{gen()} and
-\code{replace_values()} do: the caller sees the new metadata whether or not it
-reassigns the result, and so does any other binding to the same data frame.
-Use \code{copy_data()} first when isolation is required. The vector forms cannot
-mutate by reference and still return a copy.
+The data-frame forms of \code{set_var_label()}, \code{set_var_labels()}, and
+\code{set_val_labels()} mutate by reference, as \code{gen()} and \code{replace_values()} do.
+The caller and every other binding to the same data frame see the new
+metadata. Use \code{copy_data()} first when isolation is required. Replacement
+syntax follows R's assignment semantics: it updates the binding on its
+left-hand side but not another binding to the original data frame. Vector
+forms cannot mutate by reference and return a copy.
 
 \code{NULL}, \code{NA_character_}, and \code{""} all remove a variable or dataset label.
 Empty or missing value-label text is discarded. If no entries remain, the

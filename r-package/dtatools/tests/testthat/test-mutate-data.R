@@ -430,12 +430,19 @@ test_that("native write interrupts roll back values and compact state", {
                 source <- read_arrow(dictionary_path)
                 if (mutate_proxy) {
                     alias <- source
-                    data <- set_var_labels(source, target = "Target")
+                    data <- source
+                    data$target <- set_var_labels(
+                        source$target, "Target"
+                    )
                     shared <- TRUE
                 } else {
                     data <- source
                     alias <- if (shared) {
-                        set_var_labels(data, target = "Alias")
+                        result <- source
+                        result$target <- set_var_labels(
+                            source$target, "Alias"
+                        )
+                        result
                     } else {
                         NULL
                     }

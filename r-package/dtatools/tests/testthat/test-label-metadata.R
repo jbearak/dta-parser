@@ -74,16 +74,34 @@ test_that("dataset_label replacement sets and removes dataset metadata", {
     )
 })
 
-test_that("dataset_label replacement mutates aliases and returns invisibly", {
-    data <- data.frame(x = 1)
+test_that("data-frame replacement syntax follows R copy semantics", {
+    data <- data.frame(x = c(0, 1))
     alias <- data
 
-    result <- withVisible(`dataset_label<-`(data, "Shared dataset"))
+    dataset_label(data) <- "Assigned dataset"
+    var_label(data) <- list(x = "Assigned variable")
+    val_labels(data) <- list(x = c(No = 0, Yes = 1))
 
-    expect_false(result$visible)
-    expect_identical(result$value, data)
-    expect_identical(dataset_label(data), "Shared dataset")
-    expect_identical(dataset_label(alias), "Shared dataset")
+    expect_identical(dataset_label(data), "Assigned dataset")
+    expect_identical(var_label(data$x), "Assigned variable")
+    expect_identical(val_labels(data$x), c(No = 0, Yes = 1))
+    expect_null(dataset_label(alias))
+    expect_null(var_label(alias$x))
+    expect_null(val_labels(alias$x))
+
+    reference <- data.frame(x = c(0, 1))
+    gen(reference, y, x + 1)
+    reference_alias <- reference
+    var_label(reference) <- list(x = "X", y = "Y")
+    val_labels(reference) <- list(x = c(No = 0, Yes = 1))
+
+    expect_false(inherits(reference, "dtatools_ref_data"))
+    expect_identical(var_label(reference), list(x = "X", y = "Y"))
+    expect_identical(val_labels(reference$x), c(No = 0, Yes = 1))
+    expect_identical(
+        var_label(reference_alias), list(x = NULL, y = NULL)
+    )
+    expect_null(val_labels(reference_alias$x))
 })
 
 test_that("var_label replacement updates named columns and can clear all", {
@@ -771,7 +789,7 @@ test_that("bulk value-label setters normalize each table once", {
     )
 })
 
-test_that("data frame label setters mutate by reference", {
+test_that("data frame set functions mutate by reference", {
     data <- data.frame(a = 1:3, b = c(10, 20, 30))
     alias <- data
 
@@ -785,18 +803,7 @@ test_that("data frame label setters mutate by reference", {
 
     set_var_label(data, b, "Beta")
     expect_identical(var_label(data$b), "Beta")
-
-    var_label(data) <- list(b = "Beta again")
-    expect_identical(var_label(data$b), "Beta again")
-
-    val_labels(data) <- list(b = c(Ten = 10))
-    expect_identical(val_labels(data$b), c(Ten = 10))
-
-    var_label(data) <- NULL
-    expect_identical(var_label(data), list(a = NULL, b = NULL))
-
-    val_labels(data) <- NULL
-    expect_identical(val_labels(data), list(a = NULL, b = NULL))
+    expect_identical(var_label(alias$b), "Beta")
 })
 
 test_that("label setters still return the data frame for pipeline use", {
@@ -824,7 +831,7 @@ test_that("vector label setters keep copy semantics", {
 test_that("set_var_label requires one unquoted existing column", {
     data <- data.frame(a = 1:3)
     expect_error(set_var_label(data, missing_column, "Alpha"),
-                 "does not exist")
+                 "Unknown column")
     expect_error(set_var_label(data, a + 1, "Alpha"),
                  "unquoted column name")
     expect_error(set_var_label(1:3, a, "Alpha"), "must be a data frame")
@@ -839,4 +846,33 @@ test_that("set_var_label labels a generated reference column", {
 
     set_var_label(data, a, "Alpha")
     expect_identical(var_label(data$a), "Alpha")
+})
+
+test_that("clear-all replacements avoid repeated name resolution", {
+    data <- data.frame(a = 1:3)
+    gen(data, b, a + 1)
+    gen(data, c, b + 1)
+    gen(data, d, c + 1)
+    counter <- new.env(parent = emptyenv())
+    counter$calls <- 0L
+    suppressMessages(trace(
+        ".reference_names",
+        tracer = function() counter$calls <- counter$calls + 1L,
+        where = asNamespace("dtatools"),
+        print = FALSE
+    ))
+    on.exit(suppressMessages(untrace(
+        ".reference_names", where = asNamespace("dtatools")
+    )), add = TRUE)
+
+    var_label(data) <- NULL
+    variable_calls <- counter$calls
+    counter$calls <- 0L
+    val_labels(data) <- NULL
+    value_calls <- counter$calls
+
+    expect_identical(
+        c(variable = variable_calls, value = value_calls),
+        c(variable = 0L, value = 0L)
+    )
 })

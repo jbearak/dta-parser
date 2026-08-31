@@ -55,7 +55,9 @@ attach_result <- function(order) {
                     "other"
                 }
             }, character(1))
-            dtatools_only <- c("set_var_labels", "set_val_labels")
+            dtatools_only <- c(
+                "set_var_label", "set_var_labels", "set_val_labels"
+            )
             dtatools_only_owned <- vapply(dtatools_only, function(name) {
                 identical(
                     get(name, mode = "function"),

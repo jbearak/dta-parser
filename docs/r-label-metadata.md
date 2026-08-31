@@ -40,6 +40,11 @@ data$status <- set_val_labels(
 )
 ```
 
+The three `set_*()` functions mutate a data frame and every binding to it by
+reference. Call `copy_data()` first when another binding must remain unchanged.
+Replacement syntax follows R's assignment rules: it updates the binding on the
+left, while another binding to the original data frame remains unchanged.
+
 For data frames, `...` and `.labels` are combined into one atomic update. Every update must have a unique, known column name. Positional, duplicate, unknown, or overlapping updates are errors; no column is changed when validation fails. Replacement forms take a named list, while a bare `NULL` clears the corresponding metadata from every column.
 
 ## Stata-native behavior
@@ -96,7 +101,13 @@ These guarantees are covered at the exported helper seam in [`test-label-metadat
 
 ## Compared with `labelled`
 
-The variable- and value-label names above intentionally match common `labelled` calls; `dataset_label()` is a dtatools addition. dtatools promises call compatibility only for the documented surface. It does not implement `prefixed`, `null_action`, `.strict`, `.overwrite`, recursive/survey-object behavior, or the rest of the `labelled` package.
+The variable- and value-label getters and replacement functions intentionally
+match common `labelled` calls. The shorter `set_var_label()`,
+`set_var_labels()`, and `set_val_labels()` names are dtatools additions, as is
+`dataset_label()`. dtatools promises call compatibility only for the documented
+getter and replacement surface. It does not implement `prefixed`, `null_action`,
+`.strict`, `.overwrite`, recursive/survey-object behavior, or the rest of the
+`labelled` package.
 
 The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is not a claim about future releases.
 
@@ -111,7 +122,11 @@ The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is n
 
 The version-pinned comparison and both package attach orders run in [`test-labelled-interop.R`](../scripts/test-labelled-interop.R). CI installs `labelled` only for that repository-level gate; it is not a dtatools runtime, suggested, or enhanced dependency.
 
-If `labelled` is attached first and `dtatools` second, unqualified common helper names resolve to dtatools. If `labelled` is attached after dtatools, normal R masking makes them resolve to `labelled`; dtatools emits one scoped warning. Qualified calls such as `dtatools::set_val_labels()` always select this implementation.
+If `labelled` is attached first and `dtatools` second, the four common getter
+and replacement names resolve to dtatools. If `labelled` is attached after
+dtatools, normal R masking makes those names resolve to `labelled`; dtatools
+emits one scoped warning. The three `set_*()` names resolve to dtatools in
+either attach order.
 
 ## Compared with `haven` helpers
 
