@@ -1009,6 +1009,10 @@ fn later_full_read_rescans_a_sparse_projected_value_label_cache() {
         .variables
         .iter()
         .all(|variable| variable.value_label_name.is_empty()));
+    let registry_order = modern_value_label_ranges(&bytes, &metadata)
+        .into_iter()
+        .map(|(name, _, _)| name)
+        .collect::<Vec<_>>();
 
     let (reader, trace) = TracedReader::new(bytes);
     let mut file = DtaFile::from_reader(reader).unwrap();
@@ -1018,7 +1022,17 @@ fn later_full_read_rescans_a_sparse_projected_value_label_cache() {
     assert!(projected.value_label_tables.is_empty());
 
     trace.borrow_mut().reads.clear();
-    assert_eq!(file.value_label_tables().unwrap().len(), 3);
+    assert_eq!(
+        file.value_label_tables()
+            .unwrap()
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<Vec<_>>(),
+        registry_order
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+    );
     assert!(trace
         .borrow()
         .reads
@@ -1032,7 +1046,7 @@ fn later_full_read_rescans_a_sparse_projected_value_label_cache() {
 }
 
 #[test]
-fn new_projection_rescans_then_reuses_requested_value_label_locations() {
+fn repeated_and_disjoint_projections_reuse_referenced_value_label_locations() {
     let bytes = fixture("value_labels_v118.dta");
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
     let registry_order = modern_value_label_ranges(&bytes, &metadata)
@@ -1040,15 +1054,55 @@ fn new_projection_rescans_then_reuses_requested_value_label_locations() {
         .map(|(name, _, _)| name)
         .filter(|name| name == "rep_lbl" || name == "region_lbl")
         .collect::<Vec<_>>();
+    let rep_order = registry_order
+        .iter()
+        .filter(|name| name.as_str() == "rep_lbl")
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    let region_order = registry_order
+        .iter()
+        .filter(|name| name.as_str() == "region_lbl")
+        .map(String::as_str)
+        .collect::<Vec<_>>();
     let (reader, trace) = TracedReader::new(bytes);
     let mut file = DtaFile::from_reader(reader).unwrap();
 
     let first = file.read_with_options(&options(0, None, vec![1])).unwrap();
-    assert_eq!(first.value_label_tables[0].name, "rep_lbl");
+    assert_eq!(
+        first
+            .value_label_tables
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<Vec<_>>(),
+        rep_order
+    );
+
+    trace.borrow_mut().reads.clear();
+    let repeated = file.read_with_options(&options(0, None, vec![1])).unwrap();
+    assert_eq!(
+        repeated
+            .value_label_tables
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<Vec<_>>(),
+        rep_order
+    );
+    assert!(!trace
+        .borrow()
+        .reads
+        .iter()
+        .any(|(offset, _)| *offset >= metadata.section_offsets.value_labels));
 
     trace.borrow_mut().reads.clear();
     let second = file.read_with_options(&options(0, None, vec![2])).unwrap();
-    assert_eq!(second.value_label_tables[0].name, "region_lbl");
+    assert_eq!(
+        second
+            .value_label_tables
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<Vec<_>>(),
+        region_order
+    );
     let label_reads = trace
         .borrow()
         .reads
@@ -1057,7 +1111,7 @@ fn new_projection_rescans_then_reuses_requested_value_label_locations() {
         .filter(|(offset, _)| *offset >= metadata.section_offsets.value_labels)
         .collect::<Vec<_>>();
     assert!(!label_reads.is_empty());
-    assert!(label_reads
+    assert!(!label_reads
         .iter()
         .any(|(offset, _)| *offset == metadata.section_offsets.value_labels));
 

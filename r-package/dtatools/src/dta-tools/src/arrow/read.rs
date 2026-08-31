@@ -949,10 +949,7 @@ fn read_ipc_buffer<R: Read + Seek>(
             let declared = i64::from_le_bytes(raw[..8].try_into().expect("8 bytes"));
             let payload = &raw[8..];
             if declared == -1 {
-                if payload.len() != expected_length {
-                    return Err(invalid("uncompressed buffer length mismatch"));
-                }
-                return Ok(buffer_from_bytes(payload.to_vec()));
+                return uncompressed_compression_buffer(raw, expected_length);
             }
             let declared =
                 usize::try_from(declared).map_err(|_| invalid("bad compressed length"))?;
@@ -987,6 +984,19 @@ fn read_ipc_buffer<R: Read + Seek>(
             Ok(buffer_from_bytes(decompressed))
         }
     }
+}
+
+fn uncompressed_compression_buffer(
+    raw: Vec<u8>,
+    expected_length: usize,
+) -> Result<Buffer, ArrowProfileError> {
+    let payload = raw
+        .get(8..)
+        .ok_or_else(|| invalid("compressed buffer is too short"))?;
+    if payload.len() != expected_length {
+        return Err(invalid("uncompressed buffer length mismatch"));
+    }
+    Ok(buffer_from_bytes(raw).slice(8))
 }
 
 fn ipc_buffer_allocation_bytes<R: Read + Seek>(
@@ -3053,6 +3063,27 @@ mod tests {
         assert!(error
             .to_string()
             .contains("buffer length does not match its field layout"));
+    }
+
+    #[test]
+    fn compression_framed_uncompressed_buffer_reuses_the_input_allocation() {
+        let payload = b"incompressible payload";
+        let mut raw = (-1_i64).to_le_bytes().to_vec();
+        raw.extend_from_slice(payload);
+        let payload_pointer = raw[8..].as_ptr();
+
+        let buffer = uncompressed_compression_buffer(raw, payload.len())
+            .expect("the uncompressed payload is valid");
+
+        assert_eq!(buffer.as_slice(), payload);
+        assert_eq!(buffer.as_slice().as_ptr(), payload_pointer);
+
+        let malformed = (-1_i64).to_le_bytes().to_vec();
+        let error = uncompressed_compression_buffer(malformed, 1)
+            .expect_err("the payload length must still match the field layout");
+        assert!(error
+            .to_string()
+            .contains("uncompressed buffer length mismatch"));
     }
 
     #[test]
