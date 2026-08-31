@@ -615,7 +615,8 @@ gen <- function(data, variable, values, where = NULL) {
         typeof(value) %in% c("externalptr", "weakref")) {
         return(TRUE)
     }
-    contents <- if (typeof(value) %in% c("list", "expression", "pairlist")) {
+    contents <- if (typeof(value) %in%
+        c("list", "expression", "pairlist", "language")) {
         as.list(value)
     } else {
         list()

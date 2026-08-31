@@ -1144,6 +1144,18 @@ test_that("copy_data isolates every mutable column backing", {
         copy_data(reference_attribute),
         "cannot isolate environments"
     )
+
+    embedded_environment <- new.env(parent = emptyenv())
+    reference_call <- as.call(list(
+        as.name("identity"), embedded_environment
+    ))
+    reference_column <- data.frame(
+        value = I(list(reference_call))
+    )
+    expect_error(
+        copy_data(reference_column),
+        "cannot isolate environments"
+    )
 })
 
 test_that("subsets, metadata proxies, and serialized data stay isolated", {
