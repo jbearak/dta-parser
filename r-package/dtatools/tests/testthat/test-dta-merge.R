@@ -206,11 +206,13 @@ test_that("coalesced variables reconcile notes and characteristics x first", {
     expect_identical(stata_notes(result$id), c(`4` = "master note"))
     expect_identical(stata_characteristics(result$id), c(source = "master"))
 
-    fallback <- suppressWarnings(dta_merge(
-        tibble::tibble(id = c("a", "b")),
-        tibble::tibble(id = using_id),
-        by = "id", relationship = "1:1"
-    ))
+    expect_no_warning(
+        fallback <- dta_merge(
+            tibble::tibble(id = c("a", "b")),
+            tibble::tibble(id = using_id),
+            by = "id", relationship = "1:1"
+        )
+    )
     expect_identical(stata_notes(fallback$id), c(`8` = "using note"))
     expect_identical(stata_characteristics(fallback$id), c(source = "using"))
 })

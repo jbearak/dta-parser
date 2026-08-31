@@ -571,7 +571,10 @@ function validMetadataValue(value) {
   }
 }
 function validExistingMetadataValue(value, kind) {
-  if (typeof value !== "string" || value.includes("\0") || !utf8LengthAtMost(
+  if (typeof value !== "string" || value.includes("\0") || !codePointLengthAtMost(
+    value,
+    MAX_STATA_METADATA_VALUE_BYTES
+  ) || !utf8LengthAtMost(
     value,
     MAX_DECODED_STATA_METADATA_VALUE_BYTES
   )) {

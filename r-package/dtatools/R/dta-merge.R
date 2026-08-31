@@ -340,11 +340,16 @@ dta_merge <- function(x, y, by, relationship,
         )) {
             val_label_diff <- c(val_label_diff, name)
         }
-        if (!identical(stata_notes(x[[name]]), stata_notes(y[[name]])) ||
-            !identical(
-                stata_characteristics(x[[name]]),
-                stata_characteristics(y[[name]])
-            )) {
+        x_notes <- stata_notes(x[[name]])
+        y_notes <- stata_notes(y[[name]])
+        x_characteristics <- stata_characteristics(x[[name]])
+        y_characteristics <- stata_characteristics(y[[name]])
+        notes_conflict <- length(x_notes) && length(y_notes) &&
+            !identical(x_notes, y_notes)
+        characteristics_conflict <- length(x_characteristics) &&
+            length(y_characteristics) &&
+            !identical(x_characteristics, y_characteristics)
+        if (notes_conflict || characteristics_conflict) {
             stata_metadata_diff <- c(stata_metadata_diff, name)
         }
     }

@@ -202,6 +202,7 @@ describe('Stata metadata accessors', () => {
             { notes: [{ number: 0, text: 'low' }] },
             { notes: [{ number: 10_000, text: 'high' }] },
             { notes: [{ number: 1, text: 'nul\0text' }] },
+            { notes: [{ number: 1, text: 'x'.repeat(67_785) }] },
             { notes: [{ number: 1, text: '€'.repeat(67_785) }] },
             { notes: ['valid', 2] as unknown as string[] },
         ];
@@ -235,6 +236,7 @@ describe('Stata metadata accessors', () => {
             [{ name: 'fralias_from', value: 'reserved' }],
             [{ name: '2bad', value: 'invalid' }],
             [{ name: 'source', value: 'nul\0text' }],
+            [{ name: 'source', value: 'x'.repeat(67_785) }],
             [{ name: 'source', value: '€'.repeat(67_785) }],
             [{ name: 'source', value: 1 }],
         ];

@@ -286,6 +286,9 @@ function validExistingMetadataValue(
 ): asserts value is string {
     if (typeof value !== 'string'
         || value.includes('\0')
+        || !codePointLengthAtMost(
+            value, MAX_STATA_METADATA_VALUE_BYTES
+        )
         || !utf8LengthAtMost(
             value, MAX_DECODED_STATA_METADATA_VALUE_BYTES
         )) {
