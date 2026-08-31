@@ -452,37 +452,14 @@ gen <- function(data, variable, values, where = NULL) {
     }
     temporal_code <- if (temporal) .stata_temporal_code(prototype) else 0L
     kind <- match(storage, c("byte", "int", "long", "float", "double")) - 1L
-    generated_attributes <- if (temporal) {
-        .generated_stata_temporal_attributes(prototype, storage)
-    } else {
-        .generated_stata_attributes(values, storage)
-    }
+    generated_attributes <- .stata_attribute_plan(
+        prototype, storage, temporal = temporal, labelled = !temporal
+    )
     .Call(
         C_dtatools_generate_numeric, source, rows,
         as.double(row_count), as.integer(kind), as.integer(temporal_code),
         generated_attributes
     )
-}
-
-.generated_stata_attributes <- function(prototype, storage) {
-    desired <- attributes(prototype)
-    desired$names <- NULL
-    desired$stata.storage <- storage
-    classes <- .stata_classes_from(prototype, storage)
-    if (!is.null(desired$labels) && !"haven_labelled" %in% classes) {
-        location <- match("vctrs_vctr", classes)
-        classes <- append(classes, "haven_labelled", after = location - 1L)
-    }
-    desired$class <- classes
-    desired
-}
-
-.generated_stata_temporal_attributes <- function(prototype, storage) {
-    desired <- attributes(prototype)
-    desired$names <- NULL
-    desired$stata.storage <- storage
-    desired$class <- class(prototype)
-    desired
 }
 
 .generated_character <- function(values, rows, row_count) {

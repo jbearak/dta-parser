@@ -356,21 +356,39 @@ as.character.stata_numeric <- function(x, ...) {
     value
 }
 
-.restore_stata_metadata <- function(value, prototype, storage) {
-    classes <- .stata_classes_from(prototype, storage)
+.stata_attribute_plan <- function(
+    prototype, storage, result_names = NULL,
+    temporal = inherits(prototype, "stata_temporal"), labelled = FALSE
+) {
     desired <- attributes(prototype)
-    result_names <- names(value)
     desired$names <- NULL
     desired$stata.storage <- storage
+    classes <- if (temporal) {
+        class(prototype)
+    } else {
+        .stata_classes_from(prototype, storage)
+    }
+    if (labelled && !temporal && !is.null(desired$labels) &&
+        !"haven_labelled" %in% classes) {
+        location <- match("vctrs_vctr", classes)
+        classes <- append(classes, "haven_labelled", after = location - 1L)
+    }
     desired$class <- classes
     if (!is.null(result_names)) desired$names <- result_names
+    desired
+}
+
+.restore_stata_metadata <- function(value, prototype, storage) {
+    desired <- .stata_attribute_plan(
+        prototype, storage, result_names = names(value), temporal = FALSE
+    )
     plain_attributes <- desired
     plain_attributes$names <- NULL
     plain_attributes$class <- NULL
     plain_attributes$stata.storage <- NULL
     if (length(plain_attributes) == 0L &&
         identical(stata_storage_type(value), storage) &&
-        identical(class(value), classes)) {
+        identical(class(value), desired$class)) {
         return(value)
     }
     .replace_stata_attributes(value, desired)
@@ -825,11 +843,9 @@ Complex.stata_numeric <- function(z) {
 .attach_stata_temporal <- function(
     result, prototype, storage, result_names = names(result)
 ) {
-    desired <- attributes(prototype)
-    desired$names <- NULL
-    desired$stata.storage <- storage
-    desired$class <- class(prototype)
-    if (!is.null(result_names)) desired$names <- result_names
+    desired <- .stata_attribute_plan(
+        prototype, storage, result_names = result_names, temporal = TRUE
+    )
     .replace_stata_attributes(result, desired)
 }
 

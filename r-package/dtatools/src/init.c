@@ -4030,6 +4030,14 @@ static int reference_rows_alias_target(SEXP rows, SEXP target) {
     return row_values != NULL && row_values == target_values;
 }
 
+static reference_rows reference_patch_rows_create(
+    SEXP value, SEXP target, R_xlen_t limit
+) {
+    reference_rows rows = reference_rows_create(value, limit);
+    rows.snapshot_required = reference_rows_alias_target(value, target);
+    return rows;
+}
+
 static void snapshot_reference_rows(reference_rows *rows) {
     if (!rows->snapshot_required || rows->snapshot != NULL ||
         rows->value == R_NilValue) {
@@ -4439,8 +4447,9 @@ SEXP C_dtatools_patch_vector(
         !(count == 0 && replacement_count == 0)) {
         Rf_error("invalid reference replacement plan");
     }
-    reference_rows row_plan = reference_rows_create(rows, target_length);
-    row_plan.snapshot_required = reference_rows_alias_target(rows, target);
+    reference_rows row_plan = reference_patch_rows_create(
+        rows, target, target_length
+    );
 
     numeric_data *compact = unmaterialized_numeric_storage(target);
     if (compact != NULL) {
