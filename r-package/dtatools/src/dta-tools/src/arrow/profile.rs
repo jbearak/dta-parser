@@ -3,8 +3,9 @@
 
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, HashSet},
+    collections::{hash_map::RandomState, BTreeMap, HashSet},
     fmt,
+    hash::BuildHasher,
 };
 
 use arrow_schema::{DataType, Field};
@@ -376,6 +377,8 @@ where
             A: SeqAccess<'de>,
         {
             let mut decoded = Vec::new();
+            let name_hash_builder = RandomState::new();
+            let mut name_hashes = HashSet::new();
             while let Some(raw) = sequence.next_element::<RawCharacteristic<'de>>()? {
                 if raw_string_exceeds_limit(
                     raw.name,
@@ -408,23 +411,22 @@ where
                         "characteristics contain an invalid, duplicate, or reserved name",
                     ));
                 }
-                decoded.try_reserve(1).map_err(serde::de::Error::custom)?;
-                decoded.push(characteristic);
-            }
-
-            // Wait until the Vec is complete so references to its owned names
-            // remain stable. This avoids cloning every name into the duplicate
-            // index while retaining collision-safe string comparisons.
-            let mut names = std::collections::HashSet::new();
-            names
-                .try_reserve(decoded.len())
-                .map_err(serde::de::Error::custom)?;
-            for characteristic in &decoded {
-                if !names.insert(characteristic.name.as_str()) {
+                let name_hash = name_hash_builder.hash_one(characteristic.name.as_str());
+                if name_hashes.contains(&name_hash)
+                    && decoded
+                        .iter()
+                        .any(|existing: &StataCharacteristic| existing.name == characteristic.name)
+                {
                     return Err(serde::de::Error::custom(
                         "characteristics contain an invalid, duplicate, or reserved name",
                     ));
                 }
+                decoded.try_reserve(1).map_err(serde::de::Error::custom)?;
+                name_hashes
+                    .try_reserve(1)
+                    .map_err(serde::de::Error::custom)?;
+                name_hashes.insert(name_hash);
+                decoded.push(characteristic);
             }
             Ok(decoded)
         }
@@ -1741,14 +1743,14 @@ mod tests {
     }
 
     #[test]
-    fn characteristic_duplicates_compare_decoded_names() {
+    fn decoded_duplicate_characteristic_stops_before_later_json_is_parsed() {
         let error = parse_dataset_document(
             "0",
             Some(
-                r#"{"version":0,"characteristics":[{"name":"source","value":"first"},{"name":"sour\u0063e","value":"second"}]}"#,
+                r#"{"version":0,"characteristics":[{"name":"source","value":"first"},{"name":"sour\u0063e","value":"second"},invalid]}"#,
             ),
         )
-        .expect_err("equivalent decoded characteristic names are duplicates");
+        .expect_err("the decoded duplicate stops the sequence");
         assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
         assert!(
             error

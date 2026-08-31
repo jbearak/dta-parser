@@ -467,7 +467,7 @@ gen <- function(data, variable, values, where = NULL) {
         stop("`where` must yield logical values or numeric row positions",
              call. = FALSE)
     }
-    .Call(C_dtatools_mutation_rows, value, as.double(row_count))
+    .Call(C_dtatools_mutation_rows, classified, as.double(row_count))
 }
 
 .mutation_selected_count <- function(rows, row_count) {

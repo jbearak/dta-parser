@@ -1,5 +1,7 @@
+use std::collections::hash_map::RandomState;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
+use std::hash::BuildHasher;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::{mpsc::sync_channel, Arc};
@@ -28,14 +30,102 @@ use crate::{
     ReadOptions, SectionOffsets, ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
 
-fn selected_value_label_names(metadata: &DtaMetadata, indices: &[u32]) -> HashSet<String> {
-    indices
-        .iter()
-        .filter_map(|&index| {
-            let name = &metadata.variables.get(index as usize)?.value_label_name;
-            (!name.is_empty()).then(|| name.clone())
+#[derive(Debug)]
+struct SelectedValueLabelName {
+    variable_index: u32,
+    next_with_hash: Option<u32>,
+}
+
+/// A collision-safe set that keeps only indices into the stable metadata.
+///
+/// Explicit projections can contain every variable in a wide schema. Keeping
+/// the source strings in `DtaMetadata` avoids another owned copy of every
+/// selected value-label name while the value-label section is scanned.
+#[derive(Debug)]
+struct SelectedValueLabelNames {
+    hash_builder: RandomState,
+    heads_by_hash: HashMap<u64, u32>,
+    names: Vec<SelectedValueLabelName>,
+}
+
+impl SelectedValueLabelNames {
+    fn new() -> Self {
+        Self {
+            hash_builder: RandomState::new(),
+            heads_by_hash: HashMap::new(),
+            names: Vec::new(),
+        }
+    }
+
+    fn insert(&mut self, metadata: &DtaMetadata, variable_index: usize) -> Result<(), DtaError> {
+        let stored_variable_index = u32::try_from(variable_index)
+            .map_err(|_| DtaError::ArithmeticOverflow("selected variable index"))?;
+        let name = metadata.variables[variable_index].value_label_name.as_str();
+        let hash = self.hash_builder.hash_one(name);
+        let head = self.heads_by_hash.get(&hash).copied();
+        let mut current = head;
+        while let Some(index) = current {
+            let selected = &self.names[index as usize];
+            if metadata.variables[selected.variable_index as usize].value_label_name == name {
+                return Ok(());
+            }
+            current = selected.next_with_hash;
+        }
+        self.names
+            .try_reserve(1)
+            .map_err(|_| DtaError::ArithmeticOverflow("selected value-label name allocation"))?;
+        if head.is_none() {
+            self.heads_by_hash.try_reserve(1).map_err(|_| {
+                DtaError::ArithmeticOverflow("selected value-label hash allocation")
+            })?;
+        }
+        let index = u32::try_from(self.names.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("selected value-label name count"))?;
+        self.names.push(SelectedValueLabelName {
+            variable_index: stored_variable_index,
+            next_with_hash: head,
+        });
+        self.heads_by_hash.insert(hash, index);
+        Ok(())
+    }
+
+    fn contains(&self, metadata: &DtaMetadata, name: &str) -> bool {
+        let hash = self.hash_builder.hash_one(name);
+        let mut current = self.heads_by_hash.get(&hash).copied();
+        while let Some(index) = current {
+            let selected = &self.names[index as usize];
+            if metadata.variables[selected.variable_index as usize].value_label_name == name {
+                return true;
+            }
+            current = selected.next_with_hash;
+        }
+        false
+    }
+
+    fn iter<'a>(&'a self, metadata: &'a DtaMetadata) -> impl Iterator<Item = &'a str> + 'a {
+        self.names.iter().map(|selected| {
+            metadata.variables[selected.variable_index as usize]
+                .value_label_name
+                .as_str()
         })
-        .collect()
+    }
+}
+
+fn selected_value_label_names(
+    metadata: &DtaMetadata,
+    indices: &[u32],
+) -> Result<SelectedValueLabelNames, DtaError> {
+    let mut selected = SelectedValueLabelNames::new();
+    for &index in indices {
+        let variable_index = index as usize;
+        let Some(variable) = metadata.variables.get(variable_index) else {
+            continue;
+        };
+        if !variable.value_label_name.is_empty() {
+            selected.insert(metadata, variable_index)?;
+        }
+    }
+    Ok(selected)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -62,7 +152,9 @@ struct IndexedValueLabelCache {
 #[derive(Debug)]
 struct FullValueLabelCache {
     tables: Vec<ValueLabelTable>,
-    indices_by_name: HashMap<Arc<str>, Vec<usize>>,
+    /// Source indices sorted by table name, then by source position. Built
+    /// only if a projected read follows a full-table read.
+    indices_by_name: Option<Vec<usize>>,
 }
 
 #[cfg(test)]
@@ -79,19 +171,20 @@ fn index_value_label_locations(locations: &[ValueLabelLocation]) -> HashMap<Arc<
 
 fn selected_value_label_location_indices(
     indices_by_name: &HashMap<Arc<str>, Vec<usize>>,
-    selected: &HashSet<String>,
+    metadata: &DtaMetadata,
+    selected: &SelectedValueLabelNames,
 ) -> Result<Vec<usize>, DtaError> {
     let selected_count = selected
-        .iter()
-        .filter_map(|name| indices_by_name.get(name.as_str()))
+        .iter(metadata)
+        .filter_map(|name| indices_by_name.get(name))
         .map(Vec::len)
         .sum();
     let mut indices = Vec::new();
     indices
         .try_reserve_exact(selected_count)
         .map_err(|_| DtaError::ArithmeticOverflow("selected value-label index allocation"))?;
-    for name in selected {
-        if let Some(named_indices) = indices_by_name.get(name.as_str()) {
+    for name in selected.iter(metadata) {
+        if let Some(named_indices) = indices_by_name.get(name) {
             indices.extend_from_slice(named_indices);
         }
     }
@@ -99,16 +192,49 @@ fn selected_value_label_location_indices(
     Ok(indices)
 }
 
-fn index_value_label_tables(tables: &[ValueLabelTable]) -> HashMap<Arc<str>, Vec<usize>> {
-    let mut indices_by_name = HashMap::<Arc<str>, Vec<usize>>::new();
-    for (index, table) in tables.iter().enumerate() {
-        if let Some(indices) = indices_by_name.get_mut(table.name.as_str()) {
-            indices.push(index);
-        } else {
-            indices_by_name.insert(Arc::from(table.name.as_str()), vec![index]);
-        }
-    }
+fn index_value_label_tables(tables: &[ValueLabelTable]) -> Result<Vec<usize>, DtaError> {
+    let mut indices_by_name = Vec::new();
     indices_by_name
+        .try_reserve_exact(tables.len())
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label table-name index allocation"))?;
+    indices_by_name.extend(0..tables.len());
+    indices_by_name.sort_unstable_by(|&left, &right| {
+        tables[left]
+            .name
+            .cmp(&tables[right].name)
+            .then_with(|| left.cmp(&right))
+    });
+    Ok(indices_by_name)
+}
+
+fn selected_full_value_label_indices(
+    tables: &[ValueLabelTable],
+    indices_by_name: &[usize],
+    metadata: &DtaMetadata,
+    selected: &SelectedValueLabelNames,
+) -> Result<Vec<usize>, DtaError> {
+    let mut selected_count = 0_usize;
+    for name in selected.iter(metadata) {
+        let start = indices_by_name.partition_point(|&index| tables[index].name.as_str() < name);
+        let end = indices_by_name.partition_point(|&index| tables[index].name.as_str() <= name);
+        selected_count =
+            selected_count
+                .checked_add(end - start)
+                .ok_or(DtaError::ArithmeticOverflow(
+                    "selected value-label index count",
+                ))?;
+    }
+    let mut indices = Vec::new();
+    indices
+        .try_reserve_exact(selected_count)
+        .map_err(|_| DtaError::ArithmeticOverflow("selected value-label index allocation"))?;
+    for name in selected.iter(metadata) {
+        let start = indices_by_name.partition_point(|&index| tables[index].name.as_str() < name);
+        let end = indices_by_name.partition_point(|&index| tables[index].name.as_str() <= name);
+        indices.extend(indices_by_name[start..end].iter().copied());
+    }
+    indices.sort_unstable();
+    Ok(indices)
 }
 
 #[derive(Debug)]
@@ -191,7 +317,8 @@ fn take_projected_tables(
 enum ValueLabelStreamingMode<'a> {
     Full,
     Projected {
-        selected: &'a HashSet<String>,
+        metadata: &'a DtaMetadata,
+        selected: &'a SelectedValueLabelNames,
         locations: &'a mut Vec<ValueLabelLocation>,
         indices_by_name: &'a mut HashMap<Arc<str>, Vec<usize>>,
     },
@@ -214,7 +341,9 @@ impl ValueLabelStreamingMode<'_> {
 
     fn retains(&self, name: &str) -> bool {
         match self {
-            Self::Projected { selected, .. } => selected.contains(name),
+            Self::Projected {
+                metadata, selected, ..
+            } => selected.contains(metadata, name),
             Self::Full | Self::Indexed { .. } => true,
         }
     }
@@ -2134,7 +2263,7 @@ impl<R: Read + Seek> DtaFile<R> {
 
         check_cancel(&mut should_interrupt)?;
         if options.column_indices.is_some() {
-            let selected = selected_value_label_names(&self.metadata, &indices);
+            let selected = selected_value_label_names(&self.metadata, &indices)?;
             let value_label_indices =
                 self.ensure_projected_value_labels(&selected, &mut should_interrupt)?;
             if S::TAKES_VALUE_LABEL_TABLES
@@ -2428,7 +2557,7 @@ impl<R: Read + Seek> DtaFile<R> {
         check_coarse_cancel(&mut interrupts)?;
         if options.column_indices.is_some() {
             let mut coarse_interrupt = || interrupts.coarse();
-            let selected = selected_value_label_names(&self.metadata, &indices);
+            let selected = selected_value_label_names(&self.metadata, &indices)?;
             let value_label_indices =
                 self.ensure_projected_value_labels(&selected, &mut coarse_interrupt)?;
             if S::TAKES_VALUE_LABEL_TABLES
@@ -2550,29 +2679,42 @@ impl<R: Read + Seek> DtaFile<R> {
             ValueLabelCache::Full(_) => unreachable!(),
         };
         check_cancel(should_interrupt)?;
-        let indices_by_name = index_value_label_tables(&tables);
         self.value_labels = ValueLabelCache::Full(FullValueLabelCache {
             tables,
-            indices_by_name,
+            indices_by_name: None,
         });
         Ok(())
     }
 
     fn ensure_projected_value_labels<F>(
         &mut self,
-        selected: &HashSet<String>,
+        selected: &SelectedValueLabelNames,
         should_interrupt: &mut F,
     ) -> Result<Vec<usize>, DtaError>
     where
         F: FnMut() -> bool,
     {
-        match &self.value_labels {
+        match &mut self.value_labels {
             ValueLabelCache::Full(cache) => {
-                return selected_value_label_location_indices(&cache.indices_by_name, selected);
+                if cache.indices_by_name.is_none() {
+                    cache.indices_by_name = Some(index_value_label_tables(&cache.tables)?);
+                }
+                return selected_full_value_label_indices(
+                    &cache.tables,
+                    cache
+                        .indices_by_name
+                        .as_deref()
+                        .expect("full value-label table-name index was initialized"),
+                    &self.metadata,
+                    selected,
+                );
             }
             ValueLabelCache::Indexed(cache) => {
-                let indices =
-                    selected_value_label_location_indices(&cache.indices_by_name, selected)?;
+                let indices = selected_value_label_location_indices(
+                    &cache.indices_by_name,
+                    &self.metadata,
+                    selected,
+                )?;
                 self.populate_indexed_value_labels(&indices, should_interrupt)?;
                 return Ok(indices);
             }
@@ -2588,13 +2730,15 @@ impl<R: Read + Seek> DtaFile<R> {
             should_interrupt,
             self.text_encoding,
             ValueLabelStreamingMode::Projected {
+                metadata: &self.metadata,
                 selected,
                 locations: &mut locations,
                 indices_by_name: &mut indices_by_name,
             },
         )?;
         check_cancel(should_interrupt)?;
-        let selected_indices = selected_value_label_location_indices(&indices_by_name, selected)?;
+        let selected_indices =
+            selected_value_label_location_indices(&indices_by_name, &self.metadata, selected)?;
         let mut cached = HashMap::new();
         cached
             .try_reserve(tables.len())
@@ -7016,14 +7160,67 @@ mod tests {
             indices_by_name,
             tables: HashMap::new(),
         };
-        let selected = HashSet::from(["selected".to_owned()]);
+        let mut metadata = kernel_metadata(ByteOrder::Lsf);
+        metadata
+            .variables
+            .push(value_label_variable("x", "selected"));
+        let selected = selected_value_label_names(&metadata, &[0]).unwrap();
 
         for _ in 0..100 {
             assert_eq!(
-                selected_value_label_location_indices(&cache.indices_by_name, &selected).unwrap(),
+                selected_value_label_location_indices(
+                    &cache.indices_by_name,
+                    &metadata,
+                    &selected,
+                )
+                .unwrap(),
                 [7, 9_997]
             );
         }
+    }
+
+    #[test]
+    fn full_value_label_name_index_preserves_duplicate_source_order() {
+        let tables = ["z", "a", "z", "b"]
+            .into_iter()
+            .map(|name| ValueLabelTable {
+                name: name.to_owned(),
+                entries: Vec::new(),
+            })
+            .collect::<Vec<_>>();
+        let indices_by_name = index_value_label_tables(&tables).unwrap();
+        assert_eq!(indices_by_name, [1, 3, 0, 2]);
+
+        let mut metadata = kernel_metadata(ByteOrder::Lsf);
+        metadata.variables = vec![
+            value_label_variable("first", "z"),
+            value_label_variable("second", "a"),
+            value_label_variable("third", "z"),
+        ];
+        let selected = selected_value_label_names(&metadata, &[0, 1, 2]).unwrap();
+        assert_eq!(selected.names.len(), 2);
+        assert_eq!(
+            selected_full_value_label_indices(&tables, &indices_by_name, &metadata, &selected,)
+                .unwrap(),
+            [0, 1, 2]
+        );
+    }
+
+    #[test]
+    fn wide_selected_value_label_index_retains_only_metadata_positions() {
+        const VARIABLE_COUNT: usize = 120_000;
+        let mut metadata = kernel_metadata(ByteOrder::Lsf);
+        metadata.variables = (0..VARIABLE_COUNT)
+            .map(|index| value_label_variable(&format!("v{index}"), &format!("table_{index:06}")))
+            .collect();
+        let indices = (0..VARIABLE_COUNT as u32).collect::<Vec<_>>();
+
+        let selected = selected_value_label_names(&metadata, &indices).unwrap();
+
+        assert_eq!(selected.names.len(), VARIABLE_COUNT);
+        assert!(selected.contains(&metadata, "table_000000"));
+        assert!(selected.contains(&metadata, "table_119999"));
+        assert!(!selected.contains(&metadata, "table_missing"));
     }
 
     fn kernel_metadata(byte_order: ByteOrder) -> DtaMetadata {
@@ -7038,6 +7235,21 @@ mod tests {
             variables: Vec::new(),
             section_offsets: SectionOffsets::from_array([0; 14]),
             obs_length: 0,
+        }
+    }
+
+    fn value_label_variable(name: &str, value_label_name: &str) -> VariableInfo {
+        VariableInfo {
+            name: name.to_owned(),
+            dta_type: DtaType::Long,
+            type_code: 65_529,
+            format: "%12.0g".to_owned(),
+            label: String::new(),
+            value_label_name: value_label_name.to_owned(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            byte_width: 4,
+            byte_offset: 0,
         }
     }
 
@@ -7364,7 +7576,7 @@ mod tests {
             }],
         }];
         let mut cache = ValueLabelCache::Full(FullValueLabelCache {
-            indices_by_name: index_value_label_tables(&tables),
+            indices_by_name: None,
             tables,
         });
 

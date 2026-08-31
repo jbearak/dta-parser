@@ -219,6 +219,11 @@ test_that("metadata-bearing numerics remain valid row positions", {
     replace_values(data, value, c(30L, 10L), where = rows)
 
     expect_identical(data$value, c(10L, 2L, 30L))
+
+    full_values <- data.frame(value = 1:3)
+    replace_values(full_values, value, c(10L, 20L, 30L), where = rows)
+
+    expect_identical(full_values$value, c(10L, 2L, 30L))
 })
 
 test_that("compact selected positions use one native patch plan", {

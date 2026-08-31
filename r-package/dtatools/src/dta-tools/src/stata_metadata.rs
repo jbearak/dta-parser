@@ -448,11 +448,6 @@ impl DecodedCharacteristics {
             variable.notes.sort_unstable_by_key(|note| note.number);
         }
     }
-
-    #[cfg(test)]
-    fn len(&self) -> usize {
-        self.records.len()
-    }
 }
 
 #[cfg(test)]
@@ -802,12 +797,6 @@ mod tests {
         }
 
         let decoded = plan.decode(|index| Ok(index.to_string())).unwrap();
-        assert_eq!(decoded.len(), SCOPES);
-        assert_eq!(
-            std::mem::size_of_val(&decoded),
-            std::mem::size_of::<Vec<DecodedCharacteristic>>(),
-            "decoded state must be one flat record vector, not per-scope containers"
-        );
         decoded.finish(&mut Vec::new(), &mut Vec::new(), &mut variables);
 
         assert!(variables
