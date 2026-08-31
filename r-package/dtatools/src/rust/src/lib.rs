@@ -422,9 +422,30 @@ pub unsafe extern "C" fn dtatools_dictstring_clone(data: *const c_void) -> *mut 
         return ptr::null_mut();
     }
     let source = &*data.cast::<DictStringData>();
-    let ids = std::slice::from_raw_parts(source.value_ids, source.length).to_vec();
-    let values = source._values.clone();
-    let mut views = vec![(ptr::null(), 0); values.len()];
+    let mut ids = Vec::new();
+    if ids.try_reserve_exact(source.length).is_err() {
+        return ptr::null_mut();
+    }
+    ids.extend_from_slice(std::slice::from_raw_parts(source.value_ids, source.length));
+
+    let mut values = AHashMap::new();
+    if values.try_reserve(source._values.len()).is_err() {
+        return ptr::null_mut();
+    }
+    for (value, &id) in &source._values {
+        let mut copy = String::new();
+        if copy.try_reserve_exact(value.len()).is_err() {
+            return ptr::null_mut();
+        }
+        copy.push_str(value);
+        values.insert(copy, id);
+    }
+
+    let mut views = Vec::new();
+    if views.try_reserve_exact(values.len()).is_err() {
+        return ptr::null_mut();
+    }
+    views.resize(values.len(), (ptr::null(), 0));
     for (value, &id) in &values {
         let Some(slot) = views.get_mut(id as usize) else {
             return ptr::null_mut();

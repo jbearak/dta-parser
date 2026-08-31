@@ -187,6 +187,33 @@ test_that("full-dataset values are gathered by selected row", {
     expect_identical(attr(strings$y, "stata.string.storage"), "str1")
 })
 
+test_that("excluded full-dataset values do not affect validation", {
+    ordinary <- data.frame(x = 1:3)
+    replace_values(ordinary, x, c(1.5, 9, Inf), where = 2L)
+    expect_identical(ordinary$x, c(1L, 9L, 3L))
+
+    materialized <- data.frame(x = stata_byte(1:3))
+    invisible(dtatools:::.force_altrep_materialization(materialized$x))
+    replace_values(materialized, x, c(101, 9, 101), where = 2L)
+    expect_identical(as.double(materialized$x), c(1, 9, 3))
+
+    strings <- data.frame(text = structure(
+        c("a", "b", "c"), stata.string.storage = "str1"
+    ))
+    replace_values(
+        strings, text, c("too wide", "z", "also too wide"), where = 2L
+    )
+    expect_identical(as.character(strings$text), c("a", "z", "c"))
+
+    generated <- data.frame(x = 1:3)
+    declared <- structure(
+        c("too wide", "z", "also too wide"),
+        stata.string.storage = "str1"
+    )
+    gen(generated, text, declared, where = 2L)
+    expect_identical(as.character(generated$text), c("", "z", ""))
+})
+
 test_that("native mutation writers reject untrusted row plans", {
     namespace <- asNamespace("dtatools")
     patch <- get("C_dtatools_patch_vector", namespace)
@@ -299,50 +326,76 @@ test_that("native write interrupts roll back values and compact state", {
                     size = size
                 )
             }
+            dictionary_size <- 10000000L
+            dictionary_path <- tempfile(fileext = ".arrow")
+            on.exit(unlink(dictionary_path), add = TRUE)
+            save_arrow(data.frame(
+                target = rep(c("a", "b"), length.out = dictionary_size)
+            ), dictionary_path)
+            interrupt_dictionary <- function(shared) {
+                data <- read_arrow(dictionary_path)
+                alias <- if (shared) {
+                    set_variable_labels(data, target = "Alias")
+                } else {
+                    NULL
+                }
+                parent <- Sys.getpid()
+                signal <- parallel::mcparallel({
+                    Sys.sleep(0.22)
+                    tools::pskill(parent, tools::SIGINT)
+                }, silent = TRUE)
+                condition <- tryCatch(
+                    {
+                        replace_values(data, target, "changed")
+                        NULL
+                    },
+                    condition = identity
+                )
+                tryCatch(
+                    suppressWarnings(parallel::mccollect(signal)),
+                    condition = function(...) NULL
+                )
+                selected <- c(1L, dictionary_size / 2L, dictionary_size)
+                sample <- tryCatch(
+                    as.character(data$target[selected]),
+                    condition = identity
+                )
+                alias_sample <- if (shared) {
+                    tryCatch(
+                        as.character(alias$target[selected]),
+                        condition = identity
+                    )
+                } else {
+                    c("a", "b", "b")
+                }
+                list(
+                    interrupted = inherits(condition, "interrupt"),
+                    compact = dtatools:::.is_unmaterialized_dictstring(
+                        data$target
+                    ),
+                    readable = !inherits(sample, "condition"),
+                    sample = if (inherits(sample, "condition")) {
+                        character()
+                    } else {
+                        sample
+                    },
+                    alias_compact = !shared ||
+                        dtatools:::.is_unmaterialized_dictstring(
+                            alias$target
+                        ),
+                    alias_readable = !inherits(alias_sample, "condition"),
+                    alias_sample = if (inherits(alias_sample, "condition")) {
+                        character()
+                    } else {
+                        alias_sample
+                    }
+                )
+            }
             list(
                 compact = interrupt_patch(TRUE),
                 ordinary = interrupt_patch(FALSE),
-                dictionary = local({
-                    size <- 10000000L
-                    path <- tempfile(fileext = ".arrow")
-                    on.exit(unlink(path), add = TRUE)
-                    save_arrow(data.frame(
-                        target = rep(c("a", "b"), length.out = size)
-                    ), path)
-                    data <- read_arrow(path)
-                    parent <- Sys.getpid()
-                    signal <- parallel::mcparallel({
-                        Sys.sleep(0.22)
-                        tools::pskill(parent, tools::SIGINT)
-                    }, silent = TRUE)
-                    condition <- tryCatch(
-                        {
-                            replace_values(data, target, "changed")
-                            NULL
-                        },
-                        condition = identity
-                    )
-                    tryCatch(
-                        suppressWarnings(parallel::mccollect(signal)),
-                        condition = function(...) NULL
-                    )
-                    sample <- tryCatch(
-                        as.character(data$target[c(1L, size / 2L, size)]),
-                        condition = identity
-                    )
-                    list(
-                        interrupted = inherits(condition, "interrupt"),
-                        compact = dtatools:::.is_unmaterialized_dictstring(
-                            data$target
-                        ),
-                        readable = !inherits(sample, "condition"),
-                        sample = if (inherits(sample, "condition")) {
-                            character()
-                        } else {
-                            sample
-                        }
-                    )
-                })
+                dictionary = interrupt_dictionary(FALSE),
+                shared_dictionary = interrupt_dictionary(TRUE)
             )
         },
         libpath = .libPaths(),
@@ -357,10 +410,15 @@ test_that("native write interrupts roll back values and compact state", {
         expect_identical(case$minimum, 1)
         expect_identical(case$maximum, 1)
     }
-    expect_true(result$dictionary$interrupted)
-    expect_true(result$dictionary$compact)
-    expect_true(result$dictionary$readable)
-    expect_identical(result$dictionary$sample, c("a", "b", "b"))
+    for (case in result[c("dictionary", "shared_dictionary")]) {
+        expect_true(case$interrupted)
+        expect_true(case$compact)
+        expect_true(case$readable)
+        expect_identical(case$sample, c("a", "b", "b"))
+        expect_true(case$alias_compact)
+        expect_true(case$alias_readable)
+        expect_identical(case$alias_sample, c("a", "b", "b"))
+    }
 })
 
 test_that("compact replacement patches every storage without materializing", {

@@ -211,6 +211,41 @@ stopifnot(
     compact_vector_replacement_time < 0.3
 )
 
+ordinary_data <- data.frame(value = rep(1, rows))
+ordinary_values <- rep(2, rows)
+ordinary_sparse_profile <- tempfile(
+    "dtatools-reference-ordinary-sparse-replacement-", fileext = ".out"
+)
+Rprofmem(ordinary_sparse_profile, threshold = 1000)
+ordinary_sparse_time <- system.time(
+    replace_values(ordinary_data, value, ordinary_values, where = rows)
+)[["elapsed"]]
+Rprofmem(NULL)
+ordinary_sparse_records <- readLines(
+    ordinary_sparse_profile, warn = FALSE
+)
+unlink(ordinary_sparse_profile)
+ordinary_sparse_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", ordinary_sparse_records
+)))
+recorded_ordinary_sparse <- ordinary_sparse_allocations[
+    is.finite(ordinary_sparse_allocations)
+]
+total_ordinary_sparse_allocation <- sum(recorded_ordinary_sparse)
+largest_ordinary_sparse_allocation <- if (
+    length(recorded_ordinary_sparse) == 0L
+) {
+    0
+} else {
+    max(recorded_ordinary_sparse)
+}
+stopifnot(
+    identical(ordinary_data$value[[rows]], 2),
+    largest_ordinary_sparse_allocation < compact_byte_bytes,
+    total_ordinary_sparse_allocation < compact_byte_bytes,
+    ordinary_sparse_time < 0.1
+)
+
 late_missing <- data.frame(
     compact = stata_byte(c(rep(1, rows - 1L), NA_real_))
 )
@@ -581,6 +616,18 @@ cat(sprintf(
 cat(sprintf(
     "compact_vector_replacement_largest_allocation_bytes\t%.0f\n",
     largest_compact_vector_allocation
+))
+cat(sprintf(
+    "ordinary_sparse_full_values_seconds\t%.6f\n",
+    ordinary_sparse_time
+))
+cat(sprintf(
+    "ordinary_sparse_full_values_total_profiled_allocation_bytes\t%.0f\n",
+    total_ordinary_sparse_allocation
+))
+cat(sprintf(
+    "ordinary_sparse_full_values_largest_allocation_bytes\t%.0f\n",
+    largest_ordinary_sparse_allocation
 ))
 cat(sprintf("late_missing_sparse_seconds\t%.6f\n", late_missing_time))
 cat(sprintf("missing_cycle_seconds\t%.6f\n", missing_cycle_time))

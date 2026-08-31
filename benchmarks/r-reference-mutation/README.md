@@ -29,6 +29,9 @@ an interrupt can restore the original payload without materializing it.
 The full-length integer case also runs through a compact position sequence.
 The native patcher must gather each source value by its selected row without
 turning that sequence into a full R double index.
+An ordinary double target then replaces one row from a full-dataset values
+vector. Its cast and validation work must stay proportional to that one-row
+selection; excluded values cannot create a full replacement temporary.
 The run then generates a five-million-row compact byte column from one scalar.
 It fails if the largest R allocation reaches the size of a full double column,
 and uses `tracemem()` to check that neither existing column payload was copied.

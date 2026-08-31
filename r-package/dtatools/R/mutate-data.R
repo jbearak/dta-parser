@@ -332,7 +332,7 @@ gen <- function(data, variable, values, where = NULL) {
     list(maximum = maximum, storage = storage)
 }
 
-.cast_replacement <- function(values, target) {
+.cast_replacement <- function(values, target, rows, row_count) {
     if (is.factor(target) || !is.null(dim(target)) ||
         !(typeof(target) %in% c("logical", "integer", "double", "character"))) {
         stop("The target column has an unsupported replacement type",
@@ -354,6 +354,16 @@ gen <- function(data, variable, values, where = NULL) {
         # a replacement compact column and, for ordinary input, a full double
         # temporary before decoding it again.
         return(values)
+    }
+    # Fallback casts and string-width checks apply only to selected values.
+    # Direct compact targets gather the same full vector in native code above.
+    if (!is.null(rows) && vctrs::vec_size(values) == row_count) {
+        slice_rows <- if (inherits(rows, "stata_numeric")) {
+            .stata_data(rows)
+        } else {
+            rows
+        }
+        values <- vctrs::vec_slice(values, slice_rows)
     }
     .validate_numeric_values(values)
     # Build Stata prototypes from metadata rather than proxying the target.
@@ -392,7 +402,9 @@ gen <- function(data, variable, values, where = NULL) {
         generated[[target$name]] <- column
     } else {
         column <- original$columns[[target$location]]
-        replacement <- .cast_replacement(values, column)
+        replacement <- .cast_replacement(
+            values, column, rows, original$nrow
+        )
         if (.mutation_selected_count(rows, original$nrow) == 0L) {
             return(invisible(data))
         }

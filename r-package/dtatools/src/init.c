@@ -2461,7 +2461,9 @@ static SEXP dictstring_value(SEXP value, R_xlen_t index) {
     return dictstring_cached_value(data, cache, id);
 }
 
-static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
+static SEXP dictstring_materialize_impl(
+    SEXP value, Rboolean writeable, int keep_compact
+) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) {
         return writeable
@@ -2498,9 +2500,17 @@ static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
         );
     }
     R_set_altrep_data2(value, materialized);
-    dictstring_finalize(R_altrep_data1(value));
+    if (!keep_compact) dictstring_finalize(R_altrep_data1(value));
     UNPROTECT(1);
     return materialized;
+}
+
+static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
+    return dictstring_materialize_impl(value, writeable, 0);
+}
+
+static SEXP dictstring_materialize_for_patch(SEXP value) {
+    return dictstring_materialize_impl(value, TRUE, 1);
 }
 
 static void *dictstring_dataptr(SEXP value, Rboolean writeable) {
@@ -4278,7 +4288,7 @@ typedef struct {
     R_xlen_t writes_completed;
     int type;
     int journal_complete;
-    int replacement_by_row;
+    int delayed_dictstring_finalize;
 } vector_patch_transaction;
 
 static int vector_patch_state_changed(
@@ -4291,6 +4301,11 @@ static int vector_patch_state_changed(
 
 static void restore_vector_patch(vector_patch_transaction *transaction) {
     if (vector_patch_state_changed(transaction)) {
+        SEXP current_data1 = R_altrep_data1(transaction->target);
+        if (transaction->delayed_dictstring_finalize &&
+            current_data1 != transaction->saved_data1) {
+            dictstring_finalize(current_data1);
+        }
         R_set_altrep_data1(transaction->target, transaction->saved_data1);
         R_set_altrep_data2(transaction->target, transaction->saved_data2);
         return;
@@ -4378,7 +4393,11 @@ static SEXP apply_vector_patch_transaction(void *data) {
     }
     transaction->journal_complete = 1;
 
-    detach_materialized_patch_target(transaction->target);
+    if (transaction->delayed_dictstring_finalize) {
+        (void) dictstring_materialize_for_patch(transaction->target);
+    } else {
+        detach_materialized_patch_target(transaction->target);
+    }
     double *real_output = NULL;
     int *integer_output = NULL;
     int *logical_output = NULL;
@@ -4397,7 +4416,7 @@ static SEXP apply_vector_patch_transaction(void *data) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t row = reference_patch_row(transaction->rows, index);
         R_xlen_t replacement_index = transaction->replacement_count == 1
-            ? 0 : (transaction->replacement_by_row ? row : index);
+            ? 0 : index;
         switch (transaction->type) {
         case REALSXP:
             real_output[row] = REAL_ELT(
@@ -4505,6 +4524,11 @@ SEXP C_dtatools_patch_vector(
         return result;
     }
 
+    if (replacement_count != count && replacement_count != 1 &&
+        !(count == 0 && replacement_count == 0)) {
+        Rf_error("invalid reference replacement plan");
+    }
+
     if (TYPEOF(target) != TYPEOF(replacement)) {
         Rf_error("replacement storage does not match its target");
     }
@@ -4514,16 +4538,13 @@ SEXP C_dtatools_patch_vector(
         Rf_error("unsupported reference replacement storage");
     }
     size_t width = type == REALSXP ? sizeof(double) : sizeof(int);
-    int protected_string_snapshot = 0;
-    SEXP saved_data1 = ALTREP(target)
-        ? R_altrep_data1(target) : R_NilValue;
-    if (type == STRSXP && unmaterialized_dictstring_source(target) == target) {
-        SEXP snapshot = PROTECT(dictstring_compact_copy(target));
-        protected_string_snapshot = 1;
-        saved_data1 = R_altrep_data1(snapshot);
-    }
+    int delayed_dictstring_finalize = type == STRSXP &&
+        unmaterialized_dictstring_source(target) == target;
     SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
-    SET_VECTOR_ELT(saved_state, 0, saved_data1);
+    SET_VECTOR_ELT(
+        saved_state, 0,
+        ALTREP(target) ? R_altrep_data1(target) : R_NilValue
+    );
     SET_VECTOR_ELT(
         saved_state, 1,
         ALTREP(target) ? R_altrep_data2(target) : R_NilValue
@@ -4535,13 +4556,13 @@ SEXP C_dtatools_patch_vector(
     unsigned char *undo = NULL;
     if (type != STRSXP) {
         if ((size_t) count > SIZE_MAX / width) {
-            UNPROTECT(3 + protected_string_snapshot);
+            UNPROTECT(3);
             Rf_error("reference replacement plan is too large");
         }
         size_t bytes = (size_t) count * width;
         undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
         if (undo == NULL) {
-            UNPROTECT(3 + protected_string_snapshot);
+            UNPROTECT(3);
             Rf_error("could not allocate reference replacement rollback data");
         }
     }
@@ -4559,14 +4580,17 @@ SEXP C_dtatools_patch_vector(
         0,
         type,
         0,
-        rows != R_NilValue && replacement_count == target_length
+        delayed_dictstring_finalize
     };
     SEXP result = R_UnwindProtect(
         apply_vector_patch_transaction, &transaction,
         cleanup_vector_patch_transaction, &transaction,
         continuation
     );
-    UNPROTECT(3 + protected_string_snapshot);
+    if (delayed_dictstring_finalize) {
+        dictstring_finalize(R_altrep_data1(target));
+    }
+    UNPROTECT(3);
     return result;
 }
 
