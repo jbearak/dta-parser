@@ -2,7 +2,7 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, OpenOptions};
 use std::io::{BufWriter, ErrorKind};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
@@ -16,30 +16,14 @@ use dta_tools::{
     classify_int_missing_for_version, classify_long_missing_for_version,
     dta_write_numeric_value_is_representable, encode_numeric, valid_canonical_characteristic,
     valid_canonical_note, valid_characteristic, valid_note,
-    ColumnValues, DtaColumnSink, DtaData,
+    write_prevalidated_dta_with_value_label_registry_to, ColumnValues, DtaColumnSink, DtaData,
     DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
     DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
-    DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag, ParallelDtaSink,
-    ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelEntry, ValueLabelTable,
-    VariableInfo,
+    DtaWriteRawNumericValue, DtaWriteValueLabel, DtaWriteValueLabelRegistry, FormatVersion,
+    MissingTag, ParallelDtaSink, ReadOptions, StataCharacteristic, StataNote, TextEncoding,
+    ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
-
-extern "Rust" {
-    fn dtatools_internal_write_prevalidated_dta_with_value_labels(
-        writer: *mut BufWriter<File>,
-        data: *const DtaWriteData<'static>,
-        options: *const DtaWriteOptions,
-        observation_source: *const (),
-        row_count: u64,
-        value_label_names: *const &'static str,
-        value_label_name_count: usize,
-        value_label_tables: *const Vec<DtaWriteValueLabel<'static>>,
-        value_label_table_count: usize,
-        value_label_indices: *const Option<usize>,
-        value_label_index_count: usize,
-    ) -> Result<dta_tools::DtaWriteSummary, DtaWriteError>;
-}
 
 mod arrow_ffi;
 
@@ -3885,21 +3869,18 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         .open(path)
         .map_err(|error| format!("could not create temporary DTA output: {error}"))?;
     let mut writer = BufWriter::new(file);
-    let observation_source: &dyn DtaWriteObservationSource = &observation_source;
-    let observation_source_pointer =
-        (&observation_source as *const &dyn DtaWriteObservationSource).cast();
-    dtatools_internal_write_prevalidated_dta_with_value_labels(
+    let registry = DtaWriteValueLabelRegistry::new(
+        &value_label_names,
+        &value_label_tables,
+        &value_label_indices,
+    );
+    write_prevalidated_dta_with_value_label_registry_to(
         &mut writer,
-        (&data as *const DtaWriteData<'_>).cast(),
+        &data,
         &options,
-        observation_source_pointer,
+        &observation_source,
         row_count,
-        value_label_names.as_ptr().cast(),
-        value_label_names.len(),
-        value_label_tables.as_ptr().cast(),
-        value_label_tables.len(),
-        value_label_indices.as_ptr(),
-        value_label_indices.len(),
+        &registry,
     )?;
     let file = writer
         .into_inner()

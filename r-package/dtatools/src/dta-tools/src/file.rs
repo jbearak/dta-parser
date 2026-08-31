@@ -1838,10 +1838,9 @@ impl<R: Read + Seek> DtaFile<R> {
             )
         } else {
             self.ensure_value_labels(&mut should_interrupt)?;
-            let cached_tables = self
-                .value_label_tables
-                .as_deref()
-                .expect("value-label cache was initialized");
+            let ValueLabelCache::Full(cached_tables) = &self.value_labels else {
+                unreachable!("value-label cache was initialized")
+            };
             S::finish_parallel_borrowed(
                 state,
                 columns,
@@ -2107,10 +2106,9 @@ impl<R: Read + Seek> DtaFile<R> {
         } else {
             let mut coarse_interrupt = || interrupts.coarse();
             self.ensure_value_labels(&mut coarse_interrupt)?;
-            let cached_tables = self
-                .value_label_tables
-                .as_deref()
-                .expect("value-label cache was initialized");
+            let ValueLabelCache::Full(cached_tables) = &self.value_labels else {
+                unreachable!("value-label cache was initialized")
+            };
             sink.finish_borrowed(&self.metadata, row_start, row_count, cached_tables)
         }
     }
@@ -4100,6 +4098,7 @@ impl Utf8BoundaryPage {
         text_start: u64,
         text_length: usize,
         boundary: usize,
+        max_page_bytes: usize,
     ) -> Result<bool, DtaError> {
         if boundary == 0 || boundary >= text_length {
             return Ok(true);
@@ -4109,7 +4108,7 @@ impl Utf8BoundaryPage {
         let cached_end = self.start.saturating_add(self.bytes.len());
         if self.bytes.is_empty() || probe_start < self.start || probe_end > cached_end {
             self.start = probe_start;
-            let page_length = scratch.limit.min(VALUE_LABEL_BOUNDARY_PAGE_BYTES);
+            let page_length = scratch.limit.min(max_page_bytes);
             let page_end = probe_start.saturating_add(page_length).min(text_length);
             read_exact_at_into(
                 reader,
@@ -4132,11 +4131,47 @@ impl Utf8BoundaryPage {
 
 const VALUE_LABEL_BOUNDARY_BATCH_ENTRIES: usize = 4096;
 const VALUE_LABEL_BOUNDARY_PAGE_BYTES: usize = 64 * 1024;
+const VALUE_LABEL_BOUNDARY_PROBE_BYTES: usize = 7;
+const VALUE_LABEL_PAGE_READ_AMPLIFICATION: usize = 16;
 
 #[derive(Clone, Copy)]
 struct IndexedTextOffset {
     entry_index: usize,
     boundary: usize,
+}
+
+fn adaptive_utf8_boundary_page_bytes(
+    scratch_limit: usize,
+    text_length: usize,
+    offsets: &[IndexedTextOffset],
+) -> usize {
+    let full_page_bytes = scratch_limit.min(VALUE_LABEL_BOUNDARY_PAGE_BYTES);
+    let mut staged_bytes = 0_usize;
+    let mut page_start = 0_usize;
+    let mut page_end = 0_usize;
+    let mut has_page = false;
+    for offset in offsets {
+        if offset.boundary == 0 || offset.boundary >= text_length {
+            continue;
+        }
+        let probe_start = offset.boundary.saturating_sub(3);
+        let probe_end = offset.boundary.saturating_add(4).min(text_length);
+        if !has_page || probe_start < page_start || probe_end > page_end {
+            page_start = probe_start;
+            page_end = probe_start.saturating_add(full_page_bytes).min(text_length);
+            staged_bytes = staged_bytes.saturating_add(page_end - page_start);
+            has_page = true;
+        }
+    }
+    let probe_budget = offsets
+        .len()
+        .saturating_mul(VALUE_LABEL_BOUNDARY_PROBE_BYTES)
+        .saturating_mul(VALUE_LABEL_PAGE_READ_AMPLIFICATION);
+    if staged_bytes > probe_budget {
+        VALUE_LABEL_BOUNDARY_PROBE_BYTES
+    } else {
+        full_page_bytes
+    }
 }
 
 fn first_invalid_utf8_boundary_batch<R: Read + Seek, F: FnMut() -> bool>(
@@ -4149,13 +4184,20 @@ fn first_invalid_utf8_boundary_batch<R: Read + Seek, F: FnMut() -> bool>(
     page: &mut Utf8BoundaryPage,
 ) -> Result<Option<IndexedTextOffset>, DtaError> {
     offsets.sort_unstable_by_key(|offset| offset.boundary);
+    let page_bytes = adaptive_utf8_boundary_page_bytes(scratch.limit, text_length, offsets);
     let mut first_invalid = None::<IndexedTextOffset>;
     for (position, &offset) in offsets.iter().enumerate() {
         if position % 1024 == 0 {
             check_cancel(should_interrupt)?;
         }
-        if !page.is_boundary(reader, scratch, text_start, text_length, offset.boundary)?
-            && first_invalid.is_none_or(|first| offset.entry_index < first.entry_index)
+        if !page.is_boundary(
+            reader,
+            scratch,
+            text_start,
+            text_length,
+            offset.boundary,
+            page_bytes,
+        )? && first_invalid.is_none_or(|first| offset.entry_index < first.entry_index)
         {
             first_invalid = Some(offset);
         }

@@ -9,6 +9,10 @@ repository = "https://github.com/jbearak/dta-parser"
 publish = false
 exclude = ["tests/**"]
 
+[features]
+default = []
+r-adapter-internal = []
+
 [dependencies]
 arrow-array = "59.2.0"
 arrow-buffer = "59.2.0"

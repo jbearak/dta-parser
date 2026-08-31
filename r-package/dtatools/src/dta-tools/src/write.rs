@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
-use std::fs::File;
 use std::hash::{DefaultHasher, Hasher};
-use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom, Write};
 use std::mem::size_of;
 
 use crate::metadata::{field_widths, FieldWidths};
@@ -194,13 +193,32 @@ trait DtaWriteValueLabelSource {
 
 impl DtaWriteValueLabelSource for () {}
 
-struct AdapterValueLabels<'a, 'labels> {
-    names: &'a [&'labels str],
-    tables: &'a [Vec<DtaWriteValueLabel<'labels>>],
+#[cfg(feature = "r-adapter-internal")]
+#[doc(hidden)]
+pub struct DtaWriteValueLabelRegistry<'a> {
+    names: &'a [&'a str],
+    tables: &'a [Vec<DtaWriteValueLabel<'a>>],
     indices: &'a [Option<usize>],
 }
 
-impl DtaWriteValueLabelSource for AdapterValueLabels<'_, '_> {
+#[cfg(feature = "r-adapter-internal")]
+impl<'a> DtaWriteValueLabelRegistry<'a> {
+    #[doc(hidden)]
+    pub fn new(
+        names: &'a [&'a str],
+        tables: &'a [Vec<DtaWriteValueLabel<'a>>],
+        indices: &'a [Option<usize>],
+    ) -> Self {
+        Self {
+            names,
+            tables,
+            indices,
+        }
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl DtaWriteValueLabelSource for DtaWriteValueLabelRegistry<'_> {
     fn value_label_name(&self, column: usize) -> Option<&str> {
         let table_index = self.indices.get(column).copied().flatten()?;
         self.names.get(table_index).copied()
@@ -873,6 +891,7 @@ fn output_value_labels<'a, S: DtaWriteValueLabelSource + ?Sized>(
         .unwrap_or(&data.columns[column_index].value_labels)
 }
 
+#[cfg(feature = "r-adapter-internal")]
 fn validate_value_label_names<S: DtaWriteValueLabelSource + ?Sized>(
     data: &DtaWriteData<'_>,
     source: &S,
@@ -2079,68 +2098,50 @@ where
     save_dta_impl(writer, data, options, observation_source, &(), row_count)
 }
 
-/// Private Rust-ABI seam used only by the in-repository R adapter. Keeping the
-/// symbol out of the Rust module API prevents the public writer from becoming
-/// an authoring API for named/shared value-label registries.
-#[no_mangle]
-#[allow(clippy::too_many_arguments)]
-pub(crate) unsafe extern "Rust" fn dtatools_internal_write_prevalidated_dta_with_value_labels(
-    writer: *mut BufWriter<File>,
-    data: *const DtaWriteData<'static>,
-    options: *const DtaWriteOptions,
-    observation_source: *const (),
+/// Typed writer seam compiled only for the in-repository R adapter.
+#[cfg(feature = "r-adapter-internal")]
+#[doc(hidden)]
+pub fn write_prevalidated_dta_with_value_label_registry_to<W, S>(
+    writer: &mut W,
+    data: &DtaWriteData<'_>,
+    options: &DtaWriteOptions,
+    observation_source: &S,
     row_count: u64,
-    value_label_names: *const &'static str,
-    value_label_name_count: usize,
-    value_label_tables: *const Vec<DtaWriteValueLabel<'static>>,
-    value_label_table_count: usize,
-    value_label_indices: *const Option<usize>,
-    value_label_index_count: usize,
-) -> Result<DtaWriteSummary, DtaWriteError> {
-    let writer = unsafe { &mut *writer };
-    let data = unsafe { &*data };
-    let options = unsafe { &*options };
-    let observation_source =
-        unsafe { *observation_source.cast::<&'static dyn DtaWriteObservationSource>() };
-    let value_label_names =
-        unsafe { std::slice::from_raw_parts(value_label_names, value_label_name_count) };
-    let value_label_tables =
-        unsafe { std::slice::from_raw_parts(value_label_tables, value_label_table_count) };
-    let value_label_indices =
-        unsafe { std::slice::from_raw_parts(value_label_indices, value_label_index_count) };
+    registry: &DtaWriteValueLabelRegistry<'_>,
+) -> Result<DtaWriteSummary, DtaWriteError>
+where
+    W: Write + Seek,
+    S: DtaWriteObservationSource + ?Sized,
+{
     let column_row_count = validate_structure(data, options)?;
     if column_row_count != row_count {
         return Err(DtaWriteError::InvalidDatasetMetadata(format!(
             "prevalidated row count is {row_count} but columns have {column_row_count} rows"
         )));
     }
-    if value_label_indices.len() != data.columns.len() {
+    if registry.indices.len() != data.columns.len() {
         return Err(DtaWriteError::InvalidDatasetMetadata(
             "value-label table index count does not match the columns".to_owned(),
         ));
     }
-    if value_label_names.len() != value_label_tables.len()
-        || value_label_indices
+    if registry.names.len() != registry.tables.len()
+        || registry
+            .indices
             .iter()
             .flatten()
-            .any(|&index| index >= value_label_tables.len())
+            .any(|&index| index >= registry.tables.len())
     {
         return Err(DtaWriteError::InvalidDatasetMetadata(
             "value-label table registry is inconsistent".to_owned(),
         ));
     }
-    let value_label_source = AdapterValueLabels {
-        names: value_label_names,
-        tables: value_label_tables,
-        indices: value_label_indices,
-    };
-    validate_value_label_names(data, &value_label_source)?;
+    validate_value_label_names(data, registry)?;
     save_dta_impl(
         writer,
         data,
         options,
         observation_source,
-        &value_label_source,
+        registry,
         row_count,
     )
 }

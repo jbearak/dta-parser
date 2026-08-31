@@ -91,3 +91,6 @@ pub use write::{
     DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
     DtaWriteRawNumericValue, DtaWriteSummary, DtaWriteValueLabel,
 };
+#[cfg(feature = "r-adapter-internal")]
+#[doc(hidden)]
+pub use write::{write_prevalidated_dta_with_value_label_registry_to, DtaWriteValueLabelRegistry};

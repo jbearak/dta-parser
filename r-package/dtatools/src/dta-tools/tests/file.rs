@@ -378,6 +378,38 @@ fn alternating_short_first_value_labels(bytes: Vec<u8>, count: usize) -> Vec<u8>
     bytes
 }
 
+fn widely_spaced_first_value_labels(mut bytes: Vec<u8>) -> (Vec<u8>, usize) {
+    const ENTRY_COUNT: usize = 65_536;
+    const TEXT_PAGE_BYTES: usize = 64 * 1024;
+    const TEXT_PAGE_COUNT: usize = 1024;
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    let map_start = metadata.section_offsets.map as usize;
+    let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let length_offset = table_start + b"<lbl>".len();
+    let payload_start = length_offset + 4 + 129 + 3;
+    let old_length =
+        u32::from_le_bytes(bytes[length_offset..length_offset + 4].try_into().unwrap()) as usize;
+    let text_length = TEXT_PAGE_BYTES * TEXT_PAGE_COUNT;
+    let mut payload = Vec::with_capacity(8 + ENTRY_COUNT * 8 + text_length);
+    payload.extend_from_slice(&i32::try_from(ENTRY_COUNT).unwrap().to_le_bytes());
+    payload.extend_from_slice(&i32::try_from(text_length).unwrap().to_le_bytes());
+    for index in 0..ENTRY_COUNT {
+        let page = index % TEXT_PAGE_COUNT;
+        let boundary = page * TEXT_PAGE_BYTES + 2;
+        payload.extend_from_slice(&i32::try_from(boundary).unwrap().to_le_bytes());
+    }
+    payload.resize(8 + ENTRY_COUNT * 8 + text_length, 0);
+    let new_length = payload.len();
+    bytes.splice(payload_start..payload_start + old_length, payload);
+    bytes[length_offset..length_offset + 4]
+        .copy_from_slice(&u32::try_from(new_length).unwrap().to_le_bytes());
+    let extra = u64::try_from(new_length - old_length).unwrap();
+    for index in 12..=13 {
+        add_v118_map_offset(&mut bytes, map_start, index, extra);
+    }
+    (bytes, text_length)
+}
+
 fn wide_empty_fixed_strings(mut bytes: Vec<u8>) -> (Vec<u8>, u32) {
     const WIDE: usize = 2045;
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
@@ -1125,6 +1157,33 @@ fn unordered_unselected_value_label_offsets_use_bounded_file_io() {
     assert!(total_read < file_length * 5, "read {total_read} bytes");
     assert!(
         trace.seeks.len() < 5_000,
+        "issued {} seeks",
+        trace.seeks.len()
+    );
+}
+
+#[test]
+fn widely_spaced_offset_batches_bound_repeated_page_reads() {
+    let (bytes, text_length) = widely_spaced_first_value_labels(fixture("value_labels_v118.dta"));
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader(reader).unwrap();
+    {
+        let mut trace = trace.borrow_mut();
+        trace.reads.clear();
+        trace.seeks.clear();
+    }
+    let projected = file
+        .read_with_options(&options(0, None, Vec::new()))
+        .unwrap();
+    assert!(projected.value_label_tables.is_empty());
+    let trace = trace.borrow();
+    let total_read = trace.reads.iter().map(|(_, length)| *length).sum::<usize>();
+    assert!(
+        total_read < text_length * 3,
+        "read {total_read} bytes while validating {text_length} text bytes"
+    );
+    assert!(
+        trace.seeks.len() < 25_000,
         "issued {} seeks",
         trace.seeks.len()
     );
