@@ -439,6 +439,16 @@ describe('parse_metadata', () => {
                     oversized.byteOffset + oversized.byteLength
                 )
             )).toThrow('67,784-byte limit');
+            const reservedOversized = Buffer.from(oversized);
+            const name = record + 4 + 129;
+            reservedOversized.fill(0, name, name + 129);
+            reservedOversized.write('note0', name, 'ascii');
+            expect(() => parse_metadata(
+                reservedOversized.buffer.slice(
+                    reservedOversized.byteOffset,
+                    reservedOversized.byteOffset + reservedOversized.byteLength
+                )
+            )).toThrow('67,784-byte limit');
         });
 
         it('rejects invalid raw modern characteristic names', () => {

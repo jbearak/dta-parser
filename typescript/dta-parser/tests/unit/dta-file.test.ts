@@ -442,6 +442,13 @@ describe('DtaFile', () => {
                 oversized[finalValueByte] = 0x78;
                 fs.writeFileSync(filePath, oversized);
                 await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
+
+                const reservedOversized = Buffer.from(oversized);
+                const name = expansion + 5 + 33;
+                reservedOversized.fill(0, name, name + 33);
+                reservedOversized.write('note0', name, 'ascii');
+                fs.writeFileSync(filePath, reservedOversized);
+                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });
             }

@@ -30,7 +30,6 @@ import {
     text_decoder,
 } from './text-encoding';
 import {
-    MAX_STATA_METADATA_VALUE_BYTES,
     stataMetadataValueEnd,
     StataMetadataCollector,
 } from './stata-metadata';
@@ -200,13 +199,10 @@ function parse_characteristics(
             bytes, pos + field_width, field_width, decoder
         );
         const valueLength = length - names_length;
-        if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
-            throw new Error('Characteristic value exceeds the 67,784-byte limit');
-        }
+        const valueStart = pos + names_length;
+        const valueEnd = stataMetadataValueEnd(bytes, valueStart, valueLength);
         collector.pushLazy(target, name, () => {
-            const start = pos + names_length;
-            const end = stataMetadataValueEnd(bytes, start, valueLength);
-            return decoder.decode(bytes.subarray(start, end));
+            return decoder.decode(bytes.subarray(valueStart, valueEnd));
         });
         pos += length;
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {

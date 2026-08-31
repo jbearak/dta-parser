@@ -41,7 +41,6 @@ import {
     text_decoder,
 } from './text-encoding';
 import {
-    MAX_STATA_METADATA_VALUE_BYTES,
     stataMetadataValueEnd,
     StataMetadataCollector,
 } from './stata-metadata';
@@ -161,19 +160,14 @@ function scan_expansion_fields(
                 layout.varname_width, decoder
             );
             const my_value_length = my_len - 2 * layout.varname_width;
-            if (my_value_length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
-                throw new Error('Characteristic value exceeds the 67,784-byte limit');
-            }
+            const valueStart = pos + 2 * layout.varname_width;
+            const valueEnd = stataMetadataValueEnd(
+                bytes, valueStart, my_value_length
+            );
             collector.pushLazy(
                 my_variable,
                 my_characteristic,
-                () => {
-                    const start = pos + 2 * layout.varname_width;
-                    const end = stataMetadataValueEnd(
-                        bytes, start, my_value_length
-                    );
-                    return decoder.decode(bytes.subarray(start, end));
-                }
+                () => decoder.decode(bytes.subarray(valueStart, valueEnd))
             );
         }
 

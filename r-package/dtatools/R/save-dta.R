@@ -600,7 +600,7 @@ save_dta <- function(data, path, version = 19L,
                                   numeric_shift = 0,
                                   numeric_scale = 1,
                                   character_missing = NULL,
-                                  stata_metadata = .stata_metadata_payload(character(), character())) {
+                                  stata_metadata) {
     result <- list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
         label_values, label_texts, values, has_value_labels,
@@ -764,9 +764,6 @@ save_dta <- function(data, path, version = 19L,
     label <- .write_text(label, "label")
     notes <- stata_notes(data)
     characteristics <- stata_characteristics(data)
-    if (length(notes) > 9999L || any(nchar(notes, type = "bytes") > 67784L)) {
-        .dta_write_abort("Dataset notes exceed Stata's count or UTF-8 byte limits")
-    }
     columns <- Map(
         .prepare_dta_write_column, data, data_names, kinds,
         MoreArgs = list(

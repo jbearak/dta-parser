@@ -2182,6 +2182,19 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
         encoding: TextEncoding,
         context: &'static str,
     ) -> Result<String, DtaError> {
+        self.consume_field(length, Some(encoding), context)
+    }
+
+    fn validate_field(&mut self, length: usize, context: &'static str) -> Result<(), DtaError> {
+        self.consume_field(length, None, context).map(drop)
+    }
+
+    fn consume_field(
+        &mut self,
+        length: usize,
+        encoding: Option<TextEncoding>,
+        context: &'static str,
+    ) -> Result<String, DtaError> {
         let start = self.position;
         validate_raw_value_length(length, error_offset(start), context)?;
         let end = checked_add_u64(
@@ -2198,7 +2211,7 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
                 available: usize::try_from(self.end.saturating_sub(start)).unwrap_or(usize::MAX),
             });
         }
-        let mut decoder = encoding.new_decoder();
+        let mut decoder = encoding.map(TextEncoding::new_decoder);
         let mut output = String::new();
         let mut content_length = 0_usize;
         while self.position < end {
@@ -2231,7 +2244,9 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
                 "metadata value length",
             )?;
             let last = nul.is_some() || next == end;
-            decode_into_string(&mut decoder, input, last, &mut output)?;
+            if let Some(decoder) = decoder.as_mut() {
+                decode_into_string(decoder, input, last, &mut output)?;
+            }
             self.position = next;
             if nul.is_some() {
                 self.position = end;
@@ -2766,7 +2781,7 @@ fn read_modern_characteristics<R: Read + Seek>(
                 .get_or_insert_with(CharacteristicCollector::default)
                 .push(accepted, value);
         } else {
-            section.advance(value_length, "characteristic value")?;
+            section.validate_field(value_length, "characteristic value")?;
         }
         debug_assert_eq!(section.position(), close);
         section.read_into(5, &mut record, "reading </ch>")?;
@@ -3368,7 +3383,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                     .get_or_insert_with(CharacteristicCollector::default)
                     .push(accepted, value);
             } else {
-                section.advance(value_length, "legacy characteristic value")?;
+                section.validate_field(value_length, "legacy characteristic value")?;
             }
         } else {
             section.advance(payload_length, "legacy expansion-field payload")?;

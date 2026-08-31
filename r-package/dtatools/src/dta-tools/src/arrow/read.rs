@@ -469,6 +469,7 @@ fn parse_profile(
     footer: &Footer,
     apply_profile: bool,
     verify: bool,
+    selected: Option<&[usize]>,
 ) -> Result<Option<Profile>, ArrowProfileError> {
     if !apply_profile {
         return Ok(None);
@@ -488,19 +489,32 @@ fn parse_profile(
             .get(ARROW_DATASET_KEY)
             .map(String::as_str),
     )?;
-    let mut fields = Vec::with_capacity(footer.schema.fields().len());
-    for field in footer.schema.fields() {
+    let selected_fields = selected.map(|selected| {
+        let mut fields = vec![false; footer.schema.fields().len()];
+        for &index in selected {
+            fields[index] = true;
+        }
+        fields
+    });
+    let mut fields: Vec<Option<ArrowFieldDocument>> = std::iter::repeat_with(|| None)
+        .take(footer.schema.fields().len())
+        .collect();
+    for (index, field) in footer.schema.fields().iter().enumerate() {
+        if selected_fields
+            .as_ref()
+            .is_some_and(|selected| !selected[index])
+        {
+            continue;
+        }
         let document = field
             .metadata()
             .get(ARROW_FIELD_KEY)
             .map(|json| parse_field_document(version, field, json))
             .transpose()?;
-        fields.push(document);
-    }
-    for (field, document) in footer.schema.fields().iter().zip(&fields) {
-        if let Some(document) = document {
+        if let Some(document) = &document {
             validate_value_label_reference(version, field, document, &dataset)?;
         }
+        fields[index] = document;
     }
     let checksums = if verify {
         let json = footer
@@ -534,20 +548,21 @@ fn parse_profile(
 }
 
 fn discard_private_profile_json(footer: &mut Footer) {
-    let mut schema_metadata = footer.schema.metadata().clone();
-    schema_metadata.remove(ARROW_PROFILE_VERSION_KEY);
-    schema_metadata.remove(ARROW_DATASET_KEY);
-    let fields: Vec<Arc<Field>> = footer
-        .schema
-        .fields()
-        .iter()
-        .map(|field| {
-            let mut metadata = field.metadata().clone();
-            metadata.remove(ARROW_FIELD_KEY);
-            Arc::new(field.as_ref().clone().with_metadata(metadata))
-        })
-        .collect();
-    footer.schema = Schema::new_with_metadata(fields, schema_metadata);
+    footer.schema.metadata.remove(ARROW_PROFILE_VERSION_KEY);
+    footer.schema.metadata.remove(ARROW_DATASET_KEY);
+    let owned_fields = std::mem::take(&mut footer.schema.fields);
+    let mut fields: Vec<Arc<Field>> = owned_fields.iter().cloned().collect();
+    drop(owned_fields);
+    for field in &mut fields {
+        let metadata = field
+            .metadata()
+            .iter()
+            .filter(|(key, _)| key.as_str() != ARROW_FIELD_KEY)
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect();
+        Arc::make_mut(field).set_metadata(metadata);
+    }
+    footer.schema.fields = fields.into();
     footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
 }
 
@@ -1092,8 +1107,6 @@ fn prepare_read<R: Read + Seek>(
         .schema
         .metadata()
         .contains_key(ARROW_PROFILE_VERSION_KEY);
-    let mut profile = parse_profile(&footer, options.profile, options.verify)?;
-
     let field_count = footer.schema.fields().len();
     let selected: Vec<usize> = match &options.columns {
         None => (0..field_count).collect(),
@@ -1107,19 +1120,12 @@ fn prepare_read<R: Read + Seek>(
             })
             .collect::<Result<_, _>>()?,
     };
-    if options.columns.is_some() {
-        if let Some(profile) = profile.as_mut() {
-            let mut retained = vec![false; field_count];
-            for &index in &selected {
-                retained[index] = true;
-            }
-            for (index, field) in profile.fields.iter_mut().enumerate() {
-                if !retained[index] {
-                    *field = None;
-                }
-            }
-        }
-    }
+    let profile = parse_profile(
+        &footer,
+        options.profile,
+        options.verify,
+        options.columns.as_ref().map(|_| selected.as_slice()),
+    )?;
     if carries_profile {
         discard_private_profile_json(&mut footer);
     }
@@ -1936,7 +1942,7 @@ fn stored_signature_from_footer<R: Read + Seek>(
     reader: &mut R,
     footer: &Footer,
 ) -> Result<String, ArrowProfileError> {
-    let profile = parse_profile(footer, true, false)?.ok_or_else(|| {
+    let profile = parse_profile(footer, true, false, None)?.ok_or_else(|| {
         ArrowProfileError::InvalidFile(
             "the file carries no dtatools Arrow profile, so it stores no checksums to derive \
              a signature from"
@@ -2027,7 +2033,7 @@ impl ArrowFileSnapshot {
             }
             other => other?,
         };
-        let profile = parse_profile(&footer, apply_profile, false)?;
+        let profile = parse_profile(&footer, apply_profile, false, None)?;
         let ambiguous_int32: Vec<u32> = if scan_ambiguous_int32 {
             footer
                 .schema

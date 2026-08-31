@@ -1013,6 +1013,62 @@ fn incompatible_field_semantics_are_malformed_with_an_escape_hatch() {
 }
 
 #[test]
+fn projection_does_not_deserialize_unselected_field_documents() {
+    let selected = Field::new("selected", DataType::Int32, true);
+    let mut unselected = Field::new("unselected", DataType::Int32, true);
+    unselected.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        "not JSON".to_owned(),
+    )]));
+    let schema = Arc::new(
+        Schema::new(vec![selected, unselected]).with_metadata(HashMap::from([(
+            ARROW_PROFILE_VERSION_KEY.to_owned(),
+            "0".to_owned(),
+        )])),
+    );
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![
+            Arc::new(Int32Array::from(vec![1])) as ArrayRef,
+            Arc::new(Int32Array::from(vec![2])) as ArrayRef,
+        ],
+    )
+    .expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let full_error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("a full read parses every field document");
+    assert!(matches!(
+        full_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+
+    let projected = read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("projection skips an unselected field document");
+    assert_eq!(projected.columns.len(), 1);
+    assert_eq!(projected.columns[0].name, "selected");
+}
+
+#[test]
 fn nonnullable_profile_fields_reject_nulls() {
     let mut field = Field::new("x", DataType::Int8, false);
     field.set_metadata(HashMap::from([(

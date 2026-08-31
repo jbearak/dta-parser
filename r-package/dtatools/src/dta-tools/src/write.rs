@@ -863,7 +863,7 @@ fn write_characteristic<W: Write>(
     target: &str,
     name: &str,
     value: &str,
-) -> Result<(), DtaWriteError> {
+) -> Result<usize, DtaWriteError> {
     write_tag(writer, b"<ch>")?;
     let payload_length = WRITE_FIELD_WIDTHS
         .varname
@@ -881,7 +881,9 @@ fn write_characteristic<W: Write>(
     writer.write_all(value.as_bytes())?;
     writer.write_all(&[0])?;
     write_tag(writer, b"</ch>")?;
-    Ok(())
+    payload_length
+        .checked_add(b"<ch>".len() + 4 + b"</ch>".len())
+        .ok_or(DtaWriteError::Overflow("characteristic"))
 }
 
 fn validate_notes(notes: &[DtaWriteNote<'_>], context: &str) -> Result<(), DtaWriteError> {
@@ -1032,29 +1034,40 @@ where
 
     offsets.characteristics = position(writer)?;
     write_tag(writer, b"<characteristics>")?;
-    let write_scope = |writer: &mut W,
-                       target: &str,
-                       notes: &[DtaWriteNote<'_>],
-                       characteristics: &[DtaWriteCharacteristic<'_>]|
+    let mut bytes_since_interrupt = 0_usize;
+    let mut write_scope = |writer: &mut W,
+                           target: &str,
+                           notes: &[DtaWriteNote<'_>],
+                           characteristics: &[DtaWriteCharacteristic<'_>]|
      -> Result<(), DtaWriteError> {
+        let mut record_written = |bytes: usize| -> Result<(), DtaWriteError> {
+            bytes_since_interrupt = bytes_since_interrupt.saturating_add(bytes);
+            if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES {
+                source.check_interrupt()?;
+                bytes_since_interrupt = 0;
+            }
+            Ok(())
+        };
         if let Some(maximum) = notes
             .iter()
             .enumerate()
             .map(|(index, note)| note.resolved_number(index))
             .max()
         {
-            write_characteristic(writer, target, "note0", &maximum.to_string())?;
+            let maximum = maximum.to_string();
+            record_written(write_characteristic(writer, target, "note0", &maximum)?)?;
         }
         for (index, note) in notes.iter().enumerate() {
-            write_characteristic(
-                writer,
-                target,
-                &format!("note{}", note.resolved_number(index)),
-                &note.text,
-            )?;
+            let name = format!("note{}", note.resolved_number(index));
+            record_written(write_characteristic(writer, target, &name, &note.text)?)?;
         }
         for characteristic in characteristics {
-            write_characteristic(writer, target, &characteristic.name, &characteristic.value)?;
+            record_written(write_characteristic(
+                writer,
+                target,
+                &characteristic.name,
+                &characteristic.value,
+            )?)?;
         }
         Ok(())
     };

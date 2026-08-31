@@ -123,6 +123,31 @@ test_that("writers reject manually attached over-limit metadata safely", {
     }
 })
 
+test_that("native metadata envelopes validate counts before allocation", {
+    marker <- paste0(intToUtf8(30L), "dtatools:stata-metadata:1")
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    specification <- function(metadata) list("", metadata, list(), "")
+
+    expect_error(
+        .Call(
+            dtatools:::C_dtatools_write,
+            specification(c(marker, "1000000000", "0")),
+            path
+        ),
+        "note count exceeds 9,999"
+    )
+    expect_error(
+        .Call(
+            dtatools:::C_dtatools_write,
+            specification(c(marker, "0", "0", "trailing")),
+            path
+        ),
+        "counts do not match"
+    )
+    expect_false(file.exists(path))
+})
+
 test_that("Arrow retains `_dta` variable metadata that DTA cannot represent", {
     data <- data.frame(`_dta` = 1, check.names = FALSE)
     data <- set_stata_note(data, 1, "variable note", variable = "_dta")

@@ -639,6 +639,48 @@ fn rejects_metadata_on_variable_named_dta_before_writing() {
 }
 
 #[test]
+fn dense_metadata_writes_poll_at_bounded_byte_intervals() {
+    let values: [DtaWriteNumericValue; 0] = [];
+    let characteristics = (0..130)
+        .map(|index| DtaWriteCharacteristic {
+            name: format!("c{index}").into(),
+            value: "x".repeat(67_784).into(),
+        })
+        .collect();
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics,
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+    let source = InterruptingStrlSource {
+        value: String::new(),
+        interrupt_at: 7,
+        checks: Cell::new(0),
+    };
+    let error = write_prevalidated_dta_with_observation_source_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+        &source,
+        0,
+    )
+    .unwrap_err();
+    assert!(matches!(error, DtaWriteError::Interrupted));
+    assert_eq!(source.checks.get(), 7);
+}
+
+#[test]
 fn validates_display_format_grammar_and_storage_compatibility() {
     let numeric = [DtaWriteNumericValue::Value(1.0)];
     let mut data = DtaWriteData {
@@ -1210,13 +1252,24 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
         parse_metadata(&oversized),
         Err(DtaError::MetadataValueTooLong { .. })
     ));
+    let mut reserved_oversized = oversized.clone();
+    let name = record + 4 + 129;
+    reserved_oversized[name..name + 129].fill(0);
+    reserved_oversized[name..name + 5].copy_from_slice(b"note0");
     assert!(matches!(
         DtaFile::from_reader(Cursor::new(oversized)),
         Err(DtaError::MetadataValueTooLong { .. })
     ));
+    assert!(matches!(
+        parse_metadata(&reserved_oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(reserved_oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
 
     let mut invalid_raw_name = bytes.clone();
-    let name = record + 4 + 129;
     invalid_raw_name[name..name + 129].fill(0);
     invalid_raw_name[name..name + 4].copy_from_slice(b"2bad");
     assert!(matches!(

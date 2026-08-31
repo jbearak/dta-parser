@@ -382,12 +382,12 @@ fn parse_characteristics(
         let (variable, remainder) = payload.split_at(width);
         let (characteristic, value) = remainder.split_at(width);
         validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
+        validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
         let target = encoding.decode(field_bytes(variable));
         let name = encoding.decode(field_bytes(characteristic));
         if let Some(accepted) = classify_characteristic(&target, name, cursor + width, |target| {
             variable_indexes.resolve(target)
         })? {
-            validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
             collector
                 .get_or_insert_with(CharacteristicCollector::default)
                 .push(accepted, encoding.decode(field_bytes(value)));

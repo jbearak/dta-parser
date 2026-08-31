@@ -5,7 +5,7 @@ use unicode_general_category::{get_general_category, GeneralCategory};
 use crate::{DtaError, StataCharacteristic, StataNote, VariableInfo};
 
 pub(crate) const MAX_NOTE_NUMBER: u32 = 9_999;
-pub const MAX_METADATA_VALUE_BYTES: usize = 67_784;
+pub(crate) const MAX_METADATA_VALUE_BYTES: usize = 67_784;
 pub(crate) const MAX_CHARACTERISTIC_NAME_BYTES: usize = 128;
 
 pub(crate) fn validate_raw_value_length(
@@ -98,7 +98,7 @@ pub(crate) fn valid_stata_name_syntax(name: &str, maximum_characters: usize) -> 
         && name.chars().count() <= maximum_characters
 }
 
-pub fn valid_metadata_value(value: &str) -> bool {
+pub(crate) fn valid_metadata_value(value: &str) -> bool {
     !value.contains('\0') && value.len() <= MAX_METADATA_VALUE_BYTES
 }
 
@@ -106,7 +106,7 @@ pub fn valid_note(number: u32, text: &str) -> bool {
     (1..=MAX_NOTE_NUMBER).contains(&number) && valid_metadata_value(text)
 }
 
-pub fn valid_characteristic_name(name: &str) -> bool {
+pub(crate) fn valid_characteristic_name(name: &str) -> bool {
     valid_stata_name_syntax(name, 32)
         && name.len() <= MAX_CHARACTERISTIC_NAME_BYTES
         && !is_reserved_note_name(name.as_bytes())

@@ -191,6 +191,9 @@ function validCharacteristicName(name: string): void {
 export function stataMetadataValueEnd(
     bytes: Uint8Array, start: number, length: number
 ): number {
+    if (length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+        throw new Error('Characteristic value exceeds the 67,784-byte limit');
+    }
     const limit = start + length;
     let end = start;
     while (end < limit && bytes[end] !== 0) end++;

@@ -14,8 +14,7 @@ use ahash::AHashMap;
 use dta_tools::{
     classify_byte_missing_for_version, classify_float_missing_bits_for_version,
     classify_int_missing_for_version, classify_long_missing_for_version,
-    dta_write_numeric_value_is_representable, encode_numeric,
-    valid_characteristic, valid_note,
+    dta_write_numeric_value_is_representable, encode_numeric, valid_characteristic, valid_note,
     write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
     DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
@@ -81,6 +80,7 @@ extern "C" {
     ) -> c_int;
     fn dtatools_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtatools_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
+    fn dtatools_xlength(value: Sexp) -> usize;
     fn dtatools_string_elt_utf8(values: Sexp, index: usize) -> *const c_char;
     fn dtatools_write_numeric_region(
         reader: *const c_void,
@@ -117,17 +117,46 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
     note: impl Fn(u32, &'a str) -> N,
     characteristic: impl Fn(&'a str, &'a str) -> C,
 ) -> Result<(Vec<N>, Vec<C>), String> {
+    let field_count = dtatools_xlength(values);
     let field = |index| {
         required_c_str(
             dtatools_string_elt_utf8(values, index),
             "internal Stata metadata field",
         )
     };
+    let count_offset = start
+        .checked_add(1)
+        .filter(|offset| *offset < field_count)
+        .ok_or_else(|| "truncated internal Stata metadata envelope".to_owned())?;
     if field(start)? != STATA_METADATA_MARKER {
         return Err("invalid internal Stata metadata marker".to_owned());
     }
-    let note_count = parse_metadata_count(field(start + 1)?, "note")?;
-    let mut cursor = start + 2;
+    let note_count = parse_metadata_count(field(count_offset)?, "note")?;
+    if note_count > 9_999 {
+        return Err("internal Stata note count exceeds 9,999".to_owned());
+    }
+    let mut cursor = count_offset
+        .checked_add(1)
+        .and_then(|offset| {
+            note_count
+                .checked_mul(2)
+                .and_then(|count| offset.checked_add(count))
+        })
+        .filter(|offset| *offset < field_count)
+        .ok_or_else(|| "truncated internal Stata note metadata".to_owned())?;
+    let characteristic_count = parse_metadata_count(field(cursor)?, "characteristic")?;
+    cursor = cursor
+        .checked_add(1)
+        .ok_or_else(|| "internal Stata metadata layout overflows".to_owned())?;
+    let expected_end = characteristic_count
+        .checked_mul(2)
+        .and_then(|count| cursor.checked_add(count))
+        .ok_or_else(|| "internal Stata characteristic count is too large".to_owned())?;
+    if expected_end != field_count {
+        return Err("internal Stata metadata counts do not match its fields".to_owned());
+    }
+
+    let mut cursor = count_offset + 1;
     let mut notes = Vec::new();
     notes
         .try_reserve_exact(note_count)
@@ -143,7 +172,6 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
         notes.push(note(number, text));
         cursor += 2;
     }
-    let characteristic_count = parse_metadata_count(field(cursor)?, "characteristic")?;
     cursor += 1;
     let mut characteristics = Vec::new();
     characteristics

@@ -275,6 +275,11 @@ fn scan_expansion_fields_ordered(
                 cursor + 2 * layout.varname_width,
                 "legacy characteristic value",
             )?;
+            validate_raw_value_bytes(
+                value,
+                cursor + 2 * layout.varname_width,
+                "legacy characteristic value",
+            )?;
             let target = encoding.decode(field_bytes(variable));
             let name = encoding.decode(field_bytes(characteristic));
             if let Some(accepted) =
@@ -282,11 +287,6 @@ fn scan_expansion_fields_ordered(
                     variable_indexes.resolve(target)
                 })?
             {
-                validate_raw_value_bytes(
-                    value,
-                    cursor + 2 * layout.varname_width,
-                    "legacy characteristic value",
-                )?;
                 collector
                     .get_or_insert_with(CharacteristicCollector::default)
                     .push(accepted, encoding.decode(field_bytes(value)));

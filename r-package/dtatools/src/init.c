@@ -2774,6 +2774,10 @@ int dtatools_alloc_vector(int type, R_xlen_t length, SEXP *result) {
     return ok;
 }
 
+size_t dtatools_xlength(SEXP value) {
+    return (size_t) XLENGTH(value);
+}
+
 void dtatools_release_object(SEXP object) {
     if (object != NULL) R_ReleaseObject(object);
 }

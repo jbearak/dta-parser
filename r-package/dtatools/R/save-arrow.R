@@ -462,9 +462,6 @@ save_arrow <- function(data, path,
     notes <- stata_notes(data)
     characteristics <- stata_characteristics(data)
     notes[] <- .arrow_utf8(unname(notes), "Dataset notes")
-    if (length(notes) > 9999L || any(nchar(notes, type = "bytes") > 67784L)) {
-        .dta_write_abort("Dataset notes exceed Stata's count or UTF-8 byte limits")
-    }
     columns <- Map(
         .prepare_arrow_write_column, data, data_names, kinds,
         MoreArgs = list(adjust_tz = adjust_tz)
