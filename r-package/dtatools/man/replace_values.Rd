@@ -40,11 +40,13 @@ The first mutation attaches package-owned reference state to the same
 data-frame or tibble object. Existing columns remain in the data frame;
 generated columns live in the attached state until an ordinary R assignment
 materializes a complete copy. This lets \code{gen()} grow the visible column set
-without searching for or rebinding a name in the caller. Base subsetting,
-tibble conversion, package writers, and metadata helpers operate on the
-complete visible dataset. Consumers that bypass S3 methods and inspect a
-data frame's internal column-pointer array do not see generated columns;
-pass \code{as.data.frame(data)} or \code{tibble::as_tibble(data)} to such a consumer.
+without searching for or rebinding a name in the caller. Base extraction and
+data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
+metadata helpers operate on the complete visible dataset. Consumers that
+bypass S3 methods and inspect a data frame's internal column-pointer array do
+not see generated columns; pass \code{as.data.frame(data)} or
+\code{tibble::as_tibble(data)} to such a consumer. This includes non-generic
+combiners such as \code{dplyr::bind_rows()}.
 \code{unclass()} and direct inspection of internal attributes are likewise not
 supported ways to access generated columns.
 }

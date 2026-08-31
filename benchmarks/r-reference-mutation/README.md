@@ -10,7 +10,8 @@ The workload times repeated one-row changes in a five-million-row compact Stata
 byte column. It fails if the direct target materializes or if R reports one
 allocation as large as the native byte payload. A second timing keeps an
 unselected missing value at the end of the target to catch accidental
-full-column cache scans. It then generates a five-million-row column and uses
+full-column cache scans. The run fails when that path is materially slower than
+the direct sparse update. It then generates a five-million-row column and uses
 `tracemem()` to check that neither existing column payload was copied.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to

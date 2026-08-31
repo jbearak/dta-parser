@@ -9,11 +9,13 @@
 #' data-frame or tibble object. Existing columns remain in the data frame;
 #' generated columns live in the attached state until an ordinary R assignment
 #' materializes a complete copy. This lets `gen()` grow the visible column set
-#' without searching for or rebinding a name in the caller. Base subsetting,
-#' tibble conversion, package writers, and metadata helpers operate on the
-#' complete visible dataset. Consumers that bypass S3 methods and inspect a
-#' data frame's internal column-pointer array do not see generated columns;
-#' pass `as.data.frame(data)` or `tibble::as_tibble(data)` to such a consumer.
+#' without searching for or rebinding a name in the caller. Base extraction and
+#' data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
+#' metadata helpers operate on the complete visible dataset. Consumers that
+#' bypass S3 methods and inspect a data frame's internal column-pointer array do
+#' not see generated columns; pass `as.data.frame(data)` or
+#' `tibble::as_tibble(data)` to such a consumer. This includes non-generic
+#' combiners such as `dplyr::bind_rows()`.
 #' `unclass()` and direct inspection of internal attributes are likewise not
 #' supported ways to access generated columns.
 #'
@@ -242,6 +244,10 @@ gen <- function(data, variable, values, where = NULL) {
         value[is.na(value)] <- FALSE
         return(which(value))
     }
+    if (inherits(value, "stata_numeric") &&
+        !inherits(value, "stata_temporal")) {
+        value <- as.double(value)
+    }
     if (!is.numeric(value) || is.object(value) || !is.null(dim(value))) {
         stop("`where` must yield logical values or numeric row positions",
              call. = FALSE)
@@ -362,7 +368,12 @@ gen <- function(data, variable, values, where = NULL) {
     temporal <- inherits(values, "stata_temporal")
     storage <- if (is.null(declared)) "float" else declared
     output <- rep(NA_real_, row_count)
-    if (length(rows) > 0L) output[rows] <- as.double(values)
+    source <- if (inherits(values, "stata_numeric")) {
+        as.double(values)
+    } else {
+        as.double(vctrs::vec_data(values))
+    }
+    if (length(rows) > 0L) output[rows] <- source
 
     result <- .construct_stata_numeric(
         output, NULL, storage,
@@ -371,10 +382,7 @@ gen <- function(data, variable, values, where = NULL) {
     if (temporal) {
         return(.attach_stata_temporal(result, values, storage))
     }
-    if (!is.null(declared)) {
-        return(.restore_stata_metadata(result, values, storage))
-    }
-    result
+    .restore_stata_metadata(result, values, storage)
 }
 
 .generated_character <- function(values, rows, row_count) {
@@ -552,4 +560,114 @@ dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
 #' @export
 select.dtatools_ref_data <- function(.data, ...) {
     dplyr::select(.reference_snapshot(.data), ...)
+}
+
+.reference_delegate <- function(data, call, generic, environment) {
+    call[[1L]] <- generic
+    call[[2L]] <- .reference_snapshot(data)
+    eval(call, environment)
+}
+
+# Base and dplyr methods share one boundary: reference state is materialized to
+# a shallow, complete data-frame snapshot before the ordinary implementation
+# runs. The returned transformation follows normal copy-on-modify semantics.
+#' @export
+with.dtatools_ref_data <- function(data, expr, ...) {
+    .reference_delegate(data, sys.call(), base::with, parent.frame())
+}
+
+#' @export
+within.dtatools_ref_data <- function(data, expr, ...) {
+    .reference_delegate(data, sys.call(), base::within, parent.frame())
+}
+
+#' @export
+subset.dtatools_ref_data <- function(x, ...) {
+    .reference_delegate(x, sys.call(), base::subset, parent.frame())
+}
+
+#' @export
+transform.dtatools_ref_data <- function(`_data`, ...) {
+    .reference_delegate(`_data`, sys.call(), base::transform, parent.frame())
+}
+
+#' @export
+rbind.dtatools_ref_data <- function(..., deparse.level = 1) {
+    values <- lapply(list(...), .reference_snapshot)
+    do.call(base::rbind, c(values, list(deparse.level = deparse.level)))
+}
+
+#' @export
+cbind.dtatools_ref_data <- function(..., deparse.level = 1) {
+    values <- lapply(list(...), .reference_snapshot)
+    do.call(base::cbind, c(values, list(deparse.level = deparse.level)))
+}
+
+#' @export
+arrange.dtatools_ref_data <- function(.data, ..., .by_group = FALSE) {
+    .reference_delegate(.data, sys.call(), dplyr::arrange, parent.frame())
+}
+
+#' @export
+filter.dtatools_ref_data <- function(
+    .data, ..., .by = NULL, .preserve = FALSE
+) {
+    .reference_delegate(.data, sys.call(), dplyr::filter, parent.frame())
+}
+
+#' @export
+slice.dtatools_ref_data <- function(.data, ..., .by = NULL, .preserve = FALSE) {
+    .reference_delegate(.data, sys.call(), dplyr::slice, parent.frame())
+}
+
+#' @export
+relocate.dtatools_ref_data <- function(
+    .data, ..., .before = NULL, .after = NULL
+) {
+    .reference_delegate(.data, sys.call(), dplyr::relocate, parent.frame())
+}
+
+#' @export
+rename.dtatools_ref_data <- function(.data, ...) {
+    .reference_delegate(.data, sys.call(), dplyr::rename, parent.frame())
+}
+
+#' @export
+mutate.dtatools_ref_data <- function(.data, ...) {
+    .reference_delegate(.data, sys.call(), dplyr::mutate, parent.frame())
+}
+
+#' @export
+transmute.dtatools_ref_data <- function(.data, ...) {
+    .reference_delegate(.data, sys.call(), dplyr::transmute, parent.frame())
+}
+
+#' @export
+group_by.dtatools_ref_data <- function(
+    .data, ..., .add = FALSE,
+    .drop = dplyr::group_by_drop_default(.data)
+) {
+    .reference_delegate(.data, sys.call(), dplyr::group_by, parent.frame())
+}
+
+#' @export
+summarise.dtatools_ref_data <- function(
+    .data, ..., .by = NULL, .groups = NULL
+) {
+    .reference_delegate(.data, sys.call(), dplyr::summarise, parent.frame())
+}
+
+#' @export
+distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
+    .reference_delegate(.data, sys.call(), dplyr::distinct, parent.frame())
+}
+
+#' @export
+ungroup.dtatools_ref_data <- function(x, ...) {
+    .reference_delegate(x, sys.call(), dplyr::ungroup, parent.frame())
+}
+
+#' @export
+rowwise.dtatools_ref_data <- function(data, ...) {
+    .reference_delegate(data, sys.call(), dplyr::rowwise, parent.frame())
 }

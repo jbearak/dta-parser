@@ -3,7 +3,7 @@
 suppressPackageStartupMessages(library(dtatools))
 
 rows <- 5000000L
-repetitions <- 25L
+repetitions <- 100L
 warmup <- data.frame(compact = stata_byte(1:2))
 for (iteration in seq_len(5L)) {
     replace_values(warmup, compact, 2, where = 1)
@@ -46,7 +46,8 @@ late_missing_time <- system.time(
 )[["elapsed"]] / repetitions
 stopifnot(
     anyNA(late_missing$compact),
-    dtatools:::.is_unmaterialized_numeric_altrep(late_missing$compact)
+    dtatools:::.is_unmaterialized_numeric_altrep(late_missing$compact),
+    late_missing_time < max(0.002, replacement_time * 10)
 )
 
 proxy_source <- stata_byte(rep(1, rows))

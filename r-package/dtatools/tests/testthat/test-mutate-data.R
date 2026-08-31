@@ -93,6 +93,13 @@ test_that("where has documented logical and position semantics", {
     replace_values(data, x, c(20L, 30L, 40L), where = c(2, 2, 4))
     expect_identical(data$x, c(1L, 30L, 8L, 40L, 5L))
 
+    compact_positions <- data.frame(x = 1:3)
+    replace_values(
+        compact_positions, x, c(8L, 9L),
+        where = stata_byte(c(3, 1))
+    )
+    expect_identical(compact_positions$x, c(9L, 2L, 8L))
+
     unchanged <- data$x
     replace_values(data, x, integer(), where = integer())
     expect_identical(data$x, unchanged)
@@ -201,6 +208,13 @@ test_that("compact replacement updates the missing-value cache", {
     replace_values(late_missing, x, 9, where = 1)
     expect_true(anyNA(late_missing$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(late_missing$x))
+
+    duplicate <- data.frame(x = stata_byte(1:3))
+    replace_values(
+        duplicate, x, c(NA_real_, 2), where = c(1, 1)
+    )
+    expect_false(anyNA(duplicate$x))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(duplicate$x))
 })
 
 test_that("DTA-loaded compact and temporal columns use native patching", {
@@ -288,6 +302,28 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(attr(data$labelled, "label"), "Generated label")
     expect_identical(attr(data$labelled, "labels"), c(One = 1))
     expect_identical(attr(data$labelled, "format.stata"), "%8.0g")
+
+    authored <- set_variable_labels(
+        set_value_labels(c(1, 2, 3), One = 1),
+        "Authored label"
+    )
+    attr(authored, "format.stata") <- "%9.0g"
+    gen(data, authored, authored)
+    expect_identical(as.double(data$authored), c(1, 2, 3))
+    expect_identical(var_label(data$authored), "Authored label")
+    expect_identical(val_labels(data$authored), c(One = 1))
+    expect_identical(attr(data$authored, "format.stata"), "%9.0g")
+
+    attributed <- structure(
+        c(4, 5, 6),
+        label = "Attributed label",
+        labels = c(Four = 4),
+        format.stata = "%8.0g"
+    )
+    gen(data, attributed, attributed)
+    expect_identical(var_label(data$attributed), "Attributed label")
+    expect_identical(val_labels(data$attributed), c(Four = 4))
+    expect_identical(attr(data$attributed, "format.stata"), "%8.0g")
 
     gen(data, string, c("a", "long", "z"), where = eligible)
     expect_identical(as.vector(data$string), c("a", "", "z"))
@@ -428,6 +464,12 @@ test_that("reference data preserves base and tibble access semantics", {
         as.double(frame[, "z", drop = FALSE]$z),
         c(5, 7, 9)
     )
+    expect_identical(as.double(with(frame, z)), c(5, 7, 9))
+    expect_identical(as.double(subset(frame, z >= 7)$z), c(7, 9))
+    expect_identical(as.double(transform(frame, a = z + 1)$a), c(6, 8, 10))
+    expect_identical(as.double(within(frame, a <- z + 1)$a), c(6, 8, 10))
+    expect_equal(dim(rbind(frame, frame)), c(6L, 3L))
+    expect_equal(dim(cbind(frame, extra = 10:12)), c(3L, 4L))
 
     tbl <- tibble::tibble(x = 1:3)
     gen(tbl, y, x * 2)
@@ -435,6 +477,24 @@ test_that("reference data preserves base and tibble access semantics", {
     expect_identical(names(tibble::as_tibble(tbl)), c("x", "y"))
     expect_identical(names(dplyr::mutate(tbl, z = y + 1)), c("x", "y", "z"))
     expect_identical(names(dplyr::select(tbl, y)), "y")
+    expect_identical(
+        as.double(dplyr::arrange(tbl, dplyr::desc(y))$y),
+        c(6, 4, 2)
+    )
+    expect_identical(names(dplyr::relocate(tbl, y)), c("y", "x"))
+    expect_identical(names(dplyr::rename(tbl, doubled = y)), c("x", "doubled"))
+    expect_identical(as.double(dplyr::filter(tbl, y >= 4)$y), c(4, 6))
+    expect_identical(as.double(dplyr::slice(tbl, 2:3)$y), c(4, 6))
+    expect_identical(names(dplyr::transmute(tbl, z = y + 1)), "z")
+    expect_identical(nrow(dplyr::distinct(tbl, y)), 3L)
+    grouped <- dplyr::group_by(tbl, y)
+    expect_identical(names(grouped), c("x", "y"))
+    expect_identical(dplyr::group_vars(grouped), "y")
+    expect_identical(
+        dplyr::summarise(grouped, n = dplyr::n())$n,
+        rep(1L, 3)
+    )
+    expect_s3_class(dplyr::rowwise(tbl), "rowwise_df")
     combined <- dplyr::bind_rows(
         tibble::as_tibble(tbl), tibble::as_tibble(tbl)
     )

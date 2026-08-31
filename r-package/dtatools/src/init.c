@@ -1344,6 +1344,8 @@ static SEXP numeric_from_backing(
     SEXP backing, size_t length, int kind, int temporal,
     int format_version, int no_na
 ) {
+    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     void *data = dtatools_numeric_alloc(
         RAW(backing), length, kind, temporal, no_na
     );
@@ -1351,8 +1353,7 @@ static SEXP numeric_from_backing(
         Rf_error("could not allocate compact Stata numeric storage");
     }
     ((numeric_data *) data)->format_version = format_version;
-    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
-    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    R_SetExternalPtrAddr(external, data);
     SEXP result = PROTECT(R_new_altrep(
         dtatools_numeric_class, external, R_NilValue
     ));
@@ -3636,13 +3637,11 @@ SEXP C_dtatools_patch_vector(
     numeric_data *compact = unmaterialized_numeric_storage(target);
     if (compact != NULL) {
         numeric_reader reader = numeric_reader_create(replacement, count);
-        int replacement_has_missing = 0;
         int selected_target_has_missing = 0;
         for (R_xlen_t index = 0; index < count; index++) {
             int missing_code;
             double value = numeric_reader_at(&reader, index, &missing_code);
             validate_compact_patch_value(compact, value, missing_code);
-            if (missing_code >= 0) replacement_has_missing = 1;
             if (numeric_missing_offset_at(
                     compact, (R_xlen_t) INTEGER(rows)[index] - 1
                 ) >= 0) {
@@ -3663,7 +3662,16 @@ SEXP C_dtatools_patch_vector(
                 value, missing_code
             );
         }
-        if (replacement_has_missing) {
+        int patched_has_missing = 0;
+        for (R_xlen_t index = 0; index < count; index++) {
+            if (numeric_missing_offset_at(
+                    compact, (R_xlen_t) INTEGER(rows)[index] - 1
+                ) >= 0) {
+                patched_has_missing = 1;
+                break;
+            }
+        }
+        if (patched_has_missing) {
             compact->no_na = 0;
         } else if (target_had_no_missing) {
             compact->no_na = 1;
