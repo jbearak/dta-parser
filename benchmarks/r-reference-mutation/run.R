@@ -50,6 +50,22 @@ stopifnot(
     late_missing_time < max(0.002, replacement_time * 10)
 )
 
+cleared_missing <- data.frame(
+    compact = stata_byte(c(rep(1, rows - 1L), NA_real_))
+)
+missing_cycle_time <- system.time(
+    for (iteration in seq_len(repetitions)) {
+        replace_values(cleared_missing, compact, 1, where = rows)
+        replace_values(cleared_missing, compact, NA_real_, where = rows)
+    }
+)[["elapsed"]] / (2 * repetitions)
+replace_values(cleared_missing, compact, 1, where = rows)
+stopifnot(
+    !anyNA(cleared_missing$compact),
+    dtatools:::.is_unmaterialized_numeric_altrep(cleared_missing$compact),
+    missing_cycle_time < max(0.002, replacement_time * 10)
+)
+
 proxy_source <- stata_byte(rep(1, rows))
 proxy <- data.frame(compact = dtatools:::.metadata_copy(proxy_source))
 proxy_profile <- tempfile("dtatools-reference-proxy-", fileext = ".out")
@@ -89,12 +105,27 @@ stopifnot(
 )
 
 compact_trace <- tracemem(data$compact)
-generation_time <- system.time(gen(data, generated, 3))[["elapsed"]]
+generation_profile <- tempfile(
+    "dtatools-reference-generation-", fileext = ".out"
+)
+Rprofmem(generation_profile, threshold = 1000)
+generation_time <- system.time(
+    gen(data, generated, stata_byte(3))
+)[["elapsed"]]
+Rprofmem(NULL)
+generation_records <- readLines(generation_profile, warn = FALSE)
+unlink(generation_profile)
+generation_allocation <- suppressWarnings(as.numeric(sub(
+    " .*", "", generation_records
+)))
+largest_generation_allocation <- max(generation_allocation, na.rm = TRUE)
 stopifnot(
     identical(tracemem(data$compact), compact_trace),
     identical(tracemem(data$untouched), untouched_trace),
     dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
-    dtatools:::.is_unmaterialized_numeric_altrep(data$generated)
+    dtatools:::.is_unmaterialized_numeric_altrep(data$generated),
+    identical(stata_storage_type(data$generated), "byte"),
+    largest_generation_allocation < full_double_bytes
 )
 untracemem(data$compact)
 untracemem(data$untouched)
@@ -103,6 +134,7 @@ cat(sprintf("rows\t%d\n", rows))
 cat(sprintf("repetitions\t%d\n", repetitions))
 cat(sprintf("sparse_replacement_seconds\t%.6f\n", replacement_time))
 cat(sprintf("late_missing_sparse_seconds\t%.6f\n", late_missing_time))
+cat(sprintf("missing_cycle_seconds\t%.6f\n", missing_cycle_time))
 cat(sprintf("largest_profiled_allocation_bytes\t%.0f\n", largest_allocation))
 cat(sprintf(
     "largest_proxy_allocation_bytes\t%.0f\n",
@@ -111,6 +143,10 @@ cat(sprintf(
 cat(sprintf(
     "largest_second_proxy_allocation_bytes\t%.0f\n",
     largest_second_proxy_allocation
+))
+cat(sprintf(
+    "largest_generation_allocation_bytes\t%.0f\n",
+    largest_generation_allocation
 ))
 cat(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
 cat(sprintf("full_double_bytes\t%.0f\n", full_double_bytes))

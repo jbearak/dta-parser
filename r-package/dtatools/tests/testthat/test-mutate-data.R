@@ -15,7 +15,7 @@ test_that("reference mutation exports one coherent API", {
     expect_identical(result$value, data)
     expect_identical(data$x, c(0, 2, 0))
     expect_identical(alias$x, data$x)
-    expect_s3_class(data, "dtatools_ref_data")
+    expect_false(inherits(data, "dtatools_ref_data"))
 })
 
 test_that("targets are bare names and support tidy injection", {
@@ -103,6 +103,14 @@ test_that("where has documented logical and position semantics", {
     unchanged <- data$x
     replace_values(data, x, integer(), where = integer())
     expect_identical(data$x, unchanged)
+
+    for (selection in list(FALSE, integer())) {
+        fresh <- data.frame(x = 1:3)
+        before <- serialize(fresh, NULL)
+        replace_values(fresh, x, 9L, where = selection)
+        expect_identical(serialize(fresh, NULL), before)
+        expect_false(inherits(fresh, "dtatools_ref_data"))
+    }
 
     for (bad in list(0, -1, NA_real_, Inf, 1.5, 6)) {
         expect_error(replace_values(data, x, 0L, where = bad), "row positions")
@@ -215,6 +223,25 @@ test_that("compact replacement updates the missing-value cache", {
     )
     expect_false(anyNA(duplicate$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(duplicate$x))
+
+    generated <- data.frame(x = 1:3)
+    gen(generated, y, stata_byte(1), where = 2)
+    expect_true(anyNA(generated$y))
+    replace_values(generated, y, 1, where = c(1, 3))
+    expect_false(anyNA(generated$y))
+
+    restored <- unserialize(serialize(
+        data.frame(x = stata_byte(c(NA_real_, 1))), NULL
+    ))
+    replace_values(restored, x, 1, where = 1)
+    expect_false(anyNA(restored$x))
+
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(arrow_path), add = TRUE)
+    save_arrow(data.frame(x = stata_byte(c(NA_real_, 1))), arrow_path)
+    arrow <- read_arrow(arrow_path)
+    replace_values(arrow, x, 1, where = 1)
+    expect_false(anyNA(arrow$x))
 })
 
 test_that("DTA-loaded compact and temporal columns use native patching", {
@@ -293,6 +320,13 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     gen(data, declared, stata_int(x))
     expect_identical(stata_storage_type(data$declared), "int")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$declared))
+
+    compact_source <- data.frame(x = stata_byte(1:3))
+    gen(compact_source, y, x)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$x))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$y))
+    expect_identical(stata_storage_type(compact_source$y), "byte")
+    expect_identical(as.double(compact_source$y), c(1, 2, 3))
 
     labelled <- stata_byte(c(1, 2, 3))
     attr(labelled, "label") <- "Generated label"
@@ -412,6 +446,36 @@ test_that("subsets, metadata proxies, and serialized data stay isolated", {
     expect_identical(as.double(source$generated), c(2, 3, 4))
 })
 
+test_that("detached metadata payloads do not retain former proxy owners", {
+    finalized <- new.env(parent = emptyenv())
+    finalized$done <- FALSE
+    make_downstream_proxy <- function() {
+        source <- stata_byte(rep(1, 100))
+        proxy <- dtatools:::.metadata_copy(source)
+        tracker <- new.env(parent = emptyenv())
+        reg.finalizer(
+            tracker,
+            function(environment) finalized$done <- TRUE,
+            onexit = FALSE
+        )
+        attr(proxy, "tracker") <- tracker
+        data <- data.frame(x = proxy)
+        replace_values(data, x, 2, where = 1)
+        proxy <- data$x
+        downstream <- dtatools:::.metadata_copy(proxy)
+        attr(downstream, "tracker") <- NULL
+        invisible(dtatools:::.force_altrep_materialization(proxy))
+        downstream
+    }
+    downstream <- make_downstream_proxy()
+    for (iteration in seq_len(5L)) {
+        if (finalized$done) break
+        gc(full = TRUE)
+    }
+    expect_true(finalized$done)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(downstream))
+})
+
 test_that("copy_data keeps Arrow dictionary strings independent and compact", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
@@ -451,11 +515,12 @@ test_that("generated variables participate in package writes", {
 })
 
 test_that("reference data preserves base and tibble access semantics", {
-    frame <- data.frame(x = 1:3, y = 4:6)
+    frame <- data.frame(x = 1:3, y = 4:6, foobar = 7:9)
     row.names(frame) <- c("a", "b", "c")
     gen(frame, z, x + y)
     expected_x <- data.frame(x = 1:3, row.names = c("a", "b", "c"))
     expect_identical(frame[1], expected_x)
+    expect_identical(frame$foo, 7:9)
     rows <- frame[1:2, ]
     expect_identical(rows$x, 1:2)
     expect_identical(rows$y, 4:5)
@@ -472,13 +537,14 @@ test_that("reference data preserves base and tibble access semantics", {
     expect_identical(as.double(subset(frame, z >= 7)$z), c(7, 9))
     expect_identical(as.double(transform(frame, a = z + 1)$a), c(6, 8, 10))
     expect_identical(as.double(within(frame, a <- z + 1)$a), c(6, 8, 10))
-    expect_equal(dim(rbind(frame, frame)), c(6L, 3L))
-    expect_equal(dim(cbind(frame, extra = 10:12)), c(3L, 4L))
+    expect_equal(dim(rbind(frame, frame)), c(6L, 4L))
+    expect_equal(dim(cbind(frame, extra = 10:12)), c(3L, 5L))
     plain <- as.data.frame(frame)
-    expect_equal(dim(rbind(plain, as.data.frame(frame))), c(6L, 3L))
+    expect_equal(dim(rbind(plain, as.data.frame(frame))), c(6L, 4L))
 
     tbl <- tibble::tibble(x = 1:3)
     gen(tbl, y, x * 2)
+    expect_warning(tbl$missing, "Unknown or uninitialised column")
     expect_s3_class(tbl[, "x"], "tbl_df")
     expect_identical(names(tibble::as_tibble(tbl)), c("x", "y"))
     expect_identical(names(dplyr::mutate(tbl, z = y + 1)), c("x", "y", "z"))
@@ -531,6 +597,11 @@ test_that("grouped and rowwise inputs fail before reference mutation", {
         expect_error(replace_values(data, x, 1L), "ungrouped")
         expect_error(gen(data, y, 1L), "ungrouped")
         expect_identical(serialize(data, NULL), before)
+
+        isolated <- copy_data(data)
+        expect_identical(class(isolated), class(data))
+        expect_identical(dplyr::group_vars(isolated), dplyr::group_vars(data))
+        expect_identical(as.data.frame(isolated), as.data.frame(data))
     }
 })
 

@@ -16,8 +16,8 @@ gen(data, variable, values, where = NULL)
 copy_data(data)
 }
 \arguments{
-\item{data}{A data frame or tibble to mutate, or the source passed to
-\code{copy_data()}.}
+\item{data}{An ungrouped data frame or tibble to mutate. \code{copy_data()} also
+accepts grouped and rowwise tibbles.}
 
 \item{variable}{Exactly one unquoted target name.}
 
@@ -38,8 +38,8 @@ Aliases of the dataset or the same target vector observe later generation
 and replacement. This includes column-only subsets that share their column
 payload. Row subsets have new payloads and remain independent. Use
 \code{copy_data()} when isolation is required.
-The first mutation attaches package-owned reference state to the same
-data-frame or tibble object. Existing columns remain in the data frame;
+\code{gen()} attaches package-owned reference state to the same data-frame or
+tibble object. Existing columns remain in the data frame;
 generated columns live in the attached state until an ordinary R assignment
 materializes a complete copy. This lets \code{gen()} grow the visible column set
 without searching for or rebinding a name in the caller. Base extraction and
@@ -57,6 +57,8 @@ it is later, convert it explicitly because base dispatch has already chosen
 the ordinary data-frame method.
 \code{unclass()} and direct inspection of internal attributes are likewise not
 supported ways to access generated columns.
+\code{gen()} and \code{replace_values()} reject grouped and rowwise tibbles. Ungroup
+them before mutation. \code{copy_data()} accepts them and preserves their class.
 }
 \details{
 \code{variable} must be one unquoted name. Tidy-evaluation injection is supported,
@@ -80,8 +82,9 @@ values are indexed by the selected row positions.
 \code{gen()} appends one variable and does not implement Stata's \code{before()} or
 \code{after()} placement. A declared \verb{stata_*()} result keeps its numeric storage;
 otherwise logical, integer, and double results use Stata \code{float} storage.
-Character results use the smallest \code{str1} through \code{str2045} width that fits,
-or \code{strL} above 2,045 UTF-8 bytes. Numeric rows excluded by \code{where} contain
+Character results keep a valid declared \code{stata.string.storage}. Otherwise,
+they use the smallest \code{str1} through \code{str2045} width that fits, or \code{strL}
+above 2,045 UTF-8 bytes. Numeric rows excluded by \code{where} contain
 system missing. Excluded string rows contain \code{""}, Stata's string missing.
 Wrap the value expression in a Stata constructor to request explicit numeric
 storage. Stata \code{by}, \verb{[in]}, and \verb{:lblname} authoring are not supported.
@@ -96,7 +99,7 @@ Topic \tab Stata \tab dtatools \cr
 Existing name \tab Error \tab Error before mutation \cr
 Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab Always \code{float} \cr
 Explicit storage \tab Type prefix \tab \verb{stata_*()} value expression \cr
-Strings \tab Smallest fitting \code{str#} or \code{strL} \tab Smallest UTF-8-byte width or \code{strL} \cr
+Strings \tab Smallest fitting \code{str#} or \code{strL} \tab Declared width, otherwise smallest UTF-8-byte width or \code{strL} \cr
 Rows outside \code{if} \tab Numeric \code{.} or string \code{""} \tab Same \cr
 Expression with \code{if} \tab Evaluated only for selected observations \tab Evaluated once for all rows, then selected \cr
 Placement \tab Optional placement commands \tab Append only \cr

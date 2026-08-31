@@ -7,8 +7,8 @@
 #' and replacement. This includes column-only subsets that share their column
 #' payload. Row subsets have new payloads and remain independent. Use
 #' `copy_data()` when isolation is required.
-#' The first mutation attaches package-owned reference state to the same
-#' data-frame or tibble object. Existing columns remain in the data frame;
+#' `gen()` attaches package-owned reference state to the same data-frame or
+#' tibble object. Existing columns remain in the data frame;
 #' generated columns live in the attached state until an ordinary R assignment
 #' materializes a complete copy. This lets `gen()` grow the visible column set
 #' without searching for or rebinding a name in the caller. Base extraction and
@@ -26,6 +26,8 @@
 #' the ordinary data-frame method.
 #' `unclass()` and direct inspection of internal attributes are likewise not
 #' supported ways to access generated columns.
+#' `gen()` and `replace_values()` reject grouped and rowwise tibbles. Ungroup
+#' them before mutation. `copy_data()` accepts them and preserves their class.
 #'
 #' `variable` must be one unquoted name. Tidy-evaluation injection is supported,
 #' so `gen(data, !!rlang::sym(name), value)` handles a name stored in a string.
@@ -48,8 +50,9 @@
 #' `gen()` appends one variable and does not implement Stata's `before()` or
 #' `after()` placement. A declared `stata_*()` result keeps its numeric storage;
 #' otherwise logical, integer, and double results use Stata `float` storage.
-#' Character results use the smallest `str1` through `str2045` width that fits,
-#' or `strL` above 2,045 UTF-8 bytes. Numeric rows excluded by `where` contain
+#' Character results keep a valid declared `stata.string.storage`. Otherwise,
+#' they use the smallest `str1` through `str2045` width that fits, or `strL`
+#' above 2,045 UTF-8 bytes. Numeric rows excluded by `where` contain
 #' system missing. Excluded string rows contain `""`, Stata's string missing.
 #' Wrap the value expression in a Stata constructor to request explicit numeric
 #' storage. Stata `by`, `[in]`, and `:lblname` authoring are not supported.
@@ -64,7 +67,7 @@
 #' Existing name \tab Error \tab Error before mutation \cr
 #' Numeric default \tab `float`, or `double` after `set type` \tab Always `float` \cr
 #' Explicit storage \tab Type prefix \tab `stata_*()` value expression \cr
-#' Strings \tab Smallest fitting `str#` or `strL` \tab Smallest UTF-8-byte width or `strL` \cr
+#' Strings \tab Smallest fitting `str#` or `strL` \tab Declared width, otherwise smallest UTF-8-byte width or `strL` \cr
 #' Rows outside `if` \tab Numeric `.` or string `""` \tab Same \cr
 #' Expression with `if` \tab Evaluated only for selected observations \tab Evaluated once for all rows, then selected \cr
 #' Placement \tab Optional placement commands \tab Append only \cr
@@ -81,8 +84,8 @@
 #' that target character column, but does not copy the data frame. `copy_data()`
 #' keeps unmaterialized compact numeric and dictionary-string columns compact.
 #'
-#' @param data A data frame or tibble to mutate, or the source passed to
-#'   `copy_data()`.
+#' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
+#'   accepts grouped and rowwise tibbles.
 #' @param variable Exactly one unquoted target name.
 #' @param values A value expression or one-sided formula.
 #' @param where `NULL`, a logical expression, valid row positions, or a
@@ -165,11 +168,12 @@ gen <- function(data, variable, values, where = NULL) {
     result
 }
 
-.as_mutation_data <- function(data) {
+.as_mutation_data <- function(data, allow_grouped = FALSE) {
     if (!is.data.frame(data)) {
         stop("`data` must be a data frame or tibble", call. = FALSE)
     }
-    if (inherits(data, "grouped_df") || inherits(data, "rowwise_df")) {
+    if (!allow_grouped &&
+        (inherits(data, "grouped_df") || inherits(data, "rowwise_df"))) {
         stop("`data` must be an ungrouped data frame or tibble", call. = FALSE)
     }
     names <- names(data)
@@ -243,9 +247,11 @@ gen <- function(data, variable, values, where = NULL) {
 }
 
 .mutation_rows <- function(value, row_count) {
-    if (is.null(value)) return(seq_len(row_count))
+    if (is.null(value)) return(NULL)
     if (is.logical(value)) {
-        if (length(value) == 1L) value <- rep_len(value, row_count)
+        if (length(value) == 1L) {
+            return(if (isTRUE(value)) NULL else integer())
+        }
         if (length(value) != row_count) {
             stop(sprintf(
                 "`where` has size %s; expected size 1 or %s",
@@ -253,6 +259,7 @@ gen <- function(data, variable, values, where = NULL) {
             ), call. = FALSE)
         }
         value[is.na(value)] <- FALSE
+        if (all(value)) return(NULL)
         return(which(value))
     }
     if (inherits(value, "stata_numeric") &&
@@ -275,12 +282,18 @@ gen <- function(data, variable, values, where = NULL) {
     as.integer(value)
 }
 
+.mutation_selected_count <- function(rows, row_count) {
+    if (is.null(rows)) row_count else length(rows)
+}
+
 .slice_mutation_values <- function(values, rows, row_count) {
     size <- vctrs::vec_size(values)
-    selected <- length(rows)
-    if (size == row_count) return(vctrs::vec_slice(values, rows))
+    selected <- .mutation_selected_count(rows, row_count)
+    if (size == row_count) {
+        return(if (is.null(rows)) values else vctrs::vec_slice(values, rows))
+    }
     if (size == selected) return(values)
-    if (size == 1L) return(vctrs::vec_recycle(values, selected))
+    if (size == 1L) return(values)
     if (selected == 0L && size == 0L) return(values)
     stop(sprintf(
         paste0(
@@ -363,14 +376,18 @@ gen <- function(data, variable, values, where = NULL) {
     } else {
         column <- original$columns[[target$location]]
         replacement <- .cast_replacement(values, column)
-        if (is.null(state)) state <- .new_reference_state(data)
+        if (.mutation_selected_count(rows, original$nrow) == 0L) {
+            return(invisible(data))
+        }
     }
 
-    if (!generate && length(rows) > 0L) {
-        .Call(C_dtatools_patch_vector, column, as.integer(rows), replacement)
+    if (!generate) {
+        .Call(C_dtatools_patch_vector, column, rows, replacement)
     }
-    if (generate) state$generated <- generated
-    if (is.null(.reference_state(data))) .mark_reference_data(data, state)
+    if (generate) {
+        state$generated <- generated
+        if (is.null(.reference_state(data))) .mark_reference_data(data, state)
+    }
     invisible(data)
 }
 
@@ -378,18 +395,26 @@ gen <- function(data, variable, values, where = NULL) {
     declared <- stata_storage_type(values)
     temporal <- inherits(values, "stata_temporal")
     storage <- if (is.null(declared)) "float" else declared
-    output <- rep(NA_real_, row_count)
-    source <- if (inherits(values, "stata_numeric")) {
-        as.double(values)
+    source <- if (inherits(values, "stata_numeric") &&
+        !identical(storage, "double")) {
+        values
     } else {
         as.double(vctrs::vec_data(values))
     }
-    if (length(rows) > 0L) output[rows] <- source
-
-    result <- .construct_stata_numeric(
-        output, NULL, storage,
-        temporal = if (temporal) .stata_temporal_code(values) else 0L
-    )
+    temporal_code <- if (temporal) .stata_temporal_code(values) else 0L
+    if (identical(storage, "double")) {
+        output <- rep(NA_real_, row_count)
+        if (is.null(rows)) output[] <- source else output[rows] <- source
+        result <- .construct_stata_numeric(
+            output, NULL, storage, temporal = temporal_code
+        )
+    } else {
+        kind <- match(storage, c("byte", "int", "long", "float")) - 1L
+        result <- .Call(
+            C_dtatools_generate_numeric, source, rows,
+            as.double(row_count), as.integer(kind), as.integer(temporal_code)
+        )
+    }
     if (temporal) {
         return(.attach_stata_temporal(result, values, storage))
     }
@@ -401,7 +426,7 @@ gen <- function(data, variable, values, where = NULL) {
 
 .generated_character <- function(values, rows, row_count) {
     output <- rep("", row_count)
-    if (length(rows) > 0L) output[rows] <- values
+    if (is.null(rows)) output[] <- values else output[rows] <- values
     output[is.na(output)] <- ""
     sizing <- .validate_string_storage(output, NULL, "generated")
     maximum <- sizing$maximum
@@ -438,7 +463,7 @@ gen <- function(data, variable, values, where = NULL) {
 #' @rdname replace_values
 #' @export
 copy_data <- function(data) {
-    source <- .as_mutation_data(data)
+    source <- .as_mutation_data(data, allow_grouped = TRUE)
     columns <- lapply(source$columns, function(column) {
         .Call(C_dtatools_deep_copy_column, column)
     })
@@ -450,7 +475,10 @@ copy_data <- function(data) {
 
 #' @export
 `$.dtatools_ref_data` <- function(x, name) {
-    .data_columns(x)[[name]]
+    call <- sys.call()
+    call[[1L]] <- quote(`$`)
+    call[[2L]] <- .reference_snapshot(x)
+    eval(call, parent.frame())
 }
 
 #' @export

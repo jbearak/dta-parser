@@ -11,8 +11,11 @@ byte column. It fails if the direct target materializes or if R reports one
 allocation as large as the native byte payload. A second timing keeps an
 unselected missing value at the end of the target to catch accidental
 full-column cache scans. The run fails when that path is materially slower than
-the direct sparse update. It then generates a five-million-row column and uses
-`tracemem()` to check that neither existing column payload was copied.
+the direct sparse update. A third timing alternates clearing and restoring the
+last missing value, which catches scans while the missing-value cache changes.
+The run then generates a five-million-row compact byte column from one scalar.
+It fails if the largest R allocation reaches the size of a full double column,
+and uses `tracemem()` to check that neither existing column payload was copied.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

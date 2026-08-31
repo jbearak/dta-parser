@@ -27,7 +27,7 @@ extern int dtatools_write_rust(
 extern int dtatools_write_path_kind(const char *, char **);
 extern void dtatools_free_error(char *);
 extern void dtatools_numeric_free(void *);
-extern void *dtatools_numeric_alloc(void *, size_t, int, int, int);
+extern void *dtatools_numeric_alloc(void *, size_t, int, int, size_t);
 extern int dtatools_gather_numeric_columns(
     const void *, size_t, const int *, const int *, size_t
 );
@@ -99,6 +99,9 @@ static int metadata_real_aggregate_mask;
 static dictstring_data *dictstring_storage(SEXP value);
 static SEXP dictstring_cache(SEXP value);
 static SEXP unmaterialized_dictstring_source(SEXP value);
+static SEXP metadata_proxy_source(SEXP value);
+static SEXP metadata_proxy_owner(SEXP value);
+static void metadata_proxy_set_state(SEXP value, SEXP source, SEXP owner);
 static size_t numeric_kind_width(int kind);
 static void write_numeric_missing(
     unsigned char *output, R_xlen_t index, int kind, int offset
@@ -118,6 +121,7 @@ typedef struct {
     int temporal;
     int format_version;
     int no_na;
+    size_t missing_count;
 } numeric_data;
 
 typedef struct {
@@ -126,6 +130,9 @@ typedef struct {
     uintptr_t output;
     size_t width;
     unsigned char missing[8];
+    uintptr_t missing_count;
+    int kind;
+    int format_version;
 } numeric_gather_column;
 
 enum {
@@ -263,7 +270,7 @@ static numeric_data *unmaterialized_numeric_storage(SEXP value) {
     while (ALTREP(value) &&
            R_altrep_inherits(value, dtatools_metadata_real_class)) {
         if (R_altrep_data2(value) != R_NilValue) return NULL;
-        value = R_altrep_data1(value);
+        value = metadata_proxy_source(value);
     }
     if (!ALTREP(value) ||
         !R_altrep_inherits(value, dtatools_numeric_class) ||
@@ -427,6 +434,23 @@ static int numeric_missing_offset_at(
     default:
         Rf_error("invalid dtatools numeric storage kind");
     }
+}
+
+static int numeric_value_is_missing_at(
+    const numeric_data *data, size_t index
+) {
+    if (numeric_missing_offset_at(data, index) >= 0) return 1;
+    return data->kind == NUMERIC_FLOAT &&
+        isnan(numeric_float_raw_at(data, index));
+}
+
+static size_t numeric_count_missing(const numeric_data *data) {
+    size_t count = 0;
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        if (numeric_value_is_missing_at(data, index)) count++;
+    }
+    return count;
 }
 
 typedef struct {
@@ -1342,18 +1366,23 @@ static SEXP numeric_max(SEXP value, Rboolean na_rm) {
 
 static SEXP numeric_from_backing(
     SEXP backing, size_t length, int kind, int temporal,
-    int format_version, int no_na
+    int format_version, size_t missing_count
 ) {
     SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, backing));
     R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
     void *data = dtatools_numeric_alloc(
-        RAW(backing), length, kind, temporal, no_na
+        RAW(backing), length, kind, temporal, missing_count
     );
     if (data == NULL) {
         Rf_error("could not allocate compact Stata numeric storage");
     }
-    ((numeric_data *) data)->format_version = format_version;
     R_SetExternalPtrAddr(external, data);
+    numeric_data *numeric = (numeric_data *) data;
+    numeric->format_version = format_version;
+    if (missing_count == SIZE_MAX) {
+        numeric->missing_count = numeric_count_missing(numeric);
+        numeric->no_na = numeric->missing_count == 0;
+    }
     SEXP result = PROTECT(R_new_altrep(
         dtatools_numeric_class, external, R_NilValue
     ));
@@ -1372,7 +1401,7 @@ static SEXP numeric_compact_copy(const numeric_data *data) {
     memcpy(RAW(backing), data->values, (size_t) byte_length);
     SEXP result = numeric_from_backing(
         backing, data->length, data->kind, data->temporal,
-        data->format_version, data->no_na
+        data->format_version, data->missing_count
     );
     UNPROTECT(1);
     return result;
@@ -1448,7 +1477,7 @@ static SEXP numeric_unserialize(SEXP class, SEXP state) {
     }
     SEXP result = numeric_from_backing(
         backing, byte_length / width, kind, INTEGER(metadata)[1],
-        INTEGER(metadata)[2], INTEGER(metadata)[3]
+        INTEGER(metadata)[2], INTEGER(metadata)[3] ? 0 : SIZE_MAX
     );
     if (protected_backing) UNPROTECT(1);
     return result;
@@ -1511,7 +1540,7 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
         RAWSXP, (R_xlen_t) ((size_t) length * width)
     ));
     unsigned char *output = RAW(backing);
-    int no_na = data->no_na;
+    size_t missing_count = 0;
     for (R_xlen_t i = 0; i < length; i++) {
         if ((i & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t source = -1;
@@ -1530,16 +1559,19 @@ static SEXP numeric_extract_subset(SEXP value, SEXP index, SEXP call) {
             memcpy(output + (size_t) i * width,
                    (unsigned char *) data->values + (size_t) source * width,
                    width);
+            if (numeric_value_is_missing_at(data, (size_t) source)) {
+                missing_count++;
+            }
         } else {
             write_numeric_system_missing_raw(
                 output, i, data->kind, data->format_version
             );
-            no_na = 0;
+            missing_count++;
         }
     }
     SEXP result = numeric_from_backing(
         backing, (size_t) length, data->kind, data->temporal,
-        data->format_version, no_na
+        data->format_version, missing_count
     );
     UNPROTECT(1);
     return result;
@@ -1662,8 +1694,7 @@ SEXP C_dtatools_gather_numeric(
     if (x_names != R_NilValue) {
         gathered_names = PROTECT(Rf_allocVector(STRSXP, length));
     }
-    int no_na = x_data->no_na &&
-        (y_data == NULL || y_data->no_na);
+    size_t missing_count = 0;
 
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -1681,11 +1712,16 @@ SEXP C_dtatools_gather_numeric(
             write_numeric_system_missing_raw(
                 output, index, x_data->kind, x_data->format_version
             );
-            no_na = 0;
+            missing_count++;
         } else {
             numeric_gather_element(
                 output, index, source, source_index, width
             );
+            if (numeric_value_is_missing_at(
+                    source, (size_t) source_index
+                )) {
+                missing_count++;
+            }
         }
         if (gathered_names != R_NilValue) {
             SET_STRING_ELT(
@@ -1698,7 +1734,7 @@ SEXP C_dtatools_gather_numeric(
 
     SEXP result = PROTECT(numeric_from_backing(
         backing, (size_t) length, x_data->kind, x_data->temporal,
-        x_data->format_version, no_na
+        x_data->format_version, missing_count
     ));
     if (gathered_names != R_NilValue) {
         Rf_setAttrib(result, R_NamesSymbol, gathered_names);
@@ -1708,8 +1744,7 @@ SEXP C_dtatools_gather_numeric(
 }
 
 static int *numeric_gather_plan(
-    SEXP rows, size_t source_length, int *has_missing,
-    const char *argument
+    SEXP rows, size_t source_length, const char *argument
 ) {
     if (source_length > (size_t) INT_MAX) {
         Rf_error("compact numeric gather source is too long");
@@ -1722,14 +1757,12 @@ static int *numeric_gather_plan(
     numeric_gather_indices indices = numeric_gather_indices_create(
         rows, argument
     );
-    *has_missing = 0;
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t source = numeric_gather_index(
             &indices, index, source_length, argument
         );
         plan[index] = (int) source;
-        if (source < 0) *has_missing = 1;
     }
     return plan;
 }
@@ -1801,17 +1834,12 @@ SEXP C_dtatools_gather_numeric_columns(
         Rf_error("internal column gather received `y_rows` without `y`");
     }
 
-    int x_has_missing = 0;
-    int y_has_missing = 0;
     int *x_plan = numeric_gather_plan(
-        x_rows, first_x.length, &x_has_missing, "x_rows"
+        x_rows, first_x.length, "x_rows"
     );
     int *y_plan = y == R_NilValue ? NULL : numeric_gather_plan(
-        y_rows, first_y.length, &y_has_missing, "y_rows"
+        y_rows, first_y.length, "y_rows"
     );
-    /* A y row is read only where x is absent. Every reachable y gap is
-       therefore paired with an x gap already recorded by x_has_missing. */
-    (void) y_has_missing;
     if ((size_t) column_count > SIZE_MAX / sizeof(numeric_gather_column)) {
         Rf_error("compact numeric column gather is too wide");
     }
@@ -1870,13 +1898,10 @@ SEXP C_dtatools_gather_numeric_columns(
             backing = PROTECT(Rf_allocVector(
                 RAWSXP, (R_xlen_t) ((size_t) row_count * width)
             ));
-            /* x_has_missing also covers any y gap that reaches the output. */
-            int no_na = x_source.compact->no_na && !x_has_missing &&
-                (y == R_NilValue || y_source.compact->no_na);
             gathered = PROTECT(numeric_from_backing(
                 backing, (size_t) row_count,
                 x_source.compact->kind, x_source.compact->temporal,
-                x_source.compact->format_version, no_na
+                x_source.compact->format_version, 0
             ));
         } else {
             gathered = PROTECT(Rf_allocVector(REALSXP, row_count));
@@ -1894,9 +1919,16 @@ SEXP C_dtatools_gather_numeric_columns(
                 column->missing, 0,
                 x_source.compact->kind, x_source.compact->format_version
             );
+            column->missing_count = (uintptr_t)
+                &numeric_storage(gathered)->missing_count;
+            column->kind = x_source.compact->kind;
+            column->format_version = x_source.compact->format_version;
         } else {
             double missing = NA_REAL;
             memcpy(column->missing, &missing, sizeof(missing));
+            column->missing_count = (uintptr_t) 0;
+            column->kind = 0;
+            column->format_version = 0;
         }
         SHALLOW_DUPLICATE_ATTRIB(gathered, x_value);
         SET_VECTOR_ELT(result, index, gathered);
@@ -1909,6 +1941,13 @@ SEXP C_dtatools_gather_numeric_columns(
             (size_t) XLENGTH(x_rows)
         )) {
         Rf_error("parallel compact numeric gather failed");
+    }
+    for (R_xlen_t index = 0; index < column_count; index++) {
+        numeric_data *storage = unmaterialized_numeric_storage(
+            VECTOR_ELT(result, index)
+        );
+        if (storage == NULL) continue;
+        storage->no_na = storage->missing_count == 0;
     }
     R_CheckUserInterrupt();
     UNPROTECT(1);
@@ -2160,7 +2199,7 @@ SEXP C_dtatools_construct_numeric(
     R_xlen_t byte_length = (R_xlen_t) ((size_t) length * width);
     SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
     unsigned char *output = RAW(backing);
-    int no_na = 1;
+    size_t missing_count = 0;
 
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -2170,7 +2209,7 @@ SEXP C_dtatools_construct_numeric(
             ? payload_tag - 'a' + 1 : -1;
         if (payload_tag == 0 && ISNA(element)) offset = 0;
         if (offset >= 0) {
-            no_na = 0;
+            missing_count++;
             write_numeric_missing(output, index, kind, offset);
         } else if (ISNAN(element)) {
             Rf_error(
@@ -2182,7 +2221,7 @@ SEXP C_dtatools_construct_numeric(
     }
 
     void *data = dtatools_numeric_alloc(
-        output, (size_t) length, kind, temporal, no_na
+        output, (size_t) length, kind, temporal, missing_count
     );
     if (data == NULL) {
         UNPROTECT(1);
@@ -2225,7 +2264,7 @@ static SEXP unmaterialized_dictstring_source(SEXP value) {
     while (ALTREP(value) &&
            R_altrep_inherits(value, dtatools_metadata_string_class) &&
            R_altrep_data2(value) == R_NilValue) {
-        value = R_altrep_data1(value);
+        value = metadata_proxy_source(value);
     }
     return ALTREP(value) &&
             R_altrep_inherits(value, dtatools_dictstring_class) &&
@@ -3302,16 +3341,43 @@ SEXP C_dtatools_is_altrep(SEXP value) {
     return Rf_ScalarLogical(ALTREP(value));
 }
 
+static SEXP metadata_proxy_state(SEXP value) {
+    SEXP state = R_altrep_data1(value);
+    return TYPEOF(state) == VECSXP && XLENGTH(state) == 2
+        ? state : R_NilValue;
+}
+
+static SEXP metadata_proxy_source(SEXP value) {
+    SEXP state = metadata_proxy_state(value);
+    return state == R_NilValue
+        ? R_altrep_data1(value) : VECTOR_ELT(state, 0);
+}
+
+static SEXP metadata_proxy_owner(SEXP value) {
+    SEXP state = metadata_proxy_state(value);
+    return state == R_NilValue ? R_NilValue : VECTOR_ELT(state, 1);
+}
+
+static void metadata_proxy_set_state(
+    SEXP value, SEXP source, SEXP owner
+) {
+    SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(state, 0, source);
+    SET_VECTOR_ELT(state, 1, owner);
+    R_set_altrep_data1(value, state);
+    UNPROTECT(1);
+}
+
 static R_xlen_t metadata_proxy_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue
-        ? XLENGTH(R_altrep_data1(value)) : XLENGTH(materialized);
+        ? XLENGTH(metadata_proxy_source(value)) : XLENGTH(materialized);
 }
 
 static double metadata_real_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     return REAL_ELT(
-        materialized == R_NilValue ? R_altrep_data1(value) : materialized,
+        materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
         index
     );
 }
@@ -3321,7 +3387,7 @@ static R_xlen_t metadata_real_region(
 ) {
     SEXP materialized = R_altrep_data2(value);
     return REAL_GET_REGION(
-        materialized == R_NilValue ? R_altrep_data1(value) : materialized,
+        materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
         index, count, output
     );
 }
@@ -3330,7 +3396,7 @@ static SEXP metadata_real_materialize(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return materialized;
 
-    SEXP source = R_altrep_data1(value);
+    SEXP source = metadata_proxy_source(value);
     R_xlen_t length = XLENGTH(source);
     materialized = PROTECT(Rf_allocVector(REALSXP, length));
     R_xlen_t copied = REAL_GET_REGION(source, 0, length, REAL(materialized));
@@ -3362,7 +3428,7 @@ static SEXP metadata_real_extract_subset(
     SEXP value, SEXP index, SEXP call
 ) {
     if (R_altrep_data2(value) != R_NilValue) return NULL;
-    SEXP source = R_altrep_data1(value);
+    SEXP source = metadata_proxy_source(value);
     if (!ALTREP(source) ||
         !R_altrep_inherits(source, dtatools_numeric_class)) {
         return NULL;
@@ -3375,7 +3441,7 @@ static int metadata_real_no_na(SEXP value) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_NO_NA;
     }
     if (R_altrep_data2(value) != R_NilValue) return 0;
-    SEXP source = R_altrep_data1(value);
+    SEXP source = metadata_proxy_source(value);
     return ALTREP(source) &&
         R_altrep_inherits(source, dtatools_numeric_class)
         ? numeric_no_na(source) : 0;
@@ -3386,7 +3452,7 @@ static SEXP metadata_real_sum(SEXP value, Rboolean na_rm) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_SUM;
     }
     if (R_altrep_data2(value) != R_NilValue) return NULL;
-    SEXP source = R_altrep_data1(value);
+    SEXP source = metadata_proxy_source(value);
     return ALTREP(source) &&
         R_altrep_inherits(source, dtatools_numeric_class)
         ? numeric_sum(source, na_rm) : NULL;
@@ -3397,7 +3463,7 @@ static SEXP metadata_real_min(SEXP value, Rboolean na_rm) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_MIN;
     }
     if (R_altrep_data2(value) != R_NilValue) return NULL;
-    SEXP source = R_altrep_data1(value);
+    SEXP source = metadata_proxy_source(value);
     return ALTREP(source) &&
         R_altrep_inherits(source, dtatools_numeric_class)
         ? numeric_min(source, na_rm) : NULL;
@@ -3408,7 +3474,7 @@ static SEXP metadata_real_max(SEXP value, Rboolean na_rm) {
         metadata_real_aggregate_mask |= METADATA_AGGREGATE_MAX;
     }
     if (R_altrep_data2(value) != R_NilValue) return NULL;
-    SEXP source = R_altrep_data1(value);
+    SEXP source = metadata_proxy_source(value);
     return ALTREP(source) &&
         R_altrep_inherits(source, dtatools_numeric_class)
         ? numeric_max(source, na_rm) : NULL;
@@ -3417,7 +3483,7 @@ static SEXP metadata_real_max(SEXP value, Rboolean na_rm) {
 static SEXP metadata_string_value(SEXP value, R_xlen_t index) {
     SEXP materialized = R_altrep_data2(value);
     return STRING_ELT(
-        materialized == R_NilValue ? R_altrep_data1(value) : materialized,
+        materialized == R_NilValue ? metadata_proxy_source(value) : materialized,
         index
     );
 }
@@ -3426,7 +3492,7 @@ static SEXP metadata_string_materialize(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return materialized;
 
-    SEXP source = R_altrep_data1(value);
+    SEXP source = metadata_proxy_source(value);
     R_xlen_t length = XLENGTH(source);
     materialized = PROTECT(Rf_allocVector(STRSXP, length));
     for (R_xlen_t index = 0; index < length; index++) {
@@ -3463,11 +3529,14 @@ static SEXP metadata_proxy(SEXP value, R_altrep_class_t proxy_class) {
     SEXP source = value;
     while (ALTREP(source) && R_altrep_inherits(source, proxy_class) &&
            R_altrep_data2(source) == R_NilValue) {
-        source = R_altrep_data1(source);
+        source = metadata_proxy_source(source);
     }
-    SEXP result = PROTECT(R_new_altrep(proxy_class, source, R_NilValue));
+    SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(state, 0, source);
+    SET_VECTOR_ELT(state, 1, R_NilValue);
+    SEXP result = PROTECT(R_new_altrep(proxy_class, state, R_NilValue));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
@@ -3601,93 +3670,88 @@ static numeric_data *detach_compact_patch_target(SEXP value) {
         R_altrep_data2(value) != R_NilValue) {
         return NULL;
     }
-    SEXP owned = R_altrep_data1(value);
+    SEXP owned = metadata_proxy_source(value);
+    SEXP owner = metadata_proxy_owner(value);
     if (ALTREP(owned) &&
         R_altrep_inherits(owned, dtatools_numeric_class) &&
         R_altrep_data2(owned) == R_NilValue &&
-        R_ExternalPtrTag(R_altrep_data1(owned)) == value) {
+        owner != R_NilValue &&
+        R_ExternalPtrTag(R_altrep_data1(owned)) == owner) {
         return numeric_storage(owned);
     }
     numeric_data *source = unmaterialized_numeric_storage(value);
     if (source == NULL) return NULL;
     SEXP detached = PROTECT(numeric_compact_copy(source));
-    R_SetExternalPtrTag(R_altrep_data1(detached), value);
-    R_set_altrep_data1(value, detached);
+    SEXP token = PROTECT(R_MakeExternalPtr(
+        NULL, R_NilValue, R_NilValue
+    ));
+    R_SetExternalPtrTag(R_altrep_data1(detached), token);
+    metadata_proxy_set_state(value, detached, token);
     R_set_altrep_data2(value, R_NilValue);
     numeric_data *result = numeric_storage(detached);
-    UNPROTECT(1);
+    UNPROTECT(2);
     return result;
 }
 
-static int compact_storage_has_missing(const numeric_data *data) {
-    for (size_t index = 0; index < data->length; index++) {
-        if (numeric_missing_offset_at(data, index) >= 0) return 1;
-    }
-    return 0;
+static R_xlen_t reference_patch_row(SEXP rows, R_xlen_t index) {
+    return rows == R_NilValue
+        ? index : (R_xlen_t) INTEGER(rows)[index] - 1;
 }
 
 SEXP C_dtatools_patch_vector(
     SEXP target, SEXP rows, SEXP replacement
 ) {
-    if (TYPEOF(rows) != INTSXP || XLENGTH(rows) != XLENGTH(replacement)) {
+    if (rows != R_NilValue && TYPEOF(rows) != INTSXP) {
         Rf_error("invalid reference replacement plan");
     }
     R_xlen_t target_length = XLENGTH(target);
-    R_xlen_t count = XLENGTH(rows);
+    R_xlen_t count = rows == R_NilValue ? target_length : XLENGTH(rows);
+    R_xlen_t replacement_count = XLENGTH(replacement);
+    if (replacement_count != count && replacement_count != 1 &&
+        !(count == 0 && replacement_count == 0)) {
+        Rf_error("invalid reference replacement plan");
+    }
     for (R_xlen_t index = 0; index < count; index++) {
-        int row = INTEGER(rows)[index];
-        if (row == NA_INTEGER || row <= 0 ||
-            (R_xlen_t) row > target_length) {
+        R_xlen_t row = reference_patch_row(rows, index);
+        if (row < 0 || row >= target_length) {
             Rf_error("invalid reference replacement row");
         }
     }
 
     numeric_data *compact = unmaterialized_numeric_storage(target);
     if (compact != NULL) {
-        numeric_reader reader = numeric_reader_create(replacement, count);
-        int selected_target_has_missing = 0;
+        numeric_reader reader = numeric_reader_create(
+            replacement, replacement_count
+        );
         for (R_xlen_t index = 0; index < count; index++) {
             int missing_code;
-            double value = numeric_reader_at(&reader, index, &missing_code);
+            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
+            double value = numeric_reader_at(
+                &reader, replacement_index, &missing_code
+            );
             validate_compact_patch_value(compact, value, missing_code);
-            if (numeric_missing_offset_at(
-                    compact, (R_xlen_t) INTEGER(rows)[index] - 1
-                ) >= 0) {
-                selected_target_has_missing = 1;
-            }
         }
 
-        int target_had_no_missing = compact->no_na;
         compact = detach_compact_patch_target(target);
         if (compact == NULL) {
             Rf_error("compact replacement target became unavailable");
         }
         for (R_xlen_t index = 0; index < count; index++) {
             int missing_code;
-            double value = numeric_reader_at(&reader, index, &missing_code);
+            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
+            double value = numeric_reader_at(
+                &reader, replacement_index, &missing_code
+            );
+            size_t row = (size_t) reference_patch_row(rows, index);
+            int old_missing = numeric_value_is_missing_at(compact, row);
+            int new_missing = missing_code >= 0;
+            if (old_missing && !new_missing) compact->missing_count--;
+            if (!old_missing && new_missing) compact->missing_count++;
             write_compact_patch_value(
-                compact, (size_t) INTEGER(rows)[index] - 1,
-                value, missing_code
+                compact, row, value, missing_code
             );
         }
-        int patched_has_missing = 0;
-        for (R_xlen_t index = 0; index < count; index++) {
-            if (numeric_missing_offset_at(
-                    compact, (R_xlen_t) INTEGER(rows)[index] - 1
-                ) >= 0) {
-                patched_has_missing = 1;
-                break;
-            }
-        }
-        if (patched_has_missing) {
-            compact->no_na = 0;
-        } else if (target_had_no_missing) {
-            compact->no_na = 1;
-        } else if (!selected_target_has_missing) {
-            compact->no_na = 0;
-        } else {
-            compact->no_na = !compact_storage_has_missing(compact);
-        }
+        compact->no_na = compact->missing_count == 0;
         return Rf_ScalarLogical(1);
     }
 
@@ -3702,29 +3766,39 @@ SEXP C_dtatools_patch_vector(
         double *output = REAL(target);
 #endif
         for (R_xlen_t index = 0; index < count; index++) {
-            output[INTEGER(rows)[index] - 1] = REAL_ELT(replacement, index);
+            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
+            output[reference_patch_row(rows, index)] = REAL_ELT(
+                replacement, replacement_index
+            );
         }
         break;
     }
     case INTSXP: {
         int *output = INTEGER(target);
         for (R_xlen_t index = 0; index < count; index++) {
-            output[INTEGER(rows)[index] - 1] = INTEGER_ELT(replacement, index);
+            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
+            output[reference_patch_row(rows, index)] = INTEGER_ELT(
+                replacement, replacement_index
+            );
         }
         break;
     }
     case LGLSXP: {
         int *output = LOGICAL(target);
         for (R_xlen_t index = 0; index < count; index++) {
-            output[INTEGER(rows)[index] - 1] = LOGICAL_ELT(replacement, index);
+            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
+            output[reference_patch_row(rows, index)] = LOGICAL_ELT(
+                replacement, replacement_index
+            );
         }
         break;
     }
     case STRSXP:
         for (R_xlen_t index = 0; index < count; index++) {
+            R_xlen_t replacement_index = replacement_count == 1 ? 0 : index;
             SET_STRING_ELT(
-                target, INTEGER(rows)[index] - 1,
-                STRING_ELT(replacement, index)
+                target, reference_patch_row(rows, index),
+                STRING_ELT(replacement, replacement_index)
             );
         }
         break;
@@ -3734,6 +3808,92 @@ SEXP C_dtatools_patch_vector(
     return Rf_ScalarLogical(0);
 }
 
+SEXP C_dtatools_generate_numeric(
+    SEXP values, SEXP rows, SEXP row_count_value,
+    SEXP kind_value, SEXP temporal_value
+) {
+    if (rows != R_NilValue && TYPEOF(rows) != INTSXP) {
+        Rf_error("invalid reference generation plan");
+    }
+    double row_count_double = Rf_asReal(row_count_value);
+    if (!R_FINITE(row_count_double) || row_count_double < 0 ||
+        row_count_double != trunc(row_count_double) ||
+        row_count_double > (double) R_XLEN_T_MAX ||
+        row_count_double > (double) SIZE_MAX) {
+        Rf_error("invalid reference generation row count");
+    }
+    size_t row_count = (size_t) row_count_double;
+    int kind = Rf_asInteger(kind_value);
+    int temporal = Rf_asInteger(temporal_value);
+    if (kind < NUMERIC_BYTE || kind > NUMERIC_FLOAT ||
+        temporal < 0 || temporal > 2) {
+        Rf_error("invalid reference generation storage");
+    }
+
+    R_xlen_t count = rows == R_NilValue
+        ? (R_xlen_t) row_count : XLENGTH(rows);
+    R_xlen_t value_count = XLENGTH(values);
+    if (value_count != count && value_count != 1 &&
+        !(count == 0 && value_count == 0)) {
+        Rf_error("invalid reference generation plan");
+    }
+    for (R_xlen_t index = 0; index < count; index++) {
+        R_xlen_t row = reference_patch_row(rows, index);
+        if (row < 0 || (size_t) row >= row_count) {
+            Rf_error("invalid reference generation row");
+        }
+    }
+
+    numeric_data plan = {
+        NULL, row_count, kind, temporal, 119, 0,
+        rows == R_NilValue ? 0 : row_count
+    };
+    numeric_reader reader = numeric_reader_create(values, value_count);
+    for (R_xlen_t index = 0; index < value_count; index++) {
+        int missing_code;
+        double value = numeric_reader_at(&reader, index, &missing_code);
+        validate_compact_patch_value(&plan, value, missing_code);
+    }
+
+    size_t width = numeric_kind_width(kind);
+    if (row_count > SIZE_MAX / width ||
+        row_count * width > (size_t) R_XLEN_T_MAX) {
+        Rf_error("generated compact Stata numeric vector is too long");
+    }
+    SEXP backing = PROTECT(Rf_allocVector(
+        RAWSXP, (R_xlen_t) (row_count * width)
+    ));
+    plan.values = RAW(backing);
+    if (rows != R_NilValue) {
+        for (size_t index = 0; index < row_count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            write_numeric_missing(plan.values, (R_xlen_t) index, kind, 0);
+        }
+    }
+    for (R_xlen_t index = 0; index < count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t value_index = value_count == 1 ? 0 : index;
+        int missing_code;
+        double value = numeric_reader_at(&reader, value_index, &missing_code);
+        size_t row = (size_t) reference_patch_row(rows, index);
+        int new_missing = missing_code >= 0;
+        if (rows == R_NilValue) {
+            if (new_missing) plan.missing_count++;
+        } else {
+            int old_missing = numeric_value_is_missing_at(&plan, row);
+            if (old_missing && !new_missing) plan.missing_count--;
+            if (!old_missing && new_missing) plan.missing_count++;
+        }
+        write_compact_patch_value(&plan, row, value, missing_code);
+    }
+
+    SEXP result = numeric_from_backing(
+        backing, row_count, kind, temporal, 119, plan.missing_count
+    );
+    UNPROTECT(1);
+    return result;
+}
+
 SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value) {
     while (ALTREP(value)) {
         if (R_altrep_inherits(value, dtatools_numeric_class)) {
@@ -3741,7 +3901,7 @@ SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value) {
         }
         if (!R_altrep_inherits(value, dtatools_metadata_real_class)) break;
         if (R_altrep_data2(value) != R_NilValue) return Rf_ScalarLogical(0);
-        value = R_altrep_data1(value);
+        value = metadata_proxy_source(value);
     }
     return Rf_ScalarLogical(0);
 }
@@ -3804,7 +3964,7 @@ SEXP C_dtatools_metadata_proxy_depth(SEXP value) {
         }
         if (depth == INT_MAX) Rf_error("metadata proxy depth exceeds R limits");
         depth++;
-        value = R_altrep_data1(value);
+        value = metadata_proxy_source(value);
     }
     return Rf_ScalarInteger(depth);
 }
@@ -3976,12 +4136,7 @@ static int numeric_reader_is_missing_at(
 ) {
     if (reader->storage != NULL) {
         numeric_data *data = reader->storage;
-        if (data->kind == NUMERIC_FLOAT) {
-            float value = numeric_float_raw_at(data, (size_t) index);
-            return float_missing_offset(value, data->format_version) >= 0 ||
-                isnan(value);
-        }
-        return numeric_missing_offset_at(data, (size_t) index) >= 0;
+        return numeric_value_is_missing_at(data, (size_t) index);
     }
 
     if (reader->type == INTSXP || reader->type == LGLSXP) {
@@ -4241,6 +4396,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_deep_copy_column, 1},
     {"C_dtatools_patch_vector",
      (DL_FUNC) &C_dtatools_patch_vector, 3},
+    {"C_dtatools_generate_numeric",
+     (DL_FUNC) &C_dtatools_generate_numeric, 5},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
     {"C_dtatools_is_unmaterialized_dictstring",
