@@ -87,7 +87,10 @@ otherwise logical, integer, double, and \code{Date} results use Stata \code{floa
 storage. Ordinary \code{POSIXct} results use Stata \code{double} storage so their
 millisecond datetime representation is not rounded. \code{Date} and \code{POSIXct}
 results retain their temporal class and receive the corresponding Stata
-temporal declaration.
+temporal declaration. Other classed numeric results, including \code{difftime}
+and \code{bit64::integer64}, are rejected because their physical representation
+does not have Stata numeric semantics. Convert them explicitly to a bare
+numeric or one of the supported temporal or Stata types before generation.
 Character results keep a valid declared \code{stata.string.storage}. Otherwise,
 they use the smallest \code{str1} through \code{str2045} width that fits, or \code{strL}
 above 2,045 UTF-8 bytes. Numeric rows excluded by \code{where} contain

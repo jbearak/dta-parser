@@ -287,6 +287,26 @@ test_that("validation errors leave an unmarked dataset unchanged", {
     }
 })
 
+test_that("gen rejects unsupported classed numeric results atomically", {
+    cases <- list(
+        difftime = as.difftime(1:3, units = "hours"),
+        integer64 = structure(as.double(1:3), class = "integer64")
+    )
+    for (name in names(cases)) {
+        data <- data.frame(x = 1:3)
+        before <- serialize(data, NULL)
+        values <- cases[[name]]
+        expect_error(
+            gen(data, generated, .env$values),
+            "does not support this classed numeric result",
+            info = name
+        )
+        expect_identical(serialize(data, NULL), before, info = name)
+        expect_false(inherits(data, "dtatools_ref_data"), info = name)
+        expect_identical(names(data), "x", info = name)
+    }
+})
+
 test_that("evaluation interrupts leave the dataset unchanged", {
     data <- data.frame(x = 1:3)
     before <- serialize(data, NULL)
@@ -393,7 +413,7 @@ test_that("native write interrupts roll back values and compact state", {
                 }
                 parent <- Sys.getpid()
                 signal <- parallel::mcparallel({
-                    Sys.sleep(if (mutate_proxy) 0.05 else 0.22)
+                    Sys.sleep(0.02)
                     tools::pskill(parent, tools::SIGINT)
                 }, silent = TRUE)
                 condition <- tryCatch(
@@ -494,6 +514,66 @@ test_that("native write interrupts roll back values and compact state", {
         expect_true(case$alias_readable)
         expect_identical(case$alias_sample, c("a", "b", "b"))
         expect_true(case$alias_payload_matches)
+    }
+})
+
+test_that("native generation interrupts leave reference state unchanged", {
+    skip_on_os("windows")
+    skip_if_not_installed("callr")
+
+    result <- callr::r(
+        function() {
+            library(dtatools)
+            interrupt_generation <- function(character, existing) {
+                size <- 20000000L
+                data <- data.frame(anchor = stata_byte(.size = size))
+                if (existing) gen(data, prior, 1)
+                values <- if (character) "x" else seq_len(size)
+                before <- serialize(data, NULL)
+                names_before <- names(data)
+                reference_before <- inherits(data, "dtatools_ref_data")
+                parent <- Sys.getpid()
+                signal <- parallel::mcparallel({
+                    Sys.sleep(0.02)
+                    tools::pskill(parent, tools::SIGINT)
+                }, silent = TRUE)
+                condition <- tryCatch(
+                    {
+                        gen(data, created, .env$values)
+                        NULL
+                    },
+                    condition = identity
+                )
+                tryCatch(
+                    suppressWarnings(parallel::mccollect(signal)),
+                    condition = function(...) NULL
+                )
+                list(
+                    interrupted = inherits(condition, "interrupt"),
+                    unchanged = identical(serialize(data, NULL), before),
+                    names = identical(names(data), names_before),
+                    reference = identical(
+                        inherits(data, "dtatools_ref_data"),
+                        reference_before
+                    )
+                )
+            }
+            list(
+                numeric_first = interrupt_generation(FALSE, FALSE),
+                numeric_existing = interrupt_generation(FALSE, TRUE),
+                character_first = interrupt_generation(TRUE, FALSE),
+                character_existing = interrupt_generation(TRUE, TRUE)
+            )
+        },
+        libpath = .libPaths(),
+        timeout = 120
+    )
+
+    for (case in result) {
+        expect_true(case$interrupted)
+        expect_true(case$unchanged)
+        expect_true(case$names)
+        expect_true(case$reference)
     }
 })
 

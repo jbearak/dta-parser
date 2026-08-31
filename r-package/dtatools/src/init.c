@@ -2439,16 +2439,6 @@ static SEXP dictstring_cached_value(
     return cached;
 }
 
-static SEXP dictstring_value_with_cache(
-    SEXP value, R_xlen_t index, SEXP cache
-) {
-    dictstring_data *data = dictstring_storage(value);
-    if (index < 0 || (size_t) index >= data->length) {
-        Rf_error("invalid dtatools string-vector index");
-    }
-    return dictstring_cached_value(data, cache, data->value_ids[index]);
-}
-
 static R_xlen_t dictstring_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return XLENGTH(materialized);
@@ -4143,13 +4133,10 @@ static reference_value_plan reference_value_plan_create(
 }
 
 static R_xlen_t reference_value_index(
-    const reference_value_plan *plan, const reference_rows *rows,
-    R_xlen_t index
+    const reference_value_plan *plan, R_xlen_t index, R_xlen_t row
 ) {
     if (plan->mode == REFERENCE_VALUES_SCALAR) return 0;
-    if (plan->mode == REFERENCE_VALUES_BY_ROW) {
-        return reference_patch_row(rows, index);
-    }
+    if (plan->mode == REFERENCE_VALUES_BY_ROW) return row;
     return index;
 }
 
@@ -4184,8 +4171,9 @@ static compact_replacement_plan compact_replacement_plan_create(
         for (R_xlen_t index = 0; index < value_plan.count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             int missing_code;
+            R_xlen_t row = reference_patch_row(rows, index);
             R_xlen_t value_index = reference_value_index(
-                &value_plan, rows, index
+                &value_plan, index, row
             );
             double value = numeric_reader_at(
                 &plan.reader, value_index, &missing_code
@@ -4227,18 +4215,21 @@ static void apply_compact_replacement(
          index < replacement->values.count; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         int missing_code;
+        R_xlen_t row = reference_patch_row(rows, index);
         R_xlen_t value_index = reference_value_index(
-            &replacement->values, rows, index
+            &replacement->values, index, row
         );
         double value = numeric_reader_at(
             &replacement->reader, value_index, &missing_code
         );
-        size_t row = (size_t) reference_patch_row(rows, index);
-        int old_missing = numeric_value_is_missing_at(target, row);
+        size_t row_offset = (size_t) row;
+        int old_missing = numeric_value_is_missing_at(target, row_offset);
         int new_missing = missing_code >= 0;
         if (old_missing && !new_missing) target->missing_count--;
         if (!old_missing && new_missing) target->missing_count++;
-        write_compact_patch_value(target, row, value, missing_code);
+        write_compact_patch_value(
+            target, row_offset, value, missing_code
+        );
     }
 }
 
@@ -4427,46 +4418,44 @@ static SEXP apply_vector_patch_transaction(void *data) {
     vector_patch_transaction *transaction =
         (vector_patch_transaction *) data;
     snapshot_reference_rows(transaction->rows);
-    for (R_xlen_t index = 0; index < transaction->values.count; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        R_xlen_t row = reference_patch_row(transaction->rows, index);
-        switch (transaction->type) {
-        case REALSXP: {
-            double value = REAL_ELT(transaction->target, row);
-            memcpy(
-                transaction->undo + (size_t) index * transaction->width,
-                &value, transaction->width
-            );
-            break;
-        }
-        case INTSXP: {
-            int value = INTEGER_ELT(transaction->target, row);
-            memcpy(
-                transaction->undo + (size_t) index * transaction->width,
-                &value, transaction->width
-            );
-            break;
-        }
-        case LGLSXP: {
-            int value = LOGICAL_ELT(transaction->target, row);
-            memcpy(
-                transaction->undo + (size_t) index * transaction->width,
-                &value, transaction->width
-            );
-            break;
-        }
-        case STRSXP: {
-            SEXP value = transaction->dictstring_source != R_NilValue
-                ? dictstring_value_with_cache(
-                    transaction->dictstring_source, row,
-                    transaction->dictstring_private_cache
-                )
-                : STRING_ELT(transaction->target, row);
-            SET_STRING_ELT(
-                transaction->string_undo, index, value
-            );
-            break;
-        }
+    if (transaction->type != STRSXP ||
+        transaction->dictstring_source == R_NilValue) {
+        for (R_xlen_t index = 0;
+             index < transaction->values.count; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            R_xlen_t row = reference_patch_row(transaction->rows, index);
+            switch (transaction->type) {
+            case REALSXP: {
+                double value = REAL_ELT(transaction->target, row);
+                memcpy(
+                    transaction->undo + (size_t) index * transaction->width,
+                    &value, transaction->width
+                );
+                break;
+            }
+            case INTSXP: {
+                int value = INTEGER_ELT(transaction->target, row);
+                memcpy(
+                    transaction->undo + (size_t) index * transaction->width,
+                    &value, transaction->width
+                );
+                break;
+            }
+            case LGLSXP: {
+                int value = LOGICAL_ELT(transaction->target, row);
+                memcpy(
+                    transaction->undo + (size_t) index * transaction->width,
+                    &value, transaction->width
+                );
+                break;
+            }
+            case STRSXP:
+                SET_STRING_ELT(
+                    transaction->string_undo, index,
+                    STRING_ELT(transaction->target, row)
+                );
+                break;
+            }
         }
     }
     transaction->journal_complete = 1;
@@ -4501,7 +4490,7 @@ static SEXP apply_vector_patch_transaction(void *data) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t row = reference_patch_row(transaction->rows, index);
         R_xlen_t replacement_index = reference_value_index(
-            &transaction->values, transaction->rows, index
+            &transaction->values, index, row
         );
         switch (transaction->type) {
         case REALSXP:
@@ -4630,7 +4619,8 @@ SEXP C_dtatools_patch_vector(
         ALTREP(target) ? R_altrep_data2(target) : R_NilValue
     );
     SEXP string_undo = PROTECT(
-        type == STRSXP ? Rf_allocVector(STRSXP, count) : R_NilValue
+        type == STRSXP && dictstring_source == R_NilValue
+            ? Rf_allocVector(STRSXP, count) : R_NilValue
     );
     SEXP private_cache = PROTECT(
         dictstring_source != R_NilValue
@@ -4738,7 +4728,7 @@ static SEXP generate_double_numeric(
             R_xlen_t row = rows->value == R_NilValue
                 ? index : reference_patch_row(rows, index);
             R_xlen_t value_index = reference_value_index(
-                value_plan, rows, index
+                value_plan, index, row
             );
             output[row] = generated_double_value(
                 &reader, value_index, temporal
@@ -4831,7 +4821,7 @@ SEXP C_dtatools_generate_character(
         R_xlen_t row = rows == R_NilValue
             ? index : reference_patch_row(&row_plan, index);
         R_xlen_t value_index = reference_value_index(
-            &value_plan, &row_plan, index
+            &value_plan, index, row
         );
         SEXP value = STRING_ELT(values, value_index);
         SET_STRING_ELT(result, row, value == NA_STRING ? empty : value);

@@ -55,7 +55,10 @@
 #' storage. Ordinary `POSIXct` results use Stata `double` storage so their
 #' millisecond datetime representation is not rounded. `Date` and `POSIXct`
 #' results retain their temporal class and receive the corresponding Stata
-#' temporal declaration.
+#' temporal declaration. Other classed numeric results, including `difftime`
+#' and `bit64::integer64`, are rejected because their physical representation
+#' does not have Stata numeric semantics. Convert them explicitly to a bare
+#' numeric or one of the supported temporal or Stata types before generation.
 #' Character results keep a valid declared `stata.string.storage`. Otherwise,
 #' they use the smallest `str1` through `str2045` width that fits, or `strL`
 #' above 2,045 UTF-8 bytes. Numeric rows excluded by `where` contain
@@ -417,7 +420,26 @@ gen <- function(data, variable, values, where = NULL) {
     invisible(data)
 }
 
+.generated_numeric_class_supported <- function(values) {
+    if (!is.object(values) || inherits(values, "stata_numeric")) return(TRUE)
+    classes <- class(values)
+    if (inherits(values, "Date")) {
+        return(all(classes %in% "Date"))
+    }
+    if (inherits(values, "POSIXct")) {
+        return(all(classes %in% c("POSIXct", "POSIXt")))
+    }
+    inherits(values, "haven_labelled") &&
+        all(classes %in% c("haven_labelled", "vctrs_vctr", typeof(values)))
+}
+
 .generated_numeric <- function(values, rows, row_count) {
+    if (!.generated_numeric_class_supported(values)) {
+        stop(
+            "`gen()` does not support this classed numeric result; convert it explicitly",
+            call. = FALSE
+        )
+    }
     declared <- stata_storage_type(values)
     base_date <- inherits(values, "Date") &&
         !inherits(values, "stata_temporal")

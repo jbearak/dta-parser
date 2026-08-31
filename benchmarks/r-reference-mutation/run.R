@@ -350,6 +350,30 @@ stopifnot(
     total_character_generation_allocation < full_double_bytes * 1.5,
     character_generation_time < 0.5
 )
+
+dictionary_path <- tempfile(fileext = ".arrow")
+save_arrow(data.frame(
+    text = rep(c("a", "b"), length.out = rows)
+), dictionary_path)
+dictionary_data <- read_arrow(dictionary_path)
+unlink(dictionary_path)
+stopifnot(dtatools:::.is_unmaterialized_dictstring(dictionary_data$text))
+dictionary_profile <- profile_memory(
+    replace_values(dictionary_data, text, "changed"),
+    "dtatools-reference-dictionary-replacement-"
+)
+dictionary_replacement_time <- dictionary_profile$elapsed
+total_dictionary_replacement_allocation <- dictionary_profile$total
+largest_dictionary_replacement_allocation <- dictionary_profile$largest
+stopifnot(
+    identical(
+        as.character(dictionary_data$text[c(1L, rows)]),
+        c("changed", "changed")
+    ),
+    largest_dictionary_replacement_allocation <= full_double_bytes * 1.01,
+    total_dictionary_replacement_allocation < full_double_bytes * 1.5,
+    dictionary_replacement_time < 1
+)
 untracemem(integer_generation_data$anchor)
 untracemem(data$compact)
 untracemem(data$untouched)
@@ -483,6 +507,18 @@ cat(sprintf(
 cat(sprintf(
     "character_generation_largest_allocation_bytes\t%.0f\n",
     largest_character_generation_allocation
+))
+cat(sprintf(
+    "dictionary_replacement_seconds\t%.6f\n",
+    dictionary_replacement_time
+))
+cat(sprintf(
+    "dictionary_replacement_total_profiled_allocation_bytes\t%.0f\n",
+    total_dictionary_replacement_allocation
+))
+cat(sprintf(
+    "dictionary_replacement_largest_allocation_bytes\t%.0f\n",
+    largest_dictionary_replacement_allocation
 ))
 cat(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
 cat(sprintf("full_double_bytes\t%.0f\n", full_double_bytes))
