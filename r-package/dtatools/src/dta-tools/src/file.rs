@@ -329,11 +329,30 @@ pub trait DtaSink: Sized {
 
     fn finish(
         self,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError>;
+
+    /// Finish while borrowing the reader's cached metadata. The default
+    /// preserves the original owned [`DtaSink::finish`] contract for external
+    /// sinks; adapters that do not retain metadata can override this to avoid
+    /// cloning large note, characteristic, and value-label registries.
+    fn finish_borrowed(
+        self,
         metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
         value_label_tables: &[ValueLabelTable],
-    ) -> Result<Self::Output, DtaError>;
+    ) -> Result<Self::Output, DtaError> {
+        self.finish(
+            metadata.clone(),
+            row_start,
+            row_count,
+            value_label_tables.to_vec(),
+        )
+    }
 }
 
 /// One independently owned output column used by the block executor.
@@ -400,11 +419,30 @@ pub trait ParallelDtaSink: Sized {
     fn finish_parallel(
         state: Self::State,
         columns: Vec<Self::Column>,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError>;
+
+    /// Parallel counterpart to [`DtaSink::finish_borrowed`].
+    fn finish_parallel_borrowed(
+        state: Self::State,
+        columns: Vec<Self::Column>,
         metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
         value_label_tables: &[ValueLabelTable],
-    ) -> Result<Self::Output, DtaError>;
+    ) -> Result<Self::Output, DtaError> {
+        Self::finish_parallel(
+            state,
+            columns,
+            metadata.clone(),
+            row_start,
+            row_count,
+            value_label_tables.to_vec(),
+        )
+    }
 }
 
 struct VecSink {
@@ -785,13 +823,13 @@ impl DtaSink for VecSink {
 
     fn finish(
         self,
-        metadata: &DtaMetadata,
+        metadata: DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: &[ValueLabelTable],
+        value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError> {
         Ok(DtaData {
-            metadata: metadata.clone(),
+            metadata,
             row_start,
             row_count,
             columns: self
@@ -799,7 +837,7 @@ impl DtaSink for VecSink {
                 .into_iter()
                 .map(ColumnBuilder::finish)
                 .collect(),
-            value_label_tables: value_label_tables.to_vec(),
+            value_label_tables,
         })
     }
 }
@@ -816,10 +854,10 @@ impl ParallelDtaSink for VecSink {
     fn finish_parallel(
         _state: Self::State,
         columns: Vec<Self::Column>,
-        metadata: &DtaMetadata,
+        metadata: DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: &[ValueLabelTable],
+        value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError> {
         DtaSink::finish(
             VecSink { columns },
@@ -1659,7 +1697,7 @@ impl<R: Read + Seek> DtaFile<R> {
             .value_label_tables
             .as_deref()
             .expect("value-label cache was initialized");
-        S::finish_parallel(
+        S::finish_parallel_borrowed(
             state,
             columns,
             &self.metadata,
@@ -1915,7 +1953,7 @@ impl<R: Read + Seek> DtaFile<R> {
             .value_label_tables
             .as_deref()
             .expect("value-label cache was initialized");
-        sink.finish(&self.metadata, row_start, row_count, value_label_tables)
+        sink.finish_borrowed(&self.metadata, row_start, row_count, value_label_tables)
     }
 
     /// Return ownership of the underlying reader.

@@ -2085,7 +2085,10 @@ impl ArrowFileSnapshot {
                     row_count,
                     max_output_rows: None,
                     verify: false,
-                    profile: apply_profile,
+                    // The scan only needs raw Int32 buffers; the already
+                    // parsed profile above determines which fields are
+                    // ambiguous and remains authoritative for the summary.
+                    profile: false,
                     record_signature: false,
                     threads: 1,
                 },

@@ -1815,6 +1815,21 @@ impl DtaSink for RDataFrameSink {
     }
 
     fn finish(
+        self,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError> {
+        self.finish_borrowed(
+            &metadata,
+            row_start,
+            row_count,
+            &value_label_tables,
+        )
+    }
+
+    fn finish_borrowed(
         mut self,
         metadata: &DtaMetadata,
         _row_start: u64,
@@ -1927,12 +1942,34 @@ impl ParallelDtaSink for RDataFrameSink {
     fn finish_parallel(
         state: Self::State,
         columns: Vec<Self::Column>,
+        metadata: DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: Vec<ValueLabelTable>,
+    ) -> Result<Self::Output, DtaError> {
+        DtaSink::finish(
+            RDataFrameSink {
+                result: state.result,
+                columns,
+                source_indices: state.source_indices,
+                _guard: state.guard,
+            },
+            metadata,
+            row_start,
+            row_count,
+            value_label_tables,
+        )
+    }
+
+    fn finish_parallel_borrowed(
+        state: Self::State,
+        columns: Vec<Self::Column>,
         metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
         value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError> {
-        DtaSink::finish(
+        DtaSink::finish_borrowed(
             RDataFrameSink {
                 result: state.result,
                 columns,

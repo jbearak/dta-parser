@@ -8,6 +8,7 @@ use serde::{
     de::{SeqAccess, Visitor},
     Deserialize, Serialize,
 };
+use serde_json::value::RawValue;
 
 use super::ArrowProfileError;
 use crate::{
@@ -276,6 +277,154 @@ fn validate_notes_and_characteristics(
     Ok(())
 }
 
+#[derive(Deserialize)]
+struct MetadataStringPreflight<'a> {
+    #[serde(default, borrow)]
+    notes: Vec<&'a RawValue>,
+    #[serde(default, borrow)]
+    characteristics: Vec<CharacteristicStringPreflight<'a>>,
+}
+
+#[derive(Deserialize)]
+struct NumberedNoteStringPreflight<'a> {
+    #[serde(default, borrow)]
+    text: Option<&'a RawValue>,
+}
+
+#[derive(Deserialize)]
+struct CharacteristicStringPreflight<'a> {
+    #[serde(default, borrow)]
+    name: Option<&'a RawValue>,
+    #[serde(default, borrow)]
+    value: Option<&'a RawValue>,
+}
+
+fn hex_code_unit(bytes: &[u8]) -> Option<u16> {
+    if bytes.len() != 4 {
+        return None;
+    }
+    bytes.iter().try_fold(0_u16, |value, byte| {
+        let digit = match byte {
+            b'0'..=b'9' => u16::from(byte - b'0'),
+            b'a'..=b'f' => u16::from(byte - b'a' + 10),
+            b'A'..=b'F' => u16::from(byte - b'A' + 10),
+            _ => return None,
+        };
+        value.checked_mul(16)?.checked_add(digit)
+    })
+}
+
+/// Return the decoded UTF-8 length of a raw JSON string without allocating
+/// its decoded contents. Invalid JSON is left to Serde's ordinary parser.
+fn decoded_json_string_length(raw: &RawValue) -> Option<usize> {
+    let bytes = raw.get().as_bytes();
+    if bytes.len() < 2 || bytes.first() != Some(&b'"') || bytes.last() != Some(&b'"') {
+        return None;
+    }
+    let mut index = 1;
+    let end = bytes.len() - 1;
+    let mut length = 0_usize;
+    while index < end {
+        if bytes[index] != b'\\' {
+            let character = raw.get()[index..end].chars().next()?;
+            let width = character.len_utf8();
+            length = length.checked_add(width)?;
+            index += width;
+            continue;
+        }
+        index += 1;
+        let escape = *bytes.get(index)?;
+        index += 1;
+        if escape != b'u' {
+            if !matches!(
+                escape,
+                b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't'
+            ) {
+                return None;
+            }
+            length = length.checked_add(1)?;
+            continue;
+        }
+        let first = hex_code_unit(bytes.get(index..index + 4)?)?;
+        index += 4;
+        let codepoint = if (0xd800..=0xdbff).contains(&first) {
+            if bytes.get(index..index + 2) != Some(b"\\u") {
+                return None;
+            }
+            index += 2;
+            let second = hex_code_unit(bytes.get(index..index + 4)?)?;
+            index += 4;
+            if !(0xdc00..=0xdfff).contains(&second) {
+                return None;
+            }
+            0x1_0000 + (u32::from(first) - 0xd800) * 0x400 + (u32::from(second) - 0xdc00)
+        } else if (0xdc00..=0xdfff).contains(&first) {
+            return None;
+        } else {
+            u32::from(first)
+        };
+        length = length.checked_add(char::from_u32(codepoint)?.len_utf8())?;
+    }
+    (index == end).then_some(length)
+}
+
+fn validate_preflight_string(
+    version: &str,
+    context: &str,
+    raw: &RawValue,
+    limit: usize,
+) -> Result<(), ArrowProfileError> {
+    if decoded_json_string_length(raw).is_some_and(|length| length > limit) {
+        return Err(malformed(
+            version,
+            format!("{context} exceeds the {limit}-byte Stata metadata limit"),
+        ));
+    }
+    Ok(())
+}
+
+fn preflight_metadata_strings(
+    version: &str,
+    context: &str,
+    json: &str,
+) -> Result<(), ArrowProfileError> {
+    let document: MetadataStringPreflight<'_> = serde_json::from_str(json)
+        .map_err(|error| malformed(version, format!("invalid {context} document: {error}")))?;
+    let value_limit = crate::stata_metadata::MAX_METADATA_VALUE_BYTES;
+    let note_context = format!("{context} note text");
+    let characteristic_name_context = format!("{context} characteristic name");
+    let characteristic_value_context = format!("{context} characteristic value");
+    for note in document
+        .notes
+        .into_iter()
+        .take(crate::stata_metadata::MAX_NOTE_NUMBER as usize)
+    {
+        if note.get().starts_with('"') {
+            validate_preflight_string(version, &note_context, note, value_limit)?;
+        } else {
+            let numbered: NumberedNoteStringPreflight<'_> = serde_json::from_str(note.get())
+                .map_err(|error| malformed(version, format!("invalid {context} note: {error}")))?;
+            if let Some(text) = numbered.text {
+                validate_preflight_string(version, &note_context, text, value_limit)?;
+            }
+        }
+    }
+    for characteristic in document.characteristics {
+        if let Some(name) = characteristic.name {
+            validate_preflight_string(
+                version,
+                &characteristic_name_context,
+                name,
+                crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
+            )?;
+        }
+        if let Some(value) = characteristic.value {
+            validate_preflight_string(version, &characteristic_value_context, value, value_limit)?;
+        }
+    }
+    Ok(())
+}
+
 /// Per-buffer xxHash64 checksums, in canonical buffer order, for every column
 /// of every record batch and for each dictionary field's values.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -315,6 +464,7 @@ pub(crate) fn parse_dataset_document(
             ..DatasetDocument::default()
         });
     };
+    preflight_metadata_strings(version, "dataset", json)?;
     let document: DatasetDocument = serde_json::from_str(json)
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
     validate_dataset_document(version, &document)?;
@@ -365,6 +515,7 @@ pub(crate) fn parse_field_document(
     field: &Field,
     json: &str,
 ) -> Result<ArrowFieldDocument, ArrowProfileError> {
+    preflight_metadata_strings(version, "field", json)?;
     let document: ArrowFieldDocument = serde_json::from_str(json).map_err(|error| {
         malformed(
             version,
@@ -759,6 +910,41 @@ mod tests {
             assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
             assert!(error.to_string().contains("at most 9,999 entries"));
         }
+    }
+
+    #[test]
+    fn note_and_characteristic_strings_are_bounded_before_deserialization() {
+        let oversized = "x".repeat(1 << 20);
+        for json in [
+            format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{oversized}"}}]}}"#),
+            format!(
+                r#"{{"version":0,"characteristics":[{{"name":"source","value":"{oversized}"}}]}}"#
+            ),
+            format!(
+                r#"{{"version":0,"characteristics":[{{"name":"{oversized}","value":"x"}}]}}"#
+            ),
+        ] {
+            let error = parse_dataset_document("0", Some(&json))
+                .expect_err("oversized metadata strings are rejected before decoding");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("Stata metadata limit"));
+        }
+    }
+
+    #[test]
+    fn metadata_string_preflight_counts_decoded_json_bytes() {
+        let accepted = r#"\u754c"#.repeat(22_594);
+        let json = format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{accepted}"}}]}}"#);
+        parse_dataset_document("0", Some(&json)).expect("67,782 decoded bytes fit");
+
+        let oversized = r#"\u754c"#.repeat(22_595);
+        let json = format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{oversized}"}}]}}"#);
+        let error = parse_dataset_document("0", Some(&json))
+            .expect_err("67,785 decoded bytes exceed the limit");
+        assert!(
+            error.to_string().contains("67784-byte"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]
