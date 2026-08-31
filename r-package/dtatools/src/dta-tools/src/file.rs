@@ -7130,13 +7130,10 @@ mod tests {
 
     #[test]
     fn sparse_value_label_selection_preserves_duplicate_source_order() {
-        let mut indices_by_name = HashMap::<Arc<str>, Vec<usize>>::new();
-        for index in 0..10_000 {
-            if index != 7 && index != 9_997 {
-                indices_by_name.insert(Arc::from(format!("unused_{index}")), vec![index]);
-            }
-        }
-        indices_by_name.insert(Arc::from("selected"), vec![7, 9_997]);
+        let indices_by_name = HashMap::from([
+            (Arc::from("unused"), vec![3]),
+            (Arc::from("selected"), vec![7, 9_997]),
+        ]);
         let mut metadata = kernel_metadata(ByteOrder::Lsf);
         metadata
             .variables

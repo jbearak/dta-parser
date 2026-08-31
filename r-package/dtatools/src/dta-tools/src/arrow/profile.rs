@@ -3,7 +3,7 @@
 
 use std::{
     borrow::Cow,
-    collections::{hash_map::RandomState, BTreeMap, HashSet},
+    collections::{hash_map::RandomState, BTreeMap, HashMap, HashSet},
     fmt,
     hash::BuildHasher,
 };
@@ -735,7 +735,7 @@ impl<'de> DeserializeSeed<'de> for DiscardValueLabelEntries<'_> {
 }
 
 struct ValueLabelRegistrySeed<'a> {
-    selected: Option<&'a HashSet<String>>,
+    selected: Option<&'a HashMap<String, usize>>,
 }
 
 struct ValueLabelTableName<'a>(Cow<'a, str>);
@@ -797,7 +797,7 @@ impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
         #[cfg(test)]
         DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(|count| count.set(count.get() + 1));
         struct RegistryVisitor<'a> {
-            selected: Option<&'a HashSet<String>>,
+            selected: Option<&'a HashMap<String, usize>>,
         }
 
         impl<'de> Visitor<'de> for RegistryVisitor<'_> {
@@ -834,7 +834,7 @@ impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
                     })?;
                     let retain = self
                         .selected
-                        .is_none_or(|selected| selected.contains(name.as_str()));
+                        .is_none_or(|selected| selected.contains_key(name.as_str()));
                     if retain {
                         let entries = map.next_value::<Vec<ArrowValueLabelEntry>>()?;
                         retained.insert(name.as_str().to_owned(), entries);
@@ -856,7 +856,7 @@ impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
 }
 
 struct OptionalValueLabelRegistrySeed<'a> {
-    selected: Option<&'a HashSet<String>>,
+    selected: Option<&'a HashMap<String, usize>>,
 }
 
 impl<'de> DeserializeSeed<'de> for OptionalValueLabelRegistrySeed<'_> {
@@ -867,7 +867,7 @@ impl<'de> DeserializeSeed<'de> for OptionalValueLabelRegistrySeed<'_> {
         D: serde::Deserializer<'de>,
     {
         struct OptionalRegistryVisitor<'a> {
-            selected: Option<&'a HashSet<String>>,
+            selected: Option<&'a HashMap<String, usize>>,
         }
 
         impl<'de> Visitor<'de> for OptionalRegistryVisitor<'_> {
@@ -919,7 +919,7 @@ struct RawCharacteristics(
 );
 
 struct DatasetDocumentSeed<'a> {
-    selected_value_labels: Option<&'a HashSet<String>>,
+    selected_value_labels: Option<&'a HashMap<String, usize>>,
 }
 
 impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
@@ -930,7 +930,7 @@ impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
         D: serde::Deserializer<'de>,
     {
         struct DatasetVisitor<'a> {
-            selected_value_labels: Option<&'a HashSet<String>>,
+            selected_value_labels: Option<&'a HashMap<String, usize>>,
         }
 
         impl<'de> Visitor<'de> for DatasetVisitor<'_> {
@@ -1085,7 +1085,7 @@ fn parse_dataset_document(
 pub(crate) fn parse_dataset_document_selected(
     version: &str,
     json: Option<&str>,
-    selected_value_labels: Option<&HashSet<String>>,
+    selected_value_labels: Option<&HashMap<String, usize>>,
 ) -> Result<DatasetDocument, ArrowProfileError> {
     let Some(json) = json else {
         return Ok(DatasetDocument {
@@ -1545,7 +1545,7 @@ mod tests {
 
     #[test]
     fn discarded_value_label_entries_still_validate_label_types() {
-        let selected = HashSet::new();
+        let selected = HashMap::new();
         let error = parse_dataset_document_selected(
             "0",
             Some(r#"{"version":0,"value_labels":{"unselected":[{"value":1,"label":7}]}}"#),
@@ -1558,7 +1558,7 @@ mod tests {
 
     #[test]
     fn projected_registry_is_consumed_once_without_reparsing_discarded_labels() {
-        let selected = HashSet::from(["selected".to_owned()]);
+        let selected = HashMap::from([("selected".to_owned(), 1)]);
         DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(|count| count.set(0));
         DISCARDED_VALUE_LABEL_VISIT_COUNT.with(|count| count.set(0));
 
@@ -1596,7 +1596,7 @@ mod tests {
         }
         json.push_str("}}");
 
-        let selected = HashSet::new();
+        let selected = HashMap::new();
         let full = parse_dataset_document_selected("0", Some(&json), None)
             .expect("the Stata table limit is accepted on a full read");
         assert_eq!(full.value_labels.len(), MAX_VALUE_LABEL_TABLES);
@@ -1641,7 +1641,7 @@ mod tests {
 
         BORROWED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(0));
         OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(0));
-        let selected = HashSet::new();
+        let selected = HashMap::new();
         let error = parse_dataset_document_selected("0", Some(&json), Some(&selected))
             .expect_err("the extra table is rejected before its value is decoded");
 
