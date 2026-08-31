@@ -7,6 +7,7 @@ use crate::endian::{
 use crate::selection::{resolve_columns, row_window};
 use crate::strl::decode_strl_columns;
 use crate::text::{field_bytes, TextEncoding};
+use crate::value_labels::parse_selected_value_labels_with_encoding;
 use crate::{
     missing::{
         classify_byte_missing_for_version, classify_double_missing_bits_for_version,
@@ -258,17 +259,18 @@ pub fn read_dta_with_options_and_encoding(
     let encoding = encoding.resolve(metadata.format_version);
     let payload_start = validate_data_section(bytes, &metadata)?;
     let column_indices = resolve_columns(&metadata, options)?;
-    let mut value_label_tables = parse_value_labels_with_encoding(bytes, &metadata, encoding)?;
-    if options.column_indices.is_some() {
+    let value_label_tables = if options.column_indices.is_some() {
         let selected_tables = column_indices
             .iter()
             .filter_map(|&index| {
                 let name = &metadata.variables.get(index as usize)?.value_label_name;
-                (!name.is_empty()).then_some(name.as_str())
+                (!name.is_empty()).then(|| name.clone())
             })
             .collect::<HashSet<_>>();
-        value_label_tables.retain(|table| selected_tables.contains(table.name.as_str()));
-    }
+        parse_selected_value_labels_with_encoding(bytes, &metadata, encoding, &selected_tables)?
+    } else {
+        parse_value_labels_with_encoding(bytes, &metadata, encoding)?
+    };
     let (row_start, row_count) = row_window(&metadata, options);
     let mut strl_indices = Vec::new();
     for &index in &column_indices {

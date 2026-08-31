@@ -1767,15 +1767,32 @@ fn row_window(skip: f64, n_max: f64) -> (u64, Option<u64>) {
     (start, limit)
 }
 
-struct CachedValueLabels {
-    name: String,
-    labels: Sexp,
-}
-
 struct ColumnAttributes<'a> {
     document: Option<&'a ArrowFieldDocument>,
-    value_labels: Option<&'a HashMap<String, CachedValueLabels>>,
+    value_labels: Option<&'a HashMap<String, Sexp>>,
     value_label_reference_counts: Option<&'a HashMap<String, usize>>,
+}
+
+struct ReadAttributeCache<'a> {
+    value_labels: &'a HashMap<String, Sexp>,
+    value_label_reference_counts: &'a HashMap<String, usize>,
+    profiled: bool,
+}
+
+impl ReadAttributeCache<'_> {
+    fn for_column<'a>(&'a self, column: &'a ArrowReadColumn) -> ColumnAttributes<'a> {
+        ColumnAttributes {
+            document: if self.profiled {
+                column.field.as_ref()
+            } else {
+                None
+            },
+            value_labels: self.profiled.then_some(self.value_labels),
+            value_label_reference_counts: self
+                .profiled
+                .then_some(self.value_label_reference_counts),
+        }
+    }
 }
 
 impl ColumnAttributes<'_> {
@@ -1788,9 +1805,12 @@ impl ColumnAttributes<'_> {
             .map_or("", |document| document.format.as_str())
     }
 
-    fn value_labels(&self) -> Option<&CachedValueLabels> {
+    fn value_labels(&self) -> Option<(&str, Sexp)> {
         let name = self.document?.value_labels.as_deref()?;
-        self.value_labels?.get(name)
+        self.value_labels?
+            .get(name)
+            .copied()
+            .map(|labels| (name, labels))
     }
 
     fn preserve_value_label_name(&self, column_name: &str) -> bool {
@@ -2967,11 +2987,11 @@ unsafe fn attach_cached_value_labels(
     attributes: &ColumnAttributes<'_>,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
-    if let Some(cached) = attributes.value_labels() {
+    if let Some((table_name, labels)) = attributes.value_labels() {
         value_label_attributes(
             vector,
-            &cached.name,
-            cached.labels,
+            table_name,
+            labels,
             false,
             attributes.preserve_value_label_name(column_name),
             guard,
@@ -3017,21 +3037,11 @@ unsafe fn finalize_read_column(
     column: &ArrowReadColumn,
     plan: PlannedColumn,
     outcome: FillOutcome,
-    value_labels: &HashMap<String, CachedValueLabels>,
-    value_label_reference_counts: &HashMap<String, usize>,
-    profiled: bool,
+    attribute_cache: &ReadAttributeCache<'_>,
     row_count: usize,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
-    let attributes = ColumnAttributes {
-        document: if profiled {
-            column.field.as_ref()
-        } else {
-            None
-        },
-        value_labels: profiled.then_some(value_labels),
-        value_label_reference_counts: profiled.then_some(value_label_reference_counts),
-    };
+    let attributes = attribute_cache.for_column(column);
     let mismatch = || format!("column `{}` produced a mismatched fill result", column.name);
     let vector = match &plan.shape {
         ColumnShape::ProfiledCompact { .. } => {
@@ -3080,7 +3090,7 @@ unsafe fn finalize_read_column(
                 .ok_or_else(mismatch)?;
             let document = attributes.document.ok_or_else(mismatch)?;
             let dta_type = storage.dta_type();
-            let cached = attributes.value_labels();
+            let (value_label_name, labels_attribute) = attributes.value_labels().unzip();
             attach_variable_attribute_view(
                 vector,
                 super::VariableAttributeView {
@@ -3090,8 +3100,8 @@ unsafe fn finalize_read_column(
                     notes: &document.notes,
                     characteristics: &document.characteristics,
                 },
-                cached.map(|labels| labels.name.as_str()),
-                cached.map(|labels| labels.labels),
+                value_label_name,
+                labels_attribute,
                 attributes.preserve_value_label_name(&column.name),
                 guard,
             )?;
@@ -3206,7 +3216,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             record_signature: record_signature != 0,
             threads: requested,
         };
-        let result = snapshot
+        let mut result = snapshot
             .read(&options, &mut coarse_interrupt)
             .map_err(|error| error.to_string())?;
         let profiled = result.profile_version.is_some();
@@ -3222,52 +3232,63 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         let frame = result_guard.alloc(VECSXP, column_total)?;
         let names = result_guard.alloc(STRSXP, column_total)?;
 
+        let (dataset_label, dataset_notes, dataset_characteristics, value_label_registry) =
+            if let Some(mut dataset) = result.dataset.take() {
+                (
+                    std::mem::take(&mut dataset.label),
+                    std::mem::take(&mut dataset.notes),
+                    std::mem::take(&mut dataset.characteristics),
+                    std::mem::take(&mut dataset.value_labels),
+                )
+            } else {
+                (String::new(), Vec::new(), Vec::new(), Default::default())
+            };
+
         // Convert and allocate each selected value-label table once. Every
         // referring R column then shares the same table record and protected
         // `labels` vector.
         let mut value_labels = HashMap::new();
         if profiled {
-            if let Some(dataset) = &result.dataset {
-                for column in &result.columns {
-                    let Some(name) = column
-                        .field
-                        .as_ref()
-                        .and_then(|field| field.value_labels.as_deref())
-                    else {
-                        continue;
-                    };
-                    if value_labels.contains_key(name) {
-                        continue;
-                    }
-                    let entries = dataset.value_labels.get(name).ok_or_else(|| {
-                        format!("Arrow field references missing value-label table `{name}`")
-                    })?;
-                    let labels = label_attribute_from_entries(
-                        entries.len(),
-                        entries.iter().map(|entry| {
-                            let value = match (entry.value, entry.tag) {
-                                (Some(value), None) => f64::from(value),
-                                (None, Some(tag)) => r_missing(tag),
-                                _ => {
-                                    return Err(
-                                        "value-label entry must contain exactly one code".to_owned()
-                                    )
-                                }
-                            };
-                            Ok((value, entry.label.as_str()))
-                        }),
-                        &mut result_guard,
-                    )?;
-                    value_labels.insert(
-                        name.to_owned(),
-                        CachedValueLabels {
-                            name: name.to_owned(),
-                            labels,
-                        },
-                    );
+            for column in &result.columns {
+                let Some(name) = column
+                    .field
+                    .as_ref()
+                    .and_then(|field| field.value_labels.as_deref())
+                else {
+                    continue;
+                };
+                if value_labels.contains_key(name) {
+                    continue;
                 }
+                let entries = value_label_registry.get(name).ok_or_else(|| {
+                    format!("Arrow field references missing value-label table `{name}`")
+                })?;
+                let labels = label_attribute_from_entries(
+                    entries.len(),
+                    entries.iter().map(|entry| {
+                        let value = match (entry.value, entry.tag) {
+                            (Some(value), None) => f64::from(value),
+                            (None, Some(tag)) => r_missing(tag),
+                            _ => {
+                                return Err(
+                                    "value-label entry must contain exactly one code".to_owned()
+                                )
+                            }
+                        };
+                        Ok((value, entry.label.as_str()))
+                    }),
+                    &mut result_guard,
+                )?;
+                value_labels.insert(name.to_owned(), labels);
             }
         }
+        drop(value_label_registry);
+
+        let attribute_cache = ReadAttributeCache {
+            value_labels: &value_labels,
+            value_label_reference_counts: &result.value_label_reference_counts,
+            profiled,
+        };
 
         // Plan: allocate every output vector on the R thread so fills can
         // run anywhere.
@@ -3275,16 +3296,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         let mut fills = Vec::with_capacity(result.columns.len());
         for column in &result.columns {
             check_interrupt()?;
-            let attributes = ColumnAttributes {
-                document: if profiled {
-                    column.field.as_ref()
-                } else {
-                    None
-                },
-                value_labels: profiled.then_some(&value_labels),
-                value_label_reference_counts: profiled
-                    .then_some(&result.value_label_reference_counts),
-            };
+            let attributes = attribute_cache.for_column(column);
             let shape = classify_read_column(column, &attributes, numeric_altrep != 0)?;
             let mut plan =
                 plan_read_column(column, shape, &attributes, row_count, &mut result_guard)?;
@@ -3307,9 +3319,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 column,
                 plan,
                 outcome,
-                &value_labels,
-                &result.value_label_reference_counts,
-                profiled,
+                &attribute_cache,
                 row_count,
                 &mut column_guard,
             )?;
@@ -3332,15 +3342,18 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         }
         let _ = R_ClassSymbol;
 
-        if let Some(dataset) = &result.dataset {
-            if !dataset.label.is_empty() {
-                let mut guard = ProtectGuard::new();
-                let label = scalar_string(&dataset.label, &mut guard)?;
-                set_attr(frame, "label", label)?;
-            }
+        if !dataset_label.is_empty() {
             let mut guard = ProtectGuard::new();
-            attach_stata_metadata(frame, &dataset.notes, &dataset.characteristics, &mut guard)?;
+            let label = scalar_string(&dataset_label, &mut guard)?;
+            set_attr(frame, "label", label)?;
         }
+        let mut guard = ProtectGuard::new();
+        attach_stata_metadata(
+            frame,
+            &dataset_notes,
+            &dataset_characteristics,
+            &mut guard,
+        )?;
         if let Some(signature) = &result.stored_signature {
             let mut guard = ProtectGuard::new();
             let signature = scalar_string(signature, &mut guard)?;

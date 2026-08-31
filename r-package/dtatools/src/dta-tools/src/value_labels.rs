@@ -138,7 +138,8 @@ fn parse_fixed8_table(
     metadata: &DtaMetadata,
     table_start: usize,
     encoding: TextEncoding,
-) -> Result<(ValueLabelTable, usize), DtaError> {
+    selected: Option<&HashSet<String>>,
+) -> Result<(Option<ValueLabelTable>, usize), DtaError> {
     const NAME_WIDTH: usize = 9;
     const PADDING_WIDTH: usize = 1;
     const LABEL_WIDTH: usize = 8;
@@ -156,6 +157,7 @@ fn parse_fixed8_table(
         NAME_WIDTH,
         "legacy value-label table name",
     )?));
+    let retain = selected.is_none_or(|selected| selected.contains(&name));
     let values_start = checked_add(
         checked_add(name_start, NAME_WIDTH, "legacy value-label table name")?,
         PADDING_WIDTH,
@@ -184,7 +186,7 @@ fn parse_fixed8_table(
         "legacy value-label table",
     )?;
 
-    let mut entries = Vec::with_capacity(entry_count);
+    let mut entries = retain.then(|| Vec::with_capacity(entry_count));
     for entry_index in 0..entry_count {
         let value_at = checked_add(
             values_start,
@@ -196,25 +198,30 @@ fn parse_fixed8_table(
             checked_mul(entry_index, LABEL_WIDTH, "legacy value-label text")?,
             "legacy value-label text",
         )?;
-        let value = i32::from(read_i16(
-            bytes,
-            value_at,
-            metadata.byte_order,
-            "legacy value-label value",
-        )?);
-        let label = encoding.decode(field_bytes(slice_at(
-            bytes,
-            label_at,
-            LABEL_WIDTH,
-            "legacy value-label text",
-        )?));
-        entries.push(ValueLabelEntry {
-            value,
-            missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-            label,
-        });
+        if let Some(entries) = entries.as_mut() {
+            let value = i32::from(read_i16(
+                bytes,
+                value_at,
+                metadata.byte_order,
+                "legacy value-label value",
+            )?);
+            let label = encoding.decode(field_bytes(slice_at(
+                bytes,
+                label_at,
+                LABEL_WIDTH,
+                "legacy value-label text",
+            )?));
+            entries.push(ValueLabelEntry {
+                value,
+                missing_tag: classify_long_missing_for_version(value, metadata.format_version),
+                label,
+            });
+        }
     }
-    Ok((ValueLabelTable { name, entries }, table_end))
+    Ok((
+        entries.map(|entries| ValueLabelTable { name, entries }),
+        table_end,
+    ))
 }
 
 fn parse_table(
@@ -224,7 +231,8 @@ fn parse_table(
     name_width: usize,
     wrapped: bool,
     encoding: TextEncoding,
-) -> Result<(ValueLabelTable, usize), DtaError> {
+    selected: Option<&HashSet<String>>,
+) -> Result<(Option<ValueLabelTable>, usize), DtaError> {
     let mut cursor = if wrapped {
         expect_at(bytes, table_start, LABEL_OPEN, "<lbl>")?
     } else {
@@ -262,6 +270,7 @@ fn parse_table(
         field_bytes(name_field)
     };
     let name = encoding.decode(name_bytes);
+    let retain = selected.is_none_or(|selected| selected.contains(&name));
     cursor = checked_add(cursor, name_width, "value-label table name")?;
 
     // The format reserves these bytes but does not assign them semantics.
@@ -346,7 +355,7 @@ fn parse_table(
         .filter_map(|(offset, byte)| (*byte == 0).then_some(offset))
         .collect();
 
-    let mut entries = Vec::with_capacity(entry_count);
+    let mut entries = retain.then(|| Vec::with_capacity(entry_count));
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
         let raw_offset_position = checked_add(
@@ -410,19 +419,24 @@ fn parse_table(
                 )?,
             });
         };
-        let label = encoding.decode(&text[text_offset_usize..nul]);
-        entries.push(ValueLabelEntry {
-            value,
-            missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-            label,
-        });
+        if let Some(entries) = entries.as_mut() {
+            let label = encoding.decode(&text[text_offset_usize..nul]);
+            entries.push(ValueLabelEntry {
+                value,
+                missing_tag: classify_long_missing_for_version(value, metadata.format_version),
+                label,
+            });
+        }
     }
 
     cursor = checked_add(payload_start, declared, "value-label table payload")?;
     if wrapped {
         cursor = expect_at(bytes, cursor, LABEL_CLOSE, "</lbl>")?;
     }
-    Ok((ValueLabelTable { name, entries }, cursor))
+    Ok((
+        entries.map(|entries| ValueLabelTable { name, entries }),
+        cursor,
+    ))
 }
 
 fn parse_legacy_tables(
@@ -431,9 +445,10 @@ fn parse_legacy_tables(
     start: usize,
     end: usize,
     encoding: TextEncoding,
-    layout: LegacyValueLabelLayout,
-    name_width: usize,
+    layout: (LegacyValueLabelLayout, usize),
+    selected: Option<&HashSet<String>>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
+    let (layout, name_width) = layout;
     let mut cursor = start;
     let mut tables = Vec::new();
     let mut known_nonzero = None;
@@ -452,16 +467,18 @@ fn parse_legacy_tables(
         }
         let (table, next) = match layout {
             LegacyValueLabelLayout::Fixed8 => {
-                parse_fixed8_table(bytes, metadata, cursor, encoding)?
+                parse_fixed8_table(bytes, metadata, cursor, encoding, selected)?
             }
-            LegacyValueLabelLayout::OffsetTable => {
-                parse_table(bytes, metadata, cursor, name_width, false, encoding)?
-            }
+            LegacyValueLabelLayout::OffsetTable => parse_table(
+                bytes, metadata, cursor, name_width, false, encoding, selected,
+            )?,
         };
         if next <= cursor {
             return Err(DtaError::ArithmeticOverflow("legacy value-label cursor"));
         }
-        tables.push(table);
+        if let Some(table) = table {
+            tables.push(table);
+        }
         cursor = next;
     }
     if cursor != end {
@@ -496,7 +513,17 @@ pub fn parse_value_labels_with_encoding(
         metadata,
         0,
         encoding.resolve(metadata.format_version),
+        None,
     )
+}
+
+pub(crate) fn parse_selected_value_labels_with_encoding(
+    bytes: &[u8],
+    metadata: &DtaMetadata,
+    encoding: TextEncoding,
+    selected: &HashSet<String>,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    parse_value_labels_section(bytes, metadata, 0, encoding, Some(selected))
 }
 
 fn local_offset(absolute: u64, base_offset: u64, context: &'static str) -> Result<usize, DtaError> {
@@ -534,6 +561,7 @@ pub(crate) fn parse_value_labels_section(
     metadata: &DtaMetadata,
     base_offset: u64,
     encoding: TextEncoding,
+    selected: Option<&HashSet<String>>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     let name_width = name_width(metadata.format_version)?;
     let start = local_offset(
@@ -585,8 +613,8 @@ pub(crate) fn parse_value_labels_section(
             start,
             end,
             encoding,
-            value_label_layout,
-            table_name_width,
+            (value_label_layout, table_name_width),
+            selected,
         );
     }
     let mut cursor = expect_at(bytes, start, VALUE_LABELS_OPEN, "<value_labels>")?;
@@ -600,8 +628,12 @@ pub(crate) fn parse_value_labels_section(
             cursor = expect_at(bytes, cursor, VALUE_LABELS_CLOSE, "</value_labels>")?;
             break;
         }
-        let (table, next) = parse_table(bytes, metadata, cursor, name_width, true, encoding)?;
-        tables.push(table);
+        let (table, next) = parse_table(
+            bytes, metadata, cursor, name_width, true, encoding, selected,
+        )?;
+        if let Some(table) = table {
+            tables.push(table);
+        }
         cursor = next;
     }
 
@@ -626,3 +658,4 @@ pub(crate) fn parse_value_labels_section(
     )?;
     Ok(tables)
 }
+use std::collections::HashSet;

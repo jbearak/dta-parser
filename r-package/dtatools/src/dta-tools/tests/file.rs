@@ -274,6 +274,31 @@ fn large_first_value_label(mut bytes: Vec<u8>, extra: usize) -> (Vec<u8>, u64) {
     (bytes, (text_start + first_offset) as u64)
 }
 
+fn modern_value_label_ranges(bytes: &[u8], metadata: &DtaMetadata) -> Vec<(String, u64, u64)> {
+    let name_width = match metadata.format_version {
+        dta_tools::FormatVersion::V117 => 33,
+        dta_tools::FormatVersion::V118 | dta_tools::FormatVersion::V119 => 129,
+        _ => panic!("modern fixture expected"),
+    };
+    let mut cursor = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let mut ranges = Vec::new();
+    while bytes[cursor..].starts_with(b"<lbl>") {
+        let start = cursor;
+        let length_start = start + b"<lbl>".len();
+        let declared =
+            u32::from_le_bytes(bytes[length_start..length_start + 4].try_into().unwrap()) as usize;
+        let name_start = length_start + 4;
+        let name_end = bytes[name_start..name_start + name_width]
+            .iter()
+            .position(|byte| *byte == 0)
+            .unwrap();
+        let name = String::from_utf8(bytes[name_start..name_start + name_end].to_vec()).unwrap();
+        cursor = name_start + name_width + 3 + declared + b"</lbl>".len();
+        ranges.push((name, start as u64, cursor as u64));
+    }
+    ranges
+}
+
 fn many_short_first_value_labels(mut bytes: Vec<u8>, count: usize) -> Vec<u8> {
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
     let map_start = metadata.section_offsets.map as usize;
@@ -864,6 +889,45 @@ fn projected_reads_clone_only_selected_value_label_tables() {
         .read_with_options(&options(0, None, Vec::new()))
         .unwrap();
     assert!(empty.value_label_tables.is_empty());
+}
+
+#[test]
+fn repeated_projections_reuse_the_validated_value_label_index() {
+    let bytes = fixture("value_labels_v118.dta");
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    let ranges = modern_value_label_ranges(&bytes, &metadata);
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader(reader).unwrap();
+
+    let first = file.read_with_options(&options(0, None, vec![1])).unwrap();
+    assert_eq!(first.value_label_tables[0].name, "rep_lbl");
+
+    trace.borrow_mut().reads.clear();
+    let second = file.read_with_options(&options(0, None, vec![2])).unwrap();
+    assert_eq!(second.value_label_tables[0].name, "region_lbl");
+    let (_, selected_start, selected_end) = ranges
+        .iter()
+        .find(|(name, _, _)| name == "region_lbl")
+        .unwrap();
+    let label_reads = trace
+        .borrow()
+        .reads
+        .iter()
+        .copied()
+        .filter(|(offset, _)| *offset >= metadata.section_offsets.value_labels)
+        .collect::<Vec<_>>();
+    assert!(!label_reads.is_empty());
+    assert!(label_reads.iter().all(|(offset, length)| {
+        *offset >= *selected_start && *offset + *length as u64 <= *selected_end
+    }));
+
+    trace.borrow_mut().reads.clear();
+    file.read_with_options(&options(0, None, vec![2])).unwrap();
+    assert!(!trace
+        .borrow()
+        .reads
+        .iter()
+        .any(|(offset, _)| *offset >= metadata.section_offsets.value_labels));
 }
 
 #[test]
