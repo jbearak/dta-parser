@@ -1935,7 +1935,7 @@ unsafe impl Sync for ColumnFill {}
 /// What a fill hands back to the main thread for finalization.
 enum FillOutcome {
     Plain,
-    NoNa(bool),
+    MissingCount(usize),
     Strings(RStringData),
     Levels(Vec<Option<String>>),
 }
@@ -2087,35 +2087,41 @@ unsafe fn fill_profiled_compact(
     values: *mut u8,
     kind: NumericKind,
     version: FormatVersion,
-) -> Result<bool, String> {
-    let mut no_na = true;
+) -> Result<usize, String> {
+    let mut missing_count = 0;
     match kind {
         NumericKind::Byte => for_each_value::<Int8Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_byte_missing_for_version(value, version).is_none();
+            missing_count +=
+                usize::from(classify_byte_missing_for_version(value, version).is_some());
             values.add(row).cast::<i8>().write_unaligned(value);
             Ok(())
         })?,
         NumericKind::Int => for_each_value::<Int16Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_int_missing_for_version(value, version).is_none();
+            missing_count +=
+                usize::from(classify_int_missing_for_version(value, version).is_some());
             values.add(row * 2).cast::<i16>().write_unaligned(value);
             Ok(())
         })?,
         NumericKind::Long => for_each_value::<Int32Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_long_missing_for_version(value, version).is_none();
+            missing_count +=
+                usize::from(classify_long_missing_for_version(value, version).is_some());
             values.add(row * 4).cast::<i32>().write_unaligned(value);
             Ok(())
         })?,
         NumericKind::Float => for_each_value::<Float32Array>(column, |row, array, index| {
             let value = array.value(index);
-            no_na &= classify_float_missing_bits_for_version(value.to_bits(), version).is_none();
+            missing_count += usize::from(
+                value.is_nan()
+                    || classify_float_missing_bits_for_version(value.to_bits(), version).is_some(),
+            );
             values.add(row * 4).cast::<f32>().write_unaligned(value);
             Ok(())
         })?,
     }
-    Ok(no_na)
+    Ok(missing_count)
 }
 
 unsafe fn fill_profiled_eager(
@@ -2630,7 +2636,7 @@ unsafe fn fill_read_column(
             values,
             kind,
             version,
-        } => Ok(FillOutcome::NoNa(fill_profiled_compact(
+        } => Ok(FillOutcome::MissingCount(fill_profiled_compact(
             column, *values, *kind, *version,
         )?)),
         ColumnFill::ProfiledEager {
@@ -2887,11 +2893,11 @@ unsafe fn finalize_read_column(
     let mismatch = || format!("column `{}` produced a mismatched fill result", column.name);
     let vector = match &plan.shape {
         ColumnShape::ProfiledCompact { .. } => {
-            let FillOutcome::NoNa(no_na) = outcome else {
+            let FillOutcome::MissingCount(missing_count) = outcome else {
                 return Err(mismatch());
             };
             let mut data = plan.compact.ok_or_else(mismatch)?;
-            data.no_na = no_na;
+            data.missing_count = missing_count;
             guard.numeric(data)?
         }
         ColumnShape::Strings { has_nulls: false } => {
@@ -3263,6 +3269,37 @@ mod tests {
             classify_double_missing_bits(values.value(0).to_bits()),
             Some(MissingTag::System)
         );
+    }
+
+    #[test]
+    fn compact_float_fill_counts_generic_nan_as_missing() {
+        let generic_nan = f32::from_bits(0x7fc0_0001);
+        let system_missing = f32::from_bits(MissingTag::System.float_bits());
+        let column = ArrowReadColumn {
+            name: "x".to_owned(),
+            data_type: DataType::Float32,
+            nullable: false,
+            dictionary_ordered: false,
+            field: None,
+            chunks: vec![Arc::new(Float32Array::from(vec![
+                1.0,
+                generic_nan,
+                system_missing,
+            ]))],
+        };
+        let mut values = vec![0_u8; 3 * std::mem::size_of::<f32>()];
+
+        let missing_count = unsafe {
+            fill_profiled_compact(
+                &column,
+                values.as_mut_ptr(),
+                NumericKind::Float,
+                FormatVersion::V118,
+            )
+        }
+        .expect("compact float fill");
+
+        assert_eq!(missing_count, 2);
     }
 
     #[test]

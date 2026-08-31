@@ -17,12 +17,22 @@ declared Stata storage type.
 | `dta_merge()` | Merge two datasets, or `.dta`/`.arrow` files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
 | `datasig()` | Order-sensitive content signature of a data frame or a `.dta` or `.arrow` file, for verifying that source data has not changed. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
+| `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
+| `replace_values()`, `repl()` | Replace selected values by reference without widening declared Stata storage. |
+| `copy_data()` | Make an isolated copy, including compact column backing and mutable dataset metadata. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
 | `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a derived vector's Stata storage type, with validation and compact backing. |
 | `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
 | `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
+| `is_missing()` | Classify Stata system and extended numeric missing values and empty strings; use it in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_variable_labels()`, `set_value_labels()` | Get and set Stata label metadata without haven or `labelled`. |
+
+`gen()` and `replace_values()` mutate the supplied data frame or tibble. Dataset
+aliases and aliases of a target column observe the change. Call `copy_data()`
+first when the original dataset, its compact storage, and its metadata must
+remain independent. See `?replace_values` for selection, evaluation, formula,
+grouping, and Stata compatibility details.
 
 ## Why use dtatools?
 
@@ -35,7 +45,7 @@ Repository benchmarks compare `dtatools` with haven across a large survey corpus
 
 Across the full DHS, MICS, and NSFG comparison, `dtatools` was faster on 1,803 of 1,812 files and tied on five. `haven` led on four files between 31 and 66 KB, each by 1 millisecond. `dtatools` was faster on all 1,534 files larger than 1 MB.
 
-These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtatools only. See the [dated corpus report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
+These are warm-cache measurements from an Apple M4 Max, not performance guarantees. The multicore corpus refresh reused haven measurements made earlier on the same machine and files; the later India check likewise reran dtatools only. See the [dated corpus report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-corpus-performance/results-2026-08-24.md) for the full results and methodology.
 
 ### Using `.arrow` dataset files
 
@@ -68,7 +78,7 @@ character materialization through ALTREP. `read_arrow()` is faster because the
 so reading is mostly parallel column copies rather than row-major decoding.
 Checksum verification is on by default and accounts for only a few percent;
 converting the India file with `save_arrow()` took 1.4 seconds once. See the
-[dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
+[dated Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md)
 for conversion times, file sizes, and methodology.
 
 ### Projected reads across surveys
@@ -101,7 +111,7 @@ A warm-cache benchmark selected 100 variables spread across the 5.2 GB,
 All methods returned the same 724,115-row, 100-column result. These are medians
 from 11 runs on an Apple M4 Max. The direct Stata command is not union-safe;
 Stata errors if its varlist contains an absent name. See the
-[dated projection report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/projection-introspection/results-2026-08-28.md)
+[dated projection report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/projection-introspection/results-2026-08-28.md)
 for the synthetic comparisons, per-method bounds, and limitations.
 
 ### Synthetic write benchmarks
@@ -147,11 +157,11 @@ fixed-width string planning.
 
 These are medians from seven fresh-process runs on the same Apple M4 Max, not
 performance guarantees. The Stata median in the primary table is reused from
-the [dated write report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/large-scale/results-2026-08-28.md),
+the [dated write report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/large-scale/results-2026-08-28.md),
 which also covers percentiles, memory and output sizes, and provenance for the
 DTA writers; the refreshed R-writer medians and the `save_arrow()` rows come
 from the
-[dated Arrow report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md).
+[dated Arrow report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/arrow-interchange/results-2026-08-29.md).
 
 ### Synthetic merge benchmarks
 
@@ -184,7 +194,7 @@ The R figures are `bench::mark()` medians on the same Apple M4 Max. Allocated
 memory is cumulative R allocation, not peak RSS. The Stata median includes
 reading the using file, while the R operation timers start with both inputs
 loaded. These are not performance guarantees. See the
-[dated merge report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/r-merge-performance/results-2026-08-28.md)
+[dated merge report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/r-merge-performance/results-2026-08-28.md)
 for versions, iteration counts, correctness checks, and reproduction commands.
 
 Keep using haven when you need to write older DTA releases or work with SAS and
@@ -192,7 +202,7 @@ SPSS formats.
 
 ## Installation
 
-Published GitHub Releases contain compiled packages for Windows x86_64, Linux x86_64, and macOS ARM64. Open the [latest release](https://github.com/jbearak/dta-tools/releases/latest), choose the asset matching the R version, operating system, and architecture, and copy its URL:
+Published GitHub Releases contain compiled packages for Windows x86_64, Linux x86_64, and macOS ARM64. Open the [latest release](https://github.com/jbearak/dta-parser/releases/latest), choose the asset matching the R version, operating system, and architecture, and copy its URL:
 
 ```r
 pak::pkg_install("url::<asset-url>")
@@ -207,8 +217,8 @@ install.packages("<asset-url>", repos = NULL)
 Source installation requires Cargo and Rust 1.98.0 or newer:
 
 ```sh
-git clone --depth 1 https://github.com/jbearak/dta-tools.git
-R CMD INSTALL dta-tools/r-package/dtatools
+git clone --depth 1 https://github.com/jbearak/dta-parser.git
+R CMD INSTALL dta-parser/r-package/dtatools
 ```
 
 ## Read a file
@@ -275,7 +285,7 @@ variables (with a warning naming them, where Stata is silent), and generates
 the value-labelled `_merge` indicator. `keep` and
 `assert` mirror Stata's options, and either input may be a `.dta` or `.arrow` file
 path so only the merged result occupies memory; the
-[dated input-source report](https://github.com/jbearak/dta-tools/blob/main/benchmarks/dta-merge/results-2026-08-29.md)
+[dated input-source report](https://github.com/jbearak/dta-parser/blob/main/benchmarks/dta-merge/results-2026-08-29.md)
 shows a from-file merge costs its read plus the merge itself. See
 [the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence
 behind these differences.
@@ -406,17 +416,17 @@ Use the installed help for exact behavior and examples:
 
 `threads = 0` chooses an automatic worker count for sufficiently large reads; `threads = 1` forces serial decoding. `use_numeric_altrep = FALSE` disables the compact numeric representation and creates R double vectors during the read.
 
-Additional measurements and their provenance live in the repository's [dated benchmark reports](https://github.com/jbearak/dta-tools/tree/main/benchmarks).
+Additional measurements and their provenance live in the repository's [dated benchmark reports](https://github.com/jbearak/dta-parser/tree/main/benchmarks).
 
 ## Compatibility
 
 The reader covers Stata 5 through 19. The writer targets Stata 18/19 and does
-not emit older formats. See the shared [compatibility contract](https://github.com/jbearak/dta-tools/blob/main/docs/compatibility.md) for exact format releases, encodings, missing-value behavior, and intentional differences from haven.
+not emit older formats. See the shared [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact format releases, encodings, missing-value behavior, and intentional differences from haven.
 
 ## Contributing
 
-- [Contributing](https://github.com/jbearak/dta-tools/blob/main/CONTRIBUTING.md)
+- [Contributing](https://github.com/jbearak/dta-parser/blob/main/CONTRIBUTING.md)
 
 ## License
 
-GPL-3.0. See the repository's [LICENSE](https://github.com/jbearak/dta-tools/blob/main/LICENSE).
+GPL-3.0. See the repository's [LICENSE](https://github.com/jbearak/dta-parser/blob/main/LICENSE).

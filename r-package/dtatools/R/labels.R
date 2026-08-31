@@ -45,7 +45,7 @@
 #' for the label table and retains unrelated classes.
 #'
 #' See the
-#' \href{https://github.com/jbearak/dta-tools/blob/main/docs/r-label-metadata.md}{R label metadata guide}
+#' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 #' for the supported call surface and the version-specific comparison with
 #' `labelled`.
 #'
@@ -210,6 +210,10 @@ dataset_label <- function(data) {
 
 .metadata_copy <- function(value) {
     .Call(C_dtatools_metadata_copy, value)
+}
+
+.metadata_view <- function(value) {
+    .Call(C_dtatools_metadata_view, value)
 }
 
 .stata_value_label_code_info <- function(value) {

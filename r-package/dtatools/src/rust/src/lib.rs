@@ -108,7 +108,7 @@ struct NumericData {
     kind: c_int,
     temporal: c_int,
     format_version: c_int,
-    no_na: c_int,
+    missing_count: usize,
 }
 
 impl NumericData {
@@ -119,7 +119,7 @@ impl NumericData {
             kind: data.kind as c_int,
             temporal: data.temporal as c_int,
             format_version: c_int::from(data.format_version.as_u16()),
-            no_na: c_int::from(data.no_na),
+            missing_count: data.missing_count,
         }
     }
 }
@@ -163,7 +163,7 @@ struct RNumericData {
     kind: NumericKind,
     temporal: TemporalKind,
     format_version: FormatVersion,
-    no_na: bool,
+    missing_count: usize,
 }
 
 #[no_mangle]
@@ -193,7 +193,7 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
     length: usize,
     kind: c_int,
     temporal: c_int,
-    no_na: c_int,
+    missing_count: usize,
 ) -> *mut c_void {
     let Ok(kind) = NumericKind::try_from(kind) else {
         return ptr::null_mut();
@@ -207,7 +207,7 @@ pub unsafe extern "C" fn dtatools_numeric_alloc(
         kind: kind as c_int,
         temporal: temporal as c_int,
         format_version: 119,
-        no_na,
+        missing_count,
     }))
     .cast::<c_void>()
 }
@@ -220,6 +220,37 @@ pub struct NumericGatherColumn {
     output: usize,
     width: usize,
     missing: [u8; 8],
+    missing_count: usize,
+    kind: c_int,
+    format_version: c_int,
+    source_has_missing: c_int,
+}
+
+unsafe fn gathered_numeric_is_missing(column: NumericGatherColumn, value: *const u8) -> bool {
+    let kind = NumericKind::try_from(column.kind).expect("compact gather has a valid numeric kind");
+    let release =
+        u16::try_from(column.format_version).expect("compact gather has a valid format version");
+    let version =
+        FormatVersion::try_from(release).expect("compact gather has a supported format version");
+    match kind {
+        NumericKind::Byte => {
+            classify_byte_missing_for_version(value.cast::<i8>().read_unaligned(), version)
+                .is_some()
+        }
+        NumericKind::Int => {
+            classify_int_missing_for_version(value.cast::<i16>().read_unaligned(), version)
+                .is_some()
+        }
+        NumericKind::Long => {
+            classify_long_missing_for_version(value.cast::<i32>().read_unaligned(), version)
+                .is_some()
+        }
+        NumericKind::Float => {
+            let value = value.cast::<f32>().read_unaligned();
+            value.is_nan()
+                || classify_float_missing_bits_for_version(value.to_bits(), version).is_some()
+        }
+    }
 }
 
 unsafe fn gather_numeric_column(
@@ -230,6 +261,7 @@ unsafe fn gather_numeric_column(
     let x_values = column.x_values as *const u8;
     let y_values = column.y_values as *const u8;
     let output = column.output as *mut u8;
+    let mut missing_count = 0;
     for (output_index, &x_index) in x_rows.iter().enumerate() {
         let (source, source_index) = if x_index >= 0 {
             (x_values, x_index as usize)
@@ -254,6 +286,15 @@ unsafe fn gather_numeric_column(
                 column.width,
             );
         }
+        if column.missing_count != 0
+            && (source.is_null()
+                || (column.source_has_missing != 0 && gathered_numeric_is_missing(column, target)))
+        {
+            missing_count += 1;
+        }
+    }
+    if column.missing_count != 0 {
+        (column.missing_count as *mut usize).write(missing_count);
     }
 }
 
@@ -366,6 +407,52 @@ pub unsafe extern "C" fn dtatools_dictstring_bytes(
     *value = bytes.cast::<c_char>();
     *length = byte_length;
     1
+}
+
+#[no_mangle]
+/// Clone a live dictionary-string payload for an independent R ALTREP vector.
+///
+/// # Safety
+///
+/// `data` must point to a live `DictStringData`. The caller owns the returned
+/// pointer and must transfer it to R or release it with
+/// `dtatools_dictstring_free`.
+pub unsafe extern "C" fn dtatools_dictstring_clone(data: *const c_void) -> *mut c_void {
+    if data.is_null() {
+        return ptr::null_mut();
+    }
+    let source = &*data.cast::<DictStringData>();
+    let mut ids = Vec::new();
+    if ids.try_reserve_exact(source.length).is_err() {
+        return ptr::null_mut();
+    }
+    ids.extend_from_slice(std::slice::from_raw_parts(source.value_ids, source.length));
+
+    let mut values = AHashMap::new();
+    if values.try_reserve(source._values.len()).is_err() {
+        return ptr::null_mut();
+    }
+    for (value, &id) in &source._values {
+        let mut copy = String::new();
+        if copy.try_reserve_exact(value.len()).is_err() {
+            return ptr::null_mut();
+        }
+        copy.push_str(value);
+        values.insert(copy, id);
+    }
+
+    let mut views = Vec::new();
+    if views.try_reserve_exact(values.len()).is_err() {
+        return ptr::null_mut();
+    }
+    views.resize(values.len(), (ptr::null(), 0));
+    for (value, &id) in &values {
+        let Some(slot) = views.get_mut(id as usize) else {
+            return ptr::null_mut();
+        };
+        *slot = (value.as_ptr(), value.len());
+    }
+    Box::into_raw(Box::new(DictStringData::new(ids, values, views))).cast::<c_void>()
 }
 
 #[no_mangle]
@@ -1013,7 +1100,7 @@ unsafe fn numeric_altrep_storage(
         kind,
         temporal,
         format_version,
-        no_na: true,
+        missing_count: 0,
     })
 }
 
@@ -1152,7 +1239,7 @@ impl RNumericData {
             kind: self.kind,
             temporal: self.temporal,
             format_version: self.format_version,
-            no_na: true,
+            missing_count: 0,
         };
         std::mem::replace(self, replacement)
     }
@@ -1173,7 +1260,9 @@ impl RNumericData {
         if row >= self.length {
             return Err(Self::row_error(row, self.length));
         }
-        self.no_na &= no_na;
+        if !no_na {
+            self.missing_count += 1;
+        }
         unsafe {
             self.values
                 .add(row * std::mem::size_of::<T>())

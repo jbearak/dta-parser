@@ -110,7 +110,7 @@
 #' ordinary factor. Haven can be installed separately to write older DTA
 #' releases or read other statistical formats.
 #' See the
-#' \href{https://github.com/jbearak/dta-tools/blob/main/docs/r-label-metadata.md}{R label metadata guide}
+#' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 #' for bulk setters, Stata 19 limits, and the version-specific comparison with
 #' labelled 2.16.0.
 #'
@@ -219,12 +219,20 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .Call(C_dtatools_is_unmaterialized_dictstring, value)
 }
 
+.dictstring_cached_count <- function(value) {
+    .Call(C_dtatools_dictstring_cached_count, value)
+}
+
 .force_altrep_materialization <- function(value) {
     .Call(C_dtatools_force_altrep_materialization, value)
 }
 
 .mutate_first_numeric_altrep <- function(value, replacement) {
     .Call(C_dtatools_mutate_first_numeric_altrep, value, replacement)
+}
+
+.mutate_first_dictstring_altrep <- function(value, replacement) {
+    .Call(C_dtatools_mutate_first_dictstring_altrep, value, replacement)
 }
 
 .metadata_proxy_depth <- function(value) {
