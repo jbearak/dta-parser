@@ -4,8 +4,8 @@ use crate::endian::{
 };
 use crate::legacy::parse_legacy_metadata;
 use crate::stata_metadata::{
-    classify_characteristic, validate_raw_value_bytes, validate_raw_value_length,
-    CharacteristicCollector, VariableTargetIndexes,
+    validate_raw_value_bytes, validate_raw_value_length, CharacteristicCollector,
+    CharacteristicPlan, CharacteristicValueUse, VariableTargetIndexes,
 };
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
@@ -417,9 +417,9 @@ fn parse_characteristics(
     // the final record payload.
     let records =
         plan_characteristic_records(bytes, start, data, byte_order, names_length, offsets)?;
-    let mut collector = None;
+    let mut plan = CharacteristicPlan::<&[u8]>::default();
     let mut variable_indexes = VariableTargetIndexes::new(variables);
-    for record in records {
+    for (ordinal, record) in records.into_iter().enumerate() {
         let cursor = record.payload_start;
         let payload = slice_at(
             bytes,
@@ -429,19 +429,42 @@ fn parse_characteristics(
         )?;
         let (variable, remainder) = payload.split_at(width);
         let (characteristic, value) = remainder.split_at(width);
-        validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
-        let value = validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
         let target = encoding.decode(field_bytes(variable));
         let name = encoding.decode(field_bytes(characteristic));
-        if let Some(accepted) = classify_characteristic(&target, name, cursor + width, |target| {
-            variable_indexes.resolve(target)
-        })? {
-            collector
-                .get_or_insert_with(CharacteristicCollector::default)
-                .push(accepted, encoding.decode(value));
-        }
+        plan.push_record(
+            ordinal,
+            &target,
+            name,
+            cursor + width,
+            |target| variable_indexes.resolve(target),
+            |value_use| match value_use {
+                CharacteristicValueUse::Skip => Ok(None),
+                CharacteristicValueUse::Retain => {
+                    validate_raw_value_length(
+                        value.len(),
+                        cursor + names_length,
+                        "characteristic value",
+                    )?;
+                    Ok(Some(validate_raw_value_bytes(
+                        value,
+                        cursor + names_length,
+                        "characteristic value",
+                    )?))
+                }
+                CharacteristicValueUse::Validate => {
+                    validate_raw_value_length(
+                        value.len(),
+                        cursor + names_length,
+                        "characteristic value",
+                    )?;
+                    validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
+                    Ok(None)
+                }
+            },
+        )?;
     }
-    Ok(collector)
+    drop(variable_indexes);
+    Ok(Some(plan.decode(|value| Ok(encoding.decode(value)))?))
 }
 
 pub(crate) fn resolve_type(code: u16, version: FormatVersion) -> Result<(DtaType, u32), DtaError> {

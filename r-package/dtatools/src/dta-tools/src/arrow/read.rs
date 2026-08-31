@@ -179,7 +179,10 @@ struct Profile {
 
 enum ProfileFields {
     Full(Vec<Option<ArrowFieldDocument>>),
-    Projected(HashMap<usize, ArrowFieldDocument>),
+    Projected {
+        documents: HashMap<usize, ArrowFieldDocument>,
+        indices: Vec<usize>,
+    },
 }
 
 impl ProfileFields {
@@ -187,40 +190,88 @@ impl ProfileFields {
         if selected.is_none() {
             Self::Full(std::iter::repeat_with(|| None).take(field_count).collect())
         } else {
-            Self::Projected(HashMap::with_capacity(selected.map_or(0, <[usize]>::len)))
+            let capacity = selected.map_or(0, <[usize]>::len);
+            Self::Projected {
+                documents: HashMap::with_capacity(capacity),
+                indices: Vec::with_capacity(capacity),
+            }
         }
     }
 
     fn insert(&mut self, index: usize, document: ArrowFieldDocument) {
         match self {
             Self::Full(fields) => fields[index] = Some(document),
-            Self::Projected(fields) => {
-                fields.insert(index, document);
+            Self::Projected { documents, indices } => {
+                if let std::collections::hash_map::Entry::Vacant(entry) = documents.entry(index) {
+                    indices.push(index);
+                    entry.insert(document);
+                }
             }
         }
     }
 
     fn get(&self, index: usize) -> Option<&ArrowFieldDocument> {
+        #[cfg(test)]
+        PROFILE_FIELD_LOOKUP_COUNT.with(|count| count.set(count.get() + 1));
         match self {
             Self::Full(fields) => fields.get(index).and_then(Option::as_ref),
-            Self::Projected(fields) => fields.get(&index),
+            Self::Projected { documents, .. } => documents.get(&index),
         }
     }
 
     fn for_each(&self, accept: impl FnMut(&ArrowFieldDocument)) {
         match self {
             Self::Full(fields) => fields.iter().flatten().for_each(accept),
-            Self::Projected(fields) => fields.values().for_each(accept),
+            Self::Projected { documents, indices } => indices
+                .iter()
+                .map(|index| {
+                    documents
+                        .get(index)
+                        .expect("projected profile indices refer to stored documents")
+                })
+                .for_each(accept),
         }
+    }
+
+    fn try_for_each_indexed<E>(
+        &self,
+        mut accept: impl FnMut(usize, &ArrowFieldDocument) -> Result<(), E>,
+    ) -> Result<(), E> {
+        match self {
+            Self::Full(fields) => {
+                for (index, document) in fields.iter().enumerate() {
+                    if let Some(document) = document {
+                        accept(index, document)?;
+                    }
+                }
+            }
+            Self::Projected { documents, indices } => {
+                for &index in indices {
+                    accept(
+                        index,
+                        documents
+                            .get(&index)
+                            .expect("projected profile indices refer to stored documents"),
+                    )?;
+                }
+            }
+        }
+        Ok(())
     }
 
     fn take(&mut self, index: usize) -> Option<ArrowFieldDocument> {
         match self {
             Self::Full(fields) => fields.get_mut(index).and_then(Option::take),
-            Self::Projected(fields) => fields.remove(&index),
+            Self::Projected { documents, .. } => documents.remove(&index),
         }
     }
 
+}
+
+#[cfg(test)]
+thread_local! {
+    static PROFILE_FIELD_LOOKUP_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
 }
 
 fn invalid(detail: impl Into<String>) -> ArrowProfileError {
@@ -567,37 +618,27 @@ fn parse_profile(
     }
     footer.schema.fields = fields.into();
 
-    let selected_value_labels = (0..footer.schema.fields().len())
-        .filter_map(|index| documents.get(index)?.value_labels.clone())
-        .collect::<HashSet<_>>();
+    let mut selected_value_labels = HashSet::new();
+    let mut value_label_reference_counts = HashMap::new();
+    documents.for_each(|document| {
+        let Some(reference) = document.value_labels.as_ref() else {
+            return;
+        };
+        selected_value_labels.insert(reference.clone());
+        let count = value_label_reference_counts
+            .entry(reference.clone())
+            .or_insert(0_usize);
+        *count = (*count + 1).min(2);
+    });
     let dataset_json = footer.schema.metadata.remove(ARROW_DATASET_KEY);
     let dataset = parse_dataset_document_selected(
         &version,
         dataset_json.as_deref(),
         selected.map(|_| &selected_value_labels),
     )?;
-    for index in 0..footer.schema.fields().len() {
-        if let Some(document) = documents.get(index) {
-            validate_value_label_reference(
-                &version,
-                footer.schema.field(index),
-                document,
-                &dataset,
-            )?;
-        }
-    }
-    let mut value_label_reference_counts = selected_value_labels
-        .iter()
-        .map(|name| (name.clone(), 0_usize))
-        .collect::<HashMap<_, _>>();
-    documents.for_each(|document| {
-        let Some(reference) = document.value_labels.as_deref() else {
-            return;
-        };
-        if let Some(count) = value_label_reference_counts.get_mut(reference) {
-            *count = (*count + 1).min(2);
-        }
-    });
+    documents.try_for_each_indexed(|index, document| {
+        validate_value_label_reference(&version, footer.schema.field(index), document, &dataset)
+    })?;
     let mut unresolved_value_labels = value_label_reference_counts
         .iter()
         .filter(|(_, count)| **count < 2)
@@ -2579,14 +2620,20 @@ mod tests {
             )]),
         };
 
-        let profile = parse_profile(&mut footer, true, false, Some(&[selected]))
+        PROFILE_FIELD_LOOKUP_COUNT.with(|count| count.set(0));
+        let profile = parse_profile(&mut footer, true, false, Some(&[selected, selected]))
             .expect("projected profile is valid")
             .expect("profile is present");
-        let ProfileFields::Projected(documents) = &profile.fields else {
+        let lookups = PROFILE_FIELD_LOOKUP_COUNT.with(std::cell::Cell::get);
+        let ProfileFields::Projected { documents, .. } = &profile.fields else {
             panic!("a projected profile must not allocate full-width document storage");
         };
         assert_eq!(documents.len(), 1);
         assert!(documents.contains_key(&selected));
+        assert!(
+            lookups <= 1,
+            "projected validation must visit the one stored document, not {lookups} schema slots"
+        );
         assert_eq!(profile.dataset.label, "wide");
         assert!(!footer
             .schema
@@ -2599,6 +2646,40 @@ mod tests {
             .fields()
             .iter()
             .all(|field| !field.metadata().contains_key(ARROW_FIELD_KEY)));
+    }
+
+    #[test]
+    fn projected_profile_documents_iterate_once_in_source_order() {
+        let last = 119_999;
+        let mut documents = ProfileFields::new(120_000, Some(&[last, 7, 7]));
+        documents.insert(
+            7,
+            ArrowFieldDocument {
+                label: "first".to_owned(),
+                ..ArrowFieldDocument::default()
+            },
+        );
+        documents.insert(
+            7,
+            ArrowFieldDocument {
+                label: "duplicate".to_owned(),
+                ..ArrowFieldDocument::default()
+            },
+        );
+        documents.insert(last, ArrowFieldDocument::default());
+        let mut visited = Vec::new();
+
+        documents
+            .try_for_each_indexed::<std::convert::Infallible>(|index, document| {
+                visited.push((index, document.label.clone()));
+                Ok(())
+            })
+            .expect("infallible projected iteration");
+
+        assert_eq!(
+            visited,
+            vec![(7, "first".to_owned()), (last, String::new())]
+        );
     }
 
     #[test]

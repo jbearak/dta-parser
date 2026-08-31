@@ -474,7 +474,7 @@ describe('parse_metadata', () => {
             )).toThrow('Invalid on-disk Stata characteristic name');
         });
 
-        it('frames forged modern terminators before decoding values', () => {
+        it('frames forged modern terminators before classification or value errors', () => {
             const original = Buffer.from(load_fixture('auto_v118.dta'));
             const metadata = parse_metadata(
                 original.buffer.slice(
@@ -494,6 +494,8 @@ describe('parse_metadata', () => {
             const forgedPayload = Buffer.alloc(
                 2 * width + Buffer.byteLength('</characteristics>')
             );
+            forgedPayload.write('_dta', 0, 'ascii');
+            forgedPayload.write('2bad', width, 'ascii');
             forgedPayload.write('</characteristics>', 2 * width, 'ascii');
             const forgedHeader = Buffer.alloc(8);
             forgedHeader.write('<ch>', 0, 'ascii');

@@ -48,8 +48,7 @@ import {
     StataMetadataCollector,
 } from './stata-metadata';
 import {
-    decodeStataCharacteristicPayloads,
-    type FramedStataCharacteristic,
+    StataCharacteristicFramePlan,
 } from './characteristic-payload';
 
 // -----------------------------------------------------------
@@ -129,13 +128,9 @@ function frame_expansion_fields(
     start: number,
     buffer_length: number,
     format_version: LegacyFormatVersion,
-    decoder: DtaTextDecoder,
-    collector: StataMetadataCollector
-): { dataOffset: number; records: FramedStataCharacteristic[] } {
+    plan: StataCharacteristicFramePlan
+): number {
     let pos = start;
-    const records: FramedStataCharacteristic[] = [];
-    let classificationError: unknown;
-    const bytes = bytes_from_view(view);
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
 
@@ -148,8 +143,7 @@ function frame_expansion_fields(
         pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
-            if (classificationError !== undefined) throw classificationError;
-            return { dataOffset: pos, records };
+            return pos;
         }
 
         if (my_data_type === 0 || my_len < 0) {
@@ -161,29 +155,12 @@ function frame_expansion_fields(
 
         if (my_data_type === 1
             && my_len >= 2 * layout.varname_width) {
-            const my_variable = read_fixed_string(
-                bytes, pos, layout.varname_width, decoder
-            );
-            const my_characteristic = read_fixed_string(
-                bytes, pos + layout.varname_width,
-                layout.varname_width, decoder
-            );
-            if (classificationError === undefined) {
-                try {
-                    const accepted = collector.accept(
-                        my_variable, my_characteristic
-                    );
-                    if (accepted !== null) {
-                        records.push({
-                            accepted,
-                            valueStart: pos + 2 * layout.varname_width,
-                            valueLength: my_len - 2 * layout.varname_width,
-                        });
-                    }
-                } catch (error) {
-                    classificationError = error;
-                }
-            }
+            plan.add({
+                namesStart: pos,
+                nameWidth: layout.varname_width,
+                valueStart: pos + 2 * layout.varname_width,
+                valueLength: my_len - 2 * layout.varname_width,
+            });
         }
 
         pos += my_len;
@@ -382,14 +359,14 @@ export function parse_legacy_metadata(
     const collector = new StataMetadataCollector(
         { notes, characteristics }, the_variables
     );
-    const framed = frame_expansion_fields(
+    const plan = new StataCharacteristicFramePlan(
+        bytes, my_decoder, collector
+    );
+    const my_data_offset = frame_expansion_fields(
         view, little_endian, pos, buffer.byteLength,
-        format_version, my_decoder, collector
+        format_version, plan
     );
-    decodeStataCharacteristicPayloads(
-        bytes, framed.records, my_decoder, collector
-    );
-    const my_data_offset = framed.dataOffset;
+    plan.finish();
 
     // 9. Compute value labels offset (BigInt to avoid
     //    overflow for large legacy files)

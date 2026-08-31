@@ -548,19 +548,69 @@ function dropStataCharacteristics(target, names) {
 }
 
 // src/characteristic-payload.ts
-function decodeStataCharacteristicPayloads(bytes, records, decoder, collector) {
-  for (const record of records) {
-    const valueEnd = stataMetadataValueEnd(
-      bytes,
-      record.valueStart,
-      record.valueLength
-    );
-    collector.pushAcceptedLazy(record.accepted, () => {
-      return decoder.decode(bytes.subarray(record.valueStart, valueEnd));
-    });
-  }
-  collector.finish();
+function readFixedString(bytes, start, width, decoder) {
+  let end = start;
+  const limit = start + width;
+  while (end < limit && bytes[end] !== 0) end++;
+  return decoder.decode(bytes.subarray(start, end));
 }
+var StataCharacteristicFramePlan = class {
+  constructor(bytes, decoder, collector) {
+    this.bytes = bytes;
+    this.decoder = decoder;
+    this.collector = collector;
+  }
+  bytes;
+  decoder;
+  collector;
+  records = [];
+  classificationError;
+  hasClassificationError = false;
+  add(locator) {
+    if (this.hasClassificationError) return;
+    const target = readFixedString(
+      this.bytes,
+      locator.namesStart,
+      locator.nameWidth,
+      this.decoder
+    );
+    const name = readFixedString(
+      this.bytes,
+      locator.namesStart + locator.nameWidth,
+      locator.nameWidth,
+      this.decoder
+    );
+    try {
+      const accepted = this.collector.accept(target, name);
+      if (accepted !== null) {
+        this.records.push({
+          accepted,
+          valueStart: locator.valueStart,
+          valueLength: locator.valueLength
+        });
+      }
+    } catch (error) {
+      this.classificationError = error;
+      this.hasClassificationError = true;
+    }
+  }
+  finish() {
+    if (this.hasClassificationError) throw this.classificationError;
+    for (const record of this.records) {
+      const valueEnd = stataMetadataValueEnd(
+        this.bytes,
+        record.valueStart,
+        record.valueLength
+      );
+      this.collector.pushAcceptedLazy(record.accepted, () => {
+        return this.decoder.decode(
+          this.bytes.subarray(record.valueStart, valueEnd)
+        );
+      });
+    }
+    this.collector.finish();
+  }
+};
 
 // src/header.ts
 var FIELD_WIDTHS = {
@@ -648,10 +698,8 @@ function tag_at(bytes, offset, tag) {
   }
   return true;
 }
-function frame_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder, collector) {
+function frame_characteristics(bytes, view, little_endian, section_offsets, field_width, plan) {
   let pos = section_offsets.characteristics;
-  const records = [];
-  let classificationError;
   if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
     throw new Error("Missing <characteristics> tag");
   }
@@ -663,8 +711,7 @@ function frame_characteristics(bytes, view, little_endian, section_offsets, fiel
       if (pos !== section_offsets.data) {
         throw new Error("Characteristics section does not end at the mapped data offset");
       }
-      if (classificationError !== void 0) throw classificationError;
-      return records;
+      return;
     }
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
       throw new Error("Invalid characteristic record tag");
@@ -678,27 +725,12 @@ function frame_characteristics(bytes, view, little_endian, section_offsets, fiel
     if (length < names_length || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
       throw new Error("Truncated characteristic payload");
     }
-    const target = read_fixed_string(bytes, pos, field_width, decoder);
-    const name = read_fixed_string(
-      bytes,
-      pos + field_width,
-      field_width,
-      decoder
-    );
-    if (classificationError === void 0) {
-      try {
-        const accepted = collector.accept(target, name);
-        if (accepted !== null) {
-          records.push({
-            accepted,
-            valueStart: pos + names_length,
-            valueLength: length - names_length
-          });
-        }
-      } catch (error) {
-        classificationError = error;
-      }
-    }
+    plan.add({
+      namesStart: pos,
+      nameWidth: field_width,
+      valueStart: pos + names_length,
+      valueLength: length - names_length
+    });
     pos += length;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
       throw new Error("Missing </ch> tag");
@@ -709,16 +741,16 @@ function frame_characteristics(bytes, view, little_endian, section_offsets, fiel
 }
 function parse_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder, dataset, variables) {
   const collector = new StataMetadataCollector(dataset, variables);
-  const records = frame_characteristics(
+  const plan = new StataCharacteristicFramePlan(bytes, decoder, collector);
+  frame_characteristics(
     bytes,
     view,
     little_endian,
     section_offsets,
     field_width,
-    decoder,
-    collector
+    plan
   );
-  decodeStataCharacteristicPayloads(bytes, records, decoder, collector);
+  plan.finish();
 }
 function detect_format_version(bytes) {
   for (const [my_ver_str, my_sig] of Object.entries(
@@ -1237,11 +1269,8 @@ function legacy_metadata_fixed_size(nvar, format_version) {
   const my_sections_size = nvar + nvar * layout.varname_width + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * layout.format_width + nvar * layout.value_label_name_width + nvar * layout.variable_label_width;
   return layout.header_size + my_sections_size;
 }
-function frame_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder, collector) {
+function frame_expansion_fields(view, little_endian, start, buffer_length, format_version, plan) {
   let pos = start;
-  const records = [];
-  let classificationError;
-  const bytes = bytes_from_view(view);
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
   while (pos + my_header_size <= buffer_length) {
@@ -1249,8 +1278,7 @@ function frame_expansion_fields(view, little_endian, start, buffer_length, forma
     const my_len = layout.expansion_length_width === 2 ? view.getInt16(pos + 1, little_endian) : view.getInt32(pos + 1, little_endian);
     pos += my_header_size;
     if (my_data_type === 0 && my_len === 0) {
-      if (classificationError !== void 0) throw classificationError;
-      return { dataOffset: pos, records };
+      return pos;
     }
     if (my_data_type === 0 || my_len < 0) {
       throw new Error("Invalid legacy expansion field");
@@ -1259,42 +1287,16 @@ function frame_expansion_fields(view, little_endian, start, buffer_length, forma
       throw new Error("Truncated legacy expansion field");
     }
     if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
-      const my_variable = read_fixed_string2(
-        bytes,
-        pos,
-        layout.varname_width,
-        decoder
-      );
-      const my_characteristic = read_fixed_string2(
-        bytes,
-        pos + layout.varname_width,
-        layout.varname_width,
-        decoder
-      );
-      if (classificationError === void 0) {
-        try {
-          const accepted = collector.accept(
-            my_variable,
-            my_characteristic
-          );
-          if (accepted !== null) {
-            records.push({
-              accepted,
-              valueStart: pos + 2 * layout.varname_width,
-              valueLength: my_len - 2 * layout.varname_width
-            });
-          }
-        } catch (error) {
-          classificationError = error;
-        }
-      }
+      plan.add({
+        namesStart: pos,
+        nameWidth: layout.varname_width,
+        valueStart: pos + 2 * layout.varname_width,
+        valueLength: my_len - 2 * layout.varname_width
+      });
     }
     pos += my_len;
   }
   throw new Error("Missing legacy expansion-field terminator");
-}
-function bytes_from_view(view) {
-  return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
 }
 function parse_legacy_metadata(buffer, file_size, options = {}) {
   const bytes = new Uint8Array(buffer);
@@ -1425,22 +1427,20 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     { notes, characteristics },
     the_variables
   );
-  const framed = frame_expansion_fields(
+  const plan = new StataCharacteristicFramePlan(
+    bytes,
+    my_decoder,
+    collector
+  );
+  const my_data_offset = frame_expansion_fields(
     view,
     little_endian,
     pos,
     buffer.byteLength,
     format_version,
-    my_decoder,
-    collector
+    plan
   );
-  decodeStataCharacteristicPayloads(
-    bytes,
-    framed.records,
-    my_decoder,
-    collector
-  );
-  const my_data_offset = framed.dataOffset;
+  plan.finish();
   const my_value_labels_offset = Number(
     BigInt(my_data_offset) + BigInt(nobs) * BigInt(obs_length)
   );

@@ -80,8 +80,36 @@ pub struct ArrowWriteDataset {
 #[derive(Debug)]
 pub struct ArrowMetadataPreflight {
     #[cfg_attr(not(any(test, feature = "r-adapter-internal")), allow(dead_code))]
-    dataset_json: String,
+    dataset_json: PreflightDatasetJson,
 }
+
+#[derive(Debug)]
+enum PreflightDatasetJson {
+    Retained(String),
+    Deferred { length: usize },
+}
+
+#[cfg(test)]
+impl ArrowMetadataPreflight {
+    fn retained_dataset_json_bytes(&self) -> usize {
+        match &self.dataset_json {
+            PreflightDatasetJson::Retained(json) => json.len(),
+            PreflightDatasetJson::Deferred { .. } => 0,
+        }
+    }
+
+    fn retained_dataset_json(&self) -> Option<&str> {
+        match &self.dataset_json {
+            PreflightDatasetJson::Retained(json) => Some(json),
+            PreflightDatasetJson::Deferred { .. } => None,
+        }
+    }
+}
+
+// Retaining at most 64 KiB caps the saved copy at 0.1% of the 64 MiB footer
+// limit. Larger JSON is cheaper to serialize again than to keep live while
+// the R adapter extracts and encodes every cell array.
+const RETAINED_PREFLIGHT_DATASET_JSON_BYTES: usize = 64 * 1024;
 
 fn supported_write_type(data_type: &DataType) -> bool {
     match data_type {
@@ -940,19 +968,28 @@ fn validated_arrow_write_with_preflight(
     checksums: bool,
     preflight: ArrowMetadataPreflight,
 ) -> Result<ValidatedArrowWrite, ArrowProfileError> {
-    validated_arrow_write_with_dataset_json(dataset, checksums, Some(preflight.dataset_json))
+    validated_arrow_write_with_dataset_json(dataset, checksums, Some(preflight))
 }
 
 fn validated_arrow_write_with_dataset_json(
     dataset: &ArrowWriteDataset,
     checksums: bool,
-    dataset_json: Option<String>,
+    preflight: Option<ArrowMetadataPreflight>,
 ) -> Result<ValidatedArrowWrite, ArrowProfileError> {
-    let dataset_prevalidated = dataset_json.is_some();
+    let dataset_prevalidated = preflight.is_some();
     let (row_count, fields, field_metadata_bytes) =
         validated_fields(dataset, dataset_prevalidated)?;
-    let dataset_json = match dataset_json {
-        Some(json) => json,
+    let dataset_json = match preflight.map(|plan| plan.dataset_json) {
+        Some(PreflightDatasetJson::Retained(json)) => json,
+        Some(PreflightDatasetJson::Deferred { length }) => {
+            let json = serialize_dataset_footer_json(&dataset.dataset)?;
+            if json.len() != length {
+                return Err(ArrowProfileError::Invalid(
+                    "dataset metadata changed after Arrow preflight".to_owned(),
+                ));
+            }
+            json
+        }
         None => serialize_dataset_footer_json(&dataset.dataset)?,
     };
     field_metadata_bytes
@@ -984,9 +1021,10 @@ fn validated_arrow_write_with_dataset_json(
 /// Validate an Arrow profile's metadata without requiring any column arrays.
 /// This is an exact lower-bound footer plan: callers that still need to
 /// extract or encode cells can reject metadata that cannot fit before touching
-/// those cells. The returned plan retains the validated dataset JSON; the R
-/// writer reuses it while validating final field types, semantics, and block
-/// counts after column encoding.
+/// those cells. The R writer reuses small validated JSON documents while
+/// validating final field types, semantics, and block counts after column
+/// encoding. Large documents retain only their validated length until the
+/// final serialization.
 pub fn preflight_arrow_metadata<'a>(
     dataset: &DatasetDocument,
     columns: impl IntoIterator<Item = (&'a str, Option<&'a ArrowFieldDocument>)>,
@@ -1025,6 +1063,13 @@ pub fn preflight_arrow_metadata<'a>(
     if footer_size > MAX_IPC_METADATA_BYTES {
         return Err(footer_too_large());
     }
+    let dataset_json = if dataset_json_length <= RETAINED_PREFLIGHT_DATASET_JSON_BYTES {
+        PreflightDatasetJson::Retained(dataset_json)
+    } else {
+        PreflightDatasetJson::Deferred {
+            length: dataset_json_length,
+        }
+    };
     Ok(ArrowMetadataPreflight { dataset_json })
 }
 
@@ -1359,8 +1404,13 @@ mod tests {
             label: "x".repeat(MAX_IPC_METADATA_BYTES - 2_048),
             ..DatasetDocument::default()
         };
-        preflight_arrow_metadata(&dataset, std::iter::empty())
+        let plan = preflight_arrow_metadata(&dataset, std::iter::empty())
             .expect("dataset metadata alone remains below the footer limit");
+        assert_eq!(
+            plan.retained_dataset_json_bytes(),
+            0,
+            "near-limit JSON must not remain live during cell extraction"
+        );
         let field = ArrowFieldDocument {
             label: "y".repeat(4_096),
             ..ArrowFieldDocument::default()
@@ -1380,7 +1430,10 @@ mod tests {
         let plan = preflight_arrow_metadata(&dataset, std::iter::empty())
             .expect("dataset metadata is valid");
 
-        assert_eq!(plan.dataset_json, r#"{"version":0,"label":"survey"}"#);
+        assert_eq!(
+            plan.retained_dataset_json(),
+            Some(r#"{"version":0,"label":"survey"}"#)
+        );
     }
 
     #[test]
@@ -1407,6 +1460,58 @@ mod tests {
 
         assert_eq!(DATASET_VALIDATION_COUNT.with(std::cell::Cell::get), 1);
         assert_eq!(DATASET_SERIALIZATION_COUNT.with(std::cell::Cell::get), 1);
+    }
+
+    #[test]
+    fn metadata_preflight_drops_large_serialized_documents_before_cell_extraction() {
+        let dataset_document = DatasetDocument {
+            label: "x".repeat(128 * 1024),
+            ..DatasetDocument::default()
+        };
+        let dataset = ArrowWriteDataset {
+            dataset: dataset_document,
+            columns: vec![ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![1, 2, 3])),
+            }],
+        };
+        DATASET_VALIDATION_COUNT.with(|count| count.set(0));
+        DATASET_SERIALIZATION_COUNT.with(|count| count.set(0));
+
+        let plan = preflight_arrow_metadata(&dataset.dataset, [("x", None)])
+            .expect("large metadata below the footer limit is valid");
+
+        assert_eq!(plan.retained_dataset_json_bytes(), 0);
+        validated_arrow_write_with_preflight(&dataset, false, plan)
+            .expect("final validation serializes the deferred document");
+        assert_eq!(DATASET_VALIDATION_COUNT.with(std::cell::Cell::get), 1);
+        assert_eq!(DATASET_SERIALIZATION_COUNT.with(std::cell::Cell::get), 2);
+    }
+
+    #[test]
+    fn deferred_preflight_rejects_dataset_metadata_length_changes() {
+        let mut dataset = ArrowWriteDataset {
+            dataset: DatasetDocument {
+                label: "x".repeat(128 * 1024),
+                ..DatasetDocument::default()
+            },
+            columns: vec![ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![1, 2, 3])),
+            }],
+        };
+        let plan = preflight_arrow_metadata(&dataset.dataset, [("x", None)])
+            .expect("metadata preflight succeeds");
+        dataset.dataset.label.push('y');
+
+        let error = match validated_arrow_write_with_preflight(&dataset, false, plan) {
+            Ok(_) => panic!("the plan cannot validate metadata of a different length"),
+            Err(error) => error,
+        };
+
+        assert!(error.to_string().contains("changed after Arrow preflight"));
     }
 
     #[test]

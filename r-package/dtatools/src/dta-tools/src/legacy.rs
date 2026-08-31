@@ -1,7 +1,7 @@
 use crate::endian::{checked_add, checked_mul, read_i16, read_i32, read_u16, slice_at};
 use crate::stata_metadata::{
-    classify_characteristic, validate_raw_value_bytes, validate_raw_value_length,
-    CharacteristicCollector, VariableTargetIndexes,
+    validate_raw_value_bytes, validate_raw_value_length, CharacteristicCollector,
+    CharacteristicPlan, CharacteristicValueUse, VariableTargetIndexes,
 };
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
@@ -234,9 +234,9 @@ fn scan_expansion_fields_ordered(
             Ok(())
         },
     )?;
-    let mut collector = None;
+    let mut plan = CharacteristicPlan::<&[u8]>::default();
     let mut variable_indexes = VariableTargetIndexes::new(variables);
-    for (cursor, payload_length) in characteristic_records {
+    for (ordinal, (cursor, payload_length)) in characteristic_records.into_iter().enumerate() {
         let payload = slice_at(
             bytes,
             cursor,
@@ -245,29 +245,46 @@ fn scan_expansion_fields_ordered(
         )?;
         let (variable, remainder) = payload.split_at(layout.varname_width);
         let (characteristic, value) = remainder.split_at(layout.varname_width);
-        validate_raw_value_length(
-            value.len(),
-            cursor + 2 * layout.varname_width,
-            "legacy characteristic value",
-        )?;
-        let value = validate_raw_value_bytes(
-            value,
-            cursor + 2 * layout.varname_width,
-            "legacy characteristic value",
-        )?;
         let target = encoding.decode(field_bytes(variable));
         let name = encoding.decode(field_bytes(characteristic));
-        if let Some(accepted) =
-            classify_characteristic(&target, name, cursor + layout.varname_width, |target| {
-                variable_indexes.resolve(target)
-            })?
-        {
-            collector
-                .get_or_insert_with(CharacteristicCollector::default)
-                .push(accepted, encoding.decode(value));
-        }
+        let value_offset = cursor + 2 * layout.varname_width;
+        plan.push_record(
+            ordinal,
+            &target,
+            name,
+            cursor + layout.varname_width,
+            |target| variable_indexes.resolve(target),
+            |value_use| match value_use {
+                CharacteristicValueUse::Skip => Ok(None),
+                CharacteristicValueUse::Retain => {
+                    validate_raw_value_length(
+                        value.len(),
+                        value_offset,
+                        "legacy characteristic value",
+                    )?;
+                    Ok(Some(validate_raw_value_bytes(
+                        value,
+                        value_offset,
+                        "legacy characteristic value",
+                    )?))
+                }
+                CharacteristicValueUse::Validate => {
+                    validate_raw_value_length(
+                        value.len(),
+                        value_offset,
+                        "legacy characteristic value",
+                    )?;
+                    validate_raw_value_bytes(value, value_offset, "legacy characteristic value")?;
+                    Ok(None)
+                }
+            },
+        )?;
     }
-    Ok((data_offset, collector))
+    drop(variable_indexes);
+    Ok((
+        data_offset,
+        Some(plan.decode(|value| Ok(encoding.decode(value)))?),
+    ))
 }
 
 fn walk_expansion_fields<F>(

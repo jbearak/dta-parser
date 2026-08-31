@@ -471,7 +471,7 @@ describe('parse_legacy_metadata', () => {
         )).toThrow('Invalid legacy expansion field');
     });
 
-    it('frames unterminated release-111 characteristics before decoding values', () => {
+    it('frames unterminated release-111 characteristics before classification errors', () => {
         const valid = build_legacy_buffer({
             version: 111,
             nvar: 1,
@@ -487,7 +487,7 @@ describe('parse_legacy_metadata', () => {
         const payload = Buffer.alloc(66 + valueLength, 0x78);
         payload.fill(0, 0, 66);
         payload.write('_dta', 0, 'ascii');
-        payload.write('source', 33, 'ascii');
+        payload.write('2bad', 33, 'ascii');
         const header = Buffer.alloc(5);
         header[0] = 1;
         header.writeInt32LE(payload.length, 1);

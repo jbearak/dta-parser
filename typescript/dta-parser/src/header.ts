@@ -37,8 +37,7 @@ import {
     StataMetadataCollector,
 } from './stata-metadata';
 import {
-    decodeStataCharacteristicPayloads,
-    type FramedStataCharacteristic,
+    StataCharacteristicFramePlan,
 } from './characteristic-payload';
 
 // -----------------------------------------------------------
@@ -168,12 +167,9 @@ function frame_characteristics(
     little_endian: boolean,
     section_offsets: SectionOffsets,
     field_width: number,
-    decoder: DtaTextDecoder,
-    collector: StataMetadataCollector
-): FramedStataCharacteristic[] {
+    plan: StataCharacteristicFramePlan
+): void {
     let pos = section_offsets.characteristics;
-    const records: FramedStataCharacteristic[] = [];
-    let classificationError: unknown;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
         throw new Error('Missing <characteristics> tag');
     }
@@ -185,8 +181,7 @@ function frame_characteristics(
             if (pos !== section_offsets.data) {
                 throw new Error('Characteristics section does not end at the mapped data offset');
             }
-            if (classificationError !== undefined) throw classificationError;
-            return records;
+            return;
         }
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
             throw new Error('Invalid characteristic record tag');
@@ -201,24 +196,12 @@ function frame_characteristics(
             || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
             throw new Error('Truncated characteristic payload');
         }
-        const target = read_fixed_string(bytes, pos, field_width, decoder);
-        const name = read_fixed_string(
-            bytes, pos + field_width, field_width, decoder
-        );
-        if (classificationError === undefined) {
-            try {
-                const accepted = collector.accept(target, name);
-                if (accepted !== null) {
-                    records.push({
-                        accepted,
-                        valueStart: pos + names_length,
-                        valueLength: length - names_length,
-                    });
-                }
-            } catch (error) {
-                classificationError = error;
-            }
-        }
+        plan.add({
+            namesStart: pos,
+            nameWidth: field_width,
+            valueStart: pos + names_length,
+            valueLength: length - names_length,
+        });
         pos += length;
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
             throw new Error('Missing </ch> tag');
@@ -239,10 +222,11 @@ function parse_characteristics(
     variables: VariableInfo[]
 ): void {
     const collector = new StataMetadataCollector(dataset, variables);
-    const records = frame_characteristics(
-        bytes, view, little_endian, section_offsets, field_width, decoder, collector
+    const plan = new StataCharacteristicFramePlan(bytes, decoder, collector);
+    frame_characteristics(
+        bytes, view, little_endian, section_offsets, field_width, plan
     );
-    decodeStataCharacteristicPayloads(bytes, records, decoder, collector);
+    plan.finish();
 }
 
 // -----------------------------------------------------------

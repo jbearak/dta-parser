@@ -444,6 +444,67 @@ fn internal_value_label_registry_rejects_both_presence_mismatches() {
     }
 }
 
+#[cfg(feature = "r-adapter-internal")]
+#[test]
+fn internal_value_label_registry_keeps_each_table_name_and_entries_together() {
+    let labels = [
+        DtaWriteValueLabel {
+            value: DtaWriteLabelValue::Integer(-1),
+            label: "negative".into(),
+        },
+        DtaWriteValueLabel {
+            value: DtaWriteLabelValue::Integer(1),
+            label: "positive".into(),
+        },
+    ];
+    let tables = [DtaWriteValueLabelTable::new("shared_codes", &labels)];
+    let indices = [Some(0)];
+    let registry = DtaWriteValueLabelRegistry::new(&tables, &indices);
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Long,
+            format: "%12.0g".into(),
+            label: String::new().into(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            has_value_labels: true,
+            value_labels: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&ADAPTED_NUMERIC_VALUES),
+        }],
+    };
+
+    let mut output = Cursor::new(Vec::new());
+    write_prevalidated_dta_with_value_label_registry_to(
+        &mut output,
+        &data,
+        &DtaWriteOptions::default(),
+        &AdaptedObservationSource,
+        ADAPTED_NUMERIC_VALUES.len() as u64,
+        &registry,
+    )
+    .unwrap();
+
+    let parsed = read_dta(&output.into_inner()).unwrap();
+    assert_eq!(
+        parsed.metadata.variables[0].value_label_name,
+        "shared_codes"
+    );
+    let table = parsed.value_label_table_for_variable(0).unwrap();
+    assert_eq!(table.name, "shared_codes");
+    assert_eq!(
+        table
+            .entries
+            .iter()
+            .map(|entry| (entry.value, entry.label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![(-1, "negative"), (1, "positive")]
+    );
+}
+
 #[test]
 fn prevalidated_bulk_sources_must_return_complete_rows() {
     let values = [DtaWriteNumericValue::Value(0.0)];

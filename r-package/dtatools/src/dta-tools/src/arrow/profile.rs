@@ -2,7 +2,6 @@
 //! footer metadata.
 
 use std::{
-    borrow::Cow,
     collections::{BTreeMap, HashSet},
     fmt,
 };
@@ -232,27 +231,16 @@ struct RawCharacteristic<'a> {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RawDatasetDocument<'a> {
-    version: u32,
-    #[serde(default)]
-    label: String,
-    #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
-    notes: Vec<&'a RawValue>,
-    #[serde(default, deserialize_with = "deserialize_raw_characteristics")]
-    characteristics: Vec<StataCharacteristic>,
-    #[serde(default, borrow)]
-    value_labels: Option<&'a RawValue>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct DiscardedValueLabelEntry<'a> {
+struct DiscardedValueLabelEntry {
     #[serde(default)]
     value: Option<i32>,
     #[serde(default)]
     tag: Option<MissingTag>,
-    #[serde(borrow)]
-    label: &'a RawValue,
+    #[serde(
+        rename = "label",
+        deserialize_with = "deserialize_discarded_value_label"
+    )]
+    _label: (),
 }
 
 #[derive(Deserialize)]
@@ -636,24 +624,49 @@ fn decode_raw_notes(
     Ok(decoded)
 }
 
-impl RawDatasetDocument<'_> {
-    fn decode(
-        self,
-        version: &str,
-        selected_value_labels: Option<&HashSet<String>>,
-    ) -> Result<DatasetDocument, ArrowProfileError> {
-        Ok(DatasetDocument {
-            version: self.version,
-            label: self.label,
-            notes: decode_raw_notes(version, "dataset", "dataset document", self.notes)?,
-            characteristics: self.characteristics,
-            value_labels: parse_value_label_registry(
-                version,
-                self.value_labels,
-                selected_value_labels,
-            )?,
-        })
+fn deserialize_discarded_value_label<'de, D>(deserializer: D) -> Result<(), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct BoundedStringVisitor;
+
+    impl<'de> Visitor<'de> for BoundedStringVisitor {
+        type Value = ();
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a string within the 64 MiB Arrow metadata limit")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            #[cfg(test)]
+            DISCARDED_VALUE_LABEL_VISIT_COUNT.with(|count| count.set(count.get() + 1));
+            if value.len() > super::MAX_IPC_METADATA_BYTES {
+                return Err(E::custom(
+                    "value-label text exceeds the 64 MiB Arrow metadata limit",
+                ));
+            }
+            Ok(())
+        }
+
+        fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_str(value)
+        }
+
+        fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_str(&value)
+        }
     }
+
+    deserializer.deserialize_str(BoundedStringVisitor)
 }
 
 struct DiscardValueLabelEntries<'a> {
@@ -683,9 +696,7 @@ impl<'de> DeserializeSeed<'de> for DiscardValueLabelEntries<'_> {
                 A: SeqAccess<'de>,
             {
                 let mut index = 0_usize;
-                while let Some(entry) = sequence.next_element::<DiscardedValueLabelEntry<'de>>()? {
-                    let _: Cow<'_, str> = serde_json::from_str(entry.label.get())
-                        .map_err(serde::de::Error::custom)?;
+                while let Some(entry) = sequence.next_element::<DiscardedValueLabelEntry>()? {
                     if entry.value.is_some() == entry.tag.is_some() {
                         return Err(serde::de::Error::custom(format!(
                             "value-label table `{}` entry {index} must contain exactly one of `value` or `tag`",
@@ -719,6 +730,8 @@ impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
     where
         D: serde::Deserializer<'de>,
     {
+        #[cfg(test)]
+        DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(|count| count.set(count.get() + 1));
         struct RegistryVisitor<'a> {
             selected: Option<&'a HashSet<String>>,
         }
@@ -762,18 +775,169 @@ impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
     }
 }
 
-fn parse_value_label_registry(
-    version: &str,
-    json: Option<&RawValue>,
-    selected: Option<&HashSet<String>>,
-) -> Result<BTreeMap<String, Vec<ArrowValueLabelEntry>>, ArrowProfileError> {
-    let Some(json) = json else {
-        return Ok(BTreeMap::new());
+struct OptionalValueLabelRegistrySeed<'a> {
+    selected: Option<&'a HashSet<String>>,
+}
+
+impl<'de> DeserializeSeed<'de> for OptionalValueLabelRegistrySeed<'_> {
+    type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct OptionalRegistryVisitor<'a> {
+            selected: Option<&'a HashSet<String>>,
+        }
+
+        impl<'de> Visitor<'de> for OptionalRegistryVisitor<'_> {
+            type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("an object of named value-label tables or null")
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E> {
+                Ok(BTreeMap::new())
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E> {
+                Ok(BTreeMap::new())
+            }
+
+            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                ValueLabelRegistrySeed {
+                    selected: self.selected,
+                }
+                .deserialize(deserializer)
+            }
+        }
+
+        deserializer.deserialize_option(OptionalRegistryVisitor {
+            selected: self.selected,
+        })
+    }
+}
+
+struct ParsedDatasetDocument<'a> {
+    version: u32,
+    label: String,
+    notes: Vec<&'a RawValue>,
+    characteristics: Vec<StataCharacteristic>,
+    value_labels: BTreeMap<String, Vec<ArrowValueLabelEntry>>,
+}
+
+#[derive(Deserialize)]
+struct RawNotes<'a>(#[serde(borrow, deserialize_with = "deserialize_raw_notes")] Vec<&'a RawValue>);
+
+#[derive(Deserialize)]
+struct RawCharacteristics(
+    #[serde(deserialize_with = "deserialize_raw_characteristics")] Vec<StataCharacteristic>,
+);
+
+struct DatasetDocumentSeed<'a> {
+    selected_value_labels: Option<&'a HashSet<String>>,
+}
+
+impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
+    type Value = ParsedDatasetDocument<'de>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct DatasetVisitor<'a> {
+            selected_value_labels: Option<&'a HashSet<String>>,
+        }
+
+        impl<'de> Visitor<'de> for DatasetVisitor<'_> {
+            type Value = ParsedDatasetDocument<'de>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a dtatools dataset document")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                const FIELDS: &[&str] = &[
+                    "version",
+                    "label",
+                    "notes",
+                    "characteristics",
+                    "value_labels",
+                ];
+                let mut version = None;
+                let mut label = None;
+                let mut notes = None;
+                let mut characteristics = None;
+                let mut value_labels = None;
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "version" => {
+                            if version.is_some() {
+                                return Err(serde::de::Error::duplicate_field("version"));
+                            }
+                            version = Some(map.next_value()?);
+                        }
+                        "label" => {
+                            if label.is_some() {
+                                return Err(serde::de::Error::duplicate_field("label"));
+                            }
+                            label = Some(map.next_value()?);
+                        }
+                        "notes" => {
+                            if notes.is_some() {
+                                return Err(serde::de::Error::duplicate_field("notes"));
+                            }
+                            notes = Some(map.next_value::<RawNotes<'de>>()?.0);
+                        }
+                        "characteristics" => {
+                            if characteristics.is_some() {
+                                return Err(serde::de::Error::duplicate_field("characteristics"));
+                            }
+                            characteristics = Some(map.next_value::<RawCharacteristics>()?.0);
+                        }
+                        "value_labels" => {
+                            if value_labels.is_some() {
+                                return Err(serde::de::Error::duplicate_field("value_labels"));
+                            }
+                            value_labels =
+                                Some(map.next_value_seed(OptionalValueLabelRegistrySeed {
+                                    selected: self.selected_value_labels,
+                                })?);
+                        }
+                        _ => return Err(serde::de::Error::unknown_field(&key, FIELDS)),
+                    }
+                }
+                Ok(ParsedDatasetDocument {
+                    version: version.ok_or_else(|| serde::de::Error::missing_field("version"))?,
+                    label: label.unwrap_or_default(),
+                    notes: notes.unwrap_or_default(),
+                    characteristics: characteristics.unwrap_or_default(),
+                    value_labels: value_labels.unwrap_or_default(),
+                })
+            }
+        }
+
+        deserializer.deserialize_map(DatasetVisitor {
+            selected_value_labels: self.selected_value_labels,
+        })
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
     };
-    let mut deserializer = serde_json::Deserializer::from_str(json.get());
-    ValueLabelRegistrySeed { selected }
-        .deserialize(&mut deserializer)
-        .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))
+    static DISCARDED_VALUE_LABEL_VISIT_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
 }
 
 impl RawArrowFieldDocument<'_> {
@@ -843,9 +1007,22 @@ pub(crate) fn parse_dataset_document_selected(
             ..DatasetDocument::default()
         });
     };
-    let raw: RawDatasetDocument<'_> = serde_json::from_str(json)
+    let mut deserializer = serde_json::Deserializer::from_str(json);
+    let parsed = DatasetDocumentSeed {
+        selected_value_labels,
+    }
+    .deserialize(&mut deserializer)
+    .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
+    deserializer
+        .end()
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
-    let document = raw.decode(version, selected_value_labels)?;
+    let document = DatasetDocument {
+        version: parsed.version,
+        label: parsed.label,
+        notes: decode_raw_notes(version, "dataset", "dataset document", parsed.notes)?,
+        characteristics: parsed.characteristics,
+        value_labels: parsed.value_labels,
+    };
     validate_dataset_document_inner(version, &document, false)?;
     Ok(document)
 }
@@ -1294,6 +1471,35 @@ mod tests {
     }
 
     #[test]
+    fn projected_registry_is_consumed_once_without_reparsing_discarded_labels() {
+        let selected = HashSet::from(["selected".to_owned()]);
+        DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(|count| count.set(0));
+        DISCARDED_VALUE_LABEL_VISIT_COUNT.with(|count| count.set(0));
+
+        let document = parse_dataset_document_selected(
+            "0",
+            Some(
+                r#"{"version":0,"value_labels":{"selected":[{"value":1,"label":"one"}],"discarded":[{"value":2,"label":"t\u0077o"}]}}"#,
+            ),
+            Some(&selected),
+        )
+        .expect("the selected table is retained and the other table is validated");
+
+        assert_eq!(document.value_labels.len(), 1);
+        assert!(document.value_labels.contains_key("selected"));
+        assert_eq!(
+            DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(std::cell::Cell::get),
+            1,
+            "the top-level parser must send the registry through one seed"
+        );
+        assert_eq!(
+            DISCARDED_VALUE_LABEL_VISIT_COUNT.with(std::cell::Cell::get),
+            1,
+            "the active deserializer must validate each discarded label once"
+        );
+    }
+
+    #[test]
     fn dataset_documents_reject_unknown_keys() {
         for json in [
             r#"{"version":0,"lable":"typo"}"#,
@@ -1305,6 +1511,30 @@ mod tests {
                 .expect_err("unknown dataset keys are rejected");
             assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
             assert!(error.to_string().contains("unknown field"));
+        }
+    }
+
+    #[test]
+    fn dataset_documents_reject_duplicate_keys() {
+        for json in [
+            r#"{"version":0,"version":0}"#,
+            r#"{"version":0,"label":"a","label":"b"}"#,
+            r#"{"version":0,"value_labels":{},"value_labels":{}}"#,
+            r#"{"version":0,"value_labels":{"x":[],"x":[]}}"#,
+        ] {
+            let error = parse_dataset_document("0", Some(json))
+                .expect_err("duplicate dataset keys are rejected");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("duplicate"));
+        }
+    }
+
+    #[test]
+    fn null_or_omitted_value_label_registries_are_empty() {
+        for json in [r#"{"version":0}"#, r#"{"version":0,"value_labels":null}"#] {
+            let document =
+                parse_dataset_document("0", Some(json)).expect("empty registries are valid");
+            assert!(document.value_labels.is_empty());
         }
     }
 

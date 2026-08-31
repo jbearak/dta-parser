@@ -201,6 +201,126 @@ pub(crate) struct AcceptedCharacteristic {
     key: MetadataKey,
 }
 
+/// How a source adapter should handle a framed characteristic value. Retained
+/// values are decoded after the complete section has been framed. Rejected
+/// values still require bounded validation so their errors keep source order.
+/// Once an earlier semantic error exists, later values only need framing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CharacteristicValueUse {
+    Retain,
+    Validate,
+    Skip,
+}
+
+struct PlannedCharacteristic<L> {
+    ordinal: usize,
+    accepted: AcceptedCharacteristic,
+    value: L,
+}
+
+/// Source-independent characteristic policy. Format adapters frame records and
+/// provide a lazy value locator; this plan owns classification, accepted-only
+/// retention, deferred semantic errors, and source-order decoding.
+pub(crate) struct CharacteristicPlan<L> {
+    accepted: Vec<PlannedCharacteristic<L>>,
+    deferred_error: Option<(usize, DtaError)>,
+}
+
+impl<L> Default for CharacteristicPlan<L> {
+    fn default() -> Self {
+        Self {
+            accepted: Vec::new(),
+            deferred_error: None,
+        }
+    }
+}
+
+impl<L> CharacteristicPlan<L> {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn push_record<R, P>(
+        &mut self,
+        ordinal: usize,
+        target: &str,
+        name: String,
+        name_offset: usize,
+        resolve_variable: R,
+        prepare_value: P,
+    ) -> Result<(), DtaError>
+    where
+        R: FnOnce(&str) -> Option<usize>,
+        P: FnOnce(CharacteristicValueUse) -> Result<Option<L>, DtaError>,
+    {
+        if self.deferred_error.is_some() {
+            prepare_value(CharacteristicValueUse::Skip)?;
+            return Ok(());
+        }
+
+        let classified = classify_characteristic(target, name, name_offset, resolve_variable);
+        let value_use = if matches!(classified, Ok(Some(_))) {
+            CharacteristicValueUse::Retain
+        } else {
+            CharacteristicValueUse::Validate
+        };
+        let prepared = prepare_value(value_use);
+
+        match (classified, prepared) {
+            (_, Err(error)) => {
+                self.deferred_error = Some((ordinal, error));
+            }
+            (Err(error), Ok(_)) => {
+                self.deferred_error = Some((ordinal, error));
+            }
+            (Ok(None), Ok(_)) => {}
+            (Ok(Some(accepted)), Ok(Some(value))) => {
+                self.accepted.try_reserve(1).map_err(|_| {
+                    DtaError::ArithmeticOverflow("accepted characteristic framing plan")
+                })?;
+                self.accepted.push(PlannedCharacteristic {
+                    ordinal,
+                    accepted,
+                    value,
+                });
+            }
+            (Ok(Some(_)), Ok(None)) => {
+                return Err(DtaError::ArithmeticOverflow(
+                    "retained characteristic value locator",
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn decode<D>(self, mut decode_value: D) -> Result<CharacteristicCollector, DtaError>
+    where
+        D: FnMut(L) -> Result<String, DtaError>,
+    {
+        let mut collector = CharacteristicCollector::default();
+        let mut deferred_error = self.deferred_error;
+        for record in self.accepted {
+            if deferred_error
+                .as_ref()
+                .is_some_and(|(ordinal, _)| *ordinal < record.ordinal)
+            {
+                return Err(deferred_error.take().expect("deferred error exists").1);
+            }
+            collector.push(record.accepted, decode_value(record.value)?);
+        }
+        if let Some((_, error)) = deferred_error {
+            return Err(error);
+        }
+        Ok(collector)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn retained_len(&self) -> usize {
+        self.accepted.len()
+    }
+
+    pub(crate) fn has_deferred_error(&self) -> bool {
+        self.deferred_error.is_some()
+    }
+}
+
 /// Resolves variable targets lazily so dataset-only or rejected metadata does
 /// not clone or index every variable name in a wide file.
 pub(crate) struct VariableTargetIndexes<'a> {
@@ -308,6 +428,69 @@ impl CharacteristicCollector {
 mod tests {
     use super::*;
     use crate::DtaType;
+
+    #[test]
+    fn characteristic_plan_preserves_source_order_and_stops_retaining_after_errors() {
+        let mut plan = CharacteristicPlan::default();
+        plan.push_record(
+            0,
+            "_dta",
+            "source".into(),
+            0,
+            |_| None,
+            |value_use| {
+                assert_eq!(value_use, CharacteristicValueUse::Retain);
+                Ok(Some("first"))
+            },
+        )
+        .unwrap();
+        plan.push_record(
+            1,
+            "_dta",
+            String::new(),
+            7,
+            |_| None,
+            |value_use| {
+                assert_eq!(value_use, CharacteristicValueUse::Validate);
+                Ok(None)
+            },
+        )
+        .unwrap();
+        plan.push_record(
+            2,
+            "_dta",
+            "later".into(),
+            14,
+            |_| None,
+            |value_use| {
+                assert_eq!(value_use, CharacteristicValueUse::Skip);
+                Ok(None)
+            },
+        )
+        .unwrap();
+        assert_eq!(plan.retained_len(), 1);
+        assert!(matches!(
+            plan.decode(|_| Err(DtaError::InvalidSignature)),
+            Err(DtaError::InvalidSignature)
+        ));
+
+        let mut plan = CharacteristicPlan::default();
+        plan.push_record(
+            0,
+            "_dta",
+            "source".into(),
+            0,
+            |_| None,
+            |_| Ok(Some("first")),
+        )
+        .unwrap();
+        plan.push_record(1, "_dta", String::new(), 7, |_| None, |_| Ok(None))
+            .unwrap();
+        assert!(matches!(
+            plan.decode(|value| Ok(value.to_owned())),
+            Err(DtaError::InvalidCharacteristicName { offset: 7, .. })
+        ));
+    }
 
     #[test]
     fn characteristic_records_preserve_scope_gaps_and_last_duplicate_values() {
