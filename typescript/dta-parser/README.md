@@ -74,10 +74,16 @@ type MissingValue = {
 Metadata includes variables, labels, display formats, numbered notes, arbitrary
 characteristics, value-label tables, and section offsets. Dataset metadata and
 each variable expose `notes: { number, text }[]` and
-`characteristics: { name, value }[]`. List, get, set, add, drop, and renumber
+`characteristics: { name, value }[]`. Caller-built metadata may omit either
+field, and legacy `notes: string[]` inputs are normalized to consecutive note
+numbers when first passed to a metadata helper. Parser return types use the
+stricter `ParsedDtaMetadata` and `ParsedVariableInfo` interfaces, whose arrays
+are always present. List, get, set, add, drop, and renumber
 helpers are exported from the portable entrypoint; mutation helpers change the
 supplied metadata target. The Node entrypoint re-exports those helpers, and
-`DtaFile.metadata` exposes dataset-scoped metadata. `DtaFile` resolves selected
+`DtaFile.metadata` exposes editable dataset-scoped metadata. Its on-disk row
+geometry is held separately, so editing exported counts, offsets, or variable
+descriptors cannot redirect later file reads. `DtaFile` resolves selected
 `strL` values and validates their object references. Numeric `note*` keys and
 Stata's `_lang_list` and `_lang_c` language-control keys are reserved.
 

@@ -971,7 +971,7 @@ fn projected_reads_clone_only_selected_value_label_tables() {
 }
 
 #[test]
-fn projected_cache_does_not_retain_unreferenced_registry_locations() {
+fn projected_cache_reuses_unreferenced_registry_locations_for_a_later_full_read() {
     let mut bytes = fixture("value_labels_v118.dta");
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
     let names_start =
@@ -993,11 +993,16 @@ fn projected_cache_does_not_retain_unreferenced_registry_locations() {
 
     trace.borrow_mut().reads.clear();
     assert_eq!(file.value_label_tables().unwrap().len(), 3);
-    assert!(trace
+    assert!(!trace
         .borrow()
         .reads
         .iter()
         .any(|(offset, _)| *offset == metadata.section_offsets.value_labels));
+    assert!(trace
+        .borrow()
+        .reads
+        .iter()
+        .any(|(offset, _)| *offset > metadata.section_offsets.value_labels));
 }
 
 #[test]
@@ -1112,7 +1117,7 @@ fn projected_slice_and_file_validate_unselected_utf8_label_offsets() {
 
 #[test]
 fn large_unselected_value_label_offsets_use_bounded_staging() {
-    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
+    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 65_536);
     let slice = read_dta_with_options(&bytes, &options(0, None, Vec::new())).unwrap();
     assert!(slice.value_label_tables.is_empty());
     let (reader, trace) = TracedReader::new(bytes);
@@ -1133,10 +1138,10 @@ fn large_unselected_value_label_offsets_use_bounded_staging() {
 
 #[test]
 fn large_retained_value_label_tables_do_not_need_per_entry_lookup_arrays() {
-    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
+    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 65_536);
     let mut expected_data = read_dta(&bytes).unwrap();
     let expected = expected_data.value_label_tables.remove(0);
-    assert_eq!(expected.entries.len(), 100_000);
+    assert_eq!(expected.entries.len(), 65_536);
 
     let mut file = DtaFile::from_reader_with_options(
         Cursor::new(bytes),
@@ -1151,8 +1156,41 @@ fn large_retained_value_label_tables_do_not_need_per_entry_lookup_arrays() {
 }
 
 #[test]
+fn oversized_value_label_count_is_rejected_before_array_reads() {
+    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 65_537);
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader_with_options(
+        reader,
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    trace.borrow_mut().reads.clear();
+
+    assert!(matches!(
+        file.read(),
+        Err(DtaError::ArithmeticOverflow(
+            "value-label entry count exceeds 65,536"
+        ))
+    ));
+    let array_start = metadata.section_offsets.value_labels
+        + b"<value_labels><lbl>".len() as u64
+        + 4
+        + 129
+        + 3
+        + 8;
+    assert!(trace
+        .borrow()
+        .reads
+        .iter()
+        .all(|(offset, _)| *offset < array_start));
+}
+
+#[test]
 fn unordered_unselected_value_label_offsets_use_bounded_file_io() {
-    let bytes = alternating_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
+    let bytes = alternating_short_first_value_labels(fixture("value_labels_v118.dta"), 65_536);
     let file_length = bytes.len();
     let (reader, trace) = TracedReader::new(bytes);
     let mut file = DtaFile::from_reader_with_options(
@@ -1210,7 +1248,7 @@ fn widely_spaced_offset_batches_bound_repeated_page_reads() {
 
 #[test]
 fn late_invalid_value_label_offset_batches_prior_utf8_validation() {
-    let count = 100_000;
+    let count = 65_536;
     let mut bytes = alternating_short_first_value_labels(fixture("value_labels_v118.dta"), count);
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
     let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();

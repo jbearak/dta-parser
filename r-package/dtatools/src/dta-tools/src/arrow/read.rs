@@ -6,6 +6,7 @@
 //! columns' buffers; whole batches outside the requested row window are
 //! skipped after their small headers are read.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
@@ -20,13 +21,16 @@ use arrow_buffer::{Buffer, MutableBuffer};
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
 use arrow_schema::{DataType, Field, Schema};
+use serde::de::IgnoredAny;
+use serde::Deserialize;
+use serde_json::value::RawValue;
 
 use super::checksum::canonical_array_hashes;
 use super::profile::{
-    checksum_to_hex, parse_checksums_document, parse_dataset_document, parse_field_document,
-    validate_value_label_reference, ArrowFieldDocument, ChecksumsDocument, DatasetDocument,
-    ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION,
-    ARROW_PROFILE_VERSION_KEY,
+    checksum_to_hex, parse_checksums_document, parse_dataset_document_selected,
+    parse_field_document, validate_value_label_reference, ArrowFieldDocument, ChecksumsDocument,
+    DatasetDocument, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY,
+    ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
 };
 use super::ArrowProfileError;
 use super::MAX_IPC_METADATA_BYTES;
@@ -102,8 +106,9 @@ pub struct ArrowReadResult {
     /// and `profile` was requested.
     pub profile_version: Option<String>,
     pub dataset: Option<DatasetDocument>,
-    /// Reference counts from every source field, including fields omitted by
-    /// projection. Readers use these to retain shared table identity.
+    /// Reference counts from valid source fields, including fields omitted by
+    /// projection, capped at two because readers only distinguish private
+    /// from shared tables.
     pub value_label_reference_counts: HashMap<String, usize>,
     pub row_count: u64,
     pub columns: Vec<ArrowReadColumn>,
@@ -169,6 +174,7 @@ struct Profile {
     dataset: DatasetDocument,
     fields: ProfileFields,
     checksums: Option<ChecksumsDocument>,
+    value_label_reference_counts: HashMap<String, usize>,
 }
 
 enum ProfileFields {
@@ -198,6 +204,13 @@ impl ProfileFields {
         match self {
             Self::Full(fields) => fields.get(index).and_then(Option::as_ref),
             Self::Projected(fields) => fields.get(&index),
+        }
+    }
+
+    fn take(&mut self, index: usize) -> Option<ArrowFieldDocument> {
+        match self {
+            Self::Full(fields) => fields.get_mut(index).and_then(Option::take),
+            Self::Projected(fields) => fields.remove(&index),
         }
     }
 
@@ -521,34 +534,93 @@ fn parse_profile(
     if version != ARROW_PROFILE_VERSION {
         return Err(ArrowProfileError::NewerProfile(version));
     }
-    let dataset_json = footer.schema.metadata.remove(ARROW_DATASET_KEY);
-    let dataset = parse_dataset_document(&version, dataset_json.as_deref())?;
     let selected_fields = selected.map(|selected| selected.iter().copied().collect::<HashSet<_>>());
     let mut documents = ProfileFields::new(footer.schema.fields().len(), selected);
     let owned_fields = std::mem::take(&mut footer.schema.fields);
     let mut fields: Vec<Arc<Field>> = owned_fields.iter().cloned().collect();
     drop(owned_fields);
+    let mut field_json = Vec::with_capacity(fields.len());
     for (index, field) in fields.iter_mut().enumerate() {
         let field = Arc::make_mut(field);
         let json = field.metadata_mut().remove(ARROW_FIELD_KEY);
+        field_json.push(json);
         if selected_fields
             .as_ref()
             .is_some_and(|selected| !selected.contains(&index))
         {
             continue;
         }
-        let document = json
+        let document = field_json[index]
             .as_deref()
             .map(|json| parse_field_document(&version, field, json))
             .transpose()?;
-        if let Some(document) = &document {
-            validate_value_label_reference(&version, field, document, &dataset)?;
-        }
         if let Some(document) = document {
             documents.insert(index, document);
         }
     }
     footer.schema.fields = fields.into();
+
+    let selected_value_labels = (0..footer.schema.fields().len())
+        .filter_map(|index| documents.get(index)?.value_labels.clone())
+        .collect::<HashSet<_>>();
+    let dataset_json = footer.schema.metadata.remove(ARROW_DATASET_KEY);
+    let dataset = parse_dataset_document_selected(
+        &version,
+        dataset_json.as_deref(),
+        selected.map(|_| &selected_value_labels),
+    )?;
+    for index in 0..footer.schema.fields().len() {
+        if let Some(document) = documents.get(index) {
+            validate_value_label_reference(
+                &version,
+                footer.schema.field(index),
+                document,
+                &dataset,
+            )?;
+        }
+    }
+    let mut value_label_reference_counts = selected_value_labels
+        .iter()
+        .map(|name| (name.clone(), 0_usize))
+        .collect::<HashMap<_, _>>();
+    for (index, json) in field_json.iter().enumerate() {
+        let reference = if let Some(document) = documents.get(index) {
+            let Some(reference) = document.value_labels.as_deref() else {
+                continue;
+            };
+            reference
+        } else {
+            let Some(target) = raw_value_label_reference(json.as_deref(), &selected_value_labels)
+            else {
+                continue;
+            };
+            if value_label_reference_counts.get(target).copied() == Some(2) {
+                continue;
+            }
+            let Ok(document) = parse_field_document(
+                &version,
+                footer.schema.field(index),
+                json.as_deref().expect("a raw reference came from JSON"),
+            ) else {
+                continue;
+            };
+            if document.value_labels.as_deref() != Some(target)
+                || validate_value_label_reference(
+                    &version,
+                    footer.schema.field(index),
+                    &document,
+                    &dataset,
+                )
+                .is_err()
+            {
+                continue;
+            }
+            target
+        };
+        if let Some(count) = value_label_reference_counts.get_mut(reference) {
+            *count = (*count + 1).min(2);
+        }
+    }
     let checksums_json = footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
     let checksums = if verify {
         let json = checksums_json.as_deref().ok_or_else(|| {
@@ -575,7 +647,57 @@ fn parse_profile(
         dataset,
         fields: documents,
         checksums,
+        value_label_reference_counts,
     }))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawValueLabelReference<'a> {
+    version: u32,
+    #[serde(default)]
+    label: Option<IgnoredAny>,
+    #[serde(default)]
+    format: Option<IgnoredAny>,
+    #[serde(default)]
+    notes: Option<IgnoredAny>,
+    #[serde(default)]
+    characteristics: Option<IgnoredAny>,
+    #[serde(default)]
+    storage: Option<IgnoredAny>,
+    #[serde(default)]
+    string_storage: Option<IgnoredAny>,
+    #[serde(default, borrow)]
+    value_labels: Option<&'a RawValue>,
+    #[serde(default)]
+    missing: Option<IgnoredAny>,
+    #[serde(default)]
+    missing_release: Option<IgnoredAny>,
+    #[serde(default)]
+    r: Option<IgnoredAny>,
+}
+
+fn raw_value_label_reference<'a>(
+    json: Option<&str>,
+    selected: &'a HashSet<String>,
+) -> Option<&'a str> {
+    let raw: RawValueLabelReference<'_> = serde_json::from_str(json?).ok()?;
+    if raw.version != 0 {
+        return None;
+    }
+    let _ = (
+        raw.label,
+        raw.format,
+        raw.notes,
+        raw.characteristics,
+        raw.storage,
+        raw.string_storage,
+        raw.missing,
+        raw.missing_release,
+        raw.r,
+    );
+    let name: Cow<'_, str> = serde_json::from_str(raw.value_labels?.get()).ok()?;
+    selected.get(name.as_ref()).map(String::as_str)
 }
 
 fn discard_private_profile_json(footer: &mut Footer) {
@@ -1119,6 +1241,7 @@ struct PreparedRead {
     stored_signature: Option<String>,
 }
 
+#[allow(dead_code)]
 fn plan_value_labels(
     profile: &mut Option<Profile>,
     selected: &[usize],
@@ -1239,11 +1362,16 @@ fn prepare_read<R: Read + Seek>(
     // Reuse that full parse for the ordinary profiled read rather than
     // parsing the same potentially large footer documents twice.
     let signature_profile = options.record_signature && options.profile;
+    let selected_profile_fields = if signature_profile {
+        None
+    } else {
+        options.columns.as_ref().map(|_| selected.as_slice())
+    };
     let mut profile = parse_profile(
         &mut footer,
         options.profile,
         options.verify || signature_profile,
-        None,
+        selected_profile_fields,
     )?;
     let stored_signature = if options.record_signature {
         Some(if let Some(profile) = &profile {
@@ -1259,6 +1387,10 @@ fn prepare_read<R: Read + Seek>(
             profile.checksums = None;
         }
     }
+    let value_label_reference_counts = profile
+        .as_mut()
+        .map(|profile| std::mem::take(&mut profile.value_label_reference_counts))
+        .unwrap_or_default();
     if carries_profile
         && footer
             .schema
@@ -1267,9 +1399,6 @@ fn prepare_read<R: Read + Seek>(
     {
         discard_private_profile_json(&mut footer);
     }
-    let value_label_reference_counts =
-        plan_value_labels(&mut profile, &selected, options.columns.is_some())?;
-
     // Batch headers are small; reading them all up front fixes each block's
     // slice of the requested window so block bodies can decode in any order.
     let limit = options.row_count.unwrap_or(u64::MAX);
@@ -1703,8 +1832,7 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
     prepared
         .selected
         .iter()
-        .enumerate()
-        .map(|(output_index, &index)| {
+        .map(|&index| {
             let field: &Field = prepared.footer.schema.field(index);
             let chunks = if prepared.plans.is_empty() {
                 prepared.footer.layouts[index]
@@ -1726,21 +1854,37 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
                 data_type: field.data_type().clone(),
                 nullable: field.is_nullable(),
                 dictionary_ordered: prepared.footer.layouts[index].dictionary_ordered,
-                field: prepared
-                    .profile
-                    .as_ref()
-                    .and_then(|profile| profile.fields.get(output_index).cloned()),
+                field: None,
                 chunks,
             })
         })
         .collect()
 }
 
-fn finish_result(prepared: PreparedRead, columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
-    let profile = prepared.profile;
+fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+    let (profile_version, dataset) = if let Some(mut profile) = prepared.profile.take() {
+        let mut remaining = HashMap::with_capacity(prepared.selected.len());
+        for &index in &prepared.selected {
+            *remaining.entry(index).or_insert(0_usize) += 1;
+        }
+        for (&index, column) in prepared.selected.iter().zip(&mut columns) {
+            let count = remaining
+                .get_mut(&index)
+                .expect("selected field occurrence was counted");
+            *count -= 1;
+            column.field = if *count == 0 {
+                profile.fields.take(index)
+            } else {
+                profile.fields.get(index).cloned()
+            };
+        }
+        (Some(profile.version), Some(profile.dataset))
+    } else {
+        (None, None)
+    };
     ArrowReadResult {
-        profile_version: profile.as_ref().map(|profile| profile.version.clone()),
-        dataset: profile.map(|profile| profile.dataset),
+        profile_version,
+        dataset,
         value_label_reference_counts: prepared.value_label_reference_counts,
         row_count: prepared.produced,
         columns,

@@ -8,7 +8,8 @@ status: accepted
 raw source files (for example, downloaded public-use survey data) have not
 been modified. The signature is an order-sensitive digest of a dataset's read
 model — observation and variable counts, variable names and order, storage
-types, labels, display formats, notes, and values in row order — built from
+types, labels, display formats, dataset and variable numbered notes and
+characteristics, and values in row order — built from
 the Arrow profile's canonical per-batch column hashes, so a `.dta` file, a
 `.arrow` file at any compression, and their loaded read models all sign
 identically. Reimplementing Stata's `datasignature` algorithm for

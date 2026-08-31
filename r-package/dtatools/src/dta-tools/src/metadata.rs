@@ -316,18 +316,21 @@ fn validate_sortlist(
     ensure_map_offset("formats", cursor, offsets.formats)
 }
 
-fn walk_characteristic_records<F>(
+#[derive(Clone, Copy)]
+struct CharacteristicRecord {
+    payload_start: usize,
+    payload_length: usize,
+}
+
+fn plan_characteristic_records(
     bytes: &[u8],
     start: usize,
     data: usize,
     byte_order: ByteOrder,
     names_length: usize,
     offsets: &SectionOffsets,
-    mut visit: F,
-) -> Result<(), DtaError>
-where
-    F: FnMut(usize, &[u8]) -> Result<(), DtaError>,
-{
+) -> Result<Vec<CharacteristicRecord>, DtaError> {
+    let mut records = Vec::new();
     let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
     loop {
         if bytes.get(cursor..cursor.saturating_add(CHARACTERISTICS_CLOSE.len()))
@@ -335,7 +338,7 @@ where
         {
             cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
             ensure_map_offset("data", cursor, offsets.data)?;
-            return Ok(());
+            return Ok(records);
         }
 
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
@@ -369,8 +372,14 @@ where
                 available: data.saturating_sub(cursor),
             });
         }
-        let payload = slice_at(bytes, cursor, payload_length, "characteristic payload")?;
-        visit(cursor, payload)?;
+        slice_at(bytes, cursor, payload_length, "characteristic payload")?;
+        records
+            .try_reserve(1)
+            .map_err(|_| DtaError::ArithmeticOverflow("characteristic framing plan"))?;
+        records.push(CharacteristicRecord {
+            payload_start: cursor,
+            payload_length,
+        });
         cursor = expect_at(bytes, payload_end, CHARACTERISTIC_CLOSE, "</ch>")?;
     }
 }
@@ -406,44 +415,32 @@ fn parse_characteristics(
     // Validate every record boundary before decoding any values. The section
     // map alone cannot distinguish a real terminator from tag bytes forged in
     // the final record payload.
-    walk_characteristic_records(
-        bytes,
-        start,
-        data,
-        byte_order,
-        names_length,
-        offsets,
-        |_, _| Ok(()),
-    )?;
+    let records =
+        plan_characteristic_records(bytes, start, data, byte_order, names_length, offsets)?;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(variables);
-    walk_characteristic_records(
-        bytes,
-        start,
-        data,
-        byte_order,
-        names_length,
-        offsets,
-        |cursor, payload| {
-            let (variable, remainder) = payload.split_at(width);
-            let (characteristic, value) = remainder.split_at(width);
-            validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
-            let value =
-                validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
-            let target = encoding.decode(field_bytes(variable));
-            let name = encoding.decode(field_bytes(characteristic));
-            if let Some(accepted) =
-                classify_characteristic(&target, name, cursor + width, |target| {
-                    variable_indexes.resolve(target)
-                })?
-            {
-                collector
-                    .get_or_insert_with(CharacteristicCollector::default)
-                    .push(accepted, encoding.decode(value));
-            }
-            Ok(())
-        },
-    )?;
+    for record in records {
+        let cursor = record.payload_start;
+        let payload = slice_at(
+            bytes,
+            cursor,
+            record.payload_length,
+            "characteristic payload",
+        )?;
+        let (variable, remainder) = payload.split_at(width);
+        let (characteristic, value) = remainder.split_at(width);
+        validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
+        let value = validate_raw_value_bytes(value, cursor + names_length, "characteristic value")?;
+        let target = encoding.decode(field_bytes(variable));
+        let name = encoding.decode(field_bytes(characteristic));
+        if let Some(accepted) = classify_characteristic(&target, name, cursor + width, |target| {
+            variable_indexes.resolve(target)
+        })? {
+            collector
+                .get_or_insert_with(CharacteristicCollector::default)
+                .push(accepted, encoding.decode(value));
+        }
+    }
     Ok(collector)
 }
 

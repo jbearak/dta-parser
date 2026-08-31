@@ -16,6 +16,64 @@ const LABEL_OPEN: &[u8] = b"<lbl>";
 const LABEL_CLOSE: &[u8] = b"</lbl>";
 const STATA_DATA_CLOSE: &[u8] = b"</stata_dta>";
 const RESERVED_WIDTH: usize = 3;
+pub(crate) const MAX_VALUE_LABEL_ENTRIES: usize = 65_536;
+
+#[derive(Clone, Copy)]
+pub(crate) struct OffsetValueLabelFrame {
+    pub entry_count: usize,
+    pub text_length: usize,
+}
+
+pub(crate) fn frame_offset_value_label_payload(
+    header: &[u8],
+    byte_order: crate::ByteOrder,
+    table_offset: usize,
+    payload_offset: usize,
+    declared: usize,
+) -> Result<OffsetValueLabelFrame, DtaError> {
+    let entry_count_i32 = read_i32(header, 0, byte_order, "value-label entry count")?;
+    if entry_count_i32 < 0 {
+        return Err(DtaError::NegativeValueLabelField {
+            field: "entry count",
+            value: entry_count_i32,
+            offset: payload_offset,
+        });
+    }
+    let text_length_i32 = read_i32(header, 4, byte_order, "value-label text length")?;
+    if text_length_i32 < 0 {
+        return Err(DtaError::NegativeValueLabelField {
+            field: "text length",
+            value: text_length_i32,
+            offset: payload_offset.saturating_add(4),
+        });
+    }
+    let entry_count = usize::try_from(entry_count_i32)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label entry count"))?;
+    if entry_count > MAX_VALUE_LABEL_ENTRIES {
+        return Err(DtaError::ArithmeticOverflow(
+            "value-label entry count exceeds 65,536",
+        ));
+    }
+    let text_length = usize::try_from(text_length_i32)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label text length"))?;
+    let arrays_length = checked_mul(entry_count, 8, "value-label arrays length")?;
+    let expected_length = checked_add(
+        checked_add(8, arrays_length, "value-label payload length")?,
+        text_length,
+        "value-label payload length",
+    )?;
+    if declared != expected_length {
+        return Err(DtaError::InvalidValueLabelLength {
+            offset: table_offset,
+            declared,
+            expected: expected_length,
+        });
+    }
+    Ok(OffsetValueLabelFrame {
+        entry_count,
+        text_length,
+    })
+}
 
 pub(crate) fn has_legacy_offset_table_framing(
     bytes: &[u8],
@@ -56,6 +114,9 @@ pub(crate) fn has_legacy_offset_table_framing(
     let Ok(entry_count) = usize::try_from(entry_count) else {
         return false;
     };
+    if entry_count > MAX_VALUE_LABEL_ENTRIES {
+        return false;
+    }
     let Ok(text_length) = usize::try_from(text_length) else {
         return false;
     };
@@ -191,7 +252,10 @@ fn parse_fixed8_table(
         return Ok((None, table_end));
     }
 
-    let mut entries = Vec::with_capacity(entry_count);
+    let mut entries = Vec::new();
+    entries
+        .try_reserve_exact(entry_count)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label entry allocation"))?;
     for entry_index in 0..entry_count {
         let value_at = checked_add(
             values_start,
@@ -303,50 +367,15 @@ fn parse_table(
     // declared range. This matches the bounded file reader and reports a
     // corrupt declaration precisely without staging an attacker-sized slice.
     let payload_header = slice_at(bytes, payload_start, 8, "value-label payload header")?;
-    let entry_count_i32 = read_i32(
+    let frame = frame_offset_value_label_payload(
         payload_header,
-        0,
         metadata.byte_order,
-        "value-label entry count",
+        table_start,
+        payload_start,
+        declared,
     )?;
-    if entry_count_i32 < 0 {
-        return Err(DtaError::NegativeValueLabelField {
-            field: "entry count",
-            value: entry_count_i32,
-            offset: payload_start,
-        });
-    }
-    let text_length_i32 = read_i32(
-        payload_header,
-        4,
-        metadata.byte_order,
-        "value-label text length",
-    )?;
-    if text_length_i32 < 0 {
-        return Err(DtaError::NegativeValueLabelField {
-            field: "text length",
-            value: text_length_i32,
-            offset: checked_add(payload_start, 4, "value-label text length")?,
-        });
-    }
-
-    let entry_count = usize::try_from(entry_count_i32)
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label entry count"))?;
-    let text_length = usize::try_from(text_length_i32)
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label text length"))?;
-    let arrays_length = checked_mul(entry_count, 8, "value-label arrays length")?;
-    let expected = checked_add(
-        checked_add(8, arrays_length, "value-label payload length")?,
-        text_length,
-        "value-label payload length",
-    )?;
-    if declared != expected {
-        return Err(DtaError::InvalidValueLabelLength {
-            offset: table_start,
-            declared,
-            expected,
-        });
-    }
+    let entry_count = frame.entry_count;
+    let text_length = frame.text_length;
     let payload = slice_at(bytes, payload_start, declared, "value-label table payload")?;
 
     let offsets_start = 8;
@@ -362,7 +391,12 @@ fn parse_table(
     )?;
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
     let text = &payload[text_start..text_end];
-    let mut text_offsets = retain.then(|| Vec::with_capacity(entry_count));
+    let mut text_offsets = retain.then(Vec::new);
+    if let Some(text_offsets) = text_offsets.as_mut() {
+        text_offsets
+            .try_reserve_exact(entry_count)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label offset allocation"))?;
+    }
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
         let raw_offset_position = checked_add(
@@ -416,7 +450,10 @@ fn parse_table(
             .as_ref()
             .expect("retained table has text offsets");
         let terminators = nul_positions(text);
-        let mut entries = Vec::with_capacity(entry_count);
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(entry_count)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label entry allocation"))?;
         for (entry_index, &text_offset) in text_offsets.iter().enumerate() {
             let Some(nul) = first_nul_at_or_after(&terminators, text_offset) else {
                 return Err(DtaError::MissingNulTerminator {
@@ -709,8 +746,10 @@ pub(crate) fn parse_value_labels_section(
 mod tests {
     use std::collections::HashSet;
 
-    use super::parse_fixed8_table;
-    use crate::{parse_metadata, ByteOrder, TextEncoding};
+    use super::{parse_fixed8_table, parse_table};
+    use crate::{
+        parse_metadata, ByteOrder, DtaMetadata, FormatVersion, SectionOffsets, TextEncoding,
+    };
 
     #[test]
     fn unselected_fixed8_table_skips_entry_iteration_after_bounds_check() {
@@ -736,5 +775,35 @@ mod tests {
         .unwrap();
         assert!(table.is_none());
         assert_eq!(end, bytes.len());
+    }
+
+    #[test]
+    fn oversized_offset_table_count_is_rejected_before_declared_payload_is_sliced() {
+        let metadata = DtaMetadata {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: String::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            variables: Vec::new(),
+            section_offsets: SectionOffsets::default(),
+            obs_length: 0,
+        };
+        let declared = 8_i32 + 65_537_i32 * 8;
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&declared.to_le_bytes());
+        bytes.extend(std::iter::repeat_n(0, 129));
+        bytes.extend_from_slice(&[0; 3]);
+        bytes.extend_from_slice(&65_537_i32.to_le_bytes());
+        bytes.extend_from_slice(&0_i32.to_le_bytes());
+
+        assert!(matches!(
+            parse_table(&bytes, &metadata, 0, 129, false, TextEncoding::Utf8, None,),
+            Err(crate::DtaError::ArithmeticOverflow(
+                "value-label entry count exceeds 65,536"
+            ))
+        ));
     }
 }

@@ -287,8 +287,7 @@ save_arrow <- function(data, path,
 }
 
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
-                                        value_label_index,
-                                        value_label_cache) {
+                                        value_label_index) {
     characteristics <- stata_characteristics(column)
     notes <- stata_notes(column)
     variable_label <- .arrow_utf8(
@@ -308,27 +307,10 @@ save_arrow <- function(data, path,
     write_kind <- kind
     haven_labelled <- inherits(column, "haven_labelled")
 
-    if (kind %in% c(
-        "integer", "double", "date", "datetime", "difftime", "stata"
-    ) && value_label_index >= 0L) {
-        .validate_write_value_label_shape(column, name)
-        .cached_write_value_labels(
-            value_label_cache, value_label_index,
-            function() {
-                prepared <- .prepare_write_value_labels(
-                    column, name, allow_legacy_codes = TRUE
-                )
-                # The Arrow native descriptor has one f64 representation for
-                # integer and double label codes.
-                prepared[[1L]] <- as.double(prepared[[1L]])
-                prepared[[2L]] <- .arrow_utf8(
-                    prepared[[2L]],
-                    sprintf("Value-label text for `%s`", name)
-                )
-                prepared
-            }
-        )
-    } else if (!is.null(attr(column, "labels", exact = TRUE))) {
+    if (!is.null(attr(column, "labels", exact = TRUE)) &&
+        (!(kind %in% c(
+            "integer", "double", "date", "datetime", "difftime", "stata"
+        )) || value_label_index < 0L)) {
         .dta_write_abort(sprintf(
             "Column `%s` cannot carry numeric value labels", name
         ))
@@ -408,8 +390,7 @@ save_arrow <- function(data, path,
 .arrow_known_column_attributes <- function(kind) {
     common <- c(
         "label", "format.stata", "stata.string.storage",
-        "value.label.name", "notes", "stata.note.numbers",
-        "stata.characteristics"
+        "value.label.name", .stata_metadata_attribute_names
     )
     switch(kind,
         factor = c(common, "levels", "class"),
@@ -501,25 +482,45 @@ save_arrow <- function(data, path,
     notes <- stata_notes(data)
     characteristics <- stata_characteristics(data)
     notes[] <- .arrow_utf8(unname(notes), "Dataset notes")
-    value_label_names <- .resolve_write_value_label_names(data)
-    value_label_cache <- new.env(hash = TRUE, parent = emptyenv())
+    value_label_plan <- .new_write_value_label_plan(
+        data,
+        validate_column = function(column, name, index) {
+            if (!(kinds[[index]] %in% c(
+                "integer", "double", "date", "datetime", "difftime", "stata"
+            ))) {
+                .dta_write_abort(sprintf(
+                    "Column `%s` cannot carry numeric value labels", name
+                ))
+            }
+            .validate_write_value_label_shape(column, name)
+            invisible(NULL)
+        },
+        prepare_table = function(column, name, index) {
+            prepared <- .prepare_write_value_labels(
+                column, name, allow_legacy_codes = TRUE
+            )
+            # The Arrow native descriptor has one f64 representation for
+            # integer and double label codes.
+            prepared[[1L]] <- as.double(prepared[[1L]])
+            prepared[[2L]] <- .arrow_utf8(
+                prepared[[2L]], sprintf("Value-label text for `%s`", name)
+            )
+            prepared
+        }
+    )
     columns <- Map(
         .prepare_arrow_write_column, data, data_names, kinds,
-        value_label_names$indices,
+        value_label_plan$indices,
         MoreArgs = list(
-            adjust_tz = adjust_tz,
-            value_label_cache = value_label_cache
+            adjust_tz = adjust_tz
         )
-    )
-    value_label_tables <- .write_value_label_registry(
-        value_label_names, value_label_cache
     )
     specification <- list(
         label, .stata_metadata_payload(notes, characteristics),
-        unname(columns), value_label_tables
+        unname(columns), value_label_plan$tables
     )
     attr(specification, "write_warnings") <- c(
-        value_label_names$warnings,
+        value_label_plan$warnings,
         .arrow_dropped_attribute_warnings(data, kinds)
     )
     specification

@@ -21,15 +21,17 @@
 #'
 #' Key columns coalesce into their common Stata storage type through the
 #' package's vctrs methods, which promote storage losslessly, keep `x`'s
-#' variable label unless it is absent, and combine compatible value-label
-#' tables with a warning when one code's text conflicts. Overlapping non-key
+#' variable label, numbered notes, and characteristics unless each item is
+#' absent, and combine compatible value-label tables with a warning when one
+#' code's text conflicts. Overlapping non-key
 #' variables follow Stata's master-wins rule: matched and master-only rows
 #' keep the values from `x`, and using-only rows take the values from `y`
 #' cast to the common type. There are no suffixed duplicate columns. Stata
 #' applies this rule silently; `dta_merge()` warns and names the
 #' overlapping variables, because the `y` values for matched rows are
 #' discarded whether or not they agree with `x`. When the inputs disagree
-#' on a coalesced variable's variable label or value-label table (keys
+#' on a coalesced variable's variable label, value-label table, numbered notes,
+#' or characteristics (keys
 #' included), an additional warning names those variables, since the
 #' resolution keeps `x`'s side and Stata would say nothing.
 #'
@@ -156,7 +158,7 @@ dta_merge <- function(x, y, by, relationship,
             keys[[name]]$x, keys[[name]]$y,
             x_rows, y_rows, using_only
         )
-        columns[[name]] <- .dta_merge_reconcile_variable_label(
+        columns[[name]] <- .dta_merge_reconcile_variable_metadata(
             column, x[[name]], y[[name]]
         )
     }
@@ -199,7 +201,7 @@ dta_merge <- function(x, y, by, relationship,
         x_rows, y_rows, using_only, overlap_prototypes
     )
     for (name in overlapping) {
-        overlap_columns[[name]] <- .dta_merge_reconcile_variable_label(
+        overlap_columns[[name]] <- .dta_merge_reconcile_variable_metadata(
             overlap_columns[[name]], x[[name]], y[[name]]
         )
     }
@@ -324,6 +326,7 @@ dta_merge <- function(x, y, by, relationship,
 .warn_coalesced_metadata <- function(x, y, coalesced) {
     var_label_diff <- character()
     val_label_diff <- character()
+    stata_metadata_diff <- character()
     for (name in coalesced) {
         x_label <- var_label(x[[name]])
         y_label <- var_label(y[[name]])
@@ -336,6 +339,13 @@ dta_merge <- function(x, y, by, relationship,
             .normalized_value_labels(y[[name]])
         )) {
             val_label_diff <- c(val_label_diff, name)
+        }
+        if (!identical(stata_notes(x[[name]]), stata_notes(y[[name]])) ||
+            !identical(
+                stata_characteristics(x[[name]]),
+                stata_characteristics(y[[name]])
+            )) {
+            stata_metadata_diff <- c(stata_metadata_diff, name)
         }
     }
     if (length(var_label_diff) > 0L) {
@@ -358,6 +368,17 @@ dta_merge <- function(x, y, by, relationship,
             length(val_label_diff),
             if (length(val_label_diff) == 1L) "" else "s",
             .listed_variable_names(val_label_diff)
+        ), call. = FALSE)
+    }
+    if (length(stata_metadata_diff) > 0L) {
+        warning(sprintf(
+            paste0(
+                "notes or characteristics differ for %d coalesced variable%s; ",
+                "the `x` metadata wins: %s"
+            ),
+            length(stata_metadata_diff),
+            if (length(stata_metadata_diff) == 1L) "" else "s",
+            .listed_variable_names(stata_metadata_diff)
         ), call. = FALSE)
     }
     invisible(NULL)
@@ -496,12 +517,11 @@ dta_merge <- function(x, y, by, relationship,
     .restore_stata_metadata(value, prototype, storage)
 }
 
-.dta_merge_reconcile_variable_label <- function(value, x, y) {
+.dta_merge_reconcile_variable_metadata <- function(value, x, y) {
     label <- var_label(x)
     if (is.null(label)) label <- var_label(y)
-    if (identical(var_label(value), label)) return(value)
-    var_label(value) <- label
-    value
+    if (!identical(var_label(value), label)) var_label(value) <- label
+    .reconcile_stata_metadata_attributes(value, x, y)
 }
 
 .dta_merge_slice <- function(value, rows) {

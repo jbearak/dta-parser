@@ -59,15 +59,17 @@ and \code{"m:m"} is not supported.
 
 Key columns coalesce into their common Stata storage type through the
 package's vctrs methods, which promote storage losslessly, keep \code{x}'s
-variable label unless it is absent, and combine compatible value-label
-tables with a warning when one code's text conflicts. Overlapping non-key
+variable label, numbered notes, and characteristics unless each item is
+absent, and combine compatible value-label tables with a warning when one
+code's text conflicts. Overlapping non-key
 variables follow Stata's master-wins rule: matched and master-only rows
 keep the values from \code{x}, and using-only rows take the values from \code{y}
 cast to the common type. There are no suffixed duplicate columns. Stata
 applies this rule silently; \code{dta_merge()} warns and names the
 overlapping variables, because the \code{y} values for matched rows are
 discarded whether or not they agree with \code{x}. When the inputs disagree
-on a coalesced variable's variable label or value-label table (keys
+on a coalesced variable's variable label, value-label table, numbered notes,
+or characteristics (keys
 included), an additional warning names those variables, since the
 resolution keeps \code{x}'s side and Stata would say nothing.
 

@@ -80,14 +80,21 @@ an explicitly supplied zero is invalid rather than an auto-numbering marker.
 
 ## TypeScript
 
-`DtaMetadata` and `VariableInfo` expose `notes` and `characteristics` arrays.
+Parser-produced `DtaMetadata` and `VariableInfo` expose `notes` and
+`characteristics` arrays. Caller-built objects remain source-compatible when
+those fields are omitted, and legacy `notes: string[]` values are normalized
+to consecutive numbered notes by the helpers. Parser results use the stricter
+`ParsedDtaMetadata` and `ParsedVariableInfo` types, whose arrays are always
+present.
 The portable entrypoint exports list, get, set, add, drop, and renumber helpers.
 These helpers mutate the supplied metadata target and return copies from list
 operations. Dataset and variable metadata have the same shape, so callers pass
 either `metadata` or one selected `metadata.variables` entry. A missing
 variable lookup is handled by the caller before invoking a helper.
 The Node `DtaFile.metadata` getter exposes the dataset target, and the Node
-entrypoint re-exports the same helpers as the portable entrypoint.
+entrypoint re-exports the same helpers as the portable entrypoint. File reads
+use a private snapshot of row geometry, so mutating exported offsets, counts,
+or variable descriptors does not alter subsequent buffered reads.
 
 ```ts
 const metadata = parse_metadata(buffer);

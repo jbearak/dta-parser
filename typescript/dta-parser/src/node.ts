@@ -36,9 +36,10 @@ import {
 import { parse_value_labels } from './value-labels';
 import type {
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
     FormatVersion,
     LegacyFormatVersion,
-    VariableInfo,
     Row,
     RowCell,
 } from './types';
@@ -55,9 +56,8 @@ import {
 // -----------------------------------------------------------
 // Constants
 // -----------------------------------------------------------
-const MODERN_MAP_READ_SIZE = 128 * 1024;
+const MODERN_MAP_INITIAL_READ_SIZE = 1024;
 const LEGACY_SCAN_BLOCK_SIZE = 64 * 1024;
-const LEGACY_SCAN_SMALL_PAYLOAD = LEGACY_SCAN_BLOCK_SIZE / 8;
 const MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 const MODERN_METADATA_EXTRA_BYTES = 64 * 1024 * 1024;
 const MAX_MODERN_VARIABLES = 120_000;
@@ -151,13 +151,29 @@ function normalise_column_indices(
     return the_columns;
 }
 
+function clone_read_metadata(metadata: DtaMetadata): DtaMetadata {
+    return {
+        ...metadata,
+        notes: undefined,
+        characteristics: undefined,
+        variables: metadata.variables.map(variable => ({
+            ...variable,
+            notes: undefined,
+            characteristics: undefined,
+        })),
+        section_offsets: { ...metadata.section_offsets },
+    };
+}
+
 // -----------------------------------------------------------
 // DtaFile class
 // -----------------------------------------------------------
 
 export class DtaFile {
     private _fd: number | null;
-    private readonly _metadata: DtaMetadata;
+    private readonly _metadata: ParsedDtaMetadata;
+    /** Private geometry is never exposed through the mutable metadata API. */
+    private readonly _read_metadata: DtaMetadata;
     // strL (GSO) state, populated lazily by `_ensure_gso()` the first
     // time an strL cell is actually resolved. Files without strL columns,
     // and reads that never touch an strL column, never read or retain the
@@ -180,7 +196,7 @@ export class DtaFile {
 
     private constructor(
         fd: number,
-        metadata: DtaMetadata,
+        metadata: ParsedDtaMetadata,
         value_label_tables: Map<
             string,
             Map<number, string>
@@ -188,6 +204,7 @@ export class DtaFile {
     ) {
         this._fd = fd;
         this._metadata = metadata;
+        this._read_metadata = clone_read_metadata(metadata);
         this._gso_index = new Map();
         this._gso_section = null;
         this._gso_loaded = false;
@@ -198,10 +215,10 @@ export class DtaFile {
         const the_indices: number[] = [];
         for (
             let i = 0;
-            i < metadata.variables.length;
+            i < this._read_metadata.variables.length;
             i++
         ) {
-            if (metadata.variables[i].type === 'strL') {
+            if (this._read_metadata.variables[i].type === 'strL') {
                 the_indices.push(i);
             }
         }
@@ -254,34 +271,34 @@ export class DtaFile {
 
     /** Stata on-disk format release. */
     get format_version(): FormatVersion {
-        return this._metadata.format_version;
+        return this._read_metadata.format_version;
     }
 
     /** Resolved source encoding used for textual fields. */
     get text_encoding(): ResolvedTextEncoding {
         return resolve_text_encoding(
-            this._metadata.format_version,
-            this._metadata.text_encoding
+            this._read_metadata.format_version,
+            this._read_metadata.text_encoding
         );
     }
 
     /** Number of observations (rows). */
     get nobs(): number {
-        return this._metadata.nobs;
+        return this._read_metadata.nobs;
     }
 
     /** Number of variables (columns). */
     get nvar(): number {
-        return this._metadata.nvar;
+        return this._read_metadata.nvar;
     }
 
     /** Variable metadata array. */
-    get variables(): VariableInfo[] {
+    get variables(): ParsedVariableInfo[] {
         return this._metadata.variables;
     }
 
     /** Complete metadata, including dataset-scoped notes and characteristics. */
-    get metadata(): DtaMetadata {
+    get metadata(): ParsedDtaMetadata {
         return this._metadata;
     }
 
@@ -327,31 +344,31 @@ export class DtaFile {
         assert_valid_row_range(start, count);
 
         if (
-            this._metadata.nobs === 0
+            this._read_metadata.nobs === 0
             || start < 0
             || count <= 0
-            || start >= this._metadata.nobs
+            || start >= this._read_metadata.nobs
         ) {
             return [];
         }
 
         const my_actual_count = Math.min(
             count,
-            this._metadata.nobs - start
+            this._read_metadata.nobs - start
         );
 
         const my_signal = options?.signal;
         const my_chunk_rows = normalise_chunk_rows(
             options?.chunk_rows,
-            this._metadata.obs_length,
+            this._read_metadata.obs_length,
             my_signal !== undefined
         );
         if (my_signal) throw_if_aborted(my_signal);
 
         const my_col_start = Math.max(0, col_start ?? 0);
         const my_col_end = Math.min(
-            this._metadata.nvar,
-            col_end ?? this._metadata.nvar
+            this._read_metadata.nvar,
+            col_end ?? this._read_metadata.nvar
         );
         if (my_col_start >= my_col_end) return [];
 
@@ -414,13 +431,13 @@ export class DtaFile {
 
         const the_columns = normalise_column_indices(
             col_indices,
-            this._metadata.nvar
+            this._read_metadata.nvar
         );
         const my_signal = options?.signal;
         if (
             my_signal
             && the_columns.length > 0
-            && this._metadata.nobs > 0
+            && this._read_metadata.nobs > 0
         ) {
             throw_if_aborted(my_signal);
         }
@@ -431,25 +448,25 @@ export class DtaFile {
                 my_col,
                 my_signal
                     ? []
-                    : new Array<RowCell>(this._metadata.nobs)
+                    : new Array<RowCell>(this._read_metadata.nobs)
             );
         }
 
         if (
             the_columns.length === 0
-            || this._metadata.nobs === 0
+            || this._read_metadata.nobs === 0
         ) {
             return the_values;
         }
 
         const my_chunk_rows = normalise_chunk_rows(
             options?.chunk_rows,
-            this._metadata.obs_length,
+            this._read_metadata.obs_length,
             my_signal !== undefined
         );
         const my_complete = await this._for_each_observation_chunk(
             0,
-            this._metadata.nobs,
+            this._read_metadata.nobs,
             my_chunk_rows,
             my_signal,
             (
@@ -460,7 +477,7 @@ export class DtaFile {
             ) => {
                 read_columns_from_data_buffer(
                     my_data_buffer,
-                    this._metadata,
+                    this._read_metadata,
                     my_chunk_count,
                     the_columns,
                     the_values,
@@ -497,7 +514,7 @@ export class DtaFile {
     ): void {
         read_rows_from_data_buffer(
             data_buffer,
-            this._metadata,
+            this._read_metadata,
             start,
             count,
             col_start,
@@ -550,7 +567,7 @@ export class DtaFile {
             const my_chunk_start = start + my_read;
             const my_data_buffer = read_data_rows(
                 this._fd,
-                this._metadata,
+                this._read_metadata,
                 my_chunk_start,
                 my_chunk_count
             );
@@ -610,9 +627,9 @@ export class DtaFile {
         }
 
         const my_start =
-            this._metadata.section_offsets.strls;
+            this._read_metadata.section_offsets.strls;
         const my_length =
-            this._metadata.section_offsets.value_labels
+            this._read_metadata.section_offsets.value_labels
             - my_start;
         if (my_length <= 0) {
             this._gso_loaded = true;
@@ -627,7 +644,7 @@ export class DtaFile {
             this._fd, my_start, my_length
         );
         this._gso_index = build_gso_index(
-            my_buffer, this._metadata, my_start
+            my_buffer, this._read_metadata, my_start
         );
         this._gso_section = new Uint8Array(my_buffer);
         this._gso_loaded = true;
@@ -674,12 +691,12 @@ export class DtaFile {
 
             // Column index within the row array
             const my_row_col = my_abs_col - col_start;
-            const my_var = this._metadata
+            const my_var = this._read_metadata
                 .variables[my_abs_col];
 
             for (let i = 0; i < row_count; i++) {
                 const my_pointer_offset =
-                    i * this._metadata.obs_length
+                    i * this._read_metadata.obs_length
                     + my_var.byte_offset;
                 the_rows[row_start + i][my_row_col] =
                     this._resolve_strl_at(
@@ -705,10 +722,10 @@ export class DtaFile {
     ): void {
         this._ensure_gso();
         const my_view = data_buffer_view(data_buffer);
-        const my_var = this._metadata.variables[abs_col];
+        const my_var = this._read_metadata.variables[abs_col];
         for (let i = 0; i < count; i++) {
             const my_pointer_offset =
-                i * this._metadata.obs_length
+                i * this._read_metadata.obs_length
                 + my_var.byte_offset;
             col_values[base_index + i] =
                 this._resolve_strl_at(
@@ -728,7 +745,7 @@ export class DtaFile {
         pointer_offset: number
     ): string {
         const my_pointer = read_strl_pointer(
-            view, this._metadata, pointer_offset
+            view, this._read_metadata, pointer_offset
         );
         if (!my_pointer) return '';
 
@@ -764,7 +781,7 @@ function detect_and_parse_metadata(
     fd: number,
     file_size: number,
     options: TextEncodingOptions
-): DtaMetadata {
+): ParsedDtaMetadata {
     // Peek at the first byte to determine format family
     if (file_size < 1) {
         throw new Error(
@@ -785,7 +802,7 @@ function read_legacy_metadata(
     fd: number,
     file_size: number,
     options: TextEncodingOptions
-): DtaMetadata {
+): ParsedDtaMetadata {
     if (file_size < MIN_LEGACY_HEADER) {
         throw new Error(
             'Not a valid .dta file: too small for ' +
@@ -823,41 +840,69 @@ function read_legacy_metadata(
         throw new Error('Truncated legacy metadata');
     }
 
-    // Expansion payloads can exceed the initial metadata window. Scan their
-    // fixed-size headers directly from the file so malformed inputs cannot
-    // make us repeatedly allocate progressively larger file prefixes.
+    // Retain each expansion block while validating the framing. The final
+    // parser then consumes those same bytes instead of rereading the entire
+    // expanded metadata prefix.
+    const my_fixed_prefix = new Uint8Array(my_expansion_start);
+    my_fixed_prefix.set(my_header_bytes);
+    if (my_expansion_start > my_header_bytes.byteLength) {
+        read_bytes_into(
+            fd,
+            my_fixed_prefix,
+            my_header_bytes.byteLength,
+            my_expansion_start - my_header_bytes.byteLength,
+            my_header_bytes.byteLength
+        );
+    }
+    const the_scan_chunks: Uint8Array[] = [];
+    let my_loaded_end = my_expansion_start;
+    const ensure_scan_bytes = (end: number): void => {
+        while (my_loaded_end < end) {
+            const length = Math.min(
+                LEGACY_SCAN_BLOCK_SIZE,
+                file_size - my_loaded_end
+            );
+            if (length <= 0) {
+                throw new Error('Missing legacy expansion-field terminator');
+            }
+            const chunk = read_bytes(fd, my_loaded_end, length);
+            the_scan_chunks.push(chunk);
+            my_loaded_end += length;
+        }
+    };
+    const copy_scan_bytes = (
+        target: Uint8Array, offset: number, length: number
+    ): void => {
+        let copied = 0;
+        while (copied < length) {
+            const relative = offset + copied - my_expansion_start;
+            const chunkIndex = Math.floor(relative / LEGACY_SCAN_BLOCK_SIZE);
+            const chunkOffset = relative % LEGACY_SCAN_BLOCK_SIZE;
+            const chunk = the_scan_chunks[chunkIndex];
+            const count = Math.min(length - copied, chunk.length - chunkOffset);
+            target.set(chunk.subarray(chunkOffset, chunkOffset + count), copied);
+            copied += count;
+        }
+    };
+
     let my_position = my_expansion_start;
-    const my_scan_buffer = Buffer.allocUnsafe(LEGACY_SCAN_BLOCK_SIZE);
     const my_header_buffer = Buffer.allocUnsafe(my_field_header_size);
-    let my_scan_start = -1;
-    let my_scan_length = 0;
     while (true) {
         if (my_position + my_field_header_size > file_size) {
             throw new Error('Missing legacy expansion-field terminator');
         }
-        const my_record_start = my_position;
-        const my_uses_scan_buffer = my_position >= my_scan_start
-            && my_position + my_field_header_size <= my_scan_start + my_scan_length;
-        let my_header_bytes: Buffer;
-        let my_header_offset: number;
-        if (my_uses_scan_buffer) {
-            my_header_bytes = my_scan_buffer;
-            my_header_offset = my_position - my_scan_start;
-        } else {
-            read_bytes_into(
-                fd, my_header_buffer, 0, my_field_header_size, my_position
-            );
-            my_header_bytes = my_header_buffer;
-            my_header_offset = 0;
-        }
-        const my_data_type = my_header_bytes[my_header_offset];
+        ensure_scan_bytes(my_position + my_field_header_size);
+        copy_scan_bytes(
+            my_header_buffer, my_position, my_field_header_size
+        );
+        const my_data_type = my_header_buffer[0];
         const my_length = layout.expansion_length_width === 2
             ? (my_little_endian
-                ? my_header_bytes.readInt16LE(my_header_offset + 1)
-                : my_header_bytes.readInt16BE(my_header_offset + 1))
+                ? my_header_buffer.readInt16LE(1)
+                : my_header_buffer.readInt16BE(1))
             : (my_little_endian
-                ? my_header_bytes.readInt32LE(my_header_offset + 1)
-                : my_header_bytes.readInt32BE(my_header_offset + 1));
+                ? my_header_buffer.readInt32LE(1)
+                : my_header_buffer.readInt32BE(1));
         my_position += my_field_header_size;
 
         if (my_data_type === 0 && my_length === 0) break;
@@ -867,32 +912,31 @@ function read_legacy_metadata(
         if (my_length > file_size - my_position) {
             throw new Error('Truncated legacy expansion field');
         }
-        if (!my_uses_scan_buffer && my_length <= LEGACY_SCAN_SMALL_PAYLOAD) {
-            my_scan_start = my_record_start;
-            my_scan_length = Math.min(
-                LEGACY_SCAN_BLOCK_SIZE, file_size - my_scan_start
-            );
-            read_bytes_into(
-                fd, my_scan_buffer, 0, my_scan_length, my_scan_start
-            );
-        }
         my_position += my_length;
         if (my_position > MAX_LEGACY_METADATA_SIZE) {
             throw new Error('Legacy metadata exceeds 64 MiB safety limit');
         }
     }
 
-    const my_buffer = read_range(fd, 0, my_position);
-    return parse_legacy_metadata(my_buffer, file_size, options);
+    const my_prefix = new Uint8Array(my_position);
+    my_prefix.set(my_fixed_prefix);
+    let my_output = my_expansion_start;
+    for (const chunk of the_scan_chunks) {
+        const count = Math.min(chunk.length, my_position - my_output);
+        if (count <= 0) break;
+        my_prefix.set(chunk.subarray(0, count), my_output);
+        my_output += count;
+    }
+    return parse_legacy_metadata(my_prefix.buffer, file_size, options);
 }
 
 function read_modern_metadata(
     fd: number,
     file_size: number,
     options: TextEncodingOptions
-): DtaMetadata {
+): ParsedDtaMetadata {
     const map_buffer = read_range(
-        fd, 0, Math.min(file_size, MODERN_MAP_READ_SIZE)
+        fd, 0, Math.min(file_size, MODERN_MAP_INITIAL_READ_SIZE)
     );
     let header: ReturnType<typeof parse_modern_metadata_header>;
     try {
@@ -933,7 +977,7 @@ function read_modern_metadata(
     }
     let metadata_buffer: ArrayBuffer;
     if (metadata_size <= map_buffer.byteLength) {
-        metadata_buffer = map_buffer.slice(0, metadata_size);
+        metadata_buffer = map_buffer;
     } else {
         metadata_buffer = new ArrayBuffer(metadata_size);
         const metadata_bytes = new Uint8Array(metadata_buffer);
@@ -1041,18 +1085,9 @@ function read_range(
     offset: number,
     length: number
 ): ArrayBuffer {
-    const my_bytes = read_bytes(fd, offset, length);
-    if (
-        my_bytes.buffer instanceof ArrayBuffer
-        && my_bytes.byteOffset === 0
-        && my_bytes.byteLength === my_bytes.buffer.byteLength
-    ) {
-        return my_bytes.buffer;
-    }
-    return my_bytes.buffer.slice(
-        my_bytes.byteOffset,
-        my_bytes.byteOffset + my_bytes.byteLength
-    ) as ArrayBuffer;
+    const my_bytes = new Uint8Array(length);
+    read_bytes_into(fd, my_bytes, 0, length, offset);
+    return my_bytes.buffer;
 }
 
 // -----------------------------------------------------------
@@ -1066,6 +1101,8 @@ export type {
     MissingType,
     MissingValue,
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
     DtaType,
     FormatVersion,
     LegacyFormatVersion,

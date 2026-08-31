@@ -317,6 +317,34 @@ function reservedCharacteristicName(name) {
 function validCharacteristicNameShape(name) {
   return /^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) && codePointLengthAtMost(name, 32) && utf8LengthAtMost(name, 128);
 }
+function mutableNotes(target) {
+  const current = target.notes;
+  if (current === void 0) {
+    const notes = [];
+    target.notes = notes;
+    return notes;
+  }
+  if (current.length > 0 && current.every((note) => typeof note === "string")) {
+    const notes = current.map((text, index) => ({
+      number: index + 1,
+      text
+    }));
+    target.notes = notes;
+    return notes;
+  }
+  if (!current.every(
+    (note) => typeof note === "object" && note !== null && typeof note.number === "number" && typeof note.text === "string"
+  )) {
+    throw new Error("Malformed Stata note metadata");
+  }
+  return current;
+}
+function mutableCharacteristics(target) {
+  if (target.characteristics === void 0) {
+    target.characteristics = [];
+  }
+  return target.characteristics;
+}
 var StataMetadataCollector = class {
   dataset;
   variables;
@@ -343,12 +371,14 @@ var StataMetadataCollector = class {
     const existing = this.indexes.get(scopeIndex);
     if (existing !== void 0) return existing;
     const scope = this.scope(scopeIndex);
+    const notes = mutableNotes(scope);
+    const characteristics = mutableCharacteristics(scope);
     const indexes = {
       notes: new Map(
-        scope.notes.map((note, index) => [note.number, index])
+        notes.map((note, index) => [note.number, index])
       ),
       characteristics: new Map(
-        scope.characteristics.map((item, index) => [item.name, index])
+        characteristics.map((item, index) => [item.name, index])
       )
     };
     this.indexes.set(scopeIndex, indexes);
@@ -373,27 +403,29 @@ var StataMetadataCollector = class {
   pushAccepted(accepted, value) {
     const scope = this.scope(accepted.scopeIndex);
     const indexes = this.scopeIndexes(accepted.scopeIndex);
+    const notes = mutableNotes(scope);
+    const characteristics = mutableCharacteristics(scope);
     if (accepted.noteNumber !== null) {
       const existing2 = indexes.notes.get(accepted.noteNumber);
       if (existing2 === void 0) {
-        indexes.notes.set(accepted.noteNumber, scope.notes.length);
-        scope.notes.push({ number: accepted.noteNumber, text: value });
+        indexes.notes.set(accepted.noteNumber, notes.length);
+        notes.push({ number: accepted.noteNumber, text: value });
       } else {
-        scope.notes[existing2].text = value;
+        notes[existing2].text = value;
       }
       return;
     }
     const existing = indexes.characteristics.get(accepted.name);
     if (existing === void 0) {
-      indexes.characteristics.set(accepted.name, scope.characteristics.length);
-      scope.characteristics.push({ name: accepted.name, value });
+      indexes.characteristics.set(accepted.name, characteristics.length);
+      characteristics.push({ name: accepted.name, value });
     } else {
-      scope.characteristics[existing].value = value;
+      characteristics[existing].value = value;
     }
   }
   finish() {
     for (const scopeIndex of this.indexes.keys()) {
-      this.scope(scopeIndex).notes.sort(
+      mutableNotes(this.scope(scopeIndex)).sort(
         (left, right) => left.number - right.number
       );
     }
@@ -440,22 +472,24 @@ function validMetadataValue(value) {
   }
 }
 function listStataNotes(target) {
-  return target.notes.map((note) => ({ ...note }));
+  return mutableNotes(target).map((note) => ({ ...note }));
 }
 function getStataNote(target, number) {
   validNoteNumber(number);
-  return target.notes.find((note) => note.number === number)?.text;
+  return mutableNotes(target).find((note) => note.number === number)?.text;
 }
 function setStataNote(target, number, text) {
   validNoteNumber(number);
   validMetadataValue(text);
-  const existing = target.notes.find((note) => note.number === number);
-  if (existing === void 0) target.notes.push({ number, text });
+  const notes = mutableNotes(target);
+  const existing = notes.find((note) => note.number === number);
+  if (existing === void 0) notes.push({ number, text });
   else existing.text = text;
-  target.notes.sort((left, right) => left.number - right.number);
+  notes.sort((left, right) => left.number - right.number);
 }
 function addStataNote(target, text) {
-  const number = target.notes.length === 0 ? 1 : Math.max(...target.notes.map((note) => note.number)) + 1;
+  const notes = mutableNotes(target);
+  const number = notes.length === 0 ? 1 : Math.max(...notes.map((note) => note.number)) + 1;
   validNoteNumber(number);
   setStataNote(target, number, text);
   return number;
@@ -467,29 +501,35 @@ function dropStataNotes(target, numbers) {
   }
   numbers.forEach(validNoteNumber);
   const dropped = new Set(numbers);
-  target.notes = target.notes.filter((note) => !dropped.has(note.number));
+  target.notes = mutableNotes(target).filter(
+    (note) => !dropped.has(note.number)
+  );
 }
 function renumberStataNotes(target, start = 1) {
   validNoteNumber(start);
-  if (target.notes.length > 0 && start + target.notes.length - 1 > 9999) {
+  const notes = mutableNotes(target);
+  if (notes.length > 0 && start + notes.length - 1 > 9999) {
     throw new Error("Renumbered notes would exceed note number 9999");
   }
-  target.notes.sort((left, right) => left.number - right.number).forEach((note, index) => {
+  notes.sort((left, right) => left.number - right.number).forEach((note, index) => {
     note.number = start + index;
   });
 }
 function listStataCharacteristics(target) {
-  return target.characteristics.map((characteristic) => ({ ...characteristic }));
+  return mutableCharacteristics(target).map(
+    (characteristic) => ({ ...characteristic })
+  );
 }
 function getStataCharacteristic(target, name) {
   validCharacteristicName(name);
-  return target.characteristics.find((item) => item.name === name)?.value;
+  return mutableCharacteristics(target).find((item) => item.name === name)?.value;
 }
 function setStataCharacteristic(target, name, value) {
   validCharacteristicName(name);
   validMetadataValue(value);
-  const existing = target.characteristics.find((item) => item.name === name);
-  if (existing === void 0) target.characteristics.push({ name, value });
+  const characteristics = mutableCharacteristics(target);
+  const existing = characteristics.find((item) => item.name === name);
+  if (existing === void 0) characteristics.push({ name, value });
   else existing.value = value;
 }
 function dropStataCharacteristics(target, names) {
@@ -499,7 +539,7 @@ function dropStataCharacteristics(target, names) {
   }
   names.forEach(validCharacteristicName);
   const dropped = new Set(names);
-  target.characteristics = target.characteristics.filter(
+  target.characteristics = mutableCharacteristics(target).filter(
     (characteristic) => !dropped.has(characteristic.name)
   );
 }

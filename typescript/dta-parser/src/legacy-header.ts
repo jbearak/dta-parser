@@ -20,6 +20,10 @@
 
 import type {
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
+    StataCharacteristic,
+    StataNote,
     LegacyFormatVersion,
     VariableInfo,
     SectionOffsets,
@@ -198,7 +202,7 @@ export function parse_legacy_metadata(
     buffer: ArrayBuffer,
     file_size: number,
     options: TextEncodingOptions = {}
-): DtaMetadata {
+): ParsedDtaMetadata {
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer);
 
@@ -339,7 +343,7 @@ export function parse_legacy_metadata(
     // 8. Build VariableInfo before expansion scanning so raw records can be
     // folded directly into their final scopes.
     let my_running_offset = 0;
-    const the_variables: VariableInfo[] = [];
+    const the_variables: ParsedVariableInfo[] = [];
     for (let i = 0; i < nvar; i++) {
         const my_code = the_type_codes[i];
         const my_width =
@@ -359,8 +363,8 @@ export function parse_legacy_metadata(
         my_running_offset += my_width;
     }
     const obs_length = my_running_offset;
-    const notes: DtaMetadata['notes'] = [];
-    const characteristics: DtaMetadata['characteristics'] = [];
+    const notes: StataNote[] = [];
+    const characteristics: StataCharacteristic[] = [];
     // -- expansion fields --
     const my_expansion_offset = pos;
     scan_expansion_fields(

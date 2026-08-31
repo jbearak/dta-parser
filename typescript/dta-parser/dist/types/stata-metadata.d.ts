@@ -1,7 +1,7 @@
 import type { StataCharacteristic, StataNote, VariableInfo } from './types';
 export interface StataMetadataTarget {
-    notes: StataNote[];
-    characteristics: StataCharacteristic[];
+    notes?: StataNote[] | string[];
+    characteristics?: StataCharacteristic[];
 }
 /** Incrementally folds raw characteristic records into canonical metadata. */
 export declare class StataMetadataCollector {

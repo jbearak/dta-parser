@@ -1,4 +1,4 @@
-import type { DtaMetadata, LegacyFormatVersion } from './types';
+import type { ParsedDtaMetadata, LegacyFormatVersion } from './types';
 import type { TextEncodingOptions } from './text-encoding';
 /**
  * Compute the minimum buffer size needed to read all
@@ -20,5 +20,5 @@ export declare function legacy_metadata_fixed_size(nvar: number, format_version:
  * @param buffer - Buffer starting at byte 0 of the file
  * @param file_size - Total file size (for end_of_file)
  */
-export declare function parse_legacy_metadata(buffer: ArrayBuffer, file_size: number, options?: TextEncodingOptions): DtaMetadata;
+export declare function parse_legacy_metadata(buffer: ArrayBuffer, file_size: number, options?: TextEncodingOptions): ParsedDtaMetadata;
 //# sourceMappingURL=legacy-header.d.ts.map

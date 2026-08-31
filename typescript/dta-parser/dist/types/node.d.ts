@@ -1,4 +1,4 @@
-import type { DtaMetadata, FormatVersion, VariableInfo, Row, RowCell } from './types';
+import type { ParsedDtaMetadata, ParsedVariableInfo, FormatVersion, Row, RowCell } from './types';
 import type { ResolvedTextEncoding, TextEncodingOptions } from './text-encoding';
 /** Options for {@link DtaFile.read_rows}. */
 export interface ReadRowsOptions {
@@ -21,6 +21,8 @@ export type ReadColumnsOptions = ReadRowsOptions;
 export declare class DtaFile {
     private _fd;
     private readonly _metadata;
+    /** Private geometry is never exposed through the mutable metadata API. */
+    private readonly _read_metadata;
     private _gso_index;
     private _gso_section;
     private _gso_loaded;
@@ -46,9 +48,9 @@ export declare class DtaFile {
     /** Number of variables (columns). */
     get nvar(): number;
     /** Variable metadata array. */
-    get variables(): VariableInfo[];
+    get variables(): ParsedVariableInfo[];
     /** Complete metadata, including dataset-scoped notes and characteristics. */
-    get metadata(): DtaMetadata;
+    get metadata(): ParsedDtaMetadata;
     /** Dataset label string. */
     get dataset_label(): string;
     /** Value label tables (table_name -> value -> label). */
@@ -128,7 +130,7 @@ export declare class DtaFile {
      */
     private _resolve_strl_at;
 }
-export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, StataCharacteristic, StataNote, } from './types';
+export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, ParsedDtaMetadata, ParsedVariableInfo, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, StataCharacteristic, StataNote, } from './types';
 export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
 export { is_legacy_format } from './types';
 export { apply_display_format } from './display-format';

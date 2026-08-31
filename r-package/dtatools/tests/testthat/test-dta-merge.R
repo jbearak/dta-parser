@@ -189,6 +189,32 @@ test_that("ordinary coalesced columns use y's label when x has none", {
     expect_identical(var_label(result$group), "Group")
 })
 
+test_that("coalesced variables reconcile notes and characteristics x first", {
+    master_id <- set_stata_note(c("a", "b"), 4, "master note")
+    master_id <- set_stata_characteristic(master_id, "source", "master")
+    using_id <- set_stata_note(c("b", "c"), 8, "using note")
+    using_id <- set_stata_characteristic(using_id, "source", "using")
+
+    expect_warning(
+        result <- dta_merge(
+            tibble::tibble(id = master_id),
+            tibble::tibble(id = using_id),
+            by = "id", relationship = "1:1"
+        ),
+        "notes or characteristics differ.*metadata wins"
+    )
+    expect_identical(stata_notes(result$id), c(`4` = "master note"))
+    expect_identical(stata_characteristics(result$id), c(source = "master"))
+
+    fallback <- suppressWarnings(dta_merge(
+        tibble::tibble(id = c("a", "b")),
+        tibble::tibble(id = using_id),
+        by = "id", relationship = "1:1"
+    ))
+    expect_identical(stata_notes(fallback$id), c(`8` = "using note"))
+    expect_identical(stata_characteristics(fallback$id), c(source = "using"))
+})
+
 test_that("coalesced variables with matching metadata merge silently", {
     master <- tibble::tibble(
         id = set_var_labels(

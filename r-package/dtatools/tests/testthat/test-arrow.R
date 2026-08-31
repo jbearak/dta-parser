@@ -833,6 +833,22 @@ test_that("save_arrow reports attributes the profile drops", {
     expect_null(attr(actual$x, "units.custom", exact = TRUE))
 })
 
+test_that("Arrow owned-attribute allowlists share the metadata registry", {
+    registry <- dtatools:::.stata_metadata_attribute_names
+    expect_true(all(registry %in% dtatools:::.arrow_known_column_attributes(
+        "double"
+    )))
+
+    data <- tibble::tibble(x = 1)
+    for (name in registry) attr(data, name) <- switch(name,
+        notes = "dataset note",
+        stata.note.numbers = 1L,
+        stata.characteristics = c(source = "survey")
+    )
+    warnings <- dtatools:::.arrow_dropped_attribute_warnings(data, "double")
+    expect_length(warnings, 0L)
+})
+
 test_that("save_arrow reports custom row metadata the profile drops", {
     data <- data.frame(x = c(1, 2), row.names = c("alice", "bob"))
     class(data) <- c("tracked_data", "data.frame")

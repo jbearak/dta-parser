@@ -1,4 +1,4 @@
-import type { FormatVersion, DtaMetadata, SectionOffsets } from './types';
+import type { FormatVersion, ParsedDtaMetadata, SectionOffsets } from './types';
 import type { DtaTextDecoder, TextEncodingOptions } from './text-encoding';
 import { resolve_text_encoding } from './text-encoding';
 declare const FIELD_WIDTHS: {
@@ -36,8 +36,8 @@ export interface ModernMetadataHeader {
 }
 /** Parse the reusable header and section-map state from a modern prefix. */
 export declare function parse_modern_metadata_header(buffer: ArrayBuffer, options?: TextEncodingOptions): ModernMetadataHeader;
-export declare function parse_metadata(buffer: ArrayBuffer, options?: TextEncodingOptions): DtaMetadata;
+export declare function parse_metadata(buffer: ArrayBuffer, options?: TextEncodingOptions): ParsedDtaMetadata;
 /** Parse variable metadata using header state already obtained from a prefix. */
-export declare function parse_metadata_from_header(buffer: ArrayBuffer, header: ModernMetadataHeader): DtaMetadata;
+export declare function parse_metadata_from_header(buffer: ArrayBuffer, header: ModernMetadataHeader): ParsedDtaMetadata;
 export {};
 //# sourceMappingURL=header.d.ts.map

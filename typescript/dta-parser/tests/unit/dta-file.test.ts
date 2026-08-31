@@ -181,6 +181,32 @@ describe('DtaFile', () => {
                 'foreign',
             ]);
         });
+
+        it('keeps file read geometry isolated from editable metadata', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const expected = await my_file.read_rows(0, 74);
+            const metadata = my_file.metadata;
+
+            metadata.nobs = 0;
+            metadata.nvar = 1;
+            metadata.obs_length = 1;
+            metadata.section_offsets.data = 0;
+            metadata.section_offsets.strls = 0;
+            metadata.section_offsets.value_labels = 0;
+            metadata.variables[0].type = 'double';
+            metadata.variables[0].byte_width = 8;
+            metadata.variables[0].byte_offset = 999_999;
+
+            expect(my_file.nobs).toBe(74);
+            expect(my_file.nvar).toBe(12);
+            expect(await my_file.read_rows(0, 2)).toEqual(expected.slice(0, 2));
+            expect(await my_file.read_columns([0, 1])).toEqual(new Map([
+                [0, expected.map(row => row[0])],
+                [1, expected.map(row => row[1])],
+            ]));
+        });
     });
 
     // ----- read_rows -----
@@ -641,6 +667,10 @@ describe('DtaFile', () => {
                 my_file = await DtaFile.open(filePath);
                 expect(my_file.nobs).toBe(4);
                 expect(readSpy.mock.calls.length).toBeLessThan(100);
+                const bytesRead = readSpy.mock.calls.reduce(
+                    (total, call) => total + Number(call[3]), 0
+                );
+                expect(bytesRead).toBeLessThan(dense.length + 128 * 1024);
             } finally {
                 readSpy.mockRestore();
                 fs.rmSync(directory, { recursive: true, force: true });
@@ -734,9 +764,10 @@ describe('DtaFile', () => {
                     'Modern metadata exceeds its dimensioned safety limit'
                 );
                 const prefixReads = readSpy.mock.calls
-                    .map(call => call[3] as number)
-                    .filter(length => length > 4);
-                expect(prefixReads).toEqual([original.length]);
+                    .filter(call => Number(call[4]) === 0)
+                    .map(call => call[3] as number);
+                expect(prefixReads[0]).toBeLessThanOrEqual(1024);
+                expect(Math.max(...prefixReads)).toBeLessThan(original.length);
             } finally {
                 readSpy.mockRestore();
                 fs.rmSync(directory, { recursive: true, force: true });
@@ -757,6 +788,23 @@ describe('DtaFile', () => {
                 my_file?.close();
                 my_file = null;
                 fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('starts modern opens with a small map read and extends exactly once', async () => {
+            const filePath = path.join(FIXTURE_DIR, 'auto_v118.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                my_file = await DtaFile.open(filePath);
+                const reads = readSpy.mock.calls.map(call => ({
+                    length: Number(call[3]),
+                    offset: Number(call[4]),
+                }));
+                expect(reads[1]).toEqual({ length: 1024, offset: 0 });
+                expect(reads.filter(read => read.offset === 0)).toHaveLength(2);
+                expect(reads.some(read => read.length === 128 * 1024)).toBeFalse();
+            } finally {
+                readSpy.mockRestore();
             }
         });
 

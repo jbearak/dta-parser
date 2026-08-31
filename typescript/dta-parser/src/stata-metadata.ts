@@ -1,8 +1,8 @@
 import type { StataCharacteristic, StataNote, VariableInfo } from './types';
 
 export interface StataMetadataTarget {
-    notes: StataNote[];
-    characteristics: StataCharacteristic[];
+    notes?: StataNote[] | string[];
+    characteristics?: StataCharacteristic[];
 }
 
 const NOTE_NAME = /^note([0-9]+)$/;
@@ -47,6 +47,41 @@ interface AcceptedStataCharacteristic {
     noteNumber: number | null;
 }
 
+function mutableNotes(target: StataMetadataTarget): StataNote[] {
+    const current = target.notes;
+    if (current === undefined) {
+        const notes: StataNote[] = [];
+        target.notes = notes;
+        return notes;
+    }
+    if (current.length > 0 && current.every(note => typeof note === 'string')) {
+        const notes = (current as string[]).map((text, index) => ({
+            number: index + 1,
+            text,
+        }));
+        target.notes = notes;
+        return notes;
+    }
+    if (!current.every(note =>
+        typeof note === 'object'
+        && note !== null
+        && typeof (note as StataNote).number === 'number'
+        && typeof (note as StataNote).text === 'string'
+    )) {
+        throw new Error('Malformed Stata note metadata');
+    }
+    return current as StataNote[];
+}
+
+function mutableCharacteristics(
+    target: StataMetadataTarget
+): StataCharacteristic[] {
+    if (target.characteristics === undefined) {
+        target.characteristics = [];
+    }
+    return target.characteristics;
+}
+
 /** Incrementally folds raw characteristic records into canonical metadata. */
 export class StataMetadataCollector {
     private readonly dataset: StataMetadataTarget;
@@ -80,12 +115,14 @@ export class StataMetadataCollector {
         const existing = this.indexes.get(scopeIndex);
         if (existing !== undefined) return existing;
         const scope = this.scope(scopeIndex);
+        const notes = mutableNotes(scope);
+        const characteristics = mutableCharacteristics(scope);
         const indexes = {
             notes: new Map(
-                scope.notes.map((note, index) => [note.number, index])
+                notes.map((note, index) => [note.number, index])
             ),
             characteristics: new Map(
-                scope.characteristics.map((item, index) => [item.name, index])
+                characteristics.map((item, index) => [item.name, index])
             ),
         };
         this.indexes.set(scopeIndex, indexes);
@@ -117,28 +154,30 @@ export class StataMetadataCollector {
     ): void {
         const scope = this.scope(accepted.scopeIndex);
         const indexes = this.scopeIndexes(accepted.scopeIndex);
+        const notes = mutableNotes(scope);
+        const characteristics = mutableCharacteristics(scope);
         if (accepted.noteNumber !== null) {
             const existing = indexes.notes.get(accepted.noteNumber);
             if (existing === undefined) {
-                indexes.notes.set(accepted.noteNumber, scope.notes.length);
-                scope.notes.push({ number: accepted.noteNumber, text: value });
+                indexes.notes.set(accepted.noteNumber, notes.length);
+                notes.push({ number: accepted.noteNumber, text: value });
             } else {
-                scope.notes[existing].text = value;
+                notes[existing].text = value;
             }
             return;
         }
         const existing = indexes.characteristics.get(accepted.name);
         if (existing === undefined) {
-            indexes.characteristics.set(accepted.name, scope.characteristics.length);
-            scope.characteristics.push({ name: accepted.name, value });
+            indexes.characteristics.set(accepted.name, characteristics.length);
+            characteristics.push({ name: accepted.name, value });
         } else {
-            scope.characteristics[existing].value = value;
+            characteristics[existing].value = value;
         }
     }
 
     finish(): void {
         for (const scopeIndex of this.indexes.keys()) {
-            this.scope(scopeIndex).notes.sort(
+            mutableNotes(this.scope(scopeIndex)).sort(
                 (left, right) => left.number - right.number
             );
         }
@@ -197,14 +236,14 @@ function validMetadataValue(value: string): void {
 }
 
 export function listStataNotes(target: StataMetadataTarget): StataNote[] {
-    return target.notes.map(note => ({ ...note }));
+    return mutableNotes(target).map(note => ({ ...note }));
 }
 
 export function getStataNote(
     target: StataMetadataTarget, number: number
 ): string | undefined {
     validNoteNumber(number);
-    return target.notes.find(note => note.number === number)?.text;
+    return mutableNotes(target).find(note => note.number === number)?.text;
 }
 
 export function setStataNote(
@@ -212,15 +251,17 @@ export function setStataNote(
 ): void {
     validNoteNumber(number);
     validMetadataValue(text);
-    const existing = target.notes.find(note => note.number === number);
-    if (existing === undefined) target.notes.push({ number, text });
+    const notes = mutableNotes(target);
+    const existing = notes.find(note => note.number === number);
+    if (existing === undefined) notes.push({ number, text });
     else existing.text = text;
-    target.notes.sort((left, right) => left.number - right.number);
+    notes.sort((left, right) => left.number - right.number);
 }
 
 export function addStataNote(target: StataMetadataTarget, text: string): number {
-    const number = target.notes.length === 0
-        ? 1 : Math.max(...target.notes.map(note => note.number)) + 1;
+    const notes = mutableNotes(target);
+    const number = notes.length === 0
+        ? 1 : Math.max(...notes.map(note => note.number)) + 1;
     validNoteNumber(number);
     setStataNote(target, number, text);
     return number;
@@ -235,17 +276,20 @@ export function dropStataNotes(
     }
     numbers.forEach(validNoteNumber);
     const dropped = new Set(numbers);
-    target.notes = target.notes.filter(note => !dropped.has(note.number));
+    target.notes = mutableNotes(target).filter(
+        note => !dropped.has(note.number)
+    );
 }
 
 export function renumberStataNotes(
     target: StataMetadataTarget, start = 1
 ): void {
     validNoteNumber(start);
-    if (target.notes.length > 0 && start + target.notes.length - 1 > 9999) {
+    const notes = mutableNotes(target);
+    if (notes.length > 0 && start + notes.length - 1 > 9999) {
         throw new Error('Renumbered notes would exceed note number 9999');
     }
-    target.notes
+    notes
         .sort((left, right) => left.number - right.number)
         .forEach((note, index) => { note.number = start + index; });
 }
@@ -253,14 +297,17 @@ export function renumberStataNotes(
 export function listStataCharacteristics(
     target: StataMetadataTarget
 ): StataCharacteristic[] {
-    return target.characteristics.map(characteristic => ({ ...characteristic }));
+    return mutableCharacteristics(target).map(
+        characteristic => ({ ...characteristic })
+    );
 }
 
 export function getStataCharacteristic(
     target: StataMetadataTarget, name: string
 ): string | undefined {
     validCharacteristicName(name);
-    return target.characteristics.find(item => item.name === name)?.value;
+    return mutableCharacteristics(target)
+        .find(item => item.name === name)?.value;
 }
 
 export function setStataCharacteristic(
@@ -268,8 +315,9 @@ export function setStataCharacteristic(
 ): void {
     validCharacteristicName(name);
     validMetadataValue(value);
-    const existing = target.characteristics.find(item => item.name === name);
-    if (existing === undefined) target.characteristics.push({ name, value });
+    const characteristics = mutableCharacteristics(target);
+    const existing = characteristics.find(item => item.name === name);
+    if (existing === undefined) characteristics.push({ name, value });
     else existing.value = value;
 }
 
@@ -282,7 +330,7 @@ export function dropStataCharacteristics(
     }
     names.forEach(validCharacteristicName);
     const dropped = new Set(names);
-    target.characteristics = target.characteristics.filter(
+    target.characteristics = mutableCharacteristics(target).filter(
         characteristic => !dropped.has(characteristic.name)
     );
 }

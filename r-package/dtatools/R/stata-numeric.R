@@ -459,6 +459,7 @@ as.character.stata_numeric <- function(x, ...) {
     }
 
     result <- .metadata_copy(result)
+    result <- .reconcile_stata_metadata_attributes(result, x, y)
     attr(result, "labels") <- labels
     attr(result, "label") <- variable_label
     attr(result, "value.label.name") <- if (is.null(labels)) {

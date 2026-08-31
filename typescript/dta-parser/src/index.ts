@@ -36,6 +36,8 @@ export type {
     MissingType,
     MissingValue,
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
     DtaType,
     FormatVersion,
     LegacyFormatVersion,

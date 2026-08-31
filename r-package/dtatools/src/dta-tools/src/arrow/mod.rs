@@ -25,8 +25,8 @@ pub use read::{
     ArrowReadResult,
 };
 pub use write::{
-    dataset_signature, save_arrow_file, save_arrow_file_to, ArrowCompression, ArrowWriteColumn,
-    ArrowWriteDataset, ARROW_ROWS_PER_BATCH,
+    dataset_signature, preflight_arrow_metadata, save_arrow_file, save_arrow_file_to,
+    ArrowCompression, ArrowWriteColumn, ArrowWriteDataset, ARROW_ROWS_PER_BATCH,
 };
 
 use thiserror::Error;

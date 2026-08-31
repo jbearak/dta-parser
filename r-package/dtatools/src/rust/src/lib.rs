@@ -2014,11 +2014,22 @@ impl DtaSink for RDataFrameSink {
     }
 
     fn finish_borrowed(
+        self,
+        metadata: &DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: &[ValueLabelTable],
+    ) -> Result<Self::Output, DtaError> {
+        let references = value_label_tables.iter().collect::<Vec<_>>();
+        self.finish_projected_borrowed(metadata, row_start, row_count, &references)
+    }
+
+    fn finish_projected_borrowed(
         mut self,
         metadata: &DtaMetadata,
         _row_start: u64,
         row_count: u64,
-        value_label_tables: &[ValueLabelTable],
+        value_label_tables: &[&ValueLabelTable],
     ) -> Result<Self::Output, DtaError> {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
@@ -2026,8 +2037,8 @@ impl DtaSink for RDataFrameSink {
             &metadata,
             self.source_indices.iter().map(|&index| index as usize),
         );
-        let mut value_label_tables_by_name = AHashMap::new();
-        for table in value_label_tables {
+        let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
+        for &table in value_label_tables {
             if value_label_reference_counts.contains_key(table.name.as_str()) {
                 value_label_tables_by_name
                     .entry(table.name.as_str())
@@ -2183,6 +2194,28 @@ impl ParallelDtaSink for RDataFrameSink {
             value_label_tables,
         )
     }
+
+    fn finish_parallel_projected_borrowed(
+        state: Self::State,
+        columns: Vec<Self::Column>,
+        metadata: &DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: &[&ValueLabelTable],
+    ) -> Result<Self::Output, DtaError> {
+        DtaSink::finish_projected_borrowed(
+            RDataFrameSink {
+                result: state.result,
+                columns,
+                source_indices: state.source_indices,
+                _guard: state.guard,
+            },
+            metadata,
+            row_start,
+            row_count,
+            value_label_tables,
+        )
+    }
 }
 
 unsafe fn metadata_impl(
@@ -2191,8 +2224,8 @@ unsafe fn metadata_impl(
     column_start: u32,
     column_count: u32,
 ) -> Result<Sexp, String> {
-    let file = DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
-    let metadata = file.metadata();
+    let metadata = DtaFile::metadata_summary_with_encoding(path, encoding)
+        .map_err(|error| error.to_string())?;
     let start = usize::try_from(column_start)
         .map_err(|_| "metadata column start is out of range".to_owned())?
         .min(metadata.variables.len());
@@ -2477,8 +2510,8 @@ pub struct RWriteColumnDescriptor {
     label: *const c_char,
     numeric_values: *const c_void,
     string_values: Sexp,
-    stata_metadata: Sexp,
     value_label_index: c_int,
+    stata_metadata: Sexp,
     numeric_shift: f64,
     numeric_scale: f64,
     direct_numeric_values: *const c_void,
@@ -2489,6 +2522,51 @@ pub struct RWriteColumnDescriptor {
     direct_string_data: *mut c_void,
 }
 
+const DTATOOLS_DTA_COLUMN_NAME: usize = 0;
+const DTATOOLS_DTA_COLUMN_TYPE: usize = 1;
+const DTATOOLS_DTA_COLUMN_FORMAT: usize = 2;
+const DTATOOLS_DTA_COLUMN_LABEL: usize = 3;
+const DTATOOLS_DTA_COLUMN_VALUES: usize = 4;
+const DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT: usize = 5;
+const DTATOOLS_DTA_COLUMN_NUMERIC_SCALE: usize = 6;
+const DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX: usize = 7;
+const DTATOOLS_DTA_COLUMN_STATA_METADATA: usize = 8;
+const DTATOOLS_DTA_COLUMN_SLOT_COUNT: usize = 9;
+
+const _: () = {
+    assert!(DTATOOLS_DTA_COLUMN_NAME == 0);
+    assert!(DTATOOLS_DTA_COLUMN_TYPE == 1);
+    assert!(DTATOOLS_DTA_COLUMN_FORMAT == 2);
+    assert!(DTATOOLS_DTA_COLUMN_LABEL == 3);
+    assert!(DTATOOLS_DTA_COLUMN_VALUES == 4);
+    assert!(DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT == 5);
+    assert!(DTATOOLS_DTA_COLUMN_NUMERIC_SCALE == 6);
+    assert!(DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX == 7);
+    assert!(DTATOOLS_DTA_COLUMN_STATA_METADATA == 8);
+    assert!(DTATOOLS_DTA_COLUMN_SLOT_COUNT == 9);
+};
+
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, name) == 0);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, dta_type) == 8);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, format) == 16);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, label) == 24);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_values) == 32);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, string_values) == 40);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, value_label_index) == 48);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, stata_metadata) == 56);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_shift) == 64);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_scale) == 72);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_values) == 80);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_kind) == 88);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_format_version) == 92);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_temporal) == 96);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_no_na) == 100);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_string_data) == 104);
+    assert!(std::mem::size_of::<RWriteColumnDescriptor>() == 112);
+};
+
 #[repr(C)]
 pub struct RWriteValueLabelTableDescriptor {
     name: *const c_char,
@@ -2496,6 +2574,15 @@ pub struct RWriteValueLabelTableDescriptor {
     label_texts: Sexp,
     label_count: usize,
 }
+
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, name) == 0);
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, label_values) == 8);
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, label_texts) == 16);
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, label_count) == 24);
+    assert!(std::mem::size_of::<RWriteValueLabelTableDescriptor>() == 32);
+};
 
 #[derive(Debug)]
 enum RWriteError {
@@ -4159,6 +4246,25 @@ mod tests {
         assert_eq!(selected_row_count(10, 3, Some(4)), 4);
         assert_eq!(selected_row_count(10, 9, Some(8)), 1);
         assert_eq!(selected_row_count(10, 12, None), 0);
+    }
+
+    #[test]
+    fn composed_dta_column_slots_match_the_c_descriptor_contract() {
+        assert_eq!(
+            [
+                super::DTATOOLS_DTA_COLUMN_NAME,
+                super::DTATOOLS_DTA_COLUMN_TYPE,
+                super::DTATOOLS_DTA_COLUMN_FORMAT,
+                super::DTATOOLS_DTA_COLUMN_LABEL,
+                super::DTATOOLS_DTA_COLUMN_VALUES,
+                super::DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT,
+                super::DTATOOLS_DTA_COLUMN_NUMERIC_SCALE,
+                super::DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX,
+                super::DTATOOLS_DTA_COLUMN_STATA_METADATA,
+            ],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        );
+        assert_eq!(super::DTATOOLS_DTA_COLUMN_SLOT_COUNT, 9);
     }
 
     #[test]

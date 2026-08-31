@@ -304,6 +304,31 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     "notes", "stata.note.numbers", "stata.characteristics"
 )
 
+.reconcile_stata_metadata_attributes <- function(result, x, y) {
+    x_has_notes <- !is.null(attr(x, "notes", exact = TRUE)) ||
+        !is.null(attr(x, "stata.note.numbers", exact = TRUE))
+    note_source <- if (x_has_notes) x else y
+    characteristics <- attr(x, "stata.characteristics", exact = TRUE)
+    if (is.null(characteristics)) {
+        characteristics <- attr(y, "stata.characteristics", exact = TRUE)
+    }
+    desired <- list(
+        notes = attr(note_source, "notes", exact = TRUE),
+        note_numbers = attr(note_source, "stata.note.numbers", exact = TRUE),
+        characteristics = characteristics
+    )
+    current <- list(
+        notes = attr(result, "notes", exact = TRUE),
+        note_numbers = attr(result, "stata.note.numbers", exact = TRUE),
+        characteristics = attr(result, "stata.characteristics", exact = TRUE)
+    )
+    if (identical(current, desired)) return(result)
+    attr(result, "notes") <- desired$notes
+    attr(result, "stata.note.numbers") <- desired$note_numbers
+    attr(result, "stata.characteristics") <- desired$characteristics
+    result
+}
+
 .has_stata_metadata <- function(value) {
     any(vapply(.stata_metadata_attribute_names, function(name) {
         !is.null(attr(value, name, exact = TRUE))

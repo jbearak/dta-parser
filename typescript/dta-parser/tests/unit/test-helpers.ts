@@ -9,9 +9,9 @@ export async function with_temporary_nobs<T>(
 ): Promise<T> {
     const my_metadata = (
         file as unknown as {
-            _metadata: { nobs: number };
+            _read_metadata: { nobs: number };
         }
-    )._metadata;
+    )._read_metadata;
     const my_original_nobs = my_metadata.nobs;
 
     try {

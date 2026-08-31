@@ -1,11 +1,15 @@
 //! Versioned `dtatools:*` JSON documents carried in Arrow schema, field, and
 //! footer metadata.
 
-use std::{collections::BTreeMap, fmt};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashSet},
+    fmt,
+};
 
 use arrow_schema::{DataType, Field};
 use serde::{
-    de::{SeqAccess, Visitor},
+    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
     Deserialize, Serialize,
 };
 use serde_json::value::RawValue;
@@ -87,17 +91,27 @@ impl DatasetDocument {
         })
     }
 
-    pub fn insert_value_label_table(&mut self, table: &ValueLabelTable) {
+    pub fn insert_value_label_table(
+        &mut self,
+        table: ValueLabelTable,
+    ) -> Result<(), ArrowProfileError> {
+        if self.value_labels.contains_key(&table.name) {
+            return Err(ArrowProfileError::Invalid(format!(
+                "duplicate value-label table name `{}`",
+                table.name
+            )));
+        }
         let entries = table
             .entries
-            .iter()
+            .into_iter()
             .map(|entry| ArrowValueLabelEntry {
                 value: entry.missing_tag.is_none().then_some(entry.value),
                 tag: entry.missing_tag,
-                label: entry.label.clone(),
+                label: entry.label,
             })
             .collect();
-        self.value_labels.insert(table.name.clone(), entries);
+        self.value_labels.insert(table.name, entries);
+        Ok(())
     }
 }
 
@@ -226,8 +240,19 @@ struct RawDatasetDocument<'a> {
     notes: Vec<&'a RawValue>,
     #[serde(default, deserialize_with = "deserialize_raw_characteristics")]
     characteristics: Vec<StataCharacteristic>,
+    #[serde(default, borrow)]
+    value_labels: Option<&'a RawValue>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DiscardedValueLabelEntry<'a> {
     #[serde(default)]
-    value_labels: BTreeMap<String, Vec<ArrowValueLabelEntry>>,
+    value: Option<i32>,
+    #[serde(default)]
+    tag: Option<MissingTag>,
+    #[serde(borrow)]
+    label: &'a RawValue,
 }
 
 #[derive(Deserialize)]
@@ -612,15 +637,143 @@ fn decode_raw_notes(
 }
 
 impl RawDatasetDocument<'_> {
-    fn decode(self, version: &str) -> Result<DatasetDocument, ArrowProfileError> {
+    fn decode(
+        self,
+        version: &str,
+        selected_value_labels: Option<&HashSet<String>>,
+    ) -> Result<DatasetDocument, ArrowProfileError> {
         Ok(DatasetDocument {
             version: self.version,
             label: self.label,
             notes: decode_raw_notes(version, "dataset", "dataset document", self.notes)?,
             characteristics: self.characteristics,
-            value_labels: self.value_labels,
+            value_labels: parse_value_label_registry(
+                version,
+                self.value_labels,
+                selected_value_labels,
+            )?,
         })
     }
+}
+
+struct DiscardValueLabelEntries<'a> {
+    table: &'a str,
+}
+
+impl<'de> DeserializeSeed<'de> for DiscardValueLabelEntries<'_> {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct EntriesVisitor<'a> {
+            table: &'a str,
+        }
+
+        impl<'de> Visitor<'de> for EntriesVisitor<'_> {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("an array of value-label entries")
+            }
+
+            fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut index = 0_usize;
+                while let Some(entry) = sequence.next_element::<DiscardedValueLabelEntry<'de>>()? {
+                    let _: Cow<'_, str> = serde_json::from_str(entry.label.get())
+                        .map_err(serde::de::Error::custom)?;
+                    if entry.value.is_some() == entry.tag.is_some() {
+                        return Err(serde::de::Error::custom(format!(
+                            "value-label table `{}` entry {index} must contain exactly one of `value` or `tag`",
+                            self.table
+                        )));
+                    }
+                    if entry.tag == Some(MissingTag::System) {
+                        return Err(serde::de::Error::custom(format!(
+                            "value-label table `{}` entry {index} uses system missing `.`; only nonmissing values and extended missing tags `.a` through `.z` are valid",
+                            self.table
+                        )));
+                    }
+                    index += 1;
+                }
+                Ok(())
+            }
+        }
+
+        deserializer.deserialize_seq(EntriesVisitor { table: self.table })
+    }
+}
+
+struct ValueLabelRegistrySeed<'a> {
+    selected: Option<&'a HashSet<String>>,
+}
+
+impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
+    type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct RegistryVisitor<'a> {
+            selected: Option<&'a HashSet<String>>,
+        }
+
+        impl<'de> Visitor<'de> for RegistryVisitor<'_> {
+            type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("an object of named value-label tables")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut retained = BTreeMap::new();
+                let mut names = HashSet::new();
+                while let Some(name) = map.next_key::<String>()? {
+                    if !names.insert(name.clone()) {
+                        return Err(serde::de::Error::custom(format!(
+                            "duplicate value-label table name `{name}`"
+                        )));
+                    }
+                    let retain = self
+                        .selected
+                        .is_none_or(|selected| selected.contains(name.as_str()));
+                    if retain {
+                        let entries = map.next_value::<Vec<ArrowValueLabelEntry>>()?;
+                        retained.insert(name, entries);
+                    } else {
+                        map.next_value_seed(DiscardValueLabelEntries { table: &name })?;
+                    }
+                }
+                Ok(retained)
+            }
+        }
+
+        deserializer.deserialize_map(RegistryVisitor {
+            selected: self.selected,
+        })
+    }
+}
+
+fn parse_value_label_registry(
+    version: &str,
+    json: Option<&RawValue>,
+    selected: Option<&HashSet<String>>,
+) -> Result<BTreeMap<String, Vec<ArrowValueLabelEntry>>, ArrowProfileError> {
+    let Some(json) = json else {
+        return Ok(BTreeMap::new());
+    };
+    let mut deserializer = serde_json::Deserializer::from_str(json.get());
+    ValueLabelRegistrySeed { selected }
+        .deserialize(&mut deserializer)
+        .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))
 }
 
 impl RawArrowFieldDocument<'_> {
@@ -671,9 +824,18 @@ pub(crate) fn malformed(version: &str, detail: impl Into<String>) -> ArrowProfil
     }
 }
 
-pub(crate) fn parse_dataset_document(
+#[cfg(test)]
+fn parse_dataset_document(
     version: &str,
     json: Option<&str>,
+) -> Result<DatasetDocument, ArrowProfileError> {
+    parse_dataset_document_selected(version, json, None)
+}
+
+pub(crate) fn parse_dataset_document_selected(
+    version: &str,
+    json: Option<&str>,
+    selected_value_labels: Option<&HashSet<String>>,
 ) -> Result<DatasetDocument, ArrowProfileError> {
     let Some(json) = json else {
         return Ok(DatasetDocument {
@@ -683,7 +845,7 @@ pub(crate) fn parse_dataset_document(
     };
     let raw: RawDatasetDocument<'_> = serde_json::from_str(json)
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
-    let document = raw.decode(version)?;
+    let document = raw.decode(version, selected_value_labels)?;
     validate_dataset_document_inner(version, &document, false)?;
     Ok(document)
 }
@@ -1116,6 +1278,19 @@ mod tests {
         .expect_err("system missing is not a valid value-label code");
         assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
         assert!(error.to_string().contains("system missing"));
+    }
+
+    #[test]
+    fn discarded_value_label_entries_still_validate_label_types() {
+        let selected = HashSet::new();
+        let error = parse_dataset_document_selected(
+            "0",
+            Some(r#"{"version":0,"value_labels":{"unselected":[{"value":1,"label":7}]}}"#),
+            Some(&selected),
+        )
+        .expect_err("discarded tables still validate their entry schema");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+        assert!(error.to_string().contains("expected a string"));
     }
 
     #[test]

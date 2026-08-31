@@ -16,7 +16,7 @@ use crate::stata_metadata::{
     VariableTargetIndexes, MAX_METADATA_VALUE_BYTES,
 };
 use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
-use crate::value_labels::has_legacy_offset_table_framing;
+use crate::value_labels::{frame_offset_value_label_payload, has_legacy_offset_table_framing};
 use crate::{
     missing::{
         classify_byte_missing_for_version, classify_double_missing_bits_for_version,
@@ -37,26 +37,6 @@ fn selected_value_label_names(metadata: &DtaMetadata, indices: &[u32]) -> HashSe
         .collect()
 }
 
-fn referenced_value_label_names(metadata: &DtaMetadata) -> HashSet<String> {
-    metadata
-        .variables
-        .iter()
-        .filter(|variable| !variable.value_label_name.is_empty())
-        .map(|variable| variable.value_label_name.clone())
-        .collect()
-}
-
-fn clone_selected_value_label_tables(
-    tables: &[ValueLabelTable],
-    selected: &HashSet<String>,
-) -> Vec<ValueLabelTable> {
-    tables
-        .iter()
-        .filter(|table| selected.contains(&table.name))
-        .cloned()
-        .collect()
-}
-
 #[derive(Debug, Clone, Copy)]
 enum IndexedValueLabelLayout {
     Fixed8,
@@ -65,7 +45,7 @@ enum IndexedValueLabelLayout {
 
 #[derive(Debug, Clone)]
 struct ValueLabelLocation {
-    name: String,
+    name: Arc<str>,
     start: u64,
     end: u64,
 }
@@ -74,15 +54,22 @@ struct ValueLabelLocation {
 struct IndexedValueLabelCache {
     layout: IndexedValueLabelLayout,
     locations: Vec<ValueLabelLocation>,
-    indices_by_name: HashMap<String, Vec<usize>>,
+    indices_by_name: HashMap<Arc<str>, Vec<usize>>,
     tables: HashMap<usize, ValueLabelTable>,
 }
 
-fn index_value_label_locations(locations: &[ValueLabelLocation]) -> HashMap<String, Vec<usize>> {
-    let mut indices_by_name = HashMap::<String, Vec<usize>>::new();
+#[derive(Debug)]
+struct FullValueLabelCache {
+    tables: Vec<ValueLabelTable>,
+    indices_by_name: HashMap<Arc<str>, Vec<usize>>,
+}
+
+#[cfg(test)]
+fn index_value_label_locations(locations: &[ValueLabelLocation]) -> HashMap<Arc<str>, Vec<usize>> {
+    let mut indices_by_name = HashMap::<Arc<str>, Vec<usize>>::new();
     for (index, location) in locations.iter().enumerate() {
         indices_by_name
-            .entry(location.name.clone())
+            .entry(Arc::clone(&location.name))
             .or_default()
             .push(index);
     }
@@ -90,37 +77,52 @@ fn index_value_label_locations(locations: &[ValueLabelLocation]) -> HashMap<Stri
 }
 
 fn selected_value_label_location_indices(
-    cache: &IndexedValueLabelCache,
+    indices_by_name: &HashMap<Arc<str>, Vec<usize>>,
     selected: &HashSet<String>,
-) -> Vec<usize> {
+) -> Result<Vec<usize>, DtaError> {
     let selected_count = selected
         .iter()
-        .filter_map(|name| cache.indices_by_name.get(name))
+        .filter_map(|name| indices_by_name.get(name.as_str()))
         .map(Vec::len)
         .sum();
-    let mut indices = Vec::with_capacity(selected_count);
+    let mut indices = Vec::new();
+    indices
+        .try_reserve_exact(selected_count)
+        .map_err(|_| DtaError::ArithmeticOverflow("selected value-label index allocation"))?;
     for name in selected {
-        if let Some(named_indices) = cache.indices_by_name.get(name) {
+        if let Some(named_indices) = indices_by_name.get(name.as_str()) {
             indices.extend_from_slice(named_indices);
         }
     }
     indices.sort_unstable();
-    indices
+    Ok(indices)
+}
+
+fn index_value_label_tables(tables: &[ValueLabelTable]) -> HashMap<Arc<str>, Vec<usize>> {
+    let mut indices_by_name = HashMap::<Arc<str>, Vec<usize>>::new();
+    for (index, table) in tables.iter().enumerate() {
+        if let Some(indices) = indices_by_name.get_mut(table.name.as_str()) {
+            indices.push(index);
+        } else {
+            indices_by_name.insert(Arc::from(table.name.as_str()), vec![index]);
+        }
+    }
+    indices_by_name
 }
 
 #[derive(Debug)]
 enum ValueLabelCache {
     Empty,
     Indexed(IndexedValueLabelCache),
-    Full(Vec<ValueLabelTable>),
+    Full(FullValueLabelCache),
 }
 
 enum ValueLabelStreamingMode<'a> {
     Full,
     Projected {
         selected: &'a HashSet<String>,
-        indexed: &'a HashSet<String>,
         locations: &'a mut Vec<ValueLabelLocation>,
+        indices_by_name: &'a mut HashMap<Arc<str>, Vec<usize>>,
     },
     Indexed {
         range: (u64, u64),
@@ -146,13 +148,28 @@ impl ValueLabelStreamingMode<'_> {
         }
     }
 
-    fn locations(&mut self, name: &str) -> Option<&mut Vec<ValueLabelLocation>> {
+    fn record_location(&mut self, name: &str, start: u64, end: u64) {
         match self {
             Self::Projected {
-                indexed, locations, ..
-            } if indexed.contains(name) => Some(locations),
-            Self::Full | Self::Indexed { .. } => None,
-            Self::Projected { .. } => None,
+                locations,
+                indices_by_name,
+                ..
+            } => {
+                let index = locations.len();
+                let shared_name = indices_by_name
+                    .get_key_value(name)
+                    .map_or_else(|| Arc::<str>::from(name), |(stored, _)| Arc::clone(stored));
+                indices_by_name
+                    .entry(Arc::clone(&shared_name))
+                    .or_default()
+                    .push(index);
+                locations.push(ValueLabelLocation {
+                    name: shared_name,
+                    start,
+                    end,
+                });
+            }
+            Self::Full | Self::Indexed { .. } => {}
         }
     }
 }
@@ -483,6 +500,24 @@ pub trait DtaSink: Sized {
             value_label_tables.to_vec(),
         )
     }
+
+    /// Finish a projection from borrowed cache entries. The indirection keeps
+    /// selected multi-gigabyte registries in the reader cache instead of
+    /// cloning them solely to construct a contiguous temporary slice.
+    fn finish_projected_borrowed(
+        self,
+        metadata: &DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: &[&ValueLabelTable],
+    ) -> Result<Self::Output, DtaError> {
+        let mut owned = Vec::new();
+        owned
+            .try_reserve_exact(value_label_tables.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("projected value-label allocation"))?;
+        owned.extend(value_label_tables.iter().map(|table| (*table).clone()));
+        self.finish(metadata.clone(), row_start, row_count, owned)
+    }
 }
 
 /// One independently owned output column used by the block executor.
@@ -571,6 +606,29 @@ pub trait ParallelDtaSink: Sized {
             row_start,
             row_count,
             value_label_tables.to_vec(),
+        )
+    }
+
+    fn finish_parallel_projected_borrowed(
+        state: Self::State,
+        columns: Vec<Self::Column>,
+        metadata: &DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: &[&ValueLabelTable],
+    ) -> Result<Self::Output, DtaError> {
+        let mut owned = Vec::new();
+        owned
+            .try_reserve_exact(value_label_tables.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("projected value-label allocation"))?;
+        owned.extend(value_label_tables.iter().map(|table| (*table).clone()));
+        Self::finish_parallel(
+            state,
+            columns,
+            metadata.clone(),
+            row_start,
+            row_count,
+            owned,
         )
     }
 }
@@ -1270,6 +1328,21 @@ impl DtaFile<File> {
         })?;
         Self::from_reader_with_encoding(file, encoding)
     }
+
+    /// Read the schema fields needed for column selection without decoding
+    /// note and characteristic payloads.
+    pub fn metadata_summary_with_encoding(
+        path: impl AsRef<Path>,
+        encoding: TextEncoding,
+    ) -> Result<DtaMetadata, DtaError> {
+        let mut file = File::open(path).map_err(|error| DtaError::Io {
+            context: "opening file",
+            offset: 0,
+            kind: error.kind(),
+        })?;
+        let mut scratch = Scratch::new(DEFAULT_MAX_BUFFER_BYTES);
+        read_file_metadata(&mut file, &mut scratch, encoding, false).map(|(metadata, _)| metadata)
+    }
 }
 
 impl<R: Read + Seek> DtaFile<R> {
@@ -1304,41 +1377,8 @@ impl<R: Read + Seek> DtaFile<R> {
             return Err(DtaError::InvalidBufferSize);
         }
         let mut scratch = Scratch::new(options.max_buffer_bytes);
-        let file_length = reader
-            .seek(SeekFrom::End(0))
-            .map_err(|error| DtaError::Io {
-                context: "determining file length",
-                offset: 0,
-                kind: error.kind(),
-            })?;
-        if file_length == 0 {
-            return Err(DtaError::InvalidSignature);
-        }
-        let first = read_exact_at(&mut reader, 0, 1, &mut scratch, "reading signature")?;
-        let metadata = if matches!(first[0], 105 | 108 | 110 | 111 | 113..=115) {
-            read_legacy_metadata(&mut reader, file_length, &mut scratch, encoding)?
-        } else {
-            let signature_length = MODERN_SIGNATURE.len();
-            if file_length < signature_length as u64
-                || read_exact_at(
-                    &mut reader,
-                    0,
-                    signature_length,
-                    &mut scratch,
-                    "reading signature",
-                )? != MODERN_SIGNATURE
-            {
-                return Err(DtaError::InvalidSignature);
-            }
-            read_modern_metadata(&mut reader, file_length, &mut scratch, encoding)?
-        };
-        if metadata.section_offsets.end_of_file != file_length {
-            return Err(DtaError::MapOffsetMismatch {
-                section: "file length",
-                expected: metadata.section_offsets.end_of_file,
-                actual: file_length,
-            });
-        }
+        let (metadata, file_length) =
+            read_file_metadata(&mut reader, &mut scratch, encoding, true)?;
         let text_encoding = encoding.resolve(metadata.format_version);
         Ok(Self {
             reader,
@@ -1366,7 +1406,7 @@ impl<R: Read + Seek> DtaFile<R> {
         let mut never_cancel = || false;
         self.ensure_value_labels(&mut never_cancel)?;
         match &self.value_labels {
-            ValueLabelCache::Full(tables) => Ok(tables),
+            ValueLabelCache::Full(cache) => Ok(&cache.tables),
             _ => unreachable!("value-label cache was initialized"),
         }
     }
@@ -1823,22 +1863,21 @@ impl<R: Read + Seek> DtaFile<R> {
 
         check_cancel(&mut should_interrupt)?;
         if options.column_indices.is_some() {
-            let value_label_tables = self.read_output_value_labels(
-                true,
-                &indices,
-                &mut should_interrupt,
-            )?;
-            S::finish_parallel(
+            let selected = selected_value_label_names(&self.metadata, &indices);
+            let value_label_indices =
+                self.ensure_projected_value_labels(&selected, &mut should_interrupt)?;
+            let value_label_tables = self.projected_value_label_tables(&value_label_indices)?;
+            S::finish_parallel_projected_borrowed(
                 state,
                 columns,
-                self.metadata.clone(),
+                &self.metadata,
                 row_start,
                 row_count,
-                value_label_tables,
+                &value_label_tables,
             )
         } else {
             self.ensure_value_labels(&mut should_interrupt)?;
-            let ValueLabelCache::Full(cached_tables) = &self.value_labels else {
+            let ValueLabelCache::Full(value_label_cache) = &self.value_labels else {
                 unreachable!("value-label cache was initialized")
             };
             S::finish_parallel_borrowed(
@@ -1847,7 +1886,7 @@ impl<R: Read + Seek> DtaFile<R> {
                 &self.metadata,
                 row_start,
                 row_count,
-                cached_tables,
+                &value_label_cache.tables,
             )
         }
     }
@@ -2092,24 +2131,28 @@ impl<R: Read + Seek> DtaFile<R> {
         check_coarse_cancel(&mut interrupts)?;
         if options.column_indices.is_some() {
             let mut coarse_interrupt = || interrupts.coarse();
-            let value_label_tables = self.read_output_value_labels(
-                true,
-                &indices,
-                &mut coarse_interrupt,
-            )?;
-            sink.finish(
-                self.metadata.clone(),
+            let selected = selected_value_label_names(&self.metadata, &indices);
+            let value_label_indices =
+                self.ensure_projected_value_labels(&selected, &mut coarse_interrupt)?;
+            let value_label_tables = self.projected_value_label_tables(&value_label_indices)?;
+            sink.finish_projected_borrowed(
+                &self.metadata,
                 row_start,
                 row_count,
-                value_label_tables,
+                &value_label_tables,
             )
         } else {
             let mut coarse_interrupt = || interrupts.coarse();
             self.ensure_value_labels(&mut coarse_interrupt)?;
-            let ValueLabelCache::Full(cached_tables) = &self.value_labels else {
+            let ValueLabelCache::Full(value_label_cache) = &self.value_labels else {
                 unreachable!("value-label cache was initialized")
             };
-            sink.finish_borrowed(&self.metadata, row_start, row_count, cached_tables)
+            sink.finish_borrowed(
+                &self.metadata,
+                row_start,
+                row_count,
+                &value_label_cache.tables,
+            )
         }
     }
 
@@ -2126,40 +2169,99 @@ impl<R: Read + Seek> DtaFile<R> {
             return Ok(());
         }
         check_cancel(should_interrupt)?;
-        let (tables, _) = read_value_labels_streaming(
-            &mut self.reader,
-            &self.metadata,
-            &mut self.scratch,
-            should_interrupt,
-            self.text_encoding,
-            ValueLabelStreamingMode::Full,
-        )?;
+        let tables = match &self.value_labels {
+            ValueLabelCache::Indexed(cache) => {
+                let mut missing = Vec::new();
+                missing
+                    .try_reserve_exact(cache.locations.len())
+                    .map_err(|_| DtaError::ArithmeticOverflow("value-label index allocation"))?;
+                missing.extend(
+                    (0..cache.locations.len()).filter(|index| !cache.tables.contains_key(index)),
+                );
+                let layout = cache.layout;
+                for index in missing {
+                    check_cancel(should_interrupt)?;
+                    let ValueLabelCache::Indexed(cache) = &self.value_labels else {
+                        unreachable!()
+                    };
+                    let table = read_indexed_value_label_table(
+                        &mut self.reader,
+                        &self.metadata,
+                        &mut self.scratch,
+                        should_interrupt,
+                        self.text_encoding,
+                        layout,
+                        &cache.locations[index],
+                    )?;
+                    let ValueLabelCache::Indexed(cache) = &mut self.value_labels else {
+                        unreachable!()
+                    };
+                    cache.tables.insert(index, table);
+                }
+                let ValueLabelCache::Indexed(mut cache) =
+                    std::mem::replace(&mut self.value_labels, ValueLabelCache::Empty)
+                else {
+                    unreachable!()
+                };
+                let mut tables = Vec::new();
+                tables
+                    .try_reserve_exact(cache.locations.len())
+                    .map_err(|_| DtaError::ArithmeticOverflow("value-label table allocation"))?;
+                for index in 0..cache.locations.len() {
+                    tables.push(
+                        cache
+                            .tables
+                            .remove(&index)
+                            .expect("indexed value-label table was decoded"),
+                    );
+                }
+                tables
+            }
+            ValueLabelCache::Empty => {
+                read_value_labels_streaming(
+                    &mut self.reader,
+                    &self.metadata,
+                    &mut self.scratch,
+                    should_interrupt,
+                    self.text_encoding,
+                    ValueLabelStreamingMode::Full,
+                )?
+                .0
+            }
+            ValueLabelCache::Full(_) => unreachable!(),
+        };
         check_cancel(should_interrupt)?;
-        self.value_labels = ValueLabelCache::Full(tables);
+        let indices_by_name = index_value_label_tables(&tables);
+        self.value_labels = ValueLabelCache::Full(FullValueLabelCache {
+            tables,
+            indices_by_name,
+        });
         Ok(())
     }
 
-    fn read_projected_value_labels<F>(
+    fn ensure_projected_value_labels<F>(
         &mut self,
         selected: &HashSet<String>,
         should_interrupt: &mut F,
-    ) -> Result<Vec<ValueLabelTable>, DtaError>
+    ) -> Result<Vec<usize>, DtaError>
     where
         F: FnMut() -> bool,
     {
         match &self.value_labels {
-            ValueLabelCache::Full(tables) => {
-                return Ok(clone_selected_value_label_tables(tables, selected));
+            ValueLabelCache::Full(cache) => {
+                return selected_value_label_location_indices(&cache.indices_by_name, selected);
             }
-            ValueLabelCache::Indexed(_) => {
-                self.populate_indexed_value_labels(selected, should_interrupt)?;
-                return Ok(self.clone_indexed_value_labels(selected));
+            ValueLabelCache::Indexed(cache) => {
+                let indices =
+                    selected_value_label_location_indices(&cache.indices_by_name, selected)?;
+                self.populate_indexed_value_labels(&indices, should_interrupt)?;
+                return Ok(indices);
             }
             ValueLabelCache::Empty => {}
         }
         check_cancel(should_interrupt)?;
         let mut locations = Vec::new();
-        let indexed = referenced_value_label_names(&self.metadata);
+        let mut indices_by_name = HashMap::new();
         let (tables, layout) = read_value_labels_streaming(
             &mut self.reader,
             &self.metadata,
@@ -2168,53 +2270,53 @@ impl<R: Read + Seek> DtaFile<R> {
             self.text_encoding,
             ValueLabelStreamingMode::Projected {
                 selected,
-                indexed: &indexed,
                 locations: &mut locations,
+                indices_by_name: &mut indices_by_name,
             },
         )?;
         check_cancel(should_interrupt)?;
-        let mut retained = tables.iter().cloned();
-        let mut cached = HashMap::with_capacity(tables.len());
-        for (index, location) in locations.iter().enumerate() {
-            if selected.contains(&location.name) {
-                cached.insert(index, retained.next().expect("selected table was retained"));
-            }
+        let selected_indices = selected_value_label_location_indices(&indices_by_name, selected)?;
+        let mut cached = HashMap::new();
+        cached
+            .try_reserve(tables.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label cache allocation"))?;
+        for (index, table) in selected_indices.iter().copied().zip(tables) {
+            cached.insert(index, table);
         }
-        debug_assert!(retained.next().is_none());
-        let indices_by_name = index_value_label_locations(&locations);
         self.value_labels = ValueLabelCache::Indexed(IndexedValueLabelCache {
             layout,
             locations,
             indices_by_name,
             tables: cached,
         });
-        Ok(tables)
+        Ok(selected_indices)
     }
 
-    fn read_output_value_labels<F>(
-        &mut self,
-        projected: bool,
-        indices: &[u32],
-        should_interrupt: &mut F,
-    ) -> Result<Vec<ValueLabelTable>, DtaError>
-    where
-        F: FnMut() -> bool,
-    {
-        if projected {
-            let selected = selected_value_label_names(&self.metadata, indices);
-            self.read_projected_value_labels(&selected, should_interrupt)
-        } else {
-            self.ensure_value_labels(should_interrupt)?;
-            let ValueLabelCache::Full(tables) = &self.value_labels else {
-                unreachable!("value-label cache was initialized")
-            };
-            Ok(tables.clone())
+    fn projected_value_label_tables(
+        &self,
+        indices: &[usize],
+    ) -> Result<Vec<&ValueLabelTable>, DtaError> {
+        let mut tables = Vec::new();
+        tables
+            .try_reserve_exact(indices.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("projected value-label view allocation"))?;
+        match &self.value_labels {
+            ValueLabelCache::Full(cache) => {
+                tables.extend(indices.iter().map(|&index| &cache.tables[index]));
+            }
+            ValueLabelCache::Indexed(cache) => tables.extend(
+                indices
+                    .iter()
+                    .map(|index| cache.tables.get(index).expect("selected table was cached")),
+            ),
+            ValueLabelCache::Empty => unreachable!("value-label cache was initialized"),
         }
+        Ok(tables)
     }
 
     fn populate_indexed_value_labels<F>(
         &mut self,
-        selected: &HashSet<String>,
+        selected_indices: &[usize],
         should_interrupt: &mut F,
     ) -> Result<(), DtaError>
     where
@@ -2223,11 +2325,14 @@ impl<R: Read + Seek> DtaFile<R> {
         let ValueLabelCache::Indexed(cache) = &self.value_labels else {
             unreachable!("indexed value-label cache was initialized")
         };
-        let mut missing = selected_value_label_location_indices(cache, selected);
+        let mut missing = selected_indices.to_vec();
         missing.retain(|index| !cache.tables.contains_key(index));
         let layout = cache.layout;
 
-        let mut decoded = Vec::with_capacity(missing.len());
+        let mut decoded = Vec::new();
+        decoded
+            .try_reserve_exact(missing.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label decode allocation"))?;
         for index in missing {
             check_cancel(should_interrupt)?;
             let ValueLabelCache::Indexed(cache) = &self.value_labels else {
@@ -2254,22 +2359,57 @@ impl<R: Read + Seek> DtaFile<R> {
         }
         Ok(())
     }
+}
 
-    fn clone_indexed_value_labels(&self, selected: &HashSet<String>) -> Vec<ValueLabelTable> {
-        let ValueLabelCache::Indexed(cache) = &self.value_labels else {
-            unreachable!("indexed value-label cache was initialized")
-        };
-        selected_value_label_location_indices(cache, selected)
-            .into_iter()
-            .map(|index| {
-                cache
-                    .tables
-                    .get(&index)
-                    .expect("selected value-label table was cached")
-                    .clone()
-            })
-            .collect()
+fn read_file_metadata<R: Read + Seek>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    encoding: TextEncoding,
+    materialize_characteristics: bool,
+) -> Result<(DtaMetadata, u64), DtaError> {
+    let file_length = reader
+        .seek(SeekFrom::End(0))
+        .map_err(|error| DtaError::Io {
+            context: "determining file length",
+            offset: 0,
+            kind: error.kind(),
+        })?;
+    if file_length == 0 {
+        return Err(DtaError::InvalidSignature);
     }
+    let first = read_exact_at(reader, 0, 1, scratch, "reading signature")?;
+    let metadata = if matches!(first[0], 105 | 108 | 110 | 111 | 113..=115) {
+        read_legacy_metadata(
+            reader,
+            file_length,
+            scratch,
+            encoding,
+            materialize_characteristics,
+        )?
+    } else {
+        let signature_length = MODERN_SIGNATURE.len();
+        if file_length < signature_length as u64
+            || read_exact_at(reader, 0, signature_length, scratch, "reading signature")?
+                != MODERN_SIGNATURE
+        {
+            return Err(DtaError::InvalidSignature);
+        }
+        read_modern_metadata(
+            reader,
+            file_length,
+            scratch,
+            encoding,
+            materialize_characteristics,
+        )?
+    };
+    if metadata.section_offsets.end_of_file != file_length {
+        return Err(DtaError::MapOffsetMismatch {
+            section: "file length",
+            expected: metadata.section_offsets.end_of_file,
+            actual: file_length,
+        });
+    }
+    Ok((metadata, file_length))
 }
 
 fn check_cancel<F: FnMut() -> bool>(should_interrupt: &mut F) -> Result<(), DtaError> {
@@ -2551,15 +2691,6 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
         Ok(())
     }
 
-    fn decode_field(
-        &mut self,
-        length: usize,
-        encoding: TextEncoding,
-        context: &'static str,
-    ) -> Result<String, DtaError> {
-        self.consume_field(length, Some(encoding), context)
-    }
-
     fn validate_field(&mut self, length: usize, context: &'static str) -> Result<(), DtaError> {
         self.consume_field(length, None, context).map(drop)
     }
@@ -2630,6 +2761,21 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
         }
         Ok(output)
     }
+}
+
+fn validate_file_field<R: Read + Seek>(
+    reader: &mut R,
+    start: u64,
+    length: usize,
+    scratch: &mut Scratch,
+    context: &'static str,
+) -> Result<(), DtaError> {
+    let end = checked_add_u64(
+        start,
+        u64::try_from(length).map_err(|_| DtaError::ArithmeticOverflow("metadata value length"))?,
+        "metadata value length",
+    )?;
+    BufferedSectionReader::new(reader, scratch, start, end).validate_field(length, context)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -3063,6 +3209,12 @@ struct ModernCharacteristicScan {
     adaptive_read_ahead: bool,
 }
 
+#[derive(Clone, Copy)]
+struct ModernCharacteristicRecord {
+    payload_offset: u64,
+    payload_length: usize,
+}
+
 fn walk_modern_characteristic_records<R, F>(
     reader: &mut R,
     scratch: &mut Scratch,
@@ -3155,6 +3307,7 @@ fn read_modern_characteristics<R: Read + Seek>(
     encoding: TextEncoding,
     scratch: &mut Scratch,
     variables: &[VariableInfo],
+    materialize: bool,
 ) -> Result<Option<CharacteristicCollector>, DtaError> {
     let width = if header.format_version == FormatVersion::V117 {
         33_usize
@@ -3176,6 +3329,9 @@ fn read_modern_characteristics<R: Read + Seek>(
         "</characteristics>",
         scratch,
     )?;
+    if !materialize {
+        return Ok(None);
+    }
     ensure_absolute("data", after_close, header.section_offsets.data)?;
     let cursor = expect_file_tag(
         reader,
@@ -3184,6 +3340,7 @@ fn read_modern_characteristics<R: Read + Seek>(
         "<characteristics>",
         scratch,
     )?;
+    let mut records = Vec::new();
     walk_modern_characteristic_records(
         reader,
         scratch,
@@ -3194,52 +3351,88 @@ fn read_modern_characteristics<R: Read + Seek>(
             names_length,
             adaptive_read_ahead: true,
         },
-        |section, _, payload_length| section.advance(payload_length, "characteristic payload"),
+        |section, payload_offset, payload_length| {
+            records
+                .try_reserve(1)
+                .map_err(|_| DtaError::ArithmeticOverflow("characteristic framing plan"))?;
+            records.push(ModernCharacteristicRecord {
+                payload_offset,
+                payload_length,
+            });
+            section.advance(payload_length, "characteristic payload")
+        },
     )?;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(variables);
     let mut record = Vec::new();
-    walk_modern_characteristic_records(
-        reader,
-        scratch,
-        ModernCharacteristicScan {
-            start: cursor,
-            end: header.section_offsets.data,
-            byte_order: header.byte_order,
+    for framed in records {
+        read_exact_at_into(
+            reader,
+            framed.payload_offset,
             names_length,
-            adaptive_read_ahead: false,
-        },
-        |section, payload_offset, payload_length| {
-            section.read_into(names_length, &mut record, "reading characteristic names")?;
-            let target = encoding.decode(field_bytes(&record[..width]));
-            let name = encoding.decode(field_bytes(&record[width..]));
-            let value_length = payload_length - names_length;
-            let accepted = classify_characteristic(
-                &target,
-                name,
-                error_offset(payload_offset.saturating_add(width as u64)),
-                |target| variable_indexes.resolve(target),
-            );
-            match accepted {
-                Ok(Some(accepted)) => {
-                    let value = section.decode_field(
-                        value_length,
-                        encoding,
-                        "reading characteristic value",
-                    )?;
-                    collector
-                        .get_or_insert_with(CharacteristicCollector::default)
-                        .push(accepted, value);
+            scratch,
+            &mut record,
+            "reading characteristic names",
+        )?;
+        let target = encoding.decode(field_bytes(&record[..width]));
+        let name = encoding.decode(field_bytes(&record[width..]));
+        let value_length = framed.payload_length - names_length;
+        let accepted = classify_characteristic(
+            &target,
+            name,
+            error_offset(framed.payload_offset.saturating_add(width as u64)),
+            |target| variable_indexes.resolve(target),
+        );
+        match accepted {
+            Ok(Some(accepted)) => {
+                validate_raw_value_length(
+                    value_length,
+                    error_offset(framed.payload_offset.saturating_add(names_length as u64)),
+                    "characteristic value",
+                )?;
+                let (value, found_nul) = decode_range(
+                    reader,
+                    framed.payload_offset.saturating_add(names_length as u64),
+                    value_length,
+                    encoding,
+                    true,
+                    scratch,
+                    &mut || false,
+                    "reading characteristic value",
+                )?;
+                if value_length > MAX_METADATA_VALUE_BYTES && !found_nul {
+                    return Err(DtaError::MetadataValueTooLong {
+                        context: "characteristic value",
+                        offset: error_offset(
+                            framed.payload_offset.saturating_add(names_length as u64),
+                        ),
+                        length: value_length,
+                        limit: MAX_METADATA_VALUE_BYTES,
+                    });
                 }
-                Ok(None) => section.validate_field(value_length, "characteristic value")?,
-                Err(error) => {
-                    section.validate_field(value_length, "characteristic value")?;
-                    return Err(error);
-                }
+                collector
+                    .get_or_insert_with(CharacteristicCollector::default)
+                    .push(accepted, value);
             }
-            Ok(())
-        },
-    )?;
+            Ok(None) => validate_file_field(
+                reader,
+                framed.payload_offset.saturating_add(names_length as u64),
+                value_length,
+                scratch,
+                "characteristic value",
+            )?,
+            Err(error) => {
+                validate_file_field(
+                    reader,
+                    framed.payload_offset.saturating_add(names_length as u64),
+                    value_length,
+                    scratch,
+                    "characteristic value",
+                )?;
+                return Err(error);
+            }
+        }
+    }
     Ok(collector)
 }
 
@@ -3247,6 +3440,11 @@ struct LegacyExpansionRecord {
     data_type: u8,
     payload_offset: u64,
     payload_length: usize,
+}
+
+struct LegacyExpansionPlan {
+    characteristics: Vec<LegacyExpansionRecord>,
+    data_offset: u64,
 }
 
 fn read_legacy_expansion_record<R: Read + Seek>(
@@ -3321,12 +3519,13 @@ fn validate_legacy_expansion_framing<R: Read + Seek>(
     file_length: u64,
     byte_order: ByteOrder,
     layout: LegacyLayout,
-) -> Result<(), DtaError> {
+) -> Result<LegacyExpansionPlan, DtaError> {
     // Keep malformed unterminated streams bounded by locating the sentinel
     // before the collection pass allocates decoded values.
     let mut header = Vec::new();
     let mut section = BufferedSectionReader::new(reader, scratch, start, file_length);
     let mut read_ahead = false;
+    let mut characteristics = Vec::new();
     loop {
         let Some(record) = read_legacy_expansion_record(
             &mut section,
@@ -3336,8 +3535,21 @@ fn validate_legacy_expansion_framing<R: Read + Seek>(
             read_ahead,
         )?
         else {
-            return Ok(());
+            return Ok(LegacyExpansionPlan {
+                characteristics,
+                data_offset: section.position(),
+            });
         };
+        if record.data_type == 1 && record.payload_length >= 2 * layout.varname_width {
+            characteristics
+                .try_reserve(1)
+                .map_err(|_| DtaError::ArithmeticOverflow("legacy characteristic framing plan"))?;
+            characteristics.push(LegacyExpansionRecord {
+                data_type: record.data_type,
+                payload_offset: record.payload_offset,
+                payload_length: record.payload_length,
+            });
+        }
         section.advance(record.payload_length, "legacy expansion-field payload")?;
         read_ahead = record.payload_length < METADATA_SECTION_BUFFER_BYTES.saturating_div(2);
     }
@@ -3512,6 +3724,7 @@ fn read_modern_metadata<R: Read + Seek>(
     file_length: u64,
     scratch: &mut Scratch,
     encoding: TextEncoding,
+    materialize_characteristics: bool,
 ) -> Result<DtaMetadata, DtaError> {
     let header = read_modern_header_map(reader, scratch, encoding)?;
     let encoding = encoding.resolve(header.format_version);
@@ -3673,7 +3886,14 @@ fn read_modern_metadata<R: Read + Seek>(
     }
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    let collector = read_modern_characteristics(reader, &header, encoding, scratch, &variables)?;
+    let collector = read_modern_characteristics(
+        reader,
+        &header,
+        encoding,
+        scratch,
+        &variables,
+        materialize_characteristics,
+    )?;
     if let Some(collector) = collector {
         collector.finish(&mut notes, &mut characteristics, &mut variables);
     }
@@ -3696,6 +3916,7 @@ fn read_legacy_metadata<R: Read + Seek>(
     file_length: u64,
     scratch: &mut Scratch,
     encoding: TextEncoding,
+    materialize_characteristics: bool,
 ) -> Result<DtaMetadata, DtaError> {
     let release = read_exact_at(reader, 0, 1, scratch, "reading legacy release")?[0];
     let version = FormatVersion::try_from(u16::from(release))
@@ -3840,63 +4061,106 @@ fn read_legacy_metadata<R: Read + Seek>(
 
     let fixed_end = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
-    validate_legacy_expansion_framing(reader, scratch, fixed_end, file_length, byte_order, layout)?;
+    let expansion_plan = validate_legacy_expansion_framing(
+        reader,
+        scratch,
+        fixed_end,
+        file_length,
+        byte_order,
+        layout,
+    )?;
     let mut collector = None;
     let mut variable_indexes = VariableTargetIndexes::new(&variables);
     let mut expansion = Vec::new();
-    let mut section = BufferedSectionReader::new(reader, scratch, fixed_end, file_length);
-    while let Some(record) =
-        read_legacy_expansion_record(&mut section, &mut expansion, byte_order, layout, true)?
+    for record in expansion_plan
+        .characteristics
+        .into_iter()
+        .filter(|_| materialize_characteristics)
     {
-        let payload_end = checked_add_u64(
+        read_exact_at_into(
+            reader,
             record.payload_offset,
-            u64::try_from(record.payload_length)
-                .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion length"))?,
-            "legacy expansion payload",
+            2 * layout.varname_width,
+            scratch,
+            &mut expansion,
+            "reading legacy characteristic names",
         )?;
-        if record.data_type == 1 && record.payload_length >= 2 * layout.varname_width {
-            section.read_into(
-                2 * layout.varname_width,
-                &mut expansion,
-                "reading legacy characteristic names",
-            )?;
-            let target = encoding.decode(field_bytes(&expansion[..layout.varname_width]));
-            let name = encoding.decode(field_bytes(&expansion[layout.varname_width..]));
-            let value_length = record.payload_length - 2 * layout.varname_width;
-            let accepted = classify_characteristic(
-                &target,
-                name,
-                error_offset(
+        let target = encoding.decode(field_bytes(&expansion[..layout.varname_width]));
+        let name = encoding.decode(field_bytes(&expansion[layout.varname_width..]));
+        let value_length = record.payload_length - 2 * layout.varname_width;
+        let accepted = classify_characteristic(
+            &target,
+            name,
+            error_offset(
+                record
+                    .payload_offset
+                    .saturating_add(layout.varname_width as u64),
+            ),
+            |target| variable_indexes.resolve(target),
+        );
+        match accepted {
+            Ok(Some(accepted)) => {
+                validate_raw_value_length(
+                    value_length,
+                    error_offset(
+                        record
+                            .payload_offset
+                            .saturating_add((2 * layout.varname_width) as u64),
+                    ),
+                    "legacy characteristic value",
+                )?;
+                let (value, found_nul) = decode_range(
+                    reader,
                     record
                         .payload_offset
-                        .saturating_add(layout.varname_width as u64),
-                ),
-                |target| variable_indexes.resolve(target),
-            );
-            match accepted {
-                Ok(Some(accepted)) => {
-                    let value = section.decode_field(
-                        value_length,
-                        encoding,
-                        "reading legacy characteristic value",
-                    )?;
-                    collector
-                        .get_or_insert_with(CharacteristicCollector::default)
-                        .push(accepted, value);
+                        .saturating_add((2 * layout.varname_width) as u64),
+                    value_length,
+                    encoding,
+                    true,
+                    scratch,
+                    &mut never_cancel,
+                    "reading legacy characteristic value",
+                )?;
+                if value_length > MAX_METADATA_VALUE_BYTES && !found_nul {
+                    return Err(DtaError::MetadataValueTooLong {
+                        context: "legacy characteristic value",
+                        offset: error_offset(
+                            record
+                                .payload_offset
+                                .saturating_add((2 * layout.varname_width) as u64),
+                        ),
+                        length: value_length,
+                        limit: MAX_METADATA_VALUE_BYTES,
+                    });
                 }
-                Ok(None) => section.validate_field(value_length, "legacy characteristic value")?,
-                Err(error) => {
-                    section.validate_field(value_length, "legacy characteristic value")?;
-                    return Err(error);
-                }
+                collector
+                    .get_or_insert_with(CharacteristicCollector::default)
+                    .push(accepted, value);
             }
-        } else {
-            section.advance(record.payload_length, "legacy expansion-field payload")?;
+            Ok(None) => validate_file_field(
+                reader,
+                record
+                    .payload_offset
+                    .saturating_add((2 * layout.varname_width) as u64),
+                value_length,
+                scratch,
+                "legacy characteristic value",
+            )?,
+            Err(error) => {
+                validate_file_field(
+                    reader,
+                    record
+                        .payload_offset
+                        .saturating_add((2 * layout.varname_width) as u64),
+                    value_length,
+                    scratch,
+                    "legacy characteristic value",
+                )?;
+                return Err(error);
+            }
         }
-        debug_assert_eq!(section.position(), payload_end);
     }
-    let cursor = section.position();
-    drop(section);
+    let cursor = expansion_plan.data_offset;
     drop(variable_indexes);
     let observation_bytes = nobs
         .checked_mul(byte_offset)
@@ -3980,7 +4244,10 @@ fn read_value_label_offsets_streaming<R: Read + Seek, F: FnMut() -> bool>(
         byte_order,
         encoding,
     } = options;
-    let mut output = Vec::with_capacity(count);
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(count)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label offset allocation"))?;
     let mut raw = Vec::new();
     let entries_per_chunk = (scratch.limit / 4).max(1);
     while output.len() < count {
@@ -4641,7 +4908,10 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         }
         if retain {
             let mut raw = Vec::new();
-            let mut values = Vec::with_capacity(entry_count);
+            let mut values = Vec::new();
+            values
+                .try_reserve_exact(entry_count)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label value allocation"))?;
             let values_per_chunk = (scratch.limit / 2).max(1);
             while values.len() < entry_count {
                 check_cancel(should_interrupt)?;
@@ -4674,7 +4944,10 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 }
             }
 
-            let mut entries = Vec::with_capacity(entry_count);
+            let mut entries = Vec::new();
+            entries
+                .try_reserve_exact(entry_count)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label entry allocation"))?;
             let labels_per_chunk = (scratch.limit / LABEL_WIDTH).max(1);
             while entries.len() < entry_count {
                 check_cancel(should_interrupt)?;
@@ -4713,13 +4986,7 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 entries,
             });
         }
-        if let Some(locations) = mode.locations(&name) {
-            locations.push(ValueLabelLocation {
-                name,
-                start: table_start,
-                end: table_end,
-            });
-        }
+        mode.record_location(&name, table_start, table_end);
         cursor = table_end;
     }
     ensure_absolute(
@@ -4871,50 +5138,15 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             scratch,
             "reading value-label payload header",
         )?;
-        let entry_count_i32 = read_i32(
+        let frame = frame_offset_value_label_payload(
             &payload_header,
-            0,
             metadata.byte_order,
-            "value-label entry count",
+            error_offset(table_start),
+            error_offset(payload_start),
+            declared,
         )?;
-        if entry_count_i32 < 0 {
-            return Err(DtaError::NegativeValueLabelField {
-                field: "entry count",
-                value: entry_count_i32,
-                offset: error_offset(payload_start),
-            });
-        }
-        let text_length_i32 = read_i32(
-            &payload_header,
-            4,
-            metadata.byte_order,
-            "value-label text length",
-        )?;
-        if text_length_i32 < 0 {
-            return Err(DtaError::NegativeValueLabelField {
-                field: "text length",
-                value: text_length_i32,
-                offset: error_offset(payload_start.saturating_add(4)),
-            });
-        }
-        let entry_count = usize::try_from(entry_count_i32)
-            .map_err(|_| DtaError::ArithmeticOverflow("value-label entry count"))?;
-        let text_length = usize::try_from(text_length_i32)
-            .map_err(|_| DtaError::ArithmeticOverflow("value-label text length"))?;
-        let arrays_length = entry_count
-            .checked_mul(8)
-            .ok_or(DtaError::ArithmeticOverflow("value-label arrays length"))?;
-        let expected = 8_usize
-            .checked_add(arrays_length)
-            .and_then(|value| value.checked_add(text_length))
-            .ok_or(DtaError::ArithmeticOverflow("value-label payload length"))?;
-        if declared != expected {
-            return Err(DtaError::InvalidValueLabelLength {
-                offset: error_offset(table_start),
-                declared,
-                expected,
-            });
-        }
+        let entry_count = frame.entry_count;
+        let text_length = frame.text_length;
         let table_end = checked_add_u64(
             payload_start,
             u64::try_from(declared)
@@ -4975,7 +5207,10 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 "reading value-label text",
             )?;
             let terminators = nul_positions(decoded_text.as_bytes());
-            let mut entries = Vec::with_capacity(entry_count);
+            let mut entries = Vec::new();
+            entries
+                .try_reserve_exact(entry_count)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label entry allocation"))?;
             let mut raw_values = Vec::new();
             let entries_per_chunk = (scratch.limit / 4).max(1);
             while entries.len() < entry_count {
@@ -5077,13 +5312,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 entries,
             });
         }
-        if let Some(locations) = mode.locations(&name) {
-            locations.push(ValueLabelLocation {
-                name,
-                start: table_start,
-                end: cursor,
-            });
-        }
+        mode.record_location(&name, table_start, cursor);
     }
 
     ensure_absolute(
@@ -5232,7 +5461,7 @@ fn read_indexed_value_label_table<R: Read + Seek, F: FnMut() -> bool>(
             )?
         }
     };
-    if tables.len() != 1 || tables[0].name != location.name {
+    if tables.len() != 1 || tables[0].name != location.name.as_ref() {
         return Err(DtaError::Output(
             "indexed value-label table no longer matches its source".to_owned(),
         ));
@@ -5841,6 +6070,7 @@ mod tests {
                 TextEncoding::Utf8,
                 &mut Scratch::new(1024),
                 &[],
+                true,
             ),
             Err(DtaError::UnexpectedTag {
                 expected: "</characteristics>",
@@ -5877,12 +6107,72 @@ mod tests {
                 TextEncoding::Utf8,
                 &mut Scratch::new(1024),
                 &[],
+                true,
             ),
             Err(DtaError::Truncated {
                 context: "characteristic payload",
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn schema_preflight_frames_but_does_not_materialize_characteristic_payloads() {
+        let width = 129_usize;
+        let value_length = 32 * 1024;
+        let payload_length = width * 2 + value_length;
+        let mut bytes = b"<characteristics><ch>".to_vec();
+        bytes.extend_from_slice(&(payload_length as u32).to_le_bytes());
+        let mut target = vec![0; width];
+        target[..4].copy_from_slice(b"_dta");
+        bytes.extend_from_slice(&target);
+        let mut name = vec![0; width];
+        name[..6].copy_from_slice(b"source");
+        bytes.extend_from_slice(&name);
+        bytes.extend(std::iter::repeat_n(b'x', value_length - 1));
+        bytes.push(0);
+        bytes.extend_from_slice(b"</ch></characteristics>");
+        let header = FileModernHeaderMap {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: String::new(),
+            section_offsets: SectionOffsets {
+                characteristics: 0,
+                data: bytes.len() as u64,
+                ..SectionOffsets::default()
+            },
+        };
+
+        let mut preflight = CountingReader::new(bytes.clone());
+        assert!(read_modern_characteristics(
+            &mut preflight,
+            &header,
+            TextEncoding::Utf8,
+            &mut Scratch::new(1024),
+            &[],
+            false,
+        )
+        .unwrap()
+        .is_none());
+        let mut full = CountingReader::new(bytes);
+        assert!(read_modern_characteristics(
+            &mut full,
+            &header,
+            TextEncoding::Utf8,
+            &mut Scratch::new(1024),
+            &[],
+            true,
+        )
+        .unwrap()
+        .is_some());
+        assert!(
+            preflight.bytes_read * 8 < full.bytes_read,
+            "preflight read {} bytes; full metadata read {}",
+            preflight.bytes_read,
+            full.bytes_read
+        );
     }
 
     #[test]
@@ -5963,11 +6253,11 @@ mod tests {
     fn repeated_sparse_value_label_selections_use_the_name_index() {
         let locations = (0..10_000)
             .map(|index| ValueLabelLocation {
-                name: if index == 7 || index == 9_997 {
+                name: Arc::from(if index == 7 || index == 9_997 {
                     "selected".to_owned()
                 } else {
                     format!("unused_{index}")
-                },
+                }),
                 start: index as u64,
                 end: index as u64 + 1,
             })
@@ -5983,7 +6273,7 @@ mod tests {
 
         for _ in 0..100 {
             assert_eq!(
-                selected_value_label_location_indices(&cache, &selected),
+                selected_value_label_location_indices(&cache.indices_by_name, &selected).unwrap(),
                 [7, 9_997]
             );
         }

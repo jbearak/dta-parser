@@ -12,9 +12,9 @@ use std::sync::Arc;
 use std::thread;
 
 use dta_tools::arrow::{
-    arrow_stored_signature, dataset_signature, save_arrow_file, ArrowCompression,
-    ArrowFieldDocument, ArrowFileSnapshot, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn,
-    ArrowReadOptions, ArrowValueLabelEntry, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument,
+    arrow_stored_signature, dataset_signature, preflight_arrow_metadata, save_arrow_file,
+    ArrowCompression, ArrowFieldDocument, ArrowFileSnapshot, ArrowMissingEncoding, ArrowRSemantics,
+    ArrowReadColumn, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument,
     StataStorage,
 };
 use dta_tools::{
@@ -840,19 +840,25 @@ enum ColumnInput {
     },
 }
 
-struct ExtractedColumn {
+struct ColumnMetadata {
     name: String,
     kind: RArrowKind,
-    label: String,
-    format: String,
     tz: Option<String>,
     units: String,
     ordered: bool,
     haven_labelled: bool,
-    value_label_index: Option<usize>,
-    string_storage: Option<String>,
-    notes: Vec<StataNote>,
-    characteristics: Vec<StataCharacteristic>,
+    base_document: ArrowFieldDocument,
+    compact_version: Option<FormatVersion>,
+}
+
+struct ExtractedColumn {
+    name: String,
+    kind: RArrowKind,
+    tz: Option<String>,
+    units: String,
+    ordered: bool,
+    haven_labelled: bool,
+    base_document: ArrowFieldDocument,
     input: ColumnInput,
     row_count: usize,
 }
@@ -860,13 +866,11 @@ struct ExtractedColumn {
 unsafe impl Send for ExtractedColumn {}
 unsafe impl Sync for ExtractedColumn {}
 
-/// Pull one column's inputs out of R on the main thread: strings become
-/// owned values, everything else a validated raw pointer.
-unsafe fn extract_column(
+/// Pull one column's metadata out of R without inspecting its cell arrays.
+unsafe fn extract_column_metadata(
     descriptor: &RArrowColumnDescriptor,
-    row_count: usize,
     value_label_names: &[String],
-) -> Result<ExtractedColumn, String> {
+) -> Result<ColumnMetadata, String> {
     let name = required_c_string(descriptor.name, "a column name")?;
     let kind = RArrowKind::try_from(descriptor.kind)?;
     let label = optional_c_string(descriptor.label, "a variable label")?;
@@ -907,7 +911,73 @@ unsafe fn extract_column(
         1..=2045 => Some(format!("str{}", descriptor.string_storage)),
         _ => return Err(format!("column `{name}` has invalid string storage")),
     };
+    let mut base_document = base_field_document(label, format, notes, characteristics);
+    if let Some(index) = value_label_index {
+        base_document.value_labels = Some(value_label_names[index].clone());
+    }
+    if kind == RArrowKind::Character {
+        base_document.string_storage = string_storage;
+    }
+    match kind {
+        RArrowKind::Integer => base_document.r = r_semantics("integer"),
+        RArrowKind::LabelledInteger => {
+            base_document.missing = Some(ArrowMissingEncoding::Payload);
+            base_document.r = r_semantics("haven_labelled");
+        }
+        RArrowKind::Double if descriptor.haven_labelled != 0 => {
+            base_document.r = r_semantics("haven_labelled");
+        }
+        RArrowKind::Datetime => {
+            base_document.r = r_semantics("POSIXct");
+            if let Some(semantics) = base_document.r.as_mut() {
+                semantics.tz.clone_from(&tz);
+            }
+        }
+        RArrowKind::Difftime => {
+            base_document.r = r_semantics("difftime");
+            if let Some(semantics) = base_document.r.as_mut() {
+                semantics.units = Some(units.clone());
+            }
+        }
+        RArrowKind::Raw => base_document.r = r_semantics("raw"),
+        RArrowKind::Factor => {
+            base_document.r = Some(ArrowRSemantics {
+                class: "factor".to_owned(),
+                ordered: Some(descriptor.ordered != 0),
+                tz: None,
+                units: None,
+            });
+        }
+        _ => {}
+    }
+    Ok(ColumnMetadata {
+        name,
+        kind,
+        tz,
+        units,
+        ordered: descriptor.ordered != 0,
+        haven_labelled: descriptor.haven_labelled != 0,
+        base_document,
+        compact_version,
+    })
+}
 
+/// Capture one column's cell input after the metadata-only footer preflight.
+unsafe fn extract_column(
+    descriptor: &RArrowColumnDescriptor,
+    row_count: usize,
+    metadata: ColumnMetadata,
+) -> Result<ExtractedColumn, String> {
+    let ColumnMetadata {
+        name,
+        kind,
+        tz,
+        units,
+        ordered,
+        haven_labelled,
+        base_document,
+        compact_version,
+    } = metadata;
     let input = match kind {
         RArrowKind::Logical => ColumnInput::Logical {
             values: int_slice(descriptor, row_count)?.as_ptr(),
@@ -968,16 +1038,11 @@ unsafe fn extract_column(
     Ok(ExtractedColumn {
         name,
         kind,
-        label,
-        format,
         tz,
         units,
-        ordered: descriptor.ordered != 0,
-        haven_labelled: descriptor.haven_labelled != 0,
-        value_label_index,
-        string_storage,
-        notes,
-        characteristics,
+        ordered,
+        haven_labelled,
+        base_document,
         input,
         row_count,
     })
@@ -985,25 +1050,12 @@ unsafe fn extract_column(
 
 /// Encode one extracted column into its Arrow array and field document.
 /// Pure: never calls the R API, so it may run on a worker thread.
-unsafe fn encode_column(
-    mut column: ExtractedColumn,
-    value_label_names: &[String],
-) -> Result<EncodedColumn, String> {
+unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, String> {
     let name = &column.name;
     let row_count = column.row_count;
-    let base_document = base_field_document(
-        std::mem::take(&mut column.label),
-        std::mem::take(&mut column.format),
-        std::mem::take(&mut column.notes),
-        std::mem::take(&mut column.characteristics),
-    );
+    let base_document = std::mem::take(&mut column.base_document);
+    let profiled_temporal = temporal_kind(&base_document.format);
     let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
-    let with_labels = |mut document: ArrowFieldDocument| {
-        if let Some(index) = column.value_label_index {
-            document.value_labels = Some(value_label_names[index].clone());
-        }
-        document
-    };
 
     let (field, array, replaced): (Option<ArrowFieldDocument>, ArrayRef, u64) = match &column.input
     {
@@ -1017,7 +1069,7 @@ unsafe fn encode_column(
                     builder.append_value(value != 0);
                 }
             }
-            let document = with_labels(base_document);
+            let document = base_document;
             (
                 needs_document(&document).then_some(document),
                 Arc::new(builder.finish()) as ArrayRef,
@@ -1036,13 +1088,13 @@ unsafe fn encode_column(
                         .map(|&value| (value != R_NaInt).then_some(value)),
                 ))
             };
-            let mut document = with_labels(base_document);
+            let mut document = base_document;
             document.r = r_semantics("integer");
             (Some(document), array, 0)
         }
         ColumnInput::LabelledInteger { values } => {
             let values = std::slice::from_raw_parts(*values, row_count);
-            let mut document = with_labels(base_document);
+            let mut document = base_document;
             document.missing = Some(ArrowMissingEncoding::Payload);
             document.r = r_semantics("haven_labelled");
             let array = Float64Array::from_iter_values(values.iter().map(|&value| {
@@ -1066,7 +1118,7 @@ unsafe fn encode_column(
                 RArrowKind::Difftime => "difftime",
                 _ => unreachable!("double kinds"),
             };
-            let mut document = with_labels(base_document);
+            let mut document = base_document;
             if kind == RArrowKind::Datetime {
                 document.r = r_semantics(class);
                 if let Some(semantics) = document.r.as_mut() {
@@ -1080,7 +1132,7 @@ unsafe fn encode_column(
             } else if class == "haven_labelled" {
                 document.r = r_semantics(class);
             }
-            let payload_labels = kind == RArrowKind::Double && column.value_label_index.is_some();
+            let payload_labels = kind == RArrowKind::Double && document.value_labels.is_some();
             if has_tags || payload_labels {
                 // Tagged NAs and haven labels need bit-exact NaN payloads.
                 let (mut field, array) = payload_double_column(values, document, class);
@@ -1110,8 +1162,7 @@ unsafe fn encode_column(
             }
         }
         ColumnInput::CharacterEager { values } => {
-            let mut document = with_labels(base_document);
-            document.string_storage.clone_from(&column.string_storage);
+            let document = base_document;
             (
                 needs_document(&document).then_some(document),
                 string_array(values, name)?,
@@ -1121,13 +1172,12 @@ unsafe fn encode_column(
         ColumnInput::CharacterDict { data } => {
             let data = &*data.cast::<crate::DictStringData>();
             let array = dictstring_array(data, row_count, name)?;
-            let mut document = with_labels(base_document);
-            document.string_storage.clone_from(&column.string_storage);
+            let document = base_document;
             (needs_document(&document).then_some(document), array, 0)
         }
         ColumnInput::Raw { values } => {
             let array = zero_copy_array::<UInt8Type>(*values, row_count);
-            let mut document = with_labels(base_document);
+            let mut document = base_document;
             document.r = r_semantics("raw");
             (Some(document), array, 0)
         }
@@ -1148,7 +1198,7 @@ unsafe fn encode_column(
             let values = string_array(levels, name)?;
             let array = DictionaryArray::try_new(builder.finish(), values)
                 .map_err(|error| error.to_string())?;
-            let mut document = with_labels(base_document);
+            let mut document = base_document;
             document.r = Some(ArrowRSemantics {
                 class: "factor".to_owned(),
                 ordered: Some(column.ordered),
@@ -1160,10 +1210,9 @@ unsafe fn encode_column(
         ColumnInput::ProfiledEager { values, storage } => {
             let values = std::slice::from_raw_parts(*values, row_count);
             let (codes, _) = classify_doubles(values, name)?;
-            let temporal = temporal_kind(&column.format);
             let (array, replacements, missing_release) =
-                encode_profiled_column(name, *storage, temporal, values, &codes)?;
-            let mut document = with_labels(base_document);
+                encode_profiled_column(name, *storage, profiled_temporal, values, &codes)?;
+            let mut document = base_document;
             document.storage = Some(*storage);
             document.missing = Some(field_missing_for_storage(*storage));
             document.missing_release = missing_release;
@@ -1176,7 +1225,7 @@ unsafe fn encode_column(
         } => {
             let (array, storage, missing_release) =
                 compact_profiled_column(*values, *kind, *version, row_count)?;
-            let mut document = with_labels(base_document);
+            let mut document = base_document;
             document.storage = Some(storage);
             document.missing = Some(field_missing_for_storage(storage));
             document.missing_release = missing_release;
@@ -1225,7 +1274,6 @@ struct EncodedColumn {
 /// flag set by the other loops.
 fn encode_task_loop(
     columns: &[std::sync::Mutex<Option<ExtractedColumn>>],
-    value_label_names: &[String],
     next: &AtomicUsize,
     cancelled: &AtomicBool,
     mut poll: impl FnMut() -> bool,
@@ -1248,7 +1296,7 @@ fn encode_task_loop(
             .map_err(|_| "an Arrow encode task was poisoned".to_owned())?
             .take()
             .ok_or_else(|| "an Arrow encode task was claimed twice".to_owned())?;
-        match unsafe { encode_column(column, value_label_names) } {
+        match unsafe { encode_column(column) } {
             Ok(encoded) => results.push((index, encoded)),
             Err(error) => {
                 cancelled.store(true, Ordering::Relaxed);
@@ -1262,14 +1310,13 @@ fn encode_task_loop(
 /// R thread participates in the queue and is the only interrupt poller.
 fn run_column_encodes(
     columns: Vec<ExtractedColumn>,
-    value_label_names: &[String],
     threads: usize,
 ) -> Result<Vec<EncodedColumn>, String> {
     if threads <= 1 {
         let mut encoded = Vec::with_capacity(columns.len());
         for column in columns {
             check_interrupt()?;
-            encoded.push(unsafe { encode_column(column, value_label_names) }?);
+            encoded.push(unsafe { encode_column(column) }?);
         }
         return Ok(encoded);
     }
@@ -1285,18 +1332,10 @@ fn run_column_encodes(
             .map(|_| {
                 let next = &next;
                 let cancelled = &cancelled;
-                scope.spawn(move || {
-                    encode_task_loop(columns, value_label_names, next, cancelled, || false)
-                })
+                scope.spawn(move || encode_task_loop(columns, next, cancelled, || false))
             })
             .collect();
-        let own = encode_task_loop(
-            columns,
-            value_label_names,
-            &next,
-            &cancelled,
-            coarse_interrupt,
-        );
+        let own = encode_task_loop(columns, &next, &cancelled, coarse_interrupt);
         if own.is_err() {
             cancelled.store(true, Ordering::Relaxed);
         }
@@ -1473,10 +1512,24 @@ fn difftime_seconds_per_unit(units: &str) -> Result<f64, String> {
     }
 }
 
+fn insert_value_label_tables(
+    dataset: &mut DatasetDocument,
+    tables: Vec<ValueLabelTable>,
+) -> Result<(), String> {
+    for table in tables {
+        dataset
+            .insert_value_label_table(table)
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
 /// Shared write-driver front half: parse the dataset documents, extract every
 /// column on this thread (the only one that may touch the R API), encode into
 /// Arrow arrays on workers, and assemble the write dataset plus the
-/// per-column numeric replacement counts.
+/// per-column numeric replacement counts. Arrow saves request the footer
+/// preflight before cell extraction; datasig assembly has no footer and does
+/// not inherit the file-format size limit.
 ///
 /// # Safety
 ///
@@ -1489,6 +1542,7 @@ unsafe fn assemble_write_dataset(
     table_descriptors: &[RArrowValueLabelTableDescriptor],
     row_count: usize,
     requested_threads: usize,
+    preflight_footer: bool,
 ) -> Result<(ArrowWriteDataset, Vec<u64>), String> {
     let column_count = descriptors.len();
     let mut dataset = DatasetDocument {
@@ -1498,10 +1552,6 @@ unsafe fn assemble_write_dataset(
     };
     (dataset.notes, dataset.characteristics) = parse_stata_metadata_sexp(dataset_metadata)?;
 
-    let mut extracted = Vec::new();
-    extracted
-        .try_reserve_exact(column_count)
-        .map_err(|_| "could not allocate column inputs".to_owned())?;
     let value_label_names = table_descriptors
         .iter()
         .map(|descriptor| required_c_string(descriptor.name, "a value-label table name"))
@@ -1511,14 +1561,38 @@ unsafe fn assemble_write_dataset(
         .zip(&value_label_names)
         .map(|(descriptor, name)| value_label_table(descriptor, name))
         .collect::<Result<Vec<_>, _>>()?;
+    insert_value_label_tables(&mut dataset, value_label_tables)?;
+    let mut column_metadata = Vec::new();
+    column_metadata
+        .try_reserve_exact(column_count)
+        .map_err(|_| "could not allocate column metadata".to_owned())?;
     for descriptor in descriptors {
         check_interrupt()?;
-        let column = extract_column(descriptor, row_count, &value_label_names)?;
+        column_metadata.push(extract_column_metadata(descriptor, &value_label_names)?);
+    }
+    if preflight_footer {
+        preflight_arrow_metadata(
+            &dataset,
+            column_metadata.iter().map(|column| {
+                let document = (column.base_document != ArrowFieldDocument::default())
+                    .then_some(&column.base_document);
+                (column.name.as_str(), document)
+            }),
+        )
+        .map_err(|error| error.to_string())?;
+    }
+    let mut extracted = Vec::new();
+    extracted
+        .try_reserve_exact(column_count)
+        .map_err(|_| "could not allocate column inputs".to_owned())?;
+    for (descriptor, metadata) in descriptors.iter().zip(column_metadata) {
+        check_interrupt()?;
+        let column = extract_column(descriptor, row_count, metadata)?;
         extracted.push(column);
     }
 
     let threads = encode_thread_count(requested_threads, column_count, row_count);
-    let encoded = run_column_encodes(extracted, &value_label_names, threads)?;
+    let encoded = run_column_encodes(extracted, threads)?;
 
     let mut write_columns = Vec::new();
     write_columns
@@ -1528,18 +1602,6 @@ unsafe fn assemble_write_dataset(
     replacements
         .try_reserve_exact(column_count)
         .map_err(|_| "could not allocate replacement counts".to_owned())?;
-    for table in value_label_tables {
-        let entries = table
-            .entries
-            .into_iter()
-            .map(|entry| ArrowValueLabelEntry {
-                value: entry.missing_tag.is_none().then_some(entry.value),
-                tag: entry.missing_tag,
-                label: entry.label,
-            })
-            .collect();
-        dataset.value_labels.insert(table.name, entries);
-    }
     for column in encoded {
         replacements.push(column.replaced);
         write_columns.push(ArrowWriteColumn {
@@ -1603,6 +1665,7 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
             table_descriptors,
             row_count,
             requested_threads,
+            false,
         )?;
         if replacements.iter().any(|&count| count > 0) {
             let details = dataset
@@ -1684,6 +1747,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             table_descriptors,
             row_count,
             requested_threads,
+            true,
         )?;
         save_arrow_file(
             &path,
@@ -3457,6 +3521,23 @@ mod tests {
         let error = factor_levels(&values, "x")
             .expect_err("duplicate Arrow dictionary values must not become R factor levels");
         assert!(error.contains("duplicate factor level"));
+    }
+
+    #[test]
+    fn arrow_write_assembly_rejects_duplicate_value_label_table_names() {
+        let table = ValueLabelTable {
+            name: "answers".to_owned(),
+            entries: vec![ValueLabelEntry {
+                value: 1,
+                missing_tag: None,
+                label: "yes".to_owned(),
+            }],
+        };
+        let mut dataset = DatasetDocument::default();
+        let error = insert_value_label_tables(&mut dataset, vec![table.clone(), table])
+            .expect_err("duplicate registry names are rejected during Arrow assembly");
+        assert!(error.contains("duplicate value-label table name"));
+        assert_eq!(dataset.value_labels.len(), 1);
     }
 
     #[test]

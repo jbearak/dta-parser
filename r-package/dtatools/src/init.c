@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <math.h>
 #include <signal.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -741,8 +742,8 @@ typedef struct {
     const char *label;
     void *numeric_values;
     SEXP string_values;
-    SEXP stata_metadata;
     int value_label_index;
+    SEXP stata_metadata;
     double numeric_shift;
     double numeric_scale;
     const void *direct_numeric_values;
@@ -752,6 +753,47 @@ typedef struct {
     int direct_numeric_no_na;
     void *direct_string_data;
 } dtatools_write_column;
+
+enum dtatools_dta_column_slot {
+    DTATOOLS_DTA_COLUMN_NAME = 0,
+    DTATOOLS_DTA_COLUMN_TYPE = 1,
+    DTATOOLS_DTA_COLUMN_FORMAT = 2,
+    DTATOOLS_DTA_COLUMN_LABEL = 3,
+    DTATOOLS_DTA_COLUMN_VALUES = 4,
+    DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT = 5,
+    DTATOOLS_DTA_COLUMN_NUMERIC_SCALE = 6,
+    DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX = 7,
+    DTATOOLS_DTA_COLUMN_STATA_METADATA = 8,
+    DTATOOLS_DTA_COLUMN_SLOT_COUNT = 9
+};
+
+#define DTATOOLS_LAYOUT_ASSERT(name, condition) \
+    typedef char dtatools_layout_assert_##name[(condition) ? 1 : -1]
+
+#if UINTPTR_MAX == UINT64_MAX
+DTATOOLS_LAYOUT_ASSERT(write_column_name, offsetof(dtatools_write_column, name) == 0);
+DTATOOLS_LAYOUT_ASSERT(write_column_dta_type, offsetof(dtatools_write_column, dta_type) == 8);
+DTATOOLS_LAYOUT_ASSERT(write_column_format, offsetof(dtatools_write_column, format) == 16);
+DTATOOLS_LAYOUT_ASSERT(write_column_label, offsetof(dtatools_write_column, label) == 24);
+DTATOOLS_LAYOUT_ASSERT(write_column_numeric_values, offsetof(dtatools_write_column, numeric_values) == 32);
+DTATOOLS_LAYOUT_ASSERT(write_column_string_values, offsetof(dtatools_write_column, string_values) == 40);
+DTATOOLS_LAYOUT_ASSERT(write_column_value_label_index, offsetof(dtatools_write_column, value_label_index) == 48);
+DTATOOLS_LAYOUT_ASSERT(write_column_stata_metadata, offsetof(dtatools_write_column, stata_metadata) == 56);
+DTATOOLS_LAYOUT_ASSERT(write_column_numeric_shift, offsetof(dtatools_write_column, numeric_shift) == 64);
+DTATOOLS_LAYOUT_ASSERT(write_column_numeric_scale, offsetof(dtatools_write_column, numeric_scale) == 72);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_values, offsetof(dtatools_write_column, direct_numeric_values) == 80);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_kind, offsetof(dtatools_write_column, direct_numeric_kind) == 88);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_version, offsetof(dtatools_write_column, direct_numeric_format_version) == 92);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_temporal, offsetof(dtatools_write_column, direct_numeric_temporal) == 96);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_no_na, offsetof(dtatools_write_column, direct_numeric_no_na) == 100);
+DTATOOLS_LAYOUT_ASSERT(write_column_direct_string, offsetof(dtatools_write_column, direct_string_data) == 104);
+DTATOOLS_LAYOUT_ASSERT(write_column_size, sizeof(dtatools_write_column) == 112);
+DTATOOLS_LAYOUT_ASSERT(write_table_name, offsetof(dtatools_write_value_label_table, name) == 0);
+DTATOOLS_LAYOUT_ASSERT(write_table_values, offsetof(dtatools_write_value_label_table, label_values) == 8);
+DTATOOLS_LAYOUT_ASSERT(write_table_texts, offsetof(dtatools_write_value_label_table, label_texts) == 16);
+DTATOOLS_LAYOUT_ASSERT(write_table_count, offsetof(dtatools_write_value_label_table, label_count) == 24);
+DTATOOLS_LAYOUT_ASSERT(write_table_size, sizeof(dtatools_write_value_label_table) == 32);
+#endif
 
 static int write_string_utf8_status(SEXP value) {
     int utf8 = Rf_getCharCE(value) == CE_UTF8;
@@ -3064,10 +3106,10 @@ SEXP C_dtatools_write_path_kind(SEXP path) {
 }
 
 static int write_column_type(SEXP column) {
-    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 9) {
+    if (TYPEOF(column) != VECSXP || XLENGTH(column) != DTATOOLS_DTA_COLUMN_SLOT_COUNT) {
         Rf_error("internal write column must be a nine-element list");
     }
-    SEXP dta_type = VECTOR_ELT(column, 1);
+    SEXP dta_type = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_TYPE);
     if (TYPEOF(dta_type) != INTSXP || XLENGTH(dta_type) != 1 ||
         INTEGER(dta_type)[0] < 0 || INTEGER(dta_type)[0] > 2050) {
         Rf_error("invalid internal write column metadata");
@@ -3166,11 +3208,11 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     for (size_t index = 0; index < column_count; index++) {
         SEXP column = VECTOR_ELT(columns, (R_xlen_t) index);
         int dta_type = write_column_type(column);
-        SEXP values = VECTOR_ELT(column, 4);
-        SEXP numeric_shift = VECTOR_ELT(column, 5);
-        SEXP numeric_scale = VECTOR_ELT(column, 6);
-        SEXP value_label_index = VECTOR_ELT(column, 7);
-        SEXP stata_metadata = VECTOR_ELT(column, 8);
+        SEXP values = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_VALUES);
+        SEXP numeric_shift = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT);
+        SEXP numeric_scale = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_NUMERIC_SCALE);
+        SEXP value_label_index = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX);
+        SEXP stata_metadata = VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_STATA_METADATA);
         if (!is_stata_metadata(stata_metadata) ||
             TYPEOF(value_label_index) != INTSXP ||
             XLENGTH(value_label_index) != 1 ||
@@ -3192,13 +3234,13 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         }
 
         const char *name = write_rooted_scalar_string(
-            string_roots, root_index++, VECTOR_ELT(column, 0), "name"
+            string_roots, root_index++, VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_NAME), "name"
         );
         const char *format = write_rooted_scalar_string(
-            string_roots, root_index++, VECTOR_ELT(column, 2), "format"
+            string_roots, root_index++, VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_FORMAT), "format"
         );
         const char *label = write_rooted_scalar_string(
-            string_roots, root_index++, VECTOR_ELT(column, 3), "variable label"
+            string_roots, root_index++, VECTOR_ELT(column, DTATOOLS_DTA_COLUMN_LABEL), "variable label"
         );
         stata_metadata = write_rooted_stata_metadata(
             string_roots, root_index++, stata_metadata, "variable Stata metadata"

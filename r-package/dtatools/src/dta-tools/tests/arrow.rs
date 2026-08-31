@@ -214,21 +214,23 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
         }],
         ..DatasetDocument::default()
     };
-    dataset_document.insert_value_label_table(&ValueLabelTable {
-        name: "yesno".to_owned(),
-        entries: vec![
-            ValueLabelEntry {
-                value: 0,
-                missing_tag: None,
-                label: "no".to_owned(),
-            },
-            ValueLabelEntry {
-                value: 1,
-                missing_tag: None,
-                label: "yes".to_owned(),
-            },
-        ],
-    });
+    dataset_document
+        .insert_value_label_table(ValueLabelTable {
+            name: "yesno".to_owned(),
+            entries: vec![
+                ValueLabelEntry {
+                    value: 0,
+                    missing_tag: None,
+                    label: "no".to_owned(),
+                },
+                ValueLabelEntry {
+                    value: 1,
+                    missing_tag: None,
+                    label: "yes".to_owned(),
+                },
+            ],
+        })
+        .expect("unique value-label table");
 
     let logical: ArrayRef = Arc::new(BooleanArray::from(vec![
         Some(true),
@@ -414,7 +416,9 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
         }],
     };
     let mut document = DatasetDocument::default();
-    document.insert_value_label_table(&table);
+    document
+        .insert_value_label_table(table.clone())
+        .expect("unique value-label table");
     let unrelated = ValueLabelTable {
         name: "unrelated_answers".to_owned(),
         entries: vec![ValueLabelEntry {
@@ -423,7 +427,9 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
             label: "no".to_owned(),
         }],
     };
-    document.insert_value_label_table(&unrelated);
+    document
+        .insert_value_label_table(unrelated.clone())
+        .expect("unique value-label table");
     let labelled_field = || {
         Some(ArrowFieldDocument {
             value_labels: Some(table.name.clone()),
@@ -440,6 +446,11 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
             },
             ArrowWriteColumn {
                 name: "second".to_owned(),
+                field: labelled_field(),
+                array: Arc::new(Float64Array::from(vec![1.0])),
+            },
+            ArrowWriteColumn {
+                name: "third".to_owned(),
                 field: labelled_field(),
                 array: Arc::new(Float64Array::from(vec![1.0])),
             },
@@ -467,6 +478,8 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
 
     assert_eq!(result.columns.len(), 1);
     assert_eq!(result.columns[0].name, "second");
+    // Counts stop at the private/shared decision threshold; a third source
+    // reference cannot change how the R bridge restores identity.
     assert_eq!(
         result.value_label_reference_counts.get("shared_answers"),
         Some(&2)
@@ -477,6 +490,131 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
     let dataset = result.dataset.expect("profile dataset");
     assert!(dataset.value_labels.contains_key("shared_answers"));
     assert!(!dataset.value_labels.contains_key("unrelated_answers"));
+}
+
+#[test]
+fn dataset_documents_reject_duplicate_value_label_table_names() {
+    let first = ValueLabelTable {
+        name: "answers".to_owned(),
+        entries: vec![ValueLabelEntry {
+            value: 1,
+            missing_tag: None,
+            label: "yes".to_owned(),
+        }],
+    };
+    let duplicate = ValueLabelTable {
+        name: first.name.clone(),
+        entries: vec![ValueLabelEntry {
+            value: 0,
+            missing_tag: None,
+            label: "no".to_owned(),
+        }],
+    };
+    let mut document = DatasetDocument::default();
+    document
+        .insert_value_label_table(first.clone())
+        .expect("first table is unique");
+    let error = document
+        .insert_value_label_table(duplicate)
+        .expect_err("duplicate table names are rejected");
+    assert!(error
+        .to_string()
+        .contains("duplicate value-label table name"));
+    assert_eq!(document.value_label_table("answers"), Some(first));
+}
+
+#[test]
+fn projected_reads_ignore_invalid_unselected_value_label_references() {
+    let mut selected = Field::new("selected", DataType::Float64, true);
+    selected.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"value_labels":"answers"}"#.to_owned(),
+    )]));
+    let mut invalid = Field::new("invalid", DataType::Int32, true);
+    invalid.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"storage":"byte","missing":"sentinel","value_labels":"answers"}"#
+            .to_owned(),
+    )]));
+    let schema = Arc::new(
+        Schema::new(vec![selected, invalid]).with_metadata(HashMap::from([
+            (ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned()),
+            (
+                "dtatools:dataset".to_owned(),
+                r#"{"version":0,"value_labels":{"answers":[{"value":1,"label":"yes"}]}}"#
+                    .to_owned(),
+            ),
+        ])),
+    );
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![
+            Arc::new(Float64Array::from(vec![1.0])) as ArrayRef,
+            Arc::new(Int32Array::from(vec![1])) as ArrayRef,
+        ],
+    )
+    .expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let result = read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("invalid unselected field metadata is discarded");
+    assert_eq!(result.value_label_reference_counts.get("answers"), Some(&1));
+}
+
+#[test]
+fn projected_reads_validate_but_do_not_retain_unselected_value_label_tables() {
+    let mut selected = Field::new("selected", DataType::Float64, true);
+    selected.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"value_labels":"selected"}"#.to_owned(),
+    )]));
+    let schema = Arc::new(
+        Schema::new(vec![selected]).with_metadata(HashMap::from([
+            (ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned()),
+            (
+                "dtatools:dataset".to_owned(),
+                r#"{"version":0,"value_labels":{"selected":[{"value":1,"label":"yes"}],"unselected":[{"value":1,"tag":".a","label":"bad"}]}}"#
+                    .to_owned(),
+            ),
+        ])),
+    );
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![Arc::new(Float64Array::from(vec![1.0])) as ArrayRef],
+    )
+    .expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let error = read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("malformed unselected registry entries remain malformed");
+    assert!(
+        error.to_string().contains("must contain exactly one"),
+        "{error}"
+    );
 }
 
 #[test]

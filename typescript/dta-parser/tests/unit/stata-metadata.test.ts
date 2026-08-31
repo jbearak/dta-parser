@@ -16,7 +16,7 @@ import {
     StataMetadataCollector,
     type StataMetadataTarget,
 } from '../../src/stata-metadata';
-import type { VariableInfo } from '../../src/types';
+import type { DtaMetadata, VariableInfo } from '../../src/types';
 
 interface CharacteristicRecord {
     target: string;
@@ -55,7 +55,79 @@ function variable(name: string): VariableInfo {
     };
 }
 
+function oldVariable(name: string): VariableInfo {
+    return {
+        name,
+        type: 'byte',
+        type_code: 65530,
+        format: '%8.0g',
+        label: '',
+        value_label_name: '',
+        byte_width: 1,
+        byte_offset: 0,
+    };
+}
+
 describe('Stata metadata accessors', () => {
+    it('normalizes omitted metadata and legacy string-note arrays', () => {
+        const omitted: StataMetadataTarget = {};
+        setStataNote(omitted, 3, 'three');
+        setStataCharacteristic(omitted, 'source', 'survey');
+        expect(listStataNotes(omitted)).toEqual([
+            { number: 3, text: 'three' },
+        ]);
+        expect(listStataCharacteristics(omitted)).toEqual([
+            { name: 'source', value: 'survey' },
+        ]);
+
+        const legacy: StataMetadataTarget = {
+            notes: ['first', 'second'],
+        };
+        expect(listStataNotes(legacy)).toEqual([
+            { number: 1, text: 'first' },
+            { number: 2, text: 'second' },
+        ]);
+        expect(addStataNote(legacy, 'third')).toBe(3);
+        expect(legacy.notes).toEqual([
+            { number: 1, text: 'first' },
+            { number: 2, text: 'second' },
+            { number: 3, text: 'third' },
+        ]);
+
+        const dataset: StataMetadataTarget = {};
+        const variables = [oldVariable('x')];
+        applyCharacteristicRecords([
+            { target: 'x', name: 'note2', value: 'variable' },
+            { target: 'x', name: 'role', value: 'id' },
+        ], dataset, variables);
+        expect(listStataNotes(variables[0])).toEqual([
+            { number: 2, text: 'variable' },
+        ]);
+        expect(listStataCharacteristics(variables[0])).toEqual([
+            { name: 'role', value: 'id' },
+        ]);
+
+        const oldMetadata: DtaMetadata = {
+            format_version: 118,
+            byte_order: 'LSF',
+            nvar: 1,
+            nobs: 0,
+            dataset_label: '',
+            notes: ['legacy dataset note'],
+            variables,
+            section_offsets: {
+                stata_data: 0, map: 0, variable_types: 0, varnames: 0,
+                sortlist: 0, formats: 0, value_label_names: 0,
+                variable_labels: 0, characteristics: 0, data: 0,
+                strls: 0, value_labels: 0, stata_data_close: 0,
+                end_of_file: 0,
+            },
+            obs_length: 1,
+        };
+        expect(listStataNotes(oldMetadata)).toEqual([
+            { number: 1, text: 'legacy dataset note' },
+        ]);
+    });
     it('preserves note gaps, empty text, copies, and explicit renumbering', () => {
         const target = metadata();
         setStataNote(target, 4, 'four');

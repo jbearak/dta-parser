@@ -6,7 +6,7 @@ export { parse_value_labels } from './value-labels';
 export { apply_display_format } from './display-format';
 export { addStataNote, dropStataCharacteristics, dropStataNotes, getStataCharacteristic, getStataNote, listStataCharacteristics, listStataNotes, renumberStataNotes, setStataCharacteristic, setStataNote, } from './stata-metadata';
 export type { StataMetadataTarget } from './stata-metadata';
-export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, StataCharacteristic, StataNote, } from './types';
+export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, ParsedDtaMetadata, ParsedVariableInfo, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, StataCharacteristic, StataNote, } from './types';
 export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
 export { resolve_text_encoding } from './text-encoding';
 export { is_legacy_format } from './types';

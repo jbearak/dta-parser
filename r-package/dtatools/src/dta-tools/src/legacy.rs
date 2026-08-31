@@ -218,9 +218,7 @@ fn scan_expansion_fields_ordered(
     layout: LegacyLayout,
     variables: &[VariableInfo],
 ) -> Result<(usize, Option<CharacteristicCollector>), DtaError> {
-    walk_expansion_fields(bytes, start, byte_order, layout, |_, _, _| Ok(()))?;
-    let mut collector = None;
-    let mut variable_indexes = VariableTargetIndexes::new(variables);
+    let mut characteristic_records = Vec::new();
     let data_offset = walk_expansion_fields(
         bytes,
         start,
@@ -228,34 +226,47 @@ fn scan_expansion_fields_ordered(
         layout,
         |data_type, cursor, payload| {
             if data_type == 1 && payload.len() >= 2 * layout.varname_width {
-                let (variable, remainder) = payload.split_at(layout.varname_width);
-                let (characteristic, value) = remainder.split_at(layout.varname_width);
-                validate_raw_value_length(
-                    value.len(),
-                    cursor + 2 * layout.varname_width,
-                    "legacy characteristic value",
-                )?;
-                let value = validate_raw_value_bytes(
-                    value,
-                    cursor + 2 * layout.varname_width,
-                    "legacy characteristic value",
-                )?;
-                let target = encoding.decode(field_bytes(variable));
-                let name = encoding.decode(field_bytes(characteristic));
-                if let Some(accepted) = classify_characteristic(
-                    &target,
-                    name,
-                    cursor + layout.varname_width,
-                    |target| variable_indexes.resolve(target),
-                )? {
-                    collector
-                        .get_or_insert_with(CharacteristicCollector::default)
-                        .push(accepted, encoding.decode(value));
-                }
+                characteristic_records.try_reserve(1).map_err(|_| {
+                    DtaError::ArithmeticOverflow("legacy characteristic framing plan")
+                })?;
+                characteristic_records.push((cursor, payload.len()));
             }
             Ok(())
         },
     )?;
+    let mut collector = None;
+    let mut variable_indexes = VariableTargetIndexes::new(variables);
+    for (cursor, payload_length) in characteristic_records {
+        let payload = slice_at(
+            bytes,
+            cursor,
+            payload_length,
+            "legacy expansion-field payload",
+        )?;
+        let (variable, remainder) = payload.split_at(layout.varname_width);
+        let (characteristic, value) = remainder.split_at(layout.varname_width);
+        validate_raw_value_length(
+            value.len(),
+            cursor + 2 * layout.varname_width,
+            "legacy characteristic value",
+        )?;
+        let value = validate_raw_value_bytes(
+            value,
+            cursor + 2 * layout.varname_width,
+            "legacy characteristic value",
+        )?;
+        let target = encoding.decode(field_bytes(variable));
+        let name = encoding.decode(field_bytes(characteristic));
+        if let Some(accepted) =
+            classify_characteristic(&target, name, cursor + layout.varname_width, |target| {
+                variable_indexes.resolve(target)
+            })?
+        {
+            collector
+                .get_or_insert_with(CharacteristicCollector::default)
+                .push(accepted, encoding.decode(value));
+        }
+    }
     Ok((data_offset, collector))
 }
 

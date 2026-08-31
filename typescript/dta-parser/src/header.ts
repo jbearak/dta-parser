@@ -13,6 +13,10 @@
 import type {
     FormatVersion,
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
+    StataCharacteristic,
+    StataNote,
     VariableInfo,
     SectionOffsets,
 } from './types';
@@ -607,7 +611,7 @@ function parse_fixed_string_section(
 export function parse_metadata(
     buffer: ArrayBuffer,
     options: TextEncodingOptions = {}
-): DtaMetadata {
+): ParsedDtaMetadata {
     return parse_metadata_from_header(
         buffer, parse_modern_metadata_header(buffer, options)
     );
@@ -617,7 +621,7 @@ export function parse_metadata(
 export function parse_metadata_from_header(
     buffer: ArrayBuffer,
     header: ModernMetadataHeader
-): DtaMetadata {
+): ParsedDtaMetadata {
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer);
     const {
@@ -664,7 +668,7 @@ export function parse_metadata_from_header(
     // 13. Build VariableInfo array with byte widths and
     //     cumulative offsets
     let my_running_offset = 0;
-    const the_variables: VariableInfo[] = [];
+    const the_variables: ParsedVariableInfo[] = [];
     for (let i = 0; i < nvar; i++) {
         const my_code = the_type_codes[i];
         const my_width = byte_width_for_type_code(
@@ -687,8 +691,8 @@ export function parse_metadata_from_header(
         my_running_offset += my_width;
     }
 
-    const notes: DtaMetadata['notes'] = [];
-    const characteristics: DtaMetadata['characteristics'] = [];
+    const notes: StataNote[] = [];
+    const characteristics: StataCharacteristic[] = [];
     parse_characteristics(
         bytes, view, little_endian, section_offsets,
         my_widths.varname, my_decoder,

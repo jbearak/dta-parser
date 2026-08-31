@@ -32,8 +32,10 @@ export interface VariableInfo {
     format: string;
     label: string;
     value_label_name: string;
-    notes: StataNote[];
-    characteristics: StataCharacteristic[];
+    /** Numbered notes. Omitted and legacy string arrays remain accepted. */
+    notes?: StataNote[] | string[];
+    /** Arbitrary user characteristics. Omitted means none. */
+    characteristics?: StataCharacteristic[];
     byte_width: number;
     byte_offset: number;
 }
@@ -79,10 +81,23 @@ export interface DtaMetadata {
     nvar: number;
     nobs: number;
     dataset_label: string;
-    notes: StataNote[];
-    characteristics: StataCharacteristic[];
+    /** Numbered notes. Omitted and legacy string arrays remain accepted. */
+    notes?: StataNote[] | string[];
+    /** Arbitrary user characteristics. Omitted means none. */
+    characteristics?: StataCharacteristic[];
     variables: VariableInfo[];
     section_offsets: SectionOffsets;
     obs_length: number;
+}
+/** Canonical variable shape returned by this package's parsers. */
+export interface ParsedVariableInfo extends VariableInfo {
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
+}
+/** Canonical metadata shape returned by this package's parsers. */
+export interface ParsedDtaMetadata extends DtaMetadata {
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
+    variables: ParsedVariableInfo[];
 }
 //# sourceMappingURL=types.d.ts.map
