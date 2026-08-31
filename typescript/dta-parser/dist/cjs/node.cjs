@@ -363,6 +363,7 @@ function text_decoder(encoding) {
 // src/stata-metadata.ts
 var NOTE_NAME = /^note([0-9]+)$/;
 var MAX_STATA_METADATA_VALUE_BYTES = 67784;
+var TEXT_ENCODER = new TextEncoder();
 function noteNumber(name) {
   const match = NOTE_NAME.exec(name);
   if (match === null) return null;
@@ -372,22 +373,35 @@ function noteNumber(name) {
 function reservedCharacteristicName(name) {
   return NOTE_NAME.test(name) || name === "_lang_list" || name === "_lang_c" || name.startsWith("_lang_v_") || name.startsWith("_lang_l_");
 }
+function isRetainedStataCharacteristicName(name) {
+  return noteNumber(name) !== null || !reservedCharacteristicName(name);
+}
 var StataMetadataCollector = class {
-  scopes;
+  dataset;
+  variables;
   targetIndexes;
-  indexes;
+  indexes = /* @__PURE__ */ new Map();
   constructor(dataset, variables) {
-    this.scopes = [dataset, ...variables];
-    this.targetIndexes = /* @__PURE__ */ new Map([["_dta", 0]]);
-    variables.forEach((variable, index) => {
-      this.targetIndexes.set(variable.name, index + 1);
-    });
-    this.indexes = this.scopes.map(() => void 0);
+    this.dataset = dataset;
+    this.variables = variables;
+  }
+  targetIndex(target) {
+    if (target === "_dta") return 0;
+    if (this.targetIndexes === void 0) {
+      this.targetIndexes = /* @__PURE__ */ new Map();
+      this.variables.forEach((variable, index) => {
+        this.targetIndexes.set(variable.name, index + 1);
+      });
+    }
+    return this.targetIndexes.get(target);
+  }
+  scope(scopeIndex) {
+    return scopeIndex === 0 ? this.dataset : this.variables[scopeIndex - 1];
   }
   scopeIndexes(scopeIndex) {
-    const existing = this.indexes[scopeIndex];
+    const existing = this.indexes.get(scopeIndex);
     if (existing !== void 0) return existing;
-    const scope = this.scopes[scopeIndex];
+    const scope = this.scope(scopeIndex);
     const indexes = {
       notes: new Map(
         scope.notes.map((note, index) => [note.number, index])
@@ -396,18 +410,15 @@ var StataMetadataCollector = class {
         scope.characteristics.map((item, index) => [item.name, index])
       )
     };
-    this.indexes[scopeIndex] = indexes;
+    this.indexes.set(scopeIndex, indexes);
     return indexes;
   }
   classify(target, name) {
-    const scopeIndex = this.targetIndexes.get(target);
-    if (scopeIndex === void 0) return null;
     const number = noteNumber(name);
-    if (number === null && reservedCharacteristicName(name)) return null;
+    if (!isRetainedStataCharacteristicName(name)) return null;
+    const scopeIndex = this.targetIndex(target);
+    if (scopeIndex === void 0) return null;
     return { scopeIndex, name, noteNumber: number };
-  }
-  accepts(target, name) {
-    return this.classify(target, name) !== null;
   }
   push(record) {
     this.pushLazy(record.target, record.name, () => record.value);
@@ -419,7 +430,7 @@ var StataMetadataCollector = class {
     return true;
   }
   pushAccepted(accepted, value) {
-    const scope = this.scopes[accepted.scopeIndex];
+    const scope = this.scope(accepted.scopeIndex);
     const indexes = this.scopeIndexes(accepted.scopeIndex);
     if (accepted.noteNumber !== null) {
       const existing2 = indexes.notes.get(accepted.noteNumber);
@@ -440,8 +451,10 @@ var StataMetadataCollector = class {
     }
   }
   finish() {
-    for (const scope of this.scopes) {
-      scope.notes.sort((left, right) => left.number - right.number);
+    for (const scopeIndex of this.indexes.keys()) {
+      this.scope(scopeIndex).notes.sort(
+        (left, right) => left.number - right.number
+      );
     }
   }
 };
@@ -450,13 +463,26 @@ function validNoteNumber(number) {
     throw new Error("A note number must be an integer from 1 through 9999");
   }
 }
+function codePointLengthAtMost(value, limit) {
+  let count = 0;
+  for (const _character of value) {
+    count++;
+    if (count > limit) return false;
+  }
+  return true;
+}
+function utf8LengthAtMost(value, limit) {
+  const output = new Uint8Array(limit + 1);
+  const encoded = TEXT_ENCODER.encodeInto(value, output);
+  return encoded.read === value.length && encoded.written <= limit;
+}
 function validCharacteristicName(name) {
-  if (!/^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) || [...name].length > 32 || new TextEncoder().encode(name).length > 128 || reservedCharacteristicName(name)) {
+  if (!/^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) || !codePointLengthAtMost(name, 32) || !utf8LengthAtMost(name, 128) || reservedCharacteristicName(name)) {
     throw new Error("Invalid or reserved Stata characteristic name");
   }
 }
 function validMetadataValue(value) {
-  if (typeof value !== "string" || value.includes("\0") || new TextEncoder().encode(value).length > MAX_STATA_METADATA_VALUE_BYTES) {
+  if (typeof value !== "string" || value.includes("\0") || !utf8LengthAtMost(value, MAX_STATA_METADATA_VALUE_BYTES)) {
     throw new Error("Invalid or over-limit Stata metadata value");
   }
 }
@@ -651,13 +677,15 @@ function parse_characteristics(bytes, view, little_endian, section_offsets, fiel
     if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
       throw new Error("Characteristic value exceeds the 67,784-byte limit");
     }
-    collector ??= new StataMetadataCollector(dataset, variables);
-    collector.pushLazy(target, name, () => read_fixed_string(
-      bytes,
-      pos + names_length,
-      valueLength,
-      decoder
-    ));
+    if (isRetainedStataCharacteristicName(name)) {
+      collector ??= new StataMetadataCollector(dataset, variables);
+      collector.pushLazy(target, name, () => read_fixed_string(
+        bytes,
+        pos + names_length,
+        valueLength,
+        decoder
+      ));
+    }
     pos += length;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
       throw new Error("Missing </ch> tag");
@@ -854,31 +882,30 @@ function parse_section_map(bytes, view, little_endian, start) {
   }
   return my_offsets;
 }
-function modern_metadata_buffer_size(buffer, options = {}) {
+function parse_modern_metadata_header(buffer, options = {}) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const format_version = detect_format_version(bytes);
-  const decoder = text_decoder(resolve_text_encoding(
-    format_version,
-    options.encoding
-  ));
+  const text_encoding = resolve_text_encoding(format_version, options.encoding);
+  const decoder = text_decoder(text_encoding);
+  const widths = FIELD_WIDTHS[format_version];
   const { byte_order, end: after_byteorder } = parse_byte_order(bytes, 0);
   const little_endian = byte_order === "LSF";
-  const { end: after_k } = parse_nvar(
+  const { nvar, end: after_k } = parse_nvar(
     bytes,
     view,
     little_endian,
     format_version,
     after_byteorder
   );
-  const { end: after_n } = parse_nobs(
+  const { nobs, end: after_n } = parse_nobs(
     bytes,
     view,
     little_endian,
     format_version,
     after_k
   );
-  const { end: after_label } = parse_dataset_label(
+  const { dataset_label, end: after_label } = parse_dataset_label(
     bytes,
     view,
     little_endian,
@@ -888,12 +915,24 @@ function modern_metadata_buffer_size(buffer, options = {}) {
   );
   const timestamp_close = find_bytes(bytes, TAG_TIMESTAMP_CLOSE, after_label);
   if (timestamp_close === -1) throw new Error("Missing </timestamp> tag");
-  return parse_section_map(
+  const section_offsets = parse_section_map(
     bytes,
     view,
     little_endian,
     timestamp_close
-  ).data;
+  );
+  return {
+    format_version,
+    text_encoding,
+    decoder,
+    widths,
+    byte_order,
+    little_endian,
+    nvar,
+    nobs,
+    dataset_label,
+    section_offsets
+  };
 }
 function parse_variable_types(bytes, view, little_endian, offsets, nvar) {
   const my_tag_pos = find_bytes(
@@ -953,54 +992,21 @@ function parse_fixed_string_section(bytes, tag, search_start, nvar, field_width,
   }
   return the_strings;
 }
-function parse_metadata(buffer, options = {}) {
+function parse_metadata_from_header(buffer, header) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
-  const format_version = detect_format_version(bytes);
-  const text_encoding = resolve_text_encoding(
+  const {
     format_version,
-    options.encoding
-  );
-  const my_decoder = text_decoder(text_encoding);
-  const my_widths = FIELD_WIDTHS[format_version];
-  const { byte_order, end: my_after_byteorder } = parse_byte_order(bytes, 0);
-  const little_endian = byte_order === "LSF";
-  const { nvar, end: my_after_k } = parse_nvar(
-    bytes,
-    view,
+    text_encoding,
+    decoder: my_decoder,
+    widths: my_widths,
+    byte_order,
     little_endian,
-    format_version,
-    my_after_byteorder
-  );
-  const { nobs, end: my_after_n } = parse_nobs(
-    bytes,
-    view,
-    little_endian,
-    format_version,
-    my_after_k
-  );
-  const { dataset_label, end: my_after_label } = parse_dataset_label(
-    bytes,
-    view,
-    little_endian,
-    format_version,
-    my_after_n,
-    my_decoder
-  );
-  const my_ts_close = find_bytes(
-    bytes,
-    TAG_TIMESTAMP_CLOSE,
-    my_after_label
-  );
-  if (my_ts_close === -1) {
-    throw new Error("Missing </timestamp> tag");
-  }
-  const section_offsets = parse_section_map(
-    bytes,
-    view,
-    little_endian,
-    my_ts_close
-  );
+    nvar,
+    nobs,
+    dataset_label,
+    section_offsets
+  } = header;
   const the_type_codes = parse_variable_types(
     bytes,
     view,
@@ -1198,6 +1204,7 @@ function legacy_metadata_fixed_size(nvar, format_version) {
 }
 function scan_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder, dataset, variables) {
   let pos = start;
+  const bytes = bytes_from_view(view);
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
   let collector = null;
@@ -1216,15 +1223,14 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
       throw new Error("Truncated legacy expansion field");
     }
     if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
-      collector ??= new StataMetadataCollector(dataset, variables);
       const my_variable = read_fixed_string2(
-        bytes_from_view(view),
+        bytes,
         pos,
         layout.varname_width,
         decoder
       );
       const my_characteristic = read_fixed_string2(
-        bytes_from_view(view),
+        bytes,
         pos + layout.varname_width,
         layout.varname_width,
         decoder
@@ -1233,12 +1239,19 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
       if (my_value_length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
         throw new Error("Characteristic value exceeds the 67,784-byte limit");
       }
-      collector.pushLazy(my_variable, my_characteristic, () => read_fixed_string2(
-        bytes_from_view(view),
-        pos + 2 * layout.varname_width,
-        my_value_length,
-        decoder
-      ));
+      if (isRetainedStataCharacteristicName(my_characteristic)) {
+        collector ??= new StataMetadataCollector(dataset, variables);
+        collector.pushLazy(
+          my_variable,
+          my_characteristic,
+          () => read_fixed_string2(
+            bytes,
+            pos + 2 * layout.varname_width,
+            my_value_length,
+            decoder
+          )
+        );
+      }
     }
     pos += my_len;
   }
@@ -2642,6 +2655,7 @@ function format_tq(quarters_since_epoch) {
 
 // src/node.ts
 var MODERN_MAP_READ_SIZE = 128 * 1024;
+var LEGACY_SCAN_BLOCK_SIZE = 64 * 1024;
 var MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 var MAX_MODERN_METADATA_SIZE = 64 * 1024 * 1024;
 var MAX_READ_RETRIES = 2;
@@ -3162,14 +3176,30 @@ function read_legacy_metadata(fd, file_size, options) {
     throw new Error("Truncated legacy metadata");
   }
   let my_position = my_expansion_start;
+  const my_scan_buffer = Buffer.allocUnsafe(LEGACY_SCAN_BLOCK_SIZE);
+  let my_scan_start = -1;
+  let my_scan_length = 0;
   while (true) {
     if (my_position + my_field_header_size > file_size) {
       throw new Error("Missing legacy expansion-field terminator");
     }
-    const my_field_header = read_range(fd, my_position, my_field_header_size);
-    const my_field_view = new DataView(my_field_header);
-    const my_data_type = my_field_view.getUint8(0);
-    const my_length = layout.expansion_length_width === 2 ? my_field_view.getInt16(1, my_little_endian) : my_field_view.getInt32(1, my_little_endian);
+    if (my_position < my_scan_start || my_position + my_field_header_size > my_scan_start + my_scan_length) {
+      my_scan_start = my_position;
+      my_scan_length = Math.min(
+        LEGACY_SCAN_BLOCK_SIZE,
+        file_size - my_scan_start
+      );
+      read_bytes_into(
+        fd,
+        my_scan_buffer,
+        0,
+        my_scan_length,
+        my_scan_start
+      );
+    }
+    const my_header_offset = my_position - my_scan_start;
+    const my_data_type = my_scan_buffer[my_header_offset];
+    const my_length = layout.expansion_length_width === 2 ? my_little_endian ? my_scan_buffer.readInt16LE(my_header_offset + 1) : my_scan_buffer.readInt16BE(my_header_offset + 1) : my_little_endian ? my_scan_buffer.readInt32LE(my_header_offset + 1) : my_scan_buffer.readInt32BE(my_header_offset + 1);
     my_position += my_field_header_size;
     if (my_data_type === 0 && my_length === 0) break;
     if (my_data_type === 0 || my_length < 0) {
@@ -3192,9 +3222,9 @@ function read_modern_metadata(fd, file_size, options) {
     0,
     Math.min(file_size, MODERN_MAP_READ_SIZE)
   );
-  let metadata_size;
+  let header;
   try {
-    metadata_size = modern_metadata_buffer_size(map_buffer, options);
+    header = parse_modern_metadata_header(map_buffer, options);
   } catch (error) {
     if (error instanceof Error && error.message.includes("unrecognized format signature")) {
       throw new Error(
@@ -3203,14 +3233,29 @@ function read_modern_metadata(fd, file_size, options) {
     }
     throw error;
   }
+  const metadata_size = header.section_offsets.data;
   if (metadata_size > MAX_MODERN_METADATA_SIZE) {
     throw new Error("Modern metadata exceeds 64 MiB safety limit");
   }
   if (metadata_size > file_size) {
     throw new Error("Truncated modern metadata");
   }
-  const metadata_buffer = metadata_size <= map_buffer.byteLength ? map_buffer : read_range(fd, 0, metadata_size);
-  return parse_metadata(metadata_buffer, options);
+  let metadata_buffer;
+  if (metadata_size <= map_buffer.byteLength) {
+    metadata_buffer = map_buffer.slice(0, metadata_size);
+  } else {
+    metadata_buffer = new ArrayBuffer(metadata_size);
+    const metadata_bytes = new Uint8Array(metadata_buffer);
+    metadata_bytes.set(new Uint8Array(map_buffer));
+    read_bytes_into(
+      fd,
+      metadata_bytes,
+      map_buffer.byteLength,
+      metadata_size - map_buffer.byteLength,
+      map_buffer.byteLength
+    );
+  }
+  return parse_metadata_from_header(metadata_buffer, header);
 }
 function read_value_labels(fd, metadata) {
   const my_section_start = metadata.section_offsets.value_labels;
@@ -3239,28 +3284,31 @@ function read_data_rows(fd, metadata, start, count) {
 }
 function read_bytes(fd, offset, length) {
   const my_buffer = Buffer.allocUnsafe(length);
+  read_bytes_into(fd, my_buffer, 0, length, offset);
+  return my_buffer;
+}
+function read_bytes_into(fd, target, target_offset, length, file_offset) {
   let my_total_read = 0;
   let my_attempts = 0;
   while (my_total_read < length) {
     const my_bytes_read = fs.readSync(
       fd,
-      my_buffer,
-      my_total_read,
+      target,
+      target_offset + my_total_read,
       length - my_total_read,
-      offset + my_total_read
+      file_offset + my_total_read
     );
     if (my_bytes_read === 0) {
       my_attempts++;
       if (my_attempts > MAX_READ_RETRIES) {
         throw new Error(
-          `Unexpected EOF while reading ${length} bytes at offset ${offset}`
+          `Unexpected EOF while reading ${length} bytes at offset ${file_offset}`
         );
       }
       continue;
     }
     my_total_read += my_bytes_read;
   }
-  return my_buffer;
 }
 function read_range(fd, offset, length) {
   const my_bytes = read_bytes(fd, offset, length);

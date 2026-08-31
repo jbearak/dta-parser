@@ -42,6 +42,7 @@ import {
 } from './text-encoding';
 import {
     MAX_STATA_METADATA_VALUE_BYTES,
+    isRetainedStataCharacteristicName,
     StataMetadataCollector,
 } from './stata-metadata';
 
@@ -126,6 +127,7 @@ function scan_expansion_fields(
     variables: VariableInfo[]
 ): number {
     let pos = start;
+    const bytes = bytes_from_view(view);
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
     let collector: StataMetadataCollector | null = null;
@@ -151,24 +153,30 @@ function scan_expansion_fields(
         }
 
         if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
-            collector ??= new StataMetadataCollector(dataset, variables);
             const my_variable = read_fixed_string(
-                bytes_from_view(view), pos, layout.varname_width, decoder
+                bytes, pos, layout.varname_width, decoder
             );
             const my_characteristic = read_fixed_string(
-                bytes_from_view(view), pos + layout.varname_width,
+                bytes, pos + layout.varname_width,
                 layout.varname_width, decoder
             );
             const my_value_length = my_len - 2 * layout.varname_width;
             if (my_value_length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
                 throw new Error('Characteristic value exceeds the 67,784-byte limit');
             }
-            collector.pushLazy(my_variable, my_characteristic, () => read_fixed_string(
-                bytes_from_view(view),
-                pos + 2 * layout.varname_width,
-                my_value_length,
-                decoder
-            ));
+            if (isRetainedStataCharacteristicName(my_characteristic)) {
+                collector ??= new StataMetadataCollector(dataset, variables);
+                collector.pushLazy(
+                    my_variable,
+                    my_characteristic,
+                    () => read_fixed_string(
+                        bytes,
+                        pos + 2 * layout.varname_width,
+                        my_value_length,
+                        decoder
+                    )
+                );
+            }
         }
 
         pos += my_len;

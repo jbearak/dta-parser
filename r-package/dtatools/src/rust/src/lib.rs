@@ -868,40 +868,47 @@ unsafe fn attach_variable_attributes(
     table: Option<&ValueLabelTable>,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
-    attach_variable_attributes_parts(
-        vector,
-        &variable.dta_type,
-        &variable.format,
-        &variable.label,
-        &variable.notes,
-        &variable.characteristics,
-        table,
-        guard,
-    )
+    attach_variable_attribute_view(vector, VariableAttributeView::from(variable), table, guard)
 }
 
-#[allow(clippy::too_many_arguments)]
-unsafe fn attach_variable_attributes_parts(
+#[derive(Clone, Copy)]
+struct VariableAttributeView<'a> {
+    dta_type: &'a DtaType,
+    format: &'a str,
+    label: &'a str,
+    notes: &'a [StataNote],
+    characteristics: &'a [StataCharacteristic],
+}
+
+impl<'a> From<&'a VariableInfo> for VariableAttributeView<'a> {
+    fn from(variable: &'a VariableInfo) -> Self {
+        Self {
+            dta_type: &variable.dta_type,
+            format: &variable.format,
+            label: &variable.label,
+            notes: &variable.notes,
+            characteristics: &variable.characteristics,
+        }
+    }
+}
+
+unsafe fn attach_variable_attribute_view(
     vector: Sexp,
-    dta_type: &DtaType,
-    format: &str,
-    label: &str,
-    notes: &[StataNote],
-    characteristics: &[StataCharacteristic],
+    attributes: VariableAttributeView<'_>,
     table: Option<&ValueLabelTable>,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     check_interrupt()?;
-    attach_stata_metadata(vector, notes, characteristics, guard)?;
-    if !label.is_empty() {
-        let value = scalar_string(label, guard)?;
+    attach_stata_metadata(vector, attributes.notes, attributes.characteristics, guard)?;
+    if !attributes.label.is_empty() {
+        let value = scalar_string(attributes.label, guard)?;
         set_attr(vector, "label", value)?;
     }
-    if !format.is_empty() {
-        let value = scalar_string(format, guard)?;
+    if !attributes.format.is_empty() {
+        let value = scalar_string(attributes.format, guard)?;
         set_attr(vector, "format.stata", value)?;
     }
-    let string_storage = match dta_type {
+    let string_storage = match attributes.dta_type {
         DtaType::FixedString(width) => Some(format!("str{width}")),
         DtaType::StrL => Some("strL".to_owned()),
         _ => None,
@@ -915,7 +922,7 @@ unsafe fn attach_variable_attributes_parts(
         set_attr(vector, "labels", labels)?;
     }
 
-    let storage = match dta_type {
+    let storage = match attributes.dta_type {
         DtaType::Byte => Some(("byte", "stata_byte")),
         DtaType::Int => Some(("int", "stata_int")),
         DtaType::Long => Some(("long", "stata_long")),
@@ -928,7 +935,7 @@ unsafe fn attach_variable_attributes_parts(
         set_attr(vector, "stata.storage", storage_value)?;
     }
 
-    match (temporal_kind(format), storage) {
+    match (temporal_kind(attributes.format), storage) {
         (TemporalKind::Date, Some(_)) => {
             set_class(vector, &["stata_temporal", "stata_date", "Date"], guard)?;
         }

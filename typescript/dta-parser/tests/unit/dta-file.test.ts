@@ -470,6 +470,38 @@ describe('DtaFile', () => {
             }
         });
 
+        it('scans dense expansion headers through bounded read blocks', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const expansion = metadata.section_offsets.characteristics;
+            const recordCount = 50_000;
+            const records = Buffer.alloc(recordCount * 5 + 5);
+            for (let offset = 0; offset < recordCount * 5; offset += 5) {
+                records[offset] = 1;
+            }
+            const dense = Buffer.concat([
+                original.subarray(0, expansion),
+                records,
+                original.subarray(metadata.section_offsets.data),
+            ]);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'dense-expansions.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                fs.writeFileSync(filePath, dense);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.nobs).toBe(4);
+                expect(readSpy.mock.calls.length).toBeLessThan(100);
+            } finally {
+                readSpy.mockRestore();
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
         it('rejects truncated release-111 observations during open', async () => {
             const original = fs.readFileSync(V111_FIXTURE);
             const arrayBuffer = original.buffer.slice(
@@ -517,6 +549,35 @@ describe('DtaFile', () => {
                 expect(prefixReads).toEqual([original.length]);
             } finally {
                 readSpy.mockRestore();
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('does not resolve mapped metadata tags beyond the data boundary', async () => {
+            const original = Buffer.from(fs.readFileSync(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            ));
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_metadata(arrayBuffer);
+            const mapData = metadata.section_offsets.map + '<map>'.length;
+            const variableTypes = metadata.section_offsets.variable_types;
+            const injected = metadata.section_offsets.data + '<data>'.length;
+            const payloadLength = '<variable_types>'.length + metadata.nvar * 2;
+            original.copy(
+                original, injected, variableTypes, variableTypes + payloadLength
+            );
+            original.writeBigUInt64LE(BigInt(injected), mapData + 2 * 8);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v118-'));
+            const filePath = path.join(directory, 'post-data-metadata-tag.dta');
+            try {
+                fs.writeFileSync(filePath, original);
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Missing <variable_types> tag'
+                );
+            } finally {
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });

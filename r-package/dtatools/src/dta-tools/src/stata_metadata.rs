@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use unicode_general_category::{get_general_category, GeneralCategory};
 
@@ -94,12 +94,17 @@ pub(crate) fn valid_characteristic(name: &str, value: &str) -> bool {
         && valid_metadata_value(value)
 }
 
+struct PendingCharacteristic {
+    name: Arc<String>,
+    value: String,
+}
+
 #[derive(Default)]
 struct ScopeMetadata {
     notes: Vec<StataNote>,
-    characteristics: Vec<StataCharacteristic>,
+    characteristics: Vec<PendingCharacteristic>,
     note_indexes: HashMap<u32, usize>,
-    characteristic_indexes: HashMap<String, usize>,
+    characteristic_indexes: HashMap<Arc<String>, usize>,
 }
 
 impl ScopeMetadata {
@@ -118,17 +123,27 @@ impl ScopeMetadata {
             if let Some(index) = self.characteristic_indexes.get(&name).copied() {
                 self.characteristics[index].value = value;
             } else {
+                let name = Arc::new(name);
                 self.characteristic_indexes
-                    .insert(name.clone(), self.characteristics.len());
+                    .insert(Arc::clone(&name), self.characteristics.len());
                 self.characteristics
-                    .push(StataCharacteristic { name, value });
+                    .push(PendingCharacteristic { name, value });
             }
         }
     }
 
     fn finish(mut self) -> (Vec<StataNote>, Vec<StataCharacteristic>) {
         self.notes.sort_by_key(|note| note.number);
-        (self.notes, self.characteristics)
+        drop(self.characteristic_indexes);
+        let characteristics = self
+            .characteristics
+            .into_iter()
+            .map(|item| StataCharacteristic {
+                name: Arc::try_unwrap(item.name).unwrap_or_else(|shared| shared.as_ref().clone()),
+                value: item.value,
+            })
+            .collect();
+        (self.notes, characteristics)
     }
 }
 
@@ -142,64 +157,79 @@ pub(crate) struct AcceptedCharacteristic {
     key: MetadataKey,
 }
 
+/// Resolves variable targets lazily so dataset-only or rejected metadata does
+/// not clone or index every variable name in a wide file.
+pub(crate) struct VariableTargetIndexes<'a> {
+    variables: &'a [VariableInfo],
+    indexes: Option<HashMap<&'a str, usize>>,
+}
+
+impl<'a> VariableTargetIndexes<'a> {
+    pub(crate) fn new(variables: &'a [VariableInfo]) -> Self {
+        Self {
+            variables,
+            indexes: None,
+        }
+    }
+
+    pub(crate) fn resolve(&mut self, target: &str) -> Option<usize> {
+        self.indexes
+            .get_or_insert_with(|| {
+                self.variables
+                    .iter()
+                    .enumerate()
+                    .map(|(index, variable)| (variable.name.as_str(), index))
+                    .collect()
+            })
+            .get(target)
+            .copied()
+    }
+}
+
+/// Classifies a raw record before a collector is allocated or its value is
+/// decoded. The resolver is called only for an accepted variable-scoped key.
+pub(crate) fn classify_characteristic(
+    target: &str,
+    name: String,
+    resolve_variable: impl FnOnce(&str) -> Option<usize>,
+) -> Option<AcceptedCharacteristic> {
+    let key = if let Some(number) = note_index(name.as_bytes()) {
+        MetadataKey::Note(number)
+    } else if is_reserved_note_name(name.as_bytes()) || is_structural_characteristic(&name) {
+        return None;
+    } else {
+        MetadataKey::Characteristic(name)
+    };
+    let target_index = if target == "_dta" {
+        None
+    } else {
+        Some(resolve_variable(target)?)
+    };
+    Some(AcceptedCharacteristic { target_index, key })
+}
+
 /// Folds raw DTA characteristic records into their canonical scopes.
 ///
 /// Unknown targets, numeric note control records, and known structural keys
 /// are rejected before their values need to be decoded. Duplicate keys retain
 /// their first position and replace their value in constant expected time.
+#[derive(Default)]
 pub(crate) struct CharacteristicCollector {
     dataset: Option<Box<ScopeMetadata>>,
-    variables: Vec<Option<Box<ScopeMetadata>>>,
-    variable_indexes: HashMap<String, usize>,
+    variables: HashMap<usize, Box<ScopeMetadata>>,
 }
 
 impl CharacteristicCollector {
-    pub(crate) fn new(variables: &[VariableInfo]) -> Self {
-        Self::from_variable_names(variables.iter().map(|variable| variable.name.clone()))
-    }
-
-    pub(crate) fn from_variable_names(variable_names: impl IntoIterator<Item = String>) -> Self {
-        let mut variable_indexes = HashMap::new();
-        let mut variable_count = 0_usize;
-        for (index, name) in variable_names.into_iter().enumerate() {
-            variable_indexes.insert(name, index);
-            variable_count = index + 1;
-        }
-        Self {
-            dataset: None,
-            variables: (0..variable_count).map(|_| None).collect(),
-            variable_indexes,
-        }
-    }
-
-    fn target_index(&self, target: &str) -> Option<Option<usize>> {
-        if target == "_dta" {
-            Some(None)
-        } else {
-            self.variable_indexes.get(target).copied().map(Some)
-        }
-    }
-
-    pub(crate) fn classify(&self, target: &str, name: String) -> Option<AcceptedCharacteristic> {
-        let target_index = self.target_index(target)?;
-        let key = if let Some(number) = note_index(name.as_bytes()) {
-            MetadataKey::Note(number)
-        } else if is_reserved_note_name(name.as_bytes()) || is_structural_characteristic(&name) {
-            return None;
-        } else {
-            MetadataKey::Characteristic(name)
-        };
-        Some(AcceptedCharacteristic { target_index, key })
-    }
-
     pub(crate) fn push(&mut self, accepted: AcceptedCharacteristic, value: String) {
         match accepted.target_index {
             None => self
                 .dataset
                 .get_or_insert_with(Default::default)
                 .push(accepted.key, value),
-            Some(index) => self.variables[index]
-                .get_or_insert_with(Default::default)
+            Some(index) => self
+                .variables
+                .entry(index)
+                .or_default()
                 .push(accepted.key, value),
         }
     }
@@ -213,8 +243,8 @@ impl CharacteristicCollector {
         let (notes, characteristics) = self.dataset.unwrap_or_default().finish();
         *dataset_notes = notes;
         *dataset_characteristics = characteristics;
-        for (variable, metadata) in variables.iter_mut().zip(self.variables) {
-            if let Some(metadata) = metadata {
+        for (index, metadata) in self.variables {
+            if let Some(variable) = variables.get_mut(index) {
                 let (notes, characteristics) = metadata.finish();
                 variable.notes = notes;
                 variable.characteristics = characteristics;
@@ -259,12 +289,16 @@ mod tests {
             ("missing", "source", "ignored"),
         ]
         .into_iter();
-        let mut collector = CharacteristicCollector::new(&variables);
+        let mut collector = CharacteristicCollector::default();
+        let mut variable_indexes = VariableTargetIndexes::new(&variables);
         for (target, name, value) in records {
-            if let Some(accepted) = collector.classify(target, name.into()) {
+            if let Some(accepted) = classify_characteristic(target, name.into(), |target| {
+                variable_indexes.resolve(target)
+            }) {
                 collector.push(accepted, value.into());
             }
         }
+        drop(variable_indexes);
         collector.finish(
             &mut dataset_notes,
             &mut dataset_characteristics,
@@ -322,14 +356,30 @@ mod tests {
             byte_offset: 0,
         };
         let mut variables = vec![variable.clone(), variable];
-        let mut collector = CharacteristicCollector::new(&variables);
-        let accepted = collector
-            .classify("x", "role".into())
-            .expect("the duplicate target resolves");
+        let mut collector = CharacteristicCollector::default();
+        let mut variable_indexes = VariableTargetIndexes::new(&variables);
+        let accepted = classify_characteristic("x", "role".into(), |target| {
+            variable_indexes.resolve(target)
+        })
+        .expect("the duplicate target resolves");
         collector.push(accepted, "id".into());
+        drop(variable_indexes);
         collector.finish(&mut Vec::new(), &mut Vec::new(), &mut variables);
 
         assert!(variables[0].characteristics.is_empty());
         assert_eq!(variables[1].characteristics[0].value, "id");
+    }
+
+    #[test]
+    fn dataset_and_structural_records_do_not_build_variable_indexes() {
+        let dataset = classify_characteristic("_dta", "source".into(), |_| {
+            panic!("dataset metadata must not resolve variable names")
+        });
+        assert!(dataset.is_some());
+
+        let structural = classify_characteristic("x", "_lang_v_en".into(), |_| {
+            panic!("structural metadata must not resolve variable names")
+        });
+        assert!(structural.is_none());
     }
 }

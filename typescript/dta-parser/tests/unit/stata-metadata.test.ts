@@ -134,4 +134,21 @@ describe('DTA characteristic recovery', () => {
             { name: 'role', value: 'id' },
         ]);
     });
+
+    it('does not index variables for dataset or structural records', () => {
+        const dataset = metadata();
+        const unreadable = variable('x');
+        Object.defineProperty(unreadable, 'name', {
+            get(): never {
+                throw new Error('variable names should remain lazy');
+            },
+        });
+        applyCharacteristicRecords([
+            { target: '_dta', name: 'note1', value: 'dataset' },
+            { target: 'x', name: '_lang_v_en', value: 'structural' },
+        ], dataset, [unreadable]);
+        expect(dataset.notes).toEqual([
+            { number: 1, text: 'dataset' },
+        ]);
+    });
 });

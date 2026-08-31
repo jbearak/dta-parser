@@ -223,15 +223,7 @@ dta_merge <- function(x, y, by, relationship,
 
     result <- tibble::new_tibble(columns, nrow = length(merge_codes))
     dataset_label(result) <- dataset_label(x)
-    notes <- attr(x, "notes", exact = TRUE)
-    if (!is.null(notes)) attr(result, "notes") <- notes
-    note_numbers <- attr(x, "stata.note.numbers", exact = TRUE)
-    if (!is.null(note_numbers)) attr(result, "stata.note.numbers") <- note_numbers
-    characteristics <- attr(x, "stata.characteristics", exact = TRUE)
-    if (!is.null(characteristics)) {
-        attr(result, "stata.characteristics") <- characteristics
-    }
-    result
+    .copy_stata_metadata_attributes(x, result)
 }
 
 .resolve_merge_input <- function(value, side) {

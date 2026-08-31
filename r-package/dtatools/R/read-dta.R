@@ -293,18 +293,9 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     dataset_label <- attr(native, "label", exact = TRUE)
-    dataset_notes <- attr(native, "notes", exact = TRUE)
-    dataset_note_numbers <- attr(native, "stata.note.numbers", exact = TRUE)
-    dataset_characteristics <- attr(native, "stata.characteristics", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
-    if (!is.null(dataset_note_numbers)) {
-        attr(result, "stata.note.numbers") <- dataset_note_numbers
-    }
-    if (!is.null(dataset_characteristics)) {
-        attr(result, "stata.characteristics") <- dataset_characteristics
-    }
+    result <- .copy_stata_metadata_attributes(native, result)
     if (record_datasig) attr(result, "datasig") <- disk_signature
     result
 }

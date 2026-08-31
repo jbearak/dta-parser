@@ -31,6 +31,7 @@ import {
 } from './text-encoding';
 import {
     MAX_STATA_METADATA_VALUE_BYTES,
+    isRetainedStataCharacteristicName,
     StataMetadataCollector,
 } from './stata-metadata';
 
@@ -202,10 +203,12 @@ function parse_characteristics(
         if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
             throw new Error('Characteristic value exceeds the 67,784-byte limit');
         }
-        collector ??= new StataMetadataCollector(dataset, variables);
-        collector.pushLazy(target, name, () => read_fixed_string(
-            bytes, pos + names_length, valueLength, decoder
-        ));
+        if (isRetainedStataCharacteristicName(name)) {
+            collector ??= new StataMetadataCollector(dataset, variables);
+            collector.pushLazy(target, name, () => read_fixed_string(
+                bytes, pos + names_length, valueLength, decoder
+            ));
+        }
         pos += length;
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
             throw new Error('Missing </ch> tag');
@@ -448,33 +451,68 @@ function parse_section_map(
     return my_offsets;
 }
 
+type ModernFieldWidths = (typeof FIELD_WIDTHS)[keyof typeof FIELD_WIDTHS];
+
+export interface ModernMetadataHeader {
+    format_version: FormatVersion;
+    text_encoding: ReturnType<typeof resolve_text_encoding>;
+    decoder: DtaTextDecoder;
+    widths: ModernFieldWidths;
+    byte_order: 'MSF' | 'LSF';
+    little_endian: boolean;
+    nvar: number;
+    nobs: number;
+    dataset_label: string;
+    section_offsets: SectionOffsets;
+}
+
+/** Parse the reusable header and section-map state from a modern prefix. */
+export function parse_modern_metadata_header(
+    buffer: ArrayBuffer,
+    options: TextEncodingOptions = {}
+): ModernMetadataHeader {
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+    const format_version = detect_format_version(bytes);
+    const text_encoding = resolve_text_encoding(format_version, options.encoding);
+    const decoder = text_decoder(text_encoding);
+    const widths = FIELD_WIDTHS[format_version as 117 | 118 | 119];
+    const { byte_order, end: after_byteorder } = parse_byte_order(bytes, 0);
+    const little_endian = byte_order === 'LSF';
+    const { nvar, end: after_k } = parse_nvar(
+        bytes, view, little_endian, format_version, after_byteorder
+    );
+    const { nobs, end: after_n } = parse_nobs(
+        bytes, view, little_endian, format_version, after_k
+    );
+    const { dataset_label, end: after_label } = parse_dataset_label(
+        bytes, view, little_endian, format_version, after_n, decoder
+    );
+    const timestamp_close = find_bytes(bytes, TAG_TIMESTAMP_CLOSE, after_label);
+    if (timestamp_close === -1) throw new Error('Missing </timestamp> tag');
+    const section_offsets = parse_section_map(
+        bytes, view, little_endian, timestamp_close
+    );
+    return {
+        format_version,
+        text_encoding,
+        decoder,
+        widths,
+        byte_order,
+        little_endian,
+        nvar,
+        nobs,
+        dataset_label,
+        section_offsets,
+    };
+}
+
 /** Return the mapped byte boundary needed for a complete modern metadata read. */
 export function modern_metadata_buffer_size(
     buffer: ArrayBuffer,
     options: TextEncodingOptions = {}
 ): number {
-    const bytes = new Uint8Array(buffer);
-    const view = new DataView(buffer);
-    const format_version = detect_format_version(bytes);
-    const decoder = text_decoder(resolve_text_encoding(
-        format_version, options.encoding
-    ));
-    const { byte_order, end: after_byteorder } = parse_byte_order(bytes, 0);
-    const little_endian = byte_order === 'LSF';
-    const { end: after_k } = parse_nvar(
-        bytes, view, little_endian, format_version, after_byteorder
-    );
-    const { end: after_n } = parse_nobs(
-        bytes, view, little_endian, format_version, after_k
-    );
-    const { end: after_label } = parse_dataset_label(
-        bytes, view, little_endian, format_version, after_n, decoder
-    );
-    const timestamp_close = find_bytes(bytes, TAG_TIMESTAMP_CLOSE, after_label);
-    if (timestamp_close === -1) throw new Error('Missing </timestamp> tag');
-    return parse_section_map(
-        bytes, view, little_endian, timestamp_close
-    ).data;
+    return parse_modern_metadata_header(buffer, options).section_offsets.data;
 }
 
 // -----------------------------------------------------------
@@ -564,58 +602,23 @@ export function parse_metadata(
     buffer: ArrayBuffer,
     options: TextEncodingOptions = {}
 ): DtaMetadata {
+    return parse_metadata_from_header(
+        buffer, parse_modern_metadata_header(buffer, options)
+    );
+}
+
+/** Parse variable metadata using header state already obtained from a prefix. */
+export function parse_metadata_from_header(
+    buffer: ArrayBuffer,
+    header: ModernMetadataHeader
+): DtaMetadata {
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer);
-
-    // 1. Detect format version from the file signature
-    //    (always 117, 118, or 119 — legacy is handled
-    //    by legacy-header.ts)
-    const format_version = detect_format_version(bytes);
-    const text_encoding = resolve_text_encoding(
-        format_version, options.encoding
-    );
-    const my_decoder = text_decoder(text_encoding);
-    const my_widths = FIELD_WIDTHS[
-        format_version as 117 | 118 | 119
-    ];
-
-    // 2. Parse byte order
-    const { byte_order, end: my_after_byteorder } =
-        parse_byte_order(bytes, 0);
-    const little_endian = byte_order === 'LSF';
-
-    // 3. Parse K (number of variables)
-    const { nvar, end: my_after_k } = parse_nvar(
-        bytes, view, little_endian,
-        format_version, my_after_byteorder
-    );
-
-    // 4. Parse N (number of observations)
-    const { nobs, end: my_after_n } = parse_nobs(
-        bytes, view, little_endian,
-        format_version, my_after_k
-    );
-
-    // 5. Parse dataset label
-    const { dataset_label, end: my_after_label } =
-        parse_dataset_label(
-            bytes, view, little_endian,
-            format_version, my_after_n, my_decoder
-        );
-
-    // 6. Skip timestamp — find </timestamp> to locate
-    //    the end of the header
-    const my_ts_close = find_bytes(
-        bytes, TAG_TIMESTAMP_CLOSE, my_after_label
-    );
-    if (my_ts_close === -1) {
-        throw new Error('Missing </timestamp> tag');
-    }
-
-    // 7. Parse section map (14 x uint64 offsets)
-    const section_offsets = parse_section_map(
-        bytes, view, little_endian, my_ts_close
-    );
+    const {
+        format_version, text_encoding, decoder: my_decoder,
+        widths: my_widths, byte_order, little_endian, nvar, nobs,
+        dataset_label, section_offsets,
+    } = header;
 
     // 8. Parse variable type codes
     const the_type_codes = parse_variable_types(

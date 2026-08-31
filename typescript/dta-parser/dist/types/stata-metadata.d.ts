@@ -9,15 +9,19 @@ export interface StataCharacteristicRecord {
     value: string;
 }
 export declare const MAX_STATA_METADATA_VALUE_BYTES = 67784;
+/** Whether a raw key can be represented by the canonical public metadata. */
+export declare function isRetainedStataCharacteristicName(name: string): boolean;
 /** Incrementally folds raw characteristic records into canonical metadata. */
 export declare class StataMetadataCollector {
-    private readonly scopes;
-    private readonly targetIndexes;
+    private readonly dataset;
+    private readonly variables;
+    private targetIndexes;
     private readonly indexes;
     constructor(dataset: StataMetadataTarget, variables: VariableInfo[]);
+    private targetIndex;
+    private scope;
     private scopeIndexes;
     private classify;
-    accepts(target: string, name: string): boolean;
     push(record: StataCharacteristicRecord): void;
     pushLazy(target: string, name: string, value: () => string): boolean;
     private pushAccepted;

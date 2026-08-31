@@ -246,7 +246,7 @@ fn assemble_checksums(
 /// Folded into every signature payload; a change to the payload definition
 /// bumps this so signatures recorded under the old definition mismatch
 /// loudly instead of comparing across definitions.
-const DATASIG_PAYLOAD_VERSION: &str = "1";
+const DATASIG_PAYLOAD_VERSION: &str = "2";
 
 /// Compute an order-sensitive content signature: `rows:columns:digest` where
 /// the digest is the xxHash64 of a canonical payload covering the row and

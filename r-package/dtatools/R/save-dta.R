@@ -612,18 +612,14 @@ save_dta <- function(data, path, version = 19L,
     result
 }
 
-.dta_write_column_metadata <- function(result, column) {
-    notes <- stata_notes(column)
-    characteristics <- stata_characteristics(column)
-    result[[11L]] <- .stata_metadata_payload(notes, characteristics)
-    result
-}
-
 .prepare_dta_write_column <- function(column, name, kind, strl_threshold,
                                       adjust_tz) {
     variable_label <- .write_text(
         attr(column, "label", exact = TRUE),
         sprintf("variable label for `%s`", name)
+    )
+    stata_metadata <- .stata_metadata_payload(
+        stata_notes(column), stata_characteristics(column)
     )
     if (identical(kind, "factor")) {
         levels <- levels(column)
@@ -641,12 +637,13 @@ save_dta <- function(data, path, version = 19L,
         format <- .prepare_write_format(
             column, name, .default_stata_format("long"), "numeric"
         )
-        return(.dta_write_column_metadata(.new_dta_write_column(
+        return(.new_dta_write_column(
             name, 2L, format, variable_label, column,
             label_values = as.double(seq_along(levels)),
             label_texts = enc2utf8(levels),
-            has_value_labels = TRUE
-        ), column))
+            has_value_labels = TRUE,
+            stata_metadata = stata_metadata
+        ))
     }
     if (identical(kind, "character")) {
         plan <- .Call(C_dtatools_write_string_plan, column)
@@ -679,10 +676,11 @@ save_dta <- function(data, path, version = 19L,
                 "Character column `%s` cannot have numeric value labels", name
             ))
         }
-        return(.dta_write_column_metadata(.new_dta_write_column(
+        return(.new_dta_write_column(
             name, type_code, format, variable_label, values,
-            character_missing = plan[[2L]]
-        ), column))
+            character_missing = plan[[2L]],
+            stata_metadata = stata_metadata
+        ))
     }
     numeric <- .prepare_dta_write_numeric(
         column, name, kind, adjust_tz
@@ -701,15 +699,16 @@ save_dta <- function(data, path, version = 19L,
         )
     }
     value_labels <- .prepare_write_value_labels(column, name)
-    .dta_write_column_metadata(.new_dta_write_column(
+    .new_dta_write_column(
         name, match(numeric$storage, .stata_storage) - 1L,
         format, variable_label, numeric$values,
         label_values = value_labels[[1L]],
         label_texts = value_labels[[2L]],
         has_value_labels = value_labels[[3L]],
         numeric_shift = numeric$shift,
-        numeric_scale = numeric$scale
-    ), column)
+        numeric_scale = numeric$scale,
+        stata_metadata = stata_metadata
+    )
 }
 
 .write_timestamp <- function(time = Sys.time()) {

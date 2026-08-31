@@ -11,7 +11,10 @@ use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
 use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
-use crate::stata_metadata::{validate_raw_value_length, CharacteristicCollector};
+use crate::stata_metadata::{
+    classify_characteristic, validate_raw_value_length, CharacteristicCollector,
+    VariableTargetIndexes,
+};
 use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::value_labels::has_legacy_offset_table_framing;
 use crate::{
@@ -1988,46 +1991,8 @@ fn read_exact_at<R: Read + Seek>(
     scratch: &mut Scratch,
     context: &'static str,
 ) -> Result<Vec<u8>, DtaError> {
-    scratch.record(length)?;
-    reader
-        .seek(SeekFrom::Start(offset))
-        .map_err(|error| DtaError::Io {
-            context,
-            offset,
-            kind: error.kind(),
-        })?;
     let mut bytes = Vec::new();
-    bytes
-        .try_reserve_exact(length)
-        .map_err(|_| DtaError::ArithmeticOverflow("file read allocation"))?;
-    bytes.resize(length, 0);
-    let mut completed = 0_usize;
-    while completed < length {
-        let chunk = length - completed;
-        let read_offset = offset
-            .checked_add(
-                u64::try_from(completed)
-                    .map_err(|_| DtaError::ArithmeticOverflow("file read offset"))?,
-            )
-            .ok_or(DtaError::ArithmeticOverflow("file read offset"))?;
-        let count = reader
-            .read(&mut bytes[completed..completed + chunk])
-            .map_err(|error| DtaError::Io {
-                context,
-                offset: read_offset,
-                kind: error.kind(),
-            })?;
-        if count == 0 {
-            return Err(DtaError::Io {
-                context,
-                offset: read_offset,
-                kind: ErrorKind::UnexpectedEof,
-            });
-        }
-        completed = completed
-            .checked_add(count)
-            .ok_or(DtaError::ArithmeticOverflow("file read length"))?;
-    }
+    read_exact_at_into(reader, offset, length, scratch, &mut bytes, context)?;
     Ok(bytes)
 }
 
@@ -2039,7 +2004,6 @@ fn read_exact_at_into<R: Read + Seek>(
     bytes: &mut Vec<u8>,
     context: &'static str,
 ) -> Result<(), DtaError> {
-    scratch.record(length)?;
     reader
         .seek(SeekFrom::Start(offset))
         .map_err(|error| DtaError::Io {
@@ -2047,6 +2011,18 @@ fn read_exact_at_into<R: Read + Seek>(
             offset,
             kind: error.kind(),
         })?;
+    read_exact_current_into(reader, offset, length, scratch, bytes, context)
+}
+
+fn read_exact_current_into<R: Read>(
+    reader: &mut R,
+    offset: u64,
+    length: usize,
+    scratch: &mut Scratch,
+    bytes: &mut Vec<u8>,
+    context: &'static str,
+) -> Result<(), DtaError> {
+    scratch.record(length)?;
     if bytes.len() < length {
         bytes
             .try_reserve_exact(length - bytes.len())
@@ -2517,9 +2493,10 @@ fn read_modern_characteristics<R: Read + Seek>(
         scratch,
     )?;
     let mut collector = None;
+    let mut variable_indexes = VariableTargetIndexes::new(variables);
     let mut record = Vec::new();
     loop {
-        read_exact_at_into(
+        read_exact_current_into(
             reader,
             cursor,
             4,
@@ -2528,12 +2505,25 @@ fn read_modern_characteristics<R: Read + Seek>(
             "reading characteristic tag",
         )?;
         if record == b"</ch" {
-            cursor = expect_file_tag(
+            let remainder_offset = checked_add_u64(cursor, 4, "characteristics closing tag")?;
+            read_exact_current_into(
                 reader,
-                cursor,
-                b"</characteristics>",
-                "</characteristics>",
+                remainder_offset,
+                b"aracteristics>".len(),
                 scratch,
+                &mut record,
+                "reading </characteristics>",
+            )?;
+            if record != b"aracteristics>" {
+                return Err(DtaError::UnexpectedTag {
+                    expected: "</characteristics>",
+                    offset: error_offset(cursor),
+                });
+            }
+            cursor = checked_add_u64(
+                cursor,
+                b"</characteristics>".len() as u64,
+                "characteristics closing tag",
             )?;
             ensure_absolute("data", cursor, header.section_offsets.data)?;
             return Ok(collector);
@@ -2545,7 +2535,7 @@ fn read_modern_characteristics<R: Read + Seek>(
             });
         }
         cursor = checked_add_u64(cursor, 4, "characteristic opening tag")?;
-        read_exact_at_into(
+        read_exact_current_into(
             reader,
             cursor,
             4,
@@ -2585,7 +2575,7 @@ fn read_modern_characteristics<R: Read + Seek>(
                     .unwrap_or(usize::MAX),
             });
         }
-        read_exact_at_into(
+        read_exact_current_into(
             reader,
             cursor,
             names_length,
@@ -2607,23 +2597,31 @@ fn read_modern_characteristics<R: Read + Seek>(
             error_offset(value_offset),
             "characteristic value",
         )?;
-        let collector = collector.get_or_insert_with(|| CharacteristicCollector::new(variables));
-        if let Some(accepted) = collector.classify(&target, name) {
-            let mut never_cancel = || false;
-            let value = decode_range(
+        let accepted =
+            classify_characteristic(&target, name, |target| variable_indexes.resolve(target));
+        if let Some(accepted) = accepted {
+            read_exact_current_into(
                 reader,
                 value_offset,
                 value_length,
-                encoding,
-                true,
                 scratch,
-                &mut never_cancel,
+                &mut record,
                 "reading characteristic value",
-            )?
-            .0;
-            collector.push(accepted, value);
+            )?;
+            collector
+                .get_or_insert_with(CharacteristicCollector::default)
+                .push(accepted, encoding.decode(field_bytes(&record)));
+            read_exact_current_into(reader, close, 5, scratch, &mut record, "reading </ch>")?;
+        } else {
+            read_exact_at_into(reader, close, 5, scratch, &mut record, "reading </ch>")?;
         }
-        cursor = expect_file_tag(reader, close, b"</ch>", "</ch>", scratch)?;
+        if record != b"</ch>" {
+            return Err(DtaError::UnexpectedTag {
+                expected: "</ch>",
+                offset: error_offset(close),
+            });
+        }
+        cursor = after_close;
     }
 }
 
@@ -3125,16 +3123,29 @@ fn read_legacy_metadata<R: Read + Seek>(
     let mut cursor = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
     let mut collector = None;
+    let mut variable_indexes = VariableTargetIndexes::new(&variables);
     let mut expansion = Vec::new();
+    let mut positioned_at_cursor = false;
     loop {
-        read_exact_at_into(
-            reader,
-            cursor,
-            layout.expansion_header_width(),
-            scratch,
-            &mut expansion,
-            "reading legacy expansion field",
-        )?;
+        if positioned_at_cursor {
+            read_exact_current_into(
+                reader,
+                cursor,
+                layout.expansion_header_width(),
+                scratch,
+                &mut expansion,
+                "reading legacy expansion field",
+            )?;
+        } else {
+            read_exact_at_into(
+                reader,
+                cursor,
+                layout.expansion_header_width(),
+                scratch,
+                &mut expansion,
+                "reading legacy expansion field",
+            )?;
+        }
         let data_type = expansion[0];
         let length = if layout.expansion_length_width == 2 {
             i32::from(read_i16(
@@ -3189,9 +3200,7 @@ fn read_legacy_metadata<R: Read + Seek>(
             });
         }
         if data_type == 1 && payload_length >= 2 * layout.varname_width {
-            let collector =
-                collector.get_or_insert_with(|| CharacteristicCollector::new(&variables));
-            read_exact_at_into(
+            read_exact_current_into(
                 reader,
                 cursor,
                 2 * layout.varname_width,
@@ -3214,23 +3223,30 @@ fn read_legacy_metadata<R: Read + Seek>(
                 error_offset(value_offset),
                 "legacy characteristic value",
             )?;
-            if let Some(accepted) = collector.classify(&target, name) {
-                let value = decode_range(
+            if let Some(accepted) =
+                classify_characteristic(&target, name, |target| variable_indexes.resolve(target))
+            {
+                read_exact_current_into(
                     reader,
                     value_offset,
                     value_length,
-                    encoding,
-                    true,
                     scratch,
-                    &mut never_cancel,
+                    &mut expansion,
                     "reading legacy characteristic value",
-                )?
-                .0;
-                collector.push(accepted, value);
+                )?;
+                collector
+                    .get_or_insert_with(CharacteristicCollector::default)
+                    .push(accepted, encoding.decode(field_bytes(&expansion)));
+                positioned_at_cursor = true;
+            } else {
+                positioned_at_cursor = value_length == 0;
             }
+        } else {
+            positioned_at_cursor = payload_length == 0;
         }
         cursor = payload_end;
     }
+    drop(variable_indexes);
     let observation_bytes = nobs
         .checked_mul(byte_offset)
         .ok_or(DtaError::ArithmeticOverflow(

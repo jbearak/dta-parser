@@ -13,6 +13,7 @@ export interface StataCharacteristicRecord {
 
 const NOTE_NAME = /^note([0-9]+)$/;
 export const MAX_STATA_METADATA_VALUE_BYTES = 67_784;
+const TEXT_ENCODER = new TextEncoder();
 
 function noteNumber(name: string): number | null {
     const match = NOTE_NAME.exec(name);
@@ -30,6 +31,11 @@ function reservedCharacteristicName(name: string): boolean {
         || name.startsWith('_lang_l_');
 }
 
+/** Whether a raw key can be represented by the canonical public metadata. */
+export function isRetainedStataCharacteristicName(name: string): boolean {
+    return noteNumber(name) !== null || !reservedCharacteristicName(name);
+}
+
 interface ScopeIndexes {
     notes: Map<number, number>;
     characteristics: Map<string, number>;
@@ -43,23 +49,37 @@ interface AcceptedStataCharacteristic {
 
 /** Incrementally folds raw characteristic records into canonical metadata. */
 export class StataMetadataCollector {
-    private readonly scopes: StataMetadataTarget[];
-    private readonly targetIndexes: Map<string, number>;
-    private readonly indexes: Array<ScopeIndexes | undefined>;
+    private readonly dataset: StataMetadataTarget;
+    private readonly variables: VariableInfo[];
+    private targetIndexes: Map<string, number> | undefined;
+    private readonly indexes = new Map<number, ScopeIndexes>();
 
     constructor(dataset: StataMetadataTarget, variables: VariableInfo[]) {
-        this.scopes = [dataset, ...variables];
-        this.targetIndexes = new Map<string, number>([['_dta', 0]]);
-        variables.forEach((variable, index) => {
-            this.targetIndexes.set(variable.name, index + 1);
-        });
-        this.indexes = this.scopes.map(() => undefined);
+        this.dataset = dataset;
+        this.variables = variables;
+    }
+
+    private targetIndex(target: string): number | undefined {
+        if (target === '_dta') return 0;
+        if (this.targetIndexes === undefined) {
+            this.targetIndexes = new Map<string, number>();
+            this.variables.forEach((variable, index) => {
+                this.targetIndexes!.set(variable.name, index + 1);
+            });
+        }
+        return this.targetIndexes.get(target);
+    }
+
+    private scope(scopeIndex: number): StataMetadataTarget {
+        return scopeIndex === 0
+            ? this.dataset
+            : this.variables[scopeIndex - 1];
     }
 
     private scopeIndexes(scopeIndex: number): ScopeIndexes {
-        const existing = this.indexes[scopeIndex];
+        const existing = this.indexes.get(scopeIndex);
         if (existing !== undefined) return existing;
-        const scope = this.scopes[scopeIndex];
+        const scope = this.scope(scopeIndex);
         const indexes = {
             notes: new Map(
                 scope.notes.map((note, index) => [note.number, index])
@@ -68,22 +88,18 @@ export class StataMetadataCollector {
                 scope.characteristics.map((item, index) => [item.name, index])
             ),
         };
-        this.indexes[scopeIndex] = indexes;
+        this.indexes.set(scopeIndex, indexes);
         return indexes;
     }
 
     private classify(
         target: string, name: string
     ): AcceptedStataCharacteristic | null {
-        const scopeIndex = this.targetIndexes.get(target);
-        if (scopeIndex === undefined) return null;
         const number = noteNumber(name);
-        if (number === null && reservedCharacteristicName(name)) return null;
+        if (!isRetainedStataCharacteristicName(name)) return null;
+        const scopeIndex = this.targetIndex(target);
+        if (scopeIndex === undefined) return null;
         return { scopeIndex, name, noteNumber: number };
-    }
-
-    accepts(target: string, name: string): boolean {
-        return this.classify(target, name) !== null;
     }
 
     push(record: StataCharacteristicRecord): void {
@@ -100,7 +116,7 @@ export class StataMetadataCollector {
     private pushAccepted(
         accepted: AcceptedStataCharacteristic, value: string
     ): void {
-        const scope = this.scopes[accepted.scopeIndex];
+        const scope = this.scope(accepted.scopeIndex);
         const indexes = this.scopeIndexes(accepted.scopeIndex);
         if (accepted.noteNumber !== null) {
             const existing = indexes.notes.get(accepted.noteNumber);
@@ -122,8 +138,10 @@ export class StataMetadataCollector {
     }
 
     finish(): void {
-        for (const scope of this.scopes) {
-            scope.notes.sort((left, right) => left.number - right.number);
+        for (const scopeIndex of this.indexes.keys()) {
+            this.scope(scopeIndex).notes.sort(
+                (left, right) => left.number - right.number
+            );
         }
     }
 }
@@ -144,10 +162,25 @@ function validNoteNumber(number: number): void {
     }
 }
 
+function codePointLengthAtMost(value: string, limit: number): boolean {
+    let count = 0;
+    for (const _character of value) {
+        count++;
+        if (count > limit) return false;
+    }
+    return true;
+}
+
+function utf8LengthAtMost(value: string, limit: number): boolean {
+    const output = new Uint8Array(limit + 1);
+    const encoded = TEXT_ENCODER.encodeInto(value, output);
+    return encoded.read === value.length && encoded.written <= limit;
+}
+
 function validCharacteristicName(name: string): void {
     if (!/^[_\p{L}][_\p{L}\p{N}]*$/u.test(name)
-        || [...name].length > 32
-        || new TextEncoder().encode(name).length > 128
+        || !codePointLengthAtMost(name, 32)
+        || !utf8LengthAtMost(name, 128)
         || reservedCharacteristicName(name)) {
         throw new Error('Invalid or reserved Stata characteristic name');
     }
@@ -156,7 +189,7 @@ function validCharacteristicName(name: string): void {
 function validMetadataValue(value: string): void {
     if (typeof value !== 'string'
         || value.includes('\0')
-        || new TextEncoder().encode(value).length > MAX_STATA_METADATA_VALUE_BYTES) {
+        || !utf8LengthAtMost(value, MAX_STATA_METADATA_VALUE_BYTES)) {
         throw new Error('Invalid or over-limit Stata metadata value');
     }
 }

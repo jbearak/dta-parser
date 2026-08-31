@@ -1655,6 +1655,17 @@ fn dataset_signature_is_stable_across_thread_counts() {
 }
 
 #[test]
+fn dataset_signature_profile_version_is_pinned() {
+    let signature = dataset_signature(
+        &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("signature");
+    assert_eq!(signature, "3:1:ef7032616530fd27");
+}
+
+#[test]
 fn dataset_signature_detects_value_order_and_names() {
     // The failure mode Stata's datasignature misses: two values swapped
     // within one column.

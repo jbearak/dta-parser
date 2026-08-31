@@ -38,7 +38,7 @@ use arrow_buffer::{ArrowNativeType, Buffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
-    attach_stata_metadata, attach_variable_attributes_parts, boundary, check_interrupt,
+    attach_stata_metadata, attach_variable_attribute_view, boundary, check_interrupt,
     coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute,
     missing_from_code, numeric_altrep_storage, observed_value, parse_stata_metadata_sexp,
     poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
@@ -2957,13 +2957,15 @@ unsafe fn finalize_read_column(
             let document = attributes.document.ok_or_else(mismatch)?;
             let dta_type = storage.dta_type();
             let table = attributes.value_label_table();
-            attach_variable_attributes_parts(
+            attach_variable_attribute_view(
                 vector,
-                &dta_type,
-                &document.format,
-                &document.label,
-                &document.notes,
-                &document.characteristics,
+                super::VariableAttributeView {
+                    dta_type: &dta_type,
+                    format: &document.format,
+                    label: &document.label,
+                    notes: &document.notes,
+                    characteristics: &document.characteristics,
+                },
                 table.as_ref(),
                 guard,
             )?;

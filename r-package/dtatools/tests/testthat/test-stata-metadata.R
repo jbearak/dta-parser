@@ -70,6 +70,22 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
         set_stata_characteristic(data, "_lang_l_en", "English labels"),
         "language-control key"
     )
+    malformed_dataset <- data
+    attr(malformed_dataset, "stata.characteristics") <- c(
+        `_lang_c` = "default"
+    )
+    expect_error(
+        stata_characteristics(malformed_dataset),
+        "malformed Stata characteristic metadata"
+    )
+    malformed_variable <- data
+    attr(malformed_variable$x, "stata.characteristics") <- c(
+        `_lang_v_en` = "English label"
+    )
+    expect_error(
+        stata_characteristics(malformed_variable, "x"),
+        "malformed Stata characteristic metadata"
+    )
     expect_error(stata_notes(data, "missing"), "does not exist")
     expect_identical(attributes(data), attributes(data.frame(x = 1)))
 })

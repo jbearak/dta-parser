@@ -673,11 +673,15 @@ fn validate_structure(
 
     let mut names = HashSet::with_capacity(data.columns.len());
     for column in &data.columns {
-        validate_notes(&column.notes, &format!("variable `{}`", column.name))?;
-        validate_characteristics(
-            &column.characteristics,
-            &format!("variable `{}`", column.name),
-        )?;
+        if !column.notes.is_empty() {
+            validate_notes(&column.notes, &format!("variable `{}`", column.name))?;
+        }
+        if !column.characteristics.is_empty() {
+            validate_characteristics(
+                &column.characteristics,
+                &format!("variable `{}`", column.name),
+            )?;
+        }
         if !valid_stata_name(&column.name) {
             return Err(DtaWriteError::InvalidVariable {
                 column: column.name.to_string(),

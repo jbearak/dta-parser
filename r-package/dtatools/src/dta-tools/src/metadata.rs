@@ -3,7 +3,10 @@ use crate::endian::{
     read_u64, read_u8, slice_at,
 };
 use crate::legacy::parse_legacy_metadata;
-use crate::stata_metadata::{validate_raw_value_length, CharacteristicCollector};
+use crate::stata_metadata::{
+    classify_characteristic, validate_raw_value_length, CharacteristicCollector,
+    VariableTargetIndexes,
+};
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
@@ -334,6 +337,7 @@ fn parse_characteristics(
     let names_length = checked_mul(width, 2, "characteristic names length")?;
     let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
     let mut collector = None;
+    let mut variable_indexes = VariableTargetIndexes::new(variables);
     loop {
         if bytes.get(cursor..cursor.saturating_add(CHARACTERISTICS_CLOSE.len()))
             == Some(CHARACTERISTICS_CLOSE)
@@ -380,9 +384,12 @@ fn parse_characteristics(
         validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
         let target = encoding.decode(field_bytes(variable));
         let name = encoding.decode(field_bytes(characteristic));
-        let collector = collector.get_or_insert_with(|| CharacteristicCollector::new(variables));
-        if let Some(accepted) = collector.classify(&target, name) {
-            collector.push(accepted, encoding.decode(field_bytes(value)));
+        if let Some(accepted) =
+            classify_characteristic(&target, name, |target| variable_indexes.resolve(target))
+        {
+            collector
+                .get_or_insert_with(CharacteristicCollector::default)
+                .push(accepted, encoding.decode(field_bytes(value)));
         }
         cursor = payload_end;
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_CLOSE, "</ch>")?;

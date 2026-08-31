@@ -12,7 +12,10 @@
 // -----------------------------------------------------------
 
 import * as fs from 'fs';
-import { modern_metadata_buffer_size, parse_metadata } from './header';
+import {
+    parse_metadata_from_header,
+    parse_modern_metadata_header,
+} from './header';
 import {
     parse_legacy_metadata,
     legacy_metadata_fixed_size,
@@ -53,6 +56,7 @@ import {
 // Constants
 // -----------------------------------------------------------
 const MODERN_MAP_READ_SIZE = 128 * 1024;
+const LEGACY_SCAN_BLOCK_SIZE = 64 * 1024;
 const MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 const MAX_MODERN_METADATA_SIZE = 64 * 1024 * 1024;
 const MAX_READ_RETRIES = 2;
@@ -821,16 +825,32 @@ function read_legacy_metadata(
     // fixed-size headers directly from the file so malformed inputs cannot
     // make us repeatedly allocate progressively larger file prefixes.
     let my_position = my_expansion_start;
+    const my_scan_buffer = Buffer.allocUnsafe(LEGACY_SCAN_BLOCK_SIZE);
+    let my_scan_start = -1;
+    let my_scan_length = 0;
     while (true) {
         if (my_position + my_field_header_size > file_size) {
             throw new Error('Missing legacy expansion-field terminator');
         }
-        const my_field_header = read_range(fd, my_position, my_field_header_size);
-        const my_field_view = new DataView(my_field_header);
-        const my_data_type = my_field_view.getUint8(0);
+        if (my_position < my_scan_start
+            || my_position + my_field_header_size > my_scan_start + my_scan_length) {
+            my_scan_start = my_position;
+            my_scan_length = Math.min(
+                LEGACY_SCAN_BLOCK_SIZE, file_size - my_scan_start
+            );
+            read_bytes_into(
+                fd, my_scan_buffer, 0, my_scan_length, my_scan_start
+            );
+        }
+        const my_header_offset = my_position - my_scan_start;
+        const my_data_type = my_scan_buffer[my_header_offset];
         const my_length = layout.expansion_length_width === 2
-            ? my_field_view.getInt16(1, my_little_endian)
-            : my_field_view.getInt32(1, my_little_endian);
+            ? (my_little_endian
+                ? my_scan_buffer.readInt16LE(my_header_offset + 1)
+                : my_scan_buffer.readInt16BE(my_header_offset + 1))
+            : (my_little_endian
+                ? my_scan_buffer.readInt32LE(my_header_offset + 1)
+                : my_scan_buffer.readInt32BE(my_header_offset + 1));
         my_position += my_field_header_size;
 
         if (my_data_type === 0 && my_length === 0) break;
@@ -858,9 +878,9 @@ function read_modern_metadata(
     const map_buffer = read_range(
         fd, 0, Math.min(file_size, MODERN_MAP_READ_SIZE)
     );
-    let metadata_size: number;
+    let header: ReturnType<typeof parse_modern_metadata_header>;
     try {
-        metadata_size = modern_metadata_buffer_size(map_buffer, options);
+        header = parse_modern_metadata_header(map_buffer, options);
     } catch (error) {
         if (error instanceof Error
             && error.message.includes('unrecognized format signature')) {
@@ -872,16 +892,29 @@ function read_modern_metadata(
         }
         throw error;
     }
+    const metadata_size = header.section_offsets.data;
     if (metadata_size > MAX_MODERN_METADATA_SIZE) {
         throw new Error('Modern metadata exceeds 64 MiB safety limit');
     }
     if (metadata_size > file_size) {
         throw new Error('Truncated modern metadata');
     }
-    const metadata_buffer = metadata_size <= map_buffer.byteLength
-        ? map_buffer
-        : read_range(fd, 0, metadata_size);
-    return parse_metadata(metadata_buffer, options);
+    let metadata_buffer: ArrayBuffer;
+    if (metadata_size <= map_buffer.byteLength) {
+        metadata_buffer = map_buffer.slice(0, metadata_size);
+    } else {
+        metadata_buffer = new ArrayBuffer(metadata_size);
+        const metadata_bytes = new Uint8Array(metadata_buffer);
+        metadata_bytes.set(new Uint8Array(map_buffer));
+        read_bytes_into(
+            fd,
+            metadata_bytes,
+            map_buffer.byteLength,
+            metadata_size - map_buffer.byteLength,
+            map_buffer.byteLength
+        );
+    }
+    return parse_metadata_from_header(metadata_buffer, header);
 }
 
 function read_value_labels(
@@ -933,16 +966,27 @@ function read_bytes(
     length: number
 ): Uint8Array {
     const my_buffer = Buffer.allocUnsafe(length);
+    read_bytes_into(fd, my_buffer, 0, length, offset);
+    return my_buffer;
+}
+
+function read_bytes_into(
+    fd: number,
+    target: Uint8Array,
+    target_offset: number,
+    length: number,
+    file_offset: number
+): void {
     let my_total_read = 0;
     let my_attempts = 0;
 
     while (my_total_read < length) {
         const my_bytes_read = fs.readSync(
             fd,
-            my_buffer,
-            my_total_read,
+            target,
+            target_offset + my_total_read,
             length - my_total_read,
-            offset + my_total_read
+            file_offset + my_total_read
         );
 
         if (my_bytes_read === 0) {
@@ -950,7 +994,7 @@ function read_bytes(
             if (my_attempts > MAX_READ_RETRIES) {
                 throw new Error(
                     `Unexpected EOF while reading ${length} bytes ` +
-                    `at offset ${offset}`
+                    `at offset ${file_offset}`
                 );
             }
             continue;
@@ -958,8 +1002,6 @@ function read_bytes(
 
         my_total_read += my_bytes_read;
     }
-
-    return my_buffer;
 }
 
 function read_range(

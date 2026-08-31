@@ -129,8 +129,11 @@ stata_characteristics <- function(x, variable = NULL) {
     if (is.null(characteristics)) return(stats::setNames(character(), character()))
     valid <- is.character(characteristics) && !anyNA(characteristics) &&
         !is.null(names(characteristics)) && !anyNA(names(characteristics)) &&
-        all(nzchar(names(characteristics))) && !anyDuplicated(names(characteristics)) &&
-        !any(grepl("^note[0-9]+$", names(characteristics)))
+        !anyDuplicated(names(characteristics)) &&
+        all(vapply(
+            names(characteristics), .valid_stata_characteristic_name,
+            logical(1)
+        ))
     if (!valid) {
         stop("The object contains malformed Stata characteristic metadata", call. = FALSE)
     }
@@ -192,18 +195,21 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
 }
 
 .stata_characteristic_name <- function(name) {
-    valid <- is.character(name) && length(name) == 1L && !is.na(name) &&
-        .valid_stata_name_syntax(name, 32L) &&
-        nchar(name, type = "bytes") <= 128L && !grepl("^note[0-9]+$", name) &&
-        !(name %in% c("_lang_list", "_lang_c")) &&
-        !grepl("^_lang_[vl]_", name)
-    if (!valid) {
+    if (!.valid_stata_characteristic_name(name)) {
         stop(paste0(
             "A characteristic name must be a valid Stata name with at most 32 Unicode ",
             "characters and cannot be a numeric `note*` key or language-control key"
         ), call. = FALSE)
     }
     enc2utf8(name)
+}
+
+.valid_stata_characteristic_name <- function(name) {
+    is.character(name) && length(name) == 1L && !is.na(name) &&
+        .valid_stata_name_syntax(name, 32L) &&
+        nchar(name, type = "bytes") <= 128L && !grepl("^note[0-9]+$", name) &&
+        !(name %in% c("_lang_list", "_lang_c")) &&
+        !grepl("^_lang_[vl]_", name)
 }
 
 .stata_metadata_target <- function(x, variable) {
@@ -254,16 +260,38 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     })
 }
 
+.copy_stata_metadata_attributes <- function(from, to) {
+    for (name in c("notes", "stata.note.numbers", "stata.characteristics")) {
+        value <- attr(from, name, exact = TRUE)
+        if (!is.null(value)) attr(to, name) <- value
+    }
+    to
+}
+
 .stata_metadata_payload <- function(notes, characteristics) {
-    note_fields <- if (length(notes)) {
-        as.vector(rbind(names(notes), unname(notes)))
-    } else character()
-    characteristic_fields <- if (length(characteristics)) {
-        as.vector(rbind(names(characteristics), unname(characteristics)))
-    } else character()
-    enc2utf8(c(
-        paste0(intToUtf8(30L), "dtatools:stata-metadata:1"),
-        as.character(length(notes)), note_fields,
-        as.character(length(characteristics)), characteristic_fields
-    ))
+    note_count <- length(notes)
+    characteristic_count <- length(characteristics)
+    field_count <- 3 + 2 * note_count + 2 * characteristic_count
+    if (!is.finite(field_count) || field_count > .Machine$integer.max) {
+        stop("Stata metadata contains too many entries", call. = FALSE)
+    }
+    result <- character(as.integer(field_count))
+    result[[1L]] <- paste0(intToUtf8(30L), "dtatools:stata-metadata:1")
+    result[[2L]] <- as.character(note_count)
+    cursor <- 3L
+    if (note_count) {
+        note_positions <- seq.int(cursor, length.out = note_count, by = 2L)
+        result[note_positions] <- enc2utf8(names(notes))
+        result[note_positions + 1L] <- enc2utf8(unname(notes))
+        cursor <- cursor + 2L * note_count
+    }
+    result[[cursor]] <- as.character(characteristic_count)
+    if (characteristic_count) {
+        characteristic_positions <- seq.int(
+            cursor + 1L, length.out = characteristic_count, by = 2L
+        )
+        result[characteristic_positions] <- enc2utf8(names(characteristics))
+        result[characteristic_positions + 1L] <- enc2utf8(unname(characteristics))
+    }
+    result
 }
