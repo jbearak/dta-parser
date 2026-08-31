@@ -13,8 +13,11 @@ import {
     setStataNote,
 } from '../../src/index';
 import {
+    isStataCharacteristicsMaterialized,
+    isStataNotesMaterialized,
     StataMetadataCollector,
     type StataMetadataTarget,
+    withLazyStataMetadata,
 } from '../../src/stata-metadata';
 import type { DtaMetadata, VariableInfo } from '../../src/types';
 
@@ -66,6 +69,19 @@ function oldVariable(name: string): VariableInfo {
         byte_width: 1,
         byte_offset: 0,
     };
+}
+
+function lazyVariable(name: string, byteOffset: number): VariableInfo {
+    return withLazyStataMetadata({
+        name,
+        type: 'byte',
+        type_code: 65530,
+        format: '%8.0g',
+        label: '',
+        value_label_name: '',
+        byte_width: 1,
+        byte_offset: byteOffset,
+    });
 }
 
 describe('Stata metadata accessors', () => {
@@ -319,6 +335,50 @@ describe('DTA characteristic recovery', () => {
         ], dataset, [unreadable]);
         expect(dataset.notes).toEqual([
             { number: 1, text: 'dataset' },
+        ]);
+    });
+
+    it('materializes only characteristics across 120,000 variable scopes', () => {
+        const variables = Array.from(
+            { length: 120_000 },
+            (_, index) => lazyVariable(`v${index}`, index)
+        );
+        const collector = new StataMetadataCollector(metadata(), variables);
+        const value = () => 'source value';
+        for (const variable of variables) {
+            collector.pushLazy(variable.name, 'source', value);
+        }
+        collector.finish();
+
+        expect(variables.every(isStataCharacteristicsMaterialized)).toBeTrue();
+        expect(variables.every(variable =>
+            !isStataNotesMaterialized(variable)
+        )).toBeTrue();
+        variables[0].characteristics![0].value = 'first only';
+        expect(variables[119_999].characteristics).toEqual([
+            { name: 'source', value: 'source value' },
+        ]);
+    });
+
+    it('materializes only notes across 120,000 variable scopes', () => {
+        const variables = Array.from(
+            { length: 120_000 },
+            (_, index) => lazyVariable(`v${index}`, index)
+        );
+        const collector = new StataMetadataCollector(metadata(), variables);
+        const value = () => 'note value';
+        for (const variable of variables) {
+            collector.pushLazy(variable.name, 'note1', value);
+        }
+        collector.finish();
+
+        expect(variables.every(isStataNotesMaterialized)).toBeTrue();
+        expect(variables.every(variable =>
+            !isStataCharacteristicsMaterialized(variable)
+        )).toBeTrue();
+        variables[0].notes![0] = { number: 1, text: 'first only' };
+        expect(variables[119_999].notes).toEqual([
+            { number: 1, text: 'note value' },
         ]);
     });
 });

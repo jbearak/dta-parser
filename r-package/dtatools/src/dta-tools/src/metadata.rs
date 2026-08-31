@@ -4,8 +4,8 @@ use crate::endian::{
 };
 use crate::legacy::parse_legacy_metadata;
 use crate::stata_metadata::{
-    validate_raw_value_bytes, validate_raw_value_length, CharacteristicCollector,
-    CharacteristicPlan, CharacteristicValueUse, VariableTargetIndexes,
+    validate_raw_value_bytes, validate_raw_value_length, CharacteristicPlan,
+    CharacteristicValueUse, DecodedCharacteristics, VariableTargetIndexes,
 };
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
@@ -398,7 +398,7 @@ fn parse_characteristics(
     offsets: &SectionOffsets,
     encoding: TextEncoding,
     variables: &[VariableInfo],
-) -> Result<Option<CharacteristicCollector>, DtaError> {
+) -> Result<Option<DecodedCharacteristics>, DtaError> {
     let start = offset_to_usize(offsets.characteristics, "characteristics")?;
     if bytes.len() == start {
         return Ok(None);

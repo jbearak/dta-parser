@@ -13,6 +13,16 @@ const TEXT_ENCODER = new TextEncoder();
 const LAZY_NOTES = new WeakMap<object, StataNote[] | string[]>();
 const LAZY_CHARACTERISTICS = new WeakMap<object, StataCharacteristic[]>();
 
+/** Whether this lazy target has allocated its notes array. */
+export function isStataNotesMaterialized(target: object): boolean {
+    return LAZY_NOTES.has(target);
+}
+
+/** Whether this lazy target has allocated its characteristics array. */
+export function isStataCharacteristicsMaterialized(target: object): boolean {
+    return LAZY_CHARACTERISTICS.has(target);
+}
+
 function lazyNotes(this: object): StataNote[] | string[] {
     let notes = LAZY_NOTES.get(this);
     if (notes === undefined) {
@@ -92,11 +102,19 @@ function validCharacteristicNameShape(name: string): boolean {
         && utf8LengthAtMost(name, 128);
 }
 
+interface NoteScopeIndexes {
+    values: StataNote[];
+    indices: Map<number, number>;
+}
+
+interface CharacteristicScopeIndexes {
+    values: StataCharacteristic[];
+    indices: Map<string, number>;
+}
+
 interface ScopeIndexes {
-    noteValues: StataNote[];
-    characteristicValues: StataCharacteristic[];
-    noteIndices: Map<number, number>;
-    characteristicIndices: Map<string, number>;
+    notes?: NoteScopeIndexes;
+    characteristics?: CharacteristicScopeIndexes;
 }
 
 export interface AcceptedStataCharacteristic {
@@ -201,21 +219,39 @@ export class StataMetadataCollector {
     private scopeIndexes(scopeIndex: number): ScopeIndexes {
         const existing = this.indexes.get(scopeIndex);
         if (existing !== undefined) return existing;
-        const scope = this.scope(scopeIndex);
-        const notes = mutableNotes(scope);
-        const characteristics = mutableCharacteristics(scope);
-        const indexes = {
-            noteValues: notes,
-            characteristicValues: characteristics,
-            noteIndices: new Map(
-                notes.map((note, index) => [note.number, index])
-            ),
-            characteristicIndices: new Map(
-                characteristics.map((item, index) => [item.name, index])
-            ),
-        };
+        const indexes: ScopeIndexes = {};
         this.indexes.set(scopeIndex, indexes);
         return indexes;
+    }
+
+    private noteIndexes(scopeIndex: number): NoteScopeIndexes {
+        const scopeIndexes = this.scopeIndexes(scopeIndex);
+        if (scopeIndexes.notes === undefined) {
+            const values = mutableNotes(this.scope(scopeIndex));
+            scopeIndexes.notes = {
+                values,
+                indices: new Map(
+                    values.map((note, index) => [note.number, index])
+                ),
+            };
+        }
+        return scopeIndexes.notes;
+    }
+
+    private characteristicIndexes(
+        scopeIndex: number
+    ): CharacteristicScopeIndexes {
+        const scopeIndexes = this.scopeIndexes(scopeIndex);
+        if (scopeIndexes.characteristics === undefined) {
+            const values = mutableCharacteristics(this.scope(scopeIndex));
+            scopeIndexes.characteristics = {
+                values,
+                indices: new Map(
+                    values.map((item, index) => [item.name, index])
+                ),
+            };
+        }
+        return scopeIndexes.characteristics;
     }
 
     accept(
@@ -252,33 +288,36 @@ export class StataMetadataCollector {
             value,
             accepted.noteNumber === null ? 'characteristic' : 'note'
         );
-        const indexes = this.scopeIndexes(accepted.scopeIndex);
-        const notes = indexes.noteValues;
-        const characteristics = indexes.characteristicValues;
         if (accepted.noteNumber !== null) {
-            const existing = indexes.noteIndices.get(accepted.noteNumber);
+            const notes = this.noteIndexes(accepted.scopeIndex);
+            const existing = notes.indices.get(accepted.noteNumber);
             if (existing === undefined) {
-                indexes.noteIndices.set(accepted.noteNumber, notes.length);
-                notes.push({ number: accepted.noteNumber, text: value });
+                notes.indices.set(accepted.noteNumber, notes.values.length);
+                notes.values.push({
+                    number: accepted.noteNumber, text: value,
+                });
             } else {
-                notes[existing].text = value;
+                notes.values[existing].text = value;
             }
             return;
         }
-        const existing = indexes.characteristicIndices.get(accepted.name);
+        const characteristics = this.characteristicIndexes(
+            accepted.scopeIndex
+        );
+        const existing = characteristics.indices.get(accepted.name);
         if (existing === undefined) {
-            indexes.characteristicIndices.set(
-                accepted.name, characteristics.length
+            characteristics.indices.set(
+                accepted.name, characteristics.values.length
             );
-            characteristics.push({ name: accepted.name, value });
+            characteristics.values.push({ name: accepted.name, value });
         } else {
-            characteristics[existing].value = value;
+            characteristics.values[existing].value = value;
         }
     }
 
     finish(): void {
-        for (const scopeIndex of this.indexes.keys()) {
-            this.scopeIndexes(scopeIndex).noteValues.sort(
+        for (const indexes of this.indexes.values()) {
+            indexes.notes?.values.sort(
                 (left, right) => left.number - right.number
             );
         }

@@ -12,8 +12,9 @@ use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValue
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::stata_metadata::{
-    validate_raw_value_bytes, validate_raw_value_length, CharacteristicCollector,
-    CharacteristicPlan, CharacteristicValueUse, VariableTargetIndexes, MAX_METADATA_VALUE_BYTES,
+    validate_raw_value_bytes, validate_raw_value_length, CharacteristicPlan,
+    CharacteristicValueUse, DecodedCharacteristics, VariableTargetIndexes,
+    MAX_METADATA_VALUE_BYTES,
 };
 use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::value_labels::{frame_offset_value_label_payload, has_legacy_offset_table_framing};
@@ -3813,7 +3814,7 @@ fn decode_file_characteristics<R: Read + Seek>(
     reader: &mut R,
     encoding: TextEncoding,
     scratch: &mut Scratch,
-) -> Result<CharacteristicCollector, DtaError> {
+) -> Result<DecodedCharacteristics, DtaError> {
     plan.decode(|record| {
         let (value, found_nul) = decode_range(
             reader,
@@ -3911,7 +3912,7 @@ fn read_modern_characteristics<R: Read + Seek>(
     encoding: TextEncoding,
     scratch: &mut Scratch,
     variables: &[VariableInfo],
-) -> Result<CharacteristicCollector, DtaError> {
+) -> Result<DecodedCharacteristics, DtaError> {
     let width = if header.format_version == FormatVersion::V117 {
         33_usize
     } else {

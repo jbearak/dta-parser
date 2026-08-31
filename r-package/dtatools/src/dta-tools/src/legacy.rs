@@ -1,7 +1,7 @@
 use crate::endian::{checked_add, checked_mul, read_i16, read_i32, read_u16, slice_at};
 use crate::stata_metadata::{
-    validate_raw_value_bytes, validate_raw_value_length, CharacteristicCollector,
-    CharacteristicPlan, CharacteristicValueUse, VariableTargetIndexes,
+    validate_raw_value_bytes, validate_raw_value_length, CharacteristicPlan,
+    CharacteristicValueUse, DecodedCharacteristics, VariableTargetIndexes,
 };
 use crate::text::{field_bytes, TextEncoding};
 use crate::{
@@ -217,7 +217,7 @@ fn scan_expansion_fields_ordered(
     encoding: TextEncoding,
     layout: LegacyLayout,
     variables: &[VariableInfo],
-) -> Result<(usize, Option<CharacteristicCollector>), DtaError> {
+) -> Result<(usize, Option<DecodedCharacteristics>), DtaError> {
     // Frame the complete expansion section before validating metadata values.
     // A second bounded pass folds accepted records directly into the compact
     // characteristic plan instead of retaining one descriptor per record.

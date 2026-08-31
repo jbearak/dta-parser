@@ -20,6 +20,15 @@ interface FramedStataCharacteristic {
     valueEnd: number;
 }
 
+function canonicalRecordKey(
+    accepted: AcceptedStataCharacteristic
+): string {
+    const key = accepted.noteNumber === null
+        ? `c:${accepted.name}`
+        : `n:${accepted.noteNumber}`;
+    return `${accepted.scopeIndex}\0${key}`;
+}
+
 function readFixedString(
     bytes: Uint8Array,
     start: number,
@@ -40,6 +49,7 @@ function readFixedString(
  */
 export class StataCharacteristicFramePlan {
     private readonly records: FramedStataCharacteristic[] = [];
+    private readonly recordIndices = new Map<string, number>();
     private deferredError: unknown;
     private hasDeferredError = false;
 
@@ -48,6 +58,11 @@ export class StataCharacteristicFramePlan {
         private readonly decoder: DtaTextDecoder,
         private readonly collector: StataMetadataCollector
     ) {}
+
+    /** Number of distinct accepted scope/key locators retained for decoding. */
+    get retainedCount(): number {
+        return this.records.length;
+    }
 
     add(locator: StataCharacteristicLocator): void {
         let valueEnd: number;
@@ -75,11 +90,20 @@ export class StataCharacteristicFramePlan {
         try {
             const accepted = this.collector.accept(target, name);
             if (accepted !== null) {
-                this.records.push({
-                    accepted,
-                    valueStart: locator.valueStart,
-                    valueEnd,
-                });
+                const key = canonicalRecordKey(accepted);
+                const existing = this.recordIndices.get(key);
+                if (existing === undefined) {
+                    this.recordIndices.set(key, this.records.length);
+                    this.records.push({
+                        accepted,
+                        valueStart: locator.valueStart,
+                        valueEnd,
+                    });
+                } else {
+                    const record = this.records[existing];
+                    record.valueStart = locator.valueStart;
+                    record.valueEnd = valueEnd;
+                }
             }
         } catch (error) {
             this.deferredError = error;

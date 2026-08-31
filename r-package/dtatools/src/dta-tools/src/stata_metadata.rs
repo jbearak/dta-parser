@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use unicode_general_category::{get_general_category, GeneralCategory};
 
@@ -138,59 +138,6 @@ pub fn valid_canonical_characteristic(name: &str, value: &str) -> bool {
     valid_characteristic_name(name) && valid_decoded_metadata_value(value)
 }
 
-struct PendingCharacteristic {
-    name: Arc<String>,
-    value: String,
-}
-
-#[derive(Default)]
-struct ScopeMetadata {
-    notes: Vec<StataNote>,
-    characteristics: Vec<PendingCharacteristic>,
-    note_indexes: HashMap<u32, usize>,
-    characteristic_indexes: HashMap<Arc<String>, usize>,
-}
-
-impl ScopeMetadata {
-    fn push(&mut self, key: MetadataKey, value: String) {
-        if let MetadataKey::Note(number) = key {
-            if let Some(index) = self.note_indexes.get(&number).copied() {
-                self.notes[index].text = value;
-            } else {
-                self.note_indexes.insert(number, self.notes.len());
-                self.notes.push(StataNote {
-                    number,
-                    text: value,
-                });
-            }
-        } else if let MetadataKey::Characteristic(name) = key {
-            if let Some(index) = self.characteristic_indexes.get(&name).copied() {
-                self.characteristics[index].value = value;
-            } else {
-                let name = Arc::new(name);
-                self.characteristic_indexes
-                    .insert(Arc::clone(&name), self.characteristics.len());
-                self.characteristics
-                    .push(PendingCharacteristic { name, value });
-            }
-        }
-    }
-
-    fn finish(mut self) -> (Vec<StataNote>, Vec<StataCharacteristic>) {
-        self.notes.sort_by_key(|note| note.number);
-        drop(self.characteristic_indexes);
-        let characteristics = self
-            .characteristics
-            .into_iter()
-            .map(|item| StataCharacteristic {
-                name: Arc::try_unwrap(item.name).unwrap_or_else(|shared| shared.as_ref().clone()),
-                value: item.value,
-            })
-            .collect();
-        (self.notes, characteristics)
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum MetadataKey {
     Note(u32),
@@ -218,6 +165,19 @@ struct PlannedCharacteristic<L> {
     first_ordinal: usize,
     value_ordinal: usize,
     value: L,
+}
+
+struct DecodedCharacteristic {
+    first_ordinal: usize,
+    accepted: AcceptedCharacteristic,
+    value: String,
+}
+
+/// Unique decoded records in first-occurrence order. The framing plan already
+/// resolves duplicates, so final materialization needs no per-scope indexes or
+/// staging objects.
+pub(crate) struct DecodedCharacteristics {
+    records: Vec<DecodedCharacteristic>,
 }
 
 /// Source-independent characteristic policy. Format adapters frame records and
@@ -340,16 +300,10 @@ impl<L> CharacteristicPlan<L> {
         self.deferred_error = Some((ordinal, error));
     }
 
-    pub(crate) fn decode<D>(self, mut decode_value: D) -> Result<CharacteristicCollector, DtaError>
+    pub(crate) fn decode<D>(self, mut decode_value: D) -> Result<DecodedCharacteristics, DtaError>
     where
         D: FnMut(L) -> Result<String, DtaError>,
     {
-        struct DecodedCharacteristic {
-            first_ordinal: usize,
-            accepted: AcceptedCharacteristic,
-            value: String,
-        }
-
         let mut deferred_error = self.deferred_error;
         let mut records = Vec::new();
         records
@@ -380,11 +334,7 @@ impl<L> CharacteristicPlan<L> {
         }
 
         decoded.sort_unstable_by_key(|record| record.first_ordinal);
-        let mut collector = CharacteristicCollector::default();
-        for record in decoded {
-            collector.push(record.accepted, record.value);
-        }
-        Ok(collector)
+        Ok(DecodedCharacteristics { records: decoded })
     }
 
     #[cfg(test)]
@@ -455,48 +405,53 @@ pub(crate) fn classify_characteristic(
     Ok(Some(AcceptedCharacteristic { target_index, key }))
 }
 
-/// Folds raw DTA characteristic records into their canonical scopes.
-///
-/// Unknown targets, numeric note control records, and known structural keys
-/// are rejected before their values need to be decoded. Duplicate keys retain
-/// their first position and replace their value in constant expected time.
-#[derive(Default)]
-pub(crate) struct CharacteristicCollector {
-    dataset: Option<Box<ScopeMetadata>>,
-    variables: HashMap<usize, Box<ScopeMetadata>>,
-}
-
-impl CharacteristicCollector {
-    pub(crate) fn push(&mut self, accepted: AcceptedCharacteristic, value: String) {
-        match accepted.target_index {
-            None => self
-                .dataset
-                .get_or_insert_with(Default::default)
-                .push(accepted.key, value),
-            Some(index) => self
-                .variables
-                .entry(index)
-                .or_default()
-                .push(accepted.key, value),
-        }
-    }
-
+impl DecodedCharacteristics {
     pub(crate) fn finish(
         self,
         dataset_notes: &mut Vec<StataNote>,
         dataset_characteristics: &mut Vec<StataCharacteristic>,
         variables: &mut [VariableInfo],
     ) {
-        let (notes, characteristics) = self.dataset.unwrap_or_default().finish();
-        *dataset_notes = notes;
-        *dataset_characteristics = characteristics;
-        for (index, metadata) in self.variables {
-            if let Some(variable) = variables.get_mut(index) {
-                let (notes, characteristics) = metadata.finish();
-                variable.notes = notes;
-                variable.characteristics = characteristics;
+        dataset_notes.clear();
+        dataset_characteristics.clear();
+        for variable in variables.iter_mut() {
+            variable.notes.clear();
+            variable.characteristics.clear();
+        }
+
+        for record in self.records {
+            let (notes, characteristics) = match record.accepted.target_index {
+                None => (&mut *dataset_notes, &mut *dataset_characteristics),
+                Some(index) => {
+                    let Some(variable) = variables.get_mut(index) else {
+                        continue;
+                    };
+                    (&mut variable.notes, &mut variable.characteristics)
+                }
+            };
+            match record.accepted.key {
+                MetadataKey::Note(number) => notes.push(StataNote {
+                    number,
+                    text: record.value,
+                }),
+                MetadataKey::Characteristic(name) => {
+                    characteristics.push(StataCharacteristic {
+                        name,
+                        value: record.value,
+                    });
+                }
             }
         }
+
+        dataset_notes.sort_unstable_by_key(|note| note.number);
+        for variable in variables {
+            variable.notes.sort_unstable_by_key(|note| note.number);
+        }
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.records.len()
     }
 }
 
@@ -724,19 +679,21 @@ mod tests {
             ("missing", "source", "ignored"),
         ]
         .into_iter();
-        let mut collector = CharacteristicCollector::default();
+        let mut plan = CharacteristicPlan::default();
         let mut variable_indexes = VariableTargetIndexes::new(&variables);
-        for (target, name, value) in records {
-            if let Some(accepted) = classify_characteristic(target, name.into(), 0, |target| {
-                variable_indexes.resolve(target)
-            })
-            .expect("valid raw characteristic")
-            {
-                collector.push(accepted, value.into());
-            }
+        for (ordinal, (target, name, value)) in records.enumerate() {
+            plan.push_record(
+                ordinal,
+                target,
+                name.into(),
+                0,
+                |target| variable_indexes.resolve(target),
+                |_| Ok(Some(value)),
+            )
+            .expect("valid raw characteristic");
         }
         drop(variable_indexes);
-        collector.finish(
+        plan.decode(|value| Ok(value.into())).unwrap().finish(
             &mut dataset_notes,
             &mut dataset_characteristics,
             &mut variables,
@@ -793,19 +750,74 @@ mod tests {
             byte_offset: 0,
         };
         let mut variables = vec![variable.clone(), variable];
-        let mut collector = CharacteristicCollector::default();
+        let mut plan = CharacteristicPlan::default();
         let mut variable_indexes = VariableTargetIndexes::new(&variables);
-        let accepted = classify_characteristic("x", "role".into(), 0, |target| {
-            variable_indexes.resolve(target)
-        })
-        .expect("valid raw characteristic")
+        plan.push_record(
+            0,
+            "x",
+            "role".into(),
+            0,
+            |target| variable_indexes.resolve(target),
+            |_| Ok(Some("id")),
+        )
         .expect("the duplicate target resolves");
-        collector.push(accepted, "id".into());
         drop(variable_indexes);
-        collector.finish(&mut Vec::new(), &mut Vec::new(), &mut variables);
+        plan.decode(|value| Ok(value.into())).unwrap().finish(
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut variables,
+        );
 
         assert!(variables[0].characteristics.is_empty());
         assert_eq!(variables[1].characteristics[0].value, "id");
+    }
+
+    #[test]
+    fn decoded_plan_materializes_120_000_scopes_without_scope_staging() {
+        const SCOPES: usize = 120_000;
+        let template = VariableInfo {
+            name: "x".into(),
+            dta_type: DtaType::Byte,
+            type_code: 65530,
+            format: "%8.0g".into(),
+            label: String::new(),
+            value_label_name: String::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            byte_width: 1,
+            byte_offset: 0,
+        };
+        let mut variables = vec![template; SCOPES];
+        let mut plan = CharacteristicPlan::default();
+        for index in 0..SCOPES {
+            plan.push_record(
+                index,
+                "x",
+                "role".into(),
+                0,
+                |_| Some(index),
+                |_| Ok(Some(index)),
+            )
+            .unwrap();
+        }
+
+        let decoded = plan.decode(|index| Ok(index.to_string())).unwrap();
+        assert_eq!(decoded.len(), SCOPES);
+        assert_eq!(
+            std::mem::size_of_val(&decoded),
+            std::mem::size_of::<Vec<DecodedCharacteristic>>(),
+            "decoded state must be one flat record vector, not per-scope containers"
+        );
+        decoded.finish(&mut Vec::new(), &mut Vec::new(), &mut variables);
+
+        assert!(variables
+            .iter()
+            .all(|variable| variable.notes.is_empty() && variable.characteristics.len() == 1));
+        assert_eq!(variables[0].characteristics[0].value, "0");
+        assert_eq!(
+            variables[SCOPES - 1].characteristics[0].value,
+            (SCOPES - 1).to_string()
+        );
     }
 
     #[test]

@@ -502,21 +502,35 @@ var StataMetadataCollector = class {
   scopeIndexes(scopeIndex) {
     const existing = this.indexes.get(scopeIndex);
     if (existing !== void 0) return existing;
-    const scope = this.scope(scopeIndex);
-    const notes = mutableNotes(scope);
-    const characteristics = mutableCharacteristics(scope);
-    const indexes = {
-      noteValues: notes,
-      characteristicValues: characteristics,
-      noteIndices: new Map(
-        notes.map((note, index) => [note.number, index])
-      ),
-      characteristicIndices: new Map(
-        characteristics.map((item, index) => [item.name, index])
-      )
-    };
+    const indexes = {};
     this.indexes.set(scopeIndex, indexes);
     return indexes;
+  }
+  noteIndexes(scopeIndex) {
+    const scopeIndexes = this.scopeIndexes(scopeIndex);
+    if (scopeIndexes.notes === void 0) {
+      const values = mutableNotes(this.scope(scopeIndex));
+      scopeIndexes.notes = {
+        values,
+        indices: new Map(
+          values.map((note, index) => [note.number, index])
+        )
+      };
+    }
+    return scopeIndexes.notes;
+  }
+  characteristicIndexes(scopeIndex) {
+    const scopeIndexes = this.scopeIndexes(scopeIndex);
+    if (scopeIndexes.characteristics === void 0) {
+      const values = mutableCharacteristics(this.scope(scopeIndex));
+      scopeIndexes.characteristics = {
+        values,
+        indices: new Map(
+          values.map((item, index) => [item.name, index])
+        )
+      };
+    }
+    return scopeIndexes.characteristics;
   }
   accept(target, name) {
     if (!validCharacteristicNameShape(name)) {
@@ -542,33 +556,37 @@ var StataMetadataCollector = class {
       value,
       accepted.noteNumber === null ? "characteristic" : "note"
     );
-    const indexes = this.scopeIndexes(accepted.scopeIndex);
-    const notes = indexes.noteValues;
-    const characteristics = indexes.characteristicValues;
     if (accepted.noteNumber !== null) {
-      const existing2 = indexes.noteIndices.get(accepted.noteNumber);
+      const notes = this.noteIndexes(accepted.scopeIndex);
+      const existing2 = notes.indices.get(accepted.noteNumber);
       if (existing2 === void 0) {
-        indexes.noteIndices.set(accepted.noteNumber, notes.length);
-        notes.push({ number: accepted.noteNumber, text: value });
+        notes.indices.set(accepted.noteNumber, notes.values.length);
+        notes.values.push({
+          number: accepted.noteNumber,
+          text: value
+        });
       } else {
-        notes[existing2].text = value;
+        notes.values[existing2].text = value;
       }
       return;
     }
-    const existing = indexes.characteristicIndices.get(accepted.name);
+    const characteristics = this.characteristicIndexes(
+      accepted.scopeIndex
+    );
+    const existing = characteristics.indices.get(accepted.name);
     if (existing === void 0) {
-      indexes.characteristicIndices.set(
+      characteristics.indices.set(
         accepted.name,
-        characteristics.length
+        characteristics.values.length
       );
-      characteristics.push({ name: accepted.name, value });
+      characteristics.values.push({ name: accepted.name, value });
     } else {
-      characteristics[existing].value = value;
+      characteristics.values[existing].value = value;
     }
   }
   finish() {
-    for (const scopeIndex of this.indexes.keys()) {
-      this.scopeIndexes(scopeIndex).noteValues.sort(
+    for (const indexes of this.indexes.values()) {
+      indexes.notes?.values.sort(
         (left, right) => left.number - right.number
       );
     }
@@ -701,6 +719,10 @@ function dropStataCharacteristics(target, names) {
 }
 
 // src/characteristic-payload.ts
+function canonicalRecordKey(accepted) {
+  const key = accepted.noteNumber === null ? `c:${accepted.name}` : `n:${accepted.noteNumber}`;
+  return `${accepted.scopeIndex}\0${key}`;
+}
 function readFixedString(bytes, start, width, decoder) {
   let end = start;
   const limit = start + width;
@@ -717,8 +739,13 @@ var StataCharacteristicFramePlan = class {
   decoder;
   collector;
   records = [];
+  recordIndices = /* @__PURE__ */ new Map();
   deferredError;
   hasDeferredError = false;
+  /** Number of distinct accepted scope/key locators retained for decoding. */
+  get retainedCount() {
+    return this.records.length;
+  }
   add(locator) {
     let valueEnd;
     try {
@@ -750,11 +777,20 @@ var StataCharacteristicFramePlan = class {
     try {
       const accepted = this.collector.accept(target, name);
       if (accepted !== null) {
-        this.records.push({
-          accepted,
-          valueStart: locator.valueStart,
-          valueEnd
-        });
+        const key = canonicalRecordKey(accepted);
+        const existing = this.recordIndices.get(key);
+        if (existing === void 0) {
+          this.recordIndices.set(key, this.records.length);
+          this.records.push({
+            accepted,
+            valueStart: locator.valueStart,
+            valueEnd
+          });
+        } else {
+          const record = this.records[existing];
+          record.valueStart = locator.valueStart;
+          record.valueEnd = valueEnd;
+        }
       }
     } catch (error) {
       this.deferredError = error;

@@ -3,6 +3,10 @@ export interface StataMetadataTarget {
     notes?: StataNote[] | string[];
     characteristics?: StataCharacteristic[];
 }
+/** Whether this lazy target has allocated its notes array. */
+export declare function isStataNotesMaterialized(target: object): boolean;
+/** Whether this lazy target has allocated its characteristics array. */
+export declare function isStataCharacteristicsMaterialized(target: object): boolean;
 /** Add canonical metadata arrays without allocating them until first access. */
 export declare function withLazyStataMetadata<T extends object>(target: T): T & {
     notes: StataNote[];
@@ -23,6 +27,8 @@ export declare class StataMetadataCollector {
     private targetIndex;
     private scope;
     private scopeIndexes;
+    private noteIndexes;
+    private characteristicIndexes;
     accept(target: string, name: string): AcceptedStataCharacteristic | null;
     pushLazy(target: string, name: string, value: () => string): boolean;
     pushAcceptedLazy(accepted: AcceptedStataCharacteristic, value: () => string): void;
