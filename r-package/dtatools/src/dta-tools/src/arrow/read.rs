@@ -29,14 +29,14 @@ use super::profile::{
     ARROW_PROFILE_VERSION_KEY,
 };
 use super::ArrowProfileError;
+use super::MAX_IPC_METADATA_BYTES;
 
 const FILE_MAGIC: &[u8; 6] = b"ARROW1";
 const CONTINUATION_MARKER: [u8; 4] = [0xff, 0xff, 0xff, 0xff];
-const MAX_IPC_METADATA_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_PARTIAL_BATCH_DECODE_BYTES: u64 = 256 * 1024 * 1024;
 
 fn metadata_buffer(length: u64, location: &str) -> Result<Vec<u8>, ArrowProfileError> {
-    if length > MAX_IPC_METADATA_BYTES {
+    if length > MAX_IPC_METADATA_BYTES as u64 {
         return Err(invalid(format!(
             "{location} metadata length exceeds the 64 MiB safety limit"
         )));
@@ -462,7 +462,7 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
             body_length: u64::try_from(block.bodyLength())
                 .map_err(|_| invalid("negative block body length"))?,
         };
-        if u64::from(info.metadata_length) > MAX_IPC_METADATA_BYTES {
+        if u64::from(info.metadata_length) > MAX_IPC_METADATA_BYTES as u64 {
             return Err(invalid(
                 "IPC block metadata length exceeds the 64 MiB safety limit",
             ));
@@ -2273,7 +2273,7 @@ mod tests {
 
     #[test]
     fn ipc_metadata_allocations_are_bounded() {
-        let error = metadata_buffer(MAX_IPC_METADATA_BYTES + 1, "record batch")
+        let error = metadata_buffer(MAX_IPC_METADATA_BYTES as u64 + 1, "record batch")
             .expect_err("oversized metadata is rejected before allocation");
         assert!(error.to_string().contains("64 MiB safety limit"));
     }

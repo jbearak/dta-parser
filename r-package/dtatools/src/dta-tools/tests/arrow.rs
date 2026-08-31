@@ -89,6 +89,80 @@ fn write_to_vec(dataset: &ArrowWriteDataset, compression: ArrowCompression) -> V
     bytes
 }
 
+fn dataset_with_dataset_json_size(target_bytes: usize) -> ArrowWriteDataset {
+    let value = "x".repeat(67_784);
+    let mut document = DatasetDocument {
+        characteristics: (0..990)
+            .map(|index| StataCharacteristic {
+                name: format!("c{index}"),
+                value: if index == 989 {
+                    String::new()
+                } else {
+                    value.clone()
+                },
+            })
+            .collect(),
+        ..DatasetDocument::default()
+    };
+    let base_bytes = serde_json::to_string(&document).unwrap().len();
+    let final_value_bytes = target_bytes.checked_sub(base_bytes).unwrap();
+    assert!(final_value_bytes <= 67_784);
+    document.characteristics[989].value = "x".repeat(final_value_bytes);
+    assert_eq!(
+        serde_json::to_string(&document).unwrap().len(),
+        target_bytes
+    );
+    ArrowWriteDataset {
+        dataset: document,
+        columns: vec![ArrowWriteColumn {
+            name: "x".to_owned(),
+            field: None,
+            array: Arc::new(Int32Array::from(vec![1])),
+        }],
+    }
+}
+
+#[test]
+fn writer_emits_only_footers_within_the_reader_metadata_limit() {
+    const READER_METADATA_LIMIT: usize = 64 * 1024 * 1024;
+    let accepted = dataset_with_dataset_json_size(READER_METADATA_LIMIT - 4_096);
+    let mut bytes = Vec::new();
+    save_arrow_file_to(
+        &mut bytes,
+        &accepted,
+        ArrowCompression::Uncompressed,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect("a footer immediately below the reader limit is written");
+    let footer_length =
+        u32::from_le_bytes(bytes[bytes.len() - 10..bytes.len() - 6].try_into().unwrap()) as usize;
+    assert!(footer_length <= READER_METADATA_LIMIT);
+    assert!(READER_METADATA_LIMIT - footer_length < 4_096);
+    read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &read_all_options(),
+        &mut no_interrupt(),
+    )
+    .expect("the writer's near-limit footer is readable");
+    drop(accepted);
+
+    let rejected = dataset_with_dataset_json_size(READER_METADATA_LIMIT - 64);
+    let mut destination = b"untouched".to_vec();
+    let error = save_arrow_file_to(
+        &mut destination,
+        &rejected,
+        ArrowCompression::Uncompressed,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("a footer above the reader limit is rejected before writing");
+    assert!(error.to_string().contains("64 MiB"));
+    assert_eq!(destination, b"untouched");
+}
+
 fn field_document(
     storage: Option<StataStorage>,
     missing: Option<ArrowMissingEncoding>,

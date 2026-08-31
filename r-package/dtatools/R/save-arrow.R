@@ -35,8 +35,11 @@
 #'
 #' @section Output safety:
 #' Only local files are supported. The complete input is validated before
-#' native serialization starts. Output streams to a sibling temporary file and
-#' atomically replaces the destination only after the file is closed.
+#' native serialization starts, including the Arrow reader's 64 MiB aggregate
+#' footer-metadata limit. This limit covers the encoded schema, profile JSON,
+#' checksum document, and record-batch index rather than each value separately.
+#' Output streams to a sibling temporary file and atomically replaces the
+#' destination only after the file is closed.
 #' Symbolic-link, directory, and other non-regular destinations are rejected.
 #'
 #' @param data A data frame or tibble.

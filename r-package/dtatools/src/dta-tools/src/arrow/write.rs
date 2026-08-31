@@ -12,9 +12,11 @@ use std::sync::Arc;
 use std::thread;
 
 use arrow_array::{Array, ArrayRef, RecordBatch};
-use arrow_ipc::writer::{FileWriter, IpcWriteOptions};
-use arrow_ipc::CompressionType;
+use arrow_ipc::convert::{metadata_to_fb, IpcSchemaEncoder};
+use arrow_ipc::writer::{DictionaryTracker, FileWriter, IpcWriteOptions};
+use arrow_ipc::{Block, CompressionType, FooterBuilder, MetadataVersion};
 use arrow_schema::{DataType, Field, Schema};
+use flatbuffers::FlatBufferBuilder;
 
 use super::checksum::canonical_array_hashes;
 use super::profile::{
@@ -24,6 +26,7 @@ use super::profile::{
     ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY, DOCUMENT_VERSION,
 };
 use super::ArrowProfileError;
+use super::MAX_IPC_METADATA_BYTES;
 
 /// Canonical rows per record batch, pinned by benchmark. The multiple of 64
 /// keeps sliced validity and boolean bitmaps byte-aligned.
@@ -414,8 +417,213 @@ fn serialize_json_into<T: serde::Serialize>(
         .map_err(|error| ArrowProfileError::Invalid(error.to_string()))
 }
 
-fn serialize_json<T: serde::Serialize>(value: &T) -> Result<String, ArrowProfileError> {
-    serde_json::to_string(value).map_err(|error| ArrowProfileError::Invalid(error.to_string()))
+fn footer_too_large() -> ArrowProfileError {
+    ArrowProfileError::Invalid(
+        "Arrow footer metadata exceeds the 64 MiB reader safety limit".to_owned(),
+    )
+}
+
+struct BoundedMetadataJson {
+    value: Vec<u8>,
+    exceeded: bool,
+}
+
+impl BoundedMetadataJson {
+    fn new() -> Self {
+        Self {
+            value: Vec::new(),
+            exceeded: false,
+        }
+    }
+
+    fn push(&mut self, value: &str) -> Result<(), ArrowProfileError> {
+        self.push_bytes(value.as_bytes())
+    }
+
+    fn push_bytes(&mut self, value: &[u8]) -> Result<(), ArrowProfileError> {
+        let Some(length) = self.value.len().checked_add(value.len()) else {
+            self.exceeded = true;
+            return Err(footer_too_large());
+        };
+        if length > MAX_IPC_METADATA_BYTES {
+            self.exceeded = true;
+            return Err(footer_too_large());
+        }
+        self.value.try_reserve(value.len()).map_err(|_| {
+            ArrowProfileError::Invalid("could not allocate Arrow footer metadata".to_owned())
+        })?;
+        self.value.extend_from_slice(value);
+        Ok(())
+    }
+
+    fn into_string(self) -> Result<String, ArrowProfileError> {
+        String::from_utf8(self.value).map_err(|_| {
+            ArrowProfileError::Invalid("JSON serializer produced invalid UTF-8".into())
+        })
+    }
+}
+
+impl Write for BoundedMetadataJson {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.push_bytes(bytes)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn serialize_footer_json<T: serde::Serialize>(value: &T) -> Result<String, ArrowProfileError> {
+    let mut output = BoundedMetadataJson::new();
+    if let Err(error) = serde_json::to_writer(&mut output, value) {
+        return if output.exceeded {
+            Err(footer_too_large())
+        } else {
+            Err(ArrowProfileError::Invalid(error.to_string()))
+        };
+    }
+    output.into_string()
+}
+
+fn dictionary_columns(dataset: &ArrowWriteDataset) -> Vec<usize> {
+    dataset
+        .columns
+        .iter()
+        .enumerate()
+        .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
+        .map(|(index, _)| index)
+        .collect()
+}
+
+fn record_batch_count(row_count: usize, dictionary_columns: &[usize]) -> usize {
+    if row_count == 0 && !dictionary_columns.is_empty() {
+        1
+    } else {
+        row_count.div_ceil(ARROW_ROWS_PER_BATCH)
+    }
+}
+
+fn append_placeholder_hashes(
+    output: &mut BoundedMetadataJson,
+    count: usize,
+) -> Result<(), ArrowProfileError> {
+    output.push("[")?;
+    for index in 0..count {
+        if index != 0 {
+            output.push(",")?;
+        }
+        output.push("\"0000000000000000\"")?;
+    }
+    output.push("]")
+}
+
+fn placeholder_checksums_json(
+    dataset: &ArrowWriteDataset,
+    batch_count: usize,
+    dictionary_columns: &[usize],
+) -> Result<String, ArrowProfileError> {
+    let column_hash_counts: Vec<usize> = dataset
+        .columns
+        .iter()
+        .map(|column| {
+            let empty = column.array.slice(0, 0);
+            canonical_array_hashes(empty.as_ref()).map(|hashes| hashes.len())
+        })
+        .collect::<Result<_, _>>()?;
+    let dictionary_hash_counts: Vec<(usize, usize)> = dictionary_columns
+        .iter()
+        .map(|&column| {
+            let values = dictionary_values(&dataset.columns[column].array).ok_or_else(|| {
+                ArrowProfileError::Invalid(format!(
+                    "dictionary column `{}` has no values array",
+                    dataset.columns[column].name
+                ))
+            })?;
+            let empty = values.slice(0, 0);
+            Ok((column, canonical_array_hashes(empty.as_ref())?.len()))
+        })
+        .collect::<Result<_, ArrowProfileError>>()?;
+
+    let mut output = BoundedMetadataJson::new();
+    output.push("{\"version\":")?;
+    output.push(&DOCUMENT_VERSION.to_string())?;
+    output.push(",\"algorithm\":\"xxh64\",\"batches\":[")?;
+    for batch in 0..batch_count {
+        if batch != 0 {
+            output.push(",")?;
+        }
+        output.push("{\"columns\":[")?;
+        for (column, &hash_count) in column_hash_counts.iter().enumerate() {
+            if column != 0 {
+                output.push(",")?;
+            }
+            append_placeholder_hashes(&mut output, hash_count)?;
+        }
+        output.push("]}")?;
+    }
+    output.push("]")?;
+    if !dictionary_hash_counts.is_empty() {
+        output.push(",\"dictionaries\":{")?;
+        for (entry, &(column, hash_count)) in dictionary_hash_counts.iter().enumerate() {
+            if entry != 0 {
+                output.push(",")?;
+            }
+            output.push("\"")?;
+            output.push(&column.to_string())?;
+            output.push("\":")?;
+            append_placeholder_hashes(&mut output, hash_count)?;
+        }
+        output.push("}")?;
+    }
+    output.push("}")?;
+    output.into_string()
+}
+
+fn validate_footer_size(
+    schema: &Schema,
+    record_batch_count: usize,
+    dictionary_count: usize,
+    checksum_json: Option<String>,
+) -> Result<(), ArrowProfileError> {
+    let block_bytes = record_batch_count
+        .checked_add(dictionary_count)
+        .and_then(|count| count.checked_mul(size_of::<Block>()))
+        .ok_or_else(footer_too_large)?;
+    if block_bytes > MAX_IPC_METADATA_BYTES {
+        return Err(footer_too_large());
+    }
+    let mut builder = FlatBufferBuilder::new();
+    let dictionary_blocks = vec![Block::new(0, 0, 0); dictionary_count];
+    let record_blocks = vec![Block::new(0, 0, 0); record_batch_count];
+    let dictionaries = builder.create_vector(&dictionary_blocks);
+    let record_batches = builder.create_vector(&record_blocks);
+    let mut tracker = DictionaryTracker::new(true);
+    let schema = IpcSchemaEncoder::new()
+        .with_dictionary_tracker(&mut tracker)
+        .schema_to_fb_offset(&mut builder, schema);
+    let custom_metadata =
+        checksum_json.map(|json| HashMap::from([(ARROW_CHECKSUMS_KEY.to_owned(), json)]));
+    let custom_metadata = custom_metadata
+        .as_ref()
+        .map(|metadata| metadata_to_fb(&mut builder, metadata));
+    let footer = {
+        let mut footer = FooterBuilder::new(&mut builder);
+        footer.add_version(MetadataVersion::V5);
+        footer.add_schema(schema);
+        footer.add_dictionaries(dictionaries);
+        footer.add_recordBatches(record_batches);
+        if let Some(custom_metadata) = custom_metadata {
+            footer.add_custom_metadata(custom_metadata);
+        }
+        footer.finish()
+    };
+    builder.finish(footer, None);
+    if builder.finished_data().len() > MAX_IPC_METADATA_BYTES {
+        return Err(footer_too_large());
+    }
+    Ok(())
 }
 
 fn validate_fields_with(
@@ -474,22 +682,68 @@ fn validated_row_count(dataset: &ArrowWriteDataset) -> Result<usize, ArrowProfil
     validate_fields_with(dataset, |_field, _document| Ok(()))
 }
 
-fn validated_fields(dataset: &ArrowWriteDataset) -> Result<(usize, Vec<Field>), ArrowProfileError> {
+fn validated_fields(
+    dataset: &ArrowWriteDataset,
+) -> Result<(usize, Vec<Field>, usize), ArrowProfileError> {
     let mut fields = Vec::with_capacity(dataset.columns.len());
+    let mut metadata_bytes = 0_usize;
     let row_count = validate_fields_with(dataset, |mut field, document| {
         if let Some(document) = document {
-            let json = serialize_json(document)?;
+            let json = serialize_footer_json(document)?;
+            metadata_bytes = metadata_bytes
+                .checked_add(json.len())
+                .filter(|&bytes| bytes <= MAX_IPC_METADATA_BYTES)
+                .ok_or_else(footer_too_large)?;
             field.set_metadata(HashMap::from([(ARROW_FIELD_KEY.to_owned(), json)]));
         }
         fields.push(field);
         Ok(())
     })?;
-    Ok((row_count, fields))
+    Ok((row_count, fields, metadata_bytes))
+}
+
+struct ValidatedArrowWrite {
+    row_count: usize,
+    schema: Arc<Schema>,
+}
+
+fn validated_arrow_write(
+    dataset: &ArrowWriteDataset,
+    checksums: bool,
+) -> Result<ValidatedArrowWrite, ArrowProfileError> {
+    let (row_count, fields, field_metadata_bytes) = validated_fields(dataset)?;
+    let dataset_json = serialize_footer_json(&dataset.dataset)?;
+    field_metadata_bytes
+        .checked_add(dataset_json.len())
+        .filter(|&bytes| bytes <= MAX_IPC_METADATA_BYTES)
+        .ok_or_else(footer_too_large)?;
+
+    let schema = Arc::new(Schema::new(fields).with_metadata(HashMap::from([
+        (
+            ARROW_PROFILE_VERSION_KEY.to_owned(),
+            ARROW_PROFILE_VERSION.to_owned(),
+        ),
+        (ARROW_DATASET_KEY.to_owned(), dataset_json),
+    ])));
+    let dictionary_columns = dictionary_columns(dataset);
+    let record_batch_count = record_batch_count(row_count, &dictionary_columns);
+    let checksum_json = checksums
+        .then(|| placeholder_checksums_json(dataset, record_batch_count, &dictionary_columns))
+        .transpose()?;
+    validate_footer_size(
+        &schema,
+        record_batch_count,
+        dictionary_columns.len(),
+        checksum_json,
+    )?;
+    Ok(ValidatedArrowWrite { row_count, schema })
 }
 
 /// Save a dataset as a dtatools Arrow profile file at `path`, replacing any
 /// existing file. Callers that need atomic replacement write to a sibling
-/// temporary path and rename, as the R adapter does.
+/// temporary path and rename, as the R adapter does. Validation rejects a
+/// prospective footer above the reader's 64 MiB metadata limit before the
+/// destination is opened.
 pub fn save_arrow_file(
     path: impl AsRef<Path>,
     dataset: &ArrowWriteDataset,
@@ -498,7 +752,7 @@ pub fn save_arrow_file(
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    let validated = validated_fields(dataset)?;
+    let validated = validated_arrow_write(dataset, checksums)?;
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
     save_arrow_file_to_validated(
@@ -522,6 +776,8 @@ pub fn save_arrow_file(
 /// bounds checksum hashing: `0` selects a count automatically, `1` forces
 /// serial hashing. `checksums: false` omits the footer checksums document
 /// entirely; such files read back only with verification off.
+/// Validation rejects a prospective footer above the reader's 64 MiB metadata
+/// limit before writing to `output`.
 pub fn save_arrow_file_to<W: Write>(
     output: W,
     dataset: &ArrowWriteDataset,
@@ -530,7 +786,7 @@ pub fn save_arrow_file_to<W: Write>(
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    let validated = validated_fields(dataset)?;
+    let validated = validated_arrow_write(dataset, checksums)?;
     save_arrow_file_to_validated(
         output,
         dataset,
@@ -545,24 +801,13 @@ pub fn save_arrow_file_to<W: Write>(
 fn save_arrow_file_to_validated<W: Write>(
     output: W,
     dataset: &ArrowWriteDataset,
-    validated: (usize, Vec<Field>),
+    validated: ValidatedArrowWrite,
     compression: ArrowCompression,
     threads: usize,
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    let (row_count, fields) = validated;
-    let mut schema_metadata = HashMap::new();
-    schema_metadata.insert(
-        ARROW_PROFILE_VERSION_KEY.to_owned(),
-        ARROW_PROFILE_VERSION.to_owned(),
-    );
-    schema_metadata.insert(
-        ARROW_DATASET_KEY.to_owned(),
-        serde_json::to_string(&dataset.dataset)
-            .map_err(|error| ArrowProfileError::Invalid(error.to_string()))?,
-    );
-    let schema = Arc::new(Schema::new(fields).with_metadata(schema_metadata));
+    let ValidatedArrowWrite { row_count, schema } = validated;
 
     let options = IpcWriteOptions::default()
         .try_with_compression(compression.compression_type())
@@ -575,18 +820,8 @@ fn save_arrow_file_to_validated<W: Write>(
         None
     } else {
         let column_count = dataset.columns.len();
-        let dictionary_columns: Vec<usize> = dataset
-            .columns
-            .iter()
-            .enumerate()
-            .filter(|(_, column)| matches!(column.array.data_type(), DataType::Dictionary(_, _)))
-            .map(|(index, _)| index)
-            .collect();
-        let batch_count = if row_count == 0 && !dictionary_columns.is_empty() {
-            1
-        } else {
-            row_count.div_ceil(ARROW_ROWS_PER_BATCH)
-        };
+        let dictionary_columns = dictionary_columns(dataset);
+        let batch_count = record_batch_count(row_count, &dictionary_columns);
         let tasks = build_hash_tasks(batch_count, column_count, &dictionary_columns);
         let cells = (row_count as u64).saturating_mul(column_count as u64);
         let threads = hash_thread_count(threads, tasks.len(), cells);

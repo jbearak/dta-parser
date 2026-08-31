@@ -424,6 +424,13 @@ silently as a wrong value. The profile therefore records an xxHash64 checksum
 document stored in the file footer's custom metadata, which is written last,
 after all data has been hashed.
 
+The reader accepts at most 64 MiB of encoded footer metadata. The writer
+constructs the exact prospective footer shape before opening its destination
+and rejects a dataset whose schema, profile documents, checksum document, and
+block index would cross that bound. Per-value metadata validation alone is not
+enough because many individually valid notes or characteristics share the same
+footer.
+
 Per-buffer granularity is the only choice compatible with projection and row
 ranges: a projected read verifies exactly the buffers it touches, and a
 corrupt file is reported by column and batch. A whole-file or per-batch

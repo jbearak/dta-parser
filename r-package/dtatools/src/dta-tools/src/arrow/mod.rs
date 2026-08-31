@@ -12,6 +12,8 @@ mod profile;
 mod read;
 mod write;
 
+pub(crate) const MAX_IPC_METADATA_BYTES: usize = 64 * 1024 * 1024;
+
 pub use profile::{
     ArrowFieldDocument, ArrowMissingEncoding, ArrowRSemantics, ArrowValueLabelEntry,
     DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY,
