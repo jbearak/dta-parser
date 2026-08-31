@@ -34,11 +34,11 @@ if _rc fail "candidate-open" "" ""
 if r(N) != `source_n' fail "dimensions" "" ""
 if r(k) != `source_k' fail "dimensions" "" ""
 
-preserve
-quietly use "`candidate'", clear
-unab candidate_names : _all
-local candidate_dlabel : data label
-restore
+capture frame drop __dtatools_candidate
+frame create __dtatools_candidate
+frame __dtatools_candidate: quietly use "`candidate'", clear
+frame __dtatools_candidate: unab candidate_names : _all
+frame __dtatools_candidate: local candidate_dlabel : data label
 if `"`source_names'"' != `"`candidate_names'"' fail "variable-names" "" ""
 if `"`source_dlabel'"' != `"`candidate_dlabel'"' fail "dataset-label" "" ""
 
@@ -51,9 +51,11 @@ else quietly unicode encoding set utf-8
 quietly unicode analyze "`normalized_source'", redo
 quietly unicode translate "`normalized_source'", invalid(mark) transutf8
 quietly unicode erasebackups, badidea
-quietly use "`normalized_source'", clear
-mata: __dtatools_source_vlabels = J(1, st_nvar(), "")
-mata: for (__dtatools_i = 1; __dtatools_i <= st_nvar(); __dtatools_i++) __dtatools_source_vlabels[__dtatools_i] = st_varlabel(__dtatools_i)
+capture frame drop __dtatools_normalized
+frame create __dtatools_normalized
+frame __dtatools_normalized: quietly use "`normalized_source'", clear
+frame __dtatools_normalized: mata: __dtatools_source_vlabels = J(1, st_nvar(), "")
+frame __dtatools_normalized: mata: for (__dtatools_i = 1; __dtatools_i <= st_nvar(); __dtatools_i++) __dtatools_source_vlabels[__dtatools_i] = st_varlabel(__dtatools_i)
 mata: __dtatools_source_values = J(0, 1, .)
 mata: __dtatools_source_labels = J(0, 1, "")
 mata: __dtatools_candidate_values = J(0, 1, .)
@@ -91,28 +93,23 @@ local source_index 0
 foreach variable of local source_names {
     local ++source_index
     local original_source_type : type `variable'
-    preserve
-    quietly use "`normalized_source'", clear
-    local source_type : type `variable'
+    frame __dtatools_normalized: local source_type : type `variable'
     if substr("`original_source_type'", 1, 3) == "str" & ///
         "`original_source_type'" != "strL" {
         tempvar normalized_length
-        quietly generate long `normalized_length' = strlen(`variable')
-        quietly summarize `normalized_length', meanonly
+        frame __dtatools_normalized: quietly generate long `normalized_length' = strlen(`variable')
+        frame __dtatools_normalized: quietly summarize `normalized_length', meanonly
         local source_width = max(real(substr("`original_source_type'", 4, .)), r(max))
         if `source_width' > 2045 local source_type "strL"
         else local source_type "str`source_width'"
+        frame __dtatools_normalized: drop `normalized_length'
     }
-    restore
     local source_format : format `variable'
     local source_vallab : value label `variable'
-    preserve
-    quietly use "`candidate'", clear
-    local candidate_type : type `variable'
-    local candidate_format : format `variable'
-    local candidate_vallab : value label `variable'
-    mata: st_numscalar("__dtatools_vlabel_equal", st_varlabel(st_varindex("`variable'")) == __dtatools_source_vlabels[`source_index'])
-    restore
+    frame __dtatools_candidate: local candidate_type : type `variable'
+    frame __dtatools_candidate: local candidate_format : format `variable'
+    frame __dtatools_candidate: local candidate_vallab : value label `variable'
+    frame __dtatools_candidate: mata: st_numscalar("__dtatools_vlabel_equal", st_varlabel(st_varindex("`variable'")) == __dtatools_source_vlabels[`source_index'])
 
     if "`source_type'" != "`candidate_type'" fail "storage-type" "`variable'" ""
     if "`source_format'" != "`candidate_format'" fail "display-format" "`variable'" ""
@@ -128,14 +125,8 @@ foreach variable of local source_names {
         fail "value-label-assignment" "`variable'" ""
     }
     if "`source_vallab'" != "" {
-        preserve
-        quietly use "`normalized_source'", clear
-        mata: st_vlload("`source_vallab'", __dtatools_source_values, __dtatools_source_labels)
-        restore
-        preserve
-        quietly use "`candidate'", clear
-        mata: st_vlload("`candidate_vallab'", __dtatools_candidate_values, __dtatools_candidate_labels)
-        restore
+        frame __dtatools_normalized: mata: st_vlload("`source_vallab'", __dtatools_source_values, __dtatools_source_labels)
+        frame __dtatools_candidate: mata: st_vlload("`candidate_vallab'", __dtatools_candidate_values, __dtatools_candidate_labels)
         mata: st_numscalar("__dt_vldef_eq", __dtatools_value_labels_equal(__dtatools_source_values, __dtatools_source_labels, __dtatools_candidate_values, __dtatools_candidate_labels))
         if scalar(__dt_vldef_eq) == 0 {
             fail "value-label-definitions" "`variable'" ""
@@ -145,11 +136,8 @@ foreach variable of local source_names {
 
 local source_note_count : char _dta[note0]
 if "`source_note_count'" == "" local source_note_count 0
-preserve
-quietly use "`candidate'", clear
-local candidate_note_count : char _dta[note0]
+frame __dtatools_candidate: local candidate_note_count : char _dta[note0]
 if "`candidate_note_count'" == "" local candidate_note_count 0
-restore
 if `source_note_count' != `candidate_note_count' fail "dataset-notes" "" ""
 if `source_note_count' > 0 {
     forvalues note = 1/`source_note_count' {
@@ -158,15 +146,12 @@ if `source_note_count' > 0 {
             local source_note = ustrfrom(`"`source_note'"', "windows-1252", 1)
         }
         else local source_note = ustrfix(`"`source_note'"')
-        preserve
-        quietly use "`candidate'", clear
-        local candidate_note : char _dta[note`note']
-        restore
+        frame __dtatools_candidate: local candidate_note : char _dta[note`note']
         if `"`source_note'"' != `"`candidate_note'"' fail "dataset-notes" "" ""
     }
 }
 
-quietly use "`normalized_source'", clear
+frame change __dtatools_normalized
 local cf_count 0
 local cf_guard_index 0
 foreach variable of local source_names {
@@ -188,11 +173,10 @@ foreach variable of local source_names {
 if `cf_count' > 0 {
     tempfile cf_source cf_candidate
     quietly save "`cf_source'"
-    quietly use "`candidate'", clear
     forvalues cf_index = 1/`cf_count' {
-        rename `cf_old`cf_index'' `cf_new`cf_index''
+        frame __dtatools_candidate: rename `cf_old`cf_index'' `cf_new`cf_index''
     }
-    quietly save "`cf_candidate'"
+    frame __dtatools_candidate: quietly save "`cf_candidate'"
     quietly use "`cf_source'", clear
     capture noisily cf _all using "`cf_candidate'"
 }
