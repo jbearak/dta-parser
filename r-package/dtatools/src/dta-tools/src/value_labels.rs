@@ -242,20 +242,6 @@ fn first_nul_positions(text: &[u8], offsets: &[usize]) -> Vec<Option<usize>> {
     positions
 }
 
-fn first_unterminated_offset(text: &[u8], offsets: &[usize]) -> Option<usize> {
-    let mut ordered = (0..offsets.len()).collect::<Vec<_>>();
-    ordered.sort_by_key(|&index| offsets[index]);
-    let mut next = 0_usize;
-    for (position, byte) in text.iter().enumerate() {
-        if *byte == 0 {
-            while next < ordered.len() && offsets[ordered[next]] <= position {
-                next += 1;
-            }
-        }
-    }
-    ordered[next..].iter().copied().min()
-}
-
 fn parse_table(
     bytes: &[u8],
     metadata: &DtaMetadata,
@@ -381,7 +367,7 @@ fn parse_table(
     )?;
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
     let text = &payload[text_start..text_end];
-    let mut text_offsets = Vec::with_capacity(entry_count);
+    let mut text_offsets = retain.then(|| Vec::with_capacity(entry_count));
     let mut entries = retain.then(|| Vec::with_capacity(entry_count));
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
@@ -426,7 +412,9 @@ fn parse_table(
             });
         }
 
-        text_offsets.push(text_offset_usize);
+        if let Some(text_offsets) = text_offsets.as_mut() {
+            text_offsets.push(text_offset_usize);
+        }
 
         if let Some(entries) = entries.as_mut() {
             let value_position =
@@ -445,8 +433,12 @@ fn parse_table(
         }
     }
 
-    if let Some(entries) = entries.as_mut() {
-        let nul_positions = first_nul_positions(text, &text_offsets);
+    if retain {
+        let entries = entries.as_mut().expect("retained table has entries");
+        let text_offsets = text_offsets
+            .as_ref()
+            .expect("retained table has text offsets");
+        let nul_positions = first_nul_positions(text, text_offsets);
         for (entry_index, &text_offset) in text_offsets.iter().enumerate() {
             let Some(nul) = nul_positions[entry_index] else {
                 return Err(DtaError::MissingNulTerminator {
@@ -460,16 +452,32 @@ fn parse_table(
             };
             entries[entry_index].label = encoding.decode(&text[text_offset..nul]);
         }
-    } else if let Some(entry_index) = first_unterminated_offset(text, &text_offsets) {
-        let text_offset = text_offsets[entry_index];
-        return Err(DtaError::MissingNulTerminator {
-            context: "value-label text",
-            offset: checked_add(
-                payload_start,
-                checked_add(text_start, text_offset, "value-label text")?,
-                "value-label text",
-            )?,
-        });
+    } else if text.last() != Some(&0) {
+        let last_nul = text.iter().rposition(|byte| *byte == 0);
+        for entry_index in 0..entry_count {
+            let raw_offset_position = checked_add(
+                offsets_start,
+                checked_mul(entry_index, 4, "value-label entry offset")?,
+                "value-label entry offset position",
+            )?;
+            let text_offset = usize::try_from(read_i32(
+                payload,
+                raw_offset_position,
+                metadata.byte_order,
+                "validated value-label text offset",
+            )?)
+            .map_err(|_| DtaError::ArithmeticOverflow("validated value-label text offset"))?;
+            if last_nul.is_none_or(|last_nul| text_offset > last_nul) {
+                return Err(DtaError::MissingNulTerminator {
+                    context: "value-label text",
+                    offset: checked_add(
+                        payload_start,
+                        checked_add(text_start, text_offset, "value-label text")?,
+                        "value-label text",
+                    )?,
+                });
+            }
+        }
     }
 
     cursor = checked_add(payload_start, declared, "value-label table payload")?;

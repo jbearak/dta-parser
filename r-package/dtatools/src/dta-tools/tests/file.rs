@@ -357,6 +357,27 @@ fn many_short_first_value_labels(mut bytes: Vec<u8>, count: usize) -> Vec<u8> {
     bytes
 }
 
+fn alternating_short_first_value_labels(bytes: Vec<u8>, count: usize) -> Vec<u8> {
+    let mut bytes = many_short_first_value_labels(bytes, count);
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let payload_start = table_start + b"<lbl>".len() + 4 + 129 + 3;
+    let offsets_start = payload_start + 8;
+    let text_length = i32::from_le_bytes(
+        bytes[payload_start + 4..payload_start + 8]
+            .try_into()
+            .unwrap(),
+    );
+    let low = 2_i32;
+    let high = text_length - 2;
+    for index in 0..count {
+        let offset = offsets_start + index * 4;
+        let boundary = if index.is_multiple_of(2) { low } else { high };
+        bytes[offset..offset + 4].copy_from_slice(&boundary.to_le_bytes());
+    }
+    bytes
+}
+
 fn wide_empty_fixed_strings(mut bytes: Vec<u8>) -> (Vec<u8>, u32) {
     const WIDE: usize = 2045;
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
@@ -1060,6 +1081,8 @@ fn projected_slice_and_file_validate_unselected_utf8_label_offsets() {
 #[test]
 fn large_unselected_value_label_offsets_use_bounded_staging() {
     let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
+    let slice = read_dta_with_options(&bytes, &options(0, None, Vec::new())).unwrap();
+    assert!(slice.value_label_tables.is_empty());
     let (reader, trace) = TracedReader::new(bytes);
     let mut file = DtaFile::from_reader_with_options(
         reader,
@@ -1074,6 +1097,85 @@ fn large_unselected_value_label_offsets_use_bounded_staging() {
     assert!(projected.value_label_tables.is_empty());
     assert!(file.max_scratch_bytes_used() <= 1024);
     assert!(trace.borrow().max_request <= 1024);
+}
+
+#[test]
+fn unordered_unselected_value_label_offsets_use_bounded_file_io() {
+    let bytes = alternating_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
+    let file_length = bytes.len();
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader_with_options(
+        reader,
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    {
+        let mut trace = trace.borrow_mut();
+        trace.reads.clear();
+        trace.seeks.clear();
+    }
+    let projected = file
+        .read_with_options(&options(0, None, Vec::new()))
+        .unwrap();
+    assert!(projected.value_label_tables.is_empty());
+    let trace = trace.borrow();
+    let total_read = trace.reads.iter().map(|(_, length)| *length).sum::<usize>();
+    assert!(total_read < file_length * 5, "read {total_read} bytes");
+    assert!(
+        trace.seeks.len() < 5_000,
+        "issued {} seeks",
+        trace.seeks.len()
+    );
+}
+
+#[test]
+fn late_invalid_value_label_offset_batches_prior_utf8_validation() {
+    let count = 100_000;
+    let mut bytes = alternating_short_first_value_labels(fixture("value_labels_v118.dta"), count);
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    let table_start = metadata.section_offsets.value_labels as usize + b"<value_labels>".len();
+    let payload_start = table_start + b"<lbl>".len() + 4 + 129 + 3;
+    let offsets_start = payload_start + 8;
+    let text_length = i32::from_le_bytes(
+        bytes[payload_start + 4..payload_start + 8]
+            .try_into()
+            .unwrap(),
+    );
+    let final_offset = offsets_start + (count - 1) * 4;
+    bytes[final_offset..final_offset + 4].copy_from_slice(&text_length.to_le_bytes());
+    let slice_error = read_dta(&bytes).unwrap_err();
+
+    let file_length = bytes.len();
+    let (reader, trace) = TracedReader::new(bytes);
+    let mut file = DtaFile::from_reader_with_options(
+        reader,
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    {
+        let mut trace = trace.borrow_mut();
+        trace.reads.clear();
+        trace.seeks.clear();
+    }
+    let file_error = file.read().unwrap_err();
+    assert_eq!(file_error, slice_error);
+    assert!(matches!(
+        file_error,
+        DtaError::InvalidValueLabelTextOffset { entry_index, .. }
+            if entry_index == count - 1
+    ));
+    let trace = trace.borrow();
+    let total_read = trace.reads.iter().map(|(_, length)| *length).sum::<usize>();
+    assert!(total_read < file_length * 5, "read {total_read} bytes");
+    assert!(
+        trace.seeks.len() < 5_000,
+        "issued {} seeks",
+        trace.seeks.len()
+    );
 }
 
 #[test]
