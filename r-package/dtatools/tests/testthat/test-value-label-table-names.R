@@ -52,6 +52,9 @@ test_that("shared DTA tables survive projection and emit one table record", {
     expect_identical(value_label_name(full$second), "answer_set")
     expect_identical(value_label_name(projected$second), "answer_set")
     expect_identical(val_labels(full$first), val_labels(full$second))
+    expect_identical(
+        tracemem(val_labels(full$first)), tracemem(val_labels(full$second))
+    )
 })
 
 test_that("the variable matching a shared table name still retains identity", {
@@ -206,6 +209,47 @@ test_that("mapping order participates in shared-name comparison", {
             class = "dtatools_write_value_label_name_conflict_warning"
         )
     }
+})
+
+test_that("different tagged missing codes conflict even with identical text", {
+    data <- data.frame(
+        x = named_labelled(tagged_missing("a"), c(Missing = tagged_missing("a")), "tags"),
+        y = named_labelled(tagged_missing("b"), c(Missing = tagged_missing("b")), "tags")
+    )
+
+    for (writer in list(save_dta, save_arrow)) {
+        extension <- if (identical(writer, save_dta)) ".dta" else ".arrow"
+        reader <- if (identical(writer, save_dta)) read_dta else read_arrow
+        path <- tempfile(fileext = extension)
+        on.exit(unlink(path), add = TRUE)
+
+        expect_warning(
+            writer(data, path),
+            class = "dtatools_write_value_label_name_conflict_warning"
+        )
+        actual <- reader(path)
+        expect_identical(missing_tag(unname(val_labels(actual$x))), "a")
+        expect_identical(missing_tag(unname(val_labels(actual$y))), "b")
+    }
+})
+
+test_that("shared write mappings use one prepared vector", {
+    labels <- stats::setNames(as.double(seq_len(1000L)), paste0("label", seq_len(1000L)))
+    data <- data.frame(
+        first = named_labelled(1, labels, "large_shared"),
+        second = named_labelled(2, labels, "large_shared")
+    )
+
+    dta <- dtatools:::.prepare_dta_write(data, NULL, 2045L, TRUE)
+    arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
+    expect_identical(
+        tracemem(dta[[3L]][[1L]]$label_values),
+        tracemem(dta[[3L]][[2L]]$label_values)
+    )
+    expect_identical(
+        tracemem(arrow[[3L]][[1L]]$label_texts),
+        tracemem(arrow[[3L]][[2L]]$label_texts)
+    )
 })
 
 test_that("empty mappings are usable and missing mappings are malformed", {

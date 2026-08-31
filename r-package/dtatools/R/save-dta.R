@@ -73,16 +73,7 @@ save_dta <- function(data, path, version = 19L,
     )
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
-    preflight <- vapply(write_warnings, function(write_warning) {
-        identical(
-            write_warning$class,
-            "dtatools_write_value_label_name_conflict_warning"
-        )
-    }, logical(1))
-    for (write_warning in write_warnings[preflight]) {
-        .dta_write_warn(write_warning$message, write_warning$class)
-    }
-    write_warnings <- write_warnings[!preflight]
+    write_warnings <- .emit_dta_write_preflight_warnings(write_warnings)
 
     temporary <- tempfile(
         pattern = paste0(".", basename(destination), "-dtatools-"),
@@ -152,6 +143,19 @@ save_dta <- function(data, path, version = 19L,
 
 .dta_write_warning <- function(message, subclass) {
     list(message = message, class = subclass)
+}
+
+.emit_dta_write_preflight_warnings <- function(write_warnings) {
+    preflight <- vapply(write_warnings, function(write_warning) {
+        identical(
+            write_warning$class,
+            "dtatools_write_value_label_name_conflict_warning"
+        )
+    }, logical(1))
+    for (write_warning in write_warnings[preflight]) {
+        .dta_write_warn(write_warning$message, write_warning$class)
+    }
+    write_warnings[!preflight]
 }
 
 .dta_write_count_warnings <- function(counts, column_names, prefix, subclass) {
@@ -484,19 +488,17 @@ save_dta <- function(data, path, version = 19L,
     list(unname(labels), enc2utf8(label_text), TRUE)
 }
 
-.value_label_mapping <- function(column, values_index, text_index) {
-    list(
-        codes = as.double(column[[values_index]]),
-        text = enc2utf8(column[[text_index]])
-    )
+.value_label_mappings_identical <- function(left, right) {
+    identical(
+        as.double(left$label_values), as.double(right$label_values),
+        single.NA = FALSE
+    ) && identical(enc2utf8(left$label_texts), enc2utf8(right$label_texts))
 }
 
-.resolve_write_value_label_names <- function(
-    data, columns, values_index = 5L, text_index = 6L, has_index = 8L
-) {
+.resolve_write_value_label_names <- function(data, columns) {
     column_names <- names(data)
     usable <- vapply(columns, function(column) {
-        isTRUE(column[[has_index]])
+        isTRUE(column$has_value_labels)
     }, logical(1))
     explicit <- lapply(data, attr, which = "value.label.name", exact = TRUE)
 
@@ -529,58 +531,90 @@ save_dta <- function(data, path, version = 19L,
     for (index in which(usable)) {
         if (!is.null(explicit[[index]])) requested[[index]] <- explicit[[index]]
     }
-    mappings <- lapply(
-        columns, .value_label_mapping,
-        values_index = values_index, text_index = text_index
+    initial_claimants <- split(which(usable), requested[usable])
+    claimants <- list2env(
+        initial_claimants, envir = new.env(hash = TRUE, parent = emptyenv())
     )
-    conflicts <- list()
-    claimants <- split(which(usable), requested[usable])
-    owners <- as.list(stats::setNames(seq_along(column_names), column_names))
+    owners <- list2env(
+        as.list(stats::setNames(seq_along(column_names), column_names)),
+        envir = new.env(hash = TRUE, parent = emptyenv())
+    )
     fallback <- rep(FALSE, length(columns))
-    queue <- names(claimants)
-    next_name <- 1L
+    initial_names <- names(initial_claimants)
+    explicit_count <- sum(!vapply(explicit, is.null, logical(1)))
+    conflicts <- new.env(hash = TRUE, parent = emptyenv())
+    conflict_names <- character(length(initial_names) + explicit_count)
+    conflict_count <- 0L
+    queue <- character(length(initial_names) + explicit_count)
+    if (length(initial_names)) queue[seq_along(initial_names)] <- initial_names
+    head <- 1L
+    tail <- length(initial_names)
 
-    while (next_name <= length(queue)) {
-        table_name <- queue[[next_name]]
-        next_name <- next_name + 1L
-        members <- claimants[[table_name]]
+    while (head <= tail) {
+        table_name <- queue[[head]]
+        head <- head + 1L
+        members <- get0(
+            table_name, envir = claimants, inherits = FALSE,
+            ifnotfound = integer()
+        )
         if (length(members)) members <- members[!fallback[members]]
-        owner <- owners[[table_name]]
+        owner <- get0(table_name, envir = owners, inherits = FALSE)
         if (!is.null(owner) && usable[[owner]] && fallback[[owner]]) {
             members <- unique(c(members, owner))
         }
         if (length(members) < 2L) next
 
-        reference <- mappings[[members[[1L]]]]
+        reference <- columns[[members[[1L]]]]
         same <- vapply(
             members[-1L],
-            function(index) identical(mappings[[index]], reference),
+            function(index) .value_label_mappings_identical(
+                columns[[index]], reference
+            ),
             logical(1)
         )
         if (all(same)) next
 
-        conflicts[[table_name]] <- unique(c(
-            conflicts[[table_name]], column_names[members]
-        ))
+        existing_conflict <- get0(
+            table_name, envir = conflicts, inherits = FALSE,
+            ifnotfound = character()
+        )
+        if (!length(existing_conflict)) {
+            conflict_count <- conflict_count + 1L
+            conflict_names[[conflict_count]] <- table_name
+        }
+        assign(
+            table_name,
+            unique(c(existing_conflict, column_names[members])),
+            envir = conflicts
+        )
         newly_fallback <- members[
             !fallback[members] & requested[members] != column_names[members]
         ]
         if (length(newly_fallback)) {
             fallback[newly_fallback] <- TRUE
-            queue <- c(queue, column_names[newly_fallback])
+            positions <- tail + seq_along(newly_fallback)
+            queue[positions] <- column_names[newly_fallback]
+            tail <- tail + length(newly_fallback)
         }
     }
     resolved <- requested
     resolved[fallback] <- column_names[fallback]
 
     warnings <- list()
-    if (length(conflicts)) {
-        details <- vapply(names(conflicts), function(table_name) {
-            sprintf(
-                "`%s` (%s)", table_name,
-                paste(sprintf("`%s`", conflicts[[table_name]]), collapse = ", ")
-            )
-        }, character(1))
+    if (conflict_count) {
+        details <- vapply(
+            conflict_names[seq_len(conflict_count)],
+            function(table_name) {
+                sprintf(
+                    "`%s` (%s)", table_name,
+                    paste(sprintf(
+                        "`%s`",
+                        get(table_name, envir = conflicts, inherits = FALSE)
+                    ), collapse = ", ")
+                )
+            },
+            character(1)
+        )
         warnings <- list(.dta_write_warning(
             sprintf(
                 paste0(
@@ -594,6 +628,22 @@ save_dta <- function(data, path, version = 19L,
     }
 
     list(names = resolved, warnings = warnings)
+}
+
+.canonicalize_write_value_label_columns <- function(columns, table_names) {
+    canonical <- new.env(hash = TRUE, parent = emptyenv())
+    for (index in seq_along(columns)) {
+        if (!isTRUE(columns[[index]]$has_value_labels)) next
+        table_name <- table_names[[index]]
+        first <- get0(table_name, envir = canonical, inherits = FALSE)
+        if (is.null(first)) {
+            assign(table_name, index, envir = canonical)
+            next
+        }
+        columns[[index]]$label_values <- columns[[first]]$label_values
+        columns[[index]]$label_texts <- columns[[first]]$label_texts
+    }
+    columns
 }
 
 .write_datetime_timezone <- function(column) {
@@ -727,11 +777,15 @@ save_dta <- function(data, path, version = 19L,
                                   numeric_scale = 1,
                                   character_missing = NULL,
                                   stata_metadata) {
-    result <- list(
+    result <- stats::setNames(list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
         label_values, label_texts, values, has_value_labels,
         enc2utf8(name), numeric_shift, numeric_scale, stata_metadata
-    )
+    ), c(
+        "name", "type_code", "format", "label", "label_values",
+        "label_texts", "values", "has_value_labels", "value_label_name",
+        "numeric_shift", "numeric_scale", "stata_metadata"
+    ))
     if (!is.null(character_missing)) {
         attr(result, "character_missing") <- character_missing
     }
@@ -899,8 +953,11 @@ save_dta <- function(data, path, version = 19L,
     )
     value_label_names <- .resolve_write_value_label_names(data, columns)
     for (index in seq_along(columns)) {
-        columns[[index]][[9L]] <- value_label_names$names[[index]]
+        columns[[index]]$value_label_name <- value_label_names$names[[index]]
     }
+    columns <- .canonicalize_write_value_label_columns(
+        columns, value_label_names$names
+    )
     write_warnings <- c(write_warnings, value_label_names$warnings)
     factor_columns <- data_names[kinds == "factor"]
     if (length(factor_columns)) {

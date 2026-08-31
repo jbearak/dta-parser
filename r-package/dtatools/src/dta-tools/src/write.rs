@@ -144,6 +144,14 @@ pub trait DtaWriteObservationSource {
         None
     }
 
+    /// Override one column's value-label entries. Internal adapters use this
+    /// to share a single validated mapping across columns that reference the
+    /// same table instead of materializing one copy per variable.
+    #[doc(hidden)]
+    fn value_labels(&self, _column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
+        None
+    }
+
     fn begin_row(&self, _row: u64) -> Result<(), DtaWriteError> {
         Ok(())
     }
@@ -839,17 +847,28 @@ fn output_value_label_name<'a, S: DtaWriteObservationSource + ?Sized>(
         .unwrap_or(data.columns[column_index].name.as_ref())
 }
 
+fn output_value_labels<'a, S: DtaWriteObservationSource + ?Sized>(
+    data: &'a DtaWriteData<'_>,
+    source: &'a S,
+    column_index: usize,
+) -> &'a [DtaWriteValueLabel<'a>] {
+    source
+        .value_labels(column_index)
+        .unwrap_or(&data.columns[column_index].value_labels)
+}
+
 fn validate_value_label_names<S: DtaWriteObservationSource + ?Sized>(
     data: &DtaWriteData<'_>,
     source: &S,
 ) -> Result<(), DtaWriteError> {
-    let mut tables: HashMap<&str, &Vec<DtaWriteValueLabel<'_>>> =
+    let mut tables: HashMap<&str, &[DtaWriteValueLabel<'_>]> =
         HashMap::with_capacity(data.columns.len());
     for (column_index, column) in data.columns.iter().enumerate() {
         if !column.has_value_labels {
             continue;
         }
         let table_name = output_value_label_name(data, source, column_index);
+        let labels = output_value_labels(data, source, column_index);
         if !valid_stata_name(table_name) {
             return Err(DtaWriteError::InvalidValueLabels {
                 column: column.name.to_string(),
@@ -858,11 +877,34 @@ fn validate_value_label_names<S: DtaWriteObservationSource + ?Sized>(
                 ),
             });
         }
+        if labels.len() > MAX_VALUE_LABEL_ENTRIES {
+            return Err(DtaWriteError::InvalidValueLabels {
+                column: column.name.to_string(),
+                message: format!(
+                    "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
+                    labels.len()
+                ),
+            });
+        }
+        for entry in labels {
+            label_raw_value(entry.value).map_err(|message| DtaWriteError::InvalidValueLabels {
+                column: column.name.to_string(),
+                message: message.into(),
+            })?;
+            if entry.label.contains('\0') || entry.label.len() > MAX_VALUE_LABEL_TEXT_BYTES {
+                return Err(DtaWriteError::InvalidValueLabels {
+                    column: column.name.to_string(),
+                    message: format!(
+                        "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
+                    ),
+                });
+            }
+        }
         match tables.entry(table_name) {
             Entry::Vacant(entry) => {
-                entry.insert(&column.value_labels);
+                entry.insert(labels);
             }
-            Entry::Occupied(entry) if *entry.get() == &column.value_labels => {}
+            Entry::Occupied(entry) if *entry.get() == labels => {}
             Entry::Occupied(_) => {
                 return Err(DtaWriteError::InvalidValueLabels {
                     column: column.name.to_string(),
@@ -1793,8 +1835,7 @@ fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
         if !written.insert(table_name) {
             continue;
         }
-        let mut entries = column
-            .value_labels
+        let mut entries = output_value_labels(data, source, column_index)
             .iter()
             .map(|entry| Ok((label_raw_value(entry.value)?, entry.label.as_ref())))
             .collect::<Result<Vec<_>, &'static str>>()

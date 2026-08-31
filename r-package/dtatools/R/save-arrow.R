@@ -92,16 +92,7 @@ save_arrow <- function(data, path,
     specification <- .prepare_arrow_write(write_data, label, adjust_tz)
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
-    preflight <- vapply(write_warnings, function(write_warning) {
-        identical(
-            write_warning$class,
-            "dtatools_write_value_label_name_conflict_warning"
-        )
-    }, logical(1))
-    for (write_warning in write_warnings[preflight]) {
-        .dta_write_warn(write_warning$message, write_warning$class)
-    }
-    write_warnings <- write_warnings[!preflight]
+    write_warnings <- .emit_dta_write_preflight_warnings(write_warnings)
 
     temporary <- tempfile(
         pattern = paste0(".", basename(destination), "-dtatools-"),
@@ -377,7 +368,7 @@ save_arrow <- function(data, path,
     }
     units <- .arrow_utf8(units, sprintf("Difftime units for `%s`", name))
 
-    list(
+    stats::setNames(list(
         .arrow_utf8(name, "Column names"), .arrow_write_kinds[[kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
@@ -385,7 +376,12 @@ save_arrow <- function(data, path,
         .arrow_utf8(name, "Value-label table names"),
         inherits(column, "haven_labelled"), string_storage,
         .stata_metadata_payload(notes, characteristics)
-    )
+    ), c(
+        "name", "kind", "values", "levels", "ordered", "label", "format",
+        "storage", "tz", "units", "label_values", "label_texts",
+        "has_value_labels", "value_label_name", "haven_labelled",
+        "string_storage", "stata_metadata"
+    ))
 }
 
 .arrow_known_column_attributes <- function(kind) {
@@ -487,15 +483,15 @@ save_arrow <- function(data, path,
         .prepare_arrow_write_column, data, data_names, kinds,
         MoreArgs = list(adjust_tz = adjust_tz)
     )
-    value_label_names <- .resolve_write_value_label_names(
-        data, columns, values_index = 11L, text_index = 12L,
-        has_index = 13L
-    )
+    value_label_names <- .resolve_write_value_label_names(data, columns)
     for (index in seq_along(columns)) {
-        columns[[index]][[14L]] <- .arrow_utf8(
+        columns[[index]]$value_label_name <- .arrow_utf8(
             value_label_names$names[[index]], "Value-label table names"
         )
     }
+    columns <- .canonicalize_write_value_label_columns(
+        columns, value_label_names$names
+    )
     specification <- list(
         label, .stata_metadata_payload(notes, characteristics),
         unname(columns)

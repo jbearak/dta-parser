@@ -74,11 +74,17 @@ impl DtaWriteObservationSource for AdaptedObservationSource {
     }
 }
 
-struct SharedLabelObservationSource;
+struct SharedLabelObservationSource {
+    labels: Option<Vec<DtaWriteValueLabel<'static>>>,
+}
 
 impl DtaWriteObservationSource for SharedLabelObservationSource {
     fn value_label_name(&self, _column: usize) -> Option<&str> {
         Some("shared_answers")
+    }
+
+    fn value_labels(&self, _column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
+        self.labels.as_deref()
     }
 
     fn numeric_value(
@@ -1385,25 +1391,23 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
 #[test]
 fn adapter_can_write_one_named_value_label_table_for_multiple_variables() {
     let values = [DtaWriteNumericValue::Value(0.0)];
-    let labels = || {
-        vec![
-            DtaWriteValueLabel {
-                value: DtaWriteLabelValue::Integer(0),
-                label: "No".into(),
-            },
-            DtaWriteValueLabel {
-                value: DtaWriteLabelValue::Integer(1),
-                label: "Yes".into(),
-            },
-        ]
-    };
+    let labels = vec![
+        DtaWriteValueLabel {
+            value: DtaWriteLabelValue::Integer(0),
+            label: "No".into(),
+        },
+        DtaWriteValueLabel {
+            value: DtaWriteLabelValue::Integer(1),
+            label: "Yes".into(),
+        },
+    ];
     let column = |name: &'static str| DtaWriteColumn {
         name: name.into(),
         dta_type: DtaType::Long,
         format: "%12.0g".into(),
         label: String::new().into(),
         has_value_labels: true,
-        value_labels: labels(),
+        value_labels: Vec::new(),
         notes: Vec::new(),
         characteristics: Vec::new(),
         values: DtaWriteColumnValues::Numeric(&values),
@@ -1419,7 +1423,9 @@ fn adapter_can_write_one_named_value_label_table_for_multiple_variables() {
         &mut output,
         &data,
         &DtaWriteOptions::default(),
-        &SharedLabelObservationSource,
+        &SharedLabelObservationSource {
+            labels: Some(labels),
+        },
         1,
     )
     .unwrap();
@@ -1462,7 +1468,7 @@ fn adapter_rejects_different_mappings_for_one_table_name_before_writing() {
         &mut output,
         &data,
         &DtaWriteOptions::default(),
-        &SharedLabelObservationSource,
+        &SharedLabelObservationSource { labels: None },
         1,
     )
     .unwrap_err();

@@ -1011,6 +1011,51 @@ test_that("plain UInt16 columns use R integer storage", {
     )
 })
 
+test_that("profiled UInt16 columns retain projected shared value labels", {
+    skip_if_not_installed("arrow")
+    field_metadata <- list(
+        `dtatools:field` = paste0(
+            '{"version":0,"value_labels":"shared_uint16"}'
+        )
+    )
+    schema <- arrow::schema(
+        arrow::field("first", arrow::uint16(), metadata = field_metadata),
+        arrow::field("second", arrow::uint16(), metadata = field_metadata)
+    )$WithMetadata(list(
+        `dtatools:profile-version` = "0",
+        `dtatools:dataset` = paste0(
+            '{"version":0,"value_labels":{"shared_uint16":',
+            '[{"value":1,"label":"Yes"}]}}'
+        )
+    ))
+    table <- arrow::arrow_table(
+        first = arrow::Array$create(c(1, 2), type = arrow::uint16()),
+        second = arrow::Array$create(c(2, 1), type = arrow::uint16()),
+        schema = schema
+    )
+    path <- arrow_tempfile()
+    arrow::write_ipc_file(table, path, compression = "uncompressed")
+
+    full <- read_arrow(path, verify = FALSE)
+    projected <- read_arrow(path, col_select = second, verify = FALSE)
+    expect_identical(as.integer(full$first), c(1L, 2L))
+    expect_identical(val_labels(full$first), c(Yes = 1))
+    expect_identical(
+        attr(full$first, "value.label.name", exact = TRUE), "shared_uint16"
+    )
+    expect_identical(
+        attr(full$second, "value.label.name", exact = TRUE), "shared_uint16"
+    )
+    expect_identical(
+        attr(projected$second, "value.label.name", exact = TRUE),
+        "shared_uint16"
+    )
+    expect_identical(val_labels(projected$second), c(Yes = 1))
+    expect_identical(
+        tracemem(val_labels(full$first)), tracemem(val_labels(full$second))
+    )
+})
+
 test_that("Arrow selection parses profile metadata only for predicates", {
     calls <- list()
     local_mocked_bindings(
