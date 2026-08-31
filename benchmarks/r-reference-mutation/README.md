@@ -42,18 +42,20 @@ and uses `tracemem()` to check that neither existing column payload was copied.
 Full-length integer and compact-byte generation cases apply the same allocation
 limit and catch coercion or validation temporaries that scalar generation cannot
 expose. The integer case also uses a compact position sequence and limits total
-profiled allocation to less than one double column. Scalar and sparse character
-generation may allocate their result vector once, but cannot allocate a second
-full-length character-vector header. The sparse case catches a separate
-dataset-sized scan during storage-width inference.
+profiled allocation to less than one double column. Scalar, full-vector, and
+sparse character generation may allocate their result vector once, but cannot
+allocate a second full-length character-vector header. The full-vector case
+catches a second traversal of the replacement values during storage-width
+inference; the sparse case catches a separate dataset-sized result scan.
 
-A 250,000-value dictionary then undergoes a complete scalar overwrite. The
-replacement may allocate one character result, but it must not decode the old
-five-million-row payload or allocate a second result-sized undo vector. A base
-R integer ALTREP sequence is also replaced. That path deliberately allocates
-one ordinary integer vector, installs it into dataset aliases, leaves the
-former standalone column alias unchanged, and verifies the detached result's
-aggregate semantics.
+A shared, 250,000-value dictionary then undergoes a complete scalar overwrite.
+The replacement may allocate one character result, but it must not decode the
+old five-million-row payload or duplicate the fresh output because an alias
+retains the compact source. A base R integer ALTREP sequence is also replaced.
+That path deliberately allocates one ordinary integer vector, patches it while
+it is still private without a rollback journal, installs it into dataset
+aliases, leaves the former standalone column alias unchanged, and verifies the
+detached result's aggregate semantics.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

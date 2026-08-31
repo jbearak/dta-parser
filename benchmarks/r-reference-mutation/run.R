@@ -380,6 +380,33 @@ stopifnot(
     character_generation_time < 0.5
 )
 
+full_character_values <- rep(c("x", "wide"), length.out = rows)
+full_character_data <- data.frame(
+    anchor = stata_byte(rep(1, rows))
+)
+full_character_profile <- profile_memory(
+    gen(full_character_data, generated, .env$full_character_values),
+    "dtatools-reference-full-character-generation-"
+)
+full_character_generation_time <- full_character_profile$elapsed
+total_full_character_generation_allocation <- full_character_profile$total
+largest_full_character_generation_allocation <- full_character_profile$largest
+stopifnot(
+    identical(
+        as.character(full_character_data$generated[c(1L, rows)]),
+        full_character_values[c(1L, rows)]
+    ),
+    identical(
+        attr(full_character_data$generated, "stata.string.storage"),
+        "str4"
+    ),
+    largest_full_character_generation_allocation <=
+        full_double_bytes * 1.01,
+    total_full_character_generation_allocation <
+        full_double_bytes * 1.5,
+    full_character_generation_time < 0.2
+)
+
 sparse_character_data <- data.frame(
     anchor = stata_byte(rep(1, rows))
 )
@@ -419,6 +446,7 @@ save_arrow(data.frame(
 dictionary_data <- read_arrow(dictionary_path)
 unlink(dictionary_path)
 stopifnot(dtatools:::.is_unmaterialized_dictstring(dictionary_data$text))
+dictionary_alias <- set_variable_labels(dictionary_data, text = "Alias")
 dictionary_profile <- profile_memory(
     replace_values(dictionary_data, text, "changed"),
     "dtatools-reference-dictionary-replacement-"
@@ -430,6 +458,12 @@ stopifnot(
     identical(
         as.character(dictionary_data$text[c(1L, rows)]),
         c("changed", "changed")
+    ),
+    identical(
+        as.character(dictionary_alias$text[c(1L, rows)]),
+        dictionary_values[c(
+            1L, ((rows - 1L) %% dictionary_cardinality) + 1L
+        )]
     ),
     largest_dictionary_replacement_allocation <= full_double_bytes * 1.01,
     total_dictionary_replacement_allocation < full_double_bytes * 1.5,
@@ -606,6 +640,18 @@ cat(sprintf(
 cat(sprintf(
     "character_generation_largest_allocation_bytes\t%.0f\n",
     largest_character_generation_allocation
+))
+cat(sprintf(
+    "full_character_generation_seconds\t%.6f\n",
+    full_character_generation_time
+))
+cat(sprintf(
+    "full_character_generation_total_profiled_allocation_bytes\t%.0f\n",
+    total_full_character_generation_allocation
+))
+cat(sprintf(
+    "full_character_generation_largest_allocation_bytes\t%.0f\n",
+    largest_full_character_generation_allocation
 ))
 cat(sprintf(
     "sparse_character_generation_seconds\t%.6f\n",

@@ -912,6 +912,13 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(attr(strings$y, "label"), "Authored string")
     expect_identical(attr(strings$y, "stata.string.storage"), "str5")
 
+    full_strings <- data.frame(x = 1:3)
+    gen(full_strings, y, c("one", "long", NA_character_))
+    expect_identical(as.character(full_strings$y), c("one", "long", ""))
+    expect_identical(
+        attr(full_strings$y, "stata.string.storage"), "str4"
+    )
+
     duplicate <- data.frame(x = 1:3)
     gen(
         duplicate, y, c("overwritten", "x"),
@@ -1087,6 +1094,23 @@ test_that("metadata helpers remain isolated from later source patches", {
     )
     expect_true(dtatools:::.is_unmaterialized_dictstring(full_copy$text))
     expect_identical(as.character(full_copy$text), c("a", "b", "a"))
+
+    direct_identity <- read_arrow(path)
+    replace_values(direct_identity, text, text)
+    expect_identical(as.character(direct_identity$text), c("a", "b", "a"))
+
+    proxy_identity <- data.frame(
+        text = dtatools:::.metadata_copy(read_arrow(path)$text)
+    )
+    replace_values(proxy_identity, text, text)
+    expect_identical(as.character(proxy_identity$text), c("a", "b", "a"))
+
+    dependent_source <- read_arrow(path)
+    dependent_proxy <- dtatools:::.metadata_copy(dependent_source$text)
+    replace_values(dependent_source, text, .env$dependent_proxy)
+    expect_identical(
+        as.character(dependent_source$text), c("a", "b", "a")
+    )
 })
 
 test_that("writable access detaches shared materialized payloads", {

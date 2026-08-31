@@ -414,21 +414,13 @@ gen <- function(data, variable, values, where = NULL) {
         if (.mutation_selected_count(rows, original$nrow) == 0L) {
             return(invisible(data))
         }
-        detached_altrep <- .is_altrep(column) &&
-            !.is_reference_mutable_altrep(column)
-        if (detached_altrep) {
-            column <- .Call(C_dtatools_plain_column_copy, column)
-        }
     }
 
     if (!generate) {
-        .Call(C_dtatools_patch_vector, column, rows, replacement)
-        if (detached_altrep) {
-            .Call(
-                C_dtatools_replace_data_column,
-                data, as.integer(target$location), column
-            )
-        }
+        .Call(
+            C_dtatools_patch_data_column,
+            data, as.integer(target$location), column, rows, replacement
+        )
     }
     if (generate) {
         state$generated <- generated
