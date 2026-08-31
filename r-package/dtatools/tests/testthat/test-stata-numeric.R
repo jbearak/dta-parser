@@ -152,6 +152,20 @@ test_that("serialization preserves writable materialized values", {
     expect_false(dtatools:::.is_unmaterialized_numeric_altrep(restored))
 })
 
+test_that("stored public coercions are isolated from reference mutation", {
+    source <- data.frame(x = stata_byte(1:3))
+    eager <- as.double(source$x)
+    invisible(eager[[1]])
+    lazy <- as.double(source$x)
+    text <- as.character(source$x)
+
+    replace_values(source, x, 9, where = 1)
+
+    expect_identical(eager, c(1, 2, 3))
+    expect_identical(lazy, c(1, 2, 3))
+    expect_identical(text, c("1", "2", "3"))
+})
+
 test_that("base subsetting and duplication preserve compact backing", {
     source <- read_dta(fixture("all_types_v118.dta"))$v_long
     selected <- source[c(5L, 2L, NA_integer_, 2L)]

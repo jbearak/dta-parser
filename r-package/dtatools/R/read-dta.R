@@ -227,6 +227,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .Call(C_dtatools_mutate_first_numeric_altrep, value, replacement)
 }
 
+.mutate_first_dictstring_altrep <- function(value, replacement) {
+    .Call(C_dtatools_mutate_first_dictstring_altrep, value, replacement)
+}
+
 .metadata_proxy_depth <- function(value) {
     .Call(C_dtatools_metadata_proxy_depth, value)
 }

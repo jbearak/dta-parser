@@ -541,6 +541,48 @@ test_that("metadata helpers remain isolated from later source patches", {
     expect_identical(as.character(string_copy$text), c("a", "b", "a"))
 })
 
+test_that("writable access detaches shared materialized payloads", {
+    numeric <- stata_byte(1:3)
+    invisible(dtatools:::.force_altrep_materialization(numeric))
+    numeric_copy <- dtatools:::.metadata_copy(numeric)
+    numeric <- dtatools:::.mutate_first_numeric_altrep(numeric, 99)
+    expect_identical(as.double(numeric), c(99, 2, 3))
+    expect_identical(as.double(numeric_copy), c(1, 2, 3))
+
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(data.frame(text = c("a", "b", "a")), path)
+    string <- read_arrow(path)$text
+    invisible(dtatools:::.force_altrep_materialization(string))
+    string_copy <- dtatools:::.metadata_copy(string)
+    string <- dtatools:::.mutate_first_dictstring_altrep(string, "changed")
+    expect_identical(as.character(string), c("changed", "b", "a"))
+    expect_identical(as.character(string_copy), c("a", "b", "a"))
+})
+
+test_that("materialized metadata-proxy copies remain independent", {
+    numeric <- dtatools:::.metadata_copy(stata_byte(1:3))
+    invisible(dtatools:::.force_altrep_materialization(numeric))
+    numeric_copy <- dtatools:::.metadata_copy(numeric)
+    numeric_data <- data.frame(x = numeric)
+    replace_values(numeric_data, x, 9, where = 1)
+    expect_identical(as.double(numeric_data$x), c(9, 2, 3))
+    expect_identical(as.double(numeric_copy), c(1, 2, 3))
+
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(data.frame(text = c("a", "b", "a")), path)
+    string <- dtatools:::.metadata_copy(read_arrow(path)$text)
+    invisible(dtatools:::.force_altrep_materialization(string))
+    string_copy <- dtatools:::.metadata_copy(string)
+    string_data <- data.frame(text = string)
+    replace_values(string_data, text, "changed", where = 1)
+    expect_identical(
+        as.character(string_data$text), c("changed", "b", "a")
+    )
+    expect_identical(as.character(string_copy), c("a", "b", "a"))
+})
+
 test_that("materialized metadata proxies release former sources", {
     finalized <- new.env(parent = emptyenv())
     finalized$numeric <- FALSE

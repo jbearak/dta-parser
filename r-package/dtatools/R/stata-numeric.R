@@ -295,17 +295,25 @@ stata_storage_type <- function(x) {
 
 #' @export
 as.double.stata_numeric <- function(x, ...) {
-    as.double(.stata_data(x))
+    as.double(.stata_snapshot(x))
 }
 
 #' @export
 as.character.stata_numeric <- function(x, ...) {
-    as.character(.stata_data(x), ...)
+    as.character(.stata_snapshot(x), ...)
 }
 
 .stata_data <- function(x) {
     value_names <- names(x)
     value <- .metadata_view(x)
+    attributes(value) <- NULL
+    names(value) <- value_names
+    value
+}
+
+.stata_snapshot <- function(x) {
+    value_names <- names(x)
+    value <- .metadata_copy(x)
     attributes(value) <- NULL
     names(value) <- value_names
     value

@@ -50,6 +50,17 @@ stopifnot(
     identical(tracemem(data$untouched), untouched_trace)
 )
 
+all_rows_repetitions <- 5L
+all_rows_replacement_time <- system.time(
+    for (iteration in seq_len(all_rows_repetitions)) {
+        replace_values(data, compact, 2)
+    }
+)[["elapsed"]] / all_rows_repetitions
+stopifnot(
+    dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
+    all_rows_replacement_time < 0.2
+)
+
 late_missing <- data.frame(
     compact = stata_byte(c(rep(1, rows - 1L), NA_real_))
 )
@@ -139,7 +150,8 @@ stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
     dtatools:::.is_unmaterialized_numeric_altrep(data$generated),
     identical(stata_storage_type(data$generated), "byte"),
-    largest_generation_allocation < full_double_bytes
+    largest_generation_allocation < full_double_bytes,
+    all_rows_replacement_time < max(0.01, generation_time * 1.75)
 )
 untracemem(data$compact)
 untracemem(data$untouched)
@@ -148,6 +160,10 @@ cat(sprintf("rows\t%d\n", rows))
 cat(sprintf("repetitions\t%d\n", repetitions))
 cat(sprintf("small_sparse_replacement_seconds\t%.6f\n", small_replacement_time))
 cat(sprintf("sparse_replacement_seconds\t%.6f\n", replacement_time))
+cat(sprintf(
+    "all_rows_scalar_replacement_seconds\t%.6f\n",
+    all_rows_replacement_time
+))
 cat(sprintf("late_missing_sparse_seconds\t%.6f\n", late_missing_time))
 cat(sprintf("missing_cycle_seconds\t%.6f\n", missing_cycle_time))
 cat(sprintf("largest_profiled_allocation_bytes\t%.0f\n", largest_allocation))
