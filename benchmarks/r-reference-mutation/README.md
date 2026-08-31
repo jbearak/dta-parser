@@ -73,7 +73,9 @@ character-vector baselines. A transaction-private cache is permitted only when
 the read count is at least four times the dictionary cardinality, enough reuse
 to amortize its allocation. Separate scalar and near-unique dictionary cases
 prevent the cache from scaling to unused or single-use entries, while the sparse
-allocation limit prevents it from scaling to an unselected dictionary.
+allocation limit prevents it from scaling to an unselected dictionary. Scalar
+replacement is timed against an ordinary scalar source so the reader must
+decode and retain its one value once per transaction.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the
