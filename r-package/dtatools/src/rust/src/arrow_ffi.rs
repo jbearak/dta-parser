@@ -43,10 +43,11 @@ use crate::{
     coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute_from_entries,
     missing_from_code, numeric_altrep_storage, observed_value, parse_stata_metadata_sexp,
     poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
-    string_vector, temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen,
-    RNumericData, RStringData, R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol,
-    R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL,
-    REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
+    should_preserve_value_label_name, string_vector, temporal_kind, write_numeric_value,
+    NumericKind, ProtectGuard, RLen, RNumericData, RStringData, R_ClassSymbol, R_NaInt, R_NaReal,
+    R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER,
+    INTSXP, LGLSXP, LOGICAL, REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT,
+    STRSXP, VECSXP,
 };
 
 /// One column handed from C for `save_arrow()`. Field meanings depend on
@@ -1925,11 +1926,14 @@ impl ColumnAttributes<'_> {
         else {
             return false;
         };
-        name != column_name
-            || self
-                .value_label_reference_counts
+        should_preserve_value_label_name(
+            column_name,
+            name,
+            self.value_label_reference_counts
                 .get(name)
-                .is_some_and(|&count| count > 1)
+                .copied()
+                .unwrap_or(0),
+        )
     }
 
     fn semantics(&self) -> Option<&ArrowRSemantics> {

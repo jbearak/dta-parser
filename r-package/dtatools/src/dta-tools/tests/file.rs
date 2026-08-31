@@ -997,7 +997,7 @@ fn projected_reads_retain_only_selected_value_label_tables() {
 }
 
 #[test]
-fn projected_cache_reuses_unreferenced_registry_locations_for_a_later_full_read() {
+fn later_full_read_rescans_a_sparse_projected_value_label_cache() {
     let mut bytes = fixture("value_labels_v118.dta");
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
     let names_start =
@@ -1019,7 +1019,7 @@ fn projected_cache_reuses_unreferenced_registry_locations_for_a_later_full_read(
 
     trace.borrow_mut().reads.clear();
     assert_eq!(file.value_label_tables().unwrap().len(), 3);
-    assert!(!trace
+    assert!(trace
         .borrow()
         .reads
         .iter()
@@ -1032,10 +1032,14 @@ fn projected_cache_reuses_unreferenced_registry_locations_for_a_later_full_read(
 }
 
 #[test]
-fn repeated_projections_reuse_the_validated_value_label_index() {
+fn new_projection_rescans_then_reuses_requested_value_label_locations() {
     let bytes = fixture("value_labels_v118.dta");
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
-    let ranges = modern_value_label_ranges(&bytes, &metadata);
+    let registry_order = modern_value_label_ranges(&bytes, &metadata)
+        .into_iter()
+        .map(|(name, _, _)| name)
+        .filter(|name| name == "rep_lbl" || name == "region_lbl")
+        .collect::<Vec<_>>();
     let (reader, trace) = TracedReader::new(bytes);
     let mut file = DtaFile::from_reader(reader).unwrap();
 
@@ -1045,10 +1049,6 @@ fn repeated_projections_reuse_the_validated_value_label_index() {
     trace.borrow_mut().reads.clear();
     let second = file.read_with_options(&options(0, None, vec![2])).unwrap();
     assert_eq!(second.value_label_tables[0].name, "region_lbl");
-    let (_, selected_start, selected_end) = ranges
-        .iter()
-        .find(|(name, _, _)| name == "region_lbl")
-        .unwrap();
     let label_reads = trace
         .borrow()
         .reads
@@ -1057,12 +1057,25 @@ fn repeated_projections_reuse_the_validated_value_label_index() {
         .filter(|(offset, _)| *offset >= metadata.section_offsets.value_labels)
         .collect::<Vec<_>>();
     assert!(!label_reads.is_empty());
-    assert!(label_reads.iter().all(|(offset, length)| {
-        *offset >= *selected_start && *offset + *length as u64 <= *selected_end
-    }));
+    assert!(label_reads
+        .iter()
+        .any(|(offset, _)| *offset == metadata.section_offsets.value_labels));
 
     trace.borrow_mut().reads.clear();
-    file.read_with_options(&options(0, None, vec![2])).unwrap();
+    let combined = file
+        .read_with_options(&options(0, None, vec![1, 2]))
+        .unwrap();
+    assert_eq!(
+        combined
+            .value_label_tables
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<Vec<_>>(),
+        registry_order
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+    );
     assert!(!trace
         .borrow()
         .reads

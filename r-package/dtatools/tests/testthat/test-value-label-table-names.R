@@ -381,8 +381,8 @@ test_that("metadata operations preserve or clear table identity deliberately", {
     expect_identical(value_label_name(source), "foreign_lbl")
 
     copied <- dtatools:::.metadata_copy(source)
-    labelled <- set_variable_labels(source, "Vehicle origin")
-    relabelled <- set_value_labels(source, Domestic = 0, Imported = 1)
+    labelled <- set_var_labels(source, "Vehicle origin")
+    relabelled <- set_val_labels(source, Domestic = 0, Imported = 1)
     sliced <- vctrs::vec_slice(source, c(2L, 1L))
     for (value in list(copied, labelled, relabelled, sliced)) {
         expect_identical(value_label_name(value), "foreign_lbl")
@@ -390,7 +390,7 @@ test_that("metadata operations preserve or clear table identity deliberately", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(labelled))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(relabelled))
 
-    cleared <- set_value_labels(source)
+    cleared <- set_val_labels(source)
     expect_null(value_label_name(cleared))
     data <- data.frame(x = source, y = source)
     val_labels(data) <- list(x = c(No = 0, Yes = 1), y = NULL)

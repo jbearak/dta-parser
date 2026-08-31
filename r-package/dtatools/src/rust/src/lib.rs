@@ -1086,16 +1086,25 @@ fn value_label_reference_counts(
     counts
 }
 
+pub(crate) fn should_preserve_value_label_name(
+    column_name: &str,
+    table_name: &str,
+    reference_count: usize,
+) -> bool {
+    table_name != column_name || reference_count > 1
+}
+
 fn preserve_value_label_name(
     variable: &VariableInfo,
     value_label_name: Option<&str>,
     reference_counts: &AHashMap<&str, usize>,
 ) -> bool {
     value_label_name.is_some_and(|table_name| {
-        table_name != variable.name
-            || reference_counts
-                .get(table_name)
-                .is_some_and(|&count| count > 1)
+        should_preserve_value_label_name(
+            &variable.name,
+            table_name,
+            reference_counts.get(table_name).copied().unwrap_or(0),
+        )
     })
 }
 

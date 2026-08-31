@@ -834,6 +834,42 @@ fn corrupted_buffers_fail_verification_by_default() {
 }
 
 #[test]
+fn projected_checksum_verification_uses_source_column_index() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![
+            ArrowWriteColumn {
+                name: "left".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![1, 2])),
+            },
+            ArrowWriteColumn {
+                name: "right".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![3, 4])),
+            },
+        ],
+    };
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    let options = ArrowReadOptions {
+        columns: Some(vec![1]),
+        ..read_all_options()
+    };
+
+    let result = read_arrow_file_from(&mut Cursor::new(bytes), &options, &mut no_interrupt())
+        .expect("projected checksum verification uses the source column");
+
+    assert_eq!(result.columns.len(), 1);
+    assert_eq!(result.columns[0].name, "right");
+    let values = concat_chunks(&result.columns[0].chunks);
+    let values = values
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .expect("integer column");
+    assert_eq!(values.values(), &[3, 4]);
+}
+
+#[test]
 fn compressed_files_round_trip_and_verify() {
     let values: ArrayRef = Arc::new(Int32Array::from((0..1000).collect::<Vec<_>>()));
     let strings: Vec<Option<String>> = (0..1000).map(|row| Some(format!("row {row}"))).collect();

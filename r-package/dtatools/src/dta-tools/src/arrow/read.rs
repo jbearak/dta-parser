@@ -1671,7 +1671,7 @@ fn decode_planned_column<R: Read + Seek>(
                     )
                 })?
                 .columns
-                .get(output_index)
+                .get(field_index)
                 .ok_or_else(|| {
                     super::profile::malformed(
                         &profile.version,

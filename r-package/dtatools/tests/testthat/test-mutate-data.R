@@ -1059,7 +1059,7 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
     sources <- list(
         numeric = c(1, 2, 3),
         date = as.Date("2020-01-01") + 0:2,
-        labelled = set_value_labels(c(1, 2, 1), One = 1, Two = 2)
+        labelled = set_val_labels(c(1, 2, 1), One = 1, Two = 2)
     )
     for (kind in names(sources)) {
         source <- set_stata_note(sources[[kind]], 3L, "source note")

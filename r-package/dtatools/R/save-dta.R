@@ -763,12 +763,11 @@ save_dta <- function(data, path, version = 19L,
             prepared[[1L]], prepared[[2L]]
         ), c("name", "label_values", "label_texts"))
     }
-    structure(list(
-        names = resolution$names,
+    list(
         indices = resolution$indices,
         tables = tables,
         warnings = resolution$warnings
-    ), class = "dtatools_write_value_label_plan")
+    )
 }
 
 .write_datetime_timezone <- function(column) {
