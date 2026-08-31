@@ -612,6 +612,9 @@ test_that("integer-coded value labels work in Arrow and datasig", {
     labelled <- set_val_labels(c(1, 2), .labels = c(one = 1L, two = 2L))
     expect_type(val_labels(labelled), "integer")
     data <- tibble::tibble(x = labelled)
+    specification <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
+    expect_type(specification[[3L]][[1L]]$values, "integer")
+    expect_identical(specification[[3L]][[1L]]$values, data$x)
     path <- arrow_tempfile()
 
     save_arrow(data, path)

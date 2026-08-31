@@ -151,7 +151,8 @@ save_arrow <- function(data, path,
 # Kind codes shared with C_dtatools_save_arrow and the native bridge.
 .arrow_write_kinds <- c(
     logical = 0L, integer = 1L, double = 2L, character = 3L, raw = 4L,
-    factor = 5L, date = 6L, datetime = 7L, difftime = 8L, stata = 9L
+    factor = 5L, date = 6L, datetime = 7L, difftime = 8L, stata = 9L,
+    labelled_integer = 10L
 )
 
 .arrow_write_column_kind <- function(column) {
@@ -195,7 +196,10 @@ save_arrow <- function(data, path,
         return(NA_character_)
     }
     if (identical(typeof(column), "integer")) {
-        if (is.null(classes)) return("integer")
+        if (is.null(classes) || (
+            inherits(column, "haven_labelled") &&
+            all(classes %in% c("haven_labelled", "vctrs_vctr", "integer"))
+        )) return("integer")
         return(NA_character_)
     }
     if (identical(typeof(column), "double")) {
@@ -335,8 +339,7 @@ save_arrow <- function(data, path,
     # The frozen profile does not permit value-label references on Int32.
     # Promote labelled R integers to the lossless Float64 haven representation.
     if (identical(kind, "integer") && value_label_index >= 0L) {
-        values <- as.double(column)
-        write_kind <- "double"
+        write_kind <- "labelled_integer"
         haven_labelled <- TRUE
     }
 
@@ -395,15 +398,13 @@ save_arrow <- function(data, path,
         .arrow_utf8(name, "Column names"), .arrow_write_kinds[[write_kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        double(), character(), value_labels[[3L]],
-        haven_labelled, string_storage,
+        value_labels[[3L]], haven_labelled, string_storage,
         as.integer(value_label_index),
         .stata_metadata_payload(notes, characteristics)
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
-        "storage", "tz", "units", "label_values", "label_texts",
-        "has_value_labels", "haven_labelled", "string_storage",
-        "value_label_index", "stata_metadata"
+        "storage", "tz", "units", "has_value_labels", "haven_labelled",
+        "string_storage", "value_label_index", "stata_metadata"
     ))
 }
 
@@ -420,7 +421,7 @@ save_arrow <- function(data, path,
         difftime = c(common, "labels", "class", "units"),
         stata = c(common, "labels", "stata.storage", "class"),
         double = c(common, "labels", "class"),
-        integer = c(common, "labels"),
+        integer = c(common, "labels", "class"),
         common
     )
 }

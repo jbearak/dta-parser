@@ -474,6 +474,9 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
     assert!(!result
         .value_label_reference_counts
         .contains_key("unrelated_answers"));
+    let dataset = result.dataset.expect("profile dataset");
+    assert!(dataset.value_labels.contains_key("shared_answers"));
+    assert!(!dataset.value_labels.contains_key("unrelated_answers"));
 }
 
 #[test]

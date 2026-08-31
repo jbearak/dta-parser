@@ -835,6 +835,28 @@ fn labels_are_lazy_and_cancellation_never_returns_partial_data() {
 }
 
 #[test]
+fn projected_reads_clone_only_selected_value_label_tables() {
+    let bytes = fixture("value_labels_v118.dta");
+    let mut file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
+    let projected = file.read_with_options(&options(0, None, vec![1])).unwrap();
+    assert_eq!(projected.value_label_tables.len(), 1);
+    assert_eq!(projected.value_label_tables[0].name, "rep_lbl");
+
+    let mut file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
+    let parallel = file
+        .read_with_parallel_interrupt(&options(0, None, vec![1]), 1, || false)
+        .unwrap();
+    assert_eq!(parallel.value_label_tables.len(), 1);
+    assert_eq!(parallel.value_label_tables[0].name, "rep_lbl");
+
+    let mut file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    let empty = file
+        .read_with_options(&options(0, None, Vec::new()))
+        .unwrap();
+    assert!(empty.value_label_tables.is_empty());
+}
+
+#[test]
 fn split_interrupt_callbacks_keep_row_polling_separate() {
     let mut file = DtaFile::from_reader(Cursor::new(fixture("auto_v118.dta"))).unwrap();
     let mut coarse_checks = 0_usize;

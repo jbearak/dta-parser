@@ -2,7 +2,7 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
-use std::fs::{self, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, ErrorKind};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
@@ -16,13 +16,29 @@ use dta_tools::{
     classify_int_missing_for_version, classify_long_missing_for_version,
     dta_write_numeric_value_is_representable, encode_numeric, valid_canonical_characteristic,
     valid_canonical_note, valid_characteristic, valid_note,
-    write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
+    ColumnValues, DtaColumnSink, DtaData,
     DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
     DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
     DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag, ParallelDtaSink,
     ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelTable, VariableInfo,
 };
+
+extern "Rust" {
+    fn dtatools_internal_write_prevalidated_dta_with_value_labels(
+        writer: *mut BufWriter<File>,
+        data: *const DtaWriteData<'static>,
+        options: *const DtaWriteOptions,
+        observation_source: *const (),
+        row_count: u64,
+        value_label_names: *const &'static str,
+        value_label_name_count: usize,
+        value_label_tables: *const Vec<DtaWriteValueLabel<'static>>,
+        value_label_table_count: usize,
+        value_label_indices: *const Option<usize>,
+        value_label_index_count: usize,
+    ) -> Result<dta_tools::DtaWriteSummary, DtaWriteError>;
+}
 
 mod arrow_ffi;
 
@@ -886,17 +902,35 @@ unsafe fn label_attribute(
     table: &ValueLabelTable,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
-    let length = RLen::try_from(table.entries.len()).map_err(|_| "label table is too long")?;
+    label_attribute_from_entries(
+        table.entries.len(),
+        table.entries.iter().map(|entry| {
+            Ok((
+                entry
+                    .missing_tag
+                    .map(r_missing)
+                    .unwrap_or_else(|| f64::from(entry.value)),
+                entry.label.as_str(),
+            ))
+        }),
+        guard,
+    )
+}
+
+unsafe fn label_attribute_from_entries<'a>(
+    entry_count: usize,
+    entries: impl IntoIterator<Item = Result<(f64, &'a str), String>>,
+    guard: &mut ProtectGuard,
+) -> Result<Sexp, String> {
+    let length = RLen::try_from(entry_count).map_err(|_| "label table is too long")?;
     let values = guard.alloc(REALSXP, length)?;
     let names = guard.alloc(STRSXP, length)?;
     let output = REAL(values);
-    for (index, entry) in table.entries.iter().enumerate() {
+    for (index, entry) in entries.into_iter().enumerate() {
         poll_interrupt(index)?;
-        *output.add(index) = entry
-            .missing_tag
-            .map(r_missing)
-            .unwrap_or_else(|| f64::from(entry.value));
-        SET_STRING_ELT(names, index as RLen, r_char(&entry.label)?);
+        let (value, label) = entry?;
+        *output.add(index) = value;
+        SET_STRING_ELT(names, index as RLen, r_char(label)?);
     }
     set_symbol_attr(values, R_NamesSymbol, names)?;
     Ok(values)
@@ -1052,9 +1086,14 @@ fn value_label_reference_counts<'a>(
             }
         }
     }
+    if counts.is_empty() {
+        return counts;
+    }
     for variable in &metadata.variables {
-        if let Some(count) = counts.get_mut(variable.value_label_name.as_str()) {
-            *count += 1;
+        if !variable.value_label_name.is_empty() {
+            if let Some(count) = counts.get_mut(variable.value_label_name.as_str()) {
+                *count += 1;
+            }
         }
     }
     counts
@@ -3245,9 +3284,6 @@ impl DtaWriteColumnSource for RWriteSource<'_> {
 struct RWriteObservationSource<'data, 'source> {
     data: &'data DtaWriteData<'source>,
     sources: &'data [RWriteSource<'source>],
-    value_label_tables: &'data [Vec<DtaWriteValueLabel<'source>>],
-    value_label_names: &'data [&'source str],
-    value_label_indices: &'data [Option<usize>],
 }
 
 fn r_write_source_result<T>(
@@ -3520,16 +3556,6 @@ impl RWriteObservationSource<'_, '_> {
 }
 
 impl DtaWriteObservationSource for RWriteObservationSource<'_, '_> {
-    fn value_label_name(&self, column: usize) -> Option<&str> {
-        let table_index = self.value_label_indices.get(column).copied().flatten()?;
-        self.value_label_names.get(table_index).copied()
-    }
-
-    fn value_labels(&self, column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
-        let table_index = self.value_label_indices.get(column).copied().flatten()?;
-        self.value_label_tables.get(table_index).map(Vec::as_slice)
-    }
-
     fn begin_row(&self, row: u64) -> Result<(), DtaWriteError> {
         if row.is_multiple_of(INTERRUPT_STRIDE as u64) && coarse_interrupt() {
             Err(DtaWriteError::Interrupted)
@@ -3818,9 +3844,6 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     let observation_source = RWriteObservationSource {
         data: &data,
         sources: &sources,
-        value_label_tables: &value_label_tables,
-        value_label_names: &value_label_names,
-        value_label_indices: &value_label_indices,
     };
     let mut open_options = OpenOptions::new();
     open_options.write(true).create_new(true);
@@ -3830,12 +3853,21 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         .open(path)
         .map_err(|error| format!("could not create temporary DTA output: {error}"))?;
     let mut writer = BufWriter::new(file);
-    write_prevalidated_dta_with_observation_source_to(
+    let observation_source: &dyn DtaWriteObservationSource = &observation_source;
+    let observation_source_pointer =
+        (&observation_source as *const &dyn DtaWriteObservationSource).cast();
+    dtatools_internal_write_prevalidated_dta_with_value_labels(
         &mut writer,
-        &data,
+        (&data as *const DtaWriteData<'_>).cast(),
         &options,
-        &observation_source,
+        observation_source_pointer,
         row_count,
+        value_label_names.as_ptr().cast(),
+        value_label_names.len(),
+        value_label_tables.as_ptr().cast(),
+        value_label_tables.len(),
+        value_label_indices.as_ptr(),
+        value_label_indices.len(),
     )?;
     let file = writer
         .into_inner()
@@ -4037,9 +4069,6 @@ mod tests {
         let observation_source = RWriteObservationSource {
             data: &data,
             sources: &sources,
-            value_label_tables: &[],
-            value_label_names: &[],
-            value_label_indices: &[],
         };
         let mut output = Vec::new();
         let workers = observation_source

@@ -245,26 +245,24 @@ test_that("shared write mappings use one prepared vector", {
     expect_identical(
         names(dta[[3L]][[1L]]),
         c(
-            "name", "type_code", "format", "label", "label_values",
-            "label_texts", "values", "has_value_labels", "numeric_shift",
-            "numeric_scale", "value_label_index"
+            "name", "type_code", "format", "label", "values",
+            "has_value_labels", "numeric_shift", "numeric_scale",
+            "value_label_index"
         )
     )
     expect_identical(
         names(arrow[[3L]][[1L]]),
         c(
             "name", "kind", "values", "levels", "ordered", "label",
-            "format", "storage", "tz", "units", "label_values",
-            "label_texts", "has_value_labels", "haven_labelled",
-            "string_storage", "value_label_index"
+            "format", "storage", "tz", "units", "has_value_labels",
+            "haven_labelled", "string_storage", "value_label_index"
         )
     )
     expect_length(dta[[5L]], 1L)
     expect_length(arrow[[4L]], 1L)
     expect_identical(dta[[5L]][[1L]]$label_values, unname(labels))
     expect_identical(arrow[[4L]][[1L]]$label_texts, names(labels))
-    expect_length(dta[[3L]][[1L]]$label_values, 0L)
-    expect_length(arrow[[3L]][[1L]]$label_texts, 0L)
+    expect_identical(arrow[[3L]][[1L]]$values, data$first)
 })
 
 test_that("shared tables never hide malformed later claimants", {

@@ -501,16 +501,21 @@ save_dta <- function(data, path, version = 19L,
     list(unname(labels), enc2utf8(label_text), TRUE)
 }
 
-.value_label_mappings_identical <- function(left, right) {
+.value_label_mappings_identical <- function(left, right,
+                                             right_values = NULL) {
     if (identical(left$source, right$source, single.NA = FALSE)) return(TRUE)
     if (!is.numeric(left$label_values) || !is.numeric(right$label_values) ||
         is.null(left$label_texts) || is.null(right$label_texts)) {
         return(FALSE)
     }
+    if (!identical(
+        enc2utf8(left$label_texts), enc2utf8(right$label_texts)
+    )) return(FALSE)
+    if (is.null(right_values)) right_values <- as.double(right$label_values)
     identical(
-        as.double(left$label_values), as.double(right$label_values),
+        as.double(left$label_values), right_values,
         single.NA = FALSE
-    ) && identical(enc2utf8(left$label_texts), enc2utf8(right$label_texts))
+    )
 }
 
 .write_value_label_mapping <- function(column, factor_value_labels) {
@@ -570,6 +575,7 @@ save_dta <- function(data, path, version = 19L,
         return(list(
             names = column_names,
             indices = rep.int(-1L, length(data)),
+            first_columns = integer(),
             warnings = list()
         ))
     }
@@ -620,9 +626,19 @@ save_dta <- function(data, path, version = 19L,
         if (length(members) < 2L) next
 
         reference <- mappings[[members[[1L]]]]
+        reference_values <- NULL
         same <- TRUE
         for (index in members[-1L]) {
-            if (!.value_label_mappings_identical(mappings[[index]], reference)) {
+            mapping <- mappings[[index]]
+            if (!identical(
+                mapping$source, reference$source, single.NA = FALSE
+            ) && is.null(reference_values) &&
+                is.numeric(reference$label_values)) {
+                reference_values <- as.double(reference$label_values)
+            }
+            if (!.value_label_mappings_identical(
+                mapping, reference, reference_values
+            )) {
                 same <- FALSE
                 break
             }
@@ -657,6 +673,7 @@ save_dta <- function(data, path, version = 19L,
 
     table_indices <- new.env(hash = TRUE, parent = emptyenv())
     indices <- rep.int(-1L, length(data))
+    first_columns <- integer(length(data))
     table_count <- 0L
     for (index in which(usable)) {
         table_name <- resolved[[index]]
@@ -666,6 +683,7 @@ save_dta <- function(data, path, version = 19L,
         if (is.null(table_index)) {
             table_index <- table_count
             assign(table_name, table_index, envir = table_indices)
+            first_columns[[table_count + 1L]] <- index
             table_count <- table_count + 1L
         }
         indices[[index]] <- table_index
@@ -698,7 +716,12 @@ save_dta <- function(data, path, version = 19L,
         ))
     }
 
-    list(names = resolved, indices = indices, warnings = warnings)
+    list(
+        names = resolved,
+        indices = indices,
+        first_columns = first_columns[seq_len(table_count)],
+        warnings = warnings
+    )
 }
 
 .cached_write_value_labels <- function(cache, table_index, prepare) {
@@ -715,7 +738,7 @@ save_dta <- function(data, path, version = 19L,
     if (!table_count) return(list())
     tables <- vector("list", table_count)
     for (table_index in seq_len(table_count) - 1L) {
-        column_index <- which(resolution$indices == table_index)[[1L]]
+        column_index <- resolution$first_columns[[table_index + 1L]]
         prepared <- get(
             as.character(table_index), envir = cache, inherits = FALSE
         )
@@ -859,13 +882,13 @@ save_dta <- function(data, path, version = 19L,
                                   stata_metadata) {
     result <- stats::setNames(list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
-        double(), character(), values, has_value_labels,
+        values, has_value_labels,
         numeric_shift, numeric_scale, as.integer(value_label_index),
         stata_metadata
     ), c(
-        "name", "type_code", "format", "label", "label_values",
-        "label_texts", "values", "has_value_labels", "numeric_shift",
-        "numeric_scale", "value_label_index", "stata_metadata"
+        "name", "type_code", "format", "label", "values",
+        "has_value_labels", "numeric_shift", "numeric_scale",
+        "value_label_index", "stata_metadata"
     ))
     if (!is.null(character_missing)) {
         attr(result, "character_missing") <- character_missing

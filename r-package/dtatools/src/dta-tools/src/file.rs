@@ -27,6 +27,27 @@ use crate::{
     ReadOptions, SectionOffsets, ValueLabelEntry, ValueLabelTable, VariableInfo,
 };
 
+fn selected_value_label_names(metadata: &DtaMetadata, indices: &[u32]) -> HashSet<String> {
+    indices
+        .iter()
+        .filter_map(|&index| {
+            let name = &metadata.variables.get(index as usize)?.value_label_name;
+            (!name.is_empty()).then(|| name.clone())
+        })
+        .collect()
+}
+
+fn clone_selected_value_label_tables(
+    tables: &[ValueLabelTable],
+    selected: &HashSet<String>,
+) -> Vec<ValueLabelTable> {
+    tables
+        .iter()
+        .filter(|table| selected.contains(&table.name))
+        .cloned()
+        .collect()
+}
+
 const DEFAULT_MAX_BUFFER_BYTES: usize = 8 * 1024 * 1024;
 const METADATA_SECTION_BUFFER_BYTES: usize = 64 * 1024;
 const MIN_MAX_BUFFER_BYTES: usize = 1024;
@@ -1692,19 +1713,38 @@ impl<R: Read + Seek> DtaFile<R> {
             .collect::<Vec<_>>();
 
         check_cancel(&mut should_interrupt)?;
+        let selected_tables = options
+            .column_indices
+            .as_ref()
+            .map(|_| selected_value_label_names(&self.metadata, &indices));
         self.ensure_value_labels(&mut should_interrupt)?;
-        let value_label_tables = self
+        let cached_tables = self
             .value_label_tables
             .as_deref()
             .expect("value-label cache was initialized");
-        S::finish_parallel_borrowed(
-            state,
-            columns,
-            &self.metadata,
-            row_start,
-            row_count,
-            value_label_tables,
-        )
+        if let Some(selected_tables) = selected_tables {
+            let value_label_tables = clone_selected_value_label_tables(
+                cached_tables,
+                &selected_tables,
+            );
+            S::finish_parallel(
+                state,
+                columns,
+                self.metadata.clone(),
+                row_start,
+                row_count,
+                value_label_tables,
+            )
+        } else {
+            S::finish_parallel_borrowed(
+                state,
+                columns,
+                &self.metadata,
+                row_start,
+                row_count,
+                cached_tables,
+            )
+        }
     }
 
     /// Decode through a caller-provided typed output collector.
@@ -1945,15 +1985,32 @@ impl<R: Read + Seek> DtaFile<R> {
             )?;
         }
         check_coarse_cancel(&mut interrupts)?;
+        let selected_tables = options
+            .column_indices
+            .as_ref()
+            .map(|_| selected_value_label_names(&self.metadata, &indices));
         {
             let mut coarse_interrupt = || interrupts.coarse();
             self.ensure_value_labels(&mut coarse_interrupt)?;
         }
-        let value_label_tables = self
+        let cached_tables = self
             .value_label_tables
             .as_deref()
             .expect("value-label cache was initialized");
-        sink.finish_borrowed(&self.metadata, row_start, row_count, value_label_tables)
+        if let Some(selected_tables) = selected_tables {
+            let value_label_tables = clone_selected_value_label_tables(
+                cached_tables,
+                &selected_tables,
+            );
+            sink.finish(
+                self.metadata.clone(),
+                row_start,
+                row_count,
+                value_label_tables,
+            )
+        } else {
+            sink.finish_borrowed(&self.metadata, row_start, row_count, cached_tables)
+        }
     }
 
     /// Return ownership of the underlying reader.

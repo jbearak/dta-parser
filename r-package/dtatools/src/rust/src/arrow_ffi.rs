@@ -14,7 +14,8 @@ use std::thread;
 use dta_tools::arrow::{
     arrow_stored_signature, dataset_signature, save_arrow_file, ArrowCompression,
     ArrowFieldDocument, ArrowFileSnapshot, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn,
-    ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage,
+    ArrowReadOptions, ArrowValueLabelEntry, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument,
+    StataStorage,
 };
 use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
@@ -39,7 +40,7 @@ use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
     attach_stata_metadata, attach_variable_attribute_view, boundary, check_interrupt,
-    coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute,
+    coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute_from_entries,
     missing_from_code, numeric_altrep_storage, observed_value, parse_stata_metadata_sexp,
     poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
     string_vector, temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen,
@@ -107,6 +108,7 @@ enum RArrowKind {
     Datetime,
     Difftime,
     StataNumeric,
+    LabelledInteger,
 }
 
 impl TryFrom<c_int> for RArrowKind {
@@ -124,6 +126,7 @@ impl TryFrom<c_int> for RArrowKind {
             7 => Ok(Self::Datetime),
             8 => Ok(Self::Difftime),
             9 => Ok(Self::StataNumeric),
+            10 => Ok(Self::LabelledInteger),
             _ => Err("invalid native Arrow column kind".into()),
         }
     }
@@ -807,6 +810,9 @@ enum ColumnInput {
     Integer {
         values: *const c_int,
     },
+    LabelledInteger {
+        values: *const c_int,
+    },
     /// Double, Date, Datetime, and Difftime columns; `kind` disambiguates.
     DoubleLike {
         values: *const f64,
@@ -844,7 +850,7 @@ struct ExtractedColumn {
     units: String,
     ordered: bool,
     haven_labelled: bool,
-    value_label_name: Option<String>,
+    value_label_index: Option<usize>,
     string_storage: Option<String>,
     notes: Vec<StataNote>,
     characteristics: Vec<StataCharacteristic>,
@@ -901,7 +907,6 @@ unsafe fn extract_column(
         }
         Some(index)
     };
-    let value_label_name = value_label_index.map(|index| value_label_names[index].clone());
     let string_storage = match descriptor.string_storage {
         -1 => None,
         0 => Some("strL".to_owned()),
@@ -914,6 +919,9 @@ unsafe fn extract_column(
             values: int_slice(descriptor, row_count)?.as_ptr(),
         },
         RArrowKind::Integer => ColumnInput::Integer {
+            values: int_slice(descriptor, row_count)?.as_ptr(),
+        },
+        RArrowKind::LabelledInteger => ColumnInput::LabelledInteger {
             values: int_slice(descriptor, row_count)?.as_ptr(),
         },
         RArrowKind::Double | RArrowKind::Date | RArrowKind::Datetime | RArrowKind::Difftime => {
@@ -972,7 +980,7 @@ unsafe fn extract_column(
         units,
         ordered: descriptor.ordered != 0,
         haven_labelled: descriptor.haven_labelled != 0,
-        value_label_name,
+        value_label_index,
         string_storage,
         notes,
         characteristics,
@@ -983,7 +991,10 @@ unsafe fn extract_column(
 
 /// Encode one extracted column into its Arrow array and field document.
 /// Pure: never calls the R API, so it may run on a worker thread.
-unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, String> {
+unsafe fn encode_column(
+    mut column: ExtractedColumn,
+    value_label_names: &[String],
+) -> Result<EncodedColumn, String> {
     let name = &column.name;
     let row_count = column.row_count;
     let base_document = base_field_document(
@@ -994,8 +1005,8 @@ unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, St
     );
     let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
     let with_labels = |mut document: ArrowFieldDocument| {
-        if let Some(name) = &column.value_label_name {
-            document.value_labels = Some(name.clone());
+        if let Some(index) = column.value_label_index {
+            document.value_labels = Some(value_label_names[index].clone());
         }
         document
     };
@@ -1035,6 +1046,20 @@ unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, St
             document.r = r_semantics("integer");
             (Some(document), array, 0)
         }
+        ColumnInput::LabelledInteger { values } => {
+            let values = std::slice::from_raw_parts(*values, row_count);
+            let mut document = with_labels(base_document);
+            document.missing = Some(ArrowMissingEncoding::Payload);
+            document.r = r_semantics("haven_labelled");
+            let array = Float64Array::from_iter_values(values.iter().map(|&value| {
+                if value == R_NaInt {
+                    r_missing(MissingTag::System)
+                } else {
+                    f64::from(value)
+                }
+            }));
+            (Some(document), Arc::new(array), 0)
+        }
         ColumnInput::DoubleLike { values } => {
             let values = std::slice::from_raw_parts(*values, row_count);
             let (codes, has_tags) = classify_doubles(values, name)?;
@@ -1061,7 +1086,7 @@ unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, St
             } else if class == "haven_labelled" {
                 document.r = r_semantics(class);
             }
-            let payload_labels = kind == RArrowKind::Double && column.value_label_name.is_some();
+            let payload_labels = kind == RArrowKind::Double && column.value_label_index.is_some();
             if has_tags || payload_labels {
                 // Tagged NAs and haven labels need bit-exact NaN payloads.
                 let (mut field, array) = payload_double_column(values, document, class);
@@ -1206,6 +1231,7 @@ struct EncodedColumn {
 /// flag set by the other loops.
 fn encode_task_loop(
     columns: &[std::sync::Mutex<Option<ExtractedColumn>>],
+    value_label_names: &[String],
     next: &AtomicUsize,
     cancelled: &AtomicBool,
     mut poll: impl FnMut() -> bool,
@@ -1228,7 +1254,7 @@ fn encode_task_loop(
             .map_err(|_| "an Arrow encode task was poisoned".to_owned())?
             .take()
             .ok_or_else(|| "an Arrow encode task was claimed twice".to_owned())?;
-        match unsafe { encode_column(column) } {
+        match unsafe { encode_column(column, value_label_names) } {
             Ok(encoded) => results.push((index, encoded)),
             Err(error) => {
                 cancelled.store(true, Ordering::Relaxed);
@@ -1242,13 +1268,14 @@ fn encode_task_loop(
 /// R thread participates in the queue and is the only interrupt poller.
 fn run_column_encodes(
     columns: Vec<ExtractedColumn>,
+    value_label_names: &[String],
     threads: usize,
 ) -> Result<Vec<EncodedColumn>, String> {
     if threads <= 1 {
         let mut encoded = Vec::with_capacity(columns.len());
         for column in columns {
             check_interrupt()?;
-            encoded.push(unsafe { encode_column(column) }?);
+            encoded.push(unsafe { encode_column(column, value_label_names) }?);
         }
         return Ok(encoded);
     }
@@ -1264,10 +1291,18 @@ fn run_column_encodes(
             .map(|_| {
                 let next = &next;
                 let cancelled = &cancelled;
-                scope.spawn(move || encode_task_loop(columns, next, cancelled, || false))
+                scope.spawn(move || {
+                    encode_task_loop(columns, value_label_names, next, cancelled, || false)
+                })
             })
             .collect();
-        let own = encode_task_loop(columns, &next, &cancelled, coarse_interrupt);
+        let own = encode_task_loop(
+            columns,
+            value_label_names,
+            &next,
+            &cancelled,
+            coarse_interrupt,
+        );
         if own.is_err() {
             cancelled.store(true, Ordering::Relaxed);
         }
@@ -1489,7 +1524,7 @@ unsafe fn assemble_write_dataset(
     }
 
     let threads = encode_thread_count(requested_threads, column_count, row_count);
-    let encoded = run_column_encodes(extracted, threads)?;
+    let encoded = run_column_encodes(extracted, &value_label_names, threads)?;
 
     let mut write_columns = Vec::new();
     write_columns
@@ -1500,7 +1535,16 @@ unsafe fn assemble_write_dataset(
         .try_reserve_exact(column_count)
         .map_err(|_| "could not allocate replacement counts".to_owned())?;
     for table in value_label_tables {
-        dataset.insert_owned_value_label_table(table);
+        let entries = table
+            .entries
+            .into_iter()
+            .map(|entry| ArrowValueLabelEntry {
+                value: entry.missing_tag.is_none().then_some(entry.value),
+                tag: entry.missing_tag,
+                label: entry.label,
+            })
+            .collect();
+        dataset.value_labels.insert(table.name, entries);
     }
     for column in encoded {
         replacements.push(column.replaced);
@@ -3201,14 +3245,29 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                     if value_labels.contains_key(name) {
                         continue;
                     }
-                    let table = dataset.value_label_table(name).ok_or_else(|| {
+                    let entries = dataset.value_labels.get(name).ok_or_else(|| {
                         format!("Arrow field references missing value-label table `{name}`")
                     })?;
-                    let labels = label_attribute(&table, &mut result_guard)?;
+                    let labels = label_attribute_from_entries(
+                        entries.len(),
+                        entries.iter().map(|entry| {
+                            let value = match (entry.value, entry.tag) {
+                                (Some(value), None) => f64::from(value),
+                                (None, Some(tag)) => r_missing(tag),
+                                _ => {
+                                    return Err(
+                                        "value-label entry must contain exactly one code".to_owned()
+                                    )
+                                }
+                            };
+                            Ok((value, entry.label.as_str()))
+                        }),
+                        &mut result_guard,
+                    )?;
                     value_labels.insert(
                         name.to_owned(),
                         CachedValueLabels {
-                            name: table.name,
+                            name: name.to_owned(),
                             labels,
                         },
                     );

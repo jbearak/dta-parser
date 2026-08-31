@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::fs::File;
 use std::hash::{DefaultHasher, Hasher};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{BufWriter, Seek, SeekFrom, Write};
 use std::mem::size_of;
 
 use crate::metadata::{field_widths, FieldWidths};
@@ -137,21 +138,6 @@ pub trait DtaWriteColumnSource {
 /// handling. The hidden bulk seam is reserved for trusted in-tree adapters
 /// that already own the final DTA storage encoding.
 pub trait DtaWriteObservationSource {
-    /// Override the value-label table name for one column. `None` uses the
-    /// variable name, which preserves the public writer's existing behavior.
-    #[doc(hidden)]
-    fn value_label_name(&self, _column: usize) -> Option<&str> {
-        None
-    }
-
-    /// Override one column's value-label entries. Internal adapters use this
-    /// to share a single validated mapping across columns that reference the
-    /// same table instead of materializing one copy per variable.
-    #[doc(hidden)]
-    fn value_labels(&self, _column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
-        None
-    }
-
     fn begin_row(&self, _row: u64) -> Result<(), DtaWriteError> {
         Ok(())
     }
@@ -194,6 +180,86 @@ pub trait DtaWriteObservationSource {
     }
 
     fn string_value(&self, column: usize, row: u64) -> Result<Cow<'_, str>, DtaWriteError>;
+}
+
+trait DtaWriteValueLabelSource {
+    fn value_label_name(&self, _column: usize) -> Option<&str> {
+        None
+    }
+
+    fn value_labels(&self, _column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
+        None
+    }
+}
+
+struct AdapterValueLabels<'a, 'labels> {
+    names: &'a [&'labels str],
+    tables: &'a [Vec<DtaWriteValueLabel<'labels>>],
+    indices: &'a [Option<usize>],
+}
+
+struct AdapterObservationSource<'a, 'labels, S: ?Sized> {
+    source: &'a S,
+    value_labels: Option<AdapterValueLabels<'a, 'labels>>,
+}
+
+impl<S: DtaWriteObservationSource + ?Sized> DtaWriteObservationSource
+    for AdapterObservationSource<'_, '_, S>
+{
+    fn begin_row(&self, row: u64) -> Result<(), DtaWriteError> {
+        self.source.begin_row(row)
+    }
+
+    fn check_interrupt(&self) -> Result<(), DtaWriteError> {
+        self.source.check_interrupt()
+    }
+
+    fn append_observation_rows(
+        &self,
+        buffer: &mut Vec<u8>,
+        start: u64,
+        end: u64,
+    ) -> Result<bool, DtaWriteError> {
+        self.source.append_observation_rows(buffer, start, end)
+    }
+
+    fn raw_numeric_value(
+        &self,
+        column: usize,
+        row: u64,
+    ) -> Result<Option<DtaWriteRawNumericValue>, DtaWriteError> {
+        self.source.raw_numeric_value(column, row)
+    }
+
+    fn numeric_value(
+        &self,
+        column: usize,
+        row: u64,
+    ) -> Result<DtaWriteNumericValue, DtaWriteError> {
+        self.source.numeric_value(column, row)
+    }
+
+    fn string_id(&self, column: usize, row: u64) -> Result<Option<u64>, DtaWriteError> {
+        self.source.string_id(column, row)
+    }
+
+    fn string_value(&self, column: usize, row: u64) -> Result<Cow<'_, str>, DtaWriteError> {
+        self.source.string_value(column, row)
+    }
+}
+
+impl<S: ?Sized> DtaWriteValueLabelSource for AdapterObservationSource<'_, '_, S> {
+    fn value_label_name(&self, column: usize) -> Option<&str> {
+        let registry = self.value_labels.as_ref()?;
+        let table_index = registry.indices.get(column).copied().flatten()?;
+        registry.names.get(table_index).copied()
+    }
+
+    fn value_labels(&self, column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
+        let registry = self.value_labels.as_ref()?;
+        let table_index = registry.indices.get(column).copied().flatten()?;
+        registry.tables.get(table_index).map(Vec::as_slice)
+    }
 }
 
 /// Borrowed or on-demand values for one output variable.
@@ -331,6 +397,8 @@ impl DtaWriteObservationSource for ColumnObservationSource<'_, '_> {
         column.values.string_value(&column.name, row)
     }
 }
+
+impl DtaWriteValueLabelSource for ColumnObservationSource<'_, '_> {}
 
 /// Options shared by native adapters.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -837,7 +905,7 @@ fn validate_data(data: &DtaWriteData<'_>, options: &DtaWriteOptions) -> Result<u
     Ok(row_count)
 }
 
-fn output_value_label_name<'a, S: DtaWriteObservationSource + ?Sized>(
+fn output_value_label_name<'a, S: DtaWriteValueLabelSource + ?Sized>(
     data: &'a DtaWriteData<'_>,
     source: &'a S,
     column_index: usize,
@@ -847,7 +915,7 @@ fn output_value_label_name<'a, S: DtaWriteObservationSource + ?Sized>(
         .unwrap_or(data.columns[column_index].name.as_ref())
 }
 
-fn output_value_labels<'a, S: DtaWriteObservationSource + ?Sized>(
+fn output_value_labels<'a, S: DtaWriteValueLabelSource + ?Sized>(
     data: &'a DtaWriteData<'_>,
     source: &'a S,
     column_index: usize,
@@ -857,7 +925,7 @@ fn output_value_labels<'a, S: DtaWriteObservationSource + ?Sized>(
         .unwrap_or(&data.columns[column_index].value_labels)
 }
 
-fn validate_value_label_names<S: DtaWriteObservationSource + ?Sized>(
+fn validate_value_label_names<S: DtaWriteValueLabelSource + ?Sized>(
     data: &DtaWriteData<'_>,
     source: &S,
 ) -> Result<(), DtaWriteError> {
@@ -1075,7 +1143,7 @@ fn write_metadata_sections<W, S>(
 ) -> Result<(), DtaWriteError>
 where
     W: Write + Seek,
-    S: DtaWriteObservationSource + ?Sized,
+    S: DtaWriteObservationSource + DtaWriteValueLabelSource + ?Sized,
 {
     offsets.variable_types = position(writer)?;
     write_tag(writer, b"<variable_types>")?;
@@ -1825,7 +1893,10 @@ fn write_strls<W: Write, S: DtaWriteObservationSource + ?Sized>(
     Ok(())
 }
 
-fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
+fn write_value_labels<
+    W: Write,
+    S: DtaWriteObservationSource + DtaWriteValueLabelSource + ?Sized,
+>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     source: &S,
@@ -1929,7 +2000,7 @@ fn save_dta_impl<W, S>(
 ) -> Result<DtaWriteSummary, DtaWriteError>
 where
     W: Write + Seek,
-    S: DtaWriteObservationSource + ?Sized,
+    S: DtaWriteObservationSource + DtaWriteValueLabelSource + ?Sized,
 {
     validate_destination(writer)?;
     let version = if data.columns.len() <= RELEASE_118_MAX_VARIABLES {
@@ -2014,7 +2085,6 @@ pub fn save_dta_to<W: Write + Seek>(
 ) -> Result<DtaWriteSummary, DtaWriteError> {
     let source = ColumnObservationSource { data };
     let row_count = validate_data(data, options)?;
-    validate_value_label_names(data, &source)?;
     save_dta_impl(writer, data, options, &source, row_count)
 }
 
@@ -2039,13 +2109,77 @@ where
     S: DtaWriteObservationSource + ?Sized,
 {
     let column_row_count = validate_structure(data, options)?;
-    validate_value_label_names(data, observation_source)?;
     if column_row_count != row_count {
         return Err(DtaWriteError::InvalidDatasetMetadata(format!(
             "prevalidated row count is {row_count} but columns have {column_row_count} rows"
         )));
     }
-    save_dta_impl(writer, data, options, observation_source, row_count)
+    let source = AdapterObservationSource {
+        source: observation_source,
+        value_labels: None,
+    };
+    save_dta_impl(writer, data, options, &source, row_count)
+}
+
+/// Private Rust-ABI seam used only by the in-repository R adapter. Keeping the
+/// symbol out of the Rust module API prevents the public writer from becoming
+/// an authoring API for named/shared value-label registries.
+#[no_mangle]
+pub(crate) unsafe extern "Rust" fn dtatools_internal_write_prevalidated_dta_with_value_labels(
+    writer: *mut BufWriter<File>,
+    data: *const DtaWriteData<'static>,
+    options: *const DtaWriteOptions,
+    observation_source: *const (),
+    row_count: u64,
+    value_label_names: *const &'static str,
+    value_label_name_count: usize,
+    value_label_tables: *const Vec<DtaWriteValueLabel<'static>>,
+    value_label_table_count: usize,
+    value_label_indices: *const Option<usize>,
+    value_label_index_count: usize,
+) -> Result<DtaWriteSummary, DtaWriteError> {
+    let writer = unsafe { &mut *writer };
+    let data = unsafe { &*data };
+    let options = unsafe { &*options };
+    let observation_source =
+        unsafe { *observation_source.cast::<&'static dyn DtaWriteObservationSource>() };
+    let value_label_names =
+        unsafe { std::slice::from_raw_parts(value_label_names, value_label_name_count) };
+    let value_label_tables =
+        unsafe { std::slice::from_raw_parts(value_label_tables, value_label_table_count) };
+    let value_label_indices =
+        unsafe { std::slice::from_raw_parts(value_label_indices, value_label_index_count) };
+    let column_row_count = validate_structure(data, options)?;
+    if column_row_count != row_count {
+        return Err(DtaWriteError::InvalidDatasetMetadata(format!(
+            "prevalidated row count is {row_count} but columns have {column_row_count} rows"
+        )));
+    }
+    if value_label_indices.len() != data.columns.len() {
+        return Err(DtaWriteError::InvalidDatasetMetadata(
+            "value-label table index count does not match the columns".to_owned(),
+        ));
+    }
+    if value_label_names.len() != value_label_tables.len()
+        || value_label_indices
+            .iter()
+            .flatten()
+            .any(|&index| index >= value_label_tables.len())
+    {
+        return Err(DtaWriteError::InvalidDatasetMetadata(
+            "value-label table registry is inconsistent".to_owned(),
+        ));
+    }
+    let source = AdapterObservationSource {
+        source: observation_source,
+        value_labels: Some(AdapterValueLabels {
+            names: value_label_names,
+            tables: value_label_tables,
+            indices: value_label_indices,
+        }),
+    };
+    validate_value_label_names(data, &source)?;
+    save_dta_impl(writer, data, options, &source, row_count)
 }
 
 impl std::fmt::Display for DtaWriteLabelValue {

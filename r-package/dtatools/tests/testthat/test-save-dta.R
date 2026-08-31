@@ -952,12 +952,12 @@ test_that("generic ALTSTRING metadata stays rooted through native writing", {
         data, NULL, 2045L, TRUE, 19L
     )
     specification[[2L]] <- ephemeral(specification[[2L]])
-    specification[[3L]][[1L]][[6L]] <- ephemeral(
-        specification[[3L]][[1L]][[6L]]
+    specification[[5L]][[1L]][[3L]] <- ephemeral(
+        specification[[5L]][[1L]][[3L]]
     )
     expect_true(dtatools:::.is_altrep(specification[[2L]]))
     expect_true(dtatools:::.is_altrep(
-        specification[[3L]][[1L]]$label_texts
+        specification[[5L]][[1L]]$label_texts
     ))
 
     path <- tempfile(fileext = ".dta")

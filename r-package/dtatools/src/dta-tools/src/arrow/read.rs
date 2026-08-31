@@ -1122,6 +1122,7 @@ struct PreparedRead {
     plans: Vec<BlockPlan>,
     produced: u64,
     stored_signature: Option<String>,
+    projected: bool,
 }
 
 fn prepare_read<R: Read + Seek>(
@@ -1303,6 +1304,7 @@ fn prepare_read<R: Read + Seek>(
         plans,
         produced,
         stored_signature,
+        projected: options.columns.is_some(),
     })
 }
 
@@ -1652,7 +1654,7 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
         .iter()
         .filter_map(|column| column.field.as_ref()?.value_labels.as_deref())
         .collect::<HashSet<_>>();
-    if let Some(profile) = &prepared.profile {
+    if let Some(profile) = &mut prepared.profile {
         let mut count_reference = |field: &ArrowFieldDocument| {
             if let Some(name) = &field.value_labels {
                 if selected_value_labels.contains(name.as_str()) {
@@ -1673,6 +1675,12 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
                     count_reference(field);
                 }
             }
+        }
+        if prepared.projected {
+            profile
+                .dataset
+                .value_labels
+                .retain(|name, _| selected_value_labels.contains(name.as_str()));
         }
     }
     let (profile_version, dataset) = if let Some(mut profile) = prepared.profile.take() {

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::endian::{
     checked_add, checked_sub, ensure_map_offset, expect_at, offset_to_usize, read_i16, read_i32,
@@ -258,7 +258,17 @@ pub fn read_dta_with_options_and_encoding(
     let encoding = encoding.resolve(metadata.format_version);
     let payload_start = validate_data_section(bytes, &metadata)?;
     let column_indices = resolve_columns(&metadata, options)?;
-    let value_label_tables = parse_value_labels_with_encoding(bytes, &metadata, encoding)?;
+    let mut value_label_tables = parse_value_labels_with_encoding(bytes, &metadata, encoding)?;
+    if options.column_indices.is_some() {
+        let selected_tables = column_indices
+            .iter()
+            .filter_map(|&index| {
+                let name = &metadata.variables.get(index as usize)?.value_label_name;
+                (!name.is_empty()).then_some(name.as_str())
+            })
+            .collect::<HashSet<_>>();
+        value_label_tables.retain(|table| selected_tables.contains(table.name.as_str()));
+    }
     let (row_start, row_count) = row_window(&metadata, options);
     let mut strl_indices = Vec::new();
     for &index in &column_indices {
