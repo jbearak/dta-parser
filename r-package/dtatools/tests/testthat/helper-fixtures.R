@@ -47,9 +47,17 @@ tagged_nan_for_test <- function(tag) {
 }
 
 without_stata_storage <- function(value) {
-    if (is.null(attr(value, "stata.storage", exact = TRUE))) return(value)
+    has_numeric_storage <- !is.null(attr(
+        value, "stata.storage", exact = TRUE
+    ))
+    has_string_storage <- !is.null(attr(
+        value, "stata.string.storage", exact = TRUE
+    ))
+    if (!has_numeric_storage && !has_string_storage) return(value)
 
     value <- dtatools:::.metadata_copy(value)
+    attr(value, "stata.string.storage") <- NULL
+    if (!has_numeric_storage) return(value)
     attr(value, "stata.storage") <- NULL
     classes <- attr(value, "class", exact = TRUE)
     if (!is.null(classes)) {

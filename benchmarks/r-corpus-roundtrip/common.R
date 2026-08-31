@@ -32,6 +32,12 @@ roundtrip_verification_waves <- function(
 ) {
     if (!length(bytes)) return(list())
     estimates <- pmax(minimum_bytes, expansion * as.double(bytes))
+    if (any(estimates > memory_bytes)) {
+        stop(paste0(
+            "a dataset's estimated working set exceeds the verification ",
+            "memory budget; increase DTATOOLS_VERIFY_MEMORY_GIB"
+        ))
+    }
     waves <- list()
     current <- integer()
     current_memory <- 0
@@ -49,6 +55,41 @@ roundtrip_verification_waves <- function(
     }
     if (length(current)) waves[[length(waves) + 1L]] <- current
     waves
+}
+
+roundtrip_recovery_inventory <- function(cache_root, previous_run) {
+    previous_run <- normalizePath(
+        previous_run, winslash = "/", mustWork = TRUE
+    )
+    inventory_path <- file.path(previous_run, "inventory.tsv")
+    if (!file.exists(inventory_path)) {
+        stop("the previous verification run has no inventory.tsv")
+    }
+    recorded <- read.delim(
+        inventory_path, check.names = FALSE, stringsAsFactors = FALSE,
+        colClasses = "character"
+    )
+    legacy_columns <- c(
+        "corpus", "id", "relative_path", "release", "bytes", "sha256"
+    )
+    if (!identical(names(recorded), legacy_columns)) {
+        return(roundtrip_cached_inventory(cache_root, inventory_path))
+    }
+    current <- roundtrip_inventory(cache_root, progress = FALSE)
+    expected <- data.frame(
+        corpus = current$corpus,
+        id = current$id,
+        relative_path = current$relative_path,
+        release = ifelse(is.na(current$release), NA_character_,
+                         as.character(current$release)),
+        bytes = sprintf("%.0f", current$bytes),
+        sha256 = current$sha256,
+        stringsAsFactors = FALSE
+    )
+    if (!identical(recorded, expected)) {
+        stop("corpus files changed since the recovery inventory was created")
+    }
+    current
 }
 
 roundtrip_select_verification <- function(inventory, selection, argument = "") {

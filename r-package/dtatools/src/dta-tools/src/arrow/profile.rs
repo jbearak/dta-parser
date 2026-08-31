@@ -414,6 +414,35 @@ pub(crate) fn validate_field_document(
             ),
         ));
     }
+    if let Some(string_storage) = document.string_storage.as_deref() {
+        let fixed_width = string_storage
+            .strip_prefix("str")
+            .and_then(|width| {
+                if width.starts_with('0') {
+                    None
+                } else {
+                    width.parse::<u16>().ok()
+                }
+            })
+            .is_some_and(|width| (1..=2045).contains(&width));
+        if string_storage != "strL" && !fixed_width {
+            return Err(field_malformed(
+                version,
+                field,
+                format!("declares invalid string storage `{string_storage}`"),
+            ));
+        }
+        if document.storage.is_some() || field.data_type() != &DataType::Utf8 {
+            return Err(field_malformed(
+                version,
+                field,
+                format!(
+                    "declares string storage incompatible with Arrow type {}",
+                    field.data_type()
+                ),
+            ));
+        }
+    }
     if let Some(storage) = document.storage {
         let expected_type = storage_type(storage);
         if field.data_type() != &expected_type {
@@ -614,6 +643,27 @@ mod tests {
                 .expect_err("unknown field-document keys are rejected");
             assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
             assert!(error.to_string().contains("unknown field"));
+        }
+    }
+
+    #[test]
+    fn field_documents_reject_invalid_string_storage() {
+        let text = Field::new("text", DataType::Utf8, true);
+        for declaration in ["str0", "str01", "str2046", "STR12"] {
+            let json = format!(r#"{{"version":0,"string_storage":"{declaration}"}}"#);
+            let error = parse_field_document("0", &text, &json)
+                .expect_err("invalid string storage is rejected");
+            assert!(error.to_string().contains("string storage"));
+        }
+
+        for field in [
+            Field::new("number", DataType::Int32, true),
+            Field::new("large", DataType::LargeUtf8, true),
+        ] {
+            let error =
+                parse_field_document("0", &field, r#"{"version":0,"string_storage":"str12"}"#)
+                    .expect_err("string storage requires a UTF-8 field");
+            assert!(error.to_string().contains("string storage"));
         }
     }
 

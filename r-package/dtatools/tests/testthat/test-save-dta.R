@@ -328,9 +328,11 @@ test_that("fixed strings retain declared storage through Arrow", {
     via_arrow <- tempfile(fileext = ".dta")
     on.exit(unlink(c(direct, arrow, via_arrow)), add = TRUE)
 
-    expect_silent(save_dta(data, direct))
+    expect_silent(save_dta(data, direct, strl_threshold = 4L))
     expect_silent(save_arrow(data, arrow))
-    expect_silent(save_dta(read_arrow(arrow), via_arrow))
+    expect_silent(save_dta(
+        read_arrow(arrow), via_arrow, strl_threshold = 4L
+    ))
     for (path in c(direct, via_arrow)) {
         bytes <- readBin(path, "raw", n = file.info(path)$size)
         tag <- charToRaw("<variable_types>")

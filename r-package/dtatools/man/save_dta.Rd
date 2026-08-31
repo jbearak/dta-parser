@@ -24,7 +24,8 @@ save_dta(
 \item{label}{Dataset label. Defaults to the data frame's \code{label} attribute.}
 
 \item{strl_threshold}{Character columns whose maximum UTF-8 byte length is
-greater than this value are stored as \code{strL}.}
+greater than this value are stored as \code{strL}. An explicit
+\code{stata.string.storage} fixed-width declaration takes precedence.}
 
 \item{adjust_tz}{For \code{POSIXct} columns, whether to preserve displayed clock
 time (\code{TRUE}) or the underlying UTC instant (\code{FALSE}).}

@@ -1,13 +1,20 @@
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 3L || length(args) > 4L) {
-    stop("usage: verify.R CACHE_ROOT OUTPUT_DIR full|from|smallest|id [ARGUMENT]")
+if (length(args) < 3L || length(args) > 5L) {
+    stop(paste0(
+        "usage: verify.R CACHE_ROOT OUTPUT_DIR full|smallest|id [ARGUMENT] ",
+        "or verify.R CACHE_ROOT OUTPUT_DIR from PREVIOUS_RUN POSITION"
+    ))
 }
 if (!requireNamespace("processx", quietly = TRUE)) stop("processx is required")
 
 cache_root <- normalizePath(args[[1L]], winslash = "/", mustWork = TRUE)
 output_dir <- normalizePath(args[[2L]], winslash = "/", mustWork = FALSE)
 selection <- args[[3L]]
-argument <- if (length(args) == 4L) args[[4L]] else ""
+argument <- if (selection == "from" && length(args) == 5L) {
+    args[[5L]]
+} else if (length(args) == 4L) {
+    args[[4L]]
+} else ""
 script_argument <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)[[1L]]
 script_dir <- dirname(normalizePath(sub("^--file=", "", script_argument), winslash = "/"))
 source(file.path(script_dir, "common.R"), local = TRUE)
@@ -17,16 +24,27 @@ rscript <- normalizePath(Sys.which("Rscript"), winslash = "/", mustWork = TRUE)
 stata <- find_stata()
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-inventory <- roundtrip_inventory(cache_root)
+inventory <- if (selection == "from") {
+    if (length(args) != 5L) {
+        stop("from requires PREVIOUS_RUN and POSITION")
+    }
+    roundtrip_recovery_inventory(cache_root, args[[4L]])
+} else {
+    if (length(args) > 4L) stop("too many verification arguments")
+    roundtrip_inventory(cache_root)
+}
 selected <- roundtrip_select_verification(inventory, selection, argument)
 inventory_hash <- benchmark_file_sha256({
     path <- file.path(output_dir, "inventory.tsv")
-    atomic_tsv(inventory[c("corpus", "id", "relative_path", "release", "bytes", "sha256")], path, quote = TRUE)
+    atomic_tsv(inventory[c(
+        "corpus", "id", "relative_path", "release", "bytes", "modified",
+        "sha256"
+    )], path, quote = TRUE)
     path
 })
 binding <- cbind(
     data.frame(
-        schema_version = 1L,
+        schema_version = 2L,
         inventory_sha256 = inventory_hash,
         package_sha256 = benchmark_directory_sha256(
             benchmark_installed_package_path(library)
