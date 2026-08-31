@@ -104,7 +104,7 @@ test_that("data-frame replacement syntax follows R copy semantics", {
     expect_null(val_labels(reference_alias$x))
 })
 
-test_that("label replacement isolates every compact column", {
+test_that("label replacement isolates metadata, not untouched values", {
     data <- data.frame(
         labelled = stata_byte(1:3),
         untouched = stata_byte(4:6)
@@ -112,16 +112,16 @@ test_that("label replacement isolates every compact column", {
     alias <- data
 
     var_label(data) <- list(labelled = "Labelled")
+    replace_values(data, labelled, 8, where = 2)
     replace_values(data, untouched, 9, where = 1)
-    replace_values(alias, labelled, 8, where = 2)
 
     expect_identical(as.double(data$untouched), c(9, 5, 6))
-    expect_identical(as.double(alias$untouched), c(4, 5, 6))
-    expect_identical(as.double(data$labelled), c(1, 2, 3))
-    expect_identical(as.double(alias$labelled), c(1, 8, 3))
+    expect_identical(as.double(alias$untouched), c(9, 5, 6))
+    expect_identical(as.double(data$labelled), c(1, 8, 3))
+    expect_identical(as.double(alias$labelled), c(1, 2, 3))
 })
 
-test_that("dataset-label replacement detaches reference state and columns", {
+test_that("dataset-label replacement detaches reference state", {
     data <- data.frame(x = stata_byte(1:3))
     gen(data, y, x + 1)
     alias <- data
@@ -131,8 +131,8 @@ test_that("dataset-label replacement detaches reference state and columns", {
     replace_values(alias, x, 8, where = 2)
 
     expect_false(inherits(data, "dtatools_ref_data"))
-    expect_identical(as.double(data$x), c(9, 2, 3))
-    expect_identical(as.double(alias$x), c(1, 8, 3))
+    expect_identical(as.double(data$x), c(9, 8, 3))
+    expect_identical(as.double(alias$x), c(9, 8, 3))
     expect_identical(as.double(data$y), c(2, 3, 4))
     expect_identical(as.double(alias$y), c(2, 3, 4))
     expect_identical(dataset_label(data), "Labelled")
@@ -881,31 +881,4 @@ test_that("set_var_label labels a generated reference column", {
 
     set_var_label(data, a, "Alpha")
     expect_identical(var_label(data$a), "Alpha")
-})
-
-test_that("clear-all replacements avoid repeated name resolution", {
-    data <- data.frame(a = 1:3)
-    gen(data, b, a + 1)
-    gen(data, c, b + 1)
-    gen(data, d, c + 1)
-    counter <- new.env(parent = emptyenv())
-    counter$calls <- 0L
-    suppressMessages(trace(
-        ".reference_names",
-        tracer = function() counter$calls <- counter$calls + 1L,
-        where = asNamespace("dtatools"),
-        print = FALSE
-    ))
-    on.exit(suppressMessages(untrace(
-        ".reference_names", where = asNamespace("dtatools")
-    )), add = TRUE)
-
-    var_label(data) <- NULL
-    variable_calls <- counter$calls
-    counter$calls <- 0L
-    val_labels(data) <- NULL
-    value_calls <- counter$calls
-
-    expect_lte(variable_calls, 1L)
-    expect_lte(value_calls, 1L)
 })

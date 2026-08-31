@@ -89,8 +89,11 @@ The data-frame forms of \code{set_var_label()}, \code{set_var_labels()}, and
 \code{set_val_labels()} mutate by reference, as \code{gen()} and \code{replace_values()} do.
 The caller and every other binding to the same data frame see the new
 metadata. Use \code{copy_data()} first when isolation is required. Replacement
-syntax follows R's assignment semantics: it updates the binding on its
-left-hand side but not another binding to the original data frame. Vector
+syntax applies R's assignment semantics to the metadata it changes: it
+updates the binding on its left-hand side but not another binding to the
+original data frame. It does not deep-copy untouched column payloads, so a
+later \code{replace_values()} call can still be visible through both bindings.
+Use \code{copy_data()} when later value mutations must also be isolated. Vector
 forms cannot mutate by reference and return a copy.
 
 \code{NULL}, \code{NA_character_}, and \code{""} all remove a variable or dataset label.

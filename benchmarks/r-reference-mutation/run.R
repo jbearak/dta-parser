@@ -176,6 +176,20 @@ largest_allocation <- replacement_profile$largest
 full_double_bytes <- as.double(rows) * 8
 compact_byte_bytes <- as.double(rows)
 
+label_replacement_data <- data
+dataset_label_profile <- profile_memory(
+    dataset_label(label_replacement_data) <- "Benchmark",
+    "dtatools-dataset-label-replacement-"
+)
+dataset_label_replacement_time <- dataset_label_profile$elapsed
+dataset_label_replacement_allocation <- dataset_label_profile$total
+largest_dataset_label_replacement_allocation <- dataset_label_profile$largest
+stopifnot(
+    identical(dataset_label(label_replacement_data), "Benchmark"),
+    dataset_label_replacement_allocation < compact_byte_bytes,
+    largest_dataset_label_replacement_allocation < compact_byte_bytes
+)
+
 stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
     largest_allocation < compact_byte_bytes,
@@ -1108,6 +1122,9 @@ untracemem(data$untouched)
 
 record_metric("rows", rows, "%d")
 record_metric("repetitions", repetitions, "%d")
+record_metric("dataset_label_replacement_seconds", dataset_label_replacement_time, "%.6f")
+record_metric("dataset_label_replacement_total_profiled_allocation_bytes", dataset_label_replacement_allocation, "%.0f")
+record_metric("dataset_label_replacement_largest_allocation_bytes", largest_dataset_label_replacement_allocation, "%.0f")
 record_metric("small_sparse_replacement_seconds", small_replacement_time, "%.6f")
 record_metric("sparse_replacement_seconds", replacement_time, "%.6f")
 record_metric("all_rows_scalar_replacement_seconds", all_rows_replacement_time, "%.6f")

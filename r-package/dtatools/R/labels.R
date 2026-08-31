@@ -29,8 +29,11 @@
 #' `set_val_labels()` mutate by reference, as `gen()` and `replace_values()` do.
 #' The caller and every other binding to the same data frame see the new
 #' metadata. Use `copy_data()` first when isolation is required. Replacement
-#' syntax follows R's assignment semantics: it updates the binding on its
-#' left-hand side but not another binding to the original data frame. Vector
+#' syntax applies R's assignment semantics to the metadata it changes: it
+#' updates the binding on its left-hand side but not another binding to the
+#' original data frame. It does not deep-copy untouched column payloads, so a
+#' later `replace_values()` call can still be visible through both bindings.
+#' Use `copy_data()` when later value mutations must also be isolated. Vector
 #' forms cannot mutate by reference and return a copy.
 #'
 #' `NULL`, `NA_character_`, and `""` all remove a variable or dataset label.
@@ -384,20 +387,31 @@ dataset_label <- function(data) {
 }
 
 .label_replacement_data <- function(data) {
-    result <- .metadata_copy(.reference_snapshot(data))
-    access <- .column_access(result)
-    for (index in seq_along(access$names)) {
-        .set_data_column_at(
-            access, index, .metadata_copy(.data_column_at(access, index))
-        )
+    if (is.null(.reference_state(data))) {
+        .metadata_copy(data)
+    } else {
+        .reference_snapshot(data)
     }
-    result
 }
 
-.apply_variable_label_updates <- function(access, updates) {
+.check_variable_label_updates <- function(updates) {
     .warn_stata_metadata_limits(
         .text_label_violations(updates, "variable label for")
     )
+}
+
+.check_value_label_updates <- function(access, updates) {
+    locations <- match(names(updates), access$names)
+    for (index in seq_along(updates)) {
+        column <- .data_column_at(access, locations[[index]])
+        .validate_value_label_target(
+            column, updates[[index]], paste0("x$", names(updates)[[index]])
+        )
+    }
+    .warn_stata_metadata_limits(.value_label_violations(updates))
+}
+
+.apply_variable_label_updates <- function(access, updates) {
     locations <- match(names(updates), access$names)
     for (index in seq_along(updates)) {
         location <- locations[[index]]
@@ -410,13 +424,6 @@ dataset_label <- function(data) {
 
 .apply_value_label_updates <- function(access, updates) {
     locations <- match(names(updates), access$names)
-    for (index in seq_along(updates)) {
-        column <- .data_column_at(access, locations[[index]])
-        .validate_value_label_target(
-            column, updates[[index]], paste0("x$", names(updates)[[index]])
-        )
-    }
-    .warn_stata_metadata_limits(.value_label_violations(updates))
     for (index in seq_along(updates)) {
         location <- locations[[index]]
         column <- .metadata_copy(.data_column_at(access, location))
@@ -434,9 +441,9 @@ dataset_label <- function(data) {
 `var_label<-` <- function(x, value) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
-        x <- .label_replacement_data(x)
-        access <- .column_access(x)
         if (is.null(value)) {
+            x <- .label_replacement_data(x)
+            access <- .column_access(x)
             for (index in seq_along(access$names)) {
                 column <- .metadata_copy(.data_column_at(access, index))
                 attr(column, "label") <- NULL
@@ -444,9 +451,13 @@ dataset_label <- function(data) {
             }
             return(invisible(x))
         }
+        source <- .column_access(x)
         updates <- .validate_column_updates(
-            access$names, value, .normalize_text_label, "value"
+            source$names, value, .normalize_text_label, "value"
         )
+        .check_variable_label_updates(updates)
+        x <- .label_replacement_data(x)
+        access <- .column_access(x)
         return(.apply_variable_label_updates(access, updates))
     }
 
@@ -479,9 +490,9 @@ dataset_label <- function(data) {
 `val_labels<-` <- function(x, value) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
-        x <- .label_replacement_data(x)
-        access <- .column_access(x)
         if (is.null(value)) {
+            x <- .label_replacement_data(x)
+            access <- .column_access(x)
             for (index in seq_along(access$names)) {
                 column <- .metadata_copy(.data_column_at(access, index))
                 attr(column, "labels") <- NULL
@@ -490,9 +501,13 @@ dataset_label <- function(data) {
             }
             return(invisible(x))
         }
+        source <- .column_access(x)
         updates <- .validate_column_updates(
-            access$names, value, .normalize_value_labels, "value"
+            source$names, value, .normalize_value_labels, "value"
         )
+        .check_value_label_updates(source, updates)
+        x <- .label_replacement_data(x)
+        access <- .column_access(x)
         return(.apply_value_label_updates(access, updates))
     }
 
@@ -516,6 +531,7 @@ set_var_label <- function(data, variable, label) {
         access$names, stats::setNames(list(label), name),
         .normalize_text_label, "label"
     )
+    .check_variable_label_updates(updates)
     .apply_variable_label_updates(access, updates)
 }
 
@@ -550,6 +566,7 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
     updates <- .validate_column_updates(
         access$names, updates, .normalize_text_label, "labels"
     )
+    .check_variable_label_updates(updates)
     .apply_variable_label_updates(access, updates)
 }
 
@@ -584,5 +601,6 @@ set_val_labels <- function(.data, ..., .labels = NULL) {
     updates <- .validate_column_updates(
         access$names, updates, .normalize_value_labels, "labels"
     )
+    .check_value_label_updates(access, updates)
     .apply_value_label_updates(access, updates)
 }
