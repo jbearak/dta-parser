@@ -9,7 +9,7 @@
 // Supports format versions 117, 118, and 119.
 // -----------------------------------------------------------
 
-import type { DtaMetadata } from './types';
+import type { DtaMetadata, DtaReadPlan } from './types';
 import type { ResolvedTextEncoding } from './text-encoding';
 import {
     resolve_text_encoding,
@@ -54,7 +54,7 @@ const ASCII_DECODER = new TextDecoder('utf-8');
  */
 export function build_gso_index(
     buffer: ArrayBuffer,
-    metadata: DtaMetadata,
+    metadata: DtaReadPlan,
     base_offset: number = 0
 ): Map<string, GsoEntry> {
     const my_index = new Map<string, GsoEntry>();
@@ -235,7 +235,7 @@ export function resolve_strl(
 
 export function read_strl_pointer(
     view: DataView,
-    metadata: DtaMetadata,
+    metadata: DtaReadPlan,
     pointer_offset: number
 ): StrlPointer | null {
     const little_endian = metadata.byte_order === 'LSF';

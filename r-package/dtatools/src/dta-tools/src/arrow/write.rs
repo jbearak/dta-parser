@@ -75,6 +75,14 @@ pub struct ArrowWriteDataset {
     pub columns: Vec<ArrowWriteColumn>,
 }
 
+/// Reusable result of validating and serializing dataset metadata before any
+/// column arrays are extracted by the R adapter.
+#[derive(Debug)]
+pub struct ArrowMetadataPreflight {
+    #[cfg_attr(not(any(test, feature = "r-adapter-internal")), allow(dead_code))]
+    dataset_json: String,
+}
+
 fn supported_write_type(data_type: &DataType) -> bool {
     match data_type {
         DataType::Boolean
@@ -483,6 +491,26 @@ fn serialize_footer_json<T: serde::Serialize>(value: &T) -> Result<String, Arrow
     output.into_string()
 }
 
+fn validate_write_dataset_document(dataset: &DatasetDocument) -> Result<(), ArrowProfileError> {
+    #[cfg(test)]
+    DATASET_VALIDATION_COUNT.with(|count| count.set(count.get() + 1));
+    validate_dataset_document(ARROW_PROFILE_VERSION, dataset)
+}
+
+fn serialize_dataset_footer_json(dataset: &DatasetDocument) -> Result<String, ArrowProfileError> {
+    #[cfg(test)]
+    DATASET_SERIALIZATION_COUNT.with(|count| count.set(count.get() + 1));
+    serialize_footer_json(dataset)
+}
+
+#[cfg(test)]
+thread_local! {
+    static DATASET_VALIDATION_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+    static DATASET_SERIALIZATION_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+}
+
 fn dictionary_columns(dataset: &ArrowWriteDataset) -> Vec<usize> {
     dataset
         .columns
@@ -816,9 +844,12 @@ fn validate_footer_size(
 
 fn validate_fields_with(
     dataset: &ArrowWriteDataset,
+    dataset_prevalidated: bool,
     mut accept: impl FnMut(Field, Option<&ArrowFieldDocument>) -> Result<(), ArrowProfileError>,
 ) -> Result<usize, ArrowProfileError> {
-    validate_dataset_document(ARROW_PROFILE_VERSION, &dataset.dataset)?;
+    if !dataset_prevalidated {
+        validate_write_dataset_document(&dataset.dataset)?;
+    }
     let row_count = dataset
         .columns
         .first()
@@ -867,15 +898,16 @@ fn validate_fields_with(
 }
 
 fn validated_row_count(dataset: &ArrowWriteDataset) -> Result<usize, ArrowProfileError> {
-    validate_fields_with(dataset, |_field, _document| Ok(()))
+    validate_fields_with(dataset, false, |_field, _document| Ok(()))
 }
 
 fn validated_fields(
     dataset: &ArrowWriteDataset,
+    dataset_prevalidated: bool,
 ) -> Result<(usize, Vec<Field>, usize), ArrowProfileError> {
     let mut fields = Vec::with_capacity(dataset.columns.len());
     let mut metadata_bytes = 0_usize;
-    let row_count = validate_fields_with(dataset, |mut field, document| {
+    let row_count = validate_fields_with(dataset, dataset_prevalidated, |mut field, document| {
         if let Some(document) = document {
             let json = serialize_footer_json(document)?;
             metadata_bytes = metadata_bytes
@@ -899,8 +931,30 @@ fn validated_arrow_write(
     dataset: &ArrowWriteDataset,
     checksums: bool,
 ) -> Result<ValidatedArrowWrite, ArrowProfileError> {
-    let (row_count, fields, field_metadata_bytes) = validated_fields(dataset)?;
-    let dataset_json = serialize_footer_json(&dataset.dataset)?;
+    validated_arrow_write_with_dataset_json(dataset, checksums, None)
+}
+
+#[cfg(any(test, feature = "r-adapter-internal"))]
+fn validated_arrow_write_with_preflight(
+    dataset: &ArrowWriteDataset,
+    checksums: bool,
+    preflight: ArrowMetadataPreflight,
+) -> Result<ValidatedArrowWrite, ArrowProfileError> {
+    validated_arrow_write_with_dataset_json(dataset, checksums, Some(preflight.dataset_json))
+}
+
+fn validated_arrow_write_with_dataset_json(
+    dataset: &ArrowWriteDataset,
+    checksums: bool,
+    dataset_json: Option<String>,
+) -> Result<ValidatedArrowWrite, ArrowProfileError> {
+    let dataset_prevalidated = dataset_json.is_some();
+    let (row_count, fields, field_metadata_bytes) =
+        validated_fields(dataset, dataset_prevalidated)?;
+    let dataset_json = match dataset_json {
+        Some(json) => json,
+        None => serialize_dataset_footer_json(&dataset.dataset)?,
+    };
     field_metadata_bytes
         .checked_add(dataset_json.len())
         .filter(|&bytes| bytes <= MAX_IPC_METADATA_BYTES)
@@ -930,14 +984,16 @@ fn validated_arrow_write(
 /// Validate an Arrow profile's metadata without requiring any column arrays.
 /// This is an exact lower-bound footer plan: callers that still need to
 /// extract or encode cells can reject metadata that cannot fit before touching
-/// those cells. The complete writer repeats validation with final field types,
-/// semantics, and block counts.
+/// those cells. The returned plan retains the validated dataset JSON; the R
+/// writer reuses it while validating final field types, semantics, and block
+/// counts after column encoding.
 pub fn preflight_arrow_metadata<'a>(
     dataset: &DatasetDocument,
     columns: impl IntoIterator<Item = (&'a str, Option<&'a ArrowFieldDocument>)>,
-) -> Result<(), ArrowProfileError> {
-    validate_dataset_document(ARROW_PROFILE_VERSION, dataset)?;
-    let dataset_json_length = serialize_footer_json_length(dataset)?;
+) -> Result<ArrowMetadataPreflight, ArrowProfileError> {
+    validate_write_dataset_document(dataset)?;
+    let dataset_json = serialize_dataset_footer_json(dataset)?;
+    let dataset_json_length = dataset_json.len();
     let compact_length = dataset_json_length % 8;
     let mut omitted_bytes = dataset_json_length - compact_length;
     let mut fields = Vec::new();
@@ -969,7 +1025,7 @@ pub fn preflight_arrow_metadata<'a>(
     if footer_size > MAX_IPC_METADATA_BYTES {
         return Err(footer_too_large());
     }
-    Ok(())
+    Ok(ArrowMetadataPreflight { dataset_json })
 }
 
 /// Save a dataset as a dtatools Arrow profile file at `path`, replacing any
@@ -986,6 +1042,38 @@ pub fn save_arrow_file(
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
     let validated = validated_arrow_write(dataset, checksums)?;
+    let file = File::create(path)?;
+    let mut writer = BufWriter::new(file);
+    save_arrow_file_to_validated(
+        &mut writer,
+        dataset,
+        validated,
+        compression,
+        threads,
+        checksums,
+        interrupt,
+    )?;
+    writer.flush()?;
+    writer
+        .into_inner()
+        .map_err(|error| ArrowProfileError::Io(error.into_error()))?
+        .sync_all()?;
+    Ok(())
+}
+
+/// Save an Arrow file after the R adapter has already validated and serialized
+/// its dataset metadata before extracting column arrays.
+#[cfg(feature = "r-adapter-internal")]
+pub fn save_arrow_file_with_preflight(
+    path: impl AsRef<Path>,
+    dataset: &ArrowWriteDataset,
+    preflight: ArrowMetadataPreflight,
+    compression: ArrowCompression,
+    threads: usize,
+    checksums: bool,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
+    let validated = validated_arrow_write_with_preflight(dataset, checksums, preflight)?;
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
     save_arrow_file_to_validated(
@@ -1280,6 +1368,45 @@ mod tests {
         let error = preflight_arrow_metadata(&dataset, [("x", Some(&field))])
             .expect_err("field metadata pushes the lower-bound footer above the limit");
         assert!(error.to_string().contains("64 MiB"));
+    }
+
+    #[test]
+    fn metadata_preflight_returns_the_validated_dataset_json_plan() {
+        let dataset = DatasetDocument {
+            label: "survey".to_owned(),
+            ..DatasetDocument::default()
+        };
+
+        let plan = preflight_arrow_metadata(&dataset, std::iter::empty())
+            .expect("dataset metadata is valid");
+
+        assert_eq!(plan.dataset_json, r#"{"version":0,"label":"survey"}"#);
+    }
+
+    #[test]
+    fn final_validation_reuses_the_dataset_preflight_plan() {
+        let dataset_document = DatasetDocument {
+            label: "survey".to_owned(),
+            ..DatasetDocument::default()
+        };
+        let dataset = ArrowWriteDataset {
+            dataset: dataset_document,
+            columns: vec![ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![1, 2, 3])),
+            }],
+        };
+        DATASET_VALIDATION_COUNT.with(|count| count.set(0));
+        DATASET_SERIALIZATION_COUNT.with(|count| count.set(0));
+        let plan = preflight_arrow_metadata(&dataset.dataset, [("x", None)])
+            .expect("metadata preflight succeeds");
+
+        validated_arrow_write_with_preflight(&dataset, false, plan)
+            .expect("final column validation succeeds");
+
+        assert_eq!(DATASET_VALIDATION_COUNT.with(std::cell::Cell::get), 1);
+        assert_eq!(DATASET_SERIALIZATION_COUNT.with(std::cell::Cell::get), 1);
     }
 
     #[test]

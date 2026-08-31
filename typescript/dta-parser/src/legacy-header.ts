@@ -45,9 +45,12 @@ import {
     text_decoder,
 } from './text-encoding';
 import {
-    stataMetadataValueEnd,
     StataMetadataCollector,
 } from './stata-metadata';
+import {
+    decodeStataCharacteristicPayloads,
+    type FramedStataCharacteristic,
+} from './characteristic-payload';
 
 // -----------------------------------------------------------
 // Constants
@@ -109,8 +112,9 @@ export function legacy_metadata_fixed_size(
 // -----------------------------------------------------------
 
 /**
- * Scan past the expansion fields section and return the
- * byte offset immediately after it (= start of data).
+ * Frame the expansion fields section and return its data offset plus accepted
+ * characteristic payload descriptors. Values are decoded only after the
+ * terminator proves the complete section is structurally valid.
  *
  * Expansion fields are a sequence of entries:
  *   uint8  data_type
@@ -119,16 +123,18 @@ export function legacy_metadata_fixed_size(
  *
  * The section terminates when data_type=0 and len=0.
  */
-function scan_expansion_fields(
+function frame_expansion_fields(
     view: DataView,
     little_endian: boolean,
     start: number,
     buffer_length: number,
     format_version: LegacyFormatVersion,
     decoder: DtaTextDecoder,
-    collector: StataMetadataCollector | null
-): number {
+    collector: StataMetadataCollector
+): { dataOffset: number; records: FramedStataCharacteristic[] } {
     let pos = start;
+    const records: FramedStataCharacteristic[] = [];
+    let classificationError: unknown;
     const bytes = bytes_from_view(view);
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
@@ -142,7 +148,8 @@ function scan_expansion_fields(
         pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
-            return pos;
+            if (classificationError !== undefined) throw classificationError;
+            return { dataOffset: pos, records };
         }
 
         if (my_data_type === 0 || my_len < 0) {
@@ -152,8 +159,7 @@ function scan_expansion_fields(
             throw new Error('Truncated legacy expansion field');
         }
 
-        if (collector !== null
-            && my_data_type === 1
+        if (my_data_type === 1
             && my_len >= 2 * layout.varname_width) {
             const my_variable = read_fixed_string(
                 bytes, pos, layout.varname_width, decoder
@@ -162,16 +168,22 @@ function scan_expansion_fields(
                 bytes, pos + layout.varname_width,
                 layout.varname_width, decoder
             );
-            const my_value_length = my_len - 2 * layout.varname_width;
-            const valueStart = pos + 2 * layout.varname_width;
-            const valueEnd = stataMetadataValueEnd(
-                bytes, valueStart, my_value_length
-            );
-            collector.pushLazy(
-                my_variable,
-                my_characteristic,
-                () => decoder.decode(bytes.subarray(valueStart, valueEnd))
-            );
+            if (classificationError === undefined) {
+                try {
+                    const accepted = collector.accept(
+                        my_variable, my_characteristic
+                    );
+                    if (accepted !== null) {
+                        records.push({
+                            accepted,
+                            valueStart: pos + 2 * layout.varname_width,
+                            valueLength: my_len - 2 * layout.varname_width,
+                        });
+                    }
+                } catch (error) {
+                    classificationError = error;
+                }
+            }
         }
 
         pos += my_len;
@@ -367,18 +379,17 @@ export function parse_legacy_metadata(
     const characteristics: StataCharacteristic[] = [];
     // -- expansion fields --
     const my_expansion_offset = pos;
-    scan_expansion_fields(
-        view, little_endian, pos, buffer.byteLength,
-        format_version, my_decoder, null
-    );
     const collector = new StataMetadataCollector(
         { notes, characteristics }, the_variables
     );
-    const my_data_offset = scan_expansion_fields(
+    const framed = frame_expansion_fields(
         view, little_endian, pos, buffer.byteLength,
         format_version, my_decoder, collector
     );
-    collector.finish();
+    decodeStataCharacteristicPayloads(
+        bytes, framed.records, my_decoder, collector
+    );
+    const my_data_offset = framed.dataOffset;
 
     // 9. Compute value labels offset (BigInt to avoid
     //    overflow for large legacy files)

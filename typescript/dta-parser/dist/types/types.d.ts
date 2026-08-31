@@ -89,6 +89,23 @@ export interface DtaMetadata {
     section_offsets: SectionOffsets;
     obs_length: number;
 }
+/** Minimal immutable geometry consumed by observation and strL readers. */
+export interface DtaReadPlan {
+    readonly format_version: FormatVersion;
+    readonly text_encoding?: import('./text-encoding').ResolvedTextEncoding;
+    readonly byte_order: 'MSF' | 'LSF';
+    readonly nvar: number;
+    readonly nobs: number;
+    readonly obs_length: number;
+    readonly section_offsets: Readonly<Pick<SectionOffsets, 'data' | 'strls' | 'value_labels'>>;
+    readonly variables: readonly ReadVariablePlan[];
+}
+/** Per-column fields needed to locate and decode one observation cell. */
+export interface ReadVariablePlan {
+    readonly type: DtaType;
+    readonly byte_width: number;
+    readonly byte_offset: number;
+}
 /** Canonical variable shape returned by this package's parsers. */
 export interface ParsedVariableInfo extends VariableInfo {
     notes: StataNote[];

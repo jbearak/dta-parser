@@ -22,7 +22,7 @@ export declare class DtaFile {
     private _fd;
     private readonly _metadata;
     /** Private geometry is never exposed through the mutable metadata API. */
-    private readonly _read_metadata;
+    private readonly _read_plan;
     private _gso_index;
     private _gso_section;
     private _gso_loaded;

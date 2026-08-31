@@ -412,11 +412,14 @@ fn internal_value_label_registry_rejects_both_presence_mismatches() {
         let data = DtaWriteData {
             dataset_label: String::new().into(),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             columns: vec![DtaWriteColumn {
                 name: "value".into(),
                 dta_type: DtaType::Long,
                 format: "%12.0g".into(),
                 label: String::new().into(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 has_value_labels,
                 value_labels: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&ADAPTED_NUMERIC_VALUES),

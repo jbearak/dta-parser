@@ -66,7 +66,10 @@ pub use data_reader::{
     read_dta, read_dta_with_encoding, read_dta_with_options, read_dta_with_options_and_encoding,
 };
 pub use error::DtaError;
-pub use file::{DtaColumnSink, DtaFile, DtaSink, FileOptions, ParallelDtaSink};
+pub use file::{
+    DtaColumnSink, DtaFile, DtaSchemaSummary, DtaSchemaVariable, DtaSink, FileOptions,
+    ParallelDtaSink, ValueLabelTableIter, ValueLabelTableView,
+};
 pub use metadata::{parse_metadata, parse_metadata_with_encoding};
 pub use missing::{
     classify_byte_missing, classify_byte_missing_for_version, classify_double_missing_bits,

@@ -21,9 +21,9 @@ use dta_tools::{
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
     DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
     DtaWriteRawNumericValue, DtaWriteValueLabel, DtaWriteValueLabelRegistry,
-    DtaWriteValueLabelTable, FormatVersion, MissingTag,
-    ParallelDtaSink, ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelEntry,
-    ValueLabelTable, VariableInfo,
+    DtaWriteValueLabelTable, FormatVersion, MissingTag, ParallelDtaSink, ReadOptions,
+    StataCharacteristic, StataNote, TextEncoding, ValueLabelEntry, ValueLabelTable,
+    ValueLabelTableView, VariableInfo,
 };
 
 mod arrow_ffi;
@@ -2005,31 +2005,20 @@ impl DtaSink for RDataFrameSink {
         row_count: u64,
         value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError> {
-        self.finish_borrowed(
+        self.finish_with_value_labels(
             &metadata,
             row_start,
             row_count,
-            &value_label_tables,
+            ValueLabelTableView::Owned(value_label_tables),
         )
     }
 
-    fn finish_borrowed(
-        self,
-        metadata: &DtaMetadata,
-        row_start: u64,
-        row_count: u64,
-        value_label_tables: &[ValueLabelTable],
-    ) -> Result<Self::Output, DtaError> {
-        let references = value_label_tables.iter().collect::<Vec<_>>();
-        self.finish_projected_borrowed(metadata, row_start, row_count, &references)
-    }
-
-    fn finish_projected_borrowed(
+    fn finish_with_value_labels(
         mut self,
         metadata: &DtaMetadata,
         _row_start: u64,
         row_count: u64,
-        value_label_tables: &[&ValueLabelTable],
+        value_label_tables: ValueLabelTableView<'_>,
     ) -> Result<Self::Output, DtaError> {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
@@ -2038,7 +2027,7 @@ impl DtaSink for RDataFrameSink {
             self.source_indices.iter().map(|&index| index as usize),
         );
         let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
-        for &table in value_label_tables {
+        for table in value_label_tables.iter() {
             if value_label_reference_counts.contains_key(table.name.as_str()) {
                 value_label_tables_by_name
                     .entry(table.name.as_str())
@@ -2173,37 +2162,15 @@ impl ParallelDtaSink for RDataFrameSink {
         )
     }
 
-    fn finish_parallel_borrowed(
+    fn finish_parallel_with_value_labels(
         state: Self::State,
         columns: Vec<Self::Column>,
         metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: &[ValueLabelTable],
+        value_label_tables: ValueLabelTableView<'_>,
     ) -> Result<Self::Output, DtaError> {
-        DtaSink::finish_borrowed(
-            RDataFrameSink {
-                result: state.result,
-                columns,
-                source_indices: state.source_indices,
-                _guard: state.guard,
-            },
-            metadata,
-            row_start,
-            row_count,
-            value_label_tables,
-        )
-    }
-
-    fn finish_parallel_projected_borrowed(
-        state: Self::State,
-        columns: Vec<Self::Column>,
-        metadata: &DtaMetadata,
-        row_start: u64,
-        row_count: u64,
-        value_label_tables: &[&ValueLabelTable],
-    ) -> Result<Self::Output, DtaError> {
-        DtaSink::finish_projected_borrowed(
+        DtaSink::finish_with_value_labels(
             RDataFrameSink {
                 result: state.result,
                 columns,

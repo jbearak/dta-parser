@@ -12,10 +12,11 @@ import {
 } from './missing-values';
 import type {
     DtaMetadata,
+    DtaReadPlan,
     FormatVersion,
+    ReadVariablePlan,
     Row,
     RowCell,
-    VariableInfo,
 } from './types';
 import { is_legacy_format } from './types';
 import type { DtaTextDecoder } from './text-encoding';
@@ -73,7 +74,7 @@ function buffer_views(buffer: DataBuffer): BufferViews {
 }
 
 function decoder_for_metadata(
-    metadata: DtaMetadata
+    metadata: DtaReadPlan
 ): DtaTextDecoder {
     switch (metadata.text_encoding) {
         case 'utf-8':
@@ -108,7 +109,7 @@ function read_cell(
     view: DataView,
     bytes: Uint8Array,
     offset: number,
-    variable: VariableInfo,
+    variable: ReadVariablePlan,
     little_endian: boolean,
     modern_missing: boolean,
     decoder: DtaTextDecoder,
@@ -183,7 +184,7 @@ function decode_column_into_values(
     values: RowCell[],
     output_start: number,
     count: number,
-    variable: VariableInfo,
+    variable: ReadVariablePlan,
     row_width: number,
     little_endian: boolean,
     modern_missing: boolean,
@@ -284,7 +285,7 @@ function decode_single_column_into_rows(
     output_start: number,
     count: number,
     row_base_offset: number,
-    variable: VariableInfo,
+    variable: ReadVariablePlan,
     row_width: number,
     little_endian: boolean,
     modern_missing: boolean,
@@ -378,7 +379,7 @@ function decode_single_column_into_rows(
 function read_rows_from_view(
     view: DataView,
     bytes: Uint8Array,
-    metadata: DtaMetadata,
+    metadata: DtaReadPlan,
     row_base_offset: number,
     start: number,
     count: number,
@@ -489,7 +490,7 @@ export function read_rows_from_buffer(
  */
 export function read_rows_from_data_buffer(
     buffer: DataBuffer,
-    metadata: DtaMetadata,
+    metadata: DtaReadPlan,
     start: number,
     count: number,
     col_start?: number,
@@ -523,7 +524,7 @@ export function read_rows_from_data_buffer(
  */
 export function read_columns_from_data_buffer(
     buffer: DataBuffer,
-    metadata: DtaMetadata,
+    metadata: DtaReadPlan,
     count: number,
     col_indices: number[],
     out: Map<number, RowCell[]>,

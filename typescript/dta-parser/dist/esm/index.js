@@ -384,7 +384,7 @@ var StataMetadataCollector = class {
     this.indexes.set(scopeIndex, indexes);
     return indexes;
   }
-  classify(target, name) {
+  accept(target, name) {
     if (!validCharacteristicNameShape(name)) {
       throw new Error("Invalid on-disk Stata characteristic name");
     }
@@ -395,10 +395,13 @@ var StataMetadataCollector = class {
     return { scopeIndex, name, noteNumber: number };
   }
   pushLazy(target, name, value) {
-    const accepted = this.classify(target, name);
+    const accepted = this.accept(target, name);
     if (accepted === null) return false;
-    this.pushAccepted(accepted, value());
+    this.pushAcceptedLazy(accepted, value);
     return true;
+  }
+  pushAcceptedLazy(accepted, value) {
+    this.pushAccepted(accepted, value());
   }
   pushAccepted(accepted, value) {
     const scope = this.scope(accepted.scopeIndex);
@@ -544,6 +547,21 @@ function dropStataCharacteristics(target, names) {
   );
 }
 
+// src/characteristic-payload.ts
+function decodeStataCharacteristicPayloads(bytes, records, decoder, collector) {
+  for (const record of records) {
+    const valueEnd = stataMetadataValueEnd(
+      bytes,
+      record.valueStart,
+      record.valueLength
+    );
+    collector.pushAcceptedLazy(record.accepted, () => {
+      return decoder.decode(bytes.subarray(record.valueStart, valueEnd));
+    });
+  }
+  collector.finish();
+}
+
 // src/header.ts
 var FIELD_WIDTHS = {
   117: {
@@ -630,8 +648,10 @@ function tag_at(bytes, offset, tag) {
   }
   return true;
 }
-function scan_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder, collector) {
+function frame_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder, collector) {
   let pos = section_offsets.characteristics;
+  const records = [];
+  let classificationError;
   if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
     throw new Error("Missing <characteristics> tag");
   }
@@ -643,7 +663,8 @@ function scan_characteristics(bytes, view, little_endian, section_offsets, field
       if (pos !== section_offsets.data) {
         throw new Error("Characteristics section does not end at the mapped data offset");
       }
-      return;
+      if (classificationError !== void 0) throw classificationError;
+      return records;
     }
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
       throw new Error("Invalid characteristic record tag");
@@ -657,20 +678,26 @@ function scan_characteristics(bytes, view, little_endian, section_offsets, field
     if (length < names_length || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
       throw new Error("Truncated characteristic payload");
     }
-    if (collector !== null) {
-      const target = read_fixed_string(bytes, pos, field_width, decoder);
-      const name = read_fixed_string(
-        bytes,
-        pos + field_width,
-        field_width,
-        decoder
-      );
-      const valueLength = length - names_length;
-      const valueStart = pos + names_length;
-      const valueEnd = stataMetadataValueEnd(bytes, valueStart, valueLength);
-      collector.pushLazy(target, name, () => {
-        return decoder.decode(bytes.subarray(valueStart, valueEnd));
-      });
+    const target = read_fixed_string(bytes, pos, field_width, decoder);
+    const name = read_fixed_string(
+      bytes,
+      pos + field_width,
+      field_width,
+      decoder
+    );
+    if (classificationError === void 0) {
+      try {
+        const accepted = collector.accept(target, name);
+        if (accepted !== null) {
+          records.push({
+            accepted,
+            valueStart: pos + names_length,
+            valueLength: length - names_length
+          });
+        }
+      } catch (error) {
+        classificationError = error;
+      }
     }
     pos += length;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
@@ -681,17 +708,8 @@ function scan_characteristics(bytes, view, little_endian, section_offsets, field
   throw new Error("Missing </characteristics> tag");
 }
 function parse_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder, dataset, variables) {
-  scan_characteristics(
-    bytes,
-    view,
-    little_endian,
-    section_offsets,
-    field_width,
-    decoder,
-    null
-  );
   const collector = new StataMetadataCollector(dataset, variables);
-  scan_characteristics(
+  const records = frame_characteristics(
     bytes,
     view,
     little_endian,
@@ -700,7 +718,7 @@ function parse_characteristics(bytes, view, little_endian, section_offsets, fiel
     decoder,
     collector
   );
-  collector.finish();
+  decodeStataCharacteristicPayloads(bytes, records, decoder, collector);
 }
 function detect_format_version(bytes) {
   for (const [my_ver_str, my_sig] of Object.entries(
@@ -1219,8 +1237,10 @@ function legacy_metadata_fixed_size(nvar, format_version) {
   const my_sections_size = nvar + nvar * layout.varname_width + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * layout.format_width + nvar * layout.value_label_name_width + nvar * layout.variable_label_width;
   return layout.header_size + my_sections_size;
 }
-function scan_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder, collector) {
+function frame_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder, collector) {
   let pos = start;
+  const records = [];
+  let classificationError;
   const bytes = bytes_from_view(view);
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
@@ -1229,7 +1249,8 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
     const my_len = layout.expansion_length_width === 2 ? view.getInt16(pos + 1, little_endian) : view.getInt32(pos + 1, little_endian);
     pos += my_header_size;
     if (my_data_type === 0 && my_len === 0) {
-      return pos;
+      if (classificationError !== void 0) throw classificationError;
+      return { dataOffset: pos, records };
     }
     if (my_data_type === 0 || my_len < 0) {
       throw new Error("Invalid legacy expansion field");
@@ -1237,7 +1258,7 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
     if (pos + my_len > buffer_length) {
       throw new Error("Truncated legacy expansion field");
     }
-    if (collector !== null && my_data_type === 1 && my_len >= 2 * layout.varname_width) {
+    if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
       const my_variable = read_fixed_string2(
         bytes,
         pos,
@@ -1250,18 +1271,23 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
         layout.varname_width,
         decoder
       );
-      const my_value_length = my_len - 2 * layout.varname_width;
-      const valueStart = pos + 2 * layout.varname_width;
-      const valueEnd = stataMetadataValueEnd(
-        bytes,
-        valueStart,
-        my_value_length
-      );
-      collector.pushLazy(
-        my_variable,
-        my_characteristic,
-        () => decoder.decode(bytes.subarray(valueStart, valueEnd))
-      );
+      if (classificationError === void 0) {
+        try {
+          const accepted = collector.accept(
+            my_variable,
+            my_characteristic
+          );
+          if (accepted !== null) {
+            records.push({
+              accepted,
+              valueStart: pos + 2 * layout.varname_width,
+              valueLength: my_len - 2 * layout.varname_width
+            });
+          }
+        } catch (error) {
+          classificationError = error;
+        }
+      }
     }
     pos += my_len;
   }
@@ -1395,20 +1421,11 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
   const notes = [];
   const characteristics = [];
   const my_expansion_offset = pos;
-  scan_expansion_fields(
-    view,
-    little_endian,
-    pos,
-    buffer.byteLength,
-    format_version,
-    my_decoder,
-    null
-  );
   const collector = new StataMetadataCollector(
     { notes, characteristics },
     the_variables
   );
-  const my_data_offset = scan_expansion_fields(
+  const framed = frame_expansion_fields(
     view,
     little_endian,
     pos,
@@ -1417,7 +1434,13 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     my_decoder,
     collector
   );
-  collector.finish();
+  decodeStataCharacteristicPayloads(
+    bytes,
+    framed.records,
+    my_decoder,
+    collector
+  );
+  const my_data_offset = framed.dataOffset;
   const my_value_labels_offset = Number(
     BigInt(my_data_offset) + BigInt(nobs) * BigInt(obs_length)
   );

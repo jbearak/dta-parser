@@ -198,6 +198,10 @@ describe('DtaFile', () => {
             metadata.variables[0].type = 'double';
             metadata.variables[0].byte_width = 8;
             metadata.variables[0].byte_offset = 999_999;
+            metadata.variables.length = 0;
+            metadata.byte_order = 'MSF';
+            metadata.format_version = 117;
+            metadata.text_encoding = 'iso-8859-1';
 
             expect(my_file.nobs).toBe(74);
             expect(my_file.nvar).toBe(12);
@@ -539,7 +543,7 @@ describe('DtaFile', () => {
             }
         });
 
-        it('counts legacy metadata bytes through the first NUL', async () => {
+        it('bounds accepted legacy values and skips structural payloads', async () => {
             const original = fs.readFileSync(V111_FIXTURE);
             const arrayBuffer = original.buffer.slice(
                 original.byteOffset,
@@ -582,7 +586,10 @@ describe('DtaFile', () => {
                 reservedOversized.fill(0, name, name + 33);
                 reservedOversized.write('note0', name, 'ascii');
                 fs.writeFileSync(filePath, reservedOversized);
-                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
+                const ignored = await DtaFile.open(filePath);
+                expect(ignored.metadata.notes).toEqual([]);
+                expect(ignored.metadata.characteristics).toEqual([]);
+                ignored.close();
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });
             }
@@ -784,6 +791,23 @@ describe('DtaFile', () => {
                 expect(my_file.nvar).toBe(120_000);
                 expect(my_file.nobs).toBe(0);
                 expect(my_file.variables[119_999].name).toBe('v119999');
+                const readPlan = (
+                    my_file as unknown as {
+                        _read_plan: {
+                            variables: readonly Record<string, unknown>[];
+                            section_offsets: Record<string, unknown>;
+                        };
+                    }
+                )._read_plan;
+                expect(Object.isFrozen(readPlan)).toBeTrue();
+                expect(Object.isFrozen(readPlan.variables)).toBeTrue();
+                expect(Object.isFrozen(readPlan.variables[119_999])).toBeTrue();
+                expect(Object.keys(readPlan.variables[119_999]).sort()).toEqual([
+                    'byte_offset', 'byte_width', 'type',
+                ]);
+                expect(Object.keys(readPlan.section_offsets).sort()).toEqual([
+                    'data', 'strls', 'value_labels',
+                ]);
             } finally {
                 my_file?.close();
                 my_file = null;

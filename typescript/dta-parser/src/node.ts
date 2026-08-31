@@ -36,6 +36,7 @@ import {
 import { parse_value_labels } from './value-labels';
 import type {
     DtaMetadata,
+    DtaReadPlan,
     ParsedDtaMetadata,
     ParsedVariableInfo,
     FormatVersion,
@@ -151,18 +152,29 @@ function normalise_column_indices(
     return the_columns;
 }
 
-function clone_read_metadata(metadata: DtaMetadata): DtaMetadata {
-    return {
-        ...metadata,
-        notes: undefined,
-        characteristics: undefined,
-        variables: metadata.variables.map(variable => ({
-            ...variable,
-            notes: undefined,
-            characteristics: undefined,
-        })),
-        section_offsets: { ...metadata.section_offsets },
-    };
+function create_read_plan(metadata: DtaMetadata): DtaReadPlan {
+    const variables = Object.freeze(metadata.variables.map(variable => {
+        return Object.freeze({
+            type: variable.type,
+            byte_width: variable.byte_width,
+            byte_offset: variable.byte_offset,
+        });
+    }));
+    const section_offsets = Object.freeze({
+        data: metadata.section_offsets.data,
+        strls: metadata.section_offsets.strls,
+        value_labels: metadata.section_offsets.value_labels,
+    });
+    return Object.freeze({
+        format_version: metadata.format_version,
+        text_encoding: metadata.text_encoding,
+        byte_order: metadata.byte_order,
+        nvar: metadata.nvar,
+        nobs: metadata.nobs,
+        obs_length: metadata.obs_length,
+        section_offsets,
+        variables,
+    });
 }
 
 // -----------------------------------------------------------
@@ -173,7 +185,7 @@ export class DtaFile {
     private _fd: number | null;
     private readonly _metadata: ParsedDtaMetadata;
     /** Private geometry is never exposed through the mutable metadata API. */
-    private readonly _read_metadata: DtaMetadata;
+    private readonly _read_plan: DtaReadPlan;
     // strL (GSO) state, populated lazily by `_ensure_gso()` the first
     // time an strL cell is actually resolved. Files without strL columns,
     // and reads that never touch an strL column, never read or retain the
@@ -204,7 +216,7 @@ export class DtaFile {
     ) {
         this._fd = fd;
         this._metadata = metadata;
-        this._read_metadata = clone_read_metadata(metadata);
+        this._read_plan = create_read_plan(metadata);
         this._gso_index = new Map();
         this._gso_section = null;
         this._gso_loaded = false;
@@ -215,10 +227,10 @@ export class DtaFile {
         const the_indices: number[] = [];
         for (
             let i = 0;
-            i < this._read_metadata.variables.length;
+            i < this._read_plan.variables.length;
             i++
         ) {
-            if (this._read_metadata.variables[i].type === 'strL') {
+            if (this._read_plan.variables[i].type === 'strL') {
                 the_indices.push(i);
             }
         }
@@ -271,25 +283,25 @@ export class DtaFile {
 
     /** Stata on-disk format release. */
     get format_version(): FormatVersion {
-        return this._read_metadata.format_version;
+        return this._read_plan.format_version;
     }
 
     /** Resolved source encoding used for textual fields. */
     get text_encoding(): ResolvedTextEncoding {
         return resolve_text_encoding(
-            this._read_metadata.format_version,
-            this._read_metadata.text_encoding
+            this._read_plan.format_version,
+            this._read_plan.text_encoding
         );
     }
 
     /** Number of observations (rows). */
     get nobs(): number {
-        return this._read_metadata.nobs;
+        return this._read_plan.nobs;
     }
 
     /** Number of variables (columns). */
     get nvar(): number {
-        return this._read_metadata.nvar;
+        return this._read_plan.nvar;
     }
 
     /** Variable metadata array. */
@@ -344,31 +356,31 @@ export class DtaFile {
         assert_valid_row_range(start, count);
 
         if (
-            this._read_metadata.nobs === 0
+            this._read_plan.nobs === 0
             || start < 0
             || count <= 0
-            || start >= this._read_metadata.nobs
+            || start >= this._read_plan.nobs
         ) {
             return [];
         }
 
         const my_actual_count = Math.min(
             count,
-            this._read_metadata.nobs - start
+            this._read_plan.nobs - start
         );
 
         const my_signal = options?.signal;
         const my_chunk_rows = normalise_chunk_rows(
             options?.chunk_rows,
-            this._read_metadata.obs_length,
+            this._read_plan.obs_length,
             my_signal !== undefined
         );
         if (my_signal) throw_if_aborted(my_signal);
 
         const my_col_start = Math.max(0, col_start ?? 0);
         const my_col_end = Math.min(
-            this._read_metadata.nvar,
-            col_end ?? this._read_metadata.nvar
+            this._read_plan.nvar,
+            col_end ?? this._read_plan.nvar
         );
         if (my_col_start >= my_col_end) return [];
 
@@ -431,13 +443,13 @@ export class DtaFile {
 
         const the_columns = normalise_column_indices(
             col_indices,
-            this._read_metadata.nvar
+            this._read_plan.nvar
         );
         const my_signal = options?.signal;
         if (
             my_signal
             && the_columns.length > 0
-            && this._read_metadata.nobs > 0
+            && this._read_plan.nobs > 0
         ) {
             throw_if_aborted(my_signal);
         }
@@ -448,25 +460,25 @@ export class DtaFile {
                 my_col,
                 my_signal
                     ? []
-                    : new Array<RowCell>(this._read_metadata.nobs)
+                    : new Array<RowCell>(this._read_plan.nobs)
             );
         }
 
         if (
             the_columns.length === 0
-            || this._read_metadata.nobs === 0
+            || this._read_plan.nobs === 0
         ) {
             return the_values;
         }
 
         const my_chunk_rows = normalise_chunk_rows(
             options?.chunk_rows,
-            this._read_metadata.obs_length,
+            this._read_plan.obs_length,
             my_signal !== undefined
         );
         const my_complete = await this._for_each_observation_chunk(
             0,
-            this._read_metadata.nobs,
+            this._read_plan.nobs,
             my_chunk_rows,
             my_signal,
             (
@@ -477,7 +489,7 @@ export class DtaFile {
             ) => {
                 read_columns_from_data_buffer(
                     my_data_buffer,
-                    this._read_metadata,
+                    this._read_plan,
                     my_chunk_count,
                     the_columns,
                     the_values,
@@ -514,7 +526,7 @@ export class DtaFile {
     ): void {
         read_rows_from_data_buffer(
             data_buffer,
-            this._read_metadata,
+            this._read_plan,
             start,
             count,
             col_start,
@@ -567,7 +579,7 @@ export class DtaFile {
             const my_chunk_start = start + my_read;
             const my_data_buffer = read_data_rows(
                 this._fd,
-                this._read_metadata,
+                this._read_plan,
                 my_chunk_start,
                 my_chunk_count
             );
@@ -627,9 +639,9 @@ export class DtaFile {
         }
 
         const my_start =
-            this._read_metadata.section_offsets.strls;
+            this._read_plan.section_offsets.strls;
         const my_length =
-            this._read_metadata.section_offsets.value_labels
+            this._read_plan.section_offsets.value_labels
             - my_start;
         if (my_length <= 0) {
             this._gso_loaded = true;
@@ -644,7 +656,7 @@ export class DtaFile {
             this._fd, my_start, my_length
         );
         this._gso_index = build_gso_index(
-            my_buffer, this._read_metadata, my_start
+            my_buffer, this._read_plan, my_start
         );
         this._gso_section = new Uint8Array(my_buffer);
         this._gso_loaded = true;
@@ -691,12 +703,12 @@ export class DtaFile {
 
             // Column index within the row array
             const my_row_col = my_abs_col - col_start;
-            const my_var = this._read_metadata
+            const my_var = this._read_plan
                 .variables[my_abs_col];
 
             for (let i = 0; i < row_count; i++) {
                 const my_pointer_offset =
-                    i * this._read_metadata.obs_length
+                    i * this._read_plan.obs_length
                     + my_var.byte_offset;
                 the_rows[row_start + i][my_row_col] =
                     this._resolve_strl_at(
@@ -722,10 +734,10 @@ export class DtaFile {
     ): void {
         this._ensure_gso();
         const my_view = data_buffer_view(data_buffer);
-        const my_var = this._read_metadata.variables[abs_col];
+        const my_var = this._read_plan.variables[abs_col];
         for (let i = 0; i < count; i++) {
             const my_pointer_offset =
-                i * this._read_metadata.obs_length
+                i * this._read_plan.obs_length
                 + my_var.byte_offset;
             col_values[base_index + i] =
                 this._resolve_strl_at(
@@ -745,7 +757,7 @@ export class DtaFile {
         pointer_offset: number
     ): string {
         const my_pointer = read_strl_pointer(
-            view, this._read_metadata, pointer_offset
+            view, this._read_plan, pointer_offset
         );
         if (!my_pointer) return '';
 
@@ -1020,7 +1032,7 @@ function read_value_labels(
 
 function read_data_rows(
     fd: number,
-    metadata: DtaMetadata,
+    metadata: DtaReadPlan,
     start: number,
     count: number
 ): Uint8Array {

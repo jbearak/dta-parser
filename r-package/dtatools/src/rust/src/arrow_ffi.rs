@@ -12,10 +12,10 @@ use std::sync::Arc;
 use std::thread;
 
 use dta_tools::arrow::{
-    arrow_stored_signature, dataset_signature, preflight_arrow_metadata, save_arrow_file,
-    ArrowCompression, ArrowFieldDocument, ArrowFileSnapshot, ArrowMissingEncoding, ArrowRSemantics,
-    ArrowReadColumn, ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument,
-    StataStorage,
+    arrow_stored_signature, dataset_signature, preflight_arrow_metadata,
+    save_arrow_file_with_preflight, ArrowCompression, ArrowFieldDocument, ArrowFileSnapshot,
+    ArrowMetadataPreflight, ArrowMissingEncoding, ArrowRSemantics, ArrowReadColumn,
+    ArrowReadOptions, ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage,
 };
 use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
@@ -1543,7 +1543,7 @@ unsafe fn assemble_write_dataset(
     row_count: usize,
     requested_threads: usize,
     preflight_footer: bool,
-) -> Result<(ArrowWriteDataset, Vec<u64>), String> {
+) -> Result<(ArrowWriteDataset, Vec<u64>, Option<ArrowMetadataPreflight>), String> {
     let column_count = descriptors.len();
     let mut dataset = DatasetDocument {
         version: 0,
@@ -1570,17 +1570,21 @@ unsafe fn assemble_write_dataset(
         check_interrupt()?;
         column_metadata.push(extract_column_metadata(descriptor, &value_label_names)?);
     }
-    if preflight_footer {
-        preflight_arrow_metadata(
-            &dataset,
-            column_metadata.iter().map(|column| {
-                let document = (column.base_document != ArrowFieldDocument::default())
-                    .then_some(&column.base_document);
-                (column.name.as_str(), document)
-            }),
+    let metadata_preflight = if preflight_footer {
+        Some(
+            preflight_arrow_metadata(
+                &dataset,
+                column_metadata.iter().map(|column| {
+                    let document = (column.base_document != ArrowFieldDocument::default())
+                        .then_some(&column.base_document);
+                    (column.name.as_str(), document)
+                }),
+            )
+            .map_err(|error| error.to_string())?,
         )
-        .map_err(|error| error.to_string())?;
-    }
+    } else {
+        None
+    };
     let mut extracted = Vec::new();
     extracted
         .try_reserve_exact(column_count)
@@ -1617,6 +1621,7 @@ unsafe fn assemble_write_dataset(
             columns: write_columns,
         },
         replacements,
+        metadata_preflight,
     ))
 }
 
@@ -1658,7 +1663,7 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
         };
         let requested_threads =
             usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
-        let (dataset, replacements) = assemble_write_dataset(
+        let (dataset, replacements, metadata_preflight) = assemble_write_dataset(
             dataset_label,
             dataset_metadata,
             descriptors,
@@ -1667,6 +1672,7 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
             requested_threads,
             false,
         )?;
+        debug_assert!(metadata_preflight.is_none());
         if replacements.iter().any(|&count| count > 0) {
             let details = dataset
                 .columns
@@ -1740,7 +1746,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
 
         let requested_threads =
             usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
-        let (dataset, replacements) = assemble_write_dataset(
+        let (dataset, replacements, metadata_preflight) = assemble_write_dataset(
             dataset_label,
             dataset_metadata,
             descriptors,
@@ -1749,9 +1755,12 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             requested_threads,
             true,
         )?;
-        save_arrow_file(
+        let metadata_preflight =
+            metadata_preflight.expect("Arrow save assembly requested a metadata preflight");
+        save_arrow_file_with_preflight(
             &path,
             &dataset,
+            metadata_preflight,
             compression,
             requested_threads,
             checksums != 0,

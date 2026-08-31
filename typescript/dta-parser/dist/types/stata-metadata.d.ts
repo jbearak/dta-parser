@@ -3,6 +3,11 @@ export interface StataMetadataTarget {
     notes?: StataNote[] | string[];
     characteristics?: StataCharacteristic[];
 }
+export interface AcceptedStataCharacteristic {
+    scopeIndex: number;
+    name: string;
+    noteNumber: number | null;
+}
 /** Incrementally folds raw characteristic records into canonical metadata. */
 export declare class StataMetadataCollector {
     private readonly dataset;
@@ -13,8 +18,9 @@ export declare class StataMetadataCollector {
     private targetIndex;
     private scope;
     private scopeIndexes;
-    private classify;
+    accept(target: string, name: string): AcceptedStataCharacteristic | null;
     pushLazy(target: string, name: string, value: () => string): boolean;
+    pushAcceptedLazy(accepted: AcceptedStataCharacteristic, value: () => string): void;
     private pushAccepted;
     finish(): void;
 }

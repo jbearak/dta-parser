@@ -12,8 +12,8 @@ use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValue
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
 use crate::stata_metadata::{
-    classify_characteristic, validate_raw_value_length, CharacteristicCollector,
-    VariableTargetIndexes, MAX_METADATA_VALUE_BYTES,
+    classify_characteristic, validate_raw_value_length, AcceptedCharacteristic,
+    CharacteristicCollector, VariableTargetIndexes, MAX_METADATA_VALUE_BYTES,
 };
 use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::value_labels::{frame_offset_value_label_payload, has_legacy_offset_table_framing};
@@ -115,6 +115,58 @@ enum ValueLabelCache {
     Empty,
     Indexed(IndexedValueLabelCache),
     Full(FullValueLabelCache),
+}
+
+// Small tables remain cached so repeated projections avoid source I/O. Large
+// tables move into owning sinks, avoiding a second large allocation while the
+// reader and result coexist.
+const VALUE_LABEL_MOVE_THRESHOLD_BYTES: usize = 64 * 1024;
+
+fn value_label_table_heap_bytes(table: &ValueLabelTable) -> usize {
+    table.entries.iter().fold(table.name.len(), |bytes, entry| {
+        bytes
+            .saturating_add(std::mem::size_of::<ValueLabelEntry>())
+            .saturating_add(entry.label.len())
+    })
+}
+
+fn take_projected_tables(
+    value_labels: &mut ValueLabelCache,
+    indices: &[usize],
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    let mut selected = Vec::new();
+    selected
+        .try_reserve_exact(indices.len())
+        .map_err(|_| DtaError::ArithmeticOverflow("projected value-label allocation"))?;
+    match value_labels {
+        ValueLabelCache::Indexed(cache) => {
+            for index in indices {
+                selected.push(
+                    cache
+                        .tables
+                        .remove(index)
+                        .expect("selected value-label table was cached"),
+                );
+            }
+        }
+        ValueLabelCache::Full(_) => {
+            let ValueLabelCache::Full(cache) =
+                std::mem::replace(value_labels, ValueLabelCache::Empty)
+            else {
+                unreachable!()
+            };
+            let mut next = indices.iter().copied().peekable();
+            for (index, table) in cache.tables.into_iter().enumerate() {
+                if next.peek() == Some(&index) {
+                    selected.push(table);
+                    next.next();
+                }
+            }
+            debug_assert!(next.next().is_none());
+        }
+        ValueLabelCache::Empty => unreachable!("value-label cache was initialized"),
+    }
+    Ok(selected)
 }
 
 enum ValueLabelStreamingMode<'a> {
@@ -420,6 +472,11 @@ enum ColumnBuilder {
 pub trait DtaSink: Sized {
     type Output;
 
+    /// Whether the sink can consume value-label tables by ownership. Readers
+    /// use this to move cached tables into an owning result without retaining
+    /// a second copy. The default keeps custom sinks on the borrowed path.
+    const TAKES_VALUE_LABEL_TABLES: bool = false;
+
     fn push_byte(
         &mut self,
         column: usize,
@@ -482,43 +539,101 @@ pub trait DtaSink: Sized {
         value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError>;
 
-    /// Finish while borrowing the reader's cached metadata. The default
-    /// preserves the original owned [`DtaSink::finish`] contract for external
-    /// sinks; adapters that do not retain metadata can override this to avoid
-    /// cloning large note, characteristic, and value-label registries.
-    fn finish_borrowed(
+    /// Finish from one uniform view of owned, contiguous borrowed, or
+    /// projected borrowed value-label tables. The default preserves the
+    /// original owned [`DtaSink::finish`] contract for external sinks.
+    fn finish_with_value_labels(
         self,
         metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: &[ValueLabelTable],
+        value_label_tables: ValueLabelTableView<'_>,
     ) -> Result<Self::Output, DtaError> {
         self.finish(
             metadata.clone(),
             row_start,
             row_count,
-            value_label_tables.to_vec(),
+            value_label_tables.into_owned()?,
         )
     }
+}
 
-    /// Finish a projection from borrowed cache entries. The indirection keeps
-    /// selected multi-gigabyte registries in the reader cache instead of
-    /// cloning them solely to construct a contiguous temporary slice.
-    fn finish_projected_borrowed(
-        self,
-        metadata: &DtaMetadata,
-        row_start: u64,
-        row_count: u64,
-        value_label_tables: &[&ValueLabelTable],
-    ) -> Result<Self::Output, DtaError> {
-        let mut owned = Vec::new();
-        owned
-            .try_reserve_exact(value_label_tables.len())
-            .map_err(|_| DtaError::ArithmeticOverflow("projected value-label allocation"))?;
-        owned.extend(value_label_tables.iter().map(|table| (*table).clone()));
-        self.finish(metadata.clone(), row_start, row_count, owned)
+/// Value-label tables presented to a sink without imposing a clone or a
+/// contiguous temporary allocation on projected reads.
+pub enum ValueLabelTableView<'a> {
+    Owned(Vec<ValueLabelTable>),
+    Borrowed(&'a [ValueLabelTable]),
+    Projected(&'a [&'a ValueLabelTable]),
+}
+
+impl ValueLabelTableView<'_> {
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Owned(tables) => tables.len(),
+            Self::Borrowed(tables) => tables.len(),
+            Self::Projected(tables) => tables.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn iter(&self) -> ValueLabelTableIter<'_> {
+        match self {
+            Self::Owned(tables) => ValueLabelTableIter::Contiguous(tables.iter()),
+            Self::Borrowed(tables) => ValueLabelTableIter::Contiguous(tables.iter()),
+            Self::Projected(tables) => ValueLabelTableIter::Projected(tables.iter()),
+        }
+    }
+
+    fn into_owned(self) -> Result<Vec<ValueLabelTable>, DtaError> {
+        match self {
+            Self::Owned(tables) => Ok(tables),
+            Self::Borrowed(tables) => {
+                let mut owned = Vec::new();
+                owned
+                    .try_reserve_exact(tables.len())
+                    .map_err(|_| DtaError::ArithmeticOverflow("value-label allocation"))?;
+                owned.extend_from_slice(tables);
+                Ok(owned)
+            }
+            Self::Projected(tables) => {
+                let mut owned = Vec::new();
+                owned.try_reserve_exact(tables.len()).map_err(|_| {
+                    DtaError::ArithmeticOverflow("projected value-label allocation")
+                })?;
+                owned.extend(tables.iter().map(|table| (*table).clone()));
+                Ok(owned)
+            }
+        }
     }
 }
+
+pub enum ValueLabelTableIter<'a> {
+    Contiguous(std::slice::Iter<'a, ValueLabelTable>),
+    Projected(std::slice::Iter<'a, &'a ValueLabelTable>),
+}
+
+impl<'a> Iterator for ValueLabelTableIter<'a> {
+    type Item = &'a ValueLabelTable;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Contiguous(tables) => tables.next(),
+            Self::Projected(tables) => tables.next().copied(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Self::Contiguous(tables) => tables.size_hint(),
+            Self::Projected(tables) => tables.size_hint(),
+        }
+    }
+}
+
+impl ExactSizeIterator for ValueLabelTableIter<'_> {}
 
 /// One independently owned output column used by the block executor.
 ///
@@ -579,6 +694,8 @@ pub trait ParallelDtaSink: Sized {
     type Column: DtaColumnSink;
     type State;
 
+    const TAKES_VALUE_LABEL_TABLES: bool = false;
+
     fn split(self) -> (Self::State, Vec<Self::Column>);
 
     fn finish_parallel(
@@ -590,14 +707,13 @@ pub trait ParallelDtaSink: Sized {
         value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError>;
 
-    /// Parallel counterpart to [`DtaSink::finish_borrowed`].
-    fn finish_parallel_borrowed(
+    fn finish_parallel_with_value_labels(
         state: Self::State,
         columns: Vec<Self::Column>,
         metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: &[ValueLabelTable],
+        value_label_tables: ValueLabelTableView<'_>,
     ) -> Result<Self::Output, DtaError> {
         Self::finish_parallel(
             state,
@@ -605,30 +721,7 @@ pub trait ParallelDtaSink: Sized {
             metadata.clone(),
             row_start,
             row_count,
-            value_label_tables.to_vec(),
-        )
-    }
-
-    fn finish_parallel_projected_borrowed(
-        state: Self::State,
-        columns: Vec<Self::Column>,
-        metadata: &DtaMetadata,
-        row_start: u64,
-        row_count: u64,
-        value_label_tables: &[&ValueLabelTable],
-    ) -> Result<Self::Output, DtaError> {
-        let mut owned = Vec::new();
-        owned
-            .try_reserve_exact(value_label_tables.len())
-            .map_err(|_| DtaError::ArithmeticOverflow("projected value-label allocation"))?;
-        owned.extend(value_label_tables.iter().map(|table| (*table).clone()));
-        Self::finish_parallel(
-            state,
-            columns,
-            metadata.clone(),
-            row_start,
-            row_count,
-            owned,
+            value_label_tables.into_owned()?,
         )
     }
 }
@@ -881,6 +974,8 @@ impl VecSink {
 impl DtaSink for VecSink {
     type Output = DtaData;
 
+    const TAKES_VALUE_LABEL_TABLES: bool = true;
+
     #[inline(always)]
     fn push_byte(
         &mut self,
@@ -1028,12 +1123,29 @@ impl DtaSink for VecSink {
             value_label_tables,
         })
     }
+
+    fn finish_with_value_labels(
+        self,
+        metadata: &DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: ValueLabelTableView<'_>,
+    ) -> Result<Self::Output, DtaError> {
+        self.finish(
+            metadata.clone(),
+            row_start,
+            row_count,
+            value_label_tables.into_owned()?,
+        )
+    }
 }
 
 impl ParallelDtaSink for VecSink {
     type Output = DtaData;
     type Column = ColumnBuilder;
     type State = ();
+
+    const TAKES_VALUE_LABEL_TABLES: bool = true;
 
     fn split(self) -> (Self::State, Vec<Self::Column>) {
         ((), self.columns)
@@ -1048,6 +1160,23 @@ impl ParallelDtaSink for VecSink {
         value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError> {
         DtaSink::finish(
+            VecSink { columns },
+            metadata,
+            row_start,
+            row_count,
+            value_label_tables,
+        )
+    }
+
+    fn finish_parallel_with_value_labels(
+        _state: Self::State,
+        columns: Vec<Self::Column>,
+        metadata: &DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: ValueLabelTableView<'_>,
+    ) -> Result<Self::Output, DtaError> {
+        DtaSink::finish_with_value_labels(
             VecSink { columns },
             metadata,
             row_start,
@@ -1310,6 +1439,22 @@ pub struct DtaFile<R: Read + Seek> {
     text_encoding: TextEncoding,
 }
 
+/// The schema-only result used for inexpensive column selection preflight.
+/// It deliberately excludes dataset metadata values, notes, characteristics,
+/// and section offsets, which are available only after a full [`DtaFile`]
+/// open.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DtaSchemaSummary {
+    pub format_version: FormatVersion,
+    pub variables: Vec<DtaSchemaVariable>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DtaSchemaVariable {
+    pub name: String,
+    pub dta_type: DtaType,
+}
+
 impl DtaFile<File> {
     /// Open a path and retain the file handle for subsequent projected reads.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, DtaError> {
@@ -1334,14 +1479,14 @@ impl DtaFile<File> {
     pub fn metadata_summary_with_encoding(
         path: impl AsRef<Path>,
         encoding: TextEncoding,
-    ) -> Result<DtaMetadata, DtaError> {
+    ) -> Result<DtaSchemaSummary, DtaError> {
         let mut file = File::open(path).map_err(|error| DtaError::Io {
             context: "opening file",
             offset: 0,
             kind: error.kind(),
         })?;
         let mut scratch = Scratch::new(DEFAULT_MAX_BUFFER_BYTES);
-        read_file_metadata(&mut file, &mut scratch, encoding, false).map(|(metadata, _)| metadata)
+        read_file_schema_summary(&mut file, &mut scratch, encoding)
     }
 }
 
@@ -1377,8 +1522,7 @@ impl<R: Read + Seek> DtaFile<R> {
             return Err(DtaError::InvalidBufferSize);
         }
         let mut scratch = Scratch::new(options.max_buffer_bytes);
-        let (metadata, file_length) =
-            read_file_metadata(&mut reader, &mut scratch, encoding, true)?;
+        let (metadata, file_length) = read_file_metadata(&mut reader, &mut scratch, encoding)?;
         let text_encoding = encoding.resolve(metadata.format_version);
         Ok(Self {
             reader,
@@ -1866,28 +2010,54 @@ impl<R: Read + Seek> DtaFile<R> {
             let selected = selected_value_label_names(&self.metadata, &indices);
             let value_label_indices =
                 self.ensure_projected_value_labels(&selected, &mut should_interrupt)?;
-            let value_label_tables = self.projected_value_label_tables(&value_label_indices)?;
-            S::finish_parallel_projected_borrowed(
-                state,
-                columns,
-                &self.metadata,
-                row_start,
-                row_count,
-                &value_label_tables,
-            )
+            if S::TAKES_VALUE_LABEL_TABLES
+                && self.projected_value_labels_should_move(&value_label_indices)
+            {
+                let tables = self.take_projected_value_label_tables(&value_label_indices)?;
+                S::finish_parallel_with_value_labels(
+                    state,
+                    columns,
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Owned(tables),
+                )
+            } else {
+                let tables = self.projected_value_label_tables(&value_label_indices)?;
+                S::finish_parallel_with_value_labels(
+                    state,
+                    columns,
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Projected(&tables),
+                )
+            }
         } else {
             self.ensure_value_labels(&mut should_interrupt)?;
-            let ValueLabelCache::Full(value_label_cache) = &self.value_labels else {
-                unreachable!("value-label cache was initialized")
-            };
-            S::finish_parallel_borrowed(
-                state,
-                columns,
-                &self.metadata,
-                row_start,
-                row_count,
-                &value_label_cache.tables,
-            )
+            if S::TAKES_VALUE_LABEL_TABLES && self.all_value_labels_should_move() {
+                let tables = self.take_all_value_label_tables();
+                S::finish_parallel_with_value_labels(
+                    state,
+                    columns,
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Owned(tables),
+                )
+            } else {
+                let ValueLabelCache::Full(value_label_cache) = &self.value_labels else {
+                    unreachable!("value-label cache was initialized")
+                };
+                S::finish_parallel_with_value_labels(
+                    state,
+                    columns,
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Borrowed(&value_label_cache.tables),
+                )
+            }
         }
     }
 
@@ -2134,25 +2304,47 @@ impl<R: Read + Seek> DtaFile<R> {
             let selected = selected_value_label_names(&self.metadata, &indices);
             let value_label_indices =
                 self.ensure_projected_value_labels(&selected, &mut coarse_interrupt)?;
-            let value_label_tables = self.projected_value_label_tables(&value_label_indices)?;
-            sink.finish_projected_borrowed(
-                &self.metadata,
-                row_start,
-                row_count,
-                &value_label_tables,
-            )
+            if S::TAKES_VALUE_LABEL_TABLES
+                && self.projected_value_labels_should_move(&value_label_indices)
+            {
+                let tables = self.take_projected_value_label_tables(&value_label_indices)?;
+                sink.finish_with_value_labels(
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Owned(tables),
+                )
+            } else {
+                let tables = self.projected_value_label_tables(&value_label_indices)?;
+                sink.finish_with_value_labels(
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Projected(&tables),
+                )
+            }
         } else {
             let mut coarse_interrupt = || interrupts.coarse();
             self.ensure_value_labels(&mut coarse_interrupt)?;
-            let ValueLabelCache::Full(value_label_cache) = &self.value_labels else {
-                unreachable!("value-label cache was initialized")
-            };
-            sink.finish_borrowed(
-                &self.metadata,
-                row_start,
-                row_count,
-                &value_label_cache.tables,
-            )
+            if S::TAKES_VALUE_LABEL_TABLES && self.all_value_labels_should_move() {
+                let tables = self.take_all_value_label_tables();
+                sink.finish_with_value_labels(
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Owned(tables),
+                )
+            } else {
+                let ValueLabelCache::Full(value_label_cache) = &self.value_labels else {
+                    unreachable!("value-label cache was initialized")
+                };
+                sink.finish_with_value_labels(
+                    &self.metadata,
+                    row_start,
+                    row_count,
+                    ValueLabelTableView::Borrowed(&value_label_cache.tables),
+                )
+            }
         }
     }
 
@@ -2314,6 +2506,54 @@ impl<R: Read + Seek> DtaFile<R> {
         Ok(tables)
     }
 
+    fn projected_value_labels_should_move(&self, indices: &[usize]) -> bool {
+        match &self.value_labels {
+            ValueLabelCache::Full(cache) => indices.iter().any(|&index| {
+                value_label_table_heap_bytes(&cache.tables[index])
+                    >= VALUE_LABEL_MOVE_THRESHOLD_BYTES
+            }),
+            ValueLabelCache::Indexed(cache) => indices.iter().any(|index| {
+                value_label_table_heap_bytes(
+                    cache
+                        .tables
+                        .get(index)
+                        .expect("selected value-label table was cached"),
+                ) >= VALUE_LABEL_MOVE_THRESHOLD_BYTES
+            }),
+            ValueLabelCache::Empty => unreachable!("value-label cache was initialized"),
+        }
+    }
+
+    fn all_value_labels_should_move(&self) -> bool {
+        let ValueLabelCache::Full(cache) = &self.value_labels else {
+            unreachable!("full value-label cache was initialized")
+        };
+        cache
+            .tables
+            .iter()
+            .try_fold(0_usize, |bytes, table| {
+                let total = bytes.saturating_add(value_label_table_heap_bytes(table));
+                (total < VALUE_LABEL_MOVE_THRESHOLD_BYTES).then_some(total)
+            })
+            .is_none()
+    }
+
+    fn take_all_value_label_tables(&mut self) -> Vec<ValueLabelTable> {
+        let ValueLabelCache::Full(cache) =
+            std::mem::replace(&mut self.value_labels, ValueLabelCache::Empty)
+        else {
+            unreachable!("full value-label cache was initialized")
+        };
+        cache.tables
+    }
+
+    fn take_projected_value_label_tables(
+        &mut self,
+        indices: &[usize],
+    ) -> Result<Vec<ValueLabelTable>, DtaError> {
+        take_projected_tables(&mut self.value_labels, indices)
+    }
+
     fn populate_indexed_value_labels<F>(
         &mut self,
         selected_indices: &[usize],
@@ -2361,12 +2601,23 @@ impl<R: Read + Seek> DtaFile<R> {
     }
 }
 
-fn read_file_metadata<R: Read + Seek>(
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum MetadataLoad {
+    Schema,
+    Full,
+}
+
+enum ParsedFileMetadata {
+    Schema(DtaSchemaSummary),
+    Full(DtaMetadata),
+}
+
+fn read_file_metadata_mode<R: Read + Seek>(
     reader: &mut R,
     scratch: &mut Scratch,
     encoding: TextEncoding,
-    materialize_characteristics: bool,
-) -> Result<(DtaMetadata, u64), DtaError> {
+    load: MetadataLoad,
+) -> Result<(ParsedFileMetadata, u64), DtaError> {
     let file_length = reader
         .seek(SeekFrom::End(0))
         .map_err(|error| DtaError::Io {
@@ -2379,13 +2630,7 @@ fn read_file_metadata<R: Read + Seek>(
     }
     let first = read_exact_at(reader, 0, 1, scratch, "reading signature")?;
     let metadata = if matches!(first[0], 105 | 108 | 110 | 111 | 113..=115) {
-        read_legacy_metadata(
-            reader,
-            file_length,
-            scratch,
-            encoding,
-            materialize_characteristics,
-        )?
+        read_legacy_metadata(reader, file_length, scratch, encoding, load)?
     } else {
         let signature_length = MODERN_SIGNATURE.len();
         if file_length < signature_length as u64
@@ -2394,22 +2639,34 @@ fn read_file_metadata<R: Read + Seek>(
         {
             return Err(DtaError::InvalidSignature);
         }
-        read_modern_metadata(
-            reader,
-            file_length,
-            scratch,
-            encoding,
-            materialize_characteristics,
-        )?
+        read_modern_metadata(reader, file_length, scratch, encoding, load)?
     };
-    if metadata.section_offsets.end_of_file != file_length {
-        return Err(DtaError::MapOffsetMismatch {
-            section: "file length",
-            expected: metadata.section_offsets.end_of_file,
-            actual: file_length,
-        });
-    }
     Ok((metadata, file_length))
+}
+
+fn read_file_metadata<R: Read + Seek>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    encoding: TextEncoding,
+) -> Result<(DtaMetadata, u64), DtaError> {
+    let (metadata, file_length) =
+        read_file_metadata_mode(reader, scratch, encoding, MetadataLoad::Full)?;
+    let ParsedFileMetadata::Full(metadata) = metadata else {
+        unreachable!()
+    };
+    Ok((metadata, file_length))
+}
+
+fn read_file_schema_summary<R: Read + Seek>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    encoding: TextEncoding,
+) -> Result<DtaSchemaSummary, DtaError> {
+    let (metadata, _) = read_file_metadata_mode(reader, scratch, encoding, MetadataLoad::Schema)?;
+    let ParsedFileMetadata::Schema(summary) = metadata else {
+        unreachable!()
+    };
+    Ok(summary)
 }
 
 fn check_cancel<F: FnMut() -> bool>(should_interrupt: &mut F) -> Result<(), DtaError> {
@@ -2761,21 +3018,6 @@ impl<'a, R: Read + Seek> BufferedSectionReader<'a, R> {
         }
         Ok(output)
     }
-}
-
-fn validate_file_field<R: Read + Seek>(
-    reader: &mut R,
-    start: u64,
-    length: usize,
-    scratch: &mut Scratch,
-    context: &'static str,
-) -> Result<(), DtaError> {
-    let end = checked_add_u64(
-        start,
-        u64::try_from(length).map_err(|_| DtaError::ArithmeticOverflow("metadata value length"))?,
-        "metadata value length",
-    )?;
-    BufferedSectionReader::new(reader, scratch, start, end).validate_field(length, context)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -3209,12 +3451,6 @@ struct ModernCharacteristicScan {
     adaptive_read_ahead: bool,
 }
 
-#[derive(Clone, Copy)]
-struct ModernCharacteristicRecord {
-    payload_offset: u64,
-    payload_length: usize,
-}
-
 fn walk_modern_characteristic_records<R, F>(
     reader: &mut R,
     scratch: &mut Scratch,
@@ -3301,14 +3537,158 @@ where
     }
 }
 
-fn read_modern_characteristics<R: Read + Seek>(
+struct AcceptedCharacteristicRecord {
+    ordinal: usize,
+    accepted: AcceptedCharacteristic,
+    value_offset: u64,
+    value_length: usize,
+    context: &'static str,
+}
+
+#[derive(Default)]
+struct CharacteristicDecodePlan {
+    accepted: Vec<AcceptedCharacteristicRecord>,
+    deferred_error: Option<(usize, DtaError)>,
+}
+
+impl CharacteristicDecodePlan {
+    #[allow(clippy::too_many_arguments)]
+    fn frame<R: Read + Seek>(
+        &mut self,
+        section: &mut BufferedSectionReader<'_, R>,
+        ordinal: usize,
+        payload_length: usize,
+        name_width: usize,
+        encoding: TextEncoding,
+        variable_indexes: &mut VariableTargetIndexes<'_>,
+        names_context: &'static str,
+        value_context: &'static str,
+    ) -> Result<(), DtaError> {
+        let names_length = name_width
+            .checked_mul(2)
+            .ok_or(DtaError::ArithmeticOverflow("characteristic names length"))?;
+        let payload_offset = section.position();
+        let value_offset = checked_add_u64(
+            payload_offset,
+            u64::try_from(names_length)
+                .map_err(|_| DtaError::ArithmeticOverflow("characteristic names length"))?,
+            "characteristic value offset",
+        )?;
+        let value_length = payload_length - names_length;
+        let value_end = checked_add_u64(
+            value_offset,
+            u64::try_from(value_length)
+                .map_err(|_| DtaError::ArithmeticOverflow("characteristic value length"))?,
+            "characteristic value length",
+        )?;
+
+        if self.deferred_error.is_some() {
+            return section.advance(payload_length, value_context);
+        }
+
+        let mut names = Vec::new();
+        section.read_into(names_length, &mut names, names_context)?;
+        let target = encoding.decode(field_bytes(&names[..name_width]));
+        let name = encoding.decode(field_bytes(&names[name_width..]));
+        let classified = classify_characteristic(
+            &target,
+            name,
+            error_offset(payload_offset.saturating_add(name_width as u64)),
+            |target| variable_indexes.resolve(target),
+        );
+
+        match classified {
+            Ok(Some(accepted)) => {
+                if let Err(error) = validate_raw_value_length(
+                    value_length,
+                    error_offset(value_offset),
+                    value_context,
+                ) {
+                    self.deferred_error = Some((ordinal, error));
+                } else {
+                    self.accepted.try_reserve(1).map_err(|_| {
+                        DtaError::ArithmeticOverflow("accepted characteristic framing plan")
+                    })?;
+                    self.accepted.push(AcceptedCharacteristicRecord {
+                        ordinal,
+                        accepted,
+                        value_offset,
+                        value_length,
+                        context: value_context,
+                    });
+                }
+                section.advance(value_length, value_context)?;
+            }
+            Ok(None) => {
+                if let Err(error) = section.validate_field(value_length, value_context) {
+                    self.deferred_error = Some((ordinal, error));
+                    section.position = value_end;
+                }
+            }
+            Err(name_error) => {
+                let error = section
+                    .validate_field(value_length, value_context)
+                    .err()
+                    .unwrap_or(name_error);
+                self.deferred_error = Some((ordinal, error));
+                section.position = value_end;
+            }
+        }
+        debug_assert_eq!(section.position(), value_end);
+        Ok(())
+    }
+
+    fn decode<R: Read + Seek>(
+        self,
+        reader: &mut R,
+        encoding: TextEncoding,
+        scratch: &mut Scratch,
+    ) -> Result<CharacteristicCollector, DtaError> {
+        let mut collector = CharacteristicCollector::default();
+        let mut deferred_error = self.deferred_error;
+        for record in self.accepted {
+            if deferred_error
+                .as_ref()
+                .is_some_and(|(ordinal, _)| *ordinal < record.ordinal)
+            {
+                return Err(deferred_error.take().expect("deferred error exists").1);
+            }
+            let (value, found_nul) = decode_range(
+                reader,
+                record.value_offset,
+                record.value_length,
+                encoding,
+                true,
+                scratch,
+                &mut || false,
+                record.context,
+            )?;
+            if record.value_length > MAX_METADATA_VALUE_BYTES && !found_nul {
+                return Err(DtaError::MetadataValueTooLong {
+                    context: record.context,
+                    offset: error_offset(record.value_offset),
+                    length: record.value_length,
+                    limit: MAX_METADATA_VALUE_BYTES,
+                });
+            }
+            collector.push(record.accepted, value);
+        }
+        if let Some((_, error)) = deferred_error {
+            return Err(error);
+        }
+        Ok(collector)
+    }
+}
+
+fn scan_modern_characteristics<R: Read + Seek, F>(
     reader: &mut R,
     header: &FileModernHeaderMap,
-    encoding: TextEncoding,
     scratch: &mut Scratch,
-    variables: &[VariableInfo],
-    materialize: bool,
-) -> Result<Option<CharacteristicCollector>, DtaError> {
+    mut visit: F,
+) -> Result<(), DtaError>
+where
+    F: FnMut(&mut BufferedSectionReader<'_, R>, usize, usize) -> Result<(), DtaError>,
+{
     let width = if header.format_version == FormatVersion::V117 {
         33_usize
     } else {
@@ -3329,9 +3709,6 @@ fn read_modern_characteristics<R: Read + Seek>(
         "</characteristics>",
         scratch,
     )?;
-    if !materialize {
-        return Ok(None);
-    }
     ensure_absolute("data", after_close, header.section_offsets.data)?;
     let cursor = expect_file_tag(
         reader,
@@ -3340,7 +3717,7 @@ fn read_modern_characteristics<R: Read + Seek>(
         "<characteristics>",
         scratch,
     )?;
-    let mut records = Vec::new();
+    let mut ordinal = 0_usize;
     walk_modern_characteristic_records(
         reader,
         scratch,
@@ -3351,99 +3728,67 @@ fn read_modern_characteristics<R: Read + Seek>(
             names_length,
             adaptive_read_ahead: true,
         },
-        |section, payload_offset, payload_length| {
-            records
-                .try_reserve(1)
-                .map_err(|_| DtaError::ArithmeticOverflow("characteristic framing plan"))?;
-            records.push(ModernCharacteristicRecord {
-                payload_offset,
+        |section, _, payload_length| {
+            visit(section, ordinal, payload_length)?;
+            ordinal = ordinal
+                .checked_add(1)
+                .ok_or(DtaError::ArithmeticOverflow("characteristic record count"))?;
+            Ok(())
+        },
+    )
+}
+
+fn validate_modern_characteristic_framing<R: Read + Seek>(
+    reader: &mut R,
+    header: &FileModernHeaderMap,
+    scratch: &mut Scratch,
+) -> Result<(), DtaError> {
+    scan_modern_characteristics(reader, header, scratch, |section, _, payload_length| {
+        section.advance(payload_length, "characteristic payload")
+    })
+}
+
+fn read_modern_characteristics<R: Read + Seek>(
+    reader: &mut R,
+    header: &FileModernHeaderMap,
+    encoding: TextEncoding,
+    scratch: &mut Scratch,
+    variables: &[VariableInfo],
+) -> Result<CharacteristicCollector, DtaError> {
+    let width = if header.format_version == FormatVersion::V117 {
+        33_usize
+    } else {
+        129_usize
+    };
+    let mut plan = CharacteristicDecodePlan::default();
+    let mut variable_indexes = VariableTargetIndexes::new(variables);
+    scan_modern_characteristics(
+        reader,
+        header,
+        scratch,
+        |section, ordinal, payload_length| {
+            plan.frame(
+                section,
+                ordinal,
                 payload_length,
-            });
-            section.advance(payload_length, "characteristic payload")
+                width,
+                encoding,
+                &mut variable_indexes,
+                "reading characteristic names",
+                "characteristic value",
+            )
         },
     )?;
-    let mut collector = None;
-    let mut variable_indexes = VariableTargetIndexes::new(variables);
-    let mut record = Vec::new();
-    for framed in records {
-        read_exact_at_into(
-            reader,
-            framed.payload_offset,
-            names_length,
-            scratch,
-            &mut record,
-            "reading characteristic names",
-        )?;
-        let target = encoding.decode(field_bytes(&record[..width]));
-        let name = encoding.decode(field_bytes(&record[width..]));
-        let value_length = framed.payload_length - names_length;
-        let accepted = classify_characteristic(
-            &target,
-            name,
-            error_offset(framed.payload_offset.saturating_add(width as u64)),
-            |target| variable_indexes.resolve(target),
-        );
-        match accepted {
-            Ok(Some(accepted)) => {
-                validate_raw_value_length(
-                    value_length,
-                    error_offset(framed.payload_offset.saturating_add(names_length as u64)),
-                    "characteristic value",
-                )?;
-                let (value, found_nul) = decode_range(
-                    reader,
-                    framed.payload_offset.saturating_add(names_length as u64),
-                    value_length,
-                    encoding,
-                    true,
-                    scratch,
-                    &mut || false,
-                    "reading characteristic value",
-                )?;
-                if value_length > MAX_METADATA_VALUE_BYTES && !found_nul {
-                    return Err(DtaError::MetadataValueTooLong {
-                        context: "characteristic value",
-                        offset: error_offset(
-                            framed.payload_offset.saturating_add(names_length as u64),
-                        ),
-                        length: value_length,
-                        limit: MAX_METADATA_VALUE_BYTES,
-                    });
-                }
-                collector
-                    .get_or_insert_with(CharacteristicCollector::default)
-                    .push(accepted, value);
-            }
-            Ok(None) => validate_file_field(
-                reader,
-                framed.payload_offset.saturating_add(names_length as u64),
-                value_length,
-                scratch,
-                "characteristic value",
-            )?,
-            Err(error) => {
-                validate_file_field(
-                    reader,
-                    framed.payload_offset.saturating_add(names_length as u64),
-                    value_length,
-                    scratch,
-                    "characteristic value",
-                )?;
-                return Err(error);
-            }
-        }
-    }
-    Ok(collector)
+    drop(variable_indexes);
+    plan.decode(reader, encoding, scratch)
 }
 
 struct LegacyExpansionRecord {
     data_type: u8,
-    payload_offset: u64,
     payload_length: usize,
 }
 
 struct LegacyExpansionPlan {
-    characteristics: Vec<LegacyExpansionRecord>,
     data_offset: u64,
 }
 
@@ -3507,25 +3852,32 @@ fn read_legacy_expansion_record<R: Read + Seek>(
     }
     Ok(Some(LegacyExpansionRecord {
         data_type,
-        payload_offset,
         payload_length,
     }))
 }
 
-fn validate_legacy_expansion_framing<R: Read + Seek>(
+fn walk_legacy_expansion_records<R: Read + Seek, F>(
     reader: &mut R,
     scratch: &mut Scratch,
     start: u64,
     file_length: u64,
     byte_order: ByteOrder,
     layout: LegacyLayout,
-) -> Result<LegacyExpansionPlan, DtaError> {
+    mut visit: F,
+) -> Result<LegacyExpansionPlan, DtaError>
+where
+    F: FnMut(
+        &mut BufferedSectionReader<'_, R>,
+        usize,
+        LegacyExpansionRecord,
+    ) -> Result<(), DtaError>,
+{
     // Keep malformed unterminated streams bounded by locating the sentinel
     // before the collection pass allocates decoded values.
     let mut header = Vec::new();
     let mut section = BufferedSectionReader::new(reader, scratch, start, file_length);
     let mut read_ahead = false;
-    let mut characteristics = Vec::new();
+    let mut ordinal = 0_usize;
     loop {
         let Some(record) = read_legacy_expansion_record(
             &mut section,
@@ -3536,23 +3888,38 @@ fn validate_legacy_expansion_framing<R: Read + Seek>(
         )?
         else {
             return Ok(LegacyExpansionPlan {
-                characteristics,
                 data_offset: section.position(),
             });
         };
-        if record.data_type == 1 && record.payload_length >= 2 * layout.varname_width {
-            characteristics
-                .try_reserve(1)
-                .map_err(|_| DtaError::ArithmeticOverflow("legacy characteristic framing plan"))?;
-            characteristics.push(LegacyExpansionRecord {
-                data_type: record.data_type,
-                payload_offset: record.payload_offset,
-                payload_length: record.payload_length,
-            });
-        }
-        section.advance(record.payload_length, "legacy expansion-field payload")?;
-        read_ahead = record.payload_length < METADATA_SECTION_BUFFER_BYTES.saturating_div(2);
+        let payload_length = record.payload_length;
+        visit(&mut section, ordinal, record)?;
+        ordinal = ordinal.checked_add(1).ok_or(DtaError::ArithmeticOverflow(
+            "legacy expansion record count",
+        ))?;
+        read_ahead = payload_length < METADATA_SECTION_BUFFER_BYTES.saturating_div(2);
     }
+}
+
+#[cfg(test)]
+fn validate_legacy_expansion_framing<R: Read + Seek>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    start: u64,
+    file_length: u64,
+    byte_order: ByteOrder,
+    layout: LegacyLayout,
+) -> Result<LegacyExpansionPlan, DtaError> {
+    walk_legacy_expansion_records(
+        reader,
+        scratch,
+        start,
+        file_length,
+        byte_order,
+        layout,
+        |section, _, record| {
+            section.advance(record.payload_length, "legacy expansion-field payload")
+        },
+    )
 }
 
 fn read_modern_header_map<R: Read + Seek>(
@@ -3724,8 +4091,8 @@ fn read_modern_metadata<R: Read + Seek>(
     file_length: u64,
     scratch: &mut Scratch,
     encoding: TextEncoding,
-    materialize_characteristics: bool,
-) -> Result<DtaMetadata, DtaError> {
+    load: MetadataLoad,
+) -> Result<ParsedFileMetadata, DtaError> {
     let header = read_modern_header_map(reader, scratch, encoding)?;
     let encoding = encoding.resolve(header.format_version);
     if header.section_offsets.end_of_file > file_length
@@ -3884,20 +4251,25 @@ fn read_modern_metadata<R: Read + Seek>(
         });
         byte_offset = checked_add_u64(byte_offset, u64::from(byte_width), "observation length")?;
     }
+    if load == MetadataLoad::Schema {
+        validate_modern_characteristic_framing(reader, &header, scratch)?;
+        return Ok(ParsedFileMetadata::Schema(DtaSchemaSummary {
+            format_version: header.format_version,
+            variables: variables
+                .into_iter()
+                .map(|variable| DtaSchemaVariable {
+                    name: variable.name,
+                    dta_type: variable.dta_type,
+                })
+                .collect(),
+        }));
+    }
+
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    let collector = read_modern_characteristics(
-        reader,
-        &header,
-        encoding,
-        scratch,
-        &variables,
-        materialize_characteristics,
-    )?;
-    if let Some(collector) = collector {
-        collector.finish(&mut notes, &mut characteristics, &mut variables);
-    }
-    Ok(DtaMetadata {
+    let collector = read_modern_characteristics(reader, &header, encoding, scratch, &variables)?;
+    collector.finish(&mut notes, &mut characteristics, &mut variables);
+    Ok(ParsedFileMetadata::Full(DtaMetadata {
         format_version: header.format_version,
         byte_order: header.byte_order,
         nvar: header.nvar,
@@ -3908,7 +4280,7 @@ fn read_modern_metadata<R: Read + Seek>(
         variables,
         section_offsets: header.section_offsets,
         obs_length: byte_offset,
-    })
+    }))
 }
 
 fn read_legacy_metadata<R: Read + Seek>(
@@ -3916,8 +4288,8 @@ fn read_legacy_metadata<R: Read + Seek>(
     file_length: u64,
     scratch: &mut Scratch,
     encoding: TextEncoding,
-    materialize_characteristics: bool,
-) -> Result<DtaMetadata, DtaError> {
+    load: MetadataLoad,
+) -> Result<ParsedFileMetadata, DtaError> {
     let release = read_exact_at(reader, 0, 1, scratch, "reading legacy release")?[0];
     let version = FormatVersion::try_from(u16::from(release))
         .map_err(|_| DtaError::InvalidRelease(release.to_string()))?;
@@ -4061,105 +4433,35 @@ fn read_legacy_metadata<R: Read + Seek>(
 
     let fixed_end = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
-    let expansion_plan = validate_legacy_expansion_framing(
+    let mut characteristic_plan = CharacteristicDecodePlan::default();
+    let mut variable_indexes = VariableTargetIndexes::new(&variables);
+    let expansion_plan = walk_legacy_expansion_records(
         reader,
         scratch,
         fixed_end,
         file_length,
         byte_order,
         layout,
-    )?;
-    let mut collector = None;
-    let mut variable_indexes = VariableTargetIndexes::new(&variables);
-    let mut expansion = Vec::new();
-    for record in expansion_plan
-        .characteristics
-        .into_iter()
-        .filter(|_| materialize_characteristics)
-    {
-        read_exact_at_into(
-            reader,
-            record.payload_offset,
-            2 * layout.varname_width,
-            scratch,
-            &mut expansion,
-            "reading legacy characteristic names",
-        )?;
-        let target = encoding.decode(field_bytes(&expansion[..layout.varname_width]));
-        let name = encoding.decode(field_bytes(&expansion[layout.varname_width..]));
-        let value_length = record.payload_length - 2 * layout.varname_width;
-        let accepted = classify_characteristic(
-            &target,
-            name,
-            error_offset(
-                record
-                    .payload_offset
-                    .saturating_add(layout.varname_width as u64),
-            ),
-            |target| variable_indexes.resolve(target),
-        );
-        match accepted {
-            Ok(Some(accepted)) => {
-                validate_raw_value_length(
-                    value_length,
-                    error_offset(
-                        record
-                            .payload_offset
-                            .saturating_add((2 * layout.varname_width) as u64),
-                    ),
-                    "legacy characteristic value",
-                )?;
-                let (value, found_nul) = decode_range(
-                    reader,
-                    record
-                        .payload_offset
-                        .saturating_add((2 * layout.varname_width) as u64),
-                    value_length,
+        |section, ordinal, record| {
+            if load == MetadataLoad::Full
+                && record.data_type == 1
+                && record.payload_length >= 2 * layout.varname_width
+            {
+                characteristic_plan.frame(
+                    section,
+                    ordinal,
+                    record.payload_length,
+                    layout.varname_width,
                     encoding,
-                    true,
-                    scratch,
-                    &mut never_cancel,
-                    "reading legacy characteristic value",
-                )?;
-                if value_length > MAX_METADATA_VALUE_BYTES && !found_nul {
-                    return Err(DtaError::MetadataValueTooLong {
-                        context: "legacy characteristic value",
-                        offset: error_offset(
-                            record
-                                .payload_offset
-                                .saturating_add((2 * layout.varname_width) as u64),
-                        ),
-                        length: value_length,
-                        limit: MAX_METADATA_VALUE_BYTES,
-                    });
-                }
-                collector
-                    .get_or_insert_with(CharacteristicCollector::default)
-                    .push(accepted, value);
-            }
-            Ok(None) => validate_file_field(
-                reader,
-                record
-                    .payload_offset
-                    .saturating_add((2 * layout.varname_width) as u64),
-                value_length,
-                scratch,
-                "legacy characteristic value",
-            )?,
-            Err(error) => {
-                validate_file_field(
-                    reader,
-                    record
-                        .payload_offset
-                        .saturating_add((2 * layout.varname_width) as u64),
-                    value_length,
-                    scratch,
+                    &mut variable_indexes,
+                    "reading legacy characteristic names",
                     "legacy characteristic value",
-                )?;
-                return Err(error);
+                )
+            } else {
+                section.advance(record.payload_length, "legacy expansion-field payload")
             }
-        }
-    }
+        },
+    )?;
     let cursor = expansion_plan.data_offset;
     drop(variable_indexes);
     let observation_bytes = nobs
@@ -4176,12 +4478,23 @@ fn read_legacy_metadata<R: Read + Seek>(
             available: usize::try_from(file_length.saturating_sub(cursor)).unwrap_or(usize::MAX),
         });
     }
+    if load == MetadataLoad::Schema {
+        return Ok(ParsedFileMetadata::Schema(DtaSchemaSummary {
+            format_version: version,
+            variables: variables
+                .into_iter()
+                .map(|variable| DtaSchemaVariable {
+                    name: variable.name,
+                    dta_type: variable.dta_type,
+                })
+                .collect(),
+        }));
+    }
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    if let Some(collector) = collector {
-        collector.finish(&mut notes, &mut characteristics, &mut variables);
-    }
-    Ok(DtaMetadata {
+    let collector = characteristic_plan.decode(reader, encoding, scratch)?;
+    collector.finish(&mut notes, &mut characteristics, &mut variables);
+    Ok(ParsedFileMetadata::Full(DtaMetadata {
         format_version: version,
         byte_order,
         nvar,
@@ -4207,7 +4520,7 @@ fn read_legacy_metadata<R: Read + Seek>(
             end_of_file: file_length,
         },
         obs_length: byte_offset,
-    })
+    }))
 }
 
 fn read_i32_at<R: Read + Seek>(
@@ -6070,7 +6383,6 @@ mod tests {
                 TextEncoding::Utf8,
                 &mut Scratch::new(1024),
                 &[],
-                true,
             ),
             Err(DtaError::UnexpectedTag {
                 expected: "</characteristics>",
@@ -6107,7 +6419,6 @@ mod tests {
                 TextEncoding::Utf8,
                 &mut Scratch::new(1024),
                 &[],
-                true,
             ),
             Err(DtaError::Truncated {
                 context: "characteristic payload",
@@ -6146,27 +6457,17 @@ mod tests {
         };
 
         let mut preflight = CountingReader::new(bytes.clone());
-        assert!(read_modern_characteristics(
-            &mut preflight,
-            &header,
-            TextEncoding::Utf8,
-            &mut Scratch::new(1024),
-            &[],
-            false,
-        )
-        .unwrap()
-        .is_none());
+        validate_modern_characteristic_framing(&mut preflight, &header, &mut Scratch::new(1024))
+            .unwrap();
         let mut full = CountingReader::new(bytes);
-        assert!(read_modern_characteristics(
+        read_modern_characteristics(
             &mut full,
             &header,
             TextEncoding::Utf8,
             &mut Scratch::new(1024),
             &[],
-            true,
         )
-        .unwrap()
-        .is_some());
+        .unwrap();
         assert!(
             preflight.bytes_read * 8 < full.bytes_read,
             "preflight read {} bytes; full metadata read {}",
@@ -6602,6 +6903,87 @@ mod tests {
                 limit: 1024,
             })
         );
+    }
+
+    #[test]
+    fn owning_sink_moves_large_projected_tables_without_cloning_their_text() {
+        let label = "x".repeat(VALUE_LABEL_MOVE_THRESHOLD_BYTES);
+        let label_pointer = label.as_ptr();
+        let tables = vec![ValueLabelTable {
+            name: "large".to_owned(),
+            entries: vec![ValueLabelEntry {
+                value: 1,
+                missing_tag: None,
+                label,
+            }],
+        }];
+        let mut cache = ValueLabelCache::Full(FullValueLabelCache {
+            indices_by_name: index_value_label_tables(&tables),
+            tables,
+        });
+
+        let moved = take_projected_tables(&mut cache, &[0]).unwrap();
+        assert_eq!(moved[0].entries[0].label.as_ptr(), label_pointer);
+        assert!(matches!(cache, ValueLabelCache::Empty));
+    }
+
+    #[test]
+    fn characteristic_plan_retains_only_accepted_record_descriptors() {
+        let width = 129_usize;
+        let mut bytes = b"<characteristics>".to_vec();
+        for index in 0..2_048 {
+            let name = if index == 2_047 {
+                "source"
+            } else {
+                "_lang_list"
+            };
+            let payload_length = 2 * width + 2;
+            bytes.extend_from_slice(b"<ch>");
+            bytes.extend_from_slice(&(payload_length as u32).to_le_bytes());
+            let mut target = vec![0; width];
+            target[..4].copy_from_slice(b"_dta");
+            bytes.extend_from_slice(&target);
+            let mut encoded_name = vec![0; width];
+            encoded_name[..name.len()].copy_from_slice(name.as_bytes());
+            bytes.extend_from_slice(&encoded_name);
+            bytes.extend_from_slice(b"x\0");
+            bytes.extend_from_slice(b"</ch>");
+        }
+        bytes.extend_from_slice(b"</characteristics>");
+        let header = FileModernHeaderMap {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: String::new(),
+            section_offsets: SectionOffsets {
+                characteristics: 0,
+                data: bytes.len() as u64,
+                ..SectionOffsets::default()
+            },
+        };
+        let mut plan = CharacteristicDecodePlan::default();
+        let mut variable_indexes = VariableTargetIndexes::new(&[]);
+        scan_modern_characteristics(
+            &mut Cursor::new(bytes),
+            &header,
+            &mut Scratch::new(1024),
+            |section, ordinal, payload_length| {
+                plan.frame(
+                    section,
+                    ordinal,
+                    payload_length,
+                    width,
+                    TextEncoding::Utf8,
+                    &mut variable_indexes,
+                    "reading characteristic names",
+                    "characteristic value",
+                )
+            },
+        )
+        .unwrap();
+        assert_eq!(plan.accepted.len(), 1);
+        assert!(plan.deferred_error.is_none());
     }
 
     #[test]

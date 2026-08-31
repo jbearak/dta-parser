@@ -15,6 +15,8 @@ use dta_tools::{
     DtaType, FileOptions, MissingTag, ParallelDtaSink, ReadOptions, ValueLabelTable,
 };
 
+static TRACE_FILE_ID: AtomicUsize = AtomicUsize::new(0);
+
 #[derive(Default)]
 struct Trace {
     reads: Vec<(u64, usize)>,
@@ -505,6 +507,30 @@ fn modern_characteristic_lengths_cannot_cross_the_data_section() {
 }
 
 #[test]
+fn public_schema_summary_rejects_a_forged_characteristic_terminator() {
+    let mut bytes = fixture("auto_v118.dta");
+    let metadata = dta_tools::parse_metadata(&bytes).unwrap();
+    let length = metadata.section_offsets.characteristics as usize + b"<characteristics><ch>".len();
+    bytes[length..length + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+    let path = std::env::temp_dir().join(format!(
+        "dtatools-forged-characteristic-summary-{}-{}.dta",
+        std::process::id(),
+        TRACE_FILE_ID.fetch_add(1, Ordering::Relaxed)
+    ));
+    fs::write(&path, bytes).unwrap();
+    let result = DtaFile::metadata_summary_with_encoding(&path, dta_tools::TextEncoding::Auto);
+    fs::remove_file(path).unwrap();
+
+    assert!(matches!(
+        result,
+        Err(DtaError::Truncated {
+            context: "characteristic payload",
+            ..
+        })
+    ));
+}
+
+#[test]
 fn bounds_each_read_and_avoids_unselected_rows_and_gso_payloads() {
     let bytes = fixture("strl_test_v118.dta");
     let metadata = dta_tools::parse_metadata(&bytes).unwrap();
@@ -939,7 +965,7 @@ fn labels_are_lazy_and_cancellation_never_returns_partial_data() {
 }
 
 #[test]
-fn projected_reads_clone_only_selected_value_label_tables() {
+fn projected_reads_retain_only_selected_value_label_tables() {
     let bytes = fixture("value_labels_v118.dta");
     let mut file = DtaFile::from_reader(Cursor::new(bytes.clone())).unwrap();
     let projected = file.read_with_options(&options(0, None, vec![1])).unwrap();

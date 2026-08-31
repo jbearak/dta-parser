@@ -391,7 +391,7 @@ describe('parse_metadata', () => {
     // ----- Error handling -----
 
     describe('error handling', () => {
-        it('counts modern metadata bytes through the first NUL', () => {
+        it('bounds accepted modern values and skips structural payloads', () => {
             const original = Buffer.from(load_fixture('auto_v118.dta'));
             const metadata = parse_metadata(
                 original.buffer.slice(
@@ -443,12 +443,14 @@ describe('parse_metadata', () => {
             const name = record + 4 + 129;
             reservedOversized.fill(0, name, name + 129);
             reservedOversized.write('note0', name, 'ascii');
-            expect(() => parse_metadata(
+            const ignored = parse_metadata(
                 reservedOversized.buffer.slice(
                     reservedOversized.byteOffset,
                     reservedOversized.byteOffset + reservedOversized.byteLength
                 )
-            )).toThrow('67,784-byte limit');
+            );
+            expect(ignored.notes).toEqual([]);
+            expect(ignored.characteristics).toEqual([]);
         });
 
         it('rejects invalid raw modern characteristic names', () => {

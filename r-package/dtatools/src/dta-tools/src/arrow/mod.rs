@@ -24,9 +24,12 @@ pub use read::{
     ArrowColumnSummary, ArrowFileSnapshot, ArrowFileSummary, ArrowReadColumn, ArrowReadOptions,
     ArrowReadResult,
 };
+#[cfg(feature = "r-adapter-internal")]
+pub use write::save_arrow_file_with_preflight;
 pub use write::{
     dataset_signature, preflight_arrow_metadata, save_arrow_file, save_arrow_file_to,
-    ArrowCompression, ArrowWriteColumn, ArrowWriteDataset, ARROW_ROWS_PER_BATCH,
+    ArrowCompression, ArrowMetadataPreflight, ArrowWriteColumn, ArrowWriteDataset,
+    ARROW_ROWS_PER_BATCH,
 };
 
 use thiserror::Error;

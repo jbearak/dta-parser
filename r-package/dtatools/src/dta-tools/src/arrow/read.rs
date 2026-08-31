@@ -207,6 +207,13 @@ impl ProfileFields {
         }
     }
 
+    fn for_each(&self, accept: impl FnMut(&ArrowFieldDocument)) {
+        match self {
+            Self::Full(fields) => fields.iter().flatten().for_each(accept),
+            Self::Projected(fields) => fields.values().for_each(accept),
+        }
+    }
+
     fn take(&mut self, index: usize) -> Option<ArrowFieldDocument> {
         match self {
             Self::Full(fields) => fields.get_mut(index).and_then(Option::take),
@@ -583,42 +590,56 @@ fn parse_profile(
         .iter()
         .map(|name| (name.clone(), 0_usize))
         .collect::<HashMap<_, _>>();
-    for (index, json) in field_json.iter().enumerate() {
-        let reference = if let Some(document) = documents.get(index) {
-            let Some(reference) = document.value_labels.as_deref() else {
-                continue;
-            };
-            reference
-        } else {
-            let Some(target) = raw_value_label_reference(json.as_deref(), &selected_value_labels)
-            else {
-                continue;
-            };
-            if value_label_reference_counts.get(target).copied() == Some(2) {
-                continue;
-            }
-            let Ok(document) = parse_field_document(
-                &version,
-                footer.schema.field(index),
-                json.as_deref().expect("a raw reference came from JSON"),
-            ) else {
-                continue;
-            };
-            if document.value_labels.as_deref() != Some(target)
-                || validate_value_label_reference(
-                    &version,
-                    footer.schema.field(index),
-                    &document,
-                    &dataset,
-                )
-                .is_err()
-            {
-                continue;
-            }
-            target
+    documents.for_each(|document| {
+        let Some(reference) = document.value_labels.as_deref() else {
+            return;
         };
         if let Some(count) = value_label_reference_counts.get_mut(reference) {
             *count = (*count + 1).min(2);
+        }
+    });
+    let mut unresolved_value_labels = value_label_reference_counts
+        .iter()
+        .filter(|(_, count)| **count < 2)
+        .map(|(name, _)| name.clone())
+        .collect::<HashSet<_>>();
+    for (index, json) in field_json.iter().enumerate() {
+        if unresolved_value_labels.is_empty() {
+            break;
+        }
+        if documents.get(index).is_some() {
+            continue;
+        }
+        let Some(target) = raw_value_label_reference(json.as_deref(), &unresolved_value_labels)
+        else {
+            continue;
+        };
+        let Ok(document) = parse_field_document(
+            &version,
+            footer.schema.field(index),
+            json.as_deref().expect("a raw reference came from JSON"),
+        ) else {
+            continue;
+        };
+        let Some(reference) = document.value_labels.as_deref() else {
+            continue;
+        };
+        if reference != target
+            || validate_value_label_reference(
+                &version,
+                footer.schema.field(index),
+                &document,
+                &dataset,
+            )
+            .is_err()
+        {
+            continue;
+        }
+        if let Some(count) = value_label_reference_counts.get_mut(reference) {
+            *count = (*count + 1).min(2);
+            if *count == 2 {
+                unresolved_value_labels.remove(reference);
+            }
         }
     }
     let checksums_json = footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
@@ -681,6 +702,8 @@ fn raw_value_label_reference<'a>(
     json: Option<&str>,
     selected: &'a HashSet<String>,
 ) -> Option<&'a str> {
+    #[cfg(test)]
+    RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(count.get() + 1));
     let raw: RawValueLabelReference<'_> = serde_json::from_str(json?).ok()?;
     if raw.version != 0 {
         return None;
@@ -698,6 +721,12 @@ fn raw_value_label_reference<'a>(
     );
     let name: Cow<'_, str> = serde_json::from_str(raw.value_labels?.get()).ok()?;
     selected.get(name.as_ref()).map(String::as_str)
+}
+
+#[cfg(test)]
+thread_local! {
+    static RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
 }
 
 fn discard_private_profile_json(footer: &mut Footer) {
@@ -2570,6 +2599,138 @@ mod tests {
             .fields()
             .iter()
             .all(|field| !field.metadata().contains_key(ARROW_FIELD_KEY)));
+    }
+
+    #[test]
+    fn projected_profile_without_selected_value_labels_skips_wide_reference_scan() {
+        let field_count = 10_000;
+        let selected = field_count - 1;
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+            field.set_metadata(HashMap::from([(
+                ARROW_FIELD_KEY.to_owned(),
+                r#"{"version":0}"#.to_owned(),
+            )]));
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (ARROW_DATASET_KEY.to_owned(), r#"{"version":0}"#.to_owned()),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(0));
+        parse_profile(&mut footer, true, false, Some(&[selected]))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let parsed = RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(std::cell::Cell::get);
+
+        assert_eq!(parsed, 0, "no selected table needs a sharing count");
+    }
+
+    #[test]
+    fn selected_documents_can_satisfy_sharing_without_a_wide_reference_scan() {
+        let field_count = 10_000;
+        let selected = [field_count - 2, field_count - 1];
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+            let json = if selected.contains(&index) {
+                r#"{"version":0,"value_labels":"shared"}"#
+            } else {
+                r#"{"version":0}"#
+            };
+            field.set_metadata(HashMap::from([(
+                ARROW_FIELD_KEY.to_owned(),
+                json.to_owned(),
+            )]));
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"value_labels":{"shared":[]}}"#.to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(0));
+        let profile = parse_profile(&mut footer, true, false, Some(&selected))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let parsed = RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(std::cell::Cell::get);
+
+        assert_eq!(profile.value_label_reference_counts.get("shared"), Some(&2));
+        assert_eq!(parsed, 0, "selected documents already prove sharing");
+    }
+
+    #[test]
+    fn projected_reference_scan_stops_when_the_last_table_becomes_shared() {
+        let field_count = 10_000;
+        let selected = field_count - 1;
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+            let json = if index == 0 || index == selected {
+                r#"{"version":0,"value_labels":"shared"}"#
+            } else {
+                r#"{"version":0}"#
+            };
+            field.set_metadata(HashMap::from([(
+                ARROW_FIELD_KEY.to_owned(),
+                json.to_owned(),
+            )]));
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"value_labels":{"shared":[]}}"#.to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(0));
+        let profile = parse_profile(&mut footer, true, false, Some(&[selected]))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let parsed = RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(std::cell::Cell::get);
+
+        assert_eq!(profile.value_label_reference_counts.get("shared"), Some(&2));
+        assert_eq!(
+            parsed, 1,
+            "the first valid source reference reaches the cap"
+        );
     }
 
     #[test]

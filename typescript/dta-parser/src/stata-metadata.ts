@@ -41,7 +41,7 @@ interface ScopeIndexes {
     characteristics: Map<string, number>;
 }
 
-interface AcceptedStataCharacteristic {
+export interface AcceptedStataCharacteristic {
     scopeIndex: number;
     name: string;
     noteNumber: number | null;
@@ -129,7 +129,7 @@ export class StataMetadataCollector {
         return indexes;
     }
 
-    private classify(
+    accept(
         target: string, name: string
     ): AcceptedStataCharacteristic | null {
         if (!validCharacteristicNameShape(name)) {
@@ -143,10 +143,17 @@ export class StataMetadataCollector {
     }
 
     pushLazy(target: string, name: string, value: () => string): boolean {
-        const accepted = this.classify(target, name);
+        const accepted = this.accept(target, name);
         if (accepted === null) return false;
-        this.pushAccepted(accepted, value());
+        this.pushAcceptedLazy(accepted, value);
         return true;
+    }
+
+    pushAcceptedLazy(
+        accepted: AcceptedStataCharacteristic,
+        value: () => string
+    ): void {
+        this.pushAccepted(accepted, value());
     }
 
     private pushAccepted(
