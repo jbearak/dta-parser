@@ -681,6 +681,42 @@ fn dense_metadata_writes_poll_at_bounded_byte_intervals() {
 }
 
 #[test]
+fn metadata_free_wide_writes_do_not_poll_per_column() {
+    let values: [DtaWriteNumericValue; 0] = [];
+    let columns = (0..4_096)
+        .map(|index| DtaWriteColumn {
+            name: format!("x{index}").into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        })
+        .collect();
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns,
+    };
+    let source = CountingObservationSource {
+        checks: Cell::new(0),
+    };
+    write_prevalidated_dta_with_observation_source_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+        &source,
+        0,
+    )
+    .unwrap();
+    assert!(source.checks.get() < 100);
+}
+
+#[test]
 fn validates_display_format_grammar_and_storage_compatibility() {
     let numeric = [DtaWriteNumericValue::Value(1.0)];
     let mut data = DtaWriteData {

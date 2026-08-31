@@ -21,6 +21,7 @@ const MAX_VALUE_LABEL_TEXT_BYTES: usize = 32_000;
 const MAX_NOTES: usize = MAX_NOTE_NUMBER as usize;
 const MAX_STRL_BYTES: usize = 2_000_000_000;
 const WRITE_INTERRUPT_BYTES: usize = 8 * 1024 * 1024;
+const WRITE_INTERRUPT_RECORDS: usize = 4_096;
 const OBSERVATION_BUFFER_BYTES: usize = 64 * 1024 * 1024;
 const ZERO_BLOCK: [u8; 8 * 1024] = [0; 8 * 1024];
 
@@ -1035,6 +1036,7 @@ where
     offsets.characteristics = position(writer)?;
     write_tag(writer, b"<characteristics>")?;
     let mut bytes_since_interrupt = 0_usize;
+    let mut records_since_interrupt = 0_usize;
     let mut write_scope = |writer: &mut W,
                            target: &str,
                            notes: &[DtaWriteNote<'_>],
@@ -1042,9 +1044,13 @@ where
      -> Result<(), DtaWriteError> {
         let mut record_written = |bytes: usize| -> Result<(), DtaWriteError> {
             bytes_since_interrupt = bytes_since_interrupt.saturating_add(bytes);
-            if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES {
+            records_since_interrupt = records_since_interrupt.saturating_add(1);
+            if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES
+                || records_since_interrupt >= WRITE_INTERRUPT_RECORDS
+            {
                 source.check_interrupt()?;
                 bytes_since_interrupt = 0;
+                records_since_interrupt = 0;
             }
             Ok(())
         };
@@ -1074,7 +1080,6 @@ where
     write_scope(writer, "_dta", &data.notes, &data.characteristics)?;
     for column in &data.columns {
         write_scope(writer, &column.name, &column.notes, &column.characteristics)?;
-        source.check_interrupt()?;
     }
     write_tag(writer, b"</characteristics>")?;
     source.check_interrupt()?;

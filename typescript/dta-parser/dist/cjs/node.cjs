@@ -2659,6 +2659,7 @@ function format_tq(quarters_since_epoch) {
 // src/node.ts
 var MODERN_MAP_READ_SIZE = 128 * 1024;
 var LEGACY_SCAN_BLOCK_SIZE = 64 * 1024;
+var LEGACY_SCAN_SMALL_PAYLOAD = LEGACY_SCAN_BLOCK_SIZE / 8;
 var MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 var MAX_MODERN_METADATA_SIZE = 64 * 1024 * 1024;
 var MAX_READ_RETRIES = 2;
@@ -3180,14 +3181,43 @@ function read_legacy_metadata(fd, file_size, options) {
   }
   let my_position = my_expansion_start;
   const my_scan_buffer = Buffer.allocUnsafe(LEGACY_SCAN_BLOCK_SIZE);
+  const my_header_buffer = Buffer.allocUnsafe(my_field_header_size);
   let my_scan_start = -1;
   let my_scan_length = 0;
   while (true) {
     if (my_position + my_field_header_size > file_size) {
       throw new Error("Missing legacy expansion-field terminator");
     }
-    if (my_position < my_scan_start || my_position + my_field_header_size > my_scan_start + my_scan_length) {
-      my_scan_start = my_position;
+    const my_record_start = my_position;
+    const my_uses_scan_buffer = my_position >= my_scan_start && my_position + my_field_header_size <= my_scan_start + my_scan_length;
+    let my_header_bytes2;
+    let my_header_offset;
+    if (my_uses_scan_buffer) {
+      my_header_bytes2 = my_scan_buffer;
+      my_header_offset = my_position - my_scan_start;
+    } else {
+      read_bytes_into(
+        fd,
+        my_header_buffer,
+        0,
+        my_field_header_size,
+        my_position
+      );
+      my_header_bytes2 = my_header_buffer;
+      my_header_offset = 0;
+    }
+    const my_data_type = my_header_bytes2[my_header_offset];
+    const my_length = layout.expansion_length_width === 2 ? my_little_endian ? my_header_bytes2.readInt16LE(my_header_offset + 1) : my_header_bytes2.readInt16BE(my_header_offset + 1) : my_little_endian ? my_header_bytes2.readInt32LE(my_header_offset + 1) : my_header_bytes2.readInt32BE(my_header_offset + 1);
+    my_position += my_field_header_size;
+    if (my_data_type === 0 && my_length === 0) break;
+    if (my_data_type === 0 || my_length < 0) {
+      throw new Error("Invalid legacy expansion field");
+    }
+    if (my_length > file_size - my_position) {
+      throw new Error("Truncated legacy expansion field");
+    }
+    if (!my_uses_scan_buffer && my_length <= LEGACY_SCAN_SMALL_PAYLOAD) {
+      my_scan_start = my_record_start;
       my_scan_length = Math.min(
         LEGACY_SCAN_BLOCK_SIZE,
         file_size - my_scan_start
@@ -3199,17 +3229,6 @@ function read_legacy_metadata(fd, file_size, options) {
         my_scan_length,
         my_scan_start
       );
-    }
-    const my_header_offset = my_position - my_scan_start;
-    const my_data_type = my_scan_buffer[my_header_offset];
-    const my_length = layout.expansion_length_width === 2 ? my_little_endian ? my_scan_buffer.readInt16LE(my_header_offset + 1) : my_scan_buffer.readInt16BE(my_header_offset + 1) : my_little_endian ? my_scan_buffer.readInt32LE(my_header_offset + 1) : my_scan_buffer.readInt32BE(my_header_offset + 1);
-    my_position += my_field_header_size;
-    if (my_data_type === 0 && my_length === 0) break;
-    if (my_data_type === 0 || my_length < 0) {
-      throw new Error("Invalid legacy expansion field");
-    }
-    if (my_length > file_size - my_position) {
-      throw new Error("Truncated legacy expansion field");
     }
     my_position += my_length;
     if (my_position > MAX_LEGACY_METADATA_SIZE) {

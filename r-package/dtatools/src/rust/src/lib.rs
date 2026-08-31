@@ -113,7 +113,6 @@ fn parse_metadata_count(value: &str, context: &str) -> Result<usize, String> {
 
 unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
     values: Sexp,
-    start: usize,
     note: impl Fn(u32, &'a str) -> N,
     characteristic: impl Fn(&'a str, &'a str) -> C,
 ) -> Result<(Vec<N>, Vec<C>), String> {
@@ -124,24 +123,19 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
             "internal Stata metadata field",
         )
     };
-    let count_offset = start
-        .checked_add(1)
-        .filter(|offset| *offset < field_count)
-        .ok_or_else(|| "truncated internal Stata metadata envelope".to_owned())?;
-    if field(start)? != STATA_METADATA_MARKER {
+    if field_count < 2 {
+        return Err("truncated internal Stata metadata envelope".to_owned());
+    }
+    if field(0)? != STATA_METADATA_MARKER {
         return Err("invalid internal Stata metadata marker".to_owned());
     }
-    let note_count = parse_metadata_count(field(count_offset)?, "note")?;
+    let note_count = parse_metadata_count(field(1)?, "note")?;
     if note_count > 9_999 {
         return Err("internal Stata note count exceeds 9,999".to_owned());
     }
-    let mut cursor = count_offset
-        .checked_add(1)
-        .and_then(|offset| {
-            note_count
-                .checked_mul(2)
-                .and_then(|count| offset.checked_add(count))
-        })
+    let mut cursor = note_count
+        .checked_mul(2)
+        .and_then(|count| 2_usize.checked_add(count))
         .filter(|offset| *offset < field_count)
         .ok_or_else(|| "truncated internal Stata note metadata".to_owned())?;
     let characteristic_count = parse_metadata_count(field(cursor)?, "characteristic")?;
@@ -156,7 +150,7 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
         return Err("internal Stata metadata counts do not match its fields".to_owned());
     }
 
-    let mut cursor = count_offset + 1;
+    let mut cursor = 2;
     let mut notes = Vec::new();
     notes
         .try_reserve_exact(note_count)
@@ -191,11 +185,9 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
 
 pub(crate) unsafe fn parse_stata_metadata_sexp(
     values: Sexp,
-    start: usize,
 ) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
     parse_stata_metadata_sexp_as(
         values,
-        start,
         |number, text| StataNote {
             number,
             text: text.to_owned(),
@@ -212,7 +204,6 @@ unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
 ) -> Result<(Vec<DtaWriteNote<'a>>, Vec<DtaWriteCharacteristic<'a>>), String> {
     parse_stata_metadata_sexp_as(
         values,
-        0,
         |number, text| DtaWriteNote::numbered(number, Cow::Borrowed(text)),
         |name, value| DtaWriteCharacteristic {
             name: Cow::Borrowed(name),

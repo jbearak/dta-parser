@@ -539,6 +539,51 @@ describe('DtaFile', () => {
             }
         });
 
+        it('does not reread large legacy expansion payloads while locating data', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const expansion = metadata.section_offsets.characteristics;
+            const recordCount = 32;
+            const valueLength = 67_784;
+            const records: Buffer[] = [];
+            for (let index = 0; index < recordCount; index++) {
+                const payload = Buffer.alloc(66 + valueLength);
+                payload.write('_dta', 0, 'ascii');
+                payload.write(`c${index}`, 33, 'ascii');
+                payload.fill(120, 66);
+                const header = Buffer.alloc(5);
+                header[0] = 1;
+                header.writeInt32LE(payload.length, 1);
+                records.push(header, payload);
+            }
+            records.push(Buffer.alloc(5));
+            const large = Buffer.concat([
+                original.subarray(0, expansion),
+                ...records,
+                original.subarray(metadata.section_offsets.data),
+            ]);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'large-expansions.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                fs.writeFileSync(filePath, large);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.metadata.characteristics).toHaveLength(recordCount);
+                const bytesRead = readSpy.mock.calls.reduce(
+                    (total, call) => total + Number(call[3]),
+                    0
+                );
+                expect(bytesRead).toBeLessThan(large.length + 256 * 1024);
+            } finally {
+                readSpy.mockRestore();
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
         it('rejects truncated release-111 observations during open', async () => {
             const original = fs.readFileSync(V111_FIXTURE);
             const arrayBuffer = original.buffer.slice(

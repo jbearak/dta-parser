@@ -554,13 +554,7 @@ fn discard_private_profile_json(footer: &mut Footer) {
     let mut fields: Vec<Arc<Field>> = owned_fields.iter().cloned().collect();
     drop(owned_fields);
     for field in &mut fields {
-        let metadata = field
-            .metadata()
-            .iter()
-            .filter(|(key, _)| key.as_str() != ARROW_FIELD_KEY)
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect();
-        Arc::make_mut(field).set_metadata(metadata);
+        Arc::make_mut(field).metadata_mut().remove(ARROW_FIELD_KEY);
     }
     footer.schema.fields = fields.into();
     footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);

@@ -275,7 +275,7 @@ fn scan_expansion_fields_ordered(
                 cursor + 2 * layout.varname_width,
                 "legacy characteristic value",
             )?;
-            validate_raw_value_bytes(
+            let value = validate_raw_value_bytes(
                 value,
                 cursor + 2 * layout.varname_width,
                 "legacy characteristic value",
@@ -289,7 +289,7 @@ fn scan_expansion_fields_ordered(
             {
                 collector
                     .get_or_insert_with(CharacteristicCollector::default)
-                    .push(accepted, encoding.decode(field_bytes(value)));
+                    .push(accepted, encoding.decode(value));
             }
         }
         cursor = checked_add(cursor, length, "legacy expansion-field payload")?;

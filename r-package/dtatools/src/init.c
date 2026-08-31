@@ -66,11 +66,11 @@ typedef struct {
 } dtatools_arrow_column;
 
 extern SEXP dtatools_save_arrow_rust(
-    const char *, const char *, SEXP, size_t, const dtatools_arrow_column *,
+    const char *, const char *, SEXP, const dtatools_arrow_column *,
     size_t, size_t, const char *, int, int, int *, char **
 );
 extern SEXP dtatools_datasig_rust(
-    const char *, SEXP, size_t, const dtatools_arrow_column *, size_t, size_t,
+    const char *, SEXP, const dtatools_arrow_column *, size_t, size_t,
     int, int *, char **
 );
 extern void *dtatools_open_arrow_rust(const char *, char **);
@@ -3425,7 +3425,7 @@ SEXP C_dtatools_save_arrow(
     char *rust_error = NULL;
     SEXP result = dtatools_save_arrow_rust(
         output_path, dataset_label, rooted_dataset_metadata,
-        (size_t) XLENGTH(rooted_dataset_metadata), descriptors, column_count, row_count,
+        descriptors, column_count, row_count,
         compression_label, INTEGER(threads)[0], LOGICAL(checksums)[0],
         &interrupted,
         &rust_error
@@ -3493,7 +3493,7 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
     int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_datasig_rust(
-        dataset_label, rooted_dataset_metadata, (size_t) XLENGTH(rooted_dataset_metadata),
+        dataset_label, rooted_dataset_metadata,
         descriptors, column_count, row_count, INTEGER(threads)[0],
         &interrupted,
         &rust_error

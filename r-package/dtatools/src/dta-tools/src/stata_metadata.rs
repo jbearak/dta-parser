@@ -24,11 +24,11 @@ pub(crate) fn validate_raw_value_length(
     Ok(())
 }
 
-pub(crate) fn validate_raw_value_bytes(
-    bytes: &[u8],
+pub(crate) fn validate_raw_value_bytes<'a>(
+    bytes: &'a [u8],
     offset: usize,
     context: &'static str,
-) -> Result<(), DtaError> {
+) -> Result<&'a [u8], DtaError> {
     let length = bytes
         .iter()
         .position(|byte| *byte == 0)
@@ -41,7 +41,7 @@ pub(crate) fn validate_raw_value_bytes(
             limit: MAX_METADATA_VALUE_BYTES,
         });
     }
-    Ok(())
+    Ok(&bytes[..length])
 }
 
 pub(crate) fn note_index(name: &[u8]) -> Option<u32> {

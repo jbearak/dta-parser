@@ -883,7 +883,7 @@ unsafe fn extract_column(
             None
         };
     let value_labels = value_label_table(descriptor, &name)?;
-    let (notes, characteristics) = parse_stata_metadata_sexp(descriptor.stata_metadata, 0)?;
+    let (notes, characteristics) = parse_stata_metadata_sexp(descriptor.stata_metadata)?;
     let string_storage = match descriptor.string_storage {
         -1 => None,
         0 => Some("strL".to_owned()),
@@ -1440,7 +1440,6 @@ fn difftime_seconds_per_unit(units: &str) -> Result<f64, String> {
 unsafe fn assemble_write_dataset(
     dataset_label: *const c_char,
     dataset_metadata: Sexp,
-    metadata_field_count: usize,
     descriptors: &[RArrowColumnDescriptor],
     row_count: usize,
     requested_threads: usize,
@@ -1451,9 +1450,7 @@ unsafe fn assemble_write_dataset(
         label: optional_c_string(dataset_label, "the dataset label")?,
         ..DatasetDocument::default()
     };
-    if metadata_field_count > 0 {
-        (dataset.notes, dataset.characteristics) = parse_stata_metadata_sexp(dataset_metadata, 0)?;
-    }
+    (dataset.notes, dataset.characteristics) = parse_stata_metadata_sexp(dataset_metadata)?;
 
     let mut extracted = Vec::new();
     extracted
@@ -1506,7 +1503,6 @@ unsafe fn assemble_write_dataset(
 pub unsafe extern "C" fn dtatools_datasig_rust(
     dataset_label: *const c_char,
     dataset_metadata: Sexp,
-    metadata_field_count: usize,
     columns: *const RArrowColumnDescriptor,
     column_count: usize,
     row_count: usize,
@@ -1528,7 +1524,6 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
         let (dataset, replacements) = assemble_write_dataset(
             dataset_label,
             dataset_metadata,
-            metadata_field_count,
             descriptors,
             row_count,
             requested_threads,
@@ -1562,8 +1557,8 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
 /// NUL-terminated C byte strings for the duration of this call. `columns`
 /// must address `column_count` readable descriptors whose pointers stay valid
 /// (the R spec list must stay protected) for the duration of this call.
-/// `dataset_metadata` must be a protected STRSXP holding
-/// `metadata_field_count` strings or null when that count is zero.
+/// `dataset_metadata` must be a protected STRSXP holding one complete internal
+/// Stata metadata envelope.
 /// `interrupted` must point to writable status storage. If non-null, `error`
 /// must point to writable storage for one C string pointer. The caller must
 /// run on R's main thread with an initialized R runtime.
@@ -1571,7 +1566,6 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
     path: *const c_char,
     dataset_label: *const c_char,
     dataset_metadata: Sexp,
-    metadata_field_count: usize,
     columns: *const RArrowColumnDescriptor,
     column_count: usize,
     row_count: usize,
@@ -1600,7 +1594,6 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
         let (dataset, replacements) = assemble_write_dataset(
             dataset_label,
             dataset_metadata,
-            metadata_field_count,
             descriptors,
             row_count,
             requested_threads,
