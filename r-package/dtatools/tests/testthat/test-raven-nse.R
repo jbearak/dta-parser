@@ -60,6 +60,19 @@ declaration_path <- function() {
     testthat::test_path("..", "..", "inst", "raven", "nse.toml")
 }
 
+# The policy the package must keep declaring. Spelled out here so that deleting
+# a `[[function]]` table, or emptying its `captured` list, fails instead of
+# silently leaving Raven without the suppression -- the later tests only check
+# the tables that are still present.
+expected_policy <- list(
+    gen = list(captured = c("variable", "values", "where"), captured_dots = FALSE),
+    repl = list(captured = c("variable", "values", "where"), captured_dots = FALSE),
+    replace_values = list(captured = c("variable", "values", "where"), captured_dots = FALSE),
+    tab = list(captured = "x", captured_dots = TRUE),
+    read_dta = list(captured = "col_select", captured_dots = FALSE),
+    read_arrow = list(captured = "col_select", captured_dots = FALSE)
+)
+
 test_that("every declared function is exported by the package", {
     declarations <- read_nse_declarations(declaration_path())
     expect_gt(length(declarations), 0)
@@ -68,6 +81,26 @@ test_that("every declared function is exported by the package", {
         expect_true(
             declaration$name %in% exported,
             info = paste(declaration$name, "is declared but not exported")
+        )
+    }
+})
+
+test_that("the declaration file still carries the expected policy", {
+    declarations <- read_nse_declarations(declaration_path())
+    names(declarations) <- vapply(declarations, function(d) d$name, character(1))
+    expect_setequal(names(declarations), names(expected_policy))
+
+    for (name in names(expected_policy)) {
+        declaration <- declarations[[name]]
+        expect_identical(
+            declaration$captured,
+            expected_policy[[name]]$captured,
+            info = paste("inst/raven/nse.toml no longer captures the expected arguments of", name)
+        )
+        expect_identical(
+            isTRUE(declaration$captured_dots),
+            expected_policy[[name]]$captured_dots,
+            info = paste("inst/raven/nse.toml changed captured_dots for", name)
         )
     }
 })
