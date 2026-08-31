@@ -376,7 +376,6 @@ where
             A: SeqAccess<'de>,
         {
             let mut decoded = Vec::new();
-            let mut names = std::collections::HashSet::new();
             while let Some(raw) = sequence.next_element::<RawCharacteristic<'de>>()? {
                 if raw_string_exceeds_limit(
                     raw.name,
@@ -404,16 +403,28 @@ where
                 if !crate::stata_metadata::valid_canonical_characteristic(
                     &characteristic.name,
                     &characteristic.value,
-                ) || names.contains(&characteristic.name)
-                {
+                ) {
                     return Err(serde::de::Error::custom(
                         "characteristics contain an invalid, duplicate, or reserved name",
                     ));
                 }
                 decoded.try_reserve(1).map_err(serde::de::Error::custom)?;
-                names.try_reserve(1).map_err(serde::de::Error::custom)?;
-                names.insert(characteristic.name.clone());
                 decoded.push(characteristic);
+            }
+
+            // Wait until the Vec is complete so references to its owned names
+            // remain stable. This avoids cloning every name into the duplicate
+            // index while retaining collision-safe string comparisons.
+            let mut names = std::collections::HashSet::new();
+            names
+                .try_reserve(decoded.len())
+                .map_err(serde::de::Error::custom)?;
+            for characteristic in &decoded {
+                if !names.insert(characteristic.name.as_str()) {
+                    return Err(serde::de::Error::custom(
+                        "characteristics contain an invalid, duplicate, or reserved name",
+                    ));
+                }
             }
             Ok(decoded)
         }
@@ -1721,6 +1732,24 @@ mod tests {
             Some(r#"{"version":0,"characteristics":[{"name":"","value":""},invalid]}"#),
         )
         .expect_err("the first invalid characteristic stops the sequence");
+        assert!(
+            error
+                .to_string()
+                .contains("invalid, duplicate, or reserved name"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn characteristic_duplicates_compare_decoded_names() {
+        let error = parse_dataset_document(
+            "0",
+            Some(
+                r#"{"version":0,"characteristics":[{"name":"source","value":"first"},{"name":"sour\u0063e","value":"second"}]}"#,
+            ),
+        )
+        .expect_err("equivalent decoded characteristic names are duplicates");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
         assert!(
             error
                 .to_string()

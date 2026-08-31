@@ -86,51 +86,6 @@ pub struct RArrowColumnDescriptor {
     dictstring: *const c_void,
 }
 
-const DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL: usize = 0;
-const DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA: usize = 1;
-const DTATOOLS_ARROW_SPECIFICATION_COLUMNS: usize = 2;
-const DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES: usize = 3;
-const DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT: usize = 4;
-
-const DTATOOLS_ARROW_COLUMN_NAME: usize = 0;
-const DTATOOLS_ARROW_COLUMN_KIND: usize = 1;
-const DTATOOLS_ARROW_COLUMN_VALUES: usize = 2;
-const DTATOOLS_ARROW_COLUMN_LEVELS: usize = 3;
-const DTATOOLS_ARROW_COLUMN_ORDERED: usize = 4;
-const DTATOOLS_ARROW_COLUMN_LABEL: usize = 5;
-const DTATOOLS_ARROW_COLUMN_FORMAT: usize = 6;
-const DTATOOLS_ARROW_COLUMN_STORAGE: usize = 7;
-const DTATOOLS_ARROW_COLUMN_TIME_ZONE: usize = 8;
-const DTATOOLS_ARROW_COLUMN_UNITS: usize = 9;
-const DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED: usize = 10;
-const DTATOOLS_ARROW_COLUMN_STRING_STORAGE: usize = 11;
-const DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX: usize = 12;
-const DTATOOLS_ARROW_COLUMN_STATA_METADATA: usize = 13;
-const DTATOOLS_ARROW_COLUMN_SLOT_COUNT: usize = 14;
-
-const _: () = {
-    assert!(DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL == 0);
-    assert!(DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA == 1);
-    assert!(DTATOOLS_ARROW_SPECIFICATION_COLUMNS == 2);
-    assert!(DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES == 3);
-    assert!(DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT == 4);
-    assert!(DTATOOLS_ARROW_COLUMN_NAME == 0);
-    assert!(DTATOOLS_ARROW_COLUMN_KIND == 1);
-    assert!(DTATOOLS_ARROW_COLUMN_VALUES == 2);
-    assert!(DTATOOLS_ARROW_COLUMN_LEVELS == 3);
-    assert!(DTATOOLS_ARROW_COLUMN_ORDERED == 4);
-    assert!(DTATOOLS_ARROW_COLUMN_LABEL == 5);
-    assert!(DTATOOLS_ARROW_COLUMN_FORMAT == 6);
-    assert!(DTATOOLS_ARROW_COLUMN_STORAGE == 7);
-    assert!(DTATOOLS_ARROW_COLUMN_TIME_ZONE == 8);
-    assert!(DTATOOLS_ARROW_COLUMN_UNITS == 9);
-    assert!(DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED == 10);
-    assert!(DTATOOLS_ARROW_COLUMN_STRING_STORAGE == 11);
-    assert!(DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX == 12);
-    assert!(DTATOOLS_ARROW_COLUMN_STATA_METADATA == 13);
-    assert!(DTATOOLS_ARROW_COLUMN_SLOT_COUNT == 14);
-};
-
 #[cfg(target_pointer_width = "64")]
 const _: () = {
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, name) == 0);
@@ -164,18 +119,6 @@ pub struct RArrowValueLabelTableDescriptor {
     label_texts: Sexp,
     label_count: usize,
 }
-
-const DTATOOLS_ARROW_VALUE_LABEL_TABLE_NAME: usize = 0;
-const DTATOOLS_ARROW_VALUE_LABEL_TABLE_VALUES: usize = 1;
-const DTATOOLS_ARROW_VALUE_LABEL_TABLE_TEXTS: usize = 2;
-const DTATOOLS_ARROW_VALUE_LABEL_TABLE_SLOT_COUNT: usize = 3;
-
-const _: () = {
-    assert!(DTATOOLS_ARROW_VALUE_LABEL_TABLE_NAME == 0);
-    assert!(DTATOOLS_ARROW_VALUE_LABEL_TABLE_VALUES == 1);
-    assert!(DTATOOLS_ARROW_VALUE_LABEL_TABLE_TEXTS == 2);
-    assert!(DTATOOLS_ARROW_VALUE_LABEL_TABLE_SLOT_COUNT == 3);
-};
 
 #[cfg(target_pointer_width = "64")]
 const _: () = {
@@ -3606,49 +3549,6 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn arrow_write_slots_match_the_c_bridge_contract() {
-        assert_eq!(
-            [
-                DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL,
-                DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA,
-                DTATOOLS_ARROW_SPECIFICATION_COLUMNS,
-                DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES,
-            ],
-            [0, 1, 2, 3]
-        );
-        assert_eq!(DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT, 4);
-        assert_eq!(
-            [
-                DTATOOLS_ARROW_COLUMN_NAME,
-                DTATOOLS_ARROW_COLUMN_KIND,
-                DTATOOLS_ARROW_COLUMN_VALUES,
-                DTATOOLS_ARROW_COLUMN_LEVELS,
-                DTATOOLS_ARROW_COLUMN_ORDERED,
-                DTATOOLS_ARROW_COLUMN_LABEL,
-                DTATOOLS_ARROW_COLUMN_FORMAT,
-                DTATOOLS_ARROW_COLUMN_STORAGE,
-                DTATOOLS_ARROW_COLUMN_TIME_ZONE,
-                DTATOOLS_ARROW_COLUMN_UNITS,
-                DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED,
-                DTATOOLS_ARROW_COLUMN_STRING_STORAGE,
-                DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX,
-                DTATOOLS_ARROW_COLUMN_STATA_METADATA,
-            ],
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-        );
-        assert_eq!(DTATOOLS_ARROW_COLUMN_SLOT_COUNT, 14);
-        assert_eq!(
-            [
-                DTATOOLS_ARROW_VALUE_LABEL_TABLE_NAME,
-                DTATOOLS_ARROW_VALUE_LABEL_TABLE_VALUES,
-                DTATOOLS_ARROW_VALUE_LABEL_TABLE_TEXTS,
-            ],
-            [0, 1, 2]
-        );
-        assert_eq!(DTATOOLS_ARROW_VALUE_LABEL_TABLE_SLOT_COUNT, 3);
-    }
 
     #[test]
     fn empty_zero_copy_arrays_ignore_ffi_sentinel_alignment() {

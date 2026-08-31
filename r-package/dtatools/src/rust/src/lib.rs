@@ -2489,30 +2489,6 @@ pub struct RWriteColumnDescriptor {
     direct_string_data: *mut c_void,
 }
 
-const DTATOOLS_DTA_COLUMN_NAME: usize = 0;
-const DTATOOLS_DTA_COLUMN_TYPE: usize = 1;
-const DTATOOLS_DTA_COLUMN_FORMAT: usize = 2;
-const DTATOOLS_DTA_COLUMN_LABEL: usize = 3;
-const DTATOOLS_DTA_COLUMN_VALUES: usize = 4;
-const DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT: usize = 5;
-const DTATOOLS_DTA_COLUMN_NUMERIC_SCALE: usize = 6;
-const DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX: usize = 7;
-const DTATOOLS_DTA_COLUMN_STATA_METADATA: usize = 8;
-const DTATOOLS_DTA_COLUMN_SLOT_COUNT: usize = 9;
-
-const _: () = {
-    assert!(DTATOOLS_DTA_COLUMN_NAME == 0);
-    assert!(DTATOOLS_DTA_COLUMN_TYPE == 1);
-    assert!(DTATOOLS_DTA_COLUMN_FORMAT == 2);
-    assert!(DTATOOLS_DTA_COLUMN_LABEL == 3);
-    assert!(DTATOOLS_DTA_COLUMN_VALUES == 4);
-    assert!(DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT == 5);
-    assert!(DTATOOLS_DTA_COLUMN_NUMERIC_SCALE == 6);
-    assert!(DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX == 7);
-    assert!(DTATOOLS_DTA_COLUMN_STATA_METADATA == 8);
-    assert!(DTATOOLS_DTA_COLUMN_SLOT_COUNT == 9);
-};
-
 #[cfg(target_pointer_width = "64")]
 const _: () = {
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, name) == 0);
@@ -4213,25 +4189,6 @@ mod tests {
         assert_eq!(selected_row_count(10, 3, Some(4)), 4);
         assert_eq!(selected_row_count(10, 9, Some(8)), 1);
         assert_eq!(selected_row_count(10, 12, None), 0);
-    }
-
-    #[test]
-    fn composed_dta_column_slots_match_the_c_descriptor_contract() {
-        assert_eq!(
-            [
-                super::DTATOOLS_DTA_COLUMN_NAME,
-                super::DTATOOLS_DTA_COLUMN_TYPE,
-                super::DTATOOLS_DTA_COLUMN_FORMAT,
-                super::DTATOOLS_DTA_COLUMN_LABEL,
-                super::DTATOOLS_DTA_COLUMN_VALUES,
-                super::DTATOOLS_DTA_COLUMN_NUMERIC_SHIFT,
-                super::DTATOOLS_DTA_COLUMN_NUMERIC_SCALE,
-                super::DTATOOLS_DTA_COLUMN_VALUE_LABEL_INDEX,
-                super::DTATOOLS_DTA_COLUMN_STATA_METADATA,
-            ],
-            [0, 1, 2, 3, 4, 5, 6, 7, 8]
-        );
-        assert_eq!(super::DTATOOLS_DTA_COLUMN_SLOT_COUNT, 9);
     }
 
     #[test]

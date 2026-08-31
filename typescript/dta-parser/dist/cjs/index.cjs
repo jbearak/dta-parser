@@ -477,7 +477,6 @@ var StataMetadataCollector = class {
   dataset;
   variables;
   targetIndexes;
-  indexes = /* @__PURE__ */ new Map();
   uniqueNoteScopes;
   uniqueCharacteristicScopes;
   constructor(dataset, variables) {
@@ -487,10 +486,6 @@ var StataMetadataCollector = class {
   /** Variable-name lookup entries still retained by this collector. */
   get retainedTargetIndexCount() {
     return this.targetIndexes?.size ?? 0;
-  }
-  /** Scope maps retained for callers that supply un-compacted records. */
-  get indexedScopeCount() {
-    return this.indexes.size;
   }
   targetIndex(target) {
     if (target === "_dta") return 0;
@@ -504,39 +499,6 @@ var StataMetadataCollector = class {
   }
   scope(scopeIndex) {
     return scopeIndex === 0 ? this.dataset : this.variables[scopeIndex - 1];
-  }
-  scopeIndexes(scopeIndex) {
-    const existing = this.indexes.get(scopeIndex);
-    if (existing !== void 0) return existing;
-    const indexes = {};
-    this.indexes.set(scopeIndex, indexes);
-    return indexes;
-  }
-  noteIndexes(scopeIndex) {
-    const scopeIndexes = this.scopeIndexes(scopeIndex);
-    if (scopeIndexes.notes === void 0) {
-      const values = mutableNotes(this.scope(scopeIndex));
-      scopeIndexes.notes = {
-        values,
-        indices: new Map(
-          values.map((note, index) => [note.number, index])
-        )
-      };
-    }
-    return scopeIndexes.notes;
-  }
-  characteristicIndexes(scopeIndex) {
-    const scopeIndexes = this.scopeIndexes(scopeIndex);
-    if (scopeIndexes.characteristics === void 0) {
-      const values = mutableCharacteristics(this.scope(scopeIndex));
-      scopeIndexes.characteristics = {
-        values,
-        indices: new Map(
-          values.map((item, index) => [item.name, index])
-        )
-      };
-    }
-    return scopeIndexes.characteristics;
   }
   uniqueNotes(scopeIndex) {
     let scopes = this.uniqueNoteScopes;
@@ -576,15 +538,6 @@ var StataMetadataCollector = class {
     if (scopeIndex === void 0) return null;
     return { scopeIndex, name, noteNumber: number };
   }
-  pushLazy(target, name, value) {
-    const accepted = this.accept(target, name);
-    if (accepted === null) return false;
-    this.pushAcceptedLazy(accepted, value);
-    return true;
-  }
-  pushAcceptedLazy(accepted, value) {
-    this.pushAccepted(accepted, value());
-  }
   /** Materialize a record from a plan that already resolved duplicates. */
   pushAcceptedUniqueLazy(accepted, value) {
     this.targetIndexes = void 0;
@@ -605,45 +558,7 @@ var StataMetadataCollector = class {
       });
     }
   }
-  pushAccepted(accepted, value) {
-    validExistingMetadataValue(
-      value,
-      accepted.noteNumber === null ? "characteristic" : "note"
-    );
-    if (accepted.noteNumber !== null) {
-      const notes = this.noteIndexes(accepted.scopeIndex);
-      const existing2 = notes.indices.get(accepted.noteNumber);
-      if (existing2 === void 0) {
-        notes.indices.set(accepted.noteNumber, notes.values.length);
-        notes.values.push({
-          number: accepted.noteNumber,
-          text: value
-        });
-      } else {
-        notes.values[existing2].text = value;
-      }
-      return;
-    }
-    const characteristics = this.characteristicIndexes(
-      accepted.scopeIndex
-    );
-    const existing = characteristics.indices.get(accepted.name);
-    if (existing === void 0) {
-      characteristics.indices.set(
-        accepted.name,
-        characteristics.values.length
-      );
-      characteristics.values.push({ name: accepted.name, value });
-    } else {
-      characteristics.values[existing].value = value;
-    }
-  }
   finish() {
-    for (const indexes of this.indexes.values()) {
-      indexes.notes?.values.sort(
-        (left, right) => left.number - right.number
-      );
-    }
     const uniqueNoteScopes = this.uniqueNoteScopes;
     if (uniqueNoteScopes !== void 0) {
       for (let scopeIndex = 0; scopeIndex < uniqueNoteScopes.length; scopeIndex++) {
@@ -655,7 +570,6 @@ var StataMetadataCollector = class {
       }
     }
     this.targetIndexes = void 0;
-    this.indexes.clear();
     this.uniqueNoteScopes = void 0;
     this.uniqueCharacteristicScopes = void 0;
   }

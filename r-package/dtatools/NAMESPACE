@@ -1,6 +1,7 @@
 useDynLib(dtatools, .registration = TRUE)
 S3method(dplyr::recode,Date)
 S3method(dplyr::recode,POSIXct)
+S3method(dplyr::recode,dtatools_stata_metadata_vector)
 S3method(dplyr::recode,haven_labelled)
 S3method(dplyr::recode,numeric)
 S3method(dplyr::recode,stata_numeric)

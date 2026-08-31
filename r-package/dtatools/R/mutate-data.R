@@ -455,11 +455,15 @@ gen <- function(data, variable, values, where = NULL) {
 
 .mutation_rows <- function(value, row_count) {
     if (is.null(value)) return(NULL)
-    stata_positions <- inherits(value, "stata_numeric") &&
-        !inherits(value, "stata_temporal")
-    if (!is.null(dim(value)) ||
-        (!is.logical(value) &&
-         (!is.numeric(value) || (is.object(value) && !stata_positions)))) {
+    classified <- if (inherits(value, .stata_metadata_vector_class)) {
+        .stata_metadata_vector_base(value)
+    } else value
+    stata_positions <- inherits(classified, "stata_numeric") &&
+        !inherits(classified, "stata_temporal")
+    if (!is.null(dim(classified)) ||
+        (!is.logical(classified) &&
+         (!is.numeric(classified) ||
+          (is.object(classified) && !stata_positions)))) {
         stop("`where` must yield logical values or numeric row positions",
              call. = FALSE)
     }
@@ -599,6 +603,9 @@ gen <- function(data, variable, values, where = NULL) {
 }
 
 .generated_numeric_class_supported <- function(values) {
+    if (inherits(values, .stata_metadata_vector_class)) {
+        values <- .stata_metadata_vector_base(values)
+    }
     if (!is.object(values) || inherits(values, "stata_numeric")) return(TRUE)
     classes <- class(values)
     if (inherits(values, "Date")) {

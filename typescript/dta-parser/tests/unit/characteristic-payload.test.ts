@@ -100,6 +100,58 @@ function framePlan(
     return { dataset, variables, plan };
 }
 
+function wideScopeFramePlan(recordName: string): {
+    variables: VariableInfo[];
+    collector: StataMetadataCollector;
+    plan: StataCharacteristicFramePlan;
+    redundantIndexObserved: () => boolean;
+} {
+    const count = 120_000;
+    const width = 129;
+    const stride = 2 * width + 1;
+    const variables = Array.from(
+        { length: count },
+        (_, index) => lazyVariable(`v${index}`, index)
+    );
+    const bytes = new Uint8Array(count * stride);
+    const encoder = new TextEncoder();
+    const encodedName = encoder.encode(recordName);
+    const collector = new StataMetadataCollector(
+        { notes: [], characteristics: [] }, variables
+    );
+    let plan: StataCharacteristicFramePlan;
+    let observedRedundantIndex = false;
+    const utf8 = text_decoder('utf-8');
+    const decoder: DtaTextDecoder = {
+        decode(input): string {
+            if (input.length === 1 && input[0] === 0x78) {
+                observedRedundantIndex ||= plan.retainedIndexCount !== 0
+                    || collector.retainedTargetIndexCount !== 0;
+            }
+            return utf8.decode(input);
+        },
+    };
+    plan = new StataCharacteristicFramePlan(bytes, decoder, collector);
+    for (let index = 0; index < count; index++) {
+        const start = index * stride;
+        bytes.set(encoder.encode(`v${index}`), start);
+        bytes.set(encodedName, start + width);
+        bytes[start + 2 * width] = 0x78;
+        plan.add({
+            namesStart: start,
+            nameWidth: width,
+            valueStart: start + 2 * width,
+            valueLength: 1,
+        });
+    }
+    return {
+        variables,
+        collector,
+        plan,
+        redundantIndexObserved: () => observedRedundantIndex,
+    };
+}
+
 describe('Stata characteristic frame plan', () => {
     it('releases duplicate indexes before decoding and finishes once', () => {
         const dataset: StataMetadataTarget = {
@@ -138,55 +190,17 @@ describe('Stata characteristic frame plan', () => {
     });
 
     it('materializes 120,000 unique scopes without rebuilding indexes', () => {
-        const count = 120_000;
-        const width = 129;
-        const stride = 2 * width + 1;
-        const variables = Array.from(
-            { length: count },
-            (_, index) => lazyVariable(`v${index}`, index)
-        );
-        const bytes = new Uint8Array(count * stride);
-        const encoder = new TextEncoder();
-        const characteristic = encoder.encode('source');
-        const collector = new StataMetadataCollector(
-            { notes: [], characteristics: [] }, variables
-        );
-        let plan: StataCharacteristicFramePlan;
-        let redundantIndexObserved = false;
-        const utf8 = text_decoder('utf-8');
-        const decoder: DtaTextDecoder = {
-            decode(input): string {
-                if (input.length === 1 && input[0] === 0x78) {
-                    redundantIndexObserved ||= plan.retainedIndexCount !== 0
-                        || collector.retainedTargetIndexCount !== 0
-                        || collector.indexedScopeCount !== 0;
-                }
-                return utf8.decode(input);
-            },
-        };
-        plan = new StataCharacteristicFramePlan(bytes, decoder, collector);
-        for (let index = 0; index < count; index++) {
-            const start = index * stride;
-            bytes.set(encoder.encode(`v${index}`), start);
-            bytes.set(characteristic, start + width);
-            bytes[start + 2 * width] = 0x78;
-            plan.add({
-                namesStart: start,
-                nameWidth: width,
-                valueStart: start + 2 * width,
-                valueLength: 1,
-            });
-        }
+        const {
+            variables, collector, plan, redundantIndexObserved,
+        } = wideScopeFramePlan('source');
 
-        expect(plan.retainedCount).toBe(count);
-        expect(plan.retainedIndexCount).toBe(count);
-        expect(collector.indexedScopeCount).toBe(0);
+        expect(plan.retainedCount).toBe(120_000);
+        expect(plan.retainedIndexCount).toBe(120_000);
         plan.finish();
 
-        expect(redundantIndexObserved).toBeFalse();
+        expect(redundantIndexObserved()).toBeFalse();
         expect(plan.retainedIndexCount).toBe(0);
         expect(collector.retainedTargetIndexCount).toBe(0);
-        expect(collector.indexedScopeCount).toBe(0);
         expect(variables.every(isStataCharacteristicsMaterialized)).toBeTrue();
         expect(variables.every(variable =>
             !isStataNotesMaterialized(variable)
@@ -195,8 +209,96 @@ describe('Stata characteristic frame plan', () => {
             { name: 'source', value: 'x' },
         ]);
         variables[0].characteristics[0].value = 'first only';
-        expect(variables[count - 1].characteristics).toEqual([
+        expect(variables[119_999].characteristics).toEqual([
             { name: 'source', value: 'x' },
+        ]);
+    });
+
+    it('materializes only notes across 120,000 unique scopes', () => {
+        const {
+            variables, collector, plan, redundantIndexObserved,
+        } = wideScopeFramePlan('note1');
+
+        plan.finish();
+
+        expect(redundantIndexObserved()).toBeFalse();
+        expect(plan.retainedIndexCount).toBe(0);
+        expect(collector.retainedTargetIndexCount).toBe(0);
+        expect(variables.every(isStataNotesMaterialized)).toBeTrue();
+        expect(variables.every(variable =>
+            !isStataCharacteristicsMaterialized(variable)
+        )).toBeTrue();
+        expect(variables[0].notes).toEqual([
+            { number: 1, text: 'x' },
+        ]);
+        variables[0].notes[0] = { number: 1, text: 'first only' };
+        expect(variables[119_999].notes).toEqual([
+            { number: 1, text: 'x' },
+        ]);
+    });
+
+    it('filters reserved and missing-target records on the framed path', () => {
+        const { dataset, variables, plan } = framePlan(129, [
+            { target: '_dta', name: 'note3', value: 'three' },
+            { target: '_dta', name: 'note1', value: '' },
+            { target: '_dta', name: 'note01', value: 'reserved' },
+            { target: '_dta', name: 'source', value: 'old' },
+            { target: '_dta', name: 'source', value: 'new' },
+            { target: '_dta', name: 'note0', value: 'reserved' },
+            { target: '_dta', name: 'note10000', value: 'reserved' },
+            { target: '_dta', name: '_lang_list', value: 'reserved' },
+            { target: '_dta', name: '_lang_v_en', value: 'reserved' },
+            { target: 'x', name: '_lang_l_en', value: 'reserved' },
+            { target: '_dta', name: 'fralias_from', value: 'reserved' },
+            { target: 'x', name: 'fralias_varname', value: 'reserved' },
+            { target: 'x', name: 'note2', value: 'variable' },
+            { target: 'x', name: 'role', value: 'id' },
+            { target: 'missing', name: 'source', value: 'ignored' },
+        ]);
+
+        plan.finish();
+
+        expect(dataset.notes).toEqual([
+            { number: 1, text: '' },
+            { number: 3, text: 'three' },
+        ]);
+        expect(dataset.characteristics).toEqual([
+            { name: 'source', value: 'new' },
+        ]);
+        expect(variables[0].notes).toEqual([
+            { number: 2, text: 'variable' },
+        ]);
+        expect(variables[0].characteristics).toEqual([
+            { name: 'role', value: 'id' },
+        ]);
+    });
+
+    it('does not index variables for dataset or structural records', () => {
+        const dataset: StataMetadataTarget = {
+            notes: [], characteristics: [],
+        };
+        const unreadable = variable('x');
+        Object.defineProperty(unreadable, 'name', {
+            get(): never {
+                throw new Error('variable names should remain lazy');
+            },
+        });
+        const collector = new StataMetadataCollector(dataset, [unreadable]);
+        const encoded = encodeRecords(129, [
+            { target: '_dta', name: 'note1', value: 'dataset' },
+            { target: 'x', name: '_lang_v_en', value: 'structural' },
+            { target: 'x', name: 'fralias_from', value: 'structural' },
+            { target: 'x', name: 'fralias_varname', value: 'structural' },
+        ]);
+        const plan = new StataCharacteristicFramePlan(
+            encoded.bytes, text_decoder('utf-8'), collector
+        );
+        for (const locator of encoded.locators) plan.add(locator);
+
+        plan.finish();
+
+        expect(dataset.notes).toEqual([
+            { number: 1, text: 'dataset' },
         ]);
     });
 

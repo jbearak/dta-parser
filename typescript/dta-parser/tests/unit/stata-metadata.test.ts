@@ -12,50 +12,11 @@ import {
     setStataCharacteristic,
     setStataNote,
 } from '../../src/index';
-import {
-    isStataCharacteristicsMaterialized,
-    isStataNotesMaterialized,
-    StataMetadataCollector,
-    type StataMetadataTarget,
-    withLazyStataMetadata,
-} from '../../src/stata-metadata';
+import type { StataMetadataTarget } from '../../src/stata-metadata';
 import type { DtaMetadata, VariableInfo } from '../../src/types';
-
-interface CharacteristicRecord {
-    target: string;
-    name: string;
-    value: string;
-}
-
-function applyCharacteristicRecords(
-    records: CharacteristicRecord[],
-    dataset: StataMetadataTarget,
-    variables: VariableInfo[]
-): void {
-    const collector = new StataMetadataCollector(dataset, variables);
-    records.forEach(record => {
-        collector.pushLazy(record.target, record.name, () => record.value);
-    });
-    collector.finish();
-}
 
 function metadata(): StataMetadataTarget {
     return { notes: [], characteristics: [] };
-}
-
-function variable(name: string): VariableInfo {
-    return {
-        name,
-        type: 'byte',
-        type_code: 65530,
-        format: '%8.0g',
-        label: '',
-        value_label_name: '',
-        notes: [],
-        characteristics: [],
-        byte_width: 1,
-        byte_offset: 0,
-    };
 }
 
 function oldVariable(name: string): VariableInfo {
@@ -69,19 +30,6 @@ function oldVariable(name: string): VariableInfo {
         byte_width: 1,
         byte_offset: 0,
     };
-}
-
-function lazyVariable(name: string, byteOffset: number): VariableInfo {
-    return withLazyStataMetadata({
-        name,
-        type: 'byte',
-        type_code: 65530,
-        format: '%8.0g',
-        label: '',
-        value_label_name: '',
-        byte_width: 1,
-        byte_offset: byteOffset,
-    });
 }
 
 describe('Stata metadata accessors', () => {
@@ -110,12 +58,9 @@ describe('Stata metadata accessors', () => {
             { number: 3, text: 'third' },
         ]);
 
-        const dataset: StataMetadataTarget = {};
         const variables = [oldVariable('x')];
-        applyCharacteristicRecords([
-            { target: 'x', name: 'note2', value: 'variable' },
-            { target: 'x', name: 'role', value: 'id' },
-        ], dataset, variables);
+        setStataNote(variables[0], 2, 'variable');
+        setStataCharacteristic(variables[0], 'role', 'id');
         expect(listStataNotes(variables[0])).toEqual([
             { number: 2, text: 'variable' },
         ]);
@@ -279,106 +224,5 @@ describe('Stata metadata accessors', () => {
         expect(listStataCharacteristics(decoded)).toEqual(
             decoded.characteristics
         );
-    });
-});
-
-describe('DTA characteristic recovery', () => {
-    it('uses last duplicate values, filters reserved records, and scopes variables', () => {
-        const dataset = metadata();
-        const variables = [variable('x')];
-        applyCharacteristicRecords([
-            { target: '_dta', name: 'note3', value: 'three' },
-            { target: '_dta', name: 'note1', value: '' },
-            { target: '_dta', name: 'note01', value: 'reserved' },
-            { target: '_dta', name: 'source', value: 'old' },
-            { target: '_dta', name: 'source', value: 'new' },
-            { target: '_dta', name: 'note0', value: '9' },
-            { target: '_dta', name: 'note10000', value: 'reserved' },
-            { target: '_dta', name: '_lang_list', value: 'default' },
-            { target: '_dta', name: '_lang_v_en', value: 'English label' },
-            { target: 'x', name: '_lang_l_en', value: 'English labels' },
-            { target: '_dta', name: 'fralias_from', value: 'source frame' },
-            { target: 'x', name: 'fralias_varname', value: 'source variable' },
-            { target: 'x', name: 'note2', value: 'variable' },
-            { target: 'x', name: 'role', value: 'id' },
-            { target: 'missing', name: 'source', value: 'ignored' },
-        ], dataset, variables);
-
-        expect(dataset.notes).toEqual([
-            { number: 1, text: '' },
-            { number: 3, text: 'three' },
-        ]);
-        expect(dataset.characteristics).toEqual([
-            { name: 'source', value: 'new' },
-        ]);
-        expect(variables[0].notes).toEqual([
-            { number: 2, text: 'variable' },
-        ]);
-        expect(variables[0].characteristics).toEqual([
-            { name: 'role', value: 'id' },
-        ]);
-    });
-
-    it('does not index variables for dataset or structural records', () => {
-        const dataset = metadata();
-        const unreadable = variable('x');
-        Object.defineProperty(unreadable, 'name', {
-            get(): never {
-                throw new Error('variable names should remain lazy');
-            },
-        });
-        applyCharacteristicRecords([
-            { target: '_dta', name: 'note1', value: 'dataset' },
-            { target: 'x', name: '_lang_v_en', value: 'structural' },
-            { target: 'x', name: 'fralias_from', value: 'structural' },
-            { target: 'x', name: 'fralias_varname', value: 'structural' },
-        ], dataset, [unreadable]);
-        expect(dataset.notes).toEqual([
-            { number: 1, text: 'dataset' },
-        ]);
-    });
-
-    it('materializes only characteristics across 120,000 variable scopes', () => {
-        const variables = Array.from(
-            { length: 120_000 },
-            (_, index) => lazyVariable(`v${index}`, index)
-        );
-        const collector = new StataMetadataCollector(metadata(), variables);
-        const value = () => 'source value';
-        for (const variable of variables) {
-            collector.pushLazy(variable.name, 'source', value);
-        }
-        collector.finish();
-
-        expect(variables.every(isStataCharacteristicsMaterialized)).toBeTrue();
-        expect(variables.every(variable =>
-            !isStataNotesMaterialized(variable)
-        )).toBeTrue();
-        variables[0].characteristics![0].value = 'first only';
-        expect(variables[119_999].characteristics).toEqual([
-            { name: 'source', value: 'source value' },
-        ]);
-    });
-
-    it('materializes only notes across 120,000 variable scopes', () => {
-        const variables = Array.from(
-            { length: 120_000 },
-            (_, index) => lazyVariable(`v${index}`, index)
-        );
-        const collector = new StataMetadataCollector(metadata(), variables);
-        const value = () => 'note value';
-        for (const variable of variables) {
-            collector.pushLazy(variable.name, 'note1', value);
-        }
-        collector.finish();
-
-        expect(variables.every(isStataNotesMaterialized)).toBeTrue();
-        expect(variables.every(variable =>
-            !isStataCharacteristicsMaterialized(variable)
-        )).toBeTrue();
-        variables[0].notes![0] = { number: 1, text: 'first only' };
-        expect(variables[119_999].notes).toEqual([
-            { number: 1, text: 'note value' },
-        ]);
     });
 });

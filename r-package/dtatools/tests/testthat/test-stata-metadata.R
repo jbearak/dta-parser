@@ -237,6 +237,31 @@ test_that("vctrs preserves metadata on supported plain vector types", {
     expect_false(inherits(ordinary, "dtatools_stata_metadata_vector"))
 })
 
+test_that("dplyr recode treats metadata vector markers as transparent", {
+    numeric <- set_stata_note(c(1, 2), 4L, "numeric note")
+    numeric <- set_stata_characteristic(numeric, "source", "numeric")
+    character <- set_stata_note(c("a", "b"), 5L, "character note")
+    character <- set_stata_characteristic(
+        character, "source", "character"
+    )
+
+    recoded_numeric <- dplyr::recode(numeric, `1` = 10)
+    recoded_character <- dplyr::recode(character, a = "A")
+
+    expect_identical(as.vector(recoded_numeric), c(10, 2))
+    expect_identical(stata_notes(recoded_numeric), c(`4` = "numeric note"))
+    expect_identical(
+        stata_characteristics(recoded_numeric), c(source = "numeric")
+    )
+    expect_identical(as.vector(recoded_character), c("A", "b"))
+    expect_identical(
+        stata_notes(recoded_character), c(`5` = "character note")
+    )
+    expect_identical(
+        stata_characteristics(recoded_character), c(source = "character")
+    )
+})
+
 test_that("metadata vector markers remain writable", {
     character <- set_stata_note(c("a", "b"), 1L, "character note")
     logical <- set_stata_note(c(TRUE, FALSE), 1L, "logical note")

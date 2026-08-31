@@ -102,21 +102,6 @@ function validCharacteristicNameShape(name: string): boolean {
         && utf8LengthAtMost(name, 128);
 }
 
-interface NoteScopeIndexes {
-    values: StataNote[];
-    indices: Map<number, number>;
-}
-
-interface CharacteristicScopeIndexes {
-    values: StataCharacteristic[];
-    indices: Map<string, number>;
-}
-
-interface ScopeIndexes {
-    notes?: NoteScopeIndexes;
-    characteristics?: CharacteristicScopeIndexes;
-}
-
 export interface AcceptedStataCharacteristic {
     scopeIndex: number;
     name: string;
@@ -192,7 +177,6 @@ export class StataMetadataCollector {
     private readonly dataset: StataMetadataTarget;
     private readonly variables: VariableInfo[];
     private targetIndexes: Map<string, number> | undefined;
-    private readonly indexes = new Map<number, ScopeIndexes>();
     private uniqueNoteScopes: Uint8Array | undefined;
     private uniqueCharacteristicScopes: Uint8Array | undefined;
 
@@ -204,11 +188,6 @@ export class StataMetadataCollector {
     /** Variable-name lookup entries still retained by this collector. */
     get retainedTargetIndexCount(): number {
         return this.targetIndexes?.size ?? 0;
-    }
-
-    /** Scope maps retained for callers that supply un-compacted records. */
-    get indexedScopeCount(): number {
-        return this.indexes.size;
     }
 
     private targetIndex(target: string): number | undefined {
@@ -226,44 +205,6 @@ export class StataMetadataCollector {
         return scopeIndex === 0
             ? this.dataset
             : this.variables[scopeIndex - 1];
-    }
-
-    private scopeIndexes(scopeIndex: number): ScopeIndexes {
-        const existing = this.indexes.get(scopeIndex);
-        if (existing !== undefined) return existing;
-        const indexes: ScopeIndexes = {};
-        this.indexes.set(scopeIndex, indexes);
-        return indexes;
-    }
-
-    private noteIndexes(scopeIndex: number): NoteScopeIndexes {
-        const scopeIndexes = this.scopeIndexes(scopeIndex);
-        if (scopeIndexes.notes === undefined) {
-            const values = mutableNotes(this.scope(scopeIndex));
-            scopeIndexes.notes = {
-                values,
-                indices: new Map(
-                    values.map((note, index) => [note.number, index])
-                ),
-            };
-        }
-        return scopeIndexes.notes;
-    }
-
-    private characteristicIndexes(
-        scopeIndex: number
-    ): CharacteristicScopeIndexes {
-        const scopeIndexes = this.scopeIndexes(scopeIndex);
-        if (scopeIndexes.characteristics === undefined) {
-            const values = mutableCharacteristics(this.scope(scopeIndex));
-            scopeIndexes.characteristics = {
-                values,
-                indices: new Map(
-                    values.map((item, index) => [item.name, index])
-                ),
-            };
-        }
-        return scopeIndexes.characteristics;
     }
 
     private uniqueNotes(scopeIndex: number): StataNote[] {
@@ -309,20 +250,6 @@ export class StataMetadataCollector {
         return { scopeIndex, name, noteNumber: number };
     }
 
-    pushLazy(target: string, name: string, value: () => string): boolean {
-        const accepted = this.accept(target, name);
-        if (accepted === null) return false;
-        this.pushAcceptedLazy(accepted, value);
-        return true;
-    }
-
-    pushAcceptedLazy(
-        accepted: AcceptedStataCharacteristic,
-        value: () => string
-    ): void {
-        this.pushAccepted(accepted, value());
-    }
-
     /** Materialize a record from a plan that already resolved duplicates. */
     pushAcceptedUniqueLazy(
         accepted: AcceptedStataCharacteristic,
@@ -349,46 +276,7 @@ export class StataMetadataCollector {
         }
     }
 
-    private pushAccepted(
-        accepted: AcceptedStataCharacteristic, value: string
-    ): void {
-        validExistingMetadataValue(
-            value,
-            accepted.noteNumber === null ? 'characteristic' : 'note'
-        );
-        if (accepted.noteNumber !== null) {
-            const notes = this.noteIndexes(accepted.scopeIndex);
-            const existing = notes.indices.get(accepted.noteNumber);
-            if (existing === undefined) {
-                notes.indices.set(accepted.noteNumber, notes.values.length);
-                notes.values.push({
-                    number: accepted.noteNumber, text: value,
-                });
-            } else {
-                notes.values[existing].text = value;
-            }
-            return;
-        }
-        const characteristics = this.characteristicIndexes(
-            accepted.scopeIndex
-        );
-        const existing = characteristics.indices.get(accepted.name);
-        if (existing === undefined) {
-            characteristics.indices.set(
-                accepted.name, characteristics.values.length
-            );
-            characteristics.values.push({ name: accepted.name, value });
-        } else {
-            characteristics.values[existing].value = value;
-        }
-    }
-
     finish(): void {
-        for (const indexes of this.indexes.values()) {
-            indexes.notes?.values.sort(
-                (left, right) => left.number - right.number
-            );
-        }
         const uniqueNoteScopes = this.uniqueNoteScopes;
         if (uniqueNoteScopes !== undefined) {
             for (let scopeIndex = 0;
@@ -402,7 +290,6 @@ export class StataMetadataCollector {
             }
         }
         this.targetIndexes = undefined;
-        this.indexes.clear();
         this.uniqueNoteScopes = undefined;
         this.uniqueCharacteristicScopes = undefined;
     }

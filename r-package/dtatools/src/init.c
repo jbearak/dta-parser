@@ -6154,17 +6154,25 @@ static int is_missing_supported_class(SEXP value) {
     if (!Rf_isObject(value)) return 1;
     if (Rf_inherits(value, "factor")) return 0;
 
+    SEXP classes = Rf_getAttrib(value, R_ClassSymbol);
+    int metadata_only = TYPEOF(classes) == STRSXP && XLENGTH(classes) == 1 &&
+        strcmp(
+            CHAR(STRING_ELT(classes, 0)),
+            "dtatools_stata_metadata_vector"
+        ) == 0;
+
     switch (TYPEOF(value)) {
     case LGLSXP:
     case INTSXP:
     case REALSXP:
-        return Rf_inherits(value, "stata_numeric") ||
+        return metadata_only ||
+            Rf_inherits(value, "stata_numeric") ||
             Rf_inherits(value, "stata_temporal") ||
             Rf_inherits(value, "Date") ||
             Rf_inherits(value, "POSIXct") ||
             Rf_inherits(value, "haven_labelled");
     case STRSXP:
-        return Rf_inherits(value, "haven_labelled");
+        return metadata_only || Rf_inherits(value, "haven_labelled");
     default:
         return 0;
     }
