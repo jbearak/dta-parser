@@ -91,9 +91,18 @@ logical_profile <- profile_memory(
 )
 logical_plan_time <- logical_profile$elapsed / 5
 logical_plan_allocation <- logical_profile$total
+all_false_rows <- rep(FALSE, rows)
+all_false_profile <- profile_memory(
+    replace_values(data, compact, 3, where = all_false_rows),
+    "dtatools-reference-all-false-plan-"
+)
+all_false_plan_time <- all_false_profile$elapsed
+all_false_plan_allocation <- all_false_profile$total
 stopifnot(
     logical_plan_time < 0.02,
-    logical_plan_allocation < compact_byte_bytes
+    logical_plan_allocation < compact_byte_bytes,
+    all_false_plan_time < max(0.01, logical_plan_time * 0.75),
+    all_false_plan_allocation < compact_byte_bytes
 )
 
 explicit_rows <- stata_long(seq_len(rows))
@@ -133,6 +142,24 @@ position_vector_profile <- profile_memory(
 position_vector_replacement_time <- position_vector_profile$elapsed
 largest_position_vector_allocation <- position_vector_profile$largest
 
+selected_count <- rows - 1L
+selected_rows <- stata_long(seq_len(selected_count))
+integer_selected_rows <- seq_len(selected_count)
+selected_replacement <- rep.int(2L, selected_count)
+integer_selected_time <- system.time(
+    replace_values(
+        data, compact, selected_replacement, where = integer_selected_rows
+    )
+)[["elapsed"]]
+selected_profile <- profile_memory(
+    replace_values(
+        data, compact, selected_replacement, where = selected_rows
+    ),
+    "dtatools-reference-selected-vector-replacement-"
+)
+selected_vector_replacement_time <- selected_profile$elapsed
+largest_selected_vector_allocation <- selected_profile$largest
+
 compact_replacement <- stata_byte(rep(3, rows))
 compact_vector_profile <- profile_memory(
     replace_values(data, compact, .env$compact_replacement),
@@ -145,9 +172,11 @@ stopifnot(
     identical(as.double(data$compact[[rows]]), 3),
     largest_vector_allocation < compact_byte_bytes,
     largest_position_vector_allocation < compact_byte_bytes,
+    largest_selected_vector_allocation < compact_byte_bytes,
     largest_compact_vector_allocation < compact_byte_bytes,
     vector_replacement_time < 0.2,
     position_vector_replacement_time < 0.3,
+    selected_vector_replacement_time < max(0.25, integer_selected_time * 2),
     compact_vector_replacement_time < 0.3
 )
 
@@ -392,6 +421,11 @@ cat(sprintf(
     "logical_plan_profiled_allocation_bytes\t%.0f\n",
     logical_plan_allocation
 ))
+cat(sprintf("all_false_plan_seconds\t%.6f\n", all_false_plan_time))
+cat(sprintf(
+    "all_false_plan_profiled_allocation_bytes\t%.0f\n",
+    all_false_plan_allocation
+))
 cat(sprintf("explicit_plan_seconds\t%.6f\n", explicit_plan_time))
 cat(sprintf(
     "integer_explicit_plan_seconds\t%.6f\n",
@@ -416,6 +450,18 @@ cat(sprintf(
 cat(sprintf(
     "position_vector_replacement_largest_allocation_bytes\t%.0f\n",
     largest_position_vector_allocation
+))
+cat(sprintf(
+    "selected_vector_replacement_seconds\t%.6f\n",
+    selected_vector_replacement_time
+))
+cat(sprintf(
+    "integer_selected_vector_replacement_seconds\t%.6f\n",
+    integer_selected_time
+))
+cat(sprintf(
+    "selected_vector_replacement_largest_allocation_bytes\t%.0f\n",
+    largest_selected_vector_allocation
 ))
 cat(sprintf(
     "compact_vector_replacement_seconds\t%.6f\n",

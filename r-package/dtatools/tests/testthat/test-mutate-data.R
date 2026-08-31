@@ -148,6 +148,10 @@ test_that("where has documented logical and position semantics", {
     replace_values(data, x, integer(), where = integer())
     expect_identical(data$x, unchanged)
 
+    all_false <- data.frame(x = 1:3)
+    replace_values(all_false, x, 9L, where = rep(FALSE, 3))
+    expect_identical(all_false$x, 1:3)
+
     for (selection in list(FALSE, integer())) {
         fresh <- data.frame(x = 1:3)
         before <- serialize(fresh, NULL)

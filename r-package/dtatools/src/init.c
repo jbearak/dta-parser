@@ -627,6 +627,7 @@ SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value) {
             if (LOGICAL_ELT(value, index) == 1) selected++;
         }
         if (selected == row_count) return R_NilValue;
+        if (selected == 0) return Rf_allocVector(INTSXP, 0);
         SEXP result = PROTECT(Rf_allocVector(INTSXP, selected));
         R_xlen_t output = 0;
         for (R_xlen_t index = 0; index < length; index++) {
@@ -4171,10 +4172,8 @@ static compact_replacement_plan compact_replacement_plan_create(
         for (R_xlen_t index = 0; index < value_plan.count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             int missing_code;
-            R_xlen_t row = reference_patch_row(rows, index);
-            R_xlen_t value_index = reference_value_index(
-                &value_plan, index, row
-            );
+            R_xlen_t value_index = value_plan.mode == REFERENCE_VALUES_BY_ROW
+                ? reference_patch_row(rows, index) : index;
             double value = numeric_reader_at(
                 &plan.reader, value_index, &missing_code
             );

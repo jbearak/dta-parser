@@ -55,10 +55,11 @@
 #' storage. Ordinary `POSIXct` results use Stata `double` storage so their
 #' millisecond datetime representation is not rounded. `Date` and `POSIXct`
 #' results retain their temporal class and receive the corresponding Stata
-#' temporal declaration. Other classed numeric results, including `difftime`
-#' and `bit64::integer64`, are rejected because their physical representation
-#' does not have Stata numeric semantics. Convert them explicitly to a bare
-#' numeric or one of the supported temporal or Stata types before generation.
+#' temporal declaration. Standard `haven_labelled` results preserve their label
+#' metadata. Other classed numeric results, including `difftime` and
+#' `bit64::integer64`, are rejected because their physical representation does
+#' not have Stata numeric semantics. Convert them explicitly to a bare numeric
+#' or one of the supported labelled, temporal, or Stata types before generation.
 #' Character results keep a valid declared `stata.string.storage`. Otherwise,
 #' they use the smallest `str1` through `str2045` width that fits, or `strL`
 #' above 2,045 UTF-8 bytes. Numeric rows excluded by `where` contain
