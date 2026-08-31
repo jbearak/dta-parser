@@ -96,7 +96,8 @@ unverified tail after an interruption, restart at its one-based ordered corpus
 position:
 
 ```sh
-benchmarks/r-corpus-roundtrip/verify.sh from 1617
+benchmarks/r-corpus-roundtrip/verify.sh from \
+  target/r-corpus-roundtrip-verification/PREVIOUS_RUN 1617
 ```
 
 This recovery mode does not replace the final uninterrupted full-run gate.

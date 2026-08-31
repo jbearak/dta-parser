@@ -39,7 +39,8 @@
 #' @param version Target Stata application version, either 18 or 19.
 #' @param label Dataset label. Defaults to the data frame's `label` attribute.
 #' @param strl_threshold Character columns whose maximum UTF-8 byte length is
-#'   greater than this value are stored as `strL`.
+#'   greater than this value are stored as `strL`. An explicit
+#'   `stata.string.storage` fixed-width declaration takes precedence.
 #' @param adjust_tz For `POSIXct` columns, whether to preserve displayed clock
 #'   time (`TRUE`) or the underlying UTC instant (`FALSE`).
 #' @return `data`, invisibly.
@@ -654,7 +655,8 @@ save_dta <- function(data, path, version = 19L,
         } else NULL
         if (!is.null(declared_width)) maximum <- max(maximum, declared_width)
         fixed <- !identical(declared, "strL") &&
-            maximum <= strl_threshold && maximum <= 2045L
+            maximum <= 2045L &&
+            (!is.null(declared_width) || maximum <= strl_threshold)
         width <- max(1L, maximum)
         type_code <- if (fixed) width + 4L else 2050L
         storage <- if (fixed) "fixed" else "strL"

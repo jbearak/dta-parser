@@ -475,7 +475,7 @@ test_that("projection, renaming, and row bounds match haven", {
     expect_identical(actual, rust_vectors)
     expect_identical(names(actual), c("origin", "make", "price"))
     expect_equal(without_stata_storage(actual$origin), expected$foreign)
-    expect_equal(actual$make, expected$make)
+    expect_equal(without_stata_storage(actual$make), expected$make)
     expect_equal(without_stata_storage(actual$price), expected$price)
     expect_identical(attr(actual, "label"), attr(expected, "label"))
     expect_identical(attr(actual, "notes"), attr(expected, "notes"))
@@ -723,7 +723,7 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
 
             expect_identical(actual, rust_vectors,
                              info = paste(info, "materialization"))
-            expect_identical(actual$make, expected$make,
+            expect_identical(without_stata_storage(actual$make), expected$make,
                              info = paste(info, "fixed string"))
             expect_identical(attr(actual, "label"), attr(expected, "label"),
                              info = paste(info, "dataset label"))
@@ -739,7 +739,9 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
     modern <- fixture("auto_v118.dta")
     expect_identical(read_dta(modern, encoding = "utf_8"),
                      read_dta(modern, encoding = "UTF8"))
-    expect_identical(read_dta(modern, encoding = "UTF-8")$make,
+    expect_identical(without_stata_storage(
+                         read_dta(modern, encoding = "UTF-8")$make
+                     ),
                      haven::read_dta(modern, encoding = "UTF-8")$make)
 
     note_bytes <- readBin(modern, "raw", file.info(modern)$size)

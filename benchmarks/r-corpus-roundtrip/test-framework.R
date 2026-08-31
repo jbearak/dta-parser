@@ -78,7 +78,20 @@ stopifnot(
 )
 invalid_jobs <- tryCatch(roundtrip_verification_limits("0", "96"), error = identity)
 invalid_memory <- tryCatch(roundtrip_verification_limits("16", "nope"), error = identity)
-stopifnot(inherits(invalid_jobs, "error"), inherits(invalid_memory, "error"))
+oversized_wave <- tryCatch(
+    roundtrip_verification_waves(
+        51, jobs = 16L, memory_bytes = 100,
+        expansion = 2, minimum_bytes = 1
+    ),
+    error = identity
+)
+stopifnot(
+    inherits(invalid_jobs, "error"),
+    inherits(invalid_memory, "error"),
+    inherits(oversized_wave, "error"),
+    grepl("DTATOOLS_VERIFY_MEMORY_GIB", conditionMessage(oversized_wave),
+          fixed = TRUE)
+)
 invalid_selection <- tryCatch(
     roundtrip_select_verification(ordered_fixture, "smallest", "0"),
     error = identity
@@ -254,6 +267,43 @@ write.table(
 )
 validated_cache <- roundtrip_cached_inventory(root, cached_inventory_path)
 stopifnot(identical(validated_cache$release, inventory$release))
+recovery_run <- file.path(root, "previous-run")
+dir.create(recovery_run)
+stopifnot(file.copy(
+    cached_inventory_path, file.path(recovery_run, "inventory.tsv")
+))
+validated_recovery <- roundtrip_recovery_inventory(root, recovery_run)
+stopifnot(identical(validated_recovery$id, inventory$id))
+legacy_recovery_run <- file.path(root, "legacy-previous-run")
+dir.create(legacy_recovery_run)
+write.table(
+    cached_inventory[c(
+        "corpus", "id", "relative_path", "release", "bytes", "sha256"
+    )],
+    file.path(legacy_recovery_run, "inventory.tsv"),
+    sep = "\t", row.names = FALSE, quote = TRUE
+)
+validated_legacy_recovery <- roundtrip_recovery_inventory(
+    root, legacy_recovery_run
+)
+stopifnot(identical(validated_legacy_recovery$id, inventory$id))
+wrong_legacy <- cached_inventory[c(
+    "corpus", "id", "relative_path", "release", "bytes", "sha256"
+)]
+wrong_legacy$sha256[[1L]] <- strrep("f", 64L)
+write.table(
+    wrong_legacy, file.path(legacy_recovery_run, "inventory.tsv"),
+    sep = "\t", row.names = FALSE, quote = TRUE
+)
+wrong_legacy_error <- tryCatch(
+    roundtrip_recovery_inventory(root, legacy_recovery_run),
+    error = identity
+)
+stopifnot(
+    inherits(wrong_legacy_error, "error"),
+    grepl("corpus files changed", conditionMessage(wrong_legacy_error),
+          fixed = TRUE)
+)
 stale_release <- cached_inventory
 stale_release$release[stale_release$corpus == "DHS"] <- 117L
 write.table(
