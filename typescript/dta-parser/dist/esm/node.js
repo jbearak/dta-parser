@@ -310,6 +310,7 @@ function text_decoder(encoding) {
 // src/stata-metadata.ts
 var NOTE_NAME = /^note([0-9]+)$/;
 var MAX_STATA_METADATA_VALUE_BYTES = 67784;
+var MAX_DECODED_STATA_METADATA_VALUE_BYTES = 203352;
 var TEXT_ENCODER = new TextEncoder();
 function noteNumber(name) {
   const match = NOTE_NAME.exec(name);
@@ -330,24 +331,52 @@ function mutableNotes(target) {
     target.notes = notes;
     return notes;
   }
+  if (!Array.isArray(current)) {
+    throw new Error("Malformed Stata note metadata");
+  }
   if (current.length > 0 && current.every((note) => typeof note === "string")) {
-    const notes = current.map((text, index) => ({
-      number: index + 1,
-      text
-    }));
+    if (current.length > 9999) {
+      throw new Error("Malformed Stata note metadata");
+    }
+    const notes = current.map((text, index) => {
+      validExistingMetadataValue(text, "note");
+      return { number: index + 1, text };
+    });
     target.notes = notes;
     return notes;
   }
-  if (!current.every(
-    (note) => typeof note === "object" && note !== null && typeof note.number === "number" && typeof note.text === "string"
-  )) {
-    throw new Error("Malformed Stata note metadata");
+  const numbers = /* @__PURE__ */ new Set();
+  for (const note of current) {
+    if (typeof note !== "object" || note === null) {
+      throw new Error("Malformed Stata note metadata");
+    }
+    const { number, text } = note;
+    if (!Number.isInteger(number) || number < 1 || number > 9999 || numbers.has(number)) {
+      throw new Error("Malformed Stata note metadata");
+    }
+    validExistingMetadataValue(text, "note");
+    numbers.add(number);
   }
   return current;
 }
 function mutableCharacteristics(target) {
   if (target.characteristics === void 0) {
     target.characteristics = [];
+  }
+  if (!Array.isArray(target.characteristics)) {
+    throw new Error("Malformed Stata characteristic metadata");
+  }
+  const names = /* @__PURE__ */ new Set();
+  for (const characteristic of target.characteristics) {
+    if (typeof characteristic !== "object" || characteristic === null) {
+      throw new Error("Malformed Stata characteristic metadata");
+    }
+    const { name, value } = characteristic;
+    if (typeof name !== "string" || !validCharacteristicNameShape(name) || reservedCharacteristicName(name) || names.has(name)) {
+      throw new Error("Malformed Stata characteristic metadata");
+    }
+    validExistingMetadataValue(value, "characteristic");
+    names.add(name);
   }
   return target.characteristics;
 }
@@ -380,10 +409,12 @@ var StataMetadataCollector = class {
     const notes = mutableNotes(scope);
     const characteristics = mutableCharacteristics(scope);
     const indexes = {
-      notes: new Map(
+      noteValues: notes,
+      characteristicValues: characteristics,
+      noteIndices: new Map(
         notes.map((note, index) => [note.number, index])
       ),
-      characteristics: new Map(
+      characteristicIndices: new Map(
         characteristics.map((item, index) => [item.name, index])
       )
     };
@@ -410,23 +441,29 @@ var StataMetadataCollector = class {
     this.pushAccepted(accepted, value());
   }
   pushAccepted(accepted, value) {
-    const scope = this.scope(accepted.scopeIndex);
+    validExistingMetadataValue(
+      value,
+      accepted.noteNumber === null ? "characteristic" : "note"
+    );
     const indexes = this.scopeIndexes(accepted.scopeIndex);
-    const notes = mutableNotes(scope);
-    const characteristics = mutableCharacteristics(scope);
+    const notes = indexes.noteValues;
+    const characteristics = indexes.characteristicValues;
     if (accepted.noteNumber !== null) {
-      const existing2 = indexes.notes.get(accepted.noteNumber);
+      const existing2 = indexes.noteIndices.get(accepted.noteNumber);
       if (existing2 === void 0) {
-        indexes.notes.set(accepted.noteNumber, notes.length);
+        indexes.noteIndices.set(accepted.noteNumber, notes.length);
         notes.push({ number: accepted.noteNumber, text: value });
       } else {
         notes[existing2].text = value;
       }
       return;
     }
-    const existing = indexes.characteristics.get(accepted.name);
+    const existing = indexes.characteristicIndices.get(accepted.name);
     if (existing === void 0) {
-      indexes.characteristics.set(accepted.name, characteristics.length);
+      indexes.characteristicIndices.set(
+        accepted.name,
+        characteristics.length
+      );
       characteristics.push({ name: accepted.name, value });
     } else {
       characteristics[existing].value = value;
@@ -434,7 +471,7 @@ var StataMetadataCollector = class {
   }
   finish() {
     for (const scopeIndex of this.indexes.keys()) {
-      mutableNotes(this.scope(scopeIndex)).sort(
+      this.scopeIndexes(scopeIndex).noteValues.sort(
         (left, right) => left.number - right.number
       );
     }
@@ -480,6 +517,14 @@ function validMetadataValue(value) {
     throw new Error("Invalid or over-limit Stata metadata value");
   }
 }
+function validExistingMetadataValue(value, kind) {
+  if (typeof value !== "string" || value.includes("\0") || !utf8LengthAtMost(
+    value,
+    MAX_DECODED_STATA_METADATA_VALUE_BYTES
+  )) {
+    throw new Error(`Malformed Stata ${kind} metadata`);
+  }
+}
 function listStataNotes(target) {
   return mutableNotes(target).map((note) => ({ ...note }));
 }
@@ -504,6 +549,7 @@ function addStataNote(target, text) {
   return number;
 }
 function dropStataNotes(target, numbers) {
+  mutableNotes(target);
   if (numbers === void 0) {
     target.notes = [];
     return;
@@ -542,6 +588,7 @@ function setStataCharacteristic(target, name, value) {
   else existing.value = value;
 }
 function dropStataCharacteristics(target, names) {
+  mutableCharacteristics(target);
   if (names === void 0) {
     target.characteristics = [];
     return;

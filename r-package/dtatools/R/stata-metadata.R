@@ -28,7 +28,10 @@
 #' class. Data-frame-preserving `[` subsets retain dataset metadata and the
 #' metadata of every retained variable for both base data frames and tibbles.
 #' A base subset that drops one column to a vector retains that variable's
-#' metadata; tibbles retain their usual non-dropping behavior.
+#' metadata; tibbles retain their usual non-dropping behavior. Metadata-bearing
+#' plain character, logical, factor, raw, integer, and double vectors also use
+#' an internal class so [vctrs::vec_c()] and [vctrs::vec_ptype2()] retain the
+#' first input's metadata, falling back to the next input that has metadata.
 #'
 #' @param x A data frame or vector carrying Stata metadata.
 #' @param variable `NULL` for dataset or vector metadata, or one column name or
@@ -292,12 +295,12 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     })
 }
 
-.copy_stata_metadata_attributes <- function(from, to) {
+.copy_stata_metadata_attributes <- function(from, to, mark = TRUE) {
     for (name in .stata_metadata_attribute_names) {
         value <- attr(from, name, exact = TRUE)
         if (!is.null(value)) attr(to, name) <- value
     }
-    .as_stata_metadata_frame(to)
+    if (mark) .as_stata_metadata_frame(to) else to
 }
 
 .stata_metadata_attribute_names <- c(
@@ -335,15 +338,164 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     }, logical(1)))
 }
 
-.as_stata_metadata_frame <- function(value) {
-    if (!is.data.frame(value)) return(value)
-    marker <- "dtatools_stata_metadata"
-    classes <- setdiff(class(value), marker)
-    has_metadata <- .has_stata_metadata(value) ||
-        any(vapply(value, .has_stata_metadata, logical(1)))
-    class(value) <- if (has_metadata) c(marker, classes) else classes
+.stata_metadata_vector_class <- "dtatools_stata_metadata_vector"
+
+.set_stata_metadata_class <- function(value, present) {
+    marker <- if (is.data.frame(value)) {
+        "dtatools_stata_metadata"
+    } else {
+        .stata_metadata_vector_class
+    }
+    classes <- setdiff(attr(value, "class", exact = TRUE), marker)
+    if (!is.data.frame(value) && any(classes %in% c(
+        "stata_numeric", "stata_temporal"
+    ))) {
+        present <- FALSE
+    }
+    classes <- if (present) c(marker, classes) else classes
+    if (length(classes)) {
+        class(value) <- classes
+    } else {
+        attr(value, "class") <- NULL
+    }
     value
 }
+
+.as_stata_metadata_vector <- function(value) {
+    .set_stata_metadata_class(value, .has_stata_metadata(value))
+}
+
+.as_stata_metadata_frame <- function(value) {
+    if (!is.data.frame(value)) return(.as_stata_metadata_vector(value))
+    variable_metadata <- vapply(value, .has_stata_metadata, logical(1))
+    if (any(variable_metadata)) {
+        value[which(variable_metadata)] <- lapply(
+            value[variable_metadata], .as_stata_metadata_vector
+        )
+    }
+    .set_stata_metadata_class(
+        value, .has_stata_metadata(value) || any(variable_metadata)
+    )
+}
+
+.stata_metadata_vector_base <- function(value) {
+    for (name in .stata_metadata_attribute_names) attr(value, name) <- NULL
+    .set_stata_metadata_class(value, FALSE)
+}
+
+#' @export
+vec_proxy.dtatools_stata_metadata_vector <- function(x, ...) {
+    vctrs::vec_proxy(.stata_metadata_vector_base(x), ...)
+}
+
+#' @export
+vec_restore.dtatools_stata_metadata_vector <- function(x, to, ...) {
+    restored <- vctrs::vec_restore(
+        x, .stata_metadata_vector_base(to), ...
+    )
+    .copy_stata_metadata_attributes(to, restored)
+}
+
+.stata_metadata_vector_ptype2 <- function(
+    x, y, ..., x_arg = "", y_arg = ""
+) {
+    result <- vctrs::vec_ptype2(
+        .stata_metadata_vector_base(x),
+        .stata_metadata_vector_base(y),
+        ...,
+        x_arg = x_arg,
+        y_arg = y_arg
+    )
+    .as_stata_metadata_vector(
+        .reconcile_stata_metadata_attributes(result, x, y)
+    )
+}
+
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.character <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.character.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.logical <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.logical.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.integer <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.integer.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.double <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.double.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.raw <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.raw.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.factor <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.factor.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.ordered <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.ordered.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+
+.stata_metadata_vector_cast <- function(
+    x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
+) {
+    result <- vctrs::vec_cast(
+        .stata_metadata_vector_base(x),
+        .stata_metadata_vector_base(to),
+        ...,
+        x_arg = x_arg,
+        to_arg = to_arg,
+        call = call
+    )
+    .copy_stata_metadata_attributes(to, result)
+}
+
+#' @export
+vec_cast.dtatools_stata_metadata_vector.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.dtatools_stata_metadata_vector.character <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.dtatools_stata_metadata_vector.logical <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.dtatools_stata_metadata_vector.integer <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.dtatools_stata_metadata_vector.double <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.dtatools_stata_metadata_vector.raw <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.dtatools_stata_metadata_vector.factor <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.dtatools_stata_metadata_vector.ordered <-
+    .stata_metadata_vector_cast
 
 #' @export
 `[.dtatools_stata_metadata` <- function(x, i, j, ..., drop) {
@@ -368,17 +520,26 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
         return(result)
     }
 
-    result <- .copy_stata_metadata_attributes(x, result)
+    result <- .copy_stata_metadata_attributes(x, result, mark = FALSE)
     if (length(selected) != ncol(result)) {
         stop("Could not restore Stata metadata after subsetting", call. = FALSE)
     }
-    for (index in seq_along(result)) {
-        source <- x[[unname(selected[[index]])]]
-        result[[index]] <- .copy_stata_metadata_attributes(
-            source, result[[index]]
+    source_columns <- unclass(x)[unname(selected)]
+    variable_metadata <- vapply(
+        source_columns, .has_stata_metadata, logical(1)
+    )
+    if (any(variable_metadata)) {
+        locations <- which(variable_metadata)
+        replacements <- Map(
+            .copy_stata_metadata_attributes,
+            source_columns[locations],
+            unclass(result)[locations]
         )
+        result[locations] <- replacements
     }
-    .as_stata_metadata_frame(result)
+    .set_stata_metadata_class(
+        result, .has_stata_metadata(x) || any(variable_metadata)
+    )
 }
 
 .stata_metadata_payload <- function(notes, characteristics) {

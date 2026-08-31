@@ -252,29 +252,36 @@ save_dta <- function(data, path, version = 19L,
     if (!is.null(dim(column))) return(NA_character_)
     classes <- attr(column, "class", exact = TRUE)
     if (is.factor(column)) {
-        if (all(classes %in% c("ordered", "factor"))) return("factor")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "ordered", "factor"
+        ))) return("factor")
         return(NA_character_)
     }
     if (inherits(column, "Date")) {
         if (all(classes %in% c(
+            .stata_metadata_vector_class,
             "stata_temporal", "stata_date", "Date"
         ))) return("date")
         return(NA_character_)
     }
     if (inherits(column, "POSIXct")) {
         if (all(classes %in% c(
+            .stata_metadata_vector_class,
             "stata_temporal", "stata_datetime", "POSIXct", "POSIXt"
         ))) return("datetime")
         return(NA_character_)
     }
     if (is.character(column)) {
-        if (is.null(classes)) return("character")
+        if (is.null(classes) || all(
+            classes %in% .stata_metadata_vector_class
+        )) return("character")
         return(NA_character_)
     }
     if (!(typeof(column) %in% c("logical", "integer", "double"))) {
         return(NA_character_)
     }
     if (is.null(classes) || all(classes %in% c(
+        .stata_metadata_vector_class,
         "haven_labelled", "vctrs_vctr", "stata_numeric",
         paste0("stata_", .stata_storage), "double", "integer", "logical"
     ))) return("numeric")

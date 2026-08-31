@@ -191,6 +191,144 @@ test_that("base and tibble subsetting preserve Stata metadata", {
     }
 })
 
+test_that("vctrs preserves metadata on supported plain vector types", {
+    values <- list(
+        character = c("a", "b"),
+        logical = c(TRUE, FALSE),
+        factor = factor(c("a", "b")),
+        ordered = ordered(c("a", "b")),
+        raw = as.raw(c(1L, 2L)),
+        integer = 1:2,
+        double = c(1, 2)
+    )
+    for (kind in names(values)) {
+        plain <- values[[kind]]
+        left <- set_stata_note(plain, 3L, "left note")
+        left <- set_stata_characteristic(left, "source", "master")
+        right <- set_stata_note(plain, 7L, "right note")
+        right <- set_stata_characteristic(right, "source", "using")
+
+        left_right <- vctrs::vec_c(left, right)
+        right_left <- vctrs::vec_c(right, left)
+        fallback <- vctrs::vec_c(plain, right)
+        prototype <- vctrs::vec_ptype2(left, right)
+        expect_identical(
+            stata_notes(left_right), c(`3` = "left note"), info = kind
+        )
+        expect_identical(
+            stata_characteristics(left_right), c(source = "master"),
+            info = kind
+        )
+        expect_identical(
+            stata_notes(right_left), c(`7` = "right note"), info = kind
+        )
+        expect_identical(
+            stata_characteristics(fallback), c(source = "using"),
+            info = kind
+        )
+        expect_identical(
+            stata_characteristics(prototype), c(source = "master"),
+            info = kind
+        )
+    }
+
+    ordinary <- vctrs::vec_c("a", "b")
+    expect_null(attr(ordinary, "class", exact = TRUE))
+    expect_false(inherits(ordinary, "dtatools_stata_metadata_vector"))
+})
+
+test_that("metadata vector markers remain writable", {
+    character <- set_stata_note(c("a", "b"), 1L, "character note")
+    logical <- set_stata_note(c(TRUE, FALSE), 1L, "logical note")
+    factor <- set_stata_note(factor(c("a", "b")), 1L, "factor note")
+    integer <- set_stata_note(1:2, 1L, "integer note")
+    double <- set_stata_note(c(1, 2), 1L, "double note")
+    raw <- set_stata_note(as.raw(c(1L, 2L)), 1L, "raw note")
+
+    dta_path <- tempfile(fileext = ".dta")
+    arrow_path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(c(dta_path, arrow_path)), add = TRUE)
+    dta <- data.frame(
+        text = character, flag = logical, group = factor,
+        count = integer, measure = double
+    )
+    arrow <- data.frame(
+        text = character, flag = logical, group = factor,
+        count = integer, measure = double, bytes = raw
+    )
+    expected <- c(
+        text = "character note", flag = "logical note",
+        group = "factor note", count = "integer note",
+        measure = "double note", bytes = "raw note"
+    )
+    suppressWarnings(save_dta(dta, dta_path))
+    suppressWarnings(save_arrow(arrow, arrow_path))
+
+    from_dta <- read_dta(dta_path)
+    from_arrow <- read_arrow(arrow_path)
+    for (name in names(dta)) {
+        expect_identical(
+            stata_note(from_dta, 1L, variable = name),
+            unname(expected[[name]])
+        )
+    }
+    for (name in names(arrow)) {
+        expect_identical(
+            stata_note(from_arrow, 1L, variable = name),
+            unname(expected[[name]])
+        )
+    }
+})
+
+test_that("wide subsets restore only metadata-bearing variables", {
+    original <- dtatools:::.copy_stata_metadata_attributes
+    calls <- 0L
+    testthat::local_mocked_bindings(
+        .copy_stata_metadata_attributes = function(...) {
+            calls <<- calls + 1L
+            original(...)
+        },
+        .package = "dtatools"
+    )
+
+    work <- integer()
+    for (width in c(4000L, 8000L)) {
+        data <- structure(
+            rep(list(integer()), width),
+            names = paste0("v", seq_len(width)),
+            row.names = .set_row_names(0L),
+            class = "data.frame"
+        )
+        attr(data, "notes") <- "dataset"
+        attr(data, "stata.note.numbers") <- 1L
+        data <- dtatools:::.as_stata_metadata_frame(data)
+        calls <- 0L
+        subset <- data[rev(names(data))]
+        work <- c(work, calls)
+        expect_identical(stata_note(subset, 1L), "dataset")
+    }
+    expect_identical(work, c(1L, 1L))
+
+    data <- structure(
+        rep(list(integer()), 8000L),
+        names = paste0("v", seq_len(8000L)),
+        row.names = .set_row_names(0L),
+        class = "data.frame"
+    )
+    attr(data[[1L]], "stata.characteristics") <- c(role = "first")
+    attr(data[[8000L]], "stata.characteristics") <- c(role = "last")
+    data <- dtatools:::.as_stata_metadata_frame(data)
+    calls <- 0L
+    subset <- data[rev(names(data))]
+    expect_identical(calls, 3L)
+    expect_identical(
+        stata_characteristic(subset, "role", variable = "v1"), "first"
+    )
+    expect_identical(
+        stata_characteristic(subset, "role", variable = "v8000"), "last"
+    )
+})
+
 test_that("writers reject manually attached over-limit metadata safely", {
     data <- data.frame(x = 1)
     expect_error(

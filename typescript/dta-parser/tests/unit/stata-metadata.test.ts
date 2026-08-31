@@ -191,6 +191,77 @@ describe('Stata metadata accessors', () => {
             target, `a${'界'.repeat(32)}`, 'bad'
         )).toThrow();
     });
+
+    it('validates caller-provided note arrays before reading or changing them', () => {
+        const malformed: StataMetadataTarget[] = [
+            { notes: [
+                { number: 1, text: 'one' },
+                { number: 1, text: 'duplicate' },
+            ] },
+            { notes: [{ number: 1.5, text: 'fractional' }] },
+            { notes: [{ number: 0, text: 'low' }] },
+            { notes: [{ number: 10_000, text: 'high' }] },
+            { notes: [{ number: 1, text: 'nul\0text' }] },
+            { notes: [{ number: 1, text: '€'.repeat(67_785) }] },
+            { notes: ['valid', 2] as unknown as string[] },
+        ];
+        for (const target of malformed) {
+            expect(() => listStataNotes(target)).toThrow(
+                'Malformed Stata note metadata'
+            );
+        }
+        expect(() => dropStataNotes(malformed[0])).toThrow(
+            'Malformed Stata note metadata'
+        );
+
+        const decoded: StataMetadataTarget = {
+            notes: ['€'.repeat(67_784)],
+        };
+        expect(listStataNotes(decoded)).toEqual([
+            { number: 1, text: '€'.repeat(67_784) },
+        ]);
+        expect(() => setStataNote(decoded, 1, '€'.repeat(22_595))).toThrow(
+            'Invalid or over-limit Stata metadata value'
+        );
+    });
+
+    it('validates caller-provided characteristic arrays before use', () => {
+        const malformed = [
+            [
+                { name: 'source', value: 'one' },
+                { name: 'source', value: 'duplicate' },
+            ],
+            [{ name: 'note01', value: 'reserved' }],
+            [{ name: 'fralias_from', value: 'reserved' }],
+            [{ name: '2bad', value: 'invalid' }],
+            [{ name: 'source', value: 'nul\0text' }],
+            [{ name: 'source', value: '€'.repeat(67_785) }],
+            [{ name: 'source', value: 1 }],
+        ];
+        for (const characteristics of malformed) {
+            const target = {
+                characteristics,
+            } as unknown as StataMetadataTarget;
+            expect(() => listStataCharacteristics(target)).toThrow(
+                'Malformed Stata characteristic metadata'
+            );
+        }
+        const duplicate = {
+            characteristics: malformed[0],
+        } as StataMetadataTarget;
+        expect(() => dropStataCharacteristics(duplicate)).toThrow(
+            'Malformed Stata characteristic metadata'
+        );
+
+        const decoded: StataMetadataTarget = {
+            characteristics: [{
+                name: 'source', value: '€'.repeat(67_784),
+            }],
+        };
+        expect(listStataCharacteristics(decoded)).toEqual(
+            decoded.characteristics
+        );
+    });
 });
 
 describe('DTA characteristic recovery', () => {

@@ -7,6 +7,7 @@ export interface StataMetadataTarget {
 
 const NOTE_NAME = /^note([0-9]+)$/;
 const MAX_STATA_METADATA_VALUE_BYTES = 67_784;
+const MAX_DECODED_STATA_METADATA_VALUE_BYTES = 203_352;
 const TEXT_ENCODER = new TextEncoder();
 
 function noteNumber(name: string): number | null {
@@ -37,8 +38,10 @@ function validCharacteristicNameShape(name: string): boolean {
 }
 
 interface ScopeIndexes {
-    notes: Map<number, number>;
-    characteristics: Map<string, number>;
+    noteValues: StataNote[];
+    characteristicValues: StataCharacteristic[];
+    noteIndices: Map<number, number>;
+    characteristicIndices: Map<string, number>;
 }
 
 export interface AcceptedStataCharacteristic {
@@ -54,21 +57,32 @@ function mutableNotes(target: StataMetadataTarget): StataNote[] {
         target.notes = notes;
         return notes;
     }
+    if (!Array.isArray(current)) {
+        throw new Error('Malformed Stata note metadata');
+    }
     if (current.length > 0 && current.every(note => typeof note === 'string')) {
-        const notes = (current as string[]).map((text, index) => ({
-            number: index + 1,
-            text,
-        }));
+        if (current.length > 9999) {
+            throw new Error('Malformed Stata note metadata');
+        }
+        const notes = (current as string[]).map((text, index) => {
+            validExistingMetadataValue(text, 'note');
+            return { number: index + 1, text };
+        });
         target.notes = notes;
         return notes;
     }
-    if (!current.every(note =>
-        typeof note === 'object'
-        && note !== null
-        && typeof (note as StataNote).number === 'number'
-        && typeof (note as StataNote).text === 'string'
-    )) {
-        throw new Error('Malformed Stata note metadata');
+    const numbers = new Set<number>();
+    for (const note of current) {
+        if (typeof note !== 'object' || note === null) {
+            throw new Error('Malformed Stata note metadata');
+        }
+        const { number, text } = note as StataNote;
+        if (!Number.isInteger(number) || number < 1 || number > 9999
+            || numbers.has(number)) {
+            throw new Error('Malformed Stata note metadata');
+        }
+        validExistingMetadataValue(text, 'note');
+        numbers.add(number);
     }
     return current as StataNote[];
 }
@@ -78,6 +92,24 @@ function mutableCharacteristics(
 ): StataCharacteristic[] {
     if (target.characteristics === undefined) {
         target.characteristics = [];
+    }
+    if (!Array.isArray(target.characteristics)) {
+        throw new Error('Malformed Stata characteristic metadata');
+    }
+    const names = new Set<string>();
+    for (const characteristic of target.characteristics) {
+        if (typeof characteristic !== 'object' || characteristic === null) {
+            throw new Error('Malformed Stata characteristic metadata');
+        }
+        const { name, value } = characteristic as StataCharacteristic;
+        if (typeof name !== 'string'
+            || !validCharacteristicNameShape(name)
+            || reservedCharacteristicName(name)
+            || names.has(name)) {
+            throw new Error('Malformed Stata characteristic metadata');
+        }
+        validExistingMetadataValue(value, 'characteristic');
+        names.add(name);
     }
     return target.characteristics;
 }
@@ -118,10 +150,12 @@ export class StataMetadataCollector {
         const notes = mutableNotes(scope);
         const characteristics = mutableCharacteristics(scope);
         const indexes = {
-            notes: new Map(
+            noteValues: notes,
+            characteristicValues: characteristics,
+            noteIndices: new Map(
                 notes.map((note, index) => [note.number, index])
             ),
-            characteristics: new Map(
+            characteristicIndices: new Map(
                 characteristics.map((item, index) => [item.name, index])
             ),
         };
@@ -159,23 +193,28 @@ export class StataMetadataCollector {
     private pushAccepted(
         accepted: AcceptedStataCharacteristic, value: string
     ): void {
-        const scope = this.scope(accepted.scopeIndex);
+        validExistingMetadataValue(
+            value,
+            accepted.noteNumber === null ? 'characteristic' : 'note'
+        );
         const indexes = this.scopeIndexes(accepted.scopeIndex);
-        const notes = mutableNotes(scope);
-        const characteristics = mutableCharacteristics(scope);
+        const notes = indexes.noteValues;
+        const characteristics = indexes.characteristicValues;
         if (accepted.noteNumber !== null) {
-            const existing = indexes.notes.get(accepted.noteNumber);
+            const existing = indexes.noteIndices.get(accepted.noteNumber);
             if (existing === undefined) {
-                indexes.notes.set(accepted.noteNumber, notes.length);
+                indexes.noteIndices.set(accepted.noteNumber, notes.length);
                 notes.push({ number: accepted.noteNumber, text: value });
             } else {
                 notes[existing].text = value;
             }
             return;
         }
-        const existing = indexes.characteristics.get(accepted.name);
+        const existing = indexes.characteristicIndices.get(accepted.name);
         if (existing === undefined) {
-            indexes.characteristics.set(accepted.name, characteristics.length);
+            indexes.characteristicIndices.set(
+                accepted.name, characteristics.length
+            );
             characteristics.push({ name: accepted.name, value });
         } else {
             characteristics[existing].value = value;
@@ -184,7 +223,7 @@ export class StataMetadataCollector {
 
     finish(): void {
         for (const scopeIndex of this.indexes.keys()) {
-            mutableNotes(this.scope(scopeIndex)).sort(
+            this.scopeIndexes(scopeIndex).noteValues.sort(
                 (left, right) => left.number - right.number
             );
         }
@@ -242,6 +281,18 @@ function validMetadataValue(value: string): void {
     }
 }
 
+function validExistingMetadataValue(
+    value: unknown, kind: 'note' | 'characteristic'
+): asserts value is string {
+    if (typeof value !== 'string'
+        || value.includes('\0')
+        || !utf8LengthAtMost(
+            value, MAX_DECODED_STATA_METADATA_VALUE_BYTES
+        )) {
+        throw new Error(`Malformed Stata ${kind} metadata`);
+    }
+}
+
 export function listStataNotes(target: StataMetadataTarget): StataNote[] {
     return mutableNotes(target).map(note => ({ ...note }));
 }
@@ -277,6 +328,7 @@ export function addStataNote(target: StataMetadataTarget, text: string): number 
 export function dropStataNotes(
     target: StataMetadataTarget, numbers?: readonly number[]
 ): void {
+    mutableNotes(target);
     if (numbers === undefined) {
         target.notes = [];
         return;
@@ -331,6 +383,7 @@ export function setStataCharacteristic(
 export function dropStataCharacteristics(
     target: StataMetadataTarget, names?: readonly string[]
 ): void {
+    mutableCharacteristics(target);
     if (names === undefined) {
         target.characteristics = [];
         return;

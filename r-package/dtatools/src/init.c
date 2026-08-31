@@ -70,6 +70,39 @@ typedef struct {
     const void *dictstring;
 } dtatools_arrow_column;
 
+enum dtatools_arrow_specification_slot {
+    DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL = 0,
+    DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA = 1,
+    DTATOOLS_ARROW_SPECIFICATION_COLUMNS = 2,
+    DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES = 3,
+    DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT = 4
+};
+
+enum dtatools_arrow_column_slot {
+    DTATOOLS_ARROW_COLUMN_NAME = 0,
+    DTATOOLS_ARROW_COLUMN_KIND = 1,
+    DTATOOLS_ARROW_COLUMN_VALUES = 2,
+    DTATOOLS_ARROW_COLUMN_LEVELS = 3,
+    DTATOOLS_ARROW_COLUMN_ORDERED = 4,
+    DTATOOLS_ARROW_COLUMN_LABEL = 5,
+    DTATOOLS_ARROW_COLUMN_FORMAT = 6,
+    DTATOOLS_ARROW_COLUMN_STORAGE = 7,
+    DTATOOLS_ARROW_COLUMN_TIME_ZONE = 8,
+    DTATOOLS_ARROW_COLUMN_UNITS = 9,
+    DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED = 10,
+    DTATOOLS_ARROW_COLUMN_STRING_STORAGE = 11,
+    DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX = 12,
+    DTATOOLS_ARROW_COLUMN_STATA_METADATA = 13,
+    DTATOOLS_ARROW_COLUMN_SLOT_COUNT = 14
+};
+
+enum dtatools_arrow_value_label_table_slot {
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_NAME = 0,
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_VALUES = 1,
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_TEXTS = 2,
+    DTATOOLS_ARROW_VALUE_LABEL_TABLE_SLOT_COUNT = 3
+};
+
 extern SEXP dtatools_save_arrow_rust(
     const char *, const char *, SEXP, const dtatools_arrow_column *,
     size_t, const dtatools_arrow_value_label_table *, size_t, size_t,
@@ -793,6 +826,32 @@ DTATOOLS_LAYOUT_ASSERT(write_table_values, offsetof(dtatools_write_value_label_t
 DTATOOLS_LAYOUT_ASSERT(write_table_texts, offsetof(dtatools_write_value_label_table, label_texts) == 16);
 DTATOOLS_LAYOUT_ASSERT(write_table_count, offsetof(dtatools_write_value_label_table, label_count) == 24);
 DTATOOLS_LAYOUT_ASSERT(write_table_size, sizeof(dtatools_write_value_label_table) == 32);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_name, offsetof(dtatools_arrow_column, name) == 0);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_kind, offsetof(dtatools_arrow_column, kind) == 8);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_label, offsetof(dtatools_arrow_column, label) == 16);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_format, offsetof(dtatools_arrow_column, format) == 24);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_storage, offsetof(dtatools_arrow_column, storage) == 32);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_string_storage, offsetof(dtatools_arrow_column, string_storage) == 36);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_ordered, offsetof(dtatools_arrow_column, ordered) == 40);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_tz, offsetof(dtatools_arrow_column, tz) == 48);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_units, offsetof(dtatools_arrow_column, units) == 56);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_values, offsetof(dtatools_arrow_column, values) == 64);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_strings, offsetof(dtatools_arrow_column, strings) == 72);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_string_count, offsetof(dtatools_arrow_column, string_count) == 80);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_values, offsetof(dtatools_arrow_column, compact_values) == 88);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_kind, offsetof(dtatools_arrow_column, compact_kind) == 96);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_version, offsetof(dtatools_arrow_column, compact_format_version) == 100);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_compact_temporal, offsetof(dtatools_arrow_column, compact_temporal) == 104);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_value_label_index, offsetof(dtatools_arrow_column, value_label_index) == 108);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_stata_metadata, offsetof(dtatools_arrow_column, stata_metadata) == 112);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_haven_labelled, offsetof(dtatools_arrow_column, haven_labelled) == 120);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_dictstring, offsetof(dtatools_arrow_column, dictstring) == 128);
+DTATOOLS_LAYOUT_ASSERT(arrow_column_size, sizeof(dtatools_arrow_column) == 136);
+DTATOOLS_LAYOUT_ASSERT(arrow_table_name, offsetof(dtatools_arrow_value_label_table, name) == 0);
+DTATOOLS_LAYOUT_ASSERT(arrow_table_values, offsetof(dtatools_arrow_value_label_table, label_values) == 8);
+DTATOOLS_LAYOUT_ASSERT(arrow_table_texts, offsetof(dtatools_arrow_value_label_table, label_texts) == 16);
+DTATOOLS_LAYOUT_ASSERT(arrow_table_count, offsetof(dtatools_arrow_value_label_table, label_count) == 24);
+DTATOOLS_LAYOUT_ASSERT(arrow_table_size, sizeof(dtatools_arrow_value_label_table) == 32);
 #endif
 
 static int write_string_utf8_status(SEXP value) {
@@ -3317,18 +3376,27 @@ static void arrow_write_column_descriptor(
     R_xlen_t *root_index, size_t table_count,
     dtatools_arrow_column *descriptor
 ) {
-    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 14) {
+    if (TYPEOF(column) != VECSXP ||
+        XLENGTH(column) != DTATOOLS_ARROW_COLUMN_SLOT_COUNT) {
         Rf_error("internal Arrow column must be a fourteen-element list");
     }
-    SEXP kind_value = VECTOR_ELT(column, 1);
-    SEXP values = VECTOR_ELT(column, 2);
-    SEXP levels = VECTOR_ELT(column, 3);
-    SEXP ordered = VECTOR_ELT(column, 4);
-    SEXP storage = VECTOR_ELT(column, 7);
-    SEXP haven_labelled = VECTOR_ELT(column, 10);
-    SEXP string_storage = VECTOR_ELT(column, 11);
-    SEXP value_label_index = VECTOR_ELT(column, 12);
-    SEXP stata_metadata = VECTOR_ELT(column, 13);
+    SEXP kind_value = VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_KIND);
+    SEXP values = VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_VALUES);
+    SEXP levels = VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_LEVELS);
+    SEXP ordered = VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_ORDERED);
+    SEXP storage = VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_STORAGE);
+    SEXP haven_labelled = VECTOR_ELT(
+        column, DTATOOLS_ARROW_COLUMN_HAVEN_LABELLED
+    );
+    SEXP string_storage = VECTOR_ELT(
+        column, DTATOOLS_ARROW_COLUMN_STRING_STORAGE
+    );
+    SEXP value_label_index = VECTOR_ELT(
+        column, DTATOOLS_ARROW_COLUMN_VALUE_LABEL_INDEX
+    );
+    SEXP stata_metadata = VECTOR_ELT(
+        column, DTATOOLS_ARROW_COLUMN_STATA_METADATA
+    );
     if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1 ||
         TYPEOF(ordered) != LGLSXP || XLENGTH(ordered) != 1 ||
         TYPEOF(storage) != INTSXP || XLENGTH(storage) != 1 ||
@@ -3356,19 +3424,24 @@ static void arrow_write_column_descriptor(
     descriptor->ordered = LOGICAL(ordered)[0] == 1;
     descriptor->strings = R_NilValue;
     descriptor->name = write_rooted_scalar_string(
-        string_roots, (*root_index)++, VECTOR_ELT(column, 0), "name"
+        string_roots, (*root_index)++,
+        VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_NAME), "name"
     );
     descriptor->label = write_rooted_scalar_string(
-        string_roots, (*root_index)++, VECTOR_ELT(column, 5), "variable label"
+        string_roots, (*root_index)++,
+        VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_LABEL), "variable label"
     );
     descriptor->format = write_rooted_scalar_string(
-        string_roots, (*root_index)++, VECTOR_ELT(column, 6), "format"
+        string_roots, (*root_index)++,
+        VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_FORMAT), "format"
     );
     descriptor->tz = write_rooted_nullable_scalar_string(
-        string_roots, (*root_index)++, VECTOR_ELT(column, 8), "time zone"
+        string_roots, (*root_index)++,
+        VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_TIME_ZONE), "time zone"
     );
     descriptor->units = write_rooted_scalar_string(
-        string_roots, (*root_index)++, VECTOR_ELT(column, 9), "units"
+        string_roots, (*root_index)++,
+        VECTOR_ELT(column, DTATOOLS_ARROW_COLUMN_UNITS), "units"
     );
     descriptor->value_label_index = table_index;
     descriptor->stata_metadata = write_rooted_stata_metadata(
@@ -3461,12 +3534,19 @@ typedef struct {
 static void arrow_write_specification_sizes(
     SEXP specification, size_t *column_count, size_t *table_count
 ) {
-    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 4) {
+    if (TYPEOF(specification) != VECSXP ||
+        XLENGTH(specification) != DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT) {
         Rf_error("internal Arrow specification must be a four-element list");
     }
-    SEXP dataset_metadata = VECTOR_ELT(specification, 1);
-    SEXP columns = VECTOR_ELT(specification, 2);
-    SEXP tables = VECTOR_ELT(specification, 3);
+    SEXP dataset_metadata = VECTOR_ELT(
+        specification, DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA
+    );
+    SEXP columns = VECTOR_ELT(
+        specification, DTATOOLS_ARROW_SPECIFICATION_COLUMNS
+    );
+    SEXP tables = VECTOR_ELT(
+        specification, DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES
+    );
     if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP ||
         TYPEOF(tables) != VECSXP) {
         Rf_error("invalid internal Arrow specification");
@@ -3483,12 +3563,21 @@ static arrow_write_specification prepare_arrow_write_specification(
     arrow_write_specification_sizes(
         specification, &column_count, &table_count
     );
-    SEXP dataset_metadata = VECTOR_ELT(specification, 1);
-    SEXP columns = VECTOR_ELT(specification, 2);
-    SEXP tables = VECTOR_ELT(specification, 3);
+    SEXP dataset_metadata = VECTOR_ELT(
+        specification, DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA
+    );
+    SEXP columns = VECTOR_ELT(
+        specification, DTATOOLS_ARROW_SPECIFICATION_COLUMNS
+    );
+    SEXP tables = VECTOR_ELT(
+        specification, DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES
+    );
     arrow_write_specification result = {
         .dataset_label = write_rooted_scalar_string(
-            string_roots, (*root_index)++, VECTOR_ELT(specification, 0),
+            string_roots, (*root_index)++,
+            VECTOR_ELT(
+                specification, DTATOOLS_ARROW_SPECIFICATION_DATASET_LABEL
+            ),
             "dataset label"
         ),
         .dataset_metadata = write_rooted_stata_metadata(
@@ -3501,10 +3590,13 @@ static arrow_write_specification prepare_arrow_write_specification(
     };
     if (column_count > 0) {
         SEXP first = VECTOR_ELT(columns, 0);
-        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 14) {
+        if (TYPEOF(first) != VECSXP ||
+            XLENGTH(first) != DTATOOLS_ARROW_COLUMN_SLOT_COUNT) {
             Rf_error("internal Arrow column must be a fourteen-element list");
         }
-        result.row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
+        result.row_count = (size_t) XLENGTH(VECTOR_ELT(
+            first, DTATOOLS_ARROW_COLUMN_VALUES
+        ));
     }
     result.value_label_tables =
         (dtatools_arrow_value_label_table *) R_alloc(
@@ -3513,11 +3605,16 @@ static arrow_write_specification prepare_arrow_write_specification(
         );
     for (size_t index = 0; index < table_count; index++) {
         SEXP table = VECTOR_ELT(tables, (R_xlen_t) index);
-        if (TYPEOF(table) != VECSXP || XLENGTH(table) != 3) {
+        if (TYPEOF(table) != VECSXP ||
+            XLENGTH(table) != DTATOOLS_ARROW_VALUE_LABEL_TABLE_SLOT_COUNT) {
             Rf_error("internal Arrow value-label table must be a three-element list");
         }
-        SEXP label_values = VECTOR_ELT(table, 1);
-        SEXP label_texts = VECTOR_ELT(table, 2);
+        SEXP label_values = VECTOR_ELT(
+            table, DTATOOLS_ARROW_VALUE_LABEL_TABLE_VALUES
+        );
+        SEXP label_texts = VECTOR_ELT(
+            table, DTATOOLS_ARROW_VALUE_LABEL_TABLE_TEXTS
+        );
         if (TYPEOF(label_values) != REALSXP || TYPEOF(label_texts) != STRSXP ||
             XLENGTH(label_values) != XLENGTH(label_texts)) {
             Rf_error("invalid internal Arrow value-label table metadata");
@@ -3525,7 +3622,8 @@ static arrow_write_specification prepare_arrow_write_specification(
         dtatools_arrow_value_label_table *descriptor =
             &result.value_label_tables[index];
         descriptor->name = write_rooted_scalar_string(
-            string_roots, (*root_index)++, VECTOR_ELT(table, 0),
+            string_roots, (*root_index)++,
+            VECTOR_ELT(table, DTATOOLS_ARROW_VALUE_LABEL_TABLE_NAME),
             "value-label table name"
         );
         descriptor->label_texts = write_rooted_strings(

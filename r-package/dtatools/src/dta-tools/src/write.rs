@@ -704,6 +704,44 @@ fn validate_numeric_value(
     Ok(())
 }
 
+fn validate_value_label_entry_count(
+    column_name: &str,
+    entries: &[DtaWriteValueLabel<'_>],
+) -> Result<(), DtaWriteError> {
+    if entries.len() > MAX_VALUE_LABEL_ENTRIES {
+        return Err(DtaWriteError::InvalidValueLabels {
+            column: column_name.to_owned(),
+            message: format!(
+                "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
+                entries.len()
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn validate_value_label_entries(
+    column_name: &str,
+    entries: &[DtaWriteValueLabel<'_>],
+) -> Result<(), DtaWriteError> {
+    validate_value_label_entry_count(column_name, entries)?;
+    for entry in entries {
+        label_raw_value(entry.value).map_err(|message| DtaWriteError::InvalidValueLabels {
+            column: column_name.to_owned(),
+            message: message.into(),
+        })?;
+        if entry.label.contains('\0') || entry.label.len() > MAX_VALUE_LABEL_TEXT_BYTES {
+            return Err(DtaWriteError::InvalidValueLabels {
+                column: column_name.to_owned(),
+                message: format!(
+                    "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
 fn validate_structure(
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
@@ -802,15 +840,9 @@ fn validate_structure(
                 message: format!("column has {column_row_count} rows but dataset has {row_count}"),
             });
         }
-        if column.value_labels.len() > MAX_VALUE_LABEL_ENTRIES {
-            return Err(DtaWriteError::InvalidValueLabels {
-                column: column.name.to_string(),
-                message: format!(
-                    "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
-                    column.value_labels.len()
-                ),
-            });
-        }
+        // Keep the public writer's established precedence: an oversized table
+        // wins before attachment/storage errors, while entry errors follow them.
+        validate_value_label_entry_count(&column.name, &column.value_labels)?;
         if !column.has_value_labels && !column.value_labels.is_empty() {
             return Err(DtaWriteError::InvalidValueLabels {
                 column: column.name.to_string(),
@@ -825,20 +857,7 @@ fn validate_structure(
                 message: "string variables cannot have numeric value labels".into(),
             });
         }
-        for entry in &column.value_labels {
-            label_raw_value(entry.value).map_err(|message| DtaWriteError::InvalidValueLabels {
-                column: column.name.to_string(),
-                message: message.into(),
-            })?;
-            if entry.label.contains('\0') || entry.label.len() > MAX_VALUE_LABEL_TEXT_BYTES {
-                return Err(DtaWriteError::InvalidValueLabels {
-                    column: column.name.to_string(),
-                    message: format!(
-                        "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
-                    ),
-                });
-            }
-        }
+        validate_value_label_entries(&column.name, &column.value_labels)?;
     }
     Ok(row_count)
 }
@@ -919,32 +938,7 @@ fn validate_value_label_names<S: DtaWriteValueLabelSource + ?Sized>(
         }
         match tables.entry(table.name) {
             Entry::Vacant(entry) => {
-                if table.entries.len() > MAX_VALUE_LABEL_ENTRIES {
-                    return Err(DtaWriteError::InvalidValueLabels {
-                        column: column.name.to_string(),
-                        message: format!(
-                            "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
-                            table.entries.len()
-                        ),
-                    });
-                }
-                for label in table.entries {
-                    label_raw_value(label.value).map_err(|message| {
-                        DtaWriteError::InvalidValueLabels {
-                            column: column.name.to_string(),
-                            message: message.into(),
-                        }
-                    })?;
-                    if label.label.contains('\0') || label.label.len() > MAX_VALUE_LABEL_TEXT_BYTES
-                    {
-                        return Err(DtaWriteError::InvalidValueLabels {
-                            column: column.name.to_string(),
-                            message: format!(
-                                "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
-                            ),
-                        });
-                    }
-                }
+                validate_value_label_entries(&column.name, table.entries)?;
                 entry.insert(table.entries);
             }
             Entry::Occupied(entry)

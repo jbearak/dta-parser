@@ -2,6 +2,7 @@
 //! footer metadata.
 
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, HashSet},
     fmt,
 };
@@ -33,6 +34,7 @@ pub const ARROW_FIELD_KEY: &str = "dtatools:field";
 pub const ARROW_CHECKSUMS_KEY: &str = "dtatools:checksums";
 
 pub(crate) const DOCUMENT_VERSION: u32 = 0;
+const MAX_VALUE_LABEL_TABLES: usize = 120_000;
 
 /// One value-label mapping inside the dataset document: either a nonmissing
 /// Stata `long` code or an extended missing tag, with its label text.
@@ -723,6 +725,55 @@ struct ValueLabelRegistrySeed<'a> {
     selected: Option<&'a HashSet<String>>,
 }
 
+struct ValueLabelTableName<'a>(Cow<'a, str>);
+
+impl<'a> ValueLabelTableName<'a> {
+    fn as_str(&self) -> &str {
+        self.0.as_ref()
+    }
+
+    fn into_cow(self) -> Cow<'a, str> {
+        self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for ValueLabelTableName<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct TableNameVisitor;
+
+        impl<'de> Visitor<'de> for TableNameVisitor {
+            type Value = ValueLabelTableName<'de>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a value-label table name")
+            }
+
+            fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E> {
+                #[cfg(test)]
+                BORROWED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(count.get() + 1));
+                Ok(ValueLabelTableName(Cow::Borrowed(value)))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E> {
+                #[cfg(test)]
+                OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(count.get() + 1));
+                Ok(ValueLabelTableName(Cow::Owned(value.to_owned())))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E> {
+                #[cfg(test)]
+                OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(count.get() + 1));
+                Ok(ValueLabelTableName(Cow::Owned(value)))
+            }
+        }
+
+        deserializer.deserialize_str(TableNameVisitor)
+    }
+}
+
 impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
     type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
 
@@ -748,22 +799,38 @@ impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
                 A: MapAccess<'de>,
             {
                 let mut retained = BTreeMap::new();
-                let mut names = HashSet::new();
-                while let Some(name) = map.next_key::<String>()? {
-                    if !names.insert(name.clone()) {
+                let mut names: HashSet<Cow<'de, str>> = HashSet::new();
+                let mut table_count = 0_usize;
+                while let Some(name) = map.next_key::<ValueLabelTableName<'de>>()? {
+                    table_count += 1;
+                    if table_count > MAX_VALUE_LABEL_TABLES {
+                        return Err(serde::de::Error::custom(
+                            "value-label registry may contain at most 120,000 tables",
+                        ));
+                    }
+                    if names.contains(name.as_str()) {
                         return Err(serde::de::Error::custom(format!(
-                            "duplicate value-label table name `{name}`"
+                            "duplicate value-label table name `{}`",
+                            name.as_str()
                         )));
                     }
+                    names.try_reserve(1).map_err(|_| {
+                        serde::de::Error::custom(
+                            "could not allocate the value-label table-name index",
+                        )
+                    })?;
                     let retain = self
                         .selected
                         .is_none_or(|selected| selected.contains(name.as_str()));
                     if retain {
                         let entries = map.next_value::<Vec<ArrowValueLabelEntry>>()?;
-                        retained.insert(name, entries);
+                        retained.insert(name.as_str().to_owned(), entries);
                     } else {
-                        map.next_value_seed(DiscardValueLabelEntries { table: &name })?;
+                        map.next_value_seed(DiscardValueLabelEntries {
+                            table: name.as_str(),
+                        })?;
                     }
+                    names.insert(name.into_cow());
                 }
                 Ok(retained)
             }
@@ -936,6 +1003,12 @@ thread_local! {
         std::cell::Cell::new(0)
     };
     static DISCARDED_VALUE_LABEL_VISIT_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
+    static BORROWED_VALUE_LABEL_TABLE_NAME_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
+    static OWNED_VALUE_LABEL_TABLE_NAME_COUNT: std::cell::Cell<usize> = const {
         std::cell::Cell::new(0)
     };
 }
@@ -1500,6 +1573,79 @@ mod tests {
     }
 
     #[test]
+    fn full_and_projected_registries_reject_more_than_stata_variable_limit() {
+        let mut json = String::from(r#"{"version":0,"value_labels":{"#);
+        for index in 0..MAX_VALUE_LABEL_TABLES {
+            if index > 0 {
+                json.push(',');
+            }
+            json.push_str(&format!(r#""table{index}":[]"#));
+        }
+        json.push_str("}}");
+
+        let selected = HashSet::new();
+        let full = parse_dataset_document_selected("0", Some(&json), None)
+            .expect("the Stata table limit is accepted on a full read");
+        assert_eq!(full.value_labels.len(), MAX_VALUE_LABEL_TABLES);
+        let projected = parse_dataset_document_selected("0", Some(&json), Some(&selected))
+            .expect("the Stata table limit is accepted on a projected read");
+        assert!(projected.value_labels.is_empty());
+
+        json.truncate(json.len() - 2);
+        json.push_str(&format!(r#","table{MAX_VALUE_LABEL_TABLES}":[]}}}}"#));
+        for selection in [None, Some(&selected)] {
+            let error = match parse_dataset_document_selected("0", Some(&json), selection) {
+                Ok(_) => panic!("a registry cannot exceed Stata's variable limit"),
+                Err(error) => error,
+            };
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(
+                error.to_string().contains("at most 120,000 tables"),
+                "unexpected error: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn projected_registry_borrows_plain_keys_until_table_limit() {
+        use std::fmt::Write as _;
+
+        const TABLE_NAME_BYTES: usize = 540;
+        let padding = "x".repeat(TABLE_NAME_BYTES - "table000000".len());
+        let mut json = String::with_capacity(crate::arrow::MAX_IPC_METADATA_BYTES);
+        json.push_str(r#"{"version":0,"value_labels":{"#);
+        for index in 0..=MAX_VALUE_LABEL_TABLES {
+            if index > 0 {
+                json.push(',');
+            }
+            write!(&mut json, "\"table{index:06}").expect("writing to a string cannot fail");
+            json.push_str(&padding);
+            json.push_str("\":[]");
+        }
+        json.push_str("}}");
+        assert!(json.len() <= crate::arrow::MAX_IPC_METADATA_BYTES);
+        assert!(crate::arrow::MAX_IPC_METADATA_BYTES - json.len() < 2 * 1024 * 1024);
+
+        BORROWED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(0));
+        OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(0));
+        let selected = HashSet::new();
+        let error = parse_dataset_document_selected("0", Some(&json), Some(&selected))
+            .expect_err("the extra table is rejected before its value is decoded");
+
+        assert!(error.to_string().contains("at most 120,000 tables"));
+        assert_eq!(
+            BORROWED_VALUE_LABEL_TABLE_NAME_COUNT.with(std::cell::Cell::get),
+            MAX_VALUE_LABEL_TABLES + 1,
+            "plain registry keys should be borrowed directly from the metadata JSON"
+        );
+        assert_eq!(
+            OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(std::cell::Cell::get),
+            0,
+            "duplicate detection should not allocate copies of plain registry keys"
+        );
+    }
+
+    #[test]
     fn dataset_documents_reject_unknown_keys() {
         for json in [
             r#"{"version":0,"lable":"typo"}"#,
@@ -1521,6 +1667,7 @@ mod tests {
             r#"{"version":0,"label":"a","label":"b"}"#,
             r#"{"version":0,"value_labels":{},"value_labels":{}}"#,
             r#"{"version":0,"value_labels":{"x":[],"x":[]}}"#,
+            r#"{"version":0,"value_labels":{"x":[],"\u0078":[]}}"#,
         ] {
             let error = parse_dataset_document("0", Some(json))
                 .expect_err("duplicate dataset keys are rejected");

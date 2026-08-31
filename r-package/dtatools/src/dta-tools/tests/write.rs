@@ -505,6 +505,83 @@ fn internal_value_label_registry_keeps_each_table_name_and_entries_together() {
     );
 }
 
+#[cfg(feature = "r-adapter-internal")]
+#[test]
+fn public_and_registry_writers_share_value_label_entry_validation() {
+    let oversized = DtaWriteValueLabel {
+        value: DtaWriteLabelValue::Integer(0),
+        label: String::new().into(),
+    };
+    let cases = vec![
+        (
+            vec![DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Missing(MissingTag::System),
+                label: "missing".into(),
+            }],
+            "system missing cannot have a value label",
+        ),
+        (
+            vec![DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Integer(0),
+                label: "nul\0text".into(),
+            }],
+            "no NUL",
+        ),
+        (
+            vec![DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Integer(0),
+                label: "x".repeat(32_001).into(),
+            }],
+            "at most 32000 UTF-8 bytes",
+        ),
+        (vec![oversized; 65_537], "maximum is 65536"),
+    ];
+
+    let make_data = |value_labels| DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Long,
+            format: "%12.0g".into(),
+            label: String::new().into(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            has_value_labels: true,
+            value_labels,
+            values: DtaWriteColumnValues::Numeric(&ADAPTED_NUMERIC_VALUES),
+        }],
+    };
+
+    for (entries, expected) in cases {
+        let public_error = save_dta_to(
+            &mut Cursor::new(Vec::new()),
+            &make_data(entries.clone()),
+            &DtaWriteOptions::default(),
+        )
+        .unwrap_err()
+        .to_string();
+
+        let tables = [DtaWriteValueLabelTable::new("shared", &entries)];
+        let indices = [Some(0)];
+        let registry = DtaWriteValueLabelRegistry::new(&tables, &indices);
+        let registry_error = write_prevalidated_dta_with_value_label_registry_to(
+            &mut Cursor::new(Vec::new()),
+            &make_data(Vec::new()),
+            &DtaWriteOptions::default(),
+            &AdaptedObservationSource,
+            ADAPTED_NUMERIC_VALUES.len() as u64,
+            &registry,
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert_eq!(registry_error, public_error);
+        assert!(public_error.contains(expected), "{public_error}");
+    }
+}
+
 #[test]
 fn prevalidated_bulk_sources_must_return_complete_rows() {
     let values = [DtaWriteNumericValue::Value(0.0)];

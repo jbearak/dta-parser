@@ -86,7 +86,10 @@ Data frames carrying notes or characteristics use an internal restoration
 class. Data-frame-preserving \code{[} subsets retain dataset metadata and the
 metadata of every retained variable for both base data frames and tibbles.
 A base subset that drops one column to a vector retains that variable's
-metadata; tibbles retain their usual non-dropping behavior.
+metadata; tibbles retain their usual non-dropping behavior. Metadata-bearing
+plain character, logical, factor, raw, integer, and double vectors also use
+an internal class so \code{\link[vctrs:vec_c]{vctrs::vec_c()}} and \code{\link[vctrs:vec_ptype2]{vctrs::vec_ptype2()}} retain the
+first input's metadata, falling back to the next input that has metadata.
 }
 \examples{
 survey <- data.frame(age = c(20, 30))

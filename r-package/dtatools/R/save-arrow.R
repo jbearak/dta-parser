@@ -159,11 +159,14 @@ save_arrow <- function(data, path,
     if (!is.null(dim(column))) return(NA_character_)
     classes <- attr(column, "class", exact = TRUE)
     if (is.factor(column)) {
-        if (all(classes %in% c("ordered", "factor"))) return("factor")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "ordered", "factor"
+        ))) return("factor")
         return(NA_character_)
     }
     if (!is.null(attr(column, "stata.storage", exact = TRUE))) {
         if (identical(typeof(column), "double") && all(classes %in% c(
+            .stata_metadata_vector_class,
             "haven_labelled", "vctrs_vctr", "stata_numeric",
             "stata_temporal", "stata_date", "stata_datetime",
             paste0("stata_", .stata_storage), "double",
@@ -172,33 +175,46 @@ save_arrow <- function(data, path,
         return(NA_character_)
     }
     if (inherits(column, "Date")) {
-        if (all(classes %in% "Date")) return("date")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "Date"
+        ))) return("date")
         return(NA_character_)
     }
     if (inherits(column, "POSIXct")) {
-        if (all(classes %in% c("POSIXct", "POSIXt"))) return("datetime")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "POSIXct", "POSIXt"
+        ))) return("datetime")
         return(NA_character_)
     }
     if (inherits(column, "difftime")) {
-        if (all(classes %in% "difftime")) return("difftime")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "difftime"
+        ))) return("difftime")
         return(NA_character_)
     }
     if (is.character(column)) {
-        if (is.null(classes)) return("character")
+        if (is.null(classes) || all(
+            classes %in% .stata_metadata_vector_class
+        )) return("character")
         return(NA_character_)
     }
     if (identical(typeof(column), "raw")) {
-        if (is.null(classes)) return("raw")
+        if (is.null(classes) || all(
+            classes %in% .stata_metadata_vector_class
+        )) return("raw")
         return(NA_character_)
     }
     if (identical(typeof(column), "logical")) {
-        if (is.null(classes)) return("logical")
+        if (is.null(classes) || all(
+            classes %in% .stata_metadata_vector_class
+        )) return("logical")
         return(NA_character_)
     }
     if (identical(typeof(column), "integer")) {
         if (is.null(classes) || (
             inherits(column, "haven_labelled") &&
             all(classes %in% c("haven_labelled", "vctrs_vctr", "integer"))
+        ) || all(classes %in% .stata_metadata_vector_class
         )) return("integer")
         return(NA_character_)
     }
@@ -206,6 +222,7 @@ save_arrow <- function(data, path,
         if (is.null(classes) || (
             inherits(column, "haven_labelled") &&
             all(classes %in% c("haven_labelled", "vctrs_vctr", "double"))
+        ) || all(classes %in% .stata_metadata_vector_class
         )) return("double")
         return(NA_character_)
     }
@@ -390,7 +407,7 @@ save_arrow <- function(data, path,
 .arrow_known_column_attributes <- function(kind) {
     common <- c(
         "label", "format.stata", "stata.string.storage",
-        "value.label.name", .stata_metadata_attribute_names
+        "value.label.name", .stata_metadata_attribute_names, "class"
     )
     switch(kind,
         factor = c(common, "levels", "class"),
