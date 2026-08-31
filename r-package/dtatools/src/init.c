@@ -602,6 +602,27 @@ static double numeric_reader_at(
     return numeric_real_value(value, missing_code);
 }
 
+static double reference_row_reads = 0.0;
+static int reference_row_reads_enabled = 0;
+
+static void record_reference_row_read(void) {
+    if (reference_row_reads_enabled) reference_row_reads += 1.0;
+}
+
+SEXP C_dtatools_reference_row_reads(SEXP enabled) {
+    int value = Rf_asLogical(enabled);
+    if (value == NA_LOGICAL) {
+        Rf_error("invalid reference row-read counter state");
+    }
+    if (value) {
+        reference_row_reads = 0.0;
+        reference_row_reads_enabled = 1;
+        return Rf_ScalarReal(0.0);
+    }
+    reference_row_reads_enabled = 0;
+    return Rf_ScalarReal(reference_row_reads);
+}
+
 SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value) {
     double row_count_double = Rf_asReal(row_count_value);
     if (!R_FINITE(row_count_double) || row_count_double < 0 ||
@@ -648,6 +669,7 @@ SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value) {
     if (TYPEOF(value) == INTSXP) {
         for (R_xlen_t index = 0; index < length; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
+            record_reference_row_read();
             int row = INTEGER_ELT(value, index);
             if (row == NA_INTEGER || row <= 0 ||
                 (R_xlen_t) row > row_count) {
@@ -663,6 +685,7 @@ SEXP C_dtatools_mutation_rows(SEXP value, SEXP row_count_value) {
     numeric_reader reader = numeric_reader_create(value, length);
     for (R_xlen_t index = 0; index < length; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
+        record_reference_row_read();
         int missing_code;
         double row = numeric_reader_at(&reader, index, &missing_code);
         if (missing_code >= 0 || !R_FINITE(row) || row != trunc(row) ||
@@ -3921,7 +3944,7 @@ static SEXP dictstring_compact_copy(SEXP value) {
     return result;
 }
 
-SEXP C_dtatools_deep_copy_column(SEXP value) {
+SEXP C_dtatools_deep_copy_value(SEXP value) {
     numeric_data *numeric = unmaterialized_numeric_storage(value);
     if (numeric != NULL) {
         SEXP result = PROTECT(numeric_compact_copy(numeric));
@@ -4127,6 +4150,7 @@ typedef struct {
 static R_xlen_t reference_live_row_at(
     const reference_rows *rows, R_xlen_t index
 ) {
+    record_reference_row_read();
     if (rows->real) {
         int missing_code;
         double value = numeric_reader_at(
@@ -4768,6 +4792,17 @@ static void cleanup_vector_patch_transaction(
     transaction->undo = NULL;
 }
 
+static void commit_vector_patch_transaction(
+    vector_patch_transaction *transaction
+) {
+    if (!transaction->delayed_dictstring_finalize) return;
+    SEXP external = R_altrep_data1(transaction->target);
+    if (!compact_payload_is_shared(external)) {
+        dictstring_finalize(external);
+    }
+    R_set_altrep_data1(transaction->target, R_NilValue);
+}
+
 static SEXP patch_vector(
     SEXP target, SEXP rows, SEXP replacement, int rollback_required
 ) {
@@ -4895,7 +4930,7 @@ static SEXP patch_vector(
     SEXP private_cache = PROTECT(
         dictstring_source != R_NilValue && rows != R_NilValue
             ? reference_string_reader_private_cache(
-                dictstring_source, target_length
+                dictstring_source, count
             )
             : R_NilValue
     );
@@ -4968,13 +5003,7 @@ static SEXP patch_vector(
         cleanup_vector_patch_transaction, &transaction,
         continuation
     );
-    if (delayed_dictstring_finalize) {
-        SEXP external = R_altrep_data1(target);
-        if (!compact_payload_is_shared(external)) {
-            dictstring_finalize(external);
-        }
-        R_set_altrep_data1(target, R_NilValue);
-    }
+    commit_vector_patch_transaction(&transaction);
     UNPROTECT(7);
     return result;
 }
@@ -4998,25 +5027,31 @@ SEXP C_dtatools_patch_data_column(
     }
 
     if ((R_xlen_t) index > XLENGTH(data)) {
-        return patch_vector(target, rows, replacement, 1);
+        PROTECT(patch_vector(target, rows, replacement, 1));
+        UNPROTECT(1);
+        return target;
     }
     if (target != VECTOR_ELT(data, (R_xlen_t) index - 1)) {
         Rf_error("invalid generic ALTREP replacement target");
     }
     if (XLENGTH(target) == 0 ||
         (rows != R_NilValue && XLENGTH(rows) == 0)) {
-        return patch_vector(target, rows, replacement, 1);
+        PROTECT(patch_vector(target, rows, replacement, 1));
+        UNPROTECT(1);
+        return target;
     }
     int detached = ALTREP(target) && !reference_mutable_altrep(target);
     if (!detached) {
-        return patch_vector(target, rows, replacement, 1);
+        PROTECT(patch_vector(target, rows, replacement, 1));
+        UNPROTECT(1);
+        return target;
     }
 
     SEXP column = PROTECT(plain_column(target, rows != R_NilValue));
-    SEXP result = PROTECT(patch_vector(column, rows, replacement, 0));
+    PROTECT(patch_vector(column, rows, replacement, 0));
     SET_VECTOR_ELT(data, (R_xlen_t) index - 1, column);
     UNPROTECT(2);
-    return result;
+    return column;
 }
 
 static double generated_double_value(
@@ -5857,8 +5892,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata_view", (DL_FUNC) &C_dtatools_metadata_view, 1},
     {"C_dtatools_mark_reference_data",
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},
-    {"C_dtatools_deep_copy_column",
-     (DL_FUNC) &C_dtatools_deep_copy_column, 1},
+    {"C_dtatools_deep_copy_value",
+     (DL_FUNC) &C_dtatools_deep_copy_value, 1},
+    {"C_dtatools_reference_row_reads",
+     (DL_FUNC) &C_dtatools_reference_row_reads, 1},
     {"C_dtatools_mutation_rows",
      (DL_FUNC) &C_dtatools_mutation_rows, 2},
     {"C_dtatools_patch_vector",

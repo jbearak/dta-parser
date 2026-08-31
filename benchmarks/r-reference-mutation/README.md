@@ -1,10 +1,16 @@
 # R reference mutation benchmark
 
-Run this benchmark against an installed development build:
+Run the benchmark from a repository checkout:
 
 ```sh
 Rscript benchmarks/r-reference-mutation/run.R
 ```
+
+The runner installs `r-package/dtatools` into a temporary library, starts a
+clean R child process with that library first, and records the source commit
+and worktree state. This prevents an older installed package from satisfying
+the gates. Pass `--markdown=PATH` to write the same metric registry as a
+Markdown table in addition to the tab-separated standard output.
 
 The workload times repeated one-row changes in a five-million-row compact Stata
 byte column. It fails if the direct target materializes or if R reports one
@@ -32,7 +38,10 @@ The full-length integer case also runs through a compact position sequence.
 The native patcher must gather each source value by its selected row without
 turning that sequence into a full R double index.
 Another compact-position case supplies selected-length values. Its validation
-must not decode row positions that cannot affect value lookup.
+must not decode row positions that cannot affect value lookup. A native
+row-read counter permits at most four reads per selected position: validation,
+plan construction, rollback journaling, and the write. This catches an added
+selector scan even when timings fluctuate.
 An ordinary double target then replaces one row from a full-dataset values
 vector. Its cast and validation work must stay proportional to that one-row
 selection; excluded values cannot create a full replacement temporary.
@@ -58,10 +67,11 @@ old five-million-row payload or duplicate the fresh output because an alias
 retains the compact source. Its timing is bounded relative to an independent
 character-vector fill, so the former decode and duplication path cannot satisfy
 the gate. Direct and shared near-unique dictionary targets are also patched at
-one row. Each may allocate its unavoidable character result once, but neither
-may allocate a full-cardinality cache, and sharing cannot trigger a private
-clone of the old compact payload. The shared alias must remain compact and
-unchanged.
+one row. A separate R process writes that fixture, so the benchmark process
+starts with a cold R string pool. Each path may allocate its unavoidable
+character result once, but neither may allocate a full-cardinality cache, and
+sharing cannot trigger a private clone of the old compact payload. The shared
+alias must remain compact and unchanged.
 
 A base R integer ALTREP sequence is also replaced, with a corresponding
 integer-fill baseline. That path deliberately allocates one ordinary integer
@@ -91,6 +101,10 @@ copy is no larger than compact storage and never becomes a full R double
 column. A second patch must stay below one compact payload, proving the detached
 proxy reuses its private native storage. Direct targets do not pay the initial
 detachment cost.
+
+Finally, the benchmark profiles 80 and 320 consecutive `gen()` calls on the
+same dataset. The larger run must remain within the linear allocation budget;
+rebuilding every prior generated binding on each call fails this gate.
 
 `Rprofmem()` reports individual R allocations. Native compact backing appears
 as its raw-vector allocation, but the profiler does not measure allocator

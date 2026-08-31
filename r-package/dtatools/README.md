@@ -217,7 +217,7 @@ Source installation requires Cargo and Rust 1.98.0 or newer:
 
 ```sh
 git clone --depth 1 https://github.com/jbearak/dta-parser.git
-R CMD INSTALL dta-tools/r-package/dtatools
+R CMD INSTALL dta-parser/r-package/dtatools
 ```
 
 ## Read a file

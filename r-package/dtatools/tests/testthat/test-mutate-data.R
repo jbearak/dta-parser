@@ -212,6 +212,17 @@ test_that("full-dataset values are gathered by selected row", {
     expect_identical(attr(strings$y, "stata.string.storage"), "str1")
 })
 
+test_that("compact selected positions use one native patch plan", {
+    data <- data.frame(value = stata_byte(rep(1, 10)))
+    rows <- stata_long(c(2, 5, 9))
+    expect_identical(dtatools:::.reference_row_reads(TRUE), 0)
+    replace_values(data, value, c(3, 4, 5), where = rows)
+    row_reads <- dtatools:::.reference_row_reads(FALSE)
+    expect_gt(row_reads, 0)
+    expect_lte(row_reads, 12)
+    expect_identical(as.double(data$value[c(2, 5, 9)]), c(3, 4, 5))
+})
+
 test_that("excluded full-dataset values do not affect validation", {
     ordinary <- data.frame(x = 1:3)
     replace_values(ordinary, x, c(1.5, 9, Inf), where = 2L)
@@ -1044,6 +1055,22 @@ test_that("gen handles zero rows and evaluates before insertion", {
     expect_identical(names(data), "x")
 })
 
+test_that("repeated gen appends ordered reference-state bindings", {
+    data <- data.frame(anchor = 1:2)
+    for (index in seq_len(100L)) {
+        name <- rlang::sym(sprintf("generated_%03d", index))
+        gen(data, !!name, anchor + .env$index)
+    }
+    expect_identical(
+        names(data),
+        c("anchor", sprintf("generated_%03d", seq_len(100L)))
+    )
+    expect_identical(as.double(data$generated_001), c(2, 3))
+    expect_identical(as.double(data$generated_100), c(101, 102))
+    replace_values(data, generated_050, 0, where = 1)
+    expect_identical(as.double(data$generated_050), c(0, 52))
+})
+
 test_that("copy_data isolates every mutable column backing", {
     data <- data.frame(
         compact = stata_long(c(1, tagged_missing("a"), 3)),
@@ -1105,6 +1132,13 @@ test_that("copy_data isolates every mutable column backing", {
     expect_identical(
         attr(grouped_copy, "groups", exact = TRUE)$group,
         c("changed", "b")
+    )
+
+    reference_attribute <- data.frame(value = 1)
+    attr(reference_attribute, "owner") <- list(new.env(parent = emptyenv()))
+    expect_error(
+        copy_data(reference_attribute),
+        "cannot isolate environments"
     )
 })
 

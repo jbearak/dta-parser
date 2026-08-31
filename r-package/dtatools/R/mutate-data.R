@@ -107,7 +107,9 @@
 #' native reader, so a successful mutation, error, or interrupt does not
 #' populate a shared source cache. `copy_data()` keeps unmaterialized compact
 #' numeric and dictionary-string columns compact, and deep-copies dataset
-#' attributes such as names and grouped-tibble metadata.
+#' attributes such as names and grouped-tibble metadata. It rejects columns or
+#' attributes containing environments, functions, external pointers, or weak
+#' references because those objects cannot be isolated by ordinary R copying.
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
@@ -156,20 +158,78 @@ gen <- function(data, variable, values, where = NULL) {
     unname(lapply(seq_along(physical), function(index) physical[[index]]))
 }
 
+.reference_names <- function(data) {
+    state <- .reference_state(data)
+    physical <- attr(data, "names", exact = TRUE)
+    if (is.null(state) || state$generated_count == 0L) return(physical)
+    result <- c(physical, character(state$generated_count))
+    node <- state$generated_head
+    for (index in seq_len(state$generated_count)) {
+        result[[state$physical_count + index]] <- node$name
+        node <- node$following
+    }
+    result
+}
+
 .data_columns <- function(data) {
     state <- .reference_state(data)
-    columns <- .plain_data_columns(data)
-    names(columns) <- attr(data, "names", exact = TRUE)
-    if (!is.null(state)) columns <- c(columns, state$generated)
+    physical <- .plain_data_columns(data)
+    if (is.null(state) || state$generated_count == 0L) {
+        names(physical) <- attr(data, "names", exact = TRUE)
+        return(physical)
+    }
+    columns <- vector("list", state$physical_count + state$generated_count)
+    columns[seq_len(state$physical_count)] <- physical
+    names <- c(
+        attr(data, "names", exact = TRUE),
+        character(state$generated_count)
+    )
+    node <- state$generated_head
+    for (index in seq_len(state$generated_count)) {
+        location <- state$physical_count + index
+        names[[location]] <- node$name
+        columns[[location]] <- state$columns[[node$name]]
+        node <- node$following
+    }
+    names(columns) <- names
     columns
 }
 
 .new_reference_state <- function(data) {
     state <- new.env(parent = emptyenv())
-    state$generated <- list()
+    physical <- .plain_data_columns(data)
+    physical_names <- attr(data, "names", exact = TRUE)
+    columns <- new.env(hash = TRUE, parent = emptyenv())
+    locations <- new.env(hash = TRUE, parent = emptyenv())
+    for (index in seq_along(physical_names)) {
+        columns[[physical_names[[index]]]] <- physical[[index]]
+        locations[[physical_names[[index]]]] <- index
+    }
+    state$columns <- columns
+    state$locations <- locations
+    state$physical_count <- length(physical)
+    state$generated_count <- 0L
+    state$generated_head <- NULL
+    state$generated_tail <- NULL
     state$nrow <- base::nrow(data)
     state$classes <- class(data)
     state
+}
+
+.append_generated_column <- function(state, name, column) {
+    node <- new.env(parent = emptyenv())
+    node$name <- name
+    node$following <- NULL
+    if (state$generated_count == 0L) {
+        state$generated_head <- node
+    } else {
+        state$generated_tail$following <- node
+    }
+    state$generated_tail <- node
+    state$generated_count <- state$generated_count + 1L
+    state$columns[[name]] <- column
+    state$locations[[name]] <- state$physical_count + state$generated_count
+    invisible(NULL)
 }
 
 .mark_reference_data <- function(data, state) {
@@ -201,23 +261,33 @@ gen <- function(data, variable, values, where = NULL) {
         (inherits(data, "grouped_df") || inherits(data, "rowwise_df"))) {
         stop("`data` must be an ungrouped data frame or tibble", call. = FALSE)
     }
-    names <- names(data)
-    if (is.null(names) || anyNA(names) || any(names == "") ||
-        anyDuplicated(names)) {
-        stop("`data` must have unique, non-missing column names",
-             call. = FALSE)
+    state <- .reference_state(data)
+    names <- NULL
+    if (is.null(state)) {
+        names <- names(data)
+        if (is.null(names) || anyNA(names) || any(names == "") ||
+            anyDuplicated(names)) {
+            stop("`data` must have unique, non-missing column names",
+                 call. = FALSE)
+        }
     }
-    columns <- .data_columns(data)
-    sizes <- vapply(columns, NROW, numeric(1))
-    row_count <- nrow(data)
-    if (any(sizes != row_count)) {
-        stop("`data` has columns with inconsistent row counts",
-             call. = FALSE)
+    row_count <- if (is.null(state)) nrow(data) else state$nrow
+    if (is.null(state)) {
+        columns <- .data_columns(data)
+        sizes <- vapply(columns, NROW, numeric(1))
+        if (any(sizes != row_count)) {
+            stop("`data` has columns with inconsistent row counts",
+                 call. = FALSE)
+        }
+    } else {
+        columns <- state$columns
     }
-    list(columns = columns, names = names, nrow = row_count)
+    list(
+        columns = columns, names = names, nrow = row_count, state = state
+    )
 }
 
-.mutation_name <- function(variable, generate, names) {
+.mutation_name <- function(variable, generate, data) {
     if (rlang::quo_is_missing(variable)) {
         stop("`variable` must be one unquoted column name", call. = FALSE)
     }
@@ -226,7 +296,13 @@ gen <- function(data, variable, values, where = NULL) {
         stop("`variable` must be one unquoted column name", call. = FALSE)
     }
     name <- as.character(expression)
-    location <- match(name, names)
+    location <- if (is.null(data$state)) {
+        match(name, data$names)
+    } else if (exists(name, envir = data$state$locations, inherits = FALSE)) {
+        data$state$locations[[name]]
+    } else {
+        NA_integer_
+    }
     if (generate && !is.na(location)) {
         stop(sprintf("Column `%s` already exists", name), call. = FALSE)
     }
@@ -245,6 +321,25 @@ gen <- function(data, variable, values, where = NULL) {
     list(expression = value[[2L]], environment = environment(value))
 }
 
+.eval_in_mutation_data <- function(expression, columns, environment = NULL) {
+    if (!is.environment(columns)) {
+        return(if (is.null(environment)) {
+            rlang::eval_tidy(expression, data = columns)
+        } else {
+            rlang::eval_tidy(expression, data = columns, env = environment)
+        })
+    }
+    previous_parent <- parent.env(columns)
+    on.exit(parent.env(columns) <- previous_parent, add = TRUE)
+    mask <- rlang::new_data_mask(columns)
+    mask$.data <- rlang::as_data_pronoun(columns)
+    if (is.null(environment)) {
+        rlang::eval_tidy(expression, data = mask)
+    } else {
+        rlang::eval_tidy(expression, data = mask, env = environment)
+    }
+}
+
 .eval_mutation_expression <- function(quo, columns, argument) {
     if (rlang::quo_is_missing(quo)) {
         stop(sprintf("`%s` is required", argument), call. = FALSE)
@@ -255,19 +350,19 @@ gen <- function(data, variable, values, where = NULL) {
             stop(sprintf("`%s` formulas must be one-sided", argument),
                  call. = FALSE)
         }
-        return(rlang::eval_tidy(
+        return(.eval_in_mutation_data(
             expression[[2L]],
-            data = columns,
-            env = rlang::quo_get_env(quo)
+            columns,
+            rlang::quo_get_env(quo)
         ))
     }
-    value <- rlang::eval_tidy(quo, data = columns)
+    value <- .eval_in_mutation_data(quo, columns)
     formula <- .formula_expression(value, argument)
     if (is.null(formula)) return(value)
-    rlang::eval_tidy(
+    .eval_in_mutation_data(
         formula$expression,
-        data = columns,
-        env = formula$environment
+        columns,
+        formula$environment
     )
 }
 
@@ -378,7 +473,7 @@ gen <- function(data, variable, values, where = NULL) {
 
 .mutate_data <- function(data, variable, values, where, generate) {
     original <- .as_mutation_data(data)
-    target <- .mutation_name(variable, generate, original$names)
+    target <- .mutation_name(variable, generate, original)
 
     selected <- .eval_mutation_expression(where, original$columns, "where")
     rows <- .mutation_rows(selected, original$nrow)
@@ -390,23 +485,26 @@ gen <- function(data, variable, values, where = NULL) {
     if (generate) {
         column <- .generated_column(values, rows, original$nrow)
         if (is.null(state)) state <- .new_reference_state(data)
-        generated <- state$generated
-        generated[[target$name]] <- column
     } else {
-        column <- original$columns[[target$location]]
+        column <- if (is.null(state)) {
+            original$columns[[target$location]]
+        } else {
+            state$columns[[target$name]]
+        }
         replacement <- .cast_replacement(
             values, column, rows, value_mode
         )
     }
 
     if (!generate) {
-        .Call(
+        column <- .Call(
             C_dtatools_patch_data_column,
             data, as.integer(target$location), column, rows, replacement
         )
+        if (!is.null(state)) state$columns[[target$name]] <- column
     }
     if (generate) {
-        state$generated <- generated
+        .append_generated_column(state, target$name, column)
         if (is.null(.reference_state(data))) .mark_reference_data(data, state)
     }
     invisible(data)
@@ -508,18 +606,50 @@ gen <- function(data, variable, values, where = NULL) {
          call. = FALSE)
 }
 
+.deep_copy_value <- function(value) {
+    .Call(C_dtatools_deep_copy_value, value)
+}
+
+.contains_reference_object <- function(value) {
+    if (is.environment(value) || is.function(value) ||
+        typeof(value) %in% c("externalptr", "weakref")) {
+        return(TRUE)
+    }
+    contents <- if (typeof(value) %in% c("list", "expression", "pairlist")) {
+        as.list(value)
+    } else {
+        list()
+    }
+    nested <- c(contents, unname(attributes(value)))
+    any(vapply(nested, .contains_reference_object, logical(1)))
+}
+
+.reference_row_reads <- function(enabled) {
+    .Call(C_dtatools_reference_row_reads, enabled)
+}
+
 #' @rdname replace_values
 #' @export
 copy_data <- function(data) {
-    source <- .as_mutation_data(data, allow_grouped = TRUE)
-    columns <- lapply(source$columns, function(column) {
-        .Call(C_dtatools_deep_copy_column, column)
-    })
-    names(columns) <- source$names
     snapshot <- .reference_snapshot(data)
+    source <- .as_mutation_data(snapshot, allow_grouped = TRUE)
+    snapshot_columns <- source$columns
+    snapshot_attributes <- attributes(snapshot)
+    reference_values <- c(snapshot_columns, unname(snapshot_attributes))
+    if (any(vapply(
+        reference_values, .contains_reference_object, logical(1)
+    ))) {
+        stop(
+            paste0(
+                "`copy_data()` cannot isolate environments, functions, ",
+                "external pointers, or weak references"
+            ),
+            call. = FALSE
+        )
+    }
+    columns <- lapply(snapshot_columns, .deep_copy_value)
     copied_attributes <- lapply(
-        attributes(snapshot),
-        function(value) .Call(C_dtatools_deep_copy_column, value)
+        snapshot_attributes, .deep_copy_value
     )
     attributes(columns) <- copied_attributes
     columns
@@ -548,18 +678,19 @@ copy_data <- function(data) {
 
 #' @export
 names.dtatools_ref_data <- function(x) {
-    names(.data_columns(x))
+    .reference_names(x)
 }
 
 #' @export
 length.dtatools_ref_data <- function(x) {
-    length(.data_columns(x))
+    state <- .reference_state(x)
+    state$physical_count + state$generated_count
 }
 
 #' @export
 dim.dtatools_ref_data <- function(x) {
     state <- .reference_state(x)
-    c(state$nrow, length(.data_columns(x)))
+    c(state$nrow, state$physical_count + state$generated_count)
 }
 
 #' @export
