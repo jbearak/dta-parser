@@ -183,39 +183,27 @@ test_that("temporary sources are cleaned automatically after reads and errors", 
 })
 
 test_that("temporary sources are cleaned when an interrupt unwinds the read", {
-    skip_if_not_installed("callr")
-    result <- callr::r(
-        function(library, bytes) {
-            .libPaths(c(library, .libPaths()))
-            library(dtatools)
-            path <- NULL
-            original_resolver <- dtatools:::.resolve_dta_source
-            testthat::local_mocked_bindings(
-                .resolve_dta_source = function(file) {
-                    source <- original_resolver(file)
-                    path <<- source$path
-                    source
-                },
-                .dta_metadata = function(file, encoding = NULL) rlang::interrupt(),
-                .package = "dtatools"
-            )
-            interrupted <- tryCatch(
-                {
-                    dtatools::read_dta(
-                        bytes, col_select = tidyselect::everything()
-                    )
-                    FALSE
-                },
-                interrupt = function(condition) TRUE
-            )
-            list(interrupted = interrupted, temporary_exists = file.exists(path))
+    path <- NULL
+    original_resolver <- dtatools:::.resolve_dta_source
+    local_mocked_bindings(
+        .resolve_dta_source = function(file) {
+            source <- original_resolver(file)
+            path <<- source$path
+            source
         },
-        args = list(
-            dirname(find.package("dtatools")),
-            read_fixture_bytes()
-        )
+        .dta_metadata = function(file, encoding = NULL) rlang::interrupt(),
+        .package = "dtatools"
+    )
+    interrupted <- tryCatch(
+        {
+            read_dta(
+                read_fixture_bytes(), col_select = tidyselect::everything()
+            )
+            FALSE
+        },
+        interrupt = function(condition) TRUE
     )
 
-    expect_true(result$interrupted)
-    expect_false(result$temporary_exists)
+    expect_true(interrupted)
+    expect_false(file.exists(path))
 })
