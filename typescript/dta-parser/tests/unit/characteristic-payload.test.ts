@@ -5,10 +5,13 @@ import {
     type StataCharacteristicLocator,
 } from '../../src/characteristic-payload';
 import {
+    isStataCharacteristicsMaterialized,
+    isStataNotesMaterialized,
     StataMetadataCollector,
     type StataMetadataTarget,
+    withLazyStataMetadata,
 } from '../../src/stata-metadata';
-import { text_decoder } from '../../src/text-encoding';
+import { text_decoder, type DtaTextDecoder } from '../../src/text-encoding';
 import type { VariableInfo } from '../../src/types';
 
 interface RawCharacteristic {
@@ -30,6 +33,19 @@ function variable(name: string): VariableInfo {
         byte_width: 1,
         byte_offset: 0,
     };
+}
+
+function lazyVariable(name: string, byteOffset: number): VariableInfo {
+    return withLazyStataMetadata({
+        name,
+        type: 'byte',
+        type_code: 65530,
+        format: '%8.0g',
+        label: '',
+        value_label_name: '',
+        byte_width: 1,
+        byte_offset: byteOffset,
+    });
 }
 
 function encodeRecords(
@@ -85,6 +101,138 @@ function framePlan(
 }
 
 describe('Stata characteristic frame plan', () => {
+    it('releases duplicate indexes before decoding and finishes once', () => {
+        const dataset: StataMetadataTarget = {
+            notes: [], characteristics: [],
+        };
+        const collector = new StataMetadataCollector(dataset, []);
+        const encoded = encodeRecords(129, [
+            { target: '_dta', name: 'source', value: 'payload' },
+        ]);
+        const decodedIndexCounts: number[] = [];
+        const utf8 = text_decoder('utf-8');
+        let plan: StataCharacteristicFramePlan;
+        const decoder: DtaTextDecoder = {
+            decode(input): string {
+                const value = utf8.decode(input);
+                if (value === 'payload') {
+                    decodedIndexCounts.push(plan.retainedIndexCount);
+                }
+                return value;
+            },
+        };
+        plan = new StataCharacteristicFramePlan(
+            encoded.bytes, decoder, collector
+        );
+        plan.add(encoded.locators[0]);
+
+        expect(plan.retainedIndexCount).toBe(1);
+        plan.finish();
+
+        expect(decodedIndexCounts).toEqual([0]);
+        expect(plan.retainedIndexCount).toBe(0);
+        expect(dataset.characteristics).toEqual([
+            { name: 'source', value: 'payload' },
+        ]);
+        expect(() => plan.finish()).toThrow('already finished');
+    });
+
+    it('materializes 120,000 unique scopes without rebuilding indexes', () => {
+        const count = 120_000;
+        const width = 129;
+        const stride = 2 * width + 1;
+        const variables = Array.from(
+            { length: count },
+            (_, index) => lazyVariable(`v${index}`, index)
+        );
+        const bytes = new Uint8Array(count * stride);
+        const encoder = new TextEncoder();
+        const characteristic = encoder.encode('source');
+        const collector = new StataMetadataCollector(
+            { notes: [], characteristics: [] }, variables
+        );
+        let plan: StataCharacteristicFramePlan;
+        let redundantIndexObserved = false;
+        const utf8 = text_decoder('utf-8');
+        const decoder: DtaTextDecoder = {
+            decode(input): string {
+                if (input.length === 1 && input[0] === 0x78) {
+                    redundantIndexObserved ||= plan.retainedIndexCount !== 0
+                        || collector.retainedTargetIndexCount !== 0
+                        || collector.indexedScopeCount !== 0;
+                }
+                return utf8.decode(input);
+            },
+        };
+        plan = new StataCharacteristicFramePlan(bytes, decoder, collector);
+        for (let index = 0; index < count; index++) {
+            const start = index * stride;
+            bytes.set(encoder.encode(`v${index}`), start);
+            bytes.set(characteristic, start + width);
+            bytes[start + 2 * width] = 0x78;
+            plan.add({
+                namesStart: start,
+                nameWidth: width,
+                valueStart: start + 2 * width,
+                valueLength: 1,
+            });
+        }
+
+        expect(plan.retainedCount).toBe(count);
+        expect(plan.retainedIndexCount).toBe(count);
+        expect(collector.indexedScopeCount).toBe(0);
+        plan.finish();
+
+        expect(redundantIndexObserved).toBeFalse();
+        expect(plan.retainedIndexCount).toBe(0);
+        expect(collector.retainedTargetIndexCount).toBe(0);
+        expect(collector.indexedScopeCount).toBe(0);
+        expect(variables.every(isStataCharacteristicsMaterialized)).toBeTrue();
+        expect(variables.every(variable =>
+            !isStataNotesMaterialized(variable)
+        )).toBeTrue();
+        expect(variables[0].characteristics).toEqual([
+            { name: 'source', value: 'x' },
+        ]);
+        variables[0].characteristics[0].value = 'first only';
+        expect(variables[count - 1].characteristics).toEqual([
+            { name: 'source', value: 'x' },
+        ]);
+    });
+
+    it('sorts notes and targets the last duplicate variable name', () => {
+        const dataset: StataMetadataTarget = {
+            notes: [], characteristics: [],
+        };
+        const variables = [
+            lazyVariable('duplicate', 0),
+            lazyVariable('duplicate', 1),
+        ];
+        const collector = new StataMetadataCollector(dataset, variables);
+        const encoded = encodeRecords(129, [
+            { target: 'duplicate', name: 'note9', value: 'nine' },
+            { target: 'duplicate', name: 'role', value: 'old' },
+            { target: 'duplicate', name: 'note2', value: 'two' },
+            { target: 'duplicate', name: 'role', value: 'new' },
+        ]);
+        const plan = new StataCharacteristicFramePlan(
+            encoded.bytes, text_decoder('utf-8'), collector
+        );
+        for (const locator of encoded.locators) plan.add(locator);
+
+        plan.finish();
+
+        expect(isStataNotesMaterialized(variables[0])).toBeFalse();
+        expect(isStataCharacteristicsMaterialized(variables[0])).toBeFalse();
+        expect(variables[1].notes).toEqual([
+            { number: 2, text: 'two' },
+            { number: 9, text: 'nine' },
+        ]);
+        expect(variables[1].characteristics).toEqual([
+            { name: 'role', value: 'new' },
+        ]);
+    });
+
     for (const [format, width] of [
         ['modern', 129],
         ['legacy', 33],

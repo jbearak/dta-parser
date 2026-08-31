@@ -193,10 +193,22 @@ export class StataMetadataCollector {
     private readonly variables: VariableInfo[];
     private targetIndexes: Map<string, number> | undefined;
     private readonly indexes = new Map<number, ScopeIndexes>();
+    private uniqueNoteScopes: Uint8Array | undefined;
+    private uniqueCharacteristicScopes: Uint8Array | undefined;
 
     constructor(dataset: StataMetadataTarget, variables: VariableInfo[]) {
         this.dataset = dataset;
         this.variables = variables;
+    }
+
+    /** Variable-name lookup entries still retained by this collector. */
+    get retainedTargetIndexCount(): number {
+        return this.targetIndexes?.size ?? 0;
+    }
+
+    /** Scope maps retained for callers that supply un-compacted records. */
+    get indexedScopeCount(): number {
+        return this.indexes.size;
     }
 
     private targetIndex(target: string): number | undefined {
@@ -254,6 +266,36 @@ export class StataMetadataCollector {
         return scopeIndexes.characteristics;
     }
 
+    private uniqueNotes(scopeIndex: number): StataNote[] {
+        let scopes = this.uniqueNoteScopes;
+        if (scopes === undefined) {
+            scopes = new Uint8Array(this.variables.length + 1);
+            this.uniqueNoteScopes = scopes;
+        }
+        const scope = this.scope(scopeIndex);
+        if (scopes[scopeIndex] === 0) {
+            const values = mutableNotes(scope);
+            scopes[scopeIndex] = 1;
+            return values;
+        }
+        return scope.notes as StataNote[];
+    }
+
+    private uniqueCharacteristics(scopeIndex: number): StataCharacteristic[] {
+        let scopes = this.uniqueCharacteristicScopes;
+        if (scopes === undefined) {
+            scopes = new Uint8Array(this.variables.length + 1);
+            this.uniqueCharacteristicScopes = scopes;
+        }
+        const scope = this.scope(scopeIndex);
+        if (scopes[scopeIndex] === 0) {
+            const values = mutableCharacteristics(scope);
+            scopes[scopeIndex] = 1;
+            return values;
+        }
+        return scope.characteristics as StataCharacteristic[];
+    }
+
     accept(
         target: string, name: string
     ): AcceptedStataCharacteristic | null {
@@ -279,6 +321,32 @@ export class StataMetadataCollector {
         value: () => string
     ): void {
         this.pushAccepted(accepted, value());
+    }
+
+    /** Materialize a record from a plan that already resolved duplicates. */
+    pushAcceptedUniqueLazy(
+        accepted: AcceptedStataCharacteristic,
+        value: () => string
+    ): void {
+        // Target resolution ended during framing. Release the wide-schema
+        // lookup before value decoding begins.
+        this.targetIndexes = undefined;
+        const decoded = value();
+        validExistingMetadataValue(
+            decoded,
+            accepted.noteNumber === null ? 'characteristic' : 'note'
+        );
+        if (accepted.noteNumber !== null) {
+            this.uniqueNotes(accepted.scopeIndex).push({
+                number: accepted.noteNumber,
+                text: decoded,
+            });
+        } else {
+            this.uniqueCharacteristics(accepted.scopeIndex).push({
+                name: accepted.name,
+                value: decoded,
+            });
+        }
     }
 
     private pushAccepted(
@@ -321,6 +389,22 @@ export class StataMetadataCollector {
                 (left, right) => left.number - right.number
             );
         }
+        const uniqueNoteScopes = this.uniqueNoteScopes;
+        if (uniqueNoteScopes !== undefined) {
+            for (let scopeIndex = 0;
+                scopeIndex < uniqueNoteScopes.length;
+                scopeIndex++) {
+                if (uniqueNoteScopes[scopeIndex] !== 0) {
+                    (this.scope(scopeIndex).notes as StataNote[]).sort(
+                        (left, right) => left.number - right.number
+                    );
+                }
+            }
+        }
+        this.targetIndexes = undefined;
+        this.indexes.clear();
+        this.uniqueNoteScopes = undefined;
+        this.uniqueCharacteristicScopes = undefined;
     }
 }
 

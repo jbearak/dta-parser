@@ -478,9 +478,19 @@ var StataMetadataCollector = class {
   variables;
   targetIndexes;
   indexes = /* @__PURE__ */ new Map();
+  uniqueNoteScopes;
+  uniqueCharacteristicScopes;
   constructor(dataset, variables) {
     this.dataset = dataset;
     this.variables = variables;
+  }
+  /** Variable-name lookup entries still retained by this collector. */
+  get retainedTargetIndexCount() {
+    return this.targetIndexes?.size ?? 0;
+  }
+  /** Scope maps retained for callers that supply un-compacted records. */
+  get indexedScopeCount() {
+    return this.indexes.size;
   }
   targetIndex(target) {
     if (target === "_dta") return 0;
@@ -528,6 +538,34 @@ var StataMetadataCollector = class {
     }
     return scopeIndexes.characteristics;
   }
+  uniqueNotes(scopeIndex) {
+    let scopes = this.uniqueNoteScopes;
+    if (scopes === void 0) {
+      scopes = new Uint8Array(this.variables.length + 1);
+      this.uniqueNoteScopes = scopes;
+    }
+    const scope = this.scope(scopeIndex);
+    if (scopes[scopeIndex] === 0) {
+      const values = mutableNotes(scope);
+      scopes[scopeIndex] = 1;
+      return values;
+    }
+    return scope.notes;
+  }
+  uniqueCharacteristics(scopeIndex) {
+    let scopes = this.uniqueCharacteristicScopes;
+    if (scopes === void 0) {
+      scopes = new Uint8Array(this.variables.length + 1);
+      this.uniqueCharacteristicScopes = scopes;
+    }
+    const scope = this.scope(scopeIndex);
+    if (scopes[scopeIndex] === 0) {
+      const values = mutableCharacteristics(scope);
+      scopes[scopeIndex] = 1;
+      return values;
+    }
+    return scope.characteristics;
+  }
   accept(target, name) {
     if (!validCharacteristicNameShape(name)) {
       throw new Error("Invalid on-disk Stata characteristic name");
@@ -546,6 +584,26 @@ var StataMetadataCollector = class {
   }
   pushAcceptedLazy(accepted, value) {
     this.pushAccepted(accepted, value());
+  }
+  /** Materialize a record from a plan that already resolved duplicates. */
+  pushAcceptedUniqueLazy(accepted, value) {
+    this.targetIndexes = void 0;
+    const decoded = value();
+    validExistingMetadataValue(
+      decoded,
+      accepted.noteNumber === null ? "characteristic" : "note"
+    );
+    if (accepted.noteNumber !== null) {
+      this.uniqueNotes(accepted.scopeIndex).push({
+        number: accepted.noteNumber,
+        text: decoded
+      });
+    } else {
+      this.uniqueCharacteristics(accepted.scopeIndex).push({
+        name: accepted.name,
+        value: decoded
+      });
+    }
   }
   pushAccepted(accepted, value) {
     validExistingMetadataValue(
@@ -586,6 +644,20 @@ var StataMetadataCollector = class {
         (left, right) => left.number - right.number
       );
     }
+    const uniqueNoteScopes = this.uniqueNoteScopes;
+    if (uniqueNoteScopes !== void 0) {
+      for (let scopeIndex = 0; scopeIndex < uniqueNoteScopes.length; scopeIndex++) {
+        if (uniqueNoteScopes[scopeIndex] !== 0) {
+          this.scope(scopeIndex).notes.sort(
+            (left, right) => left.number - right.number
+          );
+        }
+      }
+    }
+    this.targetIndexes = void 0;
+    this.indexes.clear();
+    this.uniqueNoteScopes = void 0;
+    this.uniqueCharacteristicScopes = void 0;
   }
 };
 function validNoteNumber(number) {
@@ -742,7 +814,15 @@ var StataCharacteristicFramePlan = class {
   get retainedCount() {
     return this.records.length;
   }
+  /** Number of canonical-key lookup entries still retained for framing. */
+  get retainedIndexCount() {
+    return this.recordIndices?.size ?? 0;
+  }
   add(locator) {
+    const recordIndices = this.recordIndices;
+    if (recordIndices === void 0) {
+      throw new Error("Stata characteristic frame plan is already finished");
+    }
     let valueEnd;
     try {
       valueEnd = stataMetadataValueEnd(
@@ -774,9 +854,9 @@ var StataCharacteristicFramePlan = class {
       const accepted = this.collector.accept(target, name);
       if (accepted !== null) {
         const key = canonicalRecordKey(accepted);
-        const existing = this.recordIndices.get(key);
+        const existing = recordIndices.get(key);
         if (existing === void 0) {
-          this.recordIndices.set(key, this.records.length);
+          recordIndices.set(key, this.records.length);
           this.records.push({
             accepted,
             valueStart: locator.valueStart,
@@ -794,9 +874,13 @@ var StataCharacteristicFramePlan = class {
     }
   }
   finish() {
+    if (this.recordIndices === void 0) {
+      throw new Error("Stata characteristic frame plan is already finished");
+    }
+    this.recordIndices = void 0;
     if (this.hasDeferredError) throw this.deferredError;
     for (const record of this.records) {
-      this.collector.pushAcceptedLazy(record.accepted, () => {
+      this.collector.pushAcceptedUniqueLazy(record.accepted, () => {
         return this.decoder.decode(
           this.bytes.subarray(record.valueStart, record.valueEnd)
         );

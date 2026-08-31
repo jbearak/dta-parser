@@ -18,12 +18,14 @@ export declare class StataCharacteristicFramePlan {
     private readonly decoder;
     private readonly collector;
     private readonly records;
-    private readonly recordIndices;
+    private recordIndices;
     private deferredError;
     private hasDeferredError;
     constructor(bytes: Uint8Array, decoder: DtaTextDecoder, collector: StataMetadataCollector);
     /** Number of distinct accepted scope/key locators retained for decoding. */
     get retainedCount(): number;
+    /** Number of canonical-key lookup entries still retained for framing. */
+    get retainedIndexCount(): number;
     add(locator: StataCharacteristicLocator): void;
     finish(): void;
 }

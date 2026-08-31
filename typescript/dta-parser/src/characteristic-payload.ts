@@ -49,7 +49,7 @@ function readFixedString(
  */
 export class StataCharacteristicFramePlan {
     private readonly records: FramedStataCharacteristic[] = [];
-    private readonly recordIndices = new Map<string, number>();
+    private recordIndices: Map<string, number> | undefined = new Map();
     private deferredError: unknown;
     private hasDeferredError = false;
 
@@ -64,7 +64,16 @@ export class StataCharacteristicFramePlan {
         return this.records.length;
     }
 
+    /** Number of canonical-key lookup entries still retained for framing. */
+    get retainedIndexCount(): number {
+        return this.recordIndices?.size ?? 0;
+    }
+
     add(locator: StataCharacteristicLocator): void {
+        const recordIndices = this.recordIndices;
+        if (recordIndices === undefined) {
+            throw new Error('Stata characteristic frame plan is already finished');
+        }
         let valueEnd: number;
         try {
             valueEnd = stataMetadataValueEnd(
@@ -91,9 +100,9 @@ export class StataCharacteristicFramePlan {
             const accepted = this.collector.accept(target, name);
             if (accepted !== null) {
                 const key = canonicalRecordKey(accepted);
-                const existing = this.recordIndices.get(key);
+                const existing = recordIndices.get(key);
                 if (existing === undefined) {
-                    this.recordIndices.set(key, this.records.length);
+                    recordIndices.set(key, this.records.length);
                     this.records.push({
                         accepted,
                         valueStart: locator.valueStart,
@@ -112,9 +121,13 @@ export class StataCharacteristicFramePlan {
     }
 
     finish(): void {
+        if (this.recordIndices === undefined) {
+            throw new Error('Stata characteristic frame plan is already finished');
+        }
+        this.recordIndices = undefined;
         if (this.hasDeferredError) throw this.deferredError;
         for (const record of this.records) {
-            this.collector.pushAcceptedLazy(record.accepted, () => {
+            this.collector.pushAcceptedUniqueLazy(record.accepted, () => {
                 return this.decoder.decode(
                     this.bytes.subarray(record.valueStart, record.valueEnd)
                 );

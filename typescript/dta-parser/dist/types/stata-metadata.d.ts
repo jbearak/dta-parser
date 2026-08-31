@@ -23,15 +23,25 @@ export declare class StataMetadataCollector {
     private readonly variables;
     private targetIndexes;
     private readonly indexes;
+    private uniqueNoteScopes;
+    private uniqueCharacteristicScopes;
     constructor(dataset: StataMetadataTarget, variables: VariableInfo[]);
+    /** Variable-name lookup entries still retained by this collector. */
+    get retainedTargetIndexCount(): number;
+    /** Scope maps retained for callers that supply un-compacted records. */
+    get indexedScopeCount(): number;
     private targetIndex;
     private scope;
     private scopeIndexes;
     private noteIndexes;
     private characteristicIndexes;
+    private uniqueNotes;
+    private uniqueCharacteristics;
     accept(target: string, name: string): AcceptedStataCharacteristic | null;
     pushLazy(target: string, name: string, value: () => string): boolean;
     pushAcceptedLazy(accepted: AcceptedStataCharacteristic, value: () => string): void;
+    /** Materialize a record from a plan that already resolved duplicates. */
+    pushAcceptedUniqueLazy(accepted: AcceptedStataCharacteristic, value: () => string): void;
     private pushAccepted;
     finish(): void;
 }
