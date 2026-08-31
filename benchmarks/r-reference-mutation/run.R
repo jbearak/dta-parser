@@ -1,5 +1,25 @@
 #!/usr/bin/env Rscript
 
+required_benchmark_packages <- "callr"
+missing_benchmark_packages <- required_benchmark_packages[!vapply(
+    required_benchmark_packages, requireNamespace, logical(1), quietly = TRUE
+)]
+if (length(missing_benchmark_packages) > 0L) {
+    stop(
+        sprintf(
+            "Install the required benchmark package: %s",
+            paste(missing_benchmark_packages, collapse = ", ")
+        ),
+        call. = FALSE
+    )
+}
+if (!capabilities("profmem")) {
+    stop(
+        "This benchmark requires an R build with memory profiling enabled",
+        call. = FALSE
+    )
+}
+
 arguments <- commandArgs(trailingOnly = TRUE)
 markdown_argument <- grep("^--markdown=", arguments, value = TRUE)
 if (length(markdown_argument) > 1L) {

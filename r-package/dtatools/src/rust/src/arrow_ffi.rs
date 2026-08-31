@@ -2114,7 +2114,8 @@ unsafe fn fill_profiled_compact(
         NumericKind::Float => for_each_value::<Float32Array>(column, |row, array, index| {
             let value = array.value(index);
             missing_count += usize::from(
-                classify_float_missing_bits_for_version(value.to_bits(), version).is_some(),
+                value.is_nan()
+                    || classify_float_missing_bits_for_version(value.to_bits(), version).is_some(),
             );
             values.add(row * 4).cast::<f32>().write_unaligned(value);
             Ok(())
@@ -3268,6 +3269,37 @@ mod tests {
             classify_double_missing_bits(values.value(0).to_bits()),
             Some(MissingTag::System)
         );
+    }
+
+    #[test]
+    fn compact_float_fill_counts_generic_nan_as_missing() {
+        let generic_nan = f32::from_bits(0x7fc0_0001);
+        let system_missing = f32::from_bits(MissingTag::System.float_bits());
+        let column = ArrowReadColumn {
+            name: "x".to_owned(),
+            data_type: DataType::Float32,
+            nullable: false,
+            dictionary_ordered: false,
+            field: None,
+            chunks: vec![Arc::new(Float32Array::from(vec![
+                1.0,
+                generic_nan,
+                system_missing,
+            ]))],
+        };
+        let mut values = vec![0_u8; 3 * std::mem::size_of::<f32>()];
+
+        let missing_count = unsafe {
+            fill_profiled_compact(
+                &column,
+                values.as_mut_ptr(),
+                NumericKind::Float,
+                FormatVersion::V118,
+            )
+        }
+        .expect("compact float fill");
+
+        assert_eq!(missing_count, 2);
     }
 
     #[test]

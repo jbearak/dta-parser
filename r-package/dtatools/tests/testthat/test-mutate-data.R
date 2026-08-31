@@ -1725,6 +1725,10 @@ test_that("ordinary assignments and metadata helpers materialize current state",
 })
 
 test_that("sparse compact replacement and generation keep existing payloads", {
+    skip_if_not(
+        capabilities("profmem"),
+        "R was built without memory profiling"
+    )
     size <- 1000000L
     data <- data.frame(x = stata_byte(rep(1, size)), keep = runif(size))
     keep_trace <- tracemem(data$keep)

@@ -6,6 +6,9 @@ Run the benchmark from a repository checkout:
 Rscript benchmarks/r-reference-mutation/run.R
 ```
 
+The package dependencies and the suggested `callr` package must be installed.
+The R build must report `capabilities("profmem") == TRUE`.
+
 The runner installs `r-package/dtatools` into a temporary library, starts a
 clean R child process with that library first, and records the source commit
 and clean worktree state. It refuses tracked or untracked source changes. This
