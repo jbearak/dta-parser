@@ -1,0 +1,69 @@
+# NSE policies for dtatools' exported functions, read by Raven
+# (https://github.com/jbearak/raven) to avoid false `undefined-variable`
+# diagnostics on captured arguments.
+#
+# `R CMD INSTALL` copies this to <libpath>/dtatools/raven/nse.toml, where Raven
+# finds it alongside NAMESPACE. Keep it in step with the signatures in R/ --
+# `formals` must list the function's formal arguments in declaration order,
+# because Raven matches positional arguments against it.
+
+schema = 1
+
+# gen(survey, adjusted, income + 5): `variable`, `values`, and `where` are
+# quoted with rlang::enquo() and evaluated against the data mask, while `data`
+# is an ordinary argument that should still be checked.
+[[function]]
+name = "gen"
+formals = ["data", "variable", "values", "where"]
+captured = ["variable", "values", "where"]
+
+[[function]]
+name = "repl"
+formals = ["data", "variable", "values", "where"]
+captured = ["variable", "values", "where"]
+
+[[function]]
+name = "replace_values"
+formals = ["data", "variable", "values", "where"]
+captured = ["variable", "values", "where"]
+
+# tab(mtcars, cyl, gear): `x` and the dots are quoted column expressions. The
+# explicit `data` argument, and the literal controls after the dots, are not.
+[[function]]
+name = "tab"
+formals = ["x", "...", "data", "missing", "display"]
+captured = ["x"]
+captured_dots = true
+
+# read_dta(path, col_select = c(id, weight)): tidyselect over the file's
+# columns, matching Raven's built-in policy for haven's readers.
+[[function]]
+name = "read_dta"
+formals = [
+    "file",
+    "encoding",
+    "col_select",
+    "skip",
+    "n_max",
+    ".name_repair",
+    "threads",
+    "use_numeric_altrep",
+    "datasig",
+]
+captured = ["col_select"]
+
+[[function]]
+name = "read_arrow"
+formals = [
+    "file",
+    "col_select",
+    "skip",
+    "n_max",
+    "verify",
+    "profile",
+    ".name_repair",
+    "use_numeric_altrep",
+    "threads",
+    "datasig",
+]
+captured = ["col_select"]
