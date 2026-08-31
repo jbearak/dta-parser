@@ -3957,6 +3957,47 @@ SEXP C_dtatools_deep_copy_value(SEXP value) {
     return Rf_duplicate(value);
 }
 
+SEXP C_dtatools_reference_contents(SEXP value) {
+    int type = TYPEOF(value);
+    if (type != VECSXP && type != EXPRSXP &&
+        type != LISTSXP && type != LANGSXP) {
+        Rf_error("invalid reference-object container");
+    }
+    R_xlen_t length = 0;
+    if (type == VECSXP || type == EXPRSXP) {
+        length = XLENGTH(value);
+    } else {
+        for (SEXP node = value; node != R_NilValue; node = CDR(node)) {
+            if ((length & 16383) == 0) R_CheckUserInterrupt();
+            int node_type = TYPEOF(node);
+            if (node_type != LISTSXP && node_type != LANGSXP &&
+                node_type != DOTSXP) {
+                Rf_error("invalid reference-object pairlist");
+            }
+            if (length == R_XLEN_T_MAX) {
+                Rf_error("reference-object container is too long");
+            }
+            length++;
+        }
+    }
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, length));
+    if (type == VECSXP || type == EXPRSXP) {
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            SET_VECTOR_ELT(result, index, VECTOR_ELT(value, index));
+        }
+    } else {
+        SEXP node = value;
+        for (R_xlen_t index = 0; index < length; index++) {
+            if ((index & 16383) == 0) R_CheckUserInterrupt();
+            SET_VECTOR_ELT(result, index, CAR(node));
+            node = CDR(node);
+        }
+    }
+    UNPROTECT(1);
+    return result;
+}
+
 static int reference_mutable_altrep(SEXP value) {
     return ALTREP(value) &&
         (R_altrep_inherits(value, dtatools_numeric_class) ||
@@ -5914,6 +5955,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},
     {"C_dtatools_deep_copy_value",
      (DL_FUNC) &C_dtatools_deep_copy_value, 1},
+    {"C_dtatools_reference_contents",
+     (DL_FUNC) &C_dtatools_reference_contents, 1},
     {"C_dtatools_reference_row_reads",
      (DL_FUNC) &C_dtatools_reference_row_reads, 1},
     {"C_dtatools_mutation_rows",

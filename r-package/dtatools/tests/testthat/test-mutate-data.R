@@ -1157,20 +1157,44 @@ test_that("copy_data isolates every mutable column backing", {
         "cannot isolate environments"
     )
 
-    as.list.hidden_reference <- function(x, ...) list()
-    hidden_list <- structure(
-        list(embedded_environment), class = "hidden_reference"
+    as.list.hidden_contents <- function(x, ...) list()
+    hidden_contents_list <- structure(
+        list(embedded_environment), class = "hidden_contents"
     )
-    hidden_list_column <- data.frame(value = I(list(hidden_list)))
+    hidden_contents_column <- data.frame(
+        value = I(list(hidden_contents_list))
+    )
     expect_error(
-        copy_data(hidden_list_column),
+        copy_data(hidden_contents_column),
+        "cannot isolate environments"
+    )
+    hidden_contents_call <- structure(
+        reference_call, class = "hidden_contents"
+    )
+    hidden_contents_call_column <- data.frame(
+        value = I(list(hidden_contents_call))
+    )
+    expect_error(
+        copy_data(hidden_contents_call_column),
         "cannot isolate environments"
     )
 
-    hidden_call <- structure(reference_call, class = "hidden_reference")
-    hidden_call_column <- data.frame(value = I(list(hidden_call)))
+    length.hidden_length <- function(x) 0L
+    hidden_length_list <- structure(
+        list(embedded_environment), class = "hidden_length"
+    )
+    hidden_length_column <- data.frame(value = I(list(hidden_length_list)))
     expect_error(
-        copy_data(hidden_call_column),
+        copy_data(hidden_length_column),
+        "cannot isolate environments"
+    )
+
+    hidden_length_call <- structure(reference_call, class = "hidden_length")
+    hidden_length_call_column <- data.frame(
+        value = I(list(hidden_length_call))
+    )
+    expect_error(
+        copy_data(hidden_length_call_column),
         "cannot isolate environments"
     )
 })
