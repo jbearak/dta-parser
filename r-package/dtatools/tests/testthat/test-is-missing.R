@@ -153,6 +153,42 @@ test_that("is_missing matches compact and eager Arrow numerics", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$value))
 })
 
+test_that("is_missing leaves dictionary-string caches untouched", {
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    values <- rep(c("", "seen", "other"), 4L)
+    save_arrow(tibble::tibble(value = values), path)
+    compact <- read_arrow(path)$value
+    alias <- compact
+    metadata_alias <- dtatools:::.metadata_copy(compact)
+    cache_before <- dtatools:::.dictstring_cached_count(compact)
+
+    expect_true(dtatools:::.is_unmaterialized_dictstring(compact))
+    expect_identical(
+        is_missing(compact),
+        rep(c(TRUE, FALSE, FALSE), 4L)
+    )
+    expect_identical(
+        is_missing(metadata_alias),
+        rep(c(TRUE, FALSE, FALSE), 4L)
+    )
+    expect_identical(
+        is_missing(c(NA_character_, "", "seen")),
+        c(TRUE, TRUE, FALSE)
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(compact), cache_before
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(alias), cache_before
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(metadata_alias), cache_before
+    )
+    expect_true(dtatools:::.is_unmaterialized_dictstring(compact))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(metadata_alias))
+})
+
 test_that("is_missing works in bare and stored data-mask expressions", {
     data <- data.frame(
         woman = c(1, 1, 2, 2),

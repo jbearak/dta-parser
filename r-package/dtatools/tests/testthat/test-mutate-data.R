@@ -1441,6 +1441,69 @@ test_that("writable access detaches shared materialized payloads", {
     expect_identical(as.character(string_copy), c("a", "b", "a"))
 })
 
+test_that("is_missing masks preserve dictionary-string caches and aliases", {
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(data.frame(
+        text = rep(c("", "seen", "other"), 2L),
+        nullable = c("present", NA_character_, rep("present", 4L)),
+        target = seq_len(6L)
+    ), path)
+
+    replaced <- read_arrow(path)
+    replaced_alias <- replaced
+    replaced_text_alias <- replaced$text
+    replaced_cache <- dtatools:::.dictstring_cached_count(replaced$text)
+    replace_values(
+        replaced, target, 99L, where = is_missing(text, nullable)
+    )
+    expect_identical(
+        replaced$target, c(99L, 99L, 3L, 99L, 5L, 6L)
+    )
+    expect_identical(replaced_alias$target, replaced$target)
+    expect_identical(
+        dtatools:::.dictstring_cached_count(replaced$text), replaced_cache
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(replaced_alias$text),
+        replaced_cache
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(replaced_text_alias),
+        replaced_cache
+    )
+    expect_true(dtatools:::.is_unmaterialized_dictstring(replaced$text))
+
+    generated <- read_arrow(path)
+    generated_alias <- generated
+    generated_text_alias <- generated$text
+    generated_cache <- dtatools:::.dictstring_cached_count(generated$text)
+    gen(
+        generated, missing_row, 7L,
+        where = is_missing(text, nullable)
+    )
+    expect_identical(
+        as.double(generated$missing_row),
+        c(7, 7, NA, 7, NA, NA)
+    )
+    expect_identical(
+        as.double(generated_alias$missing_row),
+        as.double(generated$missing_row)
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(generated$text), generated_cache
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(generated_alias$text),
+        generated_cache
+    )
+    expect_identical(
+        dtatools:::.dictstring_cached_count(generated_text_alias),
+        generated_cache
+    )
+    expect_true(dtatools:::.is_unmaterialized_dictstring(generated$text))
+})
+
 test_that("materialized metadata-proxy copies remain independent", {
     numeric <- dtatools:::.metadata_copy(stata_byte(1:3))
     invisible(dtatools:::.force_altrep_materialization(numeric))

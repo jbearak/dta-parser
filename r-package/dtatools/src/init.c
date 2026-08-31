@@ -2536,6 +2536,34 @@ static SEXP reference_string_reader_at(
     return cached;
 }
 
+static int reference_string_reader_is_missing_at(
+    const reference_string_reader *reader, R_xlen_t index
+) {
+    if (reader->scalar != R_NilValue) {
+        return stata_expression_string_is_missing(reader->scalar);
+    }
+    if (reader->source == R_NilValue) {
+        return stata_expression_string_is_missing(
+            STRING_ELT(reader->values, index)
+        );
+    }
+    if (index < 0 || (size_t) index >= reader->data->length) {
+        Rf_error("invalid reference string plan");
+    }
+    uint32_t id = reader->data->value_ids[index];
+    if ((R_xlen_t) id >= XLENGTH(reader->cache)) {
+        Rf_error("invalid dtatools string-dictionary index");
+    }
+
+    const char *bytes = NULL;
+    int length = 0;
+    if (!dtatools_dictstring_bytes(reader->data, id, &bytes, &length) ||
+        bytes == NULL || length < 0) {
+        Rf_error("invalid dtatools string-dictionary value");
+    }
+    return length == 0;
+}
+
 static R_xlen_t dictstring_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return XLENGTH(materialized);
@@ -5715,12 +5743,13 @@ static int numeric_reader_is_missing_at(
 }
 
 static int is_missing_value_at(
-    SEXP value, const numeric_reader *reader, R_xlen_t index
+    SEXP value, const numeric_reader *numeric,
+    const reference_string_reader *string, R_xlen_t index
 ) {
     if (TYPEOF(value) == STRSXP) {
-        return stata_expression_string_is_missing(STRING_ELT(value, index));
+        return reference_string_reader_is_missing_at(string, index);
     }
-    return numeric_reader_is_missing_at(reader, index);
+    return numeric_reader_is_missing_at(numeric, index);
 }
 
 SEXP C_dtatools_is_missing(SEXP values) {
@@ -5765,11 +5794,18 @@ SEXP C_dtatools_is_missing(SEXP values) {
 
         numeric_reader reader = {0};
         numeric_reader *reader_pointer = NULL;
-        if (TYPEOF(value) != STRSXP) {
+        reference_string_reader string_reader = {0};
+        reference_string_reader *string_reader_pointer = NULL;
+        if (TYPEOF(value) == STRSXP) {
+            string_reader = reference_string_reader_create(value, R_NilValue);
+            string_reader_pointer = &string_reader;
+        } else {
             reader = numeric_reader_create(value, 1);
             reader_pointer = &reader;
         }
-        if (!is_missing_value_at(value, reader_pointer, 0)) continue;
+        if (!is_missing_value_at(
+                value, reader_pointer, string_reader_pointer, 0
+            )) continue;
 
         for (R_xlen_t index = 0; index < common_size; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
@@ -5787,7 +5823,12 @@ SEXP C_dtatools_is_missing(SEXP values) {
 
         numeric_reader reader = {0};
         numeric_reader *reader_pointer = NULL;
-        if (TYPEOF(value) != STRSXP) {
+        reference_string_reader string_reader = {0};
+        reference_string_reader *string_reader_pointer = NULL;
+        if (TYPEOF(value) == STRSXP) {
+            string_reader = reference_string_reader_create(value, R_NilValue);
+            string_reader_pointer = &string_reader;
+        } else {
             reader = numeric_reader_create(value, size);
             reader_pointer = &reader;
         }
@@ -5798,7 +5839,7 @@ SEXP C_dtatools_is_missing(SEXP values) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             if (output[index]) continue;
             int missing = is_missing_value_at(
-                value, reader_pointer, index
+                value, reader_pointer, string_reader_pointer, index
             );
             output[index] = missing;
             if (missing) unresolved--;

@@ -25,6 +25,7 @@ declared Stata storage type.
 | `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a derived vector's Stata storage type, with validation and compact backing. |
 | `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
 | `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
+| `is_missing()` | Classify Stata system and extended numeric missing values and empty strings; use it in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_variable_labels()`, `set_value_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
 `gen()` and `replace_values()` mutate the supplied data frame or tibble. Dataset
