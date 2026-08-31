@@ -282,7 +282,10 @@ save_arrow <- function(data, path,
     )
 }
 
-.prepare_arrow_write_column <- function(column, name, kind, adjust_tz) {
+.prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
+                                        value_label_name,
+                                        value_label_index,
+                                        value_label_cache) {
     characteristics <- stata_characteristics(column)
     notes <- stata_notes(column)
     variable_label <- .arrow_utf8(
@@ -299,22 +302,41 @@ save_arrow <- function(data, path,
     storage_code <- -1L
     string_storage <- -1L
     values <- column
+    write_kind <- kind
+    haven_labelled <- inherits(column, "haven_labelled")
 
     value_labels <- list(double(), character(), FALSE)
-    if (kind %in% c("double", "date", "datetime", "difftime", "stata")) {
-        value_labels <- .prepare_write_value_labels(
-            column, name, allow_legacy_codes = TRUE
-        )
-        # The shared validator accepts integer and double code vectors. The
-        # Arrow native descriptor has one f64 representation for both.
-        value_labels[[1L]] <- as.double(value_labels[[1L]])
-        value_labels[[2L]] <- .arrow_utf8(
-            value_labels[[2L]], sprintf("Value-label text for `%s`", name)
+    if (kind %in% c(
+        "integer", "double", "date", "datetime", "difftime", "stata"
+    ) && value_label_index >= 0L) {
+        value_labels <- .cached_write_value_labels(
+            value_label_cache, value_label_index,
+            function() {
+                prepared <- .prepare_write_value_labels(
+                    column, name, allow_legacy_codes = TRUE
+                )
+                # The Arrow native descriptor has one f64 representation for
+                # integer and double label codes.
+                prepared[[1L]] <- as.double(prepared[[1L]])
+                prepared[[2L]] <- .arrow_utf8(
+                    prepared[[2L]],
+                    sprintf("Value-label text for `%s`", name)
+                )
+                prepared
+            }
         )
     } else if (!is.null(attr(column, "labels", exact = TRUE))) {
         .dta_write_abort(sprintf(
             "Column `%s` cannot carry numeric value labels", name
         ))
+    }
+
+    # The frozen profile does not permit value-label references on Int32.
+    # Promote labelled R integers to the lossless Float64 haven representation.
+    if (identical(kind, "integer") && value_label_index >= 0L) {
+        values <- as.double(column)
+        write_kind <- "double"
+        haven_labelled <- TRUE
     }
 
     if (identical(kind, "stata")) {
@@ -369,18 +391,19 @@ save_arrow <- function(data, path,
     units <- .arrow_utf8(units, sprintf("Difftime units for `%s`", name))
 
     stats::setNames(list(
-        .arrow_utf8(name, "Column names"), .arrow_write_kinds[[kind]],
+        .arrow_utf8(name, "Column names"), .arrow_write_kinds[[write_kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
         value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
-        .arrow_utf8(name, "Value-label table names"),
-        inherits(column, "haven_labelled"), string_storage,
+        haven_labelled, string_storage,
+        .arrow_utf8(value_label_name, "Value-label table names"),
+        as.integer(value_label_index),
         .stata_metadata_payload(notes, characteristics)
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
         "storage", "tz", "units", "label_values", "label_texts",
-        "has_value_labels", "value_label_name", "haven_labelled",
-        "string_storage", "stata_metadata"
+        "has_value_labels", "haven_labelled", "string_storage",
+        "value_label_name", "value_label_index", "stata_metadata"
     ))
 }
 
@@ -397,6 +420,7 @@ save_arrow <- function(data, path,
         difftime = c(common, "labels", "class", "units"),
         stata = c(common, "labels", "stata.storage", "class"),
         double = c(common, "labels", "class"),
+        integer = c(common, "labels"),
         common
     )
 }
@@ -479,18 +503,15 @@ save_arrow <- function(data, path,
     notes <- stata_notes(data)
     characteristics <- stata_characteristics(data)
     notes[] <- .arrow_utf8(unname(notes), "Dataset notes")
+    value_label_names <- .resolve_write_value_label_names(data)
+    value_label_cache <- new.env(hash = TRUE, parent = emptyenv())
     columns <- Map(
         .prepare_arrow_write_column, data, data_names, kinds,
-        MoreArgs = list(adjust_tz = adjust_tz)
-    )
-    value_label_names <- .resolve_write_value_label_names(data, columns)
-    for (index in seq_along(columns)) {
-        columns[[index]]$value_label_name <- .arrow_utf8(
-            value_label_names$names[[index]], "Value-label table names"
+        value_label_names$names, value_label_names$indices,
+        MoreArgs = list(
+            adjust_tz = adjust_tz,
+            value_label_cache = value_label_cache
         )
-    }
-    columns <- .canonicalize_write_value_label_columns(
-        columns, value_label_names$names
     )
     specification <- list(
         label, .stata_metadata_payload(notes, characteristics),

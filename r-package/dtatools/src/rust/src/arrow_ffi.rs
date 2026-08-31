@@ -84,6 +84,7 @@ pub struct RArrowColumnDescriptor {
     stata_metadata: Sexp,
     has_value_labels: c_int,
     value_label_name: *const c_char,
+    value_label_index: c_int,
     haven_labelled: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.
@@ -846,6 +847,7 @@ struct ExtractedColumn {
     ordered: bool,
     haven_labelled: bool,
     value_label_name: Option<String>,
+    value_label_index: Option<usize>,
     string_storage: Option<String>,
     notes: Vec<StataNote>,
     characteristics: Vec<StataCharacteristic>,
@@ -887,6 +889,19 @@ unsafe fn extract_column(
         .then(|| required_c_string(descriptor.value_label_name, "a value-label table name"))
         .transpose()?;
     let (notes, characteristics) = parse_stata_metadata_sexp(descriptor.stata_metadata)?;
+    let value_label_index = if descriptor.has_value_labels == 0 {
+        if descriptor.value_label_index != -1 {
+            return Err(format!(
+                "column `{name}` has a value-label table index without labels"
+            ));
+        }
+        None
+    } else {
+        Some(
+            usize::try_from(descriptor.value_label_index)
+                .map_err(|_| format!("column `{name}` has an invalid value-label table index"))?,
+        )
+    };
     let string_storage = match descriptor.string_storage {
         -1 => None,
         0 => Some("strL".to_owned()),
@@ -958,6 +973,7 @@ unsafe fn extract_column(
         ordered: descriptor.ordered != 0,
         haven_labelled: descriptor.haven_labelled != 0,
         value_label_name,
+        value_label_index,
         string_storage,
         notes,
         characteristics,
@@ -1457,23 +1473,36 @@ unsafe fn assemble_write_dataset(
     extracted
         .try_reserve_exact(column_count)
         .map_err(|_| "could not allocate column inputs".to_owned())?;
-    let mut value_label_tables = HashMap::new();
+    let mut value_label_tables = Vec::new();
+    let mut value_label_sources = Vec::new();
     for descriptor in descriptors {
         check_interrupt()?;
         let column = extract_column(descriptor, row_count)?;
-        if let Some(name) = &column.value_label_name {
-            let candidate = value_label_table(descriptor, name)?
+        if let Some(index) = column.value_label_index {
+            let name = column
+                .value_label_name
+                .as_deref()
                 .ok_or_else(|| format!("column `{}` lost its value-label table", column.name))?;
-            match value_label_tables.get(name) {
-                Some(existing) if existing == &candidate => {}
-                Some(_) => {
-                    return Err(format!(
-                        "value-label table {name:?} is associated with different mappings"
-                    ));
-                }
-                None => {
-                    value_label_tables.insert(name.clone(), candidate);
-                }
+            if index > value_label_tables.len() {
+                return Err("value-label table indices are not canonical".to_owned());
+            }
+            if index == value_label_tables.len() {
+                value_label_tables.push(
+                    value_label_table(descriptor, name)?.ok_or_else(|| {
+                        format!("column `{}` lost its value-label table", column.name)
+                    })?,
+                );
+                value_label_sources.push((
+                    descriptor.label_values,
+                    descriptor.label_texts,
+                    descriptor.label_count,
+                ));
+            } else if value_label_tables[index].name != name {
+                return Err("value-label table index has inconsistent names".to_owned());
+            } else if value_label_sources[index]
+                != (descriptor.label_values, descriptor.label_texts, descriptor.label_count)
+            {
+                return Err("shared value-label table is not canonical".to_owned());
             }
         }
         extracted.push(column);
@@ -1490,8 +1519,8 @@ unsafe fn assemble_write_dataset(
     replacements
         .try_reserve_exact(column_count)
         .map_err(|_| "could not allocate replacement counts".to_owned())?;
-    for table in value_label_tables.values() {
-        dataset.insert_value_label_table(table);
+    for table in value_label_tables {
+        dataset.insert_value_label_table(&table);
     }
     for column in encoded {
         replacements.push(column.replaced);
@@ -1698,10 +1727,14 @@ fn row_window(skip: f64, n_max: f64) -> (u64, Option<u64>) {
     (start, limit)
 }
 
+struct CachedValueLabels {
+    table: ValueLabelTable,
+    labels: Sexp,
+}
+
 struct ColumnAttributes<'a> {
     document: Option<&'a ArrowFieldDocument>,
-    value_label_tables: Option<&'a HashMap<String, ValueLabelTable>>,
-    value_label_attributes: Option<&'a HashMap<String, Sexp>>,
+    value_labels: Option<&'a HashMap<String, CachedValueLabels>>,
     value_label_reference_counts: Option<&'a HashMap<String, usize>>,
 }
 
@@ -1715,14 +1748,9 @@ impl ColumnAttributes<'_> {
             .map_or("", |document| document.format.as_str())
     }
 
-    fn value_label_table(&self) -> Option<&ValueLabelTable> {
+    fn value_labels(&self) -> Option<&CachedValueLabels> {
         let name = self.document?.value_labels.as_deref()?;
-        self.value_label_tables?.get(name)
-    }
-
-    fn value_label_attribute(&self) -> Option<Sexp> {
-        let name = self.document?.value_labels.as_deref()?;
-        self.value_label_attributes?.get(name).copied()
+        self.value_labels?.get(name)
     }
 
     fn preserve_value_label_name(&self, column_name: &str) -> bool {
@@ -2893,6 +2921,25 @@ unsafe fn value_label_attributes(
     Ok(())
 }
 
+unsafe fn attach_cached_value_labels(
+    vector: Sexp,
+    column_name: &str,
+    attributes: &ColumnAttributes<'_>,
+    guard: &mut ProtectGuard,
+) -> Result<(), String> {
+    if let Some(cached) = attributes.value_labels() {
+        value_label_attributes(
+            vector,
+            &cached.table,
+            cached.labels,
+            false,
+            attributes.preserve_value_label_name(column_name),
+            guard,
+        )?;
+    }
+    Ok(())
+}
+
 /// The declared-class attributes shared by payload and semantic doubles.
 unsafe fn apply_double_class(
     vector: Sexp,
@@ -2920,19 +2967,7 @@ unsafe fn apply_double_class(
         }
         _ => {}
     }
-    if let Some(table) = attributes.value_label_table() {
-        value_label_attributes(
-            vector,
-            table,
-            attributes
-                .value_label_attribute()
-                .ok_or_else(|| format!("missing cached labels for table `{}`", table.name))?,
-            false,
-            attributes.preserve_value_label_name(column_name),
-            guard,
-        )?;
-    }
-    Ok(())
+    attach_cached_value_labels(vector, column_name, attributes, guard)
 }
 
 /// Turn one filled plan into the final R vector: wrap compact numerics and
@@ -2942,8 +2977,7 @@ unsafe fn finalize_read_column(
     column: &ArrowReadColumn,
     plan: PlannedColumn,
     outcome: FillOutcome,
-    value_label_tables: &HashMap<String, ValueLabelTable>,
-    value_label_attribute_cache: &HashMap<String, Sexp>,
+    value_labels: &HashMap<String, CachedValueLabels>,
     value_label_reference_counts: &HashMap<String, usize>,
     profiled: bool,
     row_count: usize,
@@ -2955,8 +2989,7 @@ unsafe fn finalize_read_column(
         } else {
             None
         },
-        value_label_tables: profiled.then_some(value_label_tables),
-        value_label_attributes: profiled.then_some(value_label_attribute_cache),
+        value_labels: profiled.then_some(value_labels),
         value_label_reference_counts: profiled.then_some(value_label_reference_counts),
     };
     let mismatch = || format!("column `{}` produced a mismatched fill result", column.name);
@@ -3007,7 +3040,7 @@ unsafe fn finalize_read_column(
                 .ok_or_else(mismatch)?;
             let document = attributes.document.ok_or_else(mismatch)?;
             let dta_type = storage.dta_type();
-            let table = attributes.value_label_table();
+            let cached = attributes.value_labels();
             attach_variable_attribute_view(
                 vector,
                 super::VariableAttributeView {
@@ -3017,8 +3050,8 @@ unsafe fn finalize_read_column(
                     notes: &document.notes,
                     characteristics: &document.characteristics,
                 },
-                table,
-                attributes.value_label_attribute(),
+                cached.map(|labels| &labels.table),
+                cached.map(|labels| labels.labels),
                 attributes.preserve_value_label_name(&column.name),
                 guard,
             )?;
@@ -3026,18 +3059,7 @@ unsafe fn finalize_read_column(
         ColumnShape::Date32 => {
             set_class(vector, &["Date"], guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
-            if let Some(table) = attributes.value_label_table() {
-                value_label_attributes(
-                    vector,
-                    table,
-                    attributes.value_label_attribute().ok_or_else(|| {
-                        format!("missing cached labels for table `{}`", table.name)
-                    })?,
-                    false,
-                    attributes.preserve_value_label_name(&column.name),
-                    guard,
-                )?;
-            }
+            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
         }
         ColumnShape::Timestamp => {
             set_class(vector, &["POSIXct", "POSIXt"], guard)?;
@@ -3057,34 +3079,12 @@ unsafe fn finalize_read_column(
                 set_attr(vector, "tzone", timezone)?;
             }
             attach_simple_attributes(vector, &attributes, guard)?;
-            if let Some(table) = attributes.value_label_table() {
-                value_label_attributes(
-                    vector,
-                    table,
-                    attributes.value_label_attribute().ok_or_else(|| {
-                        format!("missing cached labels for table `{}`", table.name)
-                    })?,
-                    false,
-                    attributes.preserve_value_label_name(&column.name),
-                    guard,
-                )?;
-            }
+            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
         }
         ColumnShape::Duration { .. } => {
             apply_difftime_attributes(vector, &attributes, guard)?;
             attach_simple_attributes(vector, &attributes, guard)?;
-            if let Some(table) = attributes.value_label_table() {
-                value_label_attributes(
-                    vector,
-                    table,
-                    attributes.value_label_attribute().ok_or_else(|| {
-                        format!("missing cached labels for table `{}`", table.name)
-                    })?,
-                    false,
-                    attributes.preserve_value_label_name(&column.name),
-                    guard,
-                )?;
-            }
+            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
         }
         ColumnShape::PayloadDouble | ColumnShape::SemanticDouble => {
             apply_double_class(vector, &column.name, &attributes, guard)?;
@@ -3092,18 +3092,7 @@ unsafe fn finalize_read_column(
         }
         ColumnShape::Integer => {
             attach_simple_attributes(vector, &attributes, guard)?;
-            if let Some(table) = attributes.value_label_table() {
-                value_label_attributes(
-                    vector,
-                    table,
-                    attributes.value_label_attribute().ok_or_else(|| {
-                        format!("missing cached labels for table `{}`", table.name)
-                    })?,
-                    false,
-                    attributes.preserve_value_label_name(&column.name),
-                    guard,
-                )?;
-            }
+            attach_cached_value_labels(vector, &column.name, &attributes, guard)?;
         }
         ColumnShape::Logical
         | ColumnShape::Raw
@@ -3194,9 +3183,9 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         let names = result_guard.alloc(STRSXP, column_total)?;
 
         // Convert and allocate each selected value-label table once. Every
-        // referring R column then shares the same protected `labels` vector.
-        let mut value_label_tables = HashMap::new();
-        let mut value_label_attributes = HashMap::new();
+        // referring R column then shares the same table record and protected
+        // `labels` vector.
+        let mut value_labels = HashMap::new();
         if profiled {
             if let Some(dataset) = &result.dataset {
                 for column in &result.columns {
@@ -3207,15 +3196,14 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                     else {
                         continue;
                     };
-                    if value_label_tables.contains_key(name) {
+                    if value_labels.contains_key(name) {
                         continue;
                     }
                     let table = dataset.value_label_table(name).ok_or_else(|| {
                         format!("Arrow field references missing value-label table `{name}`")
                     })?;
                     let labels = label_attribute(&table, &mut result_guard)?;
-                    value_label_attributes.insert(name.to_owned(), labels);
-                    value_label_tables.insert(name.to_owned(), table);
+                    value_labels.insert(name.to_owned(), CachedValueLabels { table, labels });
                 }
             }
         }
@@ -3232,8 +3220,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 } else {
                     None
                 },
-                value_label_tables: profiled.then_some(&value_label_tables),
-                value_label_attributes: profiled.then_some(&value_label_attributes),
+                value_labels: profiled.then_some(&value_labels),
                 value_label_reference_counts: profiled
                     .then_some(&result.value_label_reference_counts),
             };
@@ -3259,8 +3246,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 column,
                 plan,
                 outcome,
-                &value_label_tables,
-                &value_label_attributes,
+                &value_labels,
                 &result.value_label_reference_counts,
                 profiled,
                 row_count,
@@ -3480,8 +3466,7 @@ mod tests {
         };
         let attributes = ColumnAttributes {
             document: None,
-            value_label_tables: None,
-            value_label_attributes: None,
+            value_labels: None,
             value_label_reference_counts: None,
         };
         assert!(matches!(
@@ -3495,8 +3480,7 @@ mod tests {
         };
         let profiled = ColumnAttributes {
             document: Some(&document),
-            value_label_tables: None,
-            value_label_attributes: None,
+            value_labels: None,
             value_label_reference_counts: None,
         };
         let error = match classify_read_column(&column, &profiled, true) {

@@ -1054,6 +1054,21 @@ test_that("profiled UInt16 columns retain projected shared value labels", {
     expect_identical(
         tracemem(val_labels(full$first)), tracemem(val_labels(full$second))
     )
+
+    roundtrip_path <- arrow_tempfile()
+    save_arrow(full, roundtrip_path)
+    roundtrip <- read_arrow(roundtrip_path)
+    expect_equal(roundtrip$first, c(1, 2), ignore_attr = TRUE)
+    expect_equal(roundtrip$second, c(2, 1), ignore_attr = TRUE)
+    expect_identical(val_labels(roundtrip$first), c(Yes = 1))
+    expect_identical(
+        attr(roundtrip$first, "value.label.name", exact = TRUE),
+        "shared_uint16"
+    )
+    expect_identical(
+        attr(roundtrip$second, "value.label.name", exact = TRUE),
+        "shared_uint16"
+    )
 })
 
 test_that("Arrow selection parses profile metadata only for predicates", {

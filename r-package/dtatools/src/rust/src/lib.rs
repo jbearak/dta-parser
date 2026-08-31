@@ -2397,6 +2397,7 @@ pub struct RWriteColumnDescriptor {
     stata_metadata: Sexp,
     has_value_labels: c_int,
     value_label_name: *const c_char,
+    value_label_index: c_int,
     numeric_shift: f64,
     numeric_scale: f64,
     direct_numeric_values: *const c_void,
@@ -3723,8 +3724,9 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         })
         .collect::<Result<Vec<_>, _>>()?;
     let mut value_label_tables = Vec::new();
+    let mut value_label_table_names = Vec::new();
+    let mut value_label_sources = Vec::new();
     let mut value_label_indices = Vec::with_capacity(column_count);
-    let mut value_label_tables_by_name = AHashMap::new();
     let mut columns = Vec::with_capacity(column_count);
     for (descriptor, source) in descriptors.iter().zip(&sources) {
         if !descriptor.numeric_shift.is_finite() || !descriptor.numeric_scale.is_finite() {
@@ -3734,24 +3736,32 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         let (variable_notes, variable_characteristics) =
             parse_stata_metadata_sexp_borrowed(descriptor.stata_metadata)?;
         let value_label_index = if descriptor.has_value_labels == 0 {
+            if descriptor.value_label_index != -1 {
+                return Err("unlabelled column has a value-label table index".into());
+            }
             None
         } else {
-            let candidate = r_value_labels(descriptor)?;
-            if let Some(&index) = value_label_tables_by_name.get(source.value_label_name) {
-                if value_label_tables[index] != candidate {
-                    return Err(format!(
-                        "value-label table {:?} is associated with different mappings",
-                        source.value_label_name
-                    )
-                    .into());
-                }
-                Some(index)
-            } else {
-                let index = value_label_tables.len();
-                value_label_tables.push(candidate);
-                value_label_tables_by_name.insert(source.value_label_name, index);
-                Some(index)
+            let index = usize::try_from(descriptor.value_label_index)
+                .map_err(|_| "labelled column has an invalid value-label table index")?;
+            if index > value_label_tables.len() {
+                return Err("value-label table indices are not canonical".into());
             }
+            if index == value_label_tables.len() {
+                value_label_tables.push(r_value_labels(descriptor)?);
+                value_label_table_names.push(source.value_label_name);
+                value_label_sources.push((
+                    descriptor.label_values,
+                    descriptor.label_texts,
+                    descriptor.label_count,
+                ));
+            } else if value_label_table_names[index] != source.value_label_name {
+                return Err("value-label table index has inconsistent names".into());
+            } else if value_label_sources[index]
+                != (descriptor.label_values, descriptor.label_texts, descriptor.label_count)
+            {
+                return Err("shared value-label table is not canonical".into());
+            }
+            Some(index)
         };
         value_label_indices.push(value_label_index);
         columns.push(DtaWriteColumn {
@@ -3944,6 +3954,7 @@ mod tests {
             stata_metadata: ptr::null_mut(),
             has_value_labels: 0,
             value_label_name: c"x".as_ptr(),
+            value_label_index: -1,
             numeric_shift: shift,
             numeric_scale: scale,
             direct_numeric_values: values,

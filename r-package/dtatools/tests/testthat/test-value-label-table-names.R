@@ -243,6 +243,23 @@ test_that("shared write mappings use one prepared vector", {
     dta <- dtatools:::.prepare_dta_write(data, NULL, 2045L, TRUE)
     arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
     expect_identical(
+        names(dta[[3L]][[1L]]),
+        c(
+            "name", "type_code", "format", "label", "label_values",
+            "label_texts", "values", "has_value_labels", "numeric_shift",
+            "numeric_scale", "value_label_name", "value_label_index"
+        )
+    )
+    expect_identical(
+        names(arrow[[3L]][[1L]]),
+        c(
+            "name", "kind", "values", "levels", "ordered", "label",
+            "format", "storage", "tz", "units", "label_values",
+            "label_texts", "has_value_labels", "haven_labelled",
+            "string_storage", "value_label_name", "value_label_index"
+        )
+    )
+    expect_identical(
         tracemem(dta[[3L]][[1L]]$label_values),
         tracemem(dta[[3L]][[2L]]$label_values)
     )

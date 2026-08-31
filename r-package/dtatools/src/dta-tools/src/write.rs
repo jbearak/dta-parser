@@ -861,8 +861,7 @@ fn validate_value_label_names<S: DtaWriteObservationSource + ?Sized>(
     data: &DtaWriteData<'_>,
     source: &S,
 ) -> Result<(), DtaWriteError> {
-    let mut tables: HashMap<&str, &[DtaWriteValueLabel<'_>]> =
-        HashMap::with_capacity(data.columns.len());
+    let mut tables: HashMap<&str, &[DtaWriteValueLabel<'_>]> = HashMap::new();
     for (column_index, column) in data.columns.iter().enumerate() {
         if !column.has_value_labels {
             continue;
@@ -877,34 +876,40 @@ fn validate_value_label_names<S: DtaWriteObservationSource + ?Sized>(
                 ),
             });
         }
-        if labels.len() > MAX_VALUE_LABEL_ENTRIES {
-            return Err(DtaWriteError::InvalidValueLabels {
-                column: column.name.to_string(),
-                message: format!(
-                    "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
-                    labels.len()
-                ),
-            });
-        }
-        for entry in labels {
-            label_raw_value(entry.value).map_err(|message| DtaWriteError::InvalidValueLabels {
-                column: column.name.to_string(),
-                message: message.into(),
-            })?;
-            if entry.label.contains('\0') || entry.label.len() > MAX_VALUE_LABEL_TEXT_BYTES {
-                return Err(DtaWriteError::InvalidValueLabels {
-                    column: column.name.to_string(),
-                    message: format!(
-                        "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
-                    ),
-                });
-            }
-        }
         match tables.entry(table_name) {
             Entry::Vacant(entry) => {
+                if labels.len() > MAX_VALUE_LABEL_ENTRIES {
+                    return Err(DtaWriteError::InvalidValueLabels {
+                        column: column.name.to_string(),
+                        message: format!(
+                            "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
+                            labels.len()
+                        ),
+                    });
+                }
+                for label in labels {
+                    label_raw_value(label.value).map_err(|message| {
+                        DtaWriteError::InvalidValueLabels {
+                            column: column.name.to_string(),
+                            message: message.into(),
+                        }
+                    })?;
+                    if label.label.contains('\0') || label.label.len() > MAX_VALUE_LABEL_TEXT_BYTES
+                    {
+                        return Err(DtaWriteError::InvalidValueLabels {
+                            column: column.name.to_string(),
+                            message: format!(
+                                "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
+                            ),
+                        });
+                    }
+                }
                 entry.insert(labels);
             }
-            Entry::Occupied(entry) if *entry.get() == labels => {}
+            Entry::Occupied(entry)
+                if (entry.get().len() == labels.len()
+                    && (std::ptr::eq(entry.get().as_ptr(), labels.as_ptr())
+                        || *entry.get() == labels)) => {}
             Entry::Occupied(_) => {
                 return Err(DtaWriteError::InvalidValueLabels {
                     column: column.name.to_string(),
@@ -1826,7 +1831,7 @@ fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
     source: &S,
 ) -> Result<(), DtaWriteError> {
     write_tag(writer, b"<value_labels>")?;
-    let mut written = HashSet::with_capacity(data.columns.len());
+    let mut written = HashSet::new();
     for (column_index, column) in data.columns.iter().enumerate() {
         if !column.has_value_labels {
             continue;
