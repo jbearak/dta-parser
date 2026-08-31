@@ -2756,18 +2756,7 @@ fn read_modern_characteristics<R: Read + Seek>(
         section.read_into(names_length, &mut record, "reading characteristic names")?;
         let target = encoding.decode(field_bytes(&record[..width]));
         let name = encoding.decode(field_bytes(&record[width..]));
-        let value_offset = checked_add_u64(
-            payload_offset,
-            u64::try_from(names_length)
-                .map_err(|_| DtaError::ArithmeticOverflow("characteristic value offset"))?,
-            "characteristic value offset",
-        )?;
         let value_length = payload_length - names_length;
-        validate_raw_value_length(
-            value_length,
-            error_offset(value_offset),
-            "characteristic value",
-        )?;
         let accepted = classify_characteristic(
             &target,
             name,
@@ -3355,19 +3344,7 @@ fn read_legacy_metadata<R: Read + Seek>(
             )?;
             let target = encoding.decode(field_bytes(&expansion[..layout.varname_width]));
             let name = encoding.decode(field_bytes(&expansion[layout.varname_width..]));
-            let value_offset = checked_add_u64(
-                payload_offset,
-                u64::try_from(2 * layout.varname_width).map_err(|_| {
-                    DtaError::ArithmeticOverflow("legacy characteristic value offset")
-                })?,
-                "legacy characteristic value offset",
-            )?;
             let value_length = payload_length - 2 * layout.varname_width;
-            validate_raw_value_length(
-                value_length,
-                error_offset(value_offset),
-                "legacy characteristic value",
-            )?;
             if let Some(accepted) = classify_characteristic(
                 &target,
                 name,

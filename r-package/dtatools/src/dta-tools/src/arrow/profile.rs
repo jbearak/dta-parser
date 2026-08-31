@@ -1,10 +1,13 @@
 //! Versioned `dtatools:*` JSON documents carried in Arrow schema, field, and
 //! footer metadata.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt};
 
 use arrow_schema::{DataType, Field};
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{SeqAccess, Visitor},
+    Deserialize, Serialize,
+};
 
 use super::ArrowProfileError;
 use crate::{
@@ -199,16 +202,41 @@ fn deserialize_notes<'de, D>(deserializer: D) -> Result<Vec<StataNote>, D::Error
 where
     D: serde::Deserializer<'de>,
 {
-    Vec::<NoteDocument>::deserialize(deserializer)?
-        .into_iter()
-        .enumerate()
-        .map(|(index, note)| match note {
-            NoteDocument::Legacy(text) => u32::try_from(index + 1)
-                .map(|number| StataNote { number, text })
-                .map_err(serde::de::Error::custom),
-            NoteDocument::Numbered(note) => Ok(note),
-        })
-        .collect()
+    struct NotesVisitor;
+
+    impl<'de> Visitor<'de> for NotesVisitor {
+        type Value = Vec<StataNote>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("an array of at most 9,999 Stata notes")
+        }
+
+        fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let maximum = crate::stata_metadata::MAX_NOTE_NUMBER as usize;
+            let mut notes = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(maximum));
+            while let Some(note) = sequence.next_element::<NoteDocument>()? {
+                if notes.len() == maximum {
+                    return Err(serde::de::Error::custom(
+                        "Stata note arrays may contain at most 9,999 entries",
+                    ));
+                }
+                let note = match note {
+                    NoteDocument::Legacy(text) => StataNote {
+                        number: u32::try_from(notes.len() + 1).map_err(serde::de::Error::custom)?,
+                        text,
+                    },
+                    NoteDocument::Numbered(note) => note,
+                };
+                notes.push(note);
+            }
+            Ok(notes)
+        }
+    }
+
+    deserializer.deserialize_seq(NotesVisitor)
 }
 
 fn validate_notes_and_characteristics(
@@ -716,6 +744,16 @@ mod tests {
             assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
             assert!(error.to_string().contains("unknown field"));
         }
+    }
+
+    #[test]
+    fn note_arrays_are_bounded_during_deserialization() {
+        let notes = vec!["\"\""; 10_000].join(",");
+        let json = format!(r#"{{"version":0,"notes":[{notes}]}}"#);
+        let error = parse_dataset_document("0", Some(&json))
+            .expect_err("the ten-thousandth note is rejected while decoding JSON");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+        assert!(error.to_string().contains("at most 9,999 entries"));
     }
 
     #[test]

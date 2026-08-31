@@ -1009,13 +1009,16 @@ test_that("plain UInt16 columns use R integer storage", {
     )
 })
 
-test_that("Arrow selection scans ambiguous Int32 values only for predicates", {
-    scans <- logical()
+test_that("Arrow selection parses profile metadata only for predicates", {
+    calls <- list()
     local_mocked_bindings(
         .arrow_metadata = function(file, profile = TRUE,
                                    scan_ambiguous_int32 = FALSE,
                                    skip = 0, n_max = Inf) {
-            scans <<- c(scans, scan_ambiguous_int32)
+            calls[[length(calls) + 1L]] <<- c(
+                profile = profile,
+                scan = scan_ambiguous_int32
+            )
             list(
                 names = c("x", "y"),
                 types = if (scan_ambiguous_int32) {
@@ -1034,16 +1037,22 @@ test_that("Arrow selection scans ambiguous Int32 values only for predicates", {
     )
     expect_identical(named$indices, 1L)
     expect_identical(named$names, "y")
-    expect_identical(scans, FALSE)
+    expect_identical(calls, list(c(profile = FALSE, scan = FALSE)))
 
-    scans <- logical()
+    calls <- list()
     predicate <- dtatools:::.arrow_column_selection(
         rlang::quo(tidyselect::where(is.double)), "unused.arrow", TRUE,
         list(skip = 0, n_max = Inf)
     )
     expect_identical(predicate$indices, 0L)
     expect_identical(predicate$names, "x")
-    expect_identical(scans, c(FALSE, TRUE))
+    expect_identical(
+        calls,
+        list(
+            c(profile = FALSE, scan = FALSE),
+            c(profile = TRUE, scan = TRUE)
+        )
+    )
 })
 
 test_that("Arrow selection and decoding share one file snapshot", {

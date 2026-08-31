@@ -135,7 +135,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
 
 .arrow_column_selection <- function(selection, snapshot, profile, row_window) {
     metadata <- .arrow_metadata(
-        snapshot, profile, scan_ambiguous_int32 = FALSE,
+        snapshot, profile = FALSE, scan_ambiguous_int32 = FALSE,
         skip = row_window$skip, n_max = row_window$n_max
     )
     selection_proxy <- stats::setNames(
