@@ -14,7 +14,8 @@ use ahash::AHashMap;
 use dta_tools::{
     classify_byte_missing_for_version, classify_float_missing_bits_for_version,
     classify_int_missing_for_version, classify_long_missing_for_version,
-    dta_write_numeric_value_is_representable, encode_numeric, valid_characteristic, valid_note,
+    dta_write_numeric_value_is_representable, encode_numeric, valid_canonical_characteristic,
+    valid_canonical_note, valid_characteristic, valid_note,
     write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
     DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
@@ -116,6 +117,8 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
     values: Sexp,
     note: impl Fn(u32, &'a str) -> N,
     characteristic: impl Fn(&'a str, &'a str) -> C,
+    valid_note: impl Fn(u32, &str) -> bool,
+    valid_characteristic: impl Fn(&str, &str) -> bool,
 ) -> Result<(Vec<N>, Vec<C>), String> {
     if dtatools_is_null(values) != 0 {
         return Ok((Vec::new(), Vec::new()));
@@ -200,6 +203,8 @@ pub(crate) unsafe fn parse_stata_metadata_sexp(
             name: name.to_owned(),
             value: value.to_owned(),
         },
+        valid_canonical_note,
+        valid_canonical_characteristic,
     )
 }
 
@@ -213,6 +218,8 @@ unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
             name: Cow::Borrowed(name),
             value: Cow::Borrowed(value),
         },
+        valid_note,
+        valid_characteristic,
     )
 }
 

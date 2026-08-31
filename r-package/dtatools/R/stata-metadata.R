@@ -19,6 +19,11 @@
 #' target spelling for dataset metadata, so `save_dta()` rejects notes or
 #' characteristics on such a variable rather than changing their scope.
 #'
+#' Legacy single-byte DTA metadata may expand from at most 67,784 source bytes
+#' to at most 203,352 UTF-8 bytes when read. Getters and Arrow round trips retain
+#' that decoded form. Setters and DTA output keep Stata's 67,784-byte target
+#' limit.
+#'
 #' @param x A data frame or vector carrying Stata metadata.
 #' @param variable `NULL` for dataset or vector metadata, or one column name or
 #'   one-based position in a data frame.
@@ -194,7 +199,7 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
 .valid_stata_metadata_value <- function(value) {
     is.character(value) && length(value) == 1L && !is.na(value) &&
         nchar(value, type = "chars") <= 67784L &&
-        nchar(enc2utf8(value), type = "bytes") <= 67784L
+        nchar(enc2utf8(value), type = "bytes") <= 203352L
 }
 
 .stata_metadata_value <- function(value) {

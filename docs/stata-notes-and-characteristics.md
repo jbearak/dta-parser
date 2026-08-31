@@ -19,9 +19,12 @@ so a record cannot be accepted on write and then disappear from the public
 model on read.
 
 Raw characteristic names that are not valid Stata names are malformed input
-and cause the read to fail. The 67,784-byte value limit counts content through
-the first optional NUL terminator; the terminator itself does not consume the
-limit.
+and cause the read to fail. A DTA source value may contain at most 67,784 raw
+bytes through its first optional NUL terminator; the terminator itself does not
+consume the limit. Decoding a legacy single-byte value can expand that text to
+at most 203,352 UTF-8 bytes. The metadata accessors and Arrow profile retain
+that canonical decoded form. Newly authored values and DTA output remain bound
+to the 67,784-byte target-format limit.
 
 The DTA writer accepts note numbers 1 through 9,999. It rejects duplicate or
 reserved keys, NUL characters, over-limit values, and characteristic names

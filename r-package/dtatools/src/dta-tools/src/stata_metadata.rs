@@ -5,7 +5,10 @@ use unicode_general_category::{get_general_category, GeneralCategory};
 use crate::{DtaError, StataCharacteristic, StataNote, VariableInfo};
 
 pub(crate) const MAX_NOTE_NUMBER: u32 = 9_999;
+/// Maximum bytes in one DTA metadata value before source text decoding.
 pub(crate) const MAX_METADATA_VALUE_BYTES: usize = 67_784;
+/// Maximum canonical UTF-8 bytes after decoding a bounded legacy value.
+pub(crate) const MAX_DECODED_METADATA_VALUE_BYTES: usize = MAX_METADATA_VALUE_BYTES * 3;
 pub(crate) const MAX_CHARACTERISTIC_NAME_BYTES: usize = 128;
 
 pub(crate) fn validate_raw_value_length(
@@ -102,6 +105,12 @@ pub(crate) fn valid_metadata_value(value: &str) -> bool {
     !value.contains('\0') && value.len() <= MAX_METADATA_VALUE_BYTES
 }
 
+pub(crate) fn valid_decoded_metadata_value(value: &str) -> bool {
+    !value.contains('\0')
+        && value.chars().count() <= MAX_METADATA_VALUE_BYTES
+        && value.len() <= MAX_DECODED_METADATA_VALUE_BYTES
+}
+
 pub fn valid_note(number: u32, text: &str) -> bool {
     (1..=MAX_NOTE_NUMBER).contains(&number) && valid_metadata_value(text)
 }
@@ -115,6 +124,16 @@ pub(crate) fn valid_characteristic_name(name: &str) -> bool {
 
 pub fn valid_characteristic(name: &str, value: &str) -> bool {
     valid_characteristic_name(name) && valid_metadata_value(value)
+}
+
+/// Whether a note decoded from a bounded DTA source or Arrow profile is valid.
+pub fn valid_canonical_note(number: u32, text: &str) -> bool {
+    (1..=MAX_NOTE_NUMBER).contains(&number) && valid_decoded_metadata_value(text)
+}
+
+/// Whether a characteristic decoded from a bounded DTA source or Arrow profile is valid.
+pub fn valid_canonical_characteristic(name: &str, value: &str) -> bool {
+    valid_characteristic_name(name) && valid_decoded_metadata_value(value)
 }
 
 struct PendingCharacteristic {

@@ -374,11 +374,11 @@ where
                 }
                 if raw_string_exceeds_limit(
                     raw.value,
-                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
+                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
                 ) {
                     return Err(serde::de::Error::custom(format!(
-                        "characteristic value exceeds the {}-byte Stata metadata limit",
-                        crate::stata_metadata::MAX_METADATA_VALUE_BYTES
+                        "characteristic value exceeds the {}-byte decoded Stata metadata limit",
+                        crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES
                     )));
                 }
                 let characteristic = StataCharacteristic {
@@ -386,7 +386,7 @@ where
                     value: serde_json::from_str(raw.value.get())
                         .map_err(serde::de::Error::custom)?,
                 };
-                if !crate::stata_metadata::valid_characteristic(
+                if !crate::stata_metadata::valid_canonical_characteristic(
                     &characteristic.name,
                     &characteristic.value,
                 ) || names.contains(&characteristic.name)
@@ -414,7 +414,9 @@ fn validate_notes(
 ) -> Result<(), ArrowProfileError> {
     let mut previous = 0;
     for note in notes {
-        if !crate::stata_metadata::valid_note(note.number, &note.text) || note.number <= previous {
+        if !crate::stata_metadata::valid_canonical_note(note.number, &note.text)
+            || note.number <= previous
+        {
             return Err(malformed(
                 version,
                 format!(
@@ -434,8 +436,10 @@ fn validate_characteristics(
 ) -> Result<(), ArrowProfileError> {
     let mut names = std::collections::HashSet::with_capacity(characteristics.len());
     for characteristic in characteristics {
-        if !crate::stata_metadata::valid_characteristic(&characteristic.name, &characteristic.value)
-            || !names.insert(characteristic.name.as_str())
+        if !crate::stata_metadata::valid_canonical_characteristic(
+            &characteristic.name,
+            &characteristic.value,
+        ) || !names.insert(characteristic.name.as_str())
         {
             return Err(malformed(
                 version,
@@ -581,7 +585,7 @@ fn decode_raw_notes(
                     &note_context,
                     invalid_document_context,
                     note,
-                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
+                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
                 )?,
             });
         } else {
@@ -599,7 +603,7 @@ fn decode_raw_notes(
                     &note_context,
                     invalid_document_context,
                     numbered.text,
-                    crate::stata_metadata::MAX_METADATA_VALUE_BYTES,
+                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
                 )?,
             });
         }
@@ -1175,16 +1179,16 @@ mod tests {
 
     #[test]
     fn metadata_string_bounds_count_decoded_json_bytes() {
-        let accepted = r#"\u754c"#.repeat(22_594);
+        let accepted = r#"\u754c"#.repeat(67_784);
         let json = format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{accepted}"}}]}}"#);
-        parse_dataset_document("0", Some(&json)).expect("67,782 decoded bytes fit");
+        parse_dataset_document("0", Some(&json)).expect("203,352 decoded bytes fit");
 
-        let oversized = r#"\u754c"#.repeat(22_595);
+        let oversized = r#"\u754c"#.repeat(67_785);
         let json = format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{oversized}"}}]}}"#);
         let error = parse_dataset_document("0", Some(&json))
-            .expect_err("67,785 decoded bytes exceed the limit");
+            .expect_err("203,355 decoded bytes exceed the canonical limit");
         assert!(
-            error.to_string().contains("67784-byte"),
+            error.to_string().contains("203352-byte"),
             "unexpected error: {error}"
         );
     }

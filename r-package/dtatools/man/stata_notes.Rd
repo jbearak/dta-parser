@@ -76,6 +76,11 @@ place.
 Arrow can retain metadata on a variable named \verb{_dta}. DTA reserves that
 target spelling for dataset metadata, so \code{save_dta()} rejects notes or
 characteristics on such a variable rather than changing their scope.
+
+Legacy single-byte DTA metadata may expand from at most 67,784 source bytes
+to at most 203,352 UTF-8 bytes when read. Getters and Arrow round trips retain
+that decoded form. Setters and DTA output keep Stata's 67,784-byte target
+limit.
 }
 \examples{
 survey <- data.frame(age = c(20, 30))

@@ -750,6 +750,37 @@ fn legacy_metadata_bounds_and_raw_names_have_file_parity() {
 }
 
 #[test]
+fn legacy_metadata_decoding_preserves_the_canonical_utf8_bound() {
+    let mut bytes = synthetic_v113_msf();
+    let expansion = parse_metadata(&bytes)
+        .unwrap()
+        .section_offsets
+        .characteristics as usize;
+    let header_width = 5;
+    let names_width = 66;
+    let old_payload =
+        i32::from_be_bytes(bytes[expansion + 1..expansion + 5].try_into().unwrap()) as usize;
+    let value_start = expansion + header_width + names_width;
+    let payload_end = expansion + header_width + old_payload;
+    let source_value = vec![0x80; 22_595];
+    let new_payload = names_width + source_value.len() + 1;
+    bytes.splice(
+        value_start..payload_end,
+        source_value.into_iter().chain(std::iter::once(0)),
+    );
+    bytes[expansion + 1..expansion + 5]
+        .copy_from_slice(&i32::try_from(new_payload).unwrap().to_be_bytes());
+
+    let expected = "€".repeat(22_595);
+    assert_eq!(expected.len(), 67_785);
+    let slice = parse_metadata(&bytes).expect("slice metadata accepts the raw source bound");
+    assert_eq!(slice.notes[0].text, expected);
+    let file = DtaFile::from_reader(Cursor::new(bytes))
+        .expect("file metadata accepts the raw source bound");
+    assert_eq!(file.metadata().notes[0].text, expected);
+}
+
+#[test]
 fn decodes_big_endian_release_111_observations_notes_and_labels() {
     let mut bytes = synthetic_legacy_msf(111);
     let data_offset = parse_metadata(&bytes).unwrap().section_offsets.data as usize;

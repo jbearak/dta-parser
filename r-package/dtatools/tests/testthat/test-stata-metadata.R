@@ -123,6 +123,52 @@ test_that("writers reject manually attached over-limit metadata safely", {
     }
 })
 
+test_that("legacy decoded metadata survives R access and Arrow round trips", {
+    bytes <- readBin(
+        fixture("synthetic_v111.dta"), "raw",
+        n = file.info(fixture("synthetic_v111.dta"))[["size"]]
+    )
+    note_start <- grepRaw(
+        charToRaw("note1"), bytes, fixed = TRUE, all = TRUE
+    )[[1L]]
+    name_width <- 33L
+    header_width <- 5L
+    payload_start <- note_start - name_width
+    header_start <- payload_start - header_width
+    endian <- if (bytes[[2L]] == as.raw(1L)) "big" else "little"
+    old_payload <- readBin(
+        bytes[header_start + 1:4], integer(), n = 1L, size = 4L,
+        endian = endian
+    )
+    value_start <- note_start + name_width
+    payload_end <- payload_start + old_payload - 1L
+    source_value <- rep(as.raw(0x80), 22595L)
+    new_payload <- 2L * name_width + length(source_value) + 1L
+    bytes <- c(
+        bytes[seq_len(value_start - 1L)], source_value, as.raw(0L),
+        bytes[(payload_end + 1L):length(bytes)]
+    )
+    bytes[header_start + 1:4] <- writeBin(
+        new_payload, raw(), size = 4L, endian = endian
+    )
+    dta_path <- tempfile(fileext = ".dta")
+    arrow_path <- tempfile(fileext = ".arrow")
+    modern_path <- tempfile(fileext = ".dta")
+    on.exit(unlink(c(dta_path, arrow_path, modern_path)), add = TRUE)
+    writeBin(bytes, dta_path)
+
+    expected <- strrep(intToUtf8(0x20acL), 22595L)
+    expect_identical(nchar(expected, type = "bytes"), 67785L)
+    data <- read_dta(dta_path)
+    expect_identical(stata_note(data, 1L), expected)
+    expect_no_error(save_arrow(data, arrow_path))
+    expect_identical(stata_note(read_arrow(arrow_path), 1L), expected)
+    modern <- data.frame(x = 1L)
+    attr(modern, "notes") <- expected
+    expect_error(save_dta(modern, modern_path), "invalid internal Stata note metadata")
+    expect_false(file.exists(modern_path))
+})
+
 test_that("native metadata envelopes validate counts before allocation", {
     marker <- paste0(intToUtf8(30L), "dtatools:stata-metadata:1")
     path <- tempfile(fileext = ".dta")

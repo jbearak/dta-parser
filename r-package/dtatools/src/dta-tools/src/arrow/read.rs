@@ -6,7 +6,7 @@
 //! columns' buffers; whole batches outside the requested row window are
 //! skipped after their small headers are read.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -159,8 +159,46 @@ struct BatchHeader {
 struct Profile {
     version: String,
     dataset: DatasetDocument,
-    fields: Vec<Option<ArrowFieldDocument>>,
+    fields: ProfileFields,
     checksums: Option<ChecksumsDocument>,
+}
+
+enum ProfileFields {
+    Full(Vec<Option<ArrowFieldDocument>>),
+    Projected(HashMap<usize, ArrowFieldDocument>),
+}
+
+impl ProfileFields {
+    fn new(field_count: usize, selected: Option<&[usize]>) -> Self {
+        if selected.is_none() {
+            Self::Full(std::iter::repeat_with(|| None).take(field_count).collect())
+        } else {
+            Self::Projected(HashMap::with_capacity(selected.map_or(0, <[usize]>::len)))
+        }
+    }
+
+    fn insert(&mut self, index: usize, document: ArrowFieldDocument) {
+        match self {
+            Self::Full(fields) => fields[index] = Some(document),
+            Self::Projected(fields) => {
+                fields.insert(index, document);
+            }
+        }
+    }
+
+    fn get(&self, index: usize) -> Option<&ArrowFieldDocument> {
+        match self {
+            Self::Full(fields) => fields.get(index).and_then(Option::as_ref),
+            Self::Projected(fields) => fields.get(&index),
+        }
+    }
+
+    fn take(&mut self, index: usize) -> Option<ArrowFieldDocument> {
+        match self {
+            Self::Full(fields) => fields.get_mut(index).and_then(Option::take),
+            Self::Projected(fields) => fields.remove(&index),
+        }
+    }
 }
 
 fn invalid(detail: impl Into<String>) -> ArrowProfileError {
@@ -466,7 +504,7 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
 }
 
 fn parse_profile(
-    footer: &Footer,
+    footer: &mut Footer,
     apply_profile: bool,
     verify: bool,
     selected: Option<&[usize]>,
@@ -474,64 +512,55 @@ fn parse_profile(
     if !apply_profile {
         return Ok(None);
     }
-    let Some(version) = footer.schema.metadata().get(ARROW_PROFILE_VERSION_KEY) else {
+    let Some(version) = footer.schema.metadata.remove(ARROW_PROFILE_VERSION_KEY) else {
         // A plain Arrow file never acquires Stata semantics.
         return Ok(None);
     };
     if version != ARROW_PROFILE_VERSION {
-        return Err(ArrowProfileError::NewerProfile(version.clone()));
+        return Err(ArrowProfileError::NewerProfile(version));
     }
-    let dataset = parse_dataset_document(
-        version,
-        footer
-            .schema
-            .metadata()
-            .get(ARROW_DATASET_KEY)
-            .map(String::as_str),
-    )?;
-    let selected_fields = selected.map(|selected| {
-        let mut fields = vec![false; footer.schema.fields().len()];
-        for &index in selected {
-            fields[index] = true;
-        }
-        fields
-    });
-    let mut fields: Vec<Option<ArrowFieldDocument>> = std::iter::repeat_with(|| None)
-        .take(footer.schema.fields().len())
-        .collect();
-    for (index, field) in footer.schema.fields().iter().enumerate() {
+    let dataset_json = footer.schema.metadata.remove(ARROW_DATASET_KEY);
+    let dataset = parse_dataset_document(&version, dataset_json.as_deref())?;
+    let selected_fields = selected.map(|selected| selected.iter().copied().collect::<HashSet<_>>());
+    let mut documents = ProfileFields::new(footer.schema.fields().len(), selected);
+    let owned_fields = std::mem::take(&mut footer.schema.fields);
+    let mut fields: Vec<Arc<Field>> = owned_fields.iter().cloned().collect();
+    drop(owned_fields);
+    for (index, field) in fields.iter_mut().enumerate() {
+        let field = Arc::make_mut(field);
+        let json = field.metadata_mut().remove(ARROW_FIELD_KEY);
         if selected_fields
             .as_ref()
-            .is_some_and(|selected| !selected[index])
+            .is_some_and(|selected| !selected.contains(&index))
         {
             continue;
         }
-        let document = field
-            .metadata()
-            .get(ARROW_FIELD_KEY)
-            .map(|json| parse_field_document(version, field, json))
+        let document = json
+            .as_deref()
+            .map(|json| parse_field_document(&version, field, json))
             .transpose()?;
         if let Some(document) = &document {
-            validate_value_label_reference(version, field, document, &dataset)?;
+            validate_value_label_reference(&version, field, document, &dataset)?;
         }
-        fields[index] = document;
+        if let Some(document) = document {
+            documents.insert(index, document);
+        }
     }
+    footer.schema.fields = fields.into();
+    let checksums_json = footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
     let checksums = if verify {
-        let json = footer
-            .custom_metadata
-            .get(ARROW_CHECKSUMS_KEY)
-            .ok_or_else(|| {
-                super::profile::malformed(
-                    version,
-                    "missing checksums document; the file was written without checksums, \
+        let json = checksums_json.as_deref().ok_or_else(|| {
+            super::profile::malformed(
+                &version,
+                "missing checksums document; the file was written without checksums, \
                      so read it with verification off"
-                        .to_owned(),
-                )
-            })?;
-        let document = parse_checksums_document(version, json)?;
+                    .to_owned(),
+            )
+        })?;
+        let document = parse_checksums_document(&version, json)?;
         if document.batches.len() != footer.record_blocks.len() {
             return Err(super::profile::malformed(
-                version,
+                &version,
                 "checksums document does not cover every record batch",
             ));
         }
@@ -540,9 +569,9 @@ fn parse_profile(
         None
     };
     Ok(Some(Profile {
-        version: version.clone(),
+        version,
         dataset,
-        fields,
+        fields: documents,
         checksums,
     }))
 }
@@ -1120,7 +1149,7 @@ fn prepare_read<R: Read + Seek>(
         options.columns.as_ref().map(|_| selected.as_slice())
     };
     let mut profile = parse_profile(
-        &footer,
+        &mut footer,
         options.profile,
         options.verify || signature_profile,
         selected_profile_fields,
@@ -1129,7 +1158,7 @@ fn prepare_read<R: Read + Seek>(
         Some(if let Some(profile) = &profile {
             stored_signature_from_profile(reader, &footer, profile)?
         } else {
-            stored_signature_from_footer(reader, &footer)?
+            stored_signature_from_footer(reader, &mut footer)?
         })
     } else {
         None
@@ -1139,7 +1168,12 @@ fn prepare_read<R: Read + Seek>(
             profile.checksums = None;
         }
     }
-    if carries_profile {
+    if carries_profile
+        && footer
+            .schema
+            .metadata()
+            .contains_key(ARROW_PROFILE_VERSION_KEY)
+    {
         discard_private_profile_json(&mut footer);
     }
 
@@ -1616,9 +1650,9 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
                 .expect("selected field occurrence was counted");
             *count -= 1;
             column.field = if *count == 0 {
-                profile.fields[index].take()
+                profile.fields.take(index)
             } else {
-                profile.fields[index].clone()
+                profile.fields.get(index).cloned()
             };
         }
         (Some(profile.version), Some(profile.dataset))
@@ -1953,7 +1987,7 @@ fn validate_stored_checksum_coverage<R: Read + Seek>(
 
 fn stored_signature_from_footer<R: Read + Seek>(
     reader: &mut R,
-    footer: &Footer,
+    footer: &mut Footer,
 ) -> Result<String, ArrowProfileError> {
     let profile = parse_profile(footer, true, true, None)?.ok_or_else(|| {
         ArrowProfileError::InvalidFile(
@@ -1984,8 +2018,14 @@ fn stored_signature_from_profile<R: Read + Seek>(
             .schema
             .fields()
             .iter()
-            .zip(&profile.fields)
-            .map(|(field, document)| (field.name().as_str(), field.data_type(), document.as_ref())),
+            .enumerate()
+            .map(|(index, field)| {
+                (
+                    field.name().as_str(),
+                    field.data_type(),
+                    profile.fields.get(index),
+                )
+            }),
         footer.schema.fields().len(),
         &profile.dataset,
         checksums,
@@ -2001,7 +2041,7 @@ fn stored_signature_from_profile<R: Read + Seek>(
 pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowProfileError> {
     let path = path.as_ref();
     let mut reader = BufReader::new(File::open(path)?);
-    let footer = match read_footer(&mut reader) {
+    let mut footer = match read_footer(&mut reader) {
         Err(ArrowProfileError::NotAnArrowFile(_)) => {
             return Err(ArrowProfileError::NotAnArrowFile(
                 path.display().to_string(),
@@ -2009,7 +2049,7 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
         }
         other => other?,
     };
-    stored_signature_from_footer(&mut reader, &footer)
+    stored_signature_from_footer(&mut reader, &mut footer)
 }
 
 pub fn summarize_arrow_file(
@@ -2041,7 +2081,7 @@ impl ArrowFileSnapshot {
         interrupt: &mut dyn FnMut() -> bool,
     ) -> Result<ArrowFileSummary, ArrowProfileError> {
         let mut reader = BufReader::new(self.file.try_clone()?);
-        let footer = match read_footer(&mut reader) {
+        let mut footer = match read_footer(&mut reader) {
             Err(ArrowProfileError::NotAnArrowFile(_)) => {
                 return Err(ArrowProfileError::NotAnArrowFile(
                     self.path.display().to_string(),
@@ -2049,7 +2089,7 @@ impl ArrowFileSnapshot {
             }
             other => other?,
         };
-        let profile = parse_profile(&footer, apply_profile, false, None)?;
+        let profile = parse_profile(&mut footer, apply_profile, false, None)?;
         let ambiguous_int32: Vec<u32> = if scan_ambiguous_int32 {
             footer
                 .schema
@@ -2059,7 +2099,7 @@ impl ArrowFileSnapshot {
                 .filter(|(index, field)| {
                     let document = profile
                         .as_ref()
-                        .and_then(|profile| profile.fields[*index].as_ref());
+                        .and_then(|profile| profile.fields.get(*index));
                     field.data_type() == &DataType::Int32
                         && document.and_then(|document| document.storage).is_none()
                         && document
@@ -2136,7 +2176,7 @@ impl ArrowFileSnapshot {
                     field,
                     profile
                         .as_ref()
-                        .and_then(|profile| profile.fields[index].as_ref()),
+                        .and_then(|profile| profile.fields.get(index)),
                     int32_requires_double[index],
                 ),
             })
@@ -2233,6 +2273,69 @@ mod tests {
         let error = metadata_buffer(MAX_IPC_METADATA_BYTES + 1, "record batch")
             .expect_err("oversized metadata is rejected before allocation");
         assert!(error.to_string().contains("64 MiB safety limit"));
+    }
+
+    #[test]
+    fn projected_profile_metadata_is_sparse_and_discards_raw_json() {
+        let field_count = 120_000;
+        let selected = field_count - 1;
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new("x", DataType::Int32, true);
+            if index == 0 {
+                field.set_metadata(HashMap::from([(
+                    ARROW_FIELD_KEY.to_owned(),
+                    "not JSON".to_owned(),
+                )]));
+            } else if index == selected {
+                field.set_metadata(HashMap::from([(
+                    ARROW_FIELD_KEY.to_owned(),
+                    r#"{"version":0}"#.to_owned(),
+                )]));
+            }
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"label":"wide"}"#.to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::from([(
+                ARROW_CHECKSUMS_KEY.to_owned(),
+                "discard without verification".to_owned(),
+            )]),
+        };
+
+        let profile = parse_profile(&mut footer, true, false, Some(&[selected]))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let ProfileFields::Projected(documents) = &profile.fields else {
+            panic!("a projected profile must not allocate full-width document storage");
+        };
+        assert_eq!(documents.len(), 1);
+        assert!(documents.contains_key(&selected));
+        assert_eq!(profile.dataset.label, "wide");
+        assert!(!footer
+            .schema
+            .metadata()
+            .contains_key(ARROW_PROFILE_VERSION_KEY));
+        assert!(!footer.schema.metadata().contains_key(ARROW_DATASET_KEY));
+        assert!(!footer.custom_metadata.contains_key(ARROW_CHECKSUMS_KEY));
+        assert!(footer
+            .schema
+            .fields()
+            .iter()
+            .all(|field| !field.metadata().contains_key(ARROW_FIELD_KEY)));
     }
 
     #[test]

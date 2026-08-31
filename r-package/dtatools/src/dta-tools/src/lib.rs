@@ -75,7 +75,9 @@ pub use missing::{
     MissingTag, DOUBLE_MISSING_DOT_BITS, DOUBLE_MISSING_STEP_BITS, DOUBLE_MISSING_Z_BITS,
     FLOAT_MISSING_DOT_BITS, FLOAT_MISSING_STEP_BITS, FLOAT_MISSING_Z_BITS,
 };
-pub use stata_metadata::{valid_characteristic, valid_note};
+pub use stata_metadata::{
+    valid_canonical_characteristic, valid_canonical_note, valid_characteristic, valid_note,
+};
 pub use text::TextEncoding;
 pub use types::{
     ByteOrder, Column, ColumnValues, DtaData, DtaMetadata, DtaType, FormatVersion, ReadOptions,
