@@ -19,6 +19,7 @@ declared Stata storage type.
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
 | `replace_values()`, `repl()` | Replace selected values by reference without widening declared Stata storage. |
+| `keep_vars()`, `drop_vars()` | Keep or drop variables by reference, including variables created by `gen()`. |
 | `copy_data()` | Make an isolated copy, including compact column backing and mutable dataset metadata. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
@@ -28,7 +29,7 @@ declared Stata storage type.
 | `is_missing()` | Classify Stata system and extended numeric missing values and empty strings; use it in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
-`gen()` and `replace_values()` mutate the supplied data frame or tibble. Dataset
+`gen()`, `replace_values()`, `keep_vars()`, and `drop_vars()` mutate the supplied data frame or tibble. Dataset
 aliases and aliases of a target column observe the change. Call `copy_data()`
 first when the original dataset, its compact storage, and its metadata must
 remain independent. See `?replace_values` for selection, evaluation, formula,
