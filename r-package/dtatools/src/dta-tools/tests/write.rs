@@ -1292,6 +1292,9 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
     let name = record + 4 + 129;
     reserved_oversized[name..name + 129].fill(0);
     reserved_oversized[name..name + 5].copy_from_slice(b"note0");
+    let mut invalid_oversized = oversized.clone();
+    invalid_oversized[name..name + 129].fill(0);
+    invalid_oversized[name..name + 4].copy_from_slice(b"2bad");
     assert!(matches!(
         DtaFile::from_reader(Cursor::new(oversized)),
         Err(DtaError::MetadataValueTooLong { .. })
@@ -1302,6 +1305,14 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
     ));
     assert!(matches!(
         DtaFile::from_reader(Cursor::new(reserved_oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        parse_metadata(&invalid_oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_oversized)),
         Err(DtaError::MetadataValueTooLong { .. })
     ));
 

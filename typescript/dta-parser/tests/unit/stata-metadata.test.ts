@@ -13,10 +13,28 @@ import {
     setStataNote,
 } from '../../src/index';
 import {
-    applyCharacteristicRecords,
+    StataMetadataCollector,
     type StataMetadataTarget,
 } from '../../src/stata-metadata';
 import type { VariableInfo } from '../../src/types';
+
+interface CharacteristicRecord {
+    target: string;
+    name: string;
+    value: string;
+}
+
+function applyCharacteristicRecords(
+    records: CharacteristicRecord[],
+    dataset: StataMetadataTarget,
+    variables: VariableInfo[]
+): void {
+    const collector = new StataMetadataCollector(dataset, variables);
+    records.forEach(record => {
+        collector.pushLazy(record.target, record.name, () => record.value);
+    });
+    collector.finish();
+}
 
 function metadata(): StataMetadataTarget {
     return { notes: [], characteristics: [] };

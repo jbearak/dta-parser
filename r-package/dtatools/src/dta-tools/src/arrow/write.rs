@@ -262,7 +262,7 @@ pub fn dataset_signature(
     threads: usize,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<String, ArrowProfileError> {
-    let (row_count, _) = validated_fields(dataset)?;
+    let row_count = validated_row_count(dataset)?;
 
     let column_count = dataset.columns.len();
     let dictionary_columns: Vec<usize> = dataset
@@ -418,13 +418,15 @@ fn serialize_json<T: serde::Serialize>(value: &T) -> Result<String, ArrowProfile
     serde_json::to_string(value).map_err(|error| ArrowProfileError::Invalid(error.to_string()))
 }
 
-fn validated_fields(dataset: &ArrowWriteDataset) -> Result<(usize, Vec<Field>), ArrowProfileError> {
+fn validate_fields_with(
+    dataset: &ArrowWriteDataset,
+    mut accept: impl FnMut(Field, Option<&ArrowFieldDocument>) -> Result<(), ArrowProfileError>,
+) -> Result<usize, ArrowProfileError> {
     validate_dataset_document(ARROW_PROFILE_VERSION, &dataset.dataset)?;
     let row_count = dataset
         .columns
         .first()
         .map_or(0, |column| column.array.len());
-    let mut fields = Vec::with_capacity(dataset.columns.len());
     for column in &dataset.columns {
         if column.array.len() != row_count {
             return Err(ArrowProfileError::Invalid(format!(
@@ -453,7 +455,7 @@ fn validated_fields(dataset: &ArrowWriteDataset) -> Result<(usize, Vec<Field>), 
                 column.array.null_count()
             )));
         }
-        let mut field = Field::new(column.name.clone(), data_type.clone(), nullable);
+        let field = Field::new(column.name.clone(), data_type.clone(), nullable);
         if let Some(document) = &column.field {
             validate_field_document(ARROW_PROFILE_VERSION, &field, document)?;
             validate_value_label_reference(
@@ -462,11 +464,26 @@ fn validated_fields(dataset: &ArrowWriteDataset) -> Result<(usize, Vec<Field>), 
                 document,
                 &dataset.dataset,
             )?;
+        }
+        accept(field, column.field.as_ref())?;
+    }
+    Ok(row_count)
+}
+
+fn validated_row_count(dataset: &ArrowWriteDataset) -> Result<usize, ArrowProfileError> {
+    validate_fields_with(dataset, |_field, _document| Ok(()))
+}
+
+fn validated_fields(dataset: &ArrowWriteDataset) -> Result<(usize, Vec<Field>), ArrowProfileError> {
+    let mut fields = Vec::with_capacity(dataset.columns.len());
+    let row_count = validate_fields_with(dataset, |mut field, document| {
+        if let Some(document) = document {
             let json = serialize_json(document)?;
             field.set_metadata(HashMap::from([(ARROW_FIELD_KEY.to_owned(), json)]));
         }
         fields.push(field);
-    }
+        Ok(())
+    })?;
     Ok((row_count, fields))
 }
 
@@ -481,12 +498,13 @@ pub fn save_arrow_file(
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    validated_fields(dataset)?;
+    let validated = validated_fields(dataset)?;
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
-    save_arrow_file_to(
+    save_arrow_file_to_validated(
         &mut writer,
         dataset,
+        validated,
         compression,
         threads,
         checksums,
@@ -512,8 +530,28 @@ pub fn save_arrow_file_to<W: Write>(
     checksums: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<(), ArrowProfileError> {
-    let (row_count, fields) = validated_fields(dataset)?;
+    let validated = validated_fields(dataset)?;
+    save_arrow_file_to_validated(
+        output,
+        dataset,
+        validated,
+        compression,
+        threads,
+        checksums,
+        interrupt,
+    )
+}
 
+fn save_arrow_file_to_validated<W: Write>(
+    output: W,
+    dataset: &ArrowWriteDataset,
+    validated: (usize, Vec<Field>),
+    compression: ArrowCompression,
+    threads: usize,
+    checksums: bool,
+    interrupt: &mut dyn FnMut() -> bool,
+) -> Result<(), ArrowProfileError> {
+    let (row_count, fields) = validated;
     let mut schema_metadata = HashMap::new();
     schema_metadata.insert(
         ARROW_PROFILE_VERSION_KEY.to_owned(),

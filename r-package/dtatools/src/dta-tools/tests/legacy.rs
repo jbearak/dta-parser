@@ -712,6 +712,9 @@ fn legacy_metadata_bounds_and_raw_names_have_file_parity() {
     let name = expansion + header_width + 33;
     reserved_oversized[name..name + 33].fill(0);
     reserved_oversized[name..name + 5].copy_from_slice(b"note0");
+    let mut invalid_oversized = oversized.clone();
+    invalid_oversized[name..name + 33].fill(0);
+    invalid_oversized[name..name + 4].copy_from_slice(b"2bad");
     assert!(matches!(
         DtaFile::from_reader(Cursor::new(oversized)),
         Err(DtaError::MetadataValueTooLong { .. })
@@ -722,6 +725,14 @@ fn legacy_metadata_bounds_and_raw_names_have_file_parity() {
     ));
     assert!(matches!(
         DtaFile::from_reader(Cursor::new(reserved_oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        parse_metadata(&invalid_oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_oversized)),
         Err(DtaError::MetadataValueTooLong { .. })
     ));
 

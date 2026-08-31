@@ -5,14 +5,8 @@ export interface StataMetadataTarget {
     characteristics: StataCharacteristic[];
 }
 
-export interface StataCharacteristicRecord {
-    target: string;
-    name: string;
-    value: string;
-}
-
 const NOTE_NAME = /^note([0-9]+)$/;
-export const MAX_STATA_METADATA_VALUE_BYTES = 67_784;
+const MAX_STATA_METADATA_VALUE_BYTES = 67_784;
 const TEXT_ENCODER = new TextEncoder();
 
 function noteNumber(name: string): number | null {
@@ -106,10 +100,6 @@ export class StataMetadataCollector {
         return { scopeIndex, name, noteNumber: number };
     }
 
-    push(record: StataCharacteristicRecord): void {
-        this.pushLazy(record.target, record.name, () => record.value);
-    }
-
     pushLazy(target: string, name: string, value: () => string): boolean {
         const accepted = this.classify(target, name);
         if (accepted === null) return false;
@@ -148,16 +138,6 @@ export class StataMetadataCollector {
             );
         }
     }
-}
-
-export function applyCharacteristicRecords(
-    records: StataCharacteristicRecord[],
-    dataset: StataMetadataTarget,
-    variables: VariableInfo[]
-): void {
-    const collector = new StataMetadataCollector(dataset, variables);
-    records.forEach(record => collector.push(record));
-    collector.finish();
 }
 
 function validNoteNumber(number: number): void {

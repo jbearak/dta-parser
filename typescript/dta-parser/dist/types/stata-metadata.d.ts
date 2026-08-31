@@ -3,12 +3,6 @@ export interface StataMetadataTarget {
     notes: StataNote[];
     characteristics: StataCharacteristic[];
 }
-export interface StataCharacteristicRecord {
-    target: string;
-    name: string;
-    value: string;
-}
-export declare const MAX_STATA_METADATA_VALUE_BYTES = 67784;
 /** Incrementally folds raw characteristic records into canonical metadata. */
 export declare class StataMetadataCollector {
     private readonly dataset;
@@ -20,12 +14,10 @@ export declare class StataMetadataCollector {
     private scope;
     private scopeIndexes;
     private classify;
-    push(record: StataCharacteristicRecord): void;
     pushLazy(target: string, name: string, value: () => string): boolean;
     private pushAccepted;
     finish(): void;
 }
-export declare function applyCharacteristicRecords(records: StataCharacteristicRecord[], dataset: StataMetadataTarget, variables: VariableInfo[]): void;
 /** Return the canonical content end within a bounded raw metadata value. */
 export declare function stataMetadataValueEnd(bytes: Uint8Array, start: number, length: number): number;
 export declare function listStataNotes(target: StataMetadataTarget): StataNote[];

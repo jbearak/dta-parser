@@ -2762,15 +2762,20 @@ fn read_modern_characteristics<R: Read + Seek>(
             name,
             error_offset(payload_offset.saturating_add(width as u64)),
             |target| variable_indexes.resolve(target),
-        )?;
-        if let Some(accepted) = accepted {
-            let value =
-                section.decode_field(value_length, encoding, "reading characteristic value")?;
-            collector
-                .get_or_insert_with(CharacteristicCollector::default)
-                .push(accepted, value);
-        } else {
-            section.validate_field(value_length, "characteristic value")?;
+        );
+        match accepted {
+            Ok(Some(accepted)) => {
+                let value =
+                    section.decode_field(value_length, encoding, "reading characteristic value")?;
+                collector
+                    .get_or_insert_with(CharacteristicCollector::default)
+                    .push(accepted, value);
+            }
+            Ok(None) => section.validate_field(value_length, "characteristic value")?,
+            Err(error) => {
+                section.validate_field(value_length, "characteristic value")?;
+                return Err(error);
+            }
         }
         debug_assert_eq!(section.position(), close);
         section.read_into(5, &mut record, "reading </ch>")?;
@@ -3345,22 +3350,28 @@ fn read_legacy_metadata<R: Read + Seek>(
             let target = encoding.decode(field_bytes(&expansion[..layout.varname_width]));
             let name = encoding.decode(field_bytes(&expansion[layout.varname_width..]));
             let value_length = payload_length - 2 * layout.varname_width;
-            if let Some(accepted) = classify_characteristic(
+            let accepted = classify_characteristic(
                 &target,
                 name,
                 error_offset(payload_offset.saturating_add(layout.varname_width as u64)),
                 |target| variable_indexes.resolve(target),
-            )? {
-                let value = section.decode_field(
-                    value_length,
-                    encoding,
-                    "reading legacy characteristic value",
-                )?;
-                collector
-                    .get_or_insert_with(CharacteristicCollector::default)
-                    .push(accepted, value);
-            } else {
-                section.validate_field(value_length, "legacy characteristic value")?;
+            );
+            match accepted {
+                Ok(Some(accepted)) => {
+                    let value = section.decode_field(
+                        value_length,
+                        encoding,
+                        "reading legacy characteristic value",
+                    )?;
+                    collector
+                        .get_or_insert_with(CharacteristicCollector::default)
+                        .push(accepted, value);
+                }
+                Ok(None) => section.validate_field(value_length, "legacy characteristic value")?,
+                Err(error) => {
+                    section.validate_field(value_length, "legacy characteristic value")?;
+                    return Err(error);
+                }
             }
         } else {
             section.advance(payload_length, "legacy expansion-field payload")?;

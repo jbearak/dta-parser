@@ -423,9 +423,6 @@ var StataMetadataCollector = class {
     if (scopeIndex === void 0) return null;
     return { scopeIndex, name, noteNumber: number };
   }
-  push(record) {
-    this.pushLazy(record.target, record.name, () => record.value);
-  }
   pushLazy(target, name, value) {
     const accepted = this.classify(target, name);
     if (accepted === null) return false;

@@ -217,12 +217,10 @@ where
         {
             let maximum = crate::stata_metadata::MAX_NOTE_NUMBER as usize;
             let mut notes = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(maximum));
-            while let Some(note) = sequence.next_element::<NoteDocument>()? {
-                if notes.len() == maximum {
-                    return Err(serde::de::Error::custom(
-                        "Stata note arrays may contain at most 9,999 entries",
-                    ));
-                }
+            while notes.len() < maximum {
+                let Some(note) = sequence.next_element::<NoteDocument>()? else {
+                    return Ok(notes);
+                };
                 let note = match note {
                     NoteDocument::Legacy(text) => StataNote {
                         number: u32::try_from(notes.len() + 1).map_err(serde::de::Error::custom)?,
@@ -231,6 +229,11 @@ where
                     NoteDocument::Numbered(note) => note,
                 };
                 notes.push(note);
+            }
+            if sequence.next_element::<serde::de::IgnoredAny>()?.is_some() {
+                return Err(serde::de::Error::custom(
+                    "Stata note arrays may contain at most 9,999 entries",
+                ));
             }
             Ok(notes)
         }
@@ -748,12 +751,14 @@ mod tests {
 
     #[test]
     fn note_arrays_are_bounded_during_deserialization() {
-        let notes = vec!["\"\""; 10_000].join(",");
-        let json = format!(r#"{{"version":0,"notes":[{notes}]}}"#);
-        let error = parse_dataset_document("0", Some(&json))
-            .expect_err("the ten-thousandth note is rejected while decoding JSON");
-        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
-        assert!(error.to_string().contains("at most 9,999 entries"));
+        let prefix = vec!["\"\""; 9_999].join(",");
+        for final_note in ["\"\"".to_owned(), format!("\"{}\"", "x".repeat(1 << 20))] {
+            let json = format!(r#"{{"version":0,"notes":[{prefix},{final_note}]}}"#);
+            let error = parse_dataset_document("0", Some(&json))
+                .expect_err("the ten-thousandth note is rejected while decoding JSON");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("at most 9,999 entries"));
+        }
     }
 
     #[test]

@@ -1093,10 +1093,6 @@ fn prepare_read<R: Read + Seek>(
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<PreparedRead, ArrowProfileError> {
     let mut footer = read_footer(reader)?;
-    let stored_signature = options
-        .record_signature
-        .then(|| stored_signature_from_footer(reader, &footer))
-        .transpose()?;
     let carries_profile = footer
         .schema
         .metadata()
@@ -1114,12 +1110,35 @@ fn prepare_read<R: Read + Seek>(
             })
             .collect::<Result<_, _>>()?,
     };
-    let profile = parse_profile(
+    // A stored signature covers every field and needs the checksum document.
+    // Reuse that full parse for the ordinary profiled read rather than
+    // parsing the same potentially large footer documents twice.
+    let signature_profile = options.record_signature && options.profile;
+    let selected_profile_fields = if signature_profile {
+        None
+    } else {
+        options.columns.as_ref().map(|_| selected.as_slice())
+    };
+    let mut profile = parse_profile(
         &footer,
         options.profile,
-        options.verify,
-        options.columns.as_ref().map(|_| selected.as_slice()),
+        options.verify || signature_profile,
+        selected_profile_fields,
     )?;
+    let stored_signature = if options.record_signature {
+        Some(if let Some(profile) = &profile {
+            stored_signature_from_profile(reader, &footer, profile)?
+        } else {
+            stored_signature_from_footer(reader, &footer)?
+        })
+    } else {
+        None
+    };
+    if signature_profile && !options.verify {
+        if let Some(profile) = &mut profile {
+            profile.checksums = None;
+        }
+    }
     if carries_profile {
         discard_private_profile_json(&mut footer);
     }
@@ -1936,26 +1955,29 @@ fn stored_signature_from_footer<R: Read + Seek>(
     reader: &mut R,
     footer: &Footer,
 ) -> Result<String, ArrowProfileError> {
-    let profile = parse_profile(footer, true, false, None)?.ok_or_else(|| {
+    let profile = parse_profile(footer, true, true, None)?.ok_or_else(|| {
         ArrowProfileError::InvalidFile(
             "the file carries no dtatools Arrow profile, so it stores no checksums to derive \
              a signature from"
                 .to_owned(),
         )
     })?;
-    let json = footer
-        .custom_metadata
-        .get(ARROW_CHECKSUMS_KEY)
-        .ok_or_else(|| {
-            ArrowProfileError::InvalidFile(
-                "the file was written without checksums, so its signature cannot be derived \
-                 from the footer; read the data and compute it with datasig() instead"
-                    .to_owned(),
-            )
-        })?;
-    let checksums = parse_checksums_document(&profile.version, json)?;
-    let row_count =
-        validate_stored_checksum_coverage(reader, footer, &profile.version, &checksums)?;
+    stored_signature_from_profile(reader, footer, &profile)
+}
+
+fn stored_signature_from_profile<R: Read + Seek>(
+    reader: &mut R,
+    footer: &Footer,
+    profile: &Profile,
+) -> Result<String, ArrowProfileError> {
+    let checksums = profile.checksums.as_ref().ok_or_else(|| {
+        ArrowProfileError::InvalidFile(
+            "the file was written without checksums, so its signature cannot be derived \
+             from the footer; read the data and compute it with datasig() instead"
+                .to_owned(),
+        )
+    })?;
+    let row_count = validate_stored_checksum_coverage(reader, footer, &profile.version, checksums)?;
     super::write::signature_from_parts(
         row_count,
         footer
@@ -1966,7 +1988,7 @@ fn stored_signature_from_footer<R: Read + Seek>(
             .map(|(field, document)| (field.name().as_str(), field.data_type(), document.as_ref())),
         footer.schema.fields().len(),
         &profile.dataset,
-        &checksums,
+        checksums,
     )
 }
 
