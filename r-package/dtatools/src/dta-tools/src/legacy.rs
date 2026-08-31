@@ -213,9 +213,10 @@ fn scan_expansion_fields_ordered(
     byte_order: ByteOrder,
     encoding: TextEncoding,
     layout: LegacyLayout,
-    collector: &mut CharacteristicCollector,
-) -> Result<usize, DtaError> {
+    variable_names: &[String],
+) -> Result<(usize, Option<CharacteristicCollector>), DtaError> {
     let mut cursor = start;
+    let mut collector = None;
     loop {
         let data_type = slice_at(bytes, cursor, 1, "legacy expansion-field type")?[0];
         let length_offset = checked_add(cursor, 1, "legacy expansion-field length")?;
@@ -235,11 +236,12 @@ fn scan_expansion_fields_ordered(
             )?
         };
         if data_type == 0 && value == 0 {
-            return checked_add(
+            let data_offset = checked_add(
                 cursor,
                 layout.expansion_header_width(),
                 "legacy expansion-field terminator",
-            );
+            )?;
+            return Ok((data_offset, collector));
         }
         if value < 0 {
             return Err(DtaError::NegativeExpansionLength {
@@ -262,6 +264,9 @@ fn scan_expansion_fields_ordered(
         )?;
         let payload = slice_at(bytes, cursor, length, "legacy expansion-field payload")?;
         if data_type == 1 && payload.len() >= 2 * layout.varname_width {
+            let collector = collector.get_or_insert_with(|| {
+                CharacteristicCollector::from_variable_names(variable_names.iter().cloned())
+            });
             let (variable, remainder) = payload.split_at(layout.varname_width);
             let (characteristic, value) = remainder.split_at(layout.varname_width);
             validate_raw_value_length(
@@ -271,8 +276,8 @@ fn scan_expansion_fields_ordered(
             )?;
             let target = encoding.decode(field_bytes(variable));
             let name = encoding.decode(field_bytes(characteristic));
-            if collector.accepts(&target, &name) {
-                collector.push(target, name, encoding.decode(field_bytes(value)));
+            if let Some(accepted) = collector.classify(&target, name) {
+                collector.push(accepted, encoding.decode(field_bytes(value)));
             }
         }
         cursor = checked_add(cursor, length, "legacy expansion-field payload")?;
@@ -323,15 +328,15 @@ pub(crate) fn parse_legacy_metadata(
     )?;
     let variable_names = varname_bytes
         .chunks_exact(layout.varname_width)
-        .map(|field| resolved_encoding.decode(field_bytes(field)));
-    let mut collector = CharacteristicCollector::from_variable_names(variable_names);
-    let data_offset = scan_expansion_fields_ordered(
+        .map(|field| resolved_encoding.decode(field_bytes(field)))
+        .collect::<Vec<_>>();
+    let (data_offset, collector) = scan_expansion_fields_ordered(
         bytes,
         expansion_start,
         byte_order,
         resolved_encoding,
         layout,
-        &mut collector,
+        &variable_names,
     )?;
     parse_legacy_metadata_layout(
         bytes,
@@ -342,6 +347,7 @@ pub(crate) fn parse_legacy_metadata(
         nvar,
         nobs,
         resolved_encoding,
+        variable_names,
         collector,
     )
 }
@@ -356,7 +362,8 @@ pub(crate) fn parse_legacy_metadata_layout(
     nvar: u32,
     nobs: u64,
     encoding: TextEncoding,
-    collector: CharacteristicCollector,
+    variable_names: Vec<String>,
+    collector: Option<CharacteristicCollector>,
 ) -> Result<DtaMetadata, DtaError> {
     let nvar_usize =
         usize::try_from(nvar).map_err(|_| DtaError::ArithmeticOverflow("legacy variable count"))?;
@@ -391,12 +398,7 @@ pub(crate) fn parse_legacy_metadata_layout(
     )?;
     let mut variables = Vec::with_capacity(nvar_usize);
     let mut byte_offset = 0_u64;
-    for (index, &code) in type_codes.iter().enumerate() {
-        let name_at = checked_add(
-            fixed.varnames,
-            checked_mul(index, layout.varname_width, "legacy varname offset")?,
-            "legacy varname offset",
-        )?;
+    for ((index, &code), name) in type_codes.iter().enumerate().zip(variable_names) {
         let format_at = checked_add(
             fixed.formats,
             checked_mul(index, layout.format_width, "legacy format offset")?,
@@ -422,10 +424,7 @@ pub(crate) fn parse_legacy_metadata_layout(
         )?;
         let (dta_type, byte_width) = legacy_type(code, version)?;
         variables.push(VariableInfo {
-            name: decode_field(
-                slice_at(bytes, name_at, layout.varname_width, "legacy varname")?,
-                encoding,
-            ),
+            name,
             dta_type,
             type_code: u16::from(code),
             format: decode_field(
@@ -492,7 +491,9 @@ pub(crate) fn parse_legacy_metadata_layout(
     };
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    collector.finish(&mut notes, &mut characteristics, &mut variables);
+    if let Some(collector) = collector {
+        collector.finish(&mut notes, &mut characteristics, &mut variables);
+    }
 
     Ok(DtaMetadata {
         format_version: version,

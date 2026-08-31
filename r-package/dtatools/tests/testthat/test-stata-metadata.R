@@ -62,6 +62,14 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
         set_stata_characteristic(data, "_lang_list", "default"),
         "language-control key"
     )
+    expect_error(
+        set_stata_characteristic(data, "_lang_v_en", "English label"),
+        "language-control key"
+    )
+    expect_error(
+        set_stata_characteristic(data, "_lang_l_en", "English labels"),
+        "language-control key"
+    )
     expect_error(stata_notes(data, "missing"), "does not exist")
     expect_identical(attributes(data), attributes(data.frame(x = 1)))
 })

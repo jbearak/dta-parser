@@ -16,12 +16,11 @@ use dta_tools::{
     classify_int_missing_for_version, classify_long_missing_for_version,
     dta_write_numeric_value_is_representable, encode_numeric,
     write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
-    DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteColumn, DtaWriteColumnSource,
-    DtaWriteColumnValues, DtaWriteCharacteristic, DtaWriteData, DtaWriteError,
-    DtaWriteLabelValue, DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource,
-    DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag,
-    ParallelDtaSink, ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelTable,
-    VariableInfo,
+    DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
+    DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
+    DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
+    DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag, ParallelDtaSink,
+    ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelTable, VariableInfo,
 };
 
 mod arrow_ffi;
@@ -111,14 +110,22 @@ fn parse_metadata_count(value: &str, context: &str) -> Result<usize, String> {
         .map_err(|_| format!("invalid internal {context} count"))
 }
 
-fn parse_stata_metadata_fields(
-    mut field: impl FnMut(usize) -> Result<String, String>,
+unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
+    values: Sexp,
     start: usize,
-) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
+    note: impl Fn(u32, &'a str) -> N,
+    characteristic: impl Fn(&'a str, &'a str) -> C,
+) -> Result<(Vec<N>, Vec<C>), String> {
+    let field = |index| {
+        required_c_str(
+            dtatools_string_elt_utf8(values, index),
+            "internal Stata metadata field",
+        )
+    };
     if field(start)? != STATA_METADATA_MARKER {
         return Err("invalid internal Stata metadata marker".to_owned());
     }
-    let note_count = parse_metadata_count(&field(start + 1)?, "note")?;
+    let note_count = parse_metadata_count(field(start + 1)?, "note")?;
     let mut cursor = start + 2;
     let mut notes = Vec::new();
     notes
@@ -128,67 +135,7 @@ fn parse_stata_metadata_fields(
         let number = field(cursor)?
             .parse::<u32>()
             .map_err(|_| "invalid internal note number".to_owned())?;
-        let text = field(cursor + 1)?;
-        notes.push(StataNote { number, text });
-        cursor += 2;
-    }
-    let characteristic_count =
-        parse_metadata_count(&field(cursor)?, "characteristic")?;
-    cursor += 1;
-    let mut characteristics = Vec::new();
-    characteristics
-        .try_reserve_exact(characteristic_count)
-        .map_err(|_| "could not allocate characteristic metadata".to_owned())?;
-    for _ in 0..characteristic_count {
-        characteristics.push(StataCharacteristic {
-            name: field(cursor)?,
-            value: field(cursor + 1)?,
-        });
-        cursor += 2;
-    }
-    Ok((notes, characteristics))
-}
-
-pub(crate) unsafe fn parse_stata_metadata_sexp(
-    values: Sexp,
-    start: usize,
-) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
-    parse_stata_metadata_fields(
-        |index| {
-            required_c_string(
-                dtatools_string_elt_utf8(values, index),
-                "internal Stata metadata field",
-            )
-        },
-        start,
-    )
-}
-
-unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
-    values: Sexp,
-) -> Result<(Vec<DtaWriteNote<'a>>, Vec<DtaWriteCharacteristic<'a>>), String> {
-    let field = |index| {
-        required_c_str(
-            dtatools_string_elt_utf8(values, index),
-            "internal Stata metadata field",
-        )
-    };
-    if field(0)? != STATA_METADATA_MARKER {
-        return Err("invalid internal Stata metadata marker".to_owned());
-    }
-    let note_count = parse_metadata_count(field(1)?, "note")?;
-    let mut cursor = 2;
-    let mut notes = Vec::new();
-    notes
-        .try_reserve_exact(note_count)
-        .map_err(|_| "could not allocate note metadata".to_owned())?;
-    for _ in 0..note_count {
-        notes.push(DtaWriteNote {
-            number: field(cursor)?
-                .parse::<u32>()
-                .map_err(|_| "invalid internal note number".to_owned())?,
-            text: Cow::Borrowed(field(cursor + 1)?),
-        });
+        notes.push(note(number, field(cursor + 1)?));
         cursor += 2;
     }
     let characteristic_count = parse_metadata_count(field(cursor)?, "characteristic")?;
@@ -198,13 +145,42 @@ unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
         .try_reserve_exact(characteristic_count)
         .map_err(|_| "could not allocate characteristic metadata".to_owned())?;
     for _ in 0..characteristic_count {
-        characteristics.push(DtaWriteCharacteristic {
-            name: Cow::Borrowed(field(cursor)?),
-            value: Cow::Borrowed(field(cursor + 1)?),
-        });
+        characteristics.push(characteristic(field(cursor)?, field(cursor + 1)?));
         cursor += 2;
     }
     Ok((notes, characteristics))
+}
+
+pub(crate) unsafe fn parse_stata_metadata_sexp(
+    values: Sexp,
+    start: usize,
+) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
+    parse_stata_metadata_sexp_as(
+        values,
+        start,
+        |number, text| StataNote {
+            number,
+            text: text.to_owned(),
+        },
+        |name, value| StataCharacteristic {
+            name: name.to_owned(),
+            value: value.to_owned(),
+        },
+    )
+}
+
+unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
+    values: Sexp,
+) -> Result<(Vec<DtaWriteNote<'a>>, Vec<DtaWriteCharacteristic<'a>>), String> {
+    parse_stata_metadata_sexp_as(
+        values,
+        0,
+        |number, text| DtaWriteNote::numbered(number, Cow::Borrowed(text)),
+        |name, value| DtaWriteCharacteristic {
+            name: Cow::Borrowed(name),
+            value: Cow::Borrowed(value),
+        },
+    )
 }
 
 #[repr(C)]
@@ -892,17 +868,40 @@ unsafe fn attach_variable_attributes(
     table: Option<&ValueLabelTable>,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
+    attach_variable_attributes_parts(
+        vector,
+        &variable.dta_type,
+        &variable.format,
+        &variable.label,
+        &variable.notes,
+        &variable.characteristics,
+        table,
+        guard,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn attach_variable_attributes_parts(
+    vector: Sexp,
+    dta_type: &DtaType,
+    format: &str,
+    label: &str,
+    notes: &[StataNote],
+    characteristics: &[StataCharacteristic],
+    table: Option<&ValueLabelTable>,
+    guard: &mut ProtectGuard,
+) -> Result<(), String> {
     check_interrupt()?;
-    attach_stata_metadata(vector, &variable.notes, &variable.characteristics, guard)?;
-    if !variable.label.is_empty() {
-        let label = scalar_string(&variable.label, guard)?;
-        set_attr(vector, "label", label)?;
+    attach_stata_metadata(vector, notes, characteristics, guard)?;
+    if !label.is_empty() {
+        let value = scalar_string(label, guard)?;
+        set_attr(vector, "label", value)?;
     }
-    if !variable.format.is_empty() {
-        let format = scalar_string(&variable.format, guard)?;
-        set_attr(vector, "format.stata", format)?;
+    if !format.is_empty() {
+        let value = scalar_string(format, guard)?;
+        set_attr(vector, "format.stata", value)?;
     }
-    let string_storage = match variable.dta_type {
+    let string_storage = match dta_type {
         DtaType::FixedString(width) => Some(format!("str{width}")),
         DtaType::StrL => Some("strL".to_owned()),
         _ => None,
@@ -916,7 +915,7 @@ unsafe fn attach_variable_attributes(
         set_attr(vector, "labels", labels)?;
     }
 
-    let storage = match variable.dta_type {
+    let storage = match dta_type {
         DtaType::Byte => Some(("byte", "stata_byte")),
         DtaType::Int => Some(("int", "stata_int")),
         DtaType::Long => Some(("long", "stata_long")),
@@ -929,7 +928,7 @@ unsafe fn attach_variable_attributes(
         set_attr(vector, "stata.storage", storage_value)?;
     }
 
-    match (temporal_kind(&variable.format), storage) {
+    match (temporal_kind(format), storage) {
         (TemporalKind::Date, Some(_)) => {
             set_class(vector, &["stata_temporal", "stata_date", "Date"], guard)?;
         }
@@ -1781,15 +1780,15 @@ impl DtaSink for RDataFrameSink {
 
     fn finish(
         mut self,
-        metadata: DtaMetadata,
+        metadata: &DtaMetadata,
         _row_start: u64,
         row_count: u64,
-        value_label_tables: Vec<ValueLabelTable>,
+        value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError> {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
         let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
-        for table in &value_label_tables {
+        for table in value_label_tables {
             value_label_tables_by_name
                 .entry(table.name.as_str())
                 .or_insert(table);
@@ -1860,7 +1859,7 @@ impl DtaSink for RDataFrameSink {
                 )
                 .map_err(DtaError::Output)?;
             }
-            attach_dataset_attributes(self.result, &metadata).map_err(DtaError::Output)?;
+            attach_dataset_attributes(self.result, metadata).map_err(DtaError::Output)?;
         }
         let result = self.result;
         Ok(result)
@@ -1892,10 +1891,10 @@ impl ParallelDtaSink for RDataFrameSink {
     fn finish_parallel(
         state: Self::State,
         columns: Vec<Self::Column>,
-        metadata: DtaMetadata,
+        metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: Vec<ValueLabelTable>,
+        value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError> {
         DtaSink::finish(
             RDataFrameSink {
@@ -3711,6 +3710,7 @@ mod tests {
             label_values: ptr::null(),
             label_texts: ptr::null_mut(),
             label_count: 0,
+            stata_metadata: ptr::null_mut(),
             has_value_labels: 0,
             numeric_shift: shift,
             numeric_scale: scale,

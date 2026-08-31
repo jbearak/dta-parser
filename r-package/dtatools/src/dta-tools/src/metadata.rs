@@ -319,11 +319,11 @@ fn parse_characteristics(
     byte_order: ByteOrder,
     offsets: &SectionOffsets,
     encoding: TextEncoding,
-    collector: &mut CharacteristicCollector,
-) -> Result<(), DtaError> {
+    variables: &[VariableInfo],
+) -> Result<Option<CharacteristicCollector>, DtaError> {
     let start = offset_to_usize(offsets.characteristics, "characteristics")?;
     if bytes.len() == start {
-        return Ok(());
+        return Ok(None);
     }
     let data = offset_to_usize(offsets.data, "data")?;
     let width = if version == FormatVersion::V117 {
@@ -333,13 +333,14 @@ fn parse_characteristics(
     };
     let names_length = checked_mul(width, 2, "characteristic names length")?;
     let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
+    let mut collector = None;
     loop {
         if bytes.get(cursor..cursor.saturating_add(CHARACTERISTICS_CLOSE.len()))
             == Some(CHARACTERISTICS_CLOSE)
         {
             cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
             ensure_map_offset("data", cursor, offsets.data)?;
-            return Ok(());
+            return Ok(collector);
         }
 
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
@@ -379,8 +380,9 @@ fn parse_characteristics(
         validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
         let target = encoding.decode(field_bytes(variable));
         let name = encoding.decode(field_bytes(characteristic));
-        if collector.accepts(&target, &name) {
-            collector.push(target, name, encoding.decode(field_bytes(value)));
+        let collector = collector.get_or_insert_with(|| CharacteristicCollector::new(variables));
+        if let Some(accepted) = collector.classify(&target, name) {
+            collector.push(accepted, encoding.decode(field_bytes(value)));
         }
         cursor = payload_end;
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_CLOSE, "</ch>")?;
@@ -524,16 +526,17 @@ pub fn parse_metadata_with_encoding(
 
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    let mut collector = CharacteristicCollector::new(&variables);
-    parse_characteristics(
+    let collector = parse_characteristics(
         bytes,
         format_version,
         byte_order,
         &section_offsets,
         encoding,
-        &mut collector,
+        &variables,
     )?;
-    collector.finish(&mut notes, &mut characteristics, &mut variables);
+    if let Some(collector) = collector {
+        collector.finish(&mut notes, &mut characteristics, &mut variables);
+    }
 
     Ok(DtaMetadata {
         format_version,

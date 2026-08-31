@@ -325,10 +325,10 @@ pub trait DtaSink: Sized {
 
     fn finish(
         self,
-        metadata: DtaMetadata,
+        metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: Vec<ValueLabelTable>,
+        value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError>;
 }
 
@@ -396,10 +396,10 @@ pub trait ParallelDtaSink: Sized {
     fn finish_parallel(
         state: Self::State,
         columns: Vec<Self::Column>,
-        metadata: DtaMetadata,
+        metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: Vec<ValueLabelTable>,
+        value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError>;
 }
 
@@ -781,13 +781,13 @@ impl DtaSink for VecSink {
 
     fn finish(
         self,
-        metadata: DtaMetadata,
+        metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: Vec<ValueLabelTable>,
+        value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError> {
         Ok(DtaData {
-            metadata,
+            metadata: metadata.clone(),
             row_start,
             row_count,
             columns: self
@@ -795,7 +795,7 @@ impl DtaSink for VecSink {
                 .into_iter()
                 .map(ColumnBuilder::finish)
                 .collect(),
-            value_label_tables,
+            value_label_tables: value_label_tables.to_vec(),
         })
     }
 }
@@ -812,10 +812,10 @@ impl ParallelDtaSink for VecSink {
     fn finish_parallel(
         _state: Self::State,
         columns: Vec<Self::Column>,
-        metadata: DtaMetadata,
+        metadata: &DtaMetadata,
         row_start: u64,
         row_count: u64,
-        value_label_tables: Vec<ValueLabelTable>,
+        value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError> {
         DtaSink::finish(
             VecSink { columns },
@@ -1653,12 +1653,12 @@ impl<R: Read + Seek> DtaFile<R> {
         self.ensure_value_labels(&mut should_interrupt)?;
         let value_label_tables = self
             .value_label_tables
-            .clone()
+            .as_deref()
             .expect("value-label cache was initialized");
         S::finish_parallel(
             state,
             columns,
-            self.metadata.clone(),
+            &self.metadata,
             row_start,
             row_count,
             value_label_tables,
@@ -1909,14 +1909,9 @@ impl<R: Read + Seek> DtaFile<R> {
         }
         let value_label_tables = self
             .value_label_tables
-            .clone()
+            .as_deref()
             .expect("value-label cache was initialized");
-        sink.finish(
-            self.metadata.clone(),
-            row_start,
-            row_count,
-            value_label_tables,
-        )
+        sink.finish(&self.metadata, row_start, row_count, value_label_tables)
     }
 
     /// Return ownership of the underlying reader.
@@ -2104,13 +2099,14 @@ fn decode_range<R: Read + Seek, F: FnMut() -> bool>(
     let mut decoder = encoding.new_decoder();
     let mut completed = 0_usize;
     let mut found_nul = false;
+    let mut bytes = Vec::new();
 
     loop {
         check_cancel(should_interrupt)?;
         let remaining = length.saturating_sub(completed);
         let chunk_length = remaining.min(scratch.limit);
-        let bytes = if chunk_length == 0 {
-            Vec::new()
+        if chunk_length == 0 {
+            bytes.clear();
         } else {
             let chunk_offset = offset
                 .checked_add(
@@ -2118,8 +2114,15 @@ fn decode_range<R: Read + Seek, F: FnMut() -> bool>(
                         .map_err(|_| DtaError::ArithmeticOverflow("string read offset"))?,
                 )
                 .ok_or(DtaError::ArithmeticOverflow("string read offset"))?;
-            read_exact_at(reader, chunk_offset, chunk_length, scratch, context)?
-        };
+            read_exact_at_into(
+                reader,
+                chunk_offset,
+                chunk_length,
+                scratch,
+                &mut bytes,
+                context,
+            )?;
+        }
         let input = if stop_at_nul {
             if let Some(nul) = bytes.iter().position(|byte| *byte == 0) {
                 found_nul = true;
@@ -2496,8 +2499,8 @@ fn read_modern_characteristics<R: Read + Seek>(
     header: &FileModernHeaderMap,
     encoding: TextEncoding,
     scratch: &mut Scratch,
-    collector: &mut CharacteristicCollector,
-) -> Result<(), DtaError> {
+    variables: &[VariableInfo],
+) -> Result<Option<CharacteristicCollector>, DtaError> {
     let width = if header.format_version == FormatVersion::V117 {
         33_usize
     } else {
@@ -2513,9 +2516,18 @@ fn read_modern_characteristics<R: Read + Seek>(
         "<characteristics>",
         scratch,
     )?;
+    let mut collector = None;
+    let mut record = Vec::new();
     loop {
-        let marker = read_exact_at(reader, cursor, 4, scratch, "reading characteristic tag")?;
-        if marker == b"</ch" {
+        read_exact_at_into(
+            reader,
+            cursor,
+            4,
+            scratch,
+            &mut record,
+            "reading characteristic tag",
+        )?;
+        if record == b"</ch" {
             cursor = expect_file_tag(
                 reader,
                 cursor,
@@ -2524,19 +2536,25 @@ fn read_modern_characteristics<R: Read + Seek>(
                 scratch,
             )?;
             ensure_absolute("data", cursor, header.section_offsets.data)?;
-            return Ok(());
+            return Ok(collector);
         }
-        if marker != b"<ch>" {
+        if record != b"<ch>" {
             return Err(DtaError::UnexpectedTag {
                 expected: "<ch> or </characteristics>",
                 offset: error_offset(cursor),
             });
         }
         cursor = checked_add_u64(cursor, 4, "characteristic opening tag")?;
-        let length_bytes =
-            read_exact_at(reader, cursor, 4, scratch, "reading characteristic length")?;
+        read_exact_at_into(
+            reader,
+            cursor,
+            4,
+            scratch,
+            &mut record,
+            "reading characteristic length",
+        )?;
         let payload_length = usize::try_from(read_u32(
-            &length_bytes,
+            &record,
             0,
             header.byte_order,
             "characteristic length",
@@ -2567,15 +2585,16 @@ fn read_modern_characteristics<R: Read + Seek>(
                     .unwrap_or(usize::MAX),
             });
         }
-        let names = read_exact_at(
+        read_exact_at_into(
             reader,
             cursor,
             names_length,
             scratch,
+            &mut record,
             "reading characteristic names",
         )?;
-        let target = encoding.decode(field_bytes(&names[..width]));
-        let name = encoding.decode(field_bytes(&names[width..]));
+        let target = encoding.decode(field_bytes(&record[..width]));
+        let name = encoding.decode(field_bytes(&record[width..]));
         let value_offset = checked_add_u64(
             cursor,
             u64::try_from(names_length)
@@ -2588,7 +2607,8 @@ fn read_modern_characteristics<R: Read + Seek>(
             error_offset(value_offset),
             "characteristic value",
         )?;
-        if collector.accepts(&target, &name) {
+        let collector = collector.get_or_insert_with(|| CharacteristicCollector::new(variables));
+        if let Some(accepted) = collector.classify(&target, name) {
             let mut never_cancel = || false;
             let value = decode_range(
                 reader,
@@ -2601,7 +2621,7 @@ fn read_modern_characteristics<R: Read + Seek>(
                 "reading characteristic value",
             )?
             .0;
-            collector.push(target, name, value);
+            collector.push(accepted, value);
         }
         cursor = expect_file_tag(reader, close, b"</ch>", "</ch>", scratch)?;
     }
@@ -2937,9 +2957,10 @@ fn read_modern_metadata<R: Read + Seek>(
     }
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    let mut collector = CharacteristicCollector::new(&variables);
-    read_modern_characteristics(reader, &header, encoding, scratch, &mut collector)?;
-    collector.finish(&mut notes, &mut characteristics, &mut variables);
+    let collector = read_modern_characteristics(reader, &header, encoding, scratch, &variables)?;
+    if let Some(collector) = collector {
+        collector.finish(&mut notes, &mut characteristics, &mut variables);
+    }
     Ok(DtaMetadata {
         format_version: header.format_version,
         byte_order: header.byte_order,
@@ -3103,13 +3124,15 @@ fn read_legacy_metadata<R: Read + Seek>(
 
     let mut cursor = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
-    let mut collector = CharacteristicCollector::new(&variables);
+    let mut collector = None;
+    let mut expansion = Vec::new();
     loop {
-        let expansion = read_exact_at(
+        read_exact_at_into(
             reader,
             cursor,
             layout.expansion_header_width(),
             scratch,
+            &mut expansion,
             "reading legacy expansion field",
         )?;
         let data_type = expansion[0];
@@ -3166,15 +3189,18 @@ fn read_legacy_metadata<R: Read + Seek>(
             });
         }
         if data_type == 1 && payload_length >= 2 * layout.varname_width {
-            let names = read_exact_at(
+            let collector =
+                collector.get_or_insert_with(|| CharacteristicCollector::new(&variables));
+            read_exact_at_into(
                 reader,
                 cursor,
                 2 * layout.varname_width,
                 scratch,
+                &mut expansion,
                 "reading legacy characteristic names",
             )?;
-            let target = encoding.decode(field_bytes(&names[..layout.varname_width]));
-            let name = encoding.decode(field_bytes(&names[layout.varname_width..]));
+            let target = encoding.decode(field_bytes(&expansion[..layout.varname_width]));
+            let name = encoding.decode(field_bytes(&expansion[layout.varname_width..]));
             let value_offset = checked_add_u64(
                 cursor,
                 u64::try_from(2 * layout.varname_width).map_err(|_| {
@@ -3188,7 +3214,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                 error_offset(value_offset),
                 "legacy characteristic value",
             )?;
-            if collector.accepts(&target, &name) {
+            if let Some(accepted) = collector.classify(&target, name) {
                 let value = decode_range(
                     reader,
                     value_offset,
@@ -3200,7 +3226,7 @@ fn read_legacy_metadata<R: Read + Seek>(
                     "reading legacy characteristic value",
                 )?
                 .0;
-                collector.push(target, name, value);
+                collector.push(accepted, value);
             }
         }
         cursor = payload_end;
@@ -3221,7 +3247,9 @@ fn read_legacy_metadata<R: Read + Seek>(
     }
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    collector.finish(&mut notes, &mut characteristics, &mut variables);
+    if let Some(collector) = collector {
+        collector.finish(&mut notes, &mut characteristics, &mut variables);
+    }
     Ok(DtaMetadata {
         format_version: version,
         byte_order,

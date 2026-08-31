@@ -173,10 +173,10 @@ impl ParallelDtaSink for ProbeSink {
     fn finish_parallel(
         _state: Self::State,
         _columns: Vec<Self::Column>,
-        _metadata: DtaMetadata,
+        _metadata: &DtaMetadata,
         _row_start: u64,
         _row_count: u64,
-        _value_label_tables: Vec<ValueLabelTable>,
+        _value_label_tables: &[ValueLabelTable],
     ) -> Result<Self::Output, DtaError> {
         Ok(())
     }

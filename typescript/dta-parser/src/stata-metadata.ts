@@ -23,7 +23,11 @@ function noteNumber(name: string): number | null {
 }
 
 function reservedCharacteristicName(name: string): boolean {
-    return NOTE_NAME.test(name) || name === '_lang_list' || name === '_lang_c';
+    return NOTE_NAME.test(name)
+        || name === '_lang_list'
+        || name === '_lang_c'
+        || name.startsWith('_lang_v_')
+        || name.startsWith('_lang_l_');
 }
 
 interface ScopeIndexes {
@@ -31,11 +35,17 @@ interface ScopeIndexes {
     characteristics: Map<string, number>;
 }
 
+interface AcceptedStataCharacteristic {
+    scopeIndex: number;
+    name: string;
+    noteNumber: number | null;
+}
+
 /** Incrementally folds raw characteristic records into canonical metadata. */
 export class StataMetadataCollector {
     private readonly scopes: StataMetadataTarget[];
     private readonly targetIndexes: Map<string, number>;
-    private readonly indexes: ScopeIndexes[];
+    private readonly indexes: Array<ScopeIndexes | undefined>;
 
     constructor(dataset: StataMetadataTarget, variables: VariableInfo[]) {
         this.scopes = [dataset, ...variables];
@@ -43,43 +53,71 @@ export class StataMetadataCollector {
         variables.forEach((variable, index) => {
             this.targetIndexes.set(variable.name, index + 1);
         });
-        this.indexes = this.scopes.map(scope => ({
+        this.indexes = this.scopes.map(() => undefined);
+    }
+
+    private scopeIndexes(scopeIndex: number): ScopeIndexes {
+        const existing = this.indexes[scopeIndex];
+        if (existing !== undefined) return existing;
+        const scope = this.scopes[scopeIndex];
+        const indexes = {
             notes: new Map(
                 scope.notes.map((note, index) => [note.number, index])
             ),
             characteristics: new Map(
                 scope.characteristics.map((item, index) => [item.name, index])
             ),
-        }));
+        };
+        this.indexes[scopeIndex] = indexes;
+        return indexes;
+    }
+
+    private classify(
+        target: string, name: string
+    ): AcceptedStataCharacteristic | null {
+        const scopeIndex = this.targetIndexes.get(target);
+        if (scopeIndex === undefined) return null;
+        const number = noteNumber(name);
+        if (number === null && reservedCharacteristicName(name)) return null;
+        return { scopeIndex, name, noteNumber: number };
     }
 
     accepts(target: string, name: string): boolean {
-        return this.targetIndexes.has(target)
-            && (noteNumber(name) !== null || !reservedCharacteristicName(name));
+        return this.classify(target, name) !== null;
     }
 
     push(record: StataCharacteristicRecord): void {
-        const scopeIndex = this.targetIndexes.get(record.target);
-        if (scopeIndex === undefined || !this.accepts(record.target, record.name)) return;
-        const scope = this.scopes[scopeIndex];
-        const indexes = this.indexes[scopeIndex];
-        const number = noteNumber(record.name);
-        if (number !== null) {
-            const existing = indexes.notes.get(number);
+        this.pushLazy(record.target, record.name, () => record.value);
+    }
+
+    pushLazy(target: string, name: string, value: () => string): boolean {
+        const accepted = this.classify(target, name);
+        if (accepted === null) return false;
+        this.pushAccepted(accepted, value());
+        return true;
+    }
+
+    private pushAccepted(
+        accepted: AcceptedStataCharacteristic, value: string
+    ): void {
+        const scope = this.scopes[accepted.scopeIndex];
+        const indexes = this.scopeIndexes(accepted.scopeIndex);
+        if (accepted.noteNumber !== null) {
+            const existing = indexes.notes.get(accepted.noteNumber);
             if (existing === undefined) {
-                indexes.notes.set(number, scope.notes.length);
-                scope.notes.push({ number, text: record.value });
+                indexes.notes.set(accepted.noteNumber, scope.notes.length);
+                scope.notes.push({ number: accepted.noteNumber, text: value });
             } else {
-                scope.notes[existing].text = record.value;
+                scope.notes[existing].text = value;
             }
             return;
         }
-        const existing = indexes.characteristics.get(record.name);
+        const existing = indexes.characteristics.get(accepted.name);
         if (existing === undefined) {
-            indexes.characteristics.set(record.name, scope.characteristics.length);
-            scope.characteristics.push({ name: record.name, value: record.value });
+            indexes.characteristics.set(accepted.name, scope.characteristics.length);
+            scope.characteristics.push({ name: accepted.name, value });
         } else {
-            scope.characteristics[existing].value = record.value;
+            scope.characteristics[existing].value = value;
         }
     }
 

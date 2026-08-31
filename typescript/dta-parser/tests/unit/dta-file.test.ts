@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach, spyOn } from 'bun:test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -8,6 +8,7 @@ import {
     make_missing_value,
 } from '../../src/node';
 import { parse_legacy_metadata } from '../../src/legacy-header';
+import { parse_metadata } from '../../src/header';
 import {
     V119_STRL_VALUE,
     v119_strl_fixture,
@@ -485,6 +486,37 @@ describe('DtaFile', () => {
                     'Truncated legacy observation data'
                 );
             } finally {
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+    });
+
+    describe('modern metadata bounds', () => {
+        it('rejects an oversized map without prefix retries', async () => {
+            const original = Buffer.from(fs.readFileSync(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            ));
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_metadata(arrayBuffer);
+            const mapData = metadata.section_offsets.map + '<map>'.length;
+            original.writeBigUInt64LE(BigInt(65 * 1024 * 1024), mapData + 9 * 8);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v118-'));
+            const filePath = path.join(directory, 'oversized-metadata.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                fs.writeFileSync(filePath, original);
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Modern metadata exceeds 64 MiB safety limit'
+                );
+                const prefixReads = readSpy.mock.calls
+                    .map(call => call[3] as number)
+                    .filter(length => length > 4);
+                expect(prefixReads).toEqual([original.length]);
+            } finally {
+                readSpy.mockRestore();
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });

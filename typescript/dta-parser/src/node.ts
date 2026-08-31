@@ -12,7 +12,7 @@
 // -----------------------------------------------------------
 
 import * as fs from 'fs';
-import { parse_metadata } from './header';
+import { modern_metadata_buffer_size, parse_metadata } from './header';
 import {
     parse_legacy_metadata,
     legacy_metadata_fixed_size,
@@ -52,7 +52,7 @@ import {
 // -----------------------------------------------------------
 // Constants
 // -----------------------------------------------------------
-const INITIAL_METADATA_READ_SIZE = 64 * 1024;
+const MODERN_MAP_READ_SIZE = 128 * 1024;
 const MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
 const MAX_MODERN_METADATA_SIZE = 64 * 1024 * 1024;
 const MAX_READ_RETRIES = 2;
@@ -855,50 +855,33 @@ function read_modern_metadata(
     file_size: number,
     options: TextEncodingOptions
 ): DtaMetadata {
-    let my_read_size = Math.min(
-        file_size,
-        INITIAL_METADATA_READ_SIZE
+    const map_buffer = read_range(
+        fd, 0, Math.min(file_size, MODERN_MAP_READ_SIZE)
     );
-    let my_last_error: unknown = null;
-
-    while (my_read_size <= file_size) {
-        const my_buffer = read_range(
-            fd,
-            0,
-            my_read_size
-        );
-
-        try {
-            return parse_metadata(my_buffer, options);
-        } catch (my_err) {
-            my_last_error = my_err;
-            if (
-                my_err instanceof Error
-                && my_err.message.includes(
-                    'unrecognized format signature'
-                )
-            ) {
-                throw new Error(
-                    'Unsupported .dta format: only ' +
-                    'Stata 5+ files (formats 105, 108, 110-111, 113-115 ' +
-                    'and 117-119) are supported'
-                );
-            }
-            if (my_read_size === file_size) {
-                break;
-            }
-            if (my_read_size >= MAX_MODERN_METADATA_SIZE) {
-                throw new Error('Modern metadata exceeds 64 MiB safety limit');
-            }
-            my_read_size = Math.min(
-                file_size,
-                my_read_size * 2,
-                MAX_MODERN_METADATA_SIZE
+    let metadata_size: number;
+    try {
+        metadata_size = modern_metadata_buffer_size(map_buffer, options);
+    } catch (error) {
+        if (error instanceof Error
+            && error.message.includes('unrecognized format signature')) {
+            throw new Error(
+                'Unsupported .dta format: only ' +
+                'Stata 5+ files (formats 105, 108, 110-111, 113-115 ' +
+                'and 117-119) are supported'
             );
         }
+        throw error;
     }
-
-    throw my_last_error;
+    if (metadata_size > MAX_MODERN_METADATA_SIZE) {
+        throw new Error('Modern metadata exceeds 64 MiB safety limit');
+    }
+    if (metadata_size > file_size) {
+        throw new Error('Truncated modern metadata');
+    }
+    const metadata_buffer = metadata_size <= map_buffer.byteLength
+        ? map_buffer
+        : read_range(fd, 0, metadata_size);
+    return parse_metadata(metadata_buffer, options);
 }
 
 function read_value_labels(

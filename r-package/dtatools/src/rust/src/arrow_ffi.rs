@@ -20,8 +20,8 @@ use dta_tools::{
     classify_byte_missing_for_version, classify_double_missing_bits,
     classify_float_missing_bits_for_version, classify_int_missing_for_version,
     classify_long_missing_for_version, dta_write_numeric_value_is_representable, encode_numeric,
-    DtaWriteNumericValue, DtaWriteRawNumericValue, FormatVersion, MissingTag,
-    StataCharacteristic, StataNote, ValueLabelEntry, ValueLabelTable, VariableInfo,
+    DtaWriteNumericValue, DtaWriteRawNumericValue, FormatVersion, MissingTag, StataCharacteristic,
+    StataNote, ValueLabelEntry, ValueLabelTable,
 };
 
 use arrow_array::builder::{BooleanBuilder, Int32Builder, LargeStringBuilder, StringBuilder};
@@ -38,10 +38,10 @@ use arrow_buffer::{ArrowNativeType, Buffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
-    attach_stata_metadata, attach_variable_attributes, boundary, check_interrupt,
+    attach_stata_metadata, attach_variable_attributes_parts, boundary, check_interrupt,
     coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute,
-    missing_from_code, numeric_altrep_storage, observed_value, poll_interrupt, r_char, r_missing,
-    parse_stata_metadata_sexp, scalar_string, set_attr, set_class, set_symbol_attr,
+    missing_from_code, numeric_altrep_storage, observed_value, parse_stata_metadata_sexp,
+    poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
     string_vector, temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen,
     RNumericData, RStringData, R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol,
     R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL,
@@ -357,17 +357,17 @@ fn r_semantics(class: &str) -> Option<ArrowRSemantics> {
 }
 
 fn base_field_document(
-    label: &str,
-    format: &str,
-    notes: &[StataNote],
-    characteristics: &[StataCharacteristic],
+    label: String,
+    format: String,
+    notes: Vec<StataNote>,
+    characteristics: Vec<StataCharacteristic>,
 ) -> ArrowFieldDocument {
     ArrowFieldDocument {
         version: 0,
-        label: label.to_owned(),
-        format: format.to_owned(),
-        notes: notes.to_vec(),
-        characteristics: characteristics.to_vec(),
+        label,
+        format,
+        notes,
+        characteristics,
         ..ArrowFieldDocument::default()
     }
 }
@@ -965,16 +965,14 @@ unsafe fn extract_column(
 
 /// Encode one extracted column into its Arrow array and field document.
 /// Pure: never calls the R API, so it may run on a worker thread.
-unsafe fn encode_column(
-    column: &ExtractedColumn,
-) -> Result<(Option<ArrowFieldDocument>, ArrayRef, u64), String> {
+unsafe fn encode_column(mut column: ExtractedColumn) -> Result<EncodedColumn, String> {
     let name = &column.name;
     let row_count = column.row_count;
     let base_document = base_field_document(
-        &column.label,
-        &column.format,
-        &column.notes,
-        &column.characteristics,
+        std::mem::take(&mut column.label),
+        std::mem::take(&mut column.format),
+        std::mem::take(&mut column.notes),
+        std::mem::take(&mut column.characteristics),
     );
     let needs_document = |document: &ArrowFieldDocument| *document != ArrowFieldDocument::default();
     let with_labels = |mut document: ArrowFieldDocument| {
@@ -984,7 +982,8 @@ unsafe fn encode_column(
         document
     };
 
-    Ok(match &column.input {
+    let (field, array, replaced): (Option<ArrowFieldDocument>, ArrayRef, u64) = match &column.input
+    {
         ColumnInput::Logical { values } => {
             let values = std::slice::from_raw_parts(*values, row_count);
             let mut builder = BooleanBuilder::with_capacity(row_count);
@@ -1146,6 +1145,13 @@ unsafe fn encode_column(
             document.missing_release = missing_release;
             (Some(document), array, 0)
         }
+    };
+    Ok(EncodedColumn {
+        name: column.name,
+        value_labels: column.value_labels,
+        field,
+        array,
+        replaced,
     })
 }
 
@@ -1171,13 +1177,19 @@ fn encode_thread_count(requested: usize, task_count: usize, row_count: usize) ->
     threads.min(task_count).max(1)
 }
 
-type EncodedColumn = (Option<ArrowFieldDocument>, ArrayRef, u64);
+struct EncodedColumn {
+    name: String,
+    value_labels: Option<ValueLabelTable>,
+    field: Option<ArrowFieldDocument>,
+    array: ArrayRef,
+    replaced: u64,
+}
 
 /// Claim encode tasks from the shared queue. `poll` runs between tasks; on
 /// the R thread it checks interrupts, on workers it only observes the cancel
 /// flag set by the other loops.
 fn encode_task_loop(
-    columns: &[ExtractedColumn],
+    columns: &[std::sync::Mutex<Option<ExtractedColumn>>],
     next: &AtomicUsize,
     cancelled: &AtomicBool,
     mut poll: impl FnMut() -> bool,
@@ -1195,6 +1207,11 @@ fn encode_task_loop(
         let Some(column) = columns.get(index) else {
             return Ok(results);
         };
+        let column = column
+            .lock()
+            .map_err(|_| "an Arrow encode task was poisoned".to_owned())?
+            .take()
+            .ok_or_else(|| "an Arrow encode task was claimed twice".to_owned())?;
         match unsafe { encode_column(column) } {
             Ok(encoded) => results.push((index, encoded)),
             Err(error) => {
@@ -1208,7 +1225,7 @@ fn encode_task_loop(
 /// Encode every extracted column, in parallel when `threads` allows it. The
 /// R thread participates in the queue and is the only interrupt poller.
 fn run_column_encodes(
-    columns: &[ExtractedColumn],
+    columns: Vec<ExtractedColumn>,
     threads: usize,
 ) -> Result<Vec<EncodedColumn>, String> {
     if threads <= 1 {
@@ -1219,8 +1236,13 @@ fn run_column_encodes(
         }
         return Ok(encoded);
     }
+    let columns = columns
+        .into_iter()
+        .map(|column| std::sync::Mutex::new(Some(column)))
+        .collect::<Vec<_>>();
     let next = AtomicUsize::new(0);
     let cancelled = AtomicBool::new(false);
+    let columns = &columns;
     let (own_result, worker_results) = thread::scope(|scope| {
         let handles: Vec<_> = (1..threads)
             .map(|_| {
@@ -1430,8 +1452,7 @@ unsafe fn assemble_write_dataset(
         ..DatasetDocument::default()
     };
     if metadata_field_count > 0 {
-        (dataset.notes, dataset.characteristics) =
-            parse_stata_metadata_sexp(dataset_metadata, 0)?;
+        (dataset.notes, dataset.characteristics) = parse_stata_metadata_sexp(dataset_metadata, 0)?;
     }
 
     let mut extracted = Vec::new();
@@ -1444,7 +1465,7 @@ unsafe fn assemble_write_dataset(
     }
 
     let threads = encode_thread_count(requested_threads, column_count, row_count);
-    let encoded = run_column_encodes(&extracted, threads)?;
+    let encoded = run_column_encodes(extracted, threads)?;
 
     let mut write_columns = Vec::new();
     write_columns
@@ -1454,15 +1475,15 @@ unsafe fn assemble_write_dataset(
     replacements
         .try_reserve_exact(column_count)
         .map_err(|_| "could not allocate replacement counts".to_owned())?;
-    for (column, (field, array, replaced)) in extracted.into_iter().zip(encoded) {
+    for column in encoded {
         if let Some(table) = &column.value_labels {
             dataset.insert_value_label_table(table);
         }
-        replacements.push(replaced);
+        replacements.push(column.replaced);
         write_columns.push(ArrowWriteColumn {
             name: column.name,
-            field,
-            array,
+            field: column.field,
+            array: column.array,
         });
     }
 
@@ -1719,36 +1740,6 @@ unsafe fn attach_simple_attributes(
         set_attr(vector, "stata.string.storage", storage)?;
     }
     Ok(())
-}
-
-/// The synthesized VariableInfo used to reuse the DTA attribute logic for
-/// profiled columns.
-fn profiled_variable(
-    name: &str,
-    attributes: &ColumnAttributes<'_>,
-    storage: StataStorage,
-) -> VariableInfo {
-    VariableInfo {
-        name: name.to_owned(),
-        dta_type: storage.dta_type(),
-        type_code: 0,
-        format: attributes.format().to_owned(),
-        label: attributes.label().to_owned(),
-        value_label_name: attributes
-            .document
-            .and_then(|document| document.value_labels.clone())
-            .unwrap_or_default(),
-        notes: attributes
-            .document
-            .map(|document| document.notes.clone())
-            .unwrap_or_default(),
-        characteristics: attributes
-            .document
-            .map(|document| document.characteristics.clone())
-            .unwrap_or_default(),
-        byte_width: 0,
-        byte_offset: 0,
-    }
 }
 
 fn chunk_error(name: &str) -> String {
@@ -2963,9 +2954,19 @@ unsafe fn finalize_read_column(
                 .document
                 .and_then(|document| document.storage)
                 .ok_or_else(mismatch)?;
-            let variable = profiled_variable(&column.name, &attributes, storage);
+            let document = attributes.document.ok_or_else(mismatch)?;
+            let dta_type = storage.dta_type();
             let table = attributes.value_label_table();
-            attach_variable_attributes(vector, &variable, table.as_ref(), guard)?;
+            attach_variable_attributes_parts(
+                vector,
+                &dta_type,
+                &document.format,
+                &document.label,
+                &document.notes,
+                &document.characteristics,
+                table.as_ref(),
+                guard,
+            )?;
         }
         ColumnShape::Date32 => {
             set_class(vector, &["Date"], guard)?;
@@ -3167,12 +3168,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 set_attr(frame, "label", label)?;
             }
             let mut guard = ProtectGuard::new();
-            attach_stata_metadata(
-                frame,
-                &dataset.notes,
-                &dataset.characteristics,
-                &mut guard,
-            )?;
+            attach_stata_metadata(frame, &dataset.notes, &dataset.characteristics, &mut guard)?;
         }
         if let Some(signature) = &result.stored_signature {
             let mut guard = ProtectGuard::new();

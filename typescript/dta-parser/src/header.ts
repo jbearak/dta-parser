@@ -162,7 +162,8 @@ function parse_characteristics(
     section_offsets: SectionOffsets,
     field_width: number,
     decoder: DtaTextDecoder,
-    collector: StataMetadataCollector
+    dataset: Pick<DtaMetadata, 'notes' | 'characteristics'>,
+    variables: VariableInfo[]
 ): void {
     let pos = section_offsets.characteristics;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
@@ -170,12 +171,14 @@ function parse_characteristics(
     }
     pos += TAG_CHARACTERISTICS_OPEN.length;
     const names_length = field_width * 2;
+    let collector: StataMetadataCollector | null = null;
     while (pos < section_offsets.data) {
         if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
             pos += TAG_CHARACTERISTICS_CLOSE.length;
             if (pos !== section_offsets.data) {
                 throw new Error('Characteristics section does not end at the mapped data offset');
             }
+            collector?.finish();
             return;
         }
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
@@ -199,12 +202,10 @@ function parse_characteristics(
         if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
             throw new Error('Characteristic value exceeds the 67,784-byte limit');
         }
-        if (collector.accepts(target, name)) {
-            const value = read_fixed_string(
-                bytes, pos + names_length, valueLength, decoder
-            );
-            collector.push({ target, name, value });
-        }
+        collector ??= new StataMetadataCollector(dataset, variables);
+        collector.pushLazy(target, name, () => read_fixed_string(
+            bytes, pos + names_length, valueLength, decoder
+        ));
         pos += length;
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
             throw new Error('Missing </ch> tag');
@@ -435,13 +436,45 @@ function parse_section_map(
 
     const my_offsets = {} as SectionOffsets;
     for (let i = 0; i < SECTION_MAP_ENTRIES; i++) {
-        const my_val = Number(view.getBigUint64(
+        const my_big_val = view.getBigUint64(
             my_data_start + i * 8, little_endian
-        ));
-        my_offsets[SECTION_OFFSET_KEYS[i]] = my_val;
+        );
+        if (my_big_val > BigInt(Number.MAX_SAFE_INTEGER)) {
+            throw new Error('Section offset exceeds JavaScript safe integer limit');
+        }
+        my_offsets[SECTION_OFFSET_KEYS[i]] = Number(my_big_val);
     }
 
     return my_offsets;
+}
+
+/** Return the mapped byte boundary needed for a complete modern metadata read. */
+export function modern_metadata_buffer_size(
+    buffer: ArrayBuffer,
+    options: TextEncodingOptions = {}
+): number {
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+    const format_version = detect_format_version(bytes);
+    const decoder = text_decoder(resolve_text_encoding(
+        format_version, options.encoding
+    ));
+    const { byte_order, end: after_byteorder } = parse_byte_order(bytes, 0);
+    const little_endian = byte_order === 'LSF';
+    const { end: after_k } = parse_nvar(
+        bytes, view, little_endian, format_version, after_byteorder
+    );
+    const { end: after_n } = parse_nobs(
+        bytes, view, little_endian, format_version, after_k
+    );
+    const { end: after_label } = parse_dataset_label(
+        bytes, view, little_endian, format_version, after_n, decoder
+    );
+    const timestamp_close = find_bytes(bytes, TAG_TIMESTAMP_CLOSE, after_label);
+    if (timestamp_close === -1) throw new Error('Missing </timestamp> tag');
+    return parse_section_map(
+        bytes, view, little_endian, timestamp_close
+    ).data;
 }
 
 // -----------------------------------------------------------
@@ -647,14 +680,11 @@ export function parse_metadata(
 
     const notes: DtaMetadata['notes'] = [];
     const characteristics: DtaMetadata['characteristics'] = [];
-    const collector = new StataMetadataCollector(
-        { notes, characteristics }, the_variables
-    );
     parse_characteristics(
         bytes, view, little_endian, section_offsets,
-        my_widths.varname, my_decoder, collector
+        my_widths.varname, my_decoder,
+        { notes, characteristics }, the_variables
     );
-    collector.finish();
 
     return {
         format_version,

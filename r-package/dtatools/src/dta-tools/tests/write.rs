@@ -1060,14 +1060,8 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
     let mut data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: vec![
-            DtaWriteNote {
-                number: 3,
-                text: "three".into(),
-            },
-            DtaWriteNote {
-                number: 1,
-                text: String::new().into(),
-            },
+            DtaWriteNote::numbered(3, "three"),
+            DtaWriteNote::numbered(1, String::new()),
         ],
         characteristics: vec![
             DtaWriteCharacteristic {
@@ -1086,10 +1080,7 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
-            notes: vec![DtaWriteNote {
-                number: 2,
-                text: "variable".into(),
-            }],
+            notes: vec![DtaWriteNote::numbered(2, "variable")],
             characteristics: vec![DtaWriteCharacteristic {
                 name: "role".into(),
                 value: "id".into(),
@@ -1174,7 +1165,14 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
         Err(DtaError::MetadataValueTooLong { .. })
     ));
 
-    for invalid_name in ["note2", "2invalid", "_lang_list", "_lang_c"] {
+    for invalid_name in [
+        "note2",
+        "2invalid",
+        "_lang_list",
+        "_lang_c",
+        "_lang_v_en",
+        "_lang_l_en",
+    ] {
         data.characteristics = vec![DtaWriteCharacteristic {
             name: invalid_name.into(),
             value: "bad".into(),
@@ -1187,6 +1185,16 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
         .expect_err("invalid or reserved characteristic names are rejected");
         assert!(matches!(error, DtaWriteError::InvalidDatasetMetadata(_)));
     }
+
+    data.characteristics.clear();
+    data.notes = vec![DtaWriteNote::numbered(0, "invalid")];
+    let error = save_dta_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+    )
+    .expect_err("an explicit zero note number is rejected");
+    assert!(matches!(error, DtaWriteError::InvalidDatasetMetadata(_)));
 }
 
 #[test]

@@ -11,10 +11,12 @@ list. Gaps and empty text survive reads and writes. Notes are returned in
 ascending number order. Arbitrary characteristics retain their source order,
 scope, Unicode text, and empty values. If a malformed source repeats a key,
 the last value wins without moving the key. Records for unknown variables are
-ignored. Stata's `_dta[_lang_list]` and `_dta[_lang_c]` records control the
-active metadata language and are not user characteristics.
-Authoring APIs reject `_lang_list` and `_lang_c`, so a record cannot be
-accepted on write and then disappear from the public model on read.
+ignored. Stata's `_lang_list` and `_lang_c` records control the active
+metadata language, while `_lang_v_<language>` and `_lang_l_<language>` carry
+alternate dataset/variable labels and value-label attachments. These records
+are not user characteristics. Authoring APIs reject every structural family,
+so a record cannot be accepted on write and then disappear from the public
+model on read.
 
 The DTA writer accepts note numbers 1 through 9,999. It rejects duplicate or
 reserved keys, NUL characters, over-limit values, and characteristic names
@@ -51,7 +53,9 @@ unlike Stata commands that modify the current dataset.
 `Vec<StataCharacteristic>`. `StataNote` contains `number` and `text`;
 `StataCharacteristic` contains `name` and `value`. The modern writer accepts
 the corresponding `DtaWriteNote` and `DtaWriteCharacteristic` values at
-dataset and column scope.
+dataset and column scope. Convert strings into `DtaWriteNote` for consecutive
+numbering, or use `DtaWriteNote::numbered()` to preserve an explicit number;
+an explicitly supplied zero is invalid rather than an auto-numbering marker.
 
 ## TypeScript
 

@@ -56,17 +56,38 @@ pub struct DtaWriteValueLabel<'a> {
     pub label: Cow<'a, str>,
 }
 
-/// One explicitly numbered note supplied to the DTA writer.
+/// One note supplied to the DTA writer.
+///
+/// Values converted from strings receive consecutive numbers in input order.
+/// Use [`DtaWriteNote::numbered`] to preserve an explicit Stata note number.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DtaWriteNote<'a> {
-    pub number: u32,
+    number: Option<u32>,
     pub text: Cow<'a, str>,
+}
+
+impl<'a> DtaWriteNote<'a> {
+    pub fn numbered(number: u32, text: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            number: Some(number),
+            text: text.into(),
+        }
+    }
+
+    pub fn number(&self) -> Option<u32> {
+        self.number
+    }
+
+    fn resolved_number(&self, index: usize) -> u32 {
+        self.number
+            .unwrap_or_else(|| u32::try_from(index + 1).expect("note count is bounded"))
+    }
 }
 
 impl<'a> From<&'a str> for DtaWriteNote<'a> {
     fn from(text: &'a str) -> Self {
         Self {
-            number: 0,
+            number: None,
             text: Cow::Borrowed(text),
         }
     }
@@ -75,7 +96,7 @@ impl<'a> From<&'a str> for DtaWriteNote<'a> {
 impl From<String> for DtaWriteNote<'static> {
     fn from(text: String) -> Self {
         Self {
-            number: 0,
+            number: None,
             text: Cow::Owned(text),
         }
     }
@@ -860,11 +881,7 @@ fn validate_notes(notes: &[DtaWriteNote<'_>], context: &str) -> Result<(), DtaWr
     }
     let mut numbers = HashSet::with_capacity(notes.len());
     for (index, note) in notes.iter().enumerate() {
-        let number = if note.number == 0 {
-            u32::try_from(index + 1).expect("note count is bounded")
-        } else {
-            note.number
-        };
+        let number = note.resolved_number(index);
         if !(1..=MAX_NOTES as u32).contains(&number) || !numbers.insert(number) {
             return Err(DtaWriteError::InvalidDatasetMetadata(format!(
                 "{context} has an invalid or duplicate note number {}",
@@ -1008,17 +1025,10 @@ where
                        notes: &[DtaWriteNote<'_>],
                        characteristics: &[DtaWriteCharacteristic<'_>]|
      -> Result<(), DtaWriteError> {
-        let note_number = |index: usize, note: &DtaWriteNote<'_>| {
-            if note.number == 0 {
-                u32::try_from(index + 1).expect("note count is validated")
-            } else {
-                note.number
-            }
-        };
         if let Some(maximum) = notes
             .iter()
             .enumerate()
-            .map(|(index, note)| note_number(index, note))
+            .map(|(index, note)| note.resolved_number(index))
             .max()
         {
             write_characteristic(writer, target, "note0", &maximum.to_string())?;
@@ -1027,7 +1037,7 @@ where
             write_characteristic(
                 writer,
                 target,
-                &format!("note{}", note_number(index, note)),
+                &format!("note{}", note.resolved_number(index)),
                 &note.text,
             )?;
         }

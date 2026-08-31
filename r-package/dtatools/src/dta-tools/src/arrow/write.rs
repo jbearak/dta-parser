@@ -4,6 +4,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
+use std::hash::Hasher;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -15,7 +16,7 @@ use arrow_ipc::writer::{FileWriter, IpcWriteOptions};
 use arrow_ipc::CompressionType;
 use arrow_schema::{DataType, Field, Schema};
 
-use super::checksum::{canonical_array_hashes, xxh64};
+use super::checksum::canonical_array_hashes;
 use super::profile::{
     checksum_to_hex, validate_dataset_document, validate_field_document,
     validate_value_label_reference, ArrowFieldDocument, BatchChecksums, ChecksumsDocument,
@@ -365,25 +366,52 @@ pub(crate) fn signature_from_parts<'a>(
     dataset: &DatasetDocument,
     checksums: &ChecksumsDocument,
 ) -> Result<String, ArrowProfileError> {
-    let mut payload = String::new();
-    payload.push_str("dtatools-datasig:");
-    payload.push_str(DATASIG_PAYLOAD_VERSION);
-    payload.push_str(&format!(
-        "\nrows:{row_count}\ncolumns:{column_count}\ndataset:"
-    ));
-    payload.push_str(&serialize_json(&dataset)?);
+    let mut payload = SignatureHasher(twox_hash::XxHash64::with_seed(0));
+    write!(
+        payload,
+        "dtatools-datasig:{DATASIG_PAYLOAD_VERSION}\nrows:{row_count}\ncolumns:{column_count}\ndataset:"
+    )
+    .map_err(signature_io_error)?;
+    serialize_json_into(&mut payload, dataset)?;
     for (name, data_type, field) in columns {
-        payload.push_str("\nname:");
-        payload.push_str(&serialize_json(&name)?);
-        payload.push_str(&format!("\ntype:{data_type}\nfield:"));
+        payload.write_all(b"\nname:").map_err(signature_io_error)?;
+        serialize_json_into(&mut payload, &name)?;
+        write!(payload, "\ntype:{data_type}\nfield:").map_err(signature_io_error)?;
         if let Some(document) = field {
-            payload.push_str(&serialize_json(document)?);
+            serialize_json_into(&mut payload, document)?;
         }
     }
-    payload.push_str("\nchecksums:");
-    payload.push_str(&serialize_json(checksums)?);
-    let digest = xxh64(payload.as_bytes());
+    payload
+        .write_all(b"\nchecksums:")
+        .map_err(signature_io_error)?;
+    serialize_json_into(&mut payload, checksums)?;
+    let digest = payload.0.finish();
     Ok(format!("{row_count}:{column_count}:{digest:016x}"))
+}
+
+struct SignatureHasher(twox_hash::XxHash64);
+
+impl Write for SignatureHasher {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.write(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn signature_io_error(error: std::io::Error) -> ArrowProfileError {
+    ArrowProfileError::Invalid(error.to_string())
+}
+
+fn serialize_json_into<T: serde::Serialize>(
+    writer: &mut impl Write,
+    value: &T,
+) -> Result<(), ArrowProfileError> {
+    serde_json::to_writer(writer, value)
+        .map_err(|error| ArrowProfileError::Invalid(error.to_string()))
 }
 
 fn serialize_json<T: serde::Serialize>(value: &T) -> Result<String, ArrowProfileError> {

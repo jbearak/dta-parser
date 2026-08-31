@@ -15,8 +15,12 @@ export declare class StataMetadataCollector {
     private readonly targetIndexes;
     private readonly indexes;
     constructor(dataset: StataMetadataTarget, variables: VariableInfo[]);
+    private scopeIndexes;
+    private classify;
     accepts(target: string, name: string): boolean;
     push(record: StataCharacteristicRecord): void;
+    pushLazy(target: string, name: string, value: () => string): boolean;
+    private pushAccepted;
     finish(): void;
 }
 export declare function applyCharacteristicRecords(records: StataCharacteristicRecord[], dataset: StataMetadataTarget, variables: VariableInfo[]): void;

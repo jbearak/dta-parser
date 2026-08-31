@@ -89,6 +89,8 @@ describe('Stata metadata accessors', () => {
         expect(() => setStataCharacteristic(target, 'note2', 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, '_lang_list', 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, '_lang_c', 'bad')).toThrow();
+        expect(() => setStataCharacteristic(target, '_lang_v_en', 'bad')).toThrow();
+        expect(() => setStataCharacteristic(target, '_lang_l_en', 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, '2bad', 'bad')).toThrow();
         expect(() => setStataCharacteristic(
             target, 'source', 'x'.repeat(67_785)
@@ -111,6 +113,8 @@ describe('DTA characteristic recovery', () => {
             { target: '_dta', name: 'note0', value: '9' },
             { target: '_dta', name: 'note10000', value: 'reserved' },
             { target: '_dta', name: '_lang_list', value: 'default' },
+            { target: '_dta', name: '_lang_v_en', value: 'English label' },
+            { target: 'x', name: '_lang_l_en', value: 'English labels' },
             { target: 'x', name: 'note2', value: 'variable' },
             { target: 'x', name: 'role', value: 'id' },
             { target: 'missing', name: 'source', value: 'ignored' },

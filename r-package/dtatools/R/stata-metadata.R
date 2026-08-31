@@ -195,7 +195,8 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     valid <- is.character(name) && length(name) == 1L && !is.na(name) &&
         .valid_stata_name_syntax(name, 32L) &&
         nchar(name, type = "bytes") <= 128L && !grepl("^note[0-9]+$", name) &&
-        !(name %in% c("_lang_list", "_lang_c"))
+        !(name %in% c("_lang_list", "_lang_c")) &&
+        !grepl("^_lang_[vl]_", name)
     if (!valid) {
         stop(paste0(
             "A characteristic name must be a valid Stata name with at most 32 Unicode ",
