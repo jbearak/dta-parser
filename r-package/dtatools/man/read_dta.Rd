@@ -168,7 +168,7 @@ Use \code{factor_from_labels()} for an intentional one-way conversion to an
 ordinary factor. Haven can be installed separately to write older DTA
 releases or read other statistical formats.
 See the
-\href{https://github.com/jbearak/dta-tools/blob/main/docs/r-label-metadata.md}{R label metadata guide}
+\href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
 for bulk setters, Stata 19 limits, and the version-specific comparison with
 labelled 2.16.0.
 }

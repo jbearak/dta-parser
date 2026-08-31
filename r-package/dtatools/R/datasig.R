@@ -66,6 +66,7 @@
 #' datasig(swapped)
 #' @export
 datasig <- function(data, threads = getOption("dtatools.threads", 0L)) {
+    data <- .reference_snapshot(data)
     threads <- .normalize_threads(threads)
     if (!is.data.frame(data)) {
         if (is.character(data) && length(data) == 1L && !is.na(data)) {

@@ -33,6 +33,32 @@ test_that("1:1 merges match keys under Stata missing-code identity", {
     expect_identical(val_labels(result$`_merge`), merge_indicator_labels)
 })
 
+test_that("compact gathers retain exact missing counts", {
+    master <- tibble::tibble(
+        id = c(1L, 2L),
+        master_value = stata_byte(c(NA_real_, 20))
+    )
+    using <- tibble::tibble(
+        id = c(2L, 3L),
+        using_value = stata_byte(c(NA_real_, 40))
+    )
+
+    result <- dta_merge(master, using, by = "id", relationship = "1:1")
+    expect_true(anyNA(result$master_value))
+    expect_true(anyNA(result$using_value))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(
+        result$master_value
+    ))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(
+        result$using_value
+    ))
+
+    replace_values(result, master_value, 9, where = c(1, 3))
+    replace_values(result, using_value, 9, where = c(1, 2))
+    expect_false(anyNA(result$master_value))
+    expect_false(anyNA(result$using_value))
+})
+
 test_that("each of the 27 Stata missing codes matches only itself", {
     codes <- c(NA_real_, tagged_missing(letters))
     master <- tibble::tibble(id = stata_double(codes), row = seq_along(codes))

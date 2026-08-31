@@ -295,15 +295,23 @@ stata_storage_type <- function(x) {
 
 #' @export
 as.double.stata_numeric <- function(x, ...) {
-    as.double(.stata_data(x))
+    as.double(.stata_snapshot(x))
 }
 
 #' @export
 as.character.stata_numeric <- function(x, ...) {
-    as.character(.stata_data(x), ...)
+    as.character(.stata_snapshot(x), ...)
 }
 
 .stata_data <- function(x) {
+    value_names <- names(x)
+    value <- .metadata_view(x)
+    attributes(value) <- NULL
+    names(value) <- value_names
+    value
+}
+
+.stata_snapshot <- function(x) {
     value_names <- names(x)
     value <- .metadata_copy(x)
     attributes(value) <- NULL
@@ -348,21 +356,39 @@ as.character.stata_numeric <- function(x, ...) {
     value
 }
 
-.restore_stata_metadata <- function(value, prototype, storage) {
-    classes <- .stata_classes_from(prototype, storage)
+.stata_attribute_plan <- function(
+    prototype, storage, result_names = NULL,
+    temporal = inherits(prototype, "stata_temporal"), labelled = FALSE
+) {
     desired <- attributes(prototype)
-    result_names <- names(value)
     desired$names <- NULL
     desired$stata.storage <- storage
+    classes <- if (temporal) {
+        class(prototype)
+    } else {
+        .stata_classes_from(prototype, storage)
+    }
+    if (labelled && !temporal && !is.null(desired$labels) &&
+        !"haven_labelled" %in% classes) {
+        location <- match("vctrs_vctr", classes)
+        classes <- append(classes, "haven_labelled", after = location - 1L)
+    }
     desired$class <- classes
     if (!is.null(result_names)) desired$names <- result_names
+    desired
+}
+
+.restore_stata_metadata <- function(value, prototype, storage) {
+    desired <- .stata_attribute_plan(
+        prototype, storage, result_names = names(value), temporal = FALSE
+    )
     plain_attributes <- desired
     plain_attributes$names <- NULL
     plain_attributes$class <- NULL
     plain_attributes$stata.storage <- NULL
     if (length(plain_attributes) == 0L &&
         identical(stata_storage_type(value), storage) &&
-        identical(class(value), classes)) {
+        identical(class(value), desired$class)) {
         return(value)
     }
     .replace_stata_attributes(value, desired)
@@ -448,7 +474,36 @@ as.character.stata_numeric <- function(x, ...) {
 
 #' @export
 vec_proxy.stata_numeric <- function(x, ...) {
-    .stata_data(x)
+    .stata_snapshot(x)
+}
+
+#' @export
+as.data.frame.stata_numeric <- function(
+    x, row.names = NULL, optional = FALSE, ...,
+    nm = paste(deparse(substitute(x), width.cutoff = 500L), collapse = " ")
+) {
+    force(nm)
+    if (!is.null(dim(x))) return(NextMethod())
+    nrows <- length(x)
+    if (is.null(row.names)) {
+        if (nrows == 0L) {
+            row.names <- character()
+        } else if (length(row.names <- names(x)) != nrows ||
+                   anyDuplicated(row.names)) {
+            row.names <- .set_row_names(nrows)
+        }
+    } else if (!(is.character(row.names) || is.integer(row.names)) ||
+               length(row.names) != nrows) {
+        stop(sprintf(
+            "'row.names' is not a character or integer vector of length %s",
+            nrows
+        ), call. = FALSE)
+    }
+    column <- x
+    if (!is.null(names(column))) names(column) <- NULL
+    columns <- list(column)
+    if (!optional) names(columns) <- nm
+    vctrs::new_data_frame(columns, n = nrows, row.names = row.names)
 }
 
 #' @export
@@ -775,7 +830,7 @@ Complex.stata_numeric <- function(z) {
 }
 
 .base_stata_temporal <- function(x) {
-    value <- .metadata_copy(x)
+    value <- .metadata_view(x)
     classes <- class(value)
     classes <- classes[!classes %in% c(
         "stata_temporal", "stata_date", "stata_datetime"
@@ -788,11 +843,9 @@ Complex.stata_numeric <- function(z) {
 .attach_stata_temporal <- function(
     result, prototype, storage, result_names = names(result)
 ) {
-    desired <- attributes(prototype)
-    desired$names <- NULL
-    desired$stata.storage <- storage
-    desired$class <- class(prototype)
-    if (!is.null(result_names)) desired$names <- result_names
+    desired <- .stata_attribute_plan(
+        prototype, storage, result_names = result_names, temporal = TRUE
+    )
     .replace_stata_attributes(result, desired)
 }
 
@@ -828,7 +881,7 @@ Complex.stata_numeric <- function(z) {
 
 #' @export
 vec_proxy.stata_temporal <- function(x, ...) {
-    .stata_data(x)
+    .stata_snapshot(x)
 }
 
 #' @export

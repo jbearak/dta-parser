@@ -72,6 +72,8 @@ save_arrow <- function(data, path,
                        adjust_tz = TRUE,
                        threads = getOption("dtatools.threads", 0L),
                        checksums = TRUE) {
+    original_data <- data
+    write_data <- .reference_snapshot(data)
     threads <- .normalize_threads(threads)
     checksums <- .normalize_arrow_flag(checksums, "checksums")
     resolved_path <- .resolve_dta_write_path(path, "arrow")
@@ -79,7 +81,7 @@ save_arrow <- function(data, path,
         .dta_write_warn(write_warning$message, write_warning$class)
     }
     compression <- .arrow_write_compression(compression)
-    specification <- .prepare_arrow_write(data, label, adjust_tz)
+    specification <- .prepare_arrow_write(write_data, label, adjust_tz)
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
 
@@ -103,7 +105,7 @@ save_arrow <- function(data, path,
     )
     write_warnings <- c(write_warnings, .dta_write_count_warnings(
         numeric_replacements,
-        names(data),
+        names(write_data),
         "Converted unrepresentable numeric values to Stata system missing",
         "dtatools_write_numeric_replacement_warning"
     ))
@@ -111,7 +113,7 @@ save_arrow <- function(data, path,
         .dta_write_warn(write_warning$message, write_warning$class)
     }
     .commit_dta_write(temporary, destination)
-    invisible(data)
+    invisible(original_data)
 }
 
 .arrow_write_compression <- function(compression) {
