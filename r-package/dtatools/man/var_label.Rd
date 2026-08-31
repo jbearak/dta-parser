@@ -7,8 +7,9 @@
 \alias{var_label<-}
 \alias{dataset_label<-}
 \alias{val_labels<-}
-\alias{set_variable_labels}
-\alias{set_value_labels}
+\alias{set_var_label}
+\alias{set_var_labels}
+\alias{set_val_labels}
 \title{Get and set Stata label metadata}
 \usage{
 var_label(x)
@@ -23,9 +24,11 @@ dataset_label(data) <- value
 
 val_labels(x) <- value
 
-set_variable_labels(.data, ..., .labels = NULL)
+set_var_label(data, variable, label)
 
-set_value_labels(.data, ..., .labels = NULL)
+set_var_labels(.data, ..., .labels = NULL)
+
+set_val_labels(.data, ..., .labels = NULL)
 }
 \arguments{
 \item{x}{A vector or data frame.}
@@ -34,6 +37,10 @@ set_value_labels(.data, ..., .labels = NULL)
 
 \item{value}{New label metadata. Data-frame replacement forms require a
 named list or \code{NULL}.}
+
+\item{variable}{One unquoted column name.}
+
+\item{label}{One variable label, or \code{NULL} to remove it.}
 
 \item{.data}{A vector or data frame to update.}
 
@@ -45,7 +52,9 @@ column updates for a data frame.}
 }
 \value{
 Getters return the metadata described above. Replacement functions
-and \verb{set_*()} functions return the updated vector or data frame.
+and \verb{set_*()} functions return the updated vector or data frame; the
+data-frame forms return it invisibly, because they have already mutated
+it by reference.
 }
 \description{
 Dependency-free helpers for dataset labels, variable labels, and numeric
@@ -67,10 +76,20 @@ one character value or \code{NULL}.
 
 Replacement functions modify the supplied metadata. On a data frame,
 replacement values must be a named list; a bare \code{NULL} clears that metadata
-from every column. \code{set_variable_labels()} and \code{set_value_labels()} support
+from every column. \code{set_var_labels()} and \code{set_val_labels()} support
 named column updates in \code{...} and a programmatic named list in \code{.labels}.
 They also accept vectors for pipeline use. Unknown, duplicate, unnamed, or
 overlapping column updates fail atomically.
+
+\code{set_var_label()} sets the variable label of one column named without
+quotes, mirroring Stata's \verb{label variable}.
+
+\code{set_var_label()}, \code{set_var_labels()}, \code{set_val_labels()}, and the data-frame
+replacement forms mutate the data frame by reference, as \code{gen()} and
+\code{replace_values()} do: the caller sees the new metadata whether or not it
+reassigns the result, and so does any other binding to the same data frame.
+Use \code{copy_data()} first when isolation is required. The vector forms cannot
+mutate by reference and still return a copy.
 
 \code{NULL}, \code{NA_character_}, and \code{""} all remove a variable or dataset label.
 Empty or missing value-label text is discarded. If no entries remain, the
@@ -110,7 +129,7 @@ val_labels(status) <- c(Complete = 1, Refused = 2)
 
 survey <- data.frame(status = status, stratum = c(1, 1, 2))
 dataset_label(survey) <- "Baseline survey"
-survey <- set_variable_labels(
+survey <- set_var_labels(
     survey,
     status = "Interview status",
     .labels = list(stratum = "Sampling stratum")

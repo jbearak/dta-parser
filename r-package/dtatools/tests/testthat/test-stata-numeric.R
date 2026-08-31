@@ -374,7 +374,7 @@ test_that("temporal summaries, concatenation, and recodes retain storage", {
         "byte"
     )
 
-    unlabelled <- set_variable_labels(set_value_labels(values), NULL)
+    unlabelled <- set_var_labels(set_val_labels(values), NULL)
     for (combined in list(
         vctrs::vec_c(values, unlabelled),
         vctrs::vec_c(unlabelled, values),
@@ -535,14 +535,14 @@ test_that("assignment and vctrs recodes re-encode compact storage", {
 
 test_that("base right and full merges can append native Stata keys", {
     left <- data.frame(
-        id = set_variable_labels(
-            set_value_labels(stata_byte(c(1, 2)), One = 1),
+        id = set_var_labels(
+            set_val_labels(stata_byte(c(1, 2)), One = 1),
             "Identifier"
         ),
         left_value = c("a", "b")
     )
     right <- data.frame(
-        id = set_value_labels(stata_byte(c(2, 3)), Three = 3),
+        id = set_val_labels(stata_byte(c(2, 3)), Three = 3),
         right_value = c("c", "d")
     )
 
@@ -558,7 +558,7 @@ test_that("base right and full merges can append native Stata keys", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(full_result$id))
 
     wider <- data.frame(
-        id = set_value_labels(stata_int(c(2, 200)), TwoHundred = 200)
+        id = set_val_labels(stata_int(c(2, 200)), TwoHundred = 200)
     )
     promoted <- merge(left, wider, by = "id", all = TRUE)
     expect_identical(as.double(promoted$id), c(1, 2, 200))
@@ -592,8 +592,8 @@ test_that("base full merges promote native Stata temporal keys", {
 })
 
 test_that("extension promotes declared inputs without weakening assignment", {
-    extended <- set_value_labels(stata_byte(1), One = 1)
-    extended[3] <- set_value_labels(stata_int(200), TwoHundred = 200)
+    extended <- set_val_labels(stata_byte(1), One = 1)
+    extended[3] <- set_val_labels(stata_int(200), TwoHundred = 200)
 
     expect_identical(as.double(extended), c(1, NA, 200))
     expect_identical(stata_storage_type(extended), "int")
@@ -618,11 +618,11 @@ test_that("extension promotes declared inputs without weakening assignment", {
 })
 
 test_that("dplyr joins preserve compatible Stata key information", {
-    left_key <- set_variable_labels(
-        set_value_labels(stata_byte(c(1, 2)), One = 1),
+    left_key <- set_var_labels(
+        set_val_labels(stata_byte(c(1, 2)), One = 1),
         "Identifier"
     )
-    right_key <- set_value_labels(
+    right_key <- set_val_labels(
         stata_int(c(2, 200)), TwoHundred = 200
     )
     left <- tibble::tibble(id = left_key, left_value = c("a", "b"))
@@ -651,7 +651,7 @@ test_that("dplyr joins preserve compatible Stata key information", {
 
 test_that("value labels compose with declared storage classes", {
     values <- stata_byte(c(0, 1))
-    values <- set_value_labels(values, No = 0, Yes = 1)
+    values <- set_val_labels(values, No = 0, Yes = 1)
 
     expect_s3_class(values, "haven_labelled")
     expect_identical(stata_storage_type(values), "byte")
@@ -660,23 +660,23 @@ test_that("value labels compose with declared storage classes", {
     values[1] <- 1
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(values))
 
-    values <- set_value_labels(values)
+    values <- set_val_labels(values)
     expect_false(inherits(values, "haven_labelled"))
     expect_s3_class(values, "stata_numeric")
     expect_identical(stata_storage_type(values), "byte")
 })
 
 test_that("common types reconcile value and variable labels", {
-    left <- set_variable_labels(
-        set_value_labels(stata_byte(c(1, 2)), One = 1),
+    left <- set_var_labels(
+        set_val_labels(stata_byte(c(1, 2)), One = 1),
         "Left variable"
     )
-    right <- set_variable_labels(
-        set_value_labels(stata_int(c(2, 3)), Three = 3),
+    right <- set_var_labels(
+        set_val_labels(stata_int(c(2, 3)), Three = 3),
         "Right variable"
     )
     unlabelled <- stata_byte(c(2, 3))
-    variable_only <- set_variable_labels(
+    variable_only <- set_var_labels(
         stata_byte(c(1, 2)), "Only variable"
     )
 
@@ -706,7 +706,7 @@ test_that("common types reconcile value and variable labels", {
     expect_identical(var_label(left_right), "Left variable")
     expect_identical(var_label(right_left), "Right variable")
 
-    conflict <- set_value_labels(stata_byte(1), Uno = 1)
+    conflict <- set_val_labels(stata_byte(1), Uno = 1)
     expect_warning(
         resolved <- vctrs::vec_c(left, conflict),
         "conflicting value labels"

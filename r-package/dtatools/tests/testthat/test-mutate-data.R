@@ -430,12 +430,12 @@ test_that("native write interrupts roll back values and compact state", {
                 source <- read_arrow(dictionary_path)
                 if (mutate_proxy) {
                     alias <- source
-                    data <- set_variable_labels(source, target = "Target")
+                    data <- set_var_labels(source, target = "Target")
                     shared <- TRUE
                 } else {
                     data <- source
                     alias <- if (shared) {
-                        set_variable_labels(data, target = "Alias")
+                        set_var_labels(data, target = "Alias")
                     } else {
                         NULL
                     }
@@ -982,8 +982,8 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(attr(data$labelled, "labels"), c(One = 1))
     expect_identical(attr(data$labelled, "format.stata"), "%8.0g")
 
-    authored <- set_variable_labels(
-        set_value_labels(c(1, 2, 3), One = 1),
+    authored <- set_var_labels(
+        set_val_labels(c(1, 2, 3), One = 1),
         "Authored label"
     )
     attr(authored, "format.stata") <- "%9.0g"
@@ -1275,17 +1275,17 @@ test_that("downstream metadata proxies revoke exclusive patch ownership", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(second$x))
 })
 
-test_that("metadata helpers remain isolated from later source patches", {
+test_that("metadata copies remain isolated from later source patches", {
     compact_source <- data.frame(x = stata_byte(1:3))
-    compact_copy <- set_variable_labels(compact_source, x = "Copy")
+    compact_copy <- copy_data(compact_source)
+    set_var_labels(compact_copy, x = "Copy")
     replace_values(compact_source, x, 9, where = 1)
     expect_identical(as.double(compact_source$x), c(9, 2, 3))
     expect_identical(as.double(compact_copy$x), c(1, 2, 3))
 
     materialized_source <- data.frame(x = stata_byte(1:3))
-    materialized_copy <- set_variable_labels(
-        materialized_source, x = "Copy"
-    )
+    materialized_copy <- copy_data(materialized_source)
+    set_var_labels(materialized_copy, x = "Copy")
     invisible(dtatools:::.force_altrep_materialization(
         materialized_source$x
     ))
@@ -1300,20 +1300,23 @@ test_that("metadata helpers remain isolated from later source patches", {
     expect_true(dtatools:::.is_unmaterialized_dictstring(
         string_source$text
     ))
-    string_copy <- set_variable_labels(string_source, text = "Copy")
+    string_copy <- copy_data(string_source)
+    set_var_labels(string_copy, text = "Copy")
     replace_values(string_source, text, "changed", where = 1)
     expect_identical(as.character(string_source$text), c("changed", "b", "a"))
     expect_true(dtatools:::.is_unmaterialized_dictstring(string_copy$text))
     expect_identical(as.character(string_copy$text), c("a", "b", "a"))
 
     missing_source <- read_arrow(path)
-    missing_alias <- set_variable_labels(missing_source, text = "Copy")
+    missing_alias <- copy_data(missing_source)
+    set_var_labels(missing_alias, text = "Copy")
     replace_values(missing_source, text, NA_character_, where = 2)
     expect_identical(as.character(missing_source$text), c("a", "", "a"))
     expect_identical(as.character(missing_alias$text), c("a", "b", "a"))
 
     full_source <- read_arrow(path)
-    full_copy <- set_variable_labels(full_source, text = "Copy")
+    full_copy <- copy_data(full_source)
+    set_var_labels(full_copy, text = "Copy")
     replace_values(full_source, text, "changed")
     expect_identical(
         as.character(full_source$text), rep("changed", 3)
@@ -1707,9 +1710,9 @@ test_that("ordinary assignments and metadata helpers materialize current state",
     expect_identical(alias$x, 1:3)
 
     gen(alias, z, y + 1)
-    labelled <- set_variable_labels(alias, x = "X", y = "Y", z = "Z")
-    labelled <- set_value_labels(labelled, x = c(One = 1))
-    expect_false(inherits(labelled, "dtatools_ref_data"))
+    labelled <- set_var_labels(alias, x = "X", y = "Y", z = "Z")
+    labelled <- set_val_labels(labelled, x = c(One = 1))
+    expect_true(inherits(labelled, "dtatools_ref_data"))
     expect_identical(var_label(labelled), list(x = "X", y = "Y", z = "Z"))
     expect_identical(val_labels(labelled$x), c(One = 1))
 

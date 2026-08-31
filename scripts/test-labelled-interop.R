@@ -42,7 +42,7 @@ attach_result <- function(order) {
 
             shared <- c(
                 "var_label", "var_label<-", "val_labels", "val_labels<-",
-                "set_variable_labels", "set_value_labels"
+                "set_var_labels", "set_val_labels"
             )
             owner <- vapply(shared, function(name) {
                 resolved <- get(name, mode = "function")
@@ -141,7 +141,7 @@ interop <- callr::r(
             package = "dtatools", mustWork = TRUE
         )
         source <- dtatools::read_dta(path)$foreign
-        ours <- dtatools::set_value_labels(
+        ours <- dtatools::set_val_labels(
             source, Domestic = 0, Imported = 1
         )
         ours_unmaterialized <-

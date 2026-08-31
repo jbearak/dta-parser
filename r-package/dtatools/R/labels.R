@@ -16,10 +16,20 @@
 #' @section Setting labels:
 #' Replacement functions modify the supplied metadata. On a data frame,
 #' replacement values must be a named list; a bare `NULL` clears that metadata
-#' from every column. `set_variable_labels()` and `set_value_labels()` support
+#' from every column. `set_var_labels()` and `set_val_labels()` support
 #' named column updates in `...` and a programmatic named list in `.labels`.
 #' They also accept vectors for pipeline use. Unknown, duplicate, unnamed, or
 #' overlapping column updates fail atomically.
+#'
+#' `set_var_label()` sets the variable label of one column named without
+#' quotes, mirroring Stata's `label variable`.
+#'
+#' `set_var_label()`, `set_var_labels()`, `set_val_labels()`, and the data-frame
+#' replacement forms mutate the data frame by reference, as `gen()` and
+#' `replace_values()` do: the caller sees the new metadata whether or not it
+#' reassigns the result, and so does any other binding to the same data frame.
+#' Use `copy_data()` first when isolation is required. The vector forms cannot
+#' mutate by reference and still return a copy.
 #'
 #' `NULL`, `NA_character_`, and `""` all remove a variable or dataset label.
 #' Empty or missing value-label text is discarded. If no entries remain, the
@@ -58,8 +68,12 @@
 #'   variable label or one or more named value-label codes.
 #' @param .labels A programmatic label value for a vector, or a named list of
 #'   column updates for a data frame.
+#' @param variable One unquoted column name.
+#' @param label One variable label, or `NULL` to remove it.
 #' @return Getters return the metadata described above. Replacement functions
-#'   and `set_*()` functions return the updated vector or data frame.
+#'   and `set_*()` functions return the updated vector or data frame; the
+#'   data-frame forms return it invisibly, because they have already mutated
+#'   it by reference.
 #' @examples
 #' status <- c(1, 2, 1)
 #' var_label(status) <- "Interview status"
@@ -67,7 +81,7 @@
 #'
 #' survey <- data.frame(status = status, stratum = c(1, 1, 2))
 #' dataset_label(survey) <- "Baseline survey"
-#' survey <- set_variable_labels(
+#' survey <- set_var_labels(
 #'     survey,
 #'     status = "Interview status",
 #'     .labels = list(stratum = "Sampling stratum")
@@ -367,34 +381,81 @@ dataset_label <- function(data) {
     value
 }
 
+.get_data_column <- function(data, name) {
+    state <- .reference_state(data)
+    if (is.null(state)) return(.subset2(data, name))
+    state$columns[[name]]
+}
+
+# Stores `column` under `name` without copying `data`. The physical frame is
+# patched in place, so the caller sees the new metadata whether or not it
+# reassigns the result. Reference data holds its generated columns outside
+# the physical frame, so those are stored in the reference state instead.
+# Positional siblings of the two helpers above, for the branches that clear
+# metadata from every column. Those cannot key on the name, because a data
+# frame is allowed duplicated names there.
+.data_column_at <- function(data, index) {
+    state <- .reference_state(data)
+    if (is.null(state) || index <= state$physical_count) {
+        return(.subset2(data, index))
+    }
+    state$columns[[.reference_names(data)[[index]]]]
+}
+
+.set_data_column_at <- function(data, index, column) {
+    state <- .reference_state(data)
+    if (!is.null(state)) {
+        state$columns[[.reference_names(data)[[index]]]] <- column
+        if (index > state$physical_count) return(invisible(NULL))
+    }
+    .Call(C_dtatools_set_data_column, data, as.integer(index), column)
+    invisible(NULL)
+}
+
+.set_data_column <- function(data, name, column) {
+    state <- .reference_state(data)
+    if (is.null(state)) {
+        location <- match(name, names(data))
+        .Call(C_dtatools_set_data_column, data, as.integer(location), column)
+        return(invisible(NULL))
+    }
+    state$columns[[name]] <- column
+    location <- state$locations[[name]]
+    if (location <= state$physical_count) {
+        .Call(C_dtatools_set_data_column, data, as.integer(location), column)
+    }
+    invisible(NULL)
+}
+
 .apply_variable_label_updates <- function(data, updates) {
     .warn_stata_metadata_limits(
         .text_label_violations(updates, "variable label for")
     )
     for (name in names(updates)) {
-        column <- .metadata_copy(data[[name]])
+        column <- .metadata_copy(.get_data_column(data, name))
         attr(column, "label") <- updates[[name]]
-        data[[name]] <- column
+        .set_data_column(data, name, column)
     }
-    data
+    invisible(data)
 }
 
 .apply_value_label_updates <- function(data, updates) {
     for (name in names(updates)) {
         .validate_value_label_target(
-            data[[name]], updates[[name]], paste0("x$", name)
+            .get_data_column(data, name), updates[[name]],
+            paste0("x$", name)
         )
     }
     .warn_stata_metadata_limits(.value_label_violations(updates))
     for (name in names(updates)) {
-        column <- .metadata_copy(data[[name]])
+        column <- .metadata_copy(.get_data_column(data, name))
         attr(column, "labels") <- updates[[name]]
         column <- .apply_haven_labelled_class(
             column, !is.null(updates[[name]])
         )
-        data[[name]] <- column
+        .set_data_column(data, name, column)
     }
-    data
+    invisible(data)
 }
 
 #' @rdname var_label
@@ -403,12 +464,12 @@ dataset_label <- function(data) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
         if (is.null(value)) {
-            for (index in seq_along(x)) {
-                column <- .metadata_copy(x[[index]])
+            for (index in seq_along(names(x))) {
+                column <- .metadata_copy(.data_column_at(x, index))
                 attr(column, "label") <- NULL
-                x[[index]] <- column
+                .set_data_column_at(x, index, column)
             }
-            return(x)
+            return(invisible(x))
         }
         updates <- .validate_column_updates(
             x, value, .normalize_text_label, "value"
@@ -445,13 +506,13 @@ dataset_label <- function(data) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
         if (is.null(value)) {
-            for (index in seq_along(x)) {
-                column <- .metadata_copy(x[[index]])
+            for (index in seq_along(names(x))) {
+                column <- .metadata_copy(.data_column_at(x, index))
                 attr(column, "labels") <- NULL
                 column <- .apply_haven_labelled_class(column, FALSE)
-                x[[index]] <- column
+                .set_data_column_at(x, index, column)
             }
-            return(x)
+            return(invisible(x))
         }
         updates <- .validate_column_updates(
             x, value, .normalize_value_labels, "value"
@@ -469,7 +530,25 @@ dataset_label <- function(data) {
 
 #' @rdname var_label
 #' @export
-set_variable_labels <- function(.data, ..., .labels = NULL) {
+set_var_label <- function(data, variable, label) {
+    if (!is.data.frame(data)) {
+        stop("`data` must be a data frame", call. = FALSE)
+    }
+    variable <- rlang::enquo(variable)
+    target <- .mutation_name(
+        variable, FALSE,
+        list(state = .reference_state(data), names = names(data))
+    )
+    updates <- .validate_column_updates(
+        data, stats::setNames(list(label), target$name),
+        .normalize_text_label, "label"
+    )
+    .apply_variable_label_updates(data, updates)
+}
+
+#' @rdname var_label
+#' @export
+set_var_labels <- function(.data, ..., .labels = NULL) {
     dots <- rlang::dots_list(
         ..., .homonyms = "keep", .ignore_empty = "none"
     )
@@ -502,7 +581,7 @@ set_variable_labels <- function(.data, ..., .labels = NULL) {
 
 #' @rdname var_label
 #' @export
-set_value_labels <- function(.data, ..., .labels = NULL) {
+set_val_labels <- function(.data, ..., .labels = NULL) {
     dots <- rlang::dots_list(
         ..., .homonyms = "keep", .ignore_empty = "none"
     )

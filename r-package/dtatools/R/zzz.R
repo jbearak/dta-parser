@@ -28,7 +28,7 @@
     if (!"package:dtatools" %in% search()) return(invisible(NULL))
     shared <- c(
         "var_label", "var_label<-", "val_labels", "val_labels<-",
-        "set_variable_labels", "set_value_labels"
+        "set_var_labels", "set_val_labels"
     )
     masks_dtatools <- any(vapply(shared, function(name) {
         locations <- utils::find(name, mode = "function")
@@ -43,7 +43,7 @@
             "the dtatools package's same-named label metadata helpers. On dtatools ",
             "data, labelled's setters can materialize compact columns or ",
             "discard Stata metadata. Use qualified calls such as ",
-            "dtatools::set_value_labels()."
+            "dtatools::set_val_labels()."
         ),
         call. = FALSE
     )

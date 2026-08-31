@@ -92,10 +92,10 @@ test_that("var_label replacement updates named columns and can clear all", {
     )
 })
 
-test_that("set_variable_labels combines named dots and .labels", {
+test_that("set_var_labels combines named dots and .labels", {
     data <- data.frame(x = 1, y = 2)
 
-    updated <- set_variable_labels(
+    updated <- set_var_labels(
         data,
         x = "Interview status",
         .labels = list(y = "Sampling stratum")
@@ -107,10 +107,10 @@ test_that("set_variable_labels combines named dots and .labels", {
     )
 })
 
-test_that("set_variable_labels supports vector pipelines", {
+test_that("set_var_labels supports vector pipelines", {
     values <- c(1, 2)
 
-    updated <- set_variable_labels(values, "Interview status")
+    updated <- set_var_labels(values, "Interview status")
 
     expect_identical(
         list(values = as.vector(updated), label = var_label(updated)),
@@ -124,7 +124,7 @@ test_that("bulk variable-label limits produce one complete portability warning",
     messages <- character()
 
     updated <- withCallingHandlers(
-        set_variable_labels(data, x = over_limit, y = over_limit),
+        set_var_labels(data, x = over_limit, y = over_limit),
         warning = function(condition) {
             messages <<- c(messages, conditionMessage(condition))
             invokeRestart("muffleWarning")
@@ -155,7 +155,7 @@ test_that("bulk variable-label limits produce one complete portability warning",
 test_that("variable-label setters keep imported numeric storage compact", {
     source <- read_dta(fixture("value_labels_v118.dta"))$foreign
 
-    updated <- set_variable_labels(source, "Vehicle origin")
+    updated <- set_var_labels(source, "Vehicle origin")
 
     expect_identical(
         list(
@@ -235,10 +235,10 @@ test_that("val_labels replacement updates named columns and can clear all", {
     )
 })
 
-test_that("set_value_labels combines named dots and .labels", {
+test_that("set_val_labels combines named dots and .labels", {
     data <- data.frame(x = c(0, 1), y = c(1, 2))
 
-    updated <- set_value_labels(
+    updated <- set_val_labels(
         data,
         x = c(No = 0, Yes = 1),
         .labels = list(y = c(First = 1, Second = 2))
@@ -253,10 +253,10 @@ test_that("set_value_labels combines named dots and .labels", {
     )
 })
 
-test_that("set_value_labels supports vector pipelines", {
+test_that("set_val_labels supports vector pipelines", {
     values <- c(0, 1)
 
-    updated <- set_value_labels(values, No = 0, Yes = 1)
+    updated <- set_val_labels(values, No = 0, Yes = 1)
 
     expect_identical(
         list(values = as.vector(updated), labels = val_labels(updated)),
@@ -276,7 +276,7 @@ test_that("bulk value-label limits produce one complete portability warning", {
     messages <- character()
 
     updated <- withCallingHandlers(
-        set_value_labels(
+        set_val_labels(
             data,
             x = stats::setNames(1, overlong_text),
             y = too_many
@@ -327,8 +327,8 @@ test_that("Stata 19 metadata boundaries do not warn", {
 
     expect_no_warning({
         dataset_label(data) <- exact_variable
-        data <- set_variable_labels(data, x = exact_variable)
-        data <- set_value_labels(
+        data <- set_var_labels(data, x = exact_variable)
+        data <- set_val_labels(
             data,
             x = stats::setNames(1, exact_text),
             y = exact_table
@@ -362,7 +362,7 @@ test_that("value-label codes cover Stata long boundaries and extended missings",
         MissingZ = missing[[2L]]
     )
 
-    updated <- set_value_labels(c(1, 2), .labels = labels)
+    updated <- set_val_labels(c(1, 2), .labels = labels)
 
     expect_identical(
         list(
@@ -391,7 +391,7 @@ test_that("value-label setters reject codes outside Stata's label domain", {
 
     rejected <- vapply(invalid, function(labels) {
         inherits(
-            try(set_value_labels(c(0, 1), .labels = labels), silent = TRUE),
+            try(set_val_labels(c(0, 1), .labels = labels), silent = TRUE),
             "try-error"
         )
     }, logical(1))
@@ -404,8 +404,8 @@ test_that("empty value-label text is discarded and duplicate text is allowed", {
         c(1, 2, 3, 4), c("Shared", "Shared", "", NA_character_)
     )
 
-    updated <- set_value_labels(c(1, 2, 3, 4), .labels = labels)
-    removed <- set_value_labels(
+    updated <- set_val_labels(c(1, 2, 3, 4), .labels = labels)
+    removed <- set_val_labels(
         updated,
         .labels = stats::setNames(c(1, 2), c("", NA_character_))
     )
@@ -451,8 +451,8 @@ test_that("removing value labels retains unrelated numeric classes", {
         class = c("stata_custom", "vctrs_vctr")
     )
 
-    labelled <- set_value_labels(values, No = 0, Yes = 1)
-    removed <- set_value_labels(labelled)
+    labelled <- set_val_labels(values, No = 0, Yes = 1)
+    removed <- set_val_labels(labelled)
 
     expect_identical(
         list(labelled_class = class(labelled), removed_class = class(removed)),
@@ -466,7 +466,7 @@ test_that("removing value labels retains unrelated numeric classes", {
 test_that("value-label setters keep imported numeric storage compact", {
     source <- read_dta(fixture("value_labels_v118.dta"))$foreign
 
-    updated <- set_value_labels(source, Domestic = 0, Imported = 1)
+    updated <- set_val_labels(source, Domestic = 0, Imported = 1)
 
     expect_identical(
         list(
@@ -497,9 +497,9 @@ test_that("repeated metadata setters keep numeric backing unmaterialized", {
 
     updated <- source
     for (index in seq_len(100L)) {
-        updated <- set_variable_labels(updated, paste("Vehicle origin", index))
+        updated <- set_var_labels(updated, paste("Vehicle origin", index))
     }
-    updated <- set_value_labels(updated, Domestic = 0, Imported = 1)
+    updated <- set_val_labels(updated, Domestic = 0, Imported = 1)
 
     expect_identical(
         list(
@@ -522,7 +522,7 @@ test_that("repeated metadata setters keep numeric backing unmaterialized", {
 
 test_that("aggregate operations keep metadata proxies unmaterialized", {
     source <- read_dta(fixture("auto_v118.dta"))$price
-    updated <- set_variable_labels(source, "Price")
+    updated <- set_var_labels(source, "Price")
     invisible(dtatools:::.metadata_proxy_aggregate_mask(TRUE))
     on.exit(
         invisible(dtatools:::.metadata_proxy_aggregate_mask(FALSE)),
@@ -564,7 +564,7 @@ test_that("aggregate operations keep metadata proxies unmaterialized", {
 
 test_that("compactness probe detects materialized metadata proxies", {
     source <- read_dta(fixture("value_labels_v118.dta"))$foreign
-    updated <- set_variable_labels(source, "Vehicle origin")
+    updated <- set_var_labels(source, "Vehicle origin")
 
     updated <- dtatools:::.force_altrep_materialization(updated)
 
@@ -587,11 +587,11 @@ test_that("compactness probe detects materialized metadata proxies", {
 
 test_that("metadata proxies preserve copy-on-write in both directions", {
     source <- read_dta(fixture("value_labels_v118.dta"))$foreign
-    updated <- set_variable_labels(source, "Vehicle origin")
+    updated <- set_var_labels(source, "Vehicle origin")
     updated[[1L]] <- 99
 
     second_source <- read_dta(fixture("value_labels_v118.dta"))$foreign
-    second_updated <- set_variable_labels(second_source, "Vehicle origin")
+    second_updated <- set_var_labels(second_source, "Vehicle origin")
     second_source[[1L]] <- 99
 
     expect_identical(
@@ -614,7 +614,7 @@ test_that("metadata proxies preserve copy-on-write in both directions", {
 })
 
 test_that("tab consumes value labels created by dtatools helpers", {
-    values <- set_value_labels(c(0, 1, 0), Domestic = 0, Imported = 1)
+    values <- set_val_labels(c(0, 1, 0), Domestic = 0, Imported = 1)
 
     expect_identical(
         dimnames(tab(values))[[1L]],
@@ -628,13 +628,13 @@ test_that("bulk setters reject ambiguous column updates atomically", {
     original <- data
 
     calls <- list(
-        function() set_variable_labels(
+        function() set_var_labels(
             data, x = "From dots", .labels = list(x = "From list")
         ),
-        function() set_variable_labels(data, x = "First", x = "Second"),
-        function() set_variable_labels(data, unknown = "Unknown"),
-        function() set_variable_labels(data, "Positional"),
-        function() set_value_labels(
+        function() set_var_labels(data, x = "First", x = "Second"),
+        function() set_var_labels(data, unknown = "Unknown"),
+        function() set_var_labels(data, "Positional"),
+        function() set_val_labels(
             data, x = c(No = 0), .labels = list(x = c(Yes = 1))
         )
     )
@@ -657,8 +657,8 @@ test_that("named updates reject duplicated data-frame column names", {
     attr(data[[2L]], "labels") <- c(First = 1, Second = 2)
     original <- data
 
-    expect_error(set_variable_labels(data, x = "Ambiguous"), "ambiguous")
-    expect_error(set_value_labels(data, x = c(Zero = 0)), "ambiguous")
+    expect_error(set_var_labels(data, x = "Ambiguous"), "ambiguous")
+    expect_error(set_val_labels(data, x = c(Zero = 0)), "ambiguous")
     expect_identical(data, original)
 
     var_label(data) <- NULL
@@ -674,15 +674,15 @@ test_that("named updates reject duplicated data-frame column names", {
 
 test_that("value labels can only be attached to numeric Stata variables", {
     expect_error(
-        set_value_labels(c("No", "Yes"), No = 0, Yes = 1),
+        set_val_labels(c("No", "Yes"), No = 0, Yes = 1),
         "numeric"
     )
     expect_error(
-        set_value_labels(factor(c("No", "Yes")), No = 1, Yes = 2),
+        set_val_labels(factor(c("No", "Yes")), No = 1, Yes = 2),
         "numeric Stata variable"
     )
     expect_error(
-        set_value_labels(matrix(c(0, 1), ncol = 1), No = 0, Yes = 1),
+        set_val_labels(matrix(c(0, 1), ncol = 1), No = 0, Yes = 1),
         "numeric Stata variable"
     )
 })
@@ -699,7 +699,7 @@ test_that("value-label tables must be numeric vectors", {
 
     rejected <- vapply(invalid, function(labels) {
         inherits(
-            try(set_value_labels(c(0, 1), .labels = labels), silent = TRUE),
+            try(set_val_labels(c(0, 1), .labels = labels), silent = TRUE),
             "try-error"
         )
     }, logical(1))
@@ -715,8 +715,8 @@ test_that("label helpers reject non-vector reference objects", {
     calls <- list(
         function() var_label(value),
         function() val_labels(value),
-        function() set_variable_labels(value, "Changed"),
-        function() set_value_labels(value)
+        function() set_var_labels(value, "Changed"),
+        function() set_val_labels(value)
     )
     rejected <- vapply(calls, function(call) {
         inherits(try(call(), silent = TRUE), "try-error")
@@ -749,7 +749,7 @@ test_that("bulk value-label setters normalize each table once", {
         ".tab_missing_codes", where = asNamespace("dtatools")
     )), add = TRUE)
 
-    updated <- set_value_labels(
+    updated <- set_val_labels(
         data.frame(x = c(0, 1)), x = c(No = 0, Yes = 1)
     )
 
@@ -757,4 +757,74 @@ test_that("bulk value-label setters normalize each table once", {
         list(calls = counter$calls, labels = val_labels(updated$x)),
         list(calls = 1L, labels = c(No = 0, Yes = 1))
     )
+})
+
+test_that("data frame label setters mutate by reference", {
+    data <- data.frame(a = 1:3, b = c(10, 20, 30))
+    alias <- data
+
+    set_var_labels(data, a = "Alpha")
+    expect_identical(var_label(data$a), "Alpha")
+    expect_identical(var_label(alias$a), "Alpha")
+
+    set_val_labels(data, a = c(One = 1L))
+    expect_identical(val_labels(data$a), c(One = 1L))
+    expect_identical(val_labels(alias$a), c(One = 1L))
+
+    set_var_label(data, b, "Beta")
+    expect_identical(var_label(data$b), "Beta")
+
+    var_label(data) <- list(b = "Beta again")
+    expect_identical(var_label(data$b), "Beta again")
+
+    val_labels(data) <- list(b = c(Ten = 10))
+    expect_identical(val_labels(data$b), c(Ten = 10))
+
+    var_label(data) <- NULL
+    expect_identical(var_label(data), list(a = NULL, b = NULL))
+
+    val_labels(data) <- NULL
+    expect_identical(val_labels(data), list(a = NULL, b = NULL))
+})
+
+test_that("label setters still return the data frame for pipeline use", {
+    data <- data.frame(a = 1:3)
+    expect_identical(var_label(set_var_labels(data, a = "Alpha")$a), "Alpha")
+    expect_identical(var_label(set_var_label(data, a, "Beta")$a), "Beta")
+})
+
+test_that("copy_data isolates a data frame from later label setters", {
+    source <- data.frame(a = 1:3)
+    isolated <- copy_data(source)
+    set_var_labels(source, a = "Alpha")
+    expect_identical(var_label(source$a), "Alpha")
+    expect_null(var_label(isolated$a))
+})
+
+test_that("vector label setters keep copy semantics", {
+    values <- 1:3
+    invisible(set_var_labels(values, "Alpha"))
+    expect_null(var_label(values))
+    invisible(set_val_labels(values, One = 1L))
+    expect_null(val_labels(values))
+})
+
+test_that("set_var_label requires one unquoted existing column", {
+    data <- data.frame(a = 1:3)
+    expect_error(set_var_label(data, missing_column, "Alpha"),
+                 "does not exist")
+    expect_error(set_var_label(data, a + 1, "Alpha"),
+                 "unquoted column name")
+    expect_error(set_var_label(1:3, a, "Alpha"), "must be a data frame")
+})
+
+test_that("set_var_label labels a generated reference column", {
+    data <- data.frame(a = 1:3)
+    gen(data, doubled, a * 2)
+
+    set_var_label(data, doubled, "Doubled")
+    expect_identical(var_label(data$doubled), "Doubled")
+
+    set_var_label(data, a, "Alpha")
+    expect_identical(var_label(data$a), "Alpha")
 })

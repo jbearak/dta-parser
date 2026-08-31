@@ -26,7 +26,7 @@ declared Stata storage type.
 | `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
 | `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
 | `is_missing()` | Classify Stata system and extended numeric missing values and empty strings; use it in `where` expressions for `gen()` and `replace_values()`. |
-| `var_label()`, `val_labels()`, `dataset_label()`, `set_variable_labels()`, `set_value_labels()` | Get and set Stata label metadata without haven or `labelled`. |
+| `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
 `gen()` and `replace_values()` mutate the supplied data frame or tibble. Dataset
 aliases and aliases of a target column observe the change. Call `copy_data()`

@@ -22,18 +22,18 @@ dataset_label(data) <- "Baseline survey"
 The pipeline forms work on vectors and data frames:
 
 ```r
-data <- set_variable_labels(
+data <- set_var_labels(
   data,
   status = "Interview status",
   .labels = list(stratum = "Sampling stratum")
 )
 
-data <- set_value_labels(
+data <- set_val_labels(
   data,
   status = c(Complete = 1, Refused = 2)
 )
 
-data$status <- set_value_labels(
+data$status <- set_val_labels(
   data$status,
   Complete = 1,
   Refused = 2
@@ -111,7 +111,7 @@ The comparison below is specific to `labelled` 2.16.0 and `haven` 2.5.5. It is n
 
 The version-pinned comparison and both package attach orders run in [`test-labelled-interop.R`](../scripts/test-labelled-interop.R). CI installs `labelled` only for that repository-level gate; it is not a dtatools runtime, suggested, or enhanced dependency.
 
-If `labelled` is attached first and `dtatools` second, unqualified common helper names resolve to dtatools. If `labelled` is attached after dtatools, normal R masking makes them resolve to `labelled`; dtatools emits one scoped warning. Qualified calls such as `dtatools::set_value_labels()` always select this implementation.
+If `labelled` is attached first and `dtatools` second, unqualified common helper names resolve to dtatools. If `labelled` is attached after dtatools, normal R masking makes them resolve to `labelled`; dtatools emits one scoped warning. Qualified calls such as `dtatools::set_val_labels()` always select this implementation.
 
 ## Compared with `haven` helpers
 

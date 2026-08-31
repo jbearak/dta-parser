@@ -5123,6 +5123,22 @@ SEXP C_dtatools_patch_data_column(
     return column;
 }
 
+SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP column) {
+    if (TYPEOF(data) != VECSXP) {
+        Rf_error("`data` must be a list");
+    }
+    if (TYPEOF(location) != INTSXP || XLENGTH(location) != 1) {
+        Rf_error("`location` must be one integer value");
+    }
+    int index = INTEGER(location)[0];
+    if (index == NA_INTEGER || index < 1 ||
+        (R_xlen_t) index > XLENGTH(data)) {
+        Rf_error("`location` is out of range");
+    }
+    SET_VECTOR_ELT(data, (R_xlen_t) index - 1, column);
+    return column;
+}
+
 static double generated_double_value(
     const numeric_reader *reader, R_xlen_t index, int temporal
 ) {
@@ -6006,6 +6022,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_patch_vector, 3},
     {"C_dtatools_patch_data_column",
      (DL_FUNC) &C_dtatools_patch_data_column, 5},
+    {"C_dtatools_set_data_column",
+     (DL_FUNC) &C_dtatools_set_data_column, 3},
     {"C_dtatools_generate_numeric",
      (DL_FUNC) &C_dtatools_generate_numeric, 6},
     {"C_dtatools_generate_character",

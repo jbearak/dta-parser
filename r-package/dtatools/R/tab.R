@@ -44,7 +44,7 @@
 #' @return A standard `table` object.
 #' @export
 #' @examples
-#' x <- set_value_labels(
+#' x <- set_val_labels(
 #'     c(1, 2, 1, NA_real_, tagged_missing(c("a", "b"))),
 #'     Yes = 1, No = 2, Refused = tagged_missing("a")
 #' )

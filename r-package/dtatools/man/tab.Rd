@@ -63,7 +63,7 @@ Numeric factorization is shared with \code{\link[=factor_from_labels]{factor_fro
 materialize compact numeric columns returned by \code{\link[=read_dta]{read_dta()}}.
 }
 \examples{
-x <- set_value_labels(
+x <- set_val_labels(
     c(1, 2, 1, NA_real_, tagged_missing(c("a", "b"))),
     Yes = 1, No = 2, Refused = tagged_missing("a")
 )

@@ -119,15 +119,15 @@ test_that("character missing keys require Stata's empty string", {
 
 test_that("key columns coalesce storage and metadata", {
     master <- tibble::tibble(
-        id = set_variable_labels(
-            set_value_labels(stata_byte(c(1, 2)), One = 1),
+        id = set_var_labels(
+            set_val_labels(stata_byte(c(1, 2)), One = 1),
             "Identifier"
         ),
         master_value = c("a", "b")
     )
     using <- tibble::tibble(
-        id = set_variable_labels(
-            set_value_labels(stata_int(c(2, 200)), TwoHundred = 200),
+        id = set_var_labels(
+            set_val_labels(stata_int(c(2, 200)), TwoHundred = 200),
             "Ident (using)"
         ),
         using_value = c("c", "d")
@@ -152,7 +152,7 @@ test_that("key columns coalesce storage and metadata", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result$id))
 
     conflicting <- tibble::tibble(
-        id = set_value_labels(stata_byte(1), Uno = 1)
+        id = set_val_labels(stata_byte(1), Uno = 1)
     )
     warnings <- testthat::capture_warnings(
         dta_merge(master, conflicting, by = "id", relationship = "1:1")
@@ -191,15 +191,15 @@ test_that("ordinary coalesced columns use y's label when x has none", {
 
 test_that("coalesced variables with matching metadata merge silently", {
     master <- tibble::tibble(
-        id = set_variable_labels(
-            set_value_labels(stata_byte(c(1, 2)), One = 1),
+        id = set_var_labels(
+            set_val_labels(stata_byte(c(1, 2)), One = 1),
             "Identifier"
         ),
         score = c(10, 20)
     )
     using <- tibble::tibble(
-        id = set_variable_labels(
-            set_value_labels(stata_int(c(1, 2)), One = 1),
+        id = set_var_labels(
+            set_val_labels(stata_int(c(1, 2)), One = 1),
             "Identifier"
         ),
         group = c("a", "b")
@@ -294,24 +294,24 @@ test_that("Stata doubles retain values and metadata across merge partitions", {
     master <- tibble::tibble(
         id = c(1, 2),
         ordinary_x = c("a", "b"),
-        double_x = set_variable_labels(
+        double_x = set_var_labels(
             stata_double(c(10, tagged_missing("a"))),
             "Master double"
         ),
         ordinary_shared = c(100L, 200L),
-        shared = set_value_labels(
+        shared = set_val_labels(
             stata_double(c(1, NA_real_)), One = 1
         )
     )
     using <- tibble::tibble(
         id = c(2, 3),
         ordinary_y = c(TRUE, FALSE),
-        double_y = set_variable_labels(
+        double_y = set_var_labels(
             stata_double(c(20, 30)),
             "Using double"
         ),
         ordinary_shared = c(999L, 300L),
-        shared = set_value_labels(
+        shared = set_val_labels(
             stata_double(c(99, 3)), Three = 3
         )
     )
