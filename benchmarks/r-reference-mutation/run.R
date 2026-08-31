@@ -61,6 +61,66 @@ stopifnot(
     all_rows_replacement_time < 0.2
 )
 
+raw_fill_repetitions <- 5L
+raw_target <- raw(rows)
+raw_fill_time <- system.time(
+    for (iteration in seq_len(raw_fill_repetitions)) {
+        raw_target[] <- as.raw(2)
+    }
+)[["elapsed"]] / raw_fill_repetitions
+stopifnot(
+    all_rows_replacement_time < max(0.02, raw_fill_time * 5)
+)
+
+logical_rows <- rep(FALSE, rows)
+logical_rows[[rows]] <- TRUE
+logical_profile <- tempfile(
+    "dtatools-reference-logical-plan-", fileext = ".out"
+)
+Rprofmem(logical_profile, threshold = 1000)
+logical_plan_time <- system.time(
+    for (iteration in seq_len(5L)) {
+        replace_values(data, compact, 3, where = logical_rows)
+    }
+)[["elapsed"]] / 5
+Rprofmem(NULL)
+logical_records <- readLines(logical_profile, warn = FALSE)
+unlink(logical_profile)
+logical_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", logical_records
+)))
+logical_plan_allocation <- sum(
+    logical_allocations[is.finite(logical_allocations)]
+)
+stopifnot(
+    logical_plan_time < 0.02,
+    logical_plan_allocation < compact_byte_bytes
+)
+
+explicit_rows <- seq_len(rows)
+explicit_profile <- tempfile(
+    "dtatools-reference-explicit-plan-", fileext = ".out"
+)
+Rprofmem(explicit_profile, threshold = 1000)
+explicit_plan_time <- system.time(
+    for (iteration in seq_len(3L)) {
+        replace_values(data, compact, 2, where = explicit_rows)
+    }
+)[["elapsed"]] / 3
+Rprofmem(NULL)
+explicit_records <- readLines(explicit_profile, warn = FALSE)
+unlink(explicit_profile)
+explicit_allocations <- suppressWarnings(as.numeric(sub(
+    " .*", "", explicit_records
+)))
+explicit_plan_allocation <- sum(
+    explicit_allocations[is.finite(explicit_allocations)]
+)
+stopifnot(
+    explicit_plan_time < 0.08,
+    explicit_plan_allocation < compact_byte_bytes
+)
+
 late_missing <- data.frame(
     compact = stata_byte(c(rep(1, rows - 1L), NA_real_))
 )
@@ -150,8 +210,7 @@ stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
     dtatools:::.is_unmaterialized_numeric_altrep(data$generated),
     identical(stata_storage_type(data$generated), "byte"),
-    largest_generation_allocation < full_double_bytes,
-    all_rows_replacement_time < max(0.01, generation_time * 1.75)
+    largest_generation_allocation < full_double_bytes
 )
 untracemem(data$compact)
 untracemem(data$untouched)
@@ -163,6 +222,17 @@ cat(sprintf("sparse_replacement_seconds\t%.6f\n", replacement_time))
 cat(sprintf(
     "all_rows_scalar_replacement_seconds\t%.6f\n",
     all_rows_replacement_time
+))
+cat(sprintf("raw_fill_seconds\t%.6f\n", raw_fill_time))
+cat(sprintf("logical_plan_seconds\t%.6f\n", logical_plan_time))
+cat(sprintf(
+    "logical_plan_profiled_allocation_bytes\t%.0f\n",
+    logical_plan_allocation
+))
+cat(sprintf("explicit_plan_seconds\t%.6f\n", explicit_plan_time))
+cat(sprintf(
+    "explicit_plan_profiled_allocation_bytes\t%.0f\n",
+    explicit_plan_allocation
 ))
 cat(sprintf("late_missing_sparse_seconds\t%.6f\n", late_missing_time))
 cat(sprintf("missing_cycle_seconds\t%.6f\n", missing_cycle_time))

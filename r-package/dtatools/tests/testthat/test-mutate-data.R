@@ -121,6 +121,16 @@ test_that("where has documented logical and position semantics", {
     )
     expect_identical(compact_positions$x, c(9L, 2L, 8L))
 
+    replace_values(
+        compact_positions, x, c(6L, 7L, 5L),
+        where = stata_long(c(3, 1, 3))
+    )
+    expect_identical(compact_positions$x, c(6L, 2L, 5L))
+
+    all_rows <- data.frame(x = stata_byte(1:3))
+    replace_values(all_rows, x, 4, where = rep(TRUE, 3))
+    expect_identical(as.double(all_rows$x), rep(4, 3))
+
     unchanged <- data$x
     replace_values(data, x, integer(), where = integer())
     expect_identical(data$x, unchanged)

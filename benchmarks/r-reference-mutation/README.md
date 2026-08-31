@@ -16,9 +16,12 @@ unselected missing value at the end of the target to catch accidental
 full-column cache scans. The run fails when that path is materially slower than
 the direct sparse update. A third timing alternates clearing and restoring the
 last missing value, which catches scans while the missing-value cache changes.
-An all-row scalar replacement must stay close to compact scalar generation;
-this catches a redundant per-row validation pass without relying only on an
-absolute timing ceiling.
+An all-row scalar replacement must stay within a bounded multiple of an
+independent raw-vector fill. This catches repeated scalar decoding and
+validation without comparing two paths that share the same implementation.
+The benchmark also profiles a sparse full-length logical selector and a compact
+explicit-position sequence. Both row planners must stay below one compact byte
+payload of profiled allocation, guarding against full-length R temporaries.
 The run then generates a five-million-row compact byte column from one scalar.
 It fails if the largest R allocation reaches the size of a full double column,
 and uses `tracemem()` to check that neither existing column payload was copied.

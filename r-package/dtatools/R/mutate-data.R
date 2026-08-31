@@ -248,38 +248,15 @@ gen <- function(data, variable, values, where = NULL) {
 
 .mutation_rows <- function(value, row_count) {
     if (is.null(value)) return(NULL)
-    if (is.logical(value)) {
-        if (length(value) == 1L) {
-            return(if (isTRUE(value)) NULL else integer())
-        }
-        if (length(value) != row_count) {
-            stop(sprintf(
-                "`where` has size %s; expected size 1 or %s",
-                length(value), row_count
-            ), call. = FALSE)
-        }
-        value[is.na(value)] <- FALSE
-        if (all(value)) return(NULL)
-        return(which(value))
-    }
-    if (inherits(value, "stata_numeric") &&
-        !inherits(value, "stata_temporal")) {
-        value <- as.double(value)
-    }
-    if (!is.numeric(value) || is.object(value) || !is.null(dim(value))) {
+    stata_positions <- inherits(value, "stata_numeric") &&
+        !inherits(value, "stata_temporal")
+    if (!is.logical(value) &&
+        (!is.numeric(value) || (is.object(value) && !stata_positions) ||
+         !is.null(dim(value)))) {
         stop("`where` must yield logical values or numeric row positions",
              call. = FALSE)
     }
-    if (length(value) == 0L) return(integer())
-    if (anyNA(value) || any(!is.finite(value)) ||
-        any(value != trunc(value)) || any(value <= 0) ||
-        any(value > row_count)) {
-        stop(paste0(
-            "`where` row positions must be positive, finite, whole, ",
-            "and no greater than the row count"
-        ), call. = FALSE)
-    }
-    as.integer(value)
+    .Call(C_dtatools_mutation_rows, value, as.double(row_count))
 }
 
 .mutation_selected_count <- function(rows, row_count) {

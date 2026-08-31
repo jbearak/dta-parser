@@ -456,7 +456,19 @@ as.character.stata_numeric <- function(x, ...) {
 
 #' @export
 vec_proxy.stata_numeric <- function(x, ...) {
-    .stata_data(x)
+    .stata_snapshot(x)
+}
+
+#' @export
+as.data.frame.stata_numeric <- function(
+    x, row.names = NULL, optional = FALSE, ...,
+    nm = paste(deparse(substitute(x), width.cutoff = 500L), collapse = " ")
+) {
+    force(nm)
+    if (!is.null(dim(x))) return(NextMethod())
+    columns <- list(x)
+    if (!optional) names(columns) <- nm
+    vctrs::new_data_frame(columns, n = length(x))
 }
 
 #' @export
@@ -836,7 +848,7 @@ Complex.stata_numeric <- function(z) {
 
 #' @export
 vec_proxy.stata_temporal <- function(x, ...) {
-    .stata_data(x)
+    .stata_snapshot(x)
 }
 
 #' @export

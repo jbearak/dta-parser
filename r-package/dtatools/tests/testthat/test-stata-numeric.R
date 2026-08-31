@@ -166,6 +166,46 @@ test_that("stored public coercions are isolated from reference mutation", {
     expect_identical(text, c("1", "2", "3"))
 })
 
+test_that("stored vctrs proxies are isolated from reference mutation", {
+    numeric_source <- data.frame(x = stata_byte(1:3))
+    numeric_proxy <- vctrs::vec_proxy(numeric_source$x)
+    replace_values(numeric_source, x, 9, where = 1)
+    expect_identical(as.double(numeric_proxy), c(1, 2, 3))
+
+    path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(path), add = TRUE)
+    temporal_source <- data.frame(x = read_dta(path)$price)
+    before <- as.double(temporal_source$x)
+    temporal_proxy <- vctrs::vec_proxy(temporal_source$x)
+    replacement <- temporal_source$x[[2]]
+    replace_values(temporal_source, x, replacement, where = 1)
+    expect_identical(as.double(temporal_proxy), before)
+})
+
+test_that("lazy public snapshots release stripped source attributes", {
+    finalized <- new.env(parent = emptyenv())
+    finalized$done <- FALSE
+    snapshot <- local({
+        source <- stata_byte(1:3)
+        tracker <- new.env(parent = emptyenv())
+        reg.finalizer(
+            tracker,
+            function(environment) finalized$done <- TRUE,
+            onexit = FALSE
+        )
+        attr(source, "obsolete") <- tracker
+        as.double(source)
+    })
+
+    for (iteration in seq_len(5L)) {
+        if (finalized$done) break
+        gc(full = TRUE)
+    }
+    expect_true(finalized$done)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(snapshot))
+    expect_identical(snapshot, c(1, 2, 3))
+})
+
 test_that("base subsetting and duplication preserve compact backing", {
     source <- read_dta(fixture("all_types_v118.dta"))$v_long
     selected <- source[c(5L, 2L, NA_integer_, 2L)]
