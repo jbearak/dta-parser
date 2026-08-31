@@ -20,9 +20,10 @@ use dta_tools::{
     DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
     DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
-    DtaWriteRawNumericValue, DtaWriteValueLabel, DtaWriteValueLabelRegistry, FormatVersion,
-    MissingTag, ParallelDtaSink, ReadOptions, StataCharacteristic, StataNote, TextEncoding,
-    ValueLabelEntry, ValueLabelTable, VariableInfo,
+    DtaWriteRawNumericValue, DtaWriteValueLabel, DtaWriteValueLabelRegistry,
+    DtaWriteValueLabelTable, FormatVersion, MissingTag,
+    ParallelDtaSink, ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelEntry,
+    ValueLabelTable, VariableInfo,
 };
 
 mod arrow_ffi;
@@ -3869,11 +3870,12 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         .open(path)
         .map_err(|error| format!("could not create temporary DTA output: {error}"))?;
     let mut writer = BufWriter::new(file);
-    let registry = DtaWriteValueLabelRegistry::new(
-        &value_label_names,
-        &value_label_tables,
-        &value_label_indices,
-    );
+    let value_label_records = value_label_names
+        .iter()
+        .zip(&value_label_tables)
+        .map(|(name, entries)| DtaWriteValueLabelTable::new(name, entries))
+        .collect::<Vec<_>>();
+    let registry = DtaWriteValueLabelRegistry::new(&value_label_records, &value_label_indices);
     write_prevalidated_dta_with_value_label_registry_to(
         &mut writer,
         &data,

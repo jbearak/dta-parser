@@ -1132,6 +1132,25 @@ fn large_unselected_value_label_offsets_use_bounded_staging() {
 }
 
 #[test]
+fn large_retained_value_label_tables_do_not_need_per_entry_lookup_arrays() {
+    let bytes = many_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
+    let mut expected_data = read_dta(&bytes).unwrap();
+    let expected = expected_data.value_label_tables.remove(0);
+    assert_eq!(expected.entries.len(), 100_000);
+
+    let mut file = DtaFile::from_reader_with_options(
+        Cursor::new(bytes),
+        FileOptions {
+            max_buffer_bytes: 1024,
+        },
+    )
+    .unwrap();
+    let actual = file.value_label_tables().unwrap()[0].clone();
+    assert_eq!(actual, expected);
+    assert!(file.max_scratch_bytes_used() <= 1024);
+}
+
+#[test]
 fn unordered_unselected_value_label_offsets_use_bounded_file_io() {
     let bytes = alternating_short_first_value_labels(fixture("value_labels_v118.dta"), 100_000);
     let file_length = bytes.len();

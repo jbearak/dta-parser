@@ -187,8 +187,11 @@ fn parse_fixed8_table(
         table_end - table_start,
         "legacy value-label table",
     )?;
+    if !retain {
+        return Ok((None, table_end));
+    }
 
-    let mut entries = retain.then(|| Vec::with_capacity(entry_count));
+    let mut entries = Vec::with_capacity(entry_count);
     for entry_index in 0..entry_count {
         let value_at = checked_add(
             values_start,
@@ -200,46 +203,38 @@ fn parse_fixed8_table(
             checked_mul(entry_index, LABEL_WIDTH, "legacy value-label text")?,
             "legacy value-label text",
         )?;
-        if let Some(entries) = entries.as_mut() {
-            let value = i32::from(read_i16(
-                bytes,
-                value_at,
-                metadata.byte_order,
-                "legacy value-label value",
-            )?);
-            let label = encoding.decode(field_bytes(slice_at(
-                bytes,
-                label_at,
-                LABEL_WIDTH,
-                "legacy value-label text",
-            )?));
-            entries.push(ValueLabelEntry {
-                value,
-                missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-                label,
-            });
-        }
+        let value = i32::from(read_i16(
+            bytes,
+            value_at,
+            metadata.byte_order,
+            "legacy value-label value",
+        )?);
+        let label = encoding.decode(field_bytes(slice_at(
+            bytes,
+            label_at,
+            LABEL_WIDTH,
+            "legacy value-label text",
+        )?));
+        entries.push(ValueLabelEntry {
+            value,
+            missing_tag: classify_long_missing_for_version(value, metadata.format_version),
+            label,
+        });
     }
-    Ok((
-        entries.map(|entries| ValueLabelTable { name, entries }),
-        table_end,
-    ))
+    Ok((Some(ValueLabelTable { name, entries }), table_end))
 }
 
-fn first_nul_positions(text: &[u8], offsets: &[usize]) -> Vec<Option<usize>> {
-    let mut ordered = (0..offsets.len()).collect::<Vec<_>>();
-    ordered.sort_by_key(|&index| offsets[index]);
-    let mut positions = vec![None; offsets.len()];
-    let mut next = 0_usize;
-    for (position, byte) in text.iter().enumerate() {
-        if *byte == 0 {
-            while next < ordered.len() && offsets[ordered[next]] <= position {
-                positions[ordered[next]] = Some(position);
-                next += 1;
-            }
-        }
-    }
+fn nul_positions(text: &[u8]) -> Vec<usize> {
+    text.iter()
+        .enumerate()
+        .filter_map(|(position, byte)| (*byte == 0).then_some(position))
+        .collect()
+}
+
+fn first_nul_at_or_after(positions: &[usize], offset: usize) -> Option<usize> {
     positions
+        .get(positions.partition_point(|&position| position < offset))
+        .copied()
 }
 
 fn parse_table(
@@ -368,7 +363,6 @@ fn parse_table(
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
     let text = &payload[text_start..text_end];
     let mut text_offsets = retain.then(|| Vec::with_capacity(entry_count));
-    let mut entries = retain.then(|| Vec::with_capacity(entry_count));
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
         let raw_offset_position = checked_add(
@@ -415,8 +409,26 @@ fn parse_table(
         if let Some(text_offsets) = text_offsets.as_mut() {
             text_offsets.push(text_offset_usize);
         }
+    }
 
-        if let Some(entries) = entries.as_mut() {
+    let entries = if retain {
+        let text_offsets = text_offsets
+            .as_ref()
+            .expect("retained table has text offsets");
+        let terminators = nul_positions(text);
+        let mut entries = Vec::with_capacity(entry_count);
+        for (entry_index, &text_offset) in text_offsets.iter().enumerate() {
+            let Some(nul) = first_nul_at_or_after(&terminators, text_offset) else {
+                return Err(DtaError::MissingNulTerminator {
+                    context: "value-label text",
+                    offset: checked_add(
+                        payload_start,
+                        checked_add(text_start, text_offset, "value-label text")?,
+                        "value-label text",
+                    )?,
+                });
+            };
+            let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
             let value_position =
                 checked_add(values_start, element_offset, "value-label value position")?;
             let value = read_i32(
@@ -428,30 +440,10 @@ fn parse_table(
             entries.push(ValueLabelEntry {
                 value,
                 missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-                label: String::new(),
+                label: encoding.decode(&text[text_offset..nul]),
             });
         }
-    }
-
-    if retain {
-        let entries = entries.as_mut().expect("retained table has entries");
-        let text_offsets = text_offsets
-            .as_ref()
-            .expect("retained table has text offsets");
-        let nul_positions = first_nul_positions(text, text_offsets);
-        for (entry_index, &text_offset) in text_offsets.iter().enumerate() {
-            let Some(nul) = nul_positions[entry_index] else {
-                return Err(DtaError::MissingNulTerminator {
-                    context: "value-label text",
-                    offset: checked_add(
-                        payload_start,
-                        checked_add(text_start, text_offset, "value-label text")?,
-                        "value-label text",
-                    )?,
-                });
-            };
-            entries[entry_index].label = encoding.decode(&text[text_offset..nul]);
-        }
+        Some(entries)
     } else if text.last() != Some(&0) {
         let last_nul = text.iter().rposition(|byte| *byte == 0);
         for entry_index in 0..entry_count {
@@ -478,7 +470,10 @@ fn parse_table(
                 });
             }
         }
-    }
+        None
+    } else {
+        None
+    };
 
     cursor = checked_add(payload_start, declared, "value-label table payload")?;
     if wrapped {
@@ -708,4 +703,38 @@ pub(crate) fn parse_value_labels_section(
         metadata.section_offsets.end_of_file,
     )?;
     Ok(tables)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::parse_fixed8_table;
+    use crate::{parse_metadata, ByteOrder, TextEncoding};
+
+    #[test]
+    fn unselected_fixed8_table_skips_entry_iteration_after_bounds_check() {
+        const ENTRY_COUNT: u16 = u16::MAX;
+        let metadata = parse_metadata(include_bytes!("../tests/data/synthetic-v105.dta")).unwrap();
+        let mut bytes = Vec::with_capacity(12 + usize::from(ENTRY_COUNT) * 10);
+        bytes.extend_from_slice(&match metadata.byte_order {
+            ByteOrder::Lsf => ENTRY_COUNT.to_le_bytes(),
+            ByteOrder::Msf => ENTRY_COUNT.to_be_bytes(),
+        });
+        bytes.extend_from_slice(b"labels\0\0\0");
+        bytes.push(0);
+        bytes.resize(12 + usize::from(ENTRY_COUNT) * 10, 0xff);
+
+        let selected = HashSet::new();
+        let (table, end) = parse_fixed8_table(
+            &bytes,
+            &metadata,
+            0,
+            TextEncoding::Windows1252,
+            Some(&selected),
+        )
+        .unwrap();
+        assert!(table.is_none());
+        assert_eq!(end, bytes.len());
+    }
 }

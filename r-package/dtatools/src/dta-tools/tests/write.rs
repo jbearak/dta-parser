@@ -10,6 +10,11 @@ use dta_tools::{
     DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel,
     FormatVersion, MissingTag, ReadOptions, StataCharacteristic, StataNote,
 };
+#[cfg(feature = "r-adapter-internal")]
+use dta_tools::{
+    write_prevalidated_dta_with_value_label_registry_to, DtaWriteValueLabelRegistry,
+    DtaWriteValueLabelTable,
+};
 use sha2::{Digest, Sha256};
 
 const ADAPTED_NUMERIC_VALUES: [DtaWriteNumericValue; 3] = [
@@ -392,6 +397,48 @@ fn prevalidated_adapter_avoids_a_redundant_value_pass() {
         DtaWriteError::InvalidVariable { .. }
     ));
     assert_eq!(source.calls.get(), 0);
+}
+
+#[cfg(feature = "r-adapter-internal")]
+#[test]
+fn internal_value_label_registry_rejects_both_presence_mismatches() {
+    let labels = [DtaWriteValueLabel {
+        value: DtaWriteLabelValue::Integer(0),
+        label: "zero".into(),
+    }];
+    let tables = [DtaWriteValueLabelTable::new("shared", &labels)];
+
+    for (has_value_labels, table_index) in [(true, None), (false, Some(0))] {
+        let data = DtaWriteData {
+            dataset_label: String::new().into(),
+            notes: Vec::new(),
+            columns: vec![DtaWriteColumn {
+                name: "value".into(),
+                dta_type: DtaType::Long,
+                format: "%12.0g".into(),
+                label: String::new().into(),
+                has_value_labels,
+                value_labels: Vec::new(),
+                values: DtaWriteColumnValues::Numeric(&ADAPTED_NUMERIC_VALUES),
+            }],
+        };
+        let indices = [table_index];
+        let registry = DtaWriteValueLabelRegistry::new(&tables, &indices);
+        let error = write_prevalidated_dta_with_value_label_registry_to(
+            &mut Cursor::new(Vec::new()),
+            &data,
+            &DtaWriteOptions::default(),
+            &AdaptedObservationSource,
+            ADAPTED_NUMERIC_VALUES.len() as u64,
+            &registry,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            error,
+            DtaWriteError::InvalidDatasetMetadata(message)
+                if message == "value-label table registry does not match the columns"
+        ));
+    }
 }
 
 #[test]

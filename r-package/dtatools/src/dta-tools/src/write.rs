@@ -195,25 +195,31 @@ impl DtaWriteValueLabelSource for () {}
 
 #[cfg(feature = "r-adapter-internal")]
 #[doc(hidden)]
+pub struct DtaWriteValueLabelTable<'a> {
+    name: &'a str,
+    entries: &'a [DtaWriteValueLabel<'a>],
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl<'a> DtaWriteValueLabelTable<'a> {
+    #[doc(hidden)]
+    pub fn new(name: &'a str, entries: &'a [DtaWriteValueLabel<'a>]) -> Self {
+        Self { name, entries }
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+#[doc(hidden)]
 pub struct DtaWriteValueLabelRegistry<'a> {
-    names: &'a [&'a str],
-    tables: &'a [Vec<DtaWriteValueLabel<'a>>],
+    tables: &'a [DtaWriteValueLabelTable<'a>],
     indices: &'a [Option<usize>],
 }
 
 #[cfg(feature = "r-adapter-internal")]
 impl<'a> DtaWriteValueLabelRegistry<'a> {
     #[doc(hidden)]
-    pub fn new(
-        names: &'a [&'a str],
-        tables: &'a [Vec<DtaWriteValueLabel<'a>>],
-        indices: &'a [Option<usize>],
-    ) -> Self {
-        Self {
-            names,
-            tables,
-            indices,
-        }
+    pub fn new(tables: &'a [DtaWriteValueLabelTable<'a>], indices: &'a [Option<usize>]) -> Self {
+        Self { tables, indices }
     }
 }
 
@@ -221,12 +227,12 @@ impl<'a> DtaWriteValueLabelRegistry<'a> {
 impl DtaWriteValueLabelSource for DtaWriteValueLabelRegistry<'_> {
     fn value_label_name(&self, column: usize) -> Option<&str> {
         let table_index = self.indices.get(column).copied().flatten()?;
-        self.names.get(table_index).copied()
+        self.tables.get(table_index).map(|table| table.name)
     }
 
     fn value_labels(&self, column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
         let table_index = self.indices.get(column).copied().flatten()?;
-        self.tables.get(table_index).map(Vec::as_slice)
+        self.tables.get(table_index).map(|table| table.entries)
     }
 }
 
@@ -2124,15 +2130,24 @@ where
             "value-label table index count does not match the columns".to_owned(),
         ));
     }
-    if registry.names.len() != registry.tables.len()
-        || registry
-            .indices
-            .iter()
-            .flatten()
-            .any(|&index| index >= registry.tables.len())
+    if registry
+        .indices
+        .iter()
+        .flatten()
+        .any(|&index| index >= registry.tables.len())
     {
         return Err(DtaWriteError::InvalidDatasetMetadata(
             "value-label table registry is inconsistent".to_owned(),
+        ));
+    }
+    if data
+        .columns
+        .iter()
+        .zip(registry.indices)
+        .any(|(column, table_index)| column.has_value_labels != table_index.is_some())
+    {
+        return Err(DtaWriteError::InvalidDatasetMetadata(
+            "value-label table registry does not match the columns".to_owned(),
         ));
     }
     validate_value_label_names(data, registry)?;

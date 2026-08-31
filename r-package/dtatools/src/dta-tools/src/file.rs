@@ -2719,22 +2719,21 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
     offset: u64,
     length: usize,
     encoding: TextEncoding,
-    requested_offsets: &[usize],
+    requested_offsets: &mut [usize],
     requested_offsets_start: u64,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     context: &'static str,
-) -> Result<(String, Vec<usize>), DtaError> {
+) -> Result<String, DtaError> {
     let mut ordered = requested_offsets
         .iter()
         .copied()
         .enumerate()
         .map(|(index, offset)| (offset, index))
         .collect::<Vec<_>>();
-    // Equal raw offsets retain table-entry order so a malformed shared offset
-    // reports the same first entry as the slice parser.
-    ordered.sort_by_key(|(offset, _)| *offset);
-    let mut mapped = vec![0; requested_offsets.len()];
+    // Boundary failures track the lowest source entry explicitly, so an
+    // unstable sort avoids another entry-sized merge-sort allocation.
+    ordered.sort_unstable_by_key(|(offset, _)| *offset);
     let mut next_mapping = 0;
     let mut output = String::new();
     let mut decoder = encoding.new_decoder();
@@ -2762,8 +2761,14 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
         let mut input_start = 0;
         while next_mapping < ordered.len() && ordered[next_mapping].0 < chunk_end {
             let boundary = ordered[next_mapping].0;
+            let group_end = next_mapping
+                + ordered[next_mapping..].partition_point(|(candidate, _)| *candidate == boundary);
             let input_end = boundary.saturating_sub(completed).min(bytes.len());
-            let original_index = ordered[next_mapping].1;
+            let original_index = ordered[next_mapping..group_end]
+                .iter()
+                .map(|(_, original_index)| *original_index)
+                .min()
+                .expect("offset group is nonempty");
             if encoding.is_utf8()
                 && bytes.get(input_end).is_some_and(|byte| byte & 0xc0 == 0x80)
                 && !utf8_file_boundary(reader, offset, length, boundary, scratch, context)?
@@ -2781,10 +2786,10 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
                 &mut output,
             )?;
             input_start = input_end;
-            while next_mapping < ordered.len() && ordered[next_mapping].0 == boundary {
-                mapped[ordered[next_mapping].1] = output.len();
-                next_mapping += 1;
+            for mapping in &mut ordered[next_mapping..group_end] {
+                mapping.0 = output.len();
             }
+            next_mapping = group_end;
             decoder = encoding.new_decoder();
         }
         let last = chunk_end == length;
@@ -2806,7 +2811,12 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
                 });
             }
             output.shrink_to_fit();
-            return Ok((output, mapped));
+            ordered.sort_unstable_by_key(|(_, original_index)| *original_index);
+            for (requested_offset, (mapped_offset, _)) in requested_offsets.iter_mut().zip(ordered)
+            {
+                *requested_offset = mapped_offset;
+            }
+            return Ok(output);
         }
     }
 }
@@ -3947,52 +3957,6 @@ fn read_i32_at<R: Read + Seek>(
     read_i32(&bytes, 0, byte_order, context)
 }
 
-struct I32ArrayRead {
-    start: u64,
-    count: usize,
-    byte_order: ByteOrder,
-    context: &'static str,
-}
-
-fn read_i32_array_streaming<R: Read + Seek, F: FnMut() -> bool>(
-    reader: &mut R,
-    scratch: &mut Scratch,
-    should_interrupt: &mut F,
-    options: I32ArrayRead,
-) -> Result<Vec<i32>, DtaError> {
-    let I32ArrayRead {
-        start,
-        count,
-        byte_order,
-        context,
-    } = options;
-    let mut output = Vec::with_capacity(count);
-    let mut raw = Vec::new();
-    let entries_per_chunk = (scratch.limit / 4).max(1);
-    while output.len() < count {
-        check_cancel(should_interrupt)?;
-        let chunk_count = (count - output.len()).min(entries_per_chunk);
-        let chunk_bytes = chunk_count
-            .checked_mul(4)
-            .ok_or(DtaError::ArithmeticOverflow("value-label array length"))?;
-        let byte_offset = output
-            .len()
-            .checked_mul(4)
-            .ok_or(DtaError::ArithmeticOverflow("value-label array offset"))?;
-        let chunk_start = checked_add_u64(
-            start,
-            u64::try_from(byte_offset)
-                .map_err(|_| DtaError::ArithmeticOverflow("value-label array offset"))?,
-            "value-label array offset",
-        )?;
-        read_exact_at_into(reader, chunk_start, chunk_bytes, scratch, &mut raw, context)?;
-        for offset in (0..chunk_bytes).step_by(4) {
-            output.push(read_i32(&raw, offset, byte_order, context)?);
-        }
-    }
-    Ok(output)
-}
-
 struct ValueLabelOffsetRead {
     start: u64,
     count: usize,
@@ -4421,20 +4385,49 @@ fn validate_unselected_value_label_table<R: Read + Seek, F: FnMut() -> bool>(
     Ok(())
 }
 
-fn first_nul_positions(text: &[u8], offsets: &[usize]) -> Vec<Option<usize>> {
-    let mut ordered = (0..offsets.len()).collect::<Vec<_>>();
-    ordered.sort_by_key(|&index| offsets[index]);
-    let mut positions = vec![None; offsets.len()];
-    let mut next = 0_usize;
-    for (position, byte) in text.iter().enumerate() {
-        if *byte == 0 {
-            while next < ordered.len() && offsets[ordered[next]] <= position {
-                positions[ordered[next]] = Some(position);
-                next += 1;
-            }
-        }
-    }
+fn nul_positions(text: &[u8]) -> Vec<usize> {
+    text.iter()
+        .enumerate()
+        .filter_map(|(position, byte)| (*byte == 0).then_some(position))
+        .collect()
+}
+
+fn first_nul_at_or_after(positions: &[usize], offset: usize) -> Option<usize> {
     positions
+        .get(positions.partition_point(|&position| position < offset))
+        .copied()
+}
+
+fn value_label_source_text_offset<R: Read + Seek>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    offsets_start: u64,
+    text_start: u64,
+    entry_index: usize,
+    byte_order: ByteOrder,
+) -> Result<(i32, u64), DtaError> {
+    let offset_position = checked_add_u64(
+        offsets_start,
+        u64::try_from(entry_index)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label entry offset"))?
+            .checked_mul(4)
+            .ok_or(DtaError::ArithmeticOverflow("value-label entry offset"))?,
+        "value-label entry offset",
+    )?;
+    let text_offset = read_i32_at(
+        reader,
+        offset_position,
+        byte_order,
+        scratch,
+        "reading value-label text offset",
+    )?;
+    let label_start = checked_add_u64(
+        text_start,
+        u64::try_from(text_offset)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
+        "value-label text offset",
+    )?;
+    Ok((text_offset, label_start))
 }
 
 fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
@@ -4957,7 +4950,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             "value-label text",
         )?;
         let entries = if retain {
-            let text_offsets = read_value_label_offsets_streaming(
+            let mut decoded_offsets = read_value_label_offsets_streaming(
                 reader,
                 scratch,
                 should_interrupt,
@@ -4970,64 +4963,92 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                     encoding,
                 },
             )?;
-            let values = read_i32_array_streaming(
-                reader,
-                scratch,
-                should_interrupt,
-                I32ArrayRead {
-                    start: values_start,
-                    count: entry_count,
-                    byte_order: metadata.byte_order,
-                    context: "reading value-label value",
-                },
-            )?;
-            let (decoded_text, decoded_offsets) = decode_range_with_offsets(
+            let decoded_text = decode_range_with_offsets(
                 reader,
                 text_start,
                 text_length,
                 encoding,
-                &text_offsets,
+                &mut decoded_offsets,
                 offsets_start,
                 scratch,
                 should_interrupt,
                 "reading value-label text",
             )?;
-            let nul_positions = first_nul_positions(decoded_text.as_bytes(), &decoded_offsets);
+            let terminators = nul_positions(decoded_text.as_bytes());
             let mut entries = Vec::with_capacity(entry_count);
-            for (entry_index, ((value, text_offset), decoded_offset)) in values
-                .into_iter()
-                .zip(text_offsets)
-                .zip(decoded_offsets)
-                .enumerate()
-            {
+            let mut raw_values = Vec::new();
+            let entries_per_chunk = (scratch.limit / 4).max(1);
+            while entries.len() < entry_count {
                 check_cancel(should_interrupt)?;
-                let label_start = checked_add_u64(
-                    text_start,
-                    u64::try_from(text_offset)
-                        .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
-                    "value-label text offset",
+                let chunk_count = (entry_count - entries.len()).min(entries_per_chunk);
+                let byte_offset = entries
+                    .len()
+                    .checked_mul(4)
+                    .ok_or(DtaError::ArithmeticOverflow("value-label value offset"))?;
+                let chunk_start = checked_add_u64(
+                    values_start,
+                    u64::try_from(byte_offset)
+                        .map_err(|_| DtaError::ArithmeticOverflow("value-label value offset"))?,
+                    "value-label value offset",
                 )?;
-                let Some(nul) = nul_positions[entry_index] else {
-                    return Err(DtaError::MissingNulTerminator {
-                        context: "value-label text",
-                        offset: error_offset(label_start),
+                read_exact_at_into(
+                    reader,
+                    chunk_start,
+                    chunk_count * 4,
+                    scratch,
+                    &mut raw_values,
+                    "reading value-label value",
+                )?;
+                for raw_offset in (0..chunk_count * 4).step_by(4) {
+                    let entry_index = entries.len();
+                    let value = read_i32(
+                        &raw_values,
+                        raw_offset,
+                        metadata.byte_order,
+                        "reading value-label value",
+                    )?;
+                    let decoded_offset = decoded_offsets[entry_index];
+                    let Some(nul) = first_nul_at_or_after(&terminators, decoded_offset) else {
+                        let (_, label_start) = value_label_source_text_offset(
+                            reader,
+                            scratch,
+                            offsets_start,
+                            text_start,
+                            entry_index,
+                            metadata.byte_order,
+                        )?;
+                        return Err(DtaError::MissingNulTerminator {
+                            context: "value-label text",
+                            offset: error_offset(label_start),
+                        });
+                    };
+                    let Some(label) = decoded_text.get(decoded_offset..nul) else {
+                        let (text_offset, label_start) = value_label_source_text_offset(
+                            reader,
+                            scratch,
+                            offsets_start,
+                            text_start,
+                            entry_index,
+                            metadata.byte_order,
+                        )?;
+                        return Err(DtaError::InvalidValueLabelTextOffset {
+                            entry_index,
+                            offset: error_offset(label_start),
+                            text_offset,
+                            text_length,
+                        });
+                    };
+                    let mut label = label.to_owned();
+                    label.shrink_to_fit();
+                    entries.push(ValueLabelEntry {
+                        value,
+                        missing_tag: classify_long_missing_for_version(
+                            value,
+                            metadata.format_version,
+                        ),
+                        label,
                     });
-                };
-                let label = decoded_text.get(decoded_offset..nul).ok_or(
-                    DtaError::InvalidValueLabelTextOffset {
-                        entry_index,
-                        offset: error_offset(label_start),
-                        text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
-                        text_length,
-                    },
-                )?;
-                let mut label = label.to_owned();
-                label.shrink_to_fit();
-                entries.push(ValueLabelEntry {
-                    value,
-                    missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-                    label,
-                });
+                }
             }
             Some(entries)
         } else {
