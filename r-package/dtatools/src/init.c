@@ -2439,6 +2439,16 @@ static SEXP dictstring_cached_value(
     return cached;
 }
 
+static SEXP dictstring_value_with_cache(
+    SEXP value, R_xlen_t index, SEXP cache
+) {
+    dictstring_data *data = dictstring_storage(value);
+    if (index < 0 || (size_t) index >= data->length) {
+        Rf_error("invalid dtatools string-vector index");
+    }
+    return dictstring_cached_value(data, cache, data->value_ids[index]);
+}
+
 static R_xlen_t dictstring_length(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return XLENGTH(materialized);
@@ -2461,8 +2471,33 @@ static SEXP dictstring_value(SEXP value, R_xlen_t index) {
     return dictstring_cached_value(data, cache, id);
 }
 
+static SEXP dictstring_materialized_values(SEXP value, SEXP cache) {
+    dictstring_data *data = dictstring_storage(value);
+    R_xlen_t dictionary_length = XLENGTH(cache);
+    for (R_xlen_t id = 0; id < dictionary_length; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        (void) dictstring_cached_value(data, cache, (uint32_t) id);
+    }
+    SEXP materialized = PROTECT(Rf_allocVector(
+        STRSXP, (R_xlen_t) data->length
+    ));
+    for (size_t index = 0; index < data->length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        uint32_t id = data->value_ids[index];
+        if ((R_xlen_t) id >= dictionary_length) {
+            Rf_error("invalid dtatools string-dictionary index");
+        }
+        SET_STRING_ELT(
+            materialized, (R_xlen_t) index,
+            VECTOR_ELT(cache, (R_xlen_t) id)
+        );
+    }
+    UNPROTECT(1);
+    return materialized;
+}
+
 static SEXP dictstring_materialize_impl(
-    SEXP value, Rboolean writeable, int keep_compact
+    SEXP value, Rboolean writeable, int keep_compact, SEXP private_cache
 ) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) {
@@ -2475,30 +2510,9 @@ static SEXP dictstring_materialize_impl(
         R_set_altrep_data1(value, R_altrep_data1(detached));
         UNPROTECT(1);
     }
-    dictstring_data *data = dictstring_storage(value);
-    SEXP cache = dictstring_cache(value);
-    R_xlen_t dictionary_length = XLENGTH(cache);
-    SEXP *dictionary_values = (SEXP *) R_alloc(
-        (R_SIZE_T) dictionary_length, (int) sizeof(SEXP)
-    );
-    for (R_xlen_t id = 0; id < dictionary_length; id++) {
-        if ((id & 16383) == 0) R_CheckUserInterrupt();
-        dictionary_values[id] = dictstring_cached_value(
-            data, cache, (uint32_t) id
-        );
-    }
-    materialized = PROTECT(Rf_allocVector(STRSXP, (R_xlen_t) data->length));
-    for (size_t index = 0; index < data->length; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        uint32_t id = data->value_ids[index];
-        if ((R_xlen_t) id >= dictionary_length) {
-            Rf_error("invalid dtatools string-dictionary index");
-        }
-        SET_STRING_ELT(
-            materialized, (R_xlen_t) index,
-            dictionary_values[id]
-        );
-    }
+    SEXP cache = private_cache == R_NilValue
+        ? dictstring_cache(value) : private_cache;
+    materialized = PROTECT(dictstring_materialized_values(value, cache));
     R_set_altrep_data2(value, materialized);
     if (!keep_compact) dictstring_finalize(R_altrep_data1(value));
     UNPROTECT(1);
@@ -2506,11 +2520,11 @@ static SEXP dictstring_materialize_impl(
 }
 
 static SEXP dictstring_materialize(SEXP value, Rboolean writeable) {
-    return dictstring_materialize_impl(value, writeable, 0);
+    return dictstring_materialize_impl(value, writeable, 0, R_NilValue);
 }
 
-static SEXP dictstring_materialize_for_patch(SEXP value) {
-    return dictstring_materialize_impl(value, TRUE, 1);
+static SEXP dictstring_materialize_for_patch(SEXP value, SEXP private_cache) {
+    return dictstring_materialize_impl(value, TRUE, 1, private_cache);
 }
 
 static void *dictstring_dataptr(SEXP value, Rboolean writeable) {
@@ -3673,6 +3687,22 @@ static SEXP metadata_string_materialize(SEXP value) {
     return materialized;
 }
 
+static SEXP metadata_string_materialize_for_patch(
+    SEXP value, SEXP dictionary, SEXP private_cache
+) {
+    SEXP materialized = R_altrep_data2(value);
+    if (materialized != R_NilValue) {
+        return detach_shared_materialized_payload(value);
+    }
+    materialized = PROTECT(dictstring_materialized_values(
+        dictionary, private_cache
+    ));
+    R_set_altrep_data2(value, materialized);
+    R_set_altrep_data1(value, R_NilValue);
+    UNPROTECT(1);
+    return materialized;
+}
+
 static void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
     (void) writeable;
     SEXP materialized = metadata_string_materialize(value);
@@ -4081,28 +4111,65 @@ static R_xlen_t reference_patch_row(
     return reference_row_at(rows, index) - 1;
 }
 
+typedef enum {
+    REFERENCE_VALUES_SCALAR,
+    REFERENCE_VALUES_SELECTED,
+    REFERENCE_VALUES_BY_ROW
+} reference_value_mode;
+
 typedef struct {
-    numeric_reader reader;
     R_xlen_t count;
     R_xlen_t value_count;
+    reference_value_mode mode;
+} reference_value_plan;
+
+static reference_value_plan reference_value_plan_create(
+    SEXP values, const reference_rows *rows, R_xlen_t count,
+    R_xlen_t row_count, int allow_by_row, const char *error_message
+) {
+    reference_value_plan plan = {
+        count, XLENGTH(values), REFERENCE_VALUES_SELECTED
+    };
+    if (plan.value_count == 1) {
+        plan.mode = REFERENCE_VALUES_SCALAR;
+    } else if (allow_by_row && rows->value != R_NilValue &&
+               plan.value_count == row_count) {
+        plan.mode = REFERENCE_VALUES_BY_ROW;
+    } else if (plan.value_count != count &&
+               !(count == 0 && plan.value_count == 0)) {
+        Rf_error("%s", error_message);
+    }
+    return plan;
+}
+
+static R_xlen_t reference_value_index(
+    const reference_value_plan *plan, const reference_rows *rows,
+    R_xlen_t index
+) {
+    if (plan->mode == REFERENCE_VALUES_SCALAR) return 0;
+    if (plan->mode == REFERENCE_VALUES_BY_ROW) {
+        return reference_patch_row(rows, index);
+    }
+    return index;
+}
+
+typedef struct {
+    numeric_reader reader;
+    reference_value_plan values;
     unsigned char scalar_encoded[4];
     int scalar_missing_code;
-    int by_row;
 } compact_replacement_plan;
 
 static compact_replacement_plan compact_replacement_plan_create(
     const numeric_data *target, SEXP values, const reference_rows *rows,
-    R_xlen_t count, R_xlen_t target_length
+    reference_value_plan value_plan
 ) {
     compact_replacement_plan plan;
     memset(&plan, 0, sizeof(plan));
-    plan.count = count;
-    plan.value_count = XLENGTH(values);
-    plan.by_row = rows->value != R_NilValue &&
-        plan.value_count == target_length;
+    plan.values = value_plan;
     plan.scalar_missing_code = -1;
-    plan.reader = numeric_reader_create(values, plan.value_count);
-    if (plan.value_count == 1) {
+    plan.reader = numeric_reader_create(values, value_plan.value_count);
+    if (value_plan.mode == REFERENCE_VALUES_SCALAR) {
         double value = numeric_reader_at(
             &plan.reader, 0, &plan.scalar_missing_code
         );
@@ -4114,11 +4181,12 @@ static compact_replacement_plan compact_replacement_plan_create(
             plan.scalar_encoded
         );
     } else {
-        for (R_xlen_t index = 0; index < count; index++) {
+        for (R_xlen_t index = 0; index < value_plan.count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             int missing_code;
-            R_xlen_t value_index = plan.by_row
-                ? reference_patch_row(rows, index) : index;
+            R_xlen_t value_index = reference_value_index(
+                &value_plan, rows, index
+            );
             double value = numeric_reader_at(
                 &plan.reader, value_index, &missing_code
             );
@@ -4133,7 +4201,7 @@ static void apply_compact_replacement(
     const compact_replacement_plan *replacement
 ) {
     size_t width = numeric_kind_width(target->kind);
-    if (replacement->value_count == 1) {
+    if (replacement->values.mode == REFERENCE_VALUES_SCALAR) {
         int new_missing = replacement->scalar_missing_code >= 0;
         if (rows->value == R_NilValue) {
             fill_encoded_compact_patch_value(
@@ -4142,7 +4210,8 @@ static void apply_compact_replacement(
             target->missing_count = new_missing ? target->length : 0;
             return;
         }
-        for (R_xlen_t index = 0; index < replacement->count; index++) {
+        for (R_xlen_t index = 0;
+             index < replacement->values.count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             size_t row = (size_t) reference_patch_row(rows, index);
             int old_missing = numeric_value_is_missing_at(target, row);
@@ -4154,11 +4223,13 @@ static void apply_compact_replacement(
         }
         return;
     }
-    for (R_xlen_t index = 0; index < replacement->count; index++) {
+    for (R_xlen_t index = 0;
+         index < replacement->values.count; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         int missing_code;
-        R_xlen_t value_index = replacement->by_row
-            ? reference_patch_row(rows, index) : index;
+        R_xlen_t value_index = reference_value_index(
+            &replacement->values, rows, index
+        );
         double value = numeric_reader_at(
             &replacement->reader, value_index, &missing_code
         );
@@ -4202,7 +4273,7 @@ static void restore_compact_patch(compact_patch_transaction *transaction) {
             );
         }
     } else {
-        R_xlen_t count = transaction->replacement->count;
+        R_xlen_t count = transaction->replacement->values.count;
         for (R_xlen_t index = 0; index < count; index++) {
             size_t row = (size_t) reference_patch_row(
                 transaction->rows, index
@@ -4222,7 +4293,7 @@ static SEXP apply_compact_patch_transaction(void *data) {
     compact_patch_transaction *transaction =
         (compact_patch_transaction *) data;
     snapshot_reference_rows(transaction->rows);
-    R_xlen_t count = transaction->replacement->count;
+    R_xlen_t count = transaction->replacement->values.count;
     if (transaction->rows->value == R_NilValue) {
         if (transaction->undo_bytes > 0) {
             memcpy(
@@ -4280,11 +4351,12 @@ typedef struct {
     SEXP saved_data1;
     SEXP saved_data2;
     SEXP string_undo;
+    SEXP dictstring_private_cache;
+    SEXP dictstring_source;
     reference_rows *rows;
     unsigned char *undo;
     size_t width;
-    R_xlen_t count;
-    R_xlen_t replacement_count;
+    reference_value_plan values;
     R_xlen_t writes_completed;
     int type;
     int journal_complete;
@@ -4355,7 +4427,7 @@ static SEXP apply_vector_patch_transaction(void *data) {
     vector_patch_transaction *transaction =
         (vector_patch_transaction *) data;
     snapshot_reference_rows(transaction->rows);
-    for (R_xlen_t index = 0; index < transaction->count; index++) {
+    for (R_xlen_t index = 0; index < transaction->values.count; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t row = reference_patch_row(transaction->rows, index);
         switch (transaction->type) {
@@ -4383,18 +4455,31 @@ static SEXP apply_vector_patch_transaction(void *data) {
             );
             break;
         }
-        case STRSXP:
+        case STRSXP: {
+            SEXP value = transaction->dictstring_source != R_NilValue
+                ? dictstring_value_with_cache(
+                    transaction->dictstring_source, row,
+                    transaction->dictstring_private_cache
+                )
+                : STRING_ELT(transaction->target, row);
             SET_STRING_ELT(
-                transaction->string_undo, index,
-                STRING_ELT(transaction->target, row)
+                transaction->string_undo, index, value
             );
             break;
+        }
         }
     }
     transaction->journal_complete = 1;
 
     if (transaction->delayed_dictstring_finalize) {
-        (void) dictstring_materialize_for_patch(transaction->target);
+        (void) dictstring_materialize_for_patch(
+            transaction->target, transaction->dictstring_private_cache
+        );
+    } else if (transaction->dictstring_source != R_NilValue) {
+        (void) metadata_string_materialize_for_patch(
+            transaction->target, transaction->dictstring_source,
+            transaction->dictstring_private_cache
+        );
     } else {
         detach_materialized_patch_target(transaction->target);
     }
@@ -4412,11 +4497,12 @@ static SEXP apply_vector_patch_transaction(void *data) {
     } else if (transaction->type == LGLSXP) {
         logical_output = LOGICAL(transaction->target);
     }
-    for (R_xlen_t index = 0; index < transaction->count; index++) {
+    for (R_xlen_t index = 0; index < transaction->values.count; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t row = reference_patch_row(transaction->rows, index);
-        R_xlen_t replacement_index = transaction->replacement_count == 1
-            ? 0 : index;
+        R_xlen_t replacement_index = reference_value_index(
+            &transaction->values, transaction->rows, index
+        );
         switch (transaction->type) {
         case REALSXP:
             real_output[row] = REAL_ELT(
@@ -4470,21 +4556,19 @@ SEXP C_dtatools_patch_vector(
     }
     R_xlen_t target_length = XLENGTH(target);
     R_xlen_t count = rows == R_NilValue ? target_length : XLENGTH(rows);
-    R_xlen_t replacement_count = XLENGTH(replacement);
-    if (replacement_count != count && replacement_count != 1 &&
-        !(rows != R_NilValue && replacement_count == target_length) &&
-        !(count == 0 && replacement_count == 0)) {
-        Rf_error("invalid reference replacement plan");
-    }
     reference_rows row_plan = reference_patch_rows_create(
         rows, target, target_length
     );
 
     numeric_data *compact = unmaterialized_numeric_storage(target);
+    reference_value_plan value_plan = reference_value_plan_create(
+        replacement, &row_plan, count, target_length, compact != NULL,
+        "invalid reference replacement plan"
+    );
     if (compact != NULL) {
         compact_replacement_plan replacement_plan =
             compact_replacement_plan_create(
-                compact, replacement, &row_plan, count, target_length
+                compact, replacement, &row_plan, value_plan
             );
         size_t width = numeric_kind_width(compact->kind);
         if ((size_t) count > SIZE_MAX / width) {
@@ -4524,11 +4608,6 @@ SEXP C_dtatools_patch_vector(
         return result;
     }
 
-    if (replacement_count != count && replacement_count != 1 &&
-        !(count == 0 && replacement_count == 0)) {
-        Rf_error("invalid reference replacement plan");
-    }
-
     if (TYPEOF(target) != TYPEOF(replacement)) {
         Rf_error("replacement storage does not match its target");
     }
@@ -4538,8 +4617,9 @@ SEXP C_dtatools_patch_vector(
         Rf_error("unsupported reference replacement storage");
     }
     size_t width = type == REALSXP ? sizeof(double) : sizeof(int);
-    int delayed_dictstring_finalize = type == STRSXP &&
-        unmaterialized_dictstring_source(target) == target;
+    SEXP dictstring_source = type == STRSXP
+        ? unmaterialized_dictstring_source(target) : R_NilValue;
+    int delayed_dictstring_finalize = dictstring_source == target;
     SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
     SET_VECTOR_ELT(
         saved_state, 0,
@@ -4552,17 +4632,24 @@ SEXP C_dtatools_patch_vector(
     SEXP string_undo = PROTECT(
         type == STRSXP ? Rf_allocVector(STRSXP, count) : R_NilValue
     );
+    SEXP private_cache = PROTECT(
+        dictstring_source != R_NilValue
+            ? Rf_allocVector(
+                VECSXP, XLENGTH(dictstring_cache(dictstring_source))
+            )
+            : R_NilValue
+    );
     SEXP continuation = PROTECT(R_MakeUnwindCont());
     unsigned char *undo = NULL;
     if (type != STRSXP) {
         if ((size_t) count > SIZE_MAX / width) {
-            UNPROTECT(3);
+            UNPROTECT(4);
             Rf_error("reference replacement plan is too large");
         }
         size_t bytes = (size_t) count * width;
         undo = (unsigned char *) malloc(bytes == 0 ? 1 : bytes);
         if (undo == NULL) {
-            UNPROTECT(3);
+            UNPROTECT(4);
             Rf_error("could not allocate reference replacement rollback data");
         }
     }
@@ -4572,11 +4659,12 @@ SEXP C_dtatools_patch_vector(
         VECTOR_ELT(saved_state, 0),
         VECTOR_ELT(saved_state, 1),
         string_undo,
+        private_cache,
+        dictstring_source,
         &row_plan,
         undo,
         width,
-        count,
-        replacement_count,
+        value_plan,
         0,
         type,
         0,
@@ -4590,7 +4678,7 @@ SEXP C_dtatools_patch_vector(
     if (delayed_dictstring_finalize) {
         dictstring_finalize(R_altrep_data1(target));
     }
-    UNPROTECT(3);
+    UNPROTECT(4);
     return result;
 }
 
@@ -4617,9 +4705,11 @@ static double generated_double_value(
 
 static SEXP generate_double_numeric(
     SEXP values, const reference_rows *rows, size_t row_count,
-    R_xlen_t count, int temporal
+    const reference_value_plan *value_plan, int temporal
 ) {
-    numeric_reader reader = numeric_reader_create(values, XLENGTH(values));
+    numeric_reader reader = numeric_reader_create(
+        values, value_plan->value_count
+    );
     SEXP result = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) row_count));
     double *output = REAL(result);
     if (rows->value != R_NilValue) {
@@ -4629,8 +4719,7 @@ static SEXP generate_double_numeric(
         }
     }
 
-    R_xlen_t value_count = XLENGTH(values);
-    if (value_count == 1) {
+    if (value_plan->mode == REFERENCE_VALUES_SCALAR) {
         double value = generated_double_value(&reader, 0, temporal);
         if (rows->value == R_NilValue) {
             for (size_t index = 0; index < row_count; index++) {
@@ -4638,19 +4727,19 @@ static SEXP generate_double_numeric(
                 output[index] = value;
             }
         } else {
-            for (R_xlen_t index = 0; index < count; index++) {
+            for (R_xlen_t index = 0; index < value_plan->count; index++) {
                 if ((index & 16383) == 0) R_CheckUserInterrupt();
                 output[reference_patch_row(rows, index)] = value;
             }
         }
     } else {
-        int by_row = rows->value != R_NilValue &&
-            value_count == (R_xlen_t) row_count;
-        for (R_xlen_t index = 0; index < count; index++) {
+        for (R_xlen_t index = 0; index < value_plan->count; index++) {
             if ((index & 16383) == 0) R_CheckUserInterrupt();
             R_xlen_t row = rows->value == R_NilValue
                 ? index : reference_patch_row(rows, index);
-            R_xlen_t value_index = by_row ? row : index;
+            R_xlen_t value_index = reference_value_index(
+                value_plan, rows, index
+            );
             output[row] = generated_double_value(
                 &reader, value_index, temporal
             );
@@ -4722,13 +4811,11 @@ SEXP C_dtatools_generate_character(
     }
     R_xlen_t row_count = (R_xlen_t) row_count_double;
     R_xlen_t count = rows == R_NilValue ? row_count : XLENGTH(rows);
-    R_xlen_t value_count = XLENGTH(values);
-    if (value_count != count && value_count != 1 &&
-        !(rows != R_NilValue && value_count == row_count) &&
-        !(count == 0 && value_count == 0)) {
-        Rf_error("invalid reference string generation plan");
-    }
     reference_rows row_plan = reference_rows_create(rows, row_count);
+    reference_value_plan value_plan = reference_value_plan_create(
+        values, &row_plan, count, row_count, 1,
+        "invalid reference string generation plan"
+    );
     int declared_width = generated_string_declared_width(declared);
 
     SEXP result = PROTECT(Rf_allocVector(STRSXP, row_count));
@@ -4739,13 +4826,13 @@ SEXP C_dtatools_generate_character(
             SET_STRING_ELT(result, index, empty);
         }
     }
-    int by_row = rows != R_NilValue && value_count == row_count;
     for (R_xlen_t index = 0; index < count; index++) {
         if ((index & 16383) == 0) R_CheckUserInterrupt();
         R_xlen_t row = rows == R_NilValue
             ? index : reference_patch_row(&row_plan, index);
-        R_xlen_t value_index = value_count == 1
-            ? 0 : (by_row ? row : index);
+        R_xlen_t value_index = reference_value_index(
+            &value_plan, &row_plan, index
+        );
         SEXP value = STRING_ELT(values, value_index);
         SET_STRING_ELT(result, row, value == NA_STRING ? empty : value);
     }
@@ -4813,19 +4900,17 @@ SEXP C_dtatools_generate_numeric(
 
     R_xlen_t count = rows == R_NilValue
         ? (R_xlen_t) row_count : XLENGTH(rows);
-    R_xlen_t value_count = XLENGTH(values);
-    if (value_count != count && value_count != 1 &&
-        !(rows != R_NilValue && value_count == (R_xlen_t) row_count) &&
-        !(count == 0 && value_count == 0)) {
-        Rf_error("invalid reference generation plan");
-    }
     reference_rows row_plan = reference_rows_create(
         rows, (R_xlen_t) row_count
+    );
+    reference_value_plan value_plan = reference_value_plan_create(
+        values, &row_plan, count, (R_xlen_t) row_count, 1,
+        "invalid reference generation plan"
     );
 
     if (kind == NUMERIC_DOUBLE) {
         SEXP result = PROTECT(generate_double_numeric(
-            values, &row_plan, row_count, count, temporal
+            values, &row_plan, row_count, &value_plan, temporal
         ));
         set_generated_attributes(result, attributes);
         UNPROTECT(1);
@@ -4838,7 +4923,7 @@ SEXP C_dtatools_generate_numeric(
     };
     compact_replacement_plan replacement_plan =
         compact_replacement_plan_create(
-            &plan, values, &row_plan, count, (R_xlen_t) row_count
+            &plan, values, &row_plan, value_plan
         );
 
     size_t width = numeric_kind_width(kind);
@@ -4882,6 +4967,20 @@ SEXP C_dtatools_is_unmaterialized_dictstring(SEXP value) {
     return Rf_ScalarLogical(
         unmaterialized_dictstring_source(value) != R_NilValue
     );
+}
+
+SEXP C_dtatools_dictstring_cached_count(SEXP value) {
+    SEXP source = unmaterialized_dictstring_source(value);
+    if (source == R_NilValue) {
+        Rf_error("value is not an unmaterialized dictionary string");
+    }
+    SEXP cache = dictstring_cache(source);
+    R_xlen_t count = 0;
+    for (R_xlen_t index = 0; index < XLENGTH(cache); index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        if (VECTOR_ELT(cache, index) != R_NilValue) count++;
+    }
+    return Rf_ScalarReal((double) count);
 }
 
 SEXP C_dtatools_numeric_storage_matches(
@@ -5393,6 +5492,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
     {"C_dtatools_is_unmaterialized_dictstring",
      (DL_FUNC) &C_dtatools_is_unmaterialized_dictstring, 1},
+    {"C_dtatools_dictstring_cached_count",
+     (DL_FUNC) &C_dtatools_dictstring_cached_count, 1},
     {"C_dtatools_numeric_storage_matches",
      (DL_FUNC) &C_dtatools_numeric_storage_matches, 3},
     {"C_dtatools_force_altrep_materialization",

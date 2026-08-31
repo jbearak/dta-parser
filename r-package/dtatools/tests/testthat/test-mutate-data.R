@@ -163,6 +163,27 @@ test_that("where has documented logical and position semantics", {
     expect_error(replace_values(data, x, 1:2, where = TRUE), "has size")
     expect_error(replace_values(data, x, 1L, where = c(TRUE, FALSE)),
                  "has size")
+
+    for (shaped in list(
+        matrix(c(TRUE, FALSE, TRUE, FALSE), nrow = 2),
+        array(c(TRUE, FALSE, TRUE, FALSE), dim = c(2, 1, 2))
+    )) {
+        replace_target <- data.frame(x = 1:4)
+        replace_before <- serialize(replace_target, NULL)
+        expect_error(
+            replace_values(replace_target, x, 0L, where = shaped),
+            "logical values or numeric row positions"
+        )
+        expect_identical(serialize(replace_target, NULL), replace_before)
+
+        generate_target <- data.frame(x = 1:4)
+        generate_before <- serialize(generate_target, NULL)
+        expect_error(
+            gen(generate_target, y, 0L, where = shaped),
+            "logical values or numeric row positions"
+        )
+        expect_identical(serialize(generate_target, NULL), generate_before)
+    }
 })
 
 test_that("full-dataset values are gathered by selected row", {
@@ -332,16 +353,47 @@ test_that("native write interrupts roll back values and compact state", {
             save_arrow(data.frame(
                 target = rep(c("a", "b"), length.out = dictionary_size)
             ), dictionary_path)
-            interrupt_dictionary <- function(shared) {
-                data <- read_arrow(dictionary_path)
-                alias <- if (shared) {
-                    set_variable_labels(data, target = "Alias")
+            dictionary_matches <- function(value) {
+                chunk_size <- 250000L
+                starts <- seq.int(1L, dictionary_size, by = chunk_size)
+                all(vapply(starts, function(first) {
+                    last <- min(first + chunk_size - 1L, dictionary_size)
+                    expected_pair <- if (first %% 2L == 1L) {
+                        c("a", "b")
+                    } else {
+                        c("b", "a")
+                    }
+                    expected <- rep(
+                        expected_pair, length.out = last - first + 1L
+                    )
+                    identical(as.character(value[first:last]), expected)
+                }, logical(1)))
+            }
+            interrupt_dictionary <- function(shared, mutate_proxy = FALSE) {
+                source <- read_arrow(dictionary_path)
+                if (mutate_proxy) {
+                    alias <- source
+                    data <- set_variable_labels(source, target = "Target")
+                    shared <- TRUE
                 } else {
-                    NULL
+                    data <- source
+                    alias <- if (shared) {
+                        set_variable_labels(data, target = "Alias")
+                    } else {
+                        NULL
+                    }
+                }
+                cache_before <- dtatools:::.dictstring_cached_count(
+                    data$target
+                )
+                alias_cache_before <- if (shared) {
+                    dtatools:::.dictstring_cached_count(alias$target)
+                } else {
+                    cache_before
                 }
                 parent <- Sys.getpid()
                 signal <- parallel::mcparallel({
-                    Sys.sleep(0.22)
+                    Sys.sleep(if (mutate_proxy) 0.05 else 0.22)
                     tools::pskill(parent, tools::SIGINT)
                 }, silent = TRUE)
                 condition <- tryCatch(
@@ -355,6 +407,21 @@ test_that("native write interrupts roll back values and compact state", {
                     suppressWarnings(parallel::mccollect(signal)),
                     condition = function(...) NULL
                 )
+                compact <- dtatools:::.is_unmaterialized_dictstring(
+                    data$target
+                )
+                alias_compact <- !shared ||
+                    dtatools:::.is_unmaterialized_dictstring(alias$target)
+                cache_after <- if (compact) {
+                    dtatools:::.dictstring_cached_count(data$target)
+                } else {
+                    NA_real_
+                }
+                alias_cache_after <- if (shared && alias_compact) {
+                    dtatools:::.dictstring_cached_count(alias$target)
+                } else {
+                    cache_after
+                }
                 selected <- c(1L, dictionary_size / 2L, dictionary_size)
                 sample <- tryCatch(
                     as.character(data$target[selected]),
@@ -370,32 +437,35 @@ test_that("native write interrupts roll back values and compact state", {
                 }
                 list(
                     interrupted = inherits(condition, "interrupt"),
-                    compact = dtatools:::.is_unmaterialized_dictstring(
-                        data$target
-                    ),
+                    compact = compact,
+                    cache_before = cache_before,
+                    cache_after = cache_after,
                     readable = !inherits(sample, "condition"),
                     sample = if (inherits(sample, "condition")) {
                         character()
                     } else {
                         sample
                     },
-                    alias_compact = !shared ||
-                        dtatools:::.is_unmaterialized_dictstring(
-                            alias$target
-                        ),
+                    payload_matches = dictionary_matches(data$target),
+                    alias_compact = alias_compact,
+                    alias_cache_before = alias_cache_before,
+                    alias_cache_after = alias_cache_after,
                     alias_readable = !inherits(alias_sample, "condition"),
                     alias_sample = if (inherits(alias_sample, "condition")) {
                         character()
                     } else {
                         alias_sample
-                    }
+                    },
+                    alias_payload_matches = !shared ||
+                        dictionary_matches(alias$target)
                 )
             }
             list(
                 compact = interrupt_patch(TRUE),
                 ordinary = interrupt_patch(FALSE),
                 dictionary = interrupt_dictionary(FALSE),
-                shared_dictionary = interrupt_dictionary(TRUE)
+                shared_dictionary = interrupt_dictionary(TRUE),
+                proxy_dictionary = interrupt_dictionary(TRUE, TRUE)
             )
         },
         libpath = .libPaths(),
@@ -410,14 +480,20 @@ test_that("native write interrupts roll back values and compact state", {
         expect_identical(case$minimum, 1)
         expect_identical(case$maximum, 1)
     }
-    for (case in result[c("dictionary", "shared_dictionary")]) {
+    for (case in result[c(
+        "dictionary", "shared_dictionary", "proxy_dictionary"
+    )]) {
         expect_true(case$interrupted)
         expect_true(case$compact)
+        expect_identical(case$cache_after, case$cache_before)
         expect_true(case$readable)
         expect_identical(case$sample, c("a", "b", "b"))
+        expect_true(case$payload_matches)
         expect_true(case$alias_compact)
+        expect_identical(case$alias_cache_after, case$alias_cache_before)
         expect_true(case$alias_readable)
         expect_identical(case$alias_sample, c("a", "b", "b"))
+        expect_true(case$alias_payload_matches)
     }
 })
 

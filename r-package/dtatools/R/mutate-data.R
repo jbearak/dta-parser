@@ -260,9 +260,9 @@ gen <- function(data, variable, values, where = NULL) {
     if (is.null(value)) return(NULL)
     stata_positions <- inherits(value, "stata_numeric") &&
         !inherits(value, "stata_temporal")
-    if (!is.logical(value) &&
-        (!is.numeric(value) || (is.object(value) && !stata_positions) ||
-         !is.null(dim(value)))) {
+    if (!is.null(dim(value)) ||
+        (!is.logical(value) &&
+         (!is.numeric(value) || (is.object(value) && !stata_positions)))) {
         stop("`where` must yield logical values or numeric row positions",
              call. = FALSE)
     }
@@ -273,18 +273,14 @@ gen <- function(data, variable, values, where = NULL) {
     if (is.null(rows)) row_count else length(rows)
 }
 
-.slice_mutation_values <- function(values, rows, row_count) {
+.mutation_value_mode <- function(values, rows, row_count) {
     size <- vctrs::vec_size(values)
     selected <- .mutation_selected_count(rows, row_count)
-    if (size == row_count) {
-        # Native patch and generation plans gather full-dataset values by row.
-        # Keeping that distinction here also avoids exposing compact position
-        # vectors as full double indices in R slicing.
-        return(values)
+    if (size == 1L) return("scalar")
+    if (!is.null(rows) && size == row_count) return("row")
+    if (size == selected || (selected == 0L && size == 0L)) {
+        return("selected")
     }
-    if (size == selected) return(values)
-    if (size == 1L) return(values)
-    if (selected == 0L && size == 0L) return(values)
     stop(sprintf(
         paste0(
             "`values` has size %s; expected size 1, the selected-row ",
@@ -332,7 +328,7 @@ gen <- function(data, variable, values, where = NULL) {
     list(maximum = maximum, storage = storage)
 }
 
-.cast_replacement <- function(values, target, rows, row_count) {
+.cast_replacement <- function(values, target, rows, value_mode) {
     if (is.factor(target) || !is.null(dim(target)) ||
         !(typeof(target) %in% c("logical", "integer", "double", "character"))) {
         stop("The target column has an unsupported replacement type",
@@ -357,7 +353,7 @@ gen <- function(data, variable, values, where = NULL) {
     }
     # Fallback casts and string-width checks apply only to selected values.
     # Direct compact targets gather the same full vector in native code above.
-    if (!is.null(rows) && vctrs::vec_size(values) == row_count) {
+    if (identical(value_mode, "row")) {
         slice_rows <- if (inherits(rows, "stata_numeric")) {
             .stata_data(rows)
         } else {
@@ -392,7 +388,8 @@ gen <- function(data, variable, values, where = NULL) {
     selected <- .eval_mutation_expression(where, original$columns, "where")
     rows <- .mutation_rows(selected, original$nrow)
     evaluated <- .eval_mutation_expression(values, original$columns, "values")
-    values <- .slice_mutation_values(evaluated, rows, original$nrow)
+    value_mode <- .mutation_value_mode(evaluated, rows, original$nrow)
+    values <- evaluated
 
     state <- .reference_state(data)
     if (generate) {
@@ -403,7 +400,7 @@ gen <- function(data, variable, values, where = NULL) {
     } else {
         column <- original$columns[[target$location]]
         replacement <- .cast_replacement(
-            values, column, rows, original$nrow
+            values, column, rows, value_mode
         )
         if (.mutation_selected_count(rows, original$nrow) == 0L) {
             return(invisible(data))

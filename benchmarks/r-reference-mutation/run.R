@@ -2,6 +2,25 @@
 
 suppressPackageStartupMessages(library(dtatools))
 
+profile_memory <- function(code, prefix) {
+    path <- tempfile(prefix, fileext = ".out")
+    on.exit({
+        Rprofmem(NULL)
+        unlink(path)
+    }, add = TRUE)
+    Rprofmem(path, threshold = 1000)
+    elapsed <- system.time(force(code))[["elapsed"]]
+    Rprofmem(NULL)
+    records <- readLines(path, warn = FALSE)
+    allocations <- suppressWarnings(as.numeric(sub(" .*", "", records)))
+    allocations <- allocations[is.finite(allocations)]
+    list(
+        elapsed = elapsed,
+        total = sum(allocations),
+        largest = if (length(allocations) == 0L) 0 else max(allocations)
+    )
+}
+
 rows <- 5000000L
 small_rows <- 50000L
 repetitions <- 100L
@@ -21,24 +40,14 @@ data <- data.frame(
 )
 untouched_trace <- tracemem(data$untouched)
 
-profile <- tempfile("dtatools-reference-replacement-", fileext = ".out")
-Rprofmem(profile, threshold = 1000)
-replacement_time <- system.time(
+replacement_profile <- profile_memory(
     for (iteration in seq_len(repetitions)) {
         replace_values(data, compact, 2, where = rows)
-    }
-)[["elapsed"]] / repetitions
-Rprofmem(NULL)
-
-records <- readLines(profile, warn = FALSE)
-unlink(profile)
-allocation <- suppressWarnings(as.numeric(sub(" .*", "", records)))
-recorded_allocation <- allocation[is.finite(allocation)]
-largest_allocation <- if (length(recorded_allocation) == 0L) {
-    0
-} else {
-    max(recorded_allocation)
-}
+    },
+    "dtatools-reference-replacement-"
+)
+replacement_time <- replacement_profile$elapsed / repetitions
+largest_allocation <- replacement_profile$largest
 full_double_bytes <- as.double(rows) * 8
 compact_byte_bytes <- as.double(rows)
 
@@ -74,24 +83,14 @@ stopifnot(
 
 logical_rows <- rep(FALSE, rows)
 logical_rows[[rows]] <- TRUE
-logical_profile <- tempfile(
-    "dtatools-reference-logical-plan-", fileext = ".out"
-)
-Rprofmem(logical_profile, threshold = 1000)
-logical_plan_time <- system.time(
+logical_profile <- profile_memory(
     for (iteration in seq_len(5L)) {
         replace_values(data, compact, 3, where = logical_rows)
-    }
-)[["elapsed"]] / 5
-Rprofmem(NULL)
-logical_records <- readLines(logical_profile, warn = FALSE)
-unlink(logical_profile)
-logical_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", logical_records
-)))
-logical_plan_allocation <- sum(
-    logical_allocations[is.finite(logical_allocations)]
+    },
+    "dtatools-reference-logical-plan-"
 )
+logical_plan_time <- logical_profile$elapsed / 5
+logical_plan_allocation <- logical_profile$total
 stopifnot(
     logical_plan_time < 0.02,
     logical_plan_allocation < compact_byte_bytes
@@ -104,102 +103,43 @@ integer_explicit_plan_time <- system.time(
         replace_values(data, compact, 2, where = integer_explicit_rows)
     }
 )[["elapsed"]] / 3
-explicit_profile <- tempfile(
-    "dtatools-reference-explicit-plan-", fileext = ".out"
-)
-Rprofmem(explicit_profile, threshold = 1000)
-explicit_plan_time <- system.time(
+explicit_profile <- profile_memory(
     for (iteration in seq_len(3L)) {
         replace_values(data, compact, 2, where = explicit_rows)
-    }
-)[["elapsed"]] / 3
-Rprofmem(NULL)
-explicit_records <- readLines(explicit_profile, warn = FALSE)
-unlink(explicit_profile)
-explicit_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", explicit_records
-)))
-explicit_plan_allocation <- sum(
-    explicit_allocations[is.finite(explicit_allocations)]
+    },
+    "dtatools-reference-explicit-plan-"
 )
+explicit_plan_time <- explicit_profile$elapsed / 3
+explicit_plan_allocation <- explicit_profile$total
 stopifnot(
     explicit_plan_time < max(0.02, integer_explicit_plan_time * 4),
     explicit_plan_allocation < compact_byte_bytes
 )
 
 integer_replacement <- rep.int(2L, rows)
-vector_profile <- tempfile(
-    "dtatools-reference-vector-replacement-", fileext = ".out"
+vector_profile <- profile_memory(
+    replace_values(data, compact, integer_replacement),
+    "dtatools-reference-vector-replacement-"
 )
-Rprofmem(vector_profile, threshold = 1000)
-vector_replacement_time <- system.time(
-    replace_values(data, compact, integer_replacement)
-)[["elapsed"]]
-Rprofmem(NULL)
-vector_records <- readLines(vector_profile, warn = FALSE)
-unlink(vector_profile)
-vector_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", vector_records
-)))
-recorded_vector <- vector_allocations[is.finite(vector_allocations)]
-largest_vector_allocation <- if (length(recorded_vector) == 0L) {
-    0
-} else {
-    max(recorded_vector)
-}
+vector_replacement_time <- vector_profile$elapsed
+largest_vector_allocation <- vector_profile$largest
 
-position_vector_profile <- tempfile(
-    "dtatools-reference-position-vector-replacement-", fileext = ".out"
-)
-Rprofmem(position_vector_profile, threshold = 1000)
-position_vector_replacement_time <- system.time(
+position_vector_profile <- profile_memory(
     replace_values(
         data, compact, integer_replacement, where = explicit_rows
-    )
-)[["elapsed"]]
-Rprofmem(NULL)
-position_vector_records <- readLines(
-    position_vector_profile, warn = FALSE
+    ),
+    "dtatools-reference-position-vector-replacement-"
 )
-unlink(position_vector_profile)
-position_vector_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", position_vector_records
-)))
-recorded_position_vector <- position_vector_allocations[
-    is.finite(position_vector_allocations)
-]
-largest_position_vector_allocation <- if (
-    length(recorded_position_vector) == 0L
-) {
-    0
-} else {
-    max(recorded_position_vector)
-}
+position_vector_replacement_time <- position_vector_profile$elapsed
+largest_position_vector_allocation <- position_vector_profile$largest
 
 compact_replacement <- stata_byte(rep(3, rows))
-compact_vector_profile <- tempfile(
-    "dtatools-reference-compact-vector-replacement-", fileext = ".out"
+compact_vector_profile <- profile_memory(
+    replace_values(data, compact, .env$compact_replacement),
+    "dtatools-reference-compact-vector-replacement-"
 )
-Rprofmem(compact_vector_profile, threshold = 1000)
-compact_vector_replacement_time <- system.time(
-    replace_values(data, compact, .env$compact_replacement)
-)[["elapsed"]]
-Rprofmem(NULL)
-compact_vector_records <- readLines(compact_vector_profile, warn = FALSE)
-unlink(compact_vector_profile)
-compact_vector_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", compact_vector_records
-)))
-recorded_compact_vector <- compact_vector_allocations[
-    is.finite(compact_vector_allocations)
-]
-largest_compact_vector_allocation <- if (
-    length(recorded_compact_vector) == 0L
-) {
-    0
-} else {
-    max(recorded_compact_vector)
-}
+compact_vector_replacement_time <- compact_vector_profile$elapsed
+largest_compact_vector_allocation <- compact_vector_profile$largest
 stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
     identical(as.double(data$compact[[rows]]), 3),
@@ -213,32 +153,13 @@ stopifnot(
 
 ordinary_data <- data.frame(value = rep(1, rows))
 ordinary_values <- rep(2, rows)
-ordinary_sparse_profile <- tempfile(
-    "dtatools-reference-ordinary-sparse-replacement-", fileext = ".out"
+ordinary_sparse_profile <- profile_memory(
+    replace_values(ordinary_data, value, ordinary_values, where = rows),
+    "dtatools-reference-ordinary-sparse-replacement-"
 )
-Rprofmem(ordinary_sparse_profile, threshold = 1000)
-ordinary_sparse_time <- system.time(
-    replace_values(ordinary_data, value, ordinary_values, where = rows)
-)[["elapsed"]]
-Rprofmem(NULL)
-ordinary_sparse_records <- readLines(
-    ordinary_sparse_profile, warn = FALSE
-)
-unlink(ordinary_sparse_profile)
-ordinary_sparse_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", ordinary_sparse_records
-)))
-recorded_ordinary_sparse <- ordinary_sparse_allocations[
-    is.finite(ordinary_sparse_allocations)
-]
-total_ordinary_sparse_allocation <- sum(recorded_ordinary_sparse)
-largest_ordinary_sparse_allocation <- if (
-    length(recorded_ordinary_sparse) == 0L
-) {
-    0
-} else {
-    max(recorded_ordinary_sparse)
-}
+ordinary_sparse_time <- ordinary_sparse_profile$elapsed
+total_ordinary_sparse_allocation <- ordinary_sparse_profile$total
+largest_ordinary_sparse_allocation <- ordinary_sparse_profile$largest
 stopifnot(
     identical(ordinary_data$value[[rows]], 2),
     largest_ordinary_sparse_allocation < compact_byte_bytes,
@@ -278,33 +199,16 @@ stopifnot(
 
 proxy_source <- stata_byte(rep(1, rows))
 proxy <- data.frame(compact = dtatools:::.metadata_copy(proxy_source))
-proxy_profile <- tempfile("dtatools-reference-proxy-", fileext = ".out")
-Rprofmem(proxy_profile, threshold = 1000)
-replace_values(proxy, compact, 2, where = rows)
-Rprofmem(NULL)
-proxy_records <- readLines(proxy_profile, warn = FALSE)
-unlink(proxy_profile)
-proxy_allocation <- suppressWarnings(as.numeric(sub(" .*", "", proxy_records)))
-largest_proxy_allocation <- max(proxy_allocation, na.rm = TRUE)
-second_proxy_profile <- tempfile(
-    "dtatools-reference-proxy-second-", fileext = ".out"
+proxy_profile <- profile_memory(
+    replace_values(proxy, compact, 2, where = rows),
+    "dtatools-reference-proxy-"
 )
-Rprofmem(second_proxy_profile, threshold = 1000)
-replace_values(proxy, compact, 3, where = rows - 1L)
-Rprofmem(NULL)
-second_proxy_records <- readLines(second_proxy_profile, warn = FALSE)
-unlink(second_proxy_profile)
-second_proxy_allocation <- suppressWarnings(as.numeric(sub(
-    " .*", "", second_proxy_records
-)))
-recorded_second_proxy <- second_proxy_allocation[
-    is.finite(second_proxy_allocation)
-]
-largest_second_proxy_allocation <- if (length(recorded_second_proxy) == 0L) {
-    0
-} else {
-    max(recorded_second_proxy)
-}
+largest_proxy_allocation <- proxy_profile$largest
+second_proxy_profile <- profile_memory(
+    replace_values(proxy, compact, 3, where = rows - 1L),
+    "dtatools-reference-proxy-second-"
+)
+largest_second_proxy_allocation <- second_proxy_profile$largest
 stopifnot(
     dtatools:::.is_unmaterialized_numeric_altrep(proxy$compact),
     identical(as.double(proxy_source[[rows]]), 1),
@@ -315,20 +219,12 @@ stopifnot(
 )
 
 compact_trace <- tracemem(data$compact)
-generation_profile <- tempfile(
-    "dtatools-reference-generation-", fileext = ".out"
+generation_profile <- profile_memory(
+    gen(data, generated, stata_byte(3)),
+    "dtatools-reference-generation-"
 )
-Rprofmem(generation_profile, threshold = 1000)
-generation_time <- system.time(
-    gen(data, generated, stata_byte(3))
-)[["elapsed"]]
-Rprofmem(NULL)
-generation_records <- readLines(generation_profile, warn = FALSE)
-unlink(generation_profile)
-generation_allocation <- suppressWarnings(as.numeric(sub(
-    " .*", "", generation_records
-)))
-largest_generation_allocation <- max(generation_allocation, na.rm = TRUE)
+generation_time <- generation_profile$elapsed
+largest_generation_allocation <- generation_profile$largest
 stopifnot(
     identical(tracemem(data$compact), compact_trace),
     identical(tracemem(data$untouched), untouched_trace),
@@ -341,90 +237,33 @@ stopifnot(
 integer_generation_values <- seq_len(rows)
 integer_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
 integer_generation_trace <- tracemem(integer_generation_data$anchor)
-integer_generation_profile <- tempfile(
-    "dtatools-reference-integer-generation-", fileext = ".out"
+integer_generation_profile <- profile_memory(
+    gen(integer_generation_data, generated, integer_generation_values),
+    "dtatools-reference-integer-generation-"
 )
-Rprofmem(integer_generation_profile, threshold = 1000)
-integer_generation_time <- system.time(
-    gen(integer_generation_data, generated, integer_generation_values)
-)[["elapsed"]]
-Rprofmem(NULL)
-integer_generation_records <- readLines(
-    integer_generation_profile, warn = FALSE
-)
-unlink(integer_generation_profile)
-integer_generation_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", integer_generation_records
-)))
-recorded_integer_generation <- integer_generation_allocations[
-    is.finite(integer_generation_allocations)
-]
-largest_integer_generation_allocation <- if (
-    length(recorded_integer_generation) == 0L
-) {
-    0
-} else {
-    max(recorded_integer_generation)
-}
+integer_generation_time <- integer_generation_profile$elapsed
+largest_integer_generation_allocation <- integer_generation_profile$largest
 
 position_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
-position_generation_profile <- tempfile(
-    "dtatools-reference-position-vector-generation-", fileext = ".out"
-)
-Rprofmem(position_generation_profile, threshold = 1000)
-position_vector_generation_time <- system.time(
+position_generation_profile <- profile_memory(
     gen(
         position_generation_data, generated, integer_generation_values,
         where = explicit_rows
-    )
-)[["elapsed"]]
-Rprofmem(NULL)
-position_generation_records <- readLines(
-    position_generation_profile, warn = FALSE
+    ),
+    "dtatools-reference-position-vector-generation-"
 )
-unlink(position_generation_profile)
-position_generation_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", position_generation_records
-)))
-recorded_position_generation <- position_generation_allocations[
-    is.finite(position_generation_allocations)
-]
-largest_position_generation_allocation <- if (
-    length(recorded_position_generation) == 0L
-) {
-    0
-} else {
-    max(recorded_position_generation)
-}
-total_position_generation_allocation <- sum(recorded_position_generation)
+position_vector_generation_time <- position_generation_profile$elapsed
+largest_position_generation_allocation <- position_generation_profile$largest
+total_position_generation_allocation <- position_generation_profile$total
 
 compact_generation_values <- stata_byte(rep(2, rows))
 compact_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
-compact_generation_profile <- tempfile(
-    "dtatools-reference-compact-vector-generation-", fileext = ".out"
+compact_generation_profile <- profile_memory(
+    gen(compact_generation_data, generated, compact_generation_values),
+    "dtatools-reference-compact-vector-generation-"
 )
-Rprofmem(compact_generation_profile, threshold = 1000)
-compact_vector_generation_time <- system.time(
-    gen(compact_generation_data, generated, compact_generation_values)
-)[["elapsed"]]
-Rprofmem(NULL)
-compact_generation_records <- readLines(
-    compact_generation_profile, warn = FALSE
-)
-unlink(compact_generation_profile)
-compact_generation_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", compact_generation_records
-)))
-recorded_compact_generation <- compact_generation_allocations[
-    is.finite(compact_generation_allocations)
-]
-largest_compact_generation_allocation <- if (
-    length(recorded_compact_generation) == 0L
-) {
-    0
-} else {
-    max(recorded_compact_generation)
-}
+compact_vector_generation_time <- compact_generation_profile$elapsed
+largest_compact_generation_allocation <- compact_generation_profile$largest
 stopifnot(
     identical(tracemem(integer_generation_data$anchor),
               integer_generation_trace),
@@ -444,29 +283,12 @@ stopifnot(
     )
 )
 
-first_generated_patch_profile <- tempfile(
-    "dtatools-reference-first-generated-patch-", fileext = ".out"
+first_generated_patch_profile <- profile_memory(
+    replace_values(integer_generation_data, generated, 1, where = rows),
+    "dtatools-reference-first-generated-patch-"
 )
-Rprofmem(first_generated_patch_profile, threshold = 1000)
-replace_values(integer_generation_data, generated, 1, where = rows)
-Rprofmem(NULL)
-first_generated_patch_records <- readLines(
-    first_generated_patch_profile, warn = FALSE
-)
-unlink(first_generated_patch_profile)
-first_generated_patch_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", first_generated_patch_records
-)))
-recorded_first_generated_patch <- first_generated_patch_allocations[
-    is.finite(first_generated_patch_allocations)
-]
-largest_first_generated_patch_allocation <- if (
-    length(recorded_first_generated_patch) == 0L
-) {
-    0
-} else {
-    max(recorded_first_generated_patch)
-}
+largest_first_generated_patch_allocation <-
+    first_generated_patch_profile$largest
 stopifnot(
     dtatools:::.metadata_proxy_depth(
         integer_generation_data$generated
@@ -481,35 +303,16 @@ temporal_generation_values <- as.POSIXct(
     "2000-01-01", tz = "UTC"
 ) + seq_len(rows)
 temporal_generation_data <- data.frame(anchor = stata_byte(.size = rows))
-temporal_generation_profile <- tempfile(
-    "dtatools-reference-temporal-generation-", fileext = ".out"
-)
-Rprofmem(temporal_generation_profile, threshold = 1000)
-temporal_generation_time <- system.time(
+temporal_generation_profile <- profile_memory(
     gen(
         temporal_generation_data, generated,
         temporal_generation_values
-    )
-)[["elapsed"]]
-Rprofmem(NULL)
-temporal_generation_records <- readLines(
-    temporal_generation_profile, warn = FALSE
+    ),
+    "dtatools-reference-temporal-generation-"
 )
-unlink(temporal_generation_profile)
-temporal_generation_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", temporal_generation_records
-)))
-recorded_temporal_generation <- temporal_generation_allocations[
-    is.finite(temporal_generation_allocations)
-]
-total_temporal_generation_allocation <- sum(recorded_temporal_generation)
-largest_temporal_generation_allocation <- if (
-    length(recorded_temporal_generation) == 0L
-) {
-    0
-} else {
-    max(recorded_temporal_generation)
-}
+temporal_generation_time <- temporal_generation_profile$elapsed
+total_temporal_generation_allocation <- temporal_generation_profile$total
+largest_temporal_generation_allocation <- temporal_generation_profile$largest
 stopifnot(
     identical(
         as.double(temporal_generation_data$generated),
@@ -527,32 +330,13 @@ stopifnot(
 character_generation_data <- data.frame(
     anchor = stata_byte(rep(1, rows))
 )
-character_generation_profile <- tempfile(
-    "dtatools-reference-character-generation-", fileext = ".out"
+character_generation_profile <- profile_memory(
+    gen(character_generation_data, generated, "x"),
+    "dtatools-reference-character-generation-"
 )
-Rprofmem(character_generation_profile, threshold = 1000)
-character_generation_time <- system.time(
-    gen(character_generation_data, generated, "x")
-)[["elapsed"]]
-Rprofmem(NULL)
-character_generation_records <- readLines(
-    character_generation_profile, warn = FALSE
-)
-unlink(character_generation_profile)
-character_generation_allocations <- suppressWarnings(as.numeric(sub(
-    " .*", "", character_generation_records
-)))
-recorded_character_generation <- character_generation_allocations[
-    is.finite(character_generation_allocations)
-]
-total_character_generation_allocation <- sum(recorded_character_generation)
-largest_character_generation_allocation <- if (
-    length(recorded_character_generation) == 0L
-) {
-    0
-} else {
-    max(recorded_character_generation)
-}
+character_generation_time <- character_generation_profile$elapsed
+total_character_generation_allocation <- character_generation_profile$total
+largest_character_generation_allocation <- character_generation_profile$largest
 stopifnot(
     identical(
         as.character(character_generation_data$generated[c(1L, rows)]),
