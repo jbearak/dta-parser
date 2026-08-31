@@ -58,6 +58,10 @@ test_that("metadata accessors reject malformed and reserved input atomically", {
         set_stata_characteristic(data, "1bad", "value"),
         "valid Stata name"
     )
+    expect_error(
+        set_stata_characteristic(data, "_lang_list", "default"),
+        "language-control key"
+    )
     expect_error(stata_notes(data, "missing"), "does not exist")
     expect_identical(attributes(data), attributes(data.frame(x = 1)))
 })
@@ -81,6 +85,7 @@ test_that("DTA and Arrow writers reject over-limit characteristic values safely"
 
 test_that("DTA and Arrow round trips retain dataset and projected variable metadata", {
     data <- data.frame(x = stata_int(c(1, 2)), y = c("a", "b"))
+    attr(data$x, "labels") <- c(one = 1L, two = 2L)
     data <- set_stata_note(data, 3, "dataset gap")
     data <- set_stata_characteristic(data, "source", "survey")
     data <- set_stata_note(data, 2, "x note", variable = "x")
@@ -99,6 +104,7 @@ test_that("DTA and Arrow round trips retain dataset and projected variable metad
     expect_identical(stata_characteristics(from_dta), c(source = "survey"))
     expect_identical(stata_notes(from_dta, "x"), c(`2` = "x note"))
     expect_identical(stata_characteristics(from_dta, "x"), c(role = "id"))
+    expect_identical(attr(from_dta$x, "labels"), c(one = 1, two = 2))
 
     projected <- read_dta(dta, col_select = x)
     expect_identical(stata_notes(projected, "x"), c(`2` = "x note"))
@@ -114,6 +120,7 @@ test_that("DTA and Arrow round trips retain dataset and projected variable metad
         stata_characteristics(from_arrow, "x"),
         stata_characteristics(from_dta, "x")
     )
+    expect_identical(attr(from_arrow$x, "labels"), c(one = 1, two = 2))
     projected_arrow <- read_arrow(arrow, col_select = y)
     expect_identical(stata_notes(projected_arrow, "y"), c(`1` = "y note"))
     expect_false("x" %in% names(projected_arrow))

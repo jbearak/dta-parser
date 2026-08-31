@@ -12,7 +12,7 @@ export interface StataCharacteristicRecord {
 }
 
 const NOTE_NAME = /^note([0-9]+)$/;
-const MAX_METADATA_BYTES = 67_784;
+export const MAX_STATA_METADATA_VALUE_BYTES = 67_784;
 
 function noteNumber(name: string): number | null {
     const match = NOTE_NAME.exec(name);
@@ -22,18 +22,72 @@ function noteNumber(name: string): number | null {
         ? number : null;
 }
 
-function upsertNote(notes: StataNote[], number: number, text: string): void {
-    const existing = notes.find(note => note.number === number);
-    if (existing === undefined) notes.push({ number, text });
-    else existing.text = text;
+function reservedCharacteristicName(name: string): boolean {
+    return NOTE_NAME.test(name) || name === '_lang_list' || name === '_lang_c';
 }
 
-function upsertCharacteristic(
-    characteristics: StataCharacteristic[], name: string, value: string
-): void {
-    const existing = characteristics.find(item => item.name === name);
-    if (existing === undefined) characteristics.push({ name, value });
-    else existing.value = value;
+interface ScopeIndexes {
+    notes: Map<number, number>;
+    characteristics: Map<string, number>;
+}
+
+/** Incrementally folds raw characteristic records into canonical metadata. */
+export class StataMetadataCollector {
+    private readonly scopes: StataMetadataTarget[];
+    private readonly targetIndexes: Map<string, number>;
+    private readonly indexes: ScopeIndexes[];
+
+    constructor(dataset: StataMetadataTarget, variables: VariableInfo[]) {
+        this.scopes = [dataset, ...variables];
+        this.targetIndexes = new Map<string, number>([['_dta', 0]]);
+        variables.forEach((variable, index) => {
+            this.targetIndexes.set(variable.name, index + 1);
+        });
+        this.indexes = this.scopes.map(scope => ({
+            notes: new Map(
+                scope.notes.map((note, index) => [note.number, index])
+            ),
+            characteristics: new Map(
+                scope.characteristics.map((item, index) => [item.name, index])
+            ),
+        }));
+    }
+
+    accepts(target: string, name: string): boolean {
+        return this.targetIndexes.has(target)
+            && (noteNumber(name) !== null || !reservedCharacteristicName(name));
+    }
+
+    push(record: StataCharacteristicRecord): void {
+        const scopeIndex = this.targetIndexes.get(record.target);
+        if (scopeIndex === undefined || !this.accepts(record.target, record.name)) return;
+        const scope = this.scopes[scopeIndex];
+        const indexes = this.indexes[scopeIndex];
+        const number = noteNumber(record.name);
+        if (number !== null) {
+            const existing = indexes.notes.get(number);
+            if (existing === undefined) {
+                indexes.notes.set(number, scope.notes.length);
+                scope.notes.push({ number, text: record.value });
+            } else {
+                scope.notes[existing].text = record.value;
+            }
+            return;
+        }
+        const existing = indexes.characteristics.get(record.name);
+        if (existing === undefined) {
+            indexes.characteristics.set(record.name, scope.characteristics.length);
+            scope.characteristics.push({ name: record.name, value: record.value });
+        } else {
+            scope.characteristics[existing].value = record.value;
+        }
+    }
+
+    finish(): void {
+        for (const scope of this.scopes) {
+            scope.notes.sort((left, right) => left.number - right.number);
+        }
+    }
 }
 
 export function applyCharacteristicRecords(
@@ -41,27 +95,9 @@ export function applyCharacteristicRecords(
     dataset: StataMetadataTarget,
     variables: VariableInfo[]
 ): void {
-    const variableByName = new Map(
-        variables.map(variable => [variable.name, variable])
-    );
-    for (const record of records) {
-        const target = record.target === '_dta'
-            ? dataset
-            : variableByName.get(record.target);
-        if (target === undefined) continue;
-        const number = noteNumber(record.name);
-        if (number !== null) {
-            upsertNote(target.notes, number, record.value);
-        } else if (!NOTE_NAME.test(record.name)
-            && !(record.target === '_dta'
-                && (record.name === '_lang_list' || record.name === '_lang_c'))) {
-            upsertCharacteristic(target.characteristics, record.name, record.value);
-        }
-    }
-    dataset.notes.sort((left, right) => left.number - right.number);
-    for (const variable of variables) {
-        variable.notes.sort((left, right) => left.number - right.number);
-    }
+    const collector = new StataMetadataCollector(dataset, variables);
+    records.forEach(record => collector.push(record));
+    collector.finish();
 }
 
 function validNoteNumber(number: number): void {
@@ -74,7 +110,7 @@ function validCharacteristicName(name: string): void {
     if (!/^[_\p{L}][_\p{L}\p{N}]*$/u.test(name)
         || [...name].length > 32
         || new TextEncoder().encode(name).length > 128
-        || NOTE_NAME.test(name)) {
+        || reservedCharacteristicName(name)) {
         throw new Error('Invalid or reserved Stata characteristic name');
     }
 }
@@ -82,7 +118,7 @@ function validCharacteristicName(name: string): void {
 function validMetadataValue(value: string): void {
     if (typeof value !== 'string'
         || value.includes('\0')
-        || new TextEncoder().encode(value).length > MAX_METADATA_BYTES) {
+        || new TextEncoder().encode(value).length > MAX_STATA_METADATA_VALUE_BYTES) {
         throw new Error('Invalid or over-limit Stata metadata value');
     }
 }
@@ -103,7 +139,9 @@ export function setStataNote(
 ): void {
     validNoteNumber(number);
     validMetadataValue(text);
-    upsertNote(target.notes, number, text);
+    const existing = target.notes.find(note => note.number === number);
+    if (existing === undefined) target.notes.push({ number, text });
+    else existing.text = text;
     target.notes.sort((left, right) => left.number - right.number);
 }
 
@@ -157,7 +195,9 @@ export function setStataCharacteristic(
 ): void {
     validCharacteristicName(name);
     validMetadataValue(value);
-    upsertCharacteristic(target.characteristics, name, value);
+    const existing = target.characteristics.find(item => item.name === name);
+    if (existing === undefined) target.characteristics.push({ name, value });
+    else existing.value = value;
 }
 
 export function dropStataCharacteristics(

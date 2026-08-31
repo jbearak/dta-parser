@@ -242,7 +242,11 @@ fn generated_pre111_fixtures_decode_expected_semantics() {
             data.metadata.dataset_label,
             format!("Release {release} Café fixture")
         );
-        assert_eq!(data.metadata.notes, [format!("Release {release} note")]);
+        assert_eq!(data.metadata.notes[0].number, 1);
+        assert_eq!(
+            data.metadata.notes[0].text,
+            format!("Release {release} note")
+        );
         assert_eq!(data.row_count, 2);
         assert_eq!(data.columns.len(), 6);
         if release == 110 {
@@ -296,7 +300,8 @@ fn decodes_pre111_layouts_types_expansions_missing_and_value_labels_with_file_pa
         assert_eq!(slice.metadata.format_version, expected_version);
         assert_eq!(slice.metadata.section_offsets.data, expected_data_offset);
         assert_eq!(slice.metadata.dataset_label, "legacy");
-        assert_eq!(slice.metadata.notes, ["old note"]);
+        assert_eq!(slice.metadata.notes[0].number, 1);
+        assert_eq!(slice.metadata.notes[0].text, "old note");
         assert_eq!(
             slice.metadata.variables[0].dta_type,
             dta_tools::DtaType::Byte
@@ -511,7 +516,8 @@ fn decodes_release_111_metadata_observations_labels_and_missing_tags() {
     assert_eq!(data.metadata.format_version, FormatVersion::V111);
     assert_eq!(data.metadata.byte_order, ByteOrder::Lsf);
     assert_eq!(data.metadata.dataset_label, "Stata/SE 7 Café fixture");
-    assert_eq!(data.metadata.notes, ["Release 111 note"]);
+    assert_eq!(data.metadata.notes[0].number, 1);
+    assert_eq!(data.metadata.notes[0].text, "Release 111 note");
     assert_eq!(data.metadata.nvar, 6);
     assert_eq!(data.metadata.nobs, 4);
     assert_eq!(data.metadata.variables[5].name, "text");
@@ -643,7 +649,8 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
     assert_eq!(metadata.format_version, FormatVersion::V113);
     assert_eq!(metadata.byte_order, ByteOrder::Msf);
     assert_eq!(metadata.dataset_label, "Café");
-    assert_eq!(metadata.notes, ["Café"]);
+    assert_eq!(metadata.notes[0].number, 1);
+    assert_eq!(metadata.notes[0].text, "Café");
     assert_eq!(metadata.characteristics[0].name, "source");
     assert_eq!(metadata.characteristics[0].value, "legacy");
     assert_eq!(metadata.variables[0].notes[0].number, 3);
@@ -678,7 +685,8 @@ fn decodes_big_endian_release_111_observations_notes_and_labels() {
     let data = read_dta(&bytes).unwrap();
     assert_eq!(data.metadata.format_version, FormatVersion::V111);
     assert_eq!(data.metadata.byte_order, ByteOrder::Msf);
-    assert_eq!(data.metadata.notes, ["Café"]);
+    assert_eq!(data.metadata.notes[0].number, 1);
+    assert_eq!(data.metadata.notes[0].text, "Café");
     assert_eq!(data.metadata.characteristics[0].value, "legacy");
     assert_eq!(data.metadata.variables[0].notes[0].number, 3);
     assert_eq!(
@@ -713,7 +721,8 @@ fn explicit_encoding_overrides_every_legacy_text_surface() {
     let bytes = synthetic_v113_msf();
     let latin1 = read_dta_with_encoding(&bytes, TextEncoding::Iso8859_1).unwrap();
     assert_eq!(latin1.metadata.dataset_label, "Café");
-    assert_eq!(latin1.metadata.notes, ["Café"]);
+    assert_eq!(latin1.metadata.notes[0].number, 1);
+    assert_eq!(latin1.metadata.notes[0].text, "Café");
     assert_eq!(latin1.metadata.variables[0].label, "naïve");
     let ColumnValues::FixedString { values } = &latin1.columns[1].values else {
         panic!("text must be a fixed string");
@@ -731,7 +740,8 @@ fn explicit_encoding_overrides_every_legacy_text_surface() {
 
     let utf8 = read_dta_with_encoding(&bytes, TextEncoding::Utf8).unwrap();
     assert_eq!(utf8.metadata.dataset_label, "Caf\u{fffd}");
-    assert_eq!(utf8.metadata.notes, ["Caf\u{fffd}"]);
+    assert_eq!(utf8.metadata.notes[0].number, 1);
+    assert_eq!(utf8.metadata.notes[0].text, "Caf\u{fffd}");
     assert_eq!(utf8.metadata.variables[0].label, "na\u{fffd}ve");
 
     let mut file =
@@ -747,13 +757,18 @@ fn preserves_empty_legacy_dataset_notes() {
         .rposition(|window| window == b"Caf\xe9\0")
         .unwrap();
     bytes[value] = 0;
-    assert_eq!(parse_metadata(&bytes).unwrap().notes, [""]);
+    let parsed = parse_metadata(&bytes).unwrap();
+    assert_eq!(parsed.notes[0].number, 1);
+    assert_eq!(parsed.notes[0].text, "");
     assert_eq!(
         DtaFile::from_reader(Cursor::new(bytes))
             .unwrap()
             .metadata()
-            .notes,
-        [""]
+            .notes[0],
+        dta_tools::StataNote {
+            number: 1,
+            text: String::new(),
+        }
     );
 }
 

@@ -13,6 +13,8 @@ scope, Unicode text, and empty values. If a malformed source repeats a key,
 the last value wins without moving the key. Records for unknown variables are
 ignored. Stata's `_dta[_lang_list]` and `_dta[_lang_c]` records control the
 active metadata language and are not user characteristics.
+Authoring APIs reject `_lang_list` and `_lang_c`, so a record cannot be
+accepted on write and then disappear from the public model on read.
 
 The DTA writer accepts note numbers 1 through 9,999. It rejects duplicate or
 reserved keys, NUL characters, over-limit values, and characteristic names
@@ -59,6 +61,8 @@ These helpers mutate the supplied metadata target and return copies from list
 operations. Dataset and variable metadata have the same shape, so callers pass
 either `metadata` or one selected `metadata.variables` entry. A missing
 variable lookup is handled by the caller before invoking a helper.
+The Node `DtaFile.metadata` getter exposes the dataset target, and the Node
+entrypoint re-exports the same helpers as the portable entrypoint.
 
 ```ts
 const metadata = parse_metadata(buffer);

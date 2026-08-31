@@ -8,6 +8,17 @@ export interface StataCharacteristicRecord {
     name: string;
     value: string;
 }
+export declare const MAX_STATA_METADATA_VALUE_BYTES = 67784;
+/** Incrementally folds raw characteristic records into canonical metadata. */
+export declare class StataMetadataCollector {
+    private readonly scopes;
+    private readonly targetIndexes;
+    private readonly indexes;
+    constructor(dataset: StataMetadataTarget, variables: VariableInfo[]);
+    accepts(target: string, name: string): boolean;
+    push(record: StataCharacteristicRecord): void;
+    finish(): void;
+}
 export declare function applyCharacteristicRecords(records: StataCharacteristicRecord[], dataset: StataMetadataTarget, variables: VariableInfo[]): void;
 export declare function listStataNotes(target: StataMetadataTarget): StataNote[];
 export declare function getStataNote(target: StataMetadataTarget, number: number): string | undefined;

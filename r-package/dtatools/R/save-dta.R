@@ -599,11 +599,12 @@ save_dta <- function(data, path, version = 19L,
                                   has_value_labels = FALSE,
                                   numeric_shift = 0,
                                   numeric_scale = 1,
-                                  character_missing = NULL) {
+                                  character_missing = NULL,
+                                  stata_metadata = .stata_metadata_payload(character(), character())) {
     result <- list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
         label_values, label_texts, values, has_value_labels,
-        numeric_shift, numeric_scale
+        numeric_shift, numeric_scale, stata_metadata
     )
     if (!is.null(character_missing)) {
         attr(result, "character_missing") <- character_missing
@@ -614,9 +615,7 @@ save_dta <- function(data, path, version = 19L,
 .dta_write_column_metadata <- function(result, column) {
     notes <- stata_notes(column)
     characteristics <- stata_characteristics(column)
-    result[[6L]] <- .stata_metadata_payload(
-        notes, characteristics, prefix = result[[6L]]
-    )
+    result[[11L]] <- .stata_metadata_payload(notes, characteristics)
     result
 }
 

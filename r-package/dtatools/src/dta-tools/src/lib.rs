@@ -55,6 +55,7 @@ mod legacy;
 mod metadata;
 mod missing;
 mod selection;
+mod stata_metadata;
 mod strl;
 mod text;
 mod types;

@@ -41,8 +41,8 @@ import {
     text_decoder,
 } from './text-encoding';
 import {
-    applyCharacteristicRecords,
-    type StataCharacteristicRecord,
+    MAX_STATA_METADATA_VALUE_BYTES,
+    StataMetadataCollector,
 } from './stata-metadata';
 
 // -----------------------------------------------------------
@@ -121,12 +121,12 @@ function scan_expansion_fields(
     start: number,
     buffer_length: number,
     format_version: LegacyFormatVersion,
-    decoder: DtaTextDecoder
-): { data_offset: number; records: StataCharacteristicRecord[] } {
+    decoder: DtaTextDecoder,
+    collector: StataMetadataCollector
+): number {
     let pos = start;
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
-    const records: StataCharacteristicRecord[] = [];
 
     while (pos + my_header_size <= buffer_length) {
         const my_data_type = view.getUint8(pos);
@@ -137,7 +137,7 @@ function scan_expansion_fields(
         pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
-            return { data_offset: pos, records };
+            return pos;
         }
 
         if (my_data_type === 0 || my_len < 0) {
@@ -155,17 +155,23 @@ function scan_expansion_fields(
                 bytes_from_view(view), pos + layout.varname_width,
                 layout.varname_width, decoder
             );
-            const my_value = read_fixed_string(
-                bytes_from_view(view),
-                pos + 2 * layout.varname_width,
-                my_len - 2 * layout.varname_width,
-                decoder
-            );
-            records.push({
-                target: my_variable,
-                name: my_characteristic,
-                value: my_value,
-            });
+            const my_value_length = my_len - 2 * layout.varname_width;
+            if (my_value_length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+                throw new Error('Characteristic value exceeds the 67,784-byte limit');
+            }
+            if (collector.accepts(my_variable, my_characteristic)) {
+                const my_value = read_fixed_string(
+                    bytes_from_view(view),
+                    pos + 2 * layout.varname_width,
+                    my_value_length,
+                    decoder
+                );
+                collector.push({
+                    target: my_variable,
+                    name: my_characteristic,
+                    value: my_value,
+                });
+            }
         }
 
         pos += my_len;
@@ -334,14 +340,8 @@ export function parse_legacy_metadata(
     }
     pos += nvar * layout.variable_label_width;
 
-    // -- expansion fields --
-    const my_expansion_offset = pos;
-    const { data_offset: my_data_offset, records } = scan_expansion_fields(
-        view, little_endian, pos, buffer.byteLength,
-        format_version, my_decoder
-    );
-
-    // 8. Build VariableInfo with byte widths and offsets
+    // 8. Build VariableInfo before expansion scanning so raw records can be
+    // folded directly into their final scopes.
     let my_running_offset = 0;
     const the_variables: VariableInfo[] = [];
     for (let i = 0; i < nvar; i++) {
@@ -365,9 +365,17 @@ export function parse_legacy_metadata(
     const obs_length = my_running_offset;
     const notes: DtaMetadata['notes'] = [];
     const characteristics: DtaMetadata['characteristics'] = [];
-    applyCharacteristicRecords(
-        records, { notes, characteristics }, the_variables
+    const collector = new StataMetadataCollector(
+        { notes, characteristics }, the_variables
     );
+
+    // -- expansion fields --
+    const my_expansion_offset = pos;
+    const my_data_offset = scan_expansion_fields(
+        view, little_endian, pos, buffer.byteLength,
+        format_version, my_decoder, collector
+    );
+    collector.finish();
 
     // 9. Compute value labels offset (BigInt to avoid
     //    overflow for large legacy files)

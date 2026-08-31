@@ -30,8 +30,8 @@ import {
     text_decoder,
 } from './text-encoding';
 import {
-    applyCharacteristicRecords,
-    type StataCharacteristicRecord,
+    MAX_STATA_METADATA_VALUE_BYTES,
+    StataMetadataCollector,
 } from './stata-metadata';
 
 // -----------------------------------------------------------
@@ -161,14 +161,14 @@ function parse_characteristics(
     little_endian: boolean,
     section_offsets: SectionOffsets,
     field_width: number,
-    decoder: DtaTextDecoder
-): StataCharacteristicRecord[] {
+    decoder: DtaTextDecoder,
+    collector: StataMetadataCollector
+): void {
     let pos = section_offsets.characteristics;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
         throw new Error('Missing <characteristics> tag');
     }
     pos += TAG_CHARACTERISTICS_OPEN.length;
-    const records: StataCharacteristicRecord[] = [];
     const names_length = field_width * 2;
     while (pos < section_offsets.data) {
         if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
@@ -176,7 +176,7 @@ function parse_characteristics(
             if (pos !== section_offsets.data) {
                 throw new Error('Characteristics section does not end at the mapped data offset');
             }
-            return records;
+            return;
         }
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
             throw new Error('Invalid characteristic record tag');
@@ -195,15 +195,21 @@ function parse_characteristics(
         const name = read_fixed_string(
             bytes, pos + field_width, field_width, decoder
         );
-        const value = read_fixed_string(
-            bytes, pos + names_length, length - names_length, decoder
-        );
+        const valueLength = length - names_length;
+        if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+            throw new Error('Characteristic value exceeds the 67,784-byte limit');
+        }
+        if (collector.accepts(target, name)) {
+            const value = read_fixed_string(
+                bytes, pos + names_length, valueLength, decoder
+            );
+            collector.push({ target, name, value });
+        }
         pos += length;
         if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
             throw new Error('Missing </ch> tag');
         }
         pos += TAG_CHARACTERISTIC_CLOSE.length;
-        records.push({ target, name, value });
     }
     throw new Error('Missing </characteristics> tag');
 }
@@ -641,14 +647,14 @@ export function parse_metadata(
 
     const notes: DtaMetadata['notes'] = [];
     const characteristics: DtaMetadata['characteristics'] = [];
-    applyCharacteristicRecords(
-        parse_characteristics(
-            bytes, view, little_endian, section_offsets,
-            my_widths.varname, my_decoder
-        ),
-        { notes, characteristics },
-        the_variables
+    const collector = new StataMetadataCollector(
+        { notes, characteristics }, the_variables
     );
+    parse_characteristics(
+        bytes, view, little_endian, section_offsets,
+        my_widths.varname, my_decoder, collector
+    );
+    collector.finish();
 
     return {
         format_version,

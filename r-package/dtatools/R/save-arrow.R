@@ -364,12 +364,10 @@ save_arrow <- function(data, path,
         .arrow_utf8(name, "Column names"), .arrow_write_kinds[[kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[1L]],
-        .stata_metadata_payload(
-            notes, characteristics, prefix = value_labels[[2L]]
-        ),
+        value_labels[[1L]], value_labels[[2L]],
         value_labels[[3L]],
-        inherits(column, "haven_labelled"), string_storage
+        inherits(column, "haven_labelled"), string_storage,
+        .stata_metadata_payload(notes, characteristics)
     )
 }
 

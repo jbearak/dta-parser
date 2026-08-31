@@ -11,10 +11,8 @@ use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
 use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
 use crate::metadata::{field_widths, resolve_type};
 use crate::selection::{resolve_columns, row_window};
-use crate::text::{
-    apply_characteristics, field_bytes, is_utf8_boundary, RawCharacteristic, TextDecoder,
-    TextEncoding,
-};
+use crate::stata_metadata::{validate_raw_value_length, CharacteristicCollector};
+use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::value_labels::has_legacy_offset_table_framing;
 use crate::{
     missing::{
@@ -2498,7 +2496,8 @@ fn read_modern_characteristics<R: Read + Seek>(
     header: &FileModernHeaderMap,
     encoding: TextEncoding,
     scratch: &mut Scratch,
-) -> Result<Vec<RawCharacteristic>, DtaError> {
+    collector: &mut CharacteristicCollector,
+) -> Result<(), DtaError> {
     let width = if header.format_version == FormatVersion::V117 {
         33_usize
     } else {
@@ -2514,8 +2513,6 @@ fn read_modern_characteristics<R: Read + Seek>(
         "<characteristics>",
         scratch,
     )?;
-    let mut records = Vec::new();
-
     loop {
         let marker = read_exact_at(reader, cursor, 4, scratch, "reading characteristic tag")?;
         if marker == b"</ch" {
@@ -2527,7 +2524,7 @@ fn read_modern_characteristics<R: Read + Seek>(
                 scratch,
             )?;
             ensure_absolute("data", cursor, header.section_offsets.data)?;
-            return Ok(records);
+            return Ok(());
         }
         if marker != b"<ch>" {
             return Err(DtaError::UnexpectedTag {
@@ -2586,23 +2583,26 @@ fn read_modern_characteristics<R: Read + Seek>(
             "characteristic value offset",
         )?;
         let value_length = payload_length - names_length;
-        let mut never_cancel = || false;
-        let value = decode_range(
-            reader,
-            value_offset,
+        validate_raw_value_length(
             value_length,
-            encoding,
-            true,
-            scratch,
-            &mut never_cancel,
-            "reading characteristic value",
-        )?
-        .0;
-        records.push(RawCharacteristic {
-            target,
-            name,
-            value,
-        });
+            error_offset(value_offset),
+            "characteristic value",
+        )?;
+        if collector.accepts(&target, &name) {
+            let mut never_cancel = || false;
+            let value = decode_range(
+                reader,
+                value_offset,
+                value_length,
+                encoding,
+                true,
+                scratch,
+                &mut never_cancel,
+                "reading characteristic value",
+            )?
+            .0;
+            collector.push(target, name, value);
+        }
         cursor = expect_file_tag(reader, close, b"</ch>", "</ch>", scratch)?;
     }
 }
@@ -2873,8 +2873,6 @@ fn read_modern_metadata<R: Read + Seek>(
         "variable_labels",
         scratch,
     )?;
-    let characteristic_records = read_modern_characteristics(reader, &header, encoding, scratch)?;
-
     let type_codes = read_modern_type_codes(reader, types_start, nvar, header.byte_order, scratch)?;
     let names = read_fixed_text_fields(
         reader,
@@ -2939,12 +2937,9 @@ fn read_modern_metadata<R: Read + Seek>(
     }
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    apply_characteristics(
-        characteristic_records,
-        &mut notes,
-        &mut characteristics,
-        &mut variables,
-    );
+    let mut collector = CharacteristicCollector::new(&variables);
+    read_modern_characteristics(reader, &header, encoding, scratch, &mut collector)?;
+    collector.finish(&mut notes, &mut characteristics, &mut variables);
     Ok(DtaMetadata {
         format_version: header.format_version,
         byte_order: header.byte_order,
@@ -3108,7 +3103,7 @@ fn read_legacy_metadata<R: Read + Seek>(
 
     let mut cursor = u64::try_from(fixed_end)
         .map_err(|_| DtaError::ArithmeticOverflow("legacy expansion offset"))?;
-    let mut characteristic_records = Vec::new();
+    let mut collector = CharacteristicCollector::new(&variables);
     loop {
         let expansion = read_exact_at(
             reader,
@@ -3188,22 +3183,25 @@ fn read_legacy_metadata<R: Read + Seek>(
                 "legacy characteristic value offset",
             )?;
             let value_length = payload_length - 2 * layout.varname_width;
-            let value = decode_range(
-                reader,
-                value_offset,
+            validate_raw_value_length(
                 value_length,
-                encoding,
-                true,
-                scratch,
-                &mut never_cancel,
-                "reading legacy characteristic value",
-            )?
-            .0;
-            characteristic_records.push(RawCharacteristic {
-                target,
-                name,
-                value,
-            });
+                error_offset(value_offset),
+                "legacy characteristic value",
+            )?;
+            if collector.accepts(&target, &name) {
+                let value = decode_range(
+                    reader,
+                    value_offset,
+                    value_length,
+                    encoding,
+                    true,
+                    scratch,
+                    &mut never_cancel,
+                    "reading legacy characteristic value",
+                )?
+                .0;
+                collector.push(target, name, value);
+            }
         }
         cursor = payload_end;
     }
@@ -3223,12 +3221,7 @@ fn read_legacy_metadata<R: Read + Seek>(
     }
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    apply_characteristics(
-        characteristic_records,
-        &mut notes,
-        &mut characteristics,
-        &mut variables,
-    );
+    collector.finish(&mut notes, &mut characteristics, &mut variables);
     Ok(DtaMetadata {
         format_version: version,
         byte_order,

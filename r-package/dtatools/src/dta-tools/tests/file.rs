@@ -373,7 +373,12 @@ fn file_reads_match_slice_for_modern_strl_and_legacy_projections() {
         assert_eq!(actual, expected, "{name}");
         if name == "auto_v118.dta" {
             assert_eq!(
-                actual.metadata.notes,
+                actual
+                    .metadata
+                    .notes
+                    .iter()
+                    .map(|note| note.text.as_str())
+                    .collect::<Vec<_>>(),
                 ["From Consumer Reports with permission"]
             );
         }

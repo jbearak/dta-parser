@@ -87,6 +87,8 @@ describe('Stata metadata accessors', () => {
         expect(() => setStataNote(target, 0, 'bad')).toThrow();
         expect(() => setStataNote(target, 10_000, 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, 'note2', 'bad')).toThrow();
+        expect(() => setStataCharacteristic(target, '_lang_list', 'bad')).toThrow();
+        expect(() => setStataCharacteristic(target, '_lang_c', 'bad')).toThrow();
         expect(() => setStataCharacteristic(target, '2bad', 'bad')).toThrow();
         expect(() => setStataCharacteristic(
             target, 'source', 'x'.repeat(67_785)

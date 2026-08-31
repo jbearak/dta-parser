@@ -54,6 +54,7 @@ import {
 // -----------------------------------------------------------
 const INITIAL_METADATA_READ_SIZE = 64 * 1024;
 const MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
+const MAX_MODERN_METADATA_SIZE = 64 * 1024 * 1024;
 const MAX_READ_RETRIES = 2;
 const DATA_TAG_LENGTH = '<data>'.length;
 
@@ -271,6 +272,11 @@ export class DtaFile {
     /** Variable metadata array. */
     get variables(): VariableInfo[] {
         return this._metadata.variables;
+    }
+
+    /** Complete metadata, including dataset-scoped notes and characteristics. */
+    get metadata(): DtaMetadata {
+        return this._metadata;
     }
 
     /** Dataset label string. */
@@ -881,9 +887,13 @@ function read_modern_metadata(
             if (my_read_size === file_size) {
                 break;
             }
+            if (my_read_size >= MAX_MODERN_METADATA_SIZE) {
+                throw new Error('Modern metadata exceeds 64 MiB safety limit');
+            }
             my_read_size = Math.min(
                 file_size,
-                my_read_size * 2
+                my_read_size * 2,
+                MAX_MODERN_METADATA_SIZE
             );
         }
     }
@@ -1003,6 +1013,8 @@ export type {
     FormatVersion,
     LegacyFormatVersion,
     SectionOffsets,
+    StataCharacteristic,
+    StataNote,
 } from './types';
 export type {
     TextEncoding,
@@ -1012,6 +1024,19 @@ export type {
 } from './text-encoding';
 export { is_legacy_format } from './types';
 export { apply_display_format } from './display-format';
+export {
+    addStataNote,
+    dropStataCharacteristics,
+    dropStataNotes,
+    getStataCharacteristic,
+    getStataNote,
+    listStataCharacteristics,
+    listStataNotes,
+    renumberStataNotes,
+    setStataCharacteristic,
+    setStataNote,
+} from './stata-metadata';
+export type { StataMetadataTarget } from './stata-metadata';
 export {
     classify_missing_value,
     classify_raw_float_missing,

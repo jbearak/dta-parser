@@ -219,11 +219,7 @@ fn validate_notes_and_characteristics(
 ) -> Result<(), ArrowProfileError> {
     let mut previous = 0;
     for note in notes {
-        if !(1..=9_999).contains(&note.number)
-            || note.number <= previous
-            || note.text.contains('\0')
-            || note.text.len() > crate::write::MAX_NOTE_BYTES
-        {
+        if !crate::stata_metadata::valid_note(note.number, &note.text) || note.number <= previous {
             return Err(malformed(
                 version,
                 format!(
@@ -235,12 +231,7 @@ fn validate_notes_and_characteristics(
     }
     let mut names = std::collections::HashSet::with_capacity(characteristics.len());
     for characteristic in characteristics {
-        if !crate::write::valid_stata_name_syntax(&characteristic.name, 32)
-            || characteristic.name.len() > 128
-            || characteristic.name.contains('\0')
-            || characteristic.value.contains('\0')
-            || characteristic.value.len() > crate::write::MAX_NOTE_BYTES
-            || crate::text::is_reserved_note_name(characteristic.name.as_bytes())
+        if !crate::stata_metadata::valid_characteristic(&characteristic.name, &characteristic.value)
             || !names.insert(characteristic.name.as_str())
         {
             return Err(malformed(

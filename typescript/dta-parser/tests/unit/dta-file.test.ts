@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import {
     DtaFile,
+    listStataNotes,
     make_missing_value,
 } from '../../src/node';
 import { parse_legacy_metadata } from '../../src/legacy-header';
@@ -42,6 +43,10 @@ describe('DtaFile', () => {
             expect(my_file.nobs).toBe(74);
             expect(my_file.nvar).toBe(12);
             expect(my_file.variables.length).toBe(12);
+            expect(my_file.metadata.notes).toEqual([
+                { number: 1, text: 'From Consumer Reports with permission' },
+            ]);
+            expect(listStataNotes(my_file.metadata)).toEqual(my_file.metadata.notes);
         });
 
         it('provides dataset label', async () => {
@@ -375,7 +380,7 @@ describe('DtaFile', () => {
             const names = original.subarray(expansion + 5, expansion + 5 + 66);
             const payload = Buffer.concat([
                 names,
-                Buffer.alloc(70_000, 0x78),
+                Buffer.alloc(67_000, 0x78),
                 Buffer.from([0]),
             ]);
             const header = Buffer.alloc(5);
@@ -394,6 +399,40 @@ describe('DtaFile', () => {
                 my_file = await DtaFile.open(filePath);
                 expect(my_file.nobs).toBe(4);
                 expect((await my_file.read_rows(0, 1))[0][0]).toBe(1);
+            } finally {
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('rejects characteristic values above the Stata metadata limit', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const expansion = metadata.section_offsets.characteristics;
+            const oldLength = original.readInt32LE(expansion + 1);
+            const names = original.subarray(expansion + 5, expansion + 5 + 66);
+            const payload = Buffer.concat([
+                names,
+                Buffer.alloc(67_785, 0x78),
+                Buffer.from([0]),
+            ]);
+            const header = Buffer.alloc(5);
+            header[0] = 1;
+            header.writeInt32LE(payload.length, 1);
+            const oversized = Buffer.concat([
+                original.subarray(0, expansion),
+                header,
+                payload,
+                original.subarray(expansion + 5 + oldLength),
+            ]);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'over-limit-note.dta');
+            try {
+                fs.writeFileSync(filePath, oversized);
+                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });
             }

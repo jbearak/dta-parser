@@ -1,4 +1,4 @@
-import type { FormatVersion, VariableInfo, Row, RowCell } from './types';
+import type { DtaMetadata, FormatVersion, VariableInfo, Row, RowCell } from './types';
 import type { ResolvedTextEncoding, TextEncodingOptions } from './text-encoding';
 /** Options for {@link DtaFile.read_rows}. */
 export interface ReadRowsOptions {
@@ -47,6 +47,8 @@ export declare class DtaFile {
     get nvar(): number;
     /** Variable metadata array. */
     get variables(): VariableInfo[];
+    /** Complete metadata, including dataset-scoped notes and characteristics. */
+    get metadata(): DtaMetadata;
     /** Dataset label string. */
     get dataset_label(): string;
     /** Value label tables (table_name -> value -> label). */
@@ -126,9 +128,11 @@ export declare class DtaFile {
      */
     private _resolve_strl_at;
 }
-export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, } from './types';
+export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, StataCharacteristic, StataNote, } from './types';
 export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
 export { is_legacy_format } from './types';
 export { apply_display_format } from './display-format';
+export { addStataNote, dropStataCharacteristics, dropStataNotes, getStataCharacteristic, getStataNote, listStataCharacteristics, listStataNotes, renumberStataNotes, setStataCharacteristic, setStataNote, } from './stata-metadata';
+export type { StataMetadataTarget } from './stata-metadata';
 export { classify_missing_value, classify_raw_float_missing, classify_raw_double_missing_at, is_missing_value, is_missing_value_object, make_missing_value, missing_type_to_label_key, STATA_MISSING_B, } from './missing-values';
 //# sourceMappingURL=node.d.ts.map

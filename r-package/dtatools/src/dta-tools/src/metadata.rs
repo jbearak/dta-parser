@@ -3,7 +3,8 @@ use crate::endian::{
     read_u64, read_u8, slice_at,
 };
 use crate::legacy::parse_legacy_metadata;
-use crate::text::{apply_characteristics, field_bytes, RawCharacteristic, TextEncoding};
+use crate::stata_metadata::{validate_raw_value_length, CharacteristicCollector};
+use crate::text::{field_bytes, TextEncoding};
 use crate::{
     ByteOrder, DtaError, DtaMetadata, DtaType, FormatVersion, SectionOffsets, VariableInfo,
 };
@@ -318,10 +319,11 @@ fn parse_characteristics(
     byte_order: ByteOrder,
     offsets: &SectionOffsets,
     encoding: TextEncoding,
-) -> Result<Vec<RawCharacteristic>, DtaError> {
+    collector: &mut CharacteristicCollector,
+) -> Result<(), DtaError> {
     let start = offset_to_usize(offsets.characteristics, "characteristics")?;
     if bytes.len() == start {
-        return Ok(Vec::new());
+        return Ok(());
     }
     let data = offset_to_usize(offsets.data, "data")?;
     let width = if version == FormatVersion::V117 {
@@ -331,15 +333,13 @@ fn parse_characteristics(
     };
     let names_length = checked_mul(width, 2, "characteristic names length")?;
     let mut cursor = expect_at(bytes, start, CHARACTERISTICS_OPEN, "<characteristics>")?;
-    let mut records = Vec::new();
-
     loop {
         if bytes.get(cursor..cursor.saturating_add(CHARACTERISTICS_CLOSE.len()))
             == Some(CHARACTERISTICS_CLOSE)
         {
             cursor = expect_at(bytes, cursor, CHARACTERISTICS_CLOSE, "</characteristics>")?;
             ensure_map_offset("data", cursor, offsets.data)?;
-            return Ok(records);
+            return Ok(());
         }
 
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_OPEN, "<ch>")?;
@@ -376,14 +376,12 @@ fn parse_characteristics(
         let payload = slice_at(bytes, cursor, payload_length, "characteristic payload")?;
         let (variable, remainder) = payload.split_at(width);
         let (characteristic, value) = remainder.split_at(width);
+        validate_raw_value_length(value.len(), cursor + names_length, "characteristic value")?;
         let target = encoding.decode(field_bytes(variable));
         let name = encoding.decode(field_bytes(characteristic));
-        let value = encoding.decode(field_bytes(value));
-        records.push(RawCharacteristic {
-            target,
-            name,
-            value,
-        });
+        if collector.accepts(&target, &name) {
+            collector.push(target, name, encoding.decode(field_bytes(value)));
+        }
         cursor = payload_end;
         cursor = expect_at(bytes, cursor, CHARACTERISTIC_CLOSE, "</ch>")?;
         if cursor > data {
@@ -502,14 +500,6 @@ pub fn parse_metadata_with_encoding(
         },
         encoding,
     )?;
-    let characteristic_records = parse_characteristics(
-        bytes,
-        format_version,
-        byte_order,
-        &section_offsets,
-        encoding,
-    )?;
-
     let mut byte_offset = 0_u64;
     let mut variables = Vec::with_capacity(nvar_usize);
     for index in 0..nvar_usize {
@@ -534,12 +524,16 @@ pub fn parse_metadata_with_encoding(
 
     let mut notes = Vec::new();
     let mut characteristics = Vec::new();
-    apply_characteristics(
-        characteristic_records,
-        &mut notes,
-        &mut characteristics,
-        &mut variables,
-    );
+    let mut collector = CharacteristicCollector::new(&variables);
+    parse_characteristics(
+        bytes,
+        format_version,
+        byte_order,
+        &section_offsets,
+        encoding,
+        &mut collector,
+    )?;
+    collector.finish(&mut notes, &mut characteristics, &mut variables);
 
     Ok(DtaMetadata {
         format_version,

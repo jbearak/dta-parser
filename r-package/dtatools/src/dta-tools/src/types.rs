@@ -278,18 +278,6 @@ pub struct StataNote {
     pub text: String,
 }
 
-impl PartialEq<&str> for StataNote {
-    fn eq(&self, other: &&str) -> bool {
-        self.text == *other
-    }
-}
-
-impl PartialEq<String> for StataNote {
-    fn eq(&self, other: &String) -> bool {
-        self.text == *other
-    }
-}
-
 /// One user-authored Stata characteristic.
 ///
 /// Numeric `note*` keys never appear here because the note API owns them.

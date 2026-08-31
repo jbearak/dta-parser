@@ -309,40 +309,146 @@ function text_decoder(encoding) {
 
 // src/stata-metadata.ts
 var NOTE_NAME = /^note([0-9]+)$/;
+var MAX_STATA_METADATA_VALUE_BYTES = 67784;
 function noteNumber(name) {
   const match = NOTE_NAME.exec(name);
   if (match === null) return null;
   const number = Number(match[1]);
   return Number.isInteger(number) && number >= 1 && number <= 9999 ? number : null;
 }
-function upsertNote(notes, number, text) {
-  const existing = notes.find((note) => note.number === number);
-  if (existing === void 0) notes.push({ number, text });
-  else existing.text = text;
+function reservedCharacteristicName(name) {
+  return NOTE_NAME.test(name) || name === "_lang_list" || name === "_lang_c";
 }
-function upsertCharacteristic(characteristics, name, value) {
-  const existing = characteristics.find((item) => item.name === name);
-  if (existing === void 0) characteristics.push({ name, value });
-  else existing.value = value;
-}
-function applyCharacteristicRecords(records, dataset, variables) {
-  const variableByName = new Map(
-    variables.map((variable) => [variable.name, variable])
-  );
-  for (const record of records) {
-    const target = record.target === "_dta" ? dataset : variableByName.get(record.target);
-    if (target === void 0) continue;
+var StataMetadataCollector = class {
+  scopes;
+  targetIndexes;
+  indexes;
+  constructor(dataset, variables) {
+    this.scopes = [dataset, ...variables];
+    this.targetIndexes = /* @__PURE__ */ new Map([["_dta", 0]]);
+    variables.forEach((variable, index) => {
+      this.targetIndexes.set(variable.name, index + 1);
+    });
+    this.indexes = this.scopes.map((scope) => ({
+      notes: new Map(
+        scope.notes.map((note, index) => [note.number, index])
+      ),
+      characteristics: new Map(
+        scope.characteristics.map((item, index) => [item.name, index])
+      )
+    }));
+  }
+  accepts(target, name) {
+    return this.targetIndexes.has(target) && (noteNumber(name) !== null || !reservedCharacteristicName(name));
+  }
+  push(record) {
+    const scopeIndex = this.targetIndexes.get(record.target);
+    if (scopeIndex === void 0 || !this.accepts(record.target, record.name)) return;
+    const scope = this.scopes[scopeIndex];
+    const indexes = this.indexes[scopeIndex];
     const number = noteNumber(record.name);
     if (number !== null) {
-      upsertNote(target.notes, number, record.value);
-    } else if (!NOTE_NAME.test(record.name) && !(record.target === "_dta" && (record.name === "_lang_list" || record.name === "_lang_c"))) {
-      upsertCharacteristic(target.characteristics, record.name, record.value);
+      const existing2 = indexes.notes.get(number);
+      if (existing2 === void 0) {
+        indexes.notes.set(number, scope.notes.length);
+        scope.notes.push({ number, text: record.value });
+      } else {
+        scope.notes[existing2].text = record.value;
+      }
+      return;
+    }
+    const existing = indexes.characteristics.get(record.name);
+    if (existing === void 0) {
+      indexes.characteristics.set(record.name, scope.characteristics.length);
+      scope.characteristics.push({ name: record.name, value: record.value });
+    } else {
+      scope.characteristics[existing].value = record.value;
     }
   }
-  dataset.notes.sort((left, right) => left.number - right.number);
-  for (const variable of variables) {
-    variable.notes.sort((left, right) => left.number - right.number);
+  finish() {
+    for (const scope of this.scopes) {
+      scope.notes.sort((left, right) => left.number - right.number);
+    }
   }
+};
+function validNoteNumber(number) {
+  if (!Number.isInteger(number) || number < 1 || number > 9999) {
+    throw new Error("A note number must be an integer from 1 through 9999");
+  }
+}
+function validCharacteristicName(name) {
+  if (!/^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) || [...name].length > 32 || new TextEncoder().encode(name).length > 128 || reservedCharacteristicName(name)) {
+    throw new Error("Invalid or reserved Stata characteristic name");
+  }
+}
+function validMetadataValue(value) {
+  if (typeof value !== "string" || value.includes("\0") || new TextEncoder().encode(value).length > MAX_STATA_METADATA_VALUE_BYTES) {
+    throw new Error("Invalid or over-limit Stata metadata value");
+  }
+}
+function listStataNotes(target) {
+  return target.notes.map((note) => ({ ...note }));
+}
+function getStataNote(target, number) {
+  validNoteNumber(number);
+  return target.notes.find((note) => note.number === number)?.text;
+}
+function setStataNote(target, number, text) {
+  validNoteNumber(number);
+  validMetadataValue(text);
+  const existing = target.notes.find((note) => note.number === number);
+  if (existing === void 0) target.notes.push({ number, text });
+  else existing.text = text;
+  target.notes.sort((left, right) => left.number - right.number);
+}
+function addStataNote(target, text) {
+  const number = target.notes.length === 0 ? 1 : Math.max(...target.notes.map((note) => note.number)) + 1;
+  validNoteNumber(number);
+  setStataNote(target, number, text);
+  return number;
+}
+function dropStataNotes(target, numbers) {
+  if (numbers === void 0) {
+    target.notes = [];
+    return;
+  }
+  numbers.forEach(validNoteNumber);
+  const dropped = new Set(numbers);
+  target.notes = target.notes.filter((note) => !dropped.has(note.number));
+}
+function renumberStataNotes(target, start = 1) {
+  validNoteNumber(start);
+  if (target.notes.length > 0 && start + target.notes.length - 1 > 9999) {
+    throw new Error("Renumbered notes would exceed note number 9999");
+  }
+  target.notes.sort((left, right) => left.number - right.number).forEach((note, index) => {
+    note.number = start + index;
+  });
+}
+function listStataCharacteristics(target) {
+  return target.characteristics.map((characteristic) => ({ ...characteristic }));
+}
+function getStataCharacteristic(target, name) {
+  validCharacteristicName(name);
+  return target.characteristics.find((item) => item.name === name)?.value;
+}
+function setStataCharacteristic(target, name, value) {
+  validCharacteristicName(name);
+  validMetadataValue(value);
+  const existing = target.characteristics.find((item) => item.name === name);
+  if (existing === void 0) target.characteristics.push({ name, value });
+  else existing.value = value;
+}
+function dropStataCharacteristics(target, names) {
+  if (names === void 0) {
+    target.characteristics = [];
+    return;
+  }
+  names.forEach(validCharacteristicName);
+  const dropped = new Set(names);
+  target.characteristics = target.characteristics.filter(
+    (characteristic) => !dropped.has(characteristic.name)
+  );
 }
 
 // src/header.ts
@@ -431,13 +537,12 @@ function tag_at(bytes, offset, tag) {
   }
   return true;
 }
-function parse_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder) {
+function parse_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder, collector) {
   let pos = section_offsets.characteristics;
   if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
     throw new Error("Missing <characteristics> tag");
   }
   pos += TAG_CHARACTERISTICS_OPEN.length;
-  const records = [];
   const names_length = field_width * 2;
   while (pos < section_offsets.data) {
     if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
@@ -445,7 +550,7 @@ function parse_characteristics(bytes, view, little_endian, section_offsets, fiel
       if (pos !== section_offsets.data) {
         throw new Error("Characteristics section does not end at the mapped data offset");
       }
-      return records;
+      return;
     }
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
       throw new Error("Invalid characteristic record tag");
@@ -466,18 +571,24 @@ function parse_characteristics(bytes, view, little_endian, section_offsets, fiel
       field_width,
       decoder
     );
-    const value = read_fixed_string(
-      bytes,
-      pos + names_length,
-      length - names_length,
-      decoder
-    );
+    const valueLength = length - names_length;
+    if (valueLength > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+      throw new Error("Characteristic value exceeds the 67,784-byte limit");
+    }
+    if (collector.accepts(target, name)) {
+      const value = read_fixed_string(
+        bytes,
+        pos + names_length,
+        valueLength,
+        decoder
+      );
+      collector.push({ target, name, value });
+    }
     pos += length;
     if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
       throw new Error("Missing </ch> tag");
     }
     pos += TAG_CHARACTERISTIC_CLOSE.length;
-    records.push({ target, name, value });
   }
   throw new Error("Missing </characteristics> tag");
 }
@@ -838,18 +949,20 @@ function parse_metadata(buffer, options = {}) {
   }
   const notes = [];
   const characteristics = [];
-  applyCharacteristicRecords(
-    parse_characteristics(
-      bytes,
-      view,
-      little_endian,
-      section_offsets,
-      my_widths.varname,
-      my_decoder
-    ),
+  const collector = new StataMetadataCollector(
     { notes, characteristics },
     the_variables
   );
+  parse_characteristics(
+    bytes,
+    view,
+    little_endian,
+    section_offsets,
+    my_widths.varname,
+    my_decoder,
+    collector
+  );
+  collector.finish();
   return {
     format_version,
     text_encoding,
@@ -969,17 +1082,16 @@ function legacy_metadata_fixed_size(nvar, format_version) {
   const my_sections_size = nvar + nvar * layout.varname_width + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * layout.format_width + nvar * layout.value_label_name_width + nvar * layout.variable_label_width;
   return layout.header_size + my_sections_size;
 }
-function scan_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder) {
+function scan_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder, collector) {
   let pos = start;
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
-  const records = [];
   while (pos + my_header_size <= buffer_length) {
     const my_data_type = view.getUint8(pos);
     const my_len = layout.expansion_length_width === 2 ? view.getInt16(pos + 1, little_endian) : view.getInt32(pos + 1, little_endian);
     pos += my_header_size;
     if (my_data_type === 0 && my_len === 0) {
-      return { data_offset: pos, records };
+      return pos;
     }
     if (my_data_type === 0 || my_len < 0) {
       throw new Error("Invalid legacy expansion field");
@@ -1000,17 +1112,23 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
         layout.varname_width,
         decoder
       );
-      const my_value = read_fixed_string2(
-        bytes_from_view(view),
-        pos + 2 * layout.varname_width,
-        my_len - 2 * layout.varname_width,
-        decoder
-      );
-      records.push({
-        target: my_variable,
-        name: my_characteristic,
-        value: my_value
-      });
+      const my_value_length = my_len - 2 * layout.varname_width;
+      if (my_value_length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+        throw new Error("Characteristic value exceeds the 67,784-byte limit");
+      }
+      if (collector.accepts(my_variable, my_characteristic)) {
+        const my_value = read_fixed_string2(
+          bytes_from_view(view),
+          pos + 2 * layout.varname_width,
+          my_value_length,
+          decoder
+        );
+        collector.push({
+          target: my_variable,
+          name: my_characteristic,
+          value: my_value
+        });
+      }
     }
     pos += my_len;
   }
@@ -1121,15 +1239,6 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     );
   }
   pos += nvar * layout.variable_label_width;
-  const my_expansion_offset = pos;
-  const { data_offset: my_data_offset, records } = scan_expansion_fields(
-    view,
-    little_endian,
-    pos,
-    buffer.byteLength,
-    format_version,
-    my_decoder
-  );
   let my_running_offset = 0;
   const the_variables = [];
   for (let i = 0; i < nvar; i++) {
@@ -1152,11 +1261,21 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
   const obs_length = my_running_offset;
   const notes = [];
   const characteristics = [];
-  applyCharacteristicRecords(
-    records,
+  const collector = new StataMetadataCollector(
     { notes, characteristics },
     the_variables
   );
+  const my_expansion_offset = pos;
+  const my_data_offset = scan_expansion_fields(
+    view,
+    little_endian,
+    pos,
+    buffer.byteLength,
+    format_version,
+    my_decoder,
+    collector
+  );
+  collector.finish();
   const my_value_labels_offset = Number(
     BigInt(my_data_offset) + BigInt(nobs) * BigInt(obs_length)
   );
@@ -2418,6 +2537,7 @@ function format_tq(quarters_since_epoch) {
 // src/node.ts
 var INITIAL_METADATA_READ_SIZE = 64 * 1024;
 var MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
+var MAX_MODERN_METADATA_SIZE = 64 * 1024 * 1024;
 var MAX_READ_RETRIES = 2;
 var DATA_TAG_LENGTH2 = "<data>".length;
 var DEFAULT_CHUNK_ROWS = 65536;
@@ -2552,6 +2672,10 @@ var DtaFile = class _DtaFile {
   /** Variable metadata array. */
   get variables() {
     return this._metadata.variables;
+  }
+  /** Complete metadata, including dataset-scoped notes and characteristics. */
+  get metadata() {
+    return this._metadata;
   }
   /** Dataset label string. */
   get dataset_label() {
@@ -2982,9 +3106,13 @@ function read_modern_metadata(fd, file_size, options) {
       if (my_read_size === file_size) {
         break;
       }
+      if (my_read_size >= MAX_MODERN_METADATA_SIZE) {
+        throw new Error("Modern metadata exceeds 64 MiB safety limit");
+      }
       my_read_size = Math.min(
         file_size,
-        my_read_size * 2
+        my_read_size * 2,
+        MAX_MODERN_METADATA_SIZE
       );
     }
   }
@@ -3053,13 +3181,23 @@ function read_range(fd, offset, length) {
 export {
   DtaFile,
   STATA_MISSING_B,
+  addStataNote,
   apply_display_format,
   classify_missing_value,
   classify_raw_double_missing_at,
   classify_raw_float_missing,
+  dropStataCharacteristics,
+  dropStataNotes,
+  getStataCharacteristic,
+  getStataNote,
   is_legacy_format,
   is_missing_value,
   is_missing_value_object,
+  listStataCharacteristics,
+  listStataNotes,
   make_missing_value,
-  missing_type_to_label_key
+  missing_type_to_label_key,
+  renumberStataNotes,
+  setStataCharacteristic,
+  setStataNote
 };

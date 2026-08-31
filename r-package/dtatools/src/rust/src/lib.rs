@@ -164,6 +164,49 @@ pub(crate) unsafe fn parse_stata_metadata_sexp(
     )
 }
 
+unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
+    values: Sexp,
+) -> Result<(Vec<DtaWriteNote<'a>>, Vec<DtaWriteCharacteristic<'a>>), String> {
+    let field = |index| {
+        required_c_str(
+            dtatools_string_elt_utf8(values, index),
+            "internal Stata metadata field",
+        )
+    };
+    if field(0)? != STATA_METADATA_MARKER {
+        return Err("invalid internal Stata metadata marker".to_owned());
+    }
+    let note_count = parse_metadata_count(field(1)?, "note")?;
+    let mut cursor = 2;
+    let mut notes = Vec::new();
+    notes
+        .try_reserve_exact(note_count)
+        .map_err(|_| "could not allocate note metadata".to_owned())?;
+    for _ in 0..note_count {
+        notes.push(DtaWriteNote {
+            number: field(cursor)?
+                .parse::<u32>()
+                .map_err(|_| "invalid internal note number".to_owned())?,
+            text: Cow::Borrowed(field(cursor + 1)?),
+        });
+        cursor += 2;
+    }
+    let characteristic_count = parse_metadata_count(field(cursor)?, "characteristic")?;
+    cursor += 1;
+    let mut characteristics = Vec::new();
+    characteristics
+        .try_reserve_exact(characteristic_count)
+        .map_err(|_| "could not allocate characteristic metadata".to_owned())?;
+    for _ in 0..characteristic_count {
+        characteristics.push(DtaWriteCharacteristic {
+            name: Cow::Borrowed(field(cursor)?),
+            value: Cow::Borrowed(field(cursor + 1)?),
+        });
+        cursor += 2;
+    }
+    Ok((notes, characteristics))
+}
+
 #[repr(C)]
 struct NumericData {
     values: *mut c_void,
@@ -2164,6 +2207,7 @@ pub struct RWriteColumnDescriptor {
     label_values: *const c_void,
     label_texts: Sexp,
     label_count: usize,
+    stata_metadata: Sexp,
     has_value_labels: c_int,
     numeric_shift: f64,
     numeric_scale: f64,
@@ -3398,8 +3442,7 @@ unsafe fn r_value_labels<'a>(
 struct RWriteRequest {
     path: *const c_char,
     dataset_label: *const c_char,
-    notes: *const *const c_char,
-    note_count: usize,
+    stata_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
     numeric_replacements: *mut f64,
@@ -3411,8 +3454,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     let RWriteRequest {
         path,
         dataset_label,
-        notes,
-        note_count,
+        stata_metadata,
         descriptors,
         column_count,
         numeric_replacements,
@@ -3421,66 +3463,13 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     } = request;
     let path = required_c_string(path, "output path")?;
     let dataset_label = Cow::Borrowed(required_c_str(dataset_label, "dataset label")?);
-    if notes.is_null() && note_count != 0 {
-        return Err("dataset note pointer is null".into());
-    }
     if descriptors.is_null() && column_count != 0 {
         return Err("write column pointer is null".into());
     }
     if numeric_replacements.is_null() && column_count != 0 {
         return Err("numeric replacement output pointer is null".into());
     }
-    let note_pointers = if note_count == 0 {
-        &[]
-    } else {
-        std::slice::from_raw_parts(notes, note_count)
-    };
-    let (notes, characteristics) = if note_pointers
-        .first()
-        .is_some_and(|pointer| required_c_str(*pointer, "dataset metadata").ok()
-            == Some(STATA_METADATA_MARKER))
-    {
-        let (notes, characteristics) = parse_stata_metadata_fields(
-            |index| {
-                let pointer = note_pointers
-                    .get(index)
-                    .ok_or_else(|| "truncated internal dataset metadata".to_owned())?;
-                required_c_string(*pointer, "dataset metadata")
-            },
-            0,
-        )?;
-        (
-            notes
-                .into_iter()
-                .map(|note| DtaWriteNote {
-                    number: note.number,
-                    text: Cow::Owned(note.text),
-                })
-                .collect(),
-            characteristics
-                .into_iter()
-                .map(|characteristic| DtaWriteCharacteristic {
-                    name: Cow::Owned(characteristic.name),
-                    value: Cow::Owned(characteristic.value),
-                })
-                .collect(),
-        )
-    } else {
-        (
-            note_pointers
-                .iter()
-                .enumerate()
-                .map(|(index, note)| {
-                    Ok::<_, RWriteError>(DtaWriteNote {
-                        number: u32::try_from(index + 1)
-                            .map_err(|_| "dataset note number is too large".to_owned())?,
-                        text: Cow::Borrowed(required_c_str(*note, "dataset note")?),
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?,
-            Vec::new(),
-        )
-    };
+    let (notes, characteristics) = parse_stata_metadata_sexp_borrowed(stata_metadata)?;
     let descriptors = if column_count == 0 {
         &[]
     } else {
@@ -3535,11 +3524,8 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         }
         let dta_type = legacy_source_output_type(source, save_dta_type(descriptor.dta_type)?)?;
         let value_labels = r_value_labels(descriptor)?;
-        let (variable_notes, variable_characteristics) = if descriptor.label_texts.is_null() {
-            (Vec::new(), Vec::new())
-        } else {
-            parse_stata_metadata_sexp(descriptor.label_texts, descriptor.label_count)?
-        };
+        let (variable_notes, variable_characteristics) =
+            parse_stata_metadata_sexp_borrowed(descriptor.stata_metadata)?;
         columns.push(DtaWriteColumn {
             name: Cow::Borrowed(required_c_str(descriptor.name, "variable name")?),
             dta_type,
@@ -3547,20 +3533,8 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
             label: Cow::Borrowed(required_c_str(descriptor.label, "variable label")?),
             has_value_labels: descriptor.has_value_labels != 0,
             value_labels,
-            notes: variable_notes
-                .into_iter()
-                .map(|note| DtaWriteNote {
-                    number: note.number,
-                    text: Cow::Owned(note.text),
-                })
-                .collect(),
-            characteristics: variable_characteristics
-                .into_iter()
-                .map(|characteristic| DtaWriteCharacteristic {
-                    name: Cow::Owned(characteristic.name),
-                    value: Cow::Owned(characteristic.value),
-                })
-                .collect(),
+            notes: variable_notes,
+            characteristics: variable_characteristics,
             values: DtaWriteColumnValues::Source(source),
         });
     }
@@ -3615,8 +3589,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
 pub unsafe extern "C" fn dtatools_write_rust(
     path: *const c_char,
     dataset_label: *const c_char,
-    notes: *const *const c_char,
-    note_count: usize,
+    stata_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
     numeric_replacements: *mut f64,
@@ -3628,8 +3601,7 @@ pub unsafe extern "C" fn dtatools_write_rust(
         match write_impl(RWriteRequest {
             path,
             dataset_label,
-            notes,
-            note_count,
+            stata_metadata,
             descriptors,
             column_count,
             numeric_replacements,

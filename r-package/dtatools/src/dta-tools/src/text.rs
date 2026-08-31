@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use encoding_rs::{CoderResult, Decoder, UTF_8, WINDOWS_1252};
 
-use crate::{DtaError, FormatVersion, StataCharacteristic, StataNote, VariableInfo};
+use crate::{DtaError, FormatVersion};
 
 /// Source encoding used for textual fields in a Stata file.
 ///
@@ -119,114 +119,6 @@ pub(crate) fn field_bytes(bytes: &[u8]) -> &[u8] {
     &bytes[..end]
 }
 
-pub(crate) fn note_index(name: &[u8]) -> Option<u32> {
-    let index = name.strip_prefix(b"note")?;
-    if index.is_empty() || !index.iter().all(u8::is_ascii_digit) {
-        return None;
-    }
-    let index = std::str::from_utf8(index).ok()?.parse().ok()?;
-    (1..=9_999).contains(&index).then_some(index)
-}
-
-pub(crate) fn is_reserved_note_name(name: &[u8]) -> bool {
-    let Some(suffix) = name.strip_prefix(b"note") else {
-        return false;
-    };
-    !suffix.is_empty() && suffix.iter().all(u8::is_ascii_digit)
-}
-
-fn is_structural_characteristic(target: &str, name: &str) -> bool {
-    target == "_dta" && matches!(name, "_lang_list" | "_lang_c")
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct RawCharacteristic {
-    pub(crate) target: String,
-    pub(crate) name: String,
-    pub(crate) value: String,
-}
-
-fn upsert_note(notes: &mut Vec<StataNote>, number: u32, text: String) {
-    if let Some(note) = notes.iter_mut().find(|note| note.number == number) {
-        note.text = text;
-    } else {
-        notes.push(StataNote { number, text });
-    }
-}
-
-fn upsert_characteristic(
-    characteristics: &mut Vec<StataCharacteristic>,
-    name: String,
-    value: String,
-) {
-    if let Some(characteristic) = characteristics
-        .iter_mut()
-        .find(|characteristic| characteristic.name == name)
-    {
-        characteristic.value = value;
-    } else {
-        characteristics.push(StataCharacteristic { name, value });
-    }
-}
-
-/// Apply decoded records to dataset and variable metadata. Duplicate keys use
-/// their last value. `note0` is advisory and ignored; numbered gaps survive.
-pub(crate) fn apply_characteristics(
-    records: Vec<RawCharacteristic>,
-    dataset_notes: &mut Vec<StataNote>,
-    dataset_characteristics: &mut Vec<StataCharacteristic>,
-    variables: &mut [VariableInfo],
-) {
-    #[derive(Clone, Copy)]
-    enum Target {
-        Dataset,
-        Variable(usize),
-        Unknown,
-    }
-
-    let variable_indexes = variables
-        .iter()
-        .enumerate()
-        .map(|(index, variable)| (variable.name.as_str(), index))
-        .collect::<std::collections::HashMap<_, _>>();
-    let targets = records
-        .iter()
-        .map(|record| {
-            if record.target == "_dta" {
-                Target::Dataset
-            } else {
-                variable_indexes
-                    .get(record.target.as_str())
-                    .copied()
-                    .map_or(Target::Unknown, Target::Variable)
-            }
-        })
-        .collect::<Vec<_>>();
-    drop(variable_indexes);
-
-    for (record, target) in records.into_iter().zip(targets) {
-        let (notes, characteristics) = if matches!(target, Target::Dataset) {
-            (&mut *dataset_notes, &mut *dataset_characteristics)
-        } else if let Target::Variable(index) = target {
-            let variable = &mut variables[index];
-            (&mut variable.notes, &mut variable.characteristics)
-        } else {
-            continue;
-        };
-        if let Some(number) = note_index(record.name.as_bytes()) {
-            upsert_note(notes, number, record.value);
-        } else if !is_reserved_note_name(record.name.as_bytes())
-            && !is_structural_characteristic(&record.target, &record.name)
-        {
-            upsert_characteristic(characteristics, record.name, record.value);
-        }
-    }
-    dataset_notes.sort_by_key(|note| note.number);
-    for variable in variables {
-        variable.notes.sort_by_key(|note| note.number);
-    }
-}
-
 pub(crate) fn is_utf8_continuation(byte: u8) -> bool {
     byte & 0xc0 == 0x80
 }
@@ -302,84 +194,5 @@ mod tests {
         assert!(!is_utf8_boundary("€".as_bytes(), 2));
         assert!(is_utf8_boundary(&[b'x', 0x80], 1));
         assert!(is_utf8_boundary(&[0x80], 0));
-    }
-
-    #[test]
-    fn characteristic_records_preserve_scope_gaps_and_last_duplicate_values() {
-        let mut dataset_notes = Vec::new();
-        let mut dataset_characteristics = Vec::new();
-        let mut variables = vec![VariableInfo {
-            name: "x".into(),
-            dta_type: crate::DtaType::Byte,
-            type_code: 65530,
-            format: "%8.0g".into(),
-            label: String::new(),
-            value_label_name: String::new(),
-            notes: Vec::new(),
-            characteristics: Vec::new(),
-            byte_width: 1,
-            byte_offset: 0,
-        }];
-        let records = [
-            ("_dta", "note3", "three"),
-            ("_dta", "note1", ""),
-            ("_dta", "source", "old"),
-            ("_dta", "source", "new"),
-            ("_dta", "note0", "9"),
-            ("_dta", "note10000", "reserved"),
-            ("_dta", "_lang_list", "default"),
-            ("x", "note2", "variable"),
-            ("x", "role", "id"),
-            ("missing", "source", "ignored"),
-        ]
-        .into_iter()
-        .map(|(target, name, value)| RawCharacteristic {
-            target: target.into(),
-            name: name.into(),
-            value: value.into(),
-        })
-        .collect();
-
-        apply_characteristics(
-            records,
-            &mut dataset_notes,
-            &mut dataset_characteristics,
-            &mut variables,
-        );
-
-        assert_eq!(
-            dataset_notes,
-            vec![
-                StataNote {
-                    number: 1,
-                    text: String::new(),
-                },
-                StataNote {
-                    number: 3,
-                    text: "three".into(),
-                },
-            ]
-        );
-        assert_eq!(
-            dataset_characteristics,
-            vec![StataCharacteristic {
-                name: "source".into(),
-                value: "new".into(),
-            }]
-        );
-        assert_eq!(
-            variables[0].notes,
-            vec![StataNote {
-                number: 2,
-                text: "variable".into(),
-            }]
-        );
-        assert_eq!(
-            variables[0].characteristics,
-            vec![StataCharacteristic {
-                name: "role".into(),
-                value: "id".into(),
-            }]
-        );
     }
 }

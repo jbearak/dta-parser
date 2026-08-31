@@ -76,8 +76,10 @@ characteristics, value-label tables, and section offsets. Dataset metadata and
 each variable expose `notes: { number, text }[]` and
 `characteristics: { name, value }[]`. List, get, set, add, drop, and renumber
 helpers are exported from the portable entrypoint; mutation helpers change the
-supplied metadata target. `DtaFile` resolves selected `strL` values and validates
-their object references.
+supplied metadata target. The Node entrypoint re-exports those helpers, and
+`DtaFile.metadata` exposes dataset-scoped metadata. `DtaFile` resolves selected
+`strL` values and validates their object references. Numeric `note*` keys and
+Stata's `_lang_list` and `_lang_c` language-control keys are reserved.
 
 Automatic text decoding uses Windows-1252 for pre-Unicode files and UTF-8 for Unicode files. Callers can override it with UTF-8, Windows-1252, or ISO-8859-1. See the repository's [compatibility contract](https://github.com/jbearak/dta-tools/blob/main/docs/compatibility.md) for exact releases and language differences.
 

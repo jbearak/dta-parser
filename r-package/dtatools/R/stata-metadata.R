@@ -194,11 +194,12 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
 .stata_characteristic_name <- function(name) {
     valid <- is.character(name) && length(name) == 1L && !is.na(name) &&
         .valid_stata_name_syntax(name, 32L) &&
-        nchar(name, type = "bytes") <= 128L && !grepl("^note[0-9]+$", name)
+        nchar(name, type = "bytes") <= 128L && !grepl("^note[0-9]+$", name) &&
+        !(name %in% c("_lang_list", "_lang_c"))
     if (!valid) {
         stop(paste0(
             "A characteristic name must be a valid Stata name with at most 32 Unicode ",
-            "characters and cannot be a numeric `note*` key"
+            "characters and cannot be a numeric `note*` key or language-control key"
         ), call. = FALSE)
     }
     enc2utf8(name)
@@ -252,7 +253,7 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     })
 }
 
-.stata_metadata_payload <- function(notes, characteristics, prefix = character()) {
+.stata_metadata_payload <- function(notes, characteristics) {
     note_fields <- if (length(notes)) {
         as.vector(rbind(names(notes), unname(notes)))
     } else character()
@@ -260,7 +261,6 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
         as.vector(rbind(names(characteristics), unname(characteristics)))
     } else character()
     enc2utf8(c(
-        prefix,
         paste0(intToUtf8(30L), "dtatools:stata-metadata:1"),
         as.character(length(notes)), note_fields,
         as.character(length(characteristics)), characteristic_fields

@@ -3,9 +3,9 @@ use std::cell::Cell;
 use std::io::{Cursor, Seek, SeekFrom, Write};
 
 use dta_tools::{
-    read_dta, read_dta_with_options, save_dta_to,
-    write_prevalidated_dta_with_observation_source_to, ByteOrder, ColumnValues, DtaType,
-    DtaWriteCharacteristic, DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues,
+    parse_metadata, read_dta, read_dta_with_options, save_dta_to,
+    write_prevalidated_dta_with_observation_source_to, ByteOrder, ColumnValues, DtaError, DtaFile,
+    DtaType, DtaWriteCharacteristic, DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues,
     DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNote, DtaWriteNumericValue,
     DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel,
     FormatVersion, MissingTag, ReadOptions, StataCharacteristic, StataNote,
@@ -1033,7 +1033,15 @@ fn writes_a_release_118_dataset_that_the_public_parser_can_read() {
     assert_eq!(parsed.metadata.format_version, FormatVersion::V118);
     assert_eq!(parsed.metadata.byte_order, ByteOrder::Lsf);
     assert_eq!(parsed.metadata.dataset_label, "writer tracer bullet");
-    assert_eq!(parsed.metadata.notes, ["written by dta-tools", ""]);
+    assert_eq!(
+        parsed
+            .metadata
+            .notes
+            .iter()
+            .map(|note| note.text.as_str())
+            .collect::<Vec<_>>(),
+        ["written by dta-tools", ""]
+    );
     assert_eq!(parsed.metadata.variables[0].name, "answer");
     assert_eq!(parsed.metadata.variables[0].label, "the answer");
     assert_eq!(parsed.metadata.variables[0].dta_type, DtaType::Byte);
@@ -1092,7 +1100,8 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
 
     let mut output = Cursor::new(Vec::new());
     save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
-    let parsed = read_dta(&output.into_inner()).unwrap();
+    let bytes = output.into_inner();
+    let parsed = read_dta(&bytes).unwrap();
     assert_eq!(
         parsed.metadata.notes,
         vec![
@@ -1134,7 +1143,38 @@ fn writes_numbered_notes_and_characteristics_at_both_scopes() {
         }]
     );
 
-    for invalid_name in ["note2", "2invalid"] {
+    let metadata = parse_metadata(&bytes).unwrap();
+    let record = metadata.section_offsets.characteristics as usize + b"<characteristics><ch>".len();
+    let old_payload_length =
+        u32::from_le_bytes(bytes[record..record + 4].try_into().unwrap()) as usize;
+    let names_length = 2 * 129;
+    let desired_value_length = 67_786;
+    let extra = desired_value_length - (old_payload_length - names_length);
+    let close = record + 4 + old_payload_length;
+    let mut oversized = bytes.clone();
+    oversized.splice(close..close, vec![b'x'; extra]);
+    oversized[record..record + 4].copy_from_slice(
+        &u32::try_from(old_payload_length + extra)
+            .unwrap()
+            .to_le_bytes(),
+    );
+    let map_payload = metadata.section_offsets.map as usize + b"<map>".len();
+    for index in 9..14 {
+        let offset = map_payload + index * 8;
+        let old = u64::from_le_bytes(oversized[offset..offset + 8].try_into().unwrap());
+        oversized[offset..offset + 8]
+            .copy_from_slice(&(old + u64::try_from(extra).unwrap()).to_le_bytes());
+    }
+    assert!(matches!(
+        parse_metadata(&oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+
+    for invalid_name in ["note2", "2invalid", "_lang_list", "_lang_c"] {
         data.characteristics = vec![DtaWriteCharacteristic {
             name: invalid_name.into(),
             value: "bad".into(),

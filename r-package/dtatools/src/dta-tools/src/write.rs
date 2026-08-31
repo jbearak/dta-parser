@@ -4,9 +4,10 @@ use std::hash::{DefaultHasher, Hasher};
 use std::io::{Seek, SeekFrom, Write};
 use std::mem::size_of;
 
-use unicode_general_category::{get_general_category, GeneralCategory};
-
 use crate::metadata::{field_widths, FieldWidths};
+use crate::stata_metadata::{
+    valid_characteristic, valid_note, valid_stata_name_syntax, MAX_NOTE_NUMBER,
+};
 use crate::{
     DtaType, FormatVersion, MissingTag, SectionOffsets, DOUBLE_MISSING_DOT_BITS,
     FLOAT_MISSING_DOT_BITS,
@@ -17,8 +18,7 @@ const RELEASE_118_MAX_VARIABLES: usize = 32_767;
 const WRITE_FIELD_WIDTHS: FieldWidths = field_widths(FormatVersion::V118);
 const MAX_VALUE_LABEL_ENTRIES: usize = 65_536;
 const MAX_VALUE_LABEL_TEXT_BYTES: usize = 32_000;
-const MAX_NOTES: usize = 9_999;
-pub(crate) const MAX_NOTE_BYTES: usize = 67_784;
+const MAX_NOTES: usize = MAX_NOTE_NUMBER as usize;
 const MAX_STRL_BYTES: usize = 2_000_000_000;
 const WRITE_INTERRUPT_BYTES: usize = 8 * 1024 * 1024;
 const OBSERVATION_BUFFER_BYTES: usize = 64 * 1024 * 1024;
@@ -391,38 +391,6 @@ fn reserved_stata_name(name: &str) -> bool {
             .is_some_and(|byte| matches!(*byte, b'1'..=b'9'))
             && suffix.bytes().all(|byte| byte.is_ascii_digit())
     })
-}
-
-fn stata_name_letter(character: char) -> bool {
-    matches!(
-        get_general_category(character),
-        GeneralCategory::UppercaseLetter
-            | GeneralCategory::LowercaseLetter
-            | GeneralCategory::TitlecaseLetter
-            | GeneralCategory::ModifierLetter
-            | GeneralCategory::OtherLetter
-    )
-}
-
-fn stata_name_number(character: char) -> bool {
-    matches!(
-        get_general_category(character),
-        GeneralCategory::DecimalNumber
-            | GeneralCategory::LetterNumber
-            | GeneralCategory::OtherNumber
-    )
-}
-
-pub(crate) fn valid_stata_name_syntax(name: &str, maximum_characters: usize) -> bool {
-    let mut characters = name.chars();
-    let Some(first) = characters.next() else {
-        return false;
-    };
-    (first == '_' || stata_name_letter(first))
-        && characters.all(|character| {
-            character == '_' || stata_name_letter(character) || stata_name_number(character)
-        })
-        && name.chars().count() <= maximum_characters
 }
 
 fn valid_stata_name(name: &str) -> bool {
@@ -903,10 +871,9 @@ fn validate_notes(notes: &[DtaWriteNote<'_>], context: &str) -> Result<(), DtaWr
                 number
             )));
         }
-        if note.text.contains('\0') || note.text.len() > MAX_NOTE_BYTES {
+        if !valid_note(number, &note.text) {
             return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "{context} note {} must contain no NUL and at most {MAX_NOTE_BYTES} UTF-8 bytes",
-                number
+                "{context} note {number} must contain no NUL and have a valid bounded value"
             )));
         }
     }
@@ -919,12 +886,7 @@ fn validate_characteristics(
 ) -> Result<(), DtaWriteError> {
     let mut names = HashSet::with_capacity(characteristics.len());
     for characteristic in characteristics {
-        if !valid_stata_name_syntax(&characteristic.name, 32)
-            || characteristic.name.contains('\0')
-            || characteristic.name.len() >= WRITE_FIELD_WIDTHS.varname
-            || characteristic.value.contains('\0')
-            || characteristic.value.len() > MAX_NOTE_BYTES
-            || crate::text::is_reserved_note_name(characteristic.name.as_bytes())
+        if !valid_characteristic(&characteristic.name, &characteristic.value)
             || !names.insert(characteristic.name.as_ref())
         {
             return Err(DtaWriteError::InvalidDatasetMetadata(format!(

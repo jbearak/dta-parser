@@ -391,6 +391,42 @@ describe('parse_metadata', () => {
     // ----- Error handling -----
 
     describe('error handling', () => {
+        it('rejects modern characteristic values above the Stata limit', () => {
+            const original = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                original.buffer.slice(
+                    original.byteOffset,
+                    original.byteOffset + original.byteLength
+                )
+            );
+            const record = metadata.section_offsets.characteristics
+                + Buffer.byteLength('<characteristics><ch>');
+            const oldLength = original.readUInt32LE(record);
+            const desiredValueLength = 67_786;
+            const extra = desiredValueLength - (oldLength - 2 * 129);
+            const close = record + 4 + oldLength;
+            const oversized = Buffer.concat([
+                original.subarray(0, close),
+                Buffer.alloc(extra, 0x78),
+                original.subarray(close),
+            ]);
+            oversized.writeUInt32LE(oldLength + extra, record);
+            const mapPayload = metadata.section_offsets.map
+                + Buffer.byteLength('<map>');
+            for (let index = 9; index < 14; index++) {
+                const offset = mapPayload + index * 8;
+                oversized.writeBigUInt64LE(
+                    oversized.readBigUInt64LE(offset) + BigInt(extra), offset
+                );
+            }
+            expect(() => parse_metadata(
+                oversized.buffer.slice(
+                    oversized.byteOffset,
+                    oversized.byteOffset + oversized.byteLength
+                )
+            )).toThrow('67,784-byte limit');
+        });
+
         it('throws on truncated buffer', () => {
             const my_buf = new ArrayBuffer(10);
             expect(() => parse_metadata(my_buf)).toThrow();
