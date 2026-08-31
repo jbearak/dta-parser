@@ -23,7 +23,7 @@ extern SEXP dtatools_read_rust(
 );
 extern int dtatools_write_rust(
     const char *, const char *, SEXP, const void *,
-    size_t, double *, size_t, const char *, char **
+    size_t, const void *, size_t, double *, size_t, const char *, char **
 );
 extern int dtatools_write_path_kind(const char *, char **);
 extern void dtatools_free_error(char *);
@@ -37,6 +37,13 @@ extern int dtatools_dictstring_bytes(
     void *, uint32_t, const char **, int *
 );
 extern void *dtatools_dictstring_clone(const void *);
+
+typedef struct {
+    const char *name;
+    const double *label_values;
+    SEXP label_texts;
+    size_t label_count;
+} dtatools_arrow_value_label_table;
 
 typedef struct {
     const char *name;
@@ -55,12 +62,8 @@ typedef struct {
     int compact_kind;
     int compact_format_version;
     int compact_temporal;
-    const double *label_values;
-    SEXP label_texts;
-    size_t label_count;
     SEXP stata_metadata;
     int has_value_labels;
-    const char *value_label_name;
     int value_label_index;
     int haven_labelled;
     /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
@@ -69,10 +72,12 @@ typedef struct {
 
 extern SEXP dtatools_save_arrow_rust(
     const char *, const char *, SEXP, const dtatools_arrow_column *,
-    size_t, size_t, const char *, int, int, int *, char **
+    size_t, const dtatools_arrow_value_label_table *, size_t, size_t,
+    const char *, int, int, int *, char **
 );
 extern SEXP dtatools_datasig_rust(
-    const char *, SEXP, const dtatools_arrow_column *, size_t, size_t,
+    const char *, SEXP, const dtatools_arrow_column *, size_t,
+    const dtatools_arrow_value_label_table *, size_t, size_t,
     int, int *, char **
 );
 extern void *dtatools_open_arrow_rust(const char *, char **);
@@ -85,6 +90,13 @@ extern SEXP dtatools_arrow_metadata_rust(
     const void *, int, int, double, double, int *, char **
 );
 extern SEXP dtatools_arrow_datasig_rust(const char *, char **);
+
+typedef struct {
+    const char *name;
+    void *label_values;
+    SEXP label_texts;
+    size_t label_count;
+} dtatools_write_value_label_table;
 
 typedef struct {
     uint32_t *value_ids;
@@ -730,12 +742,8 @@ typedef struct {
     const char *label;
     void *numeric_values;
     SEXP string_values;
-    void *label_values;
-    SEXP label_texts;
-    size_t label_count;
     SEXP stata_metadata;
     int has_value_labels;
-    const char *value_label_name;
     int value_label_index;
     double numeric_shift;
     double numeric_scale;
@@ -3058,8 +3066,8 @@ SEXP C_dtatools_write_path_kind(SEXP path) {
 }
 
 static int write_column_type(SEXP column) {
-    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 13) {
-        Rf_error("internal write column must be a thirteen-element list");
+    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 12) {
+        Rf_error("internal write column must be a twelve-element list");
     }
     SEXP dta_type = VECTOR_ELT(column, 1);
     if (TYPEOF(dta_type) != INTSXP || XLENGTH(dta_type) != 1 ||
@@ -3070,21 +3078,25 @@ static int write_column_type(SEXP column) {
 }
 
 SEXP C_dtatools_write(SEXP specification, SEXP path) {
-    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 4) {
-        Rf_error("internal write specification must be a four-element list");
+    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 5) {
+        Rf_error("internal write specification must be a five-element list");
     }
     SEXP dataset_metadata = VECTOR_ELT(specification, 1);
     SEXP columns = VECTOR_ELT(specification, 2);
-    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP) {
+    SEXP value_label_tables = VECTOR_ELT(specification, 4);
+    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP ||
+        TYPEOF(value_label_tables) != VECSXP) {
         Rf_error("invalid internal write specification");
     }
 
     size_t column_count = (size_t) XLENGTH(columns);
-    if (column_count > ((size_t) R_XLEN_T_MAX - 4) / 6) {
+    size_t table_count = (size_t) XLENGTH(value_label_tables);
+    if (column_count > ((size_t) R_XLEN_T_MAX - 4) / 4 ||
+        table_count > ((size_t) R_XLEN_T_MAX - 4 - 4 * column_count) / 2) {
         Rf_error("too many internal write columns");
     }
     SEXP string_roots = PROTECT(Rf_allocVector(
-        VECSXP, (R_xlen_t) (4 + 6 * column_count)
+        VECSXP, (R_xlen_t) (4 + 4 * column_count + 2 * table_count)
     ));
     R_xlen_t root_index = 0;
     const char *output_path = write_rooted_scalar_string(
@@ -3102,11 +3114,9 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     );
 
     size_t numeric_column_count = 0;
-    size_t labelled_column_count = 0;
     for (size_t index = 0; index < column_count; index++) {
         SEXP column = VECTOR_ELT(columns, (R_xlen_t) index);
         if (write_column_type(column) <= 4) numeric_column_count++;
-        if (XLENGTH(VECTOR_ELT(column, 4)) > 0) labelled_column_count++;
     }
 
     SEXP numeric_replacements = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) column_count));
@@ -3117,45 +3127,54 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         (numeric_reader *) R_alloc(
             (R_SIZE_T) numeric_column_count, (int) sizeof(numeric_reader)
         );
-    numeric_reader *label_readers = labelled_column_count == 0 ? NULL :
+    numeric_reader *label_readers = table_count == 0 ? NULL :
         (numeric_reader *) R_alloc(
-            (R_SIZE_T) labelled_column_count, (int) sizeof(numeric_reader)
+            (R_SIZE_T) table_count, (int) sizeof(numeric_reader)
         );
-    SEXP *label_values_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    SEXP *label_texts_input_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    SEXP *label_texts_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    void **label_reader_cache = (void **) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(void *)
-    );
-    for (size_t index = 0; index < column_count; index++) {
-        label_values_cache[index] = R_NilValue;
-        label_texts_input_cache[index] = R_NilValue;
-        label_texts_cache[index] = R_NilValue;
-        label_reader_cache[index] = NULL;
+    dtatools_write_value_label_table *table_descriptors =
+        (dtatools_write_value_label_table *) R_alloc(
+            (R_SIZE_T) table_count,
+            (int) sizeof(dtatools_write_value_label_table)
+        );
+    for (size_t index = 0; index < table_count; index++) {
+        SEXP table = VECTOR_ELT(value_label_tables, (R_xlen_t) index);
+        if (TYPEOF(table) != VECSXP || XLENGTH(table) != 3) {
+            Rf_error("internal value-label table must be a three-element list");
+        }
+        SEXP label_values = VECTOR_ELT(table, 1);
+        SEXP label_texts = VECTOR_ELT(table, 2);
+        if (TYPEOF(label_texts) != STRSXP ||
+            XLENGTH(label_values) != XLENGTH(label_texts)) {
+            Rf_error("invalid internal value-label table metadata");
+        }
+        dtatools_write_value_label_table *descriptor = &table_descriptors[index];
+        descriptor->name = write_rooted_scalar_string(
+            string_roots, root_index++, VECTOR_ELT(table, 0),
+            "value-label table name"
+        );
+        descriptor->label_texts = write_rooted_strings(
+            string_roots, root_index++, label_texts, "value-label text"
+        );
+        descriptor->label_count = (size_t) XLENGTH(label_values);
+        descriptor->label_values = NULL;
+        if (descriptor->label_count > 0) {
+            numeric_reader *reader = &label_readers[index];
+            *reader = numeric_reader_create(label_values, XLENGTH(label_values));
+            descriptor->label_values = reader;
+        }
     }
     size_t value_reader_index = 0;
-    size_t label_reader_index = 0;
     size_t row_count = 0;
     for (size_t index = 0; index < column_count; index++) {
         SEXP column = VECTOR_ELT(columns, (R_xlen_t) index);
         int dta_type = write_column_type(column);
-        SEXP label_values = VECTOR_ELT(column, 4);
-        SEXP label_texts = VECTOR_ELT(column, 5);
-        SEXP stata_metadata = VECTOR_ELT(column, 12);
+        SEXP stata_metadata = VECTOR_ELT(column, 11);
         SEXP values = VECTOR_ELT(column, 6);
         SEXP has_value_labels = VECTOR_ELT(column, 7);
         SEXP numeric_shift = VECTOR_ELT(column, 8);
         SEXP numeric_scale = VECTOR_ELT(column, 9);
-        SEXP value_label_index = VECTOR_ELT(column, 11);
-        if (TYPEOF(label_texts) != STRSXP ||
-            XLENGTH(label_values) != XLENGTH(label_texts) ||
-            !is_stata_metadata(stata_metadata) ||
+        SEXP value_label_index = VECTOR_ELT(column, 10);
+        if (!is_stata_metadata(stata_metadata) ||
             TYPEOF(has_value_labels) != LGLSXP ||
             XLENGTH(has_value_labels) != 1 ||
             LOGICAL(has_value_labels)[0] == NA_LOGICAL ||
@@ -3169,7 +3188,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         }
         int has_labels = LOGICAL(has_value_labels)[0];
         int table_index = INTEGER(value_label_index)[0];
-        if ((has_labels && (table_index < 0 || (size_t) table_index >= column_count)) ||
+        if ((has_labels && (table_index < 0 || (size_t) table_index >= table_count)) ||
             (!has_labels && table_index != -1)) {
             Rf_error("invalid internal value-label table index");
         }
@@ -3188,35 +3207,6 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         const char *label = write_rooted_scalar_string(
             string_roots, root_index++, VECTOR_ELT(column, 3), "variable label"
         );
-        const char *value_label_name = write_rooted_scalar_string(
-            string_roots, root_index++, VECTOR_ELT(column, 10),
-            "value-label table name"
-        );
-        void *label_values_reader = NULL;
-        if (has_labels) {
-            size_t cache_index = (size_t) table_index;
-            if (label_values_cache[cache_index] == R_NilValue) {
-                label_values_cache[cache_index] = label_values;
-                label_texts_input_cache[cache_index] = label_texts;
-                label_texts_cache[cache_index] = write_rooted_strings(
-                    string_roots, root_index++, label_texts, "value-label text"
-                );
-                if (XLENGTH(label_values) > 0) {
-                    numeric_reader *reader = &label_readers[label_reader_index++];
-                    *reader = numeric_reader_create(
-                        label_values, XLENGTH(label_values)
-                    );
-                    label_reader_cache[cache_index] = reader;
-                }
-            } else if (label_values_cache[cache_index] != label_values ||
-                       label_texts_input_cache[cache_index] != label_texts) {
-                Rf_error("internal shared value-label table is not canonical");
-            }
-            label_texts = label_texts_cache[cache_index];
-            label_values_reader = label_reader_cache[cache_index];
-        } else {
-            label_texts = R_NilValue;
-        }
         stata_metadata = write_rooted_stata_metadata(
             string_roots, root_index++, stata_metadata, "variable Stata metadata"
         );
@@ -3227,11 +3217,8 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
             .format = format,
             .label = label,
             .string_values = R_NilValue,
-            .label_texts = label_texts,
-            .label_count = (size_t) XLENGTH(label_values),
             .stata_metadata = stata_metadata,
             .has_value_labels = has_labels,
-            .value_label_name = value_label_name,
             .value_label_index = table_index,
             .numeric_shift = REAL(numeric_shift)[0],
             .numeric_scale = REAL(numeric_scale)[0],
@@ -3267,14 +3254,13 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
                 descriptor->direct_string_data = dictstring_storage(dictionary_source);
             }
         }
-        descriptor->label_values = label_values_reader;
     }
 
     char *rust_error = NULL;
     int ok = dtatools_write_rust(
         output_path, dataset_label, rooted_dataset_metadata, descriptors,
-        column_count, REAL(numeric_replacements), row_count, timestamp,
-        &rust_error
+        column_count, table_descriptors, table_count, REAL(numeric_replacements),
+        row_count, timestamp, &rust_error
     );
     if (ok < 0) {
         UNPROTECT(2);
@@ -3286,39 +3272,34 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     return numeric_replacements;
 }
 
-/* One Arrow write column: an eighteen-element list built by
+/* One Arrow write column: a seventeen-element list built by
  * .prepare_arrow_write(): name, kind, values, levels, ordered, label, format,
  * storage, tz, units, label_values, label_texts, has_value_labels,
- * haven_labelled, string_storage, value_label_name, value_label_index.
+ * haven_labelled, string_storage, value_label_index.
  * The final element is variable Stata metadata. Character data must already
  * be UTF-8; the R layer normalizes
  * with enc2utf8(). */
 static void arrow_write_column_descriptor(
     SEXP column, size_t index, size_t row_count, SEXP string_roots,
-    R_xlen_t *root_index, SEXP *label_values_cache,
-    SEXP *label_texts_input_cache, SEXP *label_texts_cache,
-    size_t column_count, dtatools_arrow_column *descriptor
+    R_xlen_t *root_index, size_t table_count,
+    dtatools_arrow_column *descriptor
 ) {
-    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 18) {
-        Rf_error("internal Arrow column must be an eighteen-element list");
+    if (TYPEOF(column) != VECSXP || XLENGTH(column) != 17) {
+        Rf_error("internal Arrow column must be a seventeen-element list");
     }
     SEXP kind_value = VECTOR_ELT(column, 1);
     SEXP values = VECTOR_ELT(column, 2);
     SEXP levels = VECTOR_ELT(column, 3);
     SEXP ordered = VECTOR_ELT(column, 4);
     SEXP storage = VECTOR_ELT(column, 7);
-    SEXP label_values = VECTOR_ELT(column, 10);
-    SEXP label_texts = VECTOR_ELT(column, 11);
     SEXP has_value_labels = VECTOR_ELT(column, 12);
     SEXP haven_labelled = VECTOR_ELT(column, 13);
     SEXP string_storage = VECTOR_ELT(column, 14);
-    SEXP value_label_index = VECTOR_ELT(column, 16);
-    SEXP stata_metadata = VECTOR_ELT(column, 17);
+    SEXP value_label_index = VECTOR_ELT(column, 15);
+    SEXP stata_metadata = VECTOR_ELT(column, 16);
     if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1 ||
         TYPEOF(ordered) != LGLSXP || XLENGTH(ordered) != 1 ||
         TYPEOF(storage) != INTSXP || XLENGTH(storage) != 1 ||
-        TYPEOF(label_values) != REALSXP || TYPEOF(label_texts) != STRSXP ||
-        XLENGTH(label_values) != XLENGTH(label_texts) ||
         !is_stata_metadata(stata_metadata) ||
         TYPEOF(has_value_labels) != LGLSXP ||
         XLENGTH(has_value_labels) != 1 ||
@@ -3332,7 +3313,7 @@ static void arrow_write_column_descriptor(
     }
     int has_labels = LOGICAL(has_value_labels)[0];
     int table_index = INTEGER(value_label_index)[0];
-    if ((has_labels && (table_index < 0 || (size_t) table_index >= column_count)) ||
+    if ((has_labels && (table_index < 0 || (size_t) table_index >= table_count)) ||
         (!has_labels && table_index != -1)) {
         Rf_error("invalid internal Arrow value-label table index");
     }
@@ -3361,36 +3342,12 @@ static void arrow_write_column_descriptor(
     descriptor->units = write_rooted_scalar_string(
         string_roots, (*root_index)++, VECTOR_ELT(column, 9), "units"
     );
-    descriptor->value_label_name = write_rooted_scalar_string(
-        string_roots, (*root_index)++, VECTOR_ELT(column, 15),
-        "value-label table name"
-    );
-    descriptor->label_count = (size_t) XLENGTH(label_values);
     descriptor->has_value_labels = has_labels;
     descriptor->value_label_index = table_index;
     descriptor->stata_metadata = write_rooted_stata_metadata(
         string_roots, (*root_index)++, stata_metadata, "variable Stata metadata"
     );
     descriptor->haven_labelled = LOGICAL(haven_labelled)[0];
-    if (has_labels) {
-        size_t cache_index = (size_t) table_index;
-        if (label_values_cache[cache_index] == R_NilValue) {
-            label_values_cache[cache_index] = label_values;
-            label_texts_input_cache[cache_index] = label_texts;
-            label_texts_cache[cache_index] = write_rooted_strings(
-                string_roots, (*root_index)++, label_texts, "value-label text"
-            );
-        } else if (label_values_cache[cache_index] != label_values ||
-                   label_texts_input_cache[cache_index] != label_texts) {
-            Rf_error("internal shared Arrow value-label table is not canonical");
-        }
-        descriptor->label_texts = label_texts_cache[cache_index];
-        descriptor->label_values =
-            descriptor->label_count > 0 ? REAL(label_values_cache[cache_index]) : NULL;
-    } else {
-        descriptor->label_texts = R_NilValue;
-        descriptor->label_values = NULL;
-    }
 
     switch (descriptor->kind) {
     case 0: /* logical */
@@ -3463,13 +3420,109 @@ static void arrow_write_column_descriptor(
     (void) index;
 }
 
+typedef struct {
+    const char *dataset_label;
+    SEXP dataset_metadata;
+    dtatools_arrow_column *columns;
+    size_t column_count;
+    dtatools_arrow_value_label_table *value_label_tables;
+    size_t value_label_table_count;
+    size_t row_count;
+} arrow_write_specification;
+
+static void arrow_write_specification_sizes(
+    SEXP specification, size_t *column_count, size_t *table_count
+) {
+    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 4) {
+        Rf_error("internal Arrow specification must be a four-element list");
+    }
+    SEXP dataset_metadata = VECTOR_ELT(specification, 1);
+    SEXP columns = VECTOR_ELT(specification, 2);
+    SEXP tables = VECTOR_ELT(specification, 3);
+    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP ||
+        TYPEOF(tables) != VECSXP) {
+        Rf_error("invalid internal Arrow specification");
+    }
+    *column_count = (size_t) XLENGTH(columns);
+    *table_count = (size_t) XLENGTH(tables);
+}
+
+static arrow_write_specification prepare_arrow_write_specification(
+    SEXP specification, SEXP string_roots, R_xlen_t *root_index
+) {
+    size_t column_count = 0;
+    size_t table_count = 0;
+    arrow_write_specification_sizes(
+        specification, &column_count, &table_count
+    );
+    SEXP dataset_metadata = VECTOR_ELT(specification, 1);
+    SEXP columns = VECTOR_ELT(specification, 2);
+    SEXP tables = VECTOR_ELT(specification, 3);
+    arrow_write_specification result = {
+        .dataset_label = write_rooted_scalar_string(
+            string_roots, (*root_index)++, VECTOR_ELT(specification, 0),
+            "dataset label"
+        ),
+        .dataset_metadata = write_rooted_stata_metadata(
+            string_roots, (*root_index)++, dataset_metadata,
+            "dataset Stata metadata"
+        ),
+        .column_count = column_count,
+        .value_label_table_count = table_count,
+        .row_count = 0
+    };
+    if (column_count > 0) {
+        SEXP first = VECTOR_ELT(columns, 0);
+        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 17) {
+            Rf_error("internal Arrow column must be a seventeen-element list");
+        }
+        result.row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
+    }
+    result.value_label_tables =
+        (dtatools_arrow_value_label_table *) R_alloc(
+            (R_SIZE_T) table_count,
+            (int) sizeof(dtatools_arrow_value_label_table)
+        );
+    for (size_t index = 0; index < table_count; index++) {
+        SEXP table = VECTOR_ELT(tables, (R_xlen_t) index);
+        if (TYPEOF(table) != VECSXP || XLENGTH(table) != 3) {
+            Rf_error("internal Arrow value-label table must be a three-element list");
+        }
+        SEXP label_values = VECTOR_ELT(table, 1);
+        SEXP label_texts = VECTOR_ELT(table, 2);
+        if (TYPEOF(label_values) != REALSXP || TYPEOF(label_texts) != STRSXP ||
+            XLENGTH(label_values) != XLENGTH(label_texts)) {
+            Rf_error("invalid internal Arrow value-label table metadata");
+        }
+        dtatools_arrow_value_label_table *descriptor =
+            &result.value_label_tables[index];
+        descriptor->name = write_rooted_scalar_string(
+            string_roots, (*root_index)++, VECTOR_ELT(table, 0),
+            "value-label table name"
+        );
+        descriptor->label_texts = write_rooted_strings(
+            string_roots, (*root_index)++, label_texts, "value-label text"
+        );
+        descriptor->label_count = (size_t) XLENGTH(label_values);
+        descriptor->label_values = descriptor->label_count > 0
+            ? REAL(label_values) : NULL;
+    }
+    result.columns = (dtatools_arrow_column *) R_alloc(
+        (R_SIZE_T) column_count, (int) sizeof(dtatools_arrow_column)
+    );
+    for (size_t index = 0; index < column_count; index++) {
+        arrow_write_column_descriptor(
+            VECTOR_ELT(columns, (R_xlen_t) index), index, result.row_count,
+            string_roots, root_index, table_count, &result.columns[index]
+        );
+    }
+    return result;
+}
+
 SEXP C_dtatools_save_arrow(
     SEXP specification, SEXP path, SEXP compression, SEXP threads,
     SEXP checksums
 ) {
-    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 3) {
-        Rf_error("internal Arrow specification must be a three-element list");
-    }
     if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
         INTEGER(threads)[0] < 0) {
         Rf_error("internal thread count must be one non-negative integer");
@@ -3478,18 +3531,17 @@ SEXP C_dtatools_save_arrow(
         LOGICAL(checksums)[0] == NA_LOGICAL) {
         Rf_error("internal checksums flag must be TRUE or FALSE");
     }
-    SEXP dataset_metadata = VECTOR_ELT(specification, 1);
-    SEXP columns = VECTOR_ELT(specification, 2);
-    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP) {
-        Rf_error("invalid internal Arrow specification");
-    }
-
-    size_t column_count = (size_t) XLENGTH(columns);
-    if (column_count > ((size_t) R_XLEN_T_MAX - 4) / 9) {
+    size_t column_count = 0;
+    size_t table_count = 0;
+    arrow_write_specification_sizes(
+        specification, &column_count, &table_count
+    );
+    if (column_count > ((size_t) R_XLEN_T_MAX - 4) / 7 ||
+        table_count > ((size_t) R_XLEN_T_MAX - 4 - 7 * column_count) / 2) {
         Rf_error("too many internal Arrow columns");
     }
     SEXP string_roots = PROTECT(Rf_allocVector(
-        VECSXP, (R_xlen_t) (4 + 9 * column_count)
+        VECSXP, (R_xlen_t) (4 + 7 * column_count + 2 * table_count)
     ));
     R_xlen_t root_index = 0;
     const char *output_path = write_rooted_scalar_string(
@@ -3498,53 +3550,17 @@ SEXP C_dtatools_save_arrow(
     const char *compression_label = write_rooted_scalar_string(
         string_roots, root_index++, compression, "compression"
     );
-    const char *dataset_label = write_rooted_scalar_string(
-        string_roots, root_index++, VECTOR_ELT(specification, 0),
-        "dataset label"
+    arrow_write_specification prepared = prepare_arrow_write_specification(
+        specification, string_roots, &root_index
     );
-    SEXP rooted_dataset_metadata = write_rooted_stata_metadata(
-        string_roots, root_index++, dataset_metadata, "dataset Stata metadata"
-    );
-
-    size_t row_count = 0;
-    if (column_count > 0) {
-        SEXP first = VECTOR_ELT(columns, 0);
-        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 18) {
-            Rf_error("internal Arrow column must be an eighteen-element list");
-        }
-        row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
-    }
-    dtatools_arrow_column *descriptors = (dtatools_arrow_column *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(dtatools_arrow_column)
-    );
-    SEXP *label_values_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    SEXP *label_texts_input_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    SEXP *label_texts_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    for (size_t index = 0; index < column_count; index++) {
-        label_values_cache[index] = R_NilValue;
-        label_texts_input_cache[index] = R_NilValue;
-        label_texts_cache[index] = R_NilValue;
-    }
-    for (size_t index = 0; index < column_count; index++) {
-        arrow_write_column_descriptor(
-            VECTOR_ELT(columns, (R_xlen_t) index), index, row_count,
-            string_roots, &root_index, label_values_cache,
-            label_texts_input_cache, label_texts_cache, column_count,
-            &descriptors[index]
-        );
-    }
 
     int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_save_arrow_rust(
-        output_path, dataset_label, rooted_dataset_metadata,
-        descriptors, column_count, row_count,
+        output_path, prepared.dataset_label, prepared.dataset_metadata,
+        prepared.columns, prepared.column_count,
+        prepared.value_label_tables, prepared.value_label_table_count,
+        prepared.row_count,
         compression_label, INTEGER(threads)[0], LOGICAL(checksums)[0],
         &interrupted,
         &rust_error
@@ -3562,74 +3578,33 @@ SEXP C_dtatools_save_arrow(
 }
 
 SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
-    if (TYPEOF(specification) != VECSXP || XLENGTH(specification) != 3) {
-        Rf_error("internal Arrow specification must be a three-element list");
-    }
     if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
         INTEGER(threads)[0] < 0) {
         Rf_error("internal thread count must be one non-negative integer");
     }
-    SEXP dataset_metadata = VECTOR_ELT(specification, 1);
-    SEXP columns = VECTOR_ELT(specification, 2);
-    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP) {
-        Rf_error("invalid internal Arrow specification");
-    }
-
-    size_t column_count = (size_t) XLENGTH(columns);
-    if (column_count > ((size_t) R_XLEN_T_MAX - 2) / 9) {
+    size_t column_count = 0;
+    size_t table_count = 0;
+    arrow_write_specification_sizes(
+        specification, &column_count, &table_count
+    );
+    if (column_count > ((size_t) R_XLEN_T_MAX - 2) / 7 ||
+        table_count > ((size_t) R_XLEN_T_MAX - 2 - 7 * column_count) / 2) {
         Rf_error("too many internal Arrow columns");
     }
     SEXP string_roots = PROTECT(Rf_allocVector(
-        VECSXP, (R_xlen_t) (2 + 9 * column_count)
+        VECSXP, (R_xlen_t) (2 + 7 * column_count + 2 * table_count)
     ));
     R_xlen_t root_index = 0;
-    const char *dataset_label = write_rooted_scalar_string(
-        string_roots, root_index++, VECTOR_ELT(specification, 0),
-        "dataset label"
+    arrow_write_specification prepared = prepare_arrow_write_specification(
+        specification, string_roots, &root_index
     );
-    SEXP rooted_dataset_metadata = write_rooted_stata_metadata(
-        string_roots, root_index++, dataset_metadata, "dataset Stata metadata"
-    );
-
-    size_t row_count = 0;
-    if (column_count > 0) {
-        SEXP first = VECTOR_ELT(columns, 0);
-        if (TYPEOF(first) != VECSXP || XLENGTH(first) != 18) {
-            Rf_error("internal Arrow column must be an eighteen-element list");
-        }
-        row_count = (size_t) XLENGTH(VECTOR_ELT(first, 2));
-    }
-    dtatools_arrow_column *descriptors = (dtatools_arrow_column *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(dtatools_arrow_column)
-    );
-    SEXP *label_values_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    SEXP *label_texts_input_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    SEXP *label_texts_cache = (SEXP *) R_alloc(
-        (R_SIZE_T) column_count, (int) sizeof(SEXP)
-    );
-    for (size_t index = 0; index < column_count; index++) {
-        label_values_cache[index] = R_NilValue;
-        label_texts_input_cache[index] = R_NilValue;
-        label_texts_cache[index] = R_NilValue;
-    }
-    for (size_t index = 0; index < column_count; index++) {
-        arrow_write_column_descriptor(
-            VECTOR_ELT(columns, (R_xlen_t) index), index, row_count,
-            string_roots, &root_index, label_values_cache,
-            label_texts_input_cache, label_texts_cache, column_count,
-            &descriptors[index]
-        );
-    }
 
     int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_datasig_rust(
-        dataset_label, rooted_dataset_metadata,
-        descriptors, column_count, row_count, INTEGER(threads)[0],
+        prepared.dataset_label, prepared.dataset_metadata,
+        prepared.columns, prepared.column_count, prepared.value_label_tables,
+        prepared.value_label_table_count, prepared.row_count, INTEGER(threads)[0],
         &interrupted,
         &rust_error
     );

@@ -77,18 +77,22 @@ pub struct RArrowColumnDescriptor {
     compact_kind: c_int,
     compact_format_version: c_int,
     compact_temporal: c_int,
-    /// Value-label codes as R doubles (tagged NAs carry extended tags).
-    label_values: *const f64,
-    label_texts: Sexp,
-    label_count: usize,
     stata_metadata: Sexp,
     has_value_labels: c_int,
-    value_label_name: *const c_char,
     value_label_index: c_int,
     haven_labelled: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.
     dictstring: *const c_void,
+}
+
+#[repr(C)]
+pub struct RArrowValueLabelTableDescriptor {
+    name: *const c_char,
+    /// Value-label codes as R doubles (tagged NAs carry extended tags).
+    label_values: *const f64,
+    label_texts: Sexp,
+    label_count: usize,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -740,17 +744,14 @@ unsafe fn compact_profiled_column(
 }
 
 unsafe fn value_label_table(
-    descriptor: &RArrowColumnDescriptor,
+    descriptor: &RArrowValueLabelTableDescriptor,
     name: &str,
-) -> Result<Option<ValueLabelTable>, String> {
-    if descriptor.has_value_labels == 0 {
-        return Ok(None);
-    }
+) -> Result<ValueLabelTable, String> {
     if descriptor.label_count == 0 {
-        return Ok(Some(ValueLabelTable {
+        return Ok(ValueLabelTable {
             name: name.to_owned(),
             entries: Vec::new(),
-        }));
+        });
     }
     if descriptor.label_values.is_null() {
         return Err("value-label codes pointer is null".to_owned());
@@ -765,11 +766,10 @@ unsafe fn value_label_table(
     entries
         .try_reserve_exact(descriptor.label_count)
         .map_err(|_| "could not allocate value labels".to_owned())?;
-    for (index, (&code, text)) in codes.iter().zip(&texts).enumerate() {
+    for (index, (&code, text)) in codes.iter().zip(texts).enumerate() {
         poll_interrupt(index)?;
         let label = text
-            .clone()
-            .ok_or_else(|| format!("column `{name}` has a missing value-label text"))?;
+            .ok_or_else(|| format!("table `{name}` has a missing value-label text"))?;
         let entry = match missing_from_code(direct_r_missing_code(code))? {
             Some(tag) => ValueLabelEntry {
                 value: 0,
@@ -778,9 +778,7 @@ unsafe fn value_label_table(
             },
             None => {
                 if code.fract() != 0.0 || code < f64::from(i32::MIN) || code > f64::from(i32::MAX) {
-                    return Err(format!(
-                        "column `{name}` has a non-integer value-label code"
-                    ));
+                    return Err(format!("table `{name}` has a non-integer value-label code"));
                 }
                 let value = code as i32;
                 ValueLabelEntry {
@@ -792,10 +790,10 @@ unsafe fn value_label_table(
         };
         entries.push(entry);
     }
-    Ok(Some(ValueLabelTable {
+    Ok(ValueLabelTable {
         name: name.to_owned(),
         entries,
-    }))
+    })
 }
 
 /// Everything one column's encoding needs, captured on the R thread. The raw
@@ -847,7 +845,6 @@ struct ExtractedColumn {
     ordered: bool,
     haven_labelled: bool,
     value_label_name: Option<String>,
-    value_label_index: Option<usize>,
     string_storage: Option<String>,
     notes: Vec<StataNote>,
     characteristics: Vec<StataCharacteristic>,
@@ -863,6 +860,7 @@ unsafe impl Sync for ExtractedColumn {}
 unsafe fn extract_column(
     descriptor: &RArrowColumnDescriptor,
     row_count: usize,
+    value_label_names: &[String],
 ) -> Result<ExtractedColumn, String> {
     let name = required_c_string(descriptor.name, "a column name")?;
     let kind = RArrowKind::try_from(descriptor.kind)?;
@@ -885,9 +883,6 @@ unsafe fn extract_column(
         } else {
             None
         };
-    let value_label_name = (descriptor.has_value_labels != 0)
-        .then(|| required_c_string(descriptor.value_label_name, "a value-label table name"))
-        .transpose()?;
     let (notes, characteristics) = parse_stata_metadata_sexp(descriptor.stata_metadata)?;
     let value_label_index = if descriptor.has_value_labels == 0 {
         if descriptor.value_label_index != -1 {
@@ -897,11 +892,16 @@ unsafe fn extract_column(
         }
         None
     } else {
-        Some(
-            usize::try_from(descriptor.value_label_index)
-                .map_err(|_| format!("column `{name}` has an invalid value-label table index"))?,
-        )
+        let index = usize::try_from(descriptor.value_label_index)
+            .map_err(|_| format!("column `{name}` has an invalid value-label table index"))?;
+        if index >= value_label_names.len() {
+            return Err(format!(
+                "column `{name}` has an out-of-range value-label table index"
+            ));
+        }
+        Some(index)
     };
+    let value_label_name = value_label_index.map(|index| value_label_names[index].clone());
     let string_storage = match descriptor.string_storage {
         -1 => None,
         0 => Some("strL".to_owned()),
@@ -973,7 +973,6 @@ unsafe fn extract_column(
         ordered: descriptor.ordered != 0,
         haven_labelled: descriptor.haven_labelled != 0,
         value_label_name,
-        value_label_index,
         string_storage,
         notes,
         characteristics,
@@ -1458,6 +1457,7 @@ unsafe fn assemble_write_dataset(
     dataset_label: *const c_char,
     dataset_metadata: Sexp,
     descriptors: &[RArrowColumnDescriptor],
+    table_descriptors: &[RArrowValueLabelTableDescriptor],
     row_count: usize,
     requested_threads: usize,
 ) -> Result<(ArrowWriteDataset, Vec<u64>), String> {
@@ -1473,38 +1473,18 @@ unsafe fn assemble_write_dataset(
     extracted
         .try_reserve_exact(column_count)
         .map_err(|_| "could not allocate column inputs".to_owned())?;
-    let mut value_label_tables = Vec::new();
-    let mut value_label_sources = Vec::new();
+    let value_label_names = table_descriptors
+        .iter()
+        .map(|descriptor| required_c_string(descriptor.name, "a value-label table name"))
+        .collect::<Result<Vec<_>, _>>()?;
+    let value_label_tables = table_descriptors
+        .iter()
+        .zip(&value_label_names)
+        .map(|(descriptor, name)| value_label_table(descriptor, name))
+        .collect::<Result<Vec<_>, _>>()?;
     for descriptor in descriptors {
         check_interrupt()?;
-        let column = extract_column(descriptor, row_count)?;
-        if let Some(index) = column.value_label_index {
-            let name = column
-                .value_label_name
-                .as_deref()
-                .ok_or_else(|| format!("column `{}` lost its value-label table", column.name))?;
-            if index > value_label_tables.len() {
-                return Err("value-label table indices are not canonical".to_owned());
-            }
-            if index == value_label_tables.len() {
-                value_label_tables.push(
-                    value_label_table(descriptor, name)?.ok_or_else(|| {
-                        format!("column `{}` lost its value-label table", column.name)
-                    })?,
-                );
-                value_label_sources.push((
-                    descriptor.label_values,
-                    descriptor.label_texts,
-                    descriptor.label_count,
-                ));
-            } else if value_label_tables[index].name != name {
-                return Err("value-label table index has inconsistent names".to_owned());
-            } else if value_label_sources[index]
-                != (descriptor.label_values, descriptor.label_texts, descriptor.label_count)
-            {
-                return Err("shared value-label table is not canonical".to_owned());
-            }
-        }
+        let column = extract_column(descriptor, row_count, &value_label_names)?;
         extracted.push(column);
     }
 
@@ -1520,7 +1500,7 @@ unsafe fn assemble_write_dataset(
         .try_reserve_exact(column_count)
         .map_err(|_| "could not allocate replacement counts".to_owned())?;
     for table in value_label_tables {
-        dataset.insert_value_label_table(&table);
+        dataset.insert_owned_value_label_table(table);
     }
     for column in encoded {
         replacements.push(column.replaced);
@@ -1552,6 +1532,8 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
     dataset_metadata: Sexp,
     columns: *const RArrowColumnDescriptor,
     column_count: usize,
+    value_label_tables: *const RArrowValueLabelTableDescriptor,
+    value_label_table_count: usize,
     row_count: usize,
     requested_threads: c_int,
     interrupted: *mut c_int,
@@ -1561,10 +1543,18 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
         if columns.is_null() && column_count > 0 {
             return Err("column descriptor pointer is null".to_owned());
         }
+        if value_label_tables.is_null() && value_label_table_count > 0 {
+            return Err("value-label table descriptor pointer is null".to_owned());
+        }
         let descriptors = if column_count == 0 {
             &[]
         } else {
             std::slice::from_raw_parts(columns, column_count)
+        };
+        let table_descriptors = if value_label_table_count == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(value_label_tables, value_label_table_count)
         };
         let requested_threads =
             usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
@@ -1572,6 +1562,7 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
             dataset_label,
             dataset_metadata,
             descriptors,
+            table_descriptors,
             row_count,
             requested_threads,
         )?;
@@ -1615,6 +1606,8 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
     dataset_metadata: Sexp,
     columns: *const RArrowColumnDescriptor,
     column_count: usize,
+    value_label_tables: *const RArrowValueLabelTableDescriptor,
+    value_label_table_count: usize,
     row_count: usize,
     compression: *const c_char,
     requested_threads: c_int,
@@ -1630,10 +1623,18 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
         if columns.is_null() && column_count > 0 {
             return Err("column descriptor pointer is null".to_owned());
         }
+        if value_label_tables.is_null() && value_label_table_count > 0 {
+            return Err("value-label table descriptor pointer is null".to_owned());
+        }
         let descriptors = if column_count == 0 {
             &[]
         } else {
             std::slice::from_raw_parts(columns, column_count)
+        };
+        let table_descriptors = if value_label_table_count == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(value_label_tables, value_label_table_count)
         };
 
         let requested_threads =
@@ -1642,6 +1643,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             dataset_label,
             dataset_metadata,
             descriptors,
+            table_descriptors,
             row_count,
             requested_threads,
         )?;
@@ -1728,7 +1730,7 @@ fn row_window(skip: f64, n_max: f64) -> (u64, Option<u64>) {
 }
 
 struct CachedValueLabels {
-    table: ValueLabelTable,
+    name: String,
     labels: Sexp,
 }
 
@@ -2904,7 +2906,7 @@ unsafe fn apply_difftime_attributes(
 
 unsafe fn value_label_attributes(
     vector: Sexp,
-    table: &ValueLabelTable,
+    table_name: &str,
     labels: Sexp,
     add_haven_class: bool,
     preserve_value_label_name: bool,
@@ -2912,7 +2914,7 @@ unsafe fn value_label_attributes(
 ) -> Result<(), String> {
     set_attr(vector, "labels", labels)?;
     if preserve_value_label_name {
-        let name = scalar_string(&table.name, guard)?;
+        let name = scalar_string(table_name, guard)?;
         set_attr(vector, "value.label.name", name)?;
     }
     if add_haven_class {
@@ -2930,7 +2932,7 @@ unsafe fn attach_cached_value_labels(
     if let Some(cached) = attributes.value_labels() {
         value_label_attributes(
             vector,
-            &cached.table,
+            &cached.name,
             cached.labels,
             false,
             attributes.preserve_value_label_name(column_name),
@@ -3050,7 +3052,7 @@ unsafe fn finalize_read_column(
                     notes: &document.notes,
                     characteristics: &document.characteristics,
                 },
-                cached.map(|labels| &labels.table),
+                cached.map(|labels| labels.name.as_str()),
                 cached.map(|labels| labels.labels),
                 attributes.preserve_value_label_name(&column.name),
                 guard,
@@ -3203,7 +3205,13 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                         format!("Arrow field references missing value-label table `{name}`")
                     })?;
                     let labels = label_attribute(&table, &mut result_guard)?;
-                    value_labels.insert(name.to_owned(), CachedValueLabels { table, labels });
+                    value_labels.insert(
+                        name.to_owned(),
+                        CachedValueLabels {
+                            name: table.name,
+                            labels,
+                        },
+                    );
                 }
             }
         }

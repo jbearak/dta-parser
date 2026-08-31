@@ -1648,12 +1648,18 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
 
 fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
     let mut value_label_reference_counts = HashMap::new();
+    let selected_value_labels = columns
+        .iter()
+        .filter_map(|column| column.field.as_ref()?.value_labels.as_deref())
+        .collect::<HashSet<_>>();
     if let Some(profile) = &prepared.profile {
         let mut count_reference = |field: &ArrowFieldDocument| {
             if let Some(name) = &field.value_labels {
-                *value_label_reference_counts
-                    .entry(name.clone())
-                    .or_insert(0) += 1;
+                if selected_value_labels.contains(name.as_str()) {
+                    *value_label_reference_counts
+                        .entry(name.clone())
+                        .or_insert(0) += 1;
+                }
             }
         };
         match &profile.fields {

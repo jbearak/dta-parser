@@ -905,7 +905,7 @@ unsafe fn label_attribute(
 unsafe fn attach_variable_attributes(
     vector: Sexp,
     variable: &VariableInfo,
-    table: Option<&ValueLabelTable>,
+    value_label_name: Option<&str>,
     labels_attribute: Option<Sexp>,
     preserve_value_label_name: bool,
     guard: &mut ProtectGuard,
@@ -913,7 +913,7 @@ unsafe fn attach_variable_attributes(
     attach_variable_attribute_view(
         vector,
         VariableAttributeView::from(variable),
-        table,
+        value_label_name,
         labels_attribute,
         preserve_value_label_name,
         guard,
@@ -944,7 +944,7 @@ impl<'a> From<&'a VariableInfo> for VariableAttributeView<'a> {
 unsafe fn attach_variable_attribute_view(
     vector: Sexp,
     attributes: VariableAttributeView<'_>,
-    table: Option<&ValueLabelTable>,
+    value_label_name: Option<&str>,
     labels_attribute: Option<Sexp>,
     preserve_value_label_name: bool,
     guard: &mut ProtectGuard,
@@ -968,16 +968,16 @@ unsafe fn attach_variable_attribute_view(
         let value = scalar_string(&string_storage, guard)?;
         set_attr(vector, "stata.string.storage", value)?;
     }
-    if let Some(table) = table {
+    if let Some(table_name) = value_label_name {
         let labels = labels_attribute.ok_or_else(|| {
             format!(
                 "missing cached labels for value-label table `{}`",
-                table.name
+                table_name
             )
         })?;
         set_attr(vector, "labels", labels)?;
         if preserve_value_label_name {
-            let name = scalar_string(&table.name, guard)?;
+            let name = scalar_string(table_name, guard)?;
             set_attr(vector, "value.label.name", name)?;
         }
     }
@@ -1008,7 +1008,7 @@ unsafe fn attach_variable_attribute_view(
             let timezone = scalar_string("UTC", guard)?;
             set_attr(vector, "tzone", timezone)?;
         }
-        (TemporalKind::None, Some((_, storage_class))) if table.is_some() => {
+        (TemporalKind::None, Some((_, storage_class))) if value_label_name.is_some() => {
             set_class(
                 vector,
                 &[
@@ -1032,7 +1032,7 @@ unsafe fn attach_variable_attribute_view(
             let timezone = scalar_string("UTC", guard)?;
             set_attr(vector, "tzone", timezone)?;
         }
-        (TemporalKind::None, None) if table.is_some() => {
+        (TemporalKind::None, None) if value_label_name.is_some() => {
             set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
         }
         (TemporalKind::None, None) => {}
@@ -1040,13 +1040,21 @@ unsafe fn attach_variable_attribute_view(
     Ok(())
 }
 
-fn value_label_reference_counts(metadata: &DtaMetadata) -> AHashMap<&str, usize> {
+fn value_label_reference_counts<'a>(
+    metadata: &'a DtaMetadata,
+    selected: impl IntoIterator<Item = usize>,
+) -> AHashMap<&'a str, usize> {
     let mut counts = AHashMap::new();
+    for index in selected {
+        if let Some(variable) = metadata.variables.get(index) {
+            if !variable.value_label_name.is_empty() {
+                counts.entry(variable.value_label_name.as_str()).or_insert(0);
+            }
+        }
+    }
     for variable in &metadata.variables {
-        if !variable.value_label_name.is_empty() {
-            *counts
-                .entry(variable.value_label_name.as_str())
-                .or_insert(0_usize) += 1;
+        if let Some(count) = counts.get_mut(variable.value_label_name.as_str()) {
+            *count += 1;
         }
     }
     counts
@@ -1054,13 +1062,13 @@ fn value_label_reference_counts(metadata: &DtaMetadata) -> AHashMap<&str, usize>
 
 fn preserve_value_label_name(
     variable: &VariableInfo,
-    table: Option<&ValueLabelTable>,
+    value_label_name: Option<&str>,
     reference_counts: &AHashMap<&str, usize>,
 ) -> bool {
-    table.is_some_and(|table| {
-        table.name != variable.name
+    value_label_name.is_some_and(|table_name| {
+        table_name != variable.name
             || reference_counts
-                .get(table.name.as_str())
+                .get(table_name)
                 .is_some_and(|&count| count > 1)
     })
 }
@@ -1147,9 +1155,13 @@ unsafe fn build_column(
     attach_variable_attributes(
         vector,
         variable,
-        table,
+        table.map(|table| table.name.as_str()),
         labels_attribute,
-        preserve_value_label_name(variable, table, value_label_reference_counts),
+        preserve_value_label_name(
+            variable,
+            table.map(|table| table.name.as_str()),
+            value_label_reference_counts,
+        ),
         guard,
     )?;
     Ok(vector)
@@ -1179,7 +1191,12 @@ unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
     let result = result_guard.alloc(VECSXP, column_count)?;
     let names = result_guard.alloc(STRSXP, column_count)?;
 
-    let value_label_reference_counts = value_label_reference_counts(&data.metadata);
+    let value_label_reference_counts = value_label_reference_counts(
+        &data.metadata,
+        data.columns
+            .iter()
+            .map(|column| column.variable_index as usize),
+    );
     let mut value_label_attributes = AHashMap::new();
 
     for index in 0..data.columns.len() {
@@ -1933,13 +1950,18 @@ impl DtaSink for RDataFrameSink {
     ) -> Result<Self::Output, DtaError> {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
-        let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
+        let value_label_reference_counts = value_label_reference_counts(
+            &metadata,
+            self.source_indices.iter().map(|&index| index as usize),
+        );
+        let mut value_label_tables_by_name = AHashMap::new();
         for table in value_label_tables {
-            value_label_tables_by_name
-                .entry(table.name.as_str())
-                .or_insert(table);
+            if value_label_reference_counts.contains_key(table.name.as_str()) {
+                value_label_tables_by_name
+                    .entry(table.name.as_str())
+                    .or_insert(table);
+            }
         }
-        let value_label_reference_counts = value_label_reference_counts(&metadata);
         unsafe {
             for (output_index, column) in self.columns.iter_mut().enumerate() {
                 match column {
@@ -1997,9 +2019,13 @@ impl DtaSink for RDataFrameSink {
                 attach_variable_attributes(
                     vector,
                     variable,
-                    table,
+                    table.map(|table| table.name.as_str()),
                     labels_attribute,
-                    preserve_value_label_name(variable, table, &value_label_reference_counts),
+                    preserve_value_label_name(
+                        variable,
+                        table.map(|table| table.name.as_str()),
+                        &value_label_reference_counts,
+                    ),
                     &mut attribute_guard,
                 )
                 .map_err(DtaError::Output)?;
@@ -2391,12 +2417,8 @@ pub struct RWriteColumnDescriptor {
     label: *const c_char,
     numeric_values: *const c_void,
     string_values: Sexp,
-    label_values: *const c_void,
-    label_texts: Sexp,
-    label_count: usize,
     stata_metadata: Sexp,
     has_value_labels: c_int,
-    value_label_name: *const c_char,
     value_label_index: c_int,
     numeric_shift: f64,
     numeric_scale: f64,
@@ -2406,6 +2428,14 @@ pub struct RWriteColumnDescriptor {
     direct_numeric_temporal: c_int,
     direct_numeric_no_na: c_int,
     direct_string_data: *mut c_void,
+}
+
+#[repr(C)]
+pub struct RWriteValueLabelTableDescriptor {
+    name: *const c_char,
+    label_values: *const c_void,
+    label_texts: Sexp,
+    label_count: usize,
 }
 
 #[derive(Debug)]
@@ -2586,7 +2616,6 @@ impl DirectNumericKind {
 
 struct RWriteSource<'a> {
     descriptor: &'a RWriteColumnDescriptor,
-    value_label_name: &'a str,
     row_count: u64,
     direct_numeric_kind: DirectNumericKind,
     direct_numeric_version: Option<FormatVersion>,
@@ -2981,8 +3010,6 @@ impl<'a> RWriteSource<'a> {
             None
         };
         let direct_numeric_temporal = TemporalKind::try_from(descriptor.direct_numeric_temporal)?;
-        let value_label_name =
-            unsafe { required_c_str(descriptor.value_label_name, "value-label table name")? };
         let uses_numeric_callback = descriptor.dta_type <= 4
             && (descriptor.direct_numeric_values.is_null()
                 || matches!(direct_numeric_kind, DirectNumericKind::Callback));
@@ -2990,7 +3017,6 @@ impl<'a> RWriteSource<'a> {
             descriptor.dta_type >= 5 && descriptor.direct_string_data.is_null();
         Ok(Self {
             descriptor,
-            value_label_name,
             row_count,
             direct_numeric_kind,
             direct_numeric_version,
@@ -3220,6 +3246,7 @@ struct RWriteObservationSource<'data, 'source> {
     data: &'data DtaWriteData<'source>,
     sources: &'data [RWriteSource<'source>],
     value_label_tables: &'data [Vec<DtaWriteValueLabel<'source>>],
+    value_label_names: &'data [&'source str],
     value_label_indices: &'data [Option<usize>],
 }
 
@@ -3494,9 +3521,8 @@ impl RWriteObservationSource<'_, '_> {
 
 impl DtaWriteObservationSource for RWriteObservationSource<'_, '_> {
     fn value_label_name(&self, column: usize) -> Option<&str> {
-        self.sources
-            .get(column)
-            .map(|source| source.value_label_name)
+        let table_index = self.value_label_indices.get(column).copied().flatten()?;
+        self.value_label_names.get(table_index).copied()
     }
 
     fn value_labels(&self, column: usize) -> Option<&[DtaWriteValueLabel<'_>]> {
@@ -3590,7 +3616,7 @@ unsafe fn required_c_string(value: *const c_char, description: &str) -> Result<S
 }
 
 unsafe fn r_value_labels<'a>(
-    descriptor: &'a RWriteColumnDescriptor,
+    descriptor: &'a RWriteValueLabelTableDescriptor,
 ) -> Result<Vec<DtaWriteValueLabel<'a>>, RWriteError> {
     let mut result = Vec::with_capacity(descriptor.label_count);
     if descriptor.label_count == 0 {
@@ -3651,6 +3677,8 @@ struct RWriteRequest {
     stata_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
+    value_label_tables: *const RWriteValueLabelTableDescriptor,
+    value_label_table_count: usize,
     numeric_replacements: *mut f64,
     row_count: usize,
     timestamp: *const c_char,
@@ -3663,6 +3691,8 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         stata_metadata,
         descriptors,
         column_count,
+        value_label_tables,
+        value_label_table_count,
         numeric_replacements,
         row_count,
         timestamp,
@@ -3672,6 +3702,9 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     if descriptors.is_null() && column_count != 0 {
         return Err("write column pointer is null".into());
     }
+    if value_label_tables.is_null() && value_label_table_count != 0 {
+        return Err("value-label table pointer is null".into());
+    }
     if numeric_replacements.is_null() && column_count != 0 {
         return Err("numeric replacement output pointer is null".into());
     }
@@ -3680,6 +3713,11 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         &[]
     } else {
         std::slice::from_raw_parts(descriptors, column_count)
+    };
+    let table_descriptors = if value_label_table_count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(value_label_tables, value_label_table_count)
     };
     let row_count = u64::try_from(row_count).map_err(|_| "row count is too large".to_owned())?;
     let callback_numeric_count = descriptors
@@ -3723,9 +3761,16 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let mut value_label_tables = Vec::new();
-    let mut value_label_table_names = Vec::new();
-    let mut value_label_sources = Vec::new();
+    let value_label_names = table_descriptors
+        .iter()
+        .map(|descriptor| unsafe {
+            required_c_str(descriptor.name, "value-label table name")
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let value_label_tables = table_descriptors
+        .iter()
+        .map(|descriptor| unsafe { r_value_labels(descriptor) })
+        .collect::<Result<Vec<_>, _>>()?;
     let mut value_label_indices = Vec::with_capacity(column_count);
     let mut columns = Vec::with_capacity(column_count);
     for (descriptor, source) in descriptors.iter().zip(&sources) {
@@ -3743,23 +3788,8 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         } else {
             let index = usize::try_from(descriptor.value_label_index)
                 .map_err(|_| "labelled column has an invalid value-label table index")?;
-            if index > value_label_tables.len() {
-                return Err("value-label table indices are not canonical".into());
-            }
-            if index == value_label_tables.len() {
-                value_label_tables.push(r_value_labels(descriptor)?);
-                value_label_table_names.push(source.value_label_name);
-                value_label_sources.push((
-                    descriptor.label_values,
-                    descriptor.label_texts,
-                    descriptor.label_count,
-                ));
-            } else if value_label_table_names[index] != source.value_label_name {
-                return Err("value-label table index has inconsistent names".into());
-            } else if value_label_sources[index]
-                != (descriptor.label_values, descriptor.label_texts, descriptor.label_count)
-            {
-                return Err("shared value-label table is not canonical".into());
+            if index >= value_label_tables.len() {
+                return Err("labelled column has an out-of-range value-label table index".into());
             }
             Some(index)
         };
@@ -3789,6 +3819,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         data: &data,
         sources: &sources,
         value_label_tables: &value_label_tables,
+        value_label_names: &value_label_names,
         value_label_indices: &value_label_indices,
     };
     let mut open_options = OpenOptions::new();
@@ -3832,6 +3863,8 @@ pub unsafe extern "C" fn dtatools_write_rust(
     stata_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
+    value_label_tables: *const RWriteValueLabelTableDescriptor,
+    value_label_table_count: usize,
     numeric_replacements: *mut f64,
     row_count: usize,
     timestamp: *const c_char,
@@ -3844,6 +3877,8 @@ pub unsafe extern "C" fn dtatools_write_rust(
             stata_metadata,
             descriptors,
             column_count,
+            value_label_tables,
+            value_label_table_count,
             numeric_replacements,
             row_count,
             timestamp,
@@ -3948,12 +3983,8 @@ mod tests {
             label: ptr::null(),
             numeric_values: ptr::null(),
             string_values: ptr::null_mut(),
-            label_values: ptr::null(),
-            label_texts: ptr::null_mut(),
-            label_count: 0,
             stata_metadata: ptr::null_mut(),
             has_value_labels: 0,
-            value_label_name: c"x".as_ptr(),
             value_label_index: -1,
             numeric_shift: shift,
             numeric_scale: scale,
@@ -4007,6 +4038,7 @@ mod tests {
             data: &data,
             sources: &sources,
             value_label_tables: &[],
+            value_label_names: &[],
             value_label_indices: &[],
         };
         let mut output = Vec::new();

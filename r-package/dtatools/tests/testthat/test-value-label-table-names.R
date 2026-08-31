@@ -247,7 +247,7 @@ test_that("shared write mappings use one prepared vector", {
         c(
             "name", "type_code", "format", "label", "label_values",
             "label_texts", "values", "has_value_labels", "numeric_shift",
-            "numeric_scale", "value_label_name", "value_label_index"
+            "numeric_scale", "value_label_index"
         )
     )
     expect_identical(
@@ -256,17 +256,50 @@ test_that("shared write mappings use one prepared vector", {
             "name", "kind", "values", "levels", "ordered", "label",
             "format", "storage", "tz", "units", "label_values",
             "label_texts", "has_value_labels", "haven_labelled",
-            "string_storage", "value_label_name", "value_label_index"
+            "string_storage", "value_label_index"
         )
     )
-    expect_identical(
-        tracemem(dta[[3L]][[1L]]$label_values),
-        tracemem(dta[[3L]][[2L]]$label_values)
-    )
-    expect_identical(
-        tracemem(arrow[[3L]][[1L]]$label_texts),
-        tracemem(arrow[[3L]][[2L]]$label_texts)
-    )
+    expect_length(dta[[5L]], 1L)
+    expect_length(arrow[[4L]], 1L)
+    expect_identical(dta[[5L]][[1L]]$label_values, unname(labels))
+    expect_identical(arrow[[4L]][[1L]]$label_texts, names(labels))
+    expect_length(dta[[3L]][[1L]]$label_values, 0L)
+    expect_length(arrow[[3L]][[1L]]$label_texts, 0L)
+})
+
+test_that("shared tables never hide malformed later claimants", {
+    valid <- named_labelled(1, c(One = 1), "shared")
+    bad <- named_labelled(1, c(One = 1), "shared")
+    malformed <- matrix(1)
+    attr(malformed, "names") <- "One"
+    attr(bad, "labels") <- malformed
+
+    for (data in list(
+        data.frame(valid = valid, bad = bad),
+        data.frame(bad = bad, valid = valid)
+    )) {
+        expect_error(
+            save_dta(data, tempfile(fileext = ".dta")),
+            "must be a named numeric vector", fixed = TRUE
+        )
+        expect_error(
+            save_arrow(data, tempfile(fileext = ".arrow")),
+            "must be a named numeric vector", fixed = TRUE
+        )
+    }
+
+    invalid_factor <- factor(1, levels = 1, labels = "")
+    attr(invalid_factor, "value.label.name") <- "shared"
+    numeric <- named_labelled(1, stats::setNames(1, ""), "shared")
+    for (data in list(
+        data.frame(numeric = numeric, invalid_factor = invalid_factor),
+        data.frame(invalid_factor = invalid_factor, numeric = numeric)
+    )) {
+        expect_error(
+            save_dta(data, tempfile(fileext = ".dta")),
+            "empty or missing level", fixed = TRUE
+        )
+    }
 })
 
 test_that("empty mappings are usable and missing mappings are malformed", {

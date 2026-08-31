@@ -283,7 +283,6 @@ save_arrow <- function(data, path,
 }
 
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
-                                        value_label_name,
                                         value_label_index,
                                         value_label_cache) {
     characteristics <- stata_characteristics(column)
@@ -309,11 +308,13 @@ save_arrow <- function(data, path,
     if (kind %in% c(
         "integer", "double", "date", "datetime", "difftime", "stata"
     ) && value_label_index >= 0L) {
+        .validate_write_value_label_structure(column, name)
         value_labels <- .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() {
                 prepared <- .prepare_write_value_labels(
-                    column, name, allow_legacy_codes = TRUE
+                    column, name, allow_legacy_codes = TRUE,
+                    validate_structure = FALSE
                 )
                 # The Arrow native descriptor has one f64 representation for
                 # integer and double label codes.
@@ -394,16 +395,15 @@ save_arrow <- function(data, path,
         .arrow_utf8(name, "Column names"), .arrow_write_kinds[[write_kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
+        double(), character(), value_labels[[3L]],
         haven_labelled, string_storage,
-        .arrow_utf8(value_label_name, "Value-label table names"),
         as.integer(value_label_index),
         .stata_metadata_payload(notes, characteristics)
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
         "storage", "tz", "units", "label_values", "label_texts",
         "has_value_labels", "haven_labelled", "string_storage",
-        "value_label_name", "value_label_index", "stata_metadata"
+        "value_label_index", "stata_metadata"
     ))
 }
 
@@ -507,15 +507,18 @@ save_arrow <- function(data, path,
     value_label_cache <- new.env(hash = TRUE, parent = emptyenv())
     columns <- Map(
         .prepare_arrow_write_column, data, data_names, kinds,
-        value_label_names$names, value_label_names$indices,
+        value_label_names$indices,
         MoreArgs = list(
             adjust_tz = adjust_tz,
             value_label_cache = value_label_cache
         )
     )
+    value_label_tables <- .write_value_label_registry(
+        value_label_names, value_label_cache
+    )
     specification <- list(
         label, .stata_metadata_payload(notes, characteristics),
-        unname(columns)
+        unname(columns), value_label_tables
     )
     attr(specification, "write_warnings") <- c(
         value_label_names$warnings,

@@ -433,10 +433,9 @@ save_dta <- function(data, path, version = 19L,
     )
 }
 
-.prepare_write_value_labels <- function(column, name,
-                                        allow_legacy_codes = FALSE) {
+.validate_write_value_label_structure <- function(column, name) {
     labels <- attr(column, "labels", exact = TRUE)
-    if (is.null(labels)) return(list(double(), character(), FALSE))
+    if (is.null(labels)) return(NULL)
     argument <- sprintf("labels for `%s`", name)
     if (!is.numeric(labels) ||
         !(typeof(labels) %in% c("integer", "double")) ||
@@ -452,6 +451,20 @@ save_dta <- function(data, path, version = 19L,
             "`%s` must have non-missing text for every code", argument
         ))
     }
+    labels
+}
+
+.prepare_write_value_labels <- function(column, name,
+                                        allow_legacy_codes = FALSE,
+                                        validate_structure = TRUE) {
+    labels <- if (validate_structure) {
+        .validate_write_value_label_structure(column, name)
+    } else {
+        attr(column, "labels", exact = TRUE)
+    }
+    if (is.null(labels)) return(list(double(), character(), FALSE))
+    argument <- sprintf("labels for `%s`", name)
+    label_text <- names(labels)
     valid <- if (allow_legacy_codes) {
         missing_codes <- .tab_missing_codes(labels)
         tagged <- !is.na(missing_codes) &
@@ -607,14 +620,14 @@ save_dta <- function(data, path, version = 19L,
         if (length(members) < 2L) next
 
         reference <- mappings[[members[[1L]]]]
-        same <- vapply(
-            members[-1L],
-            function(index) .value_label_mappings_identical(
-                mappings[[index]], reference
-            ),
-            logical(1)
-        )
-        if (all(same)) next
+        same <- TRUE
+        for (index in members[-1L]) {
+            if (!.value_label_mappings_identical(mappings[[index]], reference)) {
+                same <- FALSE
+                break
+            }
+        }
+        if (same) next
 
         existing_conflict <- get0(
             table_name, envir = conflicts, inherits = FALSE,
@@ -695,6 +708,23 @@ save_dta <- function(data, path, version = 19L,
     cached <- prepare()
     assign(key, cached, envir = cache)
     cached
+}
+
+.write_value_label_registry <- function(resolution, cache) {
+    table_count <- max(resolution$indices, -1L) + 1L
+    if (!table_count) return(list())
+    tables <- vector("list", table_count)
+    for (table_index in seq_len(table_count) - 1L) {
+        column_index <- which(resolution$indices == table_index)[[1L]]
+        prepared <- get(
+            as.character(table_index), envir = cache, inherits = FALSE
+        )
+        tables[[table_index + 1L]] <- stats::setNames(list(
+            enc2utf8(resolution$names[[column_index]]),
+            prepared[[1L]], prepared[[2L]]
+        ), c("name", "label_values", "label_texts"))
+    }
+    tables
 }
 
 .write_datetime_timezone <- function(column) {
@@ -821,25 +851,21 @@ save_dta <- function(data, path, version = 19L,
 }
 
 .new_dta_write_column <- function(name, type_code, format, label, values,
-                                  label_values = double(),
-                                  label_texts = character(),
                                   has_value_labels = FALSE,
                                   numeric_shift = 0,
                                   numeric_scale = 1,
-                                  value_label_name = name,
                                   value_label_index = -1L,
                                   character_missing = NULL,
                                   stata_metadata) {
     result <- stats::setNames(list(
         enc2utf8(name), as.integer(type_code), enc2utf8(format), label,
-        label_values, label_texts, values, has_value_labels,
-        numeric_shift, numeric_scale, enc2utf8(value_label_name),
-        as.integer(value_label_index), stata_metadata
+        double(), character(), values, has_value_labels,
+        numeric_shift, numeric_scale, as.integer(value_label_index),
+        stata_metadata
     ), c(
         "name", "type_code", "format", "label", "label_values",
         "label_texts", "values", "has_value_labels", "numeric_shift",
-        "numeric_scale", "value_label_name", "value_label_index",
-        "stata_metadata"
+        "numeric_scale", "value_label_index", "stata_metadata"
     ))
     if (!is.null(character_missing)) {
         attr(result, "character_missing") <- character_missing
@@ -848,8 +874,8 @@ save_dta <- function(data, path, version = 19L,
 }
 
 .prepare_dta_write_column <- function(column, name, kind, strl_threshold,
-                                      adjust_tz, value_label_name,
-                                      value_label_index, value_label_cache) {
+                                      adjust_tz, value_label_index,
+                                      value_label_cache) {
     variable_label <- .write_text(
         attr(column, "label", exact = TRUE),
         sprintf("variable label for `%s`", name)
@@ -859,14 +885,14 @@ save_dta <- function(data, path, version = 19L,
     )
     if (identical(kind, "factor")) {
         levels <- levels(column)
+        if (anyNA(levels) || any(!nzchar(levels))) {
+            .dta_write_abort(sprintf(
+                "Factor column `%s` has an empty or missing level", name
+            ))
+        }
         value_labels <- .cached_write_value_labels(
             value_label_cache, value_label_index,
             function() {
-                if (anyNA(levels) || any(!nzchar(levels))) {
-                    .dta_write_abort(sprintf(
-                        "Factor column `%s` has an empty or missing level", name
-                    ))
-                }
                 violations <- .value_label_limit_violations(
                     length(levels), levels, name
                 )
@@ -883,10 +909,7 @@ save_dta <- function(data, path, version = 19L,
         )
         return(.new_dta_write_column(
             name, 2L, format, variable_label, column,
-            label_values = value_labels[[1L]],
-            label_texts = value_labels[[2L]],
             has_value_labels = value_labels[[3L]],
-            value_label_name = value_label_name,
             value_label_index = value_label_index,
             stata_metadata = stata_metadata
         ))
@@ -944,23 +967,23 @@ save_dta <- function(data, path, version = 19L,
             column, name, default_format, numeric$temporal
         )
     }
-    value_labels <- if (value_label_index < 0L) {
+    labels <- .validate_write_value_label_structure(column, name)
+    value_labels <- if (is.null(labels)) {
         list(double(), character(), FALSE)
     } else {
         .cached_write_value_labels(
             value_label_cache, value_label_index,
-            function() .prepare_write_value_labels(column, name)
+            function() .prepare_write_value_labels(
+                column, name, validate_structure = FALSE
+            )
         )
     }
     .new_dta_write_column(
         name, match(numeric$storage, .stata_storage) - 1L,
         format, variable_label, numeric$values,
-        label_values = value_labels[[1L]],
-        label_texts = value_labels[[2L]],
         has_value_labels = value_labels[[3L]],
         numeric_shift = numeric$shift,
         numeric_scale = numeric$scale,
-        value_label_name = value_label_name,
         value_label_index = value_label_index,
         stata_metadata = stata_metadata
     )
@@ -1025,12 +1048,15 @@ save_dta <- function(data, path, version = 19L,
     value_label_cache <- new.env(hash = TRUE, parent = emptyenv())
     columns <- Map(
         .prepare_dta_write_column, data, data_names, kinds,
-        value_label_names$names, value_label_names$indices,
+        value_label_names$indices,
         MoreArgs = list(
             strl_threshold = strl_threshold,
             adjust_tz = adjust_tz,
             value_label_cache = value_label_cache
         )
+    )
+    value_label_tables <- .write_value_label_registry(
+        value_label_names, value_label_cache
     )
     write_warnings <- c(write_warnings, value_label_names$warnings)
     factor_columns <- data_names[kinds == "factor"]
@@ -1058,7 +1084,7 @@ save_dta <- function(data, path, version = 19L,
     ))
     specification <- list(
         label, .stata_metadata_payload(notes, characteristics),
-        columns, .write_timestamp()
+        columns, .write_timestamp(), value_label_tables
     )
     attr(specification, "write_warnings") <- write_warnings
     specification

@@ -99,6 +99,19 @@ impl DatasetDocument {
             .collect();
         self.value_labels.insert(table.name.clone(), entries);
     }
+
+    pub fn insert_owned_value_label_table(&mut self, table: ValueLabelTable) {
+        let entries = table
+            .entries
+            .into_iter()
+            .map(|entry| ArrowValueLabelEntry {
+                value: entry.missing_tag.is_none().then_some(entry.value),
+                tag: entry.missing_tag,
+                label: entry.label,
+            })
+            .collect();
+        self.value_labels.insert(table.name, entries);
+    }
 }
 
 /// A declared Stata storage type in a field document.

@@ -415,6 +415,15 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
     };
     let mut document = DatasetDocument::default();
     document.insert_value_label_table(&table);
+    let unrelated = ValueLabelTable {
+        name: "unrelated_answers".to_owned(),
+        entries: vec![ValueLabelEntry {
+            value: 0,
+            missing_tag: None,
+            label: "no".to_owned(),
+        }],
+    };
+    document.insert_value_label_table(&unrelated);
     let labelled_field = || {
         Some(ArrowFieldDocument {
             value_labels: Some(table.name.clone()),
@@ -433,6 +442,14 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
                 name: "second".to_owned(),
                 field: labelled_field(),
                 array: Arc::new(Float64Array::from(vec![1.0])),
+            },
+            ArrowWriteColumn {
+                name: "unrelated".to_owned(),
+                field: Some(ArrowFieldDocument {
+                    value_labels: Some(unrelated.name.clone()),
+                    ..ArrowFieldDocument::default()
+                }),
+                array: Arc::new(Float64Array::from(vec![0.0])),
             },
         ],
     };
@@ -454,6 +471,9 @@ fn projected_reads_count_value_label_references_from_all_source_fields() {
         result.value_label_reference_counts.get("shared_answers"),
         Some(&2)
     );
+    assert!(!result
+        .value_label_reference_counts
+        .contains_key("unrelated_answers"));
 }
 
 #[test]
