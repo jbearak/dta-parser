@@ -42,8 +42,10 @@ and uses `tracemem()` to check that neither existing column payload was copied.
 Full-length integer and compact-byte generation cases apply the same allocation
 limit and catch coercion or validation temporaries that scalar generation cannot
 expose. The integer case also uses a compact position sequence and limits total
-profiled allocation to less than one double column. Scalar, full-vector, and
-sparse character generation may allocate their result vector once, but cannot
+profiled allocation to less than one double column. Its runtime is bounded by
+an independent `stata_float()` construction, so validation and encoding cannot
+return to separate full-vector passes. Scalar, full-vector, and sparse character
+generation may allocate their result vector once, but cannot
 allocate a second full-length character-vector header. The full-vector case is
 bounded by scalar generation plus an independent character-vector copy, so a
 second traversal of the replacement values cannot pass the timing gate. The
@@ -66,6 +68,11 @@ One row is also replaced from a five-million-row dictionary-backed values
 vector with 250,000 distinct strings. That path must leave the source cache
 unchanged and allocate less than two megabytes in total, preventing cache space
 from scaling with either source length or dictionary cardinality.
+Full generation and replacement from the same source are timed against ordinary
+character-vector baselines. A transaction-private cache is permitted only when
+the dictionary cardinality is no larger than the number of values read; these
+cases catch repeated decoding while the sparse allocation limit prevents the
+cache from scaling to an unselected dictionary.
 
 The benchmark also patches a metadata proxy. Isolation requires that path to
 detach and copy the full compact native byte payload. The check confirms the

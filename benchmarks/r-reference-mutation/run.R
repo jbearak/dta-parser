@@ -264,6 +264,11 @@ stopifnot(
 )
 
 integer_generation_values <- seq_len(rows)
+direct_float_profile <- profile_memory(
+    direct_float <- stata_float(integer_generation_values),
+    "dtatools-reference-direct-float-construction-"
+)
+direct_float_time <- direct_float_profile$elapsed
 integer_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
 integer_generation_trace <- tracemem(integer_generation_data$anchor)
 integer_generation_profile <- profile_memory(
@@ -300,7 +305,7 @@ stopifnot(
     largest_position_generation_allocation <= rows * 4 * 1.01,
     total_position_generation_allocation < full_double_bytes,
     largest_compact_generation_allocation < full_double_bytes,
-    integer_generation_time < 0.2,
+    integer_generation_time < direct_float_time * 1.35,
     position_vector_generation_time < 0.3,
     compact_vector_generation_time < 0.3,
     identical(
@@ -311,6 +316,7 @@ stopifnot(
         compact_generation_data$generated
     )
 )
+rm(direct_float)
 
 first_generated_patch_profile <- profile_memory(
     replace_values(integer_generation_data, generated, 1, where = rows),
@@ -454,6 +460,78 @@ dictionary_data <- read_arrow(dictionary_path)
 unlink(dictionary_path)
 stopifnot(dtatools:::.is_unmaterialized_dictstring(dictionary_data$text))
 dictionary_alias <- set_variable_labels(dictionary_data, text = "Alias")
+dictionary_cache_before <- dtatools:::.dictstring_cached_count(
+    dictionary_alias$text
+)
+dictionary_generation_data <- data.frame(
+    anchor = stata_byte(.size = rows)
+)
+dictionary_generation_profile <- profile_memory(
+    gen(
+        dictionary_generation_data, generated,
+        .env$dictionary_alias$text
+    ),
+    "dtatools-reference-dictionary-source-generation-"
+)
+dictionary_generation_time <- dictionary_generation_profile$elapsed
+total_dictionary_generation_allocation <-
+    dictionary_generation_profile$total
+largest_dictionary_generation_allocation <-
+    dictionary_generation_profile$largest
+stopifnot(
+    identical(
+        dtatools:::.dictstring_cached_count(dictionary_alias$text),
+        dictionary_cache_before
+    ),
+    identical(
+        as.character(dictionary_generation_data$generated[c(1L, rows)]),
+        dictionary_values[c(
+            1L, ((rows - 1L) %% dictionary_cardinality) + 1L
+        )]
+    ),
+    largest_dictionary_generation_allocation <= full_double_bytes * 1.01,
+    total_dictionary_generation_allocation < full_double_bytes * 1.1,
+    dictionary_generation_time < full_character_generation_time * 3
+)
+
+ordinary_source_target <- data.frame(text = rep.int("", rows))
+ordinary_source_profile <- profile_memory(
+    replace_values(
+        ordinary_source_target, text, .env$full_character_values
+    ),
+    "dtatools-reference-ordinary-character-source-"
+)
+ordinary_source_replacement_time <- ordinary_source_profile$elapsed
+dictionary_source_target <- data.frame(text = rep.int("", rows))
+dictionary_source_profile <- profile_memory(
+    replace_values(
+        dictionary_source_target, text, .env$dictionary_alias$text
+    ),
+    "dtatools-reference-full-dictionary-source-"
+)
+dictionary_source_replacement_time <- dictionary_source_profile$elapsed
+total_dictionary_source_allocation <- dictionary_source_profile$total
+largest_dictionary_source_allocation <- dictionary_source_profile$largest
+stopifnot(
+    identical(
+        dtatools:::.dictstring_cached_count(dictionary_alias$text),
+        dictionary_cache_before
+    ),
+    identical(
+        as.character(dictionary_source_target$text[c(1L, rows)]),
+        dictionary_values[c(
+            1L, ((rows - 1L) %% dictionary_cardinality) + 1L
+        )]
+    ),
+    largest_dictionary_source_allocation <= full_double_bytes * 1.01,
+    total_dictionary_source_allocation < full_double_bytes * 1.1,
+    dictionary_source_replacement_time <
+        ordinary_source_replacement_time * 3
+)
+rm(
+    dictionary_generation_data, ordinary_source_target,
+    dictionary_source_target
+)
 fill_repetitions <- 5L
 character_fill_time <- system.time(
     for (iteration in seq_len(fill_repetitions)) {
@@ -672,6 +750,10 @@ cat(sprintf(
     integer_generation_time
 ))
 cat(sprintf(
+    "direct_float_construction_seconds\t%.6f\n",
+    direct_float_time
+))
+cat(sprintf(
     "integer_vector_generation_largest_allocation_bytes\t%.0f\n",
     largest_integer_generation_allocation
 ))
@@ -765,6 +847,34 @@ cat(sprintf(
     largest_dictionary_replacement_allocation
 ))
 cat(sprintf("dictionary_cardinality\t%d\n", dictionary_cardinality))
+cat(sprintf(
+    "dictionary_source_generation_seconds\t%.6f\n",
+    dictionary_generation_time
+))
+cat(sprintf(
+    "dictionary_source_generation_total_profiled_allocation_bytes\t%.0f\n",
+    total_dictionary_generation_allocation
+))
+cat(sprintf(
+    "dictionary_source_generation_largest_allocation_bytes\t%.0f\n",
+    largest_dictionary_generation_allocation
+))
+cat(sprintf(
+    "ordinary_character_source_replacement_seconds\t%.6f\n",
+    ordinary_source_replacement_time
+))
+cat(sprintf(
+    "dictionary_source_full_replacement_seconds\t%.6f\n",
+    dictionary_source_replacement_time
+))
+cat(sprintf(
+    "dictionary_source_full_replacement_total_profiled_allocation_bytes\t%.0f\n",
+    total_dictionary_source_allocation
+))
+cat(sprintf(
+    "dictionary_source_full_replacement_largest_allocation_bytes\t%.0f\n",
+    largest_dictionary_source_allocation
+))
 cat(sprintf(
     "sparse_dictionary_source_replacement_seconds\t%.6f\n",
     sparse_dictionary_replacement_time

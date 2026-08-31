@@ -394,9 +394,6 @@ gen <- function(data, variable, values, where = NULL) {
         replacement <- .cast_replacement(
             values, column, rows, value_mode
         )
-        if (.mutation_selected_count(rows, original$nrow) == 0L) {
-            return(invisible(data))
-        }
     }
 
     if (!generate) {

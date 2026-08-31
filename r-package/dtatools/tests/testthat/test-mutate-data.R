@@ -230,6 +230,22 @@ test_that("excluded full-dataset values do not affect validation", {
     )
     expect_identical(as.character(strings$text), c("a", "z", "c"))
 
+    zero_selection <- data.frame(text = structure(
+        "a", stata.string.storage = "str1"
+    ))
+    zero_before <- serialize(zero_selection, NULL)
+    expect_error(
+        replace_values(zero_selection, text, "wide", where = FALSE),
+        "do not fit"
+    )
+    expect_identical(serialize(zero_selection, NULL), zero_before)
+
+    zero_altrep <- data.frame(x = 1:3)
+    zero_altrep_before <- serialize(zero_altrep, NULL)
+    replace_values(zero_altrep, x, 1L, where = FALSE)
+    expect_identical(serialize(zero_altrep, NULL), zero_altrep_before)
+    expect_true(dtatools:::.is_altrep(zero_altrep$x))
+
     generated <- data.frame(x = 1:3)
     declared <- structure(
         c("too wide", "z", "also too wide"),
