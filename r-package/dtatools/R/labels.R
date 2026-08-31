@@ -212,6 +212,10 @@ dataset_label <- function(data) {
     .Call(C_dtatools_metadata_copy, value)
 }
 
+.metadata_view <- function(value) {
+    .Call(C_dtatools_metadata_view, value)
+}
+
 .stata_value_label_code_info <- function(value) {
     missing_codes <- .tab_missing_codes(value)
     tagged <- !is.na(missing_codes) &

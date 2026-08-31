@@ -102,6 +102,7 @@ static SEXP unmaterialized_dictstring_source(SEXP value);
 static SEXP metadata_proxy_source(SEXP value);
 static SEXP metadata_proxy_owner(SEXP value);
 static void metadata_proxy_set_state(SEXP value, SEXP source, SEXP owner);
+static SEXP dictstring_compact_copy(SEXP value);
 static size_t numeric_kind_width(int kind);
 static void write_numeric_missing(
     unsigned char *output, R_xlen_t index, int kind, int offset
@@ -122,6 +123,8 @@ typedef struct {
     int format_version;
     size_t missing_count;
 } numeric_data;
+
+static SEXP numeric_compact_copy(const numeric_data *data);
 
 typedef struct {
     uintptr_t x_values;
@@ -1297,6 +1300,12 @@ static SEXP numeric_materialize(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return materialized;
     numeric_data *data = numeric_storage(value);
+    if (R_ExternalPtrTag(R_altrep_data1(value)) != R_NilValue) {
+        SEXP detached = PROTECT(numeric_compact_copy(data));
+        R_set_altrep_data1(value, R_altrep_data1(detached));
+        data = numeric_storage(value);
+        UNPROTECT(1);
+    }
     materialized = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t) data->length));
     double *output = REAL(materialized);
     numeric_fill_region(data, 0, data->length, output);
@@ -2315,6 +2324,11 @@ static SEXP dictstring_materialize(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     if (materialized != R_NilValue) return materialized;
 
+    if (R_ExternalPtrTag(R_altrep_data1(value)) != R_NilValue) {
+        SEXP detached = PROTECT(dictstring_compact_copy(value));
+        R_set_altrep_data1(value, R_altrep_data1(detached));
+        UNPROTECT(1);
+    }
     dictstring_data *data = dictstring_storage(value);
     SEXP cache = dictstring_cache(value);
     R_xlen_t dictionary_length = XLENGTH(cache);
@@ -3403,6 +3417,7 @@ static SEXP metadata_real_materialize(SEXP value) {
         Rf_error("failed to materialize dtatools metadata proxy");
     }
     R_set_altrep_data2(value, materialized);
+    R_set_altrep_data1(value, R_NilValue);
     UNPROTECT(1);
     return materialized;
 }
@@ -3498,6 +3513,7 @@ static SEXP metadata_string_materialize(SEXP value) {
         SET_STRING_ELT(materialized, index, STRING_ELT(source, index));
     }
     R_set_altrep_data2(value, materialized);
+    R_set_altrep_data1(value, R_NilValue);
     UNPROTECT(1);
     return materialized;
 }
@@ -3523,13 +3539,15 @@ static void metadata_string_set_elt(
     SET_STRING_ELT(metadata_string_materialize(value), index, replacement);
 }
 
-static SEXP metadata_proxy(SEXP value, R_altrep_class_t proxy_class) {
+static SEXP metadata_proxy(
+    SEXP value, R_altrep_class_t proxy_class, int isolate
+) {
     SEXP source = value;
     while (ALTREP(source) && R_altrep_inherits(source, proxy_class) &&
            R_altrep_data2(source) == R_NilValue) {
         SEXP owner = metadata_proxy_owner(source);
         SEXP next = metadata_proxy_source(source);
-        if (owner != R_NilValue && ALTREP(next) &&
+        if (isolate && owner != R_NilValue && ALTREP(next) &&
             R_altrep_inherits(next, dtatools_numeric_class) &&
             R_altrep_data2(next) == R_NilValue &&
             R_ExternalPtrTag(R_altrep_data1(next)) == owner) {
@@ -3539,12 +3557,32 @@ static SEXP metadata_proxy(SEXP value, R_altrep_class_t proxy_class) {
         }
         source = next;
     }
+    SEXP alias = R_NilValue;
+    if (isolate && ALTREP(source) &&
+        R_altrep_inherits(source, dtatools_numeric_class)) {
+        SEXP external = R_altrep_data1(source);
+        alias = PROTECT(R_new_altrep(
+            dtatools_numeric_class, external, R_altrep_data2(source)
+        ));
+        SHALLOW_DUPLICATE_ATTRIB(alias, source);
+        R_SetExternalPtrTag(external, R_BaseEnv);
+        source = alias;
+    } else if (isolate && ALTREP(source) &&
+               R_altrep_inherits(source, dtatools_dictstring_class)) {
+        SEXP external = R_altrep_data1(source);
+        alias = PROTECT(R_new_altrep(
+            dtatools_dictstring_class, external, R_altrep_data2(source)
+        ));
+        SHALLOW_DUPLICATE_ATTRIB(alias, source);
+        R_SetExternalPtrTag(external, R_BaseEnv);
+        source = alias;
+    }
     SEXP state = PROTECT(Rf_allocVector(VECSXP, 2));
     SET_VECTOR_ELT(state, 0, source);
     SET_VECTOR_ELT(state, 1, R_NilValue);
     SEXP result = PROTECT(R_new_altrep(proxy_class, state, R_NilValue));
     SHALLOW_DUPLICATE_ATTRIB(result, value);
-    UNPROTECT(2);
+    UNPROTECT(alias == R_NilValue ? 2 : 3);
     return result;
 }
 
@@ -3552,11 +3590,24 @@ SEXP C_dtatools_metadata_copy(SEXP value) {
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
         R_altrep_inherits(value, dtatools_metadata_real_class)) {
-        return metadata_proxy(value, dtatools_metadata_real_class);
+        return metadata_proxy(value, dtatools_metadata_real_class, 1);
     }
     if (R_altrep_inherits(value, dtatools_dictstring_class) ||
         R_altrep_inherits(value, dtatools_metadata_string_class)) {
-        return metadata_proxy(value, dtatools_metadata_string_class);
+        return metadata_proxy(value, dtatools_metadata_string_class, 1);
+    }
+    return Rf_shallow_duplicate(value);
+}
+
+SEXP C_dtatools_metadata_view(SEXP value) {
+    if (!ALTREP(value)) return Rf_shallow_duplicate(value);
+    if (R_altrep_inherits(value, dtatools_numeric_class) ||
+        R_altrep_inherits(value, dtatools_metadata_real_class)) {
+        return metadata_proxy(value, dtatools_metadata_real_class, 0);
+    }
+    if (R_altrep_inherits(value, dtatools_dictstring_class) ||
+        R_altrep_inherits(value, dtatools_metadata_string_class)) {
+        return metadata_proxy(value, dtatools_metadata_string_class, 0);
     }
     return Rf_shallow_duplicate(value);
 }
@@ -3671,7 +3722,14 @@ static numeric_data *detach_compact_patch_target(SEXP value) {
     if (ALTREP(value) &&
         R_altrep_inherits(value, dtatools_numeric_class) &&
         R_altrep_data2(value) == R_NilValue) {
-        return numeric_storage(value);
+        SEXP external = R_altrep_data1(value);
+        numeric_data *source = numeric_storage(value);
+        if (R_ExternalPtrTag(external) == R_NilValue) return source;
+        SEXP detached = PROTECT(numeric_compact_copy(source));
+        R_set_altrep_data1(value, R_altrep_data1(detached));
+        numeric_data *result = numeric_storage(value);
+        UNPROTECT(1);
+        return result;
     }
     if (!ALTREP(value) ||
         !R_altrep_inherits(value, dtatools_metadata_real_class) ||
@@ -3701,6 +3759,30 @@ static numeric_data *detach_compact_patch_target(SEXP value) {
     return result;
 }
 
+static void detach_materialized_numeric_patch_target(SEXP value) {
+    if (!ALTREP(value) ||
+        !R_altrep_inherits(value, dtatools_numeric_class) ||
+        R_altrep_data2(value) == R_NilValue ||
+        R_ExternalPtrTag(R_altrep_data1(value)) == R_NilValue) {
+        return;
+    }
+    SEXP detached = PROTECT(Rf_duplicate(R_altrep_data2(value)));
+    R_set_altrep_data2(value, detached);
+    UNPROTECT(1);
+}
+
+static void detach_materialized_dictstring_patch_target(SEXP value) {
+    if (!ALTREP(value) ||
+        !R_altrep_inherits(value, dtatools_dictstring_class) ||
+        R_altrep_data2(value) == R_NilValue ||
+        R_ExternalPtrTag(R_altrep_data1(value)) == R_NilValue) {
+        return;
+    }
+    SEXP detached = PROTECT(Rf_duplicate(R_altrep_data2(value)));
+    R_set_altrep_data2(value, detached);
+    UNPROTECT(1);
+}
+
 static R_xlen_t reference_patch_row(SEXP rows, R_xlen_t index) {
     return rows == R_NilValue
         ? index : (R_xlen_t) INTEGER(rows)[index] - 1;
@@ -3728,6 +3810,8 @@ SEXP C_dtatools_patch_vector(
         }
     }
 
+    detach_materialized_numeric_patch_target(target);
+    detach_materialized_dictstring_patch_target(target);
     numeric_data *compact = unmaterialized_numeric_storage(target);
     if (compact != NULL) {
         numeric_reader reader = numeric_reader_create(
@@ -4401,6 +4485,7 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},
     {"C_dtatools_metadata_copy", (DL_FUNC) &C_dtatools_metadata_copy, 1},
+    {"C_dtatools_metadata_view", (DL_FUNC) &C_dtatools_metadata_view, 1},
     {"C_dtatools_mark_reference_data",
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},
     {"C_dtatools_deep_copy_column",

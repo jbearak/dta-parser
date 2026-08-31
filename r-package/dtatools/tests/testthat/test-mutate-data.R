@@ -509,6 +509,77 @@ test_that("downstream metadata proxies revoke exclusive patch ownership", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(second$x))
 })
 
+test_that("metadata helpers remain isolated from later source patches", {
+    compact_source <- data.frame(x = stata_byte(1:3))
+    compact_copy <- set_variable_labels(compact_source, x = "Copy")
+    replace_values(compact_source, x, 9, where = 1)
+    expect_identical(as.double(compact_source$x), c(9, 2, 3))
+    expect_identical(as.double(compact_copy$x), c(1, 2, 3))
+
+    materialized_source <- data.frame(x = stata_byte(1:3))
+    materialized_copy <- set_variable_labels(
+        materialized_source, x = "Copy"
+    )
+    invisible(dtatools:::.force_altrep_materialization(
+        materialized_source$x
+    ))
+    replace_values(materialized_source, x, 9, where = 1)
+    expect_identical(as.double(materialized_source$x), c(9, 2, 3))
+    expect_identical(as.double(materialized_copy$x), c(1, 2, 3))
+
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(data.frame(text = c("a", "b", "a")), path)
+    string_source <- read_arrow(path)
+    expect_true(dtatools:::.is_unmaterialized_dictstring(
+        string_source$text
+    ))
+    string_copy <- set_variable_labels(string_source, text = "Copy")
+    replace_values(string_source, text, "changed", where = 1)
+    expect_identical(as.character(string_source$text), c("changed", "b", "a"))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(string_copy$text))
+    expect_identical(as.character(string_copy$text), c("a", "b", "a"))
+})
+
+test_that("materialized metadata proxies release former sources", {
+    finalized <- new.env(parent = emptyenv())
+    finalized$numeric <- FALSE
+    finalized$string <- FALSE
+
+    materialized_chain <- function(value, key) {
+        former <- dtatools:::.metadata_copy(value)
+        tracker <- new.env(parent = emptyenv())
+        reg.finalizer(
+            tracker,
+            function(environment) finalized[[key]] <- TRUE,
+            onexit = FALSE
+        )
+        attr(former, "tracker") <- tracker
+        invisible(dtatools:::.force_altrep_materialization(former))
+        downstream <- dtatools:::.metadata_copy(former)
+        attr(downstream, "tracker") <- NULL
+        invisible(dtatools:::.force_altrep_materialization(downstream))
+        downstream
+    }
+
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(data.frame(text = c("a", "b", "a")), path)
+    string <- read_arrow(path)$text
+    retained <- list(
+        numeric = materialized_chain(stata_byte(1:3), "numeric"),
+        string = materialized_chain(string, "string")
+    )
+    for (iteration in seq_len(5L)) {
+        if (finalized$numeric && finalized$string) break
+        gc(full = TRUE)
+    }
+    expect_true(finalized$numeric)
+    expect_true(finalized$string)
+    expect_identical(as.double(retained$numeric), c(1, 2, 3))
+    expect_identical(retained$string, c("a", "b", "a"))
+})
+
 test_that("copy_data keeps Arrow dictionary strings independent and compact", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)

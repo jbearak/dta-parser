@@ -305,7 +305,7 @@ as.character.stata_numeric <- function(x, ...) {
 
 .stata_data <- function(x) {
     value_names <- names(x)
-    value <- .metadata_copy(x)
+    value <- .metadata_view(x)
     attributes(value) <- NULL
     names(value) <- value_names
     value
@@ -775,7 +775,7 @@ Complex.stata_numeric <- function(z) {
 }
 
 .base_stata_temporal <- function(x) {
-    value <- .metadata_copy(x)
+    value <- .metadata_view(x)
     classes <- class(value)
     classes <- classes[!classes %in% c(
         "stata_temporal", "stata_date", "stata_datetime"
