@@ -1769,8 +1769,8 @@ fn row_window(skip: f64, n_max: f64) -> (u64, Option<u64>) {
 
 struct ColumnAttributes<'a> {
     document: Option<&'a ArrowFieldDocument>,
-    value_labels: Option<&'a HashMap<String, Sexp>>,
-    value_label_reference_counts: Option<&'a HashMap<String, usize>>,
+    value_labels: &'a HashMap<String, Sexp>,
+    value_label_reference_counts: &'a HashMap<String, usize>,
 }
 
 struct ReadAttributeCache<'a> {
@@ -1787,10 +1787,8 @@ impl ReadAttributeCache<'_> {
             } else {
                 None
             },
-            value_labels: self.profiled.then_some(self.value_labels),
-            value_label_reference_counts: self
-                .profiled
-                .then_some(self.value_label_reference_counts),
+            value_labels: self.value_labels,
+            value_label_reference_counts: self.value_label_reference_counts,
         }
     }
 }
@@ -1807,7 +1805,7 @@ impl ColumnAttributes<'_> {
 
     fn value_labels(&self) -> Option<(&str, Sexp)> {
         let name = self.document?.value_labels.as_deref()?;
-        self.value_labels?
+        self.value_labels
             .get(name)
             .copied()
             .map(|labels| (name, labels))
@@ -1823,7 +1821,7 @@ impl ColumnAttributes<'_> {
         name != column_name
             || self
                 .value_label_reference_counts
-                .and_then(|counts| counts.get(name))
+                .get(name)
                 .is_some_and(|&count| count > 1)
     }
 
@@ -3232,7 +3230,12 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
         let frame = result_guard.alloc(VECSXP, column_total)?;
         let names = result_guard.alloc(STRSXP, column_total)?;
 
-        let (dataset_label, dataset_notes, dataset_characteristics, value_label_registry) =
+        let (
+            dataset_label,
+            dataset_notes,
+            dataset_characteristics,
+            mut value_label_registry,
+        ) =
             if let Some(mut dataset) = result.dataset.take() {
                 (
                     std::mem::take(&mut dataset.label),
@@ -3260,12 +3263,12 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                 if value_labels.contains_key(name) {
                     continue;
                 }
-                let entries = value_label_registry.get(name).ok_or_else(|| {
+                let entries = value_label_registry.remove(name).ok_or_else(|| {
                     format!("Arrow field references missing value-label table `{name}`")
                 })?;
                 let labels = label_attribute_from_entries(
                     entries.len(),
-                    entries.iter().map(|entry| {
+                    entries.into_iter().map(|entry| {
                         let value = match (entry.value, entry.tag) {
                             (Some(value), None) => f64::from(value),
                             (None, Some(tag)) => r_missing(tag),
@@ -3275,7 +3278,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
                                 )
                             }
                         };
-                        Ok((value, entry.label.as_str()))
+                        Ok((value, entry.label))
                     }),
                     &mut result_guard,
                 )?;
@@ -3538,10 +3541,12 @@ mod tests {
             field: None,
             chunks: vec![Arc::new(Int32Array::from(vec![i32::MIN, 7]))],
         };
+        let value_labels = HashMap::new();
+        let value_label_reference_counts = HashMap::new();
         let attributes = ColumnAttributes {
             document: None,
-            value_labels: None,
-            value_label_reference_counts: None,
+            value_labels: &value_labels,
+            value_label_reference_counts: &value_label_reference_counts,
         };
         assert!(matches!(
             classify_read_column(&column, &attributes, true).expect("classification"),
@@ -3554,8 +3559,8 @@ mod tests {
         };
         let profiled = ColumnAttributes {
             document: Some(&document),
-            value_labels: None,
-            value_label_reference_counts: None,
+            value_labels: &value_labels,
+            value_label_reference_counts: &value_label_reference_counts,
         };
         let error = match classify_read_column(&column, &profiled, true) {
             Err(error) => error,

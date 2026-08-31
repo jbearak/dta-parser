@@ -201,12 +201,6 @@ impl ProfileFields {
         }
     }
 
-    fn take(&mut self, index: usize) -> Option<ArrowFieldDocument> {
-        match self {
-            Self::Full(fields) => fields.get_mut(index).and_then(Option::take),
-            Self::Projected(fields) => fields.remove(&index),
-        }
-    }
 }
 
 fn invalid(detail: impl Into<String>) -> ArrowProfileError {
@@ -1129,9 +1123,9 @@ fn plan_value_labels(
     profile: &mut Option<Profile>,
     selected: &[usize],
     projected: bool,
-) -> HashMap<String, usize> {
+) -> Result<HashMap<String, usize>, ArrowProfileError> {
     let Some(profile) = profile.as_mut() else {
-        return HashMap::new();
+        return Ok(HashMap::new());
     };
     let selected_names = selected
         .iter()
@@ -1154,28 +1148,59 @@ fn plan_value_labels(
         }
     }
     if projected {
+        let mut first_selected_outputs = HashMap::new();
+        for (output_index, &source_index) in selected.iter().enumerate() {
+            first_selected_outputs
+                .entry(source_index)
+                .or_insert(output_index);
+        }
         profile
             .dataset
             .value_labels
             .retain(|name, _| selected_names.contains(name.as_str()));
-        let selected_indices = selected.iter().copied().collect::<HashSet<_>>();
-        if let ProfileFields::Full(fields) = &mut profile.fields {
-            for (index, field) in fields.iter_mut().enumerate() {
-                if !selected_indices.contains(&index) {
-                    *field = None;
-                }
+        let ProfileFields::Full(mut source_fields) = std::mem::replace(
+            &mut profile.fields,
+            ProfileFields::Full(Vec::new()),
+        ) else {
+            unreachable!("value-label planning requires a full field profile")
+        };
+        let mut fields = Vec::with_capacity(selected.len());
+        for (output_index, &source_index) in selected.iter().enumerate() {
+            let first_output = first_selected_outputs[&source_index];
+            if output_index == first_output {
+                let field = source_fields.get_mut(source_index).ok_or_else(|| {
+                    super::profile::malformed(
+                        &profile.version,
+                        "profile document is missing a field entry",
+                    )
+                })?;
+                fields.push(field.take());
+            } else {
+                fields.push(fields[first_output].clone());
             }
         }
+        profile.fields = ProfileFields::Full(fields);
         if let Some(checksums) = profile.checksums.as_mut() {
             for batch in &mut checksums.batches {
-                for (index, column) in batch.columns.iter_mut().enumerate() {
-                    if !selected_indices.contains(&index) {
-                        column.clear();
-                        column.shrink_to_fit();
+                let mut source_columns = std::mem::take(&mut batch.columns);
+                let mut columns = Vec::with_capacity(selected.len());
+                for (output_index, &source_index) in selected.iter().enumerate() {
+                    let first_output = first_selected_outputs[&source_index];
+                    if output_index == first_output {
+                        let column = source_columns.get_mut(source_index).ok_or_else(|| {
+                            super::profile::malformed(
+                                &profile.version,
+                                "checksums document is missing a column entry",
+                            )
+                        })?;
+                        columns.push(std::mem::take(column));
+                    } else {
+                        columns.push(columns[first_output].clone());
                     }
                 }
+                batch.columns = columns;
             }
-            let selected_keys = selected_indices
+            let selected_keys = selected
                 .iter()
                 .map(usize::to_string)
                 .collect::<HashSet<_>>();
@@ -1184,7 +1209,7 @@ fn plan_value_labels(
                 .retain(|index, _| selected_keys.contains(index));
         }
     }
-    counts
+    Ok(counts)
 }
 
 fn prepare_read<R: Read + Seek>(
@@ -1243,7 +1268,7 @@ fn prepare_read<R: Read + Seek>(
         discard_private_profile_json(&mut footer);
     }
     let value_label_reference_counts =
-        plan_value_labels(&mut profile, &selected, options.columns.is_some());
+        plan_value_labels(&mut profile, &selected, options.columns.is_some())?;
 
     // Batch headers are small; reading them all up front fixes each block's
     // slice of the requested window so block bodies can decode in any order.
@@ -1407,7 +1432,7 @@ fn decode_planned_column<R: Read + Seek>(
                     )
                 })?
                 .columns
-                .get(field_index)
+                .get(output_index)
                 .ok_or_else(|| {
                     super::profile::malformed(
                         &profile.version,
@@ -1678,7 +1703,8 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
     prepared
         .selected
         .iter()
-        .map(|&index| {
+        .enumerate()
+        .map(|(output_index, &index)| {
             let field: &Field = prepared.footer.schema.field(index);
             let chunks = if prepared.plans.is_empty() {
                 prepared.footer.layouts[index]
@@ -1700,37 +1726,21 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
                 data_type: field.data_type().clone(),
                 nullable: field.is_nullable(),
                 dictionary_ordered: prepared.footer.layouts[index].dictionary_ordered,
-                field: None,
+                field: prepared
+                    .profile
+                    .as_ref()
+                    .and_then(|profile| profile.fields.get(output_index).cloned()),
                 chunks,
             })
         })
         .collect()
 }
 
-fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
-    let (profile_version, dataset) = if let Some(mut profile) = prepared.profile.take() {
-        let mut remaining = HashMap::with_capacity(prepared.selected.len());
-        for &index in &prepared.selected {
-            *remaining.entry(index).or_insert(0_usize) += 1;
-        }
-        for (&index, column) in prepared.selected.iter().zip(&mut columns) {
-            let count = remaining
-                .get_mut(&index)
-                .expect("selected field occurrence was counted");
-            *count -= 1;
-            column.field = if *count == 0 {
-                profile.fields.take(index)
-            } else {
-                profile.fields.get(index).cloned()
-            };
-        }
-        (Some(profile.version), Some(profile.dataset))
-    } else {
-        (None, None)
-    };
+fn finish_result(prepared: PreparedRead, columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+    let profile = prepared.profile;
     ArrowReadResult {
-        profile_version,
-        dataset,
+        profile_version: profile.as_ref().map(|profile| profile.version.clone()),
+        dataset: profile.map(|profile| profile.dataset),
         value_label_reference_counts: prepared.value_label_reference_counts,
         row_count: prepared.produced,
         columns,

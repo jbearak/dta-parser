@@ -21,7 +21,8 @@ use dta_tools::{
     DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
     DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
     DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag, ParallelDtaSink,
-    ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelTable, VariableInfo,
+    ReadOptions, StataCharacteristic, StataNote, TextEncoding, ValueLabelEntry, ValueLabelTable,
+    VariableInfo,
 };
 
 extern "Rust" {
@@ -898,28 +899,9 @@ unsafe fn set_class(
     set_symbol_attr(object, R_ClassSymbol, class)
 }
 
-unsafe fn label_attribute(
-    table: &ValueLabelTable,
-    guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    label_attribute_from_entries(
-        table.entries.len(),
-        table.entries.iter().map(|entry| {
-            Ok((
-                entry
-                    .missing_tag
-                    .map(r_missing)
-                    .unwrap_or_else(|| f64::from(entry.value)),
-                entry.label.as_str(),
-            ))
-        }),
-        guard,
-    )
-}
-
-unsafe fn label_attribute_from_entries<'a>(
+unsafe fn label_attribute_from_entries<L: AsRef<str>>(
     entry_count: usize,
-    entries: impl IntoIterator<Item = Result<(f64, &'a str), String>>,
+    entries: impl IntoIterator<Item = Result<(f64, L), String>>,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
     let length = RLen::try_from(entry_count).map_err(|_| "label table is too long")?;
@@ -930,10 +912,30 @@ unsafe fn label_attribute_from_entries<'a>(
         poll_interrupt(index)?;
         let (value, label) = entry?;
         *output.add(index) = value;
-        SET_STRING_ELT(names, index as RLen, r_char(label)?);
+        SET_STRING_ELT(names, index as RLen, r_char(label.as_ref())?);
     }
     set_symbol_attr(values, R_NamesSymbol, names)?;
     Ok(values)
+}
+
+unsafe fn owned_label_attribute(
+    entries: Vec<ValueLabelEntry>,
+    guard: &mut ProtectGuard,
+) -> Result<Sexp, String> {
+    let entry_count = entries.len();
+    label_attribute_from_entries(
+        entry_count,
+        entries.into_iter().map(|entry| {
+            Ok((
+                entry
+                    .missing_tag
+                    .map(r_missing)
+                    .unwrap_or_else(|| f64::from(entry.value)),
+                entry.label,
+            ))
+        }),
+        guard,
+    )
 }
 
 unsafe fn attach_variable_attributes(
@@ -1112,17 +1114,50 @@ fn preserve_value_label_name(
     })
 }
 
-unsafe fn cached_label_attribute(
-    table: &ValueLabelTable,
+unsafe fn cached_owned_label_attribute(
+    table_name: &str,
+    tables: &mut AHashMap<String, Vec<ValueLabelEntry>>,
     cache: &mut AHashMap<String, Sexp>,
     guard: &mut ProtectGuard,
-) -> Result<Sexp, String> {
-    if let Some(&labels) = cache.get(table.name.as_str()) {
-        return Ok(labels);
+) -> Result<Option<Sexp>, String> {
+    if let Some(&labels) = cache.get(table_name) {
+        return Ok(Some(labels));
     }
-    let labels = label_attribute(table, guard)?;
-    cache.insert(table.name.clone(), labels);
-    Ok(labels)
+    let Some(entries) = tables.remove(table_name) else {
+        return Ok(None);
+    };
+    let labels = owned_label_attribute(entries, guard)?;
+    cache.insert(table_name.to_owned(), labels);
+    Ok(Some(labels))
+}
+
+unsafe fn cached_borrowed_label_attribute<'a>(
+    table_name: &'a str,
+    tables: &AHashMap<&'a str, &'a ValueLabelTable>,
+    cache: &mut AHashMap<&'a str, Sexp>,
+    guard: &mut ProtectGuard,
+) -> Result<Option<Sexp>, String> {
+    if let Some(&labels) = cache.get(table_name) {
+        return Ok(Some(labels));
+    }
+    let Some(table) = tables.get(table_name) else {
+        return Ok(None);
+    };
+    let labels = label_attribute_from_entries(
+        table.entries.len(),
+        table.entries.iter().map(|entry| {
+            Ok((
+                entry
+                    .missing_tag
+                    .map(r_missing)
+                    .unwrap_or_else(|| f64::from(entry.value)),
+                entry.label.as_str(),
+            ))
+        }),
+        guard,
+    )?;
+    cache.insert(table_name, labels);
+    Ok(Some(labels))
 }
 
 unsafe fn numeric_column<T: Copy + Into<f64>>(
@@ -1147,6 +1182,7 @@ unsafe fn build_column(
     data: &DtaData,
     column_index: usize,
     value_label_reference_counts: &AHashMap<&str, usize>,
+    value_label_tables: &mut AHashMap<String, Vec<ValueLabelEntry>>,
     value_label_attributes: &mut AHashMap<String, Sexp>,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
@@ -1182,25 +1218,27 @@ unsafe fn build_column(
             string_vector(values, guard)?
         }
     };
-    let table = data.value_label_table_for_variable(column.variable_index);
-    let labels_attribute = match table {
-        Some(table) => Some(cached_label_attribute(
-            table,
-            value_label_attributes,
-            guard,
-        )?),
-        None => None,
-    };
+    let table_name = (!variable.value_label_name.is_empty()
+        && (value_label_attributes.contains_key(&variable.value_label_name)
+            || value_label_tables.contains_key(&variable.value_label_name)))
+    .then_some(variable.value_label_name.as_str());
+    let labels_attribute = table_name
+        .map(|table_name| {
+            cached_owned_label_attribute(
+                table_name,
+                value_label_tables,
+                value_label_attributes,
+                guard,
+            )
+        })
+        .transpose()?
+        .flatten();
     attach_variable_attributes(
         vector,
         variable,
-        table.map(|table| table.name.as_str()),
+        table_name,
         labels_attribute,
-        preserve_value_label_name(
-            variable,
-            table.map(|table| table.name.as_str()),
-            value_label_reference_counts,
-        ),
+        preserve_value_label_name(variable, table_name, value_label_reference_counts),
         guard,
     )?;
     Ok(vector)
@@ -1224,7 +1262,7 @@ unsafe fn attach_dataset_attributes(result: Sexp, metadata: &DtaMetadata) -> Res
     Ok(())
 }
 
-unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
+unsafe fn build_data_frame(mut data: DtaData) -> Result<Sexp, String> {
     let mut result_guard = ProtectGuard::new();
     let column_count = RLen::try_from(data.columns.len()).map_err(|_| "too many columns")?;
     let result = result_guard.alloc(VECSXP, column_count)?;
@@ -1237,15 +1275,25 @@ unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
             .map(|column| column.variable_index as usize),
     );
     let mut value_label_attributes = AHashMap::new();
+    let mut value_label_tables = AHashMap::new();
+    for table in std::mem::take(&mut data.value_label_tables) {
+        let ValueLabelTable { name, entries } = table;
+        if value_label_reference_counts.contains_key(name.as_str())
+            && !value_label_tables.contains_key(name.as_str())
+        {
+            value_label_tables.insert(name, entries);
+        }
+    }
 
     for index in 0..data.columns.len() {
         check_interrupt()?;
         {
             let mut column_guard = ProtectGuard::new();
             let column = build_column(
-                data,
+                &data,
                 index,
                 &value_label_reference_counts,
+                &mut value_label_tables,
                 &mut value_label_attributes,
                 &mut column_guard,
             )?;
@@ -2002,14 +2050,17 @@ impl DtaSink for RDataFrameSink {
             }
         }
         unsafe {
+            let mut value_label_attributes = AHashMap::new();
             for (output_index, column) in self.columns.iter_mut().enumerate() {
-                match column {
+                check_interrupt().map_err(DtaError::Output)?;
+                let vector = match column {
                     RColumn::NumericAltRep { vector, data } => {
                         let data = data.take();
                         *vector = self._guard.numeric(data).map_err(DtaError::Output)?;
                         SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
+                        *vector
                     }
-                    RColumn::NumericEager { .. } => {}
+                    RColumn::NumericEager { vector, .. } => *vector,
                     RColumn::String { vector, data } => {
                         if data.value_ids.len() != expected_string_rows {
                             return Err(DtaError::Output(format!(
@@ -2020,51 +2071,36 @@ impl DtaSink for RDataFrameSink {
                         let data = std::mem::replace(data, RStringData::new(0)?);
                         *vector = self._guard.dictstring(data).map_err(DtaError::Output)?;
                         SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
+                        *vector
                     }
-                }
-            }
-
-            let mut value_label_attributes = AHashMap::new();
-            for (output_index, &source_index) in self.source_indices.iter().enumerate() {
-                check_interrupt().map_err(DtaError::Output)?;
+                };
+                let source_index = self.source_indices[output_index];
                 let variable = metadata
                     .variables
                     .get(source_index as usize)
                     .ok_or(DtaError::ArithmeticOverflow("output source column"))?;
-                let table = if variable.value_label_name.is_empty() {
-                    None
-                } else {
-                    value_label_tables_by_name
-                        .get(variable.value_label_name.as_str())
-                        .copied()
-                };
-                let vector = match &self.columns[output_index] {
-                    RColumn::NumericAltRep { vector, .. }
-                    | RColumn::NumericEager { vector, .. }
-                    | RColumn::String { vector, .. } => *vector,
-                };
+                let table_name = (!variable.value_label_name.is_empty()
+                    && (value_label_attributes.contains_key(variable.value_label_name.as_str())
+                        || value_label_tables_by_name
+                            .contains_key(variable.value_label_name.as_str())))
+                .then_some(variable.value_label_name.as_str());
                 let mut attribute_guard = ProtectGuard::new();
-                let labels_attribute = match table {
-                    Some(table) => Some(
-                        cached_label_attribute(
-                            table,
-                            &mut value_label_attributes,
-                            &mut attribute_guard,
-                        )
-                        .map_err(DtaError::Output)?,
-                    ),
+                let labels_attribute = match table_name {
+                    Some(table_name) => cached_borrowed_label_attribute(
+                        table_name,
+                        &value_label_tables_by_name,
+                        &mut value_label_attributes,
+                        &mut attribute_guard,
+                    )
+                    .map_err(DtaError::Output)?,
                     None => None,
                 };
                 attach_variable_attributes(
                     vector,
                     variable,
-                    table.map(|table| table.name.as_str()),
+                    table_name,
                     labels_attribute,
-                    preserve_value_label_name(
-                        variable,
-                        table.map(|table| table.name.as_str()),
-                        &value_label_reference_counts,
-                    ),
+                    preserve_value_label_name(variable, table_name, &value_label_reference_counts),
                     &mut attribute_guard,
                 )
                 .map_err(DtaError::Output)?;
@@ -2292,7 +2328,7 @@ unsafe fn read_impl(
         let data = file
             .read_with_interrupts(&options, coarse_interrupt, frequent_interrupt_poller())
             .map_err(|error| error.to_string())?;
-        build_data_frame(&data)
+        build_data_frame(data)
     }
 }
 

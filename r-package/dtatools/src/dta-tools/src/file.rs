@@ -65,7 +65,7 @@ struct ValueLabelLocation {
 struct ProjectedValueLabelCache {
     layout: IndexedValueLabelLayout,
     locations: Vec<ValueLabelLocation>,
-    tables: HashMap<usize, ValueLabelTable>,
+    tables: Vec<Option<ValueLabelTable>>,
 }
 
 struct ValueLabelStreamingOptions<'a> {
@@ -2047,9 +2047,18 @@ impl<R: Read + Seek> DtaFile<R> {
             return Ok(());
         }
         if self.projected_value_labels.is_some() {
-            let tables = self.load_indexed_value_labels(None, should_interrupt)?;
-            self.value_label_tables = Some(tables);
-            self.projected_value_labels = None;
+            self.populate_indexed_value_labels(None, should_interrupt)?;
+            let cache = self
+                .projected_value_labels
+                .take()
+                .expect("projected value-label index was initialized");
+            self.value_label_tables = Some(
+                cache
+                    .tables
+                    .into_iter()
+                    .map(|table| table.expect("indexed value-label table was loaded"))
+                    .collect(),
+            );
             return Ok(());
         }
         check_cancel(should_interrupt)?;
@@ -2079,7 +2088,8 @@ impl<R: Read + Seek> DtaFile<R> {
             return Ok(clone_selected_value_label_tables(tables, selected));
         }
         if self.projected_value_labels.is_some() {
-            return self.load_indexed_value_labels(Some(selected), should_interrupt);
+            self.populate_indexed_value_labels(Some(selected), should_interrupt)?;
+            return Ok(self.clone_indexed_value_labels(Some(selected)));
         }
         check_cancel(should_interrupt)?;
         let mut locations = Vec::new();
@@ -2094,12 +2104,12 @@ impl<R: Read + Seek> DtaFile<R> {
         )?;
         check_cancel(should_interrupt)?;
         let mut retained = tables.iter().cloned();
-        let cached = locations
-            .iter()
-            .enumerate()
-            .filter(|(_, location)| selected.contains(&location.name))
-            .map(|(index, _)| (index, retained.next().expect("selected table was retained")))
-            .collect();
+        let mut cached = (0..locations.len()).map(|_| None).collect::<Vec<_>>();
+        for (index, location) in locations.iter().enumerate() {
+            if selected.contains(&location.name) {
+                cached[index] = Some(retained.next().expect("selected table was retained"));
+            }
+        }
         debug_assert!(retained.next().is_none());
         self.projected_value_labels = Some(ProjectedValueLabelCache {
             layout,
@@ -2131,11 +2141,11 @@ impl<R: Read + Seek> DtaFile<R> {
         }
     }
 
-    fn load_indexed_value_labels<F>(
+    fn populate_indexed_value_labels<F>(
         &mut self,
         selected: Option<&HashSet<String>>,
         should_interrupt: &mut F,
-    ) -> Result<Vec<ValueLabelTable>, DtaError>
+    ) -> Result<(), DtaError>
     where
         F: FnMut() -> bool,
     {
@@ -2149,7 +2159,7 @@ impl<R: Read + Seek> DtaFile<R> {
             .enumerate()
             .filter(|(index, location)| {
                 selected.is_none_or(|selected| selected.contains(&location.name))
-                    && !cache.tables.contains_key(index)
+                    && cache.tables[*index].is_none()
             })
             .map(|(index, location)| (index, location.clone()))
             .collect::<Vec<_>>();
@@ -2175,8 +2185,21 @@ impl<R: Read + Seek> DtaFile<R> {
             .projected_value_labels
             .as_mut()
             .expect("projected value-label index was initialized");
-        cache.tables.extend(decoded);
-        Ok(cache
+        for (index, table) in decoded {
+            cache.tables[index] = Some(table);
+        }
+        Ok(())
+    }
+
+    fn clone_indexed_value_labels(
+        &self,
+        selected: Option<&HashSet<String>>,
+    ) -> Vec<ValueLabelTable> {
+        let cache = self
+            .projected_value_labels
+            .as_ref()
+            .expect("projected value-label index was initialized");
+        cache
             .locations
             .iter()
             .enumerate()
@@ -2184,13 +2207,12 @@ impl<R: Read + Seek> DtaFile<R> {
                 selected.is_none_or(|selected| selected.contains(&location.name))
             })
             .map(|(index, _)| {
-                cache
-                    .tables
-                    .get(&index)
+                cache.tables[index]
+                    .as_ref()
                     .expect("selected value-label table was cached")
                     .clone()
             })
-            .collect())
+            .collect()
     }
 }
 
@@ -2642,14 +2664,11 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
     length: usize,
     encoding: TextEncoding,
     requested_offsets: &[usize],
-    requested_offset_positions: &[usize],
+    requested_offsets_start: u64,
     scratch: &mut Scratch,
     should_interrupt: &mut F,
     context: &'static str,
 ) -> Result<(String, Vec<usize>), DtaError> {
-    if requested_offsets.len() != requested_offset_positions.len() {
-        return Err(DtaError::ArithmeticOverflow("value-label offset positions"));
-    }
     let mut ordered = requested_offsets
         .iter()
         .copied()
@@ -2719,7 +2738,13 @@ fn decode_range_with_offsets<R: Read + Seek, F: FnMut() -> bool>(
             if let Some((entry_index, boundary)) = first_invalid_boundary {
                 return Err(DtaError::InvalidValueLabelTextOffset {
                     entry_index,
-                    offset: requested_offset_positions[entry_index],
+                    offset: error_offset(
+                        requested_offsets_start.saturating_add(
+                            u64::try_from(entry_index)
+                                .unwrap_or(u64::MAX)
+                                .saturating_mul(4),
+                        ),
+                    ),
                     text_offset: i32::try_from(boundary).unwrap_or(i32::MAX),
                     text_length: length,
                 });
@@ -3866,6 +3891,244 @@ fn read_i32_at<R: Read + Seek>(
     read_i32(&bytes, 0, byte_order, context)
 }
 
+struct I32ArrayRead {
+    start: u64,
+    count: usize,
+    byte_order: ByteOrder,
+    context: &'static str,
+}
+
+fn read_i32_array_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    options: I32ArrayRead,
+) -> Result<Vec<i32>, DtaError> {
+    let I32ArrayRead {
+        start,
+        count,
+        byte_order,
+        context,
+    } = options;
+    let mut output = Vec::with_capacity(count);
+    let mut raw = Vec::new();
+    let entries_per_chunk = (scratch.limit / 4).max(1);
+    while output.len() < count {
+        check_cancel(should_interrupt)?;
+        let chunk_count = (count - output.len()).min(entries_per_chunk);
+        let chunk_bytes = chunk_count
+            .checked_mul(4)
+            .ok_or(DtaError::ArithmeticOverflow("value-label array length"))?;
+        let byte_offset = output
+            .len()
+            .checked_mul(4)
+            .ok_or(DtaError::ArithmeticOverflow("value-label array offset"))?;
+        let chunk_start = checked_add_u64(
+            start,
+            u64::try_from(byte_offset)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label array offset"))?,
+            "value-label array offset",
+        )?;
+        read_exact_at_into(reader, chunk_start, chunk_bytes, scratch, &mut raw, context)?;
+        for offset in (0..chunk_bytes).step_by(4) {
+            output.push(read_i32(&raw, offset, byte_order, context)?);
+        }
+    }
+    Ok(output)
+}
+
+struct ValueLabelOffsetRead {
+    start: u64,
+    count: usize,
+    text_length: usize,
+    byte_order: ByteOrder,
+}
+
+fn read_value_label_offsets_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    options: ValueLabelOffsetRead,
+) -> Result<Vec<usize>, DtaError> {
+    let ValueLabelOffsetRead {
+        start,
+        count,
+        text_length,
+        byte_order,
+    } = options;
+    let mut output = Vec::with_capacity(count);
+    let mut raw = Vec::new();
+    let entries_per_chunk = (scratch.limit / 4).max(1);
+    while output.len() < count {
+        check_cancel(should_interrupt)?;
+        let chunk_count = (count - output.len()).min(entries_per_chunk);
+        let byte_offset = output
+            .len()
+            .checked_mul(4)
+            .ok_or(DtaError::ArithmeticOverflow("value-label offset array"))?;
+        let chunk_start = checked_add_u64(
+            start,
+            u64::try_from(byte_offset)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label offset array"))?,
+            "value-label offset array",
+        )?;
+        read_exact_at_into(
+            reader,
+            chunk_start,
+            chunk_count * 4,
+            scratch,
+            &mut raw,
+            "reading value-label text offset",
+        )?;
+        for offset in (0..chunk_count * 4).step_by(4) {
+            let entry_index = output.len();
+            let text_offset =
+                read_i32(&raw, offset, byte_order, "reading value-label text offset")?;
+            let Some(text_offset_usize) = usize::try_from(text_offset)
+                .ok()
+                .filter(|offset| *offset < text_length)
+            else {
+                return Err(DtaError::InvalidValueLabelTextOffset {
+                    entry_index,
+                    offset: error_offset(chunk_start.saturating_add(offset as u64)),
+                    text_offset,
+                    text_length,
+                });
+            };
+            output.push(text_offset_usize);
+        }
+    }
+    Ok(output)
+}
+
+struct ValueLabelTextValidation<'a> {
+    text_start: u64,
+    text_length: usize,
+    offsets_start: u64,
+    offsets: &'a [usize],
+    encoding: TextEncoding,
+}
+
+fn validate_value_label_text_streaming<R: Read + Seek, F: FnMut() -> bool>(
+    reader: &mut R,
+    scratch: &mut Scratch,
+    should_interrupt: &mut F,
+    options: ValueLabelTextValidation<'_>,
+) -> Result<(), DtaError> {
+    let ValueLabelTextValidation {
+        text_start,
+        text_length,
+        offsets_start,
+        offsets,
+        encoding,
+    } = options;
+    if offsets.is_empty() {
+        return Ok(());
+    }
+    let mut ordered = (0..offsets.len()).collect::<Vec<_>>();
+    ordered.sort_by_key(|&index| offsets[index]);
+    let mut next_unterminated = 0_usize;
+    let mut next_boundary = 0_usize;
+    let mut first_invalid_boundary = None;
+    let mut core_start = 0_usize;
+    let mut raw = Vec::new();
+    let mut tail = Vec::new();
+    while core_start < text_length {
+        check_cancel(should_interrupt)?;
+        let core_end = core_start.saturating_add(scratch.limit).min(text_length);
+        read_exact_at_into(
+            reader,
+            checked_add_u64(
+                text_start,
+                u64::try_from(core_start)
+                    .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
+                "value-label text offset",
+            )?,
+            core_end - core_start,
+            scratch,
+            &mut raw,
+            "reading value-label text",
+        )?;
+
+        if encoding.is_utf8() {
+            let safe_end = if core_end == text_length {
+                core_end
+            } else {
+                core_end.saturating_sub(3)
+            };
+            let tail_start = core_start.saturating_sub(tail.len());
+            while next_boundary < ordered.len() && offsets[ordered[next_boundary]] < safe_end {
+                let entry_index = ordered[next_boundary];
+                let boundary = offsets[entry_index];
+                let probe_start = boundary.saturating_sub(3);
+                let probe_end = boundary.saturating_add(4).min(text_length);
+                let mut probe = [0_u8; 7];
+                for position in probe_start..probe_end {
+                    probe[position - probe_start] = if position < core_start {
+                        tail[position - tail_start]
+                    } else {
+                        raw[position - core_start]
+                    };
+                }
+                if !is_utf8_boundary(&probe[..probe_end - probe_start], boundary - probe_start)
+                    && first_invalid_boundary.is_none_or(|first| entry_index < first)
+                {
+                    first_invalid_boundary = Some(entry_index);
+                }
+                next_boundary += 1;
+            }
+        }
+        for position in core_start..core_end {
+            if raw[position - core_start] == 0 {
+                while next_unterminated < ordered.len()
+                    && offsets[ordered[next_unterminated]] <= position
+                {
+                    next_unterminated += 1;
+                }
+            }
+        }
+        tail.clear();
+        tail.extend_from_slice(&raw[raw.len().saturating_sub(6)..]);
+        core_start = core_end;
+    }
+
+    if let Some(entry_index) = first_invalid_boundary {
+        return Err(DtaError::InvalidValueLabelTextOffset {
+            entry_index,
+            offset: error_offset(
+                offsets_start.saturating_add(u64::try_from(entry_index).unwrap_or(u64::MAX) * 4),
+            ),
+            text_offset: i32::try_from(offsets[entry_index]).unwrap_or(i32::MAX),
+            text_length,
+        });
+    }
+    if let Some(entry_index) = ordered[next_unterminated..].iter().copied().min() {
+        return Err(DtaError::MissingNulTerminator {
+            context: "value-label text",
+            offset: error_offset(
+                text_start.saturating_add(u64::try_from(offsets[entry_index]).unwrap_or(u64::MAX)),
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn first_nul_positions(text: &[u8], offsets: &[usize]) -> Vec<Option<usize>> {
+    let mut ordered = (0..offsets.len()).collect::<Vec<_>>();
+    ordered.sort_by_key(|&index| offsets[index]);
+    let mut positions = vec![None; offsets.len()];
+    let mut next = 0_usize;
+    for (position, byte) in text.iter().enumerate() {
+        if *byte == 0 {
+            while next < ordered.len() && offsets[ordered[next]] <= position {
+                positions[ordered[next]] = Some(position);
+                next += 1;
+            }
+        }
+    }
+    positions
+}
+
 fn remaining_is_zero_padding<R: Read + Seek, F: FnMut() -> bool>(
     reader: &mut R,
     start: u64,
@@ -4079,57 +4342,75 @@ fn read_fixed8_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                 kind: ErrorKind::UnexpectedEof,
             });
         }
-        let mut entries = retain.then(|| Vec::with_capacity(entry_count));
-        for entry_index in 0..entry_count {
-            check_cancel(should_interrupt)?;
-            let relative = u64::try_from(
-                entry_index
+        if retain {
+            let mut raw = Vec::new();
+            let mut values = Vec::with_capacity(entry_count);
+            let values_per_chunk = (scratch.limit / 2).max(1);
+            while values.len() < entry_count {
+                check_cancel(should_interrupt)?;
+                let chunk_count = (entry_count - values.len()).min(values_per_chunk);
+                let byte_offset = values
+                    .len()
                     .checked_mul(2)
-                    .ok_or(DtaError::ArithmeticOverflow("legacy value-label value"))?,
-            )
-            .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label value"))?;
-            let value_bytes = read_exact_at(
-                reader,
-                checked_add_u64(values_start, relative, "legacy value-label value")?,
-                2,
-                scratch,
-                "reading legacy value-label value",
-            )?;
-            let value = i32::from(read_i16(
-                &value_bytes,
-                0,
-                metadata.byte_order,
-                "legacy value-label value",
-            )?);
-            let label_offset = checked_add_u64(
-                labels_start,
-                u64::try_from(
-                    entry_index
-                        .checked_mul(LABEL_WIDTH)
-                        .ok_or(DtaError::ArithmeticOverflow("legacy value-label text"))?,
-                )
-                .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label text"))?,
-                "legacy value-label text",
-            )?;
-            let (label, _) = decode_range(
-                reader,
-                label_offset,
-                LABEL_WIDTH,
-                encoding,
-                true,
-                scratch,
-                should_interrupt,
-                "reading legacy value-label text",
-            )?;
-            if let Some(entries) = entries.as_mut() {
-                entries.push(ValueLabelEntry {
-                    value,
-                    missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-                    label,
-                });
+                    .ok_or(DtaError::ArithmeticOverflow("legacy value-label value"))?;
+                read_exact_at_into(
+                    reader,
+                    checked_add_u64(
+                        values_start,
+                        u64::try_from(byte_offset).map_err(|_| {
+                            DtaError::ArithmeticOverflow("legacy value-label value")
+                        })?,
+                        "legacy value-label value",
+                    )?,
+                    chunk_count * 2,
+                    scratch,
+                    &mut raw,
+                    "reading legacy value-label value",
+                )?;
+                for offset in (0..chunk_count * 2).step_by(2) {
+                    values.push(i32::from(read_i16(
+                        &raw,
+                        offset,
+                        metadata.byte_order,
+                        "legacy value-label value",
+                    )?));
+                }
             }
-        }
-        if let Some(entries) = entries {
+
+            let mut entries = Vec::with_capacity(entry_count);
+            let labels_per_chunk = (scratch.limit / LABEL_WIDTH).max(1);
+            while entries.len() < entry_count {
+                check_cancel(should_interrupt)?;
+                let chunk_count = (entry_count - entries.len()).min(labels_per_chunk);
+                let byte_offset = entries
+                    .len()
+                    .checked_mul(LABEL_WIDTH)
+                    .ok_or(DtaError::ArithmeticOverflow("legacy value-label text"))?;
+                read_exact_at_into(
+                    reader,
+                    checked_add_u64(
+                        labels_start,
+                        u64::try_from(byte_offset)
+                            .map_err(|_| DtaError::ArithmeticOverflow("legacy value-label text"))?,
+                        "legacy value-label text",
+                    )?,
+                    chunk_count * LABEL_WIDTH,
+                    scratch,
+                    &mut raw,
+                    "reading legacy value-label text",
+                )?;
+                for offset in (0..chunk_count * LABEL_WIDTH).step_by(LABEL_WIDTH) {
+                    let value = values[entries.len()];
+                    entries.push(ValueLabelEntry {
+                        value,
+                        missing_tag: classify_long_missing_for_version(
+                            value,
+                            metadata.format_version,
+                        ),
+                        label: encoding.decode(field_bytes(&raw[offset..offset + LABEL_WIDTH])),
+                    });
+                }
+            }
             tables.push(ValueLabelTable {
                 name: name.clone(),
                 entries,
@@ -4376,98 +4657,69 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             .map_err(|_| DtaError::ArithmeticOverflow("value-label values length"))?,
             "value-label text",
         )?;
-        let mut text_offsets = Vec::with_capacity(entry_count);
-        let mut text_offset_positions = Vec::with_capacity(entry_count);
-        let mut values = Vec::with_capacity(entry_count);
-        for entry_index in 0..entry_count {
-            check_cancel(should_interrupt)?;
-            let relative = u64::try_from(
-                entry_index
-                    .checked_mul(4)
-                    .ok_or(DtaError::ArithmeticOverflow("value-label entry offset"))?,
-            )
-            .map_err(|_| DtaError::ArithmeticOverflow("value-label entry offset"))?;
-            let offset_position =
-                checked_add_u64(offsets_start, relative, "value-label text offset position")?;
-            let text_offset = read_i32_at(
-                reader,
-                offset_position,
-                metadata.byte_order,
-                scratch,
-                "reading value-label text offset",
-            )?;
-            let Some(text_offset_usize) = usize::try_from(text_offset)
-                .ok()
-                .filter(|offset| *offset < text_length)
-            else {
-                return Err(DtaError::InvalidValueLabelTextOffset {
-                    entry_index,
-                    offset: error_offset(offset_position),
-                    text_offset,
-                    text_length,
-                });
-            };
-            let value = read_i32_at(
-                reader,
-                checked_add_u64(values_start, relative, "value-label value position")?,
-                metadata.byte_order,
-                scratch,
-                "reading value-label value",
-            )?;
-            text_offsets.push(text_offset_usize);
-            text_offset_positions.push(error_offset(offset_position));
-            values.push(value);
-        }
-        let (decoded_text, decoded_offsets) = decode_range_with_offsets(
+        let text_offsets = read_value_label_offsets_streaming(
             reader,
-            text_start,
-            text_length,
-            encoding,
-            &text_offsets,
-            &text_offset_positions,
             scratch,
             should_interrupt,
-            "reading value-label text",
+            ValueLabelOffsetRead {
+                start: offsets_start,
+                count: entry_count,
+                text_length,
+                byte_order: metadata.byte_order,
+            },
         )?;
-        let mut nul_positions = Vec::new();
-        for (offset, byte) in decoded_text.as_bytes().iter().enumerate() {
-            if offset % 65_536 == 0 {
-                check_cancel(should_interrupt)?;
-            }
-            if *byte == 0 {
-                nul_positions.push(offset);
-            }
-        }
-        let mut entries = retain.then(|| Vec::with_capacity(entry_count));
-        for (entry_index, ((value, text_offset), decoded_offset)) in values
-            .into_iter()
-            .zip(text_offsets)
-            .zip(decoded_offsets)
-            .enumerate()
-        {
-            check_cancel(should_interrupt)?;
-            let label_start = checked_add_u64(
-                text_start,
-                u64::try_from(text_offset)
-                    .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
-                "value-label text offset",
-            )?;
-            let nul_index = nul_positions.partition_point(|offset| *offset < decoded_offset);
-            let Some(&nul) = nul_positions.get(nul_index) else {
-                return Err(DtaError::MissingNulTerminator {
-                    context: "value-label text",
-                    offset: error_offset(label_start),
-                });
-            };
-            let label = decoded_text.get(decoded_offset..nul).ok_or(
-                DtaError::InvalidValueLabelTextOffset {
-                    entry_index,
-                    offset: error_offset(label_start),
-                    text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
-                    text_length,
+        let entries = if retain {
+            let values = read_i32_array_streaming(
+                reader,
+                scratch,
+                should_interrupt,
+                I32ArrayRead {
+                    start: values_start,
+                    count: entry_count,
+                    byte_order: metadata.byte_order,
+                    context: "reading value-label value",
                 },
             )?;
-            if let Some(entries) = entries.as_mut() {
+            let (decoded_text, decoded_offsets) = decode_range_with_offsets(
+                reader,
+                text_start,
+                text_length,
+                encoding,
+                &text_offsets,
+                offsets_start,
+                scratch,
+                should_interrupt,
+                "reading value-label text",
+            )?;
+            let nul_positions = first_nul_positions(decoded_text.as_bytes(), &decoded_offsets);
+            let mut entries = Vec::with_capacity(entry_count);
+            for (entry_index, ((value, text_offset), decoded_offset)) in values
+                .into_iter()
+                .zip(text_offsets)
+                .zip(decoded_offsets)
+                .enumerate()
+            {
+                check_cancel(should_interrupt)?;
+                let label_start = checked_add_u64(
+                    text_start,
+                    u64::try_from(text_offset)
+                        .map_err(|_| DtaError::ArithmeticOverflow("value-label text offset"))?,
+                    "value-label text offset",
+                )?;
+                let Some(nul) = nul_positions[entry_index] else {
+                    return Err(DtaError::MissingNulTerminator {
+                        context: "value-label text",
+                        offset: error_offset(label_start),
+                    });
+                };
+                let label = decoded_text.get(decoded_offset..nul).ok_or(
+                    DtaError::InvalidValueLabelTextOffset {
+                        entry_index,
+                        offset: error_offset(label_start),
+                        text_offset: i32::try_from(text_offset).unwrap_or(i32::MAX),
+                        text_length,
+                    },
+                )?;
                 let mut label = label.to_owned();
                 label.shrink_to_fit();
                 entries.push(ValueLabelEntry {
@@ -4476,7 +4728,22 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
                     label,
                 });
             }
-        }
+            Some(entries)
+        } else {
+            validate_value_label_text_streaming(
+                reader,
+                scratch,
+                should_interrupt,
+                ValueLabelTextValidation {
+                    text_start,
+                    text_length,
+                    offsets_start,
+                    offsets: &text_offsets,
+                    encoding,
+                },
+            )?;
+            None
+        };
         cursor = table_end;
         if modern {
             cursor = expect_file_tag(reader, cursor, b"</lbl>", "</lbl>", scratch)?;

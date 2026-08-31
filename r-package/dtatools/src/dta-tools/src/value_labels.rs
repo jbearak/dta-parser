@@ -224,6 +224,36 @@ fn parse_fixed8_table(
     ))
 }
 
+fn first_nul_positions(text: &[u8], offsets: &[usize]) -> Vec<Option<usize>> {
+    let mut ordered = (0..offsets.len()).collect::<Vec<_>>();
+    ordered.sort_by_key(|&index| offsets[index]);
+    let mut positions = vec![None; offsets.len()];
+    let mut next = 0_usize;
+    for (position, byte) in text.iter().enumerate() {
+        if *byte == 0 {
+            while next < ordered.len() && offsets[ordered[next]] <= position {
+                positions[ordered[next]] = Some(position);
+                next += 1;
+            }
+        }
+    }
+    positions
+}
+
+fn first_unterminated_offset(text: &[u8], offsets: &[usize]) -> Option<usize> {
+    let mut ordered = (0..offsets.len()).collect::<Vec<_>>();
+    ordered.sort_by_key(|&index| offsets[index]);
+    let mut next = 0_usize;
+    for (position, byte) in text.iter().enumerate() {
+        if *byte == 0 {
+            while next < ordered.len() && offsets[ordered[next]] <= position {
+                next += 1;
+            }
+        }
+    }
+    ordered[next..].iter().copied().min()
+}
+
 fn parse_table(
     bytes: &[u8],
     metadata: &DtaMetadata,
@@ -349,12 +379,7 @@ fn parse_table(
     )?;
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
     let text = &payload[text_start..text_end];
-    let nul_positions: Vec<usize> = text
-        .iter()
-        .enumerate()
-        .filter_map(|(offset, byte)| (*byte == 0).then_some(offset))
-        .collect();
-
+    let mut text_offsets = Vec::with_capacity(entry_count);
     let mut entries = retain.then(|| Vec::with_capacity(entry_count));
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
@@ -399,34 +424,50 @@ fn parse_table(
             });
         }
 
-        let value_position =
-            checked_add(values_start, element_offset, "value-label value position")?;
-        let value = read_i32(
-            payload,
-            value_position,
-            metadata.byte_order,
-            "value-label value",
-        )?;
+        text_offsets.push(text_offset_usize);
 
-        let nul_index = nul_positions.partition_point(|offset| *offset < text_offset_usize);
-        let Some(&nul) = nul_positions.get(nul_index) else {
-            return Err(DtaError::MissingNulTerminator {
-                context: "value-label text",
-                offset: checked_add(
-                    payload_start,
-                    checked_add(text_start, text_offset_usize, "value-label text")?,
-                    "value-label text",
-                )?,
-            });
-        };
         if let Some(entries) = entries.as_mut() {
-            let label = encoding.decode(&text[text_offset_usize..nul]);
+            let value_position =
+                checked_add(values_start, element_offset, "value-label value position")?;
+            let value = read_i32(
+                payload,
+                value_position,
+                metadata.byte_order,
+                "value-label value",
+            )?;
             entries.push(ValueLabelEntry {
                 value,
                 missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-                label,
+                label: String::new(),
             });
         }
+    }
+
+    if let Some(entries) = entries.as_mut() {
+        let nul_positions = first_nul_positions(text, &text_offsets);
+        for (entry_index, &text_offset) in text_offsets.iter().enumerate() {
+            let Some(nul) = nul_positions[entry_index] else {
+                return Err(DtaError::MissingNulTerminator {
+                    context: "value-label text",
+                    offset: checked_add(
+                        payload_start,
+                        checked_add(text_start, text_offset, "value-label text")?,
+                        "value-label text",
+                    )?,
+                });
+            };
+            entries[entry_index].label = encoding.decode(&text[text_offset..nul]);
+        }
+    } else if let Some(entry_index) = first_unterminated_offset(text, &text_offsets) {
+        let text_offset = text_offsets[entry_index];
+        return Err(DtaError::MissingNulTerminator {
+            context: "value-label text",
+            offset: checked_add(
+                payload_start,
+                checked_add(text_start, text_offset, "value-label text")?,
+                "value-label text",
+            )?,
+        });
     }
 
     cursor = checked_add(payload_start, declared, "value-label table payload")?;
