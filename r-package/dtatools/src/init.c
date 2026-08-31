@@ -2778,6 +2778,10 @@ size_t dtatools_xlength(SEXP value) {
     return (size_t) XLENGTH(value);
 }
 
+int dtatools_is_null(SEXP value) {
+    return Rf_isNull(value);
+}
+
 void dtatools_release_object(SEXP object) {
     if (object != NULL) R_ReleaseObject(object);
 }
@@ -2990,6 +2994,20 @@ static SEXP write_rooted_strings(
     return normalized;
 }
 
+static int is_stata_metadata(SEXP values) {
+    return Rf_isNull(values) || TYPEOF(values) == STRSXP;
+}
+
+static SEXP write_rooted_stata_metadata(
+    SEXP roots, R_xlen_t index, SEXP values, const char *name
+) {
+    if (Rf_isNull(values)) {
+        SET_VECTOR_ELT(roots, index, R_NilValue);
+        return R_NilValue;
+    }
+    return write_rooted_strings(roots, index, values, name);
+}
+
 const char *dtatools_string_elt_utf8(SEXP values, size_t index) {
     if (TYPEOF(values) != STRSXP || index >= (size_t) XLENGTH(values) ||
         STRING_ELT(values, (R_xlen_t) index) == NA_STRING) {
@@ -3053,7 +3071,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
     }
     SEXP dataset_metadata = VECTOR_ELT(specification, 1);
     SEXP columns = VECTOR_ELT(specification, 2);
-    if (TYPEOF(dataset_metadata) != STRSXP || TYPEOF(columns) != VECSXP) {
+    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP) {
         Rf_error("invalid internal write specification");
     }
 
@@ -3072,7 +3090,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         string_roots, root_index++, VECTOR_ELT(specification, 0),
         "dataset label"
     );
-    SEXP rooted_dataset_metadata = write_rooted_strings(
+    SEXP rooted_dataset_metadata = write_rooted_stata_metadata(
         string_roots, root_index++, dataset_metadata, "dataset Stata metadata"
     );
     const char *timestamp = write_rooted_scalar_string(
@@ -3114,7 +3132,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         SEXP numeric_scale = VECTOR_ELT(column, 9);
         if (TYPEOF(label_texts) != STRSXP ||
             XLENGTH(label_values) != XLENGTH(label_texts) ||
-            TYPEOF(stata_metadata) != STRSXP ||
+            !is_stata_metadata(stata_metadata) ||
             TYPEOF(has_value_labels) != LGLSXP ||
             XLENGTH(has_value_labels) != 1 ||
             LOGICAL(has_value_labels)[0] == NA_LOGICAL ||
@@ -3142,7 +3160,7 @@ SEXP C_dtatools_write(SEXP specification, SEXP path) {
         label_texts = write_rooted_strings(
             string_roots, root_index++, label_texts, "value-label text"
         );
-        stata_metadata = write_rooted_strings(
+        stata_metadata = write_rooted_stata_metadata(
             string_roots, root_index++, stata_metadata, "variable Stata metadata"
         );
         dtatools_write_column *descriptor = &descriptors[index];
@@ -3243,7 +3261,7 @@ static void arrow_write_column_descriptor(
         TYPEOF(storage) != INTSXP || XLENGTH(storage) != 1 ||
         TYPEOF(label_values) != REALSXP || TYPEOF(label_texts) != STRSXP ||
         XLENGTH(label_values) != XLENGTH(label_texts) ||
-        TYPEOF(stata_metadata) != STRSXP ||
+        !is_stata_metadata(stata_metadata) ||
         TYPEOF(has_value_labels) != LGLSXP ||
         XLENGTH(has_value_labels) != 1 ||
         LOGICAL(has_value_labels)[0] == NA_LOGICAL ||
@@ -3281,7 +3299,7 @@ static void arrow_write_column_descriptor(
         string_roots, (*root_index)++, label_texts, "value-label text"
     );
     descriptor->label_count = (size_t) XLENGTH(label_values);
-    descriptor->stata_metadata = write_rooted_strings(
+    descriptor->stata_metadata = write_rooted_stata_metadata(
         string_roots, (*root_index)++, stata_metadata, "variable Stata metadata"
     );
     descriptor->has_value_labels = LOGICAL(has_value_labels)[0];
@@ -3377,7 +3395,7 @@ SEXP C_dtatools_save_arrow(
     }
     SEXP dataset_metadata = VECTOR_ELT(specification, 1);
     SEXP columns = VECTOR_ELT(specification, 2);
-    if (TYPEOF(dataset_metadata) != STRSXP || TYPEOF(columns) != VECSXP) {
+    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP) {
         Rf_error("invalid internal Arrow specification");
     }
 
@@ -3399,7 +3417,7 @@ SEXP C_dtatools_save_arrow(
         string_roots, root_index++, VECTOR_ELT(specification, 0),
         "dataset label"
     );
-    SEXP rooted_dataset_metadata = write_rooted_strings(
+    SEXP rooted_dataset_metadata = write_rooted_stata_metadata(
         string_roots, root_index++, dataset_metadata, "dataset Stata metadata"
     );
 
@@ -3452,7 +3470,7 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
     }
     SEXP dataset_metadata = VECTOR_ELT(specification, 1);
     SEXP columns = VECTOR_ELT(specification, 2);
-    if (TYPEOF(dataset_metadata) != STRSXP || TYPEOF(columns) != VECSXP) {
+    if (!is_stata_metadata(dataset_metadata) || TYPEOF(columns) != VECSXP) {
         Rf_error("invalid internal Arrow specification");
     }
 
@@ -3468,7 +3486,7 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
         string_roots, root_index++, VECTOR_ELT(specification, 0),
         "dataset label"
     );
-    SEXP rooted_dataset_metadata = write_rooted_strings(
+    SEXP rooted_dataset_metadata = write_rooted_stata_metadata(
         string_roots, root_index++, dataset_metadata, "dataset Stata metadata"
     );
 

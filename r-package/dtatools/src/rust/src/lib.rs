@@ -81,6 +81,7 @@ extern "C" {
     fn dtatools_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtatools_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
     fn dtatools_xlength(value: Sexp) -> usize;
+    fn dtatools_is_null(value: Sexp) -> c_int;
     fn dtatools_string_elt_utf8(values: Sexp, index: usize) -> *const c_char;
     fn dtatools_write_numeric_region(
         reader: *const c_void,
@@ -116,6 +117,9 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
     note: impl Fn(u32, &'a str) -> N,
     characteristic: impl Fn(&'a str, &'a str) -> C,
 ) -> Result<(Vec<N>, Vec<C>), String> {
+    if dtatools_is_null(values) != 0 {
+        return Ok((Vec::new(), Vec::new()));
+    }
     let field_count = dtatools_xlength(values);
     let field = |index| {
         required_c_str(

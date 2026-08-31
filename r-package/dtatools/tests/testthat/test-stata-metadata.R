@@ -148,6 +148,38 @@ test_that("native metadata envelopes validate counts before allocation", {
     expect_false(file.exists(path))
 })
 
+test_that("empty write metadata uses one native sentinel at high column counts", {
+    column_count <- 4096L
+    data <- structure(
+        rep(list(integer()), column_count),
+        names = paste0("v", seq_len(column_count)),
+        row.names = .set_row_names(0L),
+        class = "data.frame"
+    )
+
+    dta <- dtatools:::.prepare_dta_write(data, NULL, 2045L, TRUE)
+    arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
+    expect_null(dta[[2L]])
+    expect_true(all(vapply(dta[[3L]], function(column) {
+        is.null(column[[11L]])
+    }, logical(1))))
+    expect_null(arrow[[2L]])
+    expect_true(all(vapply(arrow[[3L]], function(column) {
+        is.null(column[[16L]])
+    }, logical(1))))
+
+    paths <- c(
+        dta = tempfile(fileext = ".dta"),
+        arrow = tempfile(fileext = ".arrow")
+    )
+    on.exit(unlink(paths), add = TRUE)
+    input <- data.frame(x = integer())
+    save_dta(input, paths[["dta"]])
+    save_arrow(input, paths[["arrow"]])
+    expect_identical(names(read_dta(paths[["dta"]])), "x")
+    expect_identical(names(read_arrow(paths[["arrow"]])), "x")
+})
+
 test_that("Arrow retains `_dta` variable metadata that DTA cannot represent", {
     data <- data.frame(`_dta` = 1, check.names = FALSE)
     data <- set_stata_note(data, 1, "variable note", variable = "_dta")

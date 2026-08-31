@@ -289,6 +289,7 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
 .stata_metadata_payload <- function(notes, characteristics) {
     note_count <- length(notes)
     characteristic_count <- length(characteristics)
+    if (!note_count && !characteristic_count) return(NULL)
     field_count <- 3 + 2 * note_count + 2 * characteristic_count
     if (!is.finite(field_count) || field_count > .Machine$integer.max) {
         stop("Stata metadata contains too many entries", call. = FALSE)
