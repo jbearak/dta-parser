@@ -140,8 +140,8 @@ reader, so a successful mutation, error, or interrupt does not populate a
 shared source cache. \code{copy_data()} keeps unmaterialized compact numeric and
 dictionary-string columns compact, and deep-copies dataset attributes such as
 names and grouped-tibble metadata. It rejects columns or attributes containing
-environments, functions, external pointers, or weak references because those
-objects cannot be isolated by ordinary R copying.
+environments, functions, bytecode, external pointers, or weak references
+because those objects cannot be isolated by ordinary R copying.
 }
 \examples{
 survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))

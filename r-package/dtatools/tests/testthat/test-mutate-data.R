@@ -1197,6 +1197,16 @@ test_that("copy_data isolates every mutable column backing", {
         copy_data(hidden_length_call_column),
         "cannot isolate environments"
     )
+
+    embedded_bytecode <- compiler::compile(as.call(list(
+        as.name("identity"), embedded_environment
+    )))
+    expect_identical(typeof(embedded_bytecode), "bytecode")
+    bytecode_column <- data.frame(value = I(list(embedded_bytecode)))
+    expect_error(
+        copy_data(bytecode_column),
+        "cannot isolate environments"
+    )
 })
 
 test_that("subsets, metadata proxies, and serialized data stay isolated", {

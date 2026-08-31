@@ -108,8 +108,9 @@
 #' populate a shared source cache. `copy_data()` keeps unmaterialized compact
 #' numeric and dictionary-string columns compact, and deep-copies dataset
 #' attributes such as names and grouped-tibble metadata. It rejects columns or
-#' attributes containing environments, functions, external pointers, or weak
-#' references because those objects cannot be isolated by ordinary R copying.
+#' attributes containing environments, functions, bytecode, external pointers,
+#' or weak references because those objects cannot be isolated by ordinary R
+#' copying.
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
@@ -612,7 +613,7 @@ gen <- function(data, variable, values, where = NULL) {
 
 .contains_reference_object <- function(value) {
     if (is.environment(value) || is.function(value) ||
-        typeof(value) %in% c("externalptr", "weakref")) {
+        typeof(value) %in% c("bytecode", "externalptr", "weakref")) {
         return(TRUE)
     }
     contents <- if (typeof(value) %in%
@@ -643,7 +644,7 @@ copy_data <- function(data) {
         stop(
             paste0(
                 "`copy_data()` cannot isolate environments, functions, ",
-                "external pointers, or weak references"
+                "bytecode, external pointers, or weak references"
             ),
             call. = FALSE
         )
