@@ -8,9 +8,10 @@ Rscript benchmarks/r-reference-mutation/run.R
 
 The runner installs `r-package/dtatools` into a temporary library, starts a
 clean R child process with that library first, and records the source commit
-and worktree state. This prevents an older installed package from satisfying
-the gates. Pass `--markdown=PATH` to write the same metric registry as a
-Markdown table in addition to the tab-separated standard output.
+and clean worktree state. It refuses tracked or untracked source changes. This
+prevents an older installed package or an uncommitted file from satisfying the
+gates. Pass `--markdown=PATH` to write the same metric registry as a Markdown
+table in addition to the tab-separated standard output.
 
 The workload times repeated one-row changes in a five-million-row compact Stata
 byte column. It fails if the direct target materializes or if R reports one
@@ -102,9 +103,10 @@ column. A second patch must stay below one compact payload, proving the detached
 proxy reuses its private native storage. Direct targets do not pay the initial
 detachment cost.
 
-Finally, the benchmark profiles 80 and 320 consecutive `gen()` calls on the
-same dataset. The larger run must remain within the linear allocation budget;
-rebuilding every prior generated binding on each call fails this gate.
+Finally, the benchmark profiles 400 and 1,600 consecutive `gen()` calls on the
+same dataset. The larger run must remain within the linear time and allocation
+budgets; rebuilding every prior generated binding on each call fails these
+gates.
 
 `Rprofmem()` reports individual R allocations. Native compact backing appears
 as its raw-vector allocation, but the profiler does not measure allocator

@@ -1028,12 +1028,16 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     )
 
     duplicate <- data.frame(x = 1:3)
+    invisible(dtatools:::.reference_row_reads(TRUE))
     gen(
         duplicate, y, c("overwritten", "x"),
         where = c(1, 1)
     )
+    duplicate_row_reads <- dtatools:::.reference_row_reads(FALSE)
     expect_identical(as.character(duplicate$y), c("x", "", ""))
     expect_identical(attr(duplicate$y, "stata.string.storage"), "str1")
+    expect_gt(duplicate_row_reads, 0)
+    expect_lte(duplicate_row_reads, 6)
 
     too_narrow <- structure("wide", stata.string.storage = "str2")
     expect_error(gen(strings, too_wide, too_narrow), "do not fit")

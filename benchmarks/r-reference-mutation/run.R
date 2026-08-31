@@ -26,19 +26,27 @@ if (!identical(Sys.getenv("DTATOOLS_BENCHMARK_CHILD"), "1")) {
     on.exit(unlink(c(library_path, install_log), recursive = TRUE), add = TRUE)
 
     source_sha <- system2(
-        "git", c("-C", repository, "rev-parse", "HEAD"), stdout = TRUE
+        "git", c("-C", shQuote(repository), "rev-parse", "HEAD"),
+        stdout = TRUE
     )
     source_changes <- system2(
         "git",
-        c("-C", repository, "status", "--short", "--untracked-files=no"),
+        c("-C", shQuote(repository), "status", "--short"),
         stdout = TRUE
     )
     source_state <- if (length(source_changes) == 0L) "clean" else "modified"
+    if (source_state != "clean") {
+        stop(
+            "Commit or remove tracked and untracked changes before benchmarking",
+            call. = FALSE
+        )
+    }
     install_status <- system2(
         file.path(R.home("bin"), "R"),
         c(
             "CMD", "INSTALL", "--preclean",
-            sprintf("--library=%s", library_path), package_path
+            shQuote(sprintf("--library=%s", library_path)),
+            shQuote(package_path)
         ),
         stdout = install_log, stderr = install_log
     )
@@ -47,7 +55,9 @@ if (!identical(Sys.getenv("DTATOOLS_BENCHMARK_CHILD"), "1")) {
         stop("Could not install the benchmark source package", call. = FALSE)
     }
 
-    child_arguments <- c(script_path, markdown_argument)
+    child_arguments <- vapply(
+        c(script_path, markdown_argument), shQuote, character(1)
+    )
     child_status <- system2(
         file.path(R.home("bin"), "Rscript"), child_arguments,
         env = c(
@@ -65,14 +75,18 @@ suppressPackageStartupMessages(library(dtatools))
 
 benchmark_metrics <- list()
 
-record_metric <- function(line) {
-    line <- sub("\\n$", "", line)
-    fields <- strsplit(line, "\t", fixed = TRUE)[[1L]]
-    if (length(fields) != 2L || fields[[1L]] == "" ||
-        fields[[1L]] %in% names(benchmark_metrics)) {
+record_metric <- function(name, value, format = NULL) {
+    formatted <- if (is.null(format)) as.character(value) else {
+        sprintf(format, value)
+    }
+    valid_name <- length(name) == 1L && !is.na(name) && name != "" &&
+        !grepl("[\t\n]", name) && !name %in% names(benchmark_metrics)
+    valid_value <- length(formatted) == 1L && !is.na(formatted) &&
+        !grepl("[\t\n]", formatted)
+    if (!valid_name || !valid_value) {
         stop("Invalid or duplicate benchmark metric", call. = FALSE)
     }
-    benchmark_metrics[[fields[[1L]]]] <<- fields[[2L]]
+    benchmark_metrics[[name]] <<- formatted
     invisible(NULL)
 }
 
@@ -90,12 +104,8 @@ emit_metrics <- function(metrics, markdown_path) {
     invisible(NULL)
 }
 
-record_metric(sprintf(
-    "benchmark_source_sha\t%s\n", Sys.getenv("DTATOOLS_BENCHMARK_SHA")
-))
-record_metric(sprintf(
-    "benchmark_source_state\t%s\n", Sys.getenv("DTATOOLS_BENCHMARK_STATE")
-))
+record_metric("benchmark_source_sha", Sys.getenv("DTATOOLS_BENCHMARK_SHA"))
+record_metric("benchmark_source_state", Sys.getenv("DTATOOLS_BENCHMARK_STATE"))
 
 profile_memory <- function(code, prefix) {
     path <- tempfile(prefix, fileext = ".out")
@@ -547,6 +557,45 @@ stopifnot(
         character_generation_time + full_character_fill_time * 0.5
 )
 
+selected_character_values <- rep(
+    c("x", "wide"), length.out = selected_count
+)
+selected_character_data <- data.frame(
+    anchor = stata_byte(rep(1, rows))
+)
+invisible(dtatools:::.reference_row_reads(TRUE))
+selected_character_profile <- profile_memory(
+    gen(
+        selected_character_data, generated,
+        .env$selected_character_values, where = selected_rows
+    ),
+    "dtatools-reference-selected-character-generation-"
+)
+selected_character_row_reads <- dtatools:::.reference_row_reads(FALSE)
+selected_character_generation_time <- selected_character_profile$elapsed
+total_selected_character_generation_allocation <-
+    selected_character_profile$total
+largest_selected_character_generation_allocation <-
+    selected_character_profile$largest
+stopifnot(
+    identical(
+        as.character(selected_character_data$generated[c(1L, rows)]),
+        c("x", "")
+    ),
+    identical(
+        attr(selected_character_data$generated, "stata.string.storage"),
+        "str4"
+    ),
+    selected_character_row_reads > 0,
+    selected_character_row_reads <= as.double(selected_count) * 3,
+    largest_selected_character_generation_allocation <=
+        full_double_bytes * 1.01,
+    total_selected_character_generation_allocation <
+        full_double_bytes * 1.5,
+    selected_character_generation_time <
+        max(0.15, full_character_generation_time * 4)
+)
+
 dictionary_path <- tempfile(fileext = ".arrow")
 dictionary_cardinality <- min(rows, 250000L)
 dictionary_values <- sprintf(
@@ -985,25 +1034,36 @@ append_generated_columns <- function(data, count) {
     invisible(data)
 }
 invisible(append_generated_columns(data.frame(anchor = 1L), 5L))
+small_repeated_generation_count <- 400L
+large_repeated_generation_count <- 1600L
 small_generated_data <- data.frame(anchor = 1L)
 small_repeated_generation_profile <- profile_memory(
-    append_generated_columns(small_generated_data, 80L),
+    append_generated_columns(
+        small_generated_data, small_repeated_generation_count
+    ),
     "dtatools-reference-small-repeated-generation-"
 )
 large_generated_data <- data.frame(anchor = 1L)
 large_repeated_generation_profile <- profile_memory(
-    append_generated_columns(large_generated_data, 320L),
+    append_generated_columns(
+        large_generated_data, large_repeated_generation_count
+    ),
     "dtatools-reference-large-repeated-generation-"
 )
+small_repeated_generation_time <- small_repeated_generation_profile$elapsed
+large_repeated_generation_time <- large_repeated_generation_profile$elapsed
 small_repeated_generation_allocation <-
     small_repeated_generation_profile$total
 large_repeated_generation_allocation <-
     large_repeated_generation_profile$total
 stopifnot(
-    length(small_generated_data) == 81L,
-    length(large_generated_data) == 321L,
+    length(small_generated_data) == small_repeated_generation_count + 1L,
+    length(large_generated_data) == large_repeated_generation_count + 1L,
     large_repeated_generation_allocation < max(
-        100000, small_repeated_generation_allocation * 8
+        500000, small_repeated_generation_allocation * 8
+    ),
+    large_repeated_generation_time < max(
+        0.1, small_repeated_generation_time * 8
     )
 )
 
@@ -1012,347 +1072,112 @@ untracemem(integer_generation_data$anchor)
 untracemem(data$compact)
 untracemem(data$untouched)
 
-record_metric(sprintf("rows\t%d\n", rows))
-record_metric(sprintf("repetitions\t%d\n", repetitions))
-record_metric(sprintf("small_sparse_replacement_seconds\t%.6f\n", small_replacement_time))
-record_metric(sprintf("sparse_replacement_seconds\t%.6f\n", replacement_time))
-record_metric(sprintf(
-    "all_rows_scalar_replacement_seconds\t%.6f\n",
-    all_rows_replacement_time
-))
-record_metric(sprintf("raw_fill_seconds\t%.6f\n", raw_fill_time))
-record_metric(sprintf("logical_plan_seconds\t%.6f\n", logical_plan_time))
-record_metric(sprintf(
-    "logical_plan_profiled_allocation_bytes\t%.0f\n",
-    logical_plan_allocation
-))
-record_metric(sprintf("all_false_plan_seconds\t%.6f\n", all_false_plan_time))
-record_metric(sprintf(
-    "all_false_plan_profiled_allocation_bytes\t%.0f\n",
-    all_false_plan_allocation
-))
-record_metric(sprintf("explicit_plan_seconds\t%.6f\n", explicit_plan_time))
-record_metric(sprintf(
-    "integer_explicit_plan_seconds\t%.6f\n",
-    integer_explicit_plan_time
-))
-record_metric(sprintf(
-    "explicit_plan_profiled_allocation_bytes\t%.0f\n",
-    explicit_plan_allocation
-))
-record_metric(sprintf(
-    "integer_vector_replacement_seconds\t%.6f\n",
-    vector_replacement_time
-))
-record_metric(sprintf(
-    "integer_vector_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_vector_allocation
-))
-record_metric(sprintf(
-    "position_vector_replacement_seconds\t%.6f\n",
-    position_vector_replacement_time
-))
-record_metric(sprintf(
-    "position_vector_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_position_vector_allocation
-))
-record_metric(sprintf(
-    "selected_vector_replacement_seconds\t%.6f\n",
-    selected_vector_replacement_time
-))
-record_metric(sprintf(
-    "integer_selected_vector_replacement_seconds\t%.6f\n",
-    integer_selected_time
-))
-record_metric(sprintf(
-    "selected_vector_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_selected_vector_allocation
-))
-record_metric(sprintf(
-    "selected_position_native_row_reads\t%.0f\n",
-    selected_position_row_reads
-))
-record_metric(sprintf(
-    "compact_vector_replacement_seconds\t%.6f\n",
-    compact_vector_replacement_time
-))
-record_metric(sprintf(
-    "compact_vector_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_compact_vector_allocation
-))
-record_metric(sprintf(
-    "ordinary_sparse_full_values_seconds\t%.6f\n",
-    ordinary_sparse_time
-))
-record_metric(sprintf(
-    "ordinary_sparse_full_values_total_profiled_allocation_bytes\t%.0f\n",
-    total_ordinary_sparse_allocation
-))
-record_metric(sprintf(
-    "ordinary_sparse_full_values_largest_allocation_bytes\t%.0f\n",
-    largest_ordinary_sparse_allocation
-))
-record_metric(sprintf("late_missing_sparse_seconds\t%.6f\n", late_missing_time))
-record_metric(sprintf("missing_cycle_seconds\t%.6f\n", missing_cycle_time))
-record_metric(sprintf("largest_profiled_allocation_bytes\t%.0f\n", largest_allocation))
-record_metric(sprintf(
-    "largest_proxy_allocation_bytes\t%.0f\n",
-    largest_proxy_allocation
-))
-record_metric(sprintf(
-    "largest_second_proxy_allocation_bytes\t%.0f\n",
-    largest_second_proxy_allocation
-))
-record_metric(sprintf(
-    "largest_generation_allocation_bytes\t%.0f\n",
-    largest_generation_allocation
-))
-record_metric(sprintf(
-    "integer_vector_generation_seconds\t%.6f\n",
-    integer_generation_time
-))
-record_metric(sprintf(
-    "direct_float_construction_seconds\t%.6f\n",
-    direct_float_time
-))
-record_metric(sprintf(
-    "integer_vector_generation_largest_allocation_bytes\t%.0f\n",
-    largest_integer_generation_allocation
-))
-record_metric(sprintf(
-    "position_vector_generation_seconds\t%.6f\n",
-    position_vector_generation_time
-))
-record_metric(sprintf(
-    "position_vector_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_position_generation_allocation
-))
-record_metric(sprintf(
-    "position_vector_generation_largest_allocation_bytes\t%.0f\n",
-    largest_position_generation_allocation
-))
-record_metric(sprintf(
-    "compact_vector_generation_seconds\t%.6f\n",
-    compact_vector_generation_time
-))
-record_metric(sprintf(
-    "compact_vector_generation_largest_allocation_bytes\t%.0f\n",
-    largest_compact_generation_allocation
-))
-record_metric(sprintf(
-    "first_generated_patch_largest_allocation_bytes\t%.0f\n",
-    largest_first_generated_patch_allocation
-))
-record_metric(sprintf(
-    "temporal_generation_seconds\t%.6f\n",
-    temporal_generation_time
-))
-record_metric(sprintf(
-    "temporal_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_temporal_generation_allocation
-))
-record_metric(sprintf(
-    "temporal_generation_largest_allocation_bytes\t%.0f\n",
-    largest_temporal_generation_allocation
-))
-record_metric(sprintf(
-    "character_generation_seconds\t%.6f\n",
-    character_generation_time
-))
-record_metric(sprintf(
-    "character_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_character_generation_allocation
-))
-record_metric(sprintf(
-    "character_generation_largest_allocation_bytes\t%.0f\n",
-    largest_character_generation_allocation
-))
-record_metric(sprintf(
-    "full_character_generation_seconds\t%.6f\n",
-    full_character_generation_time
-))
-record_metric(sprintf(
-    "full_character_fill_seconds\t%.6f\n",
-    full_character_fill_time
-))
-record_metric(sprintf(
-    "full_character_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_full_character_generation_allocation
-))
-record_metric(sprintf(
-    "full_character_generation_largest_allocation_bytes\t%.0f\n",
-    largest_full_character_generation_allocation
-))
-record_metric(sprintf(
-    "sparse_character_generation_seconds\t%.6f\n",
-    sparse_character_generation_time
-))
-record_metric(sprintf(
-    "sparse_character_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_sparse_character_generation_allocation
-))
-record_metric(sprintf(
-    "sparse_character_generation_largest_allocation_bytes\t%.0f\n",
-    largest_sparse_character_generation_allocation
-))
-record_metric(sprintf(
-    "dictionary_replacement_seconds\t%.6f\n",
-    dictionary_replacement_time
-))
-record_metric(sprintf("character_fill_seconds\t%.6f\n", character_fill_time))
-record_metric(sprintf(
-    "dictionary_replacement_total_profiled_allocation_bytes\t%.0f\n",
-    total_dictionary_replacement_allocation
-))
-record_metric(sprintf(
-    "dictionary_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_dictionary_replacement_allocation
-))
-record_metric(sprintf("dictionary_cardinality\t%d\n", dictionary_cardinality))
-record_metric(sprintf(
-    "dictionary_source_generation_seconds\t%.6f\n",
-    dictionary_generation_time
-))
-record_metric(sprintf(
-    "scalar_dictionary_source_generation_seconds\t%.6f\n",
-    scalar_dictionary_generation_time
-))
-record_metric(sprintf(
-    "scalar_dictionary_source_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_scalar_dictionary_generation_allocation
-))
-record_metric(sprintf(
-    "scalar_dictionary_source_generation_largest_allocation_bytes\t%.0f\n",
-    largest_scalar_dictionary_generation_allocation
-))
-record_metric(sprintf(
-    "ordinary_scalar_character_replacement_seconds\t%.6f\n",
-    ordinary_scalar_replacement_time
-))
-record_metric(sprintf(
-    "scalar_dictionary_source_replacement_seconds\t%.6f\n",
-    scalar_dictionary_replacement_time
-))
-record_metric(sprintf(
-    "scalar_dictionary_source_replacement_total_profiled_allocation_bytes\t%.0f\n",
-    total_scalar_dictionary_replacement_allocation
-))
-record_metric(sprintf(
-    "scalar_dictionary_source_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_scalar_dictionary_replacement_allocation
-))
-record_metric(sprintf(
-    "dictionary_source_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_dictionary_generation_allocation
-))
-record_metric(sprintf(
-    "dictionary_source_generation_largest_allocation_bytes\t%.0f\n",
-    largest_dictionary_generation_allocation
-))
-record_metric(sprintf(
-    "ordinary_character_source_replacement_seconds\t%.6f\n",
-    ordinary_source_replacement_time
-))
-record_metric(sprintf(
-    "dictionary_source_full_replacement_seconds\t%.6f\n",
-    dictionary_source_replacement_time
-))
-record_metric(sprintf(
-    "dictionary_source_full_replacement_total_profiled_allocation_bytes\t%.0f\n",
-    total_dictionary_source_allocation
-))
-record_metric(sprintf(
-    "dictionary_source_full_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_dictionary_source_allocation
-))
-record_metric(sprintf(
-    "near_unique_ordinary_generation_seconds\t%.6f\n",
-    near_unique_ordinary_time
-))
-record_metric(sprintf(
-    "near_unique_dictionary_generation_seconds\t%.6f\n",
-    near_unique_dictionary_time
-))
-record_metric(sprintf(
-    "near_unique_dictionary_generation_total_profiled_allocation_bytes\t%.0f\n",
-    total_near_unique_dictionary_allocation
-))
-record_metric(sprintf(
-    "near_unique_dictionary_generation_largest_allocation_bytes\t%.0f\n",
-    largest_near_unique_dictionary_allocation
-))
-record_metric(sprintf(
-    "direct_sparse_dictionary_target_seconds\t%.6f\n",
-    direct_sparse_dictionary_target_time
-))
-record_metric(sprintf(
-    "direct_sparse_dictionary_target_total_profiled_allocation_bytes\t%.0f\n",
-    total_direct_sparse_dictionary_target_allocation
-))
-record_metric(sprintf(
-    "direct_sparse_dictionary_target_largest_allocation_bytes\t%.0f\n",
-    largest_direct_sparse_dictionary_target_allocation
-))
-record_metric(sprintf(
-    "shared_sparse_dictionary_target_seconds\t%.6f\n",
-    shared_sparse_dictionary_target_time
-))
-record_metric(sprintf(
-    "shared_sparse_dictionary_target_total_profiled_allocation_bytes\t%.0f\n",
-    total_shared_sparse_dictionary_target_allocation
-))
-record_metric(sprintf(
-    "shared_sparse_dictionary_target_largest_allocation_bytes\t%.0f\n",
-    largest_shared_sparse_dictionary_target_allocation
-))
-record_metric(sprintf(
-    "sparse_dictionary_source_replacement_seconds\t%.6f\n",
-    sparse_dictionary_replacement_time
-))
-record_metric(sprintf(
-    "sparse_dictionary_source_total_profiled_allocation_bytes\t%.0f\n",
-    total_sparse_dictionary_allocation
-))
-record_metric(sprintf(
-    "sparse_dictionary_source_largest_allocation_bytes\t%.0f\n",
-    largest_sparse_dictionary_allocation
-))
-record_metric(sprintf(
-    "generic_altrep_replacement_seconds\t%.6f\n",
-    generic_altrep_replacement_time
-))
-record_metric(sprintf("integer_fill_seconds\t%.6f\n", integer_fill_time))
-record_metric(sprintf(
-    "generic_altrep_replacement_total_profiled_allocation_bytes\t%.0f\n",
-    total_generic_altrep_allocation
-))
-record_metric(sprintf(
-    "generic_altrep_replacement_largest_allocation_bytes\t%.0f\n",
-    largest_generic_altrep_allocation
-))
-record_metric(sprintf(
-    "sparse_generic_altrep_replacement_seconds\t%.6f\n",
-    sparse_generic_altrep_replacement_time
-))
-record_metric(sprintf(
-    "sparse_generic_altrep_total_profiled_allocation_bytes\t%.0f\n",
-    total_sparse_generic_altrep_allocation
-))
-record_metric(sprintf(
-    "sparse_generic_altrep_largest_allocation_bytes\t%.0f\n",
-    largest_sparse_generic_altrep_allocation
-))
-record_metric(sprintf(
-    "repeated_generation_80_total_profiled_allocation_bytes\t%.0f\n",
-    small_repeated_generation_allocation
-))
-record_metric(sprintf(
-    "repeated_generation_320_total_profiled_allocation_bytes\t%.0f\n",
-    large_repeated_generation_allocation
-))
-record_metric(sprintf("compact_byte_bytes\t%.0f\n", compact_byte_bytes))
-record_metric(sprintf("integer_bytes\t%.0f\n", integer_bytes))
-record_metric(sprintf("full_double_bytes\t%.0f\n", full_double_bytes))
-record_metric(sprintf("generation_seconds\t%.3f\n", generation_time))
-record_metric("existing_payload_copy_detected\tfalse\n")
+record_metric("rows", rows, "%d")
+record_metric("repetitions", repetitions, "%d")
+record_metric("small_sparse_replacement_seconds", small_replacement_time, "%.6f")
+record_metric("sparse_replacement_seconds", replacement_time, "%.6f")
+record_metric("all_rows_scalar_replacement_seconds", all_rows_replacement_time, "%.6f")
+record_metric("raw_fill_seconds", raw_fill_time, "%.6f")
+record_metric("logical_plan_seconds", logical_plan_time, "%.6f")
+record_metric("logical_plan_profiled_allocation_bytes", logical_plan_allocation, "%.0f")
+record_metric("all_false_plan_seconds", all_false_plan_time, "%.6f")
+record_metric("all_false_plan_profiled_allocation_bytes", all_false_plan_allocation, "%.0f")
+record_metric("explicit_plan_seconds", explicit_plan_time, "%.6f")
+record_metric("integer_explicit_plan_seconds", integer_explicit_plan_time, "%.6f")
+record_metric("explicit_plan_profiled_allocation_bytes", explicit_plan_allocation, "%.0f")
+record_metric("integer_vector_replacement_seconds", vector_replacement_time, "%.6f")
+record_metric("integer_vector_replacement_largest_allocation_bytes", largest_vector_allocation, "%.0f")
+record_metric("position_vector_replacement_seconds", position_vector_replacement_time, "%.6f")
+record_metric("position_vector_replacement_largest_allocation_bytes", largest_position_vector_allocation, "%.0f")
+record_metric("selected_vector_replacement_seconds", selected_vector_replacement_time, "%.6f")
+record_metric("integer_selected_vector_replacement_seconds", integer_selected_time, "%.6f")
+record_metric("selected_vector_replacement_largest_allocation_bytes", largest_selected_vector_allocation, "%.0f")
+record_metric("selected_position_native_row_reads", selected_position_row_reads, "%.0f")
+record_metric("compact_vector_replacement_seconds", compact_vector_replacement_time, "%.6f")
+record_metric("compact_vector_replacement_largest_allocation_bytes", largest_compact_vector_allocation, "%.0f")
+record_metric("ordinary_sparse_full_values_seconds", ordinary_sparse_time, "%.6f")
+record_metric("ordinary_sparse_full_values_total_profiled_allocation_bytes", total_ordinary_sparse_allocation, "%.0f")
+record_metric("ordinary_sparse_full_values_largest_allocation_bytes", largest_ordinary_sparse_allocation, "%.0f")
+record_metric("late_missing_sparse_seconds", late_missing_time, "%.6f")
+record_metric("missing_cycle_seconds", missing_cycle_time, "%.6f")
+record_metric("largest_profiled_allocation_bytes", largest_allocation, "%.0f")
+record_metric("largest_proxy_allocation_bytes", largest_proxy_allocation, "%.0f")
+record_metric("largest_second_proxy_allocation_bytes", largest_second_proxy_allocation, "%.0f")
+record_metric("largest_generation_allocation_bytes", largest_generation_allocation, "%.0f")
+record_metric("integer_vector_generation_seconds", integer_generation_time, "%.6f")
+record_metric("direct_float_construction_seconds", direct_float_time, "%.6f")
+record_metric("integer_vector_generation_largest_allocation_bytes", largest_integer_generation_allocation, "%.0f")
+record_metric("position_vector_generation_seconds", position_vector_generation_time, "%.6f")
+record_metric("position_vector_generation_total_profiled_allocation_bytes", total_position_generation_allocation, "%.0f")
+record_metric("position_vector_generation_largest_allocation_bytes", largest_position_generation_allocation, "%.0f")
+record_metric("compact_vector_generation_seconds", compact_vector_generation_time, "%.6f")
+record_metric("compact_vector_generation_largest_allocation_bytes", largest_compact_generation_allocation, "%.0f")
+record_metric("first_generated_patch_largest_allocation_bytes", largest_first_generated_patch_allocation, "%.0f")
+record_metric("temporal_generation_seconds", temporal_generation_time, "%.6f")
+record_metric("temporal_generation_total_profiled_allocation_bytes", total_temporal_generation_allocation, "%.0f")
+record_metric("temporal_generation_largest_allocation_bytes", largest_temporal_generation_allocation, "%.0f")
+record_metric("character_generation_seconds", character_generation_time, "%.6f")
+record_metric("character_generation_total_profiled_allocation_bytes", total_character_generation_allocation, "%.0f")
+record_metric("character_generation_largest_allocation_bytes", largest_character_generation_allocation, "%.0f")
+record_metric("full_character_generation_seconds", full_character_generation_time, "%.6f")
+record_metric("full_character_fill_seconds", full_character_fill_time, "%.6f")
+record_metric("full_character_generation_total_profiled_allocation_bytes", total_full_character_generation_allocation, "%.0f")
+record_metric("full_character_generation_largest_allocation_bytes", largest_full_character_generation_allocation, "%.0f")
+record_metric("sparse_character_generation_seconds", sparse_character_generation_time, "%.6f")
+record_metric("sparse_character_generation_total_profiled_allocation_bytes", total_sparse_character_generation_allocation, "%.0f")
+record_metric("sparse_character_generation_largest_allocation_bytes", largest_sparse_character_generation_allocation, "%.0f")
+record_metric("selected_character_generation_seconds", selected_character_generation_time, "%.6f")
+record_metric("selected_character_generation_native_row_reads", selected_character_row_reads, "%.0f")
+record_metric("selected_character_generation_total_profiled_allocation_bytes", total_selected_character_generation_allocation, "%.0f")
+record_metric("selected_character_generation_largest_allocation_bytes", largest_selected_character_generation_allocation, "%.0f")
+record_metric("dictionary_replacement_seconds", dictionary_replacement_time, "%.6f")
+record_metric("character_fill_seconds", character_fill_time, "%.6f")
+record_metric("dictionary_replacement_total_profiled_allocation_bytes", total_dictionary_replacement_allocation, "%.0f")
+record_metric("dictionary_replacement_largest_allocation_bytes", largest_dictionary_replacement_allocation, "%.0f")
+record_metric("dictionary_cardinality", dictionary_cardinality, "%d")
+record_metric("dictionary_source_generation_seconds", dictionary_generation_time, "%.6f")
+record_metric("scalar_dictionary_source_generation_seconds", scalar_dictionary_generation_time, "%.6f")
+record_metric("scalar_dictionary_source_generation_total_profiled_allocation_bytes", total_scalar_dictionary_generation_allocation, "%.0f")
+record_metric("scalar_dictionary_source_generation_largest_allocation_bytes", largest_scalar_dictionary_generation_allocation, "%.0f")
+record_metric("ordinary_scalar_character_replacement_seconds", ordinary_scalar_replacement_time, "%.6f")
+record_metric("scalar_dictionary_source_replacement_seconds", scalar_dictionary_replacement_time, "%.6f")
+record_metric("scalar_dictionary_source_replacement_total_profiled_allocation_bytes", total_scalar_dictionary_replacement_allocation, "%.0f")
+record_metric("scalar_dictionary_source_replacement_largest_allocation_bytes", largest_scalar_dictionary_replacement_allocation, "%.0f")
+record_metric("dictionary_source_generation_total_profiled_allocation_bytes", total_dictionary_generation_allocation, "%.0f")
+record_metric("dictionary_source_generation_largest_allocation_bytes", largest_dictionary_generation_allocation, "%.0f")
+record_metric("ordinary_character_source_replacement_seconds", ordinary_source_replacement_time, "%.6f")
+record_metric("dictionary_source_full_replacement_seconds", dictionary_source_replacement_time, "%.6f")
+record_metric("dictionary_source_full_replacement_total_profiled_allocation_bytes", total_dictionary_source_allocation, "%.0f")
+record_metric("dictionary_source_full_replacement_largest_allocation_bytes", largest_dictionary_source_allocation, "%.0f")
+record_metric("near_unique_ordinary_generation_seconds", near_unique_ordinary_time, "%.6f")
+record_metric("near_unique_dictionary_generation_seconds", near_unique_dictionary_time, "%.6f")
+record_metric("near_unique_dictionary_generation_total_profiled_allocation_bytes", total_near_unique_dictionary_allocation, "%.0f")
+record_metric("near_unique_dictionary_generation_largest_allocation_bytes", largest_near_unique_dictionary_allocation, "%.0f")
+record_metric("direct_sparse_dictionary_target_seconds", direct_sparse_dictionary_target_time, "%.6f")
+record_metric("direct_sparse_dictionary_target_total_profiled_allocation_bytes", total_direct_sparse_dictionary_target_allocation, "%.0f")
+record_metric("direct_sparse_dictionary_target_largest_allocation_bytes", largest_direct_sparse_dictionary_target_allocation, "%.0f")
+record_metric("shared_sparse_dictionary_target_seconds", shared_sparse_dictionary_target_time, "%.6f")
+record_metric("shared_sparse_dictionary_target_total_profiled_allocation_bytes", total_shared_sparse_dictionary_target_allocation, "%.0f")
+record_metric("shared_sparse_dictionary_target_largest_allocation_bytes", largest_shared_sparse_dictionary_target_allocation, "%.0f")
+record_metric("sparse_dictionary_source_replacement_seconds", sparse_dictionary_replacement_time, "%.6f")
+record_metric("sparse_dictionary_source_total_profiled_allocation_bytes", total_sparse_dictionary_allocation, "%.0f")
+record_metric("sparse_dictionary_source_largest_allocation_bytes", largest_sparse_dictionary_allocation, "%.0f")
+record_metric("generic_altrep_replacement_seconds", generic_altrep_replacement_time, "%.6f")
+record_metric("integer_fill_seconds", integer_fill_time, "%.6f")
+record_metric("generic_altrep_replacement_total_profiled_allocation_bytes", total_generic_altrep_allocation, "%.0f")
+record_metric("generic_altrep_replacement_largest_allocation_bytes", largest_generic_altrep_allocation, "%.0f")
+record_metric("sparse_generic_altrep_replacement_seconds", sparse_generic_altrep_replacement_time, "%.6f")
+record_metric("sparse_generic_altrep_total_profiled_allocation_bytes", total_sparse_generic_altrep_allocation, "%.0f")
+record_metric("sparse_generic_altrep_largest_allocation_bytes", largest_sparse_generic_altrep_allocation, "%.0f")
+record_metric("repeated_generation_small_count", small_repeated_generation_count, "%d")
+record_metric("repeated_generation_large_count", large_repeated_generation_count, "%d")
+record_metric("repeated_generation_small_seconds", small_repeated_generation_time, "%.6f")
+record_metric("repeated_generation_large_seconds", large_repeated_generation_time, "%.6f")
+record_metric("repeated_generation_small_total_profiled_allocation_bytes", small_repeated_generation_allocation, "%.0f")
+record_metric("repeated_generation_large_total_profiled_allocation_bytes", large_repeated_generation_allocation, "%.0f")
+record_metric("compact_byte_bytes", compact_byte_bytes, "%.0f")
+record_metric("integer_bytes", integer_bytes, "%.0f")
+record_metric("full_double_bytes", full_double_bytes, "%.0f")
+record_metric("generation_seconds", generation_time, "%.3f")
+record_metric("existing_payload_copy_detected", "false")
 emit_metrics(benchmark_metrics, markdown_path)
