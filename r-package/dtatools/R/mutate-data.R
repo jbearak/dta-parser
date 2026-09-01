@@ -162,7 +162,9 @@ gen <- function(data, variable, values, where = NULL) {
 .reference_names <- function(data) {
     state <- .reference_state(data)
     physical <- attr(data, "names", exact = TRUE)
-    if (is.null(state) || state$generated_count == 0L) return(physical)
+    if (is.null(state)) return(physical)
+    if (isTRUE(state$physical_overlay)) physical <- state$physical_names
+    if (state$generated_count == 0L) return(physical)
     result <- c(physical, character(state$generated_count))
     node <- state$generated_head
     for (index in seq_len(state$generated_count)) {
@@ -186,7 +188,9 @@ gen <- function(data, variable, values, where = NULL) {
 }
 
 .data_column_at <- function(access, index) {
-    if (is.null(access$state) || index <= access$state$physical_count) {
+    if (is.null(access$state) ||
+        (!isTRUE(access$state$physical_overlay) &&
+         index <= access$state$physical_count)) {
         return(.subset2(access$data, index))
     }
     access$state$columns[[access$names[[index]]]]
@@ -195,7 +199,10 @@ gen <- function(data, variable, values, where = NULL) {
 .set_data_column_at <- function(access, index, column) {
     if (!is.null(access$state)) {
         access$state$columns[[access$names[[index]]]] <- column
-        if (index > access$state$physical_count) return(invisible(NULL))
+        if (isTRUE(access$state$physical_overlay) ||
+            index > access$state$physical_count) {
+            return(invisible(NULL))
+        }
     }
     .Call(
         C_dtatools_set_data_column, access$data, as.integer(index), column
@@ -203,19 +210,33 @@ gen <- function(data, variable, values, where = NULL) {
     invisible(NULL)
 }
 
+.native_data_column_location <- function(access, index) {
+    if (is.null(access$state) ||
+        (!isTRUE(access$state$physical_overlay) &&
+         index <= access$state$physical_count)) {
+        return(index)
+    }
+    length(attr(access$data, "names", exact = TRUE)) + 1L
+}
+
 .data_columns <- function(data) {
     state <- .reference_state(data)
-    physical <- .plain_data_columns(data)
-    if (is.null(state) || state$generated_count == 0L) {
+    if (is.null(state)) {
+        physical <- .plain_data_columns(data)
         names(physical) <- attr(data, "names", exact = TRUE)
         return(physical)
     }
     columns <- vector("list", state$physical_count + state$generated_count)
-    columns[seq_len(state$physical_count)] <- physical
-    names <- c(
-        attr(data, "names", exact = TRUE),
-        character(state$generated_count)
-    )
+    if (isTRUE(state$physical_overlay)) {
+        physical_names <- state$physical_names
+        for (index in seq_len(state$physical_count)) {
+            columns[[index]] <- state$columns[[physical_names[[index]]]]
+        }
+    } else {
+        physical_names <- attr(data, "names", exact = TRUE)
+        columns[seq_len(state$physical_count)] <- .plain_data_columns(data)
+    }
+    names <- c(physical_names, character(state$generated_count))
     node <- state$generated_head
     for (index in seq_len(state$generated_count)) {
         location <- state$physical_count + index
@@ -239,12 +260,34 @@ gen <- function(data, variable, values, where = NULL) {
     }
     state$columns <- columns
     state$locations <- locations
+    state$physical_names <- physical_names
+    state$physical_overlay <- FALSE
     state$physical_count <- length(physical)
     state$generated_count <- 0L
     state$generated_head <- NULL
     state$generated_tail <- NULL
     state$nrow <- base::nrow(data)
     state$classes <- class(data)
+    state
+}
+
+.new_structural_reference_state <- function(columns, row_count, classes) {
+    state <- new.env(parent = emptyenv())
+    column_store <- new.env(hash = TRUE, parent = emptyenv())
+    column_names <- names(columns)
+    for (index in seq_along(column_names)) {
+        column_store[[column_names[[index]]]] <- columns[[index]]
+    }
+    state$columns <- column_store
+    state$locations <- NULL
+    state$physical_names <- column_names
+    state$physical_overlay <- TRUE
+    state$physical_count <- length(columns)
+    state$generated_count <- 0L
+    state$generated_head <- NULL
+    state$generated_tail <- NULL
+    state$nrow <- row_count
+    state$classes <- classes
     state
 }
 
@@ -260,7 +303,9 @@ gen <- function(data, variable, values, where = NULL) {
     state$generated_tail <- node
     state$generated_count <- state$generated_count + 1L
     state$columns[[name]] <- column
-    state$locations[[name]] <- state$physical_count + state$generated_count
+    if (is.environment(state$locations)) {
+        state$locations[[name]] <- state$physical_count + state$generated_count
+    }
     invisible(NULL)
 }
 
@@ -294,9 +339,14 @@ gen <- function(data, variable, values, where = NULL) {
         stop("`data` must be an ungrouped data frame or tibble", call. = FALSE)
     }
     state <- .reference_state(data)
-    names <- NULL
+    names <- if (is.null(state)) {
+        names(data)
+    } else if (is.environment(state$locations)) {
+        NULL
+    } else {
+        .reference_names(data)
+    }
     if (is.null(state)) {
-        names <- names(data)
         if (is.null(names) || anyNA(names) || any(names == "") ||
             anyDuplicated(names)) {
             stop("`data` must have unique, non-missing column names",
@@ -334,10 +384,11 @@ gen <- function(data, variable, values, where = NULL) {
     name <- .unquoted_variable_name(variable)
     location <- if (is.null(data$state)) {
         match(name, data$names)
-    } else if (exists(name, envir = data$state$locations, inherits = FALSE)) {
+    } else if (is.environment(data$state$locations) &&
+        exists(name, envir = data$state$locations, inherits = FALSE)) {
         data$state$locations[[name]]
     } else {
-        NA_integer_
+        match(name, data$names)
     }
     if (generate && !is.na(location)) {
         stop(sprintf("Column `%s` already exists", name), call. = FALSE)
@@ -522,11 +573,8 @@ gen <- function(data, variable, values, where = NULL) {
         column <- .generated_column(values, rows, original$nrow)
         if (is.null(state)) state <- .new_reference_state(data)
     } else {
-        column <- if (is.null(state)) {
-            original$columns[[target$location]]
-        } else {
-            state$columns[[target$name]]
-        }
+        access <- .column_access(data)
+        column <- .data_column_at(access, target$location)
         replacement <- .cast_replacement(
             values, column, rows, value_mode
         )
@@ -535,7 +583,11 @@ gen <- function(data, variable, values, where = NULL) {
     if (!generate) {
         column <- .Call(
             C_dtatools_patch_data_column,
-            data, as.integer(target$location), column, rows, replacement
+            data,
+            as.integer(.native_data_column_location(access, target$location)),
+            column,
+            rows,
+            replacement
         )
         if (!is.null(state)) state$columns[[target$name]] <- column
     }

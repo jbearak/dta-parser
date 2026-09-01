@@ -5120,10 +5120,18 @@ SEXP C_dtatools_patch_data_column(
         Rf_error("invalid generic ALTREP replacement target");
     }
 
+    int detached = ALTREP(target) && !reference_mutable_altrep(target);
     if ((R_xlen_t) index > XLENGTH(data)) {
-        PROTECT(patch_vector(target, rows, replacement, 1));
-        UNPROTECT(1);
-        return target;
+        if (!detached || XLENGTH(target) == 0 ||
+            (rows != R_NilValue && XLENGTH(rows) == 0)) {
+            PROTECT(patch_vector(target, rows, replacement, 1));
+            UNPROTECT(1);
+            return target;
+        }
+        SEXP column = PROTECT(plain_column(target, rows != R_NilValue));
+        PROTECT(patch_vector(column, rows, replacement, 0));
+        UNPROTECT(2);
+        return column;
     }
     if (target != VECTOR_ELT(data, (R_xlen_t) index - 1)) {
         Rf_error("invalid generic ALTREP replacement target");
@@ -5134,7 +5142,6 @@ SEXP C_dtatools_patch_data_column(
         UNPROTECT(1);
         return target;
     }
-    int detached = ALTREP(target) && !reference_mutable_altrep(target);
     if (!detached) {
         PROTECT(patch_vector(target, rows, replacement, 1));
         UNPROTECT(1);
@@ -5162,6 +5169,183 @@ SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP column) {
     }
     SET_VECTOR_ELT(data, (R_xlen_t) index - 1, column);
     return column;
+}
+
+static void resize_reference_vector(SEXP value, R_xlen_t length) {
+#if R_VERSION >= R_Version(4, 6, 0)
+    R_resizeVector(value, length);
+#else
+    SETLENGTH(value, length);
+#endif
+}
+
+static int can_resize_reference_columns(
+    SEXP data, SEXP current_names, R_xlen_t new_length
+) {
+    R_xlen_t old_length = XLENGTH(data);
+    int is_data_table = Rf_inherits(data, "data.table");
+#if R_VERSION >= R_Version(4, 6, 0)
+    return new_length == old_length ||
+        (!ALTREP(data) &&
+         R_isResizable(data) &&
+         new_length <= R_maxLength(data) &&
+         (!is_data_table ||
+          (R_isResizable(current_names) &&
+           new_length <= R_maxLength(current_names))));
+#else
+    return new_length == old_length ||
+        (!ALTREP(data) &&
+         TRUELENGTH(data) > 0 &&
+         (R_xlen_t) TRUELENGTH(data) >= new_length &&
+         (!is_data_table ||
+          (TRUELENGTH(current_names) > 0 &&
+           (R_xlen_t) TRUELENGTH(current_names) >= new_length)));
+#endif
+}
+
+SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
+    if (TYPEOF(data) != VECSXP || XLENGTH(length) != 1) {
+        Rf_error("invalid reference column selection capacity query");
+    }
+    double requested = Rf_asReal(length);
+    if (!R_FINITE(requested) || requested < 0 ||
+        requested > (double) R_XLEN_T_MAX || requested != floor(requested)) {
+        Rf_error("invalid reference column selection capacity query");
+    }
+    SEXP current_names = Rf_getAttrib(data, R_NamesSymbol);
+    if (TYPEOF(current_names) != STRSXP ||
+        XLENGTH(current_names) != XLENGTH(data)) {
+        Rf_error("invalid reference column selection names");
+    }
+    int can_resize = can_resize_reference_columns(
+        data, current_names, (R_xlen_t) requested
+    );
+    if (!can_resize && Rf_inherits(data, "data.table")) {
+        Rf_error(
+            "`data` is a non-resizable data.table; call "
+            "`data.table::setalloccol()` after restoring it"
+        );
+    }
+    return Rf_ScalarLogical(can_resize);
+}
+
+SEXP C_dtatools_select_data_columns(
+    SEXP data, SEXP columns, SEXP names, SEXP state,
+    SEXP base_classes, SEXP reference_classes
+) {
+    if (TYPEOF(data) != VECSXP ||
+        TYPEOF(columns) != VECSXP || TYPEOF(names) != STRSXP ||
+        XLENGTH(columns) != XLENGTH(names)) {
+        Rf_error("invalid reference column selection plan");
+    }
+    if (state != R_NilValue && TYPEOF(state) != ENVSXP) {
+        Rf_error("invalid reference column selection state");
+    }
+    if (TYPEOF(base_classes) != STRSXP || XLENGTH(base_classes) == 0 ||
+        TYPEOF(reference_classes) != STRSXP ||
+        XLENGTH(reference_classes) == 0) {
+        Rf_error("invalid reference column selection classes");
+    }
+    SEXP current_names = PROTECT(Rf_getAttrib(data, R_NamesSymbol));
+    if (TYPEOF(current_names) != STRSXP ||
+        XLENGTH(current_names) != XLENGTH(data)) {
+        Rf_error("invalid reference column selection names");
+    }
+    for (R_xlen_t index = 0; index < XLENGTH(names); index++) {
+        SEXP name = STRING_ELT(names, index);
+        if (name == NA_STRING || LENGTH(name) == 0) {
+            Rf_error("invalid reference column selection name");
+        }
+    }
+    if (Rf_any_duplicated(names, FALSE) != 0) {
+        Rf_error("invalid duplicate reference column selection name");
+    }
+    SEXP planned_names = PROTECT(Rf_duplicate(names));
+
+    R_xlen_t old_length = XLENGTH(data);
+    R_xlen_t new_length = XLENGTH(columns);
+    int is_data_table = Rf_inherits(data, "data.table");
+    int can_resize = can_resize_reference_columns(
+        data, current_names, new_length
+    );
+    if ((!can_resize && TYPEOF(state) != ENVSXP) ||
+        (can_resize && state != R_NilValue)) {
+        Rf_error("invalid reference column selection state");
+    }
+    int keep_state = !can_resize;
+    R_xlen_t installed_length = can_resize
+        ? new_length
+        : (new_length < old_length ? new_length : old_length);
+    int protect_count = 2;
+    SEXP committed_names = current_names;
+    if (!is_data_table) {
+        committed_names = PROTECT(Rf_allocVector(
+            STRSXP, can_resize ? new_length : old_length
+        ));
+        protect_count++;
+        for (R_xlen_t index = 0; index < installed_length; index++) {
+            SET_STRING_ELT(
+                committed_names, index, STRING_ELT(planned_names, index)
+            );
+        }
+        for (R_xlen_t index = installed_length;
+             index < XLENGTH(committed_names); index++) {
+            SET_STRING_ELT(committed_names, index, R_BlankString);
+        }
+    }
+
+    /* Materialize an ALTREP list wrapper before any visible commit. Once this
+       succeeds, installing its already validated elements cannot allocate. */
+    if (ALTREP(data)) (void) DATAPTR_RO(data);
+
+    /* R-level selection and state construction are complete. The remaining
+       writes commit one already validated plan. */
+    SEXP reference_state_symbol = Rf_install(".dtatools_ref_state");
+    SEXP sorted_symbol = Rf_install("sorted");
+    SEXP index_symbol = Rf_install("index");
+    Rf_setAttrib(
+        data, reference_state_symbol,
+        keep_state ? state : R_NilValue
+    );
+    Rf_setAttrib(
+        data, R_ClassSymbol,
+        keep_state ? reference_classes : base_classes
+    );
+    if (is_data_table) {
+        Rf_setAttrib(data, sorted_symbol, R_NilValue);
+        Rf_setAttrib(data, index_symbol, R_NilValue);
+    }
+
+    if (can_resize && new_length != old_length) {
+        resize_reference_vector(data, new_length);
+        if (is_data_table) {
+            resize_reference_vector(current_names, new_length);
+        }
+    }
+    for (R_xlen_t index = 0; index < installed_length; index++) {
+        SET_VECTOR_ELT(data, index, VECTOR_ELT(columns, index));
+    }
+    if (!can_resize) {
+        for (R_xlen_t index = installed_length; index < old_length; index++) {
+            SET_VECTOR_ELT(data, index, R_NilValue);
+        }
+    }
+    if (is_data_table) {
+        for (R_xlen_t index = 0; index < installed_length; index++) {
+            SET_STRING_ELT(
+                current_names, index, STRING_ELT(planned_names, index)
+            );
+        }
+        if (!can_resize) {
+            for (R_xlen_t index = installed_length;
+                 index < old_length; index++) {
+                SET_STRING_ELT(current_names, index, R_BlankString);
+            }
+        }
+    }
+    Rf_setAttrib(data, R_NamesSymbol, committed_names);
+    UNPROTECT(protect_count);
+    return data;
 }
 
 static double generated_double_value(
@@ -6051,6 +6235,10 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_patch_data_column, 5},
     {"C_dtatools_set_data_column",
      (DL_FUNC) &C_dtatools_set_data_column, 3},
+    {"C_dtatools_can_select_data_columns",
+     (DL_FUNC) &C_dtatools_can_select_data_columns, 2},
+    {"C_dtatools_select_data_columns",
+     (DL_FUNC) &C_dtatools_select_data_columns, 6},
     {"C_dtatools_generate_numeric",
      (DL_FUNC) &C_dtatools_generate_numeric, 6},
     {"C_dtatools_generate_character",
