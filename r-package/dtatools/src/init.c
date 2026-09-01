@@ -30,6 +30,16 @@ extern int dtatools_write_path_kind(const char *, char **);
 extern void dtatools_free_error(char *);
 extern void dtatools_numeric_free(void *);
 extern void *dtatools_numeric_alloc(void *, size_t, int, int, size_t);
+typedef struct {
+    void *values;
+    int kind;
+    int temporal;
+    int format_version;
+} dtatools_compare_operand;
+extern int dtatools_numeric_compare(
+    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
+    double, int, int *, size_t, int
+);
 extern int dtatools_gather_numeric_columns(
     const void *, size_t, const int *, const int *, size_t
 );
@@ -4451,9 +4461,17 @@ static void fill_encoded_compact_patch_value(
         memset(target->values, encoded[0], target->length);
         return;
     }
-    for (size_t row = 0; row < target->length; row++) {
-        if ((row & 16383) == 0) R_CheckUserInterrupt();
-        write_encoded_compact_patch_value(target, row, encoded, width);
+    if (target->length == 0) return;
+    /* Seed the first element, then double the filled prefix so the
+       fill is memcpy-bound instead of one write per row. */
+    write_encoded_compact_patch_value(target, 0, encoded, width);
+    unsigned char *bytes = (unsigned char *) target->values;
+    size_t total = target->length * width;
+    size_t filled = width;
+    while (filled < total) {
+        size_t copy = filled <= total - filled ? filled : total - filled;
+        memcpy(bytes + filled, bytes, copy);
+        filled += copy;
     }
 }
 
@@ -5939,9 +5957,20 @@ SEXP C_dtatools_generate_numeric(
         RAWSXP, (R_xlen_t) (row_count * width)
     ));
     plan.values = RAW(backing);
-    for (size_t index = 0; index < row_count; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        write_numeric_missing(plan.values, (R_xlen_t) index, kind, 0);
+    if (row_count > 0) {
+        /* Seed one encoded system-missing element, then double the
+           filled prefix so initialization is memcpy-bound instead of
+           one encoder call per row. */
+        write_numeric_missing(plan.values, 0, kind, 0);
+        unsigned char *bytes = (unsigned char *) plan.values;
+        size_t total = row_count * width;
+        size_t filled = width;
+        while (filled < total) {
+            size_t copy = filled <= total - filled
+                ? filled : total - filled;
+            memcpy(bytes + filled, bytes, copy);
+            filled += copy;
+        }
     }
     apply_compact_replacement(&plan, &row_plan, &replacement_plan);
 
@@ -6433,6 +6462,84 @@ SEXP C_dtatools_missing_tag(SEXP value) {
     return result;
 }
 
+SEXP C_dtatools_stata_compare(
+    SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
+) {
+    /* Native Stata comparison over compact numeric storage. Returns
+       R_NilValue whenever the operands are outside this kernel's domain
+       so the caller falls back to the materializing R implementation
+       and its error messages. */
+    int op = Rf_asInteger(op_value);
+    if (op < 0 || op > 5) Rf_error("invalid Stata comparison operator");
+    int threads = Rf_asInteger(threads_value);
+    if (threads == NA_INTEGER || threads < 0) threads = 0;
+
+    /* Compact storage compares raw encoded bytes; a materialized (or
+       eagerly constructed) double vector compares decoded values whose
+       missing codes are NA_real_ and haven-style tagged NaNs. */
+    numeric_data *x_data = unmaterialized_numeric_storage(x);
+    dtatools_compare_operand left;
+    size_t length;
+    if (x_data != NULL) {
+        left.values = x_data->values;
+        left.kind = x_data->kind;
+        left.temporal = x_data->temporal;
+        left.format_version = x_data->format_version;
+        length = x_data->length;
+    } else if (TYPEOF(x) == REALSXP) {
+        left.values = (void *) REAL(x);
+        left.kind = NUMERIC_DOUBLE;
+        left.temporal = 0;
+        left.format_version = 0;
+        length = (size_t) XLENGTH(x);
+    } else {
+        return R_NilValue;
+    }
+
+    dtatools_compare_operand right;
+    const dtatools_compare_operand *right_pointer = NULL;
+    double scalar_value = 0.0;
+    int scalar_rank = 0;
+    if (y != R_NilValue) {
+        numeric_data *y_data = unmaterialized_numeric_storage(y);
+        if (y_data != NULL) {
+            if (y_data->length != length) return R_NilValue;
+            right.values = y_data->values;
+            right.kind = y_data->kind;
+            right.temporal = y_data->temporal;
+            right.format_version = y_data->format_version;
+        } else if (TYPEOF(y) == REALSXP &&
+                   (size_t) XLENGTH(y) == length) {
+            right.values = (void *) REAL(y);
+            right.kind = NUMERIC_DOUBLE;
+            right.temporal = 0;
+            right.format_version = 0;
+        } else {
+            return R_NilValue;
+        }
+        right_pointer = &right;
+    } else {
+        if (TYPEOF(scalar) != REALSXP || XLENGTH(scalar) != 2) {
+            Rf_error("invalid Stata comparison scalar plan");
+        }
+        scalar_value = REAL(scalar)[0];
+        double rank = REAL(scalar)[1];
+        if (ISNAN(rank) || rank < 0 || rank > 27 || rank != trunc(rank)) {
+            Rf_error("invalid Stata comparison scalar plan");
+        }
+        scalar_rank = (int) rank;
+    }
+    if (length > (size_t) R_XLEN_T_MAX) return R_NilValue;
+
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t) length));
+    int status = dtatools_numeric_compare(
+        op, &left, right_pointer, scalar_value, scalar_rank,
+        LOGICAL(result), length, threads
+    );
+    UNPROTECT(1);
+    return status ? result : R_NilValue;
+}
+
 SEXP C_dtatools_missing_codes(SEXP value) {
     /* NA means observed, zero is system missing, 1--255 is the tagged-NA
        payload byte, and 256 is an ordinary R NaN. */
@@ -6556,6 +6663,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",
      (DL_FUNC) &C_dtatools_missing_codes, 1},
+    {"C_dtatools_stata_compare",
+     (DL_FUNC) &C_dtatools_stata_compare, 5},
     {NULL, NULL, 0}
 };
 

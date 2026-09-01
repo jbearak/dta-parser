@@ -477,6 +477,266 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NumericCompareOperand {
+    values: *const c_void,
+    kind: c_int,
+    temporal: c_int,
+    format_version: c_int,
+}
+
+#[derive(Clone, Copy)]
+struct CompareOperandView {
+    values: usize,
+    kind: c_int,
+    temporal: c_int,
+    format_version: c_int,
+}
+
+/// One element decoded for Stata comparison: rank 0 is a finite value,
+/// rank 1 is `.`, and ranks 2 through 27 are `.a` through `.z`, with the
+/// payload zeroed whenever the element is missing so lexicographic
+/// (rank, value) order reproduces Stata's total order.
+#[derive(Clone, Copy)]
+struct ComparedElement {
+    rank: u8,
+    value: f64,
+}
+
+/// Decode one compact element without materializing the vector. Returns
+/// `None` for storage this kernel does not understand (an invalid kind or
+/// release, or a float NaN payload that is not a Stata missing value), so
+/// the caller can fall back to the R implementation and its errors.
+unsafe fn compare_operand_element(
+    operand: CompareOperandView,
+    index: usize,
+) -> Option<ComparedElement> {
+    let base = operand.values as *const u8;
+    if operand.kind == 4 {
+        // Decoded doubles (materialized or eagerly constructed Stata
+        // vectors): finite values are already in decoded units, system
+        // missing is R's `NA_real_`, and `.a` through `.z` are haven-style
+        // tagged NaNs whose tag byte sits in bits 32..40. Any other NaN
+        // payload is noncanonical, so bail to the R fallback and its error.
+        let value = base.cast::<f64>().add(index).read_unaligned();
+        if !value.is_nan() {
+            return Some(ComparedElement { rank: 0, value });
+        }
+        const SIGN_BIT: u64 = 0x8000_0000_0000_0000;
+        const QUIET_NAN_BIT: u64 = 0x0008_0000_0000_0000;
+        const TAG_BITS: u64 = 0x0000_00ff_0000_0000;
+        const IGNORED_BITS: u64 = SIGN_BIT | QUIET_NAN_BIT | TAG_BITS;
+        const TAGGED_NA_LAYOUT: u64 = 0x7ff0_0000_0000_07a2;
+        let bits = value.to_bits();
+        if bits & !IGNORED_BITS != TAGGED_NA_LAYOUT & !IGNORED_BITS {
+            return None;
+        }
+        return match ((bits & TAG_BITS) >> 32) as u8 {
+            0 => Some(ComparedElement { rank: 1, value: 0.0 }),
+            tag @ b'a'..=b'z' => Some(ComparedElement {
+                rank: tag - b'a' + 2,
+                value: 0.0,
+            }),
+            _ => None,
+        };
+    }
+    let release = u16::try_from(operand.format_version).ok()?;
+    let version = FormatVersion::try_from(release).ok()?;
+    let raw = match NumericKind::try_from(operand.kind).ok()? {
+        NumericKind::Byte => {
+            let value = base.cast::<i8>().add(index).read_unaligned();
+            if let Some(tag) = classify_byte_missing_for_version(value, version) {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            f64::from(value)
+        }
+        NumericKind::Int => {
+            let value = base.cast::<i16>().add(index).read_unaligned();
+            if let Some(tag) = classify_int_missing_for_version(value, version) {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            f64::from(value)
+        }
+        NumericKind::Long => {
+            let value = base.cast::<i32>().add(index).read_unaligned();
+            if let Some(tag) = classify_long_missing_for_version(value, version) {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            f64::from(value)
+        }
+        NumericKind::Float => {
+            let value = base.cast::<f32>().add(index).read_unaligned();
+            if let Some(tag) =
+                classify_float_missing_bits_for_version(value.to_bits(), version)
+            {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            if value.is_nan() {
+                return None;
+            }
+            f64::from(value)
+        }
+    };
+    let value = match operand.temporal {
+        1 => raw - DAYS_1960_TO_1970,
+        2 => raw / 1000.0 - SECONDS_1960_TO_1970,
+        _ => raw,
+    };
+    Some(ComparedElement { rank: 0, value })
+}
+
+fn compare_decoded(op: c_int, x: ComparedElement, y: ComparedElement) -> c_int {
+    let result = match op {
+        0 => x.rank == y.rank && x.value == y.value,
+        1 => x.rank != y.rank || x.value != y.value,
+        2 => x.rank < y.rank || (x.rank == y.rank && x.value < y.value),
+        3 => x.rank < y.rank || (x.rank == y.rank && x.value <= y.value),
+        4 => x.rank > y.rank || (x.rank == y.rank && x.value > y.value),
+        _ => x.rank > y.rank || (x.rank == y.rank && x.value >= y.value),
+    };
+    c_int::from(result)
+}
+
+unsafe fn compare_numeric_range(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    output: *mut c_int,
+    start: usize,
+    end: usize,
+) -> bool {
+    for index in start..end {
+        let Some(left) = compare_operand_element(x, index) else {
+            return false;
+        };
+        let right = match y {
+            Some(operand) => match compare_operand_element(operand, index) {
+                Some(element) => element,
+                None => return false,
+            },
+            None => scalar,
+        };
+        output.add(index).write(compare_decoded(op, left, right));
+    }
+    true
+}
+
+const COMPARE_ROWS_PER_WORKER: usize = 262_144;
+
+#[no_mangle]
+/// Compare compact Stata numeric storage against a decoded scalar or a
+/// second compact vector of the same length, in parallel and without
+/// materializing either operand into R doubles. `op` is 0 `==`, 1 `!=`,
+/// 2 `<`, 3 `<=`, 4 `>`, 5 `>=`. Returns 1 on success and 0 when the
+/// caller must fall back to the R implementation.
+///
+/// # Safety
+///
+/// `x` (and `y` when non-null) must describe live compact numeric storage
+/// of at least `length` elements that stays valid for the whole call, and
+/// `output` must point to `length` writable `c_int` slots.
+pub unsafe extern "C" fn dtatools_numeric_compare(
+    op: c_int,
+    x: *const NumericCompareOperand,
+    y: *const NumericCompareOperand,
+    scalar_value: f64,
+    scalar_rank: c_int,
+    output: *mut c_int,
+    length: usize,
+    threads: c_int,
+) -> c_int {
+    let call = || {
+        if x.is_null() || (length > 0 && output.is_null()) || !(0..=5).contains(&op) {
+            return false;
+        }
+        let view = |operand: NumericCompareOperand| CompareOperandView {
+            values: operand.values as usize,
+            kind: operand.kind,
+            temporal: operand.temporal,
+            format_version: operand.format_version,
+        };
+        let x = view(unsafe { *x });
+        let y = if y.is_null() {
+            None
+        } else {
+            Some(view(unsafe { *y }))
+        };
+        if y.is_none() && !(0..=27).contains(&scalar_rank) {
+            return false;
+        }
+        let scalar = ComparedElement {
+            rank: scalar_rank as u8,
+            value: if scalar_rank == 0 { scalar_value } else { 0.0 },
+        };
+        if scalar.rank == 0 && scalar.value.is_nan() {
+            return false;
+        }
+        let available = std::thread::available_parallelism().map_or(1, usize::from);
+        let requested = if threads <= 0 {
+            available
+        } else {
+            (threads as usize).min(available)
+        };
+        let workers = requested
+            .min(length.div_ceil(COMPARE_ROWS_PER_WORKER))
+            .max(1);
+        if workers == 1 {
+            return unsafe {
+                compare_numeric_range(op, x, y, scalar, output, 0, length)
+            };
+        }
+        let rows_per_worker = length.div_ceil(workers);
+        let output_address = output as usize;
+        let ok = std::sync::atomic::AtomicBool::new(true);
+        std::thread::scope(|scope| {
+            for worker in 0..workers {
+                let start = worker * rows_per_worker;
+                let end = length.min(start + rows_per_worker);
+                if start >= end {
+                    continue;
+                }
+                let ok = &ok;
+                scope.spawn(move || {
+                    let completed = unsafe {
+                        compare_numeric_range(
+                            op,
+                            x,
+                            y,
+                            scalar,
+                            output_address as *mut c_int,
+                            start,
+                            end,
+                        )
+                    };
+                    if !completed {
+                        ok.store(false, std::sync::atomic::Ordering::Relaxed);
+                    }
+                });
+            }
+        });
+        ok.load(std::sync::atomic::Ordering::Relaxed)
+    };
+
+    match catch_unwind(AssertUnwindSafe(call)) {
+        Ok(true) => 1,
+        Ok(false) | Err(_) => 0,
+    }
+}
+
+#[repr(C)]
 struct DictStringData {
     value_ids: *mut u32,
     length: usize,
