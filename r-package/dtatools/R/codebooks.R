@@ -14,7 +14,7 @@
 #'   mappings. Unlike Stata's random subset, dtatools lists the first mappings
 #'   in report order.
 #' @param problems Print the problem report instead of the standard report.
-#' @param detail Include detailed problem evidence. Valid only with `problems`.
+#' @param detail With `problems`, also print the normal detailed report.
 #' @return A `dtatools_labelbook` list with data-frame components `tables`,
 #'   `mappings`, `assignments`, and `diagnostics`.
 #' @export
@@ -706,7 +706,8 @@ print.dtatools_labelbook <- function(x, ...) {
     if (x$options$problems) {
         cat("Potential problems\n")
         if (!nrow(x$diagnostics)) cat("  none\n") else print(x$diagnostics[c("code", "table", "variable", "message")], row.names = FALSE)
-        return(invisible(x))
+        if (!x$options$detail) return(invisible(x))
+        cat("\n")
     }
     if (!nrow(x$tables)) { cat("No value-label tables\n"); return(invisible(x)) }
     for (i in seq_len(nrow(x$tables))) {
@@ -727,7 +728,8 @@ print.dtatools_codebook <- function(x, ...) {
     if (x$options$problems) {
         cat("Potential problems\n")
         if (!nrow(x$diagnostics)) cat("  none\n") else print(x$diagnostics[c("code", "variable", "message")], row.names = FALSE)
-        return(invisible(x))
+        if (!x$options$detail) return(invisible(x))
+        cat("\n")
     }
     if (!is.null(x$header)) print(x$header)
     if (!nrow(x$variables)) { cat("No variables\n"); return(invisible(x)) }

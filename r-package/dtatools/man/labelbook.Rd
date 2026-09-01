@@ -34,7 +34,7 @@ in report order.}
 
 \item{problems}{Print the problem report instead of the standard report.}
 
-\item{detail}{Include detailed problem evidence. Valid only with \code{problems}.}
+\item{detail}{With \code{problems}, also print the normal detailed report.}
 }
 \value{
 A \code{dtatools_labelbook} list with data-frame components \code{tables},

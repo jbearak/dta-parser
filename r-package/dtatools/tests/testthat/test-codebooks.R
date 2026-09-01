@@ -68,6 +68,17 @@ test_that("labelbook diagnoses table problems and malformed sharing", {
     expect_true("inconsistent_resolved_mappings" %in% malformed$diagnostics$code)
 })
 
+test_that("labelbook detail restores the normal report", {
+    data <- data.frame(x = labelled_for_test(1, c(One = 1, Three = 3)))
+    summary <- labelbook(data, problems = TRUE)
+    detailed <- labelbook(data, problems = TRUE, detail = TRUE)
+
+    expect_identical(summary$diagnostics$details, detailed$diagnostics$details)
+    expect_true(any(lengths(detailed$diagnostics$details) > 0L))
+    expect_false(any(grepl("Value label x", capture.output(print(summary)), fixed = TRUE)))
+    expect_output(print(detailed), "Value label x", fixed = TRUE)
+})
+
 test_that("codebook classifies and summarizes numeric and string variables", {
     data <- data.frame(
         category = c(rep(c(1, 2), length.out = 9), NA_real_, tagged_missing("a")),
@@ -175,6 +186,10 @@ test_that("codebook retains diagnostics and bounds row evidence", {
     expect_true("trailing_blanks" %in% result$diagnostics$code)
     expect_true("embedded_blanks" %in% result$diagnostics$code)
     expect_output(print(result), "few_unique_strings", fixed = TRUE)
+    summary <- codebook(data, problems = TRUE, diagnostic_limit = 2)
+    expect_identical(summary$diagnostics$details, result$diagnostics$details)
+    expect_false(any(grepl("observations", capture.output(print(summary)), fixed = TRUE)))
+    expect_output(print(result), "observations", fixed = TRUE)
     missing_result <- codebook(
         data, all_missing, problems = TRUE, diagnostic_limit = 2
     )
