@@ -8,6 +8,8 @@
 #' missing identity; use `NA_real_` or [tagged_missing()].
 #' Character keys containing `NA_character_` are also rejected because Stata
 #' has only the empty string for a missing string; use `""` instead.
+#' Unmatched rows fill string columns with `""` for the same reason, while
+#' numeric columns fill with system missing.
 #'
 #' `x` plays the role of Stata's master dataset and `y` the using dataset.
 #' Match results are named `"x"` (a row only in `x`), `"y"` (a row only in
@@ -674,6 +676,19 @@ dta_merge <- function(x, y, by, relationship,
     }
 }
 
+# Stata has no missing string distinct from the empty string, so rows
+# gathered through a missing index (unmatched merge rows) must hold ""
+# in every character column rather than the `NA_character_` that
+# vctrs::vec_slice() fills in. Filling ordinary character columns too
+# keeps every input source merging identically.
+.dta_merge_fill_string_missing <- function(value, rows) {
+    if (!is.character(value)) return(value)
+    missing_rows <- which(is.na(rows))
+    if (length(missing_rows) == 0L) return(value)
+    fill <- if (inherits(value, "stata_string")) stata_string("") else ""
+    vctrs::vec_assign(value, missing_rows, fill)
+}
+
 .dta_merge_slice <- function(value, rows) {
     if (.dta_merge_has_compact_storage(value)) {
         gathered <- .Call(
@@ -686,7 +701,7 @@ dta_merge <- function(x, y, by, relationship,
         gathered <- .stata_data(value)[rows]
         return(.dta_merge_restore_gathered(gathered, value))
     }
-    vctrs::vec_slice(value, rows)
+    .dta_merge_fill_string_missing(vctrs::vec_slice(value, rows), rows)
 }
 
 .dta_merge_slice_columns <- function(values, rows) {
@@ -723,7 +738,11 @@ dta_merge <- function(x, y, by, relationship,
     ordinary <- storage == ""
     if (any(ordinary)) {
         gathered <- vctrs::vec_slice(values[ordinary], rows)
-        result[ordinary] <- unname(as.list(gathered))
+        result[ordinary] <- lapply(
+            unname(as.list(gathered)),
+            .dta_merge_fill_string_missing,
+            rows = rows
+        )
     }
 
     fallback <- !(native | ordinary)
