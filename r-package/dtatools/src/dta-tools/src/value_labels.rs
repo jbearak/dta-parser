@@ -288,27 +288,43 @@ fn parse_fixed8_table(
     Ok((Some(ValueLabelTable { name, entries }), table_end))
 }
 
-fn nul_positions(text: &[u8]) -> Result<Vec<usize>, DtaError> {
+fn nul_positions_for_offsets(
+    text: &[u8],
+    offsets: &[usize],
+) -> Result<(Vec<usize>, Vec<Option<usize>>), DtaError> {
+    let mut unique_offsets = Vec::new();
+    unique_offsets
+        .try_reserve_exact(offsets.len())
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
+    unique_offsets.extend_from_slice(offsets);
+    unique_offsets.sort_unstable();
+    unique_offsets.dedup();
+
     let mut positions = Vec::new();
-    for (position, byte) in text.iter().enumerate() {
-        if *byte != 0 {
-            continue;
-        }
-        if positions.len() == positions.capacity() {
-            let additional = positions.capacity().max(4);
-            positions
-                .try_reserve_exact(additional)
-                .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
-        }
+    positions
+        .try_reserve_exact(unique_offsets.len())
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
+    let mut last_nul = None;
+    let mut exhausted = false;
+    for &offset in &unique_offsets {
+        let position = if exhausted {
+            None
+        } else if last_nul.is_some_and(|position| offset <= position) {
+            last_nul
+        } else {
+            let next = text
+                .get(offset..)
+                .and_then(|suffix| suffix.iter().position(|&byte| byte == 0))
+                .and_then(|relative| offset.checked_add(relative));
+            if next.is_none() {
+                exhausted = true;
+            }
+            last_nul = next;
+            next
+        };
         positions.push(position);
     }
-    Ok(positions)
-}
-
-fn first_nul_at_or_after(positions: &[usize], offset: usize) -> Option<usize> {
-    positions
-        .get(positions.partition_point(|&position| position < offset))
-        .copied()
+    Ok((unique_offsets, positions))
 }
 
 fn parse_table(
@@ -459,13 +475,16 @@ fn parse_table(
         let text_offsets = text_offsets
             .as_ref()
             .expect("retained table has text offsets");
-        let terminators = nul_positions(text)?;
+        let (unique_offsets, terminators) = nul_positions_for_offsets(text, text_offsets)?;
         let mut entries = Vec::new();
         entries
             .try_reserve_exact(entry_count)
             .map_err(|_| DtaError::ArithmeticOverflow("value-label entry allocation"))?;
         for (entry_index, &text_offset) in text_offsets.iter().enumerate() {
-            let Some(nul) = first_nul_at_or_after(&terminators, text_offset) else {
+            let terminator_index = unique_offsets
+                .binary_search(&text_offset)
+                .expect("validated value-label offset is indexed");
+            let Some(nul) = terminators[terminator_index] else {
                 return Err(DtaError::MissingNulTerminator {
                     context: "value-label text",
                     offset: checked_add(
@@ -763,8 +782,8 @@ mod tests {
     use std::collections::HashSet;
 
     use super::{
-        parse_fixed8_table, parse_selected_value_labels_with_encoding, parse_table,
-        parse_value_labels_with_encoding,
+        nul_positions_for_offsets, parse_fixed8_table, parse_selected_value_labels_with_encoding,
+        parse_table, parse_value_labels_with_encoding,
     };
     use crate::{
         parse_metadata, ByteOrder, DtaMetadata, FormatVersion, SectionOffsets, TextEncoding,
@@ -847,5 +866,16 @@ mod tests {
                 "value-label entry count exceeds 65,536"
             ))
         ));
+    }
+
+    #[test]
+    fn terminator_index_is_bounded_by_requested_offsets() {
+        let text = vec![0; 1024 * 1024];
+        let offsets = [999_999, 0, 17, 17];
+
+        let (unique_offsets, positions) = nul_positions_for_offsets(&text, &offsets).unwrap();
+
+        assert_eq!(unique_offsets, vec![0, 17, 999_999]);
+        assert_eq!(positions, vec![Some(0), Some(17), Some(999_999)]);
     }
 }

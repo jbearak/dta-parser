@@ -139,7 +139,7 @@ save_arrow <- function(data, path,
 }
 
 .arrow_reject_bytes <- function(value, what) {
-    if (any(Encoding(value) == "bytes")) {
+    if (.Call(C_dtatools_has_bytes_encoding, value)) {
         .dta_write_abort(sprintf(
             "%s cannot contain strings with `bytes` encoding; Arrow Utf8 requires Unicode text",
             what

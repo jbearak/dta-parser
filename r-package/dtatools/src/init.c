@@ -3096,6 +3096,20 @@ static SEXP write_utf8_strings(
     return normalized;
 }
 
+SEXP C_dtatools_has_bytes_encoding(SEXP values) {
+    if (TYPEOF(values) != STRSXP) {
+        Rf_error("internal encoding check requires a character vector");
+    }
+    R_xlen_t length = XLENGTH(values);
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        if (Rf_getCharCE(STRING_ELT(values, index)) == CE_BYTES) {
+            return Rf_ScalarLogical(1);
+        }
+    }
+    return Rf_ScalarLogical(0);
+}
+
 static SEXP write_rooted_strings(
     SEXP roots, R_xlen_t index, SEXP values, const char *name
 ) {
@@ -6453,6 +6467,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},
+    {"C_dtatools_has_bytes_encoding",
+     (DL_FUNC) &C_dtatools_has_bytes_encoding, 1},
     {"C_dtatools_datasig", (DL_FUNC) &C_dtatools_datasig, 2},
     {"C_dtatools_open_arrow", (DL_FUNC) &C_dtatools_open_arrow, 1},
     {"C_dtatools_close_arrow", (DL_FUNC) &C_dtatools_close_arrow, 1},
