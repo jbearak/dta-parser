@@ -54,3 +54,7 @@
 is_missing <- function(...) {
     .Call(C_dtatools_is_missing, list(...))
 }
+
+#' @rdname is_missing
+#' @export
+is_mi <- is_missing

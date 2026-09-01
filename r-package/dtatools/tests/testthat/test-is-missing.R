@@ -17,6 +17,14 @@ test_that("is_missing classifies Stata and R missing values", {
     )
 })
 
+test_that("is_mi is an exported alias for is_missing", {
+    expect_identical(is_mi, is_missing)
+    expect_identical(
+        dtatools::is_mi(c(1, NA_real_, tagged_missing("a"))),
+        c(FALSE, TRUE, TRUE)
+    )
+})
+
 test_that("is_missing uses rowwise any with size-one recycling", {
     expect_identical(
         is_missing(c(1, NA), c("", "x")),
