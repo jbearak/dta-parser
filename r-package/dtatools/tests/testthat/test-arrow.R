@@ -301,6 +301,19 @@ test_that("deferred string columns are written without materializing", {
                      as.character(materialized$s))
 })
 
+test_that("owned Stata strings are writable and signable", {
+    data <- tibble::tibble(s = stata_string(c("alpha", "", "é"), "str5"))
+    path <- arrow_tempfile()
+
+    save_arrow(data, path)
+    actual <- read_arrow(path)
+
+    expect_s3_class(actual$s, "stata_string")
+    expect_identical(attr(actual$s, "stata.string.storage"), "str5")
+    expect_identical(as.character(actual$s), as.character(data$s))
+    expect_identical(datasig(actual), datasig(data))
+})
+
 test_that("compact ALTREP columns are written without materializing", {
     dta <- tempfile(fileext = ".dta")
     path <- arrow_tempfile()

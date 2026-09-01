@@ -201,13 +201,16 @@ test_that("base R recoding preserves tags with complete predicates", {
                     info = paste(info, "ifelse attributes")
                 )
 
-                unsafe_ifelse <- ifelse(
-                    original == original[[28L]], -1, original
+                comparison <- original == original[[28L]]
+                expect_false(
+                    anyNA(comparison),
+                    info = paste(info, "Stata comparison predicate")
                 )
+                comparison_ifelse <- ifelse(comparison, -1, original)
                 expect_identical(
-                    missing_tag(unsafe_ifelse[seq_len(27L)]),
-                    rep(NA_character_, 27L),
-                    info = paste(info, "incomplete ifelse predicate")
+                    missing_tag(comparison_ifelse[seq_len(27L)]),
+                    expected_tags,
+                    info = paste(info, "Stata comparison ifelse tags")
                 )
             }
         }
@@ -726,7 +729,7 @@ test_that("native materialization survives forced garbage collection", {
 
     result <- read_dta(path, col_select = c(make, price), n_max = 1)
     expect_identical(dim(result), c(1L, 2L))
-    expect_identical(result$make[[1L]], "AMC Concord")
+    expect_identical(as.character(result$make[[1L]]), "AMC Concord")
     expect_true(dtatools:::.is_numeric_altrep(result$price))
     expect_identical(as.double(result$price[[1L]]), 4099)
 })
@@ -742,18 +745,23 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
     original <- read_dta(path)
     modified <- original
     modified$make[[1L]] <- "replacement"
-    expect_identical(original$make[[1L]], reference$make[[1L]])
-    expect_identical(modified$make[[1L]], "replacement")
+    expect_identical(
+        as.character(original$make[[1L]]),
+        as.character(reference$make[[1L]])
+    )
+    expect_identical(as.character(modified$make[[1L]]), "replacement")
 
     with_missing <- read_dta(path)$make
     expect_false(anyNA(with_missing))
-    with_missing[[1L]] <- NA_character_
-    expect_true(anyNA(with_missing))
-    expect_identical(with_missing[[1L]], NA_character_)
+    expect_error(with_missing[[1L]] <- NA_character_, "use `\\\"\\\"`")
+    expect_false(anyNA(with_missing))
 
     retained <- read_dta(path)$make
     invisible(gc())
-    expect_identical(retained[[2L]], reference$make[[2L]])
+    expect_identical(
+        as.character(retained[[2L]]),
+        as.character(reference$make[[2L]])
+    )
 })
 
 test_that("native numerics use width-aware storage with R value semantics", {

@@ -135,6 +135,7 @@ test_that("compact reader storage and materialized fallbacks write identically",
     )
 
     changed_string <- compact["text"]
+    changed_string$text <- as.character(changed_string$text)
     changed_string$text[[2L]] <- NA_character_
     expect_warning(
         save_dta(changed_string, string_path),

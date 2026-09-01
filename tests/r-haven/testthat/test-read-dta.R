@@ -93,21 +93,17 @@ test_that("dplyr recoding preserves unselected Stata missing codes", {
                 )
 
                 condition <- source[[index]] == source[[index]][[28L]]
-                unsafe_if_else <- dplyr::if_else(
+                expect_false(
+                    anyNA(condition),
+                    info = paste(info, "Stata comparison predicate")
+                )
+                comparison_if_else <- dplyr::if_else(
                     condition, -1, source[[index]]
                 )
                 expect_identical(
-                    missing_tag(unsafe_if_else[seq_len(27L)]),
-                    rep(NA_character_, 27L),
-                    info = paste(info, "if_else missing condition")
-                )
-                safe_if_else <- dplyr::if_else(
-                    condition, -1, source[[index]], missing = source[[index]]
-                )
-                expect_identical(
-                    missing_tag(safe_if_else[seq_len(27L)]),
+                    missing_tag(comparison_if_else[seq_len(27L)]),
                     expected_tags,
-                    info = paste(info, "if_else missing branch")
+                    info = paste(info, "Stata comparison if_else tags")
                 )
 
                 registered_recode <- rlang::exec(
@@ -161,10 +157,11 @@ test_that("dplyr manipulation matches haven for every storage type", {
         storage <- attr(dtatools:::.dta_metadata(path), "dta_storage")
 
         for (use_numeric_altrep in c(TRUE, FALSE)) {
-            actual <- manipulate(read_dta(
+            source <- read_dta(
                 path,
                 use_numeric_altrep = use_numeric_altrep
-            ))
+            )
+            actual <- manipulate(source)
             mode <- if (use_numeric_altrep) "default" else "eager"
             expect_identical(names(actual), names(expected))
             for (index in seq_along(actual)) {
@@ -172,6 +169,14 @@ test_that("dplyr manipulation matches haven for every storage type", {
                 expected_value <- expected[[index]]
                 attr(actual_value, "label") <- NULL
                 attr(expected_value, "label") <- NULL
+                if (identical(storage[[index]], "character")) {
+                    expect_identical(
+                        attr(actual_value, "format.stata", exact = TRUE),
+                        attr(source[[index]], "format.stata", exact = TRUE),
+                        info = paste(name, storage[[index]], mode, "format")
+                    )
+                    attr(actual_value, "format.stata") <- NULL
+                }
                 expect_equal(
                     actual_value,
                     expected_value,
@@ -615,6 +620,19 @@ test_that("date and datetime storage become native R temporal vectors", {
     expect_false(any(vapply(
         eager, dtatools:::.is_numeric_altrep, logical(1)
     )))
+})
+
+test_that("imported strings use owned Stata string vectors", {
+    skip_if_not_installed("haven")
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    haven::write_dta(data.frame(text = c("a", "wide", "")), path, version = 15)
+
+    text <- read_dta(path)$text
+    expect_s3_class(text, "stata_string")
+    expect_identical(attr(text, "stata.string.storage", exact = TRUE), "str4")
+    expect_identical(as.character(text[c(2, 2, 3)]), c("wide", "wide", ""))
+    expect_s3_class(text[integer()], "stata_string")
 })
 
 test_that("legacy and custom daily-date formats match haven", {

@@ -50,14 +50,15 @@ decoded columns (no second read of the file) and equals \code{datasig(file)}.
 Requires reading the complete file: incompatible with \code{col_select},
 \code{skip}, and \code{n_max}.}
 }
-\value{A tibble containing native numeric and character vectors. Numeric
+\value{A tibble containing native numeric and owned Stata string vectors. Numeric
 columns carry their declared Stata storage type. Byte, int, long, and float
 columns retain their compact Stata storage width until R requests a
 materialized double vector; source doubles are created eagerly.
 \code{\%td} columns and legacy or custom formats beginning \code{\%d} have class
 \code{Date}; \code{\%tc} and \code{\%tC} columns have classes \code{POSIXct}
 and \code{POSIXt} in UTC. Other Stata temporal formats remain numeric with
-their \code{format.stata} attribute.}
+their \code{format.stata} attribute. String storage and metadata survive
+supported vector operations.}
 \description{
 Reads Stata releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser,
 retaining dataset and variable labels, dataset notes, formats, value labels,
@@ -111,15 +112,17 @@ x[2] <- tagged_missing("a")       # Stata .a
 x[3] <- tagged_missing("f")       # Stata .f
 }
 
-Base subassignment and \code{replace()} retain unselected tags when their index
-contains no missing values; use \code{!is.na(x) & x == value} when recoding an
-observed value. Avoid \code{ifelse(x == value, replacement, x)}, whose missing
-condition entries become ordinary \code{NA} and lose their tags.
+Imported Stata-backed numeric and temporal vectors compare missing codes as
+Stata does, so \code{x == value} returns definite logical values for \code{.},
+\code{.a} through \code{.z}. Base subassignment, \code{replace()},
+\code{ifelse()}, and \code{dplyr::if_else()} therefore retain unselected
+missing-code identities. Bare double vectors keep ordinary R
+missing-propagating comparison behavior.
 
 When recoding, \code{dplyr::case_when()} preserves values returned by its
-default branch. \code{dplyr::if_else()} preserves unselected tags when its
-condition is complete; if the condition can be \code{NA}, also supply
-\code{missing = x}. Once the dtatools namespace is loaded, \code{recode()} and
+default branch. For a condition built from bare R values that can be \code{NA},
+supply \code{missing = x} to \code{dplyr::if_else()}. Once the dtatools
+namespace is loaded, \code{recode()} and
 \code{dplyr::recode()} preserve unmatched tags in bare numeric,
 \code{haven_labelled}, \code{Date}, and \code{POSIXct} columns, including
 inside \code{dplyr::mutate()}. Missing-value replacement helpers match all 27

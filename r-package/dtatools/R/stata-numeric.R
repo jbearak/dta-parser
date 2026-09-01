@@ -356,12 +356,46 @@ as.character.stata_numeric <- function(x, ...) {
     value
 }
 
+.stata_variable_attribute_names <- c(
+    "stata.storage", "stata.string.storage", "format.stata", "label",
+    "labels", "value.label.name", "notes", "stata.note.numbers",
+    "stata.characteristics", "tzone", "units"
+)
+
+.restore_stata_variable_metadata <- function(value, prototype, names = names(value)) {
+    source <- attributes(prototype)
+    known <- c("names", "class", .stata_variable_attribute_names)
+    unknown <- setdiff(names(source), known)
+    if (length(unknown)) {
+        warning(sprintf(
+            "Dropped unknown attribute%s during Stata vector restoration: %s",
+            if (length(unknown) == 1L) "" else "s",
+            paste(unknown, collapse = ", ")
+        ), call. = FALSE)
+    }
+    for (name in intersect(names(source), .stata_variable_attribute_names)) {
+        attr(value, name) <- source[[name]]
+    }
+    if (!is.null(names)) base::names(value) <- names
+    value
+}
+
 .stata_attribute_plan <- function(
     prototype, storage, result_names = NULL,
     temporal = inherits(prototype, "stata_temporal"), labelled = FALSE
 ) {
-    desired <- attributes(prototype)
-    desired$names <- NULL
+    source <- attributes(prototype)
+    unknown <- setdiff(
+        names(source), c("names", "class", .stata_variable_attribute_names)
+    )
+    if (length(unknown)) {
+        warning(sprintf(
+            "Dropped unknown attribute%s during Stata vector restoration: %s",
+            if (length(unknown) == 1L) "" else "s",
+            paste(unknown, collapse = ", ")
+        ), call. = FALSE)
+    }
+    desired <- source[intersect(names(source), .stata_variable_attribute_names)]
     desired$stata.storage <- storage
     classes <- if (temporal) {
         class(prototype)
@@ -485,6 +519,181 @@ as.character.stata_numeric <- function(x, ...) {
 #' @export
 vec_proxy.stata_numeric <- function(x, ...) {
     .stata_snapshot(x)
+}
+
+.stata_identity_parts <- function(x, operation = "operation") {
+    values <- if (inherits(x, "stata_temporal")) {
+        as.double(.base_stata_temporal(x))
+    } else if (inherits(x, "stata_numeric")) {
+        as.double(.stata_snapshot(x))
+    } else {
+        as.double(x)
+    }
+    codes <- .tab_missing_codes(values)
+    invalid <- !is.na(codes) & !(
+        codes == 0L |
+        (codes >= utf8ToInt("a") & codes <= utf8ToInt("z"))
+    )
+    if (any(invalid)) {
+        stop(
+            paste0(
+                "`", operation, "` cannot use a noncanonical NaN payload; ",
+                "use `NA_real_` for `.` or `tagged_missing()` for `.a` ",
+                "through `.z`"
+            ),
+            call. = FALSE
+        )
+    }
+    rank <- integer(length(values))
+    rank[codes == 0L & !is.na(codes)] <- 1L
+    extended <- !is.na(codes) & codes >= utf8ToInt("a") &
+        codes <= utf8ToInt("z")
+    rank[extended] <- codes[extended] - utf8ToInt("a") + 2L
+    values[rank > 0L] <- 0
+    list(rank = rank, value = values)
+}
+
+.stata_identity_proxy <- function(x, operation) {
+    parts <- .stata_identity_parts(x, operation)
+    data.frame(rank = parts$rank, value = parts$value)
+}
+
+#' @export
+vec_proxy_equal.stata_numeric <- function(x, ...) {
+    .stata_identity_proxy(x, "vctrs equality")
+}
+
+#' @export
+vec_proxy_order.stata_numeric <- function(x, ...) {
+    .stata_identity_proxy(x, "vctrs ordering")
+}
+
+.stata_compare <- function(op, x, y) {
+    if (inherits(x, "stata_temporal") && inherits(y, "stata_temporal") &&
+        !identical(.stata_temporal_kind(x), .stata_temporal_kind(y))) {
+        vctrs::stop_incompatible_type(x, y)
+    }
+    size <- max(length(x), length(y))
+    args <- list(vctrs::vec_recycle(x, size), vctrs::vec_recycle(y, size))
+    left <- .stata_identity_parts(args[[1L]], op)
+    right <- .stata_identity_parts(args[[2L]], op)
+    both_finite <- left$rank == 0L & right$rank == 0L
+    equal <- ifelse(
+        both_finite,
+        left$value == right$value,
+        left$rank == right$rank
+    )
+    less <- ifelse(
+        both_finite,
+        left$value < right$value,
+        left$rank < right$rank
+    )
+    switch(op,
+        "==" = equal,
+        "!=" = !equal,
+        "<" = less,
+        "<=" = less | equal,
+        ">" = !(less | equal),
+        ">=" = !less,
+        stop("unsupported Stata comparison", call. = FALSE)
+    )
+}
+
+#' @export
+Ops.stata_numeric <- function(e1, e2) {
+    if (!.Generic %in% c("==", "!=", "<", "<=", ">", ">=")) {
+        return(NextMethod())
+    }
+    .stata_compare(.Generic, e1, e2)
+}
+
+.stata_order_locations <- function(x, decreasing = FALSE, method = "auto") {
+    parts <- .stata_identity_parts(x, "order")
+    method <- match.arg(method, c("auto", "shell", "radix"))
+    order(parts$rank, parts$value, decreasing = decreasing, method = method)
+}
+
+#' @export
+xtfrm.stata_numeric <- function(x) {
+    parts <- .stata_identity_parts(x, "order")
+    if (length(x) == 0L) return(double())
+    locations <- order(parts$rank, parts$value, method = "radix")
+    ordered_rank <- parts$rank[locations]
+    ordered_value <- parts$value[locations]
+    different <- c(
+        TRUE,
+        ordered_rank[-1L] != ordered_rank[-length(ordered_rank)] |
+            ordered_value[-1L] != ordered_value[-length(ordered_value)]
+    )
+    ordered_result <- cumsum(different)
+    ranks <- numeric(length(x))
+    ranks[locations] <- ordered_result
+    as.double(ranks)
+}
+
+#' @export
+sort.stata_numeric <- function(
+    x, decreasing = FALSE, na.last = NA, ..., partial = NULL,
+    method = "auto"
+) {
+    if (!is.null(partial)) {
+        stop(
+            "Partial sorting of Stata-backed vectors is not supported yet",
+            call. = FALSE
+        )
+    }
+    if (!missing(na.last) && !identical(na.last, NA)) {
+        warning(
+            "`na.last` does not relocate or remove valid Stata missing codes",
+            call. = FALSE
+        )
+    }
+    x[.stata_order_locations(
+        x, decreasing = decreasing, method = method
+    )]
+}
+
+#' @export
+duplicated.stata_numeric <- function(
+    x, incomparables = FALSE, fromLast = FALSE, nmax = NA, ...
+) {
+    key <- .dta_identity_key(x, "numeric", "x")
+    incomparable_key <- if (identical(incomparables, FALSE)) {
+        FALSE
+    } else {
+        .dta_identity_key(incomparables, "numeric", "incomparables")
+    }
+    duplicated(
+        key,
+        incomparables = incomparable_key,
+        fromLast = fromLast,
+        nmax = nmax,
+        ...
+    )
+}
+
+#' @export
+anyDuplicated.stata_numeric <- function(x, incomparables = FALSE, ...) {
+    key <- .dta_identity_key(x, "numeric", "x")
+    incomparable_key <- if (identical(incomparables, FALSE)) {
+        FALSE
+    } else {
+        .dta_identity_key(incomparables, "numeric", "incomparables")
+    }
+    anyDuplicated(key, incomparables = incomparable_key, ...)
+}
+
+#' @export
+unique.stata_numeric <- function(
+    x, incomparables = FALSE, fromLast = FALSE, nmax = NA, ...
+) {
+    x[!duplicated(
+        x,
+        incomparables = incomparables,
+        fromLast = fromLast,
+        nmax = nmax,
+        ...
+    )]
 }
 
 #' @export
@@ -821,6 +1030,11 @@ anyNA.stata_numeric <- function(x, recursive = FALSE) {
 }
 
 #' @export
+is.na.stata_numeric <- function(x) {
+    is.na(.stata_data(x))
+}
+
+#' @export
 Complex.stata_numeric <- function(z) {
     operation <- getExportedValue("base", .Generic)
     result <- suppressWarnings(operation(.stata_data(z)))
@@ -893,6 +1107,55 @@ Complex.stata_numeric <- function(z) {
 vec_proxy.stata_temporal <- function(x, ...) {
     .stata_snapshot(x)
 }
+
+#' @export
+is.na.stata_temporal <- function(x) {
+    is.na(as.double(.base_stata_temporal(x)))
+}
+
+#' @export
+vec_proxy_equal.stata_temporal <- function(x, ...) {
+    .stata_identity_proxy(x, "vctrs equality")
+}
+
+#' @export
+vec_proxy_order.stata_temporal <- function(x, ...) {
+    .stata_identity_proxy(x, "vctrs ordering")
+}
+
+#' @export
+xtfrm.stata_temporal <- xtfrm.stata_numeric
+
+#' @export
+sort.stata_temporal <- function(
+    x, decreasing = FALSE, na.last = NA, ..., partial = NULL,
+    method = "auto"
+) {
+    if (!is.null(partial)) {
+        stop(
+            "Partial sorting of Stata-backed vectors is not supported yet",
+            call. = FALSE
+        )
+    }
+    if (!missing(na.last) && !identical(na.last, NA)) {
+        warning(
+            "`na.last` does not relocate or remove valid Stata missing codes",
+            call. = FALSE
+        )
+    }
+    x[.stata_order_locations(
+        x, decreasing = decreasing, method = method
+    )]
+}
+
+#' @export
+duplicated.stata_temporal <- duplicated.stata_numeric
+
+#' @export
+anyDuplicated.stata_temporal <- anyDuplicated.stata_numeric
+
+#' @export
+unique.stata_temporal <- unique.stata_numeric
 
 #' @export
 vec_restore.stata_temporal <- function(x, to, ...) {
@@ -1250,19 +1513,19 @@ rep.stata_temporal <- function(x, ...) {
 }
 
 #' @export
-`==.stata_temporal` <- function(e1, e2) .stata_temporal_op("==", e1, e2)
+`==.stata_temporal` <- function(e1, e2) .stata_compare("==", e1, e2)
 
 #' @export
-`!=.stata_temporal` <- function(e1, e2) .stata_temporal_op("!=", e1, e2)
+`!=.stata_temporal` <- function(e1, e2) .stata_compare("!=", e1, e2)
 
 #' @export
-`<.stata_temporal` <- function(e1, e2) .stata_temporal_op("<", e1, e2)
+`<.stata_temporal` <- function(e1, e2) .stata_compare("<", e1, e2)
 
 #' @export
-`<=.stata_temporal` <- function(e1, e2) .stata_temporal_op("<=", e1, e2)
+`<=.stata_temporal` <- function(e1, e2) .stata_compare("<=", e1, e2)
 
 #' @export
-`>.stata_temporal` <- function(e1, e2) .stata_temporal_op(">", e1, e2)
+`>.stata_temporal` <- function(e1, e2) .stata_compare(">", e1, e2)
 
 #' @export
-`>=.stata_temporal` <- function(e1, e2) .stata_temporal_op(">=", e1, e2)
+`>=.stata_temporal` <- function(e1, e2) .stata_compare(">=", e1, e2)
