@@ -77,15 +77,45 @@ drop_vars <- function(data, ...) {
     .selection_error()
 }
 
-.resolve_selection_expression <- function(expression, environment, names) {
+.selection_call_is_all_of <- function(head, environment) {
+    if (.selection_call_is(
+        head, "all_of", "tidyselect", allow_unqualified = FALSE
+    )) {
+        return(TRUE)
+    }
+    is.symbol(head) && identical(as.character(head), "all_of") &&
+        identical(
+            get0("all_of", envir = environment, inherits = TRUE),
+            tidyselect::all_of
+        )
+}
+
+.selection_range_endpoints <- function(expression) {
+    if (!is.call(expression)) return(character())
+    head <- expression[[1L]]
+    if (.selection_call_is(head, ":", "base") && length(expression) == 3L) {
+        return(vapply(
+            as.list(expression)[-1L],
+            .selection_range_endpoint,
+            character(1)
+        ))
+    }
+    if (!.selection_call_is(head, "c", "base")) return(character())
+    unlist(lapply(
+        as.list(expression)[-1L],
+        .selection_range_endpoints
+    ), use.names = FALSE)
+}
+
+.resolve_selection_expression <- function(
+    expression, environment, names, range_cursor
+) {
     if (is.symbol(expression)) return(as.character(expression))
     if (is.character(expression)) return(expression)
     if (!is.call(expression)) .selection_error()
 
     head <- expression[[1L]]
-    if (.selection_call_is(
-        head, "all_of", "tidyselect", allow_unqualified = FALSE
-    )) {
+    if (.selection_call_is_all_of(head, environment)) {
         if (length(expression) != 2L) {
             stop("`all_of()` must receive one character vector", call. = FALSE)
         }
@@ -111,26 +141,37 @@ drop_vars <- function(data, ...) {
             arguments,
             .resolve_selection_expression,
             environment = environment,
-            names = names
+            names = names,
+            range_cursor = range_cursor
         ), use.names = FALSE))
     }
     if (.selection_call_is(head, ":", "base") && length(expression) == 3L) {
-        endpoints <- vapply(
-            as.list(expression)[-1L],
-            .selection_range_endpoint,
-            character(1)
-        )
-        locations <- match(endpoints, names)
-        if (anyNA(locations)) {
-            absent <- endpoints[is.na(locations)][[1L]]
-            stop(sprintf("Column `%s` does not exist", absent), call. = FALSE)
-        }
+        first <- range_cursor$index + 1L
+        locations <- range_cursor$locations[first:(first + 1L)]
+        range_cursor$index <- first + 1L
         return(names[seq(locations[[1L]], locations[[2L]])])
     }
     .selection_error()
 }
 
 .resolve_selections <- function(selections, names) {
+    range_endpoints <- unlist(lapply(
+        selections,
+        function(selection) {
+            .selection_range_endpoints(rlang::quo_get_expr(selection))
+        }
+    ), use.names = FALSE)
+    range_cursor <- new.env(parent = emptyenv())
+    range_cursor$index <- 0L
+    range_cursor$locations <- integer()
+    if (length(range_endpoints) > 0L) {
+        locations <- match(range_endpoints, names)
+        if (anyNA(locations)) {
+            absent <- range_endpoints[is.na(locations)][[1L]]
+            stop(sprintf("Column `%s` does not exist", absent), call. = FALSE)
+        }
+        range_cursor$locations <- locations
+    }
     resolved <- vector("list", length(selections))
     index <- 0L
     for (selection in selections) {
@@ -138,7 +179,8 @@ drop_vars <- function(data, ...) {
         resolved[[index]] <- .resolve_selection_expression(
             rlang::quo_get_expr(selection),
             rlang::quo_get_env(selection),
-            names
+            names,
+            range_cursor
         )
     }
     requested <- unlist(resolved, use.names = FALSE)
@@ -161,6 +203,9 @@ drop_vars <- function(data, ...) {
         .data_columns(data)
     }
     selected_locations <- .resolve_selections(selections, names(columns))
+    if (keep && length(selected_locations) == length(columns)) {
+        return(invisible(data))
+    }
     locations <- seq_along(columns)
     retained <- if (keep) {
         locations %in% selected_locations

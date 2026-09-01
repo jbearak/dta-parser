@@ -180,6 +180,19 @@ test_that("strict name selection supports ranges, c, and all_of", {
     keep_vars(data, c(a:b), tidyselect::all_of(config$requested))
 
     expect_named(data, c("a", "b", "d"))
+
+    all_of <- tidyselect::all_of
+    data <- data.frame(a = 1, b = 2, c = 3)
+    keep_vars(data, all_of(c("c", "a")))
+    expect_named(data, c("a", "c"))
+})
+
+test_that("multiple ranges resolve together", {
+    data <- as.data.frame(setNames(as.list(1:8), letters[1:8]))
+
+    keep_vars(data, c(a:b, d:e), g:h)
+
+    expect_named(data, c("a", "b", "d", "e", "g", "h"))
 })
 
 test_that("all_of snapshots promises as character names before selection", {
@@ -223,6 +236,20 @@ test_that("data.table materialization clears keys and indexes", {
     expect_identical(as.double(data$later), c(11, 14))
 })
 
+test_that("validated keep-all is a structural no-op", {
+    skip_if_not_installed("data.table")
+    data <- data.table::data.table(a = 1:2, b = 3:4, c = 5:6)
+    data.table::setkeyv(data, "a")
+    data.table::setindexv(data, "b")
+    alias <- data
+
+    keep_vars(data, c, a:b)
+
+    expect_identical(data, alias)
+    expect_identical(data.table::key(data), "a")
+    expect_identical(data.table::indices(data), "b")
+})
+
 test_that("non-resizable data.tables fail before mutation", {
     skip_if_not_installed("data.table")
     data <- unserialize(serialize(
@@ -232,6 +259,10 @@ test_that("non-resizable data.tables fail before mutation", {
     before <- serialize(data, NULL)
 
     expect_error(drop_vars(data, b), "non-resizable data.table")
+
+    expect_identical(serialize(data, NULL), before)
+
+    expect_error(drop_vars(data, a, b), "non-resizable data.table")
 
     expect_identical(serialize(data, NULL), before)
 })

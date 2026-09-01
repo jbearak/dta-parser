@@ -5193,11 +5193,13 @@ static int can_resize_reference_columns(
           (R_isResizable(current_names) &&
            new_length <= R_maxLength(current_names))));
 #else
-    return (!ALTREP(data) && new_length <= old_length) ||
+    return new_length == old_length ||
         (!ALTREP(data) &&
+         TRUELENGTH(data) > 0 &&
          (R_xlen_t) TRUELENGTH(data) >= new_length &&
          (!is_data_table ||
-          (R_xlen_t) TRUELENGTH(current_names) >= new_length));
+          (TRUELENGTH(current_names) > 0 &&
+           (R_xlen_t) TRUELENGTH(current_names) >= new_length)));
 #endif
 }
 
