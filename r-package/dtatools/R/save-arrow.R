@@ -573,7 +573,7 @@ save_arrow <- function(data, path,
     )
     columns <- Map(
         .prepare_arrow_write_column, data, data_names, kinds,
-        value_label_plan$indices,
+        value_label_index = value_label_plan$indices,
         MoreArgs = list(
             adjust_tz = adjust_tz
         )
