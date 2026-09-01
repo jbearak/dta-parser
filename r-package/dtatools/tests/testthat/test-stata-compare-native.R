@@ -136,10 +136,52 @@ test_that("the native kernel is engaged for compact storage", {
         )
     }
 
-    # Eager doubles stay on the materializing fallback.
-    expect_null(
-        dtatools:::.stata_compare_native("==", stata_double(c(1, 2)), 1)
+    # Eager doubles compare natively too, classifying NA_real_ and
+    # tagged NaNs from the decoded payload bits.
+    expect_identical(
+        dtatools:::.stata_compare_native("==", stata_double(c(1, 2)), 1),
+        c(TRUE, FALSE)
     )
+})
+
+test_that("decoded double vectors compare natively with full semantics", {
+    value <- stata_double(c(
+        -5, 0, 5, NA_real_, tagged_missing("a"), tagged_missing("z")
+    ))
+
+    expect_identical(value == 5, c(FALSE, FALSE, TRUE, FALSE, FALSE, FALSE))
+    expect_identical(value < 5, c(TRUE, TRUE, FALSE, FALSE, FALSE, FALSE))
+    expect_identical(value > 5, c(FALSE, FALSE, FALSE, TRUE, TRUE, TRUE))
+    expect_identical(
+        value == NA_real_, c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE)
+    )
+    expect_identical(
+        value == tagged_missing("a"),
+        c(FALSE, FALSE, FALSE, FALSE, TRUE, FALSE)
+    )
+    expect_identical(
+        value >= tagged_missing("a"),
+        c(FALSE, FALSE, FALSE, FALSE, TRUE, TRUE)
+    )
+
+    # Mixed compact-vs-double pairs of equal length also stay native.
+    compact <- stata_byte(c(
+        -5, NA_real_, 5, 3, tagged_missing("a"), tagged_missing("z")
+    ))
+    expect_identical(
+        dtatools:::.stata_compare_native("==", compact, value),
+        c(TRUE, FALSE, TRUE, FALSE, TRUE, TRUE)
+    )
+    expect_identical(
+        compact == value, c(TRUE, FALSE, TRUE, FALSE, TRUE, TRUE)
+    )
+    # Element 2 is `.` versus 0: missing sorts above every finite value.
+    expect_identical(
+        compact < value, c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE)
+    )
+
+    # Noncanonical NaN payloads still surface the fallback's error.
+    expect_error(value == NaN, "noncanonical NaN")
 })
 
 test_that("multi-threaded comparisons match single-threaded results", {

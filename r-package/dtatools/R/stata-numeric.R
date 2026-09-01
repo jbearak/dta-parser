@@ -613,8 +613,10 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
     # parallel without materializing either operand into doubles. Every
     # unsupported shape returns NULL so the materializing fallback keeps
     # its exact semantics and error messages.
-    op_code <- match(op, c("==", "!=", "<", "<=", ">", ">=")) - 1L
-    if (is.na(op_code)) return(NULL)
+    op_code <- switch(op,
+        "==" = 0L, "!=" = 1L, "<" = 2L, "<=" = 3L, ">" = 4L, ">=" = 5L
+    )
+    if (is.null(op_code)) return(NULL)
     threads <- getOption("dtatools.threads", 0L)
     if (!is.numeric(threads) || length(threads) != 1L || is.na(threads) ||
         threads < 0) {
@@ -659,6 +661,12 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
         return(NULL)
     }
     decoded <- as.double(value)
+    # Finite scalars are by far the common case; skip the missing-code
+    # table for them (NaN keeps NULL so the fallback owns its error).
+    if (!is.na(decoded)) {
+        if (is.nan(decoded)) return(NULL)
+        return(c(decoded, 0))
+    }
     code <- .tab_missing_codes(decoded)
     if (is.na(code)) return(c(decoded, 0))
     if (code == 0L) return(c(0, 1))

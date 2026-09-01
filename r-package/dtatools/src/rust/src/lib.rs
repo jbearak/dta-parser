@@ -485,12 +485,42 @@ pub struct NumericCompareOperand {
     format_version: c_int,
 }
 
+/// Storage of one comparison operand, validated once so the per-element
+/// loop carries no `try_from` parsing.
+#[derive(Clone, Copy)]
+enum CompareStorage {
+    Byte(FormatVersion),
+    Int(FormatVersion),
+    Long(FormatVersion),
+    Float(FormatVersion),
+    Double,
+}
+
 #[derive(Clone, Copy)]
 struct CompareOperandView {
     values: usize,
-    kind: c_int,
+    storage: CompareStorage,
     temporal: c_int,
-    format_version: c_int,
+}
+
+fn compare_operand_view(operand: NumericCompareOperand) -> Option<CompareOperandView> {
+    let storage = if operand.kind == 4 {
+        CompareStorage::Double
+    } else {
+        let release = u16::try_from(operand.format_version).ok()?;
+        let version = FormatVersion::try_from(release).ok()?;
+        match NumericKind::try_from(operand.kind).ok()? {
+            NumericKind::Byte => CompareStorage::Byte(version),
+            NumericKind::Int => CompareStorage::Int(version),
+            NumericKind::Long => CompareStorage::Long(version),
+            NumericKind::Float => CompareStorage::Float(version),
+        }
+    };
+    Some(CompareOperandView {
+        values: operand.values as usize,
+        storage,
+        temporal: operand.temporal,
+    })
 }
 
 /// One element decoded for Stata comparison: rank 0 is a finite value,
@@ -503,47 +533,43 @@ struct ComparedElement {
     value: f64,
 }
 
-/// Decode one compact element without materializing the vector. Returns
-/// `None` for storage this kernel does not understand (an invalid kind or
-/// release, or a float NaN payload that is not a Stata missing value), so
-/// the caller can fall back to the R implementation and its errors.
+/// Decode one element without materializing the vector. Returns `None`
+/// for a NaN payload that is not a Stata missing value, so the caller can
+/// fall back to the R implementation and its errors.
 unsafe fn compare_operand_element(
     operand: CompareOperandView,
     index: usize,
 ) -> Option<ComparedElement> {
     let base = operand.values as *const u8;
-    if operand.kind == 4 {
-        // Decoded doubles (materialized or eagerly constructed Stata
-        // vectors): finite values are already in decoded units, system
-        // missing is R's `NA_real_`, and `.a` through `.z` are haven-style
-        // tagged NaNs whose tag byte sits in bits 32..40. Any other NaN
-        // payload is noncanonical, so bail to the R fallback and its error.
-        let value = base.cast::<f64>().add(index).read_unaligned();
-        if !value.is_nan() {
-            return Some(ComparedElement { rank: 0, value });
+    let raw = match operand.storage {
+        CompareStorage::Double => {
+            // Decoded doubles (materialized or eagerly constructed Stata
+            // vectors): finite values are already in decoded units, system
+            // missing is R's `NA_real_`, and `.a` through `.z` are
+            // haven-style tagged NaNs whose tag byte sits in bits 32..40.
+            let value = base.cast::<f64>().add(index).read_unaligned();
+            if !value.is_nan() {
+                return Some(ComparedElement { rank: 0, value });
+            }
+            const SIGN_BIT: u64 = 0x8000_0000_0000_0000;
+            const QUIET_NAN_BIT: u64 = 0x0008_0000_0000_0000;
+            const TAG_BITS: u64 = 0x0000_00ff_0000_0000;
+            const IGNORED_BITS: u64 = SIGN_BIT | QUIET_NAN_BIT | TAG_BITS;
+            const TAGGED_NA_LAYOUT: u64 = 0x7ff0_0000_0000_07a2;
+            let bits = value.to_bits();
+            if bits & !IGNORED_BITS != TAGGED_NA_LAYOUT & !IGNORED_BITS {
+                return None;
+            }
+            return match ((bits & TAG_BITS) >> 32) as u8 {
+                0 => Some(ComparedElement { rank: 1, value: 0.0 }),
+                tag @ b'a'..=b'z' => Some(ComparedElement {
+                    rank: tag - b'a' + 2,
+                    value: 0.0,
+                }),
+                _ => None,
+            };
         }
-        const SIGN_BIT: u64 = 0x8000_0000_0000_0000;
-        const QUIET_NAN_BIT: u64 = 0x0008_0000_0000_0000;
-        const TAG_BITS: u64 = 0x0000_00ff_0000_0000;
-        const IGNORED_BITS: u64 = SIGN_BIT | QUIET_NAN_BIT | TAG_BITS;
-        const TAGGED_NA_LAYOUT: u64 = 0x7ff0_0000_0000_07a2;
-        let bits = value.to_bits();
-        if bits & !IGNORED_BITS != TAGGED_NA_LAYOUT & !IGNORED_BITS {
-            return None;
-        }
-        return match ((bits & TAG_BITS) >> 32) as u8 {
-            0 => Some(ComparedElement { rank: 1, value: 0.0 }),
-            tag @ b'a'..=b'z' => Some(ComparedElement {
-                rank: tag - b'a' + 2,
-                value: 0.0,
-            }),
-            _ => None,
-        };
-    }
-    let release = u16::try_from(operand.format_version).ok()?;
-    let version = FormatVersion::try_from(release).ok()?;
-    let raw = match NumericKind::try_from(operand.kind).ok()? {
-        NumericKind::Byte => {
+        CompareStorage::Byte(version) => {
             let value = base.cast::<i8>().add(index).read_unaligned();
             if let Some(tag) = classify_byte_missing_for_version(value, version) {
                 return Some(ComparedElement {
@@ -553,7 +579,7 @@ unsafe fn compare_operand_element(
             }
             f64::from(value)
         }
-        NumericKind::Int => {
+        CompareStorage::Int(version) => {
             let value = base.cast::<i16>().add(index).read_unaligned();
             if let Some(tag) = classify_int_missing_for_version(value, version) {
                 return Some(ComparedElement {
@@ -563,7 +589,7 @@ unsafe fn compare_operand_element(
             }
             f64::from(value)
         }
-        NumericKind::Long => {
+        CompareStorage::Long(version) => {
             let value = base.cast::<i32>().add(index).read_unaligned();
             if let Some(tag) = classify_long_missing_for_version(value, version) {
                 return Some(ComparedElement {
@@ -573,7 +599,7 @@ unsafe fn compare_operand_element(
             }
             f64::from(value)
         }
-        NumericKind::Float => {
+        CompareStorage::Float(version) => {
             let value = base.cast::<f32>().add(index).read_unaligned();
             if let Some(tag) =
                 classify_float_missing_bits_for_version(value.to_bits(), version)
@@ -662,17 +688,16 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
         if x.is_null() || (length > 0 && output.is_null()) || !(0..=5).contains(&op) {
             return false;
         }
-        let view = |operand: NumericCompareOperand| CompareOperandView {
-            values: operand.values as usize,
-            kind: operand.kind,
-            temporal: operand.temporal,
-            format_version: operand.format_version,
+        let Some(x) = compare_operand_view(unsafe { *x }) else {
+            return false;
         };
-        let x = view(unsafe { *x });
         let y = if y.is_null() {
             None
         } else {
-            Some(view(unsafe { *y }))
+            match compare_operand_view(unsafe { *y }) {
+                Some(view) => Some(view),
+                None => return false,
+            }
         };
         if y.is_none() && !(0..=27).contains(&scalar_rank) {
             return false;

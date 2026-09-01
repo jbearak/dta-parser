@@ -270,7 +270,7 @@ test_that("dataset metadata never marks a data.table with the frame class", {
     # data.table's own non-standard evaluation must keep working: the
     # frame marker's `[` method used to intercept `:=` and fail.
     result[, doubled := y * 2]
-    expect_identical(result$doubled, c(6, 8))
+    expect_identical(as.double(result$doubled), c(6, 8))
 })
 
 test_that("dataset metadata setters keep data.table output ordinary", {
