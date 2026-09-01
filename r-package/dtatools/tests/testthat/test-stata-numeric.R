@@ -720,6 +720,25 @@ test_that("common types reconcile value and variable labels", {
     expect_identical(names(val_labels(reversed))[[1L]], "Uno")
 })
 
+test_that("common types reconcile notes and characteristics left first", {
+    left <- set_stata_note(stata_byte(c(1, 2)), 3, "left note")
+    left <- set_stata_characteristic(left, "source", "master")
+    right <- set_stata_note(stata_int(c(3, 4)), 7, "right note")
+    right <- set_stata_characteristic(right, "source", "using")
+    bare <- stata_byte(c(5, 6))
+
+    left_right <- vctrs::vec_c(left, right)
+    right_left <- vctrs::vec_c(right, left)
+    fallback <- vctrs::vec_c(bare, right)
+
+    expect_identical(stata_notes(left_right), c(`3` = "left note"))
+    expect_identical(stata_characteristics(left_right), c(source = "master"))
+    expect_identical(stata_notes(right_left), c(`7` = "right note"))
+    expect_identical(stata_characteristics(right_left), c(source = "using"))
+    expect_identical(stata_notes(fallback), c(`7` = "right note"))
+    expect_identical(stata_characteristics(fallback), c(source = "using"))
+})
+
 test_that("arithmetic promotes from operand storage according to result values", {
     cases <- list(
         byte_stays_byte = list(stata_byte(c(1, 2)) + 1, "byte", c(2, 3)),

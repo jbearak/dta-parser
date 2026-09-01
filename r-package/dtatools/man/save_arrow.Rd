@@ -57,8 +57,9 @@ that data between programs. Compatible Arrow IPC readers can access the
 standard storage arrays, but only profile-aware readers restore the added
 dtatools semantics. The profile records storage declarations, raw Stata
 missing storage (sentinel integers and tagged NaN payloads), display formats,
-labels, notes, value-label tables, and the R semantics that standard Arrow
-types alone do not express. Experimental profile version \code{"0"} carries no
+labels, numbered notes, arbitrary Stata characteristics, value-label tables,
+and the R semantics that standard Arrow types alone do not express.
+Experimental profile version \code{"0"} carries no
 cross-version stability promise yet.
 }
 \section{Conversions and metadata}{
@@ -76,6 +77,10 @@ Stata storage type cannot represent become Stata system missing with one
 aggregated warning per conversion category. Attributes outside the profile's
 documented set are dropped with one warning naming each affected column and
 attribute.
+The recognized \code{value.label.name} attribute preserves an imported nondefault
+or shared Stata table name in the existing dataset registry and field
+reference. Columns that claim one name with different mappings produce one
+aggregated warning and fall back to separate variable-name tables.
 
 Unlike \code{\link[=save_dta]{save_dta()}}, factor class and orderedness, \code{POSIXct} timezones on
 ordinary R columns, and \code{difftime} units are preserved on read.
@@ -84,8 +89,11 @@ ordinary R columns, and \code{difftime} units are preserved on read.
 \section{Output safety}{
 
 Only local files are supported. The complete input is validated before
-native serialization starts. Output streams to a sibling temporary file and
-atomically replaces the destination only after the file is closed.
+native serialization starts, including the Arrow reader's 64 MiB aggregate
+footer-metadata limit. This limit covers the encoded schema, profile JSON,
+checksum document, and record-batch index rather than each value separately.
+Output streams to a sibling temporary file and atomically replaces the
+destination only after the file is closed.
 Symbolic-link, directory, and other non-regular destinations are rejected.
 }
 

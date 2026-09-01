@@ -9,7 +9,8 @@ dta_merge(x, y, by, relationship, keep = c("x", "y", "match"), assert = NULL)
 \arguments{
 \item{x, y}{Data frames to merge, or file paths read with \code{\link[=read_dta]{read_dta()}} or
 \code{\link[=read_arrow]{read_arrow()}}, in any combination. \code{x} supplies the retained values for
-overlapping variables and the dataset label and notes. Passing paths
+overlapping variables and the dataset label, notes, and characteristics.
+Passing paths
 mirrors Stata's \verb{merge ... using filename} and keeps only the merged
 result in the caller's workspace. A path ending in \code{.arrow} is read with
 \code{\link[=read_arrow]{read_arrow()}}; any other path, including an extensionless one with the
@@ -58,22 +59,25 @@ and \code{"m:m"} is not supported.
 
 Key columns coalesce into their common Stata storage type through the
 package's vctrs methods, which promote storage losslessly, keep \code{x}'s
-variable label unless it is absent, and combine compatible value-label
-tables with a warning when one code's text conflicts. Overlapping non-key
+variable label, numbered notes, and characteristics unless each item is
+absent, and combine compatible value-label tables with a warning when one
+code's text conflicts. Overlapping non-key
 variables follow Stata's master-wins rule: matched and master-only rows
 keep the values from \code{x}, and using-only rows take the values from \code{y}
 cast to the common type. There are no suffixed duplicate columns. Stata
 applies this rule silently; \code{dta_merge()} warns and names the
 overlapping variables, because the \code{y} values for matched rows are
 discarded whether or not they agree with \code{x}. When the inputs disagree
-on a coalesced variable's variable label or value-label table (keys
+on a coalesced variable's variable label, value-label table, numbered notes,
+or characteristics (keys
 included), an additional warning names those variables, since the
 resolution keeps \code{x}'s side and Stata would say nothing.
 
 Every merge generates a \verb{_merge} variable, a \code{stata_byte} column using
 Stata's \verb{_merge} codes with value labels \verb{x only (1)}, \verb{y only (2)}, and
 \code{matched (3)}. Merging errors if either input already has a \verb{_merge}
-column. The result keeps the dataset label and notes from \code{x}.
+column. The result keeps the dataset label, numbered notes, and arbitrary
+characteristics from \code{x}.
 
 Unlike Stata, which re-sorts the merged dataset by the key variables, the
 result keeps \code{x} rows in their original order followed by unmatched \code{y}

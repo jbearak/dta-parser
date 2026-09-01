@@ -13,6 +13,10 @@
 import type {
     FormatVersion,
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
+    StataCharacteristic,
+    StataNote,
     VariableInfo,
     SectionOffsets,
 } from './types';
@@ -29,6 +33,13 @@ import {
     resolve_text_encoding,
     text_decoder,
 } from './text-encoding';
+import {
+    StataMetadataCollector,
+    withLazyStataMetadata,
+} from './stata-metadata';
+import {
+    StataCharacteristicFramePlan,
+} from './characteristic-payload';
 
 // -----------------------------------------------------------
 // Constants
@@ -83,6 +94,10 @@ const TAG_VALUE_LABEL_NAMES_OPEN = encode_tag(
 const TAG_VARIABLE_LABELS_OPEN = encode_tag(
     '<variable_labels>'
 );
+const TAG_CHARACTERISTICS_OPEN = encode_tag('<characteristics>');
+const TAG_CHARACTERISTICS_CLOSE = encode_tag('</characteristics>');
+const TAG_CHARACTERISTIC_OPEN = encode_tag('<ch>');
+const TAG_CHARACTERISTIC_CLOSE = encode_tag('</ch>');
 
 // -----------------------------------------------------------
 // Helpers
@@ -137,6 +152,82 @@ function read_fixed_string(
     return decoder.decode(
         bytes.subarray(offset, my_end)
     );
+}
+
+function tag_at(bytes: Uint8Array, offset: number, tag: Uint8Array): boolean {
+    if (offset < 0 || offset + tag.length > bytes.length) return false;
+    for (let i = 0; i < tag.length; i++) {
+        if (bytes[offset + i] !== tag[i]) return false;
+    }
+    return true;
+}
+
+function frame_characteristics(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    section_offsets: SectionOffsets,
+    field_width: number,
+    plan: StataCharacteristicFramePlan
+): void {
+    let pos = section_offsets.characteristics;
+    if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
+        throw new Error('Missing <characteristics> tag');
+    }
+    pos += TAG_CHARACTERISTICS_OPEN.length;
+    const names_length = field_width * 2;
+    while (pos < section_offsets.data) {
+        if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
+            pos += TAG_CHARACTERISTICS_CLOSE.length;
+            if (pos !== section_offsets.data) {
+                throw new Error('Characteristics section does not end at the mapped data offset');
+            }
+            return;
+        }
+        if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
+            throw new Error('Invalid characteristic record tag');
+        }
+        pos += TAG_CHARACTERISTIC_OPEN.length;
+        if (pos + 4 > section_offsets.data) {
+            throw new Error('Truncated characteristic length');
+        }
+        const length = view.getUint32(pos, little_endian);
+        pos += 4;
+        if (length < names_length
+            || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
+            throw new Error('Truncated characteristic payload');
+        }
+        plan.add({
+            namesStart: pos,
+            nameWidth: field_width,
+            valueStart: pos + names_length,
+            valueLength: length - names_length,
+        });
+        pos += length;
+        if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
+            throw new Error('Missing </ch> tag');
+        }
+        pos += TAG_CHARACTERISTIC_CLOSE.length;
+    }
+    throw new Error('Missing </characteristics> tag');
+}
+
+function parse_characteristics(
+    bytes: Uint8Array,
+    view: DataView,
+    little_endian: boolean,
+    section_offsets: SectionOffsets,
+    field_width: number,
+    decoder: DtaTextDecoder,
+    dataset: Pick<DtaMetadata, 'notes' | 'characteristics'>,
+    variables: VariableInfo[]
+): void {
+    const collector = new StataMetadataCollector(dataset, variables);
+    const plan = new StataCharacteristicFramePlan(bytes, decoder, collector);
+    frame_characteristics(
+        bytes, view, little_endian, section_offsets, field_width, plan
+    );
+    plan.finish();
 }
 
 // -----------------------------------------------------------
@@ -360,13 +451,72 @@ function parse_section_map(
 
     const my_offsets = {} as SectionOffsets;
     for (let i = 0; i < SECTION_MAP_ENTRIES; i++) {
-        const my_val = Number(view.getBigUint64(
+        const my_big_val = view.getBigUint64(
             my_data_start + i * 8, little_endian
-        ));
-        my_offsets[SECTION_OFFSET_KEYS[i]] = my_val;
+        );
+        if (my_big_val > BigInt(Number.MAX_SAFE_INTEGER)) {
+            throw new Error('Section offset exceeds JavaScript safe integer limit');
+        }
+        my_offsets[SECTION_OFFSET_KEYS[i]] = Number(my_big_val);
     }
 
     return my_offsets;
+}
+
+type ModernFieldWidths = (typeof FIELD_WIDTHS)[keyof typeof FIELD_WIDTHS];
+
+export interface ModernMetadataHeader {
+    format_version: FormatVersion;
+    text_encoding: ReturnType<typeof resolve_text_encoding>;
+    decoder: DtaTextDecoder;
+    widths: ModernFieldWidths;
+    byte_order: 'MSF' | 'LSF';
+    little_endian: boolean;
+    nvar: number;
+    nobs: number;
+    dataset_label: string;
+    section_offsets: SectionOffsets;
+}
+
+/** Parse the reusable header and section-map state from a modern prefix. */
+export function parse_modern_metadata_header(
+    buffer: ArrayBuffer,
+    options: TextEncodingOptions = {}
+): ModernMetadataHeader {
+    const bytes = new Uint8Array(buffer);
+    const view = new DataView(buffer);
+    const format_version = detect_format_version(bytes);
+    const text_encoding = resolve_text_encoding(format_version, options.encoding);
+    const decoder = text_decoder(text_encoding);
+    const widths = FIELD_WIDTHS[format_version as 117 | 118 | 119];
+    const { byte_order, end: after_byteorder } = parse_byte_order(bytes, 0);
+    const little_endian = byte_order === 'LSF';
+    const { nvar, end: after_k } = parse_nvar(
+        bytes, view, little_endian, format_version, after_byteorder
+    );
+    const { nobs, end: after_n } = parse_nobs(
+        bytes, view, little_endian, format_version, after_k
+    );
+    const { dataset_label, end: after_label } = parse_dataset_label(
+        bytes, view, little_endian, format_version, after_n, decoder
+    );
+    const timestamp_close = find_bytes(bytes, TAG_TIMESTAMP_CLOSE, after_label);
+    if (timestamp_close === -1) throw new Error('Missing </timestamp> tag');
+    const section_offsets = parse_section_map(
+        bytes, view, little_endian, timestamp_close
+    );
+    return {
+        format_version,
+        text_encoding,
+        decoder,
+        widths,
+        byte_order,
+        little_endian,
+        nvar,
+        nobs,
+        dataset_label,
+        section_offsets,
+    };
 }
 
 // -----------------------------------------------------------
@@ -455,59 +605,29 @@ function parse_fixed_string_section(
 export function parse_metadata(
     buffer: ArrayBuffer,
     options: TextEncodingOptions = {}
-): DtaMetadata {
+): ParsedDtaMetadata {
+    return parse_metadata_from_header(
+        buffer, parse_modern_metadata_header(buffer, options)
+    );
+}
+
+/** Parse variable metadata using header state already obtained from a prefix. */
+export function parse_metadata_from_header(
+    buffer: ArrayBuffer,
+    header: ModernMetadataHeader
+): ParsedDtaMetadata {
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer);
-
-    // 1. Detect format version from the file signature
-    //    (always 117, 118, or 119 — legacy is handled
-    //    by legacy-header.ts)
-    const format_version = detect_format_version(bytes);
-    const text_encoding = resolve_text_encoding(
-        format_version, options.encoding
-    );
-    const my_decoder = text_decoder(text_encoding);
-    const my_widths = FIELD_WIDTHS[
-        format_version as 117 | 118 | 119
-    ];
-
-    // 2. Parse byte order
-    const { byte_order, end: my_after_byteorder } =
-        parse_byte_order(bytes, 0);
-    const little_endian = byte_order === 'LSF';
-
-    // 3. Parse K (number of variables)
-    const { nvar, end: my_after_k } = parse_nvar(
-        bytes, view, little_endian,
-        format_version, my_after_byteorder
-    );
-
-    // 4. Parse N (number of observations)
-    const { nobs, end: my_after_n } = parse_nobs(
-        bytes, view, little_endian,
-        format_version, my_after_k
-    );
-
-    // 5. Parse dataset label
-    const { dataset_label, end: my_after_label } =
-        parse_dataset_label(
-            bytes, view, little_endian,
-            format_version, my_after_n, my_decoder
+    const {
+        format_version, text_encoding, decoder: my_decoder,
+        widths: my_widths, byte_order, little_endian, nvar, nobs,
+        dataset_label, section_offsets,
+    } = header;
+    if (section_offsets.data > bytes.length) {
+        throw new Error(
+            'Corrupt .dta file: mapped data offset exceeds buffer length'
         );
-
-    // 6. Skip timestamp — find </timestamp> to locate
-    //    the end of the header
-    const my_ts_close = find_bytes(
-        bytes, TAG_TIMESTAMP_CLOSE, my_after_label
-    );
-    if (my_ts_close === -1) {
-        throw new Error('Missing </timestamp> tag');
     }
-
-    // 7. Parse section map (14 x uint64 offsets)
-    const section_offsets = parse_section_map(
-        bytes, view, little_endian, my_ts_close
-    );
 
     // 8. Parse variable type codes
     const the_type_codes = parse_variable_types(
@@ -547,13 +667,13 @@ export function parse_metadata(
     // 13. Build VariableInfo array with byte widths and
     //     cumulative offsets
     let my_running_offset = 0;
-    const the_variables: VariableInfo[] = [];
+    const the_variables: ParsedVariableInfo[] = [];
     for (let i = 0; i < nvar; i++) {
         const my_code = the_type_codes[i];
         const my_width = byte_width_for_type_code(
             my_code, format_version
         );
-        the_variables.push({
+        the_variables.push(withLazyStataMetadata({
             name: the_varnames[i],
             type: type_code_to_dta_type(
                 my_code, format_version
@@ -564,9 +684,17 @@ export function parse_metadata(
             value_label_name: the_value_label_names[i],
             byte_width: my_width,
             byte_offset: my_running_offset,
-        });
+        }));
         my_running_offset += my_width;
     }
+
+    const notes: StataNote[] = [];
+    const characteristics: StataCharacteristic[] = [];
+    parse_characteristics(
+        bytes, view, little_endian, section_offsets,
+        my_widths.varname, my_decoder,
+        { notes, characteristics }, the_variables
+    );
 
     return {
         format_version,
@@ -575,6 +703,8 @@ export function parse_metadata(
         nvar,
         nobs,
         dataset_label,
+        notes,
+        characteristics,
         variables: the_variables,
         section_offsets,
         obs_length: my_running_offset,

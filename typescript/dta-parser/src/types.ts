@@ -206,8 +206,22 @@ export interface VariableInfo {
     format: string;           // e.g., "%9.0g", "%20s", "%td"
     label: string;            // variable label
     value_label_name: string; // associated value label table
+    /** Numbered notes. Omitted and legacy string arrays remain accepted. */
+    notes?: StataNote[] | string[];
+    /** Arbitrary user characteristics. Omitted means none. */
+    characteristics?: StataCharacteristic[];
     byte_width: number;       // width in bytes in data section
     byte_offset: number;      // offset within an observation row
+}
+
+export interface StataNote {
+    number: number;
+    text: string;
+}
+
+export interface StataCharacteristic {
+    name: string;
+    value: string;
 }
 
 export type MissingType =
@@ -253,9 +267,70 @@ export interface DtaMetadata {
     nvar: number;
     nobs: number;
     dataset_label: string;
-    /** Legacy dataset note characteristics, when parsed. */
-    notes?: string[];
+    /** Numbered notes. Omitted and legacy string arrays remain accepted. */
+    notes?: StataNote[] | string[];
+    /** Arbitrary user characteristics. Omitted means none. */
+    characteristics?: StataCharacteristic[];
     variables: VariableInfo[];
     section_offsets: SectionOffsets;
     obs_length: number;
+}
+
+/** Minimal immutable geometry consumed by observation and strL readers. */
+export interface DtaReadPlan {
+    readonly format_version: FormatVersion;
+    readonly text_encoding?: import('./text-encoding').ResolvedTextEncoding;
+    readonly byte_order: 'MSF' | 'LSF';
+    readonly nvar: number;
+    readonly nobs: number;
+    readonly obs_length: number;
+    readonly section_offsets: Readonly<Pick<
+        SectionOffsets, 'data' | 'strls' | 'value_labels'
+    >>;
+    readonly variables: readonly ReadVariablePlan[];
+}
+
+/** Immutable parallel read geometry used by long-lived file handles. */
+export interface PackedDtaReadPlan {
+    readonly format_version: FormatVersion;
+    readonly text_encoding?: import('./text-encoding').ResolvedTextEncoding;
+    readonly byte_order: 'MSF' | 'LSF';
+    readonly nvar: number;
+    readonly nobs: number;
+    readonly obs_length: number;
+    readonly section_offsets: Readonly<Pick<
+        SectionOffsets, 'data' | 'strls' | 'value_labels'
+    >>;
+    readonly variable_count: number;
+    readonly variable_types: readonly DtaType[];
+    readonly variable_byte_widths: readonly number[];
+    readonly variable_byte_offsets: readonly number[];
+    readonly strl_columns: readonly number[];
+    variable(index: number): ReadVariablePlan | undefined;
+}
+
+export function isPackedDtaReadPlan(
+    metadata: DtaReadPlan | PackedDtaReadPlan
+): metadata is PackedDtaReadPlan {
+    return 'variable_types' in metadata;
+}
+
+/** Per-column fields needed to locate and decode one observation cell. */
+export interface ReadVariablePlan {
+    readonly type: DtaType;
+    readonly byte_width: number;
+    readonly byte_offset: number;
+}
+
+/** Canonical variable shape returned by this package's parsers. */
+export interface ParsedVariableInfo extends VariableInfo {
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
+}
+
+/** Canonical metadata shape returned by this package's parsers. */
+export interface ParsedDtaMetadata extends DtaMetadata {
+    notes: StataNote[];
+    characteristics: StataCharacteristic[];
+    variables: ParsedVariableInfo[];
 }

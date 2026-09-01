@@ -1,13 +1,25 @@
 //! Versioned `dtatools:*` JSON documents carried in Arrow schema, field, and
 //! footer metadata.
 
-use std::collections::BTreeMap;
+use std::{
+    borrow::Cow,
+    collections::{hash_map::RandomState, BTreeMap, HashMap, HashSet},
+    fmt,
+    hash::BuildHasher,
+};
 
 use arrow_schema::{DataType, Field};
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+    Deserialize, Serialize,
+};
+use serde_json::value::RawValue;
 
 use super::ArrowProfileError;
-use crate::{DtaType, FormatVersion, MissingTag, ValueLabelEntry, ValueLabelTable};
+use crate::{
+    DtaType, FormatVersion, MissingTag, StataCharacteristic, StataNote, ValueLabelEntry,
+    ValueLabelTable,
+};
 
 /// The profile version this build writes. Version "0" is experimental and
 /// carries no stability promise; see ADR 0010.
@@ -23,6 +35,7 @@ pub const ARROW_FIELD_KEY: &str = "dtatools:field";
 pub const ARROW_CHECKSUMS_KEY: &str = "dtatools:checksums";
 
 pub(crate) const DOCUMENT_VERSION: u32 = 0;
+const MAX_VALUE_LABEL_TABLES: usize = 120_000;
 
 /// One value-label mapping inside the dataset document: either a nonmissing
 /// Stata `long` code or an extended missing tag, with its label text.
@@ -44,8 +57,14 @@ pub struct DatasetDocument {
     pub version: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub label: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_notes"
+    )]
+    pub notes: Vec<StataNote>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub notes: Vec<String>,
+    pub characteristics: Vec<StataCharacteristic>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub value_labels: BTreeMap<String, Vec<ArrowValueLabelEntry>>,
 }
@@ -74,17 +93,27 @@ impl DatasetDocument {
         })
     }
 
-    pub fn insert_value_label_table(&mut self, table: &ValueLabelTable) {
+    pub fn insert_value_label_table(
+        &mut self,
+        table: ValueLabelTable,
+    ) -> Result<(), ArrowProfileError> {
+        if self.value_labels.contains_key(&table.name) {
+            return Err(ArrowProfileError::Invalid(format!(
+                "duplicate value-label table name `{}`",
+                table.name
+            )));
+        }
         let entries = table
             .entries
-            .iter()
+            .into_iter()
             .map(|entry| ArrowValueLabelEntry {
                 value: entry.missing_tag.is_none().then_some(entry.value),
                 tag: entry.missing_tag,
-                label: entry.label.clone(),
+                label: entry.label,
             })
             .collect();
-        self.value_labels.insert(table.name.clone(), entries);
+        self.value_labels.insert(table.name, entries);
+        Ok(())
     }
 }
 
@@ -154,6 +183,14 @@ pub struct ArrowFieldDocument {
     pub label: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub format: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "deserialize_notes"
+    )]
+    pub notes: Vec<StataNote>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub characteristics: Vec<StataCharacteristic>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage: Option<StataStorage>,
     /// Declared DTA string storage: `str1` through `str2045`, or `strL`.
@@ -169,6 +206,854 @@ pub struct ArrowFieldDocument {
     pub missing_release: Option<FormatVersion>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r: Option<ArrowRSemantics>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum NoteDocument {
+    Legacy(String),
+    Numbered(StataNote),
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawNumberedNote<'a> {
+    number: u32,
+    #[serde(borrow)]
+    text: &'a RawValue,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawCharacteristic<'a> {
+    #[serde(borrow)]
+    name: &'a RawValue,
+    #[serde(borrow)]
+    value: &'a RawValue,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DiscardedValueLabelEntry {
+    #[serde(default)]
+    value: Option<i32>,
+    #[serde(default)]
+    tag: Option<MissingTag>,
+    #[serde(
+        rename = "label",
+        deserialize_with = "deserialize_discarded_value_label"
+    )]
+    _label: (),
+}
+
+macro_rules! raw_arrow_field_document {
+    ($name:ident $(, $attribute:meta)*) => {
+        #[derive(Deserialize)]
+        $(#[$attribute])*
+        struct $name<'a> {
+            version: u32,
+            #[serde(default)]
+            label: String,
+            #[serde(default)]
+            format: String,
+            #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
+            notes: Vec<&'a RawValue>,
+            #[serde(default, deserialize_with = "deserialize_raw_characteristics")]
+            characteristics: Vec<StataCharacteristic>,
+            #[serde(default)]
+            storage: Option<StataStorage>,
+            #[serde(default)]
+            string_storage: Option<String>,
+            #[serde(default)]
+            value_labels: Option<String>,
+            #[serde(default)]
+            missing: Option<ArrowMissingEncoding>,
+            #[serde(default)]
+            missing_release: Option<FormatVersion>,
+            #[serde(default)]
+            r: Option<ArrowRSemantics>,
+        }
+
+        impl $name<'_> {
+            fn decode(
+                self,
+                version: &str,
+                field: &Field,
+            ) -> Result<ArrowFieldDocument, ArrowProfileError> {
+                let invalid_context = format!("field document on `{}`", field.name());
+                Ok(ArrowFieldDocument {
+                    version: self.version,
+                    label: self.label,
+                    format: self.format,
+                    notes: decode_raw_notes(version, "field", &invalid_context, self.notes)?,
+                    characteristics: self.characteristics,
+                    storage: self.storage,
+                    string_storage: self.string_storage,
+                    value_labels: self.value_labels,
+                    missing: self.missing,
+                    missing_release: self.missing_release,
+                    r: self.r,
+                })
+            }
+        }
+    };
+}
+
+raw_arrow_field_document!(RawArrowFieldDocument, serde(deny_unknown_fields));
+raw_arrow_field_document!(TolerantRawArrowFieldDocument);
+
+// The Arrow reader first borrows bounded metadata strings as raw JSON. It
+// then decodes only those fragments, avoiding a second parse of the complete
+// dataset or field document without allocating an oversized decoded string.
+
+fn deserialize_notes<'de, D>(deserializer: D) -> Result<Vec<StataNote>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct NotesVisitor;
+
+    impl<'de> Visitor<'de> for NotesVisitor {
+        type Value = Vec<StataNote>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("an array of at most 9,999 Stata notes")
+        }
+
+        fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let maximum = crate::stata_metadata::MAX_NOTE_NUMBER as usize;
+            let mut notes = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(maximum));
+            while notes.len() < maximum {
+                let Some(note) = sequence.next_element::<NoteDocument>()? else {
+                    return Ok(notes);
+                };
+                let note = match note {
+                    NoteDocument::Legacy(text) => StataNote {
+                        number: u32::try_from(notes.len() + 1).map_err(serde::de::Error::custom)?,
+                        text,
+                    },
+                    NoteDocument::Numbered(note) => note,
+                };
+                notes.push(note);
+            }
+            if sequence.next_element::<serde::de::IgnoredAny>()?.is_some() {
+                return Err(serde::de::Error::custom(
+                    "Stata note arrays may contain at most 9,999 entries",
+                ));
+            }
+            Ok(notes)
+        }
+    }
+
+    deserializer.deserialize_seq(NotesVisitor)
+}
+
+fn deserialize_raw_notes<'de, D>(deserializer: D) -> Result<Vec<&'de RawValue>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct RawNotesVisitor;
+
+    impl<'de> Visitor<'de> for RawNotesVisitor {
+        type Value = Vec<&'de RawValue>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("an array of at most 9,999 Stata notes")
+        }
+
+        fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let maximum = crate::stata_metadata::MAX_NOTE_NUMBER as usize;
+            let mut notes = Vec::with_capacity(sequence.size_hint().unwrap_or(0).min(maximum));
+            while notes.len() < maximum {
+                let Some(note) = sequence.next_element::<&'de RawValue>()? else {
+                    return Ok(notes);
+                };
+                notes.push(note);
+            }
+            if sequence.next_element::<serde::de::IgnoredAny>()?.is_some() {
+                return Err(serde::de::Error::custom(
+                    "Stata note arrays may contain at most 9,999 entries",
+                ));
+            }
+            Ok(notes)
+        }
+    }
+
+    deserializer.deserialize_seq(RawNotesVisitor)
+}
+
+fn deserialize_raw_characteristics<'de, D>(
+    deserializer: D,
+) -> Result<Vec<StataCharacteristic>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct CharacteristicsVisitor;
+
+    impl<'de> Visitor<'de> for CharacteristicsVisitor {
+        type Value = Vec<StataCharacteristic>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("an array of bounded Stata characteristics")
+        }
+
+        fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let mut decoded = Vec::new();
+            let name_hash_builder = RandomState::new();
+            let mut name_hashes = HashSet::new();
+            while let Some(raw) = sequence.next_element::<RawCharacteristic<'de>>()? {
+                if raw_string_exceeds_limit(
+                    raw.name,
+                    crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES,
+                ) {
+                    return Err(serde::de::Error::custom(format!(
+                        "characteristic name exceeds the {}-byte Stata metadata limit",
+                        crate::stata_metadata::MAX_CHARACTERISTIC_NAME_BYTES
+                    )));
+                }
+                if raw_string_exceeds_limit(
+                    raw.value,
+                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
+                ) {
+                    return Err(serde::de::Error::custom(format!(
+                        "characteristic value exceeds the {}-byte decoded Stata metadata limit",
+                        crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES
+                    )));
+                }
+                let characteristic = StataCharacteristic {
+                    name: serde_json::from_str(raw.name.get()).map_err(serde::de::Error::custom)?,
+                    value: serde_json::from_str(raw.value.get())
+                        .map_err(serde::de::Error::custom)?,
+                };
+                if !crate::stata_metadata::valid_canonical_characteristic(
+                    &characteristic.name,
+                    &characteristic.value,
+                ) {
+                    return Err(serde::de::Error::custom(
+                        "characteristics contain an invalid, duplicate, or reserved name",
+                    ));
+                }
+                let name_hash = name_hash_builder.hash_one(characteristic.name.as_str());
+                if name_hashes.contains(&name_hash)
+                    && decoded
+                        .iter()
+                        .any(|existing: &StataCharacteristic| existing.name == characteristic.name)
+                {
+                    return Err(serde::de::Error::custom(
+                        "characteristics contain an invalid, duplicate, or reserved name",
+                    ));
+                }
+                decoded.try_reserve(1).map_err(serde::de::Error::custom)?;
+                name_hashes
+                    .try_reserve(1)
+                    .map_err(serde::de::Error::custom)?;
+                name_hashes.insert(name_hash);
+                decoded.push(characteristic);
+            }
+            Ok(decoded)
+        }
+    }
+
+    deserializer.deserialize_seq(CharacteristicsVisitor)
+}
+
+fn validate_notes(
+    version: &str,
+    context: &str,
+    notes: &[StataNote],
+) -> Result<(), ArrowProfileError> {
+    let mut previous = 0;
+    for note in notes {
+        if !crate::stata_metadata::valid_canonical_note(note.number, &note.text)
+            || note.number <= previous
+        {
+            return Err(malformed(
+                version,
+                format!(
+                    "{context} notes must have unique ascending numbers from 1 through 9999 and valid bounded text"
+                ),
+            ));
+        }
+        previous = note.number;
+    }
+    Ok(())
+}
+
+fn validate_characteristics(
+    version: &str,
+    context: &str,
+    characteristics: &[StataCharacteristic],
+) -> Result<(), ArrowProfileError> {
+    let mut names = std::collections::HashSet::with_capacity(characteristics.len());
+    for characteristic in characteristics {
+        if !crate::stata_metadata::valid_canonical_characteristic(
+            &characteristic.name,
+            &characteristic.value,
+        ) || !names.insert(characteristic.name.as_str())
+        {
+            return Err(malformed(
+                version,
+                format!(
+                    "{context} characteristics contain an invalid, duplicate, or reserved name"
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn hex_code_unit(bytes: &[u8]) -> Option<u16> {
+    if bytes.len() != 4 {
+        return None;
+    }
+    bytes.iter().try_fold(0_u16, |value, byte| {
+        let digit = match byte {
+            b'0'..=b'9' => u16::from(byte - b'0'),
+            b'a'..=b'f' => u16::from(byte - b'a' + 10),
+            b'A'..=b'F' => u16::from(byte - b'A' + 10),
+            _ => return None,
+        };
+        value.checked_mul(16)?.checked_add(digit)
+    })
+}
+
+/// Return the decoded UTF-8 length of a raw JSON string without allocating
+/// its decoded contents. Invalid JSON is left to Serde's ordinary parser.
+fn decoded_json_string_length(raw: &RawValue) -> Option<usize> {
+    let bytes = raw.get().as_bytes();
+    if bytes.len() < 2 || bytes.first() != Some(&b'"') || bytes.last() != Some(&b'"') {
+        return None;
+    }
+    let mut index = 1;
+    let end = bytes.len() - 1;
+    let mut length = 0_usize;
+    while index < end {
+        if bytes[index] != b'\\' {
+            let character = raw.get()[index..end].chars().next()?;
+            let width = character.len_utf8();
+            length = length.checked_add(width)?;
+            index += width;
+            continue;
+        }
+        index += 1;
+        let escape = *bytes.get(index)?;
+        index += 1;
+        if escape != b'u' {
+            if !matches!(
+                escape,
+                b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't'
+            ) {
+                return None;
+            }
+            length = length.checked_add(1)?;
+            continue;
+        }
+        let first = hex_code_unit(bytes.get(index..index + 4)?)?;
+        index += 4;
+        let codepoint = if (0xd800..=0xdbff).contains(&first) {
+            if bytes.get(index..index + 2) != Some(b"\\u") {
+                return None;
+            }
+            index += 2;
+            let second = hex_code_unit(bytes.get(index..index + 4)?)?;
+            index += 4;
+            if !(0xdc00..=0xdfff).contains(&second) {
+                return None;
+            }
+            0x1_0000 + (u32::from(first) - 0xd800) * 0x400 + (u32::from(second) - 0xdc00)
+        } else if (0xdc00..=0xdfff).contains(&first) {
+            return None;
+        } else {
+            u32::from(first)
+        };
+        length = length.checked_add(char::from_u32(codepoint)?.len_utf8())?;
+    }
+    (index == end).then_some(length)
+}
+
+fn raw_string_exceeds_limit(raw: &RawValue, limit: usize) -> bool {
+    let bytes = raw.get().as_bytes();
+    if bytes.len() >= 2
+        && bytes.first() == Some(&b'"')
+        && bytes.last() == Some(&b'"')
+        && bytes.len() - 2 <= limit
+    {
+        // JSON escapes never expand beyond their encoded representation, so
+        // a bounded interior is also bounded after decoding.
+        return false;
+    }
+    decoded_json_string_length(raw).is_some_and(|length| length > limit)
+}
+
+fn validate_raw_string_length(
+    version: &str,
+    context: &str,
+    raw: &RawValue,
+    limit: usize,
+) -> Result<(), ArrowProfileError> {
+    if raw_string_exceeds_limit(raw, limit) {
+        return Err(malformed(
+            version,
+            format!("{context} exceeds the {limit}-byte Stata metadata limit"),
+        ));
+    }
+    Ok(())
+}
+
+fn decode_raw_metadata_string(
+    version: &str,
+    string_context: &str,
+    invalid_document_context: &str,
+    raw: &RawValue,
+    limit: usize,
+) -> Result<String, ArrowProfileError> {
+    validate_raw_string_length(version, string_context, raw, limit)?;
+    serde_json::from_str(raw.get()).map_err(|error| {
+        malformed(
+            version,
+            format!("invalid {invalid_document_context}: {error}"),
+        )
+    })
+}
+
+fn decode_raw_notes(
+    version: &str,
+    context: &str,
+    invalid_document_context: &str,
+    notes: Vec<&RawValue>,
+) -> Result<Vec<StataNote>, ArrowProfileError> {
+    let mut decoded = Vec::with_capacity(notes.len());
+    let note_context = format!("{context} note text");
+    for note in notes {
+        let number = u32::try_from(decoded.len() + 1)
+            .map_err(|_| malformed(version, "Stata note count overflows"))?;
+        if note.get().starts_with('"') {
+            decoded.push(StataNote {
+                number,
+                text: decode_raw_metadata_string(
+                    version,
+                    &note_context,
+                    invalid_document_context,
+                    note,
+                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
+                )?,
+            });
+        } else {
+            let numbered: RawNumberedNote<'_> =
+                serde_json::from_str(note.get()).map_err(|error| {
+                    malformed(
+                        version,
+                        format!("invalid {invalid_document_context}: {error}"),
+                    )
+                })?;
+            decoded.push(StataNote {
+                number: numbered.number,
+                text: decode_raw_metadata_string(
+                    version,
+                    &note_context,
+                    invalid_document_context,
+                    numbered.text,
+                    crate::stata_metadata::MAX_DECODED_METADATA_VALUE_BYTES,
+                )?,
+            });
+        }
+    }
+    Ok(decoded)
+}
+
+fn deserialize_discarded_value_label<'de, D>(deserializer: D) -> Result<(), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct BoundedStringVisitor;
+
+    impl<'de> Visitor<'de> for BoundedStringVisitor {
+        type Value = ();
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a string within the 64 MiB Arrow metadata limit")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            #[cfg(test)]
+            DISCARDED_VALUE_LABEL_VISIT_COUNT.with(|count| count.set(count.get() + 1));
+            if value.len() > super::MAX_IPC_METADATA_BYTES {
+                return Err(E::custom(
+                    "value-label text exceeds the 64 MiB Arrow metadata limit",
+                ));
+            }
+            Ok(())
+        }
+
+        fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_str(value)
+        }
+
+        fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            self.visit_str(&value)
+        }
+    }
+
+    deserializer.deserialize_str(BoundedStringVisitor)
+}
+
+struct DiscardValueLabelEntries<'a> {
+    table: &'a str,
+}
+
+impl<'de> DeserializeSeed<'de> for DiscardValueLabelEntries<'_> {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct EntriesVisitor<'a> {
+            table: &'a str,
+        }
+
+        impl<'de> Visitor<'de> for EntriesVisitor<'_> {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("an array of value-label entries")
+            }
+
+            fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut index = 0_usize;
+                while let Some(entry) = sequence.next_element::<DiscardedValueLabelEntry>()? {
+                    if entry.value.is_some() == entry.tag.is_some() {
+                        return Err(serde::de::Error::custom(format!(
+                            "value-label table `{}` entry {index} must contain exactly one of `value` or `tag`",
+                            self.table
+                        )));
+                    }
+                    if entry.tag == Some(MissingTag::System) {
+                        return Err(serde::de::Error::custom(format!(
+                            "value-label table `{}` entry {index} uses system missing `.`; only nonmissing values and extended missing tags `.a` through `.z` are valid",
+                            self.table
+                        )));
+                    }
+                    index += 1;
+                }
+                Ok(())
+            }
+        }
+
+        deserializer.deserialize_seq(EntriesVisitor { table: self.table })
+    }
+}
+
+struct ValueLabelRegistrySeed<'a> {
+    selected: Option<&'a HashMap<String, usize>>,
+}
+
+struct ValueLabelTableName<'a>(Cow<'a, str>);
+
+impl<'a> ValueLabelTableName<'a> {
+    fn as_str(&self) -> &str {
+        self.0.as_ref()
+    }
+
+    fn into_cow(self) -> Cow<'a, str> {
+        self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for ValueLabelTableName<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct TableNameVisitor;
+
+        impl<'de> Visitor<'de> for TableNameVisitor {
+            type Value = ValueLabelTableName<'de>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a value-label table name")
+            }
+
+            fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E> {
+                #[cfg(test)]
+                BORROWED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(count.get() + 1));
+                Ok(ValueLabelTableName(Cow::Borrowed(value)))
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E> {
+                #[cfg(test)]
+                OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(count.get() + 1));
+                Ok(ValueLabelTableName(Cow::Owned(value.to_owned())))
+            }
+
+            fn visit_string<E>(self, value: String) -> Result<Self::Value, E> {
+                #[cfg(test)]
+                OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(count.get() + 1));
+                Ok(ValueLabelTableName(Cow::Owned(value)))
+            }
+        }
+
+        deserializer.deserialize_str(TableNameVisitor)
+    }
+}
+
+impl<'de> DeserializeSeed<'de> for ValueLabelRegistrySeed<'_> {
+    type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[cfg(test)]
+        DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(|count| count.set(count.get() + 1));
+        struct RegistryVisitor<'a> {
+            selected: Option<&'a HashMap<String, usize>>,
+        }
+
+        impl<'de> Visitor<'de> for RegistryVisitor<'_> {
+            type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("an object of named value-label tables")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut retained = BTreeMap::new();
+                let mut names: HashSet<Cow<'de, str>> = HashSet::new();
+                let mut table_count = 0_usize;
+                while let Some(name) = map.next_key::<ValueLabelTableName<'de>>()? {
+                    table_count += 1;
+                    if table_count > MAX_VALUE_LABEL_TABLES {
+                        return Err(serde::de::Error::custom(
+                            "value-label registry may contain at most 120,000 tables",
+                        ));
+                    }
+                    if names.contains(name.as_str()) {
+                        return Err(serde::de::Error::custom(format!(
+                            "duplicate value-label table name `{}`",
+                            name.as_str()
+                        )));
+                    }
+                    names.try_reserve(1).map_err(|_| {
+                        serde::de::Error::custom(
+                            "could not allocate the value-label table-name index",
+                        )
+                    })?;
+                    let retain = self
+                        .selected
+                        .is_none_or(|selected| selected.contains_key(name.as_str()));
+                    if retain {
+                        let entries = map.next_value::<Vec<ArrowValueLabelEntry>>()?;
+                        retained.insert(name.as_str().to_owned(), entries);
+                    } else {
+                        map.next_value_seed(DiscardValueLabelEntries {
+                            table: name.as_str(),
+                        })?;
+                    }
+                    names.insert(name.into_cow());
+                }
+                Ok(retained)
+            }
+        }
+
+        deserializer.deserialize_map(RegistryVisitor {
+            selected: self.selected,
+        })
+    }
+}
+
+struct OptionalValueLabelRegistrySeed<'a> {
+    selected: Option<&'a HashMap<String, usize>>,
+}
+
+impl<'de> DeserializeSeed<'de> for OptionalValueLabelRegistrySeed<'_> {
+    type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct OptionalRegistryVisitor<'a> {
+            selected: Option<&'a HashMap<String, usize>>,
+        }
+
+        impl<'de> Visitor<'de> for OptionalRegistryVisitor<'_> {
+            type Value = BTreeMap<String, Vec<ArrowValueLabelEntry>>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("an object of named value-label tables or null")
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E> {
+                Ok(BTreeMap::new())
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E> {
+                Ok(BTreeMap::new())
+            }
+
+            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                ValueLabelRegistrySeed {
+                    selected: self.selected,
+                }
+                .deserialize(deserializer)
+            }
+        }
+
+        deserializer.deserialize_option(OptionalRegistryVisitor {
+            selected: self.selected,
+        })
+    }
+}
+
+struct ParsedDatasetDocument<'a> {
+    version: u32,
+    label: String,
+    notes: Vec<&'a RawValue>,
+    characteristics: Vec<StataCharacteristic>,
+    value_labels: BTreeMap<String, Vec<ArrowValueLabelEntry>>,
+}
+
+#[derive(Deserialize)]
+struct RawNotes<'a>(#[serde(borrow, deserialize_with = "deserialize_raw_notes")] Vec<&'a RawValue>);
+
+#[derive(Deserialize)]
+struct RawCharacteristics(
+    #[serde(deserialize_with = "deserialize_raw_characteristics")] Vec<StataCharacteristic>,
+);
+
+struct DatasetDocumentSeed<'a> {
+    selected_value_labels: Option<&'a HashMap<String, usize>>,
+}
+
+impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
+    type Value = ParsedDatasetDocument<'de>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct DatasetVisitor<'a> {
+            selected_value_labels: Option<&'a HashMap<String, usize>>,
+        }
+
+        impl<'de> Visitor<'de> for DatasetVisitor<'_> {
+            type Value = ParsedDatasetDocument<'de>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a dtatools dataset document")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                const FIELDS: &[&str] = &[
+                    "version",
+                    "label",
+                    "notes",
+                    "characteristics",
+                    "value_labels",
+                ];
+                let mut version = None;
+                let mut label = None;
+                let mut notes = None;
+                let mut characteristics = None;
+                let mut value_labels = None;
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "version" => {
+                            if version.is_some() {
+                                return Err(serde::de::Error::duplicate_field("version"));
+                            }
+                            version = Some(map.next_value()?);
+                        }
+                        "label" => {
+                            if label.is_some() {
+                                return Err(serde::de::Error::duplicate_field("label"));
+                            }
+                            label = Some(map.next_value()?);
+                        }
+                        "notes" => {
+                            if notes.is_some() {
+                                return Err(serde::de::Error::duplicate_field("notes"));
+                            }
+                            notes = Some(map.next_value::<RawNotes<'de>>()?.0);
+                        }
+                        "characteristics" => {
+                            if characteristics.is_some() {
+                                return Err(serde::de::Error::duplicate_field("characteristics"));
+                            }
+                            characteristics = Some(map.next_value::<RawCharacteristics>()?.0);
+                        }
+                        "value_labels" => {
+                            if value_labels.is_some() {
+                                return Err(serde::de::Error::duplicate_field("value_labels"));
+                            }
+                            value_labels =
+                                Some(map.next_value_seed(OptionalValueLabelRegistrySeed {
+                                    selected: self.selected_value_labels,
+                                })?);
+                        }
+                        _ => return Err(serde::de::Error::unknown_field(&key, FIELDS)),
+                    }
+                }
+                Ok(ParsedDatasetDocument {
+                    version: version.ok_or_else(|| serde::de::Error::missing_field("version"))?,
+                    label: label.unwrap_or_default(),
+                    notes: notes.unwrap_or_default(),
+                    characteristics: characteristics.unwrap_or_default(),
+                    value_labels: value_labels.unwrap_or_default(),
+                })
+            }
+        }
+
+        deserializer.deserialize_map(DatasetVisitor {
+            selected_value_labels: self.selected_value_labels,
+        })
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
+    static DISCARDED_VALUE_LABEL_VISIT_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
+    static BORROWED_VALUE_LABEL_TABLE_NAME_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
+    static OWNED_VALUE_LABEL_TABLE_NAME_COUNT: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
 }
 
 /// Per-buffer xxHash64 checksums, in canonical buffer order, for every column
@@ -200,9 +1085,18 @@ pub(crate) fn malformed(version: &str, detail: impl Into<String>) -> ArrowProfil
     }
 }
 
-pub(crate) fn parse_dataset_document(
+#[cfg(test)]
+fn parse_dataset_document(
     version: &str,
     json: Option<&str>,
+) -> Result<DatasetDocument, ArrowProfileError> {
+    parse_dataset_document_selected(version, json, None)
+}
+
+pub(crate) fn parse_dataset_document_selected(
+    version: &str,
+    json: Option<&str>,
+    selected_value_labels: Option<&HashMap<String, usize>>,
 ) -> Result<DatasetDocument, ArrowProfileError> {
     let Some(json) = json else {
         return Ok(DatasetDocument {
@@ -210,9 +1104,23 @@ pub(crate) fn parse_dataset_document(
             ..DatasetDocument::default()
         });
     };
-    let document: DatasetDocument = serde_json::from_str(json)
+    let mut deserializer = serde_json::Deserializer::from_str(json);
+    let parsed = DatasetDocumentSeed {
+        selected_value_labels,
+    }
+    .deserialize(&mut deserializer)
+    .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
+    deserializer
+        .end()
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
-    validate_dataset_document(version, &document)?;
+    let document = DatasetDocument {
+        version: parsed.version,
+        label: parsed.label,
+        notes: decode_raw_notes(version, "dataset", "dataset document", parsed.notes)?,
+        characteristics: parsed.characteristics,
+        value_labels: parsed.value_labels,
+    };
+    validate_dataset_document_inner(version, &document, false)?;
     Ok(document)
 }
 
@@ -220,11 +1128,23 @@ pub(crate) fn validate_dataset_document(
     version: &str,
     document: &DatasetDocument,
 ) -> Result<(), ArrowProfileError> {
+    validate_dataset_document_inner(version, document, true)
+}
+
+fn validate_dataset_document_inner(
+    version: &str,
+    document: &DatasetDocument,
+    check_characteristics: bool,
+) -> Result<(), ArrowProfileError> {
     if document.version != DOCUMENT_VERSION {
         return Err(malformed(
             version,
             format!("dataset document version {}", document.version),
         ));
+    }
+    validate_notes(version, "dataset", &document.notes)?;
+    if check_characteristics {
+        validate_characteristics(version, "dataset", &document.characteristics)?;
     }
     for (table, entries) in &document.value_labels {
         for (index, entry) in entries.iter().enumerate() {
@@ -254,13 +1174,39 @@ pub(crate) fn parse_field_document(
     field: &Field,
     json: &str,
 ) -> Result<ArrowFieldDocument, ArrowProfileError> {
-    let document: ArrowFieldDocument = serde_json::from_str(json).map_err(|error| {
+    parse_field_document_inner(version, field, json, true)
+}
+
+pub(crate) fn parse_field_document_tolerant(
+    version: &str,
+    field: &Field,
+    json: &str,
+) -> Result<ArrowFieldDocument, ArrowProfileError> {
+    parse_field_document_inner(version, field, json, false)
+}
+
+fn parse_field_document_inner(
+    version: &str,
+    field: &Field,
+    json: &str,
+    reject_unknown: bool,
+) -> Result<ArrowFieldDocument, ArrowProfileError> {
+    let invalid = |error| {
         malformed(
             version,
             format!("invalid field document on `{}`: {error}", field.name()),
         )
-    })?;
-    validate_field_document(version, field, &document)?;
+    };
+    let document = if reject_unknown {
+        serde_json::from_str::<RawArrowFieldDocument<'_>>(json)
+            .map_err(invalid)?
+            .decode(version, field)?
+    } else {
+        serde_json::from_str::<TolerantRawArrowFieldDocument<'_>>(json)
+            .map_err(invalid)?
+            .decode(version, field)?
+    };
+    validate_field_document_inner(version, field, &document, false)?;
     Ok(document)
 }
 
@@ -404,6 +1350,15 @@ pub(crate) fn validate_field_document(
     field: &Field,
     document: &ArrowFieldDocument,
 ) -> Result<(), ArrowProfileError> {
+    validate_field_document_inner(version, field, document, true)
+}
+
+fn validate_field_document_inner(
+    version: &str,
+    field: &Field,
+    document: &ArrowFieldDocument,
+    check_characteristics: bool,
+) -> Result<(), ArrowProfileError> {
     if document.version != DOCUMENT_VERSION {
         return Err(malformed(
             version,
@@ -442,6 +1397,11 @@ pub(crate) fn validate_field_document(
                 ),
             ));
         }
+    }
+    let context = format!("field `{}`", field.name());
+    validate_notes(version, &context, &document.notes)?;
+    if check_characteristics {
+        validate_characteristics(version, &context, &document.characteristics)?;
     }
     if let Some(storage) = document.storage {
         let expected_type = storage_type(storage);
@@ -620,9 +1580,126 @@ mod tests {
     }
 
     #[test]
+    fn discarded_value_label_entries_still_validate_label_types() {
+        let selected = HashMap::new();
+        let error = parse_dataset_document_selected(
+            "0",
+            Some(r#"{"version":0,"value_labels":{"unselected":[{"value":1,"label":7}]}}"#),
+            Some(&selected),
+        )
+        .expect_err("discarded tables still validate their entry schema");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+        assert!(error.to_string().contains("expected a string"));
+    }
+
+    #[test]
+    fn projected_registry_is_consumed_once_without_reparsing_discarded_labels() {
+        let selected = HashMap::from([("selected".to_owned(), 1)]);
+        DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(|count| count.set(0));
+        DISCARDED_VALUE_LABEL_VISIT_COUNT.with(|count| count.set(0));
+
+        let document = parse_dataset_document_selected(
+            "0",
+            Some(
+                r#"{"version":0,"value_labels":{"selected":[{"value":1,"label":"one"}],"discarded":[{"value":2,"label":"t\u0077o"}]}}"#,
+            ),
+            Some(&selected),
+        )
+        .expect("the selected table is retained and the other table is validated");
+
+        assert_eq!(document.value_labels.len(), 1);
+        assert!(document.value_labels.contains_key("selected"));
+        assert_eq!(
+            DATASET_VALUE_LABEL_REGISTRY_VISIT_COUNT.with(std::cell::Cell::get),
+            1,
+            "the top-level parser must send the registry through one seed"
+        );
+        assert_eq!(
+            DISCARDED_VALUE_LABEL_VISIT_COUNT.with(std::cell::Cell::get),
+            1,
+            "the active deserializer must validate each discarded label once"
+        );
+    }
+
+    #[test]
+    fn full_and_projected_registries_reject_more_than_stata_variable_limit() {
+        let mut json = String::from(r#"{"version":0,"value_labels":{"#);
+        for index in 0..MAX_VALUE_LABEL_TABLES {
+            if index > 0 {
+                json.push(',');
+            }
+            json.push_str(&format!(r#""table{index}":[]"#));
+        }
+        json.push_str("}}");
+
+        let selected = HashMap::new();
+        let full = parse_dataset_document_selected("0", Some(&json), None)
+            .expect("the Stata table limit is accepted on a full read");
+        assert_eq!(full.value_labels.len(), MAX_VALUE_LABEL_TABLES);
+        let projected = parse_dataset_document_selected("0", Some(&json), Some(&selected))
+            .expect("the Stata table limit is accepted on a projected read");
+        assert!(projected.value_labels.is_empty());
+
+        json.truncate(json.len() - 2);
+        json.push_str(&format!(r#","table{MAX_VALUE_LABEL_TABLES}":[]}}}}"#));
+        for selection in [None, Some(&selected)] {
+            let error = match parse_dataset_document_selected("0", Some(&json), selection) {
+                Ok(_) => panic!("a registry cannot exceed Stata's variable limit"),
+                Err(error) => error,
+            };
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(
+                error.to_string().contains("at most 120,000 tables"),
+                "unexpected error: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn projected_registry_borrows_plain_keys_until_table_limit() {
+        use std::fmt::Write as _;
+
+        const TABLE_NAME_BYTES: usize = 540;
+        let padding = "x".repeat(TABLE_NAME_BYTES - "table000000".len());
+        let mut json = String::with_capacity(crate::arrow::MAX_IPC_METADATA_BYTES);
+        json.push_str(r#"{"version":0,"value_labels":{"#);
+        for index in 0..=MAX_VALUE_LABEL_TABLES {
+            if index > 0 {
+                json.push(',');
+            }
+            write!(&mut json, "\"table{index:06}").expect("writing to a string cannot fail");
+            json.push_str(&padding);
+            json.push_str("\":[]");
+        }
+        json.push_str("}}");
+        assert!(json.len() <= crate::arrow::MAX_IPC_METADATA_BYTES);
+        assert!(crate::arrow::MAX_IPC_METADATA_BYTES - json.len() < 2 * 1024 * 1024);
+
+        BORROWED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(0));
+        OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(|count| count.set(0));
+        let selected = HashMap::new();
+        let error = parse_dataset_document_selected("0", Some(&json), Some(&selected))
+            .expect_err("the extra table is rejected before its value is decoded");
+
+        assert!(error.to_string().contains("at most 120,000 tables"));
+        assert_eq!(
+            BORROWED_VALUE_LABEL_TABLE_NAME_COUNT.with(std::cell::Cell::get),
+            MAX_VALUE_LABEL_TABLES + 1,
+            "plain registry keys should be borrowed directly from the metadata JSON"
+        );
+        assert_eq!(
+            OWNED_VALUE_LABEL_TABLE_NAME_COUNT.with(std::cell::Cell::get),
+            0,
+            "duplicate detection should not allocate copies of plain registry keys"
+        );
+    }
+
+    #[test]
     fn dataset_documents_reject_unknown_keys() {
         for json in [
             r#"{"version":0,"lable":"typo"}"#,
+            r#"{"version":0,"notes":[{"number":1,"text":"note","extra":true}]}"#,
+            r#"{"version":0,"characteristics":[{"name":"source","value":"fixture","extra":true}]}"#,
             r#"{"version":0,"value_labels":{"x":[{"value":1,"label":"one","lable":"typo"}]}}"#,
         ] {
             let error = parse_dataset_document("0", Some(json))
@@ -630,6 +1707,109 @@ mod tests {
             assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
             assert!(error.to_string().contains("unknown field"));
         }
+    }
+
+    #[test]
+    fn dataset_documents_reject_duplicate_keys() {
+        for json in [
+            r#"{"version":0,"version":0}"#,
+            r#"{"version":0,"label":"a","label":"b"}"#,
+            r#"{"version":0,"value_labels":{},"value_labels":{}}"#,
+            r#"{"version":0,"value_labels":{"x":[],"x":[]}}"#,
+            r#"{"version":0,"value_labels":{"x":[],"\u0078":[]}}"#,
+        ] {
+            let error = parse_dataset_document("0", Some(json))
+                .expect_err("duplicate dataset keys are rejected");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("duplicate"));
+        }
+    }
+
+    #[test]
+    fn null_or_omitted_value_label_registries_are_empty() {
+        for json in [r#"{"version":0}"#, r#"{"version":0,"value_labels":null}"#] {
+            let document =
+                parse_dataset_document("0", Some(json)).expect("empty registries are valid");
+            assert!(document.value_labels.is_empty());
+        }
+    }
+
+    #[test]
+    fn note_arrays_are_bounded_during_deserialization() {
+        let prefix = vec!["\"\""; 9_999].join(",");
+        for final_note in ["\"\"".to_owned(), format!("\"{}\"", "x".repeat(1 << 20))] {
+            let json = format!(r#"{{"version":0,"notes":[{prefix},{final_note}]}}"#);
+            let error = parse_dataset_document("0", Some(&json))
+                .expect_err("the ten-thousandth note is rejected while decoding JSON");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("at most 9,999 entries"));
+        }
+    }
+
+    #[test]
+    fn note_and_characteristic_strings_are_bounded_before_deserialization() {
+        let oversized = "x".repeat(1 << 20);
+        for json in [
+            format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{oversized}"}}]}}"#),
+            format!(
+                r#"{{"version":0,"characteristics":[{{"name":"source","value":"{oversized}"}}]}}"#
+            ),
+            format!(r#"{{"version":0,"characteristics":[{{"name":"{oversized}","value":"x"}}]}}"#),
+        ] {
+            let error = parse_dataset_document("0", Some(&json))
+                .expect_err("oversized metadata strings are rejected before decoding");
+            assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+            assert!(error.to_string().contains("Stata metadata limit"));
+        }
+    }
+
+    #[test]
+    fn invalid_characteristic_stops_before_later_json_is_parsed() {
+        let error = parse_dataset_document(
+            "0",
+            Some(r#"{"version":0,"characteristics":[{"name":"","value":""},invalid]}"#),
+        )
+        .expect_err("the first invalid characteristic stops the sequence");
+        assert!(
+            error
+                .to_string()
+                .contains("invalid, duplicate, or reserved name"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn decoded_duplicate_characteristic_stops_before_later_json_is_parsed() {
+        let error = parse_dataset_document(
+            "0",
+            Some(
+                r#"{"version":0,"characteristics":[{"name":"source","value":"first"},{"name":"sour\u0063e","value":"second"},invalid]}"#,
+            ),
+        )
+        .expect_err("the decoded duplicate stops the sequence");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+        assert!(
+            error
+                .to_string()
+                .contains("invalid, duplicate, or reserved name"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn metadata_string_bounds_count_decoded_json_bytes() {
+        let accepted = r#"\u754c"#.repeat(67_784);
+        let json = format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{accepted}"}}]}}"#);
+        parse_dataset_document("0", Some(&json)).expect("203,352 decoded bytes fit");
+
+        let oversized = r#"\u754c"#.repeat(67_785);
+        let json = format!(r#"{{"version":0,"notes":[{{"number":1,"text":"{oversized}"}}]}}"#);
+        let error = parse_dataset_document("0", Some(&json))
+            .expect_err("203,355 decoded bytes exceed the canonical limit");
+        assert!(
+            error.to_string().contains("203352-byte"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]

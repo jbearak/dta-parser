@@ -382,7 +382,11 @@ test_that("all bundled fixtures agree with haven", {
         expect_identical(attr(actual, "notes", exact = TRUE),
                          attr(expected, "notes", exact = TRUE), info = info)
         expect_null(attr(actual, "dta_format_version", exact = TRUE), info = info)
-        expect_identical(attributes(actual), attributes(expected), info = info)
+        expect_identical(
+            attributes(without_stata_storage_data(actual)),
+            attributes(expected),
+            info = info
+        )
         expect_true(attr(metadata, "dta_format_version", exact = TRUE) %in%
                     c(105L, 108L, 110L, 111L, 113L, 114L, 115L,
                       117L, 118L, 119L), info = info)

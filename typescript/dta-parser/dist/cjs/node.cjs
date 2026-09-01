@@ -31,15 +31,25 @@ var node_exports = {};
 __export(node_exports, {
   DtaFile: () => DtaFile,
   STATA_MISSING_B: () => STATA_MISSING_B,
+  addStataNote: () => addStataNote,
   apply_display_format: () => apply_display_format,
   classify_missing_value: () => classify_missing_value,
   classify_raw_double_missing_at: () => classify_raw_double_missing_at,
   classify_raw_float_missing: () => classify_raw_float_missing,
+  dropStataCharacteristics: () => dropStataCharacteristics,
+  dropStataNotes: () => dropStataNotes,
+  getStataCharacteristic: () => getStataCharacteristic,
+  getStataNote: () => getStataNote,
   is_legacy_format: () => is_legacy_format,
   is_missing_value: () => is_missing_value,
   is_missing_value_object: () => is_missing_value_object,
+  listStataCharacteristics: () => listStataCharacteristics,
+  listStataNotes: () => listStataNotes,
   make_missing_value: () => make_missing_value,
-  missing_type_to_label_key: () => missing_type_to_label_key
+  missing_type_to_label_key: () => missing_type_to_label_key,
+  renumberStataNotes: () => renumberStataNotes,
+  setStataCharacteristic: () => setStataCharacteristic,
+  setStataNote: () => setStataNote
 });
 module.exports = __toCommonJS(node_exports);
 var fs = __toESM(require("fs"), 1);
@@ -154,6 +164,9 @@ function legacy_type_code_to_dta_type(code, format_version) {
   throw new Error(
     `Unknown legacy type code ${code}`
   );
+}
+function isPackedDtaReadPlan(metadata) {
+  return "variable_types" in metadata;
 }
 
 // src/text-encoding.ts
@@ -350,6 +363,451 @@ function text_decoder(encoding) {
   }
 }
 
+// src/stata-metadata.ts
+var NOTE_NAME = /^note([0-9]+)$/;
+var MAX_STATA_METADATA_VALUE_BYTES = 67784;
+var MAX_DECODED_STATA_METADATA_VALUE_BYTES = 203352;
+var TEXT_ENCODER = new TextEncoder();
+var LAZY_NOTES = /* @__PURE__ */ new WeakMap();
+var LAZY_CHARACTERISTICS = /* @__PURE__ */ new WeakMap();
+function lazyNotes() {
+  let notes = LAZY_NOTES.get(this);
+  if (notes === void 0) {
+    notes = [];
+    LAZY_NOTES.set(this, notes);
+  }
+  return notes;
+}
+function setLazyNotes(notes) {
+  LAZY_NOTES.set(this, notes);
+}
+function lazyCharacteristics() {
+  let characteristics = LAZY_CHARACTERISTICS.get(this);
+  if (characteristics === void 0) {
+    characteristics = [];
+    LAZY_CHARACTERISTICS.set(this, characteristics);
+  }
+  return characteristics;
+}
+function setLazyCharacteristics(characteristics) {
+  LAZY_CHARACTERISTICS.set(this, characteristics);
+}
+function withLazyStataMetadata(target) {
+  Object.defineProperties(target, {
+    notes: {
+      configurable: true,
+      enumerable: true,
+      get: lazyNotes,
+      set: setLazyNotes
+    },
+    characteristics: {
+      configurable: true,
+      enumerable: true,
+      get: lazyCharacteristics,
+      set: setLazyCharacteristics
+    }
+  });
+  return target;
+}
+function noteNumber(name) {
+  const match = NOTE_NAME.exec(name);
+  if (match === null) return null;
+  const number = Number(match[1]);
+  return Number.isInteger(number) && number >= 1 && number <= 9999 && match[1] === String(number) ? number : null;
+}
+function reservedCharacteristicName(name) {
+  return NOTE_NAME.test(name) || name === "_lang_list" || name === "_lang_c" || name === "fralias_from" || name === "fralias_varname" || name.startsWith("_lang_v_") || name.startsWith("_lang_l_");
+}
+function validCharacteristicNameShape(name) {
+  return /^[_\p{L}][_\p{L}\p{N}]*$/u.test(name) && codePointLengthAtMost(name, 32) && utf8LengthAtMost(name, 128);
+}
+function mutableNotes(target) {
+  const current = target.notes;
+  if (current === void 0) {
+    const notes = [];
+    target.notes = notes;
+    return notes;
+  }
+  if (!Array.isArray(current)) {
+    throw new Error("Malformed Stata note metadata");
+  }
+  if (current.length > 0 && current.every((note) => typeof note === "string")) {
+    if (current.length > 9999) {
+      throw new Error("Malformed Stata note metadata");
+    }
+    const notes = current.map((text, index) => {
+      validExistingMetadataValue(text, "note");
+      return { number: index + 1, text };
+    });
+    target.notes = notes;
+    return notes;
+  }
+  const numbers = /* @__PURE__ */ new Set();
+  for (const note of current) {
+    if (typeof note !== "object" || note === null) {
+      throw new Error("Malformed Stata note metadata");
+    }
+    const { number, text } = note;
+    if (!Number.isInteger(number) || number < 1 || number > 9999 || numbers.has(number)) {
+      throw new Error("Malformed Stata note metadata");
+    }
+    validExistingMetadataValue(text, "note");
+    numbers.add(number);
+  }
+  return current;
+}
+function mutableCharacteristics(target) {
+  if (target.characteristics === void 0) {
+    target.characteristics = [];
+  }
+  if (!Array.isArray(target.characteristics)) {
+    throw new Error("Malformed Stata characteristic metadata");
+  }
+  const names = /* @__PURE__ */ new Set();
+  for (const characteristic of target.characteristics) {
+    if (typeof characteristic !== "object" || characteristic === null) {
+      throw new Error("Malformed Stata characteristic metadata");
+    }
+    const { name, value } = characteristic;
+    if (typeof name !== "string" || !validCharacteristicNameShape(name) || reservedCharacteristicName(name) || names.has(name)) {
+      throw new Error("Malformed Stata characteristic metadata");
+    }
+    validExistingMetadataValue(value, "characteristic");
+    names.add(name);
+  }
+  return target.characteristics;
+}
+var StataMetadataCollector = class {
+  dataset;
+  variables;
+  targetIndexes;
+  uniqueNoteScopes;
+  uniqueCharacteristicScopes;
+  constructor(dataset, variables) {
+    this.dataset = dataset;
+    this.variables = variables;
+  }
+  /** Variable-name lookup entries still retained by this collector. */
+  get retainedTargetIndexCount() {
+    return this.targetIndexes?.size ?? 0;
+  }
+  targetIndex(target) {
+    if (target === "_dta") return 0;
+    if (this.targetIndexes === void 0) {
+      this.targetIndexes = /* @__PURE__ */ new Map();
+      this.variables.forEach((variable, index) => {
+        this.targetIndexes.set(variable.name, index + 1);
+      });
+    }
+    return this.targetIndexes.get(target);
+  }
+  scope(scopeIndex) {
+    return scopeIndex === 0 ? this.dataset : this.variables[scopeIndex - 1];
+  }
+  uniqueNotes(scopeIndex) {
+    let scopes = this.uniqueNoteScopes;
+    if (scopes === void 0) {
+      scopes = new Uint8Array(this.variables.length + 1);
+      this.uniqueNoteScopes = scopes;
+    }
+    const scope = this.scope(scopeIndex);
+    if (scopes[scopeIndex] === 0) {
+      const values = mutableNotes(scope);
+      scopes[scopeIndex] = 1;
+      return values;
+    }
+    return scope.notes;
+  }
+  uniqueCharacteristics(scopeIndex) {
+    let scopes = this.uniqueCharacteristicScopes;
+    if (scopes === void 0) {
+      scopes = new Uint8Array(this.variables.length + 1);
+      this.uniqueCharacteristicScopes = scopes;
+    }
+    const scope = this.scope(scopeIndex);
+    if (scopes[scopeIndex] === 0) {
+      const values = mutableCharacteristics(scope);
+      scopes[scopeIndex] = 1;
+      return values;
+    }
+    return scope.characteristics;
+  }
+  accept(target, name) {
+    if (!validCharacteristicNameShape(name)) {
+      throw new Error("Invalid on-disk Stata characteristic name");
+    }
+    const number = noteNumber(name);
+    if (number === null && reservedCharacteristicName(name)) return null;
+    const scopeIndex = this.targetIndex(target);
+    if (scopeIndex === void 0) return null;
+    return { scopeIndex, name, noteNumber: number };
+  }
+  /** Materialize a record from a plan that already resolved duplicates. */
+  pushAcceptedUniqueLazy(accepted, value) {
+    this.targetIndexes = void 0;
+    const decoded = value();
+    validExistingMetadataValue(
+      decoded,
+      accepted.noteNumber === null ? "characteristic" : "note"
+    );
+    if (accepted.noteNumber !== null) {
+      this.uniqueNotes(accepted.scopeIndex).push({
+        number: accepted.noteNumber,
+        text: decoded
+      });
+    } else {
+      this.uniqueCharacteristics(accepted.scopeIndex).push({
+        name: accepted.name,
+        value: decoded
+      });
+    }
+  }
+  finish() {
+    const uniqueNoteScopes = this.uniqueNoteScopes;
+    if (uniqueNoteScopes !== void 0) {
+      for (let scopeIndex = 0; scopeIndex < uniqueNoteScopes.length; scopeIndex++) {
+        if (uniqueNoteScopes[scopeIndex] !== 0) {
+          this.scope(scopeIndex).notes.sort(
+            (left, right) => left.number - right.number
+          );
+        }
+      }
+    }
+    this.targetIndexes = void 0;
+    this.uniqueNoteScopes = void 0;
+    this.uniqueCharacteristicScopes = void 0;
+  }
+};
+function validNoteNumber(number) {
+  if (!Number.isInteger(number) || number < 1 || number > 9999) {
+    throw new Error("A note number must be an integer from 1 through 9999");
+  }
+}
+function codePointLengthAtMost(value, limit) {
+  let count = 0;
+  for (const _character of value) {
+    count++;
+    if (count > limit) return false;
+  }
+  return true;
+}
+function utf8LengthAtMost(value, limit) {
+  const output = new Uint8Array(Math.min(limit + 1, value.length * 3));
+  const encoded = TEXT_ENCODER.encodeInto(value, output);
+  return encoded.read === value.length && encoded.written <= limit;
+}
+function validCharacteristicName(name) {
+  if (!validCharacteristicNameShape(name) || reservedCharacteristicName(name)) {
+    throw new Error("Invalid or reserved Stata characteristic name");
+  }
+}
+function stataMetadataValueEnd(bytes, start, length) {
+  if (length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+    throw new Error("Characteristic value exceeds the 67,784-byte limit");
+  }
+  const limit = start + length;
+  let end = start;
+  while (end < limit && bytes[end] !== 0) end++;
+  if (end - start > MAX_STATA_METADATA_VALUE_BYTES) {
+    throw new Error("Characteristic value exceeds the 67,784-byte limit");
+  }
+  return end;
+}
+function validMetadataValue(value) {
+  if (typeof value !== "string" || value.includes("\0") || !utf8LengthAtMost(value, MAX_STATA_METADATA_VALUE_BYTES)) {
+    throw new Error("Invalid or over-limit Stata metadata value");
+  }
+}
+function validExistingMetadataValue(value, kind) {
+  if (typeof value !== "string" || value.includes("\0") || !codePointLengthAtMost(
+    value,
+    MAX_STATA_METADATA_VALUE_BYTES
+  ) || !utf8LengthAtMost(
+    value,
+    MAX_DECODED_STATA_METADATA_VALUE_BYTES
+  )) {
+    throw new Error(`Malformed Stata ${kind} metadata`);
+  }
+}
+function listStataNotes(target) {
+  return mutableNotes(target).map((note) => ({ ...note }));
+}
+function getStataNote(target, number) {
+  validNoteNumber(number);
+  return mutableNotes(target).find((note) => note.number === number)?.text;
+}
+function setStataNote(target, number, text) {
+  validNoteNumber(number);
+  validMetadataValue(text);
+  const notes = mutableNotes(target);
+  const existing = notes.find((note) => note.number === number);
+  if (existing === void 0) notes.push({ number, text });
+  else existing.text = text;
+  notes.sort((left, right) => left.number - right.number);
+}
+function addStataNote(target, text) {
+  const notes = mutableNotes(target);
+  const number = notes.length === 0 ? 1 : Math.max(...notes.map((note) => note.number)) + 1;
+  validNoteNumber(number);
+  setStataNote(target, number, text);
+  return number;
+}
+function dropStataNotes(target, numbers) {
+  mutableNotes(target);
+  if (numbers === void 0) {
+    target.notes = [];
+    return;
+  }
+  numbers.forEach(validNoteNumber);
+  const dropped = new Set(numbers);
+  target.notes = mutableNotes(target).filter(
+    (note) => !dropped.has(note.number)
+  );
+}
+function renumberStataNotes(target, start = 1) {
+  validNoteNumber(start);
+  const notes = mutableNotes(target);
+  if (notes.length > 0 && start + notes.length - 1 > 9999) {
+    throw new Error("Renumbered notes would exceed note number 9999");
+  }
+  notes.sort((left, right) => left.number - right.number).forEach((note, index) => {
+    note.number = start + index;
+  });
+}
+function listStataCharacteristics(target) {
+  return mutableCharacteristics(target).map(
+    (characteristic) => ({ ...characteristic })
+  );
+}
+function getStataCharacteristic(target, name) {
+  validCharacteristicName(name);
+  return mutableCharacteristics(target).find((item) => item.name === name)?.value;
+}
+function setStataCharacteristic(target, name, value) {
+  validCharacteristicName(name);
+  validMetadataValue(value);
+  const characteristics = mutableCharacteristics(target);
+  const existing = characteristics.find((item) => item.name === name);
+  if (existing === void 0) characteristics.push({ name, value });
+  else existing.value = value;
+}
+function dropStataCharacteristics(target, names) {
+  mutableCharacteristics(target);
+  if (names === void 0) {
+    target.characteristics = [];
+    return;
+  }
+  names.forEach(validCharacteristicName);
+  const dropped = new Set(names);
+  target.characteristics = mutableCharacteristics(target).filter(
+    (characteristic) => !dropped.has(characteristic.name)
+  );
+}
+
+// src/characteristic-payload.ts
+function canonicalRecordKey(accepted) {
+  const key = accepted.noteNumber === null ? `c:${accepted.name}` : `n:${accepted.noteNumber}`;
+  return `${accepted.scopeIndex}\0${key}`;
+}
+function readFixedString(bytes, start, width, decoder) {
+  let end = start;
+  const limit = start + width;
+  while (end < limit && bytes[end] !== 0) end++;
+  return decoder.decode(bytes.subarray(start, end));
+}
+var StataCharacteristicFramePlan = class {
+  constructor(bytes, decoder, collector) {
+    this.bytes = bytes;
+    this.decoder = decoder;
+    this.collector = collector;
+  }
+  bytes;
+  decoder;
+  collector;
+  records = [];
+  recordIndices = /* @__PURE__ */ new Map();
+  deferredError;
+  hasDeferredError = false;
+  /** Number of distinct accepted scope/key locators retained for decoding. */
+  get retainedCount() {
+    return this.records.length;
+  }
+  /** Number of canonical-key lookup entries still retained for framing. */
+  get retainedIndexCount() {
+    return this.recordIndices?.size ?? 0;
+  }
+  add(locator) {
+    const recordIndices = this.recordIndices;
+    if (recordIndices === void 0) {
+      throw new Error("Stata characteristic frame plan is already finished");
+    }
+    let valueEnd;
+    try {
+      valueEnd = stataMetadataValueEnd(
+        this.bytes,
+        locator.valueStart,
+        locator.valueLength
+      );
+    } catch (error) {
+      if (!this.hasDeferredError) {
+        this.deferredError = error;
+        this.hasDeferredError = true;
+      }
+      return;
+    }
+    if (this.hasDeferredError) return;
+    const target = readFixedString(
+      this.bytes,
+      locator.namesStart,
+      locator.nameWidth,
+      this.decoder
+    );
+    const name = readFixedString(
+      this.bytes,
+      locator.namesStart + locator.nameWidth,
+      locator.nameWidth,
+      this.decoder
+    );
+    try {
+      const accepted = this.collector.accept(target, name);
+      if (accepted !== null) {
+        const key = canonicalRecordKey(accepted);
+        const existing = recordIndices.get(key);
+        if (existing === void 0) {
+          recordIndices.set(key, this.records.length);
+          this.records.push({
+            accepted,
+            valueStart: locator.valueStart,
+            valueEnd
+          });
+        } else {
+          const record = this.records[existing];
+          record.valueStart = locator.valueStart;
+          record.valueEnd = valueEnd;
+        }
+      }
+    } catch (error) {
+      this.deferredError = error;
+      this.hasDeferredError = true;
+    }
+  }
+  finish() {
+    if (this.recordIndices === void 0) {
+      throw new Error("Stata characteristic frame plan is already finished");
+    }
+    this.recordIndices = void 0;
+    if (this.hasDeferredError) throw this.deferredError;
+    for (const record of this.records) {
+      this.collector.pushAcceptedUniqueLazy(record.accepted, () => {
+        return this.decoder.decode(
+          this.bytes.subarray(record.valueStart, record.valueEnd)
+        );
+      });
+    }
+    this.collector.finish();
+  }
+};
+
 // src/header.ts
 var FIELD_WIDTHS = {
   117: {
@@ -395,6 +853,10 @@ var TAG_VALUE_LABEL_NAMES_OPEN = encode_tag(
 var TAG_VARIABLE_LABELS_OPEN = encode_tag(
   "<variable_labels>"
 );
+var TAG_CHARACTERISTICS_OPEN = encode_tag("<characteristics>");
+var TAG_CHARACTERISTICS_CLOSE = encode_tag("</characteristics>");
+var TAG_CHARACTERISTIC_OPEN = encode_tag("<ch>");
+var TAG_CHARACTERISTIC_CLOSE = encode_tag("</ch>");
 function encode_tag(tag) {
   const my_buf = new Uint8Array(tag.length);
   for (let i = 0; i < tag.length; i++) {
@@ -424,6 +886,67 @@ function read_fixed_string(bytes, offset, field_width, decoder) {
   return decoder.decode(
     bytes.subarray(offset, my_end)
   );
+}
+function tag_at(bytes, offset, tag) {
+  if (offset < 0 || offset + tag.length > bytes.length) return false;
+  for (let i = 0; i < tag.length; i++) {
+    if (bytes[offset + i] !== tag[i]) return false;
+  }
+  return true;
+}
+function frame_characteristics(bytes, view, little_endian, section_offsets, field_width, plan) {
+  let pos = section_offsets.characteristics;
+  if (!tag_at(bytes, pos, TAG_CHARACTERISTICS_OPEN)) {
+    throw new Error("Missing <characteristics> tag");
+  }
+  pos += TAG_CHARACTERISTICS_OPEN.length;
+  const names_length = field_width * 2;
+  while (pos < section_offsets.data) {
+    if (tag_at(bytes, pos, TAG_CHARACTERISTICS_CLOSE)) {
+      pos += TAG_CHARACTERISTICS_CLOSE.length;
+      if (pos !== section_offsets.data) {
+        throw new Error("Characteristics section does not end at the mapped data offset");
+      }
+      return;
+    }
+    if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_OPEN)) {
+      throw new Error("Invalid characteristic record tag");
+    }
+    pos += TAG_CHARACTERISTIC_OPEN.length;
+    if (pos + 4 > section_offsets.data) {
+      throw new Error("Truncated characteristic length");
+    }
+    const length = view.getUint32(pos, little_endian);
+    pos += 4;
+    if (length < names_length || pos + length + TAG_CHARACTERISTIC_CLOSE.length > section_offsets.data) {
+      throw new Error("Truncated characteristic payload");
+    }
+    plan.add({
+      namesStart: pos,
+      nameWidth: field_width,
+      valueStart: pos + names_length,
+      valueLength: length - names_length
+    });
+    pos += length;
+    if (!tag_at(bytes, pos, TAG_CHARACTERISTIC_CLOSE)) {
+      throw new Error("Missing </ch> tag");
+    }
+    pos += TAG_CHARACTERISTIC_CLOSE.length;
+  }
+  throw new Error("Missing </characteristics> tag");
+}
+function parse_characteristics(bytes, view, little_endian, section_offsets, field_width, decoder, dataset, variables) {
+  const collector = new StataMetadataCollector(dataset, variables);
+  const plan = new StataCharacteristicFramePlan(bytes, decoder, collector);
+  frame_characteristics(
+    bytes,
+    view,
+    little_endian,
+    section_offsets,
+    field_width,
+    plan
+  );
+  plan.finish();
 }
 function detect_format_version(bytes) {
   for (const [my_ver_str, my_sig] of Object.entries(
@@ -602,13 +1125,68 @@ function parse_section_map(bytes, view, little_endian, start) {
   const my_data_start = my_open + TAG_MAP_OPEN.length;
   const my_offsets = {};
   for (let i = 0; i < SECTION_MAP_ENTRIES; i++) {
-    const my_val = Number(view.getBigUint64(
+    const my_big_val = view.getBigUint64(
       my_data_start + i * 8,
       little_endian
-    ));
-    my_offsets[SECTION_OFFSET_KEYS[i]] = my_val;
+    );
+    if (my_big_val > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error("Section offset exceeds JavaScript safe integer limit");
+    }
+    my_offsets[SECTION_OFFSET_KEYS[i]] = Number(my_big_val);
   }
   return my_offsets;
+}
+function parse_modern_metadata_header(buffer, options = {}) {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  const format_version = detect_format_version(bytes);
+  const text_encoding = resolve_text_encoding(format_version, options.encoding);
+  const decoder = text_decoder(text_encoding);
+  const widths = FIELD_WIDTHS[format_version];
+  const { byte_order, end: after_byteorder } = parse_byte_order(bytes, 0);
+  const little_endian = byte_order === "LSF";
+  const { nvar, end: after_k } = parse_nvar(
+    bytes,
+    view,
+    little_endian,
+    format_version,
+    after_byteorder
+  );
+  const { nobs, end: after_n } = parse_nobs(
+    bytes,
+    view,
+    little_endian,
+    format_version,
+    after_k
+  );
+  const { dataset_label, end: after_label } = parse_dataset_label(
+    bytes,
+    view,
+    little_endian,
+    format_version,
+    after_n,
+    decoder
+  );
+  const timestamp_close = find_bytes(bytes, TAG_TIMESTAMP_CLOSE, after_label);
+  if (timestamp_close === -1) throw new Error("Missing </timestamp> tag");
+  const section_offsets = parse_section_map(
+    bytes,
+    view,
+    little_endian,
+    timestamp_close
+  );
+  return {
+    format_version,
+    text_encoding,
+    decoder,
+    widths,
+    byte_order,
+    little_endian,
+    nvar,
+    nobs,
+    dataset_label,
+    section_offsets
+  };
 }
 function parse_variable_types(bytes, view, little_endian, offsets, nvar) {
   const my_tag_pos = find_bytes(
@@ -668,54 +1246,26 @@ function parse_fixed_string_section(bytes, tag, search_start, nvar, field_width,
   }
   return the_strings;
 }
-function parse_metadata(buffer, options = {}) {
+function parse_metadata_from_header(buffer, header) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
-  const format_version = detect_format_version(bytes);
-  const text_encoding = resolve_text_encoding(
+  const {
     format_version,
-    options.encoding
-  );
-  const my_decoder = text_decoder(text_encoding);
-  const my_widths = FIELD_WIDTHS[format_version];
-  const { byte_order, end: my_after_byteorder } = parse_byte_order(bytes, 0);
-  const little_endian = byte_order === "LSF";
-  const { nvar, end: my_after_k } = parse_nvar(
-    bytes,
-    view,
+    text_encoding,
+    decoder: my_decoder,
+    widths: my_widths,
+    byte_order,
     little_endian,
-    format_version,
-    my_after_byteorder
-  );
-  const { nobs, end: my_after_n } = parse_nobs(
-    bytes,
-    view,
-    little_endian,
-    format_version,
-    my_after_k
-  );
-  const { dataset_label, end: my_after_label } = parse_dataset_label(
-    bytes,
-    view,
-    little_endian,
-    format_version,
-    my_after_n,
-    my_decoder
-  );
-  const my_ts_close = find_bytes(
-    bytes,
-    TAG_TIMESTAMP_CLOSE,
-    my_after_label
-  );
-  if (my_ts_close === -1) {
-    throw new Error("Missing </timestamp> tag");
+    nvar,
+    nobs,
+    dataset_label,
+    section_offsets
+  } = header;
+  if (section_offsets.data > bytes.length) {
+    throw new Error(
+      "Corrupt .dta file: mapped data offset exceeds buffer length"
+    );
   }
-  const section_offsets = parse_section_map(
-    bytes,
-    view,
-    little_endian,
-    my_ts_close
-  );
   const the_type_codes = parse_variable_types(
     bytes,
     view,
@@ -763,7 +1313,7 @@ function parse_metadata(buffer, options = {}) {
       my_code,
       format_version
     );
-    the_variables.push({
+    the_variables.push(withLazyStataMetadata({
       name: the_varnames[i],
       type: type_code_to_dta_type(
         my_code,
@@ -775,9 +1325,21 @@ function parse_metadata(buffer, options = {}) {
       value_label_name: the_value_label_names[i],
       byte_width: my_width,
       byte_offset: my_running_offset
-    });
+    }));
     my_running_offset += my_width;
   }
+  const notes = [];
+  const characteristics = [];
+  parse_characteristics(
+    bytes,
+    view,
+    little_endian,
+    section_offsets,
+    my_widths.varname,
+    my_decoder,
+    { notes, characteristics },
+    the_variables
+  );
   return {
     format_version,
     text_encoding,
@@ -785,6 +1347,8 @@ function parse_metadata(buffer, options = {}) {
     nvar,
     nobs,
     dataset_label,
+    notes,
+    characteristics,
     variables: the_variables,
     section_offsets,
     obs_length: my_running_offset
@@ -895,17 +1459,16 @@ function legacy_metadata_fixed_size(nvar, format_version) {
   const my_sections_size = nvar + nvar * layout.varname_width + (nvar + 1) * SORTLIST_ENTRY_WIDTH + nvar * layout.format_width + nvar * layout.value_label_name_width + nvar * layout.variable_label_width;
   return layout.header_size + my_sections_size;
 }
-function scan_expansion_fields(view, little_endian, start, buffer_length, format_version, decoder) {
+function frame_expansion_fields(view, little_endian, start, buffer_length, format_version, plan) {
   let pos = start;
   const layout = legacy_layout_for_version(format_version);
   const my_header_size = legacy_expansion_header_size(layout);
-  const the_notes = [];
   while (pos + my_header_size <= buffer_length) {
     const my_data_type = view.getUint8(pos);
     const my_len = layout.expansion_length_width === 2 ? view.getInt16(pos + 1, little_endian) : view.getInt32(pos + 1, little_endian);
     pos += my_header_size;
     if (my_data_type === 0 && my_len === 0) {
-      return { data_offset: pos, notes: the_notes };
+      return pos;
     }
     if (my_data_type === 0 || my_len < 0) {
       throw new Error("Invalid legacy expansion field");
@@ -914,34 +1477,16 @@ function scan_expansion_fields(view, little_endian, start, buffer_length, format
       throw new Error("Truncated legacy expansion field");
     }
     if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
-      const my_variable = read_fixed_string2(
-        bytes_from_view(view),
-        pos,
-        layout.varname_width,
-        decoder
-      );
-      const my_characteristic = read_fixed_string2(
-        bytes_from_view(view),
-        pos + layout.varname_width,
-        layout.varname_width,
-        decoder
-      );
-      if (my_variable === "_dta" && /^note[0-9]+$/.test(my_characteristic)) {
-        const my_note = read_fixed_string2(
-          bytes_from_view(view),
-          pos + 2 * layout.varname_width,
-          my_len - 2 * layout.varname_width,
-          decoder
-        );
-        if (my_note.length > 0) the_notes.push(my_note);
-      }
+      plan.add({
+        namesStart: pos,
+        nameWidth: layout.varname_width,
+        valueStart: pos + 2 * layout.varname_width,
+        valueLength: my_len - 2 * layout.varname_width
+      });
     }
     pos += my_len;
   }
   throw new Error("Missing legacy expansion-field terminator");
-}
-function bytes_from_view(view) {
-  return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
 }
 function parse_legacy_metadata(buffer, file_size, options = {}) {
   const bytes = new Uint8Array(buffer);
@@ -1045,21 +1590,12 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     );
   }
   pos += nvar * layout.variable_label_width;
-  const my_expansion_offset = pos;
-  const { data_offset: my_data_offset, notes } = scan_expansion_fields(
-    view,
-    little_endian,
-    pos,
-    buffer.byteLength,
-    format_version,
-    my_decoder
-  );
   let my_running_offset = 0;
   const the_variables = [];
   for (let i = 0; i < nvar; i++) {
     const my_code = the_type_codes[i];
     const my_width = byte_width_for_legacy_type_code(my_code, format_version);
-    the_variables.push({
+    the_variables.push(withLazyStataMetadata({
       name: the_varnames[i],
       type: legacy_type_code_to_dta_type(my_code, format_version),
       type_code: my_code,
@@ -1068,10 +1604,31 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
       value_label_name: the_value_label_names[i],
       byte_width: my_width,
       byte_offset: my_running_offset
-    });
+    }));
     my_running_offset += my_width;
   }
   const obs_length = my_running_offset;
+  const notes = [];
+  const characteristics = [];
+  const my_expansion_offset = pos;
+  const collector = new StataMetadataCollector(
+    { notes, characteristics },
+    the_variables
+  );
+  const plan = new StataCharacteristicFramePlan(
+    bytes,
+    my_decoder,
+    collector
+  );
+  const my_data_offset = frame_expansion_fields(
+    view,
+    little_endian,
+    pos,
+    buffer.byteLength,
+    format_version,
+    plan
+  );
+  plan.finish();
   const my_value_labels_offset = Number(
     BigInt(my_data_offset) + BigInt(nobs) * BigInt(obs_length)
   );
@@ -1102,6 +1659,7 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     nobs,
     dataset_label,
     notes,
+    characteristics,
     variables: the_variables,
     section_offsets,
     obs_length
@@ -1334,9 +1892,9 @@ function read_fixed_string3(bytes, offset, width, decoder) {
   }
   return decode_text_range(decoder, bytes, offset, my_end);
 }
-function read_cell(view, bytes, offset, variable, little_endian, modern_missing, decoder, format_version) {
+function read_cell(view, bytes, offset, variable_type, byte_width, little_endian, modern_missing, decoder, format_version) {
   let my_missing = -1;
-  switch (variable.type) {
+  switch (variable_type) {
     case "byte": {
       const my_value = view.getInt8(offset);
       my_missing = byte_missing_offset(
@@ -1392,7 +1950,7 @@ function read_cell(view, bytes, offset, variable, little_endian, modern_missing,
       return read_fixed_string3(
         bytes,
         offset,
-        variable.byte_width,
+        byte_width,
         decoder
       );
   }
@@ -1557,7 +2115,10 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
   const my_decoder = decoder_for_metadata(metadata);
   const the_rows = out ?? new Array(my_actual_count);
   const my_column_count = my_col_end - my_col_start;
+  const packed = isPackedDtaReadPlan(metadata);
   if (my_column_count === 1) {
+    const variable = packed ? metadata.variable(my_col_start) : metadata.variables[my_col_start];
+    if (variable === void 0) return the_rows;
     decode_single_column_into_rows(
       view,
       bytes,
@@ -1565,7 +2126,7 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
       out_offset,
       my_actual_count,
       row_base_offset,
-      metadata.variables[my_col_start],
+      variable,
       metadata.obs_length,
       little_endian,
       modern_missing,
@@ -1578,12 +2139,16 @@ function read_rows_from_view(view, bytes, metadata, row_base_offset, start, coun
     const my_row = new Array(my_column_count);
     const my_row_offset = row_base_offset + i * metadata.obs_length;
     for (let my_abs_col = my_col_start, my_output_col = 0; my_abs_col < my_col_end; my_abs_col++, my_output_col++) {
-      const my_variable = metadata.variables[my_abs_col];
+      const my_variable = packed ? void 0 : metadata.variables[my_abs_col];
+      const variableType = packed ? metadata.variable_types[my_abs_col] : my_variable.type;
+      const byteWidth = packed ? metadata.variable_byte_widths[my_abs_col] : my_variable.byte_width;
+      const byteOffset = packed ? metadata.variable_byte_offsets[my_abs_col] : my_variable.byte_offset;
       my_row[my_output_col] = read_cell(
         view,
         bytes,
-        my_row_offset + my_variable.byte_offset,
-        my_variable,
+        my_row_offset + byteOffset,
+        variableType,
+        byteWidth,
         little_endian,
         modern_missing,
         my_decoder,
@@ -1619,15 +2184,18 @@ function read_columns_from_data_buffer(buffer, metadata, count, col_indices, out
   const little_endian = metadata.byte_order === "LSF";
   const modern_missing = metadata.format_version >= 113;
   const my_decoder = decoder_for_metadata(metadata);
+  const packed = isPackedDtaReadPlan(metadata);
   for (const my_col of col_indices) {
     const my_target = out.get(my_col);
+    const variable = packed ? metadata.variable(my_col) : metadata.variables[my_col];
+    if (variable === void 0) continue;
     decode_column_into_values(
       view,
       bytes,
       my_target,
       out_offset ?? my_target.length,
       count,
-      metadata.variables[my_col],
+      variable,
       metadata.obs_length,
       little_endian,
       modern_missing,
@@ -1639,15 +2207,16 @@ function read_columns_from_data_buffer(buffer, metadata, count, col_indices, out
 }
 
 // src/strl-reader.ts
+function readVariable(metadata, index) {
+  return isPackedDtaReadPlan(metadata) ? metadata.variable(index) : metadata.variables[index];
+}
 var GSO_MARKER = [71, 83, 79];
 var STRLS_TAG = "<strls>";
 var STRLS_TAG_LENGTH = STRLS_TAG.length;
 var ASCII_DECODER2 = new TextDecoder("utf-8");
 function build_gso_index(buffer, metadata, base_offset = 0) {
   const my_index = /* @__PURE__ */ new Map();
-  const my_has_strl = metadata.variables.some(
-    (v) => v.type === "strL"
-  );
+  const my_has_strl = isPackedDtaReadPlan(metadata) ? metadata.strl_columns.length > 0 : metadata.variables.some((v) => v.type === "strL");
   if (!my_has_strl) return my_index;
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
@@ -1694,7 +2263,7 @@ function build_gso_index(buffer, metadata, base_offset = 0) {
       my_o = my_hi * 4294967296 + my_lo;
       pos += 8;
     }
-    const my_variable = metadata.variables[my_v - 1];
+    const my_variable = readVariable(metadata, my_v - 1);
     if (my_v < 1 || my_o < 1 || my_o > metadata.nobs || !my_variable || my_variable.type !== "strL") {
       throw new Error(`Invalid GSO key ${my_v}:${my_o}`);
     }
@@ -1774,7 +2343,7 @@ function read_strl_pointer(view, metadata, pointer_offset) {
   if (my_v === 0 && my_o === 0) {
     return null;
   }
-  const my_variable = metadata.variables[my_v - 1];
+  const my_variable = readVariable(metadata, my_v - 1);
   if (my_v < 1 || my_o < 1 || my_o > metadata.nobs || !my_variable || my_variable.type !== "strL") {
     throw new Error(`Invalid strL pointer ${my_v}:${my_o}`);
   }
@@ -2330,8 +2899,11 @@ function format_tq(quarters_since_epoch) {
 }
 
 // src/node.ts
-var INITIAL_METADATA_READ_SIZE = 64 * 1024;
+var MODERN_MAP_INITIAL_READ_SIZE = 1024;
+var LEGACY_SCAN_BLOCK_SIZE = 64 * 1024;
 var MAX_LEGACY_METADATA_SIZE = 64 * 1024 * 1024;
+var MODERN_METADATA_EXTRA_BYTES = 64 * 1024 * 1024;
+var MAX_MODERN_VARIABLES = 12e4;
 var MAX_READ_RETRIES = 2;
 var DATA_TAG_LENGTH2 = "<data>".length;
 var DEFAULT_CHUNK_ROWS = 65536;
@@ -2375,9 +2947,58 @@ function normalise_column_indices(col_indices, nvar) {
   }
   return the_columns;
 }
+function create_read_plan(metadata) {
+  const variable_count = metadata.variables.length;
+  const variable_types = new Array(variable_count);
+  const variable_byte_widths = new Array(variable_count);
+  const variable_byte_offsets = new Array(variable_count);
+  const strl_columns = [];
+  for (let index = 0; index < variable_count; index++) {
+    const variable = metadata.variables[index];
+    variable_types[index] = variable.type;
+    variable_byte_widths[index] = variable.byte_width;
+    variable_byte_offsets[index] = variable.byte_offset;
+    if (variable.type === "strL") strl_columns.push(index);
+  }
+  Object.freeze(variable_types);
+  Object.freeze(variable_byte_widths);
+  Object.freeze(variable_byte_offsets);
+  Object.freeze(strl_columns);
+  const section_offsets = Object.freeze({
+    data: metadata.section_offsets.data,
+    strls: metadata.section_offsets.strls,
+    value_labels: metadata.section_offsets.value_labels
+  });
+  return Object.freeze({
+    format_version: metadata.format_version,
+    text_encoding: metadata.text_encoding,
+    byte_order: metadata.byte_order,
+    nvar: metadata.nvar,
+    nobs: metadata.nobs,
+    obs_length: metadata.obs_length,
+    section_offsets,
+    variable_count,
+    variable_types,
+    variable_byte_widths,
+    variable_byte_offsets,
+    strl_columns,
+    variable(index) {
+      if (!Number.isInteger(index) || index < 0 || index >= variable_count) {
+        return void 0;
+      }
+      return {
+        type: variable_types[index],
+        byte_width: variable_byte_widths[index],
+        byte_offset: variable_byte_offsets[index]
+      };
+    }
+  });
+}
 var DtaFile = class _DtaFile {
   _fd;
   _metadata;
+  /** Private geometry is never exposed through the mutable metadata API. */
+  _read_plan;
   // strL (GSO) state, populated lazily by `_ensure_gso()` the first
   // time an strL cell is actually resolved. Files without strL columns,
   // and reads that never touch an strL column, never read or retain the
@@ -2396,19 +3017,14 @@ var DtaFile = class _DtaFile {
   constructor(fd, metadata, value_label_tables) {
     this._fd = fd;
     this._metadata = metadata;
+    this._read_plan = create_read_plan(metadata);
     this._gso_index = /* @__PURE__ */ new Map();
     this._gso_section = null;
     this._gso_loaded = false;
     this._value_label_tables = value_label_tables;
     this._closed = false;
-    const the_indices = [];
-    for (let i = 0; i < metadata.variables.length; i++) {
-      if (metadata.variables[i].type === "strL") {
-        the_indices.push(i);
-      }
-    }
-    this._strl_col_indices = the_indices;
-    this._strl_col_set = new Set(the_indices);
+    this._strl_col_indices = this._read_plan.strl_columns;
+    this._strl_col_set = new Set(this._strl_col_indices);
   }
   /**
    * Open a .dta file and parse all metadata.
@@ -2446,26 +3062,30 @@ var DtaFile = class _DtaFile {
   // -------------------------------------------------------
   /** Stata on-disk format release. */
   get format_version() {
-    return this._metadata.format_version;
+    return this._read_plan.format_version;
   }
   /** Resolved source encoding used for textual fields. */
   get text_encoding() {
     return resolve_text_encoding(
-      this._metadata.format_version,
-      this._metadata.text_encoding
+      this._read_plan.format_version,
+      this._read_plan.text_encoding
     );
   }
   /** Number of observations (rows). */
   get nobs() {
-    return this._metadata.nobs;
+    return this._read_plan.nobs;
   }
   /** Number of variables (columns). */
   get nvar() {
-    return this._metadata.nvar;
+    return this._read_plan.nvar;
   }
   /** Variable metadata array. */
   get variables() {
     return this._metadata.variables;
+  }
+  /** Complete metadata, including dataset-scoped notes and characteristics. */
+  get metadata() {
+    return this._metadata;
   }
   /** Dataset label string. */
   get dataset_label() {
@@ -2494,24 +3114,24 @@ var DtaFile = class _DtaFile {
   async read_rows(start, count, col_start, col_end, options) {
     if (this._closed || this._fd === null) return [];
     assert_valid_row_range(start, count);
-    if (this._metadata.nobs === 0 || start < 0 || count <= 0 || start >= this._metadata.nobs) {
+    if (this._read_plan.nobs === 0 || start < 0 || count <= 0 || start >= this._read_plan.nobs) {
       return [];
     }
     const my_actual_count = Math.min(
       count,
-      this._metadata.nobs - start
+      this._read_plan.nobs - start
     );
     const my_signal = options?.signal;
     const my_chunk_rows = normalise_chunk_rows(
       options?.chunk_rows,
-      this._metadata.obs_length,
+      this._read_plan.obs_length,
       my_signal !== void 0
     );
     if (my_signal) throw_if_aborted(my_signal);
     const my_col_start = Math.max(0, col_start ?? 0);
     const my_col_end = Math.min(
-      this._metadata.nvar,
-      col_end ?? this._metadata.nvar
+      this._read_plan.nvar,
+      col_end ?? this._read_plan.nvar
     );
     if (my_col_start >= my_col_end) return [];
     const the_rows = my_signal ? [] : new Array(my_actual_count);
@@ -2556,36 +3176,36 @@ var DtaFile = class _DtaFile {
     }
     const the_columns = normalise_column_indices(
       col_indices,
-      this._metadata.nvar
+      this._read_plan.nvar
     );
     const my_signal = options?.signal;
-    if (my_signal && the_columns.length > 0 && this._metadata.nobs > 0) {
+    if (my_signal && the_columns.length > 0 && this._read_plan.nobs > 0) {
       throw_if_aborted(my_signal);
     }
     const the_values = /* @__PURE__ */ new Map();
     for (const my_col of the_columns) {
       the_values.set(
         my_col,
-        my_signal ? [] : new Array(this._metadata.nobs)
+        my_signal ? [] : new Array(this._read_plan.nobs)
       );
     }
-    if (the_columns.length === 0 || this._metadata.nobs === 0) {
+    if (the_columns.length === 0 || this._read_plan.nobs === 0) {
       return the_values;
     }
     const my_chunk_rows = normalise_chunk_rows(
       options?.chunk_rows,
-      this._metadata.obs_length,
+      this._read_plan.obs_length,
       my_signal !== void 0
     );
     const my_complete = await this._for_each_observation_chunk(
       0,
-      this._metadata.nobs,
+      this._read_plan.nobs,
       my_chunk_rows,
       my_signal,
       (my_data_buffer, _my_chunk_start, my_chunk_count, my_output_offset) => {
         read_columns_from_data_buffer(
           my_data_buffer,
-          this._metadata,
+          this._read_plan,
           my_chunk_count,
           the_columns,
           the_values,
@@ -2611,7 +3231,7 @@ var DtaFile = class _DtaFile {
   _decode_rows_range(data_buffer, start, count, col_start, col_end, out, out_offset) {
     read_rows_from_data_buffer(
       data_buffer,
-      this._metadata,
+      this._read_plan,
       start,
       count,
       col_start,
@@ -2651,7 +3271,7 @@ var DtaFile = class _DtaFile {
       const my_chunk_start = start + my_read;
       const my_data_buffer = read_data_rows(
         this._fd,
-        this._metadata,
+        this._read_plan,
         my_chunk_start,
         my_chunk_count
       );
@@ -2699,8 +3319,8 @@ var DtaFile = class _DtaFile {
       this._gso_loaded = true;
       return;
     }
-    const my_start = this._metadata.section_offsets.strls;
-    const my_length = this._metadata.section_offsets.value_labels - my_start;
+    const my_start = this._read_plan.section_offsets.strls;
+    const my_length = this._read_plan.section_offsets.value_labels - my_start;
     if (my_length <= 0) {
       this._gso_loaded = true;
       return;
@@ -2712,7 +3332,7 @@ var DtaFile = class _DtaFile {
     );
     this._gso_index = build_gso_index(
       my_buffer,
-      this._metadata,
+      this._read_plan,
       my_start
     );
     this._gso_section = new Uint8Array(my_buffer);
@@ -2738,9 +3358,9 @@ var DtaFile = class _DtaFile {
         continue;
       }
       const my_row_col = my_abs_col - col_start;
-      const my_var = this._metadata.variables[my_abs_col];
+      const byteOffset = this._read_plan.variable_byte_offsets[my_abs_col];
       for (let i = 0; i < row_count; i++) {
-        const my_pointer_offset = i * this._metadata.obs_length + my_var.byte_offset;
+        const my_pointer_offset = i * this._read_plan.obs_length + byteOffset;
         the_rows[row_start + i][my_row_col] = this._resolve_strl_at(
           my_view,
           my_pointer_offset
@@ -2758,9 +3378,9 @@ var DtaFile = class _DtaFile {
   _resolve_strl_column(col_values, base_index, data_buffer, abs_col, count) {
     this._ensure_gso();
     const my_view = data_buffer_view(data_buffer);
-    const my_var = this._metadata.variables[abs_col];
+    const byteOffset = this._read_plan.variable_byte_offsets[abs_col];
     for (let i = 0; i < count; i++) {
-      const my_pointer_offset = i * this._metadata.obs_length + my_var.byte_offset;
+      const my_pointer_offset = i * this._read_plan.obs_length + byteOffset;
       col_values[base_index + i] = this._resolve_strl_at(
         my_view,
         my_pointer_offset
@@ -2776,7 +3396,7 @@ var DtaFile = class _DtaFile {
   _resolve_strl_at(view, pointer_offset) {
     const my_pointer = read_strl_pointer(
       view,
-      this._metadata,
+      this._read_plan,
       pointer_offset
     );
     if (!my_pointer) return "";
@@ -2845,15 +3465,44 @@ function read_legacy_metadata(fd, file_size, options) {
   if (my_expansion_start > file_size) {
     throw new Error("Truncated legacy metadata");
   }
+  const my_scan_buffer = Buffer.allocUnsafe(LEGACY_SCAN_BLOCK_SIZE);
+  let my_scan_start = 0;
+  let my_scan_length = 0;
+  const copy_scan_bytes = (target, offset, length) => {
+    const loaded_end = my_scan_start + my_scan_length;
+    if (offset < my_scan_start || offset + length > loaded_end) {
+      my_scan_start = offset;
+      my_scan_length = Math.min(
+        LEGACY_SCAN_BLOCK_SIZE,
+        file_size - my_scan_start
+      );
+      if (my_scan_length < length) {
+        throw new Error("Missing legacy expansion-field terminator");
+      }
+      read_bytes_into(
+        fd,
+        my_scan_buffer,
+        0,
+        my_scan_length,
+        my_scan_start
+      );
+    }
+    const start = offset - my_scan_start;
+    target.set(my_scan_buffer.subarray(start, start + length));
+  };
   let my_position = my_expansion_start;
+  const my_header_buffer = Buffer.allocUnsafe(my_field_header_size);
   while (true) {
     if (my_position + my_field_header_size > file_size) {
       throw new Error("Missing legacy expansion-field terminator");
     }
-    const my_field_header = read_range(fd, my_position, my_field_header_size);
-    const my_field_view = new DataView(my_field_header);
-    const my_data_type = my_field_view.getUint8(0);
-    const my_length = layout.expansion_length_width === 2 ? my_field_view.getInt16(1, my_little_endian) : my_field_view.getInt32(1, my_little_endian);
+    copy_scan_bytes(
+      my_header_buffer,
+      my_position,
+      my_field_header_size
+    );
+    const my_data_type = my_header_buffer[0];
+    const my_length = layout.expansion_length_width === 2 ? my_little_endian ? my_header_buffer.readInt16LE(1) : my_header_buffer.readInt16BE(1) : my_little_endian ? my_header_buffer.readInt32LE(1) : my_header_buffer.readInt32BE(1);
     my_position += my_field_header_size;
     if (my_data_type === 0 && my_length === 0) break;
     if (my_data_type === 0 || my_length < 0) {
@@ -2867,42 +3516,56 @@ function read_legacy_metadata(fd, file_size, options) {
       throw new Error("Legacy metadata exceeds 64 MiB safety limit");
     }
   }
-  const my_buffer = read_range(fd, 0, my_position);
-  return parse_legacy_metadata(my_buffer, file_size, options);
+  const my_prefix = read_range(fd, 0, my_position);
+  return parse_legacy_metadata(my_prefix, file_size, options);
 }
 function read_modern_metadata(fd, file_size, options) {
-  let my_read_size = Math.min(
-    file_size,
-    INITIAL_METADATA_READ_SIZE
+  const map_buffer = read_range(
+    fd,
+    0,
+    Math.min(file_size, MODERN_MAP_INITIAL_READ_SIZE)
   );
-  let my_last_error = null;
-  while (my_read_size <= file_size) {
-    const my_buffer = read_range(
-      fd,
-      0,
-      my_read_size
-    );
-    try {
-      return parse_metadata(my_buffer, options);
-    } catch (my_err) {
-      my_last_error = my_err;
-      if (my_err instanceof Error && my_err.message.includes(
-        "unrecognized format signature"
-      )) {
-        throw new Error(
-          "Unsupported .dta format: only Stata 5+ files (formats 105, 108, 110-111, 113-115 and 117-119) are supported"
-        );
-      }
-      if (my_read_size === file_size) {
-        break;
-      }
-      my_read_size = Math.min(
-        file_size,
-        my_read_size * 2
+  let header;
+  try {
+    header = parse_modern_metadata_header(map_buffer, options);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("unrecognized format signature")) {
+      throw new Error(
+        "Unsupported .dta format: only Stata 5+ files (formats 105, 108, 110-111, 113-115 and 117-119) are supported"
       );
     }
+    throw error;
   }
-  throw my_last_error;
+  const metadata_size = header.section_offsets.data;
+  if (header.nvar > MAX_MODERN_VARIABLES) {
+    throw new Error(
+      `Modern dataset exceeds the ${MAX_MODERN_VARIABLES}-variable limit`
+    );
+  }
+  const fixed_bytes_per_variable = 2 + 4 + header.widths.varname + header.widths.format + header.widths.value_label_name + header.widths.variable_label;
+  const metadata_limit = MODERN_METADATA_EXTRA_BYTES + header.nvar * fixed_bytes_per_variable;
+  if (metadata_size > metadata_limit) {
+    throw new Error("Modern metadata exceeds its dimensioned safety limit");
+  }
+  if (metadata_size > file_size) {
+    throw new Error("Truncated modern metadata");
+  }
+  let metadata_buffer;
+  if (metadata_size <= map_buffer.byteLength) {
+    metadata_buffer = map_buffer;
+  } else {
+    metadata_buffer = new ArrayBuffer(metadata_size);
+    const metadata_bytes = new Uint8Array(metadata_buffer);
+    metadata_bytes.set(new Uint8Array(map_buffer));
+    read_bytes_into(
+      fd,
+      metadata_bytes,
+      map_buffer.byteLength,
+      metadata_size - map_buffer.byteLength,
+      map_buffer.byteLength
+    );
+  }
+  return parse_metadata_from_header(metadata_buffer, header);
 }
 function read_value_labels(fd, metadata) {
   const my_section_start = metadata.section_offsets.value_labels;
@@ -2931,50 +3594,58 @@ function read_data_rows(fd, metadata, start, count) {
 }
 function read_bytes(fd, offset, length) {
   const my_buffer = Buffer.allocUnsafe(length);
+  read_bytes_into(fd, my_buffer, 0, length, offset);
+  return my_buffer;
+}
+function read_bytes_into(fd, target, target_offset, length, file_offset) {
   let my_total_read = 0;
   let my_attempts = 0;
   while (my_total_read < length) {
     const my_bytes_read = fs.readSync(
       fd,
-      my_buffer,
-      my_total_read,
+      target,
+      target_offset + my_total_read,
       length - my_total_read,
-      offset + my_total_read
+      file_offset + my_total_read
     );
     if (my_bytes_read === 0) {
       my_attempts++;
       if (my_attempts > MAX_READ_RETRIES) {
         throw new Error(
-          `Unexpected EOF while reading ${length} bytes at offset ${offset}`
+          `Unexpected EOF while reading ${length} bytes at offset ${file_offset}`
         );
       }
       continue;
     }
     my_total_read += my_bytes_read;
   }
-  return my_buffer;
 }
 function read_range(fd, offset, length) {
-  const my_bytes = read_bytes(fd, offset, length);
-  if (my_bytes.buffer instanceof ArrayBuffer && my_bytes.byteOffset === 0 && my_bytes.byteLength === my_bytes.buffer.byteLength) {
-    return my_bytes.buffer;
-  }
-  return my_bytes.buffer.slice(
-    my_bytes.byteOffset,
-    my_bytes.byteOffset + my_bytes.byteLength
-  );
+  const my_bytes = new Uint8Array(length);
+  read_bytes_into(fd, my_bytes, 0, length, offset);
+  return my_bytes.buffer;
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   DtaFile,
   STATA_MISSING_B,
+  addStataNote,
   apply_display_format,
   classify_missing_value,
   classify_raw_double_missing_at,
   classify_raw_float_missing,
+  dropStataCharacteristics,
+  dropStataNotes,
+  getStataCharacteristic,
+  getStataNote,
   is_legacy_format,
   is_missing_value,
   is_missing_value_object,
+  listStataCharacteristics,
+  listStataNotes,
   make_missing_value,
-  missing_type_to_label_key
+  missing_type_to_label_key,
+  renumberStataNotes,
+  setStataCharacteristic,
+  setStataNote
 });

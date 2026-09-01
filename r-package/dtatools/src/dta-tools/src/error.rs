@@ -66,6 +66,20 @@ pub enum DtaError {
     #[error("invalid expansion-field terminator length {value} at byte offset {offset}")]
     InvalidExpansionTerminator { value: i32, offset: usize },
 
+    /// A note or characteristic value exceeded the bounded Stata payload size.
+    #[error("{context} at byte offset {offset} has {length} bytes; maximum is {limit}")]
+    MetadataValueTooLong {
+        context: &'static str,
+        offset: usize,
+        length: usize,
+        limit: usize,
+    },
+
+    /// A raw characteristic key cannot be represented by Stata's name
+    /// grammar and therefore cannot safely enter the canonical metadata API.
+    #[error("invalid Stata characteristic name {name:?} at byte offset {offset}")]
+    InvalidCharacteristicName { name: String, offset: usize },
+
     /// A map entry did not point to the section it names.
     #[error("section {section} has map offset {actual}, expected {expected}")]
     MapOffsetMismatch {

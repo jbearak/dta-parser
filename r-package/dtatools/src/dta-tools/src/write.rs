@@ -4,9 +4,10 @@ use std::hash::{DefaultHasher, Hasher};
 use std::io::{Seek, SeekFrom, Write};
 use std::mem::size_of;
 
-use unicode_general_category::{get_general_category, GeneralCategory};
-
 use crate::metadata::{field_widths, FieldWidths};
+use crate::stata_metadata::{
+    valid_characteristic, valid_note, valid_stata_name_syntax, MAX_NOTE_NUMBER,
+};
 use crate::{
     DtaType, FormatVersion, MissingTag, SectionOffsets, DOUBLE_MISSING_DOT_BITS,
     FLOAT_MISSING_DOT_BITS,
@@ -17,10 +18,10 @@ const RELEASE_118_MAX_VARIABLES: usize = 32_767;
 const WRITE_FIELD_WIDTHS: FieldWidths = field_widths(FormatVersion::V118);
 const MAX_VALUE_LABEL_ENTRIES: usize = 65_536;
 const MAX_VALUE_LABEL_TEXT_BYTES: usize = 32_000;
-const MAX_NOTES: usize = 9_999;
-const MAX_NOTE_BYTES: usize = 67_784;
+const MAX_NOTES: usize = MAX_NOTE_NUMBER as usize;
 const MAX_STRL_BYTES: usize = 2_000_000_000;
 const WRITE_INTERRUPT_BYTES: usize = 8 * 1024 * 1024;
+const WRITE_INTERRUPT_RECORDS: usize = 4_096;
 const OBSERVATION_BUFFER_BYTES: usize = 64 * 1024 * 1024;
 const ZERO_BLOCK: [u8; 8 * 1024] = [0; 8 * 1024];
 
@@ -49,11 +50,65 @@ pub enum DtaWriteLabelValue {
     Missing(MissingTag),
 }
 
-/// One value-label entry. Tables are named after their variables in output.
+/// One value-label entry. The public writer names tables after their variables
+/// unless an internal adapter supplies a preserved source-table name.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DtaWriteValueLabel<'a> {
     pub value: DtaWriteLabelValue,
     pub label: Cow<'a, str>,
+}
+
+/// One note supplied to the DTA writer.
+///
+/// Values converted from strings receive consecutive numbers in input order.
+/// Use [`DtaWriteNote::numbered`] to preserve an explicit Stata note number.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DtaWriteNote<'a> {
+    number: Option<u32>,
+    pub text: Cow<'a, str>,
+}
+
+impl<'a> DtaWriteNote<'a> {
+    pub fn numbered(number: u32, text: impl Into<Cow<'a, str>>) -> Self {
+        Self {
+            number: Some(number),
+            text: text.into(),
+        }
+    }
+
+    pub fn number(&self) -> Option<u32> {
+        self.number
+    }
+
+    fn resolved_number(&self, index: usize) -> u32 {
+        self.number
+            .unwrap_or_else(|| u32::try_from(index + 1).expect("note count is bounded"))
+    }
+}
+
+impl<'a> From<&'a str> for DtaWriteNote<'a> {
+    fn from(text: &'a str) -> Self {
+        Self {
+            number: None,
+            text: Cow::Borrowed(text),
+        }
+    }
+}
+
+impl From<String> for DtaWriteNote<'static> {
+    fn from(text: String) -> Self {
+        Self {
+            number: None,
+            text: Cow::Owned(text),
+        }
+    }
+}
+
+/// One user-authored characteristic supplied to the DTA writer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DtaWriteCharacteristic<'a> {
+    pub name: Cow<'a, str>,
+    pub value: Cow<'a, str>,
 }
 
 /// On-demand values for adapters that cannot expose borrowed Rust slices.
@@ -124,6 +179,63 @@ pub trait DtaWriteObservationSource {
     }
 
     fn string_value(&self, column: usize, row: u64) -> Result<Cow<'_, str>, DtaWriteError>;
+}
+
+#[derive(Clone, Copy)]
+struct ValueLabelTableRef<'a> {
+    name: &'a str,
+    entries: &'a [DtaWriteValueLabel<'a>],
+}
+
+trait DtaWriteValueLabelSource {
+    fn value_label_table(&self, _column: usize) -> Option<ValueLabelTableRef<'_>> {
+        None
+    }
+}
+
+impl DtaWriteValueLabelSource for () {}
+
+#[cfg(feature = "r-adapter-internal")]
+#[doc(hidden)]
+pub struct DtaWriteValueLabelTable<'a> {
+    name: &'a str,
+    entries: &'a [DtaWriteValueLabel<'a>],
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl<'a> DtaWriteValueLabelTable<'a> {
+    #[doc(hidden)]
+    pub fn new(name: &'a str, entries: &'a [DtaWriteValueLabel<'a>]) -> Self {
+        Self { name, entries }
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+#[doc(hidden)]
+pub struct DtaWriteValueLabelRegistry<'a> {
+    tables: &'a [DtaWriteValueLabelTable<'a>],
+    indices: &'a [Option<usize>],
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl<'a> DtaWriteValueLabelRegistry<'a> {
+    #[doc(hidden)]
+    pub fn new(tables: &'a [DtaWriteValueLabelTable<'a>], indices: &'a [Option<usize>]) -> Self {
+        Self { tables, indices }
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+impl DtaWriteValueLabelSource for DtaWriteValueLabelRegistry<'_> {
+    fn value_label_table(&self, column: usize) -> Option<ValueLabelTableRef<'_>> {
+        let table_index = self.indices.get(column).copied().flatten()?;
+        self.tables
+            .get(table_index)
+            .map(|table| ValueLabelTableRef {
+                name: table.name,
+                entries: table.entries,
+            })
+    }
 }
 
 /// Borrowed or on-demand values for one output variable.
@@ -228,6 +340,8 @@ pub struct DtaWriteColumn<'a> {
     /// distinct from the number of entries because Stata permits empty tables.
     pub has_value_labels: bool,
     pub value_labels: Vec<DtaWriteValueLabel<'a>>,
+    pub notes: Vec<DtaWriteNote<'a>>,
+    pub characteristics: Vec<DtaWriteCharacteristic<'a>>,
     pub values: DtaWriteColumnValues<'a>,
 }
 
@@ -235,7 +349,8 @@ pub struct DtaWriteColumn<'a> {
 #[derive(Debug)]
 pub struct DtaWriteData<'a> {
     pub dataset_label: Cow<'a, str>,
-    pub notes: Vec<Cow<'a, str>>,
+    pub notes: Vec<DtaWriteNote<'a>>,
+    pub characteristics: Vec<DtaWriteCharacteristic<'a>>,
     pub columns: Vec<DtaWriteColumn<'a>>,
 }
 
@@ -356,38 +471,6 @@ fn reserved_stata_name(name: &str) -> bool {
             .is_some_and(|byte| matches!(*byte, b'1'..=b'9'))
             && suffix.bytes().all(|byte| byte.is_ascii_digit())
     })
-}
-
-fn stata_name_letter(character: char) -> bool {
-    matches!(
-        get_general_category(character),
-        GeneralCategory::UppercaseLetter
-            | GeneralCategory::LowercaseLetter
-            | GeneralCategory::TitlecaseLetter
-            | GeneralCategory::ModifierLetter
-            | GeneralCategory::OtherLetter
-    )
-}
-
-fn stata_name_number(character: char) -> bool {
-    matches!(
-        get_general_category(character),
-        GeneralCategory::DecimalNumber
-            | GeneralCategory::LetterNumber
-            | GeneralCategory::OtherNumber
-    )
-}
-
-fn valid_stata_name_syntax(name: &str, maximum_characters: usize) -> bool {
-    let mut characters = name.chars();
-    let Some(first) = characters.next() else {
-        return false;
-    };
-    (first == '_' || stata_name_letter(first))
-        && characters.all(|character| {
-            character == '_' || stata_name_letter(character) || stata_name_number(character)
-        })
-        && name.chars().count() <= maximum_characters
 }
 
 fn valid_stata_name(name: &str) -> bool {
@@ -621,6 +704,44 @@ fn validate_numeric_value(
     Ok(())
 }
 
+fn validate_value_label_entry_count(
+    column_name: &str,
+    entries: &[DtaWriteValueLabel<'_>],
+) -> Result<(), DtaWriteError> {
+    if entries.len() > MAX_VALUE_LABEL_ENTRIES {
+        return Err(DtaWriteError::InvalidValueLabels {
+            column: column_name.to_owned(),
+            message: format!(
+                "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
+                entries.len()
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn validate_value_label_entries(
+    column_name: &str,
+    entries: &[DtaWriteValueLabel<'_>],
+) -> Result<(), DtaWriteError> {
+    validate_value_label_entry_count(column_name, entries)?;
+    for entry in entries {
+        label_raw_value(entry.value).map_err(|message| DtaWriteError::InvalidValueLabels {
+            column: column_name.to_owned(),
+            message: message.into(),
+        })?;
+        if entry.label.contains('\0') || entry.label.len() > MAX_VALUE_LABEL_TEXT_BYTES {
+            return Err(DtaWriteError::InvalidValueLabels {
+                column: column_name.to_owned(),
+                message: format!(
+                    "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
 fn validate_structure(
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
@@ -637,27 +758,10 @@ fn validate_structure(
     let row_count = data.columns[0].values.len()?;
     validate_text_field(&data.dataset_label, 80, 320, "dataset label")
         .map_err(DtaWriteError::InvalidDatasetMetadata)?;
-    if data.notes.len() > MAX_NOTES {
-        return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-            "dataset has {} notes; maximum is {MAX_NOTES}",
-            data.notes.len()
-        )));
-    }
-    for (index, note) in data.notes.iter().enumerate() {
-        if note.contains('\0') {
-            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "note {} contains a NUL character",
-                index + 1
-            )));
-        }
-        if note.len() > MAX_NOTE_BYTES {
-            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "note {} has {} UTF-8 bytes; maximum is {MAX_NOTE_BYTES}",
-                index + 1,
-                note.len()
-            )));
-        }
-    }
+    validate_notes(&data.notes)
+        .map_err(|message| DtaWriteError::InvalidDatasetMetadata(format!("dataset {message}")))?;
+    validate_characteristics(&data.characteristics)
+        .map_err(|message| DtaWriteError::InvalidDatasetMetadata(format!("dataset {message}")))?;
     if let Some(timestamp) = &options.timestamp {
         if timestamp.contains('\0') || timestamp.len() > u8::MAX as usize {
             return Err(DtaWriteError::InvalidDatasetMetadata(
@@ -668,6 +772,28 @@ fn validate_structure(
 
     let mut names = HashSet::with_capacity(data.columns.len());
     for column in &data.columns {
+        if column.name == "_dta" && (!column.notes.is_empty() || !column.characteristics.is_empty())
+        {
+            return Err(DtaWriteError::InvalidVariable {
+                column: column.name.to_string(),
+                message: "notes and characteristics on a variable named `_dta` cannot be represented in DTA"
+                    .into(),
+            });
+        }
+        if !column.notes.is_empty() {
+            validate_notes(&column.notes).map_err(|message| DtaWriteError::InvalidVariable {
+                column: column.name.to_string(),
+                message,
+            })?;
+        }
+        if !column.characteristics.is_empty() {
+            validate_characteristics(&column.characteristics).map_err(|message| {
+                DtaWriteError::InvalidVariable {
+                    column: column.name.to_string(),
+                    message,
+                }
+            })?;
+        }
         if !valid_stata_name(&column.name) {
             return Err(DtaWriteError::InvalidVariable {
                 column: column.name.to_string(),
@@ -721,15 +847,9 @@ fn validate_structure(
                 message: format!("column has {column_row_count} rows but dataset has {row_count}"),
             });
         }
-        if column.value_labels.len() > MAX_VALUE_LABEL_ENTRIES {
-            return Err(DtaWriteError::InvalidValueLabels {
-                column: column.name.to_string(),
-                message: format!(
-                    "table has {} entries; maximum is {MAX_VALUE_LABEL_ENTRIES}",
-                    column.value_labels.len()
-                ),
-            });
-        }
+        // Keep the public writer's established precedence: an oversized table
+        // wins before attachment/storage errors, while entry errors follow them.
+        validate_value_label_entry_count(&column.name, &column.value_labels)?;
         if !column.has_value_labels && !column.value_labels.is_empty() {
             return Err(DtaWriteError::InvalidValueLabels {
                 column: column.name.to_string(),
@@ -744,20 +864,7 @@ fn validate_structure(
                 message: "string variables cannot have numeric value labels".into(),
             });
         }
-        for entry in &column.value_labels {
-            label_raw_value(entry.value).map_err(|message| DtaWriteError::InvalidValueLabels {
-                column: column.name.to_string(),
-                message: message.into(),
-            })?;
-            if entry.label.contains('\0') || entry.label.len() > MAX_VALUE_LABEL_TEXT_BYTES {
-                return Err(DtaWriteError::InvalidValueLabels {
-                    column: column.name.to_string(),
-                    message: format!(
-                        "label text must contain at most {MAX_VALUE_LABEL_TEXT_BYTES} UTF-8 bytes and no NUL"
-                    ),
-                });
-            }
-        }
+        validate_value_label_entries(&column.name, &column.value_labels)?;
     }
     Ok(row_count)
 }
@@ -798,6 +905,67 @@ fn validate_data(data: &DtaWriteData<'_>, options: &DtaWriteOptions) -> Result<u
     Ok(row_count)
 }
 
+fn output_value_label_table<'a, S: DtaWriteValueLabelSource + ?Sized>(
+    data: &'a DtaWriteData<'_>,
+    source: &'a S,
+    column_index: usize,
+) -> Option<ValueLabelTableRef<'a>> {
+    let column = &data.columns[column_index];
+    if !column.has_value_labels {
+        return None;
+    }
+    Some(
+        source
+            .value_label_table(column_index)
+            .unwrap_or(ValueLabelTableRef {
+                name: column.name.as_ref(),
+                entries: &column.value_labels,
+            }),
+    )
+}
+
+#[cfg(feature = "r-adapter-internal")]
+fn validate_value_label_names<S: DtaWriteValueLabelSource + ?Sized>(
+    data: &DtaWriteData<'_>,
+    source: &S,
+) -> Result<(), DtaWriteError> {
+    let mut tables: HashMap<&str, &[DtaWriteValueLabel<'_>]> = HashMap::new();
+    for (column_index, column) in data.columns.iter().enumerate() {
+        let Some(table) = output_value_label_table(data, source, column_index) else {
+            continue;
+        };
+        if !valid_stata_name(table.name) {
+            return Err(DtaWriteError::InvalidValueLabels {
+                column: column.name.to_string(),
+                message: format!(
+                    "table name {:?} must be a valid Stata name of at most 32 Unicode characters",
+                    table.name
+                ),
+            });
+        }
+        match tables.entry(table.name) {
+            Entry::Vacant(entry) => {
+                validate_value_label_entries(&column.name, table.entries)?;
+                entry.insert(table.entries);
+            }
+            Entry::Occupied(entry)
+                if (entry.get().len() == table.entries.len()
+                    && (std::ptr::eq(entry.get().as_ptr(), table.entries.as_ptr())
+                        || *entry.get() == table.entries)) => {}
+            Entry::Occupied(_) => {
+                return Err(DtaWriteError::InvalidValueLabels {
+                    column: column.name.to_string(),
+                    message: format!(
+                        "table name {:?} is associated with different mappings",
+                        table.name
+                    ),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 fn position<W: Seek>(writer: &mut W) -> Result<u64, DtaWriteError> {
     Ok(writer.stream_position()?)
 }
@@ -836,28 +1004,65 @@ fn write_field<W: Write>(writer: &mut W, value: &str, width: usize) -> Result<()
     write_zeros(writer, padding)
 }
 
-fn write_note_characteristic<W: Write>(
+fn write_characteristic<W: Write>(
     writer: &mut W,
+    target: &str,
     name: &str,
     value: &str,
-) -> Result<(), DtaWriteError> {
+) -> Result<usize, DtaWriteError> {
     write_tag(writer, b"<ch>")?;
     let payload_length = WRITE_FIELD_WIDTHS
         .varname
         .checked_mul(2)
         .and_then(|length| length.checked_add(value.len()))
         .and_then(|length| length.checked_add(1))
-        .ok_or(DtaWriteError::Overflow("note characteristic"))?;
+        .ok_or(DtaWriteError::Overflow("characteristic"))?;
     writer.write_all(
         &u32::try_from(payload_length)
-            .map_err(|_| DtaWriteError::Overflow("note characteristic"))?
+            .map_err(|_| DtaWriteError::Overflow("characteristic"))?
             .to_le_bytes(),
     )?;
-    write_field(writer, "_dta", WRITE_FIELD_WIDTHS.varname)?;
+    write_field(writer, target, WRITE_FIELD_WIDTHS.varname)?;
     write_field(writer, name, WRITE_FIELD_WIDTHS.varname)?;
     writer.write_all(value.as_bytes())?;
     writer.write_all(&[0])?;
     write_tag(writer, b"</ch>")?;
+    payload_length
+        .checked_add(b"<ch>".len() + 4 + b"</ch>".len())
+        .ok_or(DtaWriteError::Overflow("characteristic"))
+}
+
+fn validate_notes(notes: &[DtaWriteNote<'_>]) -> Result<(), String> {
+    if notes.len() > MAX_NOTES {
+        return Err(format!("has {} notes; maximum is {MAX_NOTES}", notes.len()));
+    }
+    let mut numbers = HashSet::with_capacity(notes.len());
+    for (index, note) in notes.iter().enumerate() {
+        let number = note.resolved_number(index);
+        if !(1..=MAX_NOTES as u32).contains(&number) || !numbers.insert(number) {
+            return Err(format!("has an invalid or duplicate note number {number}"));
+        }
+        if !valid_note(number, &note.text) {
+            return Err(format!(
+                "note {number} must contain no NUL and have a valid bounded value"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_characteristics(characteristics: &[DtaWriteCharacteristic<'_>]) -> Result<(), String> {
+    let mut names = HashSet::with_capacity(characteristics.len());
+    for characteristic in characteristics {
+        if !valid_characteristic(&characteristic.name, &characteristic.value)
+            || !names.insert(characteristic.name.as_ref())
+        {
+            return Err(format!(
+                "has invalid, duplicate, over-limit, or reserved characteristic `{}`",
+                characteristic.name
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -895,16 +1100,18 @@ fn write_header<W: Write>(
     Ok(())
 }
 
-fn write_metadata_sections<W, S>(
+fn write_metadata_sections<W, S, L>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     version: FormatVersion,
     offsets: &mut SectionOffsets,
-    source: &S,
+    observation_source: &S,
+    value_label_source: &L,
 ) -> Result<(), DtaWriteError>
 where
     W: Write + Seek,
     S: DtaWriteObservationSource + ?Sized,
+    L: DtaWriteValueLabelSource + ?Sized,
 {
     offsets.variable_types = position(writer)?;
     write_tag(writer, b"<variable_types>")?;
@@ -912,7 +1119,7 @@ where
         writer.write_all(&column.dta_type.modern_code().to_le_bytes())?;
     }
     write_tag(writer, b"</variable_types>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.varnames = position(writer)?;
     write_tag(writer, b"<varnames>")?;
@@ -920,7 +1127,7 @@ where
         write_field(writer, &column.name, WRITE_FIELD_WIDTHS.varname)?;
     }
     write_tag(writer, b"</varnames>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.sortlist = position(writer)?;
     write_tag(writer, b"<sortlist>")?;
@@ -933,7 +1140,7 @@ where
         .ok_or(DtaWriteError::Overflow("sortlist"))?;
     write_zeros(writer, sort_bytes)?;
     write_tag(writer, b"</sortlist>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.formats = position(writer)?;
     write_tag(writer, b"<formats>")?;
@@ -941,20 +1148,17 @@ where
         write_field(writer, &column.format, WRITE_FIELD_WIDTHS.format)?;
     }
     write_tag(writer, b"</formats>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.value_label_names = position(writer)?;
     write_tag(writer, b"<value_label_names>")?;
-    for column in &data.columns {
-        let name = if column.has_value_labels {
-            column.name.as_ref()
-        } else {
-            ""
-        };
+    for column_index in 0..data.columns.len() {
+        let name = output_value_label_table(data, value_label_source, column_index)
+            .map_or("", |table| table.name);
         write_field(writer, name, WRITE_FIELD_WIDTHS.value_label_name)?;
     }
     write_tag(writer, b"</value_label_names>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.variable_labels = position(writer)?;
     write_tag(writer, b"<variable_labels>")?;
@@ -962,19 +1166,58 @@ where
         write_field(writer, &column.label, WRITE_FIELD_WIDTHS.variable_label)?;
     }
     write_tag(writer, b"</variable_labels>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
 
     offsets.characteristics = position(writer)?;
     write_tag(writer, b"<characteristics>")?;
-    if !data.notes.is_empty() {
-        write_note_characteristic(writer, "note0", &data.notes.len().to_string())?;
-    }
-    for (index, note) in data.notes.iter().enumerate() {
-        write_note_characteristic(writer, &format!("note{}", index + 1), note)?;
-        source.check_interrupt()?;
+    let mut bytes_since_interrupt = 0_usize;
+    let mut records_since_interrupt = 0_usize;
+    let mut write_scope = |writer: &mut W,
+                           target: &str,
+                           notes: &[DtaWriteNote<'_>],
+                           characteristics: &[DtaWriteCharacteristic<'_>]|
+     -> Result<(), DtaWriteError> {
+        let mut record_written = |bytes: usize| -> Result<(), DtaWriteError> {
+            bytes_since_interrupt = bytes_since_interrupt.saturating_add(bytes);
+            records_since_interrupt = records_since_interrupt.saturating_add(1);
+            if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES
+                || records_since_interrupt >= WRITE_INTERRUPT_RECORDS
+            {
+                observation_source.check_interrupt()?;
+                bytes_since_interrupt = 0;
+                records_since_interrupt = 0;
+            }
+            Ok(())
+        };
+        if let Some(maximum) = notes
+            .iter()
+            .enumerate()
+            .map(|(index, note)| note.resolved_number(index))
+            .max()
+        {
+            let maximum = maximum.to_string();
+            record_written(write_characteristic(writer, target, "note0", &maximum)?)?;
+        }
+        for (index, note) in notes.iter().enumerate() {
+            let name = format!("note{}", note.resolved_number(index));
+            record_written(write_characteristic(writer, target, &name, &note.text)?)?;
+        }
+        for characteristic in characteristics {
+            record_written(write_characteristic(
+                writer,
+                target,
+                &characteristic.name,
+                &characteristic.value,
+            )?)?;
+        }
+        Ok(())
+    };
+    write_scope(writer, "_dta", &data.notes, &data.characteristics)?;
+    for column in &data.columns {
+        write_scope(writer, &column.name, &column.notes, &column.characteristics)?;
     }
     write_tag(writer, b"</characteristics>")?;
-    source.check_interrupt()?;
+    observation_source.check_interrupt()?;
     Ok(())
 }
 
@@ -1615,18 +1858,28 @@ fn write_strls<W: Write, S: DtaWriteObservationSource + ?Sized>(
     Ok(())
 }
 
-fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
+fn write_value_labels<W, S, L>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
-    source: &S,
-) -> Result<(), DtaWriteError> {
+    observation_source: &S,
+    value_label_source: &L,
+) -> Result<(), DtaWriteError>
+where
+    W: Write,
+    S: DtaWriteObservationSource + ?Sized,
+    L: DtaWriteValueLabelSource + ?Sized,
+{
     write_tag(writer, b"<value_labels>")?;
-    for column in &data.columns {
-        if !column.has_value_labels {
+    let mut written = HashSet::new();
+    for (column_index, column) in data.columns.iter().enumerate() {
+        let Some(table) = output_value_label_table(data, value_label_source, column_index) else {
+            continue;
+        };
+        if !written.insert(table.name) {
             continue;
         }
-        let mut entries = column
-            .value_labels
+        let mut entries = table
+            .entries
             .iter()
             .map(|entry| Ok((label_raw_value(entry.value)?, entry.label.as_ref())))
             .collect::<Result<Vec<_>, &'static str>>()
@@ -1658,7 +1911,7 @@ fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
                 .map_err(|_| DtaWriteError::Overflow("value-label table"))?
                 .to_le_bytes(),
         )?;
-        write_field(writer, &column.name, WRITE_FIELD_WIDTHS.varname)?;
+        write_field(writer, table.name, WRITE_FIELD_WIDTHS.varname)?;
         writer.write_all(&[0; 3])?;
         writer.write_all(
             &i32::try_from(entries.len())
@@ -1688,34 +1941,36 @@ fn write_value_labels<W: Write, S: DtaWriteObservationSource + ?Sized>(
                 writer.write_all(chunk)?;
                 bytes_since_interrupt += chunk.len();
                 if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES {
-                    source.check_interrupt()?;
+                    observation_source.check_interrupt()?;
                     bytes_since_interrupt = 0;
                 }
             }
             writer.write_all(&[0])?;
             bytes_since_interrupt += 1;
             if bytes_since_interrupt >= WRITE_INTERRUPT_BYTES {
-                source.check_interrupt()?;
+                observation_source.check_interrupt()?;
                 bytes_since_interrupt = 0;
             }
         }
         write_tag(writer, b"</lbl>")?;
-        source.check_interrupt()?;
+        observation_source.check_interrupt()?;
     }
     write_tag(writer, b"</value_labels>")?;
     Ok(())
 }
 
-fn save_dta_impl<W, S>(
+fn save_dta_impl<W, S, L>(
     writer: &mut W,
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
     observation_source: &S,
+    value_label_source: &L,
     row_count: u64,
 ) -> Result<DtaWriteSummary, DtaWriteError>
 where
     W: Write + Seek,
     S: DtaWriteObservationSource + ?Sized,
+    L: DtaWriteValueLabelSource + ?Sized,
 {
     validate_destination(writer)?;
     let version = if data.columns.len() <= RELEASE_118_MAX_VARIABLES {
@@ -1740,7 +1995,14 @@ where
     }
     write_tag(writer, b"</map>")?;
 
-    write_metadata_sections(writer, data, version, &mut offsets, observation_source)?;
+    write_metadata_sections(
+        writer,
+        data,
+        version,
+        &mut offsets,
+        observation_source,
+        value_label_source,
+    )?;
     offsets.data = position(writer)?;
     write_tag(writer, b"<data>")?;
     write_observations(
@@ -1757,7 +2019,7 @@ where
     offsets.strls = position(writer)?;
     write_strls(writer, data, observation_source, &strls)?;
     offsets.value_labels = position(writer)?;
-    write_value_labels(writer, data, observation_source)?;
+    write_value_labels(writer, data, observation_source, value_label_source)?;
     observation_source.check_interrupt()?;
     offsets.stata_data_close = position(writer)?;
     write_tag(writer, b"</stata_dta>")?;
@@ -1798,9 +2060,9 @@ pub fn save_dta_to<W: Write + Seek>(
     data: &DtaWriteData<'_>,
     options: &DtaWriteOptions,
 ) -> Result<DtaWriteSummary, DtaWriteError> {
-    let row_count = validate_data(data, options)?;
     let source = ColumnObservationSource { data };
-    save_dta_impl(writer, data, options, &source, row_count)
+    let row_count = validate_data(data, options)?;
+    save_dta_impl(writer, data, options, &source, &(), row_count)
 }
 
 /// Stream prevalidated data from an adapter-specific observation source.
@@ -1829,7 +2091,64 @@ where
             "prevalidated row count is {row_count} but columns have {column_row_count} rows"
         )));
     }
-    save_dta_impl(writer, data, options, observation_source, row_count)
+    save_dta_impl(writer, data, options, observation_source, &(), row_count)
+}
+
+/// Typed writer seam compiled only for the in-repository R adapter.
+#[cfg(feature = "r-adapter-internal")]
+#[doc(hidden)]
+pub fn write_prevalidated_dta_with_value_label_registry_to<W, S>(
+    writer: &mut W,
+    data: &DtaWriteData<'_>,
+    options: &DtaWriteOptions,
+    observation_source: &S,
+    row_count: u64,
+    registry: &DtaWriteValueLabelRegistry<'_>,
+) -> Result<DtaWriteSummary, DtaWriteError>
+where
+    W: Write + Seek,
+    S: DtaWriteObservationSource + ?Sized,
+{
+    let column_row_count = validate_structure(data, options)?;
+    if column_row_count != row_count {
+        return Err(DtaWriteError::InvalidDatasetMetadata(format!(
+            "prevalidated row count is {row_count} but columns have {column_row_count} rows"
+        )));
+    }
+    if registry.indices.len() != data.columns.len() {
+        return Err(DtaWriteError::InvalidDatasetMetadata(
+            "value-label table index count does not match the columns".to_owned(),
+        ));
+    }
+    if registry
+        .indices
+        .iter()
+        .flatten()
+        .any(|&index| index >= registry.tables.len())
+    {
+        return Err(DtaWriteError::InvalidDatasetMetadata(
+            "value-label table registry is inconsistent".to_owned(),
+        ));
+    }
+    if data
+        .columns
+        .iter()
+        .zip(registry.indices)
+        .any(|(column, table_index)| column.has_value_labels != table_index.is_some())
+    {
+        return Err(DtaWriteError::InvalidDatasetMetadata(
+            "value-label table registry does not match the columns".to_owned(),
+        ));
+    }
+    validate_value_label_names(data, registry)?;
+    save_dta_impl(
+        writer,
+        data,
+        options,
+        observation_source,
+        registry,
+        row_count,
+    )
 }
 
 impl std::fmt::Display for DtaWriteLabelValue {

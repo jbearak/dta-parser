@@ -16,6 +16,19 @@ export {
 } from './strl-reader';
 export { parse_value_labels } from './value-labels';
 export { apply_display_format } from './display-format';
+export {
+    addStataNote,
+    dropStataCharacteristics,
+    dropStataNotes,
+    getStataCharacteristic,
+    getStataNote,
+    listStataCharacteristics,
+    listStataNotes,
+    renumberStataNotes,
+    setStataCharacteristic,
+    setStataNote,
+} from './stata-metadata';
+export type { StataMetadataTarget } from './stata-metadata';
 export type {
     VariableInfo,
     Row,
@@ -23,10 +36,14 @@ export type {
     MissingType,
     MissingValue,
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
     DtaType,
     FormatVersion,
     LegacyFormatVersion,
     SectionOffsets,
+    StataCharacteristic,
+    StataNote,
 } from './types';
 export type {
     TextEncoding,

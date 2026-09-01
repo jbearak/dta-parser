@@ -316,7 +316,7 @@ test_that("character missing values become empty strings and long values use str
     specification <- dtatools:::.prepare_dta_write(
         data, NULL, 4L, TRUE
     )
-    expect_identical(specification[[3L]][[1L]][[7L]], data$short)
+    expect_identical(specification[[3L]][[1L]]$values, data$short)
 })
 
 test_that("fixed strings retain declared storage through Arrow", {
@@ -492,10 +492,10 @@ test_that("Date and POSIXct columns use Stata epochs and both timezone modes", {
     specification <- dtatools:::.prepare_dta_write(
         data, NULL, 2045L, TRUE
     )
-    expect_identical(specification[[3L]][[1L]][[9L]], 3653)
-    expect_identical(specification[[3L]][[1L]][[10L]], 1)
-    expect_identical(specification[[3L]][[2L]][[9L]], 315619200)
-    expect_identical(specification[[3L]][[2L]][[10L]], 1000)
+    expect_identical(specification[[3L]][[1L]]$numeric_shift, 3653)
+    expect_identical(specification[[3L]][[1L]]$numeric_scale, 1)
+    expect_identical(specification[[3L]][[2L]]$numeric_shift, 315619200)
+    expect_identical(specification[[3L]][[2L]]$numeric_scale, 1000)
 })
 
 test_that("timezone adjustment retains invalid datetimes for native warnings", {
@@ -952,11 +952,13 @@ test_that("generic ALTSTRING metadata stays rooted through native writing", {
         data, NULL, 2045L, TRUE, 19L
     )
     specification[[2L]] <- ephemeral(specification[[2L]])
-    specification[[3L]][[1L]][[6L]] <- ephemeral(
-        specification[[3L]][[1L]][[6L]]
+    specification[[5L]][[1L]]$label_texts <- ephemeral(
+        specification[[5L]][[1L]]$label_texts
     )
     expect_true(dtatools:::.is_altrep(specification[[2L]]))
-    expect_true(dtatools:::.is_altrep(specification[[3L]][[1L]][[6L]]))
+    expect_true(dtatools:::.is_altrep(
+        specification[[5L]][[1L]]$label_texts
+    ))
 
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)

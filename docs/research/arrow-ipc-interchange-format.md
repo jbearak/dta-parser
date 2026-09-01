@@ -56,9 +56,13 @@ Settled 2026-08-29; the sections below give the reasoning.
    Stata sentinel integers and NaN payloads. A generic-reader compatibility
    representation is deferred to
    [issue #82](https://github.com/jbearak/dta-parser/issues/82).
-4. **Profile safety**: a newer or malformed profile is a hard error, with an
-   explicit escape hatch to read the raw storage arrays. Plain Arrow files
-   never acquire Stata semantics.
+4. **Profile safety**: a newer profile version or malformed profile metadata
+   consumed by the read is a hard error, with an explicit escape hatch to read
+   the raw storage arrays. A predicate-free projection validates the dataset
+   and selected field documents, and discards unselected field documents
+   without parsing them. A profiled predicate summary and a profiled read that records
+   the complete stored signature validate every field, as does a full read.
+   Plain Arrow files never acquire Stata semantics.
 5. **Projection is a v1 requirement**: `read_arrow()` mirrors `read_dta()`'s
    `col_select`, `skip`, and `n_max`, and projected reads must cost I/O
    proportional to the selected columns' buffers.
@@ -349,7 +353,7 @@ namespaced name and optional metadata; implementations that do not recognize
 the extension can still handle its storage type. The extension complements the
 documented storage layout, it does not replace it.
 
-### Labels, formats, declarations, and notes
+### Labels, formats, declarations, notes, and characteristics
 
 Arrow supplies application-defined key-value metadata on schemas and fields.
 The `ARROW` namespace is reserved, so dtatools uses its own namespace.
@@ -359,25 +363,50 @@ define the underlying mechanism.
 The profile uses:
 
 ```text
-dtatools:profile-version = "0" | "1"
+dtatools:profile-version = "0"
 dtatools:dataset = <versioned JSON document>
 dtatools:field = <versioned JSON document on each Arrow field>
 dtatools:checksums = <versioned JSON document in the file footer>
 ```
 
-The dataset document contains the dataset label, ordered notes, and a registry
-of value-label tables keyed by Stata label-table name. Field documents contain
-the variable label, value-label-table name, Stata display format, original
-storage declaration, missing-value encoding, a release discriminator when a
-legacy missing layout must be retained, and portable R semantics. JSON
-is inspectable across languages and avoids embedding language-native serialized
-objects in extension metadata. [Arrow's security guidance](https://arrow.apache.org/docs/format/Security.html#extension-types)
+The dataset document contains the dataset label, numbered notes, arbitrary
+Stata characteristics, and a registry of value-label tables keyed by Stata
+label-table name. Field documents contain the same variable-scoped note and
+characteristic arrays alongside the variable label, value-label-table name,
+Stata display format, original storage declaration, missing-value encoding, a
+release discriminator when a legacy missing layout must be retained, and
+portable R semantics. The relevant profile-0 members are:
+
+```json
+{
+  "version": 0,
+  "label": "Survey",
+  "notes": [{"number": 3, "text": "Checked"}],
+  "characteristics": [{"name": "source", "value": "baseline"}],
+  "value_labels": {}
+}
+```
+
+Notes must have unique ascending numbers from 1 through 9,999. Characteristics
+must have unique valid Stata names and cannot use numeric `note*` keys or the
+language/alias structural keys. Older
+profile-0 string note arrays remain readable as consecutive notes beginning at
+one. Writers omit empty arrays; omission and an explicit empty array have the
+same behavior. JSON is inspectable across languages and avoids embedding
+language-native serialized objects in extension metadata.
+[Arrow's security guidance](https://arrow.apache.org/docs/format/Security.html#extension-types)
 recommends a robust metadata serialization rather than native object
 serialization.
 
 **Profile-version handling**: a file whose profile version is newer than the
-reader understands, or whose profile metadata fails to parse or validate, is a
-hard error naming the version and suggesting a package upgrade. An explicit
+reader understands is a hard error naming the version and suggesting a package
+upgrade. The reader also rejects any profile document it consumes that fails
+to parse or validate. A predicate-free projected read consumes the dataset
+document and the selected fields' documents; it discards unselected fields'
+private documents without parsing them. A profiled predicate first consumes a full
+summary, while recording a stored signature with profile handling consumes the
+complete schema; both therefore validate every field document. A full read
+does the same. An explicit
 escape hatch (for example `read_arrow(file, profile = FALSE)`) reads the raw
 storage arrays as plain Arrow data. Silent degradation is not permitted: a
 labeled, tagged-missing dataset must not quietly become plain numerics, which
@@ -389,7 +418,7 @@ The consequences are explicit:
   declared frozen profile version, indefinitely;
 * a generic Arrow reader obtains the storage arrays, subject to the
   raw-storage missing-value caveat, and may ignore labels, formats, notes,
-  storage declarations, R semantics, and checksums.
+  characteristics, storage declarations, R semantics, and checksums.
 
 ### Integrity checksums
 
@@ -399,6 +428,13 @@ silently as a wrong value. The profile therefore records an xxHash64 checksum
 **per buffer** — per column per record batch — in a `dtatools:checksums`
 document stored in the file footer's custom metadata, which is written last,
 after all data has been hashed.
+
+The reader accepts at most 64 MiB of encoded footer metadata. The writer
+constructs the exact prospective footer shape before opening its destination
+and rejects a dataset whose schema, profile documents, checksum document, and
+block index would cross that bound. Per-value metadata validation alone is not
+enough because many individually valid notes or characteristics share the same
+footer.
 
 Per-buffer granularity is the only choice compatible with projection and row
 ranges: a projected read verifies exactly the buffers it touches, and a

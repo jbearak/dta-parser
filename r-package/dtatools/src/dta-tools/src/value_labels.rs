@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::endian::{
     checked_add, checked_mul, expect_at, offset_to_usize, read_i16, read_i32, read_u16, slice_at,
 };
@@ -14,6 +16,64 @@ const LABEL_OPEN: &[u8] = b"<lbl>";
 const LABEL_CLOSE: &[u8] = b"</lbl>";
 const STATA_DATA_CLOSE: &[u8] = b"</stata_dta>";
 const RESERVED_WIDTH: usize = 3;
+pub(crate) const MAX_VALUE_LABEL_ENTRIES: usize = 65_536;
+
+#[derive(Clone, Copy)]
+pub(crate) struct OffsetValueLabelFrame {
+    pub entry_count: usize,
+    pub text_length: usize,
+}
+
+pub(crate) fn frame_offset_value_label_payload(
+    header: &[u8],
+    byte_order: crate::ByteOrder,
+    table_offset: usize,
+    payload_offset: usize,
+    declared: usize,
+) -> Result<OffsetValueLabelFrame, DtaError> {
+    let entry_count_i32 = read_i32(header, 0, byte_order, "value-label entry count")?;
+    if entry_count_i32 < 0 {
+        return Err(DtaError::NegativeValueLabelField {
+            field: "entry count",
+            value: entry_count_i32,
+            offset: payload_offset,
+        });
+    }
+    let text_length_i32 = read_i32(header, 4, byte_order, "value-label text length")?;
+    if text_length_i32 < 0 {
+        return Err(DtaError::NegativeValueLabelField {
+            field: "text length",
+            value: text_length_i32,
+            offset: payload_offset.saturating_add(4),
+        });
+    }
+    let entry_count = usize::try_from(entry_count_i32)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label entry count"))?;
+    if entry_count > MAX_VALUE_LABEL_ENTRIES {
+        return Err(DtaError::ArithmeticOverflow(
+            "value-label entry count exceeds 65,536",
+        ));
+    }
+    let text_length = usize::try_from(text_length_i32)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label text length"))?;
+    let arrays_length = checked_mul(entry_count, 8, "value-label arrays length")?;
+    let expected_length = checked_add(
+        checked_add(8, arrays_length, "value-label payload length")?,
+        text_length,
+        "value-label payload length",
+    )?;
+    if declared != expected_length {
+        return Err(DtaError::InvalidValueLabelLength {
+            offset: table_offset,
+            declared,
+            expected: expected_length,
+        });
+    }
+    Ok(OffsetValueLabelFrame {
+        entry_count,
+        text_length,
+    })
+}
 
 pub(crate) fn has_legacy_offset_table_framing(
     bytes: &[u8],
@@ -54,6 +114,9 @@ pub(crate) fn has_legacy_offset_table_framing(
     let Ok(entry_count) = usize::try_from(entry_count) else {
         return false;
     };
+    if entry_count > MAX_VALUE_LABEL_ENTRIES {
+        return false;
+    }
     let Ok(text_length) = usize::try_from(text_length) else {
         return false;
     };
@@ -138,7 +201,8 @@ fn parse_fixed8_table(
     metadata: &DtaMetadata,
     table_start: usize,
     encoding: TextEncoding,
-) -> Result<(ValueLabelTable, usize), DtaError> {
+    selected: Option<&HashSet<&str>>,
+) -> Result<(Option<ValueLabelTable>, usize), DtaError> {
     const NAME_WIDTH: usize = 9;
     const PADDING_WIDTH: usize = 1;
     const LABEL_WIDTH: usize = 8;
@@ -156,6 +220,7 @@ fn parse_fixed8_table(
         NAME_WIDTH,
         "legacy value-label table name",
     )?));
+    let retain = selected.is_none_or(|selected| selected.contains(name.as_str()));
     let values_start = checked_add(
         checked_add(name_start, NAME_WIDTH, "legacy value-label table name")?,
         PADDING_WIDTH,
@@ -183,8 +248,14 @@ fn parse_fixed8_table(
         table_end - table_start,
         "legacy value-label table",
     )?;
+    if !retain {
+        return Ok((None, table_end));
+    }
 
-    let mut entries = Vec::with_capacity(entry_count);
+    let mut entries = Vec::new();
+    entries
+        .try_reserve_exact(entry_count)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label entry allocation"))?;
     for entry_index in 0..entry_count {
         let value_at = checked_add(
             values_start,
@@ -214,7 +285,46 @@ fn parse_fixed8_table(
             label,
         });
     }
-    Ok((ValueLabelTable { name, entries }, table_end))
+    Ok((Some(ValueLabelTable { name, entries }), table_end))
+}
+
+fn nul_positions_for_offsets(
+    text: &[u8],
+    offsets: &[usize],
+) -> Result<(Vec<usize>, Vec<Option<usize>>), DtaError> {
+    let mut unique_offsets = Vec::new();
+    unique_offsets
+        .try_reserve_exact(offsets.len())
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
+    unique_offsets.extend_from_slice(offsets);
+    unique_offsets.sort_unstable();
+    unique_offsets.dedup();
+
+    let mut positions = Vec::new();
+    positions
+        .try_reserve_exact(unique_offsets.len())
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
+    let mut last_nul = None;
+    let mut exhausted = false;
+    for &offset in &unique_offsets {
+        let position = if exhausted {
+            None
+        } else if last_nul.is_some_and(|position| offset <= position) {
+            last_nul
+        } else {
+            let next = text
+                .get(offset..)
+                .and_then(|suffix| suffix.iter().position(|&byte| byte == 0))
+                .and_then(|relative| offset.checked_add(relative));
+            if next.is_none() {
+                exhausted = true;
+            }
+            last_nul = next;
+            next
+        };
+        positions.push(position);
+    }
+    Ok((unique_offsets, positions))
 }
 
 fn parse_table(
@@ -224,7 +334,8 @@ fn parse_table(
     name_width: usize,
     wrapped: bool,
     encoding: TextEncoding,
-) -> Result<(ValueLabelTable, usize), DtaError> {
+    selected: Option<&HashSet<&str>>,
+) -> Result<(Option<ValueLabelTable>, usize), DtaError> {
     let mut cursor = if wrapped {
         expect_at(bytes, table_start, LABEL_OPEN, "<lbl>")?
     } else {
@@ -262,6 +373,7 @@ fn parse_table(
         field_bytes(name_field)
     };
     let name = encoding.decode(name_bytes);
+    let retain = selected.is_none_or(|selected| selected.contains(name.as_str()));
     cursor = checked_add(cursor, name_width, "value-label table name")?;
 
     // The format reserves these bytes but does not assign them semantics.
@@ -281,50 +393,15 @@ fn parse_table(
     // declared range. This matches the bounded file reader and reports a
     // corrupt declaration precisely without staging an attacker-sized slice.
     let payload_header = slice_at(bytes, payload_start, 8, "value-label payload header")?;
-    let entry_count_i32 = read_i32(
+    let frame = frame_offset_value_label_payload(
         payload_header,
-        0,
         metadata.byte_order,
-        "value-label entry count",
+        table_start,
+        payload_start,
+        declared,
     )?;
-    if entry_count_i32 < 0 {
-        return Err(DtaError::NegativeValueLabelField {
-            field: "entry count",
-            value: entry_count_i32,
-            offset: payload_start,
-        });
-    }
-    let text_length_i32 = read_i32(
-        payload_header,
-        4,
-        metadata.byte_order,
-        "value-label text length",
-    )?;
-    if text_length_i32 < 0 {
-        return Err(DtaError::NegativeValueLabelField {
-            field: "text length",
-            value: text_length_i32,
-            offset: checked_add(payload_start, 4, "value-label text length")?,
-        });
-    }
-
-    let entry_count = usize::try_from(entry_count_i32)
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label entry count"))?;
-    let text_length = usize::try_from(text_length_i32)
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label text length"))?;
-    let arrays_length = checked_mul(entry_count, 8, "value-label arrays length")?;
-    let expected = checked_add(
-        checked_add(8, arrays_length, "value-label payload length")?,
-        text_length,
-        "value-label payload length",
-    )?;
-    if declared != expected {
-        return Err(DtaError::InvalidValueLabelLength {
-            offset: table_start,
-            declared,
-            expected,
-        });
-    }
+    let entry_count = frame.entry_count;
+    let text_length = frame.text_length;
     let payload = slice_at(bytes, payload_start, declared, "value-label table payload")?;
 
     let offsets_start = 8;
@@ -340,13 +417,12 @@ fn parse_table(
     )?;
     let text_end = checked_add(text_start, text_length, "value-label text block")?;
     let text = &payload[text_start..text_end];
-    let nul_positions: Vec<usize> = text
-        .iter()
-        .enumerate()
-        .filter_map(|(offset, byte)| (*byte == 0).then_some(offset))
-        .collect();
-
-    let mut entries = Vec::with_capacity(entry_count);
+    let mut text_offsets = retain.then(Vec::new);
+    if let Some(text_offsets) = text_offsets.as_mut() {
+        text_offsets
+            .try_reserve_exact(entry_count)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label offset allocation"))?;
+    }
     for entry_index in 0..entry_count {
         let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
         let raw_offset_position = checked_add(
@@ -390,39 +466,89 @@ fn parse_table(
             });
         }
 
-        let value_position =
-            checked_add(values_start, element_offset, "value-label value position")?;
-        let value = read_i32(
-            payload,
-            value_position,
-            metadata.byte_order,
-            "value-label value",
-        )?;
-
-        let nul_index = nul_positions.partition_point(|offset| *offset < text_offset_usize);
-        let Some(&nul) = nul_positions.get(nul_index) else {
-            return Err(DtaError::MissingNulTerminator {
-                context: "value-label text",
-                offset: checked_add(
-                    payload_start,
-                    checked_add(text_start, text_offset_usize, "value-label text")?,
-                    "value-label text",
-                )?,
-            });
-        };
-        let label = encoding.decode(&text[text_offset_usize..nul]);
-        entries.push(ValueLabelEntry {
-            value,
-            missing_tag: classify_long_missing_for_version(value, metadata.format_version),
-            label,
-        });
+        if let Some(text_offsets) = text_offsets.as_mut() {
+            text_offsets.push(text_offset_usize);
+        }
     }
+
+    let entries = if retain {
+        let text_offsets = text_offsets
+            .as_ref()
+            .expect("retained table has text offsets");
+        let (unique_offsets, terminators) = nul_positions_for_offsets(text, text_offsets)?;
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(entry_count)
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label entry allocation"))?;
+        for (entry_index, &text_offset) in text_offsets.iter().enumerate() {
+            let terminator_index = unique_offsets
+                .binary_search(&text_offset)
+                .expect("validated value-label offset is indexed");
+            let Some(nul) = terminators[terminator_index] else {
+                return Err(DtaError::MissingNulTerminator {
+                    context: "value-label text",
+                    offset: checked_add(
+                        payload_start,
+                        checked_add(text_start, text_offset, "value-label text")?,
+                        "value-label text",
+                    )?,
+                });
+            };
+            let element_offset = checked_mul(entry_index, 4, "value-label entry offset")?;
+            let value_position =
+                checked_add(values_start, element_offset, "value-label value position")?;
+            let value = read_i32(
+                payload,
+                value_position,
+                metadata.byte_order,
+                "value-label value",
+            )?;
+            entries.push(ValueLabelEntry {
+                value,
+                missing_tag: classify_long_missing_for_version(value, metadata.format_version),
+                label: encoding.decode(&text[text_offset..nul]),
+            });
+        }
+        Some(entries)
+    } else if text.last() != Some(&0) {
+        let last_nul = text.iter().rposition(|byte| *byte == 0);
+        for entry_index in 0..entry_count {
+            let raw_offset_position = checked_add(
+                offsets_start,
+                checked_mul(entry_index, 4, "value-label entry offset")?,
+                "value-label entry offset position",
+            )?;
+            let text_offset = usize::try_from(read_i32(
+                payload,
+                raw_offset_position,
+                metadata.byte_order,
+                "validated value-label text offset",
+            )?)
+            .map_err(|_| DtaError::ArithmeticOverflow("validated value-label text offset"))?;
+            if last_nul.is_none_or(|last_nul| text_offset > last_nul) {
+                return Err(DtaError::MissingNulTerminator {
+                    context: "value-label text",
+                    offset: checked_add(
+                        payload_start,
+                        checked_add(text_start, text_offset, "value-label text")?,
+                        "value-label text",
+                    )?,
+                });
+            }
+        }
+        None
+    } else {
+        None
+    };
 
     cursor = checked_add(payload_start, declared, "value-label table payload")?;
     if wrapped {
         cursor = expect_at(bytes, cursor, LABEL_CLOSE, "</lbl>")?;
     }
-    Ok((ValueLabelTable { name, entries }, cursor))
+    Ok((
+        entries.map(|entries| ValueLabelTable { name, entries }),
+        cursor,
+    ))
 }
 
 fn parse_legacy_tables(
@@ -431,9 +557,10 @@ fn parse_legacy_tables(
     start: usize,
     end: usize,
     encoding: TextEncoding,
-    layout: LegacyValueLabelLayout,
-    name_width: usize,
+    layout: (LegacyValueLabelLayout, usize),
+    selected: Option<&HashSet<&str>>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
+    let (layout, name_width) = layout;
     let mut cursor = start;
     let mut tables = Vec::new();
     let mut known_nonzero = None;
@@ -452,16 +579,18 @@ fn parse_legacy_tables(
         }
         let (table, next) = match layout {
             LegacyValueLabelLayout::Fixed8 => {
-                parse_fixed8_table(bytes, metadata, cursor, encoding)?
+                parse_fixed8_table(bytes, metadata, cursor, encoding, selected)?
             }
-            LegacyValueLabelLayout::OffsetTable => {
-                parse_table(bytes, metadata, cursor, name_width, false, encoding)?
-            }
+            LegacyValueLabelLayout::OffsetTable => parse_table(
+                bytes, metadata, cursor, name_width, false, encoding, selected,
+            )?,
         };
         if next <= cursor {
             return Err(DtaError::ArithmeticOverflow("legacy value-label cursor"));
         }
-        tables.push(table);
+        if let Some(table) = table {
+            tables.push(table);
+        }
         cursor = next;
     }
     if cursor != end {
@@ -496,6 +625,22 @@ pub fn parse_value_labels_with_encoding(
         metadata,
         0,
         encoding.resolve(metadata.format_version),
+        None,
+    )
+}
+
+pub(crate) fn parse_selected_value_labels_with_encoding(
+    bytes: &[u8],
+    metadata: &DtaMetadata,
+    encoding: TextEncoding,
+    selected: &HashSet<&str>,
+) -> Result<Vec<ValueLabelTable>, DtaError> {
+    parse_value_labels_section(
+        bytes,
+        metadata,
+        0,
+        encoding.resolve(metadata.format_version),
+        Some(selected),
     )
 }
 
@@ -534,6 +679,7 @@ pub(crate) fn parse_value_labels_section(
     metadata: &DtaMetadata,
     base_offset: u64,
     encoding: TextEncoding,
+    selected: Option<&HashSet<&str>>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     let name_width = name_width(metadata.format_version)?;
     let start = local_offset(
@@ -585,8 +731,8 @@ pub(crate) fn parse_value_labels_section(
             start,
             end,
             encoding,
-            value_label_layout,
-            table_name_width,
+            (value_label_layout, table_name_width),
+            selected,
         );
     }
     let mut cursor = expect_at(bytes, start, VALUE_LABELS_OPEN, "<value_labels>")?;
@@ -600,8 +746,12 @@ pub(crate) fn parse_value_labels_section(
             cursor = expect_at(bytes, cursor, VALUE_LABELS_CLOSE, "</value_labels>")?;
             break;
         }
-        let (table, next) = parse_table(bytes, metadata, cursor, name_width, true, encoding)?;
-        tables.push(table);
+        let (table, next) = parse_table(
+            bytes, metadata, cursor, name_width, true, encoding, selected,
+        )?;
+        if let Some(table) = table {
+            tables.push(table);
+        }
         cursor = next;
     }
 
@@ -625,4 +775,107 @@ pub(crate) fn parse_value_labels_section(
         metadata.section_offsets.end_of_file,
     )?;
     Ok(tables)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::{
+        nul_positions_for_offsets, parse_fixed8_table, parse_selected_value_labels_with_encoding,
+        parse_table, parse_value_labels_with_encoding,
+    };
+    use crate::{
+        parse_metadata, ByteOrder, DtaMetadata, FormatVersion, SectionOffsets, TextEncoding,
+    };
+
+    #[test]
+    fn unselected_fixed8_table_skips_entry_iteration_after_bounds_check() {
+        const ENTRY_COUNT: u16 = u16::MAX;
+        let metadata = parse_metadata(include_bytes!("../tests/data/synthetic-v105.dta")).unwrap();
+        let mut bytes = Vec::with_capacity(12 + usize::from(ENTRY_COUNT) * 10);
+        bytes.extend_from_slice(&match metadata.byte_order {
+            ByteOrder::Lsf => ENTRY_COUNT.to_le_bytes(),
+            ByteOrder::Msf => ENTRY_COUNT.to_be_bytes(),
+        });
+        bytes.extend_from_slice(b"labels\0\0\0");
+        bytes.push(0);
+        bytes.resize(12 + usize::from(ENTRY_COUNT) * 10, 0xff);
+
+        let selected = HashSet::new();
+        let (table, end) = parse_fixed8_table(
+            &bytes,
+            &metadata,
+            0,
+            TextEncoding::Windows1252,
+            Some(&selected),
+        )
+        .unwrap();
+        assert!(table.is_none());
+        assert_eq!(end, bytes.len());
+    }
+
+    #[test]
+    fn selected_value_labels_resolve_automatic_encoding() {
+        let bytes = include_bytes!("../../../../../tests/fixtures/dta/value_labels_v115.dta");
+        let metadata = parse_metadata(bytes).unwrap();
+        let expected = parse_value_labels_with_encoding(bytes, &metadata, TextEncoding::Auto)
+            .expect("the fixture value labels are valid");
+        assert!(!expected.is_empty());
+        let selected = expected
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<HashSet<_>>();
+
+        let actual = parse_selected_value_labels_with_encoding(
+            bytes,
+            &metadata,
+            TextEncoding::Auto,
+            &selected,
+        )
+        .expect("automatic encoding resolves before selected parsing");
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn oversized_offset_table_count_is_rejected_before_declared_payload_is_sliced() {
+        let metadata = DtaMetadata {
+            format_version: FormatVersion::V118,
+            byte_order: ByteOrder::Lsf,
+            nvar: 0,
+            nobs: 0,
+            dataset_label: String::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            variables: Vec::new(),
+            section_offsets: SectionOffsets::default(),
+            obs_length: 0,
+        };
+        let declared = 8_i32 + 65_537_i32 * 8;
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&declared.to_le_bytes());
+        bytes.extend(std::iter::repeat_n(0, 129));
+        bytes.extend_from_slice(&[0; 3]);
+        bytes.extend_from_slice(&65_537_i32.to_le_bytes());
+        bytes.extend_from_slice(&0_i32.to_le_bytes());
+
+        assert!(matches!(
+            parse_table(&bytes, &metadata, 0, 129, false, TextEncoding::Utf8, None,),
+            Err(crate::DtaError::ArithmeticOverflow(
+                "value-label entry count exceeds 65,536"
+            ))
+        ));
+    }
+
+    #[test]
+    fn terminator_index_is_bounded_by_requested_offsets() {
+        let text = vec![0; 1024 * 1024];
+        let offsets = [999_999, 0, 17, 17];
+
+        let (unique_offsets, positions) = nul_positions_for_offsets(&text, &offsets).unwrap();
+
+        assert_eq!(unique_offsets, vec![0, 17, 999_999]);
+        assert_eq!(positions, vec![Some(0), Some(17), Some(999_999)]);
+    }
 }

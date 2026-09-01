@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::endian::{
     checked_add, checked_sub, ensure_map_offset, expect_at, offset_to_usize, read_i16, read_i32,
@@ -7,6 +7,7 @@ use crate::endian::{
 use crate::selection::{resolve_columns, row_window};
 use crate::strl::decode_strl_columns;
 use crate::text::{field_bytes, TextEncoding};
+use crate::value_labels::parse_selected_value_labels_with_encoding;
 use crate::{
     missing::{
         classify_byte_missing_for_version, classify_double_missing_bits_for_version,
@@ -233,6 +234,19 @@ fn decode_column(
     })
 }
 
+fn selected_value_label_names<'a>(
+    metadata: &'a DtaMetadata,
+    column_indices: &[u32],
+) -> HashSet<&'a str> {
+    column_indices
+        .iter()
+        .filter_map(|&index| {
+            let name = &metadata.variables.get(index as usize)?.value_label_name;
+            (!name.is_empty()).then_some(name.as_str())
+        })
+        .collect()
+}
+
 /// Parse and decode all observations and variables in a supported Stata file.
 pub fn read_dta(bytes: &[u8]) -> Result<DtaData, DtaError> {
     read_dta_with_options(bytes, &ReadOptions::default())
@@ -258,7 +272,12 @@ pub fn read_dta_with_options_and_encoding(
     let encoding = encoding.resolve(metadata.format_version);
     let payload_start = validate_data_section(bytes, &metadata)?;
     let column_indices = resolve_columns(&metadata, options)?;
-    let value_label_tables = parse_value_labels_with_encoding(bytes, &metadata, encoding)?;
+    let value_label_tables = if options.column_indices.is_some() {
+        let selected_tables = selected_value_label_names(&metadata, &column_indices);
+        parse_selected_value_labels_with_encoding(bytes, &metadata, encoding, &selected_tables)?
+    } else {
+        parse_value_labels_with_encoding(bytes, &metadata, encoding)?
+    };
     let (row_start, row_count) = row_window(&metadata, options);
     let mut strl_indices = Vec::new();
     for &index in &column_indices {
@@ -309,6 +328,48 @@ pub fn read_dta_with_options_and_encoding(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{ByteOrder, FormatVersion, SectionOffsets};
+
+    #[test]
+    fn wide_projection_borrows_selected_value_label_name_payloads() {
+        const VARIABLE_COUNT: usize = 120_000;
+        let metadata = DtaMetadata {
+            format_version: FormatVersion::V119,
+            byte_order: ByteOrder::Lsf,
+            nvar: VARIABLE_COUNT as u32,
+            nobs: 0,
+            dataset_label: String::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            variables: (0..VARIABLE_COUNT)
+                .map(|index| VariableInfo {
+                    name: format!("v{index}"),
+                    dta_type: DtaType::Long,
+                    type_code: 65_529,
+                    format: "%12.0g".to_owned(),
+                    label: String::new(),
+                    value_label_name: format!("table_{index:06}"),
+                    notes: Vec::new(),
+                    characteristics: Vec::new(),
+                    byte_width: 4,
+                    byte_offset: index as u64 * 4,
+                })
+                .collect(),
+            section_offsets: SectionOffsets::default(),
+            obs_length: VARIABLE_COUNT as u64 * 4,
+        };
+        let indices = (0..VARIABLE_COUNT as u32).collect::<Vec<_>>();
+
+        let selected = selected_value_label_names(&metadata, &indices);
+
+        assert_eq!(selected.len(), VARIABLE_COUNT);
+        for variable in &metadata.variables {
+            let retained = selected
+                .get(variable.value_label_name.as_str())
+                .expect("selected table name");
+            assert_eq!(retained.as_ptr(), variable.value_label_name.as_ptr());
+        }
+    }
 
     #[test]
     fn rejects_a_value_labels_offset_too_small_for_the_strls_close() {

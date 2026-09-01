@@ -74,7 +74,14 @@ fn matches_known_shared_fixture_metadata() {
     assert_eq!(metadata.nvar, 12);
     assert_eq!(metadata.nobs, 74);
     assert_eq!(metadata.dataset_label, "1978 automobile data");
-    assert_eq!(metadata.notes, ["From Consumer Reports with permission"]);
+    assert_eq!(
+        metadata
+            .notes
+            .iter()
+            .map(|note| note.text.as_str())
+            .collect::<Vec<_>>(),
+        ["From Consumer Reports with permission"]
+    );
     assert_eq!(metadata.variables[0].name, "make");
     assert_eq!(metadata.variables[0].dta_type, DtaType::FixedString(18));
     assert_eq!(metadata.variables[0].label, "Make and model");
@@ -203,6 +210,7 @@ fn accepts_a_valid_metadata_prefix_but_rejects_required_section_truncation() {
     let prefix = &full[..prefix_end];
     let mut prefix_metadata = metadata;
     prefix_metadata.notes.clear();
+    prefix_metadata.characteristics.clear();
     assert_eq!(parse_metadata(prefix).unwrap(), prefix_metadata);
 
     for length in [0, 1, 40, prefix_end / 2, prefix_end - 1] {

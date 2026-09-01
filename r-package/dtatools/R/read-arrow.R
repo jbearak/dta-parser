@@ -4,9 +4,14 @@
 #' supported Stata-specific and ordinary R column classes and metadata. These
 #' include storage declarations with compact ALTREP backing, raw Stata missing
 #' storage (system missing and tagged codes `.a` through `.z`, bit-exactly),
-#' labels, display formats, notes, value-label tables, factor levels and
-#' orderedness, ordinary `POSIXct` timezones, `difftime` units, and the
+#' labels, display formats, numbered notes, arbitrary Stata characteristics,
+#' value-label tables, factor levels and orderedness, ordinary `POSIXct`
+#' timezones, `difftime` units, and the
 #' integer-versus-double distinction.
+#' Imported Stata table identity is restored in the `value.label.name` column
+#' attribute when the table name differs from the field name or several source
+#' fields refer to it. Sharing is determined from the complete source schema,
+#' including fields omitted by projection.
 #'
 #' Apache Arrow stores tabular data by column in a standard binary layout. The
 #' on-disk format uses Arrow's IPC (interprocess communication) file format to
@@ -17,6 +22,13 @@
 #' columns; they never acquire Stata semantics. Files carrying a newer
 #' profile version than this package understands are a hard error naming that
 #' version; pass `profile = FALSE` to read such a file as plain Arrow data.
+#' A profiled projection resolved without predicates validates the dataset
+#' document and each selected field document, then discards unselected fields'
+#' private documents without parsing them. A tidyselect predicate first builds
+#' a full profiled summary so the predicate sees every column's restored R type;
+#' that summary validates every field document. A full read also validates
+#' every field document. With `profile = TRUE`, `datasig = TRUE` parses every
+#' field document because the stored signature covers the complete schema.
 #'
 #' Only the Arrow IPC file variant (`.arrow`) is handled, not the IPC stream
 #' variant. Column projection reads only the selected columns' buffers, and
@@ -28,7 +40,9 @@
 #'   paths.
 #' @param col_select One or more tidyselect expressions. Predicates see each
 #'   column's R type as recorded in the file: logical, integer, double,
-#'   character, factor, or raw.
+#'   character, factor, or raw. A predicate-free projection validates selected
+#'   field documents; a predicate or an omitted selection validates every field
+#'   document when `profile = TRUE`.
 #' @param skip Number of rows to skip. Must be one non-negative whole number
 #'   no larger than `2^53`.
 #' @param n_max Maximum rows to read. `NA`, either infinity, and negative
@@ -57,8 +71,10 @@
 #'   on disk signs as, not of the projection loaded, and it is never updated
 #'   afterwards. Because it restates what the file declares, pair it with
 #'   `verify = TRUE` (and a full read) when the checksums themselves must be
-#'   validated against the stored bytes. Requires a file written with
-#'   checksums; only file paths are supported.
+#'   validated against the stored bytes. With `profile = TRUE`, requesting the
+#'   signature validates every field document even for a predicate-free
+#'   projection.
+#'   Requires a file written with checksums; only file paths are supported.
 #' @return A tibble.
 #' @export
 read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
@@ -114,11 +130,10 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     }
 
     dataset_label <- attr(native, "label", exact = TRUE)
-    dataset_notes <- attr(native, "notes", exact = TRUE)
     disk_signature <- attr(native, "datasig", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
+    result <- .copy_stata_metadata_attributes(native, result)
     if (!is.null(disk_signature)) attr(result, "datasig") <- disk_signature
     result
 }
@@ -135,7 +150,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
 
 .arrow_column_selection <- function(selection, snapshot, profile, row_window) {
     metadata <- .arrow_metadata(
-        snapshot, profile, scan_ambiguous_int32 = FALSE,
+        snapshot, profile = FALSE, scan_ambiguous_int32 = FALSE,
         skip = row_window$skip, n_max = row_window$n_max
     )
     selection_proxy <- stats::setNames(

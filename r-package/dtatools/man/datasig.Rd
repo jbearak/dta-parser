@@ -23,8 +23,9 @@ Computes an order-sensitive content signature of a dataset, for recording
 alongside raw data files (for example in a git-tracked table) and later
 comparing against the file read back from disk. The signature covers the
 row and column counts, column names and order, Stata storage types,
-display formats, variable labels, value-label tables, the dataset label
-and notes, and every value in row order, digested through the same
+display formats, variable labels, value-label tables, dataset and variable
+numbered notes and characteristics, the dataset label, and every value in
+row order, digested through the same
 canonical per-buffer xxHash64 checksums that \code{\link[=save_arrow]{save_arrow()}} embeds in its
 file footer.
 }
@@ -71,8 +72,9 @@ attaches the file's signature as the result's \code{datasig} attribute.
 almost nothing, even under projection; \code{\link[=read_dta]{read_dta()}} hashes the decoded
 columns, so it requires a full read.
 
-The payload definition is versioned internally (currently version 1); any
-future change to it will be documented as producing new signatures.
+The payload definition is versioned internally (currently version 2, which
+added numbered notes and characteristics at dataset and variable scope);
+any future change to it will be documented as producing new signatures.
 }
 
 \examples{

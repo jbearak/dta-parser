@@ -6,7 +6,8 @@
 //! columns' buffers; whole batches outside the requested row window are
 //! skipped after their small headers are read.
 
-use std::collections::HashMap;
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -20,23 +21,25 @@ use arrow_buffer::{Buffer, MutableBuffer};
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
 use arrow_schema::{DataType, Field, Schema};
+use serde::Deserialize;
+use serde_json::value::RawValue;
 
 use super::checksum::canonical_array_hashes;
 use super::profile::{
-    checksum_to_hex, parse_checksums_document, parse_dataset_document, parse_field_document,
-    validate_value_label_reference, ArrowFieldDocument, ChecksumsDocument, DatasetDocument,
-    ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY, ARROW_PROFILE_VERSION,
-    ARROW_PROFILE_VERSION_KEY,
+    checksum_to_hex, parse_checksums_document, parse_dataset_document_selected,
+    parse_field_document, parse_field_document_tolerant, validate_value_label_reference,
+    ArrowFieldDocument, ChecksumsDocument, DatasetDocument, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY,
+    ARROW_FIELD_KEY, ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
 };
 use super::ArrowProfileError;
+use super::MAX_IPC_METADATA_BYTES;
 
 const FILE_MAGIC: &[u8; 6] = b"ARROW1";
 const CONTINUATION_MARKER: [u8; 4] = [0xff, 0xff, 0xff, 0xff];
-const MAX_IPC_METADATA_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_PARTIAL_BATCH_DECODE_BYTES: u64 = 256 * 1024 * 1024;
 
 fn metadata_buffer(length: u64, location: &str) -> Result<Vec<u8>, ArrowProfileError> {
-    if length > MAX_IPC_METADATA_BYTES {
+    if length > MAX_IPC_METADATA_BYTES as u64 {
         return Err(invalid(format!(
             "{location} metadata length exceeds the 64 MiB safety limit"
         )));
@@ -54,6 +57,12 @@ fn metadata_buffer(length: u64, location: &str) -> Result<Vec<u8>, ArrowProfileE
 #[derive(Debug, Clone, Default)]
 pub struct ArrowReadOptions {
     /// Projected column indices in output order, or `None` for all columns.
+    /// Ordinary profiled projections validate the dataset document and the
+    /// selected fields' documents. They do not validate unselected fields'
+    /// private profile documents, though some may be parsed opportunistically
+    /// to determine value-label sharing. A full read validates every field.
+    /// Setting [`Self::record_signature`] with profile handling enabled also
+    /// validates every field because the signature covers the full schema.
     pub columns: Option<Vec<u32>>,
     /// Rows to skip before the first returned row.
     pub row_start: u64,
@@ -97,6 +106,10 @@ pub struct ArrowReadResult {
     /// and `profile` was requested.
     pub profile_version: Option<String>,
     pub dataset: Option<DatasetDocument>,
+    /// Reference counts from valid source fields, including fields omitted by
+    /// projection, capped at two because readers only distinguish private
+    /// from shared tables.
+    pub value_label_reference_counts: HashMap<String, usize>,
     pub row_count: u64,
     pub columns: Vec<ArrowReadColumn>,
     pub stored_signature: Option<String>,
@@ -159,8 +172,130 @@ struct BatchHeader {
 struct Profile {
     version: String,
     dataset: DatasetDocument,
-    fields: Vec<Option<ArrowFieldDocument>>,
+    fields: ProfileFields,
     checksums: Option<ChecksumsDocument>,
+    value_label_reference_counts: HashMap<String, usize>,
+}
+
+enum ProfileFields {
+    Full(Vec<Option<ArrowFieldDocument>>),
+    Projected {
+        documents: HashMap<usize, ArrowFieldDocument>,
+        indices: Vec<usize>,
+    },
+}
+
+impl ProfileFields {
+    fn new(field_count: usize, selected: Option<&[usize]>) -> Self {
+        if selected.is_none() {
+            Self::Full(std::iter::repeat_with(|| None).take(field_count).collect())
+        } else {
+            let capacity = selected.map_or(0, <[usize]>::len);
+            Self::Projected {
+                documents: HashMap::with_capacity(capacity),
+                indices: Vec::with_capacity(capacity),
+            }
+        }
+    }
+
+    fn insert(&mut self, index: usize, document: ArrowFieldDocument) {
+        match self {
+            Self::Full(fields) => fields[index] = Some(document),
+            Self::Projected { documents, indices } => {
+                if let std::collections::hash_map::Entry::Vacant(entry) = documents.entry(index) {
+                    indices.push(index);
+                    entry.insert(document);
+                }
+            }
+        }
+    }
+
+    fn get(&self, index: usize) -> Option<&ArrowFieldDocument> {
+        #[cfg(test)]
+        PROFILE_FIELD_LOOKUP_COUNT.with(|count| count.set(count.get() + 1));
+        match self {
+            Self::Full(fields) => fields.get(index).and_then(Option::as_ref),
+            Self::Projected { documents, .. } => documents.get(&index),
+        }
+    }
+
+    fn for_each(&self, accept: impl FnMut(&ArrowFieldDocument)) {
+        match self {
+            Self::Full(fields) => fields.iter().flatten().for_each(accept),
+            Self::Projected { documents, indices } => indices
+                .iter()
+                .map(|index| {
+                    documents
+                        .get(index)
+                        .expect("projected profile indices refer to stored documents")
+                })
+                .for_each(accept),
+        }
+    }
+
+    fn try_for_each_indexed<E>(
+        &self,
+        mut accept: impl FnMut(usize, &ArrowFieldDocument) -> Result<(), E>,
+    ) -> Result<(), E> {
+        match self {
+            Self::Full(fields) => {
+                for (index, document) in fields.iter().enumerate() {
+                    if let Some(document) = document {
+                        accept(index, document)?;
+                    }
+                }
+            }
+            Self::Projected { documents, indices } => {
+                for &index in indices {
+                    accept(
+                        index,
+                        documents
+                            .get(&index)
+                            .expect("projected profile indices refer to stored documents"),
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn take(&mut self, index: usize) -> Option<ArrowFieldDocument> {
+        match self {
+            Self::Full(fields) => fields.get_mut(index).and_then(Option::take),
+            Self::Projected { documents, .. } => documents.remove(&index),
+        }
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static PROFILE_FIELD_LOOKUP_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+    static PROFILE_SELECTED_RAW_JSON_BYTES: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+    static PROFILE_OWNED_VALUE_LABEL_NAME_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+}
+
+fn owned_value_label_name(name: &str) -> String {
+    #[cfg(test)]
+    PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(|count| count.set(count.get() + 1));
+    name.to_owned()
+}
+
+fn profile_value_label_reference_counts(documents: &ProfileFields) -> HashMap<String, usize> {
+    let mut counts = HashMap::<String, usize>::new();
+    documents.for_each(|document| {
+        let Some(reference) = document.value_labels.as_deref() else {
+            return;
+        };
+        if let Some(count) = counts.get_mut(reference) {
+            *count = (*count + 1).min(2);
+        } else {
+            counts.insert(owned_value_label_name(reference), 1_usize);
+        }
+    });
+    counts
 }
 
 fn invalid(detail: impl Into<String>) -> ArrowProfileError {
@@ -421,7 +556,7 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
             body_length: u64::try_from(block.bodyLength())
                 .map_err(|_| invalid("negative block body length"))?,
         };
-        if u64::from(info.metadata_length) > MAX_IPC_METADATA_BYTES {
+        if u64::from(info.metadata_length) > MAX_IPC_METADATA_BYTES as u64 {
             return Err(invalid(
                 "IPC block metadata length exceeds the 64 MiB safety limit",
             ));
@@ -466,58 +601,140 @@ fn read_footer<R: Read + Seek>(reader: &mut R) -> Result<Footer, ArrowProfileErr
 }
 
 fn parse_profile(
-    footer: &Footer,
+    footer: &mut Footer,
     apply_profile: bool,
     verify: bool,
+    selected: Option<&[usize]>,
 ) -> Result<Option<Profile>, ArrowProfileError> {
     if !apply_profile {
         return Ok(None);
     }
-    let Some(version) = footer.schema.metadata().get(ARROW_PROFILE_VERSION_KEY) else {
+    let Some(version) = footer.schema.metadata.remove(ARROW_PROFILE_VERSION_KEY) else {
         // A plain Arrow file never acquires Stata semantics.
         return Ok(None);
     };
     if version != ARROW_PROFILE_VERSION {
-        return Err(ArrowProfileError::NewerProfile(version.clone()));
+        return Err(ArrowProfileError::NewerProfile(version));
     }
-    let dataset = parse_dataset_document(
-        version,
-        footer
-            .schema
-            .metadata()
-            .get(ARROW_DATASET_KEY)
-            .map(String::as_str),
-    )?;
-    let mut fields = Vec::with_capacity(footer.schema.fields().len());
-    for field in footer.schema.fields() {
-        let document = field
-            .metadata()
-            .get(ARROW_FIELD_KEY)
-            .map(|json| parse_field_document(version, field, json))
+    let selected_fields = selected.map(|selected| selected.iter().copied().collect::<HashSet<_>>());
+    let mut documents = ProfileFields::new(footer.schema.fields().len(), selected);
+    let owned_fields = std::mem::take(&mut footer.schema.fields);
+    let mut fields: Vec<Arc<Field>> = owned_fields.iter().cloned().collect();
+    drop(owned_fields);
+    let mut field_json = selected.map(|_| Vec::with_capacity(fields.len()));
+    for (index, field) in fields.iter_mut().enumerate() {
+        let field = Arc::make_mut(field);
+        let json = field.metadata_mut().remove(ARROW_FIELD_KEY);
+        if selected_fields
+            .as_ref()
+            .is_some_and(|selected| !selected.contains(&index))
+        {
+            field_json
+                .as_mut()
+                .expect("projected reads retain unselected raw field documents")
+                .push(json);
+            continue;
+        }
+        if let Some(field_json) = &mut field_json {
+            field_json.push(None);
+        }
+        let document = json
+            .as_deref()
+            .map(|json| parse_field_document(&version, field, json))
             .transpose()?;
-        fields.push(document);
-    }
-    for (field, document) in footer.schema.fields().iter().zip(&fields) {
         if let Some(document) = document {
-            validate_value_label_reference(version, field, document, &dataset)?;
+            documents.insert(index, document);
         }
     }
-    let checksums = if verify {
-        let json = footer
-            .custom_metadata
-            .get(ARROW_CHECKSUMS_KEY)
-            .ok_or_else(|| {
-                super::profile::malformed(
-                    version,
-                    "missing checksums document; the file was written without checksums, \
-                     so read it with verification off"
-                        .to_owned(),
+    #[cfg(test)]
+    {
+        let selected_raw_json = field_json.iter().flat_map(|json| {
+            json.iter()
+                .enumerate()
+                .filter(|(index, _)| {
+                    selected_fields
+                        .as_ref()
+                        .is_none_or(|selected| selected.contains(index))
+                })
+                .filter_map(|(_, json)| json.as_deref())
+        });
+        let bytes = selected_raw_json.fold(0_usize, |bytes, json| bytes.saturating_add(json.len()));
+        PROFILE_SELECTED_RAW_JSON_BYTES.with(|retained| retained.set(bytes));
+    }
+    footer.schema.fields = fields.into();
+
+    let mut value_label_reference_counts = profile_value_label_reference_counts(&documents);
+    let dataset_json = footer.schema.metadata.remove(ARROW_DATASET_KEY);
+    let dataset = parse_dataset_document_selected(
+        &version,
+        dataset_json.as_deref(),
+        selected.map(|_| &value_label_reference_counts),
+    )?;
+    drop(dataset_json);
+    documents.try_for_each_indexed(|index, document| {
+        validate_value_label_reference(&version, footer.schema.field(index), document, &dataset)
+    })?;
+    let mut unresolved_value_labels = selected.map_or(0, |_| {
+        value_label_reference_counts
+            .values()
+            .filter(|count| **count < 2)
+            .count()
+    });
+    if let Some(mut field_json) = field_json {
+        for (index, json) in field_json.iter_mut().enumerate() {
+            if unresolved_value_labels == 0 {
+                break;
+            }
+            let Some(json) = json.take() else {
+                continue;
+            };
+            let Some(target) =
+                raw_value_label_reference(Some(json.as_str()), &value_label_reference_counts)
+            else {
+                continue;
+            };
+            let Ok(document) =
+                parse_field_document_tolerant(&version, footer.schema.field(index), json.as_str())
+            else {
+                continue;
+            };
+            let Some(reference) = document.value_labels.as_deref() else {
+                continue;
+            };
+            if reference != target
+                || validate_value_label_reference(
+                    &version,
+                    footer.schema.field(index),
+                    &document,
+                    &dataset,
                 )
-            })?;
-        let document = parse_checksums_document(version, json)?;
+                .is_err()
+            {
+                continue;
+            }
+            if let Some(count) = value_label_reference_counts.get_mut(target.as_ref()) {
+                *count = (*count + 1).min(2);
+                if *count == 2 {
+                    unresolved_value_labels -= 1;
+                }
+            }
+        }
+        drop(field_json);
+    }
+    let checksums_json = footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
+    let checksums = if verify {
+        let json = checksums_json.as_deref().ok_or_else(|| {
+            super::profile::malformed(
+                &version,
+                "missing checksums document; the file was written without checksums, \
+                     so read it with verification off"
+                    .to_owned(),
+            )
+        })?;
+        let document = parse_checksums_document(&version, json)?;
         if document.batches.len() != footer.record_blocks.len() {
             return Err(super::profile::malformed(
-                version,
+                &version,
                 "checksums document does not cover every record batch",
             ));
         }
@@ -526,11 +743,53 @@ fn parse_profile(
         None
     };
     Ok(Some(Profile {
-        version: version.clone(),
+        version,
         dataset,
-        fields,
+        fields: documents,
         checksums,
+        value_label_reference_counts,
     }))
+}
+
+#[derive(Deserialize)]
+struct RawValueLabelReference<'a> {
+    version: u32,
+    #[serde(default, borrow)]
+    value_labels: Option<&'a RawValue>,
+}
+
+fn raw_value_label_reference<'a>(
+    json: Option<&'a str>,
+    selected: &HashMap<String, usize>,
+) -> Option<Cow<'a, str>> {
+    #[cfg(test)]
+    RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(count.get() + 1));
+    let raw: RawValueLabelReference<'_> = serde_json::from_str(json?).ok()?;
+    if raw.version != 0 {
+        return None;
+    }
+    let name: Cow<'_, str> = serde_json::from_str(raw.value_labels?.get()).ok()?;
+    let count = selected.get(name.as_ref())?;
+    (*count < 2).then_some(name)
+}
+
+#[cfg(test)]
+thread_local! {
+    static RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+}
+
+fn discard_private_profile_json(footer: &mut Footer) {
+    footer.schema.metadata.remove(ARROW_PROFILE_VERSION_KEY);
+    footer.schema.metadata.remove(ARROW_DATASET_KEY);
+    let owned_fields = std::mem::take(&mut footer.schema.fields);
+    let mut fields: Vec<Arc<Field>> = owned_fields.iter().cloned().collect();
+    drop(owned_fields);
+    for field in &mut fields {
+        Arc::make_mut(field).metadata_mut().remove(ARROW_FIELD_KEY);
+    }
+    footer.schema.fields = fields.into();
+    footer.custom_metadata.remove(ARROW_CHECKSUMS_KEY);
 }
 
 fn parse_message_header(bytes: &[u8]) -> Result<arrow_ipc::Message<'_>, ArrowProfileError> {
@@ -659,10 +918,7 @@ fn read_ipc_buffer<R: Read + Seek>(
             let declared = i64::from_le_bytes(raw[..8].try_into().expect("8 bytes"));
             let payload = &raw[8..];
             if declared == -1 {
-                if payload.len() != expected_length {
-                    return Err(invalid("uncompressed buffer length mismatch"));
-                }
-                return Ok(buffer_from_bytes(payload.to_vec()));
+                return uncompressed_compression_buffer(raw, expected_length);
             }
             let declared =
                 usize::try_from(declared).map_err(|_| invalid("bad compressed length"))?;
@@ -697,6 +953,19 @@ fn read_ipc_buffer<R: Read + Seek>(
             Ok(buffer_from_bytes(decompressed))
         }
     }
+}
+
+fn uncompressed_compression_buffer(
+    raw: Vec<u8>,
+    expected_length: usize,
+) -> Result<Buffer, ArrowProfileError> {
+    let payload = raw
+        .get(8..)
+        .ok_or_else(|| invalid("compressed buffer is too short"))?;
+    if payload.len() != expected_length {
+        return Err(invalid("uncompressed buffer length mismatch"));
+    }
+    Ok(buffer_from_bytes(raw).slice(8))
 }
 
 fn ipc_buffer_allocation_bytes<R: Read + Seek>(
@@ -1053,6 +1322,7 @@ struct DecodeContext<'a> {
 struct PreparedRead {
     footer: Footer,
     profile: Option<Profile>,
+    value_label_reference_counts: HashMap<String, usize>,
     selected: Vec<usize>,
     dictionaries: HashMap<i64, ArrayData>,
     plans: Vec<BlockPlan>,
@@ -1065,13 +1335,11 @@ fn prepare_read<R: Read + Seek>(
     options: &ArrowReadOptions,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<PreparedRead, ArrowProfileError> {
-    let footer = read_footer(reader)?;
-    let stored_signature = options
-        .record_signature
-        .then(|| stored_signature_from_footer(reader, &footer))
-        .transpose()?;
-    let profile = parse_profile(&footer, options.profile, options.verify)?;
-
+    let mut footer = read_footer(reader)?;
+    let carries_profile = footer
+        .schema
+        .metadata()
+        .contains_key(ARROW_PROFILE_VERSION_KEY);
     let field_count = footer.schema.fields().len();
     let selected: Vec<usize> = match &options.columns {
         None => (0..field_count).collect(),
@@ -1085,7 +1353,47 @@ fn prepare_read<R: Read + Seek>(
             })
             .collect::<Result<_, _>>()?,
     };
-
+    // A stored signature covers every field and needs the checksum document.
+    // Reuse that full parse for the ordinary profiled read rather than
+    // parsing the same potentially large footer documents twice.
+    let signature_profile = options.record_signature && options.profile;
+    let selected_profile_fields = if signature_profile {
+        None
+    } else {
+        options.columns.as_ref().map(|_| selected.as_slice())
+    };
+    let mut profile = parse_profile(
+        &mut footer,
+        options.profile,
+        options.verify || signature_profile,
+        selected_profile_fields,
+    )?;
+    let stored_signature = if options.record_signature {
+        Some(if let Some(profile) = &profile {
+            stored_signature_from_profile(reader, &footer, profile)?
+        } else {
+            stored_signature_from_footer(reader, &mut footer)?
+        })
+    } else {
+        None
+    };
+    if signature_profile && !options.verify {
+        if let Some(profile) = &mut profile {
+            profile.checksums = None;
+        }
+    }
+    let value_label_reference_counts = profile
+        .as_mut()
+        .map(|profile| std::mem::take(&mut profile.value_label_reference_counts))
+        .unwrap_or_default();
+    if carries_profile
+        && footer
+            .schema
+            .metadata()
+            .contains_key(ARROW_PROFILE_VERSION_KEY)
+    {
+        discard_private_profile_json(&mut footer);
+    }
     // Batch headers are small; reading them all up front fixes each block's
     // slice of the requested window so block bodies can decode in any order.
     let limit = options.row_count.unwrap_or(u64::MAX);
@@ -1199,6 +1507,7 @@ fn prepare_read<R: Read + Seek>(
     Ok(PreparedRead {
         footer,
         profile,
+        value_label_reference_counts,
         selected,
         dictionaries,
         plans,
@@ -1540,23 +1849,38 @@ fn columns_skeleton(prepared: &PreparedRead) -> Result<Vec<ArrowReadColumn>, Arr
                 data_type: field.data_type().clone(),
                 nullable: field.is_nullable(),
                 dictionary_ordered: prepared.footer.layouts[index].dictionary_ordered,
-                field: prepared
-                    .profile
-                    .as_ref()
-                    .and_then(|profile| profile.fields[index].clone()),
+                field: None,
                 chunks,
             })
         })
         .collect()
 }
 
-fn finish_result(prepared: PreparedRead, columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) -> ArrowReadResult {
+    let (profile_version, dataset) = if let Some(mut profile) = prepared.profile.take() {
+        let mut remaining = HashMap::with_capacity(prepared.selected.len());
+        for &index in &prepared.selected {
+            *remaining.entry(index).or_insert(0_usize) += 1;
+        }
+        for (&index, column) in prepared.selected.iter().zip(&mut columns) {
+            let count = remaining
+                .get_mut(&index)
+                .expect("selected field occurrence was counted");
+            *count -= 1;
+            column.field = if *count == 0 {
+                profile.fields.take(index)
+            } else {
+                profile.fields.get(index).cloned()
+            };
+        }
+        (Some(profile.version), Some(profile.dataset))
+    } else {
+        (None, None)
+    };
     ArrowReadResult {
-        profile_version: prepared
-            .profile
-            .as_ref()
-            .map(|profile| profile.version.clone()),
-        dataset: prepared.profile.map(|profile| profile.dataset),
+        profile_version,
+        dataset,
+        value_label_reference_counts: prepared.value_label_reference_counts,
         row_count: prepared.produced,
         columns,
         stored_signature: prepared.stored_signature,
@@ -1882,39 +2206,48 @@ fn validate_stored_checksum_coverage<R: Read + Seek>(
 
 fn stored_signature_from_footer<R: Read + Seek>(
     reader: &mut R,
-    footer: &Footer,
+    footer: &mut Footer,
 ) -> Result<String, ArrowProfileError> {
-    let profile = parse_profile(footer, true, false)?.ok_or_else(|| {
+    let profile = parse_profile(footer, true, true, None)?.ok_or_else(|| {
         ArrowProfileError::InvalidFile(
             "the file carries no dtatools Arrow profile, so it stores no checksums to derive \
              a signature from"
                 .to_owned(),
         )
     })?;
-    let json = footer
-        .custom_metadata
-        .get(ARROW_CHECKSUMS_KEY)
-        .ok_or_else(|| {
-            ArrowProfileError::InvalidFile(
-                "the file was written without checksums, so its signature cannot be derived \
-                 from the footer; read the data and compute it with datasig() instead"
-                    .to_owned(),
-            )
-        })?;
-    let checksums = parse_checksums_document(&profile.version, json)?;
-    let row_count =
-        validate_stored_checksum_coverage(reader, footer, &profile.version, &checksums)?;
+    stored_signature_from_profile(reader, footer, &profile)
+}
+
+fn stored_signature_from_profile<R: Read + Seek>(
+    reader: &mut R,
+    footer: &Footer,
+    profile: &Profile,
+) -> Result<String, ArrowProfileError> {
+    let checksums = profile.checksums.as_ref().ok_or_else(|| {
+        ArrowProfileError::InvalidFile(
+            "the file was written without checksums, so its signature cannot be derived \
+             from the footer; read the data and compute it with datasig() instead"
+                .to_owned(),
+        )
+    })?;
+    let row_count = validate_stored_checksum_coverage(reader, footer, &profile.version, checksums)?;
     super::write::signature_from_parts(
         row_count,
         footer
             .schema
             .fields()
             .iter()
-            .zip(&profile.fields)
-            .map(|(field, document)| (field.name().as_str(), field.data_type(), document.as_ref())),
+            .enumerate()
+            .map(|(index, field)| {
+                (
+                    field.name().as_str(),
+                    field.data_type(),
+                    profile.fields.get(index),
+                )
+            }),
         footer.schema.fields().len(),
         &profile.dataset,
-        &checksums,
+        checksums,
     )
 }
 
@@ -1927,7 +2260,7 @@ fn stored_signature_from_footer<R: Read + Seek>(
 pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowProfileError> {
     let path = path.as_ref();
     let mut reader = BufReader::new(File::open(path)?);
-    let footer = match read_footer(&mut reader) {
+    let mut footer = match read_footer(&mut reader) {
         Err(ArrowProfileError::NotAnArrowFile(_)) => {
             return Err(ArrowProfileError::NotAnArrowFile(
                 path.display().to_string(),
@@ -1935,7 +2268,7 @@ pub fn arrow_stored_signature(path: impl AsRef<Path>) -> Result<String, ArrowPro
         }
         other => other?,
     };
-    stored_signature_from_footer(&mut reader, &footer)
+    stored_signature_from_footer(&mut reader, &mut footer)
 }
 
 pub fn summarize_arrow_file(
@@ -1958,6 +2291,8 @@ pub fn summarize_arrow_file(
 impl ArrowFileSnapshot {
     /// Read selection metadata from this snapshot, scanning ambiguous Int32
     /// values only when a tidyselect predicate needs their concrete R type.
+    /// Profile handling parses every field document because the summary may
+    /// expose any field to the predicate.
     pub fn summarize(
         &self,
         apply_profile: bool,
@@ -1967,7 +2302,7 @@ impl ArrowFileSnapshot {
         interrupt: &mut dyn FnMut() -> bool,
     ) -> Result<ArrowFileSummary, ArrowProfileError> {
         let mut reader = BufReader::new(self.file.try_clone()?);
-        let footer = match read_footer(&mut reader) {
+        let mut footer = match read_footer(&mut reader) {
             Err(ArrowProfileError::NotAnArrowFile(_)) => {
                 return Err(ArrowProfileError::NotAnArrowFile(
                     self.path.display().to_string(),
@@ -1975,7 +2310,7 @@ impl ArrowFileSnapshot {
             }
             other => other?,
         };
-        let profile = parse_profile(&footer, apply_profile, false)?;
+        let profile = parse_profile(&mut footer, apply_profile, false, None)?;
         let ambiguous_int32: Vec<u32> = if scan_ambiguous_int32 {
             footer
                 .schema
@@ -1985,7 +2320,7 @@ impl ArrowFileSnapshot {
                 .filter(|(index, field)| {
                     let document = profile
                         .as_ref()
-                        .and_then(|profile| profile.fields[*index].as_ref());
+                        .and_then(|profile| profile.fields.get(*index));
                     field.data_type() == &DataType::Int32
                         && document.and_then(|document| document.storage).is_none()
                         && document
@@ -2011,7 +2346,10 @@ impl ArrowFileSnapshot {
                     row_count,
                     max_output_rows: None,
                     verify: false,
-                    profile: apply_profile,
+                    // The scan only needs raw Int32 buffers; the already
+                    // parsed profile above determines which fields are
+                    // ambiguous and remains authoritative for the summary.
+                    profile: false,
                     record_signature: false,
                     threads: 1,
                 },
@@ -2059,7 +2397,7 @@ impl ArrowFileSnapshot {
                     field,
                     profile
                         .as_ref()
-                        .and_then(|profile| profile.fields[index].as_ref()),
+                        .and_then(|profile| profile.fields.get(index)),
                     int32_requires_double[index],
                 ),
             })
@@ -2123,6 +2461,14 @@ mod tests {
         };
         let prepared =
             prepare_read(&mut reader, &options, &mut || false).expect("source metadata reads");
+        assert!(prepared.footer.schema.metadata().is_empty());
+        assert!(prepared
+            .footer
+            .schema
+            .fields()
+            .iter()
+            .all(|field| field.metadata().is_empty()));
+        assert!(prepared.footer.custom_metadata.is_empty());
         std::fs::rename(&replacement, &path).expect("path is atomically replaced");
         let mut columns = columns_skeleton(&prepared).expect("column skeletons");
         {
@@ -2153,9 +2499,319 @@ mod tests {
 
     #[test]
     fn ipc_metadata_allocations_are_bounded() {
-        let error = metadata_buffer(MAX_IPC_METADATA_BYTES + 1, "record batch")
+        let error = metadata_buffer(MAX_IPC_METADATA_BYTES as u64 + 1, "record batch")
             .expect_err("oversized metadata is rejected before allocation");
         assert!(error.to_string().contains("64 MiB safety limit"));
+    }
+
+    #[test]
+    fn parsed_profile_releases_raw_fields_and_owns_each_reference_key_once() {
+        let fields = (0..3)
+            .map(|index| {
+                let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+                field.set_metadata(HashMap::from([(
+                    ARROW_FIELD_KEY.to_owned(),
+                    format!(r#"{{"version":0,"value_labels":"table_{index}"}}"#),
+                )]));
+                field
+            })
+            .collect::<Vec<_>>();
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"value_labels":{"table_0":[],"table_1":[],"table_2":[]}}"#
+                    .to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(|count| count.set(0));
+        parse_profile(&mut footer, true, false, None)
+            .expect("full profile is valid")
+            .expect("profile is present");
+
+        assert_eq!(
+            PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(std::cell::Cell::get),
+            3,
+            "the result count map is the only owner added for distinct references"
+        );
+    }
+
+    #[test]
+    fn projected_profile_is_sparse_and_validates_only_selected_field_documents() {
+        let field_count = 120_000;
+        let selected = field_count - 1;
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new("x", DataType::Int32, true);
+            if index == 0 {
+                field.set_metadata(HashMap::from([(
+                    ARROW_FIELD_KEY.to_owned(),
+                    "not JSON".to_owned(),
+                )]));
+            } else if index == selected {
+                field.set_metadata(HashMap::from([(
+                    ARROW_FIELD_KEY.to_owned(),
+                    r#"{"version":0}"#.to_owned(),
+                )]));
+            }
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"label":"wide"}"#.to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::from([(
+                ARROW_CHECKSUMS_KEY.to_owned(),
+                "discard without verification".to_owned(),
+            )]),
+        };
+
+        PROFILE_FIELD_LOOKUP_COUNT.with(|count| count.set(0));
+        PROFILE_SELECTED_RAW_JSON_BYTES.with(|bytes| bytes.set(0));
+        let profile = parse_profile(&mut footer, true, false, Some(&[selected, selected]))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let lookups = PROFILE_FIELD_LOOKUP_COUNT.with(std::cell::Cell::get);
+        let ProfileFields::Projected { documents, .. } = &profile.fields else {
+            panic!("a projected profile must not allocate full-width document storage");
+        };
+        assert_eq!(documents.len(), 1);
+        assert!(documents.contains_key(&selected));
+        assert!(
+            lookups <= 1,
+            "projected validation must visit the one stored document, not {lookups} schema slots"
+        );
+        assert_eq!(
+            PROFILE_SELECTED_RAW_JSON_BYTES.with(std::cell::Cell::get),
+            0,
+            "the selected wide-schema JSON payload must be released"
+        );
+        assert_eq!(profile.dataset.label, "wide");
+        assert!(!footer
+            .schema
+            .metadata()
+            .contains_key(ARROW_PROFILE_VERSION_KEY));
+        assert!(!footer.schema.metadata().contains_key(ARROW_DATASET_KEY));
+        assert!(!footer.custom_metadata.contains_key(ARROW_CHECKSUMS_KEY));
+        assert!(footer
+            .schema
+            .fields()
+            .iter()
+            .all(|field| !field.metadata().contains_key(ARROW_FIELD_KEY)));
+    }
+
+    #[test]
+    fn projected_profile_documents_iterate_once_in_source_order() {
+        let last = 119_999;
+        let mut documents = ProfileFields::new(120_000, Some(&[last, 7, 7]));
+        documents.insert(
+            7,
+            ArrowFieldDocument {
+                label: "first".to_owned(),
+                ..ArrowFieldDocument::default()
+            },
+        );
+        documents.insert(
+            7,
+            ArrowFieldDocument {
+                label: "duplicate".to_owned(),
+                ..ArrowFieldDocument::default()
+            },
+        );
+        documents.insert(last, ArrowFieldDocument::default());
+        let mut visited = Vec::new();
+
+        documents
+            .try_for_each_indexed::<std::convert::Infallible>(|index, document| {
+                visited.push((index, document.label.clone()));
+                Ok(())
+            })
+            .expect("infallible projected iteration");
+
+        assert_eq!(
+            visited,
+            vec![(7, "first".to_owned()), (last, String::new())]
+        );
+    }
+
+    #[test]
+    fn wide_profile_reference_state_owns_one_key_per_distinct_name() {
+        let field_count = 120_000;
+        let mut documents = ProfileFields::new(field_count, None);
+        for index in 0..field_count {
+            documents.insert(
+                index,
+                ArrowFieldDocument {
+                    value_labels: Some(format!("table_{index:06}")),
+                    ..ArrowFieldDocument::default()
+                },
+            );
+        }
+
+        PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(|count| count.set(0));
+        let counts = profile_value_label_reference_counts(&documents);
+        assert_eq!(counts.len(), field_count);
+        assert_eq!(
+            PROFILE_OWNED_VALUE_LABEL_NAME_COUNT.with(std::cell::Cell::get),
+            field_count,
+            "a full read must build only its result count-map keys"
+        );
+    }
+
+    #[test]
+    fn projected_profile_without_selected_value_labels_skips_wide_reference_scan() {
+        let field_count = 10_000;
+        let selected = field_count - 1;
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+            field.set_metadata(HashMap::from([(
+                ARROW_FIELD_KEY.to_owned(),
+                r#"{"version":0}"#.to_owned(),
+            )]));
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (ARROW_DATASET_KEY.to_owned(), r#"{"version":0}"#.to_owned()),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(0));
+        parse_profile(&mut footer, true, false, Some(&[selected]))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let parsed = RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(std::cell::Cell::get);
+
+        assert_eq!(parsed, 0, "no selected table needs a sharing count");
+    }
+
+    #[test]
+    fn selected_documents_can_satisfy_sharing_without_a_wide_reference_scan() {
+        let field_count = 10_000;
+        let selected = [field_count - 2, field_count - 1];
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+            let json = if selected.contains(&index) {
+                r#"{"version":0,"value_labels":"shared"}"#
+            } else {
+                r#"{"version":0}"#
+            };
+            field.set_metadata(HashMap::from([(
+                ARROW_FIELD_KEY.to_owned(),
+                json.to_owned(),
+            )]));
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"value_labels":{"shared":[]}}"#.to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(0));
+        let profile = parse_profile(&mut footer, true, false, Some(&selected))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let parsed = RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(std::cell::Cell::get);
+
+        assert_eq!(profile.value_label_reference_counts.get("shared"), Some(&2));
+        assert_eq!(parsed, 0, "selected documents already prove sharing");
+    }
+
+    #[test]
+    fn projected_reference_scan_stops_when_the_last_table_becomes_shared() {
+        let field_count = 10_000;
+        let selected = field_count - 1;
+        let mut fields = Vec::with_capacity(field_count);
+        for index in 0..field_count {
+            let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
+            let json = if index == 0 {
+                r#"{"version":0,"value_labels":"shared","future_field":true}"#
+            } else if index == selected {
+                r#"{"version":0,"value_labels":"shared"}"#
+            } else {
+                r#"{"version":0}"#
+            };
+            field.set_metadata(HashMap::from([(
+                ARROW_FIELD_KEY.to_owned(),
+                json.to_owned(),
+            )]));
+            fields.push(field);
+        }
+        let schema = Schema::new(fields).with_metadata(HashMap::from([
+            (
+                ARROW_PROFILE_VERSION_KEY.to_owned(),
+                ARROW_PROFILE_VERSION.to_owned(),
+            ),
+            (
+                ARROW_DATASET_KEY.to_owned(),
+                r#"{"version":0,"value_labels":{"shared":[]}}"#.to_owned(),
+            ),
+        ]));
+        let mut footer = Footer {
+            schema,
+            layouts: Vec::new(),
+            record_blocks: Vec::new(),
+            dictionary_blocks: Vec::new(),
+            custom_metadata: HashMap::new(),
+        };
+
+        RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(0));
+        let profile = parse_profile(&mut footer, true, false, Some(&[selected]))
+            .expect("projected profile is valid")
+            .expect("profile is present");
+        let parsed = RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(std::cell::Cell::get);
+
+        assert_eq!(profile.value_label_reference_counts.get("shared"), Some(&2));
+        assert_eq!(
+            parsed, 1,
+            "the first valid source reference reaches the cap"
+        );
     }
 
     #[test]
@@ -2284,6 +2940,27 @@ mod tests {
         assert!(error
             .to_string()
             .contains("buffer length does not match its field layout"));
+    }
+
+    #[test]
+    fn compression_framed_uncompressed_buffer_reuses_the_input_allocation() {
+        let payload = b"incompressible payload";
+        let mut raw = (-1_i64).to_le_bytes().to_vec();
+        raw.extend_from_slice(payload);
+        let payload_pointer = raw[8..].as_ptr();
+
+        let buffer = uncompressed_compression_buffer(raw, payload.len())
+            .expect("the uncompressed payload is valid");
+
+        assert_eq!(buffer.as_slice(), payload);
+        assert_eq!(buffer.as_slice().as_ptr(), payload_pointer);
+
+        let malformed = (-1_i64).to_le_bytes().to_vec();
+        let error = uncompressed_compression_buffer(malformed, 1)
+            .expect_err("the payload length must still match the field layout");
+        assert!(error
+            .to_string()
+            .contains("uncompressed buffer length mismatch"));
     }
 
     #[test]

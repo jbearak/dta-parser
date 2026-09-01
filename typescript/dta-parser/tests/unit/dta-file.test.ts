@@ -1,12 +1,14 @@
-import { describe, it, expect, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach, spyOn } from 'bun:test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
     DtaFile,
+    listStataNotes,
     make_missing_value,
 } from '../../src/node';
 import { parse_legacy_metadata } from '../../src/legacy-header';
+import { parse_metadata } from '../../src/header';
 import {
     V119_STRL_VALUE,
     v119_strl_fixture,
@@ -22,6 +24,114 @@ const FIXTURE_DIR = path.resolve(
 const V111_FIXTURE = path.resolve(
     __dirname, '../../../../r-package/dtatools/src/dta-tools/tests/data/synthetic-v111.dta'
 );
+
+function wideV119MetadataFixture(nvar: number): Buffer {
+    const headerPrefix = Buffer.from(
+        '<stata_dta><header><release>119</release>'
+        + '<byteorder>LSF</byteorder><K>',
+        'ascii'
+    );
+    const headerSuffix = Buffer.from(
+        '</K><N>\0\0\0\0\0\0\0\0</N><label>\0\0</label>'
+        + '<timestamp>\0</timestamp></header>',
+        'ascii'
+    );
+    const headerLength = headerPrefix.length + 4 + headerSuffix.length;
+    const sectionLengths = [
+        '<map>'.length + 14 * 8 + '</map>'.length,
+        '<variable_types>'.length + nvar * 2 + '</variable_types>'.length,
+        '<varnames>'.length + nvar * 129 + '</varnames>'.length,
+        '<sortlist>'.length + (nvar + 1) * 4 + '</sortlist>'.length,
+        '<formats>'.length + nvar * 57 + '</formats>'.length,
+        '<value_label_names>'.length + nvar * 129
+            + '</value_label_names>'.length,
+        '<variable_labels>'.length + nvar * 321
+            + '</variable_labels>'.length,
+        '<characteristics></characteristics>'.length,
+        '<data></data>'.length,
+        '<strls></strls>'.length,
+        '<value_labels></value_labels>'.length,
+        '</stata_dta>'.length,
+    ];
+    const totalLength = headerLength
+        + sectionLengths.reduce((sum, length) => sum + length, 0);
+    const output = Buffer.alloc(totalLength);
+    let position = 0;
+    const writeAscii = (value: string): void => {
+        position += output.write(value, position, 'ascii');
+    };
+
+    headerPrefix.copy(output, position);
+    position += headerPrefix.length;
+    output.writeUInt32LE(nvar, position);
+    position += 4;
+    headerSuffix.copy(output, position);
+    position += headerSuffix.length;
+
+    const offsets = new Array<number>(14).fill(0);
+    offsets[1] = position;
+    writeAscii('<map>');
+    const mapPayload = position;
+    position += 14 * 8;
+    writeAscii('</map>');
+
+    offsets[2] = position;
+    writeAscii('<variable_types>');
+    for (let index = 0; index < nvar; index++) {
+        output.writeUInt16LE(65_530, position + index * 2);
+    }
+    position += nvar * 2;
+    writeAscii('</variable_types>');
+
+    offsets[3] = position;
+    writeAscii('<varnames>');
+    for (let index = 0; index < nvar; index++) {
+        output.write(`v${index}`, position + index * 129, 'ascii');
+    }
+    position += nvar * 129;
+    writeAscii('</varnames>');
+
+    offsets[4] = position;
+    writeAscii('<sortlist>');
+    position += (nvar + 1) * 4;
+    writeAscii('</sortlist>');
+
+    offsets[5] = position;
+    writeAscii('<formats>');
+    for (let index = 0; index < nvar; index++) {
+        output.write('%8.0g', position + index * 57, 'ascii');
+    }
+    position += nvar * 57;
+    writeAscii('</formats>');
+
+    offsets[6] = position;
+    writeAscii('<value_label_names>');
+    position += nvar * 129;
+    writeAscii('</value_label_names>');
+
+    offsets[7] = position;
+    writeAscii('<variable_labels>');
+    position += nvar * 321;
+    writeAscii('</variable_labels>');
+
+    offsets[8] = position;
+    writeAscii('<characteristics></characteristics>');
+    offsets[9] = position;
+    writeAscii('<data></data>');
+    offsets[10] = position;
+    writeAscii('<strls></strls>');
+    offsets[11] = position;
+    writeAscii('<value_labels></value_labels>');
+    offsets[12] = position;
+    writeAscii('</stata_dta>');
+    offsets[13] = position;
+
+    expect(position).toBe(output.length);
+    for (let index = 0; index < offsets.length; index++) {
+        output.writeBigUInt64LE(BigInt(offsets[index]), mapPayload + index * 8);
+    }
+    return output;
+}
 
 let my_file: DtaFile | null = null;
 
@@ -42,6 +152,10 @@ describe('DtaFile', () => {
             expect(my_file.nobs).toBe(74);
             expect(my_file.nvar).toBe(12);
             expect(my_file.variables.length).toBe(12);
+            expect(my_file.metadata.notes).toEqual([
+                { number: 1, text: 'From Consumer Reports with permission' },
+            ]);
+            expect(listStataNotes(my_file.metadata)).toEqual(my_file.metadata.notes);
         });
 
         it('provides dataset label', async () => {
@@ -66,6 +180,36 @@ describe('DtaFile', () => {
                 'turn', 'displacement', 'gear_ratio',
                 'foreign',
             ]);
+        });
+
+        it('keeps file read geometry isolated from editable metadata', async () => {
+            my_file = await DtaFile.open(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            );
+            const expected = await my_file.read_rows(0, 74);
+            const metadata = my_file.metadata;
+
+            metadata.nobs = 0;
+            metadata.nvar = 1;
+            metadata.obs_length = 1;
+            metadata.section_offsets.data = 0;
+            metadata.section_offsets.strls = 0;
+            metadata.section_offsets.value_labels = 0;
+            metadata.variables[0].type = 'double';
+            metadata.variables[0].byte_width = 8;
+            metadata.variables[0].byte_offset = 999_999;
+            metadata.variables.length = 0;
+            metadata.byte_order = 'MSF';
+            metadata.format_version = 117;
+            metadata.text_encoding = 'iso-8859-1';
+
+            expect(my_file.nobs).toBe(74);
+            expect(my_file.nvar).toBe(12);
+            expect(await my_file.read_rows(0, 2)).toEqual(expected.slice(0, 2));
+            expect(await my_file.read_columns([0, 1])).toEqual(new Map([
+                [0, expected.map(row => row[0])],
+                [1, expected.map(row => row[1])],
+            ]));
         });
     });
 
@@ -367,13 +511,15 @@ describe('DtaFile', () => {
                 original.byteOffset + original.byteLength
             );
             const metadata = parse_legacy_metadata(arrayBuffer, original.length);
-            expect(metadata.notes).toEqual(['Release 111 note']);
+            expect(metadata.notes).toEqual([
+                { number: 1, text: 'Release 111 note' },
+            ]);
             const expansion = metadata.section_offsets.characteristics;
             const oldLength = original.readInt32LE(expansion + 1);
             const names = original.subarray(expansion + 5, expansion + 5 + 66);
             const payload = Buffer.concat([
                 names,
-                Buffer.alloc(70_000, 0x78),
+                Buffer.alloc(67_000, 0x78),
                 Buffer.from([0]),
             ]);
             const header = Buffer.alloc(5);
@@ -392,6 +538,88 @@ describe('DtaFile', () => {
                 my_file = await DtaFile.open(filePath);
                 expect(my_file.nobs).toBe(4);
                 expect((await my_file.read_rows(0, 1))[0][0]).toBe(1);
+            } finally {
+                my_file?.close();
+                my_file = null;
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('bounds every legacy characteristic value', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const expansion = metadata.section_offsets.characteristics;
+            const oldLength = original.readInt32LE(expansion + 1);
+            const names = original.subarray(expansion + 5, expansion + 5 + 66);
+            const payload = Buffer.concat([
+                names,
+                Buffer.alloc(67_784, 0x78),
+                Buffer.from([0]),
+            ]);
+            const header = Buffer.alloc(5);
+            header[0] = 1;
+            header.writeInt32LE(payload.length, 1);
+            const exactWithNul = Buffer.concat([
+                original.subarray(0, expansion),
+                header,
+                payload,
+                original.subarray(expansion + 5 + oldLength),
+            ]);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'over-limit-note.dta');
+            try {
+                fs.writeFileSync(filePath, exactWithNul);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.metadata.notes).not.toHaveLength(0);
+
+                const oversized = Buffer.from(exactWithNul);
+                const finalValueByte = expansion + 5 + 66 + 67_785 - 1;
+                expect(oversized[finalValueByte]).toBe(0);
+                oversized[finalValueByte] = 0x78;
+                fs.writeFileSync(filePath, oversized);
+                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
+
+                const reservedOversized = Buffer.from(oversized);
+                const name = expansion + 5 + 33;
+                reservedOversized.fill(0, name, name + 33);
+                reservedOversized.write('note0', name, 'ascii');
+                fs.writeFileSync(filePath, reservedOversized);
+                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
+
+                const unknownTargetOversized = Buffer.from(oversized);
+                const target = expansion + 5;
+                unknownTargetOversized.fill(0, target, target + 33);
+                unknownTargetOversized.write('missing', target, 'ascii');
+                fs.writeFileSync(filePath, unknownTargetOversized);
+                await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
+            } finally {
+                my_file?.close();
+                my_file = null;
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('rejects invalid raw legacy characteristic names', async () => {
+            const malformed = Buffer.from(fs.readFileSync(V111_FIXTURE));
+            const arrayBuffer = malformed.buffer.slice(
+                malformed.byteOffset,
+                malformed.byteOffset + malformed.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, malformed.length);
+            const name = metadata.section_offsets.characteristics + 5 + 33;
+            malformed.fill(0, name, name + 33);
+            malformed.write('2bad', name, 'ascii');
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'invalid-name.dta');
+            try {
+                fs.writeFileSync(filePath, malformed);
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Invalid on-disk Stata characteristic name'
+                );
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });
             }
@@ -428,6 +656,110 @@ describe('DtaFile', () => {
             }
         });
 
+        it('scans dense expansion headers through bounded read blocks', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const expansion = metadata.section_offsets.characteristics;
+            const recordCount = 50_000;
+            const records = Buffer.alloc(recordCount * 5 + 5);
+            for (let offset = 0; offset < recordCount * 5; offset += 5) {
+                records[offset] = 1;
+            }
+            const dense = Buffer.concat([
+                original.subarray(0, expansion),
+                records,
+                original.subarray(metadata.section_offsets.data),
+            ]);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'dense-expansions.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                fs.writeFileSync(filePath, dense);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.nobs).toBe(4);
+                expect(readSpy.mock.calls.length).toBeLessThan(100);
+                const bytesRead = readSpy.mock.calls.reduce(
+                    (total, call) => total + Number(call[3]), 0
+                );
+                expect(bytesRead).toBeLessThan(2 * dense.length + 128 * 1024);
+            } finally {
+                readSpy.mockRestore();
+                my_file?.close();
+                my_file = null;
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('uses bounded scan reads before loading one legacy metadata prefix', async () => {
+            const original = fs.readFileSync(V111_FIXTURE);
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_legacy_metadata(arrayBuffer, original.length);
+            const expansion = metadata.section_offsets.characteristics;
+            const recordCount = 32;
+            const valueLength = 67_784;
+            const records: Buffer[] = [];
+            for (let index = 0; index < recordCount; index++) {
+                const payload = Buffer.alloc(66 + valueLength);
+                payload.write('_dta', 0, 'ascii');
+                payload.write(`c${index}`, 33, 'ascii');
+                payload.fill(120, 66);
+                const header = Buffer.alloc(5);
+                header[0] = 1;
+                header.writeInt32LE(payload.length, 1);
+                records.push(header, payload);
+            }
+            records.push(Buffer.alloc(5));
+            const metadataLength = expansion + records.reduce(
+                (total, record) => total + record.length,
+                0
+            );
+            const large = Buffer.concat([
+                original.subarray(0, expansion),
+                ...records,
+                original.subarray(metadata.section_offsets.data),
+            ]);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v111-'));
+            const filePath = path.join(directory, 'large-expansions.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                fs.writeFileSync(filePath, large);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.metadata.characteristics).toHaveLength(recordCount);
+                expect(my_file.metadata.section_offsets.data).toBe(metadataLength);
+                const reads = readSpy.mock.calls.map(call => ({
+                    length: Number(call[3]),
+                    position: Number(call[4]),
+                }));
+                expect(reads).toContainEqual({
+                    length: metadataLength,
+                    position: 0,
+                });
+                const scanReads = reads.filter(read =>
+                    read.position >= expansion && read.position < metadataLength
+                );
+                expect(scanReads.length).toBeGreaterThan(0);
+                expect(Math.max(...scanReads.map(read => read.length)))
+                    .toBeLessThanOrEqual(64 * 1024);
+                const bytesRead = readSpy.mock.calls.reduce(
+                    (total, call) => total + Number(call[3]),
+                    0
+                );
+                expect(bytesRead).toBeLessThan(2 * large.length + 256 * 1024);
+            } finally {
+                readSpy.mockRestore();
+                my_file?.close();
+                my_file = null;
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
         it('rejects truncated release-111 observations during open', async () => {
             const original = fs.readFileSync(V111_FIXTURE);
             const arrayBuffer = original.buffer.slice(
@@ -442,6 +774,149 @@ describe('DtaFile', () => {
                 fs.writeFileSync(filePath, truncated);
                 await expect(DtaFile.open(filePath)).rejects.toThrow(
                     'Truncated legacy observation data'
+                );
+            } finally {
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+    });
+
+    describe('modern metadata bounds', () => {
+        it('rejects an oversized map without prefix retries', async () => {
+            const original = Buffer.from(fs.readFileSync(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            ));
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_metadata(arrayBuffer);
+            const mapData = metadata.section_offsets.map + '<map>'.length;
+            original.writeBigUInt64LE(BigInt(65 * 1024 * 1024), mapData + 9 * 8);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v118-'));
+            const filePath = path.join(directory, 'oversized-metadata.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                fs.writeFileSync(filePath, original);
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Modern metadata exceeds its dimensioned safety limit'
+                );
+                const prefixReads = readSpy.mock.calls
+                    .filter(call => Number(call[4]) === 0)
+                    .map(call => call[3] as number);
+                expect(prefixReads[0]).toBeLessThanOrEqual(1024);
+                expect(Math.max(...prefixReads)).toBeLessThan(original.length);
+            } finally {
+                readSpy.mockRestore();
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('opens release-119 fixed metadata at the 120,000-variable limit', async () => {
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v119-wide-'));
+            const filePath = path.join(directory, 'wide-metadata.dta');
+            try {
+                fs.writeFileSync(filePath, wideV119MetadataFixture(120_000));
+                expect(fs.statSync(filePath).size).toBeGreaterThan(64 * 1024 * 1024);
+                my_file = await DtaFile.open(filePath);
+                expect(my_file.nvar).toBe(120_000);
+                expect(my_file.nobs).toBe(0);
+                expect(my_file.variables[119_999].name).toBe('v119999');
+                const readPlan = (
+                    my_file as unknown as {
+                        _read_plan: {
+                            variable_count: number;
+                            variable(index: number): {
+                                type: string;
+                                byte_width: number;
+                                byte_offset: number;
+                            } | undefined;
+                            section_offsets: Record<string, unknown>;
+                        };
+                    }
+                )._read_plan;
+                expect(Object.isFrozen(readPlan)).toBeTrue();
+                expect(Object.hasOwn(readPlan, 'variables')).toBeFalse();
+                expect(readPlan.variable_count).toBe(120_000);
+                expect(readPlan.variable(119_999)).toEqual({
+                    type: 'byte',
+                    byte_width: 1,
+                    byte_offset: 119_999,
+                });
+                expect(Object.keys(readPlan.section_offsets).sort()).toEqual([
+                    'data', 'strls', 'value_labels',
+                ]);
+
+                const firstVariable = my_file.variables[0];
+                const lastVariable = my_file.variables[119_999];
+                const firstNotes = Object.getOwnPropertyDescriptor(
+                    firstVariable, 'notes'
+                );
+                const lastNotes = Object.getOwnPropertyDescriptor(
+                    lastVariable, 'notes'
+                );
+                const firstCharacteristics = Object.getOwnPropertyDescriptor(
+                    firstVariable, 'characteristics'
+                );
+                const lastCharacteristics = Object.getOwnPropertyDescriptor(
+                    lastVariable, 'characteristics'
+                );
+                expect(firstNotes?.get).toBeFunction();
+                expect(firstNotes?.get).toBe(lastNotes?.get);
+                expect(firstCharacteristics?.get).toBeFunction();
+                expect(firstCharacteristics?.get).toBe(lastCharacteristics?.get);
+
+                firstVariable.notes.push({ number: 1, text: 'first only' });
+                firstVariable.characteristics.push({ name: 'source', value: 'x' });
+                expect(lastVariable.notes).toEqual([]);
+                expect(lastVariable.characteristics).toEqual([]);
+            } finally {
+                my_file?.close();
+                my_file = null;
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
+        it('starts modern opens with a small map read and extends exactly once', async () => {
+            const filePath = path.join(FIXTURE_DIR, 'auto_v118.dta');
+            const readSpy = spyOn(fs, 'readSync');
+            try {
+                my_file = await DtaFile.open(filePath);
+                const reads = readSpy.mock.calls.map(call => ({
+                    length: Number(call[3]),
+                    offset: Number(call[4]),
+                }));
+                expect(reads[1]).toEqual({ length: 1024, offset: 0 });
+                expect(reads.filter(read => read.offset === 0)).toHaveLength(2);
+                expect(reads.some(read => read.length === 128 * 1024)).toBeFalse();
+            } finally {
+                readSpy.mockRestore();
+            }
+        });
+
+        it('does not resolve mapped metadata tags beyond the data boundary', async () => {
+            const original = Buffer.from(fs.readFileSync(
+                path.join(FIXTURE_DIR, 'auto_v118.dta')
+            ));
+            const arrayBuffer = original.buffer.slice(
+                original.byteOffset,
+                original.byteOffset + original.byteLength
+            );
+            const metadata = parse_metadata(arrayBuffer);
+            const mapData = metadata.section_offsets.map + '<map>'.length;
+            const variableTypes = metadata.section_offsets.variable_types;
+            const injected = metadata.section_offsets.data + '<data>'.length;
+            const payloadLength = '<variable_types>'.length + metadata.nvar * 2;
+            original.copy(
+                original, injected, variableTypes, variableTypes + payloadLength
+            );
+            original.writeBigUInt64LE(BigInt(injected), mapData + 2 * 8);
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v118-'));
+            const filePath = path.join(directory, 'post-data-metadata-tag.dta');
+            try {
+                fs.writeFileSync(filePath, original);
+                await expect(DtaFile.open(filePath)).rejects.toThrow(
+                    'Missing <variable_types> tag'
                 );
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });

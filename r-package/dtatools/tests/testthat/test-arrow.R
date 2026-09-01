@@ -23,7 +23,9 @@ standard_arrow_fixture <- function() {
         dt = as.difftime(c(1.5, NA, -2, 0), units = "hours")
     )
     attr(data, "label") <- "standard fixture"
-    attr(data, "notes") <- c("first note", "second note")
+    data <- set_stata_note(data, 1L, "first note")
+    data <- set_stata_note(data, 2L, "second note")
+    attr(data, "stata.note.numbers") <- NULL
     attr(data$x, "label") <- "a double"
     data
 }
@@ -468,6 +470,62 @@ test_that("byte-encoded strings are rejected instead of replaced", {
     }
 })
 
+test_that("byte-encoded Stata metadata is rejected instead of serialized", {
+    as_bytes <- function(value) {
+        Encoding(value) <- "bytes"
+        value
+    }
+    cases <- list(
+        dataset_note = function(data) {
+            attr(data, "notes") <- as_bytes("nôte")
+            attr(data, "stata.note.numbers") <- 1L
+            data
+        },
+        dataset_characteristic_name = function(data) {
+            attr(data, "stata.characteristics") <- stats::setNames(
+                "survey", as_bytes("sourcé")
+            )
+            data
+        },
+        dataset_characteristic_value = function(data) {
+            attr(data, "stata.characteristics") <- stats::setNames(
+                as_bytes("survéy"), "source"
+            )
+            data
+        },
+        variable_note = function(data) {
+            attr(data$x, "notes") <- as_bytes("nôte")
+            attr(data$x, "stata.note.numbers") <- 1L
+            data
+        },
+        variable_characteristic_name = function(data) {
+            attr(data$x, "stata.characteristics") <- stats::setNames(
+                "identifier", as_bytes("rôle")
+            )
+            data
+        },
+        variable_characteristic_value = function(data) {
+            attr(data$x, "stata.characteristics") <- stats::setNames(
+                as_bytes("identifiér"), "role"
+            )
+            data
+        }
+    )
+
+    for (name in names(cases)) {
+        data <- cases[[name]](tibble::tibble(x = 1))
+        path <- arrow_tempfile()
+        expect_error(
+            save_arrow(data, path),
+            "cannot contain strings with `bytes` encoding",
+            fixed = TRUE,
+            class = "dtatools_write_validation_error",
+            info = name
+        )
+        expect_false(file.exists(path), info = name)
+    }
+})
+
 test_that("haven labelled doubles round-trip with their labels", {
     data <- tibble::tibble(status = labelled_for_test(
         c(1, 2, tagged_missing("r")),
@@ -607,9 +665,12 @@ test_that("value labels on profiled columns round-trip", {
 })
 
 test_that("integer-coded value labels work in Arrow and datasig", {
-    labelled <- set_val_labels(c(1, 2), .labels = c(one = 1L, two = 2L))
+    labelled <- set_val_labels(1:2, .labels = c(one = 1L, two = 2L))
     expect_type(val_labels(labelled), "integer")
     data <- tibble::tibble(x = labelled)
+    specification <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
+    expect_type(specification[[3L]][[1L]]$values, "integer")
+    expect_identical(specification[[3L]][[1L]]$values, data$x)
     path <- arrow_tempfile()
 
     save_arrow(data, path)
@@ -828,6 +889,23 @@ test_that("save_arrow reports attributes the profile drops", {
     expect_null(attr(actual$x, "units.custom", exact = TRUE))
 })
 
+test_that("Arrow owned-attribute allowlists share the metadata registry", {
+    registry <- dtatools:::.stata_metadata_attribute_names
+    expect_true(all(registry %in% dtatools:::.arrow_known_column_attributes(
+        "double"
+    )))
+
+    data <- tibble::tibble(x = 1)
+    for (name in registry) attr(data, name) <- switch(name,
+        notes = "dataset note",
+        stata.note.numbers = 1L,
+        stata.characteristics = c(source = "survey"),
+        stop("add a sample value for the new registry attribute: ", name)
+    )
+    warnings <- dtatools:::.arrow_dropped_attribute_warnings(data, "double")
+    expect_length(warnings, 0L)
+})
+
 test_that("save_arrow reports custom row metadata the profile drops", {
     data <- data.frame(x = c(1, 2), row.names = c("alice", "bob"))
     class(data) <- c("tracked_data", "data.frame")
@@ -1009,13 +1087,76 @@ test_that("plain UInt16 columns use R integer storage", {
     )
 })
 
-test_that("Arrow selection scans ambiguous Int32 values only for predicates", {
-    scans <- logical()
+test_that("profiled UInt16 columns retain projected shared value labels", {
+    skip_if_not_installed("arrow")
+    field_metadata <- list(
+        `dtatools:field` = paste0(
+            '{"version":0,"value_labels":"shared_uint16"}'
+        )
+    )
+    schema <- arrow::schema(
+        arrow::field("first", arrow::uint16(), metadata = field_metadata),
+        arrow::field("second", arrow::uint16(), metadata = field_metadata)
+    )$WithMetadata(list(
+        `dtatools:profile-version` = "0",
+        `dtatools:dataset` = paste0(
+            '{"version":0,"value_labels":{"shared_uint16":',
+            '[{"value":1,"label":"Yes"}]}}'
+        )
+    ))
+    table <- arrow::arrow_table(
+        first = arrow::Array$create(c(1, 2), type = arrow::uint16()),
+        second = arrow::Array$create(c(2, 1), type = arrow::uint16()),
+        schema = schema
+    )
+    path <- arrow_tempfile()
+    arrow::write_ipc_file(table, path, compression = "uncompressed")
+
+    full <- read_arrow(path, verify = FALSE)
+    projected <- read_arrow(path, col_select = second, verify = FALSE)
+    expect_identical(as.integer(full$first), c(1L, 2L))
+    expect_identical(val_labels(full$first), c(Yes = 1))
+    expect_identical(
+        attr(full$first, "value.label.name", exact = TRUE), "shared_uint16"
+    )
+    expect_identical(
+        attr(full$second, "value.label.name", exact = TRUE), "shared_uint16"
+    )
+    expect_identical(
+        attr(projected$second, "value.label.name", exact = TRUE),
+        "shared_uint16"
+    )
+    expect_identical(val_labels(projected$second), c(Yes = 1))
+    expect_identical(
+        tracemem(val_labels(full$first)), tracemem(val_labels(full$second))
+    )
+
+    roundtrip_path <- arrow_tempfile()
+    save_arrow(full, roundtrip_path)
+    roundtrip <- read_arrow(roundtrip_path)
+    expect_equal(roundtrip$first, c(1, 2), ignore_attr = TRUE)
+    expect_equal(roundtrip$second, c(2, 1), ignore_attr = TRUE)
+    expect_identical(val_labels(roundtrip$first), c(Yes = 1))
+    expect_identical(
+        attr(roundtrip$first, "value.label.name", exact = TRUE),
+        "shared_uint16"
+    )
+    expect_identical(
+        attr(roundtrip$second, "value.label.name", exact = TRUE),
+        "shared_uint16"
+    )
+})
+
+test_that("Arrow selection parses profile metadata only for predicates", {
+    calls <- list()
     local_mocked_bindings(
         .arrow_metadata = function(file, profile = TRUE,
                                    scan_ambiguous_int32 = FALSE,
                                    skip = 0, n_max = Inf) {
-            scans <<- c(scans, scan_ambiguous_int32)
+            calls[[length(calls) + 1L]] <<- c(
+                profile = profile,
+                scan = scan_ambiguous_int32
+            )
             list(
                 names = c("x", "y"),
                 types = if (scan_ambiguous_int32) {
@@ -1034,16 +1175,56 @@ test_that("Arrow selection scans ambiguous Int32 values only for predicates", {
     )
     expect_identical(named$indices, 1L)
     expect_identical(named$names, "y")
-    expect_identical(scans, FALSE)
+    expect_identical(calls, list(c(profile = FALSE, scan = FALSE)))
 
-    scans <- logical()
+    calls <- list()
     predicate <- dtatools:::.arrow_column_selection(
         rlang::quo(tidyselect::where(is.double)), "unused.arrow", TRUE,
         list(skip = 0, n_max = Inf)
     )
     expect_identical(predicate$indices, 0L)
     expect_identical(predicate$names, "x")
-    expect_identical(scans, c(FALSE, TRUE))
+    expect_identical(
+        calls,
+        list(
+            c(profile = FALSE, scan = FALSE),
+            c(profile = TRUE, scan = TRUE)
+        )
+    )
+})
+
+test_that("predicate and datasig projections validate every field document", {
+    marker <- "unselected-profile-corruption-marker"
+    data <- tibble::tibble(selected = 1:2, unselected = 3:4)
+    data <- set_stata_note(data, 1L, marker, variable = "unselected")
+    path <- arrow_tempfile()
+    save_arrow(data, path)
+
+    bytes <- readBin(path, "raw", n = file.size(path))
+    marker_offsets <- grepRaw(
+        charToRaw(marker), bytes, fixed = TRUE, all = TRUE
+    )
+    marker_offset <- tail(marker_offsets, 1L)
+    document_starts <- grepRaw(
+        charToRaw('{"version":0'), bytes[seq_len(marker_offset)],
+        fixed = TRUE, all = TRUE
+    )
+    field_start <- tail(document_starts, 1L)
+    bytes[[field_start]] <- charToRaw("[")
+    writeBin(bytes, path)
+
+    name_only <- read_arrow(path, col_select = selected)
+    expect_identical(names(name_only), "selected")
+    expect_error(
+        read_arrow(path, col_select = tidyselect::where(is.integer)),
+        "malformed.*profile|profile.*malformed",
+        ignore.case = TRUE
+    )
+    expect_error(
+        read_arrow(path, col_select = selected, datasig = TRUE),
+        "malformed.*profile|profile.*malformed",
+        ignore.case = TRUE
+    )
 })
 
 test_that("Arrow selection and decoding share one file snapshot", {

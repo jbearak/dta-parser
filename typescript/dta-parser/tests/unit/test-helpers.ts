@@ -7,18 +7,18 @@ export async function with_temporary_nobs<T>(
     nobs: number,
     fn: () => Promise<T>
 ): Promise<T> {
-    const my_metadata = (
+    const internal = (
         file as unknown as {
-            _metadata: { nobs: number };
+            _read_plan: { readonly nobs: number };
         }
-    )._metadata;
-    const my_original_nobs = my_metadata.nobs;
+    );
+    const original = internal._read_plan;
 
     try {
-        my_metadata.nobs = nobs;
+        internal._read_plan = { ...original, nobs };
         return await fn();
     } finally {
-        my_metadata.nobs = my_original_nobs;
+        internal._read_plan = original;
     }
 }
 

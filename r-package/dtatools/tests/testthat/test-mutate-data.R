@@ -212,6 +212,20 @@ test_that("full-dataset values are gathered by selected row", {
     expect_identical(attr(strings$y, "stata.string.storage"), "str1")
 })
 
+test_that("metadata-bearing numerics remain valid row positions", {
+    rows <- set_stata_note(c(3, 1), 2L, "selection note")
+    data <- data.frame(value = 1:3)
+
+    replace_values(data, value, c(30L, 10L), where = rows)
+
+    expect_identical(data$value, c(10L, 2L, 30L))
+
+    full_values <- data.frame(value = 1:3)
+    replace_values(full_values, value, c(10L, 20L, 30L), where = rows)
+
+    expect_identical(full_values$value, c(10L, 2L, 30L))
+})
+
 test_that("compact selected positions use one native patch plan", {
     data <- data.frame(value = stata_byte(rep(1, 10)))
     rows <- stata_long(c(2, 5, 9))
@@ -1039,6 +1053,34 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     wide <- paste(rep("x", 2046), collapse = "")
     gen(data, long_string, wide)
     expect_identical(attr(data$long_string, "stata.string.storage"), "strL")
+})
+
+test_that("gen preserves metadata on otherwise supported numeric classes", {
+    sources <- list(
+        numeric = c(1, 2, 3),
+        date = as.Date("2020-01-01") + 0:2,
+        labelled = set_val_labels(c(1, 2, 1), One = 1, Two = 2)
+    )
+    for (kind in names(sources)) {
+        source <- set_stata_note(sources[[kind]], 3L, "source note")
+        source <- set_stata_characteristic(source, "source", kind)
+        data <- data.frame(anchor = 1:3)
+
+        gen(data, copied, .env$source)
+
+        expect_identical(
+            stata_notes(data$copied), c(`3` = "source note"), info = kind
+        )
+        expect_identical(
+            stata_characteristics(data$copied), c(source = kind), info = kind
+        )
+        if (identical(kind, "date")) {
+            expect_s3_class(data$copied, "stata_date")
+        }
+        if (identical(kind, "labelled")) {
+            expect_identical(val_labels(data$copied), c(One = 1, Two = 2))
+        }
+    }
 })
 
 test_that("gen handles zero rows and evaluates before insertion", {

@@ -10,8 +10,9 @@
 #' standard storage arrays, but only profile-aware readers restore the added
 #' dtatools semantics. The profile records storage declarations, raw Stata
 #' missing storage (sentinel integers and tagged NaN payloads), display formats,
-#' labels, notes, value-label tables, and the R semantics that standard Arrow
-#' types alone do not express. Experimental profile version `"0"` carries no
+#' labels, numbered notes, arbitrary Stata characteristics, value-label tables,
+#' and the R semantics that standard Arrow types alone do not express.
+#' Experimental profile version `"0"` carries no
 #' cross-version stability promise yet.
 #'
 #' @section Conversions and metadata:
@@ -28,14 +29,21 @@
 #' aggregated warning per conversion category. Attributes outside the profile's
 #' documented set are dropped with one warning naming each affected column and
 #' attribute.
+#' The recognized `value.label.name` attribute preserves an imported nondefault
+#' or shared Stata table name in the existing dataset registry and field
+#' reference. Columns that claim one name with different mappings produce one
+#' aggregated warning and fall back to separate variable-name tables.
 #'
 #' Unlike [save_dta()], factor class and orderedness, `POSIXct` timezones on
 #' ordinary R columns, and `difftime` units are preserved on read.
 #'
 #' @section Output safety:
 #' Only local files are supported. The complete input is validated before
-#' native serialization starts. Output streams to a sibling temporary file and
-#' atomically replaces the destination only after the file is closed.
+#' native serialization starts, including the Arrow reader's 64 MiB aggregate
+#' footer-metadata limit. This limit covers the encoded schema, profile JSON,
+#' checksum document, and record-batch index rather than each value separately.
+#' Output streams to a sibling temporary file and atomically replaces the
+#' destination only after the file is closed.
 #' Symbolic-link, directory, and other non-regular destinations are rejected.
 #'
 #' @param data A data frame or tibble.
@@ -84,6 +92,7 @@ save_arrow <- function(data, path,
     specification <- .prepare_arrow_write(write_data, label, adjust_tz)
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
+    write_warnings <- .emit_dta_write_preflight_warnings(write_warnings)
 
     temporary <- tempfile(
         pattern = paste0(".", basename(destination), "-dtatools-"),
@@ -129,31 +138,74 @@ save_arrow <- function(data, path,
     compression
 }
 
-.arrow_utf8 <- function(value, what) {
-    if (any(Encoding(value) == "bytes")) {
+.arrow_reject_bytes <- function(value, what) {
+    if (.Call(C_dtatools_has_bytes_encoding, value)) {
         .dta_write_abort(sprintf(
             "%s cannot contain strings with `bytes` encoding; Arrow Utf8 requires Unicode text",
             what
         ))
     }
+    invisible(NULL)
+}
+
+.arrow_utf8 <- function(value, what) {
+    .arrow_reject_bytes(value, what)
     enc2utf8(value)
+}
+
+.arrow_stata_metadata_payload <- function(notes, characteristics) {
+    # The source attributes passed the allocation-free bytes-encoding preflight
+    # before the metadata getters validated and copied them.
+    if (length(notes)) {
+        names(notes) <- enc2utf8(names(notes))
+        notes <- enc2utf8(notes)
+    }
+    if (length(characteristics)) {
+        names(characteristics) <- enc2utf8(names(characteristics))
+        characteristics <- enc2utf8(characteristics)
+    }
+    .stata_metadata_payload(notes, characteristics, inputs_are_utf8 = TRUE)
+}
+
+.arrow_validate_stata_metadata_utf8 <- function(x, what) {
+    notes <- attr(x, "notes", exact = TRUE)
+    if (is.character(notes)) {
+        .arrow_reject_bytes(notes, sprintf("%s notes", what))
+    }
+    characteristics <- attr(x, "stata.characteristics", exact = TRUE)
+    if (is.character(characteristics)) {
+        if (!is.null(names(characteristics))) {
+            .arrow_reject_bytes(
+                names(characteristics),
+                sprintf("%s characteristic names", what)
+            )
+        }
+        .arrow_reject_bytes(
+            characteristics, sprintf("%s characteristics", what)
+        )
+    }
+    invisible(NULL)
 }
 
 # Kind codes shared with C_dtatools_save_arrow and the native bridge.
 .arrow_write_kinds <- c(
     logical = 0L, integer = 1L, double = 2L, character = 3L, raw = 4L,
-    factor = 5L, date = 6L, datetime = 7L, difftime = 8L, stata = 9L
+    factor = 5L, date = 6L, datetime = 7L, difftime = 8L, stata = 9L,
+    labelled_integer = 10L
 )
 
 .arrow_write_column_kind <- function(column) {
     if (!is.null(dim(column))) return(NA_character_)
     classes <- attr(column, "class", exact = TRUE)
     if (is.factor(column)) {
-        if (all(classes %in% c("ordered", "factor"))) return("factor")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "ordered", "factor"
+        ))) return("factor")
         return(NA_character_)
     }
     if (!is.null(attr(column, "stata.storage", exact = TRUE))) {
         if (identical(typeof(column), "double") && all(classes %in% c(
+            .stata_metadata_vector_class,
             "haven_labelled", "vctrs_vctr", "stata_numeric",
             "stata_temporal", "stata_date", "stata_datetime",
             paste0("stata_", .stata_storage), "double",
@@ -162,37 +214,60 @@ save_arrow <- function(data, path,
         return(NA_character_)
     }
     if (inherits(column, "Date")) {
-        if (all(classes %in% "Date")) return("date")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "Date"
+        ))) return("date")
         return(NA_character_)
     }
     if (inherits(column, "POSIXct")) {
-        if (all(classes %in% c("POSIXct", "POSIXt"))) return("datetime")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "POSIXct", "POSIXt"
+        ))) return("datetime")
         return(NA_character_)
     }
     if (inherits(column, "difftime")) {
-        if (all(classes %in% "difftime")) return("difftime")
+        if (all(classes %in% c(
+            .stata_metadata_vector_class, "difftime"
+        ))) return("difftime")
         return(NA_character_)
     }
     if (is.character(column)) {
-        if (is.null(classes)) return("character")
+        if (is.null(classes) || all(
+            classes %in% .stata_metadata_vector_class
+        )) return("character")
         return(NA_character_)
     }
     if (identical(typeof(column), "raw")) {
-        if (is.null(classes)) return("raw")
+        if (is.null(classes) || all(
+            classes %in% .stata_metadata_vector_class
+        )) return("raw")
         return(NA_character_)
     }
     if (identical(typeof(column), "logical")) {
-        if (is.null(classes)) return("logical")
+        if (is.null(classes) || all(
+            classes %in% .stata_metadata_vector_class
+        )) return("logical")
         return(NA_character_)
     }
     if (identical(typeof(column), "integer")) {
-        if (is.null(classes)) return("integer")
+        if (is.null(classes) || (
+            inherits(column, "haven_labelled") &&
+            all(classes %in% c(
+                .stata_metadata_vector_class,
+                "haven_labelled", "vctrs_vctr", "integer"
+            ))
+        ) || all(classes %in% .stata_metadata_vector_class
+        )) return("integer")
         return(NA_character_)
     }
     if (identical(typeof(column), "double")) {
         if (is.null(classes) || (
             inherits(column, "haven_labelled") &&
-            all(classes %in% c("haven_labelled", "vctrs_vctr", "double"))
+            all(classes %in% c(
+                .stata_metadata_vector_class,
+                "haven_labelled", "vctrs_vctr", "double"
+            ))
+        ) || all(classes %in% .stata_metadata_vector_class
         )) return("double")
         return(NA_character_)
     }
@@ -273,7 +348,11 @@ save_arrow <- function(data, path,
     )
 }
 
-.prepare_arrow_write_column <- function(column, name, kind, adjust_tz) {
+.prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
+                                        value_label_index) {
+    .arrow_validate_stata_metadata_utf8(column, sprintf("Column `%s`", name))
+    characteristics <- stata_characteristics(column)
+    notes <- stata_notes(column)
     variable_label <- .arrow_utf8(
         .write_text(
             attr(column, "label", exact = TRUE),
@@ -288,22 +367,23 @@ save_arrow <- function(data, path,
     storage_code <- -1L
     string_storage <- -1L
     values <- column
+    write_kind <- kind
+    haven_labelled <- inherits(column, "haven_labelled")
 
-    value_labels <- list(double(), character(), FALSE)
-    if (kind %in% c("double", "date", "datetime", "difftime", "stata")) {
-        value_labels <- .prepare_write_value_labels(
-            column, name, allow_legacy_codes = TRUE
-        )
-        # The shared validator accepts integer and double code vectors. The
-        # Arrow native descriptor has one f64 representation for both.
-        value_labels[[1L]] <- as.double(value_labels[[1L]])
-        value_labels[[2L]] <- .arrow_utf8(
-            value_labels[[2L]], sprintf("Value-label text for `%s`", name)
-        )
-    } else if (!is.null(attr(column, "labels", exact = TRUE))) {
+    if (!is.null(attr(column, "labels", exact = TRUE)) &&
+        (!(kind %in% c(
+            "integer", "double", "date", "datetime", "difftime", "stata"
+        )) || value_label_index < 0L)) {
         .dta_write_abort(sprintf(
             "Column `%s` cannot carry numeric value labels", name
         ))
+    }
+
+    # The frozen profile does not permit value-label references on Int32.
+    # Promote labelled R integers to the lossless Float64 haven representation.
+    if (identical(kind, "integer") && value_label_index >= 0L) {
+        write_kind <- "labelled_integer"
+        haven_labelled <- TRUE
     }
 
     if (identical(kind, "stata")) {
@@ -357,17 +437,24 @@ save_arrow <- function(data, path,
     }
     units <- .arrow_utf8(units, sprintf("Difftime units for `%s`", name))
 
-    list(
-        .arrow_utf8(name, "Column names"), .arrow_write_kinds[[kind]],
+    stats::setNames(list(
+        .arrow_utf8(name, "Column names"), .arrow_write_kinds[[write_kind]],
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
-        value_labels[[1L]], value_labels[[2L]], value_labels[[3L]],
-        inherits(column, "haven_labelled"), string_storage
-    )
+        haven_labelled, string_storage, as.integer(value_label_index),
+        .arrow_stata_metadata_payload(notes, characteristics)
+    ), c(
+        "name", "kind", "values", "levels", "ordered", "label", "format",
+        "storage", "tz", "units", "haven_labelled", "string_storage",
+        "value_label_index", "stata_metadata"
+    ))
 }
 
 .arrow_known_column_attributes <- function(kind) {
-    common <- c("label", "format.stata", "stata.string.storage")
+    common <- c(
+        "label", "format.stata", "stata.string.storage",
+        "value.label.name", .stata_metadata_attribute_names, "class"
+    )
     switch(kind,
         factor = c(common, "levels", "class"),
         date = c(common, "labels", "class"),
@@ -375,19 +462,26 @@ save_arrow <- function(data, path,
         difftime = c(common, "labels", "class", "units"),
         stata = c(common, "labels", "stata.storage", "class"),
         double = c(common, "labels", "class"),
+        integer = c(common, "labels", "class"),
         common
     )
 }
 
 .arrow_dropped_attribute_warnings <- function(data, kinds) {
     details <- character()
-    known_dataset_attributes <- c("names", "label", "notes")
+    known_dataset_attributes <- c(
+        "names", "label", "notes", "stata.note.numbers",
+        "stata.characteristics"
+    )
     if (.row_names_info(data, type = 1L) <= 0L) {
         known_dataset_attributes <- c(known_dataset_attributes, "row.names")
     }
     dataset_class <- attr(data, "class", exact = TRUE)
-    if (identical(dataset_class, "data.frame") ||
-        identical(dataset_class, c("tbl_df", "tbl", "data.frame"))) {
+    ordinary_dataset_class <- setdiff(
+        dataset_class, "dtatools_stata_metadata"
+    )
+    if (identical(ordinary_dataset_class, "data.frame") ||
+        identical(ordinary_dataset_class, c("tbl_df", "tbl", "data.frame"))) {
         known_dataset_attributes <- c(known_dataset_attributes, "class")
     }
     dataset_attributes <- setdiff(
@@ -448,21 +542,49 @@ save_arrow <- function(data, path,
         ))
     }
     label <- .arrow_utf8(.write_text(label, "label"), "Dataset label")
-    notes <- attr(data, "notes", exact = TRUE)
-    if (is.null(notes)) notes <- character()
-    if (!is.character(notes) || anyNA(notes)) {
-        .dta_write_abort("The data frame's `notes` attribute must be NULL or a character vector")
-    }
-    notes <- .arrow_utf8(notes, "Dataset notes")
-    if (length(notes) > 9999L || any(nchar(notes, type = "bytes") > 67784L)) {
-        .dta_write_abort("Dataset notes exceed Stata's count or UTF-8 byte limits")
-    }
+    .arrow_validate_stata_metadata_utf8(data, "Dataset")
+    notes <- stata_notes(data)
+    characteristics <- stata_characteristics(data)
+    value_label_plan <- .new_write_value_label_plan(
+        data,
+        validate_column = function(column, name, index) {
+            if (!(kinds[[index]] %in% c(
+                "integer", "double", "date", "datetime", "difftime", "stata"
+            ))) {
+                .dta_write_abort(sprintf(
+                    "Column `%s` cannot carry numeric value labels", name
+                ))
+            }
+            .validate_write_value_label_shape(column, name)
+            invisible(NULL)
+        },
+        prepare_table = function(column, name, index) {
+            prepared <- .prepare_write_value_labels(
+                column, name, allow_legacy_codes = TRUE
+            )
+            # The Arrow native descriptor has one f64 representation for
+            # integer and double label codes.
+            prepared[[1L]] <- as.double(prepared[[1L]])
+            prepared[[2L]] <- .arrow_utf8(
+                prepared[[2L]], sprintf("Value-label text for `%s`", name)
+            )
+            prepared
+        }
+    )
     columns <- Map(
         .prepare_arrow_write_column, data, data_names, kinds,
-        MoreArgs = list(adjust_tz = adjust_tz)
+        value_label_index = value_label_plan$indices,
+        MoreArgs = list(
+            adjust_tz = adjust_tz
+        )
     )
-    specification <- list(label, notes, unname(columns))
-    attr(specification, "write_warnings") <-
+    specification <- list(
+        label, .arrow_stata_metadata_payload(notes, characteristics),
+        unname(columns), value_label_plan$tables
+    )
+    attr(specification, "write_warnings") <- c(
+        value_label_plan$warnings,
         .arrow_dropped_attribute_warnings(data, kinds)
+    )
     specification
 }

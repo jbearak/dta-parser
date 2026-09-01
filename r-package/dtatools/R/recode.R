@@ -341,3 +341,14 @@ recode.Date <- function(.x, ..., .default = NULL, .missing = NULL) {
 recode.POSIXct <- function(.x, ..., .default = NULL, .missing = NULL) {
     recode(.x, ..., .default = .default, .missing = .missing)
 }
+
+#' @export
+recode.dtatools_stata_metadata_vector <- function(
+    .x, ..., .default = NULL, .missing = NULL
+) {
+    result <- dplyr::recode(
+        .stata_metadata_vector_base(.x), ...,
+        .default = .default, .missing = .missing
+    )
+    .copy_stata_metadata_attributes(.x, result)
+}

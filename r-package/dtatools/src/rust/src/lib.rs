@@ -14,13 +14,16 @@ use ahash::AHashMap;
 use dta_tools::{
     classify_byte_missing_for_version, classify_float_missing_bits_for_version,
     classify_int_missing_for_version, classify_long_missing_for_version,
-    dta_write_numeric_value_is_representable, encode_numeric,
-    write_prevalidated_dta_with_observation_source_to, ColumnValues, DtaColumnSink, DtaData,
-    DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteColumn, DtaWriteColumnSource,
-    DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNumericValue,
-    DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel,
-    FormatVersion, MissingTag, ParallelDtaSink, ReadOptions, TextEncoding, ValueLabelTable,
-    VariableInfo,
+    dta_write_numeric_value_is_representable, encode_numeric, valid_canonical_characteristic,
+    valid_canonical_note, valid_characteristic, valid_note,
+    write_prevalidated_dta_with_value_label_registry_to, ColumnValues, DtaColumnSink, DtaData,
+    DtaError, DtaFile, DtaMetadata, DtaSink, DtaType, DtaWriteCharacteristic, DtaWriteColumn,
+    DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError, DtaWriteLabelValue,
+    DtaWriteNote, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
+    DtaWriteRawNumericValue, DtaWriteValueLabel, DtaWriteValueLabelRegistry,
+    DtaWriteValueLabelTable, FormatVersion, MissingTag, ParallelDtaSink, ReadOptions,
+    StataCharacteristic, StataNote, TextEncoding, ValueLabelEntry, ValueLabelTable,
+    ValueLabelTableView, VariableInfo,
 };
 
 mod arrow_ffi;
@@ -80,6 +83,9 @@ extern "C" {
     ) -> c_int;
     fn dtatools_install(name: *const c_char, result: *mut Sexp) -> c_int;
     fn dtatools_set_attrib(object: Sexp, name: Sexp, value: Sexp) -> c_int;
+    fn dtatools_xlength(value: Sexp) -> usize;
+    fn dtatools_is_null(value: Sexp) -> c_int;
+    fn dtatools_string_elt_utf8(values: Sexp, index: usize) -> *const c_char;
     fn dtatools_write_numeric_region(
         reader: *const c_void,
         start: usize,
@@ -99,6 +105,124 @@ extern "C" {
         error_message: *mut c_char,
         error_capacity: usize,
     ) -> c_int;
+}
+
+const STATA_METADATA_MARKER: &str = "\u{1e}dtatools:stata-metadata:1";
+
+fn parse_metadata_count(value: &str, context: &str) -> Result<usize, String> {
+    value
+        .parse::<usize>()
+        .map_err(|_| format!("invalid internal {context} count"))
+}
+
+unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
+    values: Sexp,
+    note: impl Fn(u32, &'a str) -> N,
+    characteristic: impl Fn(&'a str, &'a str) -> C,
+    valid_note: impl Fn(u32, &str) -> bool,
+    valid_characteristic: impl Fn(&str, &str) -> bool,
+) -> Result<(Vec<N>, Vec<C>), String> {
+    if dtatools_is_null(values) != 0 {
+        return Ok((Vec::new(), Vec::new()));
+    }
+    let field_count = dtatools_xlength(values);
+    let field = |index| {
+        required_c_str(
+            dtatools_string_elt_utf8(values, index),
+            "internal Stata metadata field",
+        )
+    };
+    if field_count < 2 {
+        return Err("truncated internal Stata metadata envelope".to_owned());
+    }
+    if field(0)? != STATA_METADATA_MARKER {
+        return Err("invalid internal Stata metadata marker".to_owned());
+    }
+    let note_count = parse_metadata_count(field(1)?, "note")?;
+    if note_count > 9_999 {
+        return Err("internal Stata note count exceeds 9,999".to_owned());
+    }
+    let mut cursor = note_count
+        .checked_mul(2)
+        .and_then(|count| 2_usize.checked_add(count))
+        .filter(|offset| *offset < field_count)
+        .ok_or_else(|| "truncated internal Stata note metadata".to_owned())?;
+    let characteristic_count = parse_metadata_count(field(cursor)?, "characteristic")?;
+    cursor = cursor
+        .checked_add(1)
+        .ok_or_else(|| "internal Stata metadata layout overflows".to_owned())?;
+    let expected_end = characteristic_count
+        .checked_mul(2)
+        .and_then(|count| cursor.checked_add(count))
+        .ok_or_else(|| "internal Stata characteristic count is too large".to_owned())?;
+    if expected_end != field_count {
+        return Err("internal Stata metadata counts do not match its fields".to_owned());
+    }
+
+    let mut cursor = 2;
+    let mut notes = Vec::new();
+    notes
+        .try_reserve_exact(note_count)
+        .map_err(|_| "could not allocate note metadata".to_owned())?;
+    for _ in 0..note_count {
+        let number = field(cursor)?
+            .parse::<u32>()
+            .map_err(|_| "invalid internal note number".to_owned())?;
+        let text = field(cursor + 1)?;
+        if !valid_note(number, text) {
+            return Err("invalid internal Stata note metadata".to_owned());
+        }
+        notes.push(note(number, text));
+        cursor += 2;
+    }
+    cursor += 1;
+    let mut characteristics = Vec::new();
+    characteristics
+        .try_reserve_exact(characteristic_count)
+        .map_err(|_| "could not allocate characteristic metadata".to_owned())?;
+    for _ in 0..characteristic_count {
+        let name = field(cursor)?;
+        let value = field(cursor + 1)?;
+        if !valid_characteristic(name, value) {
+            return Err("invalid internal Stata characteristic metadata".to_owned());
+        }
+        characteristics.push(characteristic(name, value));
+        cursor += 2;
+    }
+    Ok((notes, characteristics))
+}
+
+pub(crate) unsafe fn parse_stata_metadata_sexp(
+    values: Sexp,
+) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
+    parse_stata_metadata_sexp_as(
+        values,
+        |number, text| StataNote {
+            number,
+            text: text.to_owned(),
+        },
+        |name, value| StataCharacteristic {
+            name: name.to_owned(),
+            value: value.to_owned(),
+        },
+        valid_canonical_note,
+        valid_canonical_characteristic,
+    )
+}
+
+unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
+    values: Sexp,
+) -> Result<(Vec<DtaWriteNote<'a>>, Vec<DtaWriteCharacteristic<'a>>), String> {
+    parse_stata_metadata_sexp_as(
+        values,
+        |number, text| DtaWriteNote::numbered(number, Cow::Borrowed(text)),
+        |name, value| DtaWriteCharacteristic {
+            name: Cow::Borrowed(name),
+            value: Cow::Borrowed(value),
+        },
+        valid_note,
+        valid_characteristic,
+    )
 }
 
 #[repr(C)]
@@ -657,26 +781,77 @@ unsafe fn r_char(value: &str) -> Result<Sexp, String> {
     Ok(result)
 }
 
-unsafe fn string_vector(values: &[String], guard: &mut ProtectGuard) -> Result<Sexp, String> {
+unsafe fn string_vector_iter<'a>(
+    values: impl ExactSizeIterator<Item = &'a str>,
+    guard: &mut ProtectGuard,
+) -> Result<Sexp, String> {
     let vector = guard.alloc(
         STRSXP,
         RLen::try_from(values.len()).map_err(|_| "R vector is too long".to_owned())?,
     )?;
-    for (index, value) in values.iter().enumerate() {
+    for (index, value) in values.enumerate() {
         poll_interrupt(index)?;
         SET_STRING_ELT(vector, index as RLen, r_char(value)?);
     }
     Ok(vector)
 }
 
+unsafe fn string_vector(values: &[String], guard: &mut ProtectGuard) -> Result<Sexp, String> {
+    string_vector_iter(values.iter().map(String::as_str), guard)
+}
+
 unsafe fn scalar_string(value: &str, guard: &mut ProtectGuard) -> Result<Sexp, String> {
-    string_vector(&[value.to_owned()], guard)
+    string_vector_iter(std::iter::once(value), guard)
 }
 
 unsafe fn scalar_integer(value: c_int, guard: &mut ProtectGuard) -> Result<Sexp, String> {
     let vector = guard.alloc(INTSXP, 1)?;
     *INTEGER(vector) = value;
     Ok(vector)
+}
+
+unsafe fn attach_stata_metadata(
+    object: Sexp,
+    notes: &[StataNote],
+    characteristics: &[StataCharacteristic],
+    guard: &mut ProtectGuard,
+) -> Result<(), String> {
+    if !notes.is_empty() {
+        let values = string_vector_iter(notes.iter().map(|note| note.text.as_str()), guard)?;
+        set_attr(object, "notes", values)?;
+        let consecutive = notes
+            .iter()
+            .enumerate()
+            .all(|(index, note)| note.number == u32::try_from(index + 1).unwrap_or(u32::MAX));
+        if !consecutive {
+            let numbers = guard.alloc(
+                INTSXP,
+                RLen::try_from(notes.len()).map_err(|_| "too many notes".to_owned())?,
+            )?;
+            for (index, note) in notes.iter().enumerate() {
+                *INTEGER(numbers).add(index) =
+                    c_int::try_from(note.number).map_err(|_| "note number is too large")?;
+            }
+            set_attr(object, "stata.note.numbers", numbers)?;
+        }
+    }
+    if !characteristics.is_empty() {
+        let values = string_vector_iter(
+            characteristics
+                .iter()
+                .map(|characteristic| characteristic.value.as_str()),
+            guard,
+        )?;
+        let names = string_vector_iter(
+            characteristics
+                .iter()
+                .map(|characteristic| characteristic.name.as_str()),
+            guard,
+        )?;
+        set_symbol_attr(values, R_NamesSymbol, names)?;
+        set_attr(object, "stata.characteristics", values)?;
+    }
+    Ok(())
 }
 
 unsafe fn set_attr(object: Sexp, name: &str, value: Sexp) -> Result<(), String> {
@@ -709,42 +884,103 @@ unsafe fn set_class(
     set_symbol_attr(object, R_ClassSymbol, class)
 }
 
-unsafe fn label_attribute(
-    table: &ValueLabelTable,
+unsafe fn label_attribute_from_entries<L: AsRef<str>>(
+    entry_count: usize,
+    entries: impl IntoIterator<Item = Result<(f64, L), String>>,
     guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
-    let length = RLen::try_from(table.entries.len()).map_err(|_| "label table is too long")?;
+    let length = RLen::try_from(entry_count).map_err(|_| "label table is too long")?;
     let values = guard.alloc(REALSXP, length)?;
     let names = guard.alloc(STRSXP, length)?;
     let output = REAL(values);
-    for (index, entry) in table.entries.iter().enumerate() {
+    for (index, entry) in entries.into_iter().enumerate() {
         poll_interrupt(index)?;
-        *output.add(index) = entry
-            .missing_tag
-            .map(r_missing)
-            .unwrap_or_else(|| f64::from(entry.value));
-        SET_STRING_ELT(names, index as RLen, r_char(&entry.label)?);
+        let (value, label) = entry?;
+        *output.add(index) = value;
+        SET_STRING_ELT(names, index as RLen, r_char(label.as_ref())?);
     }
     set_symbol_attr(values, R_NamesSymbol, names)?;
     Ok(values)
 }
 
+unsafe fn owned_label_attribute(
+    entries: Vec<ValueLabelEntry>,
+    guard: &mut ProtectGuard,
+) -> Result<Sexp, String> {
+    let entry_count = entries.len();
+    label_attribute_from_entries(
+        entry_count,
+        entries.into_iter().map(|entry| {
+            Ok((
+                entry
+                    .missing_tag
+                    .map(r_missing)
+                    .unwrap_or_else(|| f64::from(entry.value)),
+                entry.label,
+            ))
+        }),
+        guard,
+    )
+}
+
 unsafe fn attach_variable_attributes(
     vector: Sexp,
     variable: &VariableInfo,
-    table: Option<&ValueLabelTable>,
+    value_label_name: Option<&str>,
+    labels_attribute: Option<Sexp>,
+    preserve_value_label_name: bool,
+    guard: &mut ProtectGuard,
+) -> Result<(), String> {
+    attach_variable_attribute_view(
+        vector,
+        VariableAttributeView::from(variable),
+        value_label_name,
+        labels_attribute,
+        preserve_value_label_name,
+        guard,
+    )
+}
+
+#[derive(Clone, Copy)]
+struct VariableAttributeView<'a> {
+    dta_type: &'a DtaType,
+    format: &'a str,
+    label: &'a str,
+    notes: &'a [StataNote],
+    characteristics: &'a [StataCharacteristic],
+}
+
+impl<'a> From<&'a VariableInfo> for VariableAttributeView<'a> {
+    fn from(variable: &'a VariableInfo) -> Self {
+        Self {
+            dta_type: &variable.dta_type,
+            format: &variable.format,
+            label: &variable.label,
+            notes: &variable.notes,
+            characteristics: &variable.characteristics,
+        }
+    }
+}
+
+unsafe fn attach_variable_attribute_view(
+    vector: Sexp,
+    attributes: VariableAttributeView<'_>,
+    value_label_name: Option<&str>,
+    labels_attribute: Option<Sexp>,
+    preserve_value_label_name: bool,
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     check_interrupt()?;
-    if !variable.label.is_empty() {
-        let label = scalar_string(&variable.label, guard)?;
-        set_attr(vector, "label", label)?;
+    attach_stata_metadata(vector, attributes.notes, attributes.characteristics, guard)?;
+    if !attributes.label.is_empty() {
+        let value = scalar_string(attributes.label, guard)?;
+        set_attr(vector, "label", value)?;
     }
-    if !variable.format.is_empty() {
-        let format = scalar_string(&variable.format, guard)?;
-        set_attr(vector, "format.stata", format)?;
+    if !attributes.format.is_empty() {
+        let value = scalar_string(attributes.format, guard)?;
+        set_attr(vector, "format.stata", value)?;
     }
-    let string_storage = match variable.dta_type {
+    let string_storage = match attributes.dta_type {
         DtaType::FixedString(width) => Some(format!("str{width}")),
         DtaType::StrL => Some("strL".to_owned()),
         _ => None,
@@ -753,12 +989,21 @@ unsafe fn attach_variable_attributes(
         let value = scalar_string(&string_storage, guard)?;
         set_attr(vector, "stata.string.storage", value)?;
     }
-    if let Some(table) = table {
-        let labels = label_attribute(table, guard)?;
+    if let Some(table_name) = value_label_name {
+        let labels = labels_attribute.ok_or_else(|| {
+            format!(
+                "missing cached labels for value-label table `{}`",
+                table_name
+            )
+        })?;
         set_attr(vector, "labels", labels)?;
+        if preserve_value_label_name {
+            let name = scalar_string(table_name, guard)?;
+            set_attr(vector, "value.label.name", name)?;
+        }
     }
 
-    let storage = match variable.dta_type {
+    let storage = match attributes.dta_type {
         DtaType::Byte => Some(("byte", "stata_byte")),
         DtaType::Int => Some(("int", "stata_int")),
         DtaType::Long => Some(("long", "stata_long")),
@@ -771,7 +1016,7 @@ unsafe fn attach_variable_attributes(
         set_attr(vector, "stata.storage", storage_value)?;
     }
 
-    match (temporal_kind(&variable.format), storage) {
+    match (temporal_kind(attributes.format), storage) {
         (TemporalKind::Date, Some(_)) => {
             set_class(vector, &["stata_temporal", "stata_date", "Date"], guard)?;
         }
@@ -784,7 +1029,7 @@ unsafe fn attach_variable_attributes(
             let timezone = scalar_string("UTC", guard)?;
             set_attr(vector, "tzone", timezone)?;
         }
-        (TemporalKind::None, Some((_, storage_class))) if table.is_some() => {
+        (TemporalKind::None, Some((_, storage_class))) if value_label_name.is_some() => {
             set_class(
                 vector,
                 &[
@@ -808,12 +1053,105 @@ unsafe fn attach_variable_attributes(
             let timezone = scalar_string("UTC", guard)?;
             set_attr(vector, "tzone", timezone)?;
         }
-        (TemporalKind::None, None) if table.is_some() => {
+        (TemporalKind::None, None) if value_label_name.is_some() => {
             set_class(vector, &["haven_labelled", "vctrs_vctr", "double"], guard)?;
         }
         (TemporalKind::None, None) => {}
     }
     Ok(())
+}
+
+fn value_label_reference_counts(
+    metadata: &DtaMetadata,
+    selected: impl IntoIterator<Item = usize>,
+) -> AHashMap<&str, usize> {
+    let mut counts = AHashMap::new();
+    for index in selected {
+        if let Some(variable) = metadata.variables.get(index) {
+            if !variable.value_label_name.is_empty() {
+                counts.entry(variable.value_label_name.as_str()).or_insert(0);
+            }
+        }
+    }
+    if counts.is_empty() {
+        return counts;
+    }
+    for variable in &metadata.variables {
+        if !variable.value_label_name.is_empty() {
+            if let Some(count) = counts.get_mut(variable.value_label_name.as_str()) {
+                *count += 1;
+            }
+        }
+    }
+    counts
+}
+
+pub(crate) fn should_preserve_value_label_name(
+    column_name: &str,
+    table_name: &str,
+    reference_count: usize,
+) -> bool {
+    table_name != column_name || reference_count > 1
+}
+
+fn preserve_value_label_name(
+    variable: &VariableInfo,
+    value_label_name: Option<&str>,
+    reference_counts: &AHashMap<&str, usize>,
+) -> bool {
+    value_label_name.is_some_and(|table_name| {
+        should_preserve_value_label_name(
+            &variable.name,
+            table_name,
+            reference_counts.get(table_name).copied().unwrap_or(0),
+        )
+    })
+}
+
+unsafe fn cached_owned_label_attribute(
+    table_name: &str,
+    tables: &mut AHashMap<String, Vec<ValueLabelEntry>>,
+    cache: &mut AHashMap<String, Sexp>,
+    guard: &mut ProtectGuard,
+) -> Result<Option<Sexp>, String> {
+    if let Some(&labels) = cache.get(table_name) {
+        return Ok(Some(labels));
+    }
+    let Some(entries) = tables.remove(table_name) else {
+        return Ok(None);
+    };
+    let labels = owned_label_attribute(entries, guard)?;
+    cache.insert(table_name.to_owned(), labels);
+    Ok(Some(labels))
+}
+
+unsafe fn cached_borrowed_label_attribute<'a>(
+    table_name: &'a str,
+    tables: &AHashMap<&'a str, &'a ValueLabelTable>,
+    cache: &mut AHashMap<&'a str, Sexp>,
+    guard: &mut ProtectGuard,
+) -> Result<Option<Sexp>, String> {
+    if let Some(&labels) = cache.get(table_name) {
+        return Ok(Some(labels));
+    }
+    let Some(table) = tables.get(table_name) else {
+        return Ok(None);
+    };
+    let labels = label_attribute_from_entries(
+        table.entries.len(),
+        table.entries.iter().map(|entry| {
+            Ok((
+                entry
+                    .missing_tag
+                    .map(r_missing)
+                    .unwrap_or_else(|| f64::from(entry.value)),
+                entry.label.as_str(),
+            ))
+        }),
+        guard,
+    )?;
+    cache.insert(table_name, labels);
+    Ok(Some(labels))
 }
 
 unsafe fn numeric_column<T: Copy + Into<f64>>(
@@ -837,7 +1175,11 @@ unsafe fn numeric_column<T: Copy + Into<f64>>(
 unsafe fn build_column(
     data: &DtaData,
     column_index: usize,
+    value_label_reference_counts: &AHashMap<&str, usize>,
+    value_label_tables: &mut AHashMap<String, Vec<ValueLabelEntry>>,
+    value_label_attributes: &mut AHashMap<String, Sexp>,
     guard: &mut ProtectGuard,
+    cache_guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
     let column = &data.columns[column_index];
     let variable = data
@@ -871,8 +1213,29 @@ unsafe fn build_column(
             string_vector(values, guard)?
         }
     };
-    let table = data.value_label_table_for_variable(column.variable_index);
-    attach_variable_attributes(vector, variable, table, guard)?;
+    let table_name = (!variable.value_label_name.is_empty()
+        && (value_label_attributes.contains_key(&variable.value_label_name)
+            || value_label_tables.contains_key(&variable.value_label_name)))
+    .then_some(variable.value_label_name.as_str());
+    let labels_attribute = table_name
+        .map(|table_name| {
+            cached_owned_label_attribute(
+                table_name,
+                value_label_tables,
+                value_label_attributes,
+                cache_guard,
+            )
+        })
+        .transpose()?
+        .flatten();
+    attach_variable_attributes(
+        vector,
+        variable,
+        table_name,
+        labels_attribute,
+        preserve_value_label_name(variable, table_name, value_label_reference_counts),
+        guard,
+    )?;
     Ok(vector)
 }
 
@@ -883,26 +1246,53 @@ unsafe fn attach_dataset_attributes(result: Sexp, metadata: &DtaMetadata) -> Res
         let label = scalar_string(&metadata.dataset_label, &mut guard)?;
         set_attr(result, "label", label)?;
     }
-    if !metadata.notes.is_empty() {
-        check_interrupt()?;
-        let mut guard = ProtectGuard::new();
-        let notes = string_vector(&metadata.notes, &mut guard)?;
-        set_attr(result, "notes", notes)?;
-    }
+    check_interrupt()?;
+    let mut guard = ProtectGuard::new();
+    attach_stata_metadata(
+        result,
+        &metadata.notes,
+        &metadata.characteristics,
+        &mut guard,
+    )?;
     Ok(())
 }
 
-unsafe fn build_data_frame(data: &DtaData) -> Result<Sexp, String> {
+unsafe fn build_data_frame(mut data: DtaData) -> Result<Sexp, String> {
     let mut result_guard = ProtectGuard::new();
     let column_count = RLen::try_from(data.columns.len()).map_err(|_| "too many columns")?;
     let result = result_guard.alloc(VECSXP, column_count)?;
     let names = result_guard.alloc(STRSXP, column_count)?;
 
+    let value_label_reference_counts = value_label_reference_counts(
+        &data.metadata,
+        data.columns
+            .iter()
+            .map(|column| column.variable_index as usize),
+    );
+    let mut value_label_attributes = AHashMap::new();
+    let mut value_label_tables = AHashMap::new();
+    for table in std::mem::take(&mut data.value_label_tables) {
+        let ValueLabelTable { name, entries } = table;
+        if value_label_reference_counts.contains_key(name.as_str())
+            && !value_label_tables.contains_key(name.as_str())
+        {
+            value_label_tables.insert(name, entries);
+        }
+    }
+
     for index in 0..data.columns.len() {
         check_interrupt()?;
         {
             let mut column_guard = ProtectGuard::new();
-            let column = build_column(data, index, &mut column_guard)?;
+            let column = build_column(
+                &data,
+                index,
+                &value_label_reference_counts,
+                &mut value_label_tables,
+                &mut value_label_attributes,
+                &mut column_guard,
+                &mut result_guard,
+            )?;
             SET_VECTOR_ELT(result, index as RLen, column);
             let variable = &data.metadata.variables[data.columns[index].variable_index as usize];
             SET_STRING_ELT(names, index as RLen, r_char(&variable.name)?);
@@ -1620,29 +2010,53 @@ impl DtaSink for RDataFrameSink {
     }
 
     fn finish(
-        mut self,
+        self,
         metadata: DtaMetadata,
-        _row_start: u64,
+        row_start: u64,
         row_count: u64,
         value_label_tables: Vec<ValueLabelTable>,
     ) -> Result<Self::Output, DtaError> {
+        self.finish_with_value_labels(
+            &metadata,
+            row_start,
+            row_count,
+            ValueLabelTableView::Owned(value_label_tables),
+        )
+    }
+
+    fn finish_with_value_labels(
+        mut self,
+        metadata: &DtaMetadata,
+        _row_start: u64,
+        row_count: u64,
+        value_label_tables: ValueLabelTableView<'_>,
+    ) -> Result<Self::Output, DtaError> {
         let expected_string_rows = usize::try_from(row_count)
             .map_err(|_| DtaError::Output("R vector is too long".to_owned()))?;
+        let value_label_reference_counts = value_label_reference_counts(
+            &metadata,
+            self.source_indices.iter().map(|&index| index as usize),
+        );
         let mut value_label_tables_by_name = AHashMap::with_capacity(value_label_tables.len());
-        for table in &value_label_tables {
-            value_label_tables_by_name
-                .entry(table.name.as_str())
-                .or_insert(table);
+        for table in value_label_tables.iter() {
+            if value_label_reference_counts.contains_key(table.name.as_str()) {
+                value_label_tables_by_name
+                    .entry(table.name.as_str())
+                    .or_insert(table);
+            }
         }
         unsafe {
+            let mut value_label_attributes = AHashMap::new();
             for (output_index, column) in self.columns.iter_mut().enumerate() {
-                match column {
+                check_interrupt().map_err(DtaError::Output)?;
+                let vector = match column {
                     RColumn::NumericAltRep { vector, data } => {
                         let data = data.take();
                         *vector = self._guard.numeric(data).map_err(DtaError::Output)?;
                         SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
+                        *vector
                     }
-                    RColumn::NumericEager { .. } => {}
+                    RColumn::NumericEager { vector, .. } => *vector,
                     RColumn::String { vector, data } => {
                         if data.value_ids.len() != expected_string_rows {
                             return Err(DtaError::Output(format!(
@@ -1653,31 +2067,39 @@ impl DtaSink for RDataFrameSink {
                         let data = std::mem::replace(data, RStringData::new(0)?);
                         *vector = self._guard.dictstring(data).map_err(DtaError::Output)?;
                         SET_VECTOR_ELT(self.result, output_index as RLen, *vector);
+                        *vector
                     }
-                }
-            }
-
-            for (output_index, &source_index) in self.source_indices.iter().enumerate() {
-                check_interrupt().map_err(DtaError::Output)?;
+                };
+                let source_index = self.source_indices[output_index];
                 let variable = metadata
                     .variables
                     .get(source_index as usize)
                     .ok_or(DtaError::ArithmeticOverflow("output source column"))?;
-                let table = if variable.value_label_name.is_empty() {
-                    None
-                } else {
-                    value_label_tables_by_name
-                        .get(variable.value_label_name.as_str())
-                        .copied()
-                };
-                let vector = match &self.columns[output_index] {
-                    RColumn::NumericAltRep { vector, .. }
-                    | RColumn::NumericEager { vector, .. }
-                    | RColumn::String { vector, .. } => *vector,
-                };
+                let table_name = (!variable.value_label_name.is_empty()
+                    && (value_label_attributes.contains_key(variable.value_label_name.as_str())
+                        || value_label_tables_by_name
+                            .contains_key(variable.value_label_name.as_str())))
+                .then_some(variable.value_label_name.as_str());
                 let mut attribute_guard = ProtectGuard::new();
-                attach_variable_attributes(vector, variable, table, &mut attribute_guard)
-                    .map_err(DtaError::Output)?;
+                let labels_attribute = match table_name {
+                    Some(table_name) => cached_borrowed_label_attribute(
+                        table_name,
+                        &value_label_tables_by_name,
+                        &mut value_label_attributes,
+                        &mut self._guard,
+                    )
+                    .map_err(DtaError::Output)?,
+                    None => None,
+                };
+                attach_variable_attributes(
+                    vector,
+                    variable,
+                    table_name,
+                    labels_attribute,
+                    preserve_value_label_name(variable, table_name, &value_label_reference_counts),
+                    &mut attribute_guard,
+                )
+                .map_err(DtaError::Output)?;
             }
 
             let row_count = c_int::try_from(row_count).map_err(|_| {
@@ -1700,7 +2122,7 @@ impl DtaSink for RDataFrameSink {
                 )
                 .map_err(DtaError::Output)?;
             }
-            attach_dataset_attributes(self.result, &metadata).map_err(DtaError::Output)?;
+            attach_dataset_attributes(self.result, metadata).map_err(DtaError::Output)?;
         }
         let result = self.result;
         Ok(result)
@@ -1750,6 +2172,28 @@ impl ParallelDtaSink for RDataFrameSink {
             value_label_tables,
         )
     }
+
+    fn finish_parallel_with_value_labels(
+        state: Self::State,
+        columns: Vec<Self::Column>,
+        metadata: &DtaMetadata,
+        row_start: u64,
+        row_count: u64,
+        value_label_tables: ValueLabelTableView<'_>,
+    ) -> Result<Self::Output, DtaError> {
+        DtaSink::finish_with_value_labels(
+            RDataFrameSink {
+                result: state.result,
+                columns,
+                source_indices: state.source_indices,
+                _guard: state.guard,
+            },
+            metadata,
+            row_start,
+            row_count,
+            value_label_tables,
+        )
+    }
 }
 
 unsafe fn metadata_impl(
@@ -1758,8 +2202,8 @@ unsafe fn metadata_impl(
     column_start: u32,
     column_count: u32,
 ) -> Result<Sexp, String> {
-    let file = DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
-    let metadata = file.metadata();
+    let metadata = DtaFile::metadata_summary_with_encoding(path, encoding)
+        .map_err(|error| error.to_string())?;
     let start = usize::try_from(column_start)
         .map_err(|_| "metadata column start is out of range".to_owned())?
         .min(metadata.variables.len());
@@ -1880,7 +2324,7 @@ unsafe fn read_impl(
         let data = file
             .read_with_interrupts(&options, coarse_interrupt, frequent_interrupt_poller())
             .map_err(|error| error.to_string())?;
-        build_data_frame(&data)
+        build_data_frame(data)
     }
 }
 
@@ -2044,10 +2488,8 @@ pub struct RWriteColumnDescriptor {
     label: *const c_char,
     numeric_values: *const c_void,
     string_values: Sexp,
-    label_values: *const c_void,
-    label_texts: Sexp,
-    label_count: usize,
-    has_value_labels: c_int,
+    value_label_index: c_int,
+    stata_metadata: Sexp,
     numeric_shift: f64,
     numeric_scale: f64,
     direct_numeric_values: *const c_void,
@@ -2057,6 +2499,44 @@ pub struct RWriteColumnDescriptor {
     direct_numeric_no_na: c_int,
     direct_string_data: *mut c_void,
 }
+
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, name) == 0);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, dta_type) == 8);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, format) == 16);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, label) == 24);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_values) == 32);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, string_values) == 40);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, value_label_index) == 48);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, stata_metadata) == 56);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_shift) == 64);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_scale) == 72);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_values) == 80);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_kind) == 88);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_format_version) == 92);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_temporal) == 96);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_no_na) == 100);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_string_data) == 104);
+    assert!(std::mem::size_of::<RWriteColumnDescriptor>() == 112);
+};
+
+#[repr(C)]
+pub struct RWriteValueLabelTableDescriptor {
+    name: *const c_char,
+    label_values: *const c_void,
+    label_texts: Sexp,
+    label_count: usize,
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: () = {
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, name) == 0);
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, label_values) == 8);
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, label_texts) == 16);
+    assert!(std::mem::offset_of!(RWriteValueLabelTableDescriptor, label_count) == 24);
+    assert!(std::mem::size_of::<RWriteValueLabelTableDescriptor>() == 32);
+};
 
 #[derive(Debug)]
 enum RWriteError {
@@ -3223,7 +3703,7 @@ unsafe fn required_c_string(value: *const c_char, description: &str) -> Result<S
 }
 
 unsafe fn r_value_labels<'a>(
-    descriptor: &'a RWriteColumnDescriptor,
+    descriptor: &'a RWriteValueLabelTableDescriptor,
 ) -> Result<Vec<DtaWriteValueLabel<'a>>, RWriteError> {
     let mut result = Vec::with_capacity(descriptor.label_count);
     if descriptor.label_count == 0 {
@@ -3281,10 +3761,11 @@ unsafe fn r_value_labels<'a>(
 struct RWriteRequest {
     path: *const c_char,
     dataset_label: *const c_char,
-    notes: *const *const c_char,
-    note_count: usize,
+    stata_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
+    value_label_tables: *const RWriteValueLabelTableDescriptor,
+    value_label_table_count: usize,
     numeric_replacements: *mut f64,
     row_count: usize,
     timestamp: *const c_char,
@@ -3294,38 +3775,36 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     let RWriteRequest {
         path,
         dataset_label,
-        notes,
-        note_count,
+        stata_metadata,
         descriptors,
         column_count,
+        value_label_tables,
+        value_label_table_count,
         numeric_replacements,
         row_count,
         timestamp,
     } = request;
     let path = required_c_string(path, "output path")?;
     let dataset_label = Cow::Borrowed(required_c_str(dataset_label, "dataset label")?);
-    if notes.is_null() && note_count != 0 {
-        return Err("dataset note pointer is null".into());
-    }
     if descriptors.is_null() && column_count != 0 {
         return Err("write column pointer is null".into());
+    }
+    if value_label_tables.is_null() && value_label_table_count != 0 {
+        return Err("value-label table pointer is null".into());
     }
     if numeric_replacements.is_null() && column_count != 0 {
         return Err("numeric replacement output pointer is null".into());
     }
-    let note_pointers = if note_count == 0 {
-        &[]
-    } else {
-        std::slice::from_raw_parts(notes, note_count)
-    };
-    let notes = note_pointers
-        .iter()
-        .map(|note| required_c_str(*note, "dataset note").map(Cow::Borrowed))
-        .collect::<Result<Vec<_>, _>>()?;
+    let (notes, characteristics) = parse_stata_metadata_sexp_borrowed(stata_metadata)?;
     let descriptors = if column_count == 0 {
         &[]
     } else {
         std::slice::from_raw_parts(descriptors, column_count)
+    };
+    let table_descriptors = if value_label_table_count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(value_label_tables, value_label_table_count)
     };
     let row_count = u64::try_from(row_count).map_err(|_| "row count is too large".to_owned())?;
     let callback_numeric_count = descriptors
@@ -3369,20 +3848,45 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let value_label_names = table_descriptors
+        .iter()
+        .map(|descriptor| unsafe {
+            required_c_str(descriptor.name, "value-label table name")
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let value_label_tables = table_descriptors
+        .iter()
+        .map(|descriptor| unsafe { r_value_labels(descriptor) })
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut value_label_indices = Vec::with_capacity(column_count);
     let mut columns = Vec::with_capacity(column_count);
     for (descriptor, source) in descriptors.iter().zip(&sources) {
         if !descriptor.numeric_shift.is_finite() || !descriptor.numeric_scale.is_finite() {
             return Err("numeric write transform must be finite".into());
         }
         let dta_type = legacy_source_output_type(source, save_dta_type(descriptor.dta_type)?)?;
-        let value_labels = r_value_labels(descriptor)?;
+        let (variable_notes, variable_characteristics) =
+            parse_stata_metadata_sexp_borrowed(descriptor.stata_metadata)?;
+        let value_label_index = if descriptor.value_label_index == -1 {
+            None
+        } else {
+            let index = usize::try_from(descriptor.value_label_index)
+                .map_err(|_| "labelled column has an invalid value-label table index")?;
+            if index >= value_label_tables.len() {
+                return Err("labelled column has an out-of-range value-label table index".into());
+            }
+            Some(index)
+        };
+        value_label_indices.push(value_label_index);
         columns.push(DtaWriteColumn {
             name: Cow::Borrowed(required_c_str(descriptor.name, "variable name")?),
             dta_type,
             format: Cow::Borrowed(required_c_str(descriptor.format, "display format")?),
             label: Cow::Borrowed(required_c_str(descriptor.label, "variable label")?),
-            has_value_labels: descriptor.has_value_labels != 0,
-            value_labels,
+            has_value_labels: value_label_index.is_some(),
+            value_labels: Vec::new(),
+            notes: variable_notes,
+            characteristics: variable_characteristics,
             values: DtaWriteColumnValues::Source(source),
         });
     }
@@ -3392,6 +3896,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     let data = DtaWriteData {
         dataset_label,
         notes,
+        characteristics,
         columns,
     };
     let observation_source = RWriteObservationSource {
@@ -3406,12 +3911,19 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         .open(path)
         .map_err(|error| format!("could not create temporary DTA output: {error}"))?;
     let mut writer = BufWriter::new(file);
-    write_prevalidated_dta_with_observation_source_to(
+    let value_label_records = value_label_names
+        .iter()
+        .zip(&value_label_tables)
+        .map(|(name, entries)| DtaWriteValueLabelTable::new(name, entries))
+        .collect::<Vec<_>>();
+    let registry = DtaWriteValueLabelRegistry::new(&value_label_records, &value_label_indices);
+    write_prevalidated_dta_with_value_label_registry_to(
         &mut writer,
         &data,
         &options,
         &observation_source,
         row_count,
+        &registry,
     )?;
     let file = writer
         .into_inner()
@@ -3436,10 +3948,11 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
 pub unsafe extern "C" fn dtatools_write_rust(
     path: *const c_char,
     dataset_label: *const c_char,
-    notes: *const *const c_char,
-    note_count: usize,
+    stata_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
+    value_label_tables: *const RWriteValueLabelTableDescriptor,
+    value_label_table_count: usize,
     numeric_replacements: *mut f64,
     row_count: usize,
     timestamp: *const c_char,
@@ -3449,10 +3962,11 @@ pub unsafe extern "C" fn dtatools_write_rust(
         match write_impl(RWriteRequest {
             path,
             dataset_label,
-            notes,
-            note_count,
+            stata_metadata,
             descriptors,
             column_count,
+            value_label_tables,
+            value_label_table_count,
             numeric_replacements,
             row_count,
             timestamp,
@@ -3557,10 +4071,8 @@ mod tests {
             label: ptr::null(),
             numeric_values: ptr::null(),
             string_values: ptr::null_mut(),
-            label_values: ptr::null(),
-            label_texts: ptr::null_mut(),
-            label_count: 0,
-            has_value_labels: 0,
+            stata_metadata: ptr::null_mut(),
+            value_label_index: -1,
             numeric_shift: shift,
             numeric_scale: scale,
             direct_numeric_values: values,
@@ -3598,12 +4110,15 @@ mod tests {
                 label: Cow::Borrowed(""),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Source(&sources[index]),
             })
             .collect();
         let data = DtaWriteData {
             dataset_label: Cow::Borrowed(""),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             columns,
         };
         let observation_source = RWriteObservationSource {

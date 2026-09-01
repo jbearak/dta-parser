@@ -48,7 +48,7 @@
     "build:cjs": "esbuild src/index.ts src/node.ts --bundle --platform=node --target=node20 --format=cjs --outdir=dist/cjs --outbase=src --out-extension:.js=.cjs",
     "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs",
     "prepare": "npm run build",
-    "typecheck": "tsc -p tsconfig.types.json --noEmit",
+    "typecheck": "tsc -p tsconfig.types.json --noEmit && tsc -p tsconfig.compat.json",
     "test": "bun test ./tests ../../tests/integration",
     "conformance": "cd ../.. && scripts/conformance.sh",
     "fuzz:smoke": "cd ../.. && cargo test -p dta-tools --locked --test fuzz_smoke -- --nocapture",

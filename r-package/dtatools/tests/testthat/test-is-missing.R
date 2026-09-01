@@ -71,6 +71,23 @@ test_that("is_missing supports semantic atomic classes", {
     expect_identical(is_missing(labelled_numbers), c(FALSE, TRUE))
 })
 
+test_that("is_missing treats Stata metadata markers as transparent", {
+    numeric <- set_stata_note(c(1, NA_real_), 1L, "numeric note")
+    character <- set_stata_characteristic(
+        c("seen", "", NA_character_), "source", "survey"
+    )
+
+    expect_identical(is_missing(numeric), c(FALSE, TRUE))
+    expect_identical(is_missing(character), c(FALSE, TRUE, TRUE))
+
+    custom <- set_stata_note(
+        structure(c(1, NA_real_), class = "custom"),
+        1L,
+        "custom note"
+    )
+    expect_error(is_missing(custom), "unsupported class")
+})
+
 test_that("is_missing rejects containers and unsupported classes", {
     invalid <- list(
         factor = factor(c("", "seen")),

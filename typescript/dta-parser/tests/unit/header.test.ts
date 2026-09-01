@@ -110,6 +110,18 @@ describe('parse_metadata', () => {
             );
         });
 
+        it('reads numbered notes and hides structural characteristics', () => {
+            expect(meta.notes).toEqual([{
+                number: 1,
+                text: 'From Consumer Reports with permission',
+            }]);
+            expect(meta.characteristics).toEqual([]);
+            expect(meta.variables.every(
+                variable => variable.notes.length === 0
+                    && variable.characteristics.length === 0
+            )).toBe(true);
+        });
+
         it('computes obs_length as sum of byte widths', () => {
             const my_sum = meta.variables.reduce(
                 (acc, v) => acc + v.byte_width, 0
@@ -379,6 +391,183 @@ describe('parse_metadata', () => {
     // ----- Error handling -----
 
     describe('error handling', () => {
+        it('bounds every modern characteristic value', () => {
+            const original = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                original.buffer.slice(
+                    original.byteOffset,
+                    original.byteOffset + original.byteLength
+                )
+            );
+            const firstRecord = metadata.section_offsets.characteristics
+                + Buffer.byteLength('<characteristics><ch>');
+            const record = firstRecord;
+            const oldLength = original.readUInt32LE(record);
+            const desiredValueLength = 67_785;
+            const extra = desiredValueLength - (oldLength - 2 * 129);
+            const close = record + 4 + oldLength;
+            const exactValue = Buffer.alloc(desiredValueLength, 0x78);
+            exactValue[exactValue.length - 1] = 0;
+            const exactWithNul = Buffer.concat([
+                original.subarray(0, record + 4 + 2 * 129),
+                exactValue,
+                original.subarray(close),
+            ]);
+            exactWithNul.writeUInt32LE(oldLength + extra, record);
+            const mapPayload = metadata.section_offsets.map
+                + Buffer.byteLength('<map>');
+            for (let index = 9; index < 14; index++) {
+                const offset = mapPayload + index * 8;
+                exactWithNul.writeBigUInt64LE(
+                    exactWithNul.readBigUInt64LE(offset) + BigInt(extra), offset
+                );
+            }
+            const exactBuffer = exactWithNul.buffer.slice(
+                exactWithNul.byteOffset,
+                exactWithNul.byteOffset + exactWithNul.byteLength
+            );
+            expect(() => parse_metadata(exactBuffer)).not.toThrow();
+
+            const oversized = Buffer.from(exactWithNul);
+            const finalValueByte = record + 4 + 2 * 129
+                + desiredValueLength - 1;
+            expect(oversized[finalValueByte]).toBe(0);
+            oversized[finalValueByte] = 0x78;
+            expect(() => parse_metadata(
+                oversized.buffer.slice(
+                    oversized.byteOffset,
+                    oversized.byteOffset + oversized.byteLength
+                )
+            )).toThrow('67,784-byte limit');
+            const reservedOversized = Buffer.from(oversized);
+            const name = record + 4 + 129;
+            reservedOversized.fill(0, name, name + 129);
+            reservedOversized.write('note0', name, 'ascii');
+            expect(() => parse_metadata(
+                reservedOversized.buffer.slice(
+                    reservedOversized.byteOffset,
+                    reservedOversized.byteOffset + reservedOversized.byteLength
+                )
+            )).toThrow('67,784-byte limit');
+
+            const unknownTargetOversized = Buffer.from(oversized);
+            const target = record + 4;
+            unknownTargetOversized.fill(0, target, target + 129);
+            unknownTargetOversized.write('missing', target, 'ascii');
+            expect(() => parse_metadata(
+                unknownTargetOversized.buffer.slice(
+                    unknownTargetOversized.byteOffset,
+                    unknownTargetOversized.byteOffset
+                        + unknownTargetOversized.byteLength
+                )
+            )).toThrow('67,784-byte limit');
+        });
+
+        it('rejects invalid raw modern characteristic names', () => {
+            const malformed = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            );
+            const record = metadata.section_offsets.characteristics
+                + Buffer.byteLength('<characteristics><ch>');
+            const name = record + 4 + 129;
+            malformed.fill(0, name, name + 129);
+            malformed.write('2bad', name, 'ascii');
+            expect(() => parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            )).toThrow('Invalid on-disk Stata characteristic name');
+        });
+
+        it('frames forged modern terminators before classification or value errors', () => {
+            const original = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                original.buffer.slice(
+                    original.byteOffset,
+                    original.byteOffset + original.byteLength
+                )
+            );
+            const width = 129;
+            const valueLength = 67_786;
+            const firstPayload = Buffer.alloc(2 * width + valueLength, 0x78);
+            firstPayload.fill(0, 0, 2 * width);
+            firstPayload.write('_dta', 0, 'ascii');
+            firstPayload.write('source', width, 'ascii');
+            const firstHeader = Buffer.alloc(8);
+            firstHeader.write('<ch>', 0, 'ascii');
+            firstHeader.writeUInt32LE(firstPayload.length, 4);
+            const forgedPayload = Buffer.alloc(
+                2 * width + Buffer.byteLength('</characteristics>')
+            );
+            forgedPayload.write('_dta', 0, 'ascii');
+            forgedPayload.write('2bad', width, 'ascii');
+            forgedPayload.write('</characteristics>', 2 * width, 'ascii');
+            const forgedHeader = Buffer.alloc(8);
+            forgedHeader.write('<ch>', 0, 'ascii');
+            forgedHeader.writeUInt32LE(forgedPayload.length, 4);
+            const section = Buffer.concat([
+                Buffer.from('<characteristics>'),
+                firstHeader,
+                firstPayload,
+                Buffer.from('</ch>'),
+                forgedHeader,
+                forgedPayload,
+            ]);
+            const oldLength = metadata.section_offsets.data
+                - metadata.section_offsets.characteristics;
+            const delta = section.length - oldLength;
+            const malformed = Buffer.concat([
+                original.subarray(0, metadata.section_offsets.characteristics),
+                section,
+                original.subarray(metadata.section_offsets.data),
+            ]);
+            const mapPayload = metadata.section_offsets.map
+                + Buffer.byteLength('<map>');
+            for (let index = 9; index < 14; index++) {
+                const offset = mapPayload + index * 8;
+                malformed.writeBigUInt64LE(
+                    malformed.readBigUInt64LE(offset) + BigInt(delta), offset
+                );
+            }
+
+            expect(() => parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            )).toThrow('Truncated characteristic payload');
+        });
+
+        it('rejects a mapped data offset beyond the supplied buffer', () => {
+            const malformed = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            );
+            const mapPayload = metadata.section_offsets.map
+                + Buffer.byteLength('<map>');
+            malformed.writeBigUInt64LE(
+                BigInt(malformed.length + 1),
+                mapPayload + 9 * 8
+            );
+
+            expect(() => parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            )).toThrow(
+                'Corrupt .dta file: mapped data offset exceeds buffer length'
+            );
+        });
+
         it('throws on truncated buffer', () => {
             const my_buf = new ArrayBuffer(10);
             expect(() => parse_metadata(my_buf)).toThrow();

@@ -8,7 +8,8 @@ status: accepted
 raw source files (for example, downloaded public-use survey data) have not
 been modified. The signature is an order-sensitive digest of a dataset's read
 model — observation and variable counts, variable names and order, storage
-types, labels, display formats, notes, and values in row order — built from
+types, labels, display formats, dataset and variable numbered notes and
+characteristics, and values in row order — built from
 the Arrow profile's canonical per-batch column hashes, so a `.dta` file, a
 `.arrow` file at any compression, and their loaded read models all sign
 identically. Reimplementing Stata's `datasignature` algorithm for
@@ -34,7 +35,8 @@ those declarations against the stored bytes. DTA files store no hashes, so
 `read_dta()` hashes the decoded columns instead and refuses `col_select`,
 `skip`, and `n_max`: a partial read cannot testify to the full file.
 
-The signature payload is versioned (currently `"1"`) but carries no
+The signature payload is versioned (currently `"2"`; version 2 adds the
+numbered-note and characteristic fields to the profile documents) but carries no
 stability promise yet: it embeds the profile's JSON metadata documents and
 the fixed 65,536-row batch size, so it is only as stable as the experimental
 profile version `"0"`. The signature's stability promise is made together

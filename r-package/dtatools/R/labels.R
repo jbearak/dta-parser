@@ -58,6 +58,11 @@
 #' Date and POSIXct classes, time zones, Stata formats, and unrelated attributes
 #' are preserved. Removing the table removes only compatibility classes added
 #' for the label table and retains unrelated classes.
+#' Imported nondefault or shared Stata table identity is carried separately in
+#' `attr(x, "value.label.name")`. Setters retain that package-owned attribute
+#' while value labels remain and remove it when all value labels are removed.
+#' This interface does not provide a public way to create or edit named shared
+#' tables.
 #'
 #' See the
 #' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
@@ -428,6 +433,9 @@ dataset_label <- function(data) {
         location <- locations[[index]]
         column <- .metadata_copy(.data_column_at(access, location))
         attr(column, "labels") <- updates[[index]]
+        if (is.null(updates[[index]])) {
+            attr(column, "value.label.name") <- NULL
+        }
         column <- .apply_haven_labelled_class(
             column, !is.null(updates[[index]])
         )
@@ -496,6 +504,7 @@ dataset_label <- function(data) {
             for (index in seq_along(access$names)) {
                 column <- .metadata_copy(.data_column_at(access, index))
                 attr(column, "labels") <- NULL
+                attr(column, "value.label.name") <- NULL
                 column <- .apply_haven_labelled_class(column, FALSE)
                 .set_data_column_at(access, index, column)
             }
@@ -516,6 +525,7 @@ dataset_label <- function(data) {
     .warn_stata_metadata_limits(.value_label_violations(value))
     x <- .metadata_copy(x)
     attr(x, "labels") <- value
+    if (is.null(value)) attr(x, "value.label.name") <- NULL
     .apply_haven_labelled_class(x, !is.null(value))
 }
 

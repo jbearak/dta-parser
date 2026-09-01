@@ -18,6 +18,8 @@ test_that("datasig is container-independent and shaped as rows:columns:digest", 
     reference <- read_dta(dta_path)
     signature <- datasig(reference)
     expect_match(signature, "^4:3:[0-9a-f]{16}$")
+    # Fixed regression value for DATASIG_PAYLOAD_VERSION 2.
+    expect_identical(signature, "4:3:1ac3e0c5bab249cd")
     expect_identical(datasig(reference), signature)
     expect_false(identical(datasig(data), signature))
 
@@ -72,6 +74,14 @@ test_that("datasig covers names, storage types, labels, and metadata", {
     noted <- base
     attr(noted, "notes") <- "a note"
     expect_false(identical(datasig(noted), signature))
+
+    variable_noted <- set_stata_note(base, 2, "variable note", variable = "x")
+    expect_false(identical(datasig(variable_noted), signature))
+
+    characterized <- set_stata_characteristic(
+        base, "source", "survey", variable = "x"
+    )
+    expect_false(identical(datasig(characterized), signature))
 
     value_labelled <- base
     attr(value_labelled$x, "labels") <- c(one = 1)

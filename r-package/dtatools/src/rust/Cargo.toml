@@ -14,7 +14,7 @@ ahash = { version = "0.8", default-features = false, features = ["std"] }
 arrow-array = "59.2.0"
 arrow-buffer = "59.2.0"
 arrow-schema = "59.2.0"
-dta-tools = { path = "../dta-tools" }
+dta-tools = { path = "../dta-tools", features = ["r-adapter-internal"] }
 
 [profile.release]
 lto = "thin"

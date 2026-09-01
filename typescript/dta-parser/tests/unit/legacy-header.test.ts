@@ -471,6 +471,37 @@ describe('parse_legacy_metadata', () => {
         )).toThrow('Invalid legacy expansion field');
     });
 
+    it('frames unterminated release-111 characteristics before classification errors', () => {
+        const valid = build_legacy_buffer({
+            version: 111,
+            nvar: 1,
+            nobs: 0,
+            type_codes: [251],
+            varnames: ['x'],
+        });
+        const metadata = parse_legacy_metadata(valid.buffer, valid.file_size);
+        const prefix = Buffer.from(valid.buffer).subarray(
+            0, metadata.section_offsets.characteristics
+        );
+        const valueLength = 67_786;
+        const payload = Buffer.alloc(66 + valueLength, 0x78);
+        payload.fill(0, 0, 66);
+        payload.write('_dta', 0, 'ascii');
+        payload.write('2bad', 33, 'ascii');
+        const header = Buffer.alloc(5);
+        header[0] = 1;
+        header.writeInt32LE(payload.length, 1);
+        const malformed = Buffer.concat([prefix, header, payload]);
+
+        expect(() => parse_legacy_metadata(
+            malformed.buffer.slice(
+                malformed.byteOffset,
+                malformed.byteOffset + malformed.byteLength
+            ),
+            malformed.byteLength
+        )).toThrow('Missing legacy expansion-field terminator');
+    });
+
     it('rejects release-111 observation geometry beyond the file size', () => {
         const valid = build_legacy_buffer({
             version: 111,

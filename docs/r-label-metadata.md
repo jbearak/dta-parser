@@ -61,6 +61,35 @@ Value-label codes are limited to values that Stata can use in a label definition
 
 System missing `.`, ordinary R `NA` and `NaN`, fractions, and infinities are rejected. Use `tagged_missing()`, `missing_tag()`, and `is_tagged_missing()` to create or inspect extended missing values without haven.
 
+### Value-label table names
+
+Three pieces of Stata metadata have similar names but different jobs:
+
+- `attr(column, "label")` is the human-readable variable label.
+- `attr(column, "labels")` maps numeric codes to displayed text.
+- `attr(column, "value.label.name")` identifies the Stata table that supplies that mapping.
+
+`read_dta()` and `read_arrow()` attach `value.label.name` when an imported
+table name differs from the source variable name or when several source
+variables share the table. A projected read still checks all source variables,
+so it does not lose shared-table identity. The attribute is omitted for the
+ordinary one-variable case in which the table and variable have the same name.
+
+`save_dta()` and `save_arrow()` preserve the imported name. Columns with the
+same name and the same mapping share one output table. Without the attribute,
+each writer uses the current variable name, as before. Comparison covers codes,
+extended missing tags, label text, duplicate imported entries, and source
+order. If columns claim one table name but carry different mappings, the writer
+emits one warning for the whole call and uses each affected variable name as a
+fallback. Other shared tables remain shared.
+
+The attribute is valid only with a usable `labels` mapping. An empty named
+mapping is usable and represents an empty Stata table; a table name without a
+mapping is a write error. Removing all value labels with a dtatools setter also
+removes `value.label.name`. Other metadata setters and supported reconstruction
+operations retain it. The attribute documents imported identity only. There is
+no public getter, setter, or registry editor for authoring shared tables.
+
 ## Converting labels to factors
 
 `factor_from_labels()` converts one numeric vector and its value-label table to
@@ -98,7 +127,7 @@ An over-limit value is stored unchanged in R. A call emits one standard, suppres
 
 Adding value labels to an ordinary numeric vector gives it the dependency-free classes `haven_labelled`, `vctrs_vctr`, and its R storage type. This preserves call compatibility with software that understands haven-labelled vectors without importing `labelled`.
 
-The setters change only the requested metadata and compatibility class. They retain Stata display formats, variable labels, time zones, temporal and unrelated classes, and custom attributes. Removing every value label removes the compatibility class while retaining unrelated classes. For numeric columns read by dtatools, setting labels also preserves an ALTREP-backed compact result instead of immediately allocating a decoded double vector.
+The setters change only the requested metadata and compatibility class. They retain Stata display formats, variable labels, imported value-label table names, time zones, temporal and unrelated classes, and custom attributes. Removing every value label removes the compatibility class and `value.label.name` while retaining unrelated classes. For numeric columns read by dtatools, setting labels also preserves an ALTREP-backed compact result instead of immediately allocating a decoded double vector.
 
 These guarantees are covered at the exported helper seam in [`test-label-metadata.R`](../r-package/dtatools/tests/testthat/test-label-metadata.R).
 

@@ -3,11 +3,17 @@ use std::cell::Cell;
 use std::io::{Cursor, Seek, SeekFrom, Write};
 
 use dta_tools::{
-    read_dta, read_dta_with_options, save_dta_to,
-    write_prevalidated_dta_with_observation_source_to, ByteOrder, ColumnValues, DtaType,
-    DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues, DtaWriteData, DtaWriteError,
-    DtaWriteLabelValue, DtaWriteNumericValue, DtaWriteObservationSource, DtaWriteOptions,
-    DtaWriteRawNumericValue, DtaWriteValueLabel, FormatVersion, MissingTag, ReadOptions,
+    parse_metadata, read_dta, read_dta_with_options, save_dta_to,
+    write_prevalidated_dta_with_observation_source_to, ByteOrder, ColumnValues, DtaError, DtaFile,
+    DtaType, DtaWriteCharacteristic, DtaWriteColumn, DtaWriteColumnSource, DtaWriteColumnValues,
+    DtaWriteData, DtaWriteError, DtaWriteLabelValue, DtaWriteNote, DtaWriteNumericValue,
+    DtaWriteObservationSource, DtaWriteOptions, DtaWriteRawNumericValue, DtaWriteValueLabel,
+    FormatVersion, MissingTag, ReadOptions, StataCharacteristic, StataNote,
+};
+#[cfg(feature = "r-adapter-internal")]
+use dta_tools::{
+    write_prevalidated_dta_with_value_label_registry_to, DtaWriteValueLabelRegistry,
+    DtaWriteValueLabelTable,
 };
 use sha2::{Digest, Sha256};
 
@@ -316,6 +322,7 @@ fn prevalidated_adapter_avoids_a_redundant_value_pass() {
     let mut data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "value".into(),
             dta_type: DtaType::Long,
@@ -323,6 +330,8 @@ fn prevalidated_adapter_avoids_a_redundant_value_pass() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Source(&source),
         }],
     };
@@ -390,12 +399,196 @@ fn prevalidated_adapter_avoids_a_redundant_value_pass() {
     assert_eq!(source.calls.get(), 0);
 }
 
+#[cfg(feature = "r-adapter-internal")]
+#[test]
+fn internal_value_label_registry_rejects_both_presence_mismatches() {
+    let labels = [DtaWriteValueLabel {
+        value: DtaWriteLabelValue::Integer(0),
+        label: "zero".into(),
+    }];
+    let tables = [DtaWriteValueLabelTable::new("shared", &labels)];
+
+    for (has_value_labels, table_index) in [(true, None), (false, Some(0))] {
+        let data = DtaWriteData {
+            dataset_label: String::new().into(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            columns: vec![DtaWriteColumn {
+                name: "value".into(),
+                dta_type: DtaType::Long,
+                format: "%12.0g".into(),
+                label: String::new().into(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
+                has_value_labels,
+                value_labels: Vec::new(),
+                values: DtaWriteColumnValues::Numeric(&ADAPTED_NUMERIC_VALUES),
+            }],
+        };
+        let indices = [table_index];
+        let registry = DtaWriteValueLabelRegistry::new(&tables, &indices);
+        let error = write_prevalidated_dta_with_value_label_registry_to(
+            &mut Cursor::new(Vec::new()),
+            &data,
+            &DtaWriteOptions::default(),
+            &AdaptedObservationSource,
+            ADAPTED_NUMERIC_VALUES.len() as u64,
+            &registry,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            error,
+            DtaWriteError::InvalidDatasetMetadata(message)
+                if message == "value-label table registry does not match the columns"
+        ));
+    }
+}
+
+#[cfg(feature = "r-adapter-internal")]
+#[test]
+fn internal_value_label_registry_keeps_each_table_name_and_entries_together() {
+    let labels = [
+        DtaWriteValueLabel {
+            value: DtaWriteLabelValue::Integer(-1),
+            label: "negative".into(),
+        },
+        DtaWriteValueLabel {
+            value: DtaWriteLabelValue::Integer(1),
+            label: "positive".into(),
+        },
+    ];
+    let tables = [DtaWriteValueLabelTable::new("shared_codes", &labels)];
+    let indices = [Some(0)];
+    let registry = DtaWriteValueLabelRegistry::new(&tables, &indices);
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Long,
+            format: "%12.0g".into(),
+            label: String::new().into(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            has_value_labels: true,
+            value_labels: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&ADAPTED_NUMERIC_VALUES),
+        }],
+    };
+
+    let mut output = Cursor::new(Vec::new());
+    write_prevalidated_dta_with_value_label_registry_to(
+        &mut output,
+        &data,
+        &DtaWriteOptions::default(),
+        &AdaptedObservationSource,
+        ADAPTED_NUMERIC_VALUES.len() as u64,
+        &registry,
+    )
+    .unwrap();
+
+    let parsed = read_dta(&output.into_inner()).unwrap();
+    assert_eq!(
+        parsed.metadata.variables[0].value_label_name,
+        "shared_codes"
+    );
+    let table = parsed.value_label_table_for_variable(0).unwrap();
+    assert_eq!(table.name, "shared_codes");
+    assert_eq!(
+        table
+            .entries
+            .iter()
+            .map(|entry| (entry.value, entry.label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![(-1, "negative"), (1, "positive")]
+    );
+}
+
+#[cfg(feature = "r-adapter-internal")]
+#[test]
+fn public_and_registry_writers_share_value_label_entry_validation() {
+    let oversized = DtaWriteValueLabel {
+        value: DtaWriteLabelValue::Integer(0),
+        label: String::new().into(),
+    };
+    let cases = vec![
+        (
+            vec![DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Missing(MissingTag::System),
+                label: "missing".into(),
+            }],
+            "system missing cannot have a value label",
+        ),
+        (
+            vec![DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Integer(0),
+                label: "nul\0text".into(),
+            }],
+            "no NUL",
+        ),
+        (
+            vec![DtaWriteValueLabel {
+                value: DtaWriteLabelValue::Integer(0),
+                label: "x".repeat(32_001).into(),
+            }],
+            "at most 32000 UTF-8 bytes",
+        ),
+        (vec![oversized; 65_537], "maximum is 65536"),
+    ];
+
+    let make_data = |value_labels| DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Long,
+            format: "%12.0g".into(),
+            label: String::new().into(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            has_value_labels: true,
+            value_labels,
+            values: DtaWriteColumnValues::Numeric(&ADAPTED_NUMERIC_VALUES),
+        }],
+    };
+
+    for (entries, expected) in cases {
+        let public_error = save_dta_to(
+            &mut Cursor::new(Vec::new()),
+            &make_data(entries.clone()),
+            &DtaWriteOptions::default(),
+        )
+        .unwrap_err()
+        .to_string();
+
+        let tables = [DtaWriteValueLabelTable::new("shared", &entries)];
+        let indices = [Some(0)];
+        let registry = DtaWriteValueLabelRegistry::new(&tables, &indices);
+        let registry_error = write_prevalidated_dta_with_value_label_registry_to(
+            &mut Cursor::new(Vec::new()),
+            &make_data(Vec::new()),
+            &DtaWriteOptions::default(),
+            &AdaptedObservationSource,
+            ADAPTED_NUMERIC_VALUES.len() as u64,
+            &registry,
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert_eq!(registry_error, public_error);
+        assert!(public_error.contains(expected), "{public_error}");
+    }
+}
+
 #[test]
 fn prevalidated_bulk_sources_must_return_complete_rows() {
     let values = [DtaWriteNumericValue::Value(0.0)];
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "value".into(),
             dta_type: DtaType::Long,
@@ -403,6 +596,8 @@ fn prevalidated_bulk_sources_must_return_complete_rows() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&values),
         }],
     };
@@ -423,6 +618,7 @@ fn large_strl_hashing_and_tail_writes_poll_for_interrupts() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "text".into(),
             dta_type: DtaType::StrL,
@@ -430,6 +626,8 @@ fn large_strl_hashing_and_tail_writes_poll_for_interrupts() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Strings(&placeholder),
         }],
     };
@@ -458,6 +656,7 @@ fn value_label_write_interrupt_checks(labels: Vec<DtaWriteValueLabel<'static>>) 
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "value".into(),
             dta_type: DtaType::Long,
@@ -465,6 +664,8 @@ fn value_label_write_interrupt_checks(labels: Vec<DtaWriteValueLabel<'static>>) 
             label: String::new().into(),
             has_value_labels: true,
             value_labels: labels,
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&values),
         }],
     };
@@ -510,6 +711,7 @@ fn rejects_reserved_stata_variable_names() {
         let data = DtaWriteData {
             dataset_label: String::new().into(),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             columns: vec![DtaWriteColumn {
                 name: name.into(),
                 dta_type: DtaType::Double,
@@ -517,6 +719,8 @@ fn rejects_reserved_stata_variable_names() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&values),
             }],
         };
@@ -536,6 +740,7 @@ fn rejects_reserved_stata_variable_names() {
         let data = DtaWriteData {
             dataset_label: String::new().into(),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             columns: vec![DtaWriteColumn {
                 name: name.into(),
                 dta_type: DtaType::Double,
@@ -543,6 +748,8 @@ fn rejects_reserved_stata_variable_names() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&values),
             }],
         };
@@ -558,6 +765,7 @@ fn rejects_reserved_stata_variable_names() {
         let data = DtaWriteData {
             dataset_label: String::new().into(),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             columns: vec![DtaWriteColumn {
                 name: name.into(),
                 dta_type: DtaType::Double,
@@ -565,6 +773,8 @@ fn rejects_reserved_stata_variable_names() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&values),
             }],
         };
@@ -580,11 +790,103 @@ fn rejects_reserved_stata_variable_names() {
 }
 
 #[test]
-fn validates_display_format_grammar_and_storage_compatibility() {
-    let numeric = [DtaWriteNumericValue::Value(1.0)];
+fn rejects_metadata_on_variable_named_dta_before_writing() {
+    let values = [DtaWriteNumericValue::Value(1.0)];
     let mut data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "_dta".into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: vec!["cannot be encoded".into()],
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+
+    for use_characteristic in [false, true] {
+        if use_characteristic {
+            data.columns[0].notes.clear();
+            data.columns[0]
+                .characteristics
+                .push(DtaWriteCharacteristic {
+                    name: "role".into(),
+                    value: "id".into(),
+                });
+        }
+        let mut output = Cursor::new(Vec::new());
+        let error = save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap_err();
+        assert!(matches!(error, DtaWriteError::InvalidVariable { .. }));
+        assert!(output.into_inner().is_empty());
+    }
+}
+
+#[test]
+fn variable_metadata_validation_reports_variable_scope() {
+    let values = [DtaWriteNumericValue::Value(1.0)];
+    let mut data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "answer".into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: vec![DtaWriteNote::numbered(0, "invalid")],
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+
+    let error = save_dta_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+    )
+    .expect_err("invalid variable note numbers are rejected");
+    assert!(matches!(
+        error,
+        DtaWriteError::InvalidVariable { ref column, .. } if column == "answer"
+    ));
+
+    data.columns[0].notes.clear();
+    data.columns[0].characteristics = vec![DtaWriteCharacteristic {
+        name: "note2".into(),
+        value: "reserved".into(),
+    }];
+    let error = save_dta_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+    )
+    .expect_err("invalid variable characteristics are rejected");
+    assert!(matches!(
+        error,
+        DtaWriteError::InvalidVariable { ref column, .. } if column == "answer"
+    ));
+}
+
+#[test]
+fn dense_metadata_writes_poll_at_bounded_byte_intervals() {
+    let values: [DtaWriteNumericValue; 0] = [];
+    let characteristics = (0..130)
+        .map(|index| DtaWriteCharacteristic {
+            name: format!("c{index}").into(),
+            value: "x".repeat(67_784).into(),
+        })
+        .collect();
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics,
         columns: vec![DtaWriteColumn {
             name: "value".into(),
             dta_type: DtaType::Double,
@@ -592,6 +894,80 @@ fn validates_display_format_grammar_and_storage_compatibility() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+    let source = InterruptingStrlSource {
+        value: String::new(),
+        interrupt_at: 7,
+        checks: Cell::new(0),
+    };
+    let error = write_prevalidated_dta_with_observation_source_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+        &source,
+        0,
+    )
+    .unwrap_err();
+    assert!(matches!(error, DtaWriteError::Interrupted));
+    assert_eq!(source.checks.get(), 7);
+}
+
+#[test]
+fn metadata_free_wide_writes_do_not_poll_per_column() {
+    let values: [DtaWriteNumericValue; 0] = [];
+    let columns = (0..4_096)
+        .map(|index| DtaWriteColumn {
+            name: format!("x{index}").into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        })
+        .collect();
+    let data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns,
+    };
+    let source = CountingObservationSource {
+        checks: Cell::new(0),
+    };
+    write_prevalidated_dta_with_observation_source_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+        &source,
+        0,
+    )
+    .unwrap();
+    assert!(source.checks.get() < 100);
+}
+
+#[test]
+fn validates_display_format_grammar_and_storage_compatibility() {
+    let numeric = [DtaWriteNumericValue::Value(1.0)];
+    let mut data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "value".into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&numeric),
         }],
     };
@@ -678,6 +1054,7 @@ fn rejects_raw_numeric_storage_that_does_not_match_the_column() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "value".into(),
             dta_type: DtaType::Double,
@@ -685,6 +1062,8 @@ fn rejects_raw_numeric_storage_that_does_not_match_the_column() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&values),
         }],
     };
@@ -705,6 +1084,7 @@ fn rejects_invalid_destination_streams() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "value".into(),
             dta_type: DtaType::Long,
@@ -712,6 +1092,8 @@ fn rejects_invalid_destination_streams() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&values),
         }],
     };
@@ -738,6 +1120,7 @@ fn prevalidated_numeric_values_are_checked_while_encoding() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "value".into(),
             dta_type: DtaType::Byte,
@@ -745,6 +1128,8 @@ fn prevalidated_numeric_values_are_checked_while_encoding() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&values),
         }],
     };
@@ -772,6 +1157,7 @@ fn prevalidated_fixed_strings_are_checked_while_encoding() {
         let data = DtaWriteData {
             dataset_label: String::new().into(),
             notes: Vec::new(),
+            characteristics: Vec::new(),
             columns: vec![DtaWriteColumn {
                 name: "text".into(),
                 dta_type: DtaType::FixedString(1),
@@ -779,6 +1165,8 @@ fn prevalidated_fixed_strings_are_checked_while_encoding() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Strings(&values),
             }],
         };
@@ -806,6 +1194,7 @@ fn prevalidated_strls_are_always_checked_during_planning() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "text".into(),
             dta_type: DtaType::StrL,
@@ -813,6 +1202,8 @@ fn prevalidated_strls_are_always_checked_during_planning() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Strings(&values),
         }],
     };
@@ -840,6 +1231,7 @@ fn strl_row_switches_call_begin_row_and_restore_the_active_row() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![
             DtaWriteColumn {
                 name: "long_text".into(),
@@ -848,6 +1240,8 @@ fn strl_row_switches_call_begin_row_and_restore_the_active_row() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Strings(&long_values),
             },
             DtaWriteColumn {
@@ -857,6 +1251,8 @@ fn strl_row_switches_call_begin_row_and_restore_the_active_row() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Strings(&fixed_values),
             },
         ],
@@ -883,6 +1279,7 @@ fn one_stable_strl_id_cannot_alias_different_values() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "text".into(),
             dta_type: DtaType::StrL,
@@ -890,6 +1287,8 @@ fn one_stable_strl_id_cannot_alias_different_values() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Strings(&values),
         }],
     };
@@ -916,6 +1315,7 @@ fn canonical_strl_payloads_cannot_change_after_planning() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "text".into(),
             dta_type: DtaType::StrL,
@@ -923,6 +1323,8 @@ fn canonical_strl_payloads_cannot_change_after_planning() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Strings(&values),
         }],
     };
@@ -950,6 +1352,7 @@ fn writes_a_release_118_dataset_that_the_public_parser_can_read() {
     let data = DtaWriteData {
         dataset_label: "writer tracer bullet".into(),
         notes: vec!["written by dta-tools".into(), String::new().into()],
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "answer".into(),
             dta_type: DtaType::Byte,
@@ -957,6 +1360,8 @@ fn writes_a_release_118_dataset_that_the_public_parser_can_read() {
             label: "the answer".into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&values),
         }],
     };
@@ -979,7 +1384,15 @@ fn writes_a_release_118_dataset_that_the_public_parser_can_read() {
     assert_eq!(parsed.metadata.format_version, FormatVersion::V118);
     assert_eq!(parsed.metadata.byte_order, ByteOrder::Lsf);
     assert_eq!(parsed.metadata.dataset_label, "writer tracer bullet");
-    assert_eq!(parsed.metadata.notes, ["written by dta-tools", ""]);
+    assert_eq!(
+        parsed
+            .metadata
+            .notes
+            .iter()
+            .map(|note| note.text.as_str())
+            .collect::<Vec<_>>(),
+        ["written by dta-tools", ""]
+    );
     assert_eq!(parsed.metadata.variables[0].name, "answer");
     assert_eq!(parsed.metadata.variables[0].label, "the answer");
     assert_eq!(parsed.metadata.variables[0].dta_type, DtaType::Byte);
@@ -990,6 +1403,199 @@ fn writes_a_release_118_dataset_that_the_public_parser_can_read() {
             missing_tags: vec![None, Some(MissingTag::A)],
         }
     );
+}
+
+#[test]
+fn writes_numbered_notes_and_characteristics_at_both_scopes() {
+    let values = [DtaWriteNumericValue::Value(1.0)];
+    let mut data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: vec![
+            DtaWriteNote::numbered(3, "three"),
+            DtaWriteNote::numbered(1, String::new()),
+        ],
+        characteristics: vec![
+            DtaWriteCharacteristic {
+                name: "source".into(),
+                value: String::new().into(),
+            },
+            DtaWriteCharacteristic {
+                name: "café".into(),
+                value: "naïve".into(),
+            },
+        ],
+        columns: vec![DtaWriteColumn {
+            name: "answer".into(),
+            dta_type: DtaType::Byte,
+            format: "%8.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: vec![DtaWriteNote::numbered(2, "variable")],
+            characteristics: vec![DtaWriteCharacteristic {
+                name: "role".into(),
+                value: "id".into(),
+            }],
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+
+    let mut output = Cursor::new(Vec::new());
+    save_dta_to(&mut output, &data, &DtaWriteOptions::default()).unwrap();
+    let bytes = output.into_inner();
+    let parsed = read_dta(&bytes).unwrap();
+    assert_eq!(
+        parsed.metadata.notes,
+        vec![
+            StataNote {
+                number: 1,
+                text: String::new(),
+            },
+            StataNote {
+                number: 3,
+                text: "three".into(),
+            },
+        ]
+    );
+    assert_eq!(
+        parsed.metadata.characteristics,
+        vec![
+            StataCharacteristic {
+                name: "source".into(),
+                value: String::new(),
+            },
+            StataCharacteristic {
+                name: "café".into(),
+                value: "naïve".into(),
+            },
+        ]
+    );
+    assert_eq!(
+        parsed.metadata.variables[0].notes,
+        vec![StataNote {
+            number: 2,
+            text: "variable".into(),
+        }]
+    );
+    assert_eq!(
+        parsed.metadata.variables[0].characteristics,
+        vec![StataCharacteristic {
+            name: "role".into(),
+            value: "id".into(),
+        }]
+    );
+
+    let metadata = parse_metadata(&bytes).unwrap();
+    let first_record =
+        metadata.section_offsets.characteristics as usize + b"<characteristics><ch>".len();
+    let first_payload =
+        u32::from_le_bytes(bytes[first_record..first_record + 4].try_into().unwrap()) as usize;
+    let record = first_record + 4 + first_payload + b"</ch><ch>".len();
+    let old_payload_length =
+        u32::from_le_bytes(bytes[record..record + 4].try_into().unwrap()) as usize;
+    let names_length = 2 * 129;
+    let desired_value_length = 67_785;
+    let extra = desired_value_length - (old_payload_length - names_length);
+    let close = record + 4 + old_payload_length;
+    let mut exact_value = vec![b'x'; desired_value_length];
+    *exact_value.last_mut().unwrap() = 0;
+    let mut exact_with_nul = bytes.clone();
+    exact_with_nul.splice(record + 4 + names_length..close, exact_value);
+    exact_with_nul[record..record + 4].copy_from_slice(
+        &u32::try_from(old_payload_length + extra)
+            .unwrap()
+            .to_le_bytes(),
+    );
+    let map_payload = metadata.section_offsets.map as usize + b"<map>".len();
+    for index in 9..14 {
+        let offset = map_payload + index * 8;
+        let old = u64::from_le_bytes(exact_with_nul[offset..offset + 8].try_into().unwrap());
+        exact_with_nul[offset..offset + 8]
+            .copy_from_slice(&(old + u64::try_from(extra).unwrap()).to_le_bytes());
+    }
+    assert_eq!(parse_metadata(&exact_with_nul).unwrap().notes.len(), 2);
+    DtaFile::from_reader(Cursor::new(exact_with_nul.clone())).unwrap();
+
+    let mut oversized = exact_with_nul;
+    let final_value_byte = record + 4 + names_length + desired_value_length - 1;
+    assert_eq!(oversized[final_value_byte], 0);
+    oversized[final_value_byte] = b'x';
+    assert!(matches!(
+        parse_metadata(&oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    let mut reserved_oversized = oversized.clone();
+    let name = record + 4 + 129;
+    reserved_oversized[name..name + 129].fill(0);
+    reserved_oversized[name..name + 5].copy_from_slice(b"note0");
+    let mut invalid_oversized = oversized.clone();
+    invalid_oversized[name..name + 129].fill(0);
+    invalid_oversized[name..name + 4].copy_from_slice(b"2bad");
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        parse_metadata(&reserved_oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(reserved_oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        parse_metadata(&invalid_oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+
+    let mut invalid_raw_name = bytes.clone();
+    invalid_raw_name[name..name + 129].fill(0);
+    invalid_raw_name[name..name + 4].copy_from_slice(b"2bad");
+    assert!(matches!(
+        parse_metadata(&invalid_raw_name),
+        Err(DtaError::InvalidCharacteristicName { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_raw_name)),
+        Err(DtaError::InvalidCharacteristicName { .. })
+    ));
+
+    for invalid_name in [
+        "note2",
+        "2invalid",
+        "_lang_list",
+        "_lang_c",
+        "_lang_v_en",
+        "_lang_l_en",
+        "fralias_from",
+        "fralias_varname",
+    ] {
+        data.characteristics = vec![DtaWriteCharacteristic {
+            name: invalid_name.into(),
+            value: "bad".into(),
+        }];
+        let error = save_dta_to(
+            &mut Cursor::new(Vec::new()),
+            &data,
+            &DtaWriteOptions::default(),
+        )
+        .expect_err("invalid or reserved characteristic names are rejected");
+        assert!(matches!(error, DtaWriteError::InvalidDatasetMetadata(_)));
+    }
+
+    data.characteristics.clear();
+    data.notes = vec![DtaWriteNote::numbered(0, "invalid")];
+    let error = save_dta_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+    )
+    .expect_err("an explicit zero note number is rejected");
+    assert!(matches!(error, DtaWriteError::InvalidDatasetMetadata(_)));
 }
 
 #[test]
@@ -1018,6 +1624,7 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![
             DtaWriteColumn {
                 name: "b".into(),
@@ -1026,6 +1633,8 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&byte),
             },
             DtaWriteColumn {
@@ -1035,6 +1644,8 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&int),
             },
             DtaWriteColumn {
@@ -1053,6 +1664,8 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
                         label: "negative".into(),
                     },
                 ],
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&long),
             },
             DtaWriteColumn {
@@ -1062,6 +1675,8 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&float),
             },
             DtaWriteColumn {
@@ -1071,6 +1686,8 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Numeric(&double),
             },
             DtaWriteColumn {
@@ -1080,6 +1697,8 @@ fn writes_every_storage_width_fixed_utf8_and_sorted_value_labels() {
                 label: String::new().into(),
                 has_value_labels: false,
                 value_labels: Vec::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 values: DtaWriteColumnValues::Strings(&strings),
             },
         ],
@@ -1151,6 +1770,7 @@ fn writes_an_attached_empty_value_label_table() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "coded".into(),
             dta_type: DtaType::Double,
@@ -1158,6 +1778,8 @@ fn writes_an_attached_empty_value_label_table() {
             label: String::new().into(),
             has_value_labels: true,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&values),
         }],
     };
@@ -1182,6 +1804,8 @@ fn release_119_uses_three_variable_bytes_in_strl_pointers() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Numeric(&numeric),
         });
     }
@@ -1192,11 +1816,14 @@ fn release_119_uses_three_variable_bytes_in_strl_pointers() {
         label: String::new().into(),
         has_value_labels: false,
         value_labels: Vec::new(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
         values: DtaWriteColumnValues::Strings(&text),
     });
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns,
     };
 
@@ -1237,6 +1864,7 @@ fn writes_deduplicated_strl_values_and_null_pointers_for_empty_strings() {
     let data = DtaWriteData {
         dataset_label: String::new().into(),
         notes: Vec::new(),
+        characteristics: Vec::new(),
         columns: vec![DtaWriteColumn {
             name: "text".into(),
             dta_type: DtaType::StrL,
@@ -1244,6 +1872,8 @@ fn writes_deduplicated_strl_values_and_null_pointers_for_empty_strings() {
             label: String::new().into(),
             has_value_labels: false,
             value_labels: Vec::new(),
+            notes: Vec::new(),
+            characteristics: Vec::new(),
             values: DtaWriteColumnValues::Strings(&values),
         }],
     };

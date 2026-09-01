@@ -17,7 +17,36 @@ fn v111_fixture() -> Vec<u8> {
     synthetic_fixture(111)
 }
 
-fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
+fn push_big_endian_characteristic(bytes: &mut Vec<u8>, target: &[u8], name: &[u8], value: &[u8]) {
+    let mut payload = vec![0_u8; 2 * 33];
+    payload[..target.len()].copy_from_slice(target);
+    payload[33..33 + name.len()].copy_from_slice(name);
+    payload.extend_from_slice(value);
+    payload.push(0);
+    bytes.push(1);
+    bytes.extend_from_slice(&(payload.len() as i32).to_be_bytes());
+    bytes.extend_from_slice(&payload);
+}
+
+fn push_big_endian_raw_characteristic(
+    bytes: &mut Vec<u8>,
+    target: &[u8],
+    name: &[u8],
+    value: &[u8],
+) {
+    let mut payload = vec![0_u8; 2 * 33];
+    payload[..target.len()].copy_from_slice(target);
+    payload[33..33 + name.len()].copy_from_slice(name);
+    payload.extend_from_slice(value);
+    bytes.push(1);
+    bytes.extend_from_slice(&(payload.len() as i32).to_be_bytes());
+    bytes.extend_from_slice(&payload);
+}
+
+fn synthetic_legacy_msf_with_duplicate_characteristics(
+    version: u8,
+    duplicate_count: usize,
+) -> Vec<u8> {
     let nvar = 2_usize;
     let fixed_end = 109 + nvar + nvar * 33 + (nvar + 1) * 2 + nvar * 12 + nvar * 33 + nvar * 81;
     let mut bytes = vec![0_u8; fixed_end];
@@ -43,14 +72,18 @@ fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
     bytes[cursor..cursor + 5].copy_from_slice(b"na\xefve");
     bytes[cursor + 81..cursor + 87].copy_from_slice(b"quoted");
 
-    // One dataset note characteristic followed by the exact sentinel.
-    let mut note = vec![0_u8; 2 * 33];
-    note[..4].copy_from_slice(b"_dta");
-    note[33..38].copy_from_slice(b"note1");
-    note.extend_from_slice(b"Caf\xe9\0");
-    bytes.push(1);
-    bytes.extend_from_slice(&(note.len() as i32).to_be_bytes());
-    bytes.extend_from_slice(&note);
+    push_big_endian_characteristic(&mut bytes, b"_dta", b"note1", b"Caf\xe9");
+    push_big_endian_characteristic(&mut bytes, b"_dta", b"source", b"legacy");
+    for ordinal in 0..duplicate_count {
+        push_big_endian_characteristic(
+            &mut bytes,
+            b"_dta",
+            b"source",
+            ordinal.to_string().as_bytes(),
+        );
+    }
+    push_big_endian_characteristic(&mut bytes, b"num", b"note3", b"");
+    push_big_endian_characteristic(&mut bytes, b"text", b"role", b"quoted");
     bytes.extend_from_slice(&[0, 0, 0, 0, 0]);
     bytes.extend_from_slice(&321_i16.to_be_bytes());
     bytes.extend_from_slice(&[0x93, b'h', 0x94, 0]);
@@ -67,6 +100,10 @@ fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
     bytes.extend_from_slice(&321_i32.to_be_bytes());
     bytes.extend_from_slice(&[0xe9, 0]);
     bytes
+}
+
+fn synthetic_legacy_msf(version: u8) -> Vec<u8> {
+    synthetic_legacy_msf_with_duplicate_characteristics(version, 0)
 }
 
 fn synthetic_v113_msf() -> Vec<u8> {
@@ -235,7 +272,11 @@ fn generated_pre111_fixtures_decode_expected_semantics() {
             data.metadata.dataset_label,
             format!("Release {release} Café fixture")
         );
-        assert_eq!(data.metadata.notes, [format!("Release {release} note")]);
+        assert_eq!(data.metadata.notes[0].number, 1);
+        assert_eq!(
+            data.metadata.notes[0].text,
+            format!("Release {release} note")
+        );
         assert_eq!(data.row_count, 2);
         assert_eq!(data.columns.len(), 6);
         if release == 110 {
@@ -289,7 +330,8 @@ fn decodes_pre111_layouts_types_expansions_missing_and_value_labels_with_file_pa
         assert_eq!(slice.metadata.format_version, expected_version);
         assert_eq!(slice.metadata.section_offsets.data, expected_data_offset);
         assert_eq!(slice.metadata.dataset_label, "legacy");
-        assert_eq!(slice.metadata.notes, ["old note"]);
+        assert_eq!(slice.metadata.notes[0].number, 1);
+        assert_eq!(slice.metadata.notes[0].text, "old note");
         assert_eq!(
             slice.metadata.variables[0].dta_type,
             dta_tools::DtaType::Byte
@@ -504,7 +546,8 @@ fn decodes_release_111_metadata_observations_labels_and_missing_tags() {
     assert_eq!(data.metadata.format_version, FormatVersion::V111);
     assert_eq!(data.metadata.byte_order, ByteOrder::Lsf);
     assert_eq!(data.metadata.dataset_label, "Stata/SE 7 Café fixture");
-    assert_eq!(data.metadata.notes, ["Release 111 note"]);
+    assert_eq!(data.metadata.notes[0].number, 1);
+    assert_eq!(data.metadata.notes[0].text, "Release 111 note");
     assert_eq!(data.metadata.nvar, 6);
     assert_eq!(data.metadata.nobs, 4);
     assert_eq!(data.metadata.variables[5].name, "text");
@@ -636,7 +679,14 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
     assert_eq!(metadata.format_version, FormatVersion::V113);
     assert_eq!(metadata.byte_order, ByteOrder::Msf);
     assert_eq!(metadata.dataset_label, "Café");
-    assert_eq!(metadata.notes, ["Café"]);
+    assert_eq!(metadata.notes[0].number, 1);
+    assert_eq!(metadata.notes[0].text, "Café");
+    assert_eq!(metadata.characteristics[0].name, "source");
+    assert_eq!(metadata.characteristics[0].value, "legacy");
+    assert_eq!(metadata.variables[0].notes[0].number, 3);
+    assert_eq!(metadata.variables[0].notes[0].text, "");
+    assert_eq!(metadata.variables[1].characteristics[0].name, "role");
+    assert_eq!(metadata.variables[1].characteristics[0].value, "quoted");
     assert_eq!(metadata.variables[0].label, "naïve");
     let data = read_dta(&bytes).unwrap();
     match &data.columns[0].values {
@@ -658,6 +708,149 @@ fn decodes_true_big_endian_v113_and_windows_1252() {
 }
 
 #[test]
+fn legacy_slice_and_streaming_parsers_compact_adversarial_duplicates() {
+    const DUPLICATES: usize = 10_000;
+    let bytes = synthetic_legacy_msf_with_duplicate_characteristics(113, DUPLICATES);
+    let expected = (DUPLICATES - 1).to_string();
+
+    let metadata = parse_metadata(&bytes).unwrap();
+    assert_eq!(metadata.characteristics.len(), 1);
+    assert_eq!(metadata.characteristics[0].name, "source");
+    assert_eq!(metadata.characteristics[0].value, expected);
+
+    let file = DtaFile::from_reader(Cursor::new(bytes)).unwrap();
+    assert_eq!(file.metadata().characteristics.len(), 1);
+    assert_eq!(file.metadata().characteristics[0].name, "source");
+    assert_eq!(file.metadata().characteristics[0].value, expected);
+}
+
+#[test]
+fn legacy_slice_and_streaming_parsers_validate_superseded_duplicate_values() {
+    let mut bytes = synthetic_v113_msf();
+    let expansion = parse_metadata(&bytes)
+        .unwrap()
+        .section_offsets
+        .characteristics as usize;
+    let mut duplicates = Vec::new();
+    let invalid_value = vec![b'x'; 67_785];
+    push_big_endian_raw_characteristic(&mut duplicates, b"_dta", b"source", &invalid_value);
+    push_big_endian_characteristic(&mut duplicates, b"_dta", b"source", b"replacement");
+    bytes.splice(expansion..expansion, duplicates);
+
+    assert!(matches!(
+        parse_metadata(&bytes),
+        Err(DtaError::MetadataValueTooLong { length: 67_785, .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(bytes)),
+        Err(DtaError::MetadataValueTooLong { length: 67_785, .. })
+    ));
+}
+
+#[test]
+fn legacy_metadata_bounds_and_raw_names_have_file_parity() {
+    let bytes = synthetic_v113_msf();
+    let expansion = parse_metadata(&bytes)
+        .unwrap()
+        .section_offsets
+        .characteristics as usize;
+    let header_width = 5;
+    let names_width = 66;
+    let old_payload =
+        i32::from_be_bytes(bytes[expansion + 1..expansion + 5].try_into().unwrap()) as usize;
+    let old_value = old_payload - names_width;
+    let desired_value = 67_785;
+    let extra = desired_value - old_value;
+    let payload_end = expansion + header_width + old_payload;
+
+    let mut exact_with_nul = bytes.clone();
+    exact_with_nul.splice(payload_end - 1..payload_end - 1, vec![b'x'; extra]);
+    exact_with_nul[expansion + 1..expansion + 5]
+        .copy_from_slice(&i32::try_from(old_payload + extra).unwrap().to_be_bytes());
+    parse_metadata(&exact_with_nul).unwrap();
+    DtaFile::from_reader(Cursor::new(exact_with_nul.clone())).unwrap();
+
+    let mut oversized = exact_with_nul;
+    let final_value_byte = expansion + header_width + names_width + desired_value - 1;
+    assert_eq!(oversized[final_value_byte], 0);
+    oversized[final_value_byte] = b'x';
+    assert!(matches!(
+        parse_metadata(&oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    let mut reserved_oversized = oversized.clone();
+    let name = expansion + header_width + 33;
+    reserved_oversized[name..name + 33].fill(0);
+    reserved_oversized[name..name + 5].copy_from_slice(b"note0");
+    let mut invalid_oversized = oversized.clone();
+    invalid_oversized[name..name + 33].fill(0);
+    invalid_oversized[name..name + 4].copy_from_slice(b"2bad");
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        parse_metadata(&reserved_oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(reserved_oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        parse_metadata(&invalid_oversized),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_oversized)),
+        Err(DtaError::MetadataValueTooLong { .. })
+    ));
+
+    let mut invalid_raw_name = bytes;
+    invalid_raw_name[name..name + 33].fill(0);
+    invalid_raw_name[name..name + 4].copy_from_slice(b"2bad");
+    assert!(matches!(
+        parse_metadata(&invalid_raw_name),
+        Err(DtaError::InvalidCharacteristicName { .. })
+    ));
+    assert!(matches!(
+        DtaFile::from_reader(Cursor::new(invalid_raw_name)),
+        Err(DtaError::InvalidCharacteristicName { .. })
+    ));
+}
+
+#[test]
+fn legacy_metadata_decoding_preserves_the_canonical_utf8_bound() {
+    let mut bytes = synthetic_v113_msf();
+    let expansion = parse_metadata(&bytes)
+        .unwrap()
+        .section_offsets
+        .characteristics as usize;
+    let header_width = 5;
+    let names_width = 66;
+    let old_payload =
+        i32::from_be_bytes(bytes[expansion + 1..expansion + 5].try_into().unwrap()) as usize;
+    let value_start = expansion + header_width + names_width;
+    let payload_end = expansion + header_width + old_payload;
+    let source_value = vec![0x80; 22_595];
+    let new_payload = names_width + source_value.len() + 1;
+    bytes.splice(
+        value_start..payload_end,
+        source_value.into_iter().chain(std::iter::once(0)),
+    );
+    bytes[expansion + 1..expansion + 5]
+        .copy_from_slice(&i32::try_from(new_payload).unwrap().to_be_bytes());
+
+    let expected = "€".repeat(22_595);
+    assert_eq!(expected.len(), 67_785);
+    let slice = parse_metadata(&bytes).expect("slice metadata accepts the raw source bound");
+    assert_eq!(slice.notes[0].text, expected);
+    let file = DtaFile::from_reader(Cursor::new(bytes))
+        .expect("file metadata accepts the raw source bound");
+    assert_eq!(file.metadata().notes[0].text, expected);
+}
+
+#[test]
 fn decodes_big_endian_release_111_observations_notes_and_labels() {
     let mut bytes = synthetic_legacy_msf(111);
     let data_offset = parse_metadata(&bytes).unwrap().section_offsets.data as usize;
@@ -665,7 +858,14 @@ fn decodes_big_endian_release_111_observations_notes_and_labels() {
     let data = read_dta(&bytes).unwrap();
     assert_eq!(data.metadata.format_version, FormatVersion::V111);
     assert_eq!(data.metadata.byte_order, ByteOrder::Msf);
-    assert_eq!(data.metadata.notes, ["Café"]);
+    assert_eq!(data.metadata.notes[0].number, 1);
+    assert_eq!(data.metadata.notes[0].text, "Café");
+    assert_eq!(data.metadata.characteristics[0].value, "legacy");
+    assert_eq!(data.metadata.variables[0].notes[0].number, 3);
+    assert_eq!(
+        data.metadata.variables[1].characteristics[0].value,
+        "quoted"
+    );
     let ColumnValues::Int {
         values,
         missing_tags,
@@ -694,7 +894,8 @@ fn explicit_encoding_overrides_every_legacy_text_surface() {
     let bytes = synthetic_v113_msf();
     let latin1 = read_dta_with_encoding(&bytes, TextEncoding::Iso8859_1).unwrap();
     assert_eq!(latin1.metadata.dataset_label, "Café");
-    assert_eq!(latin1.metadata.notes, ["Café"]);
+    assert_eq!(latin1.metadata.notes[0].number, 1);
+    assert_eq!(latin1.metadata.notes[0].text, "Café");
     assert_eq!(latin1.metadata.variables[0].label, "naïve");
     let ColumnValues::FixedString { values } = &latin1.columns[1].values else {
         panic!("text must be a fixed string");
@@ -712,7 +913,8 @@ fn explicit_encoding_overrides_every_legacy_text_surface() {
 
     let utf8 = read_dta_with_encoding(&bytes, TextEncoding::Utf8).unwrap();
     assert_eq!(utf8.metadata.dataset_label, "Caf\u{fffd}");
-    assert_eq!(utf8.metadata.notes, ["Caf\u{fffd}"]);
+    assert_eq!(utf8.metadata.notes[0].number, 1);
+    assert_eq!(utf8.metadata.notes[0].text, "Caf\u{fffd}");
     assert_eq!(utf8.metadata.variables[0].label, "na\u{fffd}ve");
 
     let mut file =
@@ -728,13 +930,18 @@ fn preserves_empty_legacy_dataset_notes() {
         .rposition(|window| window == b"Caf\xe9\0")
         .unwrap();
     bytes[value] = 0;
-    assert_eq!(parse_metadata(&bytes).unwrap().notes, [""]);
+    let parsed = parse_metadata(&bytes).unwrap();
+    assert_eq!(parsed.notes[0].number, 1);
+    assert_eq!(parsed.notes[0].text, "");
     assert_eq!(
         DtaFile::from_reader(Cursor::new(bytes))
             .unwrap()
             .metadata()
-            .notes,
-        [""]
+            .notes[0],
+        dta_tools::StataNote {
+            number: 1,
+            text: String::new(),
+        }
     );
 }
 

@@ -20,6 +20,10 @@
 
 import type {
     DtaMetadata,
+    ParsedDtaMetadata,
+    ParsedVariableInfo,
+    StataCharacteristic,
+    StataNote,
     LegacyFormatVersion,
     VariableInfo,
     SectionOffsets,
@@ -40,6 +44,13 @@ import {
     resolve_text_encoding,
     text_decoder,
 } from './text-encoding';
+import {
+    StataMetadataCollector,
+    withLazyStataMetadata,
+} from './stata-metadata';
+import {
+    StataCharacteristicFramePlan,
+} from './characteristic-payload';
 
 // -----------------------------------------------------------
 // Constants
@@ -101,8 +112,9 @@ export function legacy_metadata_fixed_size(
 // -----------------------------------------------------------
 
 /**
- * Scan past the expansion fields section and return the
- * byte offset immediately after it (= start of data).
+ * Frame the expansion fields section and return its data offset plus accepted
+ * characteristic payload descriptors. Values are decoded only after the
+ * terminator proves the complete section is structurally valid.
  *
  * Expansion fields are a sequence of entries:
  *   uint8  data_type
@@ -111,18 +123,17 @@ export function legacy_metadata_fixed_size(
  *
  * The section terminates when data_type=0 and len=0.
  */
-function scan_expansion_fields(
+function frame_expansion_fields(
     view: DataView,
     little_endian: boolean,
     start: number,
     buffer_length: number,
     format_version: LegacyFormatVersion,
-    decoder: DtaTextDecoder
-): { data_offset: number; notes: string[] } {
+    plan: StataCharacteristicFramePlan
+): number {
     let pos = start;
     const layout = legacy_layout_for_version(format_version);
     const my_header_size = legacy_expansion_header_size(layout);
-    const the_notes: string[] = [];
 
     while (pos + my_header_size <= buffer_length) {
         const my_data_type = view.getUint8(pos);
@@ -133,7 +144,7 @@ function scan_expansion_fields(
         pos += my_header_size;
 
         if (my_data_type === 0 && my_len === 0) {
-            return { data_offset: pos, notes: the_notes };
+            return pos;
         }
 
         if (my_data_type === 0 || my_len < 0) {
@@ -143,23 +154,14 @@ function scan_expansion_fields(
             throw new Error('Truncated legacy expansion field');
         }
 
-        if (my_data_type === 1 && my_len >= 2 * layout.varname_width) {
-            const my_variable = read_fixed_string(
-                bytes_from_view(view), pos, layout.varname_width, decoder
-            );
-            const my_characteristic = read_fixed_string(
-                bytes_from_view(view), pos + layout.varname_width,
-                layout.varname_width, decoder
-            );
-            if (my_variable === '_dta' && /^note[0-9]+$/.test(my_characteristic)) {
-                const my_note = read_fixed_string(
-                    bytes_from_view(view),
-                    pos + 2 * layout.varname_width,
-                    my_len - 2 * layout.varname_width,
-                    decoder
-                );
-                if (my_note.length > 0) the_notes.push(my_note);
-            }
+        if (my_data_type === 1
+            && my_len >= 2 * layout.varname_width) {
+            plan.add({
+                namesStart: pos,
+                nameWidth: layout.varname_width,
+                valueStart: pos + 2 * layout.varname_width,
+                valueLength: my_len - 2 * layout.varname_width,
+            });
         }
 
         pos += my_len;
@@ -190,7 +192,7 @@ export function parse_legacy_metadata(
     buffer: ArrayBuffer,
     file_size: number,
     options: TextEncodingOptions = {}
-): DtaMetadata {
+): ParsedDtaMetadata {
     const bytes = new Uint8Array(buffer);
     const view = new DataView(buffer);
 
@@ -328,21 +330,15 @@ export function parse_legacy_metadata(
     }
     pos += nvar * layout.variable_label_width;
 
-    // -- expansion fields --
-    const my_expansion_offset = pos;
-    const { data_offset: my_data_offset, notes } = scan_expansion_fields(
-        view, little_endian, pos, buffer.byteLength,
-        format_version, my_decoder
-    );
-
-    // 8. Build VariableInfo with byte widths and offsets
+    // 8. Build VariableInfo before expansion scanning so raw records can be
+    // folded directly into their final scopes.
     let my_running_offset = 0;
-    const the_variables: VariableInfo[] = [];
+    const the_variables: ParsedVariableInfo[] = [];
     for (let i = 0; i < nvar; i++) {
         const my_code = the_type_codes[i];
         const my_width =
             byte_width_for_legacy_type_code(my_code, format_version);
-        the_variables.push({
+        the_variables.push(withLazyStataMetadata({
             name: the_varnames[i],
             type: legacy_type_code_to_dta_type(my_code, format_version),
             type_code: my_code,
@@ -351,10 +347,25 @@ export function parse_legacy_metadata(
             value_label_name: the_value_label_names[i],
             byte_width: my_width,
             byte_offset: my_running_offset,
-        });
+        }));
         my_running_offset += my_width;
     }
     const obs_length = my_running_offset;
+    const notes: StataNote[] = [];
+    const characteristics: StataCharacteristic[] = [];
+    // -- expansion fields --
+    const my_expansion_offset = pos;
+    const collector = new StataMetadataCollector(
+        { notes, characteristics }, the_variables
+    );
+    const plan = new StataCharacteristicFramePlan(
+        bytes, my_decoder, collector
+    );
+    const my_data_offset = frame_expansion_fields(
+        view, little_endian, pos, buffer.byteLength,
+        format_version, plan
+    );
+    plan.finish();
 
     // 9. Compute value labels offset (BigInt to avoid
     //    overflow for large legacy files)
@@ -395,6 +406,7 @@ export function parse_legacy_metadata(
         nobs,
         dataset_label,
         notes,
+        characteristics,
         variables: the_variables,
         section_offsets,
         obs_length,

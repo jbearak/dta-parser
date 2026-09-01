@@ -19,7 +19,7 @@ use dta_tools::arrow::{
     ArrowWriteColumn, ArrowWriteDataset, DatasetDocument, StataStorage, ARROW_CHECKSUMS_KEY,
     ARROW_FIELD_KEY, ARROW_PROFILE_VERSION_KEY, ARROW_ROWS_PER_BATCH,
 };
-use dta_tools::{ValueLabelEntry, ValueLabelTable};
+use dta_tools::{StataCharacteristic, StataNote, ValueLabelEntry, ValueLabelTable};
 
 fn no_interrupt() -> impl FnMut() -> bool {
     || false
@@ -89,6 +89,80 @@ fn write_to_vec(dataset: &ArrowWriteDataset, compression: ArrowCompression) -> V
     bytes
 }
 
+fn dataset_with_dataset_json_size(target_bytes: usize) -> ArrowWriteDataset {
+    let value = "x".repeat(67_784);
+    let mut document = DatasetDocument {
+        characteristics: (0..990)
+            .map(|index| StataCharacteristic {
+                name: format!("c{index}"),
+                value: if index == 989 {
+                    String::new()
+                } else {
+                    value.clone()
+                },
+            })
+            .collect(),
+        ..DatasetDocument::default()
+    };
+    let base_bytes = serde_json::to_string(&document).unwrap().len();
+    let final_value_bytes = target_bytes.checked_sub(base_bytes).unwrap();
+    assert!(final_value_bytes <= 67_784);
+    document.characteristics[989].value = "x".repeat(final_value_bytes);
+    assert_eq!(
+        serde_json::to_string(&document).unwrap().len(),
+        target_bytes
+    );
+    ArrowWriteDataset {
+        dataset: document,
+        columns: vec![ArrowWriteColumn {
+            name: "x".to_owned(),
+            field: None,
+            array: Arc::new(Int32Array::from(vec![1])),
+        }],
+    }
+}
+
+#[test]
+fn writer_emits_only_footers_within_the_reader_metadata_limit() {
+    const READER_METADATA_LIMIT: usize = 64 * 1024 * 1024;
+    let accepted = dataset_with_dataset_json_size(READER_METADATA_LIMIT - 4_096);
+    let mut bytes = Vec::new();
+    save_arrow_file_to(
+        &mut bytes,
+        &accepted,
+        ArrowCompression::Uncompressed,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect("a footer immediately below the reader limit is written");
+    let footer_length =
+        u32::from_le_bytes(bytes[bytes.len() - 10..bytes.len() - 6].try_into().unwrap()) as usize;
+    assert!(footer_length <= READER_METADATA_LIMIT);
+    assert!(READER_METADATA_LIMIT - footer_length < 4_096);
+    read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &read_all_options(),
+        &mut no_interrupt(),
+    )
+    .expect("the writer's near-limit footer is readable");
+    drop(accepted);
+
+    let rejected = dataset_with_dataset_json_size(READER_METADATA_LIMIT - 64);
+    let mut destination = b"untouched".to_vec();
+    let error = save_arrow_file_to(
+        &mut destination,
+        &rejected,
+        ArrowCompression::Uncompressed,
+        1,
+        true,
+        &mut no_interrupt(),
+    )
+    .expect_err("a footer above the reader limit is rejected before writing");
+    assert!(error.to_string().contains("64 MiB"));
+    assert_eq!(destination, b"untouched");
+}
+
 fn field_document(
     storage: Option<StataStorage>,
     missing: Option<ArrowMissingEncoding>,
@@ -98,6 +172,8 @@ fn field_document(
         version: 0,
         label: format!("label for a {class} column"),
         format: String::new(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
         storage,
         string_storage: None,
         value_labels: None,
@@ -122,24 +198,39 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
     let mut dataset_document = DatasetDocument {
         version: 0,
         label: "test dataset".to_owned(),
-        notes: vec!["first note".to_owned(), "second note".to_owned()],
-        ..DatasetDocument::default()
-    };
-    dataset_document.insert_value_label_table(&ValueLabelTable {
-        name: "yesno".to_owned(),
-        entries: vec![
-            ValueLabelEntry {
-                value: 0,
-                missing_tag: None,
-                label: "no".to_owned(),
+        notes: vec![
+            StataNote {
+                number: 1,
+                text: "first note".to_owned(),
             },
-            ValueLabelEntry {
-                value: 1,
-                missing_tag: None,
-                label: "yes".to_owned(),
+            StataNote {
+                number: 2,
+                text: "second note".to_owned(),
             },
         ],
-    });
+        characteristics: vec![StataCharacteristic {
+            name: "source".to_owned(),
+            value: "survey café".to_owned(),
+        }],
+        ..DatasetDocument::default()
+    };
+    dataset_document
+        .insert_value_label_table(ValueLabelTable {
+            name: "yesno".to_owned(),
+            entries: vec![
+                ValueLabelEntry {
+                    value: 0,
+                    missing_tag: None,
+                    label: "no".to_owned(),
+                },
+                ValueLabelEntry {
+                    value: 1,
+                    missing_tag: None,
+                    label: "yes".to_owned(),
+                },
+            ],
+        })
+        .expect("unique value-label table");
 
     let logical: ArrayRef = Arc::new(BooleanArray::from(vec![
         Some(true),
@@ -195,11 +286,21 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
             },
             ArrowWriteColumn {
                 name: "b".to_owned(),
-                field: Some(field_document(
-                    Some(StataStorage::Byte),
-                    Some(ArrowMissingEncoding::Sentinel),
-                    "stata_numeric",
-                )),
+                field: Some(ArrowFieldDocument {
+                    notes: vec![StataNote {
+                        number: 4,
+                        text: String::new(),
+                    }],
+                    characteristics: vec![StataCharacteristic {
+                        name: "role".to_owned(),
+                        value: "identifier".to_owned(),
+                    }],
+                    ..field_document(
+                        Some(StataStorage::Byte),
+                        Some(ArrowMissingEncoding::Sentinel),
+                        "stata_numeric",
+                    )
+                }),
                 array: stata_byte.clone(),
             },
             ArrowWriteColumn {
@@ -264,6 +365,28 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
         Some(StataStorage::Byte)
     );
     assert_eq!(
+        result.columns[3]
+            .field
+            .as_ref()
+            .expect("profiled field")
+            .notes,
+        vec![StataNote {
+            number: 4,
+            text: String::new(),
+        }]
+    );
+    assert_eq!(
+        result.columns[3]
+            .field
+            .as_ref()
+            .expect("profiled field")
+            .characteristics,
+        vec![StataCharacteristic {
+            name: "role".to_owned(),
+            value: "identifier".to_owned(),
+        }]
+    );
+    assert_eq!(
         result.columns[2]
             .field
             .as_ref()
@@ -280,6 +403,218 @@ fn standard_and_profiled_columns_round_trip_with_metadata() {
         .expect("float column");
     assert_eq!(read_float.value(1).to_bits(), 0x7f000000);
     assert_eq!(read_float.value(3).to_bits(), 0x7f00d000);
+}
+
+#[test]
+fn projected_reads_count_value_label_references_from_all_source_fields() {
+    let table = ValueLabelTable {
+        name: "shared_answers".to_owned(),
+        entries: vec![ValueLabelEntry {
+            value: 1,
+            missing_tag: None,
+            label: "yes".to_owned(),
+        }],
+    };
+    let mut document = DatasetDocument::default();
+    document
+        .insert_value_label_table(table.clone())
+        .expect("unique value-label table");
+    let unrelated = ValueLabelTable {
+        name: "unrelated_answers".to_owned(),
+        entries: vec![ValueLabelEntry {
+            value: 0,
+            missing_tag: None,
+            label: "no".to_owned(),
+        }],
+    };
+    document
+        .insert_value_label_table(unrelated.clone())
+        .expect("unique value-label table");
+    let labelled_field = || {
+        Some(ArrowFieldDocument {
+            value_labels: Some(table.name.clone()),
+            ..ArrowFieldDocument::default()
+        })
+    };
+    let dataset = ArrowWriteDataset {
+        dataset: document,
+        columns: vec![
+            ArrowWriteColumn {
+                name: "first".to_owned(),
+                field: labelled_field(),
+                array: Arc::new(Float64Array::from(vec![1.0])),
+            },
+            ArrowWriteColumn {
+                name: "second".to_owned(),
+                field: labelled_field(),
+                array: Arc::new(Float64Array::from(vec![1.0])),
+            },
+            ArrowWriteColumn {
+                name: "third".to_owned(),
+                field: labelled_field(),
+                array: Arc::new(Float64Array::from(vec![1.0])),
+            },
+            ArrowWriteColumn {
+                name: "unrelated".to_owned(),
+                field: Some(ArrowFieldDocument {
+                    value_labels: Some(unrelated.name.clone()),
+                    ..ArrowFieldDocument::default()
+                }),
+                array: Arc::new(Float64Array::from(vec![0.0])),
+            },
+        ],
+    };
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    let mut cursor = Cursor::new(bytes);
+    let result = read_arrow_file_from(
+        &mut cursor,
+        &ArrowReadOptions {
+            columns: Some(vec![1]),
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("projected read succeeds");
+
+    assert_eq!(result.columns.len(), 1);
+    assert_eq!(result.columns[0].name, "second");
+    // Counts stop at the private/shared decision threshold; a third source
+    // reference cannot change how the R bridge restores identity.
+    assert_eq!(
+        result.value_label_reference_counts.get("shared_answers"),
+        Some(&2)
+    );
+    assert!(!result
+        .value_label_reference_counts
+        .contains_key("unrelated_answers"));
+    let dataset = result.dataset.expect("profile dataset");
+    assert!(dataset.value_labels.contains_key("shared_answers"));
+    assert!(!dataset.value_labels.contains_key("unrelated_answers"));
+}
+
+#[test]
+fn dataset_documents_reject_duplicate_value_label_table_names() {
+    let first = ValueLabelTable {
+        name: "answers".to_owned(),
+        entries: vec![ValueLabelEntry {
+            value: 1,
+            missing_tag: None,
+            label: "yes".to_owned(),
+        }],
+    };
+    let duplicate = ValueLabelTable {
+        name: first.name.clone(),
+        entries: vec![ValueLabelEntry {
+            value: 0,
+            missing_tag: None,
+            label: "no".to_owned(),
+        }],
+    };
+    let mut document = DatasetDocument::default();
+    document
+        .insert_value_label_table(first.clone())
+        .expect("first table is unique");
+    let error = document
+        .insert_value_label_table(duplicate)
+        .expect_err("duplicate table names are rejected");
+    assert!(error
+        .to_string()
+        .contains("duplicate value-label table name"));
+    assert_eq!(document.value_label_table("answers"), Some(first));
+}
+
+#[test]
+fn projected_reads_ignore_invalid_unselected_value_label_references() {
+    let mut selected = Field::new("selected", DataType::Float64, true);
+    selected.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"value_labels":"answers"}"#.to_owned(),
+    )]));
+    let mut invalid = Field::new("invalid", DataType::Int32, true);
+    invalid.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"storage":"byte","missing":"sentinel","value_labels":"answers"}"#
+            .to_owned(),
+    )]));
+    let schema = Arc::new(
+        Schema::new(vec![selected, invalid]).with_metadata(HashMap::from([
+            (ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned()),
+            (
+                "dtatools:dataset".to_owned(),
+                r#"{"version":0,"value_labels":{"answers":[{"value":1,"label":"yes"}]}}"#
+                    .to_owned(),
+            ),
+        ])),
+    );
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![
+            Arc::new(Float64Array::from(vec![1.0])) as ArrayRef,
+            Arc::new(Int32Array::from(vec![1])) as ArrayRef,
+        ],
+    )
+    .expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let result = read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("invalid unselected field metadata is discarded");
+    assert_eq!(result.value_label_reference_counts.get("answers"), Some(&1));
+}
+
+#[test]
+fn projected_reads_validate_but_do_not_retain_unselected_value_label_tables() {
+    let mut selected = Field::new("selected", DataType::Float64, true);
+    selected.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        r#"{"version":0,"value_labels":"selected"}"#.to_owned(),
+    )]));
+    let schema = Arc::new(
+        Schema::new(vec![selected]).with_metadata(HashMap::from([
+            (ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned()),
+            (
+                "dtatools:dataset".to_owned(),
+                r#"{"version":0,"value_labels":{"selected":[{"value":1,"label":"yes"}],"unselected":[{"value":1,"tag":".a","label":"bad"}]}}"#
+                    .to_owned(),
+            ),
+        ])),
+    );
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![Arc::new(Float64Array::from(vec![1.0])) as ArrayRef],
+    )
+    .expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let error = read_arrow_file_from(
+        &mut Cursor::new(bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("malformed unselected registry entries remain malformed");
+    assert!(
+        error.to_string().contains("must contain exactly one"),
+        "{error}"
+    );
 }
 
 #[test]
@@ -496,6 +831,42 @@ fn corrupted_buffers_fail_verification_by_default() {
         .downcast_ref::<Int32Array>()
         .expect("integer column");
     assert_eq!(read.value(3), 1002);
+}
+
+#[test]
+fn projected_checksum_verification_uses_source_column_index() {
+    let dataset = ArrowWriteDataset {
+        dataset: DatasetDocument::default(),
+        columns: vec![
+            ArrowWriteColumn {
+                name: "left".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![1, 2])),
+            },
+            ArrowWriteColumn {
+                name: "right".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![3, 4])),
+            },
+        ],
+    };
+    let bytes = write_to_vec(&dataset, ArrowCompression::Uncompressed);
+    let options = ArrowReadOptions {
+        columns: Some(vec![1]),
+        ..read_all_options()
+    };
+
+    let result = read_arrow_file_from(&mut Cursor::new(bytes), &options, &mut no_interrupt())
+        .expect("projected checksum verification uses the source column");
+
+    assert_eq!(result.columns.len(), 1);
+    assert_eq!(result.columns[0].name, "right");
+    let values = concat_chunks(&result.columns[0].chunks);
+    let values = values
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .expect("integer column");
+    assert_eq!(values.values(), &[3, 4]);
 }
 
 #[test]
@@ -824,6 +1195,114 @@ fn newer_profile_versions_are_a_hard_error_with_an_escape_hatch() {
 }
 
 #[test]
+fn legacy_profile_note_arrays_are_read_as_consecutive_numbered_notes() {
+    let bytes = plain_arrow_file(HashMap::from([
+        (ARROW_PROFILE_VERSION_KEY.to_owned(), "0".to_owned()),
+        (
+            dta_tools::arrow::ARROW_DATASET_KEY.to_owned(),
+            r#"{"version":0,"notes":["first",""]}"#.to_owned(),
+        ),
+    ]));
+    let options = ArrowReadOptions {
+        verify: false,
+        ..read_all_options()
+    };
+    let result = read_arrow_file_from(&mut Cursor::new(bytes), &options, &mut no_interrupt())
+        .expect("the earlier profile-0 note shape remains readable");
+    assert_eq!(
+        result.dataset.expect("dataset document").notes,
+        vec![
+            StataNote {
+                number: 1,
+                text: "first".to_owned(),
+            },
+            StataNote {
+                number: 2,
+                text: String::new(),
+            },
+        ]
+    );
+}
+
+#[test]
+fn malformed_note_and_characteristic_documents_are_rejected_before_output() {
+    let invalid_documents = [
+        DatasetDocument {
+            notes: vec![
+                StataNote {
+                    number: 3,
+                    text: "three".to_owned(),
+                },
+                StataNote {
+                    number: 1,
+                    text: "one".to_owned(),
+                },
+            ],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![
+                StataCharacteristic {
+                    name: "source".to_owned(),
+                    value: "one".to_owned(),
+                },
+                StataCharacteristic {
+                    name: "source".to_owned(),
+                    value: "two".to_owned(),
+                },
+            ],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![StataCharacteristic {
+                name: "note2".to_owned(),
+                value: "reserved".to_owned(),
+            }],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![StataCharacteristic {
+                name: "fralias_from".to_owned(),
+                value: "reserved".to_owned(),
+            }],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            characteristics: vec![StataCharacteristic {
+                name: "2invalid".to_owned(),
+                value: "bad".to_owned(),
+            }],
+            ..DatasetDocument::default()
+        },
+        DatasetDocument {
+            notes: vec![StataNote {
+                number: 1,
+                text: "x".repeat(67_785),
+            }],
+            ..DatasetDocument::default()
+        },
+    ];
+    for document in invalid_documents {
+        let dataset = ArrowWriteDataset {
+            dataset: document,
+            columns: Vec::new(),
+        };
+        let mut bytes = Vec::new();
+        let error = save_arrow_file_to(
+            &mut bytes,
+            &dataset,
+            ArrowCompression::Uncompressed,
+            1,
+            true,
+            &mut no_interrupt(),
+        )
+        .expect_err("malformed metadata is rejected");
+        assert!(matches!(error, ArrowProfileError::MalformedProfile { .. }));
+        assert!(bytes.is_empty());
+    }
+}
+
+#[test]
 fn incompatible_field_semantics_are_malformed_with_an_escape_hatch() {
     let mut field = Field::new("day", DataType::Int32, true);
     field.set_metadata(HashMap::from([(
@@ -862,6 +1341,111 @@ fn incompatible_field_semantics_are_malformed_with_an_escape_hatch() {
         .expect("profile = FALSE reads the raw field");
     assert_eq!(result.profile_version, None);
     assert_eq!(result.columns[0].data_type, DataType::Int32);
+}
+
+#[test]
+fn projection_validates_selected_and_discards_unselected_field_documents() {
+    let selected = Field::new("selected", DataType::Int32, true);
+    let mut unselected = Field::new("unselected", DataType::Int32, true);
+    unselected.set_metadata(HashMap::from([(
+        ARROW_FIELD_KEY.to_owned(),
+        "not JSON".to_owned(),
+    )]));
+    let schema = Arc::new(
+        Schema::new(vec![selected, unselected]).with_metadata(HashMap::from([(
+            ARROW_PROFILE_VERSION_KEY.to_owned(),
+            "0".to_owned(),
+        )])),
+    );
+    let batch = RecordBatch::try_new(
+        schema.clone(),
+        vec![
+            Arc::new(Int32Array::from(vec![1])) as ArrayRef,
+            Arc::new(Int32Array::from(vec![2])) as ArrayRef,
+        ],
+    )
+    .expect("valid batch");
+    let mut bytes = Vec::new();
+    let mut writer = FileWriter::try_new(&mut bytes, &schema).expect("writer opens");
+    writer.write(&batch).expect("batch writes");
+    writer.finish().expect("writer finishes");
+    drop(writer);
+
+    let full_error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("a full read parses every field document");
+    assert!(matches!(
+        full_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+
+    let selected_error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![1]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("a projected read parses its selected field document");
+    assert!(matches!(
+        selected_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+
+    let signature_error = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            record_signature: true,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect_err("a stored signature parses every field document");
+    assert!(matches!(
+        signature_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+
+    let directory = std::env::temp_dir().join(format!(
+        "dtatools-profile-summary-validation-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).expect("temp dir");
+    let path = directory.join("malformed-unselected.arrow");
+    std::fs::write(&path, &bytes).expect("file written");
+    let summary_error = match summarize_arrow_file(&path, true, true, 0, None, &mut no_interrupt())
+    {
+        Ok(_) => panic!("a profiled predicate summary must parse every field document"),
+        Err(error) => error,
+    };
+    assert!(matches!(
+        summary_error,
+        ArrowProfileError::MalformedProfile { .. }
+    ));
+    std::fs::remove_dir_all(directory).expect("temp dir removed");
+
+    let projected = read_arrow_file_from(
+        &mut Cursor::new(&bytes),
+        &ArrowReadOptions {
+            columns: Some(vec![0]),
+            verify: false,
+            ..read_all_options()
+        },
+        &mut no_interrupt(),
+    )
+    .expect("projection skips an unselected field document");
+    assert_eq!(projected.columns.len(), 1);
+    assert_eq!(projected.columns[0].name, "selected");
 }
 
 #[test]
@@ -1504,6 +2088,17 @@ fn dataset_signature_is_stable_across_thread_counts() {
         serial.starts_with(&format!("{rows}:1:")),
         "unexpected form: {serial}"
     );
+}
+
+#[test]
+fn dataset_signature_profile_version_is_pinned() {
+    let signature = dataset_signature(
+        &signature_dataset(vec![1.0, 2.0, 3.0], "x"),
+        1,
+        &mut no_interrupt(),
+    )
+    .expect("signature");
+    assert_eq!(signature, "3:1:ef7032616530fd27");
 }
 
 #[test]

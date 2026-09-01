@@ -261,9 +261,31 @@ pub struct VariableInfo {
     pub format: String,
     pub label: String,
     pub value_label_name: String,
+    #[serde(default)]
+    pub notes: Vec<StataNote>,
+    #[serde(default)]
+    pub characteristics: Vec<StataCharacteristic>,
     pub byte_width: u32,
     #[serde(with = "decimal_u64")]
     pub byte_offset: u64,
+}
+
+/// One numbered Stata note. Canonical metadata sorts notes by number.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StataNote {
+    pub number: u32,
+    pub text: String,
+}
+
+/// One user-authored Stata characteristic.
+///
+/// Numeric `note*` keys never appear here because the note API owns them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StataCharacteristic {
+    pub name: String,
+    pub value: String,
 }
 
 /// Absolute file offsets. Legacy files synthesize the modern section names
@@ -367,7 +389,9 @@ pub struct DtaMetadata {
     pub nobs: u64,
     pub dataset_label: String,
     #[serde(default)]
-    pub notes: Vec<String>,
+    pub notes: Vec<StataNote>,
+    #[serde(default)]
+    pub characteristics: Vec<StataCharacteristic>,
     pub variables: Vec<VariableInfo>,
     pub section_offsets: SectionOffsets,
     #[serde(with = "decimal_u64")]
@@ -523,7 +547,14 @@ mod tests {
             nvar: 1,
             nobs: 9_007_199_254_740_993,
             dataset_label: "fixture".into(),
-            notes: vec!["first note".into()],
+            notes: vec![StataNote {
+                number: 1,
+                text: "first note".into(),
+            }],
+            characteristics: vec![StataCharacteristic {
+                name: "source".into(),
+                value: "survey".into(),
+            }],
             variables: vec![VariableInfo {
                 name: "x".into(),
                 dta_type: DtaType::FixedString(12),
@@ -531,6 +562,8 @@ mod tests {
                 format: "%12s".into(),
                 label: String::new(),
                 value_label_name: String::new(),
+                notes: Vec::new(),
+                characteristics: Vec::new(),
                 byte_width: 12,
                 byte_offset: 0,
             }],
@@ -542,7 +575,9 @@ mod tests {
         assert_eq!(value["format_version"], 119);
         assert_eq!(value["byte_order"], "MSF");
         assert_eq!(value["nobs"], "9007199254740993");
-        assert_eq!(value["notes"][0], "first note");
+        assert_eq!(value["notes"][0]["number"], 1);
+        assert_eq!(value["notes"][0]["text"], "first note");
+        assert_eq!(value["characteristics"][0]["name"], "source");
         assert_eq!(value["variables"][0]["type"], "str12");
         assert_eq!(value["variables"][0]["byte_offset"], "0");
         assert_eq!(value["section_offsets"]["data"], "0");

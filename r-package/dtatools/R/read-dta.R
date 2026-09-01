@@ -6,8 +6,14 @@
 #' Byte, int, long, and float columns retain their compact Stata storage width
 #' until R requests a materialized double vector; source doubles are created
 #' eagerly.
-#' Dataset and variable labels, dataset notes, Stata display formats, value
-#' labels, `strL` content, and Stata system/extended missing values are retained.
+#' Dataset and variable labels, numbered notes, arbitrary Stata
+#' characteristics, display formats, value labels, `strL` content, and Stata
+#' system/extended missing values are retained. Use [stata_notes()] and
+#' [stata_characteristics()] at dataset or variable scope.
+#' Imported value-label table identity is stored in `value.label.name` when the
+#' table name differs from the source variable name or the source table is
+#' shared. This differs from the variable label in `label` and the code-to-text
+#' mapping in `labels`. Projection checks sharing against all source variables.
 #'
 #' @section Stata missing values:
 #' Stata system missing (`.`) is returned as `NA_real_`; in releases supporting
@@ -291,10 +297,9 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     dataset_label <- attr(native, "label", exact = TRUE)
-    dataset_notes <- attr(native, "notes", exact = TRUE)
     result <- tibble::as_tibble(native, .name_repair = .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    if (!is.null(dataset_notes)) attr(result, "notes") <- dataset_notes
+    result <- .copy_stata_metadata_attributes(native, result)
     if (record_datasig) attr(result, "datasig") <- disk_signature
     result
 }

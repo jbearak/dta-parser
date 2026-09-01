@@ -1,4 +1,4 @@
-import type { DtaMetadata, Row, RowCell } from './types';
+import type { DtaMetadata, DtaReadPlan, PackedDtaReadPlan, Row, RowCell } from './types';
 type DataBuffer = ArrayBuffer | Uint8Array;
 /** Reject NaN and finite fractions; infinities retain sentinel semantics. */
 export declare function assert_valid_row_range(start: number, count: number): void;
@@ -9,7 +9,7 @@ export declare function read_rows_from_buffer(buffer: ArrayBuffer, metadata: Dta
  * Read rows from a buffer containing contiguous observation bytes.
  * When `out` is provided, decoded rows overwrite it from `out_offset`.
  */
-export declare function read_rows_from_data_buffer(buffer: DataBuffer, metadata: DtaMetadata, start: number, count: number, col_start?: number, col_end?: number, out?: Row[], out_offset?: number): Row[];
+export declare function read_rows_from_data_buffer(buffer: DataBuffer, metadata: DtaReadPlan | PackedDtaReadPlan, start: number, count: number, col_start?: number, col_end?: number, out?: Row[], out_offset?: number): Row[];
 /**
  * Decode selected columns from contiguous observation bytes.
  *
@@ -18,6 +18,6 @@ export declare function read_rows_from_data_buffer(buffer: DataBuffer, metadata:
  * contract for callers outside the Node reader. Callers that immediately
  * resolve strLs may disable placeholder writes.
  */
-export declare function read_columns_from_data_buffer(buffer: DataBuffer, metadata: DtaMetadata, count: number, col_indices: number[], out: Map<number, RowCell[]>, out_offset?: number, write_strl_placeholders?: boolean): void;
+export declare function read_columns_from_data_buffer(buffer: DataBuffer, metadata: DtaReadPlan | PackedDtaReadPlan, count: number, col_indices: number[], out: Map<number, RowCell[]>, out_offset?: number, write_strl_placeholders?: boolean): void;
 export {};
 //# sourceMappingURL=data-reader.d.ts.map

@@ -598,7 +598,14 @@ fn decodes_big_endian_v119_observations_and_labels() {
     let data = read_dta(&bytes).unwrap();
     assert_eq!(data.metadata.format_version, dta_tools::FormatVersion::V119);
     assert_eq!(data.metadata.byte_order, dta_tools::ByteOrder::Msf);
-    assert_eq!(data.metadata.notes, ["big-endian metadata note"]);
+    assert_eq!(
+        data.metadata
+            .notes
+            .iter()
+            .map(|note| note.text.as_str())
+            .collect::<Vec<_>>(),
+        ["big-endian metadata note"]
+    );
     assert_eq!(data.metadata.obs_length, 23);
     assert_eq!(data.row_count, 2);
 

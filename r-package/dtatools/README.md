@@ -253,8 +253,9 @@ save_dta(cars, "cars.dta")
 
 The writer targets Stata 18 or 19 and emits release 118 for ordinary datasets
 or release 119 above 32,767 variables. It preserves declared numeric storage,
-formats, temporal values, labels, tagged missing codes, long strings, and
-dataset notes. It writes through a sibling temporary file so validation,
+formats, temporal values, labels, tagged missing codes, long strings, numbered
+notes, and arbitrary characteristics at dataset and variable scope. It writes
+through a sibling temporary file so validation,
 serialization, and interruption failures leave an existing destination intact.
 
 Factors become value-labelled Stata `long` variables, character missing values
@@ -320,7 +321,11 @@ re-baselining until the profile freezes.
 
 ## Data returned to R
 
-Dataset and variable labels, notes, display formats, and value-label tables are retained as attributes. Stata daily dates become `Date`; `%tc` and `%tC` values become UTC `POSIXct`.
+Dataset and variable labels, numbered notes, arbitrary characteristics,
+display formats, and value-label tables are retained as attributes. Use
+`stata_notes()` and `stata_characteristics()` to inspect them, and pass a
+column name as `variable` for variable scope. Stata daily dates become `Date`;
+`%tc` and `%tC` values become UTC `POSIXct`.
 
 System missing `.` becomes `NA_real_`. Extended `.a` through `.z` values use the tagged-NA payloads understood by haven:
 
