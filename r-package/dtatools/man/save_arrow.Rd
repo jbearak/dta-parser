@@ -77,10 +77,12 @@ Stata storage type cannot represent become Stata system missing with one
 aggregated warning per conversion category. Attributes outside the profile's
 documented set are dropped with one warning naming each affected column and
 attribute.
-The recognized \code{value.label.name} attribute preserves an imported nondefault
-or shared Stata table name in the existing dataset registry and field
-reference. Columns that claim one name with different mappings produce one
-aggregated warning and fall back to separate variable-name tables.
+The recognized \code{value.label.name} attribute is a serialization hint for an
+imported nondefault or shared Stata table name in the existing dataset
+registry and field reference. It does not make the name part of a column's
+resolved value-label semantics. Columns that claim one name with different
+mappings produce one aggregated warning and fall back to independently
+synthesized variable-name tables.
 
 Unlike \code{\link[=save_dta]{save_dta()}}, factor class and orderedness, \code{POSIXct} timezones on
 ordinary R columns, and \code{difftime} units are preserved on read.

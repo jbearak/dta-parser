@@ -63,11 +63,15 @@ supported vector operations.}
 Reads Stata releases 105, 108, 110--111, 113--115, and 117--119 through the native Rust parser,
 retaining dataset and variable labels, dataset notes, formats, value labels,
 long strings, temporal classes, and Stata tagged missing values.
-Imported value-label table identity is stored in \code{value.label.name} when
-the table name differs from the source variable name or the source table is
-shared. This differs from the variable label in \code{label} and the
-code-to-text mapping in \code{labels}. Projection checks sharing against all
-source variables.
+Stata stores named value-label definitions at dataset scope and assigns a
+definition to each labelled variable. \code{read_dta()} instead gives each
+variable its resolved code-to-text mapping in \code{labels}. An imported table
+name may also appear in \code{value.label.name} when it differs from the source
+variable name or the source table is shared. That attribute is a serialization
+hint, not a live shared table or a semantic namespace. Changing one variable's
+mapping does not change another variable that came from the same Stata
+definition. Projection checks all source variables when deciding whether to
+retain the name hint.
 }
 \section{Stata missing values}{
 Stata system missing (\code{.}) is returned as \code{NA_real_}; in releases

@@ -35,6 +35,24 @@
 #' included), an additional warning names those variables, since the
 #' resolution keeps `x`'s side and Stata would say nothing.
 #'
+#' Value-label mappings belong to individual result variables. `dta_merge()`
+#' does not resolve them through Stata's dataset-level namespace of named
+#' definitions. This intentionally differs from Stata when `x` and `y` contain
+#' different definitions with the same name. Stata retains the definition from
+#' `x`, so a variable found only in `y` can display unrelated labels after the
+#' merge. `dta_merge()` retains that variable's resolved mapping from `y`.
+#'
+#' For example, suppose `x$wm11` uses a definition named `labels4` for
+#' interview-privacy codes, while `y$bh4m` uses its own `labels4` definition
+#' for month codes. Stata keeps the privacy definition and applies it to the
+#' merged `bh4m`. `dta_merge()` keeps the month mapping on `bh4m`. Correct an
+#' unintended collision in the Stata source before treating the two results as
+#' an exact compatibility comparison. A later writer may preserve an
+#' unambiguous imported name hint or synthesize separate definitions; it never
+#' substitutes one variable's mapping for another solely because names match.
+#' This is normally the expected result: Stata's collision can silently make a
+#' later label-based recode operate on unrelated text.
+#'
 #' Every merge generates a `_merge` variable, a `stata_byte` column using
 #' Stata's `_merge` codes with value labels `x only (1)`, `y only (2)`, and
 #' `matched (3)`. Merging errors if either input already has a `_merge`
