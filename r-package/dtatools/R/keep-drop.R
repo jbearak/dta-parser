@@ -196,6 +196,7 @@ drop_vars <- function(data, ...) {
 }
 
 .select_vars_by_reference <- function(data, selections, keep) {
+    .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
     columns <- if (is.null(original$state)) {
         original$columns
@@ -234,14 +235,30 @@ drop_vars <- function(data, ...) {
     }
     reference_classes <- unique(c("dtatools_ref_data", source_classes))
 
-    .Call(
-        C_dtatools_select_data_columns,
-        data,
-        unname(retained_columns),
-        names(retained_columns),
-        final_state,
-        source_classes,
-        reference_classes
+    select <- function() .Call(
+        C_dtatools_select_data_columns, data, unname(retained_columns),
+        names(retained_columns), final_state, source_classes, reference_classes
     )
+    if (.ordinary_data_table(data)) {
+        retained_names <- names(retained_columns)
+        key_columns <- data.table::key(data)
+        preserve_key <- length(key_columns) > 0L &&
+            all(key_columns %in% retained_names)
+        index_columns <- data.table::indices(data, vectors = TRUE)
+        preserve_indexes <- vapply(
+            index_columns,
+            function(columns) all(columns %in% retained_names),
+            logical(1)
+        )
+        suspendInterrupts({
+            select()
+            if (preserve_key) data.table::setkeyv(data, key_columns)
+            for (columns in index_columns[preserve_indexes]) {
+                data.table::setindexv(data, columns)
+            }
+        })
+    } else {
+        select()
+    }
     invisible(data)
 }

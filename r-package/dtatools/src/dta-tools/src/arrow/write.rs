@@ -411,7 +411,9 @@ pub(crate) fn signature_from_parts<'a>(
         "dtatools-datasig:{DATASIG_PAYLOAD_VERSION}\nrows:{row_count}\ncolumns:{column_count}\ndataset:"
     )
     .map_err(signature_io_error)?;
-    serialize_json_into(&mut payload, dataset)?;
+    let mut semantic_dataset = dataset.clone();
+    semantic_dataset.output_container = None;
+    serialize_json_into(&mut payload, &semantic_dataset)?;
     for (name, data_type, field) in columns {
         payload.write_all(b"\nname:").map_err(signature_io_error)?;
         serialize_json_into(&mut payload, &name)?;

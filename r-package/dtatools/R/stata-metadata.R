@@ -264,6 +264,7 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
 }
 
 .stata_update_target <- function(x, variable, update) {
+    if (is.data.frame(x)) .reject_data_table_subclass(x, "x")
     target <- .stata_metadata_target(x, variable)
     changed <- .metadata_copy(target$value)
     changed <- update(changed)
@@ -373,9 +374,9 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
             value[variable_metadata], .as_stata_metadata_vector
         )
     }
-    .set_stata_metadata_class(
+    .repair_data_table_container(.set_stata_metadata_class(
         value, .has_stata_metadata(value) || any(variable_metadata)
-    )
+    ))
 }
 
 .stata_metadata_vector_base <- function(value) {

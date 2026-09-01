@@ -785,7 +785,15 @@ test_that("base, tibble, and data.table inputs merge identically", {
             ))
             info <- sprintf("x = %s, y = %s", x_kind, y_kind)
 
-            expect_s3_class(result, "tbl_df")
+            if (identical(x_kind, "tibble")) {
+                expect_s3_class(result, "tbl_df")
+            } else if (identical(x_kind, "data.table")) {
+                expect_s3_class(result, "data.table")
+                expect_null(data.table::key(result))
+                expect_length(data.table::indices(result), 0L)
+            } else {
+                expect_false(inherits(result, c("tbl_df", "data.table")))
+            }
             expect_identical(data_values(result), data_values(reference),
                              info = info)
             expect_identical(stata_notes(result), stata_notes(reference),
@@ -825,7 +833,9 @@ test_that("plain keyed data.tables retain their values, aliases, and keys", {
         master, using, by = "id", relationship = "1:1"
     ))
 
-    expect_s3_class(result, "tbl_df")
+    expect_s3_class(result, "data.table")
+    expect_null(data.table::key(result))
+    expect_length(data.table::indices(result), 0L)
     expect_identical(
         data_values(result),
         list(

@@ -3,7 +3,7 @@ Title: Fast Reader and Writer for Stata DTA Files
 Version: 0.6.0
 Authors@R: person("Jonathan", "Bearak", role = c("aut", "cre"),
     email = "jonathan@bearak.net")
-Description: Reads Stata DTA files into tibbles with a Rust parser, multicore
+Description: Reads Stata DTA files into tibbles or data tables with a Rust parser, multicore
     decoding, and compact in-memory representations for numeric and character
     columns. Its read interface follows 'haven' while retaining dataset labels,
     variable labels, display formats, value labels, temporal classes, and Stata

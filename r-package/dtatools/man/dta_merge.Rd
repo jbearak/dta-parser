@@ -4,14 +4,22 @@
 \alias{dta_merge}
 \title{Merge DTA datasets under Stata missing-code identity}
 \usage{
-dta_merge(x, y, by, relationship, keep = c("x", "y", "match"), assert = NULL)
+dta_merge(
+  x,
+  y,
+  by,
+  relationship,
+  keep = c("x", "y", "match"),
+  assert = NULL,
+  output = c("x", "tibble", "data.table")
+)
 }
 \arguments{
 \item{x, y}{Data frames to merge, or file paths read with \code{\link[=read_dta]{read_dta()}} or
 \code{\link[=read_arrow]{read_arrow()}}, in any combination. \code{x} supplies the retained values for
 overlapping variables, dataset label, and dataset characteristics.
 Base data frames, tibbles, and data.tables are accepted without mutation;
-the result is always a tibble.
+by default, the result follows the resolved \code{x} input's container.
 Passing paths
 mirrors Stata's \verb{merge ... using filename} and keeps only the merged
 result in the caller's workspace. A path ending in \code{.arrow} is read with
@@ -33,9 +41,13 @@ The default keeps every row, as Stata does.}
 \item{assert}{Optional match results that are allowed to occur, using the
 same names as \code{keep}. Any other match result is an error naming each
 disallowed match result and its row count.}
+
+\item{output}{Result container. \code{"x"} preserves the resolved \code{x}
+input's base data-frame, tibble, or data-table class. Supply \code{"tibble"}
+or \code{"data.table"} to override it.}
 }
 \value{
-A tibble with the key columns, the remaining columns of \code{x}, the
+A data frame, tibble, or data table with the key columns, the remaining columns of \code{x}, the
 columns only in \code{y}, and \verb{_merge}, in that order.
 }
 \description{

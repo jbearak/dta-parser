@@ -12,6 +12,7 @@ read_arrow(
   verify = TRUE,
   profile = TRUE,
   .name_repair = "unique",
+  output = c("default", "tibble", "data.table"),
   use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
   threads = getOption("dtatools.threads", 0L),
   datasig = FALSE
@@ -46,6 +47,11 @@ metadata.}
 
 \item{.name_repair}{Name repair passed to \code{\link[tibble:as_tibble]{tibble::as_tibble()}}.}
 
+\item{output}{Output container. An explicit \code{"tibble"} or \code{"data.table"}
+overrides stored Arrow provenance. \code{"default"} restores a container
+recorded by \code{\link[=save_arrow]{save_arrow()}} and otherwise uses the \code{dtatools.output} option,
+falling back to \code{"tibble"}. \code{profile = FALSE} ignores stored provenance.}
+
 \item{use_numeric_altrep}{Whether profiled byte, int, long, and float
 columns should retain their compact Stata storage through ALTREP. Set to
 \code{FALSE} to create eager R double vectors while reading.}
@@ -69,7 +75,7 @@ projection.
 Requires a file written with checksums; only file paths are supported.}
 }
 \value{
-A tibble.
+A tibble or data table.
 }
 \description{
 Reads a standalone \code{.arrow} dataset written by \code{\link[=save_arrow]{save_arrow()}}, restoring its

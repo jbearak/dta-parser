@@ -55,6 +55,8 @@ pub struct ArrowValueLabelEntry {
 #[serde(deny_unknown_fields)]
 pub struct DatasetDocument {
     pub version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_container: Option<String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub label: String,
     #[serde(
@@ -934,6 +936,7 @@ impl<'de> DeserializeSeed<'de> for OptionalValueLabelRegistrySeed<'_> {
 
 struct ParsedDatasetDocument<'a> {
     version: u32,
+    output_container: Option<String>,
     label: String,
     notes: Vec<&'a RawValue>,
     characteristics: Vec<StataCharacteristic>,
@@ -976,12 +979,14 @@ impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
             {
                 const FIELDS: &[&str] = &[
                     "version",
+                    "output_container",
                     "label",
                     "notes",
                     "characteristics",
                     "value_labels",
                 ];
                 let mut version = None;
+                let mut output_container = None;
                 let mut label = None;
                 let mut notes = None;
                 let mut characteristics = None;
@@ -993,6 +998,14 @@ impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
                                 return Err(serde::de::Error::duplicate_field("version"));
                             }
                             version = Some(map.next_value()?);
+                        }
+                        "output_container" => {
+                            if output_container.is_some() {
+                                return Err(serde::de::Error::duplicate_field(
+                                    "output_container",
+                                ));
+                            }
+                            output_container = Some(map.next_value()?);
                         }
                         "label" => {
                             if label.is_some() {
@@ -1026,6 +1039,7 @@ impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
                 }
                 Ok(ParsedDatasetDocument {
                     version: version.ok_or_else(|| serde::de::Error::missing_field("version"))?,
+                    output_container: output_container.unwrap_or(None),
                     label: label.unwrap_or_default(),
                     notes: notes.unwrap_or_default(),
                     characteristics: characteristics.unwrap_or_default(),
@@ -1115,6 +1129,7 @@ pub(crate) fn parse_dataset_document_selected(
         .map_err(|error| malformed(version, format!("invalid dataset document: {error}")))?;
     let document = DatasetDocument {
         version: parsed.version,
+        output_container: parsed.output_container,
         label: parsed.label,
         notes: decode_raw_notes(version, "dataset", "dataset document", parsed.notes)?,
         characteristics: parsed.characteristics,
@@ -1140,6 +1155,16 @@ fn validate_dataset_document_inner(
         return Err(malformed(
             version,
             format!("dataset document version {}", document.version),
+        ));
+    }
+    if document
+        .output_container
+        .as_deref()
+        .is_some_and(|value| !matches!(value, "tibble" | "data.table"))
+    {
+        return Err(malformed(
+            version,
+            "dataset output_container must be `tibble` or `data.table`",
         ));
     }
     validate_notes(version, "dataset", &document.notes)?;
@@ -1552,6 +1577,29 @@ pub(crate) fn parse_checksums_document(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dataset_output_container_is_optional_and_validated() {
+        let absent = parse_dataset_document("0", Some(r#"{"version":0}"#))
+            .expect("old documents remain readable");
+        assert_eq!(absent.output_container, None);
+
+        for container in ["tibble", "data.table"] {
+            let json = format!(
+                r#"{{"version":0,"output_container":"{container}"}}"#
+            );
+            let document = parse_dataset_document("0", Some(&json))
+                .expect("supported output container parses");
+            assert_eq!(document.output_container.as_deref(), Some(container));
+        }
+
+        let error = parse_dataset_document(
+            "0",
+            Some(r#"{"version":0,"output_container":"matrix"}"#),
+        )
+        .expect_err("unknown output containers are rejected");
+        assert!(error.to_string().contains("output_container"));
+    }
 
     #[test]
     fn value_label_entries_require_exactly_one_code() {

@@ -1,6 +1,6 @@
 # dtatools
 
-`dtatools` reads Stata `.dta` files into R tibbles and writes standalone Stata
+`dtatools` reads Stata `.dta` files into R tibbles or data tables and writes standalone Stata
 18/19 datasets. Use it instead of `haven::read_dta()` for Stata imports. The
 read interface accepts haven's common arguments and returns compatible values,
 labels, dates, and tagged missing values. Numeric columns also retain their
@@ -10,7 +10,7 @@ declared Stata storage type.
 
 | Function | Purpose |
 | --- | --- |
-| `read_dta()` | Read a DTA file into a tibble with labels, display formats, notes, tagged missing values, and compact numeric columns. |
+| `read_dta()` | Read a DTA file into a tibble or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
 | `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
 | `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |
@@ -33,6 +33,33 @@ declared Stata storage type.
 | `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
 | `is_missing()` | Classify Stata system and extended numeric missing values and empty strings; use it in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
+
+## Tibbles and data tables
+
+Readers return tibbles by default. Set one session-wide default or override it
+for one DTA read:
+
+```r
+options(dtatools.output = "data.table")
+survey <- read_dta("survey.dta")
+survey_tbl <- read_dta("survey.dta", output = "tibble")
+```
+
+The data.table package remains optional. Requesting data-table output without
+it installed is an error. Direct reader construction retains compact numeric
+and dictionary-string columns; it does not build a tibble and convert it.
+
+`save_arrow()` records whether its input is an ordinary tibble or data table.
+`read_arrow()` restores that container by default. An explicit `output`
+argument overrides the stored choice. Older Arrow files and files saved from a
+plain data frame use `dtatools.output`, then fall back to a tibble.
+
+Exported whole-table operations support ordinary data tables. `gen()` installs
+a physical column, and `repl()` invalidates keys or secondary indexes that use
+the changed column while preserving unrelated lookup state. Keys, indexes,
+allocation capacity, and `.internal.selfref` are runtime state and are not
+stored in Arrow files. Mutating and table-producing operations reject custom
+data-table subclasses whose invariants dtatools cannot know.
 
 `gen()`, `replace_values()`, `keep_vars()`, and `drop_vars()` mutate the supplied data frame or tibble. Dataset
 aliases and aliases of a target column observe the change. Call `copy_data()`

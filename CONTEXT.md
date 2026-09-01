@@ -31,6 +31,14 @@ _Avoid_: Default Stata reader, Haven replacement
 A DTA read that accepts haven's common read arguments and returns equivalent values, labels, dates, and missing codes for valid supported inputs. It does not promise identical validation or encoding behavior.
 _Avoid_: Drop-in replacement
 
+**Output container**:
+The table class a dataset operation returns, independently of the column representations and Stata metadata it contains. Readers produce tibbles or data tables; operations that follow an input may also preserve a base data frame.
+_Avoid_: Output format, dataset type
+
+**Stored output container**:
+The supported output container recorded in a standalone `.arrow` dataset and restored by default when the dataset is read. It excludes runtime data-table state such as keys, indexes, allocation capacity, and self-reference.
+_Avoid_: Stored table state, serialized data table
+
 **Tag-preserving recode**:
 A recode that changes matched values while retaining each unmatched system or extended missing code.
 _Avoid_: Missing-value-safe recode
