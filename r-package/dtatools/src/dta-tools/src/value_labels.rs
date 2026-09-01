@@ -201,7 +201,7 @@ fn parse_fixed8_table(
     metadata: &DtaMetadata,
     table_start: usize,
     encoding: TextEncoding,
-    selected: Option<&HashSet<String>>,
+    selected: Option<&HashSet<&str>>,
 ) -> Result<(Option<ValueLabelTable>, usize), DtaError> {
     const NAME_WIDTH: usize = 9;
     const PADDING_WIDTH: usize = 1;
@@ -220,7 +220,7 @@ fn parse_fixed8_table(
         NAME_WIDTH,
         "legacy value-label table name",
     )?));
-    let retain = selected.is_none_or(|selected| selected.contains(&name));
+    let retain = selected.is_none_or(|selected| selected.contains(name.as_str()));
     let values_start = checked_add(
         checked_add(name_start, NAME_WIDTH, "legacy value-label table name")?,
         PADDING_WIDTH,
@@ -308,7 +308,7 @@ fn parse_table(
     name_width: usize,
     wrapped: bool,
     encoding: TextEncoding,
-    selected: Option<&HashSet<String>>,
+    selected: Option<&HashSet<&str>>,
 ) -> Result<(Option<ValueLabelTable>, usize), DtaError> {
     let mut cursor = if wrapped {
         expect_at(bytes, table_start, LABEL_OPEN, "<lbl>")?
@@ -347,7 +347,7 @@ fn parse_table(
         field_bytes(name_field)
     };
     let name = encoding.decode(name_bytes);
-    let retain = selected.is_none_or(|selected| selected.contains(&name));
+    let retain = selected.is_none_or(|selected| selected.contains(name.as_str()));
     cursor = checked_add(cursor, name_width, "value-label table name")?;
 
     // The format reserves these bytes but does not assign them semantics.
@@ -529,7 +529,7 @@ fn parse_legacy_tables(
     end: usize,
     encoding: TextEncoding,
     layout: (LegacyValueLabelLayout, usize),
-    selected: Option<&HashSet<String>>,
+    selected: Option<&HashSet<&str>>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     let (layout, name_width) = layout;
     let mut cursor = start;
@@ -604,7 +604,7 @@ pub(crate) fn parse_selected_value_labels_with_encoding(
     bytes: &[u8],
     metadata: &DtaMetadata,
     encoding: TextEncoding,
-    selected: &HashSet<String>,
+    selected: &HashSet<&str>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     parse_value_labels_section(bytes, metadata, 0, encoding, Some(selected))
 }
@@ -644,7 +644,7 @@ pub(crate) fn parse_value_labels_section(
     metadata: &DtaMetadata,
     base_offset: u64,
     encoding: TextEncoding,
-    selected: Option<&HashSet<String>>,
+    selected: Option<&HashSet<&str>>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
     let name_width = name_width(metadata.format_version)?;
     let start = local_offset(

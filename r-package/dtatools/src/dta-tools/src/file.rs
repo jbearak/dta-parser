@@ -2814,8 +2814,16 @@ impl<R: Read + Seek> DtaFile<R> {
         let ValueLabelCache::Indexed(cache) = &self.value_labels else {
             unreachable!("indexed value-label cache was initialized")
         };
-        let mut missing = selected_indices.to_vec();
-        missing.retain(|index| !cache.tables.contains_key(index));
+        let mut missing = Vec::new();
+        missing
+            .try_reserve_exact(selected_indices.len())
+            .map_err(|_| DtaError::ArithmeticOverflow("value-label missing-index allocation"))?;
+        missing.extend(
+            selected_indices
+                .iter()
+                .copied()
+                .filter(|index| !cache.tables.contains_key(index)),
+        );
         let layout = cache.layout;
 
         let mut decoded = Vec::new();
