@@ -1001,9 +1001,7 @@ impl<'de> DeserializeSeed<'de> for DatasetDocumentSeed<'_> {
                         }
                         "output_container" => {
                             if output_container.is_some() {
-                                return Err(serde::de::Error::duplicate_field(
-                                    "output_container",
-                                ));
+                                return Err(serde::de::Error::duplicate_field("output_container"));
                             }
                             output_container = Some(map.next_value()?);
                         }
@@ -1585,19 +1583,15 @@ mod tests {
         assert_eq!(absent.output_container, None);
 
         for container in ["tibble", "data.table"] {
-            let json = format!(
-                r#"{{"version":0,"output_container":"{container}"}}"#
-            );
+            let json = format!(r#"{{"version":0,"output_container":"{container}"}}"#);
             let document = parse_dataset_document("0", Some(&json))
                 .expect("supported output container parses");
             assert_eq!(document.output_container.as_deref(), Some(container));
         }
 
-        let error = parse_dataset_document(
-            "0",
-            Some(r#"{"version":0,"output_container":"matrix"}"#),
-        )
-        .expect_err("unknown output containers are rejected");
+        let error =
+            parse_dataset_document("0", Some(r#"{"version":0,"output_container":"matrix"}"#))
+                .expect_err("unknown output containers are rejected");
         assert!(error.to_string().contains("output_container"));
     }
 
