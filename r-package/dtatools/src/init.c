@@ -5913,8 +5913,7 @@ SEXP C_dtatools_generate_numeric(
     }
 
     numeric_data plan = {
-        NULL, row_count, kind, temporal, 119,
-        rows == R_NilValue ? 0 : row_count
+        NULL, row_count, kind, temporal, 119, row_count
     };
     compact_replacement_plan replacement_plan =
         compact_replacement_plan_create(
@@ -5930,11 +5929,9 @@ SEXP C_dtatools_generate_numeric(
         RAWSXP, (R_xlen_t) (row_count * width)
     ));
     plan.values = RAW(backing);
-    if (rows != R_NilValue) {
-        for (size_t index = 0; index < row_count; index++) {
-            if ((index & 16383) == 0) R_CheckUserInterrupt();
-            write_numeric_missing(plan.values, (R_xlen_t) index, kind, 0);
-        }
+    for (size_t index = 0; index < row_count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        write_numeric_missing(plan.values, (R_xlen_t) index, kind, 0);
     }
     apply_compact_replacement(&plan, &row_plan, &replacement_plan);
 
