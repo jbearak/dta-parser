@@ -95,6 +95,10 @@ _Avoid_: Factor levels, variable labels
 A human-readable description of a dataset as a whole, distinct from its file name and its variables' labels.
 _Avoid_: Variable label, file name
 
+**Dataset note**:
+A numbered annotation attached to a dataset as a whole, distinct from a variable note and the dataset label.
+_Avoid_: Dataset label, variable note
+
 **Target Stata version**:
 The Stata application generation an exported dataset targets. It is distinct from the DTA format release stored in the file header.
 _Avoid_: DTA release, file format code

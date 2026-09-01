@@ -665,7 +665,7 @@ test_that("temporal keys merge with promoted storage", {
     )
 })
 
-test_that("dataset label and notes come from the master", {
+test_that("dataset notes append master then using with stable numbering", {
     master <- tibble::tibble(id = 1)
     dataset_label(master) <- "Master survey"
     attr(master, "notes") <- c("master note")
@@ -676,7 +676,172 @@ test_that("dataset label and notes come from the master", {
     result <- dta_merge(master, using, by = "id", relationship = "1:1")
 
     expect_identical(dataset_label(result), "Master survey")
-    expect_identical(attr(result, "notes", exact = TRUE), "master note")
+    expect_identical(
+        attr(result, "notes", exact = TRUE),
+        c("master note", "using note")
+    )
+    expect_null(attr(result, "stata.note.numbers", exact = TRUE))
+    expect_identical(
+        stata_notes(result),
+        c(`1` = "master note", `2` = "using note")
+    )
+})
+
+test_that("dataset-note merge preserves one side and renumbers using notes", {
+    empty <- tibble::tibble(id = 1)
+    master <- set_stata_note(empty, 3, "master three")
+    master <- set_stata_note(master, 7, "same text")
+    using <- set_stata_note(empty, 2, "same text")
+    using <- set_stata_note(using, 8, "using eight")
+
+    master_only <- dta_merge(
+        master, empty, by = "id", relationship = "1:1"
+    )
+    using_only <- dta_merge(
+        empty, using, by = "id", relationship = "1:1"
+    )
+    combined <- dta_merge(
+        master, using, by = "id", relationship = "1:1"
+    )
+    explicit_empty <- empty
+    attr(explicit_empty, "notes") <- character()
+    attr(explicit_empty, "stata.note.numbers") <- integer()
+    neither <- dta_merge(
+        explicit_empty, empty, by = "id", relationship = "1:1"
+    )
+
+    expect_identical(stata_notes(master_only), stata_notes(master))
+    expect_identical(
+        attr(master_only, "stata.note.numbers", exact = TRUE), c(3L, 7L)
+    )
+    expect_identical(stata_notes(using_only), stata_notes(using))
+    expect_identical(
+        attr(using_only, "stata.note.numbers", exact = TRUE), c(2L, 8L)
+    )
+    expect_identical(
+        stata_notes(combined),
+        c(
+            `3` = "master three", `7` = "same text",
+            `8` = "same text", `9` = "using eight"
+        )
+    )
+    expect_null(attr(neither, "notes", exact = TRUE))
+    expect_null(attr(neither, "stata.note.numbers", exact = TRUE))
+})
+
+test_that("dataset-note merge rejects Stata note-number exhaustion", {
+    master <- set_stata_note(tibble::tibble(id = 1), 9999, "last")
+    using <- set_stata_note(tibble::tibble(id = 1), 1, "using")
+
+    expect_error(
+        dta_merge(master, using, by = "id", relationship = "1:1"),
+        "cannot be appended.*9,999"
+    )
+})
+
+test_that("base, tibble, and data.table inputs merge identically", {
+    skip_if_not_installed("data.table")
+    make_input <- function(side, kind) {
+        data <- if (identical(side, "x")) {
+            data.frame(
+                id = c(1L, 2L), shared = c("x1", "x2"),
+                x_only = c(10L, 20L)
+            )
+        } else {
+            data.frame(
+                id = c(2L, 3L), shared = c("y2", "y3"),
+                y_only = c(30L, 40L)
+            )
+        }
+        data <- switch(kind,
+            base = data,
+            tibble = tibble::as_tibble(data),
+            data.table = data.table::as.data.table(data)
+        )
+        dataset_label(data) <- paste(side, "dataset")
+        data <- set_stata_note(data, 2, paste(side, "note"))
+        data <- set_stata_characteristic(data, "source", side)
+        data[["shared"]] <- set_stata_note(
+            data[["shared"]], 4, paste(side, "variable note")
+        )
+        data
+    }
+    kinds <- c("base", "tibble", "data.table")
+    reference <- suppressWarnings(dta_merge(
+        make_input("x", "base"), make_input("y", "base"),
+        by = "id", relationship = "1:1"
+    ))
+
+    for (x_kind in kinds) {
+        for (y_kind in kinds) {
+            x <- make_input("x", x_kind)
+            y <- make_input("y", y_kind)
+            x_before <- data.table::copy(x)
+            y_before <- data.table::copy(y)
+            x_alias <- x
+            y_alias <- y
+            result <- suppressWarnings(dta_merge(
+                x, y, by = "id", relationship = "1:1"
+            ))
+            info <- sprintf("x = %s, y = %s", x_kind, y_kind)
+
+            expect_s3_class(result, "tbl_df")
+            expect_identical(data_values(result), data_values(reference),
+                             info = info)
+            expect_identical(stata_notes(result), stata_notes(reference),
+                             info = info)
+            expect_identical(
+                stata_notes(result$shared), stata_notes(reference$shared),
+                info = info
+            )
+            expect_identical(
+                stata_characteristics(result),
+                stata_characteristics(reference), info = info
+            )
+            expect_equal(x, x_before, info = info)
+            expect_equal(y, y_before, info = info)
+            expect_equal(x_alias, x_before, info = info)
+            expect_equal(y_alias, y_before, info = info)
+        }
+    }
+})
+
+test_that("plain keyed data.tables retain their values, aliases, and keys", {
+    skip_if_not_installed("data.table")
+    master <- data.table::data.table(
+        id = c(1L, 2L), shared = c("x1", "x2"), x_only = c(10L, 20L)
+    )
+    using <- data.table::data.table(
+        id = c(2L, 3L), shared = c("y2", "y3"), y_only = c(30L, 40L)
+    )
+    data.table::setkey(master, id)
+    data.table::setkey(using, id)
+    master_before <- data.table::copy(master)
+    using_before <- data.table::copy(using)
+    master_alias <- master
+    using_alias <- using
+
+    result <- suppressWarnings(dta_merge(
+        master, using, by = "id", relationship = "1:1"
+    ))
+
+    expect_s3_class(result, "tbl_df")
+    expect_identical(
+        data_values(result),
+        list(
+            id = c(1, 2, 3),
+            shared = c("x1", "x2", "y3"),
+            x_only = c(10, 20, NA_real_),
+            y_only = c(NA_real_, 30, 40),
+            `_merge` = c(1, 3, 2)
+        )
+    )
+    expect_equal(master, master_before)
+    expect_equal(using, using_before)
+    expect_equal(master_alias, master_before)
+    expect_equal(using_alias, using_before)
+    expect_identical(data.table::key(master), "id")
+    expect_identical(data.table::key(using), "id")
 })
 
 test_that("master and using accept DTA file paths in any combination", {

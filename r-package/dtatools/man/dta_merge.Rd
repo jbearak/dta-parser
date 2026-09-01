@@ -9,7 +9,9 @@ dta_merge(x, y, by, relationship, keep = c("x", "y", "match"), assert = NULL)
 \arguments{
 \item{x, y}{Data frames to merge, or file paths read with \code{\link[=read_dta]{read_dta()}} or
 \code{\link[=read_arrow]{read_arrow()}}, in any combination. \code{x} supplies the retained values for
-overlapping variables and the dataset label, notes, and characteristics.
+overlapping variables, dataset label, and dataset characteristics.
+Base data frames, tibbles, and data.tables are accepted without mutation;
+the result is always a tibble.
 Passing paths
 mirrors Stata's \verb{merge ... using filename} and keeps only the merged
 result in the caller's workspace. A path ending in \code{.arrow} is read with
@@ -76,8 +78,11 @@ resolution keeps \code{x}'s side and Stata would say nothing.
 Every merge generates a \verb{_merge} variable, a \code{stata_byte} column using
 Stata's \verb{_merge} codes with value labels \verb{x only (1)}, \verb{y only (2)}, and
 \code{matched (3)}. Merging errors if either input already has a \verb{_merge}
-column. The result keeps the dataset label, numbered notes, and arbitrary
-characteristics from \code{x}.
+column. The result keeps the dataset label and arbitrary characteristics
+from \code{x}. Dataset notes combine in master-then-using order. The master
+keeps its note numbers, while using notes receive consecutive numbers after
+the master's highest number. A merge errors if the combined notes would
+exceed Stata's limit of 9,999.
 
 Unlike Stata, which re-sorts the merged dataset by the key variables, the
 result keeps \code{x} rows in their original order followed by unmatched \code{y}
