@@ -1800,3 +1800,51 @@ test_that("sparse compact replacement and generation keep existing payloads", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$added))
 })
+
+test_that("plain-expression evaluation matches tidy-eval semantics", {
+    data <- data.frame(x = stata_byte(c(1, 2, 3)), y = c(10, 20, 30))
+
+    # Columns mask the calling environment.
+    y <- c(999, 999, 999)
+    gen(data, column_wins, y + 1)
+    expect_identical(as.double(data$column_wins), c(11, 21, 31))
+
+    # Environment lookups still reach the caller.
+    scale_factor <- 2
+    gen(data, uses_env, y * scale_factor)
+    expect_identical(as.double(data$uses_env), c(20, 40, 60))
+
+    # Empty call arguments are tolerated by the expression scan.
+    matrix_2x3 <- matrix(1:6, nrow = 2)
+    gen(data, empty_argument, sum(matrix_2x3[1, ]) + x)
+    expect_identical(as.double(data$empty_argument), c(10, 11, 12))
+
+    # Assignments inside expressions never leak into the data or the
+    # calling environment.
+    gen(data, assignment_isolated, { leaked <- 1; y + leaked })
+    expect_identical(as.double(data$assignment_isolated), c(11, 21, 31))
+    expect_false(exists("leaked", inherits = FALSE))
+    expect_false("leaked" %in% names(data))
+
+    # `.data` pronouns and injected quosures take the tidy-eval path.
+    gen(data, pronoun, .data$y)
+    expect_identical(as.double(data$pronoun), c(10, 20, 30))
+    quo_y <- rlang::quo(y)
+    rlang::inject(gen(data, injected, !!quo_y))
+    expect_identical(as.double(data$injected), c(10, 20, 30))
+
+    # `where` expressions run through the same fast path.
+    repl(data, y, 0, where = x == 2)
+    expect_identical(as.double(data$y), c(10, 0, 30))
+})
+
+test_that("plain expressions evaluate against reference-state columns", {
+    data <- data.frame(x = stata_byte(c(1, 2, 3)))
+    offset <- 5
+    gen(data, seed_column, x)
+    expect_false(is.null(attr(data, ".dtatools_ref_state", exact = TRUE)))
+    gen(data, from_state, x + offset)
+    expect_identical(as.double(data$from_state), c(6, 7, 8))
+    repl(data, from_state, x, where = x >= 2)
+    expect_identical(as.double(data$from_state), c(6, 2, 3))
+})

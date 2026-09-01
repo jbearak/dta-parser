@@ -408,7 +408,49 @@ gen <- function(data, variable, values, where = NULL) {
     list(expression = value[[2L]], environment = environment(value))
 }
 
+.plain_mutation_expression <- function(expression) {
+    if (is.symbol(expression)) {
+        return(!identical(expression, quote(.data)) &&
+            !identical(expression, quote(.env)))
+    }
+    if (rlang::is_quosure(expression)) return(FALSE)
+    if (is.call(expression) || is.pairlist(expression)) {
+        for (index in seq_along(expression)) {
+            if (identical(expression[[index]], quote(expr = ))) next
+            if (!.plain_mutation_expression(expression[[index]])) {
+                return(FALSE)
+            }
+        }
+    }
+    TRUE
+}
+
+.eval_plain_mutation <- function(expression, columns, environment) {
+    if (!is.environment(columns)) {
+        return(eval(expression, columns, environment))
+    }
+    previous_parent <- parent.env(columns)
+    on.exit(parent.env(columns) <- previous_parent, add = TRUE)
+    parent.env(columns) <- environment
+    eval(expression, new.env(parent = columns))
+}
+
 .eval_in_mutation_data <- function(expression, columns, environment = NULL) {
+    # Plain expressions -- no `.data`/`.env` pronouns and no embedded
+    # quosures -- have identical semantics under base evaluation with the
+    # columns masking the expression environment. Skipping the rlang data
+    # mask there removes the dominant per-call cost of `gen()`/`repl()`.
+    if (is.null(environment)) {
+        if (rlang::is_quosure(expression) &&
+            .plain_mutation_expression(rlang::quo_get_expr(expression))) {
+            return(.eval_plain_mutation(
+                rlang::quo_get_expr(expression), columns,
+                rlang::quo_get_env(expression)
+            ))
+        }
+    } else if (.plain_mutation_expression(expression)) {
+        return(.eval_plain_mutation(expression, columns, environment))
+    }
     if (!is.environment(columns)) {
         return(if (is.null(environment)) {
             rlang::eval_tidy(expression, data = columns)
