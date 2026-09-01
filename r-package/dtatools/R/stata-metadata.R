@@ -577,7 +577,9 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
     )
 }
 
-.stata_metadata_payload <- function(notes, characteristics) {
+.stata_metadata_payload <- function(
+    notes, characteristics, inputs_are_utf8 = FALSE
+) {
     note_count <- length(notes)
     characteristic_count <- length(characteristics)
     if (!note_count && !characteristic_count) return(NULL)
@@ -591,8 +593,14 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
     cursor <- 3L
     if (note_count) {
         note_positions <- seq.int(cursor, length.out = note_count, by = 2L)
-        result[note_positions] <- enc2utf8(names(notes))
-        result[note_positions + 1L] <- enc2utf8(unname(notes))
+        note_numbers <- names(notes)
+        note_texts <- unname(notes)
+        if (!inputs_are_utf8) {
+            note_numbers <- enc2utf8(note_numbers)
+            note_texts <- enc2utf8(note_texts)
+        }
+        result[note_positions] <- note_numbers
+        result[note_positions + 1L] <- note_texts
         cursor <- cursor + 2L * note_count
     }
     result[[cursor]] <- as.character(characteristic_count)
@@ -600,8 +608,14 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
         characteristic_positions <- seq.int(
             cursor + 1L, length.out = characteristic_count, by = 2L
         )
-        result[characteristic_positions] <- enc2utf8(names(characteristics))
-        result[characteristic_positions + 1L] <- enc2utf8(unname(characteristics))
+        characteristic_names <- names(characteristics)
+        characteristic_values <- unname(characteristics)
+        if (!inputs_are_utf8) {
+            characteristic_names <- enc2utf8(characteristic_names)
+            characteristic_values <- enc2utf8(characteristic_values)
+        }
+        result[characteristic_positions] <- characteristic_names
+        result[characteristic_positions + 1L] <- characteristic_values
     }
     result
 }

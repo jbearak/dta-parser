@@ -289,16 +289,19 @@ fn parse_fixed8_table(
 }
 
 fn nul_positions(text: &[u8]) -> Result<Vec<usize>, DtaError> {
-    let count = text.iter().filter(|&&byte| byte == 0).count();
     let mut positions = Vec::new();
-    positions
-        .try_reserve_exact(count)
-        .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
-    positions.extend(
-        text.iter()
-            .enumerate()
-            .filter_map(|(position, byte)| (*byte == 0).then_some(position)),
-    );
+    for (position, byte) in text.iter().enumerate() {
+        if *byte != 0 {
+            continue;
+        }
+        if positions.len() == positions.capacity() {
+            let additional = positions.capacity().max(4);
+            positions
+                .try_reserve_exact(additional)
+                .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
+        }
+        positions.push(position);
+    }
     Ok(positions)
 }
 

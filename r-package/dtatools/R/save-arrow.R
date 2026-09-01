@@ -138,13 +138,18 @@ save_arrow <- function(data, path,
     compression
 }
 
-.arrow_utf8 <- function(value, what) {
+.arrow_reject_bytes <- function(value, what) {
     if (any(Encoding(value) == "bytes")) {
         .dta_write_abort(sprintf(
             "%s cannot contain strings with `bytes` encoding; Arrow Utf8 requires Unicode text",
             what
         ))
     }
+    invisible(NULL)
+}
+
+.arrow_utf8 <- function(value, what) {
+    .arrow_reject_bytes(value, what)
     enc2utf8(value)
 }
 
@@ -163,23 +168,23 @@ save_arrow <- function(data, path,
             unname(characteristics), sprintf("%s characteristics", what)
         )
     }
-    .stata_metadata_payload(notes, characteristics)
+    .stata_metadata_payload(notes, characteristics, inputs_are_utf8 = TRUE)
 }
 
 .arrow_validate_stata_metadata_utf8 <- function(x, what) {
     notes <- attr(x, "notes", exact = TRUE)
     if (is.character(notes)) {
-        .arrow_utf8(notes, sprintf("%s notes", what))
+        .arrow_reject_bytes(notes, sprintf("%s notes", what))
     }
     characteristics <- attr(x, "stata.characteristics", exact = TRUE)
     if (is.character(characteristics)) {
         if (!is.null(names(characteristics))) {
-            .arrow_utf8(
+            .arrow_reject_bytes(
                 names(characteristics),
                 sprintf("%s characteristic names", what)
             )
         }
-        .arrow_utf8(
+        .arrow_reject_bytes(
             unname(characteristics), sprintf("%s characteristics", what)
         )
     }

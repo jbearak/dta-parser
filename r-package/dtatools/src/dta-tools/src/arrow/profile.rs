@@ -10,7 +10,7 @@ use std::{
 
 use arrow_schema::{DataType, Field};
 use serde::{
-    de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor},
+    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
     Deserialize, Serialize,
 };
 use serde_json::value::RawValue;
@@ -246,32 +246,61 @@ struct DiscardedValueLabelEntry {
     _label: (),
 }
 
-#[derive(Deserialize)]
-struct RawArrowFieldDocument<'a> {
-    version: u32,
-    #[serde(default)]
-    label: String,
-    #[serde(default)]
-    format: String,
-    #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
-    notes: Vec<&'a RawValue>,
-    #[serde(default, deserialize_with = "deserialize_raw_characteristics")]
-    characteristics: Vec<StataCharacteristic>,
-    #[serde(default)]
-    storage: Option<StataStorage>,
-    #[serde(default)]
-    string_storage: Option<String>,
-    #[serde(default)]
-    value_labels: Option<String>,
-    #[serde(default)]
-    missing: Option<ArrowMissingEncoding>,
-    #[serde(default)]
-    missing_release: Option<FormatVersion>,
-    #[serde(default)]
-    r: Option<ArrowRSemantics>,
-    #[serde(flatten)]
-    unknown: BTreeMap<String, IgnoredAny>,
+macro_rules! raw_arrow_field_document {
+    ($name:ident $(, $attribute:meta)*) => {
+        #[derive(Deserialize)]
+        $(#[$attribute])*
+        struct $name<'a> {
+            version: u32,
+            #[serde(default)]
+            label: String,
+            #[serde(default)]
+            format: String,
+            #[serde(default, borrow, deserialize_with = "deserialize_raw_notes")]
+            notes: Vec<&'a RawValue>,
+            #[serde(default, deserialize_with = "deserialize_raw_characteristics")]
+            characteristics: Vec<StataCharacteristic>,
+            #[serde(default)]
+            storage: Option<StataStorage>,
+            #[serde(default)]
+            string_storage: Option<String>,
+            #[serde(default)]
+            value_labels: Option<String>,
+            #[serde(default)]
+            missing: Option<ArrowMissingEncoding>,
+            #[serde(default)]
+            missing_release: Option<FormatVersion>,
+            #[serde(default)]
+            r: Option<ArrowRSemantics>,
+        }
+
+        impl $name<'_> {
+            fn decode(
+                self,
+                version: &str,
+                field: &Field,
+            ) -> Result<ArrowFieldDocument, ArrowProfileError> {
+                let invalid_context = format!("field document on `{}`", field.name());
+                Ok(ArrowFieldDocument {
+                    version: self.version,
+                    label: self.label,
+                    format: self.format,
+                    notes: decode_raw_notes(version, "field", &invalid_context, self.notes)?,
+                    characteristics: self.characteristics,
+                    storage: self.storage,
+                    string_storage: self.string_storage,
+                    value_labels: self.value_labels,
+                    missing: self.missing,
+                    missing_release: self.missing_release,
+                    r: self.r,
+                })
+            }
+        }
+    };
 }
+
+raw_arrow_field_document!(RawArrowFieldDocument, serde(deny_unknown_fields));
+raw_arrow_field_document!(TolerantRawArrowFieldDocument);
 
 // The Arrow reader first borrows bounded metadata strings as raw JSON. It
 // then decodes only those fragments, avoiding a second parse of the complete
@@ -1027,25 +1056,6 @@ thread_local! {
     };
 }
 
-impl RawArrowFieldDocument<'_> {
-    fn decode(self, version: &str, field: &Field) -> Result<ArrowFieldDocument, ArrowProfileError> {
-        let invalid_context = format!("field document on `{}`", field.name());
-        Ok(ArrowFieldDocument {
-            version: self.version,
-            label: self.label,
-            format: self.format,
-            notes: decode_raw_notes(version, "field", &invalid_context, self.notes)?,
-            characteristics: self.characteristics,
-            storage: self.storage,
-            string_storage: self.string_storage,
-            value_labels: self.value_labels,
-            missing: self.missing,
-            missing_release: self.missing_release,
-            r: self.r,
-        })
-    }
-}
-
 /// Per-buffer xxHash64 checksums, in canonical buffer order, for every column
 /// of every record batch and for each dictionary field's values.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -1181,24 +1191,21 @@ fn parse_field_document_inner(
     json: &str,
     reject_unknown: bool,
 ) -> Result<ArrowFieldDocument, ArrowProfileError> {
-    let raw: RawArrowFieldDocument<'_> = serde_json::from_str(json).map_err(|error| {
+    let invalid = |error| {
         malformed(
             version,
             format!("invalid field document on `{}`: {error}", field.name()),
         )
-    })?;
-    if reject_unknown {
-        if let Some(key) = raw.unknown.keys().next() {
-            return Err(malformed(
-                version,
-                format!(
-                    "invalid field document on `{}`: unknown field `{key}`",
-                    field.name()
-                ),
-            ));
-        }
-    }
-    let document = raw.decode(version, field)?;
+    };
+    let document = if reject_unknown {
+        serde_json::from_str::<RawArrowFieldDocument<'_>>(json)
+            .map_err(invalid)?
+            .decode(version, field)?
+    } else {
+        serde_json::from_str::<TolerantRawArrowFieldDocument<'_>>(json)
+            .map_err(invalid)?
+            .decode(version, field)?
+    };
     validate_field_document_inner(version, field, &document, false)?;
     Ok(document)
 }
