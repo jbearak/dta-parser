@@ -155,7 +155,9 @@ test_that("codebook retains diagnostics and bounds row evidence", {
     )
     row_problem <- missing_result$diagnostics[
         missing_result$diagnostics$code == "all_selected_variables_missing", ]
-    expect_lte(length(row_problem$details[[1L]]$rows), 2L)
+    payload <- row_problem$details[[1L]][[1L]]
+    expect_identical(payload$count, 5L)
+    expect_length(payload$rows, 2L)
 })
 
 test_that("codebook compact mode enforces Stata option combinations", {

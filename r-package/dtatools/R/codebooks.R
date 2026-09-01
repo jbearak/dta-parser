@@ -458,7 +458,6 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         add("leading_blanks", any(grepl("^\\s", observed)), "Strings contain leading blanks")
         add("trailing_blanks", any(grepl("\\s$", observed)), "Strings contain trailing blanks")
         add("embedded_blanks", any(grepl("\\S\\s+\\S", observed)), "Strings contain embedded blanks")
-        add("embedded_zero", any(grepl("\\0", observed, fixed = TRUE)), "Strings contain embedded zero bytes")
         width <- attr(x, "stata.string.storage", exact = TRUE)
         needed <- if (length(observed)) max(nchar(enc2utf8(observed), type = "bytes")) else 0L
         add("string_storage_wider_than_required", is.numeric(width) && width > needed,
