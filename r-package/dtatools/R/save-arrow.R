@@ -153,20 +153,16 @@ save_arrow <- function(data, path,
     enc2utf8(value)
 }
 
-.arrow_stata_metadata_payload <- function(notes, characteristics, what) {
+.arrow_stata_metadata_payload <- function(notes, characteristics) {
+    # The source attributes passed the allocation-free bytes-encoding preflight
+    # before the metadata getters validated and copied them.
     if (length(notes)) {
-        names(notes) <- .arrow_utf8(
-            names(notes), sprintf("%s note numbers", what)
-        )
-        notes <- .arrow_utf8(notes, sprintf("%s notes", what))
+        names(notes) <- enc2utf8(names(notes))
+        notes <- enc2utf8(notes)
     }
     if (length(characteristics)) {
-        names(characteristics) <- .arrow_utf8(
-            names(characteristics), sprintf("%s characteristic names", what)
-        )
-        characteristics <- .arrow_utf8(
-            characteristics, sprintf("%s characteristics", what)
-        )
+        names(characteristics) <- enc2utf8(names(characteristics))
+        characteristics <- enc2utf8(characteristics)
     }
     .stata_metadata_payload(notes, characteristics, inputs_are_utf8 = TRUE)
 }
@@ -446,9 +442,7 @@ save_arrow <- function(data, path,
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
         haven_labelled, string_storage, as.integer(value_label_index),
-        .arrow_stata_metadata_payload(
-            notes, characteristics, sprintf("Column `%s`", name)
-        )
+        .arrow_stata_metadata_payload(notes, characteristics)
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
         "storage", "tz", "units", "haven_labelled", "string_storage",
@@ -585,9 +579,7 @@ save_arrow <- function(data, path,
         )
     )
     specification <- list(
-        label, .arrow_stata_metadata_payload(
-            notes, characteristics, "Dataset"
-        ),
+        label, .arrow_stata_metadata_payload(notes, characteristics),
         unname(columns), value_label_plan$tables
     )
     attr(specification, "write_warnings") <- c(
