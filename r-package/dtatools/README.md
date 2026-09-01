@@ -24,7 +24,7 @@ declared Stata storage type.
 | `copy_data()` | Make an isolated copy, including compact column backing and mutable dataset metadata. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
-| `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a derived vector's Stata storage type, with validation and compact backing. |
+| `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
 | `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
 | `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
 | `is_missing()` | Classify Stata system and extended numeric missing values and empty strings; use it in `where` expressions for `gen()` and `replace_values()`. |
