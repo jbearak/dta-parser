@@ -390,6 +390,31 @@ static numeric_data *unmaterialized_numeric_storage(SEXP value) {
     return numeric_storage(value);
 }
 
+static int materialized_numeric_storage(
+    SEXP value, numeric_data *storage
+) {
+    if (!ALTREP(value) || R_altrep_data2(value) == R_NilValue ||
+        (!R_altrep_inherits(value, dtatools_numeric_class) &&
+         !R_altrep_inherits(value, dtatools_metadata_real_class))) {
+        return 0;
+    }
+    SEXP declared = Rf_getAttrib(value, Rf_install("stata.storage"));
+    if (TYPEOF(declared) != STRSXP || XLENGTH(declared) != 1) return 0;
+    const char *name = CHAR(STRING_ELT(declared, 0));
+    int kind = strcmp(name, "byte") == 0 ? NUMERIC_BYTE :
+        strcmp(name, "int") == 0 ? NUMERIC_INT :
+        strcmp(name, "long") == 0 ? NUMERIC_LONG :
+        strcmp(name, "float") == 0 ? NUMERIC_FLOAT : -1;
+    if (kind < 0) return 0;
+    memset(storage, 0, sizeof(*storage));
+    storage->length = (size_t) XLENGTH(value);
+    storage->kind = kind;
+    storage->temporal = Rf_inherits(value, "stata_date") ? 1 :
+        (Rf_inherits(value, "stata_datetime") ? 2 : 0);
+    storage->format_version = 119;
+    return 1;
+}
+
 static double numeric_observed_value(double value, int temporal) {
     if (temporal == 1) return value - 3653.0;
     if (temporal == 2) return value / 1000.0 - 315619200.0;
@@ -4686,6 +4711,128 @@ static R_xlen_t reference_value_index(
     return index;
 }
 
+static void validate_materialized_numeric_replacement(
+    const numeric_data *target, const numeric_reader *reader,
+    const reference_rows *rows, reference_value_plan values
+) {
+    int fits_requested = 1;
+    int fits_int = 1;
+    int fits_long = 1;
+    int fits_float = 1;
+    int fits_double = 1;
+    uint32_t float_maximum_bits = UINT32_C(0x7effffff);
+    float float_maximum;
+    memcpy(&float_maximum, &float_maximum_bits, sizeof(float_maximum));
+    R_xlen_t count = values.mode == REFERENCE_VALUES_SCALAR
+        ? 1 : values.count;
+    for (R_xlen_t index = 0; index < count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t row = values.mode == REFERENCE_VALUES_SCALAR
+            ? 0 : reference_patch_row(rows, index);
+        R_xlen_t value_index = reference_value_index(&values, index, row);
+        int missing_code;
+        double value = numeric_reader_at(reader, value_index, &missing_code);
+        if (missing_code >= 0) {
+            if (missing_code == 256 ||
+                (missing_code != 0 &&
+                 (missing_code < 'a' || missing_code > 'z'))) {
+                Rf_error(
+                    "`values` cannot contain `NaN` or infinities; use "
+                    "`NA_real_` for Stata system missing"
+                );
+            }
+            continue;
+        }
+        if (!R_FINITE(value)) {
+            Rf_error(
+                "`values` cannot contain `NaN` or infinities; use "
+                "`NA_real_` for Stata system missing"
+            );
+        }
+        double encoded = compact_patch_encoded_value(value, target->temporal);
+        int integral = R_FINITE(encoded) && encoded == trunc(encoded);
+        int element_fits_int = integral &&
+            encoded >= -32767.0 && encoded <= 32740.0;
+        int element_fits_long = integral &&
+            encoded >= -2147483647.0 && encoded <= 2147483620.0;
+        int element_fits_float = R_FINITE(encoded) &&
+            fabs(encoded) <= (double) float_maximum;
+        int element_fits_double = R_FINITE(encoded) &&
+            fabs(encoded) <= DBL_MAX / 2.0;
+        fits_int = fits_int && element_fits_int;
+        fits_long = fits_long && element_fits_long;
+        fits_float = fits_float && element_fits_float;
+        fits_double = fits_double && element_fits_double;
+        switch (target->kind) {
+        case NUMERIC_BYTE:
+            fits_requested = fits_requested && integral &&
+                encoded >= -127.0 && encoded <= 100.0;
+            break;
+        case NUMERIC_INT:
+            fits_requested = fits_requested && element_fits_int;
+            break;
+        case NUMERIC_LONG:
+            fits_requested = fits_requested && element_fits_long;
+            break;
+        case NUMERIC_FLOAT:
+            fits_requested = fits_requested && element_fits_float;
+            break;
+        default:
+            Rf_error("invalid compact Stata numeric storage type");
+        }
+    }
+    if (fits_requested) return;
+    const char *storage_name = target->kind == NUMERIC_BYTE ? "byte" :
+        target->kind == NUMERIC_INT ? "int" :
+        target->kind == NUMERIC_LONG ? "long" : "float";
+    const char *recommendation = NULL;
+    if (target->kind == NUMERIC_BYTE && fits_int) recommendation = "int";
+    else if ((target->kind == NUMERIC_BYTE ||
+              target->kind == NUMERIC_INT) && fits_long) {
+        recommendation = "long";
+    } else if ((target->kind == NUMERIC_BYTE ||
+                target->kind == NUMERIC_INT) && fits_float) {
+        recommendation = "float";
+    } else if (fits_double) {
+        recommendation = "double";
+    }
+    if (recommendation == NULL) {
+        Rf_error("No Stata numeric storage can represent `x`");
+    }
+    Rf_error(
+        "Stata %s storage cannot represent `x`; use `stata_%s(x)`",
+        storage_name, recommendation
+    );
+}
+
+static double materialized_numeric_patch_value(
+    const numeric_data *target, double value, int missing_code
+) {
+    if (missing_code >= 0) {
+        int offset = missing_code == 0 ? 0 : missing_code - 'a' + 1;
+        return numeric_missing_value(offset);
+    }
+    double encoded = compact_patch_encoded_value(value, target->temporal);
+    double stored;
+    switch (target->kind) {
+    case NUMERIC_BYTE:
+        stored = (double) ((int8_t) encoded);
+        break;
+    case NUMERIC_INT:
+        stored = (double) ((int16_t) encoded);
+        break;
+    case NUMERIC_LONG:
+        stored = (double) ((int32_t) encoded);
+        break;
+    case NUMERIC_FLOAT:
+        stored = (double) ((float) encoded);
+        break;
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+    return numeric_observed_value(stored, target->temporal);
+}
+
 typedef struct {
     numeric_reader reader;
     reference_value_plan values;
@@ -4890,6 +5037,8 @@ typedef struct {
     SEXP target;
     SEXP replacement;
     reference_string_reader replacement_reader;
+    numeric_reader numeric_replacement_reader;
+    const numeric_data *materialized_numeric;
     SEXP saved_data1;
     SEXP saved_data2;
     SEXP string_undo;
@@ -5140,9 +5289,20 @@ static SEXP apply_vector_patch_transaction(void *data) {
         );
         switch (transaction->type) {
         case REALSXP:
-            real_output[row] = REAL_ELT(
-                transaction->replacement, replacement_index
-            );
+            if (transaction->materialized_numeric != NULL) {
+                int missing_code;
+                double value = numeric_reader_at(
+                    &transaction->numeric_replacement_reader,
+                    replacement_index, &missing_code
+                );
+                real_output[row] = materialized_numeric_patch_value(
+                    transaction->materialized_numeric, value, missing_code
+                );
+            } else {
+                real_output[row] = REAL_ELT(
+                    transaction->replacement, replacement_index
+                );
+            }
             break;
         case INTSXP:
             integer_output[row] = INTEGER_ELT(
@@ -5212,7 +5372,11 @@ static SEXP patch_vector(
     );
 
     numeric_data *compact = unmaterialized_numeric_storage(target);
-    int native_by_row = compact != NULL ||
+    numeric_data materialized_storage;
+    numeric_data *materialized = materialized_numeric_storage(
+        target, &materialized_storage
+    ) ? &materialized_storage : NULL;
+    int native_by_row = compact != NULL || materialized != NULL ||
         unmaterialized_dictstring_source(replacement) != R_NilValue;
     reference_value_plan value_plan = reference_value_plan_create(
         replacement, &row_plan, count, target_length, native_by_row,
@@ -5265,7 +5429,16 @@ static SEXP patch_vector(
         return result;
     }
 
-    if (TYPEOF(target) != TYPEOF(replacement)) {
+    numeric_reader materialized_reader;
+    memset(&materialized_reader, 0, sizeof(materialized_reader));
+    if (materialized != NULL) {
+        materialized_reader = numeric_reader_create(
+            replacement, value_plan.value_count
+        );
+        validate_materialized_numeric_replacement(
+            materialized, &materialized_reader, &row_plan, value_plan
+        );
+    } else if (TYPEOF(target) != TYPEOF(replacement)) {
         Rf_error("replacement storage does not match its target");
     }
     int type = TYPEOF(target);
@@ -5369,6 +5542,8 @@ static SEXP patch_vector(
         .target = target,
         .replacement = replacement,
         .replacement_reader = replacement_reader,
+        .numeric_replacement_reader = materialized_reader,
+        .materialized_numeric = materialized,
         .saved_data1 = VECTOR_ELT(saved_state, 0),
         .saved_data2 = VECTOR_ELT(saved_state, 1),
         .string_undo = string_undo,
@@ -5998,6 +6173,11 @@ SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value) {
         value = metadata_proxy_source(value);
     }
     return Rf_ScalarLogical(0);
+}
+
+SEXP C_dtatools_is_materialized_numeric_altrep(SEXP value) {
+    numeric_data storage;
+    return Rf_ScalarLogical(materialized_numeric_storage(value, &storage));
 }
 
 SEXP C_dtatools_is_unmaterialized_dictstring(SEXP value) {
@@ -6642,6 +6822,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_generate_character, 5},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
+    {"C_dtatools_is_materialized_numeric_altrep",
+     (DL_FUNC) &C_dtatools_is_materialized_numeric_altrep, 1},
     {"C_dtatools_is_unmaterialized_dictstring",
      (DL_FUNC) &C_dtatools_is_unmaterialized_dictstring, 1},
     {"C_dtatools_dictstring_cached_count",

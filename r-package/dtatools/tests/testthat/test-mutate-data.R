@@ -1848,3 +1848,76 @@ test_that("plain expressions evaluate against reference-state columns", {
     repl(data, from_state, x, where = x >= 2)
     expect_identical(as.double(data$from_state), c(6, 2, 3))
 })
+
+test_that("materialized compact replacements retain Stata semantics", {
+    constructors <- list(
+        byte = stata_byte,
+        int = stata_int,
+        long = stata_long,
+        float = stata_float
+    )
+    for (storage in names(constructors)) {
+        target <- constructors[[storage]](c(
+            1, 2, NA_real_, tagged_missing("a"), tagged_missing("z")
+        ))
+        attr(target, "label") <- paste(storage, "label")
+        attr(target, "format.stata") <- "%9.0g"
+        attr(target, "labels") <- c(One = 1)
+        data <- data.frame(target = target)
+        independent <- copy_data(data)
+        invisible(dtatools:::.force_altrep_materialization(data$target))
+
+        replace_values(
+            data, target,
+            c(9, tagged_missing("b"), NA_real_),
+            where = c(1, 2, 3)
+        )
+
+        expect_false(
+            dtatools:::.is_unmaterialized_numeric_altrep(data$target),
+            info = storage
+        )
+        expect_identical(stata_storage_type(data$target), storage)
+        expect_equal(
+            as.double(data$target),
+            c(9, tagged_missing("b"), NA_real_,
+              tagged_missing("a"), tagged_missing("z")),
+            info = storage
+        )
+        expect_identical(
+            attr(data$target, "label"), paste(storage, "label")
+        )
+        expect_identical(attr(data$target, "format.stata"), "%9.0g")
+        expect_identical(attr(data$target, "labels"), c(One = 1))
+        expect_equal(
+            as.double(independent$target),
+            c(1, 2, NA_real_, tagged_missing("a"), tagged_missing("z")),
+            info = storage
+        )
+    }
+})
+
+test_that("materialized compact replacement keeps fallback errors atomic", {
+    cases <- list(
+        list(value = NaN, message = "cannot contain `NaN` or infinities"),
+        list(value = Inf, message = "cannot contain `NaN` or infinities"),
+        list(value = 101, message = "cannot represent `x`; use `stata_int")
+    )
+    for (case in cases) {
+        data <- data.frame(x = stata_byte(1:3))
+        invisible(dtatools:::.force_altrep_materialization(data$x))
+        before <- serialize(data, NULL)
+
+        expect_error(
+            replace_values(data, x, case$value, where = 2),
+            case$message
+        )
+        expect_identical(serialize(data, NULL), before)
+    }
+
+    data <- data.frame(x = stata_byte(1:3))
+    invisible(dtatools:::.force_altrep_materialization(data$x))
+    before <- serialize(data, NULL)
+    expect_error(replace_values(data, x, 1:2), "has size")
+    expect_identical(serialize(data, NULL), before)
+})

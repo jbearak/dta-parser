@@ -100,8 +100,9 @@
 #' interrupt restores the original payload and missing-value cache.
 #' A metadata proxy first detaches by copying its compact native payload so an
 #' independent source remains unchanged; it still avoids a full R double copy.
-#' Ordinary and materialized numeric columns and character columns are patched in their
-#' existing R representation. Replacing a dictionary-backed string materializes
+#' Materialized compact numeric columns are validated against their declared
+#' storage and patched directly in their decoded R buffer. Ordinary numeric
+#' columns and character columns are patched in their existing R representation. Replacing a dictionary-backed string materializes
 #' that target character column, but does not copy the data frame.
 #' Dictionary-backed replacement values are validated through a read-only
 #' native reader, so a successful mutation, error, or interrupt does not
@@ -563,7 +564,8 @@ gen <- function(data, variable, values, where = NULL) {
         ((inherits(target, "stata_date") && inherits(values, "Date")) ||
          (inherits(target, "stata_datetime") &&
           inherits(values, "POSIXct")))
-    if (.is_unmaterialized_numeric_altrep(target) &&
+    if ((.is_unmaterialized_numeric_altrep(target) ||
+         .is_materialized_numeric_altrep(target)) &&
         (native_numeric || native_temporal) &&
         !is.factor(values) && is.null(dim(values))) {
         # The native patcher validates and encodes these values directly for
