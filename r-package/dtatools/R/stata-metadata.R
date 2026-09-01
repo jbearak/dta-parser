@@ -594,7 +594,7 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
     if (note_count) {
         note_positions <- seq.int(cursor, length.out = note_count, by = 2L)
         note_numbers <- names(notes)
-        note_texts <- unname(notes)
+        note_texts <- notes
         if (!inputs_are_utf8) {
             note_numbers <- enc2utf8(note_numbers)
             note_texts <- enc2utf8(note_texts)
@@ -609,7 +609,7 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
             cursor + 1L, length.out = characteristic_count, by = 2L
         )
         characteristic_names <- names(characteristics)
-        characteristic_values <- unname(characteristics)
+        characteristic_values <- characteristics
         if (!inputs_are_utf8) {
             characteristic_names <- enc2utf8(characteristic_names)
             characteristic_values <- enc2utf8(characteristic_values)

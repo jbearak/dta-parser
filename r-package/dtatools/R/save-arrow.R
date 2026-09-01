@@ -158,14 +158,14 @@ save_arrow <- function(data, path,
         names(notes) <- .arrow_utf8(
             names(notes), sprintf("%s note numbers", what)
         )
-        notes[] <- .arrow_utf8(unname(notes), sprintf("%s notes", what))
+        notes[] <- .arrow_utf8(notes, sprintf("%s notes", what))
     }
     if (length(characteristics)) {
         names(characteristics) <- .arrow_utf8(
             names(characteristics), sprintf("%s characteristic names", what)
         )
         characteristics[] <- .arrow_utf8(
-            unname(characteristics), sprintf("%s characteristics", what)
+            characteristics, sprintf("%s characteristics", what)
         )
     }
     .stata_metadata_payload(notes, characteristics, inputs_are_utf8 = TRUE)
@@ -185,7 +185,7 @@ save_arrow <- function(data, path,
             )
         }
         .arrow_reject_bytes(
-            unname(characteristics), sprintf("%s characteristics", what)
+            characteristics, sprintf("%s characteristics", what)
         )
     }
     invisible(NULL)
