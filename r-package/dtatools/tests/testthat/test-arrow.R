@@ -609,7 +609,7 @@ test_that("value labels on profiled columns round-trip", {
 })
 
 test_that("integer-coded value labels work in Arrow and datasig", {
-    labelled <- set_val_labels(c(1, 2), .labels = c(one = 1L, two = 2L))
+    labelled <- set_val_labels(1:2, .labels = c(one = 1L, two = 2L))
     expect_type(val_labels(labelled), "integer")
     data <- tibble::tibble(x = labelled)
     specification <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
