@@ -148,6 +148,44 @@ save_arrow <- function(data, path,
     enc2utf8(value)
 }
 
+.arrow_stata_metadata_payload <- function(notes, characteristics, what) {
+    if (length(notes)) {
+        names(notes) <- .arrow_utf8(
+            names(notes), sprintf("%s note numbers", what)
+        )
+        notes[] <- .arrow_utf8(unname(notes), sprintf("%s notes", what))
+    }
+    if (length(characteristics)) {
+        names(characteristics) <- .arrow_utf8(
+            names(characteristics), sprintf("%s characteristic names", what)
+        )
+        characteristics[] <- .arrow_utf8(
+            unname(characteristics), sprintf("%s characteristics", what)
+        )
+    }
+    .stata_metadata_payload(notes, characteristics)
+}
+
+.arrow_validate_stata_metadata_utf8 <- function(x, what) {
+    notes <- attr(x, "notes", exact = TRUE)
+    if (is.character(notes)) {
+        .arrow_utf8(notes, sprintf("%s notes", what))
+    }
+    characteristics <- attr(x, "stata.characteristics", exact = TRUE)
+    if (is.character(characteristics)) {
+        if (!is.null(names(characteristics))) {
+            .arrow_utf8(
+                names(characteristics),
+                sprintf("%s characteristic names", what)
+            )
+        }
+        .arrow_utf8(
+            unname(characteristics), sprintf("%s characteristics", what)
+        )
+    }
+    invisible(NULL)
+}
+
 # Kind codes shared with C_dtatools_save_arrow and the native bridge.
 .arrow_write_kinds <- c(
     logical = 0L, integer = 1L, double = 2L, character = 3L, raw = 4L,
@@ -311,6 +349,7 @@ save_arrow <- function(data, path,
 
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
                                         value_label_index) {
+    .arrow_validate_stata_metadata_utf8(column, sprintf("Column `%s`", name))
     characteristics <- stata_characteristics(column)
     notes <- stata_notes(column)
     variable_label <- .arrow_utf8(
@@ -402,7 +441,9 @@ save_arrow <- function(data, path,
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
         haven_labelled, string_storage, as.integer(value_label_index),
-        .stata_metadata_payload(notes, characteristics)
+        .arrow_stata_metadata_payload(
+            notes, characteristics, sprintf("Column `%s`", name)
+        )
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
         "storage", "tz", "units", "haven_labelled", "string_storage",
@@ -502,9 +543,9 @@ save_arrow <- function(data, path,
         ))
     }
     label <- .arrow_utf8(.write_text(label, "label"), "Dataset label")
+    .arrow_validate_stata_metadata_utf8(data, "Dataset")
     notes <- stata_notes(data)
     characteristics <- stata_characteristics(data)
-    notes[] <- .arrow_utf8(unname(notes), "Dataset notes")
     value_label_plan <- .new_write_value_label_plan(
         data,
         validate_column = function(column, name, index) {
@@ -539,7 +580,9 @@ save_arrow <- function(data, path,
         )
     )
     specification <- list(
-        label, .stata_metadata_payload(notes, characteristics),
+        label, .arrow_stata_metadata_payload(
+            notes, characteristics, "Dataset"
+        ),
         unname(columns), value_label_plan$tables
     )
     attr(specification, "write_warnings") <- c(

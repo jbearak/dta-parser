@@ -212,6 +212,7 @@ test_that("vctrs preserves metadata on supported plain vector types", {
         right_left <- vctrs::vec_c(right, left)
         fallback <- vctrs::vec_c(plain, right)
         prototype <- vctrs::vec_ptype2(left, right)
+        cast_to_plain <- vctrs::vec_cast(left, plain[0])
         expect_identical(
             stata_notes(left_right), c(`3` = "left note"), info = kind
         )
@@ -230,6 +231,13 @@ test_that("vctrs preserves metadata on supported plain vector types", {
             stata_characteristics(prototype), c(source = "master"),
             info = kind
         )
+        expect_identical(cast_to_plain, plain, info = kind)
+        expect_false(
+            inherits(cast_to_plain, "dtatools_stata_metadata_vector"),
+            info = kind
+        )
+        expect_length(stata_notes(cast_to_plain), 0L)
+        expect_length(stata_characteristics(cast_to_plain), 0L)
     }
 
     ordinary <- vctrs::vec_c("a", "b")

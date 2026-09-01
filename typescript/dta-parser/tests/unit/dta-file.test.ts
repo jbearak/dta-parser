@@ -539,6 +539,8 @@ describe('DtaFile', () => {
                 expect(my_file.nobs).toBe(4);
                 expect((await my_file.read_rows(0, 1))[0][0]).toBe(1);
             } finally {
+                my_file?.close();
+                my_file = null;
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });
@@ -595,6 +597,8 @@ describe('DtaFile', () => {
                 fs.writeFileSync(filePath, unknownTargetOversized);
                 await expect(DtaFile.open(filePath)).rejects.toThrow('67,784-byte limit');
             } finally {
+                my_file?.close();
+                my_file = null;
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });
@@ -684,6 +688,8 @@ describe('DtaFile', () => {
                 expect(bytesRead).toBeLessThan(2 * dense.length + 128 * 1024);
             } finally {
                 readSpy.mockRestore();
+                my_file?.close();
+                my_file = null;
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });
@@ -748,6 +754,8 @@ describe('DtaFile', () => {
                 expect(bytesRead).toBeLessThan(2 * large.length + 256 * 1024);
             } finally {
                 readSpy.mockRestore();
+                my_file?.close();
+                my_file = null;
                 fs.rmSync(directory, { recursive: true, force: true });
             }
         });

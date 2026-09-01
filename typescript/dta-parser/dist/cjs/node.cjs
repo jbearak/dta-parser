@@ -1261,6 +1261,11 @@ function parse_metadata_from_header(buffer, header) {
     dataset_label,
     section_offsets
   } = header;
+  if (section_offsets.data > bytes.length) {
+    throw new Error(
+      "Corrupt .dta file: mapped data offset exceeds buffer length"
+    );
+  }
   const the_type_codes = parse_variable_types(
     bytes,
     view,

@@ -10,7 +10,7 @@ use std::{
 
 use arrow_schema::{DataType, Field};
 use serde::{
-    de::{DeserializeSeed, MapAccess, SeqAccess, Visitor},
+    de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor},
     Deserialize, Serialize,
 };
 use serde_json::value::RawValue;
@@ -247,7 +247,6 @@ struct DiscardedValueLabelEntry {
 }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct RawArrowFieldDocument<'a> {
     version: u32,
     #[serde(default)]
@@ -270,6 +269,8 @@ struct RawArrowFieldDocument<'a> {
     missing_release: Option<FormatVersion>,
     #[serde(default)]
     r: Option<ArrowRSemantics>,
+    #[serde(flatten)]
+    unknown: BTreeMap<String, IgnoredAny>,
 }
 
 // The Arrow reader first borrows bounded metadata strings as raw JSON. It
@@ -1163,12 +1164,40 @@ pub(crate) fn parse_field_document(
     field: &Field,
     json: &str,
 ) -> Result<ArrowFieldDocument, ArrowProfileError> {
+    parse_field_document_inner(version, field, json, true)
+}
+
+pub(crate) fn parse_field_document_tolerant(
+    version: &str,
+    field: &Field,
+    json: &str,
+) -> Result<ArrowFieldDocument, ArrowProfileError> {
+    parse_field_document_inner(version, field, json, false)
+}
+
+fn parse_field_document_inner(
+    version: &str,
+    field: &Field,
+    json: &str,
+    reject_unknown: bool,
+) -> Result<ArrowFieldDocument, ArrowProfileError> {
     let raw: RawArrowFieldDocument<'_> = serde_json::from_str(json).map_err(|error| {
         malformed(
             version,
             format!("invalid field document on `{}`: {error}", field.name()),
         )
     })?;
+    if reject_unknown {
+        if let Some(key) = raw.unknown.keys().next() {
+            return Err(malformed(
+                version,
+                format!(
+                    "invalid field document on `{}`: unknown field `{key}`",
+                    field.name()
+                ),
+            ));
+        }
+    }
     let document = raw.decode(version, field)?;
     validate_field_document_inner(version, field, &document, false)?;
     Ok(document)

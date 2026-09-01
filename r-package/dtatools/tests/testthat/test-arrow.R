@@ -470,6 +470,62 @@ test_that("byte-encoded strings are rejected instead of replaced", {
     }
 })
 
+test_that("byte-encoded Stata metadata is rejected instead of serialized", {
+    as_bytes <- function(value) {
+        Encoding(value) <- "bytes"
+        value
+    }
+    cases <- list(
+        dataset_note = function(data) {
+            attr(data, "notes") <- as_bytes("nôte")
+            attr(data, "stata.note.numbers") <- 1L
+            data
+        },
+        dataset_characteristic_name = function(data) {
+            attr(data, "stata.characteristics") <- stats::setNames(
+                "survey", as_bytes("sourcé")
+            )
+            data
+        },
+        dataset_characteristic_value = function(data) {
+            attr(data, "stata.characteristics") <- stats::setNames(
+                as_bytes("survéy"), "source"
+            )
+            data
+        },
+        variable_note = function(data) {
+            attr(data$x, "notes") <- as_bytes("nôte")
+            attr(data$x, "stata.note.numbers") <- 1L
+            data
+        },
+        variable_characteristic_name = function(data) {
+            attr(data$x, "stata.characteristics") <- stats::setNames(
+                "identifier", as_bytes("rôle")
+            )
+            data
+        },
+        variable_characteristic_value = function(data) {
+            attr(data$x, "stata.characteristics") <- stats::setNames(
+                as_bytes("identifiér"), "role"
+            )
+            data
+        }
+    )
+
+    for (name in names(cases)) {
+        data <- cases[[name]](tibble::tibble(x = 1))
+        path <- arrow_tempfile()
+        expect_error(
+            save_arrow(data, path),
+            "cannot contain strings with `bytes` encoding",
+            fixed = TRUE,
+            class = "dtatools_write_validation_error",
+            info = name
+        )
+        expect_false(file.exists(path), info = name)
+    }
+})
+
 test_that("haven labelled doubles round-trip with their labels", {
     data <- tibble::tibble(status = labelled_for_test(
         c(1, 2, tagged_missing("r")),
@@ -843,7 +899,8 @@ test_that("Arrow owned-attribute allowlists share the metadata registry", {
     for (name in registry) attr(data, name) <- switch(name,
         notes = "dataset note",
         stata.note.numbers = 1L,
-        stata.characteristics = c(source = "survey")
+        stata.characteristics = c(source = "survey"),
+        stop("add a sample value for the new registry attribute: ", name)
     )
     warnings <- dtatools:::.arrow_dropped_attribute_warnings(data, "double")
     expect_length(warnings, 0L)

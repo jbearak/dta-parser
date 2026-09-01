@@ -1179,6 +1179,7 @@ unsafe fn build_column(
     value_label_tables: &mut AHashMap<String, Vec<ValueLabelEntry>>,
     value_label_attributes: &mut AHashMap<String, Sexp>,
     guard: &mut ProtectGuard,
+    cache_guard: &mut ProtectGuard,
 ) -> Result<Sexp, String> {
     let column = &data.columns[column_index];
     let variable = data
@@ -1222,7 +1223,7 @@ unsafe fn build_column(
                 table_name,
                 value_label_tables,
                 value_label_attributes,
-                guard,
+                cache_guard,
             )
         })
         .transpose()?
@@ -1290,6 +1291,7 @@ unsafe fn build_data_frame(mut data: DtaData) -> Result<Sexp, String> {
                 &mut value_label_tables,
                 &mut value_label_attributes,
                 &mut column_guard,
+                &mut result_guard,
             )?;
             SET_VECTOR_ELT(result, index as RLen, column);
             let variable = &data.metadata.variables[data.columns[index].variable_index as usize];
@@ -2084,7 +2086,7 @@ impl DtaSink for RDataFrameSink {
                         table_name,
                         &value_label_tables_by_name,
                         &mut value_label_attributes,
-                        &mut attribute_guard,
+                        &mut self._guard,
                     )
                     .map_err(DtaError::Output)?,
                     None => None,

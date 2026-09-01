@@ -982,6 +982,7 @@ fn validated_arrow_write_with_dataset_json(
     let dataset_json = match preflight.map(|plan| plan.dataset_json) {
         Some(PreflightDatasetJson::Retained(json)) => json,
         Some(PreflightDatasetJson::Deferred { length }) => {
+            validate_write_dataset_document(&dataset.dataset)?;
             let json = serialize_dataset_footer_json(&dataset.dataset)?;
             if json.len() != length {
                 return Err(ArrowProfileError::Invalid(
@@ -1485,7 +1486,7 @@ mod tests {
         assert_eq!(plan.retained_dataset_json_bytes(), 0);
         validated_arrow_write_with_preflight(&dataset, false, plan)
             .expect("final validation serializes the deferred document");
-        assert_eq!(DATASET_VALIDATION_COUNT.with(std::cell::Cell::get), 1);
+        assert_eq!(DATASET_VALIDATION_COUNT.with(std::cell::Cell::get), 2);
         assert_eq!(DATASET_SERIALIZATION_COUNT.with(std::cell::Cell::get), 2);
     }
 
@@ -1512,6 +1513,35 @@ mod tests {
         };
 
         assert!(error.to_string().contains("changed after Arrow preflight"));
+    }
+
+    #[test]
+    fn deferred_preflight_revalidates_same_length_dataset_mutations() {
+        let mut dataset = ArrowWriteDataset {
+            dataset: DatasetDocument {
+                label: "x".repeat(128 * 1024),
+                notes: vec![crate::StataNote {
+                    number: 1,
+                    text: "note".to_owned(),
+                }],
+                ..DatasetDocument::default()
+            },
+            columns: vec![ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![1, 2, 3])),
+            }],
+        };
+        let plan = preflight_arrow_metadata(&dataset.dataset, [("x", None)])
+            .expect("metadata preflight succeeds");
+        dataset.dataset.notes[0].number = 0;
+
+        let error = match validated_arrow_write_with_preflight(&dataset, false, plan) {
+            Ok(_) => panic!("the plan cannot bypass final dataset validation"),
+            Err(error) => error,
+        };
+
+        assert!(error.to_string().contains("dataset notes"));
     }
 
     #[test]

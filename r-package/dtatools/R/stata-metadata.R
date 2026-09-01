@@ -497,6 +497,41 @@ vec_cast.dtatools_stata_metadata_vector.factor <-
 vec_cast.dtatools_stata_metadata_vector.ordered <-
     .stata_metadata_vector_cast
 
+.stata_metadata_vector_cast_base <- function(
+    x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
+) {
+    vctrs::vec_cast(
+        .stata_metadata_vector_base(x),
+        .stata_metadata_vector_base(to),
+        ...,
+        x_arg = x_arg,
+        to_arg = to_arg,
+        call = call
+    )
+}
+
+#' @export
+vec_cast.character.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base
+#' @export
+vec_cast.logical.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base
+#' @export
+vec_cast.integer.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base
+#' @export
+vec_cast.double.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base
+#' @export
+vec_cast.raw.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base
+#' @export
+vec_cast.factor.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base
+#' @export
+vec_cast.ordered.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base
+
 #' @export
 `[.dtatools_stata_metadata` <- function(x, i, j, ..., drop) {
     argument_count <- nargs() - !missing(drop)

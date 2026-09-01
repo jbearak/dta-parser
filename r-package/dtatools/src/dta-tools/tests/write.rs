@@ -827,6 +827,54 @@ fn rejects_metadata_on_variable_named_dta_before_writing() {
 }
 
 #[test]
+fn variable_metadata_validation_reports_variable_scope() {
+    let values = [DtaWriteNumericValue::Value(1.0)];
+    let mut data = DtaWriteData {
+        dataset_label: String::new().into(),
+        notes: Vec::new(),
+        characteristics: Vec::new(),
+        columns: vec![DtaWriteColumn {
+            name: "answer".into(),
+            dta_type: DtaType::Double,
+            format: "%10.0g".into(),
+            label: String::new().into(),
+            has_value_labels: false,
+            value_labels: Vec::new(),
+            notes: vec![DtaWriteNote::numbered(0, "invalid")],
+            characteristics: Vec::new(),
+            values: DtaWriteColumnValues::Numeric(&values),
+        }],
+    };
+
+    let error = save_dta_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+    )
+    .expect_err("invalid variable note numbers are rejected");
+    assert!(matches!(
+        error,
+        DtaWriteError::InvalidVariable { ref column, .. } if column == "answer"
+    ));
+
+    data.columns[0].notes.clear();
+    data.columns[0].characteristics = vec![DtaWriteCharacteristic {
+        name: "note2".into(),
+        value: "reserved".into(),
+    }];
+    let error = save_dta_to(
+        &mut Cursor::new(Vec::new()),
+        &data,
+        &DtaWriteOptions::default(),
+    )
+    .expect_err("invalid variable characteristics are rejected");
+    assert!(matches!(
+        error,
+        DtaWriteError::InvalidVariable { ref column, .. } if column == "answer"
+    ));
+}
+
+#[test]
 fn dense_metadata_writes_poll_at_bounded_byte_intervals() {
     let values: [DtaWriteNumericValue; 0] = [];
     let characteristics = (0..130)

@@ -623,6 +623,11 @@ export function parse_metadata_from_header(
         widths: my_widths, byte_order, little_endian, nvar, nobs,
         dataset_label, section_offsets,
     } = header;
+    if (section_offsets.data > bytes.length) {
+        throw new Error(
+            'Corrupt .dta file: mapped data offset exceeds buffer length'
+        );
+    }
 
     // 8. Parse variable type codes
     const the_type_codes = parse_variable_types(

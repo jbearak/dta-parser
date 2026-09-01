@@ -543,6 +543,31 @@ describe('parse_metadata', () => {
             )).toThrow('Truncated characteristic payload');
         });
 
+        it('rejects a mapped data offset beyond the supplied buffer', () => {
+            const malformed = Buffer.from(load_fixture('auto_v118.dta'));
+            const metadata = parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            );
+            const mapPayload = metadata.section_offsets.map
+                + Buffer.byteLength('<map>');
+            malformed.writeBigUInt64LE(
+                BigInt(malformed.length + 1),
+                mapPayload + 9 * 8
+            );
+
+            expect(() => parse_metadata(
+                malformed.buffer.slice(
+                    malformed.byteOffset,
+                    malformed.byteOffset + malformed.byteLength
+                )
+            )).toThrow(
+                'Corrupt .dta file: mapped data offset exceeds buffer length'
+            );
+        });
+
         it('throws on truncated buffer', () => {
             const my_buf = new ArrayBuffer(10);
             expect(() => parse_metadata(my_buf)).toThrow();

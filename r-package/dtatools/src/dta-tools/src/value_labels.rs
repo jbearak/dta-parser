@@ -288,11 +288,18 @@ fn parse_fixed8_table(
     Ok((Some(ValueLabelTable { name, entries }), table_end))
 }
 
-fn nul_positions(text: &[u8]) -> Vec<usize> {
-    text.iter()
-        .enumerate()
-        .filter_map(|(position, byte)| (*byte == 0).then_some(position))
-        .collect()
+fn nul_positions(text: &[u8]) -> Result<Vec<usize>, DtaError> {
+    let count = text.iter().filter(|&&byte| byte == 0).count();
+    let mut positions = Vec::new();
+    positions
+        .try_reserve_exact(count)
+        .map_err(|_| DtaError::ArithmeticOverflow("value-label terminator index"))?;
+    positions.extend(
+        text.iter()
+            .enumerate()
+            .filter_map(|(position, byte)| (*byte == 0).then_some(position)),
+    );
+    Ok(positions)
 }
 
 fn first_nul_at_or_after(positions: &[usize], offset: usize) -> Option<usize> {
@@ -449,7 +456,7 @@ fn parse_table(
         let text_offsets = text_offsets
             .as_ref()
             .expect("retained table has text offsets");
-        let terminators = nul_positions(text);
+        let terminators = nul_positions(text)?;
         let mut entries = Vec::new();
         entries
             .try_reserve_exact(entry_count)
@@ -606,7 +613,13 @@ pub(crate) fn parse_selected_value_labels_with_encoding(
     encoding: TextEncoding,
     selected: &HashSet<&str>,
 ) -> Result<Vec<ValueLabelTable>, DtaError> {
-    parse_value_labels_section(bytes, metadata, 0, encoding, Some(selected))
+    parse_value_labels_section(
+        bytes,
+        metadata,
+        0,
+        encoding.resolve(metadata.format_version),
+        Some(selected),
+    )
 }
 
 fn local_offset(absolute: u64, base_offset: u64, context: &'static str) -> Result<usize, DtaError> {
@@ -746,7 +759,10 @@ pub(crate) fn parse_value_labels_section(
 mod tests {
     use std::collections::HashSet;
 
-    use super::{parse_fixed8_table, parse_table};
+    use super::{
+        parse_fixed8_table, parse_selected_value_labels_with_encoding, parse_table,
+        parse_value_labels_with_encoding,
+    };
     use crate::{
         parse_metadata, ByteOrder, DtaMetadata, FormatVersion, SectionOffsets, TextEncoding,
     };
@@ -775,6 +791,29 @@ mod tests {
         .unwrap();
         assert!(table.is_none());
         assert_eq!(end, bytes.len());
+    }
+
+    #[test]
+    fn selected_value_labels_resolve_automatic_encoding() {
+        let bytes = include_bytes!("../../../../../tests/fixtures/dta/value_labels_v115.dta");
+        let metadata = parse_metadata(bytes).unwrap();
+        let expected = parse_value_labels_with_encoding(bytes, &metadata, TextEncoding::Auto)
+            .expect("the fixture value labels are valid");
+        assert!(!expected.is_empty());
+        let selected = expected
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<HashSet<_>>();
+
+        let actual = parse_selected_value_labels_with_encoding(
+            bytes,
+            &metadata,
+            TextEncoding::Auto,
+            &selected,
+        )
+        .expect("automatic encoding resolves before selected parsing");
+
+        assert_eq!(actual, expected);
     }
 
     #[test]

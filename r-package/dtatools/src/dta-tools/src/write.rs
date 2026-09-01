@@ -758,8 +758,10 @@ fn validate_structure(
     let row_count = data.columns[0].values.len()?;
     validate_text_field(&data.dataset_label, 80, 320, "dataset label")
         .map_err(DtaWriteError::InvalidDatasetMetadata)?;
-    validate_notes(&data.notes, "dataset")?;
-    validate_characteristics(&data.characteristics, "dataset")?;
+    validate_notes(&data.notes)
+        .map_err(|message| DtaWriteError::InvalidDatasetMetadata(format!("dataset {message}")))?;
+    validate_characteristics(&data.characteristics)
+        .map_err(|message| DtaWriteError::InvalidDatasetMetadata(format!("dataset {message}")))?;
     if let Some(timestamp) = &options.timestamp {
         if timestamp.contains('\0') || timestamp.len() > u8::MAX as usize {
             return Err(DtaWriteError::InvalidDatasetMetadata(
@@ -779,13 +781,18 @@ fn validate_structure(
             });
         }
         if !column.notes.is_empty() {
-            validate_notes(&column.notes, &format!("variable `{}`", column.name))?;
+            validate_notes(&column.notes).map_err(|message| DtaWriteError::InvalidVariable {
+                column: column.name.to_string(),
+                message,
+            })?;
         }
         if !column.characteristics.is_empty() {
-            validate_characteristics(
-                &column.characteristics,
-                &format!("variable `{}`", column.name),
-            )?;
+            validate_characteristics(&column.characteristics).map_err(|message| {
+                DtaWriteError::InvalidVariable {
+                    column: column.name.to_string(),
+                    message,
+                }
+            })?;
         }
         if !valid_stata_name(&column.name) {
             return Err(DtaWriteError::InvalidVariable {
@@ -1025,44 +1032,35 @@ fn write_characteristic<W: Write>(
         .ok_or(DtaWriteError::Overflow("characteristic"))
 }
 
-fn validate_notes(notes: &[DtaWriteNote<'_>], context: &str) -> Result<(), DtaWriteError> {
+fn validate_notes(notes: &[DtaWriteNote<'_>]) -> Result<(), String> {
     if notes.len() > MAX_NOTES {
-        return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-            "{context} has {} notes; maximum is {MAX_NOTES}",
-            notes.len()
-        )));
+        return Err(format!("has {} notes; maximum is {MAX_NOTES}", notes.len()));
     }
     let mut numbers = HashSet::with_capacity(notes.len());
     for (index, note) in notes.iter().enumerate() {
         let number = note.resolved_number(index);
         if !(1..=MAX_NOTES as u32).contains(&number) || !numbers.insert(number) {
-            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "{context} has an invalid or duplicate note number {}",
-                number
-            )));
+            return Err(format!("has an invalid or duplicate note number {number}"));
         }
         if !valid_note(number, &note.text) {
-            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "{context} note {number} must contain no NUL and have a valid bounded value"
-            )));
+            return Err(format!(
+                "note {number} must contain no NUL and have a valid bounded value"
+            ));
         }
     }
     Ok(())
 }
 
-fn validate_characteristics(
-    characteristics: &[DtaWriteCharacteristic<'_>],
-    context: &str,
-) -> Result<(), DtaWriteError> {
+fn validate_characteristics(characteristics: &[DtaWriteCharacteristic<'_>]) -> Result<(), String> {
     let mut names = HashSet::with_capacity(characteristics.len());
     for characteristic in characteristics {
         if !valid_characteristic(&characteristic.name, &characteristic.value)
             || !names.insert(characteristic.name.as_ref())
         {
-            return Err(DtaWriteError::InvalidDatasetMetadata(format!(
-                "{context} has invalid, duplicate, over-limit, or reserved characteristic `{}`",
+            return Err(format!(
+                "has invalid, duplicate, over-limit, or reserved characteristic `{}`",
                 characteristic.name
-            )));
+            ));
         }
     }
     Ok(())

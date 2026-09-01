@@ -21,16 +21,15 @@ use arrow_buffer::{Buffer, MutableBuffer};
 use arrow_data::ArrayData;
 use arrow_ipc::{root_as_footer, root_as_message, CompressionType, MessageHeader};
 use arrow_schema::{DataType, Field, Schema};
-use serde::de::IgnoredAny;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 
 use super::checksum::canonical_array_hashes;
 use super::profile::{
     checksum_to_hex, parse_checksums_document, parse_dataset_document_selected,
-    parse_field_document, validate_value_label_reference, ArrowFieldDocument, ChecksumsDocument,
-    DatasetDocument, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY, ARROW_FIELD_KEY,
-    ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
+    parse_field_document, parse_field_document_tolerant, validate_value_label_reference,
+    ArrowFieldDocument, ChecksumsDocument, DatasetDocument, ARROW_CHECKSUMS_KEY, ARROW_DATASET_KEY,
+    ARROW_FIELD_KEY, ARROW_PROFILE_VERSION, ARROW_PROFILE_VERSION_KEY,
 };
 use super::ArrowProfileError;
 use super::MAX_IPC_METADATA_BYTES;
@@ -59,10 +58,11 @@ fn metadata_buffer(length: u64, location: &str) -> Result<Vec<u8>, ArrowProfileE
 pub struct ArrowReadOptions {
     /// Projected column indices in output order, or `None` for all columns.
     /// Ordinary profiled projections validate the dataset document and the
-    /// selected fields' documents. They discard unselected fields' private
-    /// profile documents without parsing them. A full read validates every
-    /// field. Setting [`Self::record_signature`] with profile handling enabled
-    /// also validates every field because the signature covers the full schema.
+    /// selected fields' documents. They do not validate unselected fields'
+    /// private profile documents, though some may be parsed opportunistically
+    /// to determine value-label sharing. A full read validates every field.
+    /// Setting [`Self::record_signature`] with profile handling enabled also
+    /// validates every field because the signature covers the full schema.
     pub columns: Option<Vec<u32>>,
     /// Rows to skip before the first returned row.
     pub row_start: u64,
@@ -694,7 +694,7 @@ fn parse_profile(
                 continue;
             };
             let Ok(document) =
-                parse_field_document(&version, footer.schema.field(index), json.as_str())
+                parse_field_document_tolerant(&version, footer.schema.field(index), json.as_str())
             else {
                 continue;
             };
@@ -712,7 +712,7 @@ fn parse_profile(
             {
                 continue;
             }
-            if let Some(count) = value_label_reference_counts.get_mut(reference) {
+            if let Some(count) = value_label_reference_counts.get_mut(target.as_ref()) {
                 *count = (*count + 1).min(2);
                 if *count == 2 {
                     unresolved_value_labels -= 1;
@@ -752,55 +752,25 @@ fn parse_profile(
 }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct RawValueLabelReference<'a> {
     version: u32,
-    #[serde(default)]
-    label: Option<IgnoredAny>,
-    #[serde(default)]
-    format: Option<IgnoredAny>,
-    #[serde(default)]
-    notes: Option<IgnoredAny>,
-    #[serde(default)]
-    characteristics: Option<IgnoredAny>,
-    #[serde(default)]
-    storage: Option<IgnoredAny>,
-    #[serde(default)]
-    string_storage: Option<IgnoredAny>,
     #[serde(default, borrow)]
     value_labels: Option<&'a RawValue>,
-    #[serde(default)]
-    missing: Option<IgnoredAny>,
-    #[serde(default)]
-    missing_release: Option<IgnoredAny>,
-    #[serde(default)]
-    r: Option<IgnoredAny>,
 }
 
 fn raw_value_label_reference<'a>(
-    json: Option<&str>,
-    selected: &'a HashMap<String, usize>,
-) -> Option<&'a str> {
+    json: Option<&'a str>,
+    selected: &HashMap<String, usize>,
+) -> Option<Cow<'a, str>> {
     #[cfg(test)]
     RAW_VALUE_LABEL_REFERENCE_PARSE_COUNT.with(|count| count.set(count.get() + 1));
     let raw: RawValueLabelReference<'_> = serde_json::from_str(json?).ok()?;
     if raw.version != 0 {
         return None;
     }
-    let _ = (
-        raw.label,
-        raw.format,
-        raw.notes,
-        raw.characteristics,
-        raw.storage,
-        raw.string_storage,
-        raw.missing,
-        raw.missing_release,
-        raw.r,
-    );
     let name: Cow<'_, str> = serde_json::from_str(raw.value_labels?.get()).ok()?;
-    let (stored, count) = selected.get_key_value(name.as_ref())?;
-    (*count < 2).then_some(stored.as_str())
+    let count = selected.get(name.as_ref())?;
+    (*count < 2).then_some(name)
 }
 
 #[cfg(test)]
@@ -1358,99 +1328,6 @@ struct PreparedRead {
     plans: Vec<BlockPlan>,
     produced: u64,
     stored_signature: Option<String>,
-}
-
-#[allow(dead_code)]
-fn plan_value_labels(
-    profile: &mut Option<Profile>,
-    selected: &[usize],
-    projected: bool,
-) -> Result<HashMap<String, usize>, ArrowProfileError> {
-    let Some(profile) = profile.as_mut() else {
-        return Ok(HashMap::new());
-    };
-    let selected_names = selected
-        .iter()
-        .filter_map(|&index| profile.fields.get(index)?.value_labels.as_deref())
-        .collect::<HashSet<_>>();
-    let mut counts = selected_names
-        .iter()
-        .map(|&name| (name.to_owned(), 0_usize))
-        .collect::<HashMap<_, _>>();
-    if !selected_names.is_empty() {
-        let ProfileFields::Full(fields) = &profile.fields else {
-            unreachable!("value-label planning requires a full field profile")
-        };
-        for field in fields.iter().flatten() {
-            if let Some(name) = &field.value_labels {
-                if let Some(count) = counts.get_mut(name.as_str()) {
-                    *count += 1;
-                }
-            }
-        }
-    }
-    if projected {
-        let mut first_selected_outputs = HashMap::new();
-        for (output_index, &source_index) in selected.iter().enumerate() {
-            first_selected_outputs
-                .entry(source_index)
-                .or_insert(output_index);
-        }
-        profile
-            .dataset
-            .value_labels
-            .retain(|name, _| selected_names.contains(name.as_str()));
-        let ProfileFields::Full(mut source_fields) =
-            std::mem::replace(&mut profile.fields, ProfileFields::Full(Vec::new()))
-        else {
-            unreachable!("value-label planning requires a full field profile")
-        };
-        let mut fields = Vec::with_capacity(selected.len());
-        for (output_index, &source_index) in selected.iter().enumerate() {
-            let first_output = first_selected_outputs[&source_index];
-            if output_index == first_output {
-                let field = source_fields.get_mut(source_index).ok_or_else(|| {
-                    super::profile::malformed(
-                        &profile.version,
-                        "profile document is missing a field entry",
-                    )
-                })?;
-                fields.push(field.take());
-            } else {
-                fields.push(fields[first_output].clone());
-            }
-        }
-        profile.fields = ProfileFields::Full(fields);
-        if let Some(checksums) = profile.checksums.as_mut() {
-            for batch in &mut checksums.batches {
-                let mut source_columns = std::mem::take(&mut batch.columns);
-                let mut columns = Vec::with_capacity(selected.len());
-                for (output_index, &source_index) in selected.iter().enumerate() {
-                    let first_output = first_selected_outputs[&source_index];
-                    if output_index == first_output {
-                        let column = source_columns.get_mut(source_index).ok_or_else(|| {
-                            super::profile::malformed(
-                                &profile.version,
-                                "checksums document is missing a column entry",
-                            )
-                        })?;
-                        columns.push(std::mem::take(column));
-                    } else {
-                        columns.push(columns[first_output].clone());
-                    }
-                }
-                batch.columns = columns;
-            }
-            let selected_keys = selected
-                .iter()
-                .map(usize::to_string)
-                .collect::<HashSet<_>>();
-            checksums
-                .dictionaries
-                .retain(|index, _| selected_keys.contains(index));
-        }
-    }
-    Ok(counts)
 }
 
 fn prepare_read<R: Read + Seek>(
@@ -2893,7 +2770,9 @@ mod tests {
         let mut fields = Vec::with_capacity(field_count);
         for index in 0..field_count {
             let mut field = Field::new(format!("x{index}"), DataType::Float64, true);
-            let json = if index == 0 || index == selected {
+            let json = if index == 0 {
+                r#"{"version":0,"value_labels":"shared","future_field":true}"#
+            } else if index == selected {
                 r#"{"version":0,"value_labels":"shared"}"#
             } else {
                 r#"{"version":0}"#
