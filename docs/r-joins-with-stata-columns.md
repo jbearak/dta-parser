@@ -196,7 +196,13 @@ before using `<`, `>=`, `closest()`, or an overlap helper.
 When Stata key identity matters, use the dtatools package's own `dta_merge()`. It
 matches `.` and each of `.a` through `.z` only to themselves, requires a
 declared merge relationship, generates Stata's `_merge` indicator, and
-reconciles key storage and metadata through the package's vctrs methods.
+reconciles key storage and metadata through the package's vctrs methods. It
+accepts base data frames, tibbles, and data.tables without mutating an input or
+its aliases, and always returns a tibble. Dataset notes combine in
+master-then-using order. The master keeps its note numbers, and using notes
+receive consecutive numbers after the master's highest number. A merge fails
+if those notes would exceed Stata's 9,999 limit. Dataset labels and
+characteristics remain master-owned.
 ADR 0009 records its semantics and the rejected alternatives, including the
 equality-proxy change discussed below.
 

@@ -38,8 +38,11 @@
 #' Every merge generates a `_merge` variable, a `stata_byte` column using
 #' Stata's `_merge` codes with value labels `x only (1)`, `y only (2)`, and
 #' `matched (3)`. Merging errors if either input already has a `_merge`
-#' column. The result keeps the dataset label, numbered notes, and arbitrary
-#' characteristics from `x`.
+#' column. The result keeps the dataset label and arbitrary characteristics
+#' from `x`. Dataset notes combine in master-then-using order. The master
+#' keeps its note numbers, while using notes receive consecutive numbers after
+#' the master's highest number. A merge errors if the combined notes would
+#' exceed Stata's limit of 9,999.
 #'
 #' Unlike Stata, which re-sorts the merged dataset by the key variables, the
 #' result keeps `x` rows in their original order followed by unmatched `y`
@@ -47,7 +50,9 @@
 #'
 #' @param x,y Data frames to merge, or file paths read with [read_dta()] or
 #'   [read_arrow()], in any combination. `x` supplies the retained values for
-#'   overlapping variables and the dataset label, notes, and characteristics.
+#'   overlapping variables, dataset label, and dataset characteristics.
+#'   Base data frames, tibbles, and data.tables are accepted without mutation;
+#'   the result is always a tibble.
 #'   Passing paths
 #'   mirrors Stata's `merge ... using filename` and keeps only the merged
 #'   result in the caller's workspace. A path ending in `.arrow` is read with
@@ -101,6 +106,7 @@ dta_merge <- function(x, y, by, relationship,
             ), call. = FALSE)
         }
     }
+    dataset_notes <- .dta_merge_dataset_note_plan(x, y)
 
     keys <- lapply(by, function(name) {
         prototype <- vctrs::vec_ptype2(
@@ -179,8 +185,12 @@ dta_merge <- function(x, y, by, relationship,
 
     x_only <- setdiff(x_extra, overlapping)
     y_only <- setdiff(names(y), c(by, overlapping))
-    x_only_columns <- .dta_merge_slice_columns(x[x_only], x_rows)
-    y_only_columns <- .dta_merge_slice_columns(y[y_only], y_rows)
+    x_only_columns <- .dta_merge_slice_columns(
+        .dta_merge_select_columns(x, x_only), x_rows
+    )
+    y_only_columns <- .dta_merge_slice_columns(
+        .dta_merge_select_columns(y, y_only), y_rows
+    )
     overlap_x <- overlap_prototypes <- vector(
         "list", length(overlapping)
     )
@@ -197,7 +207,7 @@ dta_merge <- function(x, y, by, relationship,
         )
     }
     overlap_columns <- .dta_merge_coalesce_columns(
-        overlap_x, y[overlapping],
+        overlap_x, .dta_merge_select_columns(y, overlapping),
         x_rows, y_rows, using_only, overlap_prototypes
     )
     for (name in overlapping) {
@@ -225,7 +235,10 @@ dta_merge <- function(x, y, by, relationship,
 
     result <- tibble::new_tibble(columns, nrow = length(merge_codes))
     dataset_label(result) <- dataset_label(x)
-    .copy_stata_metadata_attributes(x, result)
+    result <- .copy_stata_metadata_attributes(x, result)
+    attr(result, "notes") <- dataset_notes$notes
+    attr(result, "stata.note.numbers") <- dataset_notes$numbers
+    result
 }
 
 .resolve_merge_input <- function(value, side) {
@@ -238,6 +251,50 @@ dta_merge <- function(x, y, by, relationship,
     stop(sprintf(
         "`%s` must be a data frame or one DTA or Arrow file path", side
     ), call. = FALSE)
+}
+
+.dta_merge_select_columns <- function(data, names) {
+    columns <- lapply(names, function(name) data[[name]])
+    names(columns) <- names
+    vctrs::new_data_frame(columns, n = nrow(data))
+}
+
+.dta_merge_dataset_note_plan <- function(x, y) {
+    x_notes <- stata_notes(x)
+    y_notes <- stata_notes(y)
+    if (!length(x_notes) && !length(y_notes)) {
+        return(list(notes = NULL, numbers = NULL))
+    }
+    if (!length(y_notes)) {
+        return(list(
+            notes = attr(x, "notes", exact = TRUE),
+            numbers = attr(x, "stata.note.numbers", exact = TRUE)
+        ))
+    }
+    if (!length(x_notes)) {
+        return(list(
+            notes = attr(y, "notes", exact = TRUE),
+            numbers = attr(y, "stata.note.numbers", exact = TRUE)
+        ))
+    }
+
+    x_numbers <- as.integer(names(x_notes))
+    first_using <- max(x_numbers) + 1L
+    last_using <- first_using + length(y_notes) - 1L
+    if (last_using > 9999L) {
+        stop(
+            paste0(
+                "the using dataset's notes cannot be appended after note ",
+                max(x_numbers), "; Stata note numbers cannot exceed 9,999"
+            ),
+            call. = FALSE
+        )
+    }
+    numbers <- c(x_numbers, seq.int(first_using, last_using))
+    list(
+        notes = c(unname(x_notes), unname(y_notes)),
+        numbers = if (identical(numbers, seq_along(numbers))) NULL else numbers
+    )
 }
 
 .validate_merge_input_names <- function(data, side) {
