@@ -430,7 +430,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 }
 
 .dta_metadata <- function(file, encoding = NULL, column_start = 1L,
-                          column_count = Inf) {
+                          column_count = Inf, include_value_labels = FALSE) {
     validate <- function(value, name, unlimited = FALSE) {
         if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
             is.nan(value) || value < 0 || value != floor(value) ||
@@ -444,7 +444,13 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     start <- validate(column_start, "column_start")
     if (start < 1L) stop("`column_start` must be at least 1", call. = FALSE)
     count <- validate(column_count, "column_count", unlimited = TRUE)
-    .Call(C_dtatools_metadata, file, encoding, start - 1L, count)
+    include_value_labels <- .normalize_arrow_flag(
+        include_value_labels, "include_value_labels"
+    )
+    .Call(
+        C_dtatools_metadata, file, encoding, start - 1L, count,
+        include_value_labels
+    )
 }
 
 .validate_dta_encoding <- function(encoding) {

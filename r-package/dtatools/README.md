@@ -26,6 +26,8 @@ declared Stata storage type.
 | `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
 | `copy_data()` | Make an isolated copy, including compact column backing and mutable dataset metadata. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
+| `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
+| `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
 | `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
 | `stata_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
@@ -413,6 +415,35 @@ rather than a reduction in peak memory during construction.
 ```r
 tab(cars$foreign, missing = TRUE)
 ```
+
+`labelbook()` describes named value-label tables rather than observations.
+An R data frame reports tables assigned to its current columns. A direct DTA
+path reads the complete on-disk registry without decoding observations, so it
+also reports unassigned tables. Use `.tables` for programmatic exact-name
+selection. `order = "alpha"` maps to Stata's `alpha` option, and `list_limit`
+maps to `list(#)` but chooses a deterministic prefix instead of a random sample.
+
+`codebook()` describes variables and their observed data. Numeric variables
+with at most nine unique nonmissing values are tabulated by default; variables
+with more values receive summary statistics. Its result retains underlying
+numeric codes, system and extended missing counts, notes, diagnostics, and
+Stata-style missingness implications without requiring callers to parse the
+printed report.
+
+```r
+labelbook(cars)
+labelbook("survey.dta", .tables = c("yesno", "region"))
+
+codebook(cars, foreign, mpg)
+codebook(cars, mpg, where = foreign == 1, mv = TRUE)
+```
+
+`val_labels()` returns one variable's resolved mapping, while `labelbook()`
+groups mappings by their named table assignments. `tab()` counts observed
+values. Base `summary()` remains useful for ordinary R summaries, while
+`codebook()` applies Stata's categorical threshold, missing-code rules,
+metadata terminology, and problem checks. Multilingual value-label registries
+are not yet represented and are never merged implicitly.
 
 `factor_from_labels()` makes an ordinary R factor for modeling, plotting, or
 data manipulation. It keeps distinct numeric codes distinct even when their

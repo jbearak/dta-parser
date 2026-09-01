@@ -372,9 +372,10 @@ test_that("native write interrupts roll back values and compact state", {
     skip_on_os("windows")
     skip_if_not_installed("callr")
 
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
     result <- callr::r(
-        function() {
-            library(dtatools)
+        function(package_path, load_package) {
+            load_package(package_path)
             interrupt_patch <- function(compact) {
                 size <- 100000L
                 target <- if (compact) {
@@ -553,6 +554,10 @@ test_that("native write interrupts roll back values and compact state", {
                 )
             )
         },
+        args = list(
+            package_path = package_path,
+            load_package = load_dtatools_for_subprocess
+        ),
         libpath = .libPaths(),
         timeout = 120
     )
@@ -589,9 +594,10 @@ test_that("native generation interrupts leave reference state unchanged", {
     skip_on_os("windows")
     skip_if_not_installed("callr")
 
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
     result <- callr::r(
-        function() {
-            library(dtatools)
+        function(package_path, load_package) {
+            load_package(package_path)
             interrupt_generation <- function(character, existing) {
                 size <- 20000000L
                 data <- data.frame(anchor = stata_byte(.size = size))
@@ -674,6 +680,10 @@ test_that("native generation interrupts leave reference state unchanged", {
                 dictionary = interrupt_dictionary_generation()
             )
         },
+        args = list(
+            package_path = package_path,
+            load_package = load_dtatools_for_subprocess
+        ),
         libpath = .libPaths(),
         timeout = 120
     )
@@ -695,9 +705,10 @@ test_that("generic ALTREP detachment interrupts before installation", {
     skip_on_os("windows")
     skip_if_not_installed("callr")
 
+    package_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
     result <- callr::r(
-        function() {
-            library(dtatools)
+        function(package_path, load_package) {
+            load_package(package_path)
             size <- 20000000L
             data <- data.frame(x = seq_len(size))
             before <- serialize(data, NULL)
@@ -726,6 +737,10 @@ test_that("generic ALTREP detachment interrupts before installation", {
                 size = size
             )
         },
+        args = list(
+            package_path = package_path,
+            load_package = load_dtatools_for_subprocess
+        ),
         libpath = .libPaths(),
         timeout = 120
     )

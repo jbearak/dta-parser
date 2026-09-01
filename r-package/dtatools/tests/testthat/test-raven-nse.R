@@ -68,6 +68,9 @@ expected_policy <- list(
     gen = list(captured = c("variable", "values", "where"), captured_dots = FALSE),
     repl = list(captured = c("variable", "values", "where"), captured_dots = FALSE),
     replace_values = list(captured = c("variable", "values", "where"), captured_dots = FALSE),
+    keep_vars = list(captured = character(), captured_dots = TRUE),
+    drop_vars = list(captured = character(), captured_dots = TRUE),
+    set_var_label = list(captured = "variable", captured_dots = FALSE),
     tab = list(captured = "x", captured_dots = TRUE),
     read_dta = list(captured = "col_select", captured_dots = FALSE),
     read_arrow = list(captured = "col_select", captured_dots = FALSE)

@@ -99,6 +99,18 @@ _Avoid_: Variable-level metadata, copied attributes
 Mappings from nonmissing integers in Stata's `long` range or Stata extended missing codes (`.a` through `.z`) to human-readable category descriptions.
 _Avoid_: Factor levels, variable labels
 
+**Named value-label table**:
+A dataset-scoped, named definition of value labels that any number of variables may use.
+_Avoid_: Column labels, factor levels, resolved labels
+
+**Value-label assignment**:
+The relationship by which a variable uses one named value-label table.
+_Avoid_: Value labels, table ownership, column labels
+
+**Value-label registry**:
+The collection of named value-label tables defined by a dataset, including tables with no variable assignments.
+_Avoid_: Label attributes, factor levels, variable labels
+
 **Dataset label**:
 A human-readable description of a dataset as a whole, distinct from its file name and its variables' labels.
 _Avoid_: Variable label, file name

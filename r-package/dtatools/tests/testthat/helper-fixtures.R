@@ -2,6 +2,21 @@ fixture <- function(name) {
     system.file("extdata", name, package = "dtatools", mustWork = TRUE)
 }
 
+load_dtatools_for_subprocess <- function(package_path) {
+    if (dir.exists(file.path(package_path, "src"))) {
+        pkgload::load_all(package_path, quiet = TRUE)
+    } else {
+        library(
+            "dtatools", lib.loc = dirname(package_path), character.only = TRUE
+        )
+    }
+    loaded_path <- getNamespaceInfo(asNamespace("dtatools"), "path")
+    stopifnot(identical(
+        normalizePath(loaded_path), normalizePath(package_path)
+    ))
+    invisible(NULL)
+}
+
 fixture_with_temporal_storage <- function(column, display_format = "%td") {
     path <- fixture("auto_v118.dta")
     bytes <- readBin(path, "raw", n = file.info(path)[["size"]])
