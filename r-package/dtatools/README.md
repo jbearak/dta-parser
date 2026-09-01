@@ -20,6 +20,7 @@ declared Stata storage type.
 | `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
 | `replace_values()`, `repl()` | Replace selected values by reference without widening declared Stata storage. |
 | `keep_vars()`, `drop_vars()` | Keep or drop variables by reference, including variables created by `gen()`. |
+| `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
 | `copy_data()` | Make an isolated copy, including compact column backing and mutable dataset metadata. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
@@ -401,6 +402,34 @@ and unrelated attributes. See the
 Stata 19 validation and portability limits, attach-order behavior, and the
 version-specific comparison with `labelled` 2.16.0.
 
+Resolve a variable reference against the current column names with
+`resolve_var_name()`. Exact names take priority over abbreviations, and an
+abbreviation must match only one column:
+
+```r
+survey <- data.frame(identifier = 1:2, income = c(10, 20))
+
+resolve_var_name(survey, "ident")
+#> [1] "identifier"
+resolve_var_name(survey, "missing")
+#> [1] NA
+```
+
+Set `exact = TRUE` to disable abbreviation. Set `on_failure = "error"` when a
+missing or ambiguous reference should stop execution.
+
+`confirm_var()` checks the same kind of reference and returns `TRUE` when it
+resolves. By default it throws an error when the reference is missing or
+ambiguous, like Stata's uncaptured `confirm variable` command. Use
+`on_failure = "false"` for a non-throwing check:
+
+```r
+confirm_var(survey, "inc")
+#> [1] TRUE
+confirm_var(survey, "missing", on_failure = "false")
+#> [1] FALSE
+```
+
 Use the installed help for exact behavior and examples:
 
 ```r
@@ -416,6 +445,8 @@ Use the installed help for exact behavior and examples:
 ?factor_from_labels # one-way conversion to an ordinary factor
 ?tab                # label-aware frequency tables
 ?var_label          # dataset, variable, and value-label metadata
+?resolve_var_name    # resolve variable names and abbreviations
+?confirm_var         # check variable names and abbreviations
 ```
 
 ## Performance controls
