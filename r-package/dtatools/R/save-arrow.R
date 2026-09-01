@@ -48,7 +48,8 @@
 #' destination only after the file is closed.
 #' Symbolic-link, directory, and other non-regular destinations are rejected.
 #'
-#' @param data A data frame or tibble.
+#' @param data A data frame, tibble, or data table. Ordinary tibble and
+#'   data-table containers are recorded for restoration by [read_arrow()].
 #' @param path Local output path. If the final filename has no extension,
 #'   `.arrow` is appended with a warning.
 #' @param compression Per-buffer body compression: `"uncompressed"`, `"lz4"`
@@ -486,8 +487,14 @@ save_arrow <- function(data, path,
         dataset_class, "dtatools_stata_metadata"
     )
     if (identical(ordinary_dataset_class, "data.frame") ||
-        identical(ordinary_dataset_class, c("tbl_df", "tbl", "data.frame"))) {
+        identical(ordinary_dataset_class, c("tbl_df", "tbl", "data.frame")) ||
+        identical(ordinary_dataset_class, c("data.table", "data.frame"))) {
         known_dataset_attributes <- c(known_dataset_attributes, "class")
+    }
+    if (inherits(data, "data.table")) {
+        known_dataset_attributes <- c(
+            known_dataset_attributes, ".internal.selfref", "sorted", "index"
+        )
     }
     dataset_attributes <- setdiff(
         names(attributes(data)),
@@ -583,9 +590,16 @@ save_arrow <- function(data, path,
             adjust_tz = adjust_tz
         )
     )
+    output_container <- if (inherits(data, "data.table")) {
+        "data.table"
+    } else if (inherits(data, "tbl_df")) {
+        "tibble"
+    } else {
+        NULL
+    }
     specification <- list(
         label, .arrow_stata_metadata_payload(notes, characteristics),
-        unname(columns), value_label_plan$tables
+        unname(columns), value_label_plan$tables, output_container
     )
     attr(specification, "write_warnings") <- c(
         value_label_plan$warnings,

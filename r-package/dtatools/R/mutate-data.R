@@ -563,6 +563,7 @@ gen <- function(data, variable, values, where = NULL) {
 }
 
 .mutate_data <- function(data, variable, values, where, generate) {
+    .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
     target <- .mutation_name(variable, generate, original)
 
@@ -575,6 +576,10 @@ gen <- function(data, variable, values, where = NULL) {
     state <- .reference_state(data)
     if (generate) {
         column <- .generated_column(values, rows, original$nrow)
+        if (.ordinary_data_table(data)) {
+            data.table::set(data, j = target$name, value = column)
+            return(invisible(data))
+        }
         if (is.null(state)) state <- .new_reference_state(data)
     } else {
         access <- .column_access(data)
@@ -585,14 +590,16 @@ gen <- function(data, variable, values, where = NULL) {
     }
 
     if (!generate) {
-        column <- .Call(
-            C_dtatools_patch_data_column,
-            data,
+        patch <- function() .Call(
+            C_dtatools_patch_data_column, data,
             as.integer(.native_data_column_location(access, target$location)),
-            column,
-            rows,
-            replacement
+            column, rows, replacement
         )
+        column <- if (.ordinary_data_table(data)) {
+            .data_table_replace_commit(data, target$name, patch)
+        } else {
+            patch()
+        }
         if (!is.null(state)) state$columns[[target$name]] <- column
     }
     if (generate) {
@@ -600,6 +607,24 @@ gen <- function(data, variable, values, where = NULL) {
         if (is.null(.reference_state(data))) .mark_reference_data(data, state)
     }
     invisible(data)
+}
+
+.data_table_replace_commit <- function(data, target, patch) {
+    key_columns <- data.table::key(data)
+    index_columns <- data.table::indices(data, vectors = TRUE)
+    affected_indexes <- vapply(
+        index_columns, function(columns) target %in% columns, logical(1)
+    )
+    suspendInterrupts({
+        result <- patch()
+        if (target %in% key_columns) data.table::setkeyv(data, NULL)
+        if (any(affected_indexes)) {
+            retained <- index_columns[!affected_indexes]
+            data.table::setindexv(data, NULL)
+            for (columns in retained) data.table::setindexv(data, columns)
+        }
+        result
+    })
 }
 
 .generated_numeric_class_supported <- function(values) {
@@ -732,10 +757,13 @@ gen <- function(data, variable, values, where = NULL) {
 #' @rdname replace_values
 #' @export
 copy_data <- function(data) {
+    .reject_data_table_subclass(data)
+    data_table <- .ordinary_data_table(data)
     snapshot <- .reference_snapshot(data)
     source <- .as_mutation_data(snapshot, allow_grouped = TRUE)
     snapshot_columns <- source$columns
     snapshot_attributes <- attributes(snapshot)
+    if (data_table) snapshot_attributes$.internal.selfref <- NULL
     reference_values <- c(snapshot_columns, unname(snapshot_attributes))
     if (any(vapply(
         reference_values, .contains_reference_object, logical(1)
@@ -753,6 +781,7 @@ copy_data <- function(data) {
         snapshot_attributes, .deep_copy_value
     )
     attributes(columns) <- copied_attributes
+    if (data_table) data.table::setalloccol(columns)
     columns
 }
 

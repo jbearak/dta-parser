@@ -69,8 +69,8 @@
 #' @param x,y Data frames to merge, or file paths read with [read_dta()] or
 #'   [read_arrow()], in any combination. `x` supplies the retained values for
 #'   overlapping variables, dataset label, and dataset characteristics.
-#'   Base data frames, tibbles, and data.tables are accepted without mutation;
-#'   the result is always a tibble.
+#'   Base data frames, tibbles, and data.tables are accepted without mutation.
+#'   By default, the result follows the resolved `x` input's container.
 #'   Passing paths
 #'   mirrors Stata's `merge ... using filename` and keeps only the merged
 #'   result in the caller's workspace. A path ending in `.arrow` is read with
@@ -88,7 +88,11 @@
 #' @param assert Optional match results that are allowed to occur, using the
 #'   same names as `keep`. Any other match result is an error naming each
 #'   disallowed match result and its row count.
-#' @return A tibble with the key columns, the remaining columns of `x`, the
+#' @param output Result container. `"x"` preserves the resolved `x` input's
+#'   base data-frame, tibble, or data-table class. Supply `"tibble"` or
+#'   `"data.table"` to override it.
+#' @return A data frame, tibble, or data table with the key columns, the
+#'   remaining columns of `x`, the
 #'   columns only in `y`, and `_merge`, in that order.
 #' @examples
 #' master <- tibble::tibble(
@@ -103,9 +107,13 @@
 #' @export
 dta_merge <- function(x, y, by, relationship,
                       keep = c("x", "y", "match"),
-                      assert = NULL) {
+                      assert = NULL,
+                      output = c("x", "tibble", "data.table")) {
     x <- .resolve_merge_input(x, "x")
     y <- .resolve_merge_input(y, "y")
+    .reject_data_table_subclass(x, "x")
+    .reject_data_table_subclass(y, "y")
+    output <- rlang::arg_match(output)
     .validate_merge_input_names(x, "x")
     .validate_merge_input_names(y, "y")
     relationship <- .validate_merge_relationship(
@@ -251,11 +259,31 @@ dta_merge <- function(x, y, by, relationship,
     )
     columns[["_merge"]] <- indicator
 
-    result <- tibble::new_tibble(columns, nrow = length(merge_codes))
+    result <- vctrs::new_data_frame(columns, n = length(merge_codes))
+    result <- .dta_merge_output_container(result, x, output)
     dataset_label(result) <- dataset_label(x)
     result <- .copy_stata_metadata_attributes(x, result)
     attr(result, "notes") <- dataset_notes$notes
     attr(result, "stata.note.numbers") <- dataset_notes$numbers
+    .repair_data_table_container(result)
+}
+
+.dta_merge_output_container <- function(result, x, output) {
+    selected <- if (!identical(output, "x")) {
+        output
+    } else if (.ordinary_data_table(x)) {
+        "data.table"
+    } else if (inherits(x, "tbl_df")) {
+        "tibble"
+    } else {
+        "data.frame"
+    }
+    if (identical(selected, "tibble")) return(tibble::as_tibble(result))
+    if (identical(selected, "data.table")) {
+        .normalize_output_container("data.table")
+        class(result) <- c("data.table", "data.frame")
+        return(data.table::setalloccol(result))
+    }
     result
 }
 

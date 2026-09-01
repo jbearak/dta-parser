@@ -234,7 +234,7 @@ dataset_label <- function(data) {
 }
 
 .metadata_copy <- function(value) {
-    .Call(C_dtatools_metadata_copy, value)
+    .repair_data_table_container(.Call(C_dtatools_metadata_copy, value))
 }
 
 .metadata_view <- function(value) {
@@ -450,6 +450,7 @@ dataset_label <- function(data) {
 `var_label<-` <- function(x, value) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
+        .reject_data_table_subclass(x, "x")
         if (is.null(value)) {
             x <- .label_replacement_data(x)
             access <- .column_access(x)
@@ -485,13 +486,14 @@ dataset_label <- function(data) {
     if (!is.data.frame(data)) {
         stop("`data` must be a data frame", call. = FALSE)
     }
+    .reject_data_table_subclass(data)
     value <- .normalize_text_label(value)
     .warn_stata_metadata_limits(
         .text_label_violations(value, "dataset label")
     )
     data <- .label_replacement_data(data)
     attr(data, "label") <- value
-    data
+    .repair_data_table_container(data)
 }
 
 #' @rdname var_label
@@ -499,6 +501,7 @@ dataset_label <- function(data) {
 `val_labels<-` <- function(x, value) {
     .validate_label_object(x)
     if (is.data.frame(x)) {
+        .reject_data_table_subclass(x, "x")
         if (is.null(value)) {
             x <- .label_replacement_data(x)
             access <- .column_access(x)
@@ -536,6 +539,7 @@ set_var_label <- function(data, variable, label) {
     if (!is.data.frame(data)) {
         stop("`data` must be a data frame", call. = FALSE)
     }
+    .reject_data_table_subclass(data)
     name <- .unquoted_variable_name(rlang::enquo(variable))
     access <- .column_access(data)
     updates <- .validate_column_updates(
@@ -568,6 +572,7 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
         }
         return(`var_label<-`(.data, value))
     }
+    .reject_data_table_subclass(.data, ".data")
     if (!is.null(.labels) && !is.list(.labels)) {
         stop("`.labels` must be a named list or NULL", call. = FALSE)
     }
@@ -603,6 +608,7 @@ set_val_labels <- function(.data, ..., .labels = NULL) {
         }
         return(`val_labels<-`(.data, value))
     }
+    .reject_data_table_subclass(.data, ".data")
     if (!is.null(.labels) && !is.list(.labels)) {
         stop("`.labels` must be a named list or NULL", call. = FALSE)
     }

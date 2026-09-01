@@ -20,7 +20,7 @@ missing value.
 
 ## What the columns contain
 
-`read_dta()` returns a tibble. Numeric columns retain their declared Stata
+`read_dta()` returns a tibble by default and can return a data table. Numeric columns retain their declared Stata
 storage type, value and variable labels, display format, and system or extended
 missing values. Source byte, int, long, and float columns can remain compact
 ALTREP vectors until an operation needs ordinary R doubles. Stata `.` becomes

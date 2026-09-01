@@ -14,7 +14,7 @@ save_dta(
 )
 }
 \arguments{
-\item{data}{A data frame or tibble.}
+\item{data}{A data frame, tibble, or data table.}
 
 \item{path}{Local output path. If the final filename has no extension,
 \code{.dta} is appended with a warning, matching Stata's \code{save} behavior.}

@@ -40,7 +40,7 @@
 #' crash durability are not covered. Symbolic-link, directory, and other
 #' non-regular destinations are rejected. Output is always little-endian.
 #'
-#' @param data A data frame or tibble.
+#' @param data A data frame, tibble, or data table.
 #' @param path Local output path. If the final filename has no extension,
 #'   `.dta` is appended with a warning, matching Stata's `save` behavior.
 #' @param version Target Stata application version, either 18 or 19.

@@ -1572,6 +1572,7 @@ fn insert_value_label_tables(
 /// [`dtatools_save_arrow_rust`].
 unsafe fn assemble_write_dataset(
     dataset_label: *const c_char,
+    output_container: *const c_char,
     dataset_metadata: Sexp,
     descriptors: &[RArrowColumnDescriptor],
     table_descriptors: &[RArrowValueLabelTableDescriptor],
@@ -1583,6 +1584,11 @@ unsafe fn assemble_write_dataset(
     let mut dataset = DatasetDocument {
         version: 0,
         label: optional_c_string(dataset_label, "the dataset label")?,
+        output_container: if output_container.is_null() {
+            None
+        } else {
+            Some(required_c_string(output_container, "the output container")?)
+        },
         ..DatasetDocument::default()
     };
     (dataset.notes, dataset.characteristics) = parse_stata_metadata_sexp(dataset_metadata)?;
@@ -1700,6 +1706,7 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
             usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
         let (dataset, replacements, metadata_preflight) = assemble_write_dataset(
             dataset_label,
+            ptr::null(),
             dataset_metadata,
             descriptors,
             table_descriptors,
@@ -1745,6 +1752,7 @@ pub unsafe extern "C" fn dtatools_datasig_rust(
 pub unsafe extern "C" fn dtatools_save_arrow_rust(
     path: *const c_char,
     dataset_label: *const c_char,
+    output_container: *const c_char,
     dataset_metadata: Sexp,
     columns: *const RArrowColumnDescriptor,
     column_count: usize,
@@ -1783,6 +1791,7 @@ pub unsafe extern "C" fn dtatools_save_arrow_rust(
             usize::try_from(requested_threads).map_err(|_| "invalid thread count".to_owned())?;
         let (dataset, replacements, metadata_preflight) = assemble_write_dataset(
             dataset_label,
+            output_container,
             dataset_metadata,
             descriptors,
             table_descriptors,
@@ -3344,20 +3353,27 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
 
         let (
             dataset_label,
+            output_container,
             dataset_notes,
             dataset_characteristics,
             mut value_label_registry,
-        ) =
-            if let Some(mut dataset) = result.dataset.take() {
-                (
-                    std::mem::take(&mut dataset.label),
-                    std::mem::take(&mut dataset.notes),
-                    std::mem::take(&mut dataset.characteristics),
-                    std::mem::take(&mut dataset.value_labels),
-                )
-            } else {
-                (String::new(), Vec::new(), Vec::new(), Default::default())
-            };
+        ) = if let Some(mut dataset) = result.dataset.take() {
+            (
+                std::mem::take(&mut dataset.label),
+                dataset.output_container.take(),
+                std::mem::take(&mut dataset.notes),
+                std::mem::take(&mut dataset.characteristics),
+                std::mem::take(&mut dataset.value_labels),
+            )
+        } else {
+            (
+                String::new(),
+                None,
+                Vec::new(),
+                Vec::new(),
+                Default::default(),
+            )
+        };
 
         // Convert and allocate each selected value-label table once. Every
         // referring R column then shares the same table record and protected
@@ -3461,6 +3477,11 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             let mut guard = ProtectGuard::new();
             let label = scalar_string(&dataset_label, &mut guard)?;
             set_attr(frame, "label", label)?;
+        }
+        if let Some(output_container) = output_container {
+            let mut guard = ProtectGuard::new();
+            let value = scalar_string(&output_container, &mut guard)?;
+            set_attr(frame, "dtatools.output.container", value)?;
         }
         let mut guard = ProtectGuard::new();
         attach_stata_metadata(

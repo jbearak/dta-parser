@@ -75,7 +75,8 @@ enum dtatools_arrow_specification_slot {
     DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA = 1,
     DTATOOLS_ARROW_SPECIFICATION_COLUMNS = 2,
     DTATOOLS_ARROW_SPECIFICATION_VALUE_LABEL_TABLES = 3,
-    DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT = 4
+    DTATOOLS_ARROW_SPECIFICATION_OUTPUT_CONTAINER = 4,
+    DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT = 5
 };
 
 enum dtatools_arrow_column_slot {
@@ -104,7 +105,7 @@ enum dtatools_arrow_value_label_table_slot {
 };
 
 extern SEXP dtatools_save_arrow_rust(
-    const char *, const char *, SEXP, const dtatools_arrow_column *,
+    const char *, const char *, const char *, SEXP, const dtatools_arrow_column *,
     size_t, const dtatools_arrow_value_label_table *, size_t, size_t,
     const char *, int, int, int *, char **
 );
@@ -3537,6 +3538,7 @@ static void arrow_write_column_descriptor(
 
 typedef struct {
     const char *dataset_label;
+    const char *output_container;
     SEXP dataset_metadata;
     dtatools_arrow_column *columns;
     size_t column_count;
@@ -3550,7 +3552,7 @@ static void arrow_write_specification_sizes(
 ) {
     if (TYPEOF(specification) != VECSXP ||
         XLENGTH(specification) != DTATOOLS_ARROW_SPECIFICATION_SLOT_COUNT) {
-        Rf_error("internal Arrow specification must be a four-element list");
+        Rf_error("internal Arrow specification must be a five-element list");
     }
     SEXP dataset_metadata = VECTOR_ELT(
         specification, DTATOOLS_ARROW_SPECIFICATION_STATA_METADATA
@@ -3597,6 +3599,13 @@ static arrow_write_specification prepare_arrow_write_specification(
         .dataset_metadata = write_rooted_stata_metadata(
             string_roots, (*root_index)++, dataset_metadata,
             "dataset Stata metadata"
+        ),
+        .output_container = write_rooted_nullable_scalar_string(
+            string_roots, (*root_index)++,
+            VECTOR_ELT(
+                specification, DTATOOLS_ARROW_SPECIFICATION_OUTPUT_CONTAINER
+            ),
+            "output container"
         ),
         .column_count = column_count,
         .value_label_table_count = table_count,
@@ -3676,12 +3685,12 @@ SEXP C_dtatools_save_arrow(
     arrow_write_specification_sizes(
         specification, &column_count, &table_count
     );
-    if (column_count > ((size_t) R_XLEN_T_MAX - 4) / 7 ||
-        table_count > ((size_t) R_XLEN_T_MAX - 4 - 7 * column_count) / 2) {
+    if (column_count > ((size_t) R_XLEN_T_MAX - 5) / 7 ||
+        table_count > ((size_t) R_XLEN_T_MAX - 5 - 7 * column_count) / 2) {
         Rf_error("too many internal Arrow columns");
     }
     SEXP string_roots = PROTECT(Rf_allocVector(
-        VECSXP, (R_xlen_t) (4 + 7 * column_count + 2 * table_count)
+        VECSXP, (R_xlen_t) (5 + 7 * column_count + 2 * table_count)
     ));
     R_xlen_t root_index = 0;
     const char *output_path = write_rooted_scalar_string(
@@ -3697,7 +3706,8 @@ SEXP C_dtatools_save_arrow(
     int interrupted = 0;
     char *rust_error = NULL;
     SEXP result = dtatools_save_arrow_rust(
-        output_path, prepared.dataset_label, prepared.dataset_metadata,
+        output_path, prepared.dataset_label, prepared.output_container,
+        prepared.dataset_metadata,
         prepared.columns, prepared.column_count,
         prepared.value_label_tables, prepared.value_label_table_count,
         prepared.row_count,
@@ -3727,12 +3737,12 @@ SEXP C_dtatools_datasig(SEXP specification, SEXP threads) {
     arrow_write_specification_sizes(
         specification, &column_count, &table_count
     );
-    if (column_count > ((size_t) R_XLEN_T_MAX - 2) / 7 ||
-        table_count > ((size_t) R_XLEN_T_MAX - 2 - 7 * column_count) / 2) {
+    if (column_count > ((size_t) R_XLEN_T_MAX - 3) / 7 ||
+        table_count > ((size_t) R_XLEN_T_MAX - 3 - 7 * column_count) / 2) {
         Rf_error("too many internal Arrow columns");
     }
     SEXP string_roots = PROTECT(Rf_allocVector(
-        VECSXP, (R_xlen_t) (2 + 7 * column_count + 2 * table_count)
+        VECSXP, (R_xlen_t) (3 + 7 * column_count + 2 * table_count)
     ));
     R_xlen_t root_index = 0;
     arrow_write_specification prepared = prepare_arrow_write_specification(

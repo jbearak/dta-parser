@@ -163,6 +163,10 @@
 #'   widening when a workload requires a contiguous double data pointer.
 #'   Character-column ALTREP is unaffected.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
+#' @param output Output container. `"default"` uses the `dtatools.output`
+#'   option, falling back to `"tibble"`. Supply `"tibble"` or `"data.table"`
+#'   to override the option. Data-table output requires the suggested
+#'   data.table package.
 #' @param datasig Whether to record the file's [datasig()] signature in the
 #'   result's `datasig` attribute, as a load-time record of what the file on
 #'   disk signed as; it is never updated afterwards, so it is not a claim
@@ -170,7 +174,7 @@
 #'   over the decoded columns (no second read of the file) and equals
 #'   `datasig(file)`. Requires reading the complete file: incompatible with
 #'   `col_select`, `skip`, and `n_max`.
-#' @return A tibble with owned `stata_string` columns. `%td` columns and legacy or custom formats beginning `%d`
+#' @return A tibble or data table with owned `stata_string` columns. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
 #'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
 #'   `format.stata` attribute. String storage and metadata survive supported
@@ -178,6 +182,7 @@
 #' @export
 read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      n_max = Inf, .name_repair = "unique",
+                     output = c("default", "tibble", "data.table"),
                      threads = getOption("dtatools.threads", 0L),
                      use_numeric_altrep = getOption(
                          "dtatools.numeric_altrep", TRUE
@@ -187,7 +192,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     datasig <- .normalize_arrow_flag(datasig, "datasig")
     if (datasig) .validate_datasig_read(selection, skip, n_max)
     .read_dta_impl(
-        file, encoding, selection, skip, n_max, .name_repair,
+        file, encoding, selection, skip, n_max, .name_repair, output,
         materialization = "direct", threads = threads,
         use_numeric_altrep = use_numeric_altrep,
         record_datasig = datasig
@@ -212,6 +217,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                                    .name_repair = "unique") {
     .read_dta_impl(
         file, encoding, rlang::enquo(col_select), skip, n_max, .name_repair,
+        "tibble",
         materialization = "rust-vectors", threads = 1L,
         use_numeric_altrep = FALSE, record_datasig = FALSE
     )
@@ -259,7 +265,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 }
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
-                           .name_repair, materialization, threads,
+                           .name_repair, output, materialization, threads,
                            use_numeric_altrep, record_datasig) {
     encoding <- .validate_dta_encoding(encoding)
     row_window <- .normalize_row_window(skip, n_max)
@@ -316,11 +322,11 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     }
 
     dataset_label <- attr(native, "label", exact = TRUE)
-    result <- tibble::as_tibble(native, .name_repair = .name_repair)
+    result <- .finalize_output_container(native, output, .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     result <- .copy_stata_metadata_attributes(native, result)
     if (record_datasig) attr(result, "datasig") <- disk_signature
-    result
+    .repair_data_table_container(result)
 }
 
 .normalize_use_numeric_altrep <- function(value) {
