@@ -2202,9 +2202,11 @@ unsafe fn metadata_impl(
     encoding: TextEncoding,
     column_start: u32,
     column_count: u32,
+    include_value_labels: bool,
 ) -> Result<Sexp, String> {
-    let metadata = DtaFile::metadata_summary_with_encoding(path, encoding)
-        .map_err(|error| error.to_string())?;
+    let mut file =
+        DtaFile::open_with_encoding(path, encoding).map_err(|error| error.to_string())?;
+    let metadata = file.metadata();
     let start = usize::try_from(column_start)
         .map_err(|_| "metadata column start is out of range".to_owned())?
         .min(metadata.variables.len());
@@ -2229,10 +2231,46 @@ unsafe fn metadata_impl(
             DtaType::FixedString(_) | DtaType::StrL => "character".to_owned(),
         })
         .collect::<Vec<_>>();
+    let value_label_names = variables
+        .iter()
+        .map(|variable| variable.value_label_name.clone())
+        .collect::<Vec<_>>();
     let storage = string_vector(&storage, &mut guard)?;
     set_attr(result, "dta_storage", storage)?;
     let version = scalar_integer(metadata.format_version.as_u16().into(), &mut guard)?;
     set_attr(result, "dta_format_version", version)?;
+    let value_label_names = string_vector(&value_label_names, &mut guard)?;
+    set_attr(result, "dta_value_label_names", value_label_names)?;
+
+    if include_value_labels {
+        let tables = file
+            .value_label_tables()
+            .map_err(|error| error.to_string())?;
+        let table_count =
+            RLen::try_from(tables.len()).map_err(|_| "too many value-label tables")?;
+        let registry = guard.alloc(VECSXP, table_count)?;
+        let registry_names = guard.alloc(STRSXP, table_count)?;
+        for (index, table) in tables.iter().enumerate() {
+            check_interrupt()?;
+            let labels = label_attribute_from_entries(
+                table.entries.len(),
+                table.entries.iter().map(|entry| {
+                    Ok((
+                        entry
+                            .missing_tag
+                            .map(r_missing)
+                            .unwrap_or_else(|| f64::from(entry.value)),
+                        entry.label.as_str(),
+                    ))
+                }),
+                &mut guard,
+            )?;
+            SET_VECTOR_ELT(registry, index as RLen, labels);
+            SET_STRING_ELT(registry_names, index as RLen, r_char(&table.name)?);
+        }
+        set_symbol_attr(registry, R_NamesSymbol, registry_names)?;
+        set_attr(result, "dta_value_label_registry", registry)?;
+    }
     Ok(result)
 }
 
@@ -2398,6 +2436,7 @@ pub unsafe extern "C" fn dtatools_metadata_rust(
     column_start: u32,
     column_count: u32,
     encoding: *const c_char,
+    include_value_labels: c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
     boundary(error, ptr::null_mut(), || {
@@ -2407,7 +2446,13 @@ pub unsafe extern "C" fn dtatools_metadata_rust(
         let path = CStr::from_ptr(path)
             .to_str()
             .map_err(|_| "file path is not valid UTF-8".to_owned())?;
-        metadata_impl(path, text_encoding(encoding)?, column_start, column_count)
+        metadata_impl(
+            path,
+            text_encoding(encoding)?,
+            column_start,
+            column_count,
+            include_value_labels != 0,
+        )
     })
 }
 

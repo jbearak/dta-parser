@@ -156,7 +156,10 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         C_dtatools_arrow_metadata, snapshot, profile, scan_ambiguous_int32,
         skip, n_max
     )
-    list(names = metadata[[1L]], types = metadata[[2L]])
+    list(
+        names = metadata[[1L]], types = metadata[[2L]],
+        value_label_names = metadata[[3L]], value_label_registry = metadata[[4L]]
+    )
 }
 
 .arrow_column_selection <- function(selection, snapshot, profile, row_window) {

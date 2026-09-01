@@ -125,6 +125,8 @@ pub struct ArrowColumnSummary {
 /// values of plain Int32 columns whose R storage depends on their contents.
 pub struct ArrowFileSummary {
     pub columns: Vec<ArrowColumnSummary>,
+    pub dataset: Option<DatasetDocument>,
+    pub value_label_names: Vec<Option<String>>,
 }
 
 /// One open Arrow file whose identity remains stable if its path is replaced.
@@ -2386,6 +2388,18 @@ impl ArrowFileSnapshot {
                 int32_requires_double[index as usize] = found;
             }
         }
+        let value_label_names = footer
+            .schema
+            .fields()
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                profile
+                    .as_ref()
+                    .and_then(|profile| profile.fields.get(index))
+                    .and_then(|field| field.value_labels.clone())
+            })
+            .collect();
         let columns = footer
             .schema
             .fields()
@@ -2402,7 +2416,11 @@ impl ArrowFileSnapshot {
                 ),
             })
             .collect();
-        Ok(ArrowFileSummary { columns })
+        Ok(ArrowFileSummary {
+            columns,
+            dataset: profile.map(|profile| profile.dataset),
+            value_label_names,
+        })
     }
 }
 

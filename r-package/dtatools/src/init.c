@@ -16,7 +16,7 @@
 #include <string.h>
 
 extern SEXP dtatools_metadata_rust(
-    const char *, uint32_t, uint32_t, const char *, char **
+    const char *, uint32_t, uint32_t, const char *, int, char **
 );
 extern SEXP dtatools_read_rust(
     const char *, const int *, size_t, int, double, double, int, int, int,
@@ -2994,7 +2994,8 @@ static const char *optional_encoding(SEXP encoding) {
 }
 
 SEXP C_dtatools_metadata(
-    SEXP path, SEXP encoding, SEXP column_start, SEXP column_count
+    SEXP path, SEXP encoding, SEXP column_start, SEXP column_count,
+    SEXP include_value_labels
 ) {
     if (TYPEOF(path) != STRSXP || XLENGTH(path) != 1 || STRING_ELT(path, 0) == NA_STRING) {
         Rf_error("`file` must be one non-missing path");
@@ -3004,12 +3005,17 @@ SEXP C_dtatools_metadata(
         XLENGTH(column_count) != 1 || INTEGER(column_count)[0] < 0) {
         Rf_error("internal metadata column bounds must be non-negative integers");
     }
+    if (TYPEOF(include_value_labels) != LGLSXP ||
+        XLENGTH(include_value_labels) != 1 ||
+        LOGICAL(include_value_labels)[0] == NA_LOGICAL) {
+        Rf_error("internal value-label metadata selector must be logical");
+    }
     char *error = NULL;
     SEXP result = dtatools_metadata_rust(
         Rf_translateCharUTF8(STRING_ELT(path, 0)),
         (uint32_t) INTEGER(column_start)[0],
         (uint32_t) INTEGER(column_count)[0],
-        optional_encoding(encoding), &error
+        optional_encoding(encoding), LOGICAL(include_value_labels)[0], &error
     );
     if (result == NULL) fail_from_rust(error);
     return result;
@@ -6470,7 +6476,7 @@ SEXP C_dtatools_missing_codes(SEXP value) {
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 4},
+    {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
     {"C_dtatools_write", (DL_FUNC) &C_dtatools_write, 2},
     {"C_dtatools_save_arrow", (DL_FUNC) &C_dtatools_save_arrow, 5},

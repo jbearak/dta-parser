@@ -3543,7 +3543,7 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
     arrow_boundary(interrupted, error, ptr::null_mut(), || {
         let snapshot = required_arrow_snapshot(snapshot)?;
         let (row_start, row_count) = row_window(skip, n_max);
-        let summary = snapshot
+        let mut summary = snapshot
             .summarize(
                 apply_profile != 0,
                 scan_ambiguous_int32 != 0,
@@ -3553,7 +3553,7 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
             )
             .map_err(|error| error.to_string())?;
         let mut guard = ProtectGuard::new();
-        let result = guard.alloc(VECSXP, 2)?;
+        let result = guard.alloc(VECSXP, 4)?;
         let names: Vec<String> = summary
             .columns
             .iter()
@@ -3566,8 +3566,42 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
             .collect();
         let name_vector = string_vector(&names, &mut guard)?;
         let type_vector = string_vector(&types, &mut guard)?;
+        let value_label_names = summary
+            .value_label_names
+            .iter()
+            .map(|name| name.as_deref().unwrap_or("").to_owned())
+            .collect::<Vec<_>>();
+        let value_label_name_vector = string_vector(&value_label_names, &mut guard)?;
+        let registry_values = summary
+            .dataset
+            .as_mut()
+            .map(|dataset| std::mem::take(&mut dataset.value_labels))
+            .unwrap_or_default();
+        let registry_count =
+            RLen::try_from(registry_values.len()).map_err(|_| "too many value-label tables")?;
+        let registry = guard.alloc(VECSXP, registry_count)?;
+        let registry_names = guard.alloc(STRSXP, registry_count)?;
+        for (index, (name, entries)) in registry_values.into_iter().enumerate() {
+            let labels = label_attribute_from_entries(
+                entries.len(),
+                entries.into_iter().map(|entry| {
+                    let value = match (entry.value, entry.tag) {
+                        (Some(value), None) => f64::from(value),
+                        (None, Some(tag)) => r_missing(tag),
+                        _ => return Err("value-label entry must contain exactly one code".to_owned()),
+                    };
+                    Ok((value, entry.label))
+                }),
+                &mut guard,
+            )?;
+            SET_VECTOR_ELT(registry, index as RLen, labels);
+            SET_STRING_ELT(registry_names, index as RLen, r_char(&name)?);
+        }
+        set_symbol_attr(registry, R_NamesSymbol, registry_names)?;
         SET_VECTOR_ELT(result, 0, name_vector);
         SET_VECTOR_ELT(result, 1, type_vector);
+        SET_VECTOR_ELT(result, 2, value_label_name_vector);
+        SET_VECTOR_ELT(result, 3, registry);
         Ok(result)
     })
 }
