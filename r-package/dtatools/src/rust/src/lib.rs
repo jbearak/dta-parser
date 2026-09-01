@@ -988,6 +988,7 @@ unsafe fn attach_variable_attribute_view(
     if let Some(string_storage) = string_storage {
         let value = scalar_string(&string_storage, guard)?;
         set_attr(vector, "stata.string.storage", value)?;
+        set_class(vector, &["stata_string", "vctrs_vctr", "character"], guard)?;
     }
     if let Some(table_name) = value_label_name {
         let labels = labels_attribute.ok_or_else(|| {

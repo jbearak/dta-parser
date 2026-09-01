@@ -1,5 +1,12 @@
 # R joins with Stata columns
 
+> **Development note:** The Stata-identity behavior described in
+> [Stata vector operations in R](./r-stata-vector-operations.md) supersedes
+> this version-pinned 0.6.0 investigation. In the coordinated #113 change,
+> vctrs equality and dplyr joins distinguish `.`, `.a` through `.z`, and
+> `na_matches` no longer changes their identity. The historical observations
+> below remain useful background for ADR-0009 and ADR-0015.
+
 This note examines `base::merge()` and dplyr joins whose `by` argument is built
 with `join_by()`. `join_by()` only describes the match; `left_join()`,
 `full_join()`, and the other join verbs do the work.

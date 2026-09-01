@@ -1967,6 +1967,7 @@ unsafe fn attach_simple_attributes(
     {
         let storage = scalar_string(storage, guard)?;
         set_attr(vector, "stata.string.storage", storage)?;
+        set_class(vector, &["stata_string", "vctrs_vctr", "character"], guard)?;
     }
     Ok(())
 }

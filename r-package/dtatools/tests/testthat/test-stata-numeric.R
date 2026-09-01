@@ -81,6 +81,116 @@ test_that("constructors preserve Stata extended missing codes", {
     }
 })
 
+test_that("Stata numeric comparisons use missing-code identity and order", {
+    values <- stata_double(c(
+        -1, 1, NA_real_, tagged_missing("a"), tagged_missing("z")
+    ))
+
+    expect_identical(values == values, rep(TRUE, 5L))
+    expect_identical(values[3] < values[4], TRUE)
+    expect_identical(values[4] < values[5], TRUE)
+    expect_identical(values[2] < values[3], TRUE)
+    expect_identical(values[4] == tagged_missing("a"), TRUE)
+    expect_identical(values[4] == tagged_missing("b"), FALSE)
+    expect_identical(stata_byte(100) < 101, TRUE)
+})
+
+test_that("Stata numeric comparisons return empty results for empty operands", {
+    empty <- stata_byte()
+
+    expect_identical(empty == stata_byte(1), logical())
+    expect_identical(stata_int(1) != empty, logical())
+    expect_identical(empty < c(1, 2), logical())
+    expect_identical(c(1, 2) >= empty, logical())
+})
+
+test_that("Stata numeric ordering retains and ranks missing codes", {
+    values <- stata_byte(c(
+        tagged_missing("b"), 2, NA_real_, tagged_missing("a"), 1
+    ))
+    names(values) <- letters[1:5]
+
+    ascending <- sort(values)
+    descending <- sort(values, decreasing = TRUE)
+
+    expect_identical(as.double(ascending)[1:2], c(1, 2))
+    expect_identical(
+        unname(missing_tag(ascending)), c(NA, NA, NA, "a", "b")
+    )
+    expect_identical(names(ascending), c("e", "b", "c", "d", "a"))
+    expect_identical(
+        unname(missing_tag(descending)), c("b", "a", NA, NA, NA)
+    )
+    expect_identical(order(values), c(5L, 2L, 3L, 4L, 1L))
+    expect_identical(as.double(sort(values, method = "shell")), as.double(ascending))
+    expect_warning(
+        retained <- sort(values, na.last = FALSE),
+        "does not relocate or remove"
+    )
+    expect_identical(as.double(retained), as.double(ascending))
+    expect_error(sort(values, partial = 2), "not supported yet")
+})
+
+test_that("vctrs identity distinguishes Stata missing codes", {
+    values <- stata_double(c(
+        NA_real_, NA_real_, tagged_missing("a"), tagged_missing("a"),
+        tagged_missing("b")
+    ))
+
+    expect_identical(
+        vctrs::vec_equal(values, values), rep(TRUE, length(values))
+    )
+    expect_false(any(vctrs::vec_detect_missing(values)))
+    expect_identical(duplicated(values), c(FALSE, TRUE, FALSE, TRUE, FALSE))
+    expect_identical(anyDuplicated(values), 2L)
+    expect_identical(missing_tag(unique(values)), c(NA, "a", "b"))
+
+    expect_identical(
+        duplicated(values, incomparables = tagged_missing("a")),
+        c(FALSE, TRUE, FALSE, FALSE, FALSE)
+    )
+    expect_identical(
+        missing_tag(unique(values, incomparables = tagged_missing("a"))),
+        c(NA, "a", "a", "b")
+    )
+    expect_identical(
+        anyDuplicated(values, incomparables = NA_real_),
+        4L
+    )
+    expect_identical(
+        missing_tag(unique(values, fromLast = TRUE)),
+        c(NA, "a", "b")
+    )
+    expect_identical(
+        duplicated(values, nmax = 3L),
+        c(FALSE, TRUE, FALSE, TRUE, FALSE)
+    )
+})
+
+test_that("identity operations reject noncanonical NaN payloads", {
+    value <- tagged_nan_for_test("?")
+    attributes(value) <- attributes(stata_double(1))
+
+    expect_error(value == value, "noncanonical NaN payload")
+    expect_error(sort(value), "noncanonical NaN payload")
+    expect_error(vctrs::vec_equal(value, value), "NA_real_")
+    expect_true(is.na(value))
+})
+
+test_that("Stata temporal vectors use numeric missing identity", {
+    path <- fixture_with_temporal_storage("price")
+    on.exit(unlink(path), add = TRUE)
+    prototype <- read_dta(path)$price
+    values <- dtatools:::.restore_stata_temporal(
+        c(1, NA_real_, tagged_missing("a")), prototype, "int"
+    )
+
+    expect_identical(values == values, rep(TRUE, 3L))
+    expect_identical(missing_tag(sort(values)), c(NA, NA, "a"))
+    expect_s3_class(sort(values), "Date")
+    expect_false(any(vctrs::vec_detect_missing(values)))
+})
+
 test_that("native construction rejects unsupported tagged missing payloads", {
     constructor <- get(
         "C_dtatools_construct_numeric",
@@ -771,7 +881,7 @@ test_that("arithmetic preserves tags and returns bare logical comparisons", {
     expect_identical(stata_storage_type(result), "int")
     expect_identical(as.double(result)[1], 2)
     expect_identical(missing_tag(result), c(NA_character_, "a", NA))
-    expect_identical(values == 1, c(TRUE, NA, NA))
+    expect_identical(values == 1, c(TRUE, FALSE, FALSE))
     expect_null(stata_storage_type(values == 1))
     expect_identical(!stata_int(c(0, 1, NA_real_)), c(TRUE, FALSE, NA))
 })

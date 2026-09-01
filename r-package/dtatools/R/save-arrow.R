@@ -233,7 +233,10 @@ save_arrow <- function(data, path,
     }
     if (is.character(column)) {
         if (is.null(classes) || all(
-            classes %in% .stata_metadata_vector_class
+            classes %in% c(
+                .stata_metadata_vector_class,
+                "stata_string", "vctrs_vctr", "character"
+            )
         )) return("character")
         return(NA_character_)
     }

@@ -15,6 +15,9 @@ declared Stata storage type.
 | `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
 | `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |
 | `dta_merge()` | Merge two datasets, or `.dta`/`.arrow` files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `dta_identical()` | Compare equal-length vectors in order using Stata value identity while ignoring storage, class, names, and metadata. |
+| `dta_match()`, `dta_in()` | Match bare or Stata-backed values while keeping `.`, `.a` through `.z`, and finite values distinct. |
+| `dta_union()`, `dta_intersect()`, `dta_setdiff()`, `dta_setequal()` | Apply Stata identity to stable set operations with symmetric bare-vector support and package-owned metadata handling. |
 | `datasig()` | Order-sensitive content signature of a data frame or a `.dta` or `.arrow` file, for verifying that source data has not changed. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
@@ -25,6 +28,7 @@ declared Stata storage type.
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
 | `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
+| `stata_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
 | `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
 | `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
 | `is_missing()` | Classify Stata system and extended numeric missing values and empty strings; use it in `where` expressions for `gen()` and `replace_values()`. |

@@ -72,13 +72,16 @@ without_stata_storage <- function(value) {
     if (!is.null(classes)) {
         classes <- classes[!classes %in% c(
             "dtatools_stata_metadata_vector",
+            "stata_string",
             "stata_numeric", "stata_temporal", "stata_date",
             "stata_datetime", paste0("stata_", c(
                 "byte", "int", "long", "float", "double"
             ))
         )]
         if (!"haven_labelled" %in% classes) {
-            classes <- classes[!classes %in% c("vctrs_vctr", "double")]
+            classes <- classes[!classes %in% c(
+                "vctrs_vctr", "double", "character"
+            )]
         }
         attr(value, "class") <- if (length(classes) == 0L) NULL else classes
     }

@@ -25,8 +25,10 @@
 #' Stata system missing. Missing tags are part of the numeric values and are
 #' distinct from Stata value labels stored in a column's `labels` attribute.
 #' Tagged missings can be stored in any R double vector; the missing payload
-#' itself does not require a Stata-specific class. Imported Stata numerics do
-#' carry a class so their storage declaration survives supported operations.
+#' itself does not require a Stata-specific class. Imported Stata numeric and
+#' string columns carry owned classes so their storage declarations survive
+#' supported operations. Stata strings use `""` for missing values and never
+#' contain `NA_character_`; see [stata_string()].
 #' Assigning one to an R integer vector widens that vector
 #' to double because R integers have only `NA_integer_`. This does not reflect
 #' a Stata limitation: Stata `byte`, `int`, and `long` storage each encode all
@@ -57,14 +59,15 @@
 #' x[3] <- tagged_missing("f")       # Stata .f
 #' ```
 #'
-#' Base subassignment and [replace()] retain unselected tags when their index
-#' contains no missing values; use `!is.na(x) & x == value` when recoding an
-#' observed value. Avoid `ifelse(x == value, replacement, x)`, whose missing
-#' condition entries become ordinary `NA` and lose their tags.
+#' Imported Stata-backed numeric and temporal vectors compare missing codes as
+#' Stata does, so `x == value` returns definite logical values for `.`, `.a`
+#' through `.z`. Base subassignment, [replace()], `ifelse()`, and
+#' `dplyr::if_else()` therefore retain unselected missing-code identities.
+#' Bare double vectors keep ordinary R missing-propagating comparison behavior.
 #'
 #' When recoding, `dplyr::case_when()` preserves values returned by its default
-#' branch. `dplyr::if_else()` preserves unselected tags when its condition is
-#' complete; if the condition can be `NA`, also supply `missing = x`. Once the
+#' branch. For a condition built from bare R values that can be `NA`, supply
+#' `missing = x` to `dplyr::if_else()`. Once the
 #' dtatools namespace is loaded, [recode()] and `dplyr::recode()` preserve
 #' unmatched tags in bare numeric, `haven_labelled`, `Date`, and `POSIXct`
 #' columns, including inside `dplyr::mutate()`. Missing-value replacement
@@ -162,10 +165,11 @@
 #'   over the decoded columns (no second read of the file) and equals
 #'   `datasig(file)`. Requires reading the complete file: incompatible with
 #'   `col_select`, `skip`, and `n_max`.
-#' @return A tibble. `%td` columns and legacy or custom formats beginning `%d`
+#' @return A tibble with owned `stata_string` columns. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
 #'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
-#'   `format.stata` attribute.
+#'   `format.stata` attribute. String storage and metadata survive supported
+#'   vector operations.
 #' @export
 read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      n_max = Inf, .name_repair = "unique",
@@ -291,6 +295,16 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (!is.null(column_indices)) {
         names(native) <- selected_names
     }
+
+    native[] <- lapply(native, function(column) {
+        storage <- attr(column, "stata.string.storage", exact = TRUE)
+        if (is.character(column) && !is.null(storage) &&
+            !inherits(column, "stata_string")) {
+            .new_stata_string(column, storage, column)
+        } else {
+            column
+        }
+    })
 
     disk_signature <- if (record_datasig) {
         datasig(native, threads = threads)

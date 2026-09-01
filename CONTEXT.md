@@ -15,6 +15,10 @@ _Avoid_: R type, display format
 The empty string, which is Stata's only missing string representation. Exporting `NA_character_` converts it to an empty string and reports the conversion.
 _Avoid_: String NA, tagged string missing
 
+**Stata string vector**:
+An R character vector with package-owned class and variable-level DTA metadata. It behaves like an ordinary character vector while preserving that metadata through supported vector operations.
+_Avoid_: Labelled string, metadata-bearing character vector
+
 **Compact representation**:
 A read-mostly in-memory backing that stores a numeric column at its Stata storage type's width while presenting values to R as doubles. The column's storage type persists through supported mutations; operations that strip it require re-encoding with a storage-named constructor.
 _Avoid_: ALTREP column, packed vector
@@ -51,6 +55,10 @@ _Avoid_: Stata merge, base merge wrapper, Stata join
 Key equality in which system missing `.` and each extended missing `.a` through `.z` are distinct values that match only themselves.
 _Avoid_: NA matching, missing bucket
 
+**Stata total order**:
+The ordering in which all finite numeric values precede system missing `.`, followed by extended missings `.a` through `.z`. Stata missing codes keep these ranks when sorting and are not relocated or removed by R's `na.last` argument.
+_Avoid_: NA ordering, missing-last order
+
 **Merge relationship**:
 The declared key multiplicity between the master and using datasets: `1:1`, `m:1`, or `1:m`. Many-to-many merges are rejected.
 _Avoid_: join cardinality, relationship check
@@ -70,6 +78,14 @@ _Avoid_: Safe tabulation
 **Variable label**:
 A human-readable description of a variable, distinct from its programmatic name.
 _Avoid_: Column label, variable name
+
+**Variable-level DTA metadata**:
+Metadata that describes a Stata variable independently of which observations are retained, including its storage type, display format, variable label, value labels, and string storage.
+_Avoid_: Custom attributes, column attributes
+
+**Observation-dependent metadata**:
+Metadata attached to a variable whose entries correspond to observations and must therefore be subset or reordered with the variable's values.
+_Avoid_: Variable-level metadata, copied attributes
 
 **Value labels**:
 Mappings from nonmissing integers in Stata's `long` range or Stata extended missing codes (`.a` through `.z`) to human-readable category descriptions.
