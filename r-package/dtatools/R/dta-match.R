@@ -1,10 +1,20 @@
-#' Match and combine values using Stata identity
+#' Compare, match, and combine values using Stata identity
 #'
 #' These functions compare finite values and Stata missing codes using Stata's
-#' identity rules. Unlike [base::match()] and `%in%`, `dta_match()` and
-#' `dta_in()` recognize bare values returned by [tagged_missing()] on either
-#' side. System missing `.` and extended missings `.a` through `.z` are distinct
-#' values.
+#' identity rules. `dta_identical()` compares corresponding elements without
+#' recycling and ignores storage, class, names, and metadata. Unlike
+#' [base::match()] and `%in%`, `dta_match()` and `dta_in()` recognize bare values
+#' returned by [tagged_missing()] on either side. System missing `.` and
+#' extended missings `.a` through `.z` are distinct values.
+#'
+#' `dta_identical()` requires equal lengths and preserves element order. It
+#' accepts compatible bare and Stata-backed vectors, ignores storage width,
+#' compact representation, class, names, labels, formats, and other metadata,
+#' and returns `FALSE` for incompatible kinds. Strings use exact character
+#' identity, including `""` as Stata string missing. Dates compare only with
+#' dates and datetimes only with datetimes. Two `NULL` inputs are identical;
+#' `NULL` and any vector are not. Noncanonical NaN payloads are errors. This
+#' function does not change [base::identical()] or its structural R semantics.
 #'
 #' The set functions keep first-occurrence order and remove names.
 #' `dta_union()` returns unique values from `x`, followed by values found only
@@ -12,22 +22,45 @@
 #' `dta_setdiff()` retain `x`'s type and metadata. Incompatible kinds, such as
 #' strings and numerics or dates and datetimes, are errors.
 #'
-#' @param x Values to match or the left input to a set operation.
+#' @param x Values to compare, match, or use as the left input to a set
+#'   operation.
 #' @param table Values against which to match.
 #' @param nomatch Integer value returned for unmatched elements.
 #' @param incomparables Values that must not match. Stata missing codes may be
 #'   excluded separately. `NULL` means that every value is comparable.
-#' @param y The right input to a set operation.
-#' @return `dta_match()` returns integer locations and `dta_in()` returns a
-#'   logical vector without missing values. `dta_union()`, `dta_intersect()`,
-#'   and `dta_setdiff()` return vectors without names. `dta_setequal()` returns
-#'   one logical value.
+#' @param y Values to compare or use as the right input to a set operation.
+#' @return `dta_identical()` returns one nonmissing logical value.
+#'   `dta_match()` returns integer locations and `dta_in()` returns a logical
+#'   vector without missing values. `dta_union()`, `dta_intersect()`, and
+#'   `dta_setdiff()` return vectors without names. `dta_setequal()` returns one
+#'   logical value.
 #' @examples
 #' x <- c(1, tagged_missing("a"), NA_real_)
 #' column <- stata_byte(c(1, NA_real_, tagged_missing("a")))
 #' dta_in(x, column)
 #' dta_match(x, column)
+#' dta_identical(column, x)
 #' dta_union(column, stata_int(c(2, tagged_missing("b"))))
+#' @name dta_match
+#' @export
+dta_identical <- function(x, y) {
+    if (is.null(x) || is.null(y)) return(is.null(x) && is.null(y))
+    if (length(x) != length(y)) return(FALSE)
+
+    x_kind <- .dta_identity_kind(x, "x")
+    y_kind <- .dta_identity_kind(y, "y")
+    if (!identical(x_kind, y_kind)) {
+        .dta_identity_key(x, x_kind, "x")
+        .dta_identity_key(y, y_kind, "y")
+        return(FALSE)
+    }
+
+    x_key <- unname(.dta_identity_key(x, x_kind, "x"))
+    y_key <- unname(.dta_identity_key(y, y_kind, "y"))
+    identical(x_key, y_key)
+}
+
+#' @rdname dta_match
 #' @export
 dta_match <- function(x, table, nomatch = NA_integer_, incomparables = NULL) {
     kind <- .dta_common_identity_kind(x, table, "x", "table")
