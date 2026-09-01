@@ -36,11 +36,18 @@ labelbook <- function(data, ..., .tables = NULL,
     input <- .labelbook_input(data)
     data <- input$data
 
-    candidates <- lapply(input$registry, function(labels) list(list(
+    diagnostics <- list()
+    registry_ok <- vapply(input$registry, .labelbook_shape_ok, logical(1))
+    candidates <- lapply(input$registry[registry_ok], function(labels) list(list(
         labels = labels, variable = NA_character_, position = NA_integer_
     )))
+    for (table in names(input$registry)[!registry_ok]) {
+        diagnostics[[length(diagnostics) + 1L]] <- .book_diag(
+            "malformed_value_labels", "table", table,
+            message = "Value-label registry entry cannot be interpreted safely"
+        )
+    }
     assignments <- list()
-    diagnostics <- list()
     for (position in seq_along(data)) {
         column <- data[[position]]
         labels <- attr(column, "labels", exact = TRUE)
@@ -60,9 +67,7 @@ labelbook <- function(data, ..., .tables = NULL,
             )
             next
         }
-        shape_ok <- is.numeric(labels) && !is.null(names(labels)) &&
-            length(names(labels)) == length(labels)
-        if (!shape_ok) {
+        if (!.labelbook_shape_ok(labels)) {
             diagnostics[[length(diagnostics) + 1L]] <- .book_diag(
                 "malformed_value_labels", "variable", table, names(data)[[position]],
                 position, message = "Value-label metadata cannot be interpreted safely"
@@ -73,7 +78,10 @@ labelbook <- function(data, ..., .tables = NULL,
             labels = labels, variable = names(data)[[position]], position = position
         )))
     }
-    available <- unique(c(names(candidates), vapply(assignments, `[[`, "", "table")))
+    available <- unique(c(
+        names(input$registry), names(candidates),
+        vapply(assignments, `[[`, "", "table")
+    ))
     available <- available[!is.na(available)]
     selected <- if (is.null(selection)) available else selection
     unknown <- setdiff(selected, available)
@@ -131,6 +139,11 @@ labelbook <- function(data, ..., .tables = NULL,
         source = input$source
     ), class = "dtatools_labelbook")
     result
+}
+
+.labelbook_shape_ok <- function(labels) {
+    is.numeric(labels) && !is.null(names(labels)) &&
+        length(names(labels)) == length(labels) && !anyNA(names(labels))
 }
 
 .labelbook_tables <- function() data.frame(

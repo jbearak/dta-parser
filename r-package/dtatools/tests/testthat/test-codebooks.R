@@ -68,6 +68,35 @@ test_that("labelbook diagnoses table problems and malformed sharing", {
     expect_true("inconsistent_resolved_mappings" %in% malformed$diagnostics$code)
 })
 
+test_that("labelbook diagnoses missing value-label names as malformed", {
+    labels <- stats::setNames(c(1, 2), c("One", NA_character_))
+    data <- data.frame(x = labelled_for_test(1, labels))
+
+    result <- labelbook(data)
+
+    expect_true(result$tables$malformed)
+    expect_equal(nrow(result$mappings), 0L)
+    expect_identical(result$diagnostics$code, "malformed_value_labels")
+    expect_identical(result$diagnostics$scope, "variable")
+})
+
+test_that("labelbook diagnoses malformed registry entries", {
+    labels <- stats::setNames(c(1, 2), c("One", NA_character_))
+    local_mocked_bindings(
+        .labelbook_input = function(data) list(
+            data = data.frame(), registry = list(answer = labels), source = NULL
+        ),
+        .package = "dtatools"
+    )
+
+    result <- labelbook(data.frame())
+
+    expect_true(result$tables$malformed)
+    expect_equal(nrow(result$mappings), 0L)
+    expect_identical(result$diagnostics$code, "malformed_value_labels")
+    expect_identical(result$diagnostics$scope, "table")
+})
+
 test_that("labelbook detail restores the normal report", {
     data <- data.frame(x = labelled_for_test(1, c(One = 1, Three = 3)))
     summary <- labelbook(data, problems = TRUE)
