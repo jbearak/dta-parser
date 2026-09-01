@@ -94,6 +94,14 @@ test_that("codebook classifies and summarizes numeric and string variables", {
     expect_identical(result$examples$example, c("first", " second", "other"))
 })
 
+test_that("codebook handles string variables containing only Stata missing values", {
+    result <- codebook(data.frame(empty = rep("", 3)))
+
+    expect_identical(result$variables$report_type, "examples")
+    expect_identical(result$variables$missing_count, 3L)
+    expect_equal(nrow(result$examples), 0L)
+})
+
 test_that("codebook selections and where use report semantics", {
     data <- data.frame(x = 1:5, y = 6:10, eligible = c(TRUE, FALSE, TRUE, TRUE, FALSE))
     selected <- codebook(data, x, where = eligible)
@@ -116,6 +124,23 @@ test_that("codebook distinguishes duplicate names by position", {
     expect_identical(result$variables$position, 1:2)
     expect_identical(result$variables$variable, c("same", "same"))
     expect_error(codebook(data, same), "ambiguous")
+})
+
+test_that("codebook detects duplicate rows under Stata missing identity", {
+    data <- data.frame(
+        x = stata_double(c(
+            1, 1, NA_real_, NA_real_, tagged_missing("a"),
+            tagged_missing("a"), tagged_missing("b")
+        )),
+        y = rep("same", 7)
+    )
+    result <- codebook(data, diagnostic_limit = Inf)
+    duplicate <- result$diagnostics[
+        result$diagnostics$code == "duplicate_observations", ]
+    payload <- duplicate$details[[1L]][[1L]]
+
+    expect_identical(payload$count, 6L)
+    expect_identical(payload$rows, 1:6)
 })
 
 test_that("codebook returns Stata-style missingness relationships", {

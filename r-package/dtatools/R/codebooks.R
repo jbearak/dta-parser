@@ -298,7 +298,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     }
     if (dots) cat("\n")
     if (length(positions)) {
-        duplicate <- duplicated(selected[positions]) | duplicated(selected[positions], fromLast = TRUE)
+        duplicate <- vctrs::vec_duplicate_detect(selected[positions])
         diagnostics <- c(diagnostics, .book_row_diag(
             "duplicate_observations", "Selected variables contain duplicate observations",
             source_rows[duplicate], diagnostic_limit
@@ -413,7 +413,9 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     tabulation <- if (!compact && categorical) .codebook_tabulate(x, name, position) else .codebook_tabulations()
     example <- if (!compact && report_type == "examples") {
         values <- unique(as.character(observed)); values <- utils::head(values, 5L)
-        data.frame(position, variable = name, example = values, stringsAsFactors = FALSE)
+        data.frame(position = rep(position, length(values)),
+                   variable = rep(name, length(values)), example = values,
+                   stringsAsFactors = FALSE)
     } else .codebook_examples()
     list(variable = variable, tabulation = tabulation, examples = example)
 }
