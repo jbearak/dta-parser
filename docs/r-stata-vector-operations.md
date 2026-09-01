@@ -10,7 +10,7 @@ Stata numeric missing codes are distinct comparable values. System missing `.` e
 finite values < . < .a < ... < .z
 ```
 
-Relational operators, vctrs equality, grouping, deduplication, matching, joins, and dtatools set operations use this identity. Finite operands compare at a lossless common precision; comparison never casts a wide constant into narrower Stata storage. Constructors, casts, assignment, and recode replacement remain strict.
+Relational operators, vctrs equality, grouping, deduplication, matching, joins, ordered identity, and dtatools set operations use this identity. Finite operands compare at a lossless common precision; comparison never casts a wide constant into narrower Stata storage. Constructors, casts, assignment, and recode replacement remain strict.
 
 Stata missing codes remain missing to `is.na()` and `is_missing()`. Vctrs equality must encode them as distinct comparable keys, so `vctrs::vec_detect_missing()` and completeness operations treat them as present. Dplyr's `na_matches` setting does not change their identity. This deliberate split keeps Stata equality consistent across grouping and joins.
 
@@ -36,6 +36,16 @@ dta_in(x, table)
 ```
 
 `dta_match()` applies Stata identity to `incomparables`, so `.`, `.a`, and other missing codes can be excluded separately. `dta_in()` always returns a nonmissing logical vector. Both preserve the names of `x`.
+
+Use `dta_identical()` for an order-sensitive value comparison:
+
+```r
+dta_identical(x, y)
+```
+
+It returns one nonmissing logical value and never recycles. The vectors must have equal lengths and compatible kinds. Numeric storage widths, compact representation, classes, names, labels, formats, and other metadata do not affect the result. Bare and Stata-backed numeric vectors can therefore be identical. Strings compare by exact character identity, including `""` as Stata string missing. Dates compare only with dates, and datetimes only with datetimes. Incompatible kinds return `FALSE`.
+
+`dta_identical(NULL, NULL)` is `TRUE`; pairing `NULL` with any vector, including a zero-length vector, is `FALSE`. As with matching and set operations, a noncanonical NaN payload errors because it has no Stata identity. Base `identical()` remains unchanged and continues to compare R structure and attributes.
 
 Base set operations do not expose enough class dispatch to preserve metadata symmetrically. Use:
 

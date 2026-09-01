@@ -2,13 +2,16 @@
 % Please edit documentation in R/dta-match.R
 \name{dta_match}
 \alias{dta_match}
+\alias{dta_identical}
 \alias{dta_in}
 \alias{dta_union}
 \alias{dta_intersect}
 \alias{dta_setdiff}
 \alias{dta_setequal}
-\title{Match and combine values using Stata identity}
+\title{Compare, match, and combine values using Stata identity}
 \usage{
+dta_identical(x, y)
+
 dta_match(x, table, nomatch = NA_integer_, incomparables = NULL)
 
 dta_in(x, table)
@@ -22,7 +25,10 @@ dta_setdiff(x, y)
 dta_setequal(x, y)
 }
 \arguments{
-\item{x}{Values to match or the left input to a set operation.}
+\item{x}{Values to compare, match, or use as the left input to a set
+operation.}
+
+\item{y}{Values to compare or use as the right input to a set operation.}
 
 \item{table}{Values against which to match.}
 
@@ -30,23 +36,32 @@ dta_setequal(x, y)
 
 \item{incomparables}{Values that must not match. Stata missing codes may be
 excluded separately. \code{NULL} means that every value is comparable.}
-
-\item{y}{The right input to a set operation.}
 }
 \value{
-\code{dta_match()} returns integer locations and \code{dta_in()} returns a
-logical vector without missing values. \code{dta_union()}, \code{dta_intersect()},
-and \code{dta_setdiff()} return vectors without names. \code{dta_setequal()} returns
-one logical value.
+\code{dta_identical()} returns one nonmissing logical value.
+\code{dta_match()} returns integer locations and \code{dta_in()} returns a logical
+vector without missing values. \code{dta_union()}, \code{dta_intersect()}, and
+\code{dta_setdiff()} return vectors without names. \code{dta_setequal()} returns one
+logical value.
 }
 \description{
 These functions compare finite values and Stata missing codes using Stata's
-identity rules. Unlike \code{\link[base:match]{base::match()}} and \code{\%in\%}, \code{dta_match()} and
-\code{dta_in()} recognize bare values returned by \code{\link[=tagged_missing]{tagged_missing()}} on either
-side. System missing \code{.} and extended missings \code{.a} through \code{.z} are distinct
-values.
+identity rules. \code{dta_identical()} compares corresponding elements without
+recycling and ignores storage, class, names, and metadata. Unlike
+\code{\link[base:match]{base::match()}} and \code{\%in\%}, \code{dta_match()} and \code{dta_in()} recognize bare values
+returned by \code{\link[=tagged_missing]{tagged_missing()}} on either side. System missing \code{.} and
+extended missings \code{.a} through \code{.z} are distinct values.
 }
 \details{
+\code{dta_identical()} requires equal lengths and preserves element order. It
+accepts compatible bare and Stata-backed vectors, ignores storage width,
+compact representation, class, names, labels, formats, and other metadata,
+and returns \code{FALSE} for incompatible kinds. Strings use exact character
+identity, including \code{""} as Stata string missing. Dates compare only with
+dates and datetimes only with datetimes. Two \code{NULL} inputs are identical;
+\code{NULL} and any vector are not. Noncanonical NaN payloads are errors. This
+function does not change \code{\link[base:identical]{base::identical()}} or its structural R semantics.
+
 The set functions keep first-occurrence order and remove names.
 \code{dta_union()} returns unique values from \code{x}, followed by values found only
 in \code{y}, using a lossless common Stata storage type. \code{dta_intersect()} and
@@ -58,5 +73,6 @@ x <- c(1, tagged_missing("a"), NA_real_)
 column <- stata_byte(c(1, NA_real_, tagged_missing("a")))
 dta_in(x, column)
 dta_match(x, column)
+dta_identical(column, x)
 dta_union(column, stata_int(c(2, tagged_missing("b"))))
 }

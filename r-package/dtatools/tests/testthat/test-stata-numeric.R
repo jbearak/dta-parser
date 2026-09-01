@@ -95,6 +95,15 @@ test_that("Stata numeric comparisons use missing-code identity and order", {
     expect_identical(stata_byte(100) < 101, TRUE)
 })
 
+test_that("Stata numeric comparisons return empty results for empty operands", {
+    empty <- stata_byte()
+
+    expect_identical(empty == stata_byte(1), logical())
+    expect_identical(stata_int(1) != empty, logical())
+    expect_identical(empty < c(1, 2), logical())
+    expect_identical(c(1, 2) >= empty, logical())
+})
+
 test_that("Stata numeric ordering retains and ranks missing codes", {
     values <- stata_byte(c(
         tagged_missing("b"), 2, NA_real_, tagged_missing("a"), 1
