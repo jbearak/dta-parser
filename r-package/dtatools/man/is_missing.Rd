@@ -2,9 +2,12 @@
 % Please edit documentation in R/is-missing.R
 \name{is_missing}
 \alias{is_missing}
+\alias{is_mi}
 \title{Test values with Stata's missing-value rule}
 \usage{
 is_missing(...)
+
+is_mi(...)
 }
 \arguments{
 \item{...}{One or more supported atomic vectors.}
