@@ -158,13 +158,13 @@ save_arrow <- function(data, path,
         names(notes) <- .arrow_utf8(
             names(notes), sprintf("%s note numbers", what)
         )
-        notes[] <- .arrow_utf8(notes, sprintf("%s notes", what))
+        notes <- .arrow_utf8(notes, sprintf("%s notes", what))
     }
     if (length(characteristics)) {
         names(characteristics) <- .arrow_utf8(
             names(characteristics), sprintf("%s characteristic names", what)
         )
-        characteristics[] <- .arrow_utf8(
+        characteristics <- .arrow_utf8(
             characteristics, sprintf("%s characteristics", what)
         )
     }
