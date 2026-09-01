@@ -573,6 +573,7 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
         !identical(.stata_temporal_kind(x), .stata_temporal_kind(y))) {
         vctrs::stop_incompatible_type(x, y)
     }
+    if (length(x) == 0L || length(y) == 0L) return(logical())
     size <- max(length(x), length(y))
     args <- list(vctrs::vec_recycle(x, size), vctrs::vec_recycle(y, size))
     left <- .stata_identity_parts(args[[1L]], op)
