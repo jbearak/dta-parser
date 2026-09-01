@@ -58,11 +58,12 @@
 #' Date and POSIXct classes, time zones, Stata formats, and unrelated attributes
 #' are preserved. Removing the table removes only compatibility classes added
 #' for the label table and retains unrelated classes.
-#' Imported nondefault or shared Stata table identity is carried separately in
-#' `attr(x, "value.label.name")`. Setters retain that package-owned attribute
-#' while value labels remain and remove it when all value labels are removed.
-#' This interface does not provide a public way to create or edit named shared
-#' tables.
+#' An imported nondefault or shared Stata table name may be carried separately
+#' in `attr(x, "value.label.name")`. The attribute is a serialization hint, not
+#' shared semantic state. Each vector's `labels` mapping is authoritative in R.
+#' Setters retain the hint while value labels remain and remove it when all
+#' value labels are removed. This interface does not provide a public way to
+#' create or edit named shared tables.
 #'
 #' See the
 #' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}

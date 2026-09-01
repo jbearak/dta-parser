@@ -29,10 +29,12 @@
 #' aggregated warning per conversion category. Attributes outside the profile's
 #' documented set are dropped with one warning naming each affected column and
 #' attribute.
-#' The recognized `value.label.name` attribute preserves an imported nondefault
-#' or shared Stata table name in the existing dataset registry and field
-#' reference. Columns that claim one name with different mappings produce one
-#' aggregated warning and fall back to separate variable-name tables.
+#' The recognized `value.label.name` attribute is a serialization hint for an
+#' imported nondefault or shared Stata table name in the existing dataset
+#' registry and field reference. It does not make the name part of a column's
+#' resolved value-label semantics. Columns that claim one name with different
+#' mappings produce one aggregated warning and fall back to independently
+#' synthesized variable-name tables.
 #'
 #' Unlike [save_dta()], factor class and orderedness, `POSIXct` timezones on
 #' ordinary R columns, and `difftime` units are preserved on read.

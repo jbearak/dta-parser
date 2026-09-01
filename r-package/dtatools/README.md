@@ -297,6 +297,19 @@ shows a from-file merge costs its read plus the merge itself. See
 [the joins note](../../docs/r-joins-with-stata-columns.md) for the evidence
 behind these differences.
 
+One Stata behavior is intentionally excluded. Stata stores named value-label
+definitions at dataset scope. If master and using contain different mappings
+with the same definition name, Stata keeps master's definition and can display
+the wrong labels on a using-only variable. `dta_merge()` keeps each variable's
+resolved mapping instead. For example, if master uses `labels4` for interview
+privacy and using assigns its own `labels4` month mapping to `bh4m`, Stata can
+show privacy labels for the merged `bh4m`; `dta_merge()` keeps the month labels.
+The latter is normally what the user intended. Stata's result can silently
+misdirect later recodes that use label text. Correct accidental name collisions
+in Stata source before comparing exact merge output. The
+[label metadata guide](../../docs/r-label-metadata.md#compatibility-with-stata-merge)
+explains the representation and writer behavior.
+
 ## Verify source data
 
 ```r
@@ -327,7 +340,7 @@ re-baselining until the profile freezes.
 ## Data returned to R
 
 Dataset and variable labels, numbered notes, arbitrary characteristics,
-display formats, and value-label tables are retained as attributes. Use
+display formats, and resolved value-label mappings are retained as attributes. Use
 `stata_notes()` and `stata_characteristics()` to inspect them, and pass a
 column name as `variable` for variable scope. Stata daily dates become `Date`;
 `%tc` and `%tC` values become UTC `POSIXct`.

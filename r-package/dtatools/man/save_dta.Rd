@@ -59,10 +59,12 @@ silently repaired or truncated.
 Duplicate value-label keys already present in imported source metadata are
 retained in stable order; the package's metadata setters remain stricter for
 newly authored tables.
-An imported \code{value.label.name} attribute preserves a nondefault or shared
-value-label table name. Columns that claim one name with different mappings
-produce one aggregated warning and fall back to separate variable-name
-tables. A table-name attribute without a usable \code{labels} mapping is invalid.
+An imported \code{value.label.name} attribute is a serialization hint for a
+nondefault or shared value-label table name. It does not make the name part
+of a column's resolved value-label semantics. Columns that claim one name
+with different mappings produce one aggregated warning and fall back to
+independently synthesized variable-name tables. A table-name attribute
+without a usable \code{labels} mapping is invalid.
 }
 
 \section{Output safety}{

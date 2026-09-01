@@ -73,6 +73,24 @@ or characteristics (keys
 included), an additional warning names those variables, since the
 resolution keeps \code{x}'s side and Stata would say nothing.
 
+Value-label mappings belong to individual result variables. \code{dta_merge()}
+does not resolve them through Stata's dataset-level namespace of named
+definitions. This intentionally differs from Stata when \code{x} and \code{y} contain
+different definitions with the same name. Stata retains the definition from
+\code{x}, so a variable found only in \code{y} can display unrelated labels after the
+merge. \code{dta_merge()} retains that variable's resolved mapping from \code{y}.
+
+For example, suppose \code{x$wm11} uses a definition named \code{labels4} for
+interview-privacy codes, while \code{y$bh4m} uses its own \code{labels4} definition
+for month codes. Stata keeps the privacy definition and applies it to the
+merged \code{bh4m}. \code{dta_merge()} keeps the month mapping on \code{bh4m}. Correct an
+unintended collision in the Stata source before treating the two results as
+an exact compatibility comparison. A later writer may preserve an
+unambiguous imported name hint or synthesize separate definitions; it never
+substitutes one variable's mapping for another solely because names match.
+This is normally the expected result: Stata's collision can silently make a
+later label-based recode operate on unrelated text.
+
 Every merge generates a \verb{_merge} variable, a \code{stata_byte} column using
 Stata's \verb{_merge} codes with value labels \verb{x only (1)}, \verb{y only (2)}, and
 \code{matched (3)}. Merging errors if either input already has a \verb{_merge}

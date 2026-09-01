@@ -61,34 +61,72 @@ Value-label codes are limited to values that Stata can use in a label definition
 
 System missing `.`, ordinary R `NA` and `NaN`, fractions, and infinities are rejected. Use `tagged_missing()`, `missing_tag()`, and `is_tagged_missing()` to create or inspect extended missing values without haven.
 
-### Value-label table names
+### Value labels and Stata table names
 
-Three pieces of Stata metadata have similar names but different jobs:
+Four pieces of metadata matter here:
 
-- `attr(column, "label")` is the human-readable variable label.
-- `attr(column, "labels")` maps numeric codes to displayed text.
-- `attr(column, "value.label.name")` identifies the Stata table that supplies that mapping.
+- A variable label is a human-readable description of the variable. R stores
+  it in `attr(column, "label")`.
+- A resolved value-label mapping assigns displayed text to the numeric codes of
+  one variable. R stores it in `attr(column, "labels")`.
+- A named Stata value-label definition is a dataset-level table containing one
+  such mapping.
+- A Stata assignment makes a variable refer to a named definition.
+
+`dtatools` treats the resolved mapping on each variable as authoritative. It
+does not maintain a live dataset-level registry in which several R columns
+share one definition. Editing one column's `labels` attribute therefore does
+not change any other column.
 
 `read_dta()` and `read_arrow()` attach `value.label.name` when an imported
 table name differs from the source variable name or when several source
 variables share the table. A projected read still checks all source variables,
-so it does not lose shared-table identity. The attribute is omitted for the
-ordinary one-variable case in which the table and variable have the same name.
+so it retains the table-name hint even if only one referring variable is
+selected. The attribute is omitted for the ordinary one-variable case in which
+the table and variable have the same name. `value.label.name` helps writers
+reconstruct source-format metadata, but it is not shared semantic state and it
+does not override the resolved `labels` mapping.
 
 `save_dta()` and `save_arrow()` preserve the imported name. Columns with the
 same name and the same mapping share one output table. Without the attribute,
-each writer uses the current variable name, as before. Comparison covers codes,
-extended missing tags, label text, duplicate imported entries, and source
-order. If columns claim one table name but carry different mappings, the writer
-emits one warning for the whole call and uses each affected variable name as a
-fallback. Other shared tables remain shared.
+each writer synthesizes a separate definition from the current variable name
+and resolved mapping. Comparison covers codes, extended missing tags, label
+text, duplicate imported entries, and source order. If columns claim one table
+name but carry different mappings, the writer emits one warning for the whole
+call and synthesizes independent variable-name definitions for the affected
+columns. It never chooses one mapping merely because two name hints match.
+Other unambiguous shared tables remain shared in the serialized file.
 
 The attribute is valid only with a usable `labels` mapping. An empty named
 mapping is usable and represents an empty Stata table; a table name without a
 mapping is a write error. Removing all value labels with a dtatools setter also
 removes `value.label.name`. Other metadata setters and supported reconstruction
-operations retain it. The attribute documents imported identity only. There is
-no public getter, setter, or registry editor for authoring shared tables.
+operations retain it. The attribute records an imported serialization detail
+only. There is no public getter, setter, or registry editor for authoring
+shared tables.
+
+### Compatibility with Stata merge
+
+Stata resolves value labels through its dataset-level namespace. During a
+merge, the master dataset's definition wins when the master and using datasets
+contain different mappings under the same table name. A using-only variable
+can then display the wrong text even though its values and labels were correct
+before the merge.
+
+For example, the Uzbekistan 2022 MICS birth-history data assign `bh4m` to a
+table named `labels4` containing month labels. The women's data assign `wm11`
+to a different `labels4` containing interview-privacy labels. With the women's
+data as master, Stata retains the privacy definition and applies it to the
+merged `bh4m`.
+
+`dta_merge()` does not reproduce that namespace collision. It carries the
+resolved month mapping with `bh4m` and the privacy mapping with `wm11`.
+This is the expected result from the variable-level mapping: `bh4m` remains a
+month variable after the merge. Stata's result can silently break a later
+recode that relies on displayed label text. Exact Stata ports can therefore
+differ when same-named definitions have different contents. Treat the Stata
+result as a source-data bug unless the shared namespace was intentional. Rename
+or reassign the definition in the Stata source before merging.
 
 ## Converting labels to factors
 
