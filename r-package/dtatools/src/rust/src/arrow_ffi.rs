@@ -79,8 +79,8 @@ pub struct RArrowColumnDescriptor {
     compact_kind: c_int,
     compact_format_version: c_int,
     compact_temporal: c_int,
-    stata_metadata: Sexp,
     value_label_index: c_int,
+    stata_metadata: Sexp,
     haven_labelled: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.

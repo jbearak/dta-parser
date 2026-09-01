@@ -53,15 +53,25 @@ without_stata_storage <- function(value) {
     has_string_storage <- !is.null(attr(
         value, "stata.string.storage", exact = TRUE
     ))
-    if (!has_numeric_storage && !has_string_storage) return(value)
+    has_value_label_name <- !is.null(attr(
+        value, "value.label.name", exact = TRUE
+    ))
+    has_metadata_marker <- inherits(
+        value, "dtatools_stata_metadata_vector"
+    )
+    if (!has_numeric_storage && !has_string_storage &&
+        !has_value_label_name && !has_metadata_marker) {
+        return(value)
+    }
 
     value <- dtatools:::.metadata_copy(value)
     attr(value, "stata.string.storage") <- NULL
-    if (!has_numeric_storage) return(value)
-    attr(value, "stata.storage") <- NULL
+    attr(value, "value.label.name") <- NULL
+    if (has_numeric_storage) attr(value, "stata.storage") <- NULL
     classes <- attr(value, "class", exact = TRUE)
     if (!is.null(classes)) {
         classes <- classes[!classes %in% c(
+            "dtatools_stata_metadata_vector",
             "stata_numeric", "stata_temporal", "stata_date",
             "stata_datetime", paste0("stata_", c(
                 "byte", "int", "long", "float", "double"
@@ -85,6 +95,11 @@ without_stata_storage_data <- function(data) {
     for (index in seq_along(data)) {
         data[[index]] <- without_stata_storage(data[[index]])
     }
+    classes <- setdiff(
+        attr(data, "class", exact = TRUE),
+        "dtatools_stata_metadata"
+    )
+    attr(data, "class") <- if (length(classes)) classes else NULL
     data
 }
 

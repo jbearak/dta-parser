@@ -265,7 +265,6 @@ impl ProfileFields {
             Self::Projected { documents, .. } => documents.remove(&index),
         }
     }
-
 }
 
 #[cfg(test)]
@@ -1401,10 +1400,9 @@ fn plan_value_labels(
             .dataset
             .value_labels
             .retain(|name, _| selected_names.contains(name.as_str()));
-        let ProfileFields::Full(mut source_fields) = std::mem::replace(
-            &mut profile.fields,
-            ProfileFields::Full(Vec::new()),
-        ) else {
+        let ProfileFields::Full(mut source_fields) =
+            std::mem::replace(&mut profile.fields, ProfileFields::Full(Vec::new()))
+        else {
             unreachable!("value-label planning requires a full field profile")
         };
         let mut fields = Vec::with_capacity(selected.len());

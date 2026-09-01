@@ -63,8 +63,8 @@ typedef struct {
     int compact_kind;
     int compact_format_version;
     int compact_temporal;
-    SEXP stata_metadata;
     int value_label_index;
+    SEXP stata_metadata;
     int haven_labelled;
     /* Unmaterialized dictionary-string payload, or NULL for eager columns. */
     const void *dictstring;
