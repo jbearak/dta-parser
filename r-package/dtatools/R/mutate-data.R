@@ -43,14 +43,21 @@
 #' scalar, and one nonempty, non-missing string is accepted in the `variable`
 #' position. A literal `gen(data, "adjusted", value)` names a column the same
 #' way. An empty string, `NA`, a character vector of length other than one, a
-#' call such as `a + 1`, `...`, and a missing argument are errors.
+#' call other than `.()`, `...`, and a missing argument are errors.
 #'
-#' In the `values` and `where` expressions a runtime name is reached through
-#' the mask's `.data` pronoun instead: `values = .data[[name]]` and
+#' `.(name)` is the one spelling that works in every position. It is
+#' evaluated where it sits, so it can stand inside a larger expression the
+#' way `!!` cannot: `values = income + .(name)` reads the column that `name`
+#' holds. The argument is evaluated in the caller's environment, never in
+#' the data mask, so a column sharing the variable's name cannot shadow it,
+#' and it must be one nonempty, non-missing string.
+#'
+#' In the `values` and `where` expressions a runtime name is also reached
+#' through the mask's `.data` pronoun: `values = .data[[name]]` and
 #' `where = !is_missing(.data[[name]])`. Note the asymmetry, which is the
 #' surprising part: `.data[[name]]` works in `values` and `where` but not in
 #' the `variable` position, because `variable` names a target rather than
-#' reading a column. Use `!!name` there.
+#' reading a column. Use `!!name` or `.(name)` there.
 #'
 #' `values` and `where` use a data mask built from the dataset before the
 #' mutation. Columns win over objects in the calling environment; use `.env`
@@ -134,8 +141,9 @@
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
 #' @param variable Exactly one unquoted target name, or one nonempty,
-#'   non-missing character string, which is what `!!name` unquotes to. An
-#'   empty string, `NA`, a character vector of length other than one, a call,
+#'   non-missing character string, which is what `!!name` unquotes to and
+#'   what a `.(name)` call supplies in place. An empty string, `NA`, a
+#'   character vector of length other than one, a call other than `.()`,
 #'   `...`, and a missing argument are errors.
 #' @param values A value expression or one-sided formula. It may reference a
 #'   column whose name is a string through the mask's `.data` pronoun.

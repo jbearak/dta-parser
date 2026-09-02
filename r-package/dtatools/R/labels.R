@@ -37,12 +37,14 @@
 #' tidy-evaluation escape, as in
 #' `set_var_label(data, !!name, "Cluster number")`; no `rlang::inject()`
 #' wrapper is required, and `rlang::sym()` is optional, so the older
-#' `!!rlang::sym(name)` spelling remains equivalent. There is no `.data`
-#' pronoun for this argument, because it names a target rather than reading a
-#' column. On a bare vector, `set_var_label(x, label)` sets the vector's
-#' label, as the non-data-frame branch of `set_var_labels()` does.
-#' `set_var_labels()` and `set_val_labels()` take a programmatic named
-#' list through `.labels` instead, and `keep_vars()`, `drop_vars()`, and
+#' `!!rlang::sym(name)` spelling remains equivalent. A `.(name)` call reaches
+#' the same place: `set_var_label(data, .(name), "Cluster number")`. There is
+#' no `.data` pronoun for this argument, because it names a target rather
+#' than reading a column. On a bare vector, `set_var_label(x, label)` sets the
+#' vector's label, as the non-data-frame branch of `set_var_labels()` does.
+#' `set_var_labels()` and `set_val_labels()` name a runtime column with a
+#' `.(name) := value` tag in `...` or a programmatic named list through
+#' `.labels`, and `keep_vars()`, `drop_vars()`, and
 #' `rename_vars()` take `tidyselect::all_of()` or `.names`.
 #'
 #' `set_var_labels(data, variable, label)` and
@@ -107,14 +109,16 @@
 #' @param value New label metadata. Data-frame replacement forms require a
 #'   named list or `NULL`.
 #' @param .data A vector or data frame to update.
-#' @param ... Named column updates for a data frame. For a vector, supply one
-#'   variable label or one or more named value-label codes.
+#' @param ... Named column updates for a data frame. A column named at run
+#'   time takes a `.(name) := value` tag. For a vector, supply one variable
+#'   label or one or more named value-label codes.
 #' @param .labels A programmatic label value for a vector, or a named list of
 #'   column updates for a data frame.
 #' @param variable One unquoted column name, or one nonempty, non-missing
-#'   character string, which is what `!!name` unquotes to. Optional in
-#'   `var_label()` and `val_labels()`: when supplied, `x` must be a data
-#'   frame and only that column's metadata is returned.
+#'   character string, which is what `!!name` unquotes to and what a
+#'   `.(name)` call supplies in place. Optional in `var_label()` and
+#'   `val_labels()`: when supplied, `x` must be a data frame and only that
+#'   column's metadata is returned.
 #' @param label One variable label, or `NULL` to remove it. In the vector
 #'   shape `set_var_label(x, label)` the label is the second argument.
 #' @return Getters return the metadata described above. Replacement functions
@@ -639,37 +643,52 @@ set_var_label <- function(data, variable, label) {
 
 # `.(name) := value` in the plural setters. rlang rejects a call on the
 # left of `:=` before it evaluates anything, so the tags are resolved here
-# first: each `.()` left-hand side is evaluated in the caller's environment
-# and becomes an ordinary argument name, then `rlang::dots_list()` runs on
-# the rewritten call and keeps its own handling of `!!`, `!!!`, homonyms
-# and empty arguments unchanged.
-.dots_list_with_runtime_names <- function(quoted, environment, plain) {
-    arguments <- as.list(quoted)
-    if (!any(vapply(arguments, .is_runtime_name_tag, logical(1L)))) {
+# first: each `.()` left-hand side becomes an ordinary argument name, then
+# `rlang::dots_list()` runs on the rewritten argument and keeps its own
+# handling of `!!!`, `:=`, homonyms and empty arguments unchanged.
+#
+# Dots forwarded from an enclosing function belong to that function's
+# caller, not to the setter's immediate caller, so a single evaluation
+# environment cannot be right for every argument. `rlang::enquos0()`
+# captures each dot's own expression and environment without injection
+# processing, which also lets a `.()` call survive on the left of `:=`.
+# Each argument is then handed to its own `rlang::dots_list()` call,
+# evaluated in its own frame, so `!!!` and `:=` inside it behave exactly
+# as they do on the ordinary path. `.homonyms = "keep"` makes the
+# per-argument results concatenate without loss.
+.dots_list_with_runtime_names <- function(quoted, plain, quosures) {
+    if (!any(vapply(as.list(quoted), .is_runtime_name_tag, logical(1L)))) {
         # No `.()` tag, so nothing needs rewriting. Taking the ordinary
         # path here keeps every existing call byte-identical in behavior,
         # including dots forwarded from an enclosing function, whose
         # promises belong to that caller rather than to this frame.
         return(plain())
     }
-    names(arguments) <- if (is.null(names(arguments))) {
-        rep("", length(arguments))
-    } else {
-        names(arguments)
+    quosures <- quosures()
+    labels <- names(quosures)
+    if (is.null(labels)) labels <- rep("", length(quosures))
+    pieces <- vector("list", length(quosures))
+    for (index in seq_along(quosures)) {
+        quosure <- quosures[[index]]
+        if (rlang::quo_is_missing(quosure)) {
+            stop(sprintf("Argument %d can't be empty.", index), call. = FALSE)
+        }
+        expression <- rlang::quo_get_expr(quosure)
+        frame <- rlang::quo_get_env(quosure)
+        label <- labels[[index]]
+        if (.is_runtime_name_tag(expression)) {
+            label <- .runtime_name_call_value(expression[[2L]], frame)
+            expression <- expression[[3L]]
+        }
+        # The function object heads the call, because a constant's
+        # quosure carries the empty environment, where `::` is unbound.
+        call <- as.call(c(
+            list(rlang::dots_list), stats::setNames(list(expression), label),
+            list(.homonyms = "keep", .ignore_empty = "none")
+        ))
+        pieces[[index]] <- eval(call, frame)
     }
-    for (index in seq_along(arguments)) {
-        argument <- arguments[[index]]
-        if (!.is_runtime_name_tag(argument)) next
-        names(arguments)[[index]] <- .runtime_name_call_value(
-            argument[[2L]], environment
-        )
-        arguments[[index]] <- argument[[3L]]
-    }
-    call <- as.call(c(
-        quote(rlang::dots_list), arguments,
-        list(.homonyms = "keep", .ignore_empty = "none")
-    ))
-    eval(call, environment)
+    do.call(c, pieces)
 }
 
 # `!!name` before rlang's quasiquotation runs: the parsed call
@@ -722,12 +741,13 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
         )
     } else {
         .dots_list_with_runtime_names(
-            quoted, parent.frame(),
+            quoted,
             function() {
                 rlang::dots_list(
                     ..., .homonyms = "keep", .ignore_empty = "none"
                 )
-            }
+            },
+            function() rlang::enquos0(...)
         )
     }
     if (!is.data.frame(.data)) {
@@ -773,12 +793,13 @@ set_val_labels <- function(.data, ..., .labels = NULL) {
         )
     } else {
         .dots_list_with_runtime_names(
-            quoted, parent.frame(),
+            quoted,
             function() {
                 rlang::dots_list(
                     ..., .homonyms = "keep", .ignore_empty = "none"
                 )
-            }
+            },
+            function() rlang::enquos0(...)
         )
     }
     if (!is.data.frame(.data)) {

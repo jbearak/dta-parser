@@ -34,9 +34,10 @@ set_val_labels(.data, ..., .labels = NULL)
 \item{x}{A vector or data frame.}
 
 \item{variable}{One unquoted column name, or one nonempty, non-missing
-character string, which is what \code{!!name} unquotes to. Optional in
-\code{var_label()} and \code{val_labels()}: when supplied, \code{x} must be a data
-frame and only that column's metadata is returned.}
+character string, which is what \code{!!name} unquotes to and what a
+\code{.(name)} call supplies in place. Optional in \code{var_label()} and
+\code{val_labels()}: when supplied, \code{x} must be a data frame and only that
+column's metadata is returned.}
 
 \item{data}{A data frame or tibble.}
 
@@ -48,8 +49,9 @@ shape \code{set_var_label(x, label)} the label is the second argument.}
 
 \item{.data}{A vector or data frame to update.}
 
-\item{...}{Named column updates for a data frame. For a vector, supply one
-variable label or one or more named value-label codes.}
+\item{...}{Named column updates for a data frame. A column named at run
+time takes a \code{.(name) := value} tag. For a vector, supply one variable
+label or one or more named value-label codes.}
 
 \item{.labels}{A programmatic label value for a vector, or a named list of
 column updates for a data frame.}
@@ -101,12 +103,14 @@ non-missing string. A name known only at run time therefore needs only the
 tidy-evaluation escape, as in
 \code{set_var_label(data, !!name, "Cluster number")}; no \code{rlang::inject()}
 wrapper is required, and \code{rlang::sym()} is optional, so the older
-\code{!!rlang::sym(name)} spelling remains equivalent. There is no \code{.data}
-pronoun for this argument, because it names a target rather than reading a
-column. On a bare vector, \code{set_var_label(x, label)} sets the vector's
-label, as the non-data-frame branch of \code{set_var_labels()} does.
-\code{set_var_labels()} and \code{set_val_labels()} take a programmatic named
-list through \code{.labels} instead, and \code{keep_vars()}, \code{drop_vars()}, and
+\code{!!rlang::sym(name)} spelling remains equivalent. A \code{.(name)} call reaches
+the same place: \code{set_var_label(data, .(name), "Cluster number")}. There is
+no \code{.data} pronoun for this argument, because it names a target rather
+than reading a column. On a bare vector, \code{set_var_label(x, label)} sets the
+vector's label, as the non-data-frame branch of \code{set_var_labels()} does.
+\code{set_var_labels()} and \code{set_val_labels()} name a runtime column with a
+\code{.(name) := value} tag in \code{...} or a programmatic named list through
+\code{.labels}, and \code{keep_vars()}, \code{drop_vars()}, and
 \code{rename_vars()} take \code{tidyselect::all_of()} or \code{.names}.
 
 \code{set_var_labels(data, variable, label)} and
