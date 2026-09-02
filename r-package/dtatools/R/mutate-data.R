@@ -919,10 +919,14 @@ gen <- function(data, ..., where = NULL) {
     value
 }
 
+# `.mutate_data()` has already shadow-checked a non-formula `where` in
+# full, and a formula body is exempt, so the operand is not checked here.
 .fused_comparison_scalar <- function(expression, columns, environment) {
-    value <- .eval_in_mutation_data(expression, columns, environment)
+    value <- .eval_in_mutation_data(expression, columns, environment,
+                                    shadow_check = FALSE)
+    if (length(value) != 1L) return(NULL)
     scalar <- .stata_compare_scalar(value)
-    if (length(value) != 1L || is.null(scalar)) return(NULL)
+    if (is.null(scalar)) return(NULL)
     list(value = value, scalar = scalar)
 }
 

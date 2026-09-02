@@ -2242,6 +2242,14 @@ test_that("a symbol bound as both column and object is an error", {
     expect_identical(data$x, c(7, 7))
     rm(rows, y)
 
+    # The fused plan's scalar operand is exempt under a formula too.
+    compact <- data.frame(x = stata_byte(c(1, 5, 9)), cutoff = c(4, 4, 4))
+    cutoff <- 100
+    expect_error(repl(compact, x, 0, where = x > cutoff), "`cutoff` is both")
+    repl(compact, x, 0, where = ~ x > cutoff)
+    expect_identical(as.double(compact$x), c(1, 0, 0))
+    rm(cutoff)
+
     # A function binding does not count: a script may share its column's name.
     data <- data.frame(x = c(1, 2), income = c(5, 6))
     income <- function(data) repl(data, x, income * 2)
