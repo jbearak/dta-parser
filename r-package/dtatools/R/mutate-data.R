@@ -1436,11 +1436,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     count <- length(groups$rows)
     row_pieces <- vector("list", count)
     value_pieces <- vector("list", count)
+    kept <- logical(count)
     first <- TRUE
     for (index in seq_len(count)) {
         rows <- groups$rows[[index]]
         size <- length(rows)
         if (size == 0L) next
+        kept[[index]] <- TRUE
         view$rows <- rows
         view$cache <- new.env(hash = TRUE, parent = emptyenv())
         extras <- list(.n = seq_len(size), .N = size)
@@ -1471,12 +1473,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             row = vctrs::vec_slice(evaluated, positions),
             selected = evaluated
         )
-        row_pieces[[index]] <- rows[positions]
-        value_pieces[[index]] <- piece
+        row_pieces[index] <- list(rows[positions])
+        # Single-bracket assignment keeps a `NULL` piece, which a group
+        # that selects no rows and evaluates `values` to `NULL` produces.
+        value_pieces[index] <- list(piece)
     }
     # `.drop = FALSE` grouping can carry empty groups; they contribute
     # nothing. A dataset with rows always has at least one nonempty group.
-    kept <- !vapply(value_pieces, is.null, logical(1L))
     row_pieces <- row_pieces[kept]
     value_pieces <- value_pieces[kept]
     all_rows <- unlist(row_pieces, use.names = FALSE)

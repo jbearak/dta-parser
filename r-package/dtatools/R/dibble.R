@@ -134,9 +134,10 @@ is_dibble <- function(x) {
 #' Bracket mutation on a dibble
 #'
 #' A dibble supports data.table's assignment shape, `data[i, j, by]`, with
-#' `j` one or more `:=` assignments: `data[income > 20, adjusted := income
-#' * 1.1]`. The assignment happens by reference, as with [gen()] and
-#' [replace_values()], and the call returns the dibble so brackets chain:
+#' `j` one or more `:=` assignments:
+#' `data[income > 20, adjusted := income * 1.1]`. The assignment happens by
+#' reference, as with [gen()] and [replace_values()], and the call returns
+#' the dibble so brackets chain:
 #' `data[i, y := 1][j, z := 2]`. Because `[` always makes its result
 #' visible, the dataset would print after every assignment; as data.table
 #' does, the next top-level print of the mutated dataset is skipped, so an

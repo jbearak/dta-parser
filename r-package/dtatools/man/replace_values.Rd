@@ -183,7 +183,7 @@ omit any group \code{i} empties. Here \code{.N} counts the group's rows whatever
 in Stata's total order for \verb{stata_*()} columns (finite values, then \code{.},
 then \code{.a} through \code{.z}), and then groups by those same columns, so the
 rows within each group are the sorted rows and \code{.n} follows the sort.
-Stata's parenthesized sort-only keys are not supported: \verb{bysort id (date):} is an \code{arrange()} or \code{reorder_stata_rows()} line followed by
+Stata's parenthesized sort-only keys are not supported: \verb{bysort id (date):} is an \code{arrange()} or \code{reorder_dta_rows()} line followed by
 \code{by = id}. Group identity uses Stata value identity for \verb{stata_*()}
 columns and ordinary identity otherwise, so missing values form their
 own group, as in Stata, and each extended missing code its own.

@@ -10,7 +10,7 @@ declared Stata storage type.
 
 | Function | Purpose |
 | --- | --- |
-| `read_dta()` | Read a DTA file into a tibble or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
+| `read_dta()` | Read a DTA file into a dibble, tibble, or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
 | `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
 | `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |

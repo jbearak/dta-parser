@@ -309,6 +309,29 @@ test_that("readers, save_arrow, and dta_merge take the dibble container", {
     )
 })
 
+test_that("a file recording an unknown container still reads", {
+    skip_if_not_installed("arrow")
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(dibble(x = 1:2), path)
+    # Rewrite the recorded container to a value this release does not
+    # know, as a file from a newer dtatools might carry.
+    table <- arrow::read_ipc_file(path, as_data_frame = FALSE)
+    metadata <- table$metadata
+    key <- grep("dataset", names(metadata), value = TRUE)[[1L]]
+    metadata[[key]] <- sub(
+        "\"output_container\":\"dibble\"",
+        "\"output_container\":\"matrix\"", metadata[[key]], fixed = FALSE
+    )
+    expect_true(grepl("matrix", metadata[[key]], fixed = TRUE))
+    table$metadata <- metadata
+    arrow::write_ipc_file(table, path, compression = "uncompressed")
+    restored <- read_arrow(path, verify = FALSE)
+    expect_false(is_dibble(restored))
+    expect_identical(class(restored), c("tbl_df", "tbl", "data.frame"))
+    expect_identical(restored$x, 1:2)
+})
+
 test_that("unknown stored containers fall back to a tibble", {
     expect_identical(
         dtatools:::.normalize_output_container("default", stored = "matrix"),

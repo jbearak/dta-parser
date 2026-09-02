@@ -31,22 +31,22 @@ tibble subset.
 }
 \description{
 A dibble supports data.table's assignment shape, \code{data[i, j, by]}, with
-\code{j} one or more \verb{:=} assignments: `data[income > 20, adjusted := income
-\itemize{
-\item 1.1]\verb{. The assignment happens by reference, as with [gen()] and [replace_values()], and the call returns the dibble so brackets chain: }data[i, y := 1][j, z := 2]\verb{. Because }[\verb{always makes its result visible, the dataset would print after every assignment; as data.table does, the next top-level print of the mutated dataset is skipped, so an assignment typed at the console prints nothing and}data\verb{on the following line prints as usual. The skip lasts only for the statement that made the assignment: after}result <- data[i, y := 1]\verb{, a loop, or }invisible(data[i, y := 1])\verb{, nothing is skipped. Only a dibble has this form. dtatools cannot own }[\verb{on a plain data frame or tibble, and a data table's own}:=\verb{has different storage, missing-value, and type-promotion semantics, so on those containers}[i, y := 1]\verb{is whatever error their}[\verb{raises; use}gen()\code{or}replace_values()`,
+\code{j} one or more \verb{:=} assignments:
+\code{data[income > 20, adjusted := income * 1.1]}. The assignment happens by
+reference, as with \code{\link[=gen]{gen()}} and \code{\link[=replace_values]{replace_values()}}, and the call returns
+the dibble so brackets chain:
+\code{data[i, y := 1][j, z := 2]}. Because \code{[} always makes its result
+visible, the dataset would print after every assignment; as data.table
+does, the next top-level print of the mutated dataset is skipped, so an
+assignment typed at the console prints nothing and \code{data} on the
+following line prints as usual. The skip lasts only for the statement
+that made the assignment: after \code{result <- data[i, y := 1]}, a loop, or
+\code{invisible(data[i, y := 1])}, nothing is skipped. Only a dibble has this
+form. dtatools cannot own \code{[} on a plain data frame or tibble, and a
+data table's own \verb{:=} has different storage, missing-value, and
+type-promotion semantics, so on those containers \verb{[i, y := 1]} is
+whatever error their \code{[} raises; use \code{gen()} or \code{replace_values()},
 which accept every supported container.
-}
-
-[income > 20, adjusted := income
-\itemize{
-\item 1.1]: R:income\%20\%3E\%2020,\%20adjusted\%20:=\%20income\%0A*\%201.1
-[gen()]: R:gen()
-[replace_values()]: R:replace_values()
-[j, z := 2]: R:j,\%20z\%20:=\%202
-[i, y := 1]: R:i,\%20y\%20:=\%201
-[i, y := 1]: R:i,\%20y\%20:=\%201
-[i, y := 1]: R:i,\%20y\%20:=\%201
-}
 }
 \details{
 \code{i} is \code{where}: \code{NULL} or missing selects every row, and a logical

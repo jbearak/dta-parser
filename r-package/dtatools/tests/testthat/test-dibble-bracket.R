@@ -255,13 +255,14 @@ test_that("the autoprint skip does not outlive its top-level statement", {
         "data",                       # prints
         "cat('F\\n')"
     ), script)
-    output <- system2(
-        file.path(R.home("bin"), "Rscript"), shQuote(script),
-        stdout = TRUE, stderr = FALSE,
-        env = paste0("R_LIBS=", shQuote(paste(.libPaths(), collapse = ":")))
-    )
-    # Only the child's standard output carries printed tables; anything on
-    # its standard error, such as a startup message, is not content.
+    skip_if_not_installed("callr")
+    # callr passes the parent's library paths to the child on every
+    # platform, where a hand-built `R_LIBS` would need the OS separator.
+    # Only the child's standard output carries printed tables.
+    output <- callr::rscript(
+        script, libpath = .libPaths(), show = FALSE, fail_on_status = TRUE
+    )$stdout
+    output <- strsplit(output, "\r?\n")[[1L]]
     markers <- match(c("A", "B", "C", "D", "E", "F"), output)
     expect_false(anyNA(markers), info = paste(output, collapse = "\n"))
     section <- function(index) {

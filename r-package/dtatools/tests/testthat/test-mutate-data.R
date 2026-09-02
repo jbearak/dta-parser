@@ -1888,6 +1888,13 @@ test_that("per-group value sizes must be 1, the selection, or .N", {
     )
     expect_identical(data$x, 1:3)
 
+    # A group that selects no rows may evaluate `values` to `NULL`; the
+    # empty piece must stay aligned with its rows rather than vanish.
+    sparse <- data.frame(id = c(1, 1, 2, 2), x = c(1, 2, 3, 4))
+    repl(sparse, x = if (.N == 2 && any(x > 2)) 0 else NULL,
+         where = x > 2, by = id)
+    expect_identical(sparse$x, c(1, 2, 0, 0))
+
     # Within a group, a `.N`-length value is indexed by the selection.
     pairs <- data.frame(id = c(1, 1, 2, 2), x = 1:4)
     gen(pairs, z = c(10, 20), where = .n == 2, by = id)
