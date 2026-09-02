@@ -254,3 +254,58 @@ test_that("slice_stata_rows validates its container and locations", {
         "doesn't exist"
     )
 })
+
+test_that("reorder_stata_rows permutes a data.table in place", {
+    data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
+    data.table::setattr(data, "sorted", "v_byte")
+    frame <- as.data.frame(data)
+    class(frame) <- "data.frame"
+    rows <- rev(seq_len(nrow(data)))
+    expected <- frame[rows, , drop = FALSE]
+    compact_names <- c("v_byte", "v_int", "v_long", "v_float")
+
+    before <- data.table::address(data)
+    result <- withVisible(reorder_stata_rows(data, rows))
+    expect_false(result$visible)
+    expect_identical(data.table::address(data), before)
+    # Checked before any content comparison: base identical() reads
+    # column DATAPTRs, which materializes compact ALTREP columns.
+    expect_true(all(vapply(
+        as.list(data)[compact_names],
+        dtatools:::.is_unmaterialized_numeric_altrep,
+        logical(1)
+    )))
+    expect_identical(as.list(data), as.list(expected))
+    expect_null(attr(data, "sorted"))
+    expect_null(attr(data, "index"))
+    expect_silent(data.table::set(
+        data, j = "v_str5", value = as.list(data)$v_str5
+    ))
+
+    tagged_table <- data.table::data.table(
+        value = stata_int(c(1, NA_real_, tagged_missing("a")))
+    )
+    reorder_stata_rows(tagged_table, c(3L, 1L, 2L))
+    expect_identical(missing_tag(tagged_table$value), c("a", NA, NA))
+    expect_identical(stata_storage_type(tagged_table$value), "int")
+})
+
+test_that("reorder_stata_rows validates its container and permutation", {
+    frame <- data.frame(x = 1:3)
+    expect_error(
+        reorder_stata_rows(frame, 1:3),
+        "ordinary data.table"
+    )
+    data <- data.table::data.table(x = 1:3)
+    expect_error(
+        reorder_stata_rows(data, c(1L, 1L, 2L)),
+        "every row exactly once"
+    )
+    expect_error(
+        reorder_stata_rows(data, 1:2),
+        "every row exactly once"
+    )
+    expect_error(reorder_stata_rows(data, c(NA_integer_, 2L, 3L)))
+    expect_error(reorder_stata_rows(data, c(1L, 2L, 4L)))
+    expect_identical(data$x, 1:3)
+})

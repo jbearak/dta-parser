@@ -7128,6 +7128,20 @@ SEXP C_dtatools_missing_codes(SEXP value) {
     return result;
 }
 
+SEXP C_dtatools_replace_table_columns(SEXP data, SEXP columns) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(columns) != VECSXP) {
+        Rf_error("internal column replacement requires lists");
+    }
+    R_xlen_t count = XLENGTH(data);
+    if (XLENGTH(columns) != count) {
+        Rf_error("internal column replacement requires matching lists");
+    }
+    for (R_xlen_t index = 0; index < count; index++) {
+        SET_VECTOR_ELT(data, index, VECTOR_ELT(columns, index));
+    }
+    return R_NilValue;
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
@@ -7157,6 +7171,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
      (DL_FUNC) &C_dtatools_gather_numeric_columns, 4},
+    {"C_dtatools_replace_table_columns",
+     (DL_FUNC) &C_dtatools_replace_table_columns, 2},
     {"C_dtatools_is_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},
