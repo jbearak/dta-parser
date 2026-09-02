@@ -42,3 +42,131 @@ missing_tag <- function(x) {
 is_tagged_missing <- function(x, tag = NULL) {
     .Call(C_dtatools_is_tagged_missing, x, tag)
 }
+
+#' Stata extended missing-value constants
+#'
+#' `.a` through `.z` are scalar shorthand for
+#' `tagged_missing("a")` through `tagged_missing("z")`. They make literal
+#' vectors and assignments read like their Stata equivalents. Use
+#' [tagged_missing()] when tags come from data or when creating more than one
+#' tagged missing value at a time.
+#'
+#' @return A length-one double containing the corresponding tagged missing
+#'   value.
+#' @examples
+#' values <- c(1, NA_real_, .a, .z)
+#' missing_tag(values)
+#' identical(.f, tagged_missing("f"))
+#' @name tagged_missing_constants
+NULL
+
+.tagged_missing_constant <- function(tag) {
+    readBin(
+        as.raw(c(0x7f, 0xf0, 0x00, utf8ToInt(tag), 0x00, 0x00, 0x07, 0xa2)),
+        double(), n = 1L, size = 8L, endian = "big"
+    )
+}
+
+#' @rdname tagged_missing_constants
+#' @export
+.a <- .tagged_missing_constant("a")
+
+#' @rdname tagged_missing_constants
+#' @export
+.b <- .tagged_missing_constant("b")
+
+#' @rdname tagged_missing_constants
+#' @export
+.c <- .tagged_missing_constant("c")
+
+#' @rdname tagged_missing_constants
+#' @export
+.d <- .tagged_missing_constant("d")
+
+#' @rdname tagged_missing_constants
+#' @export
+.e <- .tagged_missing_constant("e")
+
+#' @rdname tagged_missing_constants
+#' @export
+.f <- .tagged_missing_constant("f")
+
+#' @rdname tagged_missing_constants
+#' @export
+.g <- .tagged_missing_constant("g")
+
+#' @rdname tagged_missing_constants
+#' @export
+.h <- .tagged_missing_constant("h")
+
+#' @rdname tagged_missing_constants
+#' @export
+.i <- .tagged_missing_constant("i")
+
+#' @rdname tagged_missing_constants
+#' @export
+.j <- .tagged_missing_constant("j")
+
+#' @rdname tagged_missing_constants
+#' @export
+.k <- .tagged_missing_constant("k")
+
+#' @rdname tagged_missing_constants
+#' @export
+.l <- .tagged_missing_constant("l")
+
+#' @rdname tagged_missing_constants
+#' @export
+.m <- .tagged_missing_constant("m")
+
+#' @rdname tagged_missing_constants
+#' @export
+.n <- .tagged_missing_constant("n")
+
+#' @rdname tagged_missing_constants
+#' @export
+.o <- .tagged_missing_constant("o")
+
+#' @rdname tagged_missing_constants
+#' @export
+.p <- .tagged_missing_constant("p")
+
+#' @rdname tagged_missing_constants
+#' @export
+.q <- .tagged_missing_constant("q")
+
+#' @rdname tagged_missing_constants
+#' @export
+.r <- .tagged_missing_constant("r")
+
+#' @rdname tagged_missing_constants
+#' @export
+.s <- .tagged_missing_constant("s")
+
+#' @rdname tagged_missing_constants
+#' @export
+.t <- .tagged_missing_constant("t")
+
+#' @rdname tagged_missing_constants
+#' @export
+.u <- .tagged_missing_constant("u")
+
+#' @rdname tagged_missing_constants
+#' @export
+.v <- .tagged_missing_constant("v")
+
+#' @rdname tagged_missing_constants
+#' @export
+.w <- .tagged_missing_constant("w")
+
+#' @rdname tagged_missing_constants
+#' @export
+.x <- .tagged_missing_constant("x")
+
+#' @rdname tagged_missing_constants
+#' @export
+.y <- .tagged_missing_constant("y")
+
+#' @rdname tagged_missing_constants
+#' @export
+.z <- .tagged_missing_constant("z")
