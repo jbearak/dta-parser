@@ -7,17 +7,18 @@
 \alias{copy_data}
 \title{Generate and replace variables by reference}
 \usage{
-replace_values(data, ..., where = NULL)
+replace_values(data, ..., where = NULL, by = NULL, bysort = NULL)
 
-repl(data, ..., where = NULL)
+repl(data, ..., where = NULL, by = NULL, bysort = NULL)
 
-gen(data, ..., where = NULL)
+gen(data, ..., where = NULL, by = NULL, bysort = NULL)
 
 copy_data(data)
 }
 \arguments{
-\item{data}{An ungrouped data frame or tibble to mutate. \code{copy_data()} also
-accepts grouped and rowwise tibbles.}
+\item{data}{A data frame or tibble to mutate. A grouped tibble's groups
+become the assignment groups. Rowwise tibbles are rejected;
+\code{copy_data()} accepts them.}
 
 \item{...}{The target and its values, as one tagged pair
 \code{variable = values} or as the two positional arguments \verb{variable, values}, optionally followed by one untagged \code{where}. \code{variable} is
@@ -31,7 +32,16 @@ pronoun.}
 
 \item{where}{\code{NULL}, a logical expression, valid row positions, or a
 one-sided formula. It may also be supplied as the last untagged
-argument in \code{...}.}
+argument in \code{...}. Under groups it is evaluated per group, and row
+positions count within the group.}
+
+\item{by}{\code{NULL}, or the columns to group by, as bare names, strings,
+\code{c()} of those, \code{!!name}, or \code{.(name)}. Rows keep their current
+order. Not allowed with \code{bysort} or on a grouped tibble.}
+
+\item{bysort}{\code{NULL}, or the columns to sort the dataset by, by
+reference, and then group by. Same spellings as \code{by}. Not allowed with
+\code{by} or on a grouped tibble.}
 }
 \value{
 \code{gen()} and \code{replace_values()} return \code{data} invisibly.
@@ -69,8 +79,9 @@ it is later, convert it explicitly because base dispatch has already chosen
 the ordinary data-frame method.
 \code{unclass()} and direct inspection of internal attributes are likewise not
 supported ways to access generated columns.
-\code{gen()} and \code{replace_values()} reject grouped and rowwise tibbles. Ungroup
-them before mutation. \code{copy_data()} accepts them and preserves their class.
+\code{gen()} and \code{replace_values()} accept a grouped tibble and treat its dplyr
+groups as assignment groups (see below). They reject rowwise tibbles;
+\code{copy_data()} accepts both and preserves their class.
 }
 \details{
 The target and its values arrive through \code{...} in one of two shapes.
@@ -138,6 +149,51 @@ or another column sharing its payload. \code{values} must have size
 one, the selected-row count, or the full dataset row count. Full-length
 values are indexed by the selected row positions.
 
+Two mask variables stand beside the columns in \code{values} and \code{where}:
+\code{.N} is the row count and \code{.n} the row number, \code{1} through \code{.N}. Both
+are exempt from the shadow check, so a caller object called \code{.N} is
+never consulted. Without groups they describe the whole dataset, so
+\code{repl(d, last = 1, where = .n == .N)} marks the final row.
+}
+\section{Group-wise assignment}{
+
+\code{by} and \code{bysort} evaluate the mutation separately within groups, as
+Stata's \verb{by varlist:} prefix does. Groups are formed first. Then, for
+each group, \code{where} is evaluated on that group's rows and \code{values}
+against that group's columns, with \code{.N} the group's row count and \code{.n}
+the within-group row number. Per group, \code{values} must have size one,
+the group's selected-row count, or \code{.N}; anything else is an error
+naming the group's key values. The per-group results are gathered into
+one full-length assignment and written through the same path as an
+ungrouped call, so storage validation, compact patching, transactions,
+and data.table handling are unchanged. Rows a group's \code{where} does not
+select are left alone by \code{replace_values()} and hold missing after
+\code{gen()}, which still appends the new column once.
+
+This is Stata's order of operations, not data.table's. data.table's
+\code{dt[i, j, by]} applies \code{i} first and groups only the surviving rows,
+so under a non-empty \code{i} its \code{.N} counts selected rows and its groups
+omit any group \code{i} empties. Here \code{.N} counts the group's rows whatever
+\code{where} selects, and \code{where = .n == .N} marks each group's last row.
+\code{.SD}, \code{.GRP}, and \code{.BY} are not provided; summaries stay with dplyr.
+
+\code{by} groups the dataset in its current row order and never sorts.
+\code{bysort} first sorts the dataset by reference on every listed column,
+in Stata's total order for \verb{stata_*()} columns (finite values, then \code{.},
+then \code{.a} through \code{.z}), and then groups by those same columns, so the
+rows within each group are the sorted rows and \code{.n} follows the sort.
+Stata's parenthesized sort-only keys are not supported: \verb{bysort id (date):} is an \code{arrange()} or \code{reorder_stata_rows()} line followed by
+\code{by = id}. Group identity uses Stata value identity for \verb{stata_*()}
+columns and ordinary identity otherwise, so missing values form their
+own group, as in Stata, and each extended missing code its own.
+
+A grouped tibble supplies its dplyr groups. Giving \code{by} or \code{bysort} to
+one is an error rather than a precedence rule; ungroup it first.
+Supplying both \code{by} and \code{bysort} is also an error. Column names follow
+the package's usual rules: \code{by = g}, \code{by = c(g1, g2)}, \code{by = c("g1", "g2")}, \code{by = !!name}, and \code{by = .(name)}, where \code{.()} evaluates its
+argument to a string as it does everywhere else in dtatools, not
+data.table's \code{list()}.
+
 \code{gen()} appends one variable and does not implement Stata's \code{before()} or
 \code{after()} placement. A declared \verb{stata_*()} result keeps its numeric storage;
 otherwise logical, integer, double, and \code{Date} results use Stata \code{float}
@@ -154,7 +210,8 @@ they use the smallest \code{str1} through \code{str2045} width that fits, or \co
 above 2,045 UTF-8 bytes. Numeric rows excluded by \code{where} contain
 system missing. Excluded string rows contain \code{""}, Stata's string missing.
 Wrap the value expression in a Stata constructor to request explicit numeric
-storage. Stata \code{by}, \verb{[in]}, and \verb{:lblname} authoring are not supported.
+storage. Stata \verb{[in]} and \verb{:lblname} authoring are not supported; the
+\verb{by varlist:} prefix is \code{by}/\code{bysort}.
 Unlike Stata's default \code{replace}, \code{replace_values()} never promotes a target
 to wider storage. It rejects values that do not fit the declared storage.
 Character \code{NA} replacement values are normalized to \code{""}, Stata's string
@@ -201,6 +258,7 @@ attributes containing environments, functions, bytecode, external pointers,
 or weak references because those objects cannot be isolated by ordinary R
 copying.
 }
+
 \examples{
 survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
 gen(survey, adjusted = income + 5)
@@ -219,6 +277,13 @@ repl(survey, .(target_name) := 1)
 repl(survey, !!target_name, 2)
 gen(survey, doubled = .data[[source_name]] * 2)
 repl(survey, doubled = 0, where = .data[[source_name]] > 15)
+
+# Group-wise assignment in Stata's `by varlist:` order
+panel <- data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4)
+gen(panel, rows = .N, by = id)               # each group's row count
+gen(panel, last = .n == .N, by = id)         # each group's last row
+gen(panel, above = x - mean(x), by = id)     # centred within group
+repl(panel, x = 0, where = .n == 1, bysort = c(id, t))  # sorts first
 }
 \references{
 StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
