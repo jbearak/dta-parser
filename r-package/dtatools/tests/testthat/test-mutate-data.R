@@ -2,7 +2,9 @@ test_that("reference mutation exports one coherent API", {
     expect_identical(repl, replace_values)
     expect_identical(
         formals(replace_values),
-        as.pairlist(alist(data = , ... = , where = NULL))
+        as.pairlist(alist(
+            data = , ... = , where = NULL, by = NULL, bysort = NULL
+        ))
     )
     expect_identical(formals(repl), formals(replace_values))
     expect_identical(formals(gen), formals(replace_values))
@@ -1736,20 +1738,16 @@ test_that("target-vector aliases observe replacement while row subsets isolate",
     expect_identical(as.double(left$x), c(9, 8, 3))
 })
 
-test_that("grouped and rowwise inputs fail before reference mutation", {
-    grouped <- dplyr::group_by(tibble::tibble(x = 1:2), x)
+test_that("rowwise inputs fail before reference mutation", {
     rowwise <- dplyr::rowwise(tibble::tibble(x = 1:2))
-    for (data in list(grouped, rowwise)) {
-        before <- serialize(data, NULL)
-        expect_error(replace_values(data, x, 1L), "ungrouped")
-        expect_error(gen(data, y, 1L), "ungrouped")
-        expect_identical(serialize(data, NULL), before)
+    before <- serialize(rowwise, NULL)
+    expect_error(replace_values(rowwise, x, 1L), "ungrouped")
+    expect_error(gen(rowwise, y, 1L), "ungrouped")
+    expect_identical(serialize(rowwise, NULL), before)
 
-        isolated <- copy_data(data)
-        expect_identical(class(isolated), class(data))
-        expect_identical(dplyr::group_vars(isolated), dplyr::group_vars(data))
-        expect_identical(as.data.frame(isolated), as.data.frame(data))
-    }
+    isolated <- copy_data(rowwise)
+    expect_identical(class(isolated), class(rowwise))
+    expect_identical(as.data.frame(isolated), as.data.frame(rowwise))
 })
 
 test_that("ordinary assignments and metadata helpers materialize current state", {
