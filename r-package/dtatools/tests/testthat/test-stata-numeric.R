@@ -831,10 +831,10 @@ test_that("common types reconcile value and variable labels", {
 })
 
 test_that("common types reconcile notes and characteristics left first", {
-    left <- set_stata_note(dta_byte(c(1, 2)), 3, "left note")
-    left <- set_stata_characteristic(left, "source", "master")
-    right <- set_stata_note(dta_int(c(3, 4)), 7, "right note")
-    right <- set_stata_characteristic(right, "source", "using")
+    left <- set_dta_note(dta_byte(c(1, 2)), 3, "left note")
+    left <- set_dta_characteristic(left, "source", "master")
+    right <- set_dta_note(dta_int(c(3, 4)), 7, "right note")
+    right <- set_dta_characteristic(right, "source", "using")
     bare <- dta_byte(c(5, 6))
 
     left_right <- vctrs::vec_c(left, right)
