@@ -641,23 +641,10 @@ set_var_label <- function(data, variable, label) {
         .is_runtime_name_call(argument[[2L]])
 }
 
-# The `!!!x` splice spelling parses as three nested `!` calls. Returns the
-# spliced operand, or NULL when the expression is not a splice.
-.splice_operand <- function(expression) {
-    bang <- function(e) {
-        is.call(e) && length(e) == 2L && identical(e[[1L]], quote(`!`))
-    }
-    if (!bang(expression) || !bang(expression[[2L]]) ||
-        !bang(expression[[2L]][[2L]])) {
-        return(NULL)
-    }
-    expression[[2L]][[2L]][[2L]]
-}
-
 # `.(name) := value` in the plural setters. rlang rejects a call on the
 # left of `:=` before it evaluates anything, so the tags are resolved here
 # first: each `.()` left-hand side becomes an ordinary argument name, then
-# `rlang::dots_list()` runs on the rewritten call and keeps its own
+# `rlang::dots_list()` runs on the rewritten argument and keeps its own
 # handling of `!!!`, `:=`, homonyms and empty arguments unchanged.
 #
 # Dots forwarded from an enclosing function belong to that function's
@@ -665,11 +652,11 @@ set_var_label <- function(data, variable, label) {
 # environment cannot be right for every argument. `rlang::enquos0()`
 # captures each dot's own expression and environment without injection
 # processing, which also lets a `.()` call survive on the left of `:=`.
-# Every argument is evaluated in its own environment here and enters the
-# rebuilt call as a bound value; `!!!x` keeps its splice spelling around
-# the bound operand so `rlang::dots_list()` still splices it.
-.dots_list_with_runtime_names <- function(quoted, environment, plain,
-                                          quosures) {
+# Each argument is then handed to its own `rlang::dots_list()` call,
+# evaluated in its own frame, so `!!!` and `:=` inside it behave exactly
+# as they do on the ordinary path. `.homonyms = "keep"` makes the
+# per-argument results concatenate without loss.
+.dots_list_with_runtime_names <- function(quoted, plain, quosures) {
     if (!any(vapply(as.list(quoted), .is_runtime_name_tag, logical(1L)))) {
         # No `.()` tag, so nothing needs rewriting. Taking the ordinary
         # path here keeps every existing call byte-identical in behavior,
@@ -680,43 +667,28 @@ set_var_label <- function(data, variable, label) {
     quosures <- quosures()
     labels <- names(quosures)
     if (is.null(labels)) labels <- rep("", length(quosures))
-    bindings <- new.env(parent = environment)
-    arguments <- vector("list", length(quosures))
+    pieces <- vector("list", length(quosures))
     for (index in seq_along(quosures)) {
         quosure <- quosures[[index]]
         if (rlang::quo_is_missing(quosure)) {
-            arguments[[index]] <- quote(expr = )
-            next
+            stop(sprintf("Argument %d can't be empty.", index), call. = FALSE)
         }
         expression <- rlang::quo_get_expr(quosure)
         frame <- rlang::quo_get_env(quosure)
-        name <- sprintf(".dtatools_dot_%d", index)
-        symbol <- as.name(name)
-        splice <- .splice_operand(expression)
+        label <- labels[[index]]
         if (.is_runtime_name_tag(expression)) {
-            labels[[index]] <- .runtime_name_call_value(
-                expression[[2L]], frame
-            )
-            assign(name, eval(expression[[3L]], frame), envir = bindings)
-            arguments[[index]] <- symbol
-        } else if (!is.null(splice)) {
-            assign(name, eval(splice, frame), envir = bindings)
-            arguments[[index]] <- call("!", call("!", call("!", symbol)))
-        } else if (is.call(expression) && length(expression) == 3L &&
-                   identical(expression[[1L]], quote(`:=`))) {
-            assign(name, eval(expression[[3L]], frame), envir = bindings)
-            arguments[[index]] <- call(":=", expression[[2L]], symbol)
-        } else {
-            assign(name, eval(expression, frame), envir = bindings)
-            arguments[[index]] <- symbol
+            label <- .runtime_name_call_value(expression[[2L]], frame)
+            expression <- expression[[3L]]
         }
+        # The function object heads the call, because a constant's
+        # quosure carries the empty environment, where `::` is unbound.
+        call <- as.call(c(
+            list(rlang::dots_list), stats::setNames(list(expression), label),
+            list(.homonyms = "keep", .ignore_empty = "none")
+        ))
+        pieces[[index]] <- eval(call, frame)
     }
-    names(arguments) <- labels
-    call <- as.call(c(
-        quote(rlang::dots_list), arguments,
-        list(.homonyms = "keep", .ignore_empty = "none")
-    ))
-    eval(call, bindings)
+    do.call(c, pieces)
 }
 
 # `!!name` before rlang's quasiquotation runs: the parsed call
@@ -769,7 +741,7 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
         )
     } else {
         .dots_list_with_runtime_names(
-            quoted, parent.frame(),
+            quoted,
             function() {
                 rlang::dots_list(
                     ..., .homonyms = "keep", .ignore_empty = "none"
@@ -821,7 +793,7 @@ set_val_labels <- function(.data, ..., .labels = NULL) {
         )
     } else {
         .dots_list_with_runtime_names(
-            quoted, parent.frame(),
+            quoted,
             function() {
                 rlang::dots_list(
                     ..., .homonyms = "keep", .ignore_empty = "none"

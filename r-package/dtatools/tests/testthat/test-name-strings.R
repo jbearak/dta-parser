@@ -244,6 +244,27 @@ test_that("`.()` tags coexist with splices and `:=` names", {
         set_var_labels(data, .(tag) := "x", a = "y"),
         "must not contain duplicate column names"
     )
+    expect_identical(var_label(data$a), "First")
+    expect_identical(var_label(data$b), "Second")
+    expect_identical(var_label(data$c), "Third")
+})
+
+test_that("`.()` tags keep a spliced value's own frame and reject empties", {
+    data <- data.frame(a = c(1, 2), b = c(3, 4))
+    tag <- "a"
+    relabel <- function(data, ...) set_var_labels(data, ...)
+    from_caller <- function(data) {
+        second <- "b"
+        spliced <- list(b = "Spliced")
+        relabel(data, .(tag) := "Tagged", !!second := "Named")
+        relabel(data, .(tag) := "Tagged", !!!spliced)
+    }
+    from_caller(data)
+    expect_identical(var_label(data$a), "Tagged")
+    expect_identical(var_label(data$b), "Spliced")
+
+    expect_error(set_var_labels(data, .(tag) := "x", ), "can't be empty")
+    expect_identical(var_label(data$a), "Tagged")
 })
 
 test_that("forwarded dots keep their own frames alongside a `.()` tag", {

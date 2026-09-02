@@ -513,10 +513,10 @@ is normally written unquoted. When the name is only known at run time, unquote
 it with rlang's `!!` operator or write `.(name)`. These functions capture with
 `rlang::enquo()`, which already applies quasiquotation, so no `rlang::inject()`
 wrapper is needed. Inside the `values` and `where` expressions, `.(name)` and
-the `.data` pronoun both read a column whose name is a string; `!!` and
-`.data[[name]]` do not work in the name position, which names a target rather
-than reading a column, while `.(name)` works everywhere and may sit inside a
-larger expression.
+the `.data` pronoun both read a column whose name is a string. In the name
+position, which names a target rather than reading a column, `!!name` and
+`.(name)` work but `.data[[name]]` does not. `.(name)` is the one spelling that
+works everywhere, and it may sit inside a larger expression.
 
 ```r
 target_name <- "income"
