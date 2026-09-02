@@ -102,7 +102,7 @@
 #' values are indexed by the selected row positions.
 #'
 #' `gen()` appends one variable and does not implement Stata's `before()` or
-#' `after()` placement. A declared `stata_*()` result keeps its numeric storage;
+#' `after()` placement. A declared `dta_*()` result keeps its numeric storage;
 #' otherwise logical, integer, double, and `Date` results use Stata `float`
 #' storage. Ordinary `POSIXct` results use Stata `double` storage so their
 #' millisecond datetime representation is not rounded. `Date` and `POSIXct`
@@ -130,7 +130,7 @@
 #' Topic \tab Stata \tab dtatools \cr
 #' Existing name \tab Error \tab Error before mutation \cr
 #' Numeric default \tab `float`, or `double` after `set type` \tab `float`; `POSIXct` uses `double` \cr
-#' Explicit storage \tab Type prefix \tab `stata_*()` value expression \cr
+#' Explicit storage \tab Type prefix \tab `dta_*()` value expression \cr
 #' Strings \tab Smallest fitting `str#` or `strL` \tab Declared width, otherwise smallest UTF-8-byte width or `strL` \cr
 #' Rows outside `if` \tab Numeric `.` or string `""` \tab Same \cr
 #' Expression with `if` \tab Evaluated only for selected observations \tab Evaluated once for all rows, then selected \cr

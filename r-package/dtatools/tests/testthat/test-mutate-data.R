@@ -1912,7 +1912,7 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
     cases <- list(
         list(value = NaN, message = "cannot contain `NaN` or infinities"),
         list(value = Inf, message = "cannot contain `NaN` or infinities"),
-        list(value = 101, message = "cannot represent `x`; use `stata_int")
+        list(value = 101, message = "cannot represent `x`; use `dta_int")
     )
     for (case in cases) {
         data <- data.frame(x = dta_byte(1:3))

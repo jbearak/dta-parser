@@ -140,7 +140,7 @@ one, the selected-row count, or the full dataset row count. Full-length
 values are indexed by the selected row positions.
 
 \code{gen()} appends one variable and does not implement Stata's \code{before()} or
-\code{after()} placement. A declared \verb{stata_*()} result keeps its numeric storage;
+\code{after()} placement. A declared \verb{dta_*()} result keeps its numeric storage;
 otherwise logical, integer, double, and \code{Date} results use Stata \code{float}
 storage. Ordinary \code{POSIXct} results use Stata \code{double} storage so their
 millisecond datetime representation is not rounded. \code{Date} and \code{POSIXct}
@@ -168,7 +168,7 @@ The table records the deliberate first-release choices relative to Stata's
 Topic \tab Stata \tab dtatools \cr
 Existing name \tab Error \tab Error before mutation \cr
 Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{float}; \code{POSIXct} uses \code{double} \cr
-Explicit storage \tab Type prefix \tab \verb{stata_*()} value expression \cr
+Explicit storage \tab Type prefix \tab \verb{dta_*()} value expression \cr
 Strings \tab Smallest fitting \code{str#} or \code{strL} \tab Declared width, otherwise smallest UTF-8-byte width or \code{strL} \cr
 Rows outside \code{if} \tab Numeric \code{.} or string \code{""} \tab Same \cr
 Expression with \code{if} \tab Evaluated only for selected observations \tab Evaluated once for all rows, then selected \cr
