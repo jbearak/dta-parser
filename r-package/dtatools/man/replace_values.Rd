@@ -289,3 +289,8 @@ repl(panel, x = 0, where = .n == 1, bysort = c(id, t))  # sorts first
 \references{
 StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
 }
+\seealso{
+\link{dibble-bracket} for \code{data[i, y := value]} on a \link{dibble}, which
+creates or overwrites in one call and takes the same \code{by}, \code{bysort},
+and grouped input.
+}

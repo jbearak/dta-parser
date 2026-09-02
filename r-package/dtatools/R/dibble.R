@@ -51,6 +51,8 @@
 #' grouped <- dplyr::group_by(frame, x)
 #' is_dibble(grouped)
 #' dplyr::group_vars(grouped)
+#' @seealso [dibble-bracket] for `survey[i, y := value]`, the assignment
+#'   shape only a dibble supports.
 #' @name dibble
 NULL
 
@@ -127,4 +129,247 @@ is_dibble <- function(x) {
     )
     for (name in carried) attr(result, name) <- source_attributes[[name]]
     result
+}
+
+#' Bracket mutation on a dibble
+#'
+#' A dibble supports data.table's assignment shape, `data[i, j, by]`, with
+#' `j` one or more `:=` assignments: `data[income > 20, adjusted := income
+#' * 1.1]`. The assignment happens by reference, as with [gen()] and
+#' [replace_values()], and the call returns the dibble so brackets chain:
+#' `data[i, y := 1][j, z := 2]`. Because `[` always makes its result
+#' visible, the dataset would print after every assignment; as data.table
+#' does, the next top-level print of the mutated dataset is skipped, so an
+#' assignment typed at the console prints nothing and `data` on the
+#' following line prints as usual. Only a dibble has this
+#' form. dtatools cannot own `[` on a plain data frame or tibble, and a
+#' data table's own `:=` has different storage, missing-value, and
+#' type-promotion semantics, so on those containers `[i, y := 1]` is
+#' whatever error their `[` raises; use `gen()` or `replace_values()`,
+#' which accept every supported container.
+#'
+#' `i` is `where`: `NULL` or missing selects every row, and a logical
+#' expression or numeric row positions follow the rules of
+#' [replace_values()], including the shadow check and the `.n`/`.N` mask
+#' variables. Each right-hand side of `:=` is `values`, evaluated in the
+#' same data mask. Unlike `gen()`, which refuses an existing name, and
+#' `replace_values()`, which refuses a new one, `:=` creates a column that
+#' is absent and overwrites one that exists, as a user of the data.table
+#' shape expects; a new column takes `gen()`'s storage rules and an
+#' existing one `replace_values()`'s, so a declared `stata_*()` target
+#' still rejects values that do not fit. `data[i, y := 1]` is otherwise
+#' `repl(data, y = 1, where = i)` or `gen(data, y = 1, where = i)`.
+#'
+#' `j` may carry several assignments: `` `:=`(y = v, z = w) ``, or
+#' `c("y", "z") := list(v, w)` with one value expression per name. Names
+#' follow `gen()`'s tag rules, so `.(name) := v` and `!!name := v` name a
+#' column held in a string, and a plain string works too: `"y" := v`.
+#' Assignments apply left to right, each seeing the columns the previous
+#' one wrote, and each commits or fails on its own, so a failed second
+#' column leaves the first written, as two Stata lines would. Rows are
+#' selected once for the whole `j`, before any assignment writes: a later
+#' assignment cannot change which rows an earlier one selected, and an
+#' assignment that overwrites the column `i` reads does not move the rows
+#' of the assignments after it. `j` is not a general expression, and
+#' `.SD`, `.GRP`, and `.BY` are not provided; summaries stay with dplyr.
+#'
+#' `by`, `bysort`, and a grouped dibble behave exactly as in
+#' [replace_values()]: groups are formed first, then `i` and each value
+#' are evaluated on each group's rows, which is Stata's `by varlist:`
+#' order rather than data.table's; see the group-wise assignment section
+#' there for `.n`/`.N`, sorting, and the `by`-plus-grouped error. Under
+#' groups, several assignments run column by column across all groups, so
+#' `.n` and `.N` are the same in every assignment of one call. `by` or
+#' `bysort` without a `:=` in `j` is an error.
+#'
+#' Without `:=` the brackets are ordinary tibble subsetting of the current
+#' contents: `data[1, ]`, `data[, "x"]`, `data["x"]`, and `data[i, cols]`
+#' return plain tibbles, following copy-on-modify.
+#'
+#' @param x A dibble.
+#' @param i Row selection, as `where` in [replace_values()]: missing or
+#'   `NULL` for every row, a logical expression, or row positions.
+#'   Without `:=` in `j`, ordinary tibble row indexing.
+#' @param j One or more `:=` assignments, or, without `:=`, ordinary
+#'   tibble column indexing.
+#' @param ... Passed to tibble's `[` when `j` is not an assignment.
+#'   Not allowed otherwise.
+#' @param by,bysort Assignment groups, as in [replace_values()]. Only
+#'   allowed with a `:=` in `j`.
+#' @param drop Passed to tibble's `[` when `j` is not an assignment.
+#' @return With a `:=` in `j`, `x` invisibly, mutated. Otherwise the
+#'   tibble subset.
+#' @examples
+#' survey <- dibble(id = 1:4, income = c(10, 20, 30, 40))
+#' survey[income > 20, adjusted := income * 1.1]
+#' survey[, adjusted := 0][id == 1, adjusted := 1]
+#' survey[, `:=`(rows = .N, last = .n == .N), by = id]
+#' survey[, c("a", "b") := list(id * 2, id * 3)]
+#' name <- "flag"
+#' survey[id > 2, .(name) := TRUE]
+#' survey[1, ]
+#' @seealso [dibble], [replace_values()]
+#' @name dibble-bracket
+NULL
+
+#' @rdname dibble-bracket
+#' @export
+`[.dtatools_ref_data` <- function(x, i, j, ..., by = NULL, bysort = NULL,
+                                  drop) {
+    assignments <- .bracket_assignments(rlang::enquo(j))
+    if (is.null(assignments)) {
+        if (!missing(by) || !missing(bysort)) {
+            stop("`by` and `bysort` need a `:=` assignment in `j`",
+                 call. = FALSE)
+        }
+        # Ordinary subsetting: hand the snapshot to tibble's `[` with the
+        # original call, so `data[i]`, `data[, j]`, and `drop` all keep
+        # tibble's meaning and its own errors.
+        call <- sys.call()
+        call[[1L]] <- quote(`[`)
+        call[[2L]] <- .reference_snapshot(x)
+        return(eval(call, parent.frame()))
+    }
+    if (...length() > 0L || !missing(drop)) {
+        stop("`[` with `:=` takes `i`, `j`, `by`, and `bysort` only",
+             call. = FALSE)
+    }
+    where <- if (missing(i)) {
+        rlang::new_quosure(NULL, emptyenv())
+    } else {
+        rlang::enquo(i)
+    }
+    selection <- .mutation_selection(
+        x, where,
+        by = if (missing(by)) NULL else rlang::enquo(by),
+        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
+    )
+    for (assignment in assignments) {
+        # `:=` creates or overwrites, so the target's presence picks the
+        # path. Looked up per assignment because an earlier one may have
+        # created the column.
+        exists <- .has_mutation_column(
+            .as_mutation_data(x, allow_grouped = TRUE)$columns,
+            assignment$name
+        )
+        .mutate_data(
+            x, rlang::new_quosure(assignment$name, emptyenv()),
+            assignment$values, where, generate = !exists,
+            selection = selection
+        )
+    }
+    # `[` forces its result visible after dispatch, so `invisible()` alone
+    # would autoprint the dataset after every assignment. Recorded after
+    # the last write so a failed assignment still shows its error only.
+    .suppress_bracket_autoprint(x)
+    invisible(x)
+}
+
+# Reads `j` as one or more `:=` assignments, or `NULL` when `j` is
+# missing or not a `:=` call so the ordinary tibble `[` applies. Three
+# spellings: `y := v`, with `y` a bare name, string, `.(name)` call, or
+# the string `!!name` unquotes to; `` `:=`(y = v, z = w) `` with tagged
+# arguments; and `names := list(v, w)`, where `names` is a `c()` call or
+# character vector and the right side a `list()` call of the same length.
+# Each value becomes a quosure in `j`'s environment so it is evaluated as
+# `values` is in `gen()`.
+.bracket_assignments <- function(j_quo) {
+    if (rlang::quo_is_missing(j_quo)) return(NULL)
+    expression <- rlang::quo_get_expr(j_quo)
+    if (!is.call(expression) || !identical(expression[[1L]], quote(`:=`))) {
+        return(NULL)
+    }
+    environment <- rlang::quo_get_env(j_quo)
+    arguments <- as.list(expression)[-1L]
+    tags <- names(arguments)
+    if (is.null(tags)) tags <- rep("", length(arguments))
+    value_quosure <- function(value) {
+        if (identical(value, quote(expr = ))) {
+            stop("`:=` needs a value for every column", call. = FALSE)
+        }
+        rlang::new_quosure(value, environment)
+    }
+    if (any(nzchar(tags))) {
+        if (!all(nzchar(tags))) {
+            stop("`:=` mixes tagged and untagged arguments", call. = FALSE)
+        }
+        if (anyDuplicated(tags) > 0L) {
+            stop("`:=` names each column once", call. = FALSE)
+        }
+        return(lapply(seq_along(arguments), function(index) {
+            list(
+                name = .validated_runtime_name(tags[[index]]),
+                values = value_quosure(arguments[[index]])
+            )
+        }))
+    }
+    if (length(arguments) != 2L) {
+        stop("`:=` takes one left-hand side and one right-hand side",
+             call. = FALSE)
+    }
+    left <- arguments[[1L]]
+    right <- arguments[[2L]]
+    names <- .bracket_target_names(left, environment)
+    # The left-hand shape picks the form: a `c()` call or a vector of
+    # several names pairs with `list()`, and anything else takes the
+    # whole right-hand side as one value expression, so `y := list(x)`
+    # is not mistaken for the multi-column form.
+    multiple <- .bracket_is_call_to(left, "c") ||
+        (is.character(left) && length(left) > 1L)
+    if (!multiple) {
+        return(list(list(name = names, values = value_quosure(right))))
+    }
+    if (!.bracket_is_call_to(right, "list") ||
+        length(right) - 1L != length(names)) {
+        stop(sprintf(
+            "`%s :=` needs `list()` of %d value expressions on the right",
+            paste(deparse(left), collapse = " "), length(names)
+        ), call. = FALSE)
+    }
+    if (!is.null(names(right)) && any(nzchar(names(right)))) {
+        stop("the `list()` of `:=` values takes no names", call. = FALSE)
+    }
+    values <- as.list(right)[-1L]
+    lapply(seq_along(names), function(index) {
+        list(name = names[[index]], values = value_quosure(values[[index]]))
+    })
+}
+
+# The left-hand side of an untagged `:=`: `gen()`'s target rules extended
+# to a character vector or a `c()` of names for the multi-column form.
+.bracket_target_names <- function(left, environment) {
+    message <- paste(
+        "the left of `:=` must be one column name or `c()` of names: a",
+        "bare name, a string, `!!name`, or `.(name)`"
+    )
+    if (is.symbol(left)) {
+        if (identical(left, quote(...))) stop(message, call. = FALSE)
+        return(as.character(left))
+    }
+    if (is.character(left)) {
+        if (length(left) == 0L || anyNA(left) || !all(nzchar(left))) {
+            stop(message, call. = FALSE)
+        }
+        names <- left
+    } else if (.is_runtime_name_call(left)) {
+        return(.runtime_name_call_value(left, environment))
+    } else if (.bracket_is_call_to(left, "c")) {
+        parts <- as.list(left)[-1L]
+        if (length(parts) == 0L) stop(message, call. = FALSE)
+        names <- unlist(lapply(parts, function(part) {
+            if (.bracket_is_call_to(part, "c")) stop(message, call. = FALSE)
+            .bracket_target_names(part, environment)
+        }), use.names = FALSE)
+    } else {
+        stop(message, call. = FALSE)
+    }
+    if (anyDuplicated(names) > 0L) {
+        stop("`:=` names each column once", call. = FALSE)
+    }
+    names
+}
+
+.bracket_is_call_to <- function(expression, name) {
+    is.call(expression) &&
+        .selection_call_is(expression[[1L]], name, "base")
 }
