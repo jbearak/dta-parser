@@ -1899,7 +1899,7 @@ test_that("per-group value sizes must be 1, the selection, or .N", {
 
 test_that("missing values in a by column form their own groups", {
     data <- data.frame(
-        id = stata_byte(c(1, NA, 1, NA, 2, NA)), x = stata_int(1:6)
+        id = dta_byte(c(1, NA, 1, NA, 2, NA)), x = dta_int(1:6)
     )
     data$id[4] <- tagged_missing("a")
     gen(data, n = .N, by = id)
@@ -1933,7 +1933,7 @@ test_that("bysort sorts by reference and then groups", {
 
     # Stata total order puts `.` and `.a` after every finite value.
     compact <- data.frame(
-        id = stata_byte(c(NA, 2, 1, NA)), x = dta_int(1:4)
+        id = dta_byte(c(NA, 2, 1, NA)), x = dta_int(1:4)
     )
     compact$id[1] <- tagged_missing("a")
     gen(compact, n = .n, bysort = id)
@@ -2010,14 +2010,14 @@ test_that("compact targets stay compact under by", {
     expect_identical(as.double(data$x), c(1, 0, 3, 0))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
 
-    repl(data, x = stata_int(9L), by = id)
+    repl(data, x = dta_int(9L), by = id)
     expect_identical(as.double(data$x), c(9, 9, 9, 9))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     expect_error(repl(data, x = 1e6, where = .n == 1, by = id), "int")
     expect_identical(as.double(data$x), c(9, 9, 9, 9))
 
-    gen(data, y = stata_byte(.n), by = id)
-    expect_identical(stata_storage_type(data$y), "byte")
+    gen(data, y = dta_byte(.n), by = id)
+    expect_identical(dta_storage_type(data$y), "byte")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$y))
 })
 

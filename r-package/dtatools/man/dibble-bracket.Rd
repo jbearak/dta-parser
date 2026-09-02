@@ -33,7 +33,7 @@ tibble subset.
 A dibble supports data.table's assignment shape, \code{data[i, j, by]}, with
 \code{j} one or more \verb{:=} assignments: `data[income > 20, adjusted := income
 \itemize{
-\item 1.1]\verb{. The assignment happens by reference, as with [gen()] and [replace_values()], and the call returns the dibble so brackets chain: }data[i, y := 1][j, z := 2]\verb{. Because }[\verb{always makes its result visible, the dataset would print after every assignment; as data.table does, the next top-level print of the mutated dataset is skipped, so an assignment typed at the console prints nothing and}data\verb{on the following line prints as usual. Only a dibble has this form. dtatools cannot own}[\verb{on a plain data frame or tibble, and a data table's own}:=\verb{has different storage, missing-value, and type-promotion semantics, so on those containers}[i, y := 1]\verb{is whatever error their}[\verb{raises; use}gen()\code{or}replace_values()`,
+\item 1.1]\verb{. The assignment happens by reference, as with [gen()] and [replace_values()], and the call returns the dibble so brackets chain: }data[i, y := 1][j, z := 2]\verb{. Because }[\verb{always makes its result visible, the dataset would print after every assignment; as data.table does, the next top-level print of the mutated dataset is skipped, so an assignment typed at the console prints nothing and}data\verb{on the following line prints as usual. The skip lasts only for the statement that made the assignment: after}result <- data[i, y := 1]\verb{, a loop, or }invisible(data[i, y := 1])\verb{, nothing is skipped. Only a dibble has this form. dtatools cannot own }[\verb{on a plain data frame or tibble, and a data table's own}:=\verb{has different storage, missing-value, and type-promotion semantics, so on those containers}[i, y := 1]\verb{is whatever error their}[\verb{raises; use}gen()\code{or}replace_values()`,
 which accept every supported container.
 }
 
@@ -43,6 +43,8 @@ which accept every supported container.
 [gen()]: R:gen()
 [replace_values()]: R:replace_values()
 [j, z := 2]: R:j,\%20z\%20:=\%202
+[i, y := 1]: R:i,\%20y\%20:=\%201
+[i, y := 1]: R:i,\%20y\%20:=\%201
 [i, y := 1]: R:i,\%20y\%20:=\%201
 }
 }

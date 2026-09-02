@@ -7,7 +7,7 @@ test_that("one := creates a missing column and overwrites an existing one", {
     expect_true(is_dibble(result))
     expect_identical(names(data), c("x", "y"))
     expect_identical(as.double(data$y), c(2, 4, 6))
-    expect_identical(stata_storage_type(data$y), "float")
+    expect_identical(dta_storage_type(data$y), "float")
 
     data[, y := 0]
     expect_identical(as.double(data$y), c(0, 0, 0))
@@ -184,11 +184,11 @@ test_that("a compact target stays compact after a bracket replacement", {
     data[.n == .N, x := 7L, by = id]
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     expect_identical(as.double(data$x), c(1, 7, 7))
-    expect_identical(stata_storage_type(data$x), "int")
+    expect_identical(dta_storage_type(data$x), "int")
 
     data[, y := dta_byte(.n)]
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$y))
-    expect_identical(stata_storage_type(data$y), "byte")
+    expect_identical(dta_storage_type(data$y), "byte")
 })
 
 test_that("brackets without := subset the snapshot as before", {
@@ -232,4 +232,50 @@ test_that("the next top-level print after a bracket assignment is skipped", {
     expect_output(print(data), "A tibble")
     expect_null(dtatools:::.bracket_print$skip)
     expect_output(print(data), "A tibble")
+})
+
+test_that("the autoprint skip does not outlive its top-level statement", {
+    # Only a real top-level loop autoprints, so drive a child R session.
+    script <- tempfile(fileext = ".R")
+    writeLines(c(
+        "library(dtatools)",
+        "data <- dibble(x = 1:2)",
+        "cat('A\\n')",
+        "data[1, y := 9]",            # autoprint skipped
+        "cat('B\\n')",
+        "data",                       # prints
+        "cat('C\\n')",
+        "result <- data[2, y := 1]",  # nothing to skip; record must die
+        "data",                       # prints
+        "cat('D\\n')",
+        "for (i in 1:2) data[i, z := i]",
+        "data",                       # prints
+        "cat('E\\n')",
+        "invisible(data[, w := 0])",
+        "data",                       # prints
+        "cat('F\\n')"
+    ), script)
+    output <- system2(
+        file.path(R.home("bin"), "Rscript"), shQuote(script),
+        stdout = TRUE, stderr = FALSE,
+        env = paste0("R_LIBS=", shQuote(paste(.libPaths(), collapse = ":")))
+    )
+    # Only the child's standard output carries printed tables; anything on
+    # its standard error, such as a startup message, is not content.
+    markers <- match(c("A", "B", "C", "D", "E", "F"), output)
+    expect_false(anyNA(markers), info = paste(output, collapse = "\n"))
+    section <- function(index) {
+        # `seq.int(a, b)` counts down when `b < a`, so size the run first.
+        start <- markers[[index]] + 1L
+        output[seq.int(start, length.out = markers[[index + 1L]] - start)]
+    }
+    expect_identical(
+        section(1L), character(), info = paste(output, collapse = "\n")
+    )
+    for (index in 2:5) {
+        expect_true(
+            any(grepl("tibble", section(index), fixed = TRUE)),
+            info = paste("section", index)
+        )
+    }
 })

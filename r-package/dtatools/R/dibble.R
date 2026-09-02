@@ -141,7 +141,9 @@ is_dibble <- function(x) {
 #' visible, the dataset would print after every assignment; as data.table
 #' does, the next top-level print of the mutated dataset is skipped, so an
 #' assignment typed at the console prints nothing and `data` on the
-#' following line prints as usual. Only a dibble has this
+#' following line prints as usual. The skip lasts only for the statement
+#' that made the assignment: after `result <- data[i, y := 1]`, a loop, or
+#' `invisible(data[i, y := 1])`, nothing is skipped. Only a dibble has this
 #' form. dtatools cannot own `[` on a plain data frame or tibble, and a
 #' data table's own `:=` has different storage, missing-value, and
 #' type-promotion semantics, so on those containers `[i, y := 1]` is

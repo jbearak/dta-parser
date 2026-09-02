@@ -135,7 +135,7 @@
 #' then `.a` through `.z`), and then groups by those same columns, so the
 #' rows within each group are the sorted rows and `.n` follows the sort.
 #' Stata's parenthesized sort-only keys are not supported: `bysort id
-#' (date):` is an `arrange()` or `reorder_stata_rows()` line followed by
+#' (date):` is an `arrange()` or `reorder_dta_rows()` line followed by
 #' `by = id`. Group identity uses Stata value identity for `stata_*()`
 #' columns and ordinary identity otherwise, so missing values form their
 #' own group, as in Stata, and each extended missing code its own.
@@ -1324,7 +1324,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         # extended missing after every finite value.
         order <- vctrs::vec_order(key_columns())
         if (!identical(order, seq_len(original$nrow))) {
-            reorder_stata_rows(data, order)
+            reorder_dta_rows(data, order)
             # The sort permuted every column by reference; a plain data
             # frame's column list was snapshotted before it.
             original <- .as_mutation_data(data, allow_grouped = TRUE)
@@ -2048,16 +2048,34 @@ as.list.dtatools_ref_data <- function(x, ...) {
 # The `[` primitive marks its result visible after S3 dispatch, so a
 # bracket assignment cannot return invisibly the way `gen()` does. As
 # data.table does for its `:=`, the assignment records the dataset it
-# just mutated and the next top-level print of that dataset is skipped,
+# just mutated, and the next top-level print of that dataset is skipped,
 # which is the autoprint of the assignment's own result. The record is
 # dropped at that first print, so a `print(data)` or bare `data` on the
 # next line prints, and a print from inside a function or a test never
 # skips, because it sits deeper in the call stack.
+#
+# The autoprint only happens when the bracket call is itself the
+# top-level statement. Inside `<-`, a loop, `invisible()`, or a function
+# body nothing consumes the record, and left alone it would swallow the
+# user's next bare `data`. A task callback clears the record when the
+# top-level statement that set it finishes, so it can never outlive that
+# statement. The callback is registered once per statement and removes
+# itself, so an idle session carries no callback.
 .bracket_print <- new.env(parent = emptyenv())
 .bracket_print$skip <- NULL
+.bracket_print$callback <- FALSE
 
 .suppress_bracket_autoprint <- function(x) {
     .bracket_print$skip <- .reference_state(x)
+    if (!.bracket_print$callback) {
+        .bracket_print$callback <- TRUE
+        addTaskCallback(function(...) {
+            .bracket_print$skip <- NULL
+            .bracket_print$callback <- FALSE
+            FALSE
+        }, name = "dtatools_bracket_autoprint")
+    }
+    invisible(NULL)
 }
 
 .skip_bracket_autoprint <- function(x, frames) {
