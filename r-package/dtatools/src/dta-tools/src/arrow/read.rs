@@ -111,6 +111,8 @@ pub struct ArrowReadResult {
     /// from shared tables.
     pub value_label_reference_counts: HashMap<String, usize>,
     pub row_count: u64,
+    /// Complete source rows when a zero-row schema read requested the count.
+    pub source_row_count: Option<u64>,
     pub columns: Vec<ArrowReadColumn>,
     pub stored_signature: Option<String>,
 }
@@ -1329,12 +1331,14 @@ struct PreparedRead {
     dictionaries: HashMap<i64, ArrayData>,
     plans: Vec<BlockPlan>,
     produced: u64,
+    source_row_count: Option<u64>,
     stored_signature: Option<String>,
 }
 
 fn prepare_read<R: Read + Seek>(
     reader: &mut R,
     options: &ArrowReadOptions,
+    count_source_rows: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<PreparedRead, ArrowProfileError> {
     let mut footer = read_footer(reader)?;
@@ -1403,7 +1407,7 @@ fn prepare_read<R: Read + Seek>(
     let mut produced = 0_u64;
     let mut seen_rows = 0_u64;
     for (batch_index, block) in footer.record_blocks.iter().enumerate() {
-        if produced >= limit {
+        if produced >= limit && !count_source_rows {
             break;
         }
         if interrupt() {
@@ -1414,6 +1418,11 @@ fn prepare_read<R: Read + Seek>(
         seen_rows = seen_rows
             .checked_add(header.rows)
             .ok_or_else(|| invalid("row count overflow"))?;
+        if produced >= limit {
+            // Only a counted read gets here: the window is complete, and
+            // the remaining headers are scanned for their row totals alone.
+            continue;
+        }
         if header.rows == 0 {
             plans.push(BlockPlan {
                 batch_index,
@@ -1514,6 +1523,7 @@ fn prepare_read<R: Read + Seek>(
         dictionaries,
         plans,
         produced,
+        source_row_count: count_source_rows.then_some(seen_rows),
         stored_signature,
     })
 }
@@ -1884,6 +1894,7 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
         dataset,
         value_label_reference_counts: prepared.value_label_reference_counts,
         row_count: prepared.produced,
+        source_row_count: prepared.source_row_count,
         columns,
         stored_signature: prepared.stored_signature,
     }
@@ -1912,9 +1923,27 @@ impl ArrowFileSnapshot {
         options: &ArrowReadOptions,
         interrupt: &mut dyn FnMut() -> bool,
     ) -> Result<ArrowReadResult, ArrowProfileError> {
+        self.read_internal(options, false, interrupt)
+    }
+
+    /// Read while also scanning every batch header for the complete row count.
+    pub fn read_with_source_row_count(
+        &self,
+        options: &ArrowReadOptions,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowReadResult, ArrowProfileError> {
+        self.read_internal(options, true, interrupt)
+    }
+
+    fn read_internal(
+        &self,
+        options: &ArrowReadOptions,
+        count_source_rows: bool,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowReadResult, ArrowProfileError> {
         let mut read = || -> Result<ArrowReadResult, ArrowProfileError> {
             let mut reader = BufReader::new(self.file.try_clone()?);
-            let prepared = prepare_read(&mut reader, options, interrupt)?;
+            let prepared = prepare_read(&mut reader, options, count_source_rows, interrupt)?;
             let mut columns = columns_skeleton(&prepared)?;
             let context = DecodeContext {
                 footer: &prepared.footer,
@@ -1964,7 +1993,7 @@ pub fn read_arrow_file_from<R: Read + Seek>(
     options: &ArrowReadOptions,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<ArrowReadResult, ArrowProfileError> {
-    let prepared = prepare_read(reader, options, interrupt)?;
+    let prepared = prepare_read(reader, options, false, interrupt)?;
     let mut columns = columns_skeleton(&prepared)?;
     let context = DecodeContext {
         footer: &prepared.footer,
@@ -2355,6 +2384,7 @@ impl ArrowFileSnapshot {
                     record_signature: false,
                     threads: 1,
                 },
+                false,
                 interrupt,
             )?;
             let context = DecodeContext {
@@ -2477,8 +2507,8 @@ mod tests {
             threads: 2,
             ..ArrowReadOptions::default()
         };
-        let prepared =
-            prepare_read(&mut reader, &options, &mut || false).expect("source metadata reads");
+        let prepared = prepare_read(&mut reader, &options, false, &mut || false)
+            .expect("source metadata reads");
         assert!(prepared.footer.schema.metadata().is_empty());
         assert!(prepared
             .footer
@@ -2997,5 +3027,69 @@ mod tests {
         assert!(error
             .to_string()
             .contains("declared decompressed buffer length mismatch"));
+    }
+    #[test]
+    fn counted_read_keeps_the_selected_window() {
+        let directory =
+            std::env::temp_dir().join(format!("dtatools-arrow-counted-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).expect("temp directory");
+        let path = directory.join("source.arrow");
+        let dataset = ArrowWriteDataset {
+            dataset: DatasetDocument::default(),
+            columns: vec![ArrowWriteColumn {
+                name: "x".to_owned(),
+                field: None,
+                array: Arc::new(Int32Array::from(vec![1, 2, 3, 4])),
+            }],
+        };
+        save_arrow_file(
+            &path,
+            &dataset,
+            ArrowCompression::Uncompressed,
+            1,
+            true,
+            &mut || false,
+        )
+        .expect("fixture writes");
+        let snapshot = ArrowFileSnapshot::open(&path).expect("source opens");
+
+        for (row_start, row_count, expected) in [
+            (0, Some(0), vec![]),
+            (0, Some(1), vec![1]),
+            (2, Some(1), vec![3]),
+            (1, None, vec![2, 3, 4]),
+        ] {
+            let options = ArrowReadOptions {
+                row_start,
+                row_count,
+                verify: false,
+                ..ArrowReadOptions::default()
+            };
+            let result = snapshot
+                .read_with_source_row_count(&options, &mut || false)
+                .expect("counted read succeeds");
+            assert_eq!(result.source_row_count, Some(4));
+            assert_eq!(result.row_count, expected.len() as u64);
+            let values: Vec<i32> = result.columns[0]
+                .chunks
+                .iter()
+                .flat_map(|chunk| {
+                    chunk
+                        .as_any()
+                        .downcast_ref::<Int32Array>()
+                        .expect("Int32 result")
+                        .values()
+                        .to_vec()
+                })
+                .collect();
+            assert_eq!(values, expected);
+            let plain = snapshot
+                .read(&options, &mut || false)
+                .expect("plain read succeeds");
+            assert_eq!(plain.source_row_count, None);
+            assert_eq!(plain.row_count, result.row_count);
+        }
+        drop(snapshot);
+        std::fs::remove_dir_all(directory).expect("temp directory removed");
     }
 }

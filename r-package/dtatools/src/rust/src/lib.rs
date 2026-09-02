@@ -62,6 +62,7 @@ extern "C" {
 
     fn dtatools_check_interrupt() -> c_int;
     fn dtatools_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
+    fn dtatools_preserve_object(object: Sexp) -> c_int;
     fn dtatools_release_object(object: Sexp);
     fn dtatools_make_char(
         value: *const c_char,
@@ -1632,6 +1633,17 @@ impl ProtectGuard {
         }
     }
 
+    unsafe fn preserve(&mut self, value: Sexp) -> Result<(), String> {
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| "R could not track a preserved native vector".to_owned())?;
+        if dtatools_preserve_object(value) == 0 {
+            return Err("R could not preserve a native vector".to_owned());
+        }
+        self.objects.push(value);
+        Ok(())
+    }
+
     unsafe fn alloc(&mut self, kind: c_int, length: RLen) -> Result<Sexp, String> {
         self.objects
             .try_reserve(1)
@@ -2283,6 +2295,13 @@ unsafe fn attach_dataset_attributes(result: Sexp, metadata: &DtaMetadata) -> Res
         &mut guard,
     )?;
     Ok(())
+}
+
+unsafe fn attach_source_rows(result: Sexp, rows: u64) -> Result<(), String> {
+    let mut guard = ProtectGuard::new();
+    let value = guard.alloc(REALSXP, 1)?;
+    *REAL(value) = rows as f64;
+    set_attr(result, "dtatools.source.rows", value)
 }
 
 unsafe fn build_data_frame(mut data: DtaData) -> Result<Sexp, String> {
@@ -3352,13 +3371,14 @@ unsafe fn read_impl(
     };
     let mut file =
         DtaFile::open_with_encoding(path, config.encoding).map_err(|error| error.to_string())?;
-    validate_r_row_count(file.metadata().nobs, row_start, row_count)?;
+    let source_rows = file.metadata().nobs;
+    validate_r_row_count(source_rows, row_start, row_count)?;
     let options = ReadOptions {
         row_start,
         row_count,
         column_indices: columns,
     };
-    if config.direct_to_r {
+    let result = if config.direct_to_r {
         let threads = file
             .parallel_thread_count(&options, config.requested_threads)
             .map_err(|error| error.to_string())?;
@@ -3391,7 +3411,13 @@ unsafe fn read_impl(
             .read_with_interrupts(&options, coarse_interrupt, frequent_interrupt_poller())
             .map_err(|error| error.to_string())?;
         build_data_frame(data)
+    }?;
+    if row_count == Some(0) {
+        let mut result_guard = ProtectGuard::new();
+        result_guard.preserve(result)?;
+        attach_source_rows(result, source_rows)?;
     }
+    Ok(result)
 }
 
 fn panic_message(payload: Box<dyn Any + Send>) -> String {

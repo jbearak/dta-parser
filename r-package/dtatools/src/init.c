@@ -140,7 +140,7 @@ extern void *dtatools_open_arrow_rust(const char *, char **);
 extern void dtatools_close_arrow_rust(void *);
 extern SEXP dtatools_read_arrow_rust(
     const void *, const int *, size_t, int, double, double, int, int, int,
-    int, int, int *, char **
+    int, int, int, int *, char **
 );
 extern SEXP dtatools_arrow_metadata_rust(
     const void *, int, int, double, double, int *, char **
@@ -3037,6 +3037,21 @@ int dtatools_is_null(SEXP value) {
     return Rf_isNull(value);
 }
 
+typedef struct {
+    SEXP object;
+} preserve_object_context;
+
+static void preserve_object_call(void *data) {
+    preserve_object_context *context = (preserve_object_context *) data;
+    R_PreserveObject(context->object);
+}
+
+int dtatools_preserve_object(SEXP object) {
+    if (object == NULL) return 0;
+    preserve_object_context context = {object};
+    return R_ToplevelExec(preserve_object_call, &context);
+}
+
 void dtatools_release_object(SEXP object) {
     if (object != NULL) R_ReleaseObject(object);
 }
@@ -3971,7 +3986,7 @@ SEXP C_dtatools_close_arrow(SEXP snapshot) {
 
 SEXP C_dtatools_read_arrow(
     SEXP snapshot, SEXP columns, SEXP skip, SEXP n_max, SEXP verify, SEXP profile,
-    SEXP numeric_altrep, SEXP threads, SEXP datasig
+    SEXP numeric_altrep, SEXP threads, SEXP datasig, SEXP count_source_rows
 ) {
     void *snapshot_pointer = arrow_snapshot_pointer(snapshot);
     int all_columns = Rf_isNull(columns);
@@ -3996,6 +4011,11 @@ SEXP C_dtatools_read_arrow(
         LOGICAL(datasig)[0] == NA_LOGICAL) {
         Rf_error("internal data signature selector must be logical");
     }
+    if (TYPEOF(count_source_rows) != LGLSXP ||
+        XLENGTH(count_source_rows) != 1 ||
+        LOGICAL(count_source_rows)[0] == NA_LOGICAL) {
+        Rf_error("internal source-row selector must be logical");
+    }
     if (TYPEOF(threads) != INTSXP || XLENGTH(threads) != 1 ||
         INTEGER(threads)[0] < 0) {
         Rf_error("internal thread count must be one non-negative integer");
@@ -4014,6 +4034,7 @@ SEXP C_dtatools_read_arrow(
         LOGICAL(numeric_altrep)[0],
         INTEGER(threads)[0],
         LOGICAL(datasig)[0],
+        LOGICAL(count_source_rows)[0],
         &interrupted,
         &rust_error
     );
@@ -7209,7 +7230,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_datasig", (DL_FUNC) &C_dtatools_datasig, 2},
     {"C_dtatools_open_arrow", (DL_FUNC) &C_dtatools_open_arrow, 1},
     {"C_dtatools_close_arrow", (DL_FUNC) &C_dtatools_close_arrow, 1},
-    {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 9},
+    {"C_dtatools_read_arrow", (DL_FUNC) &C_dtatools_read_arrow, 10},
     {"C_dtatools_arrow_metadata",
      (DL_FUNC) &C_dtatools_arrow_metadata, 5},
     {"C_dtatools_arrow_datasig",

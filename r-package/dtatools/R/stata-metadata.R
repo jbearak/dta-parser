@@ -638,3 +638,25 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
     }
     result
 }
+
+# `stata_string` declares coercion pairs only with itself and `character`,
+# but read_dta() wraps a labelled or noted string column in the metadata
+# vector class. Combining a bare owned string with a wrapped one - which
+# happens whenever ragged sources are appended - therefore had no common
+# type. Delegating to the shared metadata helpers strips the marker and
+# lets the `stata_string` pair resolve the storage width, then restores
+# the notes and characteristics.
+
+#' @export
+vec_ptype2.dtatools_stata_metadata_vector.stata_string <-
+    .stata_metadata_vector_ptype2
+#' @export
+vec_ptype2.stata_string.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_ptype2
+
+#' @export
+vec_cast.dtatools_stata_metadata_vector.stata_string <-
+    .stata_metadata_vector_cast
+#' @export
+vec_cast.stata_string.dtatools_stata_metadata_vector <-
+    .stata_metadata_vector_cast_base

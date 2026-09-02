@@ -39,7 +39,8 @@ use arrow_buffer::{ArrowNativeType, Buffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
-    attach_stata_metadata, attach_variable_attribute_view, boundary, check_interrupt,
+    attach_source_rows, attach_stata_metadata, attach_variable_attribute_view, boundary,
+    check_interrupt,
     coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute_from_entries,
     missing_from_code, numeric_altrep_storage, observed_value, parse_stata_metadata_sexp,
     poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
@@ -3297,6 +3298,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
     numeric_altrep: c_int,
     requested_threads: c_int,
     record_signature: c_int,
+    count_source_rows: c_int,
     interrupted: *mut c_int,
     error: *mut *mut c_char,
 ) -> Sexp {
@@ -3335,12 +3337,15 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             record_signature: record_signature != 0,
             threads: requested,
         };
-        let mut result = snapshot
-            .read(&options, &mut coarse_interrupt)
-            .map_err(|error| error.to_string())?;
+        let mut result = if count_source_rows != 0 {
+            snapshot.read_with_source_row_count(&options, &mut coarse_interrupt)
+        } else {
+            snapshot.read(&options, &mut coarse_interrupt)
+        }.map_err(|error| error.to_string())?;
         let profiled = result.profile_version.is_some();
         let row_count = usize::try_from(result.row_count)
             .map_err(|_| "the selection has too many rows".to_owned())?;
+        let source_row_count = result.source_row_count;
         if result.row_count > crate::R_DATA_FRAME_MAX_ROWS {
             return Err("R data frames cannot contain more than 2^31-1 rows".to_owned());
         }
@@ -3494,6 +3499,9 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             let mut guard = ProtectGuard::new();
             let signature = scalar_string(signature, &mut guard)?;
             set_attr(frame, "datasig", signature)?;
+        }
+        if let Some(source_rows) = source_row_count {
+            attach_source_rows(frame, source_rows)?;
         }
         Ok(frame)
     })

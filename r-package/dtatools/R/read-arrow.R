@@ -90,7 +90,16 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
                        ),
                        threads = getOption("dtatools.threads", 0L),
                        datasig = FALSE) {
-    selection <- rlang::enquo(col_select)
+    .read_arrow_impl(
+        file, rlang::enquo(col_select), skip, n_max, verify, profile,
+        .name_repair, output, use_numeric_altrep, threads, datasig,
+        keep_source_rows = FALSE
+    )
+}
+
+.read_arrow_impl <- function(file, selection, skip, n_max, verify, profile,
+                             .name_repair, output, use_numeric_altrep, threads,
+                             datasig, keep_source_rows) {
     row_window <- .normalize_row_window(skip, n_max)
     verify <- .normalize_arrow_flag(verify, "verify")
     profile <- .normalize_arrow_flag(profile, "profile")
@@ -128,8 +137,11 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         profile,
         use_numeric_altrep,
         threads,
-        datasig
+        datasig,
+        keep_source_rows
     )
+    source_rows <- attr(native, "dtatools.source.rows", exact = TRUE)
+    attr(native, "dtatools.source.rows") <- NULL
     if (!is.null(column_indices)) {
         names(native) <- selected_names
     }
@@ -146,7 +158,11 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     result <- .copy_stata_metadata_attributes(native, result)
     if (!is.null(disk_signature)) attr(result, "datasig") <- disk_signature
-    .repair_data_table_container(result)
+    result <- .repair_data_table_container(result)
+    if (keep_source_rows) {
+        attr(result, "dtatools.source.rows") <- source_rows
+    }
+    result
 }
 
 .arrow_metadata <- function(snapshot, profile = TRUE,
