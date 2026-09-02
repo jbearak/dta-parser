@@ -174,3 +174,90 @@ test_that("a string target leaves a compact column unmaterialized", {
     )
     expect_equal(as.double(data$compact), c(10, 3))
 })
+
+test_that("`.()` names the target and reads columns at run time", {
+    data <- data.frame(income = c(10, 20), hh1 = c(5, 6))
+    target <- "income"
+    origin <- "hh1"
+
+    repl(data, .(target), .(origin) + 1)
+    expect_equal(as.double(data$income), c(6, 7))
+
+    repl(data, .(target), 0, where = .(origin) > 5)
+    expect_equal(as.double(data$income), c(6, 0))
+
+    # `.()` sits inside a larger expression, which `!!` cannot do.
+    gen(data, .(paste0(target, "_flag")), .(origin) * 2 + income)
+    expect_equal(as.double(data$income_flag), c(16, 12))
+})
+
+test_that("`.()` rejects invalid runtime names", {
+    data <- data.frame(income = c(10, 20))
+    expect_error(
+        repl(data, .(1), 0),
+        "takes one nonempty, non-missing string"
+    )
+    expect_error(
+        repl(data, .(c("a", "b")), 0),
+        "takes one nonempty, non-missing string"
+    )
+    expect_error(
+        repl(data, .("income", "extra"), 0),
+        "takes one nonempty, non-missing string"
+    )
+    absent <- "absent"
+    expect_error(repl(data, income, .(absent)), "does not exist")
+    expect_identical(names(data), "income")
+})
+
+test_that("`set_var_label()` accepts a `.()` runtime name", {
+    data <- data.frame(income = c(10, 20))
+    target <- "income"
+    set_var_label(data, .(target), "Income")
+    expect_identical(var_label(data$income), "Income")
+})
+
+test_that("`.()` tags name columns in the plural label setters", {
+    data <- data.frame(a = c(1, 2), b = c(3, 4))
+    first <- "a"
+    set_var_labels(data, .(first) := "First", b = "Second")
+    expect_identical(var_label(data$a), "First")
+    expect_identical(var_label(data$b), "Second")
+
+    second <- "b"
+    set_val_labels(data, .(second) := c(yes = 3, no = 4))
+    expect_identical(val_labels(data$b), c(yes = 3, no = 4))
+})
+
+test_that("`.()` tags coexist with splices and `:=` names", {
+    data <- data.frame(a = c(1, 2), b = c(3, 4), c = c(5, 6))
+    tag <- "a"
+    others <- list(b = "Second")
+    third <- "c"
+    set_var_labels(data, .(tag) := "First", !!!others, !!third := "Third")
+    expect_identical(var_label(data$a), "First")
+    expect_identical(var_label(data$b), "Second")
+    expect_identical(var_label(data$c), "Third")
+
+    # Overlapping updates still fail atomically alongside a tag.
+    expect_error(
+        set_var_labels(data, .(tag) := "x", a = "y"),
+        "must not contain duplicate column names"
+    )
+})
+
+test_that("forwarded dots keep their own frames alongside a `.()` tag", {
+    relabel <- function(data, ...) set_var_labels(data, ...)
+    revalue <- function(data, ...) set_val_labels(data, ...)
+    from_caller <- function(data) {
+        tag_name <- "a"
+        caller_label <- "From the caller"
+        relabel(data, .(tag_name) := "Tagged", b = caller_label)
+        revalue(data, .(tag_name) := c(low = 1))
+    }
+    data <- data.frame(a = c(1, 2), b = c(3, 4))
+    from_caller(data)
+    expect_identical(var_label(data$a), "Tagged")
+    expect_identical(var_label(data$b), "From the caller")
+    expect_identical(val_labels(data$a), c(low = 1))
+})
