@@ -1921,3 +1921,154 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
     expect_error(replace_values(data, x, 1:2), "has size")
     expect_identical(serialize(data, NULL), before)
 })
+
+test_that("fused comparison replacement matches the general path", {
+    make_data <- function() data.frame(
+        x = stata_byte(c(1, 2, 3, 4, 5, 6)),
+        y = stata_byte(c(
+            -1, 0, 1, NA_real_, tagged_missing("a"),
+            tagged_missing("z")
+        )),
+        z = stata_long(c(
+            0, 0, 0, NA_real_, tagged_missing("b"),
+            tagged_missing("z")
+        ))
+    )
+    cases <- list(
+        list(value = 9, fused = quote(y < 0), general = quote(I(y < 0))),
+        list(
+            value = tagged_missing("b"),
+            fused = quote(y >= tagged_missing("a")),
+            general = quote(I(y >= tagged_missing("a")))
+        ),
+        list(value = NA_real_, fused = quote(y <= z),
+             general = quote(I(y <= z))),
+        list(value = 8, fused = quote(0 < y),
+             general = quote(I(0 < y)))
+    )
+
+    for (case in cases) {
+        fused <- make_data()
+        general <- make_data()
+        value <- case$value
+        eval(call(
+            "replace_values", quote(fused), quote(x), quote(.env$value),
+            where = case$fused
+        ))
+        eval(call(
+            "replace_values", quote(general), quote(x), quote(.env$value),
+            where = case$general
+        ))
+
+        expect_equal(as.double(fused$x), as.double(general$x))
+        expect_identical(attributes(fused$x), attributes(general$x))
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(fused$x))
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(fused$y))
+        expect_true(dtatools:::.is_unmaterialized_numeric_altrep(fused$z))
+    }
+})
+
+test_that("fused comparison replacement handles full-row values", {
+    replacement <- c(9, NaN, 7, 6, 5, 4)
+    fused <- data.frame(
+        x = stata_byte(1:6),
+        y = stata_byte(c(1, 0, 1, 0, 1, 0))
+    )
+    general <- copy_data(fused)
+
+    replace_values(fused, x, .env$replacement, where = y == 1)
+    replace_values(general, x, .env$replacement, where = I(y == 1))
+
+    expect_equal(as.double(fused$x), as.double(general$x))
+    expect_identical(as.double(fused$x), c(9, 2, 7, 4, 5, 6))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(fused$x))
+})
+
+test_that("fused comparison replacement handles empty and full matches", {
+    empty <- data.frame(x = stata_byte(1:3), y = stata_byte(1:3))
+    before <- serialize(empty, NULL)
+    replace_values(empty, x, 9, where = y < 0)
+    expect_identical(serialize(empty, NULL), before)
+
+    full <- data.frame(x = stata_byte(1:3), y = stata_byte(1:3))
+    replace_values(full, x, tagged_missing("c"), where = y >= 1)
+    expect_true(all(is_tagged_missing(full$x, "c")))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(full$x))
+})
+
+test_that("fused replacement preserves recycling errors and shared data", {
+    bad <- data.frame(
+        x = stata_byte(1:4),
+        y = stata_byte(c(1, 0, 1, 0))
+    )
+    before <- serialize(bad, NULL)
+    expect_error(
+        replace_values(bad, x, c(8, 9, 10), where = y == 1),
+        "has size"
+    )
+    expect_identical(serialize(bad, NULL), before)
+
+    source <- data.frame(
+        x = stata_byte(1:4),
+        y = stata_byte(c(1, 0, 1, 0))
+    )
+    independent <- copy_data(source)
+    replace_values(source, x, 9, where = y == 1)
+
+    expect_identical(as.double(source$x), c(9, 2, 9, 4))
+    expect_identical(as.double(independent$x), as.double(1:4))
+    expect_true(
+        dtatools:::.is_unmaterialized_numeric_altrep(independent$x)
+    )
+})
+
+test_that("threaded fused replacement matches the general path", {
+    size <- 600000L
+    fused <- data.frame(
+        x = stata_byte(rep(1, size)),
+        y = stata_long(seq_len(size))
+    )
+    general <- copy_data(fused)
+    previous <- options(dtatools.threads = 2L)
+    on.exit(options(previous), add = TRUE)
+
+    replace_values(fused, x, 2, where = y <= size / 2)
+    replace_values(general, x, 2, where = I(y <= size / 2))
+
+    expect_identical(as.double(fused$x), as.double(general$x))
+    expect_identical(sum(fused$x == 2), as.integer(size / 2))
+})
+
+test_that("fused comparison evaluates scalar operands once", {
+    calls <- 0L
+    cutoff <- function() {
+        calls <<- calls + 1L
+        1
+    }
+    data <- data.frame(x = stata_byte(1:3), y = stata_byte(1:3))
+
+    replace_values(data, x, 9, where = y > cutoff())
+
+    expect_identical(calls, 1L)
+    expect_identical(as.double(data$x), c(1, 9, 9))
+
+    calls <- 0L
+    ordinary <- data.frame(x = 1:3, y = 1:3)
+    replace_values(ordinary, x, 9L, where = y > cutoff())
+    expect_identical(calls, 1L)
+})
+
+test_that("fused row-value errors roll back before the fallback error", {
+    values <- c(9, NaN, 7)
+    data <- data.frame(
+        x = stata_byte(1:3),
+        y = stata_byte(c(1, 1, 0))
+    )
+    before <- serialize(data, NULL)
+
+    expect_error(
+        replace_values(data, x, .env$values, where = y == 1),
+        "cannot contain `NaN` or unsupported missing tags"
+    )
+    expect_identical(serialize(data, NULL), before)
+})

@@ -561,7 +561,10 @@ unsafe fn compare_operand_element(
                 return None;
             }
             return match ((bits & TAG_BITS) >> 32) as u8 {
-                0 => Some(ComparedElement { rank: 1, value: 0.0 }),
+                0 => Some(ComparedElement {
+                    rank: 1,
+                    value: 0.0,
+                }),
                 tag @ b'a'..=b'z' => Some(ComparedElement {
                     rank: tag - b'a' + 2,
                     value: 0.0,
@@ -601,9 +604,7 @@ unsafe fn compare_operand_element(
         }
         CompareStorage::Float(version) => {
             let value = base.cast::<f32>().add(index).read_unaligned();
-            if let Some(tag) =
-                classify_float_missing_bits_for_version(value.to_bits(), version)
-            {
+            if let Some(tag) = classify_float_missing_bits_for_version(value.to_bits(), version) {
                 return Some(ComparedElement {
                     rank: tag.offset() + 1,
                     value: 0.0,
@@ -719,9 +720,7 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
             .min(length.div_ceil(COMPARE_ROWS_PER_WORKER))
             .max(1);
         if workers == 1 {
-            return unsafe {
-                compare_numeric_range(op, x, y, scalar, output, 0, length)
-            };
+            return unsafe { compare_numeric_range(op, x, y, scalar, output, 0, length) };
         }
         let rows_per_worker = length.div_ceil(workers);
         let output_address = output as usize;
@@ -753,6 +752,379 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
             }
         });
         ok.load(std::sync::atomic::Ordering::Relaxed)
+    };
+
+    match catch_unwind(AssertUnwindSafe(call)) {
+        Ok(true) => 1,
+        Ok(false) | Err(_) => 0,
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NumericPatchTarget {
+    values: *mut c_void,
+    kind: c_int,
+    temporal: c_int,
+    format_version: c_int,
+}
+
+#[derive(Clone, Copy)]
+struct PatchTargetView {
+    values: usize,
+    storage: CompareStorage,
+    kind: NumericKind,
+    temporal: c_int,
+    format_version: c_int,
+}
+
+fn patch_target_view(target: NumericPatchTarget) -> Option<PatchTargetView> {
+    let operand = NumericCompareOperand {
+        values: target.values,
+        kind: target.kind,
+        temporal: target.temporal,
+        format_version: target.format_version,
+    };
+    let compared = compare_operand_view(operand)?;
+    Some(PatchTargetView {
+        values: target.values as usize,
+        storage: compared.storage,
+        kind: NumericKind::try_from(target.kind).ok()?,
+        temporal: target.temporal,
+        format_version: target.format_version,
+    })
+}
+
+fn encoded_patch_observed(value: f64, temporal: c_int) -> f64 {
+    match temporal {
+        1 => value + DAYS_1960_TO_1970,
+        2 => {
+            let source = (value + SECONDS_1960_TO_1970) * 1000.0;
+            let rounded = source.round();
+            let decoded = rounded / 1000.0 - SECONDS_1960_TO_1970;
+            if source.is_finite() && decoded == value {
+                rounded
+            } else {
+                source
+            }
+        }
+        _ => value,
+    }
+}
+
+unsafe fn write_patch_element(
+    target: PatchTargetView,
+    index: usize,
+    value: ComparedElement,
+) -> bool {
+    let output = target.values as *mut u8;
+    if value.rank > 0 {
+        let offset = value.rank - 1;
+        if target.format_version <= 111 && offset != 0 {
+            return false;
+        }
+        match target.kind {
+            NumericKind::Byte => {
+                let encoded = if target.format_version <= 111 {
+                    i8::MAX
+                } else {
+                    101_i8.checked_add_unsigned(offset).unwrap()
+                };
+                output.cast::<i8>().add(index).write_unaligned(encoded);
+            }
+            NumericKind::Int => {
+                let encoded = if target.format_version <= 111 {
+                    i16::MAX
+                } else {
+                    32_741_i16.checked_add_unsigned(offset.into()).unwrap()
+                };
+                output.cast::<i16>().add(index).write_unaligned(encoded);
+            }
+            NumericKind::Long => {
+                let encoded = if target.format_version <= 111 {
+                    i32::MAX
+                } else {
+                    2_147_483_621_i32 + i32::from(offset)
+                };
+                output.cast::<i32>().add(index).write_unaligned(encoded);
+            }
+            NumericKind::Float => {
+                let bits = if target.format_version <= 111 {
+                    0x7f00_0000
+                } else {
+                    0x7f00_0000 + u32::from(offset) * 0x0000_0800
+                };
+                output
+                    .cast::<f32>()
+                    .add(index)
+                    .write_unaligned(f32::from_bits(bits));
+            }
+        }
+        return true;
+    }
+
+    let encoded = encoded_patch_observed(value.value, target.temporal);
+    match target.kind {
+        NumericKind::Byte => {
+            if !encoded.is_finite()
+                || encoded.fract() != 0.0
+                || !(-127.0..=100.0).contains(&encoded)
+            {
+                return false;
+            }
+            output
+                .cast::<i8>()
+                .add(index)
+                .write_unaligned(encoded as i8);
+        }
+        NumericKind::Int => {
+            if !encoded.is_finite()
+                || encoded.fract() != 0.0
+                || !(-32_767.0..=32_740.0).contains(&encoded)
+            {
+                return false;
+            }
+            output
+                .cast::<i16>()
+                .add(index)
+                .write_unaligned(encoded as i16);
+        }
+        NumericKind::Long => {
+            if !encoded.is_finite()
+                || encoded.fract() != 0.0
+                || !(-2_147_483_647.0..=2_147_483_620.0).contains(&encoded)
+            {
+                return false;
+            }
+            output
+                .cast::<i32>()
+                .add(index)
+                .write_unaligned(encoded as i32);
+        }
+        NumericKind::Float => {
+            let maximum = f32::from_bits(0x7eff_ffff) as f64;
+            if !encoded.is_finite() || !(-maximum..=maximum).contains(&encoded) {
+                return false;
+            }
+            output
+                .cast::<f32>()
+                .add(index)
+                .write_unaligned(encoded as f32);
+        }
+    }
+    true
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn compare_patch_range(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    replacement: Option<CompareOperandView>,
+    replacement_scalar: ComparedElement,
+    target: PatchTargetView,
+    start: usize,
+    end: usize,
+) -> Option<(usize, usize, usize)> {
+    let target_operand = CompareOperandView {
+        values: target.values,
+        storage: target.storage,
+        temporal: target.temporal,
+    };
+    let mut matched = 0;
+    let mut old_missing = 0;
+    let mut new_missing = 0;
+    for index in start..end {
+        let left = compare_operand_element(x, index)?;
+        let right = match y {
+            Some(operand) => compare_operand_element(operand, index)?,
+            None => scalar,
+        };
+        if compare_decoded(op, left, right) == 0 {
+            continue;
+        }
+        let old = compare_operand_element(target_operand, index)?;
+        let new = match replacement {
+            Some(operand) => compare_operand_element(operand, index)?,
+            None => replacement_scalar,
+        };
+        if !write_patch_element(target, index, new) {
+            return None;
+        }
+        matched += 1;
+        old_missing += usize::from(old.rank > 0);
+        new_missing += usize::from(new.rank > 0);
+    }
+    Some((matched, old_missing, new_missing))
+}
+
+#[no_mangle]
+/// Compare Stata numeric operands and patch matching compact target rows in
+/// one pass. The caller owns rollback and restores the target when this
+/// function returns zero.
+///
+/// # Safety
+///
+/// Every operand and the target must describe live buffers of at least
+/// `length` elements. The target must not alias another concurrently written
+/// buffer. Output counters must be writable.
+pub unsafe extern "C" fn dtatools_numeric_compare_patch(
+    op: c_int,
+    x: *const NumericCompareOperand,
+    y: *const NumericCompareOperand,
+    scalar_value: f64,
+    scalar_rank: c_int,
+    replacement: *const NumericCompareOperand,
+    replacement_scalar_value: f64,
+    replacement_scalar_rank: c_int,
+    target: *const NumericPatchTarget,
+    length: usize,
+    threads: c_int,
+    matched_output: *mut usize,
+    old_missing_output: *mut usize,
+    new_missing_output: *mut usize,
+) -> c_int {
+    let call = || {
+        if x.is_null()
+            || target.is_null()
+            || matched_output.is_null()
+            || old_missing_output.is_null()
+            || new_missing_output.is_null()
+            || !(0..=5).contains(&op)
+            || !(0..=27).contains(&scalar_rank)
+            || !(0..=27).contains(&replacement_scalar_rank)
+        {
+            return false;
+        }
+        let Some(x) = compare_operand_view(unsafe { *x }) else {
+            return false;
+        };
+        let y = if y.is_null() {
+            None
+        } else {
+            let Some(view) = compare_operand_view(unsafe { *y }) else {
+                return false;
+            };
+            Some(view)
+        };
+        let replacement = if replacement.is_null() {
+            None
+        } else {
+            let Some(view) = compare_operand_view(unsafe { *replacement }) else {
+                return false;
+            };
+            Some(view)
+        };
+        let Some(target) = patch_target_view(unsafe { *target }) else {
+            return false;
+        };
+        let scalar = ComparedElement {
+            rank: scalar_rank as u8,
+            value: if scalar_rank == 0 { scalar_value } else { 0.0 },
+        };
+        let replacement_scalar = ComparedElement {
+            rank: replacement_scalar_rank as u8,
+            value: if replacement_scalar_rank == 0 {
+                replacement_scalar_value
+            } else {
+                0.0
+            },
+        };
+        if (scalar.rank == 0 && scalar.value.is_nan())
+            || (replacement.is_none()
+                && replacement_scalar.rank == 0
+                && replacement_scalar.value.is_nan())
+        {
+            return false;
+        }
+
+        let available = std::thread::available_parallelism().map_or(1, usize::from);
+        let requested = if threads <= 0 {
+            available
+        } else {
+            (threads as usize).min(available)
+        };
+        let workers = requested
+            .min(length.div_ceil(COMPARE_ROWS_PER_WORKER))
+            .max(1);
+        let matched = std::sync::atomic::AtomicUsize::new(0);
+        let old_missing = std::sync::atomic::AtomicUsize::new(0);
+        let new_missing = std::sync::atomic::AtomicUsize::new(0);
+        let ok = std::sync::atomic::AtomicBool::new(true);
+        if workers == 1 {
+            match unsafe {
+                compare_patch_range(
+                    op,
+                    x,
+                    y,
+                    scalar,
+                    replacement,
+                    replacement_scalar,
+                    target,
+                    0,
+                    length,
+                )
+            } {
+                Some((matched_count, old_count, new_count)) => {
+                    matched.store(matched_count, std::sync::atomic::Ordering::Relaxed);
+                    old_missing.store(old_count, std::sync::atomic::Ordering::Relaxed);
+                    new_missing.store(new_count, std::sync::atomic::Ordering::Relaxed);
+                }
+                None => return false,
+            }
+        } else {
+            let rows_per_worker = length.div_ceil(workers);
+            std::thread::scope(|scope| {
+                for worker in 0..workers {
+                    let start = worker * rows_per_worker;
+                    let end = length.min(start + rows_per_worker);
+                    if start >= end {
+                        continue;
+                    }
+                    let matched = &matched;
+                    let old_missing = &old_missing;
+                    let new_missing = &new_missing;
+                    let ok = &ok;
+                    scope.spawn(move || {
+                        match unsafe {
+                            compare_patch_range(
+                                op,
+                                x,
+                                y,
+                                scalar,
+                                replacement,
+                                replacement_scalar,
+                                target,
+                                start,
+                                end,
+                            )
+                        } {
+                            Some((matched_count, old_count, new_count)) => {
+                                matched
+                                    .fetch_add(matched_count, std::sync::atomic::Ordering::Relaxed);
+                                old_missing
+                                    .fetch_add(old_count, std::sync::atomic::Ordering::Relaxed);
+                                new_missing
+                                    .fetch_add(new_count, std::sync::atomic::Ordering::Relaxed);
+                            }
+                            None => {
+                                ok.store(false, std::sync::atomic::Ordering::Relaxed);
+                            }
+                        }
+                    });
+                }
+            });
+            if !ok.load(std::sync::atomic::Ordering::Relaxed) {
+                return false;
+            }
+        }
+        unsafe {
+            matched_output.write(matched.load(std::sync::atomic::Ordering::Relaxed));
+            old_missing_output.write(old_missing.load(std::sync::atomic::Ordering::Relaxed));
+            new_missing_output.write(new_missing.load(std::sync::atomic::Ordering::Relaxed));
+        }
+        true
     };
 
     match catch_unwind(AssertUnwindSafe(call)) {
@@ -1355,7 +1727,9 @@ fn value_label_reference_counts(
     for index in selected {
         if let Some(variable) = metadata.variables.get(index) {
             if !variable.value_label_name.is_empty() {
-                counts.entry(variable.value_label_name.as_str()).or_insert(0);
+                counts
+                    .entry(variable.value_label_name.as_str())
+                    .or_insert(0);
             }
         }
     }
@@ -4181,9 +4555,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         .collect::<Result<Vec<_>, _>>()?;
     let value_label_names = table_descriptors
         .iter()
-        .map(|descriptor| unsafe {
-            required_c_str(descriptor.name, "value-label table name")
-        })
+        .map(|descriptor| unsafe { required_c_str(descriptor.name, "value-label table name") })
         .collect::<Result<Vec<_>, _>>()?;
     let value_label_tables = table_descriptors
         .iter()

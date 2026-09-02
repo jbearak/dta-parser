@@ -40,6 +40,18 @@ extern int dtatools_numeric_compare(
     int, const dtatools_compare_operand *, const dtatools_compare_operand *,
     double, int, int *, size_t, int
 );
+typedef struct {
+    void *values;
+    int kind;
+    int temporal;
+    int format_version;
+} dtatools_patch_target;
+extern int dtatools_numeric_compare_patch(
+    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
+    double, int, const dtatools_compare_operand *, double, int,
+    const dtatools_patch_target *, size_t, int,
+    size_t *, size_t *, size_t *
+);
 extern int dtatools_gather_numeric_columns(
     const void *, size_t, const int *, const int *, size_t
 );
@@ -6648,6 +6660,264 @@ SEXP C_dtatools_missing_tag(SEXP value) {
     return result;
 }
 
+static int numeric_compare_operand_create(
+    SEXP value, dtatools_compare_operand *operand, size_t *length
+) {
+    numeric_data *compact = unmaterialized_numeric_storage(value);
+    if (compact != NULL) {
+        operand->values = compact->values;
+        operand->kind = compact->kind;
+        operand->temporal = compact->temporal;
+        operand->format_version = compact->format_version;
+        *length = compact->length;
+        return 1;
+    }
+    if (TYPEOF(value) != REALSXP) return 0;
+    operand->values = (void *) REAL(value);
+    operand->kind = NUMERIC_DOUBLE;
+    operand->temporal = 0;
+    operand->format_version = 0;
+    *length = (size_t) XLENGTH(value);
+    return 1;
+}
+
+static void numeric_scalar_plan(
+    SEXP scalar, double *value, int *rank, const char *message
+) {
+    if (TYPEOF(scalar) != REALSXP || XLENGTH(scalar) != 2) {
+        Rf_error("%s", message);
+    }
+    *value = REAL(scalar)[0];
+    double scalar_rank = REAL(scalar)[1];
+    if (ISNAN(scalar_rank) || scalar_rank < 0 || scalar_rank > 27 ||
+        scalar_rank != trunc(scalar_rank)) {
+        Rf_error("%s", message);
+    }
+    *rank = (int) scalar_rank;
+}
+
+typedef struct {
+    SEXP target;
+    SEXP saved_data1;
+    SEXP saved_data2;
+    numeric_data *source;
+    numeric_data *patched;
+    unsigned char *undo;
+    size_t undo_bytes;
+    size_t saved_missing_count;
+    dtatools_compare_operand left;
+    dtatools_compare_operand right;
+    dtatools_compare_operand replacement;
+    int has_right;
+    int has_replacement;
+    double scalar_value;
+    int scalar_rank;
+    double replacement_scalar_value;
+    int replacement_scalar_rank;
+    int op;
+    int threads;
+    int journal_complete;
+} fused_compare_patch_transaction;
+
+static int fused_compare_patch_state_changed(
+    const fused_compare_patch_transaction *transaction
+) {
+    return R_altrep_data1(transaction->target) != transaction->saved_data1 ||
+        R_altrep_data2(transaction->target) != transaction->saved_data2;
+}
+
+static void restore_fused_compare_patch(
+    fused_compare_patch_transaction *transaction
+) {
+    if (fused_compare_patch_state_changed(transaction)) {
+        R_set_altrep_data1(transaction->target, transaction->saved_data1);
+        R_set_altrep_data2(transaction->target, transaction->saved_data2);
+        return;
+    }
+    if (transaction->undo_bytes > 0) {
+        memcpy(
+            transaction->source->values,
+            transaction->undo,
+            transaction->undo_bytes
+        );
+    }
+    transaction->source->missing_count = transaction->saved_missing_count;
+}
+
+static SEXP apply_fused_compare_patch(void *data) {
+    fused_compare_patch_transaction *transaction =
+        (fused_compare_patch_transaction *) data;
+    if (transaction->undo_bytes > 0) {
+        memcpy(
+            transaction->undo,
+            transaction->source->values,
+            transaction->undo_bytes
+        );
+    }
+    transaction->journal_complete = 1;
+    transaction->patched = detach_compact_patch_target(transaction->target);
+    if (transaction->patched == NULL) {
+        Rf_error("compact replacement target became unavailable");
+    }
+    dtatools_patch_target target = {
+        transaction->patched->values,
+        transaction->patched->kind,
+        transaction->patched->temporal,
+        transaction->patched->format_version
+    };
+    size_t matched = 0;
+    size_t old_missing = 0;
+    size_t new_missing = 0;
+    int status = dtatools_numeric_compare_patch(
+        transaction->op,
+        &transaction->left,
+        transaction->has_right ? &transaction->right : NULL,
+        transaction->scalar_value,
+        transaction->scalar_rank,
+        transaction->has_replacement ? &transaction->replacement : NULL,
+        transaction->replacement_scalar_value,
+        transaction->replacement_scalar_rank,
+        &target,
+        transaction->patched->length,
+        transaction->threads,
+        &matched,
+        &old_missing,
+        &new_missing
+    );
+    if (!status || matched == 0) {
+        restore_fused_compare_patch(transaction);
+        transaction->journal_complete = 0;
+        return status ? Rf_ScalarLogical(1) : R_NilValue;
+    }
+    if (old_missing > transaction->saved_missing_count ||
+        transaction->saved_missing_count - old_missing > SIZE_MAX - new_missing) {
+        Rf_error("invalid fused replacement missing-value count");
+    }
+    transaction->patched->missing_count =
+        transaction->saved_missing_count - old_missing + new_missing;
+    maybe_inject_reference_write_interrupt();
+    R_CheckUserInterrupt();
+    return Rf_ScalarLogical(1);
+}
+
+static void cleanup_fused_compare_patch(void *data, Rboolean jump) {
+    fused_compare_patch_transaction *transaction =
+        (fused_compare_patch_transaction *) data;
+    if (jump && transaction->journal_complete) {
+        restore_fused_compare_patch(transaction);
+    }
+    free(transaction->undo);
+    transaction->undo = NULL;
+}
+
+SEXP C_dtatools_fused_compare_patch(
+    SEXP target, SEXP op_value, SEXP x, SEXP y, SEXP scalar,
+    SEXP replacement, SEXP replacement_scalar, SEXP threads_value
+) {
+    numeric_data *target_storage = unmaterialized_numeric_storage(target);
+    if (target_storage == NULL) return R_NilValue;
+    int op = Rf_asInteger(op_value);
+    if (op < 0 || op > 5) Rf_error("invalid Stata comparison operator");
+    int threads = Rf_asInteger(threads_value);
+    if (threads == NA_INTEGER || threads < 0) threads = 0;
+
+    dtatools_compare_operand left;
+    size_t length = 0;
+    if (!numeric_compare_operand_create(x, &left, &length) ||
+        length != target_storage->length) {
+        return R_NilValue;
+    }
+    dtatools_compare_operand right;
+    memset(&right, 0, sizeof(right));
+    int has_right = y != R_NilValue;
+    double scalar_value = 0.0;
+    int scalar_rank = 0;
+    if (has_right) {
+        size_t right_length = 0;
+        if (!numeric_compare_operand_create(y, &right, &right_length) ||
+            right_length != length) {
+            return R_NilValue;
+        }
+    } else {
+        numeric_scalar_plan(
+            scalar, &scalar_value, &scalar_rank,
+            "invalid Stata comparison scalar plan"
+        );
+    }
+
+    dtatools_compare_operand replacement_operand;
+    memset(&replacement_operand, 0, sizeof(replacement_operand));
+    int has_replacement = replacement != R_NilValue;
+    double replacement_scalar_value = 0.0;
+    int replacement_scalar_rank = 0;
+    if (has_replacement) {
+        size_t replacement_length = 0;
+        if (!numeric_compare_operand_create(
+                replacement, &replacement_operand, &replacement_length
+            ) || replacement_length != length) {
+            return R_NilValue;
+        }
+    } else {
+        numeric_scalar_plan(
+            replacement_scalar,
+            &replacement_scalar_value,
+            &replacement_scalar_rank,
+            "invalid fused replacement scalar plan"
+        );
+        int missing_code = replacement_scalar_rank == 0
+            ? -1 : (replacement_scalar_rank == 1
+                ? 0 : 'a' + replacement_scalar_rank - 2);
+        validate_compact_patch_value(
+            target_storage, replacement_scalar_value, missing_code
+        );
+    }
+
+    size_t width = numeric_kind_width(target_storage->kind);
+    if (target_storage->length > SIZE_MAX / width) {
+        Rf_error("fused replacement target is too large");
+    }
+    size_t undo_bytes = target_storage->length * width;
+    unsigned char *undo = (unsigned char *) malloc(
+        undo_bytes == 0 ? 1 : undo_bytes
+    );
+    if (undo == NULL) {
+        Rf_error("could not allocate fused replacement rollback data");
+    }
+    SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(saved_state, 0, R_altrep_data1(target));
+    SET_VECTOR_ELT(saved_state, 1, R_altrep_data2(target));
+    SEXP continuation = PROTECT(R_MakeUnwindCont());
+    fused_compare_patch_transaction transaction = {
+        .target = target,
+        .saved_data1 = VECTOR_ELT(saved_state, 0),
+        .saved_data2 = VECTOR_ELT(saved_state, 1),
+        .source = target_storage,
+        .patched = NULL,
+        .undo = undo,
+        .undo_bytes = undo_bytes,
+        .saved_missing_count = target_storage->missing_count,
+        .left = left,
+        .right = right,
+        .replacement = replacement_operand,
+        .has_right = has_right,
+        .has_replacement = has_replacement,
+        .scalar_value = scalar_value,
+        .scalar_rank = scalar_rank,
+        .replacement_scalar_value = replacement_scalar_value,
+        .replacement_scalar_rank = replacement_scalar_rank,
+        .op = op,
+        .threads = threads,
+        .journal_complete = 0
+    };
+    SEXP result = R_UnwindProtect(
+        apply_fused_compare_patch, &transaction,
+        cleanup_fused_compare_patch, &transaction,
+        continuation
+    );
+    UNPROTECT(2);
+    return result;
+}
+
 SEXP C_dtatools_stata_compare(
     SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
 ) {
@@ -6853,6 +7123,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_missing_codes, 1},
     {"C_dtatools_stata_compare",
      (DL_FUNC) &C_dtatools_stata_compare, 5},
+    {"C_dtatools_fused_compare_patch",
+     (DL_FUNC) &C_dtatools_fused_compare_patch, 8},
     {NULL, NULL, 0}
 };
 

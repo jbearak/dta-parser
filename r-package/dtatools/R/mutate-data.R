@@ -101,9 +101,13 @@
 #' A metadata proxy first detaches by copying its compact native payload so an
 #' independent source remains unchanged; it still avoids a full R double copy.
 #' Materialized compact numeric columns are validated against their declared
-#' storage and patched directly in their decoded R buffer. Ordinary numeric
-#' columns and character columns are patched in their existing R representation. Replacing a dictionary-backed string materializes
-#' that target character column, but does not copy the data frame.
+#' storage and patched directly in their decoded R buffer. A `where` expression
+#' that is one comparison of a Stata numeric column with a scalar or another
+#' Stata numeric column is fused with compact-target replacement, avoiding a
+#' logical selection vector. Other selections keep the general path. Ordinary
+#' numeric columns and character columns are patched in their existing R
+#' representation. Replacing a dictionary-backed string materializes that
+#' target character column, but does not copy the data frame.
 #' Dictionary-backed replacement values are validated through a read-only
 #' native reader, so a successful mutation, error, or interrupt does not
 #' populate a shared source cache. `copy_data()` keeps unmaterialized compact
@@ -496,6 +500,137 @@ gen <- function(data, variable, values, where = NULL) {
     )
 }
 
+.fused_comparison_operator <- function(operator) {
+    switch(operator,
+        "==" = 0L, "!=" = 1L, "<" = 2L, "<=" = 3L,
+        ">" = 4L, ">=" = 5L, NULL
+    )
+}
+
+.fused_comparison_column <- function(expression, columns, row_count) {
+    if (!is.symbol(expression)) return(NULL)
+    name <- as.character(expression)
+    present <- if (is.environment(columns)) {
+        exists(name, envir = columns, inherits = FALSE)
+    } else {
+        name %in% names(columns)
+    }
+    if (!present) return(NULL)
+    value <- columns[[name]]
+    if (!inherits(value, "stata_numeric") || length(value) != row_count ||
+        !is.null(dim(value))) {
+        return(NULL)
+    }
+    value
+}
+
+.fused_comparison_scalar <- function(expression, columns, environment) {
+    value <- .eval_in_mutation_data(expression, columns, environment)
+    scalar <- .stata_compare_scalar(value)
+    if (length(value) != 1L || is.null(scalar)) return(NULL)
+    list(value = value, scalar = scalar)
+}
+
+.fused_comparison_plan <- function(where, columns, row_count) {
+    if (rlang::quo_is_missing(where)) return(NULL)
+    expression <- rlang::quo_get_expr(where)
+    environment <- rlang::quo_get_env(where)
+    if (is.call(expression) && identical(expression[[1L]], quote(`~`))) {
+        if (length(expression) != 2L) return(NULL)
+        expression <- expression[[2L]]
+    }
+    if (!is.call(expression) || length(expression) != 3L ||
+        !is.symbol(expression[[1L]])) {
+        return(NULL)
+    }
+    operator <- as.character(expression[[1L]])
+    op_code <- .fused_comparison_operator(operator)
+    if (is.null(op_code)) return(NULL)
+    left_column <- .fused_comparison_column(
+        expression[[2L]], columns, row_count
+    )
+    right_column <- .fused_comparison_column(
+        expression[[3L]], columns, row_count
+    )
+    if (is.null(left_column) && is.null(right_column)) return(NULL)
+    if (!is.null(left_column) && !is.null(right_column)) {
+        if (inherits(left_column, "stata_temporal") &&
+            inherits(right_column, "stata_temporal") &&
+            !identical(
+                .stata_temporal_kind(left_column),
+                .stata_temporal_kind(right_column)
+            )) {
+            return(NULL)
+        }
+        return(list(
+            op = operator, op_code = op_code,
+            left = left_column, right = right_column, scalar = NULL,
+            original_left = left_column, original_right = right_column
+        ))
+    }
+    if (is.null(left_column)) {
+        left_scalar <- .fused_comparison_scalar(
+            expression[[2L]], columns, environment
+        )
+        if (is.null(left_scalar)) return(NULL)
+        flipped <- c(0L, 1L, 4L, 5L, 2L, 3L)[[op_code + 1L]]
+        return(list(
+            op = operator, op_code = flipped,
+            left = right_column, right = NULL,
+            scalar = left_scalar$scalar,
+            original_left = left_scalar$value,
+            original_right = right_column
+        ))
+    }
+    right_scalar <- .fused_comparison_scalar(
+        expression[[3L]], columns, environment
+    )
+    if (is.null(right_scalar)) return(NULL)
+    list(
+        op = operator, op_code = op_code,
+        left = left_column, right = NULL, scalar = right_scalar$scalar,
+        original_left = left_column, original_right = right_scalar$value
+    )
+}
+
+.fused_comparison_value <- function(plan) {
+    .stata_compare(plan$op, plan$original_left, plan$original_right)
+}
+
+.fused_replacement_plan <- function(values, target, row_count) {
+    native_numeric <- inherits(target, "stata_numeric") &&
+        !inherits(target, "stata_temporal") &&
+        typeof(values) %in% c("logical", "integer", "double") &&
+        (!is.object(values) || inherits(values, "stata_numeric"))
+    native_temporal <- inherits(target, "stata_temporal") &&
+        ((inherits(target, "stata_date") && inherits(values, "Date")) ||
+         (inherits(target, "stata_datetime") &&
+          inherits(values, "POSIXct")))
+    if ((!native_numeric && !native_temporal) || is.factor(values) ||
+        !is.null(dim(values))) {
+        return(NULL)
+    }
+    size <- vctrs::vec_size(values)
+    if (size == 1L) {
+        scalar <- .stata_compare_scalar(values)
+        if (is.null(scalar)) return(NULL)
+        return(list(values = NULL, scalar = scalar))
+    }
+    if (size == row_count && typeof(values) == "double") {
+        return(list(values = values, scalar = NULL))
+    }
+    NULL
+}
+
+.mutation_threads <- function() {
+    threads <- getOption("dtatools.threads", 0L)
+    if (!is.numeric(threads) || length(threads) != 1L || is.na(threads) ||
+        threads < 0) {
+        return(0L)
+    }
+    as.integer(threads)
+}
+
 .mutation_rows <- function(value, row_count) {
     if (is.null(value)) return(NULL)
     classified <- if (inherits(value, .stata_metadata_vector_class)) {
@@ -610,14 +745,51 @@ gen <- function(data, variable, values, where = NULL) {
     .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
     target <- .mutation_name(variable, generate, original)
+    state <- .reference_state(data)
+    access <- NULL
+    column <- NULL
 
-    selected <- .eval_mutation_expression(where, original$columns, "where")
+    fused <- if (generate) NULL else {
+        .fused_comparison_plan(where, original$columns, original$nrow)
+    }
+    if (is.null(fused)) {
+        selected <- .eval_mutation_expression(
+            where, original$columns, "where"
+        )
+        evaluated <- .eval_mutation_expression(
+            values, original$columns, "values"
+        )
+    } else {
+        evaluated <- .eval_mutation_expression(
+            values, original$columns, "values"
+        )
+        access <- .column_access(data)
+        column <- .data_column_at(access, target$location)
+        replacement_plan <- if (
+            .is_unmaterialized_numeric_altrep(column)
+        ) {
+            .fused_replacement_plan(evaluated, column, original$nrow)
+        } else NULL
+        if (!is.null(replacement_plan)) {
+            patch <- function() .Call(
+                C_dtatools_fused_compare_patch,
+                column, fused$op_code, fused$left, fused$right,
+                fused$scalar, replacement_plan$values,
+                replacement_plan$scalar, .mutation_threads()
+            )
+            patched <- if (.ordinary_data_table(data)) {
+                .data_table_fused_replace_commit(data, target$name, patch)
+            } else {
+                patch()
+            }
+            if (isTRUE(patched)) return(invisible(data))
+        }
+        selected <- .fused_comparison_value(fused)
+    }
     rows <- .mutation_rows(selected, original$nrow)
-    evaluated <- .eval_mutation_expression(values, original$columns, "values")
     value_mode <- .mutation_value_mode(evaluated, rows, original$nrow)
     values <- evaluated
 
-    state <- .reference_state(data)
     if (generate) {
         column <- .generated_column(values, rows, original$nrow)
         if (.ordinary_data_table(data)) {
@@ -626,8 +798,10 @@ gen <- function(data, variable, values, where = NULL) {
         }
         if (is.null(state)) state <- .new_reference_state(data)
     } else {
-        access <- .column_access(data)
-        column <- .data_column_at(access, target$location)
+        if (is.null(access)) access <- .column_access(data)
+        if (is.null(column)) {
+            column <- .data_column_at(access, target$location)
+        }
         replacement <- .cast_replacement(
             values, column, rows, value_mode
         )
@@ -651,6 +825,25 @@ gen <- function(data, variable, values, where = NULL) {
         if (is.null(.reference_state(data))) .mark_reference_data(data, state)
     }
     invisible(data)
+}
+
+.data_table_fused_replace_commit <- function(data, target, patch) {
+    key_columns <- data.table::key(data)
+    index_columns <- data.table::indices(data, vectors = TRUE)
+    affected_indexes <- vapply(
+        index_columns, function(columns) target %in% columns, logical(1)
+    )
+    suspendInterrupts({
+        result <- patch()
+        if (is.null(result)) return(NULL)
+        if (target %in% key_columns) data.table::setkeyv(data, NULL)
+        if (any(affected_indexes)) {
+            retained <- index_columns[!affected_indexes]
+            data.table::setindexv(data, NULL)
+            for (columns in retained) data.table::setindexv(data, columns)
+        }
+        result
+    })
 }
 
 .data_table_replace_commit <- function(data, target, patch) {
