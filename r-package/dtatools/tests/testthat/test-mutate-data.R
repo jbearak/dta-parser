@@ -802,7 +802,7 @@ test_that("compact validation is strict and atomic", {
         expect_identical(serialize(data$x, NULL), before)
         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     }
-    expect_error(replace_values(data, x, 101, where = 2), "stata_int")
+    expect_error(replace_values(data, x, 101, where = 2), "dta_int")
     expect_identical(dta_storage_type(data$x), "byte")
 })
 

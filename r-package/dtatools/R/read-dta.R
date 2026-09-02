@@ -174,7 +174,7 @@
 #'   over the decoded columns (no second read of the file) and equals
 #'   `datasig(file)`. Requires reading the complete file: incompatible with
 #'   `col_select`, `skip`, and `n_max`.
-#' @return A tibble or data table with owned `dta_string` columns. `%td` columns and legacy or custom formats beginning `%d`
+#' @return A tibble or data table with owned Stata string columns (see `dta_string()`). `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
 #'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
 #'   `format.stata` attribute. String storage and metadata survive supported
