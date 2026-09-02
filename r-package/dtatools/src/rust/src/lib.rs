@@ -661,6 +661,281 @@ unsafe fn compare_numeric_range(
     true
 }
 
+/// Raw-order bounds of one integer storage: every finite value sits
+/// below `first_missing`, and `z` is the highest raw value the storage
+/// can hold, so raw integer order reproduces Stata's total order
+/// (finite values, then `.`, then `.a` through `.z`).
+#[derive(Clone, Copy)]
+struct RawIntBounds {
+    type_min: i64,
+    first_missing: i64,
+    z: i64,
+}
+
+/// Whether the release stores tagged missing values. Older releases
+/// reserve only the top raw value for `.` and treat the tagged-missing
+/// slots below it as finite values.
+fn tagged_missing_version(version: FormatVersion) -> bool {
+    !matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    )
+}
+
+fn raw_int_bounds(storage: CompareStorage) -> Option<RawIntBounds> {
+    let (dot, z, type_min, version) = match storage {
+        CompareStorage::Byte(version) => (
+            i64::from(MissingTag::System.byte_value()),
+            i64::from(MissingTag::Z.byte_value()),
+            i64::from(i8::MIN),
+            version,
+        ),
+        CompareStorage::Int(version) => (
+            i64::from(MissingTag::System.int_value()),
+            i64::from(MissingTag::Z.int_value()),
+            i64::from(i16::MIN),
+            version,
+        ),
+        CompareStorage::Long(version) => (
+            i64::from(MissingTag::System.long_value()),
+            i64::from(MissingTag::Z.long_value()),
+            i64::from(i32::MIN),
+            version,
+        ),
+        CompareStorage::Float(_) | CompareStorage::Double => return None,
+    };
+    Some(RawIntBounds {
+        type_min,
+        first_missing: if tagged_missing_version(version) { dot } else { z },
+        z,
+    })
+}
+
+/// One raw-space comparison, planned once per call so the per-element
+/// loop is a single branch-free integer compare.
+#[derive(Clone, Copy)]
+enum RawScalarPlan {
+    Fill(bool),
+    Eq { target: i64, invert: bool },
+    Lt { cutoff: i64, invert: bool },
+}
+
+/// Encode a decoded scalar into the storage's raw order and plan the
+/// comparison. `None` leaves the decoding loop to run: millisecond
+/// temporal storage rounds through doubles, so raw cutoffs cannot
+/// reproduce its equality semantics.
+fn raw_int_scalar_plan(
+    op: c_int,
+    scalar: ComparedElement,
+    temporal: c_int,
+    bounds: RawIntBounds,
+) -> Option<RawScalarPlan> {
+    if temporal == 2 {
+        return None;
+    }
+    let finite_max = bounds.first_missing - 1;
+    // Cutoffs for finite scalars clamp to `first_missing` because every
+    // missing value outranks every finite scalar; cutoffs for missing
+    // scalars clamp one past `z` so `.` compares below `.a` even when
+    // the storage predates tagged missing values.
+    let clamp_max = if scalar.rank == 0 {
+        bounds.first_missing
+    } else {
+        bounds.z + 1
+    };
+    let (eq_target, cutoff_lt, cutoff_le) = if scalar.rank == 0 {
+        let encoded = if temporal == 1 {
+            scalar.value + DAYS_1960_TO_1970
+        } else {
+            scalar.value
+        };
+        let integral = encoded == encoded.trunc();
+        let key = encoded as i64;
+        let eq_target = (integral
+            && key as f64 == encoded
+            && key >= bounds.type_min
+            && key <= finite_max)
+            .then_some(key);
+        (
+            eq_target,
+            encoded.ceil() as i64,
+            (encoded.floor() as i64).saturating_add(1),
+        )
+    } else {
+        let key = if bounds.first_missing < bounds.z {
+            bounds.first_missing + i64::from(scalar.rank) - 1
+        } else if scalar.rank == 1 {
+            bounds.z
+        } else {
+            bounds.z + 1
+        };
+        let eq_target = (key <= bounds.z).then_some(key);
+        (eq_target, key, key.saturating_add(1))
+    };
+    let clamp = |key: i64| key.clamp(bounds.type_min, clamp_max);
+    let lt = |cutoff: i64, invert: bool| {
+        let cutoff = clamp(cutoff);
+        if cutoff <= bounds.type_min {
+            RawScalarPlan::Fill(invert)
+        } else if cutoff > bounds.z {
+            RawScalarPlan::Fill(!invert)
+        } else {
+            RawScalarPlan::Lt { cutoff, invert }
+        }
+    };
+    Some(match op {
+        0 | 1 => match eq_target {
+            Some(target) => RawScalarPlan::Eq {
+                target,
+                invert: op == 1,
+            },
+            None => RawScalarPlan::Fill(op == 1),
+        },
+        2 => lt(cutoff_lt, false),
+        3 => lt(cutoff_le, false),
+        4 => lt(cutoff_le, true),
+        5 => lt(cutoff_lt, true),
+        _ => return None,
+    })
+}
+
+unsafe fn run_raw_int_scalar_plan<T>(
+    plan: RawScalarPlan,
+    base: *const T,
+    output: *mut c_int,
+    length: usize,
+) where
+    T: Copy + PartialEq + PartialOrd + TryFrom<i64>,
+{
+    match plan {
+        RawScalarPlan::Fill(value) => {
+            for index in 0..length {
+                output.add(index).write(c_int::from(value));
+            }
+        }
+        RawScalarPlan::Eq { target, invert } => {
+            let Ok(target) = T::try_from(target) else {
+                unreachable!("plan targets stay inside the storage range");
+            };
+            for index in 0..length {
+                let raw = base.add(index).read_unaligned();
+                output.add(index).write(c_int::from((raw == target) != invert));
+            }
+        }
+        RawScalarPlan::Lt { cutoff, invert } => {
+            let Ok(cutoff) = T::try_from(cutoff) else {
+                unreachable!("plan cutoffs stay inside the storage range");
+            };
+            for index in 0..length {
+                let raw = base.add(index).read_unaligned();
+                output.add(index).write(c_int::from((raw < cutoff) != invert));
+            }
+        }
+    }
+}
+
+unsafe fn run_raw_int_pair<T>(
+    op: c_int,
+    x_base: *const T,
+    y_base: *const T,
+    output: *mut c_int,
+    length: usize,
+) where
+    T: Copy + PartialEq + PartialOrd,
+{
+    macro_rules! pair_loop {
+        ($compare:expr) => {
+            for index in 0..length {
+                let left = x_base.add(index).read_unaligned();
+                let right = y_base.add(index).read_unaligned();
+                output.add(index).write(c_int::from($compare(left, right)));
+            }
+        };
+    }
+    match op {
+        0 => pair_loop!(|left: T, right: T| left == right),
+        1 => pair_loop!(|left: T, right: T| left != right),
+        2 => pair_loop!(|left: T, right: T| left < right),
+        3 => pair_loop!(|left: T, right: T| left <= right),
+        4 => pair_loop!(|left: T, right: T| left > right),
+        _ => pair_loop!(|left: T, right: T| left >= right),
+    }
+}
+
+/// Compare integer storage in raw order without decoding elements.
+/// Returns `None` when the operands need the decoding loop: float or
+/// double storage, millisecond temporal scalars, or operand pairs whose
+/// raw encodings are not directly comparable.
+unsafe fn compare_raw_int(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    output: *mut c_int,
+    length: usize,
+) -> Option<bool> {
+    let x_bounds = raw_int_bounds(x.storage)?;
+    match y {
+        None => {
+            let plan = raw_int_scalar_plan(op, scalar, x.temporal, x_bounds)?;
+            match x.storage {
+                CompareStorage::Byte(_) => {
+                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i8>(), output, length)
+                }
+                CompareStorage::Int(_) => {
+                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i16>(), output, length)
+                }
+                CompareStorage::Long(_) => {
+                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i32>(), output, length)
+                }
+                CompareStorage::Float(_) | CompareStorage::Double => unreachable!(),
+            }
+            Some(true)
+        }
+        Some(y) => {
+            // Raw order lines up between two operands only when they
+            // share the storage width, the tagged-missing convention,
+            // and the temporal decode (any shared temporal decode is
+            // strictly monotone, so raw order survives it).
+            let y_bounds = raw_int_bounds(y.storage)?;
+            if x.temporal != y.temporal
+                || x_bounds.type_min != y_bounds.type_min
+                || x_bounds.first_missing != y_bounds.first_missing
+            {
+                return None;
+            }
+            if !(0..=5).contains(&op) {
+                return None;
+            }
+            match x.storage {
+                CompareStorage::Byte(_) => run_raw_int_pair(
+                    op,
+                    (x.values as *const u8).cast::<i8>(),
+                    (y.values as *const u8).cast::<i8>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Int(_) => run_raw_int_pair(
+                    op,
+                    (x.values as *const u8).cast::<i16>(),
+                    (y.values as *const u8).cast::<i16>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Long(_) => run_raw_int_pair(
+                    op,
+                    (x.values as *const u8).cast::<i32>(),
+                    (y.values as *const u8).cast::<i32>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Float(_) | CompareStorage::Double => unreachable!(),
+            }
+            Some(true)
+        }
+    }
+}
+
 const COMPARE_ROWS_PER_WORKER: usize = 262_144;
 
 #[no_mangle]
@@ -709,6 +984,9 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
         };
         if scalar.rank == 0 && scalar.value.is_nan() {
             return false;
+        }
+        if let Some(done) = unsafe { compare_raw_int(op, x, y, scalar, output, length) } {
+            return done;
         }
         let available = std::thread::available_parallelism().map_or(1, usize::from);
         let requested = if threads <= 0 {
