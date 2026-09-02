@@ -12,9 +12,9 @@
 \alias{set_val_labels}
 \title{Get and set Stata label metadata}
 \usage{
-var_label(x)
+var_label(x, variable)
 
-val_labels(x)
+val_labels(x, variable)
 
 dataset_label(data)
 
@@ -33,16 +33,19 @@ set_val_labels(.data, ..., .labels = NULL)
 \arguments{
 \item{x}{A vector or data frame.}
 
+\item{variable}{One unquoted column name, or one nonempty, non-missing
+character string, which is what \code{!!name} unquotes to and what a
+\code{.(name)} call supplies in place. Optional in \code{var_label()} and
+\code{val_labels()}: when supplied, \code{x} must be a data frame and only that
+column's metadata is returned.}
+
 \item{data}{A data frame or tibble.}
 
 \item{value}{New label metadata. Data-frame replacement forms require a
 named list or \code{NULL}.}
 
-\item{variable}{One unquoted column name, or one nonempty, non-missing
-character string, which is what \code{!!name} unquotes to and what a
-\code{.(name)} call supplies in place.}
-
-\item{label}{One variable label, or \code{NULL} to remove it.}
+\item{label}{One variable label, or \code{NULL} to remove it. In the vector
+shape \code{set_var_label(x, label)} the label is the second argument.}
 
 \item{.data}{A vector or data frame to update.}
 
@@ -69,11 +72,19 @@ and unrelated attributes.
 }
 \section{Getter results}{
 
-For a vector, \code{var_label()} returns one character value or \code{NULL}, and
-\code{val_labels()} returns a named numeric vector or \code{NULL}. For a data frame,
-each returns a named list with one element per column, including \code{NULL}
-entries. \code{dataset_label()} accepts only a data frame or tibble and returns
-one character value or \code{NULL}.
+\code{var_label(data, variable)} returns one column's character label or
+\code{NULL}, and \code{val_labels(data, variable)} returns its named numeric
+vector or \code{NULL}. The \code{variable} argument follows the same rule as in
+\code{gen()} and \code{replace_values()}, so \code{var_label(data, hh1)},
+\code{var_label(data, "hh1")}, \code{var_label(data, !!name)}, and
+\code{var_label(data, .(name))} are equivalent. Asking for a column that
+does not exist is an error.
+
+Without \code{variable}: for a vector, \code{var_label()} returns one character
+value or \code{NULL}, and \code{val_labels()} returns a named numeric vector or
+\code{NULL}. For a data frame, each returns a named list with one element
+per column, including \code{NULL} entries. \code{dataset_label()} accepts only a
+data frame or tibble and returns one character value or \code{NULL}.
 }
 
 \section{Setting labels}{
@@ -95,10 +106,24 @@ wrapper is required, and \code{rlang::sym()} is optional, so the older
 \code{!!rlang::sym(name)} spelling remains equivalent. A \code{.(name)} call reaches
 the same place: \code{set_var_label(data, .(name), "Cluster number")}. There is
 no \code{.data} pronoun for this argument, because it names a target rather
-than reading a column. \code{set_var_labels()} and \code{set_val_labels()} name a
-runtime column with a \code{.(name) := value} tag in \code{...} or a programmatic
-named list through \code{.labels}, and \code{keep_vars()}, \code{drop_vars()}, and
+than reading a column. On a bare vector, \code{set_var_label(x, label)} sets the
+vector's label, as the non-data-frame branch of \code{set_var_labels()} does.
+\code{set_var_labels()} and \code{set_val_labels()} name a runtime column with a
+\code{.(name) := value} tag in \code{...} or a programmatic named list through
+\code{.labels}, and \code{keep_vars()}, \code{drop_vars()}, and
 \code{rename_vars()} take \code{tidyselect::all_of()} or \code{.names}.
+
+\code{set_var_labels(data, variable, label)} and
+\code{set_val_labels(data, variable, labels)} also accept the positional
+shape of \code{gen()} and \code{replace_values()}. It is recognized only when
+\code{.labels} is \code{NULL}, \code{.data} is a data frame, and \code{...} holds exactly
+two untagged arguments whose first is syntactically a name: a bare
+symbol, one string literal, \code{.(name)}, or \code{!!name}, which unquotes to
+a string literal at capture. The symbol is taken as the column name
+literally, never resolved against caller variables, and the second
+argument is evaluated in the caller's environment as that column's
+new metadata. A first argument that is any other expression, and
+every tagged call, keeps today's path and today's errors.
 
 The data-frame forms of \code{set_var_label()}, \code{set_var_labels()}, and
 \code{set_val_labels()} mutate by reference, as \code{gen()} and \code{replace_values()} do.
@@ -160,10 +185,18 @@ survey <- set_var_labels(
     status = "Interview status",
     .labels = list(stratum = "Sampling stratum")
 )
+# One column at a time, in the (data, variable) shape of gen()
+var_label(survey, status)
+val_labels(survey, status)
+set_var_label(survey, status, "Interview status")
+set_val_labels(survey, status, c(Complete = 1, Refused = 2))
+set_var_labels(survey, stratum, "Sampling stratum")
+
 var_label(survey)
 val_labels(survey$status)
 
 # A column name known only at run time
 stratum_name <- "stratum"
 set_var_label(survey, !!stratum_name, "Sampling stratum")
+var_label(survey, !!stratum_name)
 }

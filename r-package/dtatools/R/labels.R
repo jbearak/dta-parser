@@ -8,11 +8,19 @@
 #' and unrelated attributes.
 #'
 #' @section Getter results:
-#' For a vector, `var_label()` returns one character value or `NULL`, and
-#' `val_labels()` returns a named numeric vector or `NULL`. For a data frame,
-#' each returns a named list with one element per column, including `NULL`
-#' entries. `dataset_label()` accepts only a data frame or tibble and returns
-#' one character value or `NULL`.
+#' `var_label(data, variable)` returns one column's character label or
+#' `NULL`, and `val_labels(data, variable)` returns its named numeric
+#' vector or `NULL`. The `variable` argument follows the same rule as in
+#' `gen()` and `replace_values()`, so `var_label(data, hh1)`,
+#' `var_label(data, "hh1")`, `var_label(data, !!name)`, and
+#' `var_label(data, .(name))` are equivalent. Asking for a column that
+#' does not exist is an error.
+#'
+#' Without `variable`: for a vector, `var_label()` returns one character
+#' value or `NULL`, and `val_labels()` returns a named numeric vector or
+#' `NULL`. For a data frame, each returns a named list with one element
+#' per column, including `NULL` entries. `dataset_label()` accepts only a
+#' data frame or tibble and returns one character value or `NULL`.
 #'
 #' @section Setting labels:
 #' Replacement functions modify the supplied metadata. On a data frame,
@@ -32,10 +40,24 @@
 #' `!!rlang::sym(name)` spelling remains equivalent. A `.(name)` call reaches
 #' the same place: `set_var_label(data, .(name), "Cluster number")`. There is
 #' no `.data` pronoun for this argument, because it names a target rather
-#' than reading a column. `set_var_labels()` and `set_val_labels()` name a
-#' runtime column with a `.(name) := value` tag in `...` or a programmatic
-#' named list through `.labels`, and `keep_vars()`, `drop_vars()`, and
+#' than reading a column. On a bare vector, `set_var_label(x, label)` sets the
+#' vector's label, as the non-data-frame branch of `set_var_labels()` does.
+#' `set_var_labels()` and `set_val_labels()` name a runtime column with a
+#' `.(name) := value` tag in `...` or a programmatic named list through
+#' `.labels`, and `keep_vars()`, `drop_vars()`, and
 #' `rename_vars()` take `tidyselect::all_of()` or `.names`.
+#'
+#' `set_var_labels(data, variable, label)` and
+#' `set_val_labels(data, variable, labels)` also accept the positional
+#' shape of `gen()` and `replace_values()`. It is recognized only when
+#' `.labels` is `NULL`, `.data` is a data frame, and `...` holds exactly
+#' two untagged arguments whose first is syntactically a name: a bare
+#' symbol, one string literal, `.(name)`, or `!!name`, which unquotes to
+#' a string literal at capture. The symbol is taken as the column name
+#' literally, never resolved against caller variables, and the second
+#' argument is evaluated in the caller's environment as that column's
+#' new metadata. A first argument that is any other expression, and
+#' every tagged call, keeps today's path and today's errors.
 #'
 #' The data-frame forms of `set_var_label()`, `set_var_labels()`, and
 #' `set_val_labels()` mutate by reference, as `gen()` and `replace_values()` do.
@@ -94,8 +116,11 @@
 #'   column updates for a data frame.
 #' @param variable One unquoted column name, or one nonempty, non-missing
 #'   character string, which is what `!!name` unquotes to and what a
-#'   `.(name)` call supplies in place.
-#' @param label One variable label, or `NULL` to remove it.
+#'   `.(name)` call supplies in place. Optional in `var_label()` and
+#'   `val_labels()`: when supplied, `x` must be a data frame and only that
+#'   column's metadata is returned.
+#' @param label One variable label, or `NULL` to remove it. In the vector
+#'   shape `set_var_label(x, label)` the label is the second argument.
 #' @return Getters return the metadata described above. Replacement functions
 #'   and `set_*()` functions return the updated vector or data frame. Data-frame
 #'   `set_*()` forms return it invisibly because they already mutated it by
@@ -112,15 +137,28 @@
 #'     status = "Interview status",
 #'     .labels = list(stratum = "Sampling stratum")
 #' )
+#' # One column at a time, in the (data, variable) shape of gen()
+#' var_label(survey, status)
+#' val_labels(survey, status)
+#' set_var_label(survey, status, "Interview status")
+#' set_val_labels(survey, status, c(Complete = 1, Refused = 2))
+#' set_var_labels(survey, stratum, "Sampling stratum")
+#'
 #' var_label(survey)
 #' val_labels(survey$status)
 #'
 #' # A column name known only at run time
 #' stratum_name <- "stratum"
 #' set_var_label(survey, !!stratum_name, "Sampling stratum")
+#' var_label(survey, !!stratum_name)
 #' @export
-var_label <- function(x) {
+var_label <- function(x, variable) {
     .validate_label_object(x)
+    variable <- rlang::enquo(variable)
+    if (!rlang::quo_is_missing(variable)) {
+        column <- .label_lookup_column(x, variable)
+        return(attr(column, "label", exact = TRUE))
+    }
     if (is.data.frame(x)) {
         return(stats::setNames(
             lapply(x, attr, which = "label", exact = TRUE),
@@ -133,8 +171,13 @@ var_label <- function(x) {
 
 #' @rdname var_label
 #' @export
-val_labels <- function(x) {
+val_labels <- function(x, variable) {
     .validate_label_object(x)
+    variable <- rlang::enquo(variable)
+    if (!rlang::quo_is_missing(variable)) {
+        column <- .label_lookup_column(x, variable)
+        return(attr(column, "labels", exact = TRUE))
+    }
     if (is.data.frame(x)) {
         return(stats::setNames(
             lapply(x, attr, which = "labels", exact = TRUE),
@@ -143,6 +186,23 @@ val_labels <- function(x) {
     }
 
     attr(x, "labels", exact = TRUE)
+}
+
+# `var_label(data, variable)` and `val_labels(data, variable)` read one
+# column's metadata. The name follows the same rule as in `gen()`: one
+# unquoted name, one string, `!!name`, or `.(name)`. A symbol is taken
+# as the column name literally, never resolved against caller variables.
+.label_lookup_column <- function(x, variable) {
+    if (!is.data.frame(x)) {
+        stop("`x` must be a data frame when `variable` is supplied",
+             call. = FALSE)
+    }
+    name <- .unquoted_variable_name(variable)
+    location <- match(name, names(x))
+    if (is.na(location)) {
+        stop(sprintf("Column `%s` does not exist", name), call. = FALSE)
+    }
+    x[[location]]
 }
 
 #' @rdname var_label
@@ -556,6 +616,12 @@ dataset_label <- function(data) {
 #' @export
 set_var_label <- function(data, variable, label) {
     if (!is.data.frame(data)) {
+        # `set_var_label(x, label)`: the vector shape, mirroring the
+        # non-data-frame branch of `set_var_labels()`. Any other
+        # non-data-frame call keeps its existing error.
+        if (!missing(variable) && missing(label)) {
+            return(`var_label<-`(data, variable))
+        }
         stop("`data` must be a data frame", call. = FALSE)
     }
     .reject_data_table_subclass(data)
@@ -653,18 +719,65 @@ set_var_label <- function(data, variable, label) {
     eval(call, bindings)
 }
 
+# `!!name` before rlang's quasiquotation runs: the parsed call
+# `!(!name)`. `rlang::enquos()` unquotes it to a string literal at
+# capture, which is why it counts as syntactically a name below.
+.is_double_bang_call <- function(expression) {
+    is.call(expression) && length(expression) == 2L &&
+        identical(expression[[1L]], quote(`!`)) &&
+        is.call(expression[[2L]]) && length(expression[[2L]]) == 2L &&
+        identical(expression[[2L]][[1L]], quote(`!`))
+}
+
+# `set_var_labels(data, variable, label)` and
+# `set_val_labels(data, variable, labels)`: the positional shape that
+# mirrors `gen(data, variable, ...)`. It is recognized on the defused
+# dots, before anything is evaluated, and only when `.labels` is NULL,
+# `.data` is a data frame, and `...` is exactly two untagged, nonempty
+# arguments whose first is syntactically a name: a bare symbol, one
+# string literal, `.(name)`, or `!!name`. Any other first argument
+# falls through to the existing path and its existing errors, and a
+# symbol is taken as the column name literally, never resolved against
+# caller variables. No call that succeeds today matches: two untagged
+# dots on a data frame have always been an error, because column
+# updates in `...` must be named.
+.is_positional_label_dots <- function(quoted) {
+    if (length(quoted) != 2L) return(FALSE)
+    tags <- names(quoted)
+    if (!is.null(tags) && any(nzchar(tags))) return(FALSE)
+    if (identical(quoted[[1L]], quote(expr = )) ||
+        identical(quoted[[2L]], quote(expr = ))) {
+        return(FALSE)
+    }
+    first <- quoted[[1L]]
+    is.symbol(first) ||
+        (is.character(first) && length(first) == 1L) ||
+        .is_runtime_name_call(first) ||
+        .is_double_bang_call(first)
+}
+
 #' @rdname var_label
 #' @export
 set_var_labels <- function(.data, ..., .labels = NULL) {
-    dots <- .dots_list_with_runtime_names(
-        substitute(...()), parent.frame(),
-        function() {
-            rlang::dots_list(
-                ..., .homonyms = "keep", .ignore_empty = "none"
-            )
-        },
-        function() rlang::enquos0(...)
-    )
+    quoted <- substitute(...())
+    dots <- if (is.data.frame(.data) && is.null(.labels) &&
+        .is_positional_label_dots(quoted)) {
+        pair <- rlang::enquos(...)
+        stats::setNames(
+            list(rlang::eval_tidy(pair[[2L]])),
+            .unquoted_variable_name(pair[[1L]])
+        )
+    } else {
+        .dots_list_with_runtime_names(
+            quoted, parent.frame(),
+            function() {
+                rlang::dots_list(
+                    ..., .homonyms = "keep", .ignore_empty = "none"
+                )
+            },
+            function() rlang::enquos0(...)
+        )
+    }
     if (!is.data.frame(.data)) {
         if (!is.null(.labels) && length(dots) > 0L) {
             stop("Supply a vector label in either `...` or `.labels`, not both",
@@ -698,15 +811,25 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
 #' @rdname var_label
 #' @export
 set_val_labels <- function(.data, ..., .labels = NULL) {
-    dots <- .dots_list_with_runtime_names(
-        substitute(...()), parent.frame(),
-        function() {
-            rlang::dots_list(
-                ..., .homonyms = "keep", .ignore_empty = "none"
-            )
-        },
-        function() rlang::enquos0(...)
-    )
+    quoted <- substitute(...())
+    dots <- if (is.data.frame(.data) && is.null(.labels) &&
+        .is_positional_label_dots(quoted)) {
+        pair <- rlang::enquos(...)
+        stats::setNames(
+            list(rlang::eval_tidy(pair[[2L]])),
+            .unquoted_variable_name(pair[[1L]])
+        )
+    } else {
+        .dots_list_with_runtime_names(
+            quoted, parent.frame(),
+            function() {
+                rlang::dots_list(
+                    ..., .homonyms = "keep", .ignore_empty = "none"
+                )
+            },
+            function() rlang::enquos0(...)
+        )
+    }
     if (!is.data.frame(.data)) {
         if (!is.null(.labels) && length(dots) > 0L) {
             stop(
