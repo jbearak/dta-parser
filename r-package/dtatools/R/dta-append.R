@@ -73,7 +73,7 @@ dta_append <- function(sources, force = TRUE,
     }
 
     schemas <- lapply(seq_along(the_sources), function(my_index) {
-        .append_read_schema(the_sources[[my_index]], my_index)
+        .append_read_schema(the_sources[[my_index]], my_index, output)
     })
     plan <- .append_build_plan(schemas, force)
     filled <- .append_fill_columns(schemas, plan)
@@ -126,13 +126,13 @@ dta_append <- function(sources, force = TRUE,
 
 # Pass one. A file source is opened for its header alone, so the
 # schema union costs one tiny read per file and no observation data.
-.append_read_schema <- function(source, index) {
+.append_read_schema <- function(source, index, output = "default") {
     kind <- .append_source_kind(source, index)
     schema <- switch(
         kind,
-        frame = source[0L, , drop = FALSE],
-        dta = .append_read_dta_schema(source),
-        arrow = .append_read_arrow_schema(source)
+        frame = vctrs::vec_slice(source, integer()),
+        dta = .append_read_dta_schema(source, output),
+        arrow = .append_read_arrow_schema(source, output)
     )
     rows <- if (identical(kind, "frame")) {
         nrow(source)
@@ -153,9 +153,9 @@ dta_append <- function(sources, force = TRUE,
     )
 }
 
-.append_read_dta_schema <- function(source) {
+.append_read_dta_schema <- function(source, output) {
     .read_dta_impl(
-        source, NULL, rlang::quo(NULL), 0, 0, "unique", "tibble",
+        source, NULL, rlang::quo(NULL), 0, 0, "unique", output,
         materialization = "direct",
         threads = getOption("dtatools.threads", 0L),
         use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
@@ -163,9 +163,9 @@ dta_append <- function(sources, force = TRUE,
     )
 }
 
-.append_read_arrow_schema <- function(source) {
+.append_read_arrow_schema <- function(source, output) {
     .read_arrow_impl(
-        source, rlang::quo(NULL), 0, 0, TRUE, TRUE, "unique", "default",
+        source, rlang::quo(NULL), 0, 0, TRUE, TRUE, "unique", output,
         getOption("dtatools.numeric_altrep", TRUE),
         getOption("dtatools.threads", 0L), FALSE,
         keep_source_rows = TRUE
@@ -176,8 +176,8 @@ dta_append <- function(sources, force = TRUE,
     switch(
         entry$kind,
         frame = entry$source,
-        dta = read_dta(entry$source),
-        arrow = read_arrow(entry$source)
+        dta = read_dta(entry$source, output = "tibble"),
+        arrow = read_arrow(entry$source, output = "tibble")
     )
 }
 
@@ -185,7 +185,8 @@ dta_append <- function(sources, force = TRUE,
     source_count <- length(schemas)
     the_names <- character(0)
     occurrences <- integer(0)
-    source_columns <- vector("list", source_count)
+    plan_lookup <- new.env(hash = TRUE, parent = emptyenv())
+    source_plans <- vector("list", source_count)
     for (my_index in seq_len(source_count)) {
         source_names <- names(schemas[[my_index]]$schema)
         if (is.null(source_names)) source_names <- rep("", ncol(
@@ -193,27 +194,41 @@ dta_append <- function(sources, force = TRUE,
         ))
         source_names[is.na(source_names)] <- ""
         source_occurrences <- .append_name_occurrences(source_names)
-        source_columns[[my_index]] <- rep(NA_integer_, length(the_names))
+        source_plans[[my_index]] <- integer(length(source_names))
         for (my_column in seq_along(source_names)) {
-            plan_index <- which(
-                the_names == source_names[[my_column]] &
-                    occurrences == source_occurrences[[my_column]]
+            name_key <- paste0("x", enc2utf8(source_names[[my_column]]))
+            if (exists(name_key, plan_lookup, inherits = FALSE)) {
+                name_lookup <- get(name_key, plan_lookup, inherits = FALSE)
+            } else {
+                name_lookup <- new.env(hash = TRUE, parent = emptyenv())
+                assign(name_key, name_lookup, plan_lookup)
+            }
+            occurrence_key <- as.character(
+                source_occurrences[[my_column]]
             )
-            if (!length(plan_index)) {
+            if (exists(occurrence_key, name_lookup, inherits = FALSE)) {
+                plan_index <- get(
+                    occurrence_key, name_lookup, inherits = FALSE
+                )
+            } else {
                 the_names <- c(the_names, source_names[[my_column]])
                 occurrences <- c(
                     occurrences, source_occurrences[[my_column]]
                 )
-                source_columns <- lapply(source_columns, function(columns) {
-                    c(columns, NA_integer_)
-                })
                 plan_index <- length(the_names)
+                assign(occurrence_key, plan_index, name_lookup)
             }
-            source_columns[[my_index]][[plan_index[[1L]]]] <- my_column
+            source_plans[[my_index]][[my_column]] <- plan_index
         }
     }
+    source_columns <- lapply(source_plans, function(plan_indices) {
+        columns <- rep(NA_integer_, length(the_names))
+        columns[plan_indices] <- seq_along(plan_indices)
+        columns
+    })
 
     prototypes <- vector("list", length(the_names))
+    metadata_owners <- vector("list", length(the_names))
     # A source is dropped for one variable when its storage cannot
     # meet the accumulated prototype; those rows take missing values.
     dropped <- vector("list", length(the_names))
@@ -229,6 +244,7 @@ dta_append <- function(sources, force = TRUE,
             candidate <- vctrs::vec_ptype(value)
             if (is.null(prototype)) {
                 prototype <- candidate
+                metadata_owners[[plan_index]] <- candidate
                 next
             }
             merged <- tryCatch(
@@ -254,7 +270,9 @@ dta_append <- function(sources, force = TRUE,
             }
             prototype <- merged
         }
-        prototypes[[plan_index]] <- prototype
+        prototypes[[plan_index]] <- .append_restore_owned_metadata(
+            prototype, metadata_owners[[plan_index]]
+        )
         dropped[[plan_index]] <- conflicting
         if (length(conflicting)) {
             message(sprintf(
@@ -276,12 +294,34 @@ dta_append <- function(sources, force = TRUE,
 
     list(
         names = the_names, prototypes = prototypes, dropped = dropped,
-        source_columns = source_columns
+        source_columns = source_columns, force = force
     )
 }
 
+.append_restore_owned_metadata <- function(prototype, owner) {
+    result <- .metadata_copy(prototype)
+    owned <- c(
+        "format.stata", "label", "value.label.name", "notes",
+        "stata.note.numbers", "stata.characteristics", "tzone", "units"
+    )
+    for (my_name in owned) {
+        attr(result, my_name) <- attr(owner, my_name, exact = TRUE)
+    }
+    result
+}
+
 .append_name_occurrences <- function(the_names) {
-    as.integer(ave(seq_along(the_names), the_names, FUN = seq_along))
+    counts <- new.env(hash = TRUE, parent = emptyenv())
+    vapply(the_names, function(my_name) {
+        key <- paste0("x", enc2utf8(my_name))
+        occurrence <- if (exists(key, counts, inherits = FALSE)) {
+            get(key, counts, inherits = FALSE) + 1L
+        } else {
+            1L
+        }
+        assign(key, occurrence, counts)
+        occurrence
+    }, integer(1))
 }
 
 .append_common_prototype <- function(left, right) {
@@ -295,9 +335,20 @@ dta_append <- function(sources, force = TRUE,
         !inherits(left, "stata_temporal")
     right_bare <- is.numeric(right) && is.null(right_storage) &&
         !inherits(right, "stata_temporal")
-    if (left_declared && right_bare) right <- stata_double()
-    if (right_declared && left_bare) left <- stata_double()
+    if (left_declared && right_bare) {
+        right <- .append_promote_bare_numeric(right)
+    }
+    if (right_declared && left_bare) {
+        left <- .append_promote_bare_numeric(left)
+    }
     vctrs::vec_ptype2(left, right)
+}
+
+.append_promote_bare_numeric <- function(prototype) {
+    widened <- .restore_stata_variable_metadata(
+        stata_double(), prototype, names = NULL
+    )
+    .as_stata_metadata_vector(widened)
 }
 
 # Pass two. One source is held at a time: its columns are cast to the
@@ -310,8 +361,15 @@ dta_append <- function(sources, force = TRUE,
     row_counts <- vapply(schemas, function(my_schema) {
         as.integer(my_schema$rows)
     }, integer(1))
-    total_rows <- sum(row_counts)
-    offsets <- cumsum(c(0L, row_counts))
+    total_rows <- sum(as.double(row_counts))
+    if (total_rows > .Machine$integer.max) {
+        stop(
+            "combined sources exceed R's maximum data-frame row count",
+            call. = FALSE
+        )
+    }
+    total_rows <- as.integer(total_rows)
+    offsets <- as.integer(cumsum(c(0, as.double(row_counts))))
 
     # A column whose prototype and contributors share one physical
     # layout gets a buffer allocated once at the full row count, and
@@ -355,12 +413,14 @@ dta_append <- function(sources, force = TRUE,
                     writable <- if (.append_fits_buffer(value, prototype)) {
                         value
                     } else {
-                        tryCatch(
-                            vctrs::vec_cast(value, prototype),
-                            error = function(condition) NULL
-                        )
+                        .append_cast_to_buffer(value, prototype)
                     }
-                    if (!is.null(writable)) {
+                    if (is.null(writable)) {
+                        .append_unwritable_source(
+                            plan$names[[plan_index]], schemas[[my_index]],
+                            plan$force
+                        )
+                    } else {
                         buffer <- buffers[[plan_index]]
                         # Clear the list slot first. While the list still
                         # references the buffer, `[<-` would duplicate
@@ -388,7 +448,8 @@ dta_append <- function(sources, force = TRUE,
         buffer <- buffers[[my_index]]
         if (is.null(buffer)) {
             columns[[my_index]] <- .append_combine_pieces(
-                pieces[[my_index]], plan$prototypes[[my_index]], row_counts
+                pieces[[my_index]], plan$prototypes[[my_index]], row_counts,
+                schemas, plan$names[[my_index]], plan$force
             )
             pieces[my_index] <- list(NULL)
             next
@@ -435,6 +496,55 @@ dta_append <- function(sources, force = TRUE,
         !inherits(value, "stata_temporal") && is.null(names(value))
 }
 
+.append_cast_to_buffer <- function(value, prototype) {
+    if (inherits(value, .stata_metadata_vector_class)) {
+        value <- .stata_metadata_vector_base(value)
+    }
+    writable <- tryCatch(
+        vctrs::vec_cast(value, prototype),
+        error = function(condition) NULL
+    )
+    if (is.null(writable) || inherits(prototype, "stata_string")) {
+        return(writable)
+    }
+    storage <- stata_storage_type(prototype)
+    if (is.null(storage)) {
+        return(writable)
+    }
+    valid <- tryCatch({
+        if (inherits(prototype, "stata_temporal")) {
+            .construct_stata_numeric(
+                as.double(.base_stata_temporal(writable)), NULL, storage,
+                temporal = .stata_temporal_code(prototype)
+            )
+        } else {
+            .construct_stata_numeric(as.double(writable), NULL, storage)
+        }
+        TRUE
+    }, error = function(condition) FALSE)
+    if (valid) writable else NULL
+}
+
+.append_unwritable_source <- function(my_name, schema, force) {
+    if (!force) {
+        stop(sprintf(
+            paste0(
+                "variable `%s` has incompatible storage across sources; ",
+                "use `force = TRUE` to fill the conflicting rows with ",
+                "missing values"
+            ),
+            my_name
+        ), call. = FALSE)
+    }
+    message(sprintf(
+        paste0(
+            "note: `%s` is stored differently in %s; force specified, ",
+            "so those observations are missing"
+        ),
+        my_name, .append_source_label(schema$source, schema$index)
+    ))
+}
+
 .append_buffer_values <- function(value) {
     if (is.character(value)) as.character(value) else as.double(value)
 }
@@ -455,7 +565,25 @@ dta_append <- function(sources, force = TRUE,
 # that only its observations reveal to be out of range - a numeric too
 # wide for the promoted storage - falls back to casting piece by piece
 # so one bad source becomes missing instead of failing the append.
-.append_combine_pieces <- function(the_pieces, prototype, row_counts) {
+.append_combine_pieces <- function(the_pieces, prototype, row_counts,
+                                   schemas, my_name, force) {
+    # Stata numerics, including temporals, need observation-level range
+    # validation in addition to vctrs' type compatibility check.
+    if (!is.null(stata_storage_type(prototype))) {
+        for (my_index in seq_along(the_pieces)) {
+            cast <- .append_cast_to_buffer(the_pieces[[my_index]], prototype)
+            if (is.null(cast)) {
+                .append_unwritable_source(
+                    my_name, schemas[[my_index]], force
+                )
+                cast <- .append_missing_column(
+                    prototype, row_counts[[my_index]]
+                )
+            }
+            the_pieces[[my_index]] <- cast
+        }
+        return(vctrs::vec_c(!!!the_pieces, .ptype = prototype))
+    }
     combined <- tryCatch(
         vctrs::vec_c(!!!the_pieces, .ptype = prototype),
         error = function(condition) NULL
@@ -467,6 +595,9 @@ dta_append <- function(sources, force = TRUE,
             error = function(condition) NULL
         )
         the_pieces[[my_index]] <- if (is.null(cast)) {
+            .append_unwritable_source(
+                my_name, schemas[[my_index]], force
+            )
             .append_missing_column(prototype, row_counts[[my_index]])
         } else {
             cast
@@ -480,6 +611,9 @@ dta_append <- function(sources, force = TRUE,
 # vec_init()'s `NA`.
 .append_missing_column <- function(prototype, rows) {
     if (rows == 0L) return(prototype)
+    if (inherits(prototype, "stata_temporal")) {
+        return(vctrs::vec_init(prototype, rows))
+    }
     if (inherits(prototype, "stata_string")) {
         return(vctrs::vec_cast(rep("", rows), prototype))
     }

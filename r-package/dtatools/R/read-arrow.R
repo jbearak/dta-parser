@@ -137,7 +137,8 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         profile,
         use_numeric_altrep,
         threads,
-        datasig
+        datasig,
+        keep_source_rows
     )
     source_rows <- attr(native, "dtatools.source.rows", exact = TRUE)
     attr(native, "dtatools.source.rows") <- NULL

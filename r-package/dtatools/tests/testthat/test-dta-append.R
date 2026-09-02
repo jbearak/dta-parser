@@ -110,6 +110,39 @@ test_that("the missing fill for an absent numeric stays compact", {
     expect_identical(is_missing(result$v), c(FALSE, FALSE, TRUE))
 })
 
+test_that("a missing temporal contribution preserves the Stata type", {
+    date_path <- fixture_with_temporal_storage("foreign", "%td")
+    datetime_path <- fixture_with_temporal_storage("foreign", "%tc")
+    withr::defer(unlink(c(date_path, datetime_path)))
+
+    for (path in c(date_path, datetime_path)) {
+        value <- read_dta(path, n_max = 1L)$foreign
+        result <- dta_append(list(
+            tibble::tibble(v = value),
+            tibble::tibble(other = stata_byte(1))
+        ))
+
+        expect_s3_class(result$v, "stata_temporal")
+        expect_identical(
+            stata_storage_type(result$v), stata_storage_type(value)
+        )
+        expect_identical(is_missing(result$v), c(FALSE, TRUE))
+    }
+})
+
+test_that("the combined row count cannot exceed R's frame limit", {
+    schemas <- list(list(rows = 2^30), list(rows = 2^30))
+    plan <- list(
+        names = character(), prototypes = list(), dropped = list(),
+        source_columns = list(integer(), integer()), force = TRUE
+    )
+
+    expect_error(
+        dtatools:::.append_fill_columns(schemas, plan),
+        "maximum data-frame row count"
+    )
+})
+
 test_that("force fills a string/numeric conflict with missing values", {
     text <- tibble::tibble(v = stata_string(c("ab", "cd")))
     number <- tibble::tibble(v = stata_byte(c(1, 2)))
@@ -151,6 +184,21 @@ test_that("variable labels come from the first contributor", {
 
     result <- dta_append(list(first, second))
     expect_identical(var_label(result$v), "first label")
+
+    unlabeled <- tibble::tibble(v = stata_byte(3))
+    result <- dta_append(list(unlabeled, second))
+    expect_null(var_label(result$v))
+})
+
+test_that("formats come from the first contributor after promotion", {
+    first <- tibble::tibble(v = stata_byte(1))
+    attr(first$v, "format.stata") <- "%8.0g"
+    second <- tibble::tibble(v = stata_long(100000))
+    attr(second$v, "format.stata") <- "%12.0g"
+
+    result <- dta_append(list(first, second))
+    expect_identical(stata_storage_type(result$v), "long")
+    expect_identical(attr(result$v, "format.stata"), "%8.0g")
 })
 
 test_that("value-label tables merge and the first contributor wins text", {
@@ -185,6 +233,13 @@ test_that(".dta and .arrow paths append like in-memory frames", {
     expect_identical(arrow_schema$rows, 2L)
     expect_null(attr(read_dta(dta, n_max = 0L), "dtatools.source.rows"))
     expect_null(attr(read_arrow(arrow, n_max = 0L), "dtatools.source.rows"))
+
+    withr::local_options(dtatools.output = "data.table")
+    expect_s3_class(dta_append(dta), "data.table")
+
+    options(dtatools.output = "invalid")
+    expect_s3_class(dta_append(dta, output = "tibble"), "tbl_df")
+    options(dtatools.output = "data.table")
 
     from_memory <- dta_append(list(master_frame(), using_frame()))
     from_files <- dta_append(list(dta, arrow))
@@ -329,4 +384,43 @@ test_that("an undeclared numeric widens a declared Stata prototype", {
     result <- dta_append(list(declared, integers))
     expect_identical(stata_storage_type(result$v), "double")
     expect_identical(as.numeric(result$v), c(1, 2, 50000, 60000))
+})
+
+test_that("widening an undeclared numeric preserves variable metadata", {
+    noted <- data.frame(v = c(1, 2))
+    attr(noted$v, "notes") <- "source note"
+    attr(noted$v, "stata.characteristics") <- c(origin = "memory")
+    noted$v <- dtatools:::.as_stata_metadata_vector(noted$v)
+    labelled <- data.frame(v = c(5, 6))
+    var_label(labelled$v) <- "first label"
+
+    result <- dta_append(list(
+        noted, tibble::tibble(v = stata_byte(c(3, 4)))
+    ))
+    expect_identical(as.numeric(result$v), c(1, 2, 3, 4))
+    expect_identical(attr(result$v, "notes"), "source note")
+    expect_identical(
+        attr(result$v, "stata.characteristics"), c(origin = "memory")
+    )
+
+    result <- dta_append(list(
+        labelled, tibble::tibble(v = stata_byte(c(7, 8)))
+    ))
+    expect_identical(as.numeric(result$v), c(5, 6, 7, 8))
+    expect_identical(var_label(result$v), "first label")
+})
+
+test_that("values outside Stata double storage obey force", {
+    declared <- tibble::tibble(v = stata_byte(1))
+    outside <- tibble::tibble(v = 1e308)
+
+    expect_message(
+        result <- dta_append(list(declared, outside)),
+        "those observations are missing"
+    )
+    expect_identical(as.numeric(result$v), c(1, NA))
+    expect_error(
+        dta_append(list(declared, outside), force = FALSE),
+        "incompatible storage"
+    )
 })

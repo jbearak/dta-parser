@@ -62,6 +62,7 @@ extern "C" {
 
     fn dtatools_check_interrupt() -> c_int;
     fn dtatools_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
+    fn dtatools_preserve_object(object: Sexp);
     fn dtatools_release_object(object: Sexp);
     fn dtatools_make_char(
         value: *const c_char,
@@ -1630,6 +1631,15 @@ impl ProtectGuard {
         Self {
             objects: Vec::new(),
         }
+    }
+
+    unsafe fn preserve(&mut self, value: Sexp) -> Result<(), String> {
+        self.objects
+            .try_reserve(1)
+            .map_err(|_| "R could not track a preserved native vector".to_owned())?;
+        dtatools_preserve_object(value);
+        self.objects.push(value);
+        Ok(())
     }
 
     unsafe fn alloc(&mut self, kind: c_int, length: RLen) -> Result<Sexp, String> {
@@ -3401,6 +3411,8 @@ unsafe fn read_impl(
         build_data_frame(data)
     }?;
     if row_count == Some(0) {
+        let mut result_guard = ProtectGuard::new();
+        result_guard.preserve(result)?;
         attach_source_rows(result, source_rows)?;
     }
     Ok(result)

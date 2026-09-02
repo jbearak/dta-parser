@@ -1338,6 +1338,7 @@ struct PreparedRead {
 fn prepare_read<R: Read + Seek>(
     reader: &mut R,
     options: &ArrowReadOptions,
+    count_source_rows: bool,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<PreparedRead, ArrowProfileError> {
     let mut footer = read_footer(reader)?;
@@ -1405,7 +1406,6 @@ fn prepare_read<R: Read + Seek>(
     let mut plans = Vec::new();
     let mut produced = 0_u64;
     let mut seen_rows = 0_u64;
-    let count_source_rows = limit == 0;
     for (batch_index, block) in footer.record_blocks.iter().enumerate() {
         if produced >= limit && !count_source_rows {
             break;
@@ -1921,9 +1921,27 @@ impl ArrowFileSnapshot {
         options: &ArrowReadOptions,
         interrupt: &mut dyn FnMut() -> bool,
     ) -> Result<ArrowReadResult, ArrowProfileError> {
+        self.read_internal(options, false, interrupt)
+    }
+
+    /// Read while also scanning every batch header for the complete row count.
+    pub fn read_with_source_row_count(
+        &self,
+        options: &ArrowReadOptions,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowReadResult, ArrowProfileError> {
+        self.read_internal(options, true, interrupt)
+    }
+
+    fn read_internal(
+        &self,
+        options: &ArrowReadOptions,
+        count_source_rows: bool,
+        interrupt: &mut dyn FnMut() -> bool,
+    ) -> Result<ArrowReadResult, ArrowProfileError> {
         let mut read = || -> Result<ArrowReadResult, ArrowProfileError> {
             let mut reader = BufReader::new(self.file.try_clone()?);
-            let prepared = prepare_read(&mut reader, options, interrupt)?;
+            let prepared = prepare_read(&mut reader, options, count_source_rows, interrupt)?;
             let mut columns = columns_skeleton(&prepared)?;
             let context = DecodeContext {
                 footer: &prepared.footer,
@@ -1973,7 +1991,7 @@ pub fn read_arrow_file_from<R: Read + Seek>(
     options: &ArrowReadOptions,
     interrupt: &mut dyn FnMut() -> bool,
 ) -> Result<ArrowReadResult, ArrowProfileError> {
-    let prepared = prepare_read(reader, options, interrupt)?;
+    let prepared = prepare_read(reader, options, false, interrupt)?;
     let mut columns = columns_skeleton(&prepared)?;
     let context = DecodeContext {
         footer: &prepared.footer,
@@ -2364,6 +2382,7 @@ impl ArrowFileSnapshot {
                     record_signature: false,
                     threads: 1,
                 },
+                false,
                 interrupt,
             )?;
             let context = DecodeContext {
@@ -2486,8 +2505,8 @@ mod tests {
             threads: 2,
             ..ArrowReadOptions::default()
         };
-        let prepared =
-            prepare_read(&mut reader, &options, &mut || false).expect("source metadata reads");
+        let prepared = prepare_read(&mut reader, &options, false, &mut || false)
+            .expect("source metadata reads");
         assert!(prepared.footer.schema.metadata().is_empty());
         assert!(prepared
             .footer
