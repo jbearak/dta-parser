@@ -477,6 +477,1031 @@ pub unsafe extern "C" fn dtatools_gather_numeric_columns(
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NumericCompareOperand {
+    values: *const c_void,
+    kind: c_int,
+    temporal: c_int,
+    format_version: c_int,
+}
+
+/// Storage of one comparison operand, validated once so the per-element
+/// loop carries no `try_from` parsing.
+#[derive(Clone, Copy)]
+enum CompareStorage {
+    Byte(FormatVersion),
+    Int(FormatVersion),
+    Long(FormatVersion),
+    Float(FormatVersion),
+    Double,
+}
+
+#[derive(Clone, Copy)]
+struct CompareOperandView {
+    values: usize,
+    storage: CompareStorage,
+    temporal: c_int,
+}
+
+fn compare_operand_view(operand: NumericCompareOperand) -> Option<CompareOperandView> {
+    let storage = if operand.kind == 4 {
+        CompareStorage::Double
+    } else {
+        let release = u16::try_from(operand.format_version).ok()?;
+        let version = FormatVersion::try_from(release).ok()?;
+        match NumericKind::try_from(operand.kind).ok()? {
+            NumericKind::Byte => CompareStorage::Byte(version),
+            NumericKind::Int => CompareStorage::Int(version),
+            NumericKind::Long => CompareStorage::Long(version),
+            NumericKind::Float => CompareStorage::Float(version),
+        }
+    };
+    Some(CompareOperandView {
+        values: operand.values as usize,
+        storage,
+        temporal: operand.temporal,
+    })
+}
+
+/// One element decoded for Stata comparison: rank 0 is a finite value,
+/// rank 1 is `.`, and ranks 2 through 27 are `.a` through `.z`, with the
+/// payload zeroed whenever the element is missing so lexicographic
+/// (rank, value) order reproduces Stata's total order.
+#[derive(Clone, Copy)]
+struct ComparedElement {
+    rank: u8,
+    value: f64,
+}
+
+/// Decode one element without materializing the vector. Returns `None`
+/// for a NaN payload that is not a Stata missing value, so the caller can
+/// fall back to the R implementation and its errors.
+unsafe fn compare_operand_element(
+    operand: CompareOperandView,
+    index: usize,
+) -> Option<ComparedElement> {
+    let base = operand.values as *const u8;
+    let raw = match operand.storage {
+        CompareStorage::Double => {
+            // Decoded doubles (materialized or eagerly constructed Stata
+            // vectors): finite values are already in decoded units, system
+            // missing is R's `NA_real_`, and `.a` through `.z` are
+            // haven-style tagged NaNs whose tag byte sits in bits 32..40.
+            let value = base.cast::<f64>().add(index).read_unaligned();
+            if !value.is_nan() {
+                return Some(ComparedElement { rank: 0, value });
+            }
+            const SIGN_BIT: u64 = 0x8000_0000_0000_0000;
+            const QUIET_NAN_BIT: u64 = 0x0008_0000_0000_0000;
+            const TAG_BITS: u64 = 0x0000_00ff_0000_0000;
+            const IGNORED_BITS: u64 = SIGN_BIT | QUIET_NAN_BIT | TAG_BITS;
+            const TAGGED_NA_LAYOUT: u64 = 0x7ff0_0000_0000_07a2;
+            let bits = value.to_bits();
+            if bits & !IGNORED_BITS != TAGGED_NA_LAYOUT & !IGNORED_BITS {
+                return None;
+            }
+            return match ((bits & TAG_BITS) >> 32) as u8 {
+                0 => Some(ComparedElement {
+                    rank: 1,
+                    value: 0.0,
+                }),
+                tag @ b'a'..=b'z' => Some(ComparedElement {
+                    rank: tag - b'a' + 2,
+                    value: 0.0,
+                }),
+                _ => None,
+            };
+        }
+        CompareStorage::Byte(version) => {
+            let value = base.cast::<i8>().add(index).read_unaligned();
+            if let Some(tag) = classify_byte_missing_for_version(value, version) {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            f64::from(value)
+        }
+        CompareStorage::Int(version) => {
+            let value = base.cast::<i16>().add(index).read_unaligned();
+            if let Some(tag) = classify_int_missing_for_version(value, version) {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            f64::from(value)
+        }
+        CompareStorage::Long(version) => {
+            let value = base.cast::<i32>().add(index).read_unaligned();
+            if let Some(tag) = classify_long_missing_for_version(value, version) {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            f64::from(value)
+        }
+        CompareStorage::Float(version) => {
+            let value = base.cast::<f32>().add(index).read_unaligned();
+            if let Some(tag) = classify_float_missing_bits_for_version(value.to_bits(), version) {
+                return Some(ComparedElement {
+                    rank: tag.offset() + 1,
+                    value: 0.0,
+                });
+            }
+            if value.is_nan() {
+                return None;
+            }
+            f64::from(value)
+        }
+    };
+    let value = match operand.temporal {
+        1 => raw - DAYS_1960_TO_1970,
+        2 => raw / 1000.0 - SECONDS_1960_TO_1970,
+        _ => raw,
+    };
+    Some(ComparedElement { rank: 0, value })
+}
+
+fn compare_decoded(op: c_int, x: ComparedElement, y: ComparedElement) -> c_int {
+    let result = match op {
+        0 => x.rank == y.rank && x.value == y.value,
+        1 => x.rank != y.rank || x.value != y.value,
+        2 => x.rank < y.rank || (x.rank == y.rank && x.value < y.value),
+        3 => x.rank < y.rank || (x.rank == y.rank && x.value <= y.value),
+        4 => x.rank > y.rank || (x.rank == y.rank && x.value > y.value),
+        _ => x.rank > y.rank || (x.rank == y.rank && x.value >= y.value),
+    };
+    c_int::from(result)
+}
+
+unsafe fn compare_numeric_range(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    output: *mut c_int,
+    start: usize,
+    end: usize,
+) -> bool {
+    for index in start..end {
+        let Some(left) = compare_operand_element(x, index) else {
+            return false;
+        };
+        let right = match y {
+            Some(operand) => match compare_operand_element(operand, index) {
+                Some(element) => element,
+                None => return false,
+            },
+            None => scalar,
+        };
+        output.add(index).write(compare_decoded(op, left, right));
+    }
+    true
+}
+
+/// Raw-order bounds of one integer storage: every finite value sits
+/// below `first_missing`, and `z` is the highest raw value the storage
+/// can hold, so raw integer order reproduces Stata's total order
+/// (finite values, then `.`, then `.a` through `.z`).
+#[derive(Clone, Copy)]
+struct RawIntBounds {
+    type_min: i64,
+    first_missing: i64,
+    z: i64,
+}
+
+/// Whether the release stores tagged missing values. Older releases
+/// reserve only the top raw value for `.` and treat the tagged-missing
+/// slots below it as finite values.
+fn tagged_missing_version(version: FormatVersion) -> bool {
+    !matches!(
+        version,
+        FormatVersion::V105 | FormatVersion::V108 | FormatVersion::V110 | FormatVersion::V111
+    )
+}
+
+fn raw_int_bounds(storage: CompareStorage) -> Option<RawIntBounds> {
+    let (dot, z, type_min, version) = match storage {
+        CompareStorage::Byte(version) => (
+            i64::from(MissingTag::System.byte_value()),
+            i64::from(MissingTag::Z.byte_value()),
+            i64::from(i8::MIN),
+            version,
+        ),
+        CompareStorage::Int(version) => (
+            i64::from(MissingTag::System.int_value()),
+            i64::from(MissingTag::Z.int_value()),
+            i64::from(i16::MIN),
+            version,
+        ),
+        CompareStorage::Long(version) => (
+            i64::from(MissingTag::System.long_value()),
+            i64::from(MissingTag::Z.long_value()),
+            i64::from(i32::MIN),
+            version,
+        ),
+        CompareStorage::Float(_) | CompareStorage::Double => return None,
+    };
+    Some(RawIntBounds {
+        type_min,
+        first_missing: if tagged_missing_version(version) { dot } else { z },
+        z,
+    })
+}
+
+/// One raw-space comparison, planned once per call so the per-element
+/// loop is a single branch-free integer compare.
+#[derive(Clone, Copy)]
+enum RawScalarPlan {
+    Fill(bool),
+    Eq { target: i64, invert: bool },
+    Lt { cutoff: i64, invert: bool },
+}
+
+/// Encode a decoded scalar into the storage's raw order and plan the
+/// comparison. `None` leaves the decoding loop to run: millisecond
+/// temporal storage rounds through doubles, so raw cutoffs cannot
+/// reproduce its equality semantics.
+fn raw_int_scalar_plan(
+    op: c_int,
+    scalar: ComparedElement,
+    temporal: c_int,
+    bounds: RawIntBounds,
+) -> Option<RawScalarPlan> {
+    if temporal == 2 {
+        return None;
+    }
+    let finite_max = bounds.first_missing - 1;
+    // Cutoffs for finite scalars clamp to `first_missing` because every
+    // missing value outranks every finite scalar; cutoffs for missing
+    // scalars clamp one past `z` so `.` compares below `.a` even when
+    // the storage predates tagged missing values.
+    let clamp_max = if scalar.rank == 0 {
+        bounds.first_missing
+    } else {
+        bounds.z + 1
+    };
+    let (eq_target, cutoff_lt, cutoff_le) = if scalar.rank == 0 {
+        let encoded = if temporal == 1 {
+            scalar.value + DAYS_1960_TO_1970
+        } else {
+            scalar.value
+        };
+        let integral = encoded == encoded.trunc();
+        let key = encoded as i64;
+        let eq_target = (integral
+            && key as f64 == encoded
+            && key >= bounds.type_min
+            && key <= finite_max)
+            .then_some(key);
+        (
+            eq_target,
+            encoded.ceil() as i64,
+            (encoded.floor() as i64).saturating_add(1),
+        )
+    } else {
+        let key = if bounds.first_missing < bounds.z {
+            bounds.first_missing + i64::from(scalar.rank) - 1
+        } else if scalar.rank == 1 {
+            bounds.z
+        } else {
+            bounds.z + 1
+        };
+        let eq_target = (key <= bounds.z).then_some(key);
+        (eq_target, key, key.saturating_add(1))
+    };
+    let clamp = |key: i64| key.clamp(bounds.type_min, clamp_max);
+    let lt = |cutoff: i64, invert: bool| {
+        let cutoff = clamp(cutoff);
+        if cutoff <= bounds.type_min {
+            RawScalarPlan::Fill(invert)
+        } else if cutoff > bounds.z {
+            RawScalarPlan::Fill(!invert)
+        } else {
+            RawScalarPlan::Lt { cutoff, invert }
+        }
+    };
+    Some(match op {
+        0 | 1 => match eq_target {
+            Some(target) => RawScalarPlan::Eq {
+                target,
+                invert: op == 1,
+            },
+            None => RawScalarPlan::Fill(op == 1),
+        },
+        2 => lt(cutoff_lt, false),
+        3 => lt(cutoff_le, false),
+        4 => lt(cutoff_le, true),
+        5 => lt(cutoff_lt, true),
+        _ => return None,
+    })
+}
+
+unsafe fn run_raw_int_scalar_plan<T>(
+    plan: RawScalarPlan,
+    base: *const T,
+    output: *mut c_int,
+    length: usize,
+) where
+    T: Copy + PartialEq + PartialOrd + TryFrom<i64>,
+{
+    match plan {
+        RawScalarPlan::Fill(value) => {
+            for index in 0..length {
+                output.add(index).write(c_int::from(value));
+            }
+        }
+        RawScalarPlan::Eq { target, invert } => {
+            let Ok(target) = T::try_from(target) else {
+                unreachable!("plan targets stay inside the storage range");
+            };
+            for index in 0..length {
+                let raw = base.add(index).read_unaligned();
+                output.add(index).write(c_int::from((raw == target) != invert));
+            }
+        }
+        RawScalarPlan::Lt { cutoff, invert } => {
+            let Ok(cutoff) = T::try_from(cutoff) else {
+                unreachable!("plan cutoffs stay inside the storage range");
+            };
+            for index in 0..length {
+                let raw = base.add(index).read_unaligned();
+                output.add(index).write(c_int::from((raw < cutoff) != invert));
+            }
+        }
+    }
+}
+
+unsafe fn run_raw_int_pair<T>(
+    op: c_int,
+    x_base: *const T,
+    y_base: *const T,
+    output: *mut c_int,
+    length: usize,
+) where
+    T: Copy + PartialEq + PartialOrd,
+{
+    macro_rules! pair_loop {
+        ($compare:expr) => {
+            for index in 0..length {
+                let left = x_base.add(index).read_unaligned();
+                let right = y_base.add(index).read_unaligned();
+                output.add(index).write(c_int::from($compare(left, right)));
+            }
+        };
+    }
+    match op {
+        0 => pair_loop!(|left: T, right: T| left == right),
+        1 => pair_loop!(|left: T, right: T| left != right),
+        2 => pair_loop!(|left: T, right: T| left < right),
+        3 => pair_loop!(|left: T, right: T| left <= right),
+        4 => pair_loop!(|left: T, right: T| left > right),
+        _ => pair_loop!(|left: T, right: T| left >= right),
+    }
+}
+
+const DOUBLE_SIGN_BIT: u64 = 0x8000_0000_0000_0000;
+const DOUBLE_QUIET_NAN_BIT: u64 = 0x0008_0000_0000_0000;
+const DOUBLE_TAG_BITS: u64 = 0x0000_00ff_0000_0000;
+const DOUBLE_IGNORED_BITS: u64 = DOUBLE_SIGN_BIT | DOUBLE_QUIET_NAN_BIT | DOUBLE_TAG_BITS;
+const DOUBLE_TAGGED_NA_LAYOUT: u64 = 0x7ff0_0000_0000_07a2;
+
+/// Missing rank of one decoded double, from its haven-style NaN tag
+/// byte: 1 for `.` and 2 through 27 for `.a` through `.z`. The caller
+/// separately verifies the payload is canonical; wrapped arithmetic on
+/// an invalid tag never reaches the output.
+fn double_missing_rank(bits: u64) -> u8 {
+    let tag = ((bits & DOUBLE_TAG_BITS) >> 32) as u8;
+    if tag == 0 {
+        1
+    } else {
+        tag.wrapping_sub(b'a').wrapping_add(2)
+    }
+}
+
+fn double_payload_canonical(bits: u64) -> bool {
+    let tag = ((bits & DOUBLE_TAG_BITS) >> 32) as u8;
+    bits & !DOUBLE_IGNORED_BITS == DOUBLE_TAGGED_NA_LAYOUT & !DOUBLE_IGNORED_BITS
+        && (tag == 0 || tag.is_ascii_lowercase())
+}
+
+/// Compare decoded-double storage against a scalar in one branch-light
+/// pass. Finite elements use the IEEE compare directly; missing
+/// elements resolve by rank against the scalar's rank. Returns `false`
+/// when a noncanonical NaN payload appears, leaving the decoding loop
+/// (and its error path) to run.
+unsafe fn compare_raw_double_scalar(
+    op: c_int,
+    base: *const f64,
+    scalar: ComparedElement,
+    output: *mut c_int,
+    length: usize,
+) -> bool {
+    let mut valid = true;
+    macro_rules! scalar_loop {
+        ($finite:expr, $missing:expr) => {
+            for index in 0..length {
+                let value = base.add(index).read_unaligned();
+                if value.is_nan() {
+                    let bits = value.to_bits();
+                    valid &= double_payload_canonical(bits);
+                    let rank = double_missing_rank(bits);
+                    output.add(index).write(c_int::from($missing(rank)));
+                } else {
+                    output.add(index).write(c_int::from($finite(value)));
+                }
+            }
+        };
+    }
+    if scalar.rank == 0 {
+        let s = scalar.value;
+        // A missing element outranks every finite scalar, so its result
+        // depends only on the operator.
+        match op {
+            0 => scalar_loop!(|v: f64| v == s, |_| false),
+            1 => scalar_loop!(|v: f64| v != s, |_| true),
+            2 => scalar_loop!(|v: f64| v < s, |_| false),
+            3 => scalar_loop!(|v: f64| v <= s, |_| false),
+            4 => scalar_loop!(|v: f64| v > s, |_| true),
+            _ => scalar_loop!(|v: f64| v >= s, |_| true),
+        }
+    } else {
+        // A finite element ranks below every missing scalar, so its
+        // result also depends only on the operator.
+        let r = scalar.rank;
+        match op {
+            0 => scalar_loop!(|_| false, |rank: u8| rank == r),
+            1 => scalar_loop!(|_| true, |rank: u8| rank != r),
+            2 => scalar_loop!(|_| true, |rank: u8| rank < r),
+            3 => scalar_loop!(|_| true, |rank: u8| rank <= r),
+            4 => scalar_loop!(|_| false, |rank: u8| rank > r),
+            _ => scalar_loop!(|_| false, |rank: u8| rank >= r),
+        }
+    }
+    valid
+}
+
+/// Compare integer storage in raw order without decoding elements.
+/// Returns `None` when the operands need the decoding loop: float or
+/// double storage, millisecond temporal scalars, or operand pairs whose
+/// raw encodings are not directly comparable.
+unsafe fn compare_raw_int(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    output: *mut c_int,
+    length: usize,
+) -> Option<bool> {
+    let x_bounds = raw_int_bounds(x.storage)?;
+    match y {
+        None => {
+            let plan = raw_int_scalar_plan(op, scalar, x.temporal, x_bounds)?;
+            match x.storage {
+                CompareStorage::Byte(_) => {
+                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i8>(), output, length)
+                }
+                CompareStorage::Int(_) => {
+                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i16>(), output, length)
+                }
+                CompareStorage::Long(_) => {
+                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i32>(), output, length)
+                }
+                CompareStorage::Float(_) | CompareStorage::Double => unreachable!(),
+            }
+            Some(true)
+        }
+        Some(y) => {
+            // Raw order lines up between two operands only when they
+            // share the storage width, the tagged-missing convention,
+            // and the temporal decode (any shared temporal decode is
+            // strictly monotone, so raw order survives it).
+            let y_bounds = raw_int_bounds(y.storage)?;
+            if x.temporal != y.temporal
+                || x_bounds.type_min != y_bounds.type_min
+                || x_bounds.first_missing != y_bounds.first_missing
+            {
+                return None;
+            }
+            if !(0..=5).contains(&op) {
+                return None;
+            }
+            match x.storage {
+                CompareStorage::Byte(_) => run_raw_int_pair(
+                    op,
+                    (x.values as *const u8).cast::<i8>(),
+                    (y.values as *const u8).cast::<i8>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Int(_) => run_raw_int_pair(
+                    op,
+                    (x.values as *const u8).cast::<i16>(),
+                    (y.values as *const u8).cast::<i16>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Long(_) => run_raw_int_pair(
+                    op,
+                    (x.values as *const u8).cast::<i32>(),
+                    (y.values as *const u8).cast::<i32>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Float(_) | CompareStorage::Double => unreachable!(),
+            }
+            Some(true)
+        }
+    }
+}
+
+const COMPARE_ROWS_PER_WORKER: usize = 262_144;
+
+#[no_mangle]
+/// Compare compact Stata numeric storage against a decoded scalar or a
+/// second compact vector of the same length, in parallel and without
+/// materializing either operand into R doubles. `op` is 0 `==`, 1 `!=`,
+/// 2 `<`, 3 `<=`, 4 `>`, 5 `>=`. Returns 1 on success and 0 when the
+/// caller must fall back to the R implementation.
+///
+/// # Safety
+///
+/// `x` (and `y` when non-null) must describe live compact numeric storage
+/// of at least `length` elements that stays valid for the whole call, and
+/// `output` must point to `length` writable `c_int` slots.
+pub unsafe extern "C" fn dtatools_numeric_compare(
+    op: c_int,
+    x: *const NumericCompareOperand,
+    y: *const NumericCompareOperand,
+    scalar_value: f64,
+    scalar_rank: c_int,
+    output: *mut c_int,
+    length: usize,
+    threads: c_int,
+) -> c_int {
+    let call = || {
+        if x.is_null() || (length > 0 && output.is_null()) || !(0..=5).contains(&op) {
+            return false;
+        }
+        let Some(x) = compare_operand_view(unsafe { *x }) else {
+            return false;
+        };
+        let y = if y.is_null() {
+            None
+        } else {
+            match compare_operand_view(unsafe { *y }) {
+                Some(view) => Some(view),
+                None => return false,
+            }
+        };
+        if y.is_none() && !(0..=27).contains(&scalar_rank) {
+            return false;
+        }
+        let scalar = ComparedElement {
+            rank: scalar_rank as u8,
+            value: if scalar_rank == 0 { scalar_value } else { 0.0 },
+        };
+        if scalar.rank == 0 && scalar.value.is_nan() {
+            return false;
+        }
+        if let Some(done) = unsafe { compare_raw_int(op, x, y, scalar, output, length) } {
+            return done;
+        }
+        if y.is_none() && matches!(x.storage, CompareStorage::Double) {
+            // A false return means a noncanonical NaN payload; fall
+            // through so the decoding loop reports the failure and the
+            // R fallback owns its error.
+            let base = (x.values as *const u8).cast::<f64>();
+            if unsafe { compare_raw_double_scalar(op, base, scalar, output, length) } {
+                return true;
+            }
+        }
+        let available = std::thread::available_parallelism().map_or(1, usize::from);
+        let requested = if threads <= 0 {
+            available
+        } else {
+            (threads as usize).min(available)
+        };
+        let workers = requested
+            .min(length.div_ceil(COMPARE_ROWS_PER_WORKER))
+            .max(1);
+        if workers == 1 {
+            return unsafe { compare_numeric_range(op, x, y, scalar, output, 0, length) };
+        }
+        let rows_per_worker = length.div_ceil(workers);
+        let output_address = output as usize;
+        let ok = std::sync::atomic::AtomicBool::new(true);
+        std::thread::scope(|scope| {
+            for worker in 0..workers {
+                let start = worker * rows_per_worker;
+                let end = length.min(start + rows_per_worker);
+                if start >= end {
+                    continue;
+                }
+                let ok = &ok;
+                scope.spawn(move || {
+                    let completed = unsafe {
+                        compare_numeric_range(
+                            op,
+                            x,
+                            y,
+                            scalar,
+                            output_address as *mut c_int,
+                            start,
+                            end,
+                        )
+                    };
+                    if !completed {
+                        ok.store(false, std::sync::atomic::Ordering::Relaxed);
+                    }
+                });
+            }
+        });
+        ok.load(std::sync::atomic::Ordering::Relaxed)
+    };
+
+    match catch_unwind(AssertUnwindSafe(call)) {
+        Ok(true) => 1,
+        Ok(false) | Err(_) => 0,
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NumericPatchTarget {
+    values: *mut c_void,
+    kind: c_int,
+    temporal: c_int,
+    format_version: c_int,
+}
+
+#[derive(Clone, Copy)]
+struct PatchTargetView {
+    values: usize,
+    storage: CompareStorage,
+    kind: NumericKind,
+    temporal: c_int,
+    format_version: c_int,
+}
+
+fn patch_target_view(target: NumericPatchTarget) -> Option<PatchTargetView> {
+    let operand = NumericCompareOperand {
+        values: target.values,
+        kind: target.kind,
+        temporal: target.temporal,
+        format_version: target.format_version,
+    };
+    let compared = compare_operand_view(operand)?;
+    Some(PatchTargetView {
+        values: target.values as usize,
+        storage: compared.storage,
+        kind: NumericKind::try_from(target.kind).ok()?,
+        temporal: target.temporal,
+        format_version: target.format_version,
+    })
+}
+
+fn encoded_patch_observed(value: f64, temporal: c_int) -> f64 {
+    match temporal {
+        1 => value + DAYS_1960_TO_1970,
+        2 => {
+            let source = (value + SECONDS_1960_TO_1970) * 1000.0;
+            let rounded = source.round();
+            let decoded = rounded / 1000.0 - SECONDS_1960_TO_1970;
+            if source.is_finite() && decoded == value {
+                rounded
+            } else {
+                source
+            }
+        }
+        _ => value,
+    }
+}
+
+unsafe fn write_patch_element(
+    target: PatchTargetView,
+    index: usize,
+    value: ComparedElement,
+) -> bool {
+    let output = target.values as *mut u8;
+    if value.rank > 0 {
+        let offset = value.rank - 1;
+        if target.format_version <= 111 && offset != 0 {
+            return false;
+        }
+        match target.kind {
+            NumericKind::Byte => {
+                let encoded = if target.format_version <= 111 {
+                    i8::MAX
+                } else {
+                    101_i8.checked_add_unsigned(offset).unwrap()
+                };
+                output.cast::<i8>().add(index).write_unaligned(encoded);
+            }
+            NumericKind::Int => {
+                let encoded = if target.format_version <= 111 {
+                    i16::MAX
+                } else {
+                    32_741_i16.checked_add_unsigned(offset.into()).unwrap()
+                };
+                output.cast::<i16>().add(index).write_unaligned(encoded);
+            }
+            NumericKind::Long => {
+                let encoded = if target.format_version <= 111 {
+                    i32::MAX
+                } else {
+                    2_147_483_621_i32 + i32::from(offset)
+                };
+                output.cast::<i32>().add(index).write_unaligned(encoded);
+            }
+            NumericKind::Float => {
+                let bits = if target.format_version <= 111 {
+                    0x7f00_0000
+                } else {
+                    0x7f00_0000 + u32::from(offset) * 0x0000_0800
+                };
+                output
+                    .cast::<f32>()
+                    .add(index)
+                    .write_unaligned(f32::from_bits(bits));
+            }
+        }
+        return true;
+    }
+
+    let encoded = encoded_patch_observed(value.value, target.temporal);
+    match target.kind {
+        NumericKind::Byte => {
+            if !encoded.is_finite()
+                || encoded.fract() != 0.0
+                || !(-127.0..=100.0).contains(&encoded)
+            {
+                return false;
+            }
+            output
+                .cast::<i8>()
+                .add(index)
+                .write_unaligned(encoded as i8);
+        }
+        NumericKind::Int => {
+            if !encoded.is_finite()
+                || encoded.fract() != 0.0
+                || !(-32_767.0..=32_740.0).contains(&encoded)
+            {
+                return false;
+            }
+            output
+                .cast::<i16>()
+                .add(index)
+                .write_unaligned(encoded as i16);
+        }
+        NumericKind::Long => {
+            if !encoded.is_finite()
+                || encoded.fract() != 0.0
+                || !(-2_147_483_647.0..=2_147_483_620.0).contains(&encoded)
+            {
+                return false;
+            }
+            output
+                .cast::<i32>()
+                .add(index)
+                .write_unaligned(encoded as i32);
+        }
+        NumericKind::Float => {
+            let maximum = f32::from_bits(0x7eff_ffff) as f64;
+            if !encoded.is_finite() || !(-maximum..=maximum).contains(&encoded) {
+                return false;
+            }
+            output
+                .cast::<f32>()
+                .add(index)
+                .write_unaligned(encoded as f32);
+        }
+    }
+    true
+}
+
+#[allow(clippy::too_many_arguments)]
+unsafe fn compare_patch_range(
+    op: c_int,
+    x: CompareOperandView,
+    y: Option<CompareOperandView>,
+    scalar: ComparedElement,
+    replacement: Option<CompareOperandView>,
+    replacement_scalar: ComparedElement,
+    target: PatchTargetView,
+    start: usize,
+    end: usize,
+) -> Option<(usize, usize, usize)> {
+    let target_operand = CompareOperandView {
+        values: target.values,
+        storage: target.storage,
+        temporal: target.temporal,
+    };
+    let mut matched = 0;
+    let mut old_missing = 0;
+    let mut new_missing = 0;
+    for index in start..end {
+        let left = compare_operand_element(x, index)?;
+        let right = match y {
+            Some(operand) => compare_operand_element(operand, index)?,
+            None => scalar,
+        };
+        if compare_decoded(op, left, right) == 0 {
+            continue;
+        }
+        let old = compare_operand_element(target_operand, index)?;
+        let new = match replacement {
+            Some(operand) => compare_operand_element(operand, index)?,
+            None => replacement_scalar,
+        };
+        if !write_patch_element(target, index, new) {
+            return None;
+        }
+        matched += 1;
+        old_missing += usize::from(old.rank > 0);
+        new_missing += usize::from(new.rank > 0);
+    }
+    Some((matched, old_missing, new_missing))
+}
+
+#[no_mangle]
+/// Compare Stata numeric operands and patch matching compact target rows in
+/// one pass. The caller owns rollback and restores the target when this
+/// function returns zero.
+///
+/// # Safety
+///
+/// Every operand and the target must describe live buffers of at least
+/// `length` elements. The target must not alias another concurrently written
+/// buffer. Output counters must be writable.
+pub unsafe extern "C" fn dtatools_numeric_compare_patch(
+    op: c_int,
+    x: *const NumericCompareOperand,
+    y: *const NumericCompareOperand,
+    scalar_value: f64,
+    scalar_rank: c_int,
+    replacement: *const NumericCompareOperand,
+    replacement_scalar_value: f64,
+    replacement_scalar_rank: c_int,
+    target: *const NumericPatchTarget,
+    length: usize,
+    threads: c_int,
+    matched_output: *mut usize,
+    old_missing_output: *mut usize,
+    new_missing_output: *mut usize,
+) -> c_int {
+    let call = || {
+        if x.is_null()
+            || target.is_null()
+            || matched_output.is_null()
+            || old_missing_output.is_null()
+            || new_missing_output.is_null()
+            || !(0..=5).contains(&op)
+            || !(0..=27).contains(&scalar_rank)
+            || !(0..=27).contains(&replacement_scalar_rank)
+        {
+            return false;
+        }
+        let Some(x) = compare_operand_view(unsafe { *x }) else {
+            return false;
+        };
+        let y = if y.is_null() {
+            None
+        } else {
+            let Some(view) = compare_operand_view(unsafe { *y }) else {
+                return false;
+            };
+            Some(view)
+        };
+        let replacement = if replacement.is_null() {
+            None
+        } else {
+            let Some(view) = compare_operand_view(unsafe { *replacement }) else {
+                return false;
+            };
+            Some(view)
+        };
+        let Some(target) = patch_target_view(unsafe { *target }) else {
+            return false;
+        };
+        let scalar = ComparedElement {
+            rank: scalar_rank as u8,
+            value: if scalar_rank == 0 { scalar_value } else { 0.0 },
+        };
+        let replacement_scalar = ComparedElement {
+            rank: replacement_scalar_rank as u8,
+            value: if replacement_scalar_rank == 0 {
+                replacement_scalar_value
+            } else {
+                0.0
+            },
+        };
+        if (scalar.rank == 0 && scalar.value.is_nan())
+            || (replacement.is_none()
+                && replacement_scalar.rank == 0
+                && replacement_scalar.value.is_nan())
+        {
+            return false;
+        }
+
+        let available = std::thread::available_parallelism().map_or(1, usize::from);
+        let requested = if threads <= 0 {
+            available
+        } else {
+            (threads as usize).min(available)
+        };
+        let workers = requested
+            .min(length.div_ceil(COMPARE_ROWS_PER_WORKER))
+            .max(1);
+        let matched = std::sync::atomic::AtomicUsize::new(0);
+        let old_missing = std::sync::atomic::AtomicUsize::new(0);
+        let new_missing = std::sync::atomic::AtomicUsize::new(0);
+        let ok = std::sync::atomic::AtomicBool::new(true);
+        if workers == 1 {
+            match unsafe {
+                compare_patch_range(
+                    op,
+                    x,
+                    y,
+                    scalar,
+                    replacement,
+                    replacement_scalar,
+                    target,
+                    0,
+                    length,
+                )
+            } {
+                Some((matched_count, old_count, new_count)) => {
+                    matched.store(matched_count, std::sync::atomic::Ordering::Relaxed);
+                    old_missing.store(old_count, std::sync::atomic::Ordering::Relaxed);
+                    new_missing.store(new_count, std::sync::atomic::Ordering::Relaxed);
+                }
+                None => return false,
+            }
+        } else {
+            let rows_per_worker = length.div_ceil(workers);
+            std::thread::scope(|scope| {
+                for worker in 0..workers {
+                    let start = worker * rows_per_worker;
+                    let end = length.min(start + rows_per_worker);
+                    if start >= end {
+                        continue;
+                    }
+                    let matched = &matched;
+                    let old_missing = &old_missing;
+                    let new_missing = &new_missing;
+                    let ok = &ok;
+                    scope.spawn(move || {
+                        match unsafe {
+                            compare_patch_range(
+                                op,
+                                x,
+                                y,
+                                scalar,
+                                replacement,
+                                replacement_scalar,
+                                target,
+                                start,
+                                end,
+                            )
+                        } {
+                            Some((matched_count, old_count, new_count)) => {
+                                matched
+                                    .fetch_add(matched_count, std::sync::atomic::Ordering::Relaxed);
+                                old_missing
+                                    .fetch_add(old_count, std::sync::atomic::Ordering::Relaxed);
+                                new_missing
+                                    .fetch_add(new_count, std::sync::atomic::Ordering::Relaxed);
+                            }
+                            None => {
+                                ok.store(false, std::sync::atomic::Ordering::Relaxed);
+                            }
+                        }
+                    });
+                }
+            });
+            if !ok.load(std::sync::atomic::Ordering::Relaxed) {
+                return false;
+            }
+        }
+        unsafe {
+            matched_output.write(matched.load(std::sync::atomic::Ordering::Relaxed));
+            old_missing_output.write(old_missing.load(std::sync::atomic::Ordering::Relaxed));
+            new_missing_output.write(new_missing.load(std::sync::atomic::Ordering::Relaxed));
+        }
+        true
+    };
+
+    match catch_unwind(AssertUnwindSafe(call)) {
+        Ok(true) => 1,
+        Ok(false) | Err(_) => 0,
+    }
+}
+
+#[repr(C)]
 struct DictStringData {
     value_ids: *mut u32,
     length: usize,
@@ -1070,7 +2095,9 @@ fn value_label_reference_counts(
     for index in selected {
         if let Some(variable) = metadata.variables.get(index) {
             if !variable.value_label_name.is_empty() {
-                counts.entry(variable.value_label_name.as_str()).or_insert(0);
+                counts
+                    .entry(variable.value_label_name.as_str())
+                    .or_insert(0);
             }
         }
     }
@@ -3896,9 +4923,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         .collect::<Result<Vec<_>, _>>()?;
     let value_label_names = table_descriptors
         .iter()
-        .map(|descriptor| unsafe {
-            required_c_str(descriptor.name, "value-label table name")
-        })
+        .map(|descriptor| unsafe { required_c_str(descriptor.name, "value-label table name") })
         .collect::<Result<Vec<_>, _>>()?;
     let value_label_tables = table_descriptors
         .iter()

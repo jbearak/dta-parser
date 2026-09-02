@@ -30,6 +30,28 @@ extern int dtatools_write_path_kind(const char *, char **);
 extern void dtatools_free_error(char *);
 extern void dtatools_numeric_free(void *);
 extern void *dtatools_numeric_alloc(void *, size_t, int, int, size_t);
+typedef struct {
+    void *values;
+    int kind;
+    int temporal;
+    int format_version;
+} dtatools_compare_operand;
+extern int dtatools_numeric_compare(
+    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
+    double, int, int *, size_t, int
+);
+typedef struct {
+    void *values;
+    int kind;
+    int temporal;
+    int format_version;
+} dtatools_patch_target;
+extern int dtatools_numeric_compare_patch(
+    int, const dtatools_compare_operand *, const dtatools_compare_operand *,
+    double, int, const dtatools_compare_operand *, double, int,
+    const dtatools_patch_target *, size_t, int,
+    size_t *, size_t *, size_t *
+);
 extern int dtatools_gather_numeric_columns(
     const void *, size_t, const int *, const int *, size_t
 );
@@ -378,6 +400,31 @@ static numeric_data *unmaterialized_numeric_storage(SEXP value) {
         return NULL;
     }
     return numeric_storage(value);
+}
+
+static int materialized_numeric_storage(
+    SEXP value, numeric_data *storage
+) {
+    if (!ALTREP(value) || R_altrep_data2(value) == R_NilValue ||
+        (!R_altrep_inherits(value, dtatools_numeric_class) &&
+         !R_altrep_inherits(value, dtatools_metadata_real_class))) {
+        return 0;
+    }
+    SEXP declared = Rf_getAttrib(value, Rf_install("stata.storage"));
+    if (TYPEOF(declared) != STRSXP || XLENGTH(declared) != 1) return 0;
+    const char *name = CHAR(STRING_ELT(declared, 0));
+    int kind = strcmp(name, "byte") == 0 ? NUMERIC_BYTE :
+        strcmp(name, "int") == 0 ? NUMERIC_INT :
+        strcmp(name, "long") == 0 ? NUMERIC_LONG :
+        strcmp(name, "float") == 0 ? NUMERIC_FLOAT : -1;
+    if (kind < 0) return 0;
+    memset(storage, 0, sizeof(*storage));
+    storage->length = (size_t) XLENGTH(value);
+    storage->kind = kind;
+    storage->temporal = Rf_inherits(value, "stata_date") ? 1 :
+        (Rf_inherits(value, "stata_datetime") ? 2 : 0);
+    storage->format_version = 119;
+    return 1;
 }
 
 static double numeric_observed_value(double value, int temporal) {
@@ -2399,6 +2446,39 @@ static void write_numeric_observed(
     }
 }
 
+static void write_numeric_observed_trusted(
+    unsigned char *output, R_xlen_t index, int kind, double value
+) {
+    switch (kind) {
+    case NUMERIC_BYTE: {
+        int8_t encoded = (int8_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_INT: {
+        int16_t encoded = (int16_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_LONG: {
+        int32_t encoded = (int32_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_FLOAT: {
+        float encoded = (float) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+}
+
 SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -2526,6 +2606,69 @@ SEXP C_dtatools_construct_numeric(
         } else {
             write_numeric_observed(output, index, kind, element);
         }
+    }
+
+    void *data = dtatools_numeric_alloc(
+        output, (size_t) length, kind, temporal, missing_count
+    );
+    if (data == NULL) {
+        UNPROTECT(1);
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = PROTECT(R_new_altrep(
+        dtatools_numeric_class, external, R_NilValue
+    ));
+    UNPROTECT(3);
+    return result;
+}
+
+SEXP C_dtatools_construct_numeric_trusted(
+    SEXP value, SEXP missing_codes, SEXP kind_value, SEXP temporal_value
+) {
+    if (TYPEOF(value) != REALSXP || TYPEOF(missing_codes) != INTSXP ||
+        XLENGTH(value) != XLENGTH(missing_codes)) {
+        Rf_error("invalid trusted Stata numeric construction buffers");
+    }
+    if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1) {
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+    int kind = INTEGER(kind_value)[0];
+    if (TYPEOF(temporal_value) != INTSXP ||
+        XLENGTH(temporal_value) != 1 ||
+        INTEGER(temporal_value)[0] < 0 || INTEGER(temporal_value)[0] > 2) {
+        Rf_error("invalid compact Stata temporal storage type");
+    }
+    int temporal = INTEGER(temporal_value)[0];
+    size_t width = numeric_kind_width(kind);
+    R_xlen_t length = XLENGTH(value);
+    if ((size_t) length > SIZE_MAX / width ||
+        (size_t) length * width > (size_t) R_XLEN_T_MAX) {
+        Rf_error("compact Stata numeric vector is too long");
+    }
+
+    R_xlen_t byte_length = (R_xlen_t) ((size_t) length * width);
+    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
+    unsigned char *output = RAW(backing);
+    size_t missing_count = 0;
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int code = INTEGER_ELT(missing_codes, index);
+        if (code == NA_INTEGER) {
+            write_numeric_observed_trusted(
+                output, index, kind, REAL_ELT(value, index)
+            );
+            continue;
+        }
+        int offset = code == 0 ? 0 : code >= 'a' && code <= 'z'
+            ? code - 'a' + 1 : -1;
+        if (offset < 0) {
+            UNPROTECT(1);
+            Rf_error("invalid trusted Stata numeric missing code");
+        }
+        missing_count++;
+        write_numeric_missing(output, index, kind, offset);
     }
 
     void *data = dtatools_numeric_alloc(
@@ -4457,9 +4600,17 @@ static void fill_encoded_compact_patch_value(
         memset(target->values, encoded[0], target->length);
         return;
     }
-    for (size_t row = 0; row < target->length; row++) {
-        if ((row & 16383) == 0) R_CheckUserInterrupt();
-        write_encoded_compact_patch_value(target, row, encoded, width);
+    if (target->length == 0) return;
+    /* Seed the first element, then double the filled prefix so the
+       fill is memcpy-bound instead of one write per row. */
+    write_encoded_compact_patch_value(target, 0, encoded, width);
+    unsigned char *bytes = (unsigned char *) target->values;
+    size_t total = target->length * width;
+    size_t filled = width;
+    while (filled < total) {
+        size_t copy = filled <= total - filled ? filled : total - filled;
+        memcpy(bytes + filled, bytes, copy);
+        filled += copy;
     }
 }
 
@@ -4668,6 +4819,128 @@ static R_xlen_t reference_value_index(
     return index;
 }
 
+static void validate_materialized_numeric_replacement(
+    const numeric_data *target, const numeric_reader *reader,
+    const reference_rows *rows, reference_value_plan values
+) {
+    int fits_requested = 1;
+    int fits_int = 1;
+    int fits_long = 1;
+    int fits_float = 1;
+    int fits_double = 1;
+    uint32_t float_maximum_bits = UINT32_C(0x7effffff);
+    float float_maximum;
+    memcpy(&float_maximum, &float_maximum_bits, sizeof(float_maximum));
+    R_xlen_t count = values.mode == REFERENCE_VALUES_SCALAR
+        ? 1 : values.count;
+    for (R_xlen_t index = 0; index < count; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t row = values.mode == REFERENCE_VALUES_SCALAR
+            ? 0 : reference_patch_row(rows, index);
+        R_xlen_t value_index = reference_value_index(&values, index, row);
+        int missing_code;
+        double value = numeric_reader_at(reader, value_index, &missing_code);
+        if (missing_code >= 0) {
+            if (missing_code == 256 ||
+                (missing_code != 0 &&
+                 (missing_code < 'a' || missing_code > 'z'))) {
+                Rf_error(
+                    "`values` cannot contain `NaN` or infinities; use "
+                    "`NA_real_` for Stata system missing"
+                );
+            }
+            continue;
+        }
+        if (!R_FINITE(value)) {
+            Rf_error(
+                "`values` cannot contain `NaN` or infinities; use "
+                "`NA_real_` for Stata system missing"
+            );
+        }
+        double encoded = compact_patch_encoded_value(value, target->temporal);
+        int integral = R_FINITE(encoded) && encoded == trunc(encoded);
+        int element_fits_int = integral &&
+            encoded >= -32767.0 && encoded <= 32740.0;
+        int element_fits_long = integral &&
+            encoded >= -2147483647.0 && encoded <= 2147483620.0;
+        int element_fits_float = R_FINITE(encoded) &&
+            fabs(encoded) <= (double) float_maximum;
+        int element_fits_double = R_FINITE(encoded) &&
+            fabs(encoded) <= DBL_MAX / 2.0;
+        fits_int = fits_int && element_fits_int;
+        fits_long = fits_long && element_fits_long;
+        fits_float = fits_float && element_fits_float;
+        fits_double = fits_double && element_fits_double;
+        switch (target->kind) {
+        case NUMERIC_BYTE:
+            fits_requested = fits_requested && integral &&
+                encoded >= -127.0 && encoded <= 100.0;
+            break;
+        case NUMERIC_INT:
+            fits_requested = fits_requested && element_fits_int;
+            break;
+        case NUMERIC_LONG:
+            fits_requested = fits_requested && element_fits_long;
+            break;
+        case NUMERIC_FLOAT:
+            fits_requested = fits_requested && element_fits_float;
+            break;
+        default:
+            Rf_error("invalid compact Stata numeric storage type");
+        }
+    }
+    if (fits_requested) return;
+    const char *storage_name = target->kind == NUMERIC_BYTE ? "byte" :
+        target->kind == NUMERIC_INT ? "int" :
+        target->kind == NUMERIC_LONG ? "long" : "float";
+    const char *recommendation = NULL;
+    if (target->kind == NUMERIC_BYTE && fits_int) recommendation = "int";
+    else if ((target->kind == NUMERIC_BYTE ||
+              target->kind == NUMERIC_INT) && fits_long) {
+        recommendation = "long";
+    } else if ((target->kind == NUMERIC_BYTE ||
+                target->kind == NUMERIC_INT) && fits_float) {
+        recommendation = "float";
+    } else if (fits_double) {
+        recommendation = "double";
+    }
+    if (recommendation == NULL) {
+        Rf_error("No Stata numeric storage can represent `x`");
+    }
+    Rf_error(
+        "Stata %s storage cannot represent `x`; use `stata_%s(x)`",
+        storage_name, recommendation
+    );
+}
+
+static double materialized_numeric_patch_value(
+    const numeric_data *target, double value, int missing_code
+) {
+    if (missing_code >= 0) {
+        int offset = missing_code == 0 ? 0 : missing_code - 'a' + 1;
+        return numeric_missing_value(offset);
+    }
+    double encoded = compact_patch_encoded_value(value, target->temporal);
+    double stored;
+    switch (target->kind) {
+    case NUMERIC_BYTE:
+        stored = (double) ((int8_t) encoded);
+        break;
+    case NUMERIC_INT:
+        stored = (double) ((int16_t) encoded);
+        break;
+    case NUMERIC_LONG:
+        stored = (double) ((int32_t) encoded);
+        break;
+    case NUMERIC_FLOAT:
+        stored = (double) ((float) encoded);
+        break;
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+    return numeric_observed_value(stored, target->temporal);
+}
+
 typedef struct {
     numeric_reader reader;
     reference_value_plan values;
@@ -4872,6 +5145,8 @@ typedef struct {
     SEXP target;
     SEXP replacement;
     reference_string_reader replacement_reader;
+    numeric_reader numeric_replacement_reader;
+    const numeric_data *materialized_numeric;
     SEXP saved_data1;
     SEXP saved_data2;
     SEXP string_undo;
@@ -5122,9 +5397,20 @@ static SEXP apply_vector_patch_transaction(void *data) {
         );
         switch (transaction->type) {
         case REALSXP:
-            real_output[row] = REAL_ELT(
-                transaction->replacement, replacement_index
-            );
+            if (transaction->materialized_numeric != NULL) {
+                int missing_code;
+                double value = numeric_reader_at(
+                    &transaction->numeric_replacement_reader,
+                    replacement_index, &missing_code
+                );
+                real_output[row] = materialized_numeric_patch_value(
+                    transaction->materialized_numeric, value, missing_code
+                );
+            } else {
+                real_output[row] = REAL_ELT(
+                    transaction->replacement, replacement_index
+                );
+            }
             break;
         case INTSXP:
             integer_output[row] = INTEGER_ELT(
@@ -5194,7 +5480,11 @@ static SEXP patch_vector(
     );
 
     numeric_data *compact = unmaterialized_numeric_storage(target);
-    int native_by_row = compact != NULL ||
+    numeric_data materialized_storage;
+    numeric_data *materialized = materialized_numeric_storage(
+        target, &materialized_storage
+    ) ? &materialized_storage : NULL;
+    int native_by_row = compact != NULL || materialized != NULL ||
         unmaterialized_dictstring_source(replacement) != R_NilValue;
     reference_value_plan value_plan = reference_value_plan_create(
         replacement, &row_plan, count, target_length, native_by_row,
@@ -5247,7 +5537,16 @@ static SEXP patch_vector(
         return result;
     }
 
-    if (TYPEOF(target) != TYPEOF(replacement)) {
+    numeric_reader materialized_reader;
+    memset(&materialized_reader, 0, sizeof(materialized_reader));
+    if (materialized != NULL) {
+        materialized_reader = numeric_reader_create(
+            replacement, value_plan.value_count
+        );
+        validate_materialized_numeric_replacement(
+            materialized, &materialized_reader, &row_plan, value_plan
+        );
+    } else if (TYPEOF(target) != TYPEOF(replacement)) {
         Rf_error("replacement storage does not match its target");
     }
     int type = TYPEOF(target);
@@ -5351,6 +5650,8 @@ static SEXP patch_vector(
         .target = target,
         .replacement = replacement,
         .replacement_reader = replacement_reader,
+        .numeric_replacement_reader = materialized_reader,
+        .materialized_numeric = materialized,
         .saved_data1 = VECTOR_ELT(saved_state, 0),
         .saved_data2 = VECTOR_ELT(saved_state, 1),
         .string_undo = string_undo,
@@ -5945,9 +6246,20 @@ SEXP C_dtatools_generate_numeric(
         RAWSXP, (R_xlen_t) (row_count * width)
     ));
     plan.values = RAW(backing);
-    for (size_t index = 0; index < row_count; index++) {
-        if ((index & 16383) == 0) R_CheckUserInterrupt();
-        write_numeric_missing(plan.values, (R_xlen_t) index, kind, 0);
+    if (row_count > 0) {
+        /* Seed one encoded system-missing element, then double the
+           filled prefix so initialization is memcpy-bound instead of
+           one encoder call per row. */
+        write_numeric_missing(plan.values, 0, kind, 0);
+        unsigned char *bytes = (unsigned char *) plan.values;
+        size_t total = row_count * width;
+        size_t filled = width;
+        while (filled < total) {
+            size_t copy = filled <= total - filled
+                ? filled : total - filled;
+            memcpy(bytes + filled, bytes, copy);
+            filled += copy;
+        }
     }
     apply_compact_replacement(&plan, &row_plan, &replacement_plan);
 
@@ -5969,6 +6281,11 @@ SEXP C_dtatools_is_unmaterialized_numeric_altrep(SEXP value) {
         value = metadata_proxy_source(value);
     }
     return Rf_ScalarLogical(0);
+}
+
+SEXP C_dtatools_is_materialized_numeric_altrep(SEXP value) {
+    numeric_data storage;
+    return Rf_ScalarLogical(materialized_numeric_storage(value, &storage));
 }
 
 SEXP C_dtatools_is_unmaterialized_dictstring(SEXP value) {
@@ -6439,6 +6756,342 @@ SEXP C_dtatools_missing_tag(SEXP value) {
     return result;
 }
 
+static int numeric_compare_operand_create(
+    SEXP value, dtatools_compare_operand *operand, size_t *length
+) {
+    numeric_data *compact = unmaterialized_numeric_storage(value);
+    if (compact != NULL) {
+        operand->values = compact->values;
+        operand->kind = compact->kind;
+        operand->temporal = compact->temporal;
+        operand->format_version = compact->format_version;
+        *length = compact->length;
+        return 1;
+    }
+    if (TYPEOF(value) != REALSXP) return 0;
+    operand->values = (void *) REAL(value);
+    operand->kind = NUMERIC_DOUBLE;
+    operand->temporal = 0;
+    operand->format_version = 0;
+    *length = (size_t) XLENGTH(value);
+    return 1;
+}
+
+static void numeric_scalar_plan(
+    SEXP scalar, double *value, int *rank, const char *message
+) {
+    if (TYPEOF(scalar) != REALSXP || XLENGTH(scalar) != 2) {
+        Rf_error("%s", message);
+    }
+    *value = REAL(scalar)[0];
+    double scalar_rank = REAL(scalar)[1];
+    if (ISNAN(scalar_rank) || scalar_rank < 0 || scalar_rank > 27 ||
+        scalar_rank != trunc(scalar_rank)) {
+        Rf_error("%s", message);
+    }
+    *rank = (int) scalar_rank;
+}
+
+typedef struct {
+    SEXP target;
+    SEXP saved_data1;
+    SEXP saved_data2;
+    numeric_data *source;
+    numeric_data *patched;
+    unsigned char *undo;
+    size_t undo_bytes;
+    size_t saved_missing_count;
+    dtatools_compare_operand left;
+    dtatools_compare_operand right;
+    dtatools_compare_operand replacement;
+    int has_right;
+    int has_replacement;
+    double scalar_value;
+    int scalar_rank;
+    double replacement_scalar_value;
+    int replacement_scalar_rank;
+    int op;
+    int threads;
+    int journal_complete;
+} fused_compare_patch_transaction;
+
+static int fused_compare_patch_state_changed(
+    const fused_compare_patch_transaction *transaction
+) {
+    return R_altrep_data1(transaction->target) != transaction->saved_data1 ||
+        R_altrep_data2(transaction->target) != transaction->saved_data2;
+}
+
+static void restore_fused_compare_patch(
+    fused_compare_patch_transaction *transaction
+) {
+    if (fused_compare_patch_state_changed(transaction)) {
+        R_set_altrep_data1(transaction->target, transaction->saved_data1);
+        R_set_altrep_data2(transaction->target, transaction->saved_data2);
+        return;
+    }
+    if (transaction->undo_bytes > 0) {
+        memcpy(
+            transaction->source->values,
+            transaction->undo,
+            transaction->undo_bytes
+        );
+    }
+    transaction->source->missing_count = transaction->saved_missing_count;
+}
+
+static SEXP apply_fused_compare_patch(void *data) {
+    fused_compare_patch_transaction *transaction =
+        (fused_compare_patch_transaction *) data;
+    if (transaction->undo_bytes > 0) {
+        memcpy(
+            transaction->undo,
+            transaction->source->values,
+            transaction->undo_bytes
+        );
+    }
+    transaction->journal_complete = 1;
+    transaction->patched = detach_compact_patch_target(transaction->target);
+    if (transaction->patched == NULL) {
+        Rf_error("compact replacement target became unavailable");
+    }
+    dtatools_patch_target target = {
+        transaction->patched->values,
+        transaction->patched->kind,
+        transaction->patched->temporal,
+        transaction->patched->format_version
+    };
+    size_t matched = 0;
+    size_t old_missing = 0;
+    size_t new_missing = 0;
+    int status = dtatools_numeric_compare_patch(
+        transaction->op,
+        &transaction->left,
+        transaction->has_right ? &transaction->right : NULL,
+        transaction->scalar_value,
+        transaction->scalar_rank,
+        transaction->has_replacement ? &transaction->replacement : NULL,
+        transaction->replacement_scalar_value,
+        transaction->replacement_scalar_rank,
+        &target,
+        transaction->patched->length,
+        transaction->threads,
+        &matched,
+        &old_missing,
+        &new_missing
+    );
+    if (!status || matched == 0) {
+        restore_fused_compare_patch(transaction);
+        transaction->journal_complete = 0;
+        return status ? Rf_ScalarLogical(1) : R_NilValue;
+    }
+    if (old_missing > transaction->saved_missing_count ||
+        transaction->saved_missing_count - old_missing > SIZE_MAX - new_missing) {
+        Rf_error("invalid fused replacement missing-value count");
+    }
+    transaction->patched->missing_count =
+        transaction->saved_missing_count - old_missing + new_missing;
+    maybe_inject_reference_write_interrupt();
+    R_CheckUserInterrupt();
+    return Rf_ScalarLogical(1);
+}
+
+static void cleanup_fused_compare_patch(void *data, Rboolean jump) {
+    fused_compare_patch_transaction *transaction =
+        (fused_compare_patch_transaction *) data;
+    if (jump && transaction->journal_complete) {
+        restore_fused_compare_patch(transaction);
+    }
+    free(transaction->undo);
+    transaction->undo = NULL;
+}
+
+SEXP C_dtatools_fused_compare_patch(
+    SEXP target, SEXP op_value, SEXP x, SEXP y, SEXP scalar,
+    SEXP replacement, SEXP replacement_scalar, SEXP threads_value
+) {
+    numeric_data *target_storage = unmaterialized_numeric_storage(target);
+    if (target_storage == NULL) return R_NilValue;
+    int op = Rf_asInteger(op_value);
+    if (op < 0 || op > 5) Rf_error("invalid Stata comparison operator");
+    int threads = Rf_asInteger(threads_value);
+    if (threads == NA_INTEGER || threads < 0) threads = 0;
+
+    dtatools_compare_operand left;
+    size_t length = 0;
+    if (!numeric_compare_operand_create(x, &left, &length) ||
+        length != target_storage->length) {
+        return R_NilValue;
+    }
+    dtatools_compare_operand right;
+    memset(&right, 0, sizeof(right));
+    int has_right = y != R_NilValue;
+    double scalar_value = 0.0;
+    int scalar_rank = 0;
+    if (has_right) {
+        size_t right_length = 0;
+        if (!numeric_compare_operand_create(y, &right, &right_length) ||
+            right_length != length) {
+            return R_NilValue;
+        }
+    } else {
+        numeric_scalar_plan(
+            scalar, &scalar_value, &scalar_rank,
+            "invalid Stata comparison scalar plan"
+        );
+    }
+
+    dtatools_compare_operand replacement_operand;
+    memset(&replacement_operand, 0, sizeof(replacement_operand));
+    int has_replacement = replacement != R_NilValue;
+    double replacement_scalar_value = 0.0;
+    int replacement_scalar_rank = 0;
+    if (has_replacement) {
+        size_t replacement_length = 0;
+        if (!numeric_compare_operand_create(
+                replacement, &replacement_operand, &replacement_length
+            ) || replacement_length != length) {
+            return R_NilValue;
+        }
+    } else {
+        numeric_scalar_plan(
+            replacement_scalar,
+            &replacement_scalar_value,
+            &replacement_scalar_rank,
+            "invalid fused replacement scalar plan"
+        );
+        int missing_code = replacement_scalar_rank == 0
+            ? -1 : (replacement_scalar_rank == 1
+                ? 0 : 'a' + replacement_scalar_rank - 2);
+        validate_compact_patch_value(
+            target_storage, replacement_scalar_value, missing_code
+        );
+    }
+
+    size_t width = numeric_kind_width(target_storage->kind);
+    if (target_storage->length > SIZE_MAX / width) {
+        Rf_error("fused replacement target is too large");
+    }
+    size_t undo_bytes = target_storage->length * width;
+    unsigned char *undo = (unsigned char *) malloc(
+        undo_bytes == 0 ? 1 : undo_bytes
+    );
+    if (undo == NULL) {
+        Rf_error("could not allocate fused replacement rollback data");
+    }
+    SEXP saved_state = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(saved_state, 0, R_altrep_data1(target));
+    SET_VECTOR_ELT(saved_state, 1, R_altrep_data2(target));
+    SEXP continuation = PROTECT(R_MakeUnwindCont());
+    fused_compare_patch_transaction transaction = {
+        .target = target,
+        .saved_data1 = VECTOR_ELT(saved_state, 0),
+        .saved_data2 = VECTOR_ELT(saved_state, 1),
+        .source = target_storage,
+        .patched = NULL,
+        .undo = undo,
+        .undo_bytes = undo_bytes,
+        .saved_missing_count = target_storage->missing_count,
+        .left = left,
+        .right = right,
+        .replacement = replacement_operand,
+        .has_right = has_right,
+        .has_replacement = has_replacement,
+        .scalar_value = scalar_value,
+        .scalar_rank = scalar_rank,
+        .replacement_scalar_value = replacement_scalar_value,
+        .replacement_scalar_rank = replacement_scalar_rank,
+        .op = op,
+        .threads = threads,
+        .journal_complete = 0
+    };
+    SEXP result = R_UnwindProtect(
+        apply_fused_compare_patch, &transaction,
+        cleanup_fused_compare_patch, &transaction,
+        continuation
+    );
+    UNPROTECT(2);
+    return result;
+}
+
+SEXP C_dtatools_stata_compare(
+    SEXP op_value, SEXP x, SEXP y, SEXP scalar, SEXP threads_value
+) {
+    /* Native Stata comparison over compact numeric storage. Returns
+       R_NilValue whenever the operands are outside this kernel's domain
+       so the caller falls back to the materializing R implementation
+       and its error messages. */
+    int op = Rf_asInteger(op_value);
+    if (op < 0 || op > 5) Rf_error("invalid Stata comparison operator");
+    int threads = Rf_asInteger(threads_value);
+    if (threads == NA_INTEGER || threads < 0) threads = 0;
+
+    /* Compact storage compares raw encoded bytes; a materialized (or
+       eagerly constructed) double vector compares decoded values whose
+       missing codes are NA_real_ and haven-style tagged NaNs. */
+    numeric_data *x_data = unmaterialized_numeric_storage(x);
+    dtatools_compare_operand left;
+    size_t length;
+    if (x_data != NULL) {
+        left.values = x_data->values;
+        left.kind = x_data->kind;
+        left.temporal = x_data->temporal;
+        left.format_version = x_data->format_version;
+        length = x_data->length;
+    } else if (TYPEOF(x) == REALSXP) {
+        left.values = (void *) REAL(x);
+        left.kind = NUMERIC_DOUBLE;
+        left.temporal = 0;
+        left.format_version = 0;
+        length = (size_t) XLENGTH(x);
+    } else {
+        return R_NilValue;
+    }
+
+    dtatools_compare_operand right;
+    const dtatools_compare_operand *right_pointer = NULL;
+    double scalar_value = 0.0;
+    int scalar_rank = 0;
+    if (y != R_NilValue) {
+        numeric_data *y_data = unmaterialized_numeric_storage(y);
+        if (y_data != NULL) {
+            if (y_data->length != length) return R_NilValue;
+            right.values = y_data->values;
+            right.kind = y_data->kind;
+            right.temporal = y_data->temporal;
+            right.format_version = y_data->format_version;
+        } else if (TYPEOF(y) == REALSXP &&
+                   (size_t) XLENGTH(y) == length) {
+            right.values = (void *) REAL(y);
+            right.kind = NUMERIC_DOUBLE;
+            right.temporal = 0;
+            right.format_version = 0;
+        } else {
+            return R_NilValue;
+        }
+        right_pointer = &right;
+    } else {
+        if (TYPEOF(scalar) != REALSXP || XLENGTH(scalar) != 2) {
+            Rf_error("invalid Stata comparison scalar plan");
+        }
+        scalar_value = REAL(scalar)[0];
+        double rank = REAL(scalar)[1];
+        if (ISNAN(rank) || rank < 0 || rank > 27 || rank != trunc(rank)) {
+            Rf_error("invalid Stata comparison scalar plan");
+        }
+        scalar_rank = (int) rank;
+    }
+    if (length > (size_t) R_XLEN_T_MAX) return R_NilValue;
+
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, (R_xlen_t) length));
+    int status = dtatools_numeric_compare(
+        op, &left, right_pointer, scalar_value, scalar_rank,
+        LOGICAL(result), length, threads
+    );
+    UNPROTECT(1);
+    return status ? result : R_NilValue;
+}
+
 SEXP C_dtatools_missing_codes(SEXP value) {
     /* NA means observed, zero is system missing, 1--255 is the tagged-NA
        payload byte, and 256 is an ordinary R NaN. */
@@ -6475,6 +7128,77 @@ SEXP C_dtatools_missing_codes(SEXP value) {
     return result;
 }
 
+SEXP C_dtatools_replace_table_columns(SEXP data, SEXP columns) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(columns) != VECSXP) {
+        Rf_error("internal column replacement requires lists");
+    }
+    R_xlen_t count = XLENGTH(data);
+    if (XLENGTH(columns) != count) {
+        Rf_error("internal column replacement requires matching lists");
+    }
+    for (R_xlen_t index = 0; index < count; index++) {
+        SET_VECTOR_ELT(data, index, VECTOR_ELT(columns, index));
+    }
+    return R_NilValue;
+}
+
+/* Commits one already gathered set of columns back into a table, and into
+   the reference-state column store when the table carries an overlay.
+   Every column reaches its destination or none does: the plan is fully
+   validated and every binding symbol interned before the commit loop,
+   which then only rebinds existing bindings and so cannot allocate. */
+SEXP C_dtatools_replace_reference_columns(
+    SEXP data, SEXP store, SEXP locations, SEXP names, SEXP columns
+) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(columns) != VECSXP ||
+        TYPEOF(locations) != INTSXP || TYPEOF(names) != STRSXP) {
+        Rf_error("internal column replacement requires a valid plan");
+    }
+    R_xlen_t count = XLENGTH(columns);
+    if (XLENGTH(locations) != count || XLENGTH(names) != count) {
+        Rf_error("internal column replacement requires matching plan lengths");
+    }
+    if (store != R_NilValue && TYPEOF(store) != ENVSXP) {
+        Rf_error("internal column replacement requires a column store");
+    }
+
+    /* Validate the whole plan and intern every binding symbol first. The
+       commit loop below then only overwrites list elements and rebinds
+       bindings the caller has already checked exist, so it cannot
+       allocate or fail part way through. */
+    SEXP symbols = PROTECT(Rf_allocVector(VECSXP, count));
+    for (R_xlen_t index = 0; index < count; index++) {
+        int location = INTEGER_ELT(locations, index);
+        if (location != NA_INTEGER &&
+            (location < 1 || (R_xlen_t) location > XLENGTH(data))) {
+            Rf_error("internal column replacement location is out of range");
+        }
+        SEXP name = STRING_ELT(names, index);
+        if (name == NA_STRING) {
+            if (location == NA_INTEGER) {
+                Rf_error("internal column replacement targets nothing");
+            }
+            continue;
+        }
+        if (store == R_NilValue || LENGTH(name) == 0) {
+            Rf_error("internal column replacement has no column store");
+        }
+        SET_VECTOR_ELT(symbols, index, Rf_installChar(name));
+    }
+
+    for (R_xlen_t index = 0; index < count; index++) {
+        SEXP column = VECTOR_ELT(columns, index);
+        int location = INTEGER_ELT(locations, index);
+        if (location != NA_INTEGER) {
+            SET_VECTOR_ELT(data, (R_xlen_t) location - 1, column);
+        }
+        SEXP symbol = VECTOR_ELT(symbols, index);
+        if (symbol != R_NilValue) Rf_defineVar(symbol, column, store);
+    }
+    UNPROTECT(1);
+    return R_NilValue;
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
@@ -6498,10 +7222,16 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_ephemeral_altstring, 1},
     {"C_dtatools_construct_numeric",
      (DL_FUNC) &C_dtatools_construct_numeric, 3},
+    {"C_dtatools_construct_numeric_trusted",
+     (DL_FUNC) &C_dtatools_construct_numeric_trusted, 4},
     {"C_dtatools_gather_numeric",
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
      (DL_FUNC) &C_dtatools_gather_numeric_columns, 4},
+    {"C_dtatools_replace_table_columns",
+     (DL_FUNC) &C_dtatools_replace_table_columns, 2},
+    {"C_dtatools_replace_reference_columns",
+     (DL_FUNC) &C_dtatools_replace_reference_columns, 5},
     {"C_dtatools_is_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},
@@ -6535,6 +7265,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_generate_character, 5},
     {"C_dtatools_is_unmaterialized_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_unmaterialized_numeric_altrep, 1},
+    {"C_dtatools_is_materialized_numeric_altrep",
+     (DL_FUNC) &C_dtatools_is_materialized_numeric_altrep, 1},
     {"C_dtatools_is_unmaterialized_dictstring",
      (DL_FUNC) &C_dtatools_is_unmaterialized_dictstring, 1},
     {"C_dtatools_dictstring_cached_count",
@@ -6562,6 +7294,10 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_factorize_numeric, 3},
     {"C_dtatools_missing_codes",
      (DL_FUNC) &C_dtatools_missing_codes, 1},
+    {"C_dtatools_stata_compare",
+     (DL_FUNC) &C_dtatools_stata_compare, 5},
+    {"C_dtatools_fused_compare_patch",
+     (DL_FUNC) &C_dtatools_fused_compare_patch, 8},
     {NULL, NULL, 0}
 };
 

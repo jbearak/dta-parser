@@ -236,6 +236,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .Call(C_dtatools_is_unmaterialized_numeric_altrep, value)
 }
 
+.is_materialized_numeric_altrep <- function(value) {
+    .Call(C_dtatools_is_materialized_numeric_altrep, value)
+}
+
 .is_unmaterialized_dictstring <- function(value) {
     .Call(C_dtatools_is_unmaterialized_dictstring, value)
 }

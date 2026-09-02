@@ -8,6 +8,8 @@
 #' missing identity; use `NA_real_` or [tagged_missing()].
 #' Character keys containing `NA_character_` are also rejected because Stata
 #' has only the empty string for a missing string; use `""` instead.
+#' Unmatched rows fill string columns with `""` for the same reason, while
+#' numeric columns fill with system missing.
 #'
 #' `x` plays the role of Stata's master dataset and `y` the using dataset.
 #' Match results are named `"x"` (a row only in `x`), `"y"` (a row only in
@@ -674,7 +676,22 @@ dta_merge <- function(x, y, by, relationship,
     }
 }
 
-.dta_merge_slice <- function(value, rows) {
+# Stata has no missing string distinct from the empty string, so rows
+# gathered through a missing index (unmatched merge rows) must hold ""
+# in every character column rather than the `NA_character_` that
+# vctrs::vec_slice() fills in. Filling ordinary character columns too
+# keeps every input source merging identically.
+.dta_merge_fill_string_missing <- function(value, rows) {
+    if (!is.character(value)) return(value)
+    missing_rows <- which(is.na(rows))
+    if (length(missing_rows) == 0L) return(value)
+    fill <- if (inherits(value, "stata_string")) stata_string("") else ""
+    vctrs::vec_assign(value, missing_rows, fill)
+}
+
+.dta_merge_slice <- function(
+    value, rows, fill_string_missing = TRUE
+) {
     if (.dta_merge_has_compact_storage(value)) {
         gathered <- .Call(
             C_dtatools_gather_numeric,
@@ -686,10 +703,17 @@ dta_merge <- function(x, y, by, relationship,
         gathered <- .stata_data(value)[rows]
         return(.dta_merge_restore_gathered(gathered, value))
     }
-    vctrs::vec_slice(value, rows)
+    result <- vctrs::vec_slice(value, rows)
+    if (fill_string_missing) {
+        .dta_merge_fill_string_missing(result, rows)
+    } else {
+        result
+    }
 }
 
-.dta_merge_slice_columns <- function(values, rows) {
+.dta_merge_slice_columns <- function(
+    values, rows, fill_string_missing = TRUE
+) {
     count <- length(values)
     result <- vector("list", count)
     names(result) <- names(values)
@@ -713,7 +737,10 @@ dta_merge <- function(x, y, by, relationship,
             location <- locations[[offset]]
             value <- values[[location]]
             result[[location]] <- if (is.null(gathered[[offset]])) {
-                .dta_merge_slice(value, rows)
+                .dta_merge_slice(
+                    value, rows,
+                    fill_string_missing = fill_string_missing
+                )
             } else {
                 gathered[[offset]]
             }
@@ -722,14 +749,22 @@ dta_merge <- function(x, y, by, relationship,
 
     ordinary <- storage == ""
     if (any(ordinary)) {
-        gathered <- vctrs::vec_slice(values[ordinary], rows)
-        result[ordinary] <- unname(as.list(gathered))
+        gathered <- unname(as.list(
+            vctrs::vec_slice(values[ordinary], rows)
+        ))
+        if (fill_string_missing) {
+            gathered <- lapply(
+                gathered, .dta_merge_fill_string_missing, rows = rows
+            )
+        }
+        result[ordinary] <- gathered
     }
 
     fallback <- !(native | ordinary)
     for (location in which(fallback)) {
         result[[location]] <- .dta_merge_slice(
-            values[[location]], rows
+            values[[location]], rows,
+            fill_string_missing = fill_string_missing
         )
     }
     result

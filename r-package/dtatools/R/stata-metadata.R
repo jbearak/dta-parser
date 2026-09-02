@@ -348,6 +348,13 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
         .stata_metadata_vector_class
     }
     classes <- setdiff(attr(value, "class", exact = TRUE), marker)
+    if (is.data.frame(value) && "data.table" %in% classes) {
+        # data.table's `[` evaluates `i` and `j` with its own non-standard
+        # evaluation, so the frame marker's `[` method must never intercept
+        # it, and the mutation functions require ordinary data.tables.
+        # Dataset metadata stays in plain attributes on the container.
+        present <- FALSE
+    }
     if (!is.data.frame(value) && any(classes %in% c(
         "stata_numeric", "stata_temporal"
     ))) {
@@ -370,9 +377,20 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
     if (!is.data.frame(value)) return(.as_stata_metadata_vector(value))
     variable_metadata <- vapply(value, .has_stata_metadata, logical(1))
     if (any(variable_metadata)) {
-        value[which(variable_metadata)] <- lapply(
-            value[variable_metadata], .as_stata_metadata_vector
+        locations <- which(variable_metadata)
+        marked <- lapply(
+            locations, function(k) .as_stata_metadata_vector(value[[k]])
         )
+        if (inherits(value, "data.table")) {
+            # `[<-` on a data.table with a logical index selects rows, and
+            # list-style column replacement invalidates its self-reference,
+            # so install marked columns through data.table's own setter.
+            for (k in seq_along(locations)) {
+                data.table::set(value, j = locations[[k]], value = marked[[k]])
+            }
+        } else {
+            value[locations] <- marked
+        }
     }
     .repair_data_table_container(.set_stata_metadata_class(
         value, .has_stata_metadata(value) || any(variable_metadata)

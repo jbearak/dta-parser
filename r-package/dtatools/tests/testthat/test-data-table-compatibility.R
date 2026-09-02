@@ -253,3 +253,40 @@ test_that("dta_merge follows x or an explicit output container", {
     )
     expect_s3_class(explicit, "data.table")
 })
+
+test_that("dataset metadata never marks a data.table with the frame class", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    data <- data.frame(x = stata_byte(c(1, 2)), y = c(3, 4))
+    dataset_label(data) <- "Example label"
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(data, path)
+
+    result <- read_dta(path, output = "data.table")
+
+    expect_true(dtatools:::.ordinary_data_table(result))
+    expect_identical(dataset_label(result), "Example label")
+
+    # data.table's own non-standard evaluation must keep working: the
+    # frame marker's `[` method used to intercept `:=` and fail.
+    result[, doubled := y * 2]
+    expect_identical(as.double(result$doubled), c(6, 8))
+})
+
+test_that("dataset metadata setters keep data.table output ordinary", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    data <- data.frame(x = stata_byte(c(1, 2)))
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(data, path)
+
+    result <- read_dta(path, output = "data.table")
+    dataset_label(result) <- "Replaced label"
+
+    expect_true(dtatools:::.ordinary_data_table(result))
+    expect_identical(dataset_label(result), "Replaced label")
+    result[, extra := 1]
+    expect_identical(result$extra, c(1, 1))
+})

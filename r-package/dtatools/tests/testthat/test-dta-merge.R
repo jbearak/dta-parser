@@ -25,8 +25,8 @@ test_that("1:1 merges match keys under Stata missing-code identity", {
     expect_identical(missing_tag(result$id), c(NA, NA, "a", NA))
     expect_true(is.na(result$id[2]) && !is_tagged_missing(result$id[2]))
 
-    expect_identical(result$master_value, c("m1", "m2", "m3", NA))
-    expect_identical(result$using_value, c(NA, "u2", "u1", "u3"))
+    expect_identical(result$master_value, c("m1", "m2", "m3", ""))
+    expect_identical(result$using_value, c("", "u2", "u1", "u3"))
 
     expect_identical(stata_storage_type(result$`_merge`), "byte")
     expect_identical(as.double(result$`_merge`), c(1, 3, 3, 2))
@@ -399,7 +399,7 @@ test_that("Stata doubles retain values and metadata across merge partitions", {
         master, using, by = "id", relationship = "1:1"
     ))
 
-    expect_identical(result$ordinary_x, c("a", "b", NA))
+    expect_identical(result$ordinary_x, c("a", "b", ""))
     expect_identical(result$ordinary_y, c(NA, TRUE, FALSE))
     expect_identical(result$ordinary_shared, c(100L, 200L, 300L))
     expect_identical(as.double(result$double_x)[c(1L, 3L)], c(10, NA))
@@ -613,7 +613,7 @@ test_that("zero-row inputs merge cleanly", {
     result <- dta_merge(master, using, by = "id", relationship = "1:1")
     expect_identical(nrow(result), 2L)
     expect_identical(as.double(result$`_merge`), c(2, 2))
-    expect_identical(result$master_value, c(NA_character_, NA_character_))
+    expect_identical(result$master_value, c("", ""))
 
     empty <- dta_merge(
         master,
@@ -990,5 +990,29 @@ test_that("multiple keys match jointly under missing-code identity", {
     )
 
     expect_identical(as.double(result$`_merge`), c(1, 3, 3, 2))
-    expect_identical(result$using_value, c(NA, "x", "z", "y"))
+    expect_identical(result$using_value, c("", "x", "z", "y"))
+})
+
+test_that("unmatched rows fill string columns with the empty string", {
+    master <- tibble::tibble(
+        id = stata_long(c(1, 2)),
+        master_name = stata_string(c("a", "b")),
+        plain_name = c("p", "q")
+    )
+    using <- tibble::tibble(
+        id = stata_long(c(2, 3)),
+        using_name = stata_string(c("c", "d"))
+    )
+
+    result <- dta_merge(master, using, by = "id", relationship = "1:1")
+
+    expect_identical(vctrs::vec_data(result$using_name), c("", "c", "d"))
+    expect_identical(vctrs::vec_data(result$master_name), c("a", "b", ""))
+    expect_identical(result$plain_name, c("p", "q", ""))
+    # The filled columns must stay valid stata strings: a downstream
+    # comparison casts them and rejects any `NA_character_`.
+    expect_identical(
+        result$master_name == result$using_name,
+        c(FALSE, FALSE, FALSE)
+    )
 })

@@ -188,6 +188,28 @@ stata_storage_type <- function(x) {
     result
 }
 
+# `.stata_computed()` has already classified missing payloads and
+# proved that every observed encoded value fits the chosen storage.
+.construct_stata_numeric_trusted <- function(
+    values, encoded, missing_codes, storage,
+    temporal = .stata_temporal_none
+) {
+    result <- if (identical(storage, "double")) {
+        values
+    } else {
+        .Call(
+            C_dtatools_construct_numeric_trusted,
+            encoded, missing_codes,
+            match(storage, .stata_storage) - 1L,
+            temporal
+        )
+    }
+    attr(result, "stata.storage") <- storage
+    attr(result, "class") <- .stata_storage_class(storage)
+    names(result) <- names(values)
+    result
+}
+
 .encode_stata_temporal <- function(values, observed, temporal) {
     if (identical(temporal, .stata_temporal_none)) return(values)
 
@@ -529,6 +551,11 @@ vec_proxy.stata_numeric <- function(x, ...) {
     } else {
         as.double(x)
     }
+    if (!anyNA(values)) {
+        # No system missing, tagged missing, or NaN payload is present, so
+        # every rank is finite; skip the missing-code scan.
+        return(list(rank = integer(length(values)), value = values))
+    }
     codes <- .tab_missing_codes(values)
     invalid <- !is.na(codes) & !(
         codes == 0L |
@@ -575,29 +602,98 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
     }
     if (length(x) == 0L || length(y) == 0L) return(logical())
     size <- max(length(x), length(y))
-    args <- list(vctrs::vec_recycle(x, size), vctrs::vec_recycle(y, size))
-    left <- .stata_identity_parts(args[[1L]], op)
-    right <- .stata_identity_parts(args[[2L]], op)
-    both_finite <- left$rank == 0L & right$rank == 0L
-    equal <- ifelse(
-        both_finite,
-        left$value == right$value,
-        left$rank == right$rank
-    )
-    less <- ifelse(
-        both_finite,
-        left$value < right$value,
-        left$rank < right$rank
-    )
+    if (length(x) != length(y) && length(x) != 1L && length(y) != 1L) {
+        # Reproduce the vctrs recycling error without paying for a
+        # materialized recycle of compatible inputs on the fast path.
+        vctrs::vec_recycle(if (length(x) == size) y else x, size)
+    }
+    native <- .stata_compare_native(op, x, y)
+    if (!is.null(native)) return(native)
+    # Identity parts zero the payload of every missing entry, so one
+    # lexicographic (rank, value) comparison covers finite values and
+    # missing codes together; length-one operands broadcast for free.
+    left <- .stata_identity_parts(x, op)
+    right <- .stata_identity_parts(y, op)
+    equal <- left$rank == right$rank & left$value == right$value
     switch(op,
         "==" = equal,
         "!=" = !equal,
-        "<" = less,
-        "<=" = less | equal,
-        ">" = !(less | equal),
-        ">=" = !less,
+        "<" = left$rank < right$rank |
+            (left$rank == right$rank & left$value < right$value),
+        "<=" = left$rank < right$rank |
+            (left$rank == right$rank & left$value <= right$value),
+        ">" = left$rank > right$rank |
+            (left$rank == right$rank & left$value > right$value),
+        ">=" = left$rank > right$rank |
+            (left$rank == right$rank & left$value >= right$value),
         stop("unsupported Stata comparison", call. = FALSE)
     )
+}
+
+.stata_compare_native <- function(op, x, y) {
+    # Native kernel over compact Stata storage: compares raw bytes in
+    # parallel without materializing either operand into doubles. Every
+    # unsupported shape returns NULL so the materializing fallback keeps
+    # its exact semantics and error messages.
+    op_code <- switch(op,
+        "==" = 0L, "!=" = 1L, "<" = 2L, "<=" = 3L, ">" = 4L, ">=" = 5L
+    )
+    if (is.null(op_code)) return(NULL)
+    threads <- getOption("dtatools.threads", 0L)
+    if (!is.numeric(threads) || length(threads) != 1L || is.na(threads) ||
+        threads < 0) {
+        threads <- 0L
+    }
+    threads <- as.integer(threads)
+    if (length(y) == 1L) {
+        scalar <- .stata_compare_scalar(y)
+        if (!is.null(scalar)) {
+            native <- .Call(
+                C_dtatools_stata_compare, op_code, x, NULL, scalar, threads
+            )
+            if (!is.null(native)) return(native)
+        }
+    }
+    if (length(x) == 1L) {
+        scalar <- .stata_compare_scalar(x)
+        if (!is.null(scalar)) {
+            # Flip the operator so the compact vector stays on the left.
+            flipped <- c(0L, 1L, 4L, 5L, 2L, 3L)[[op_code + 1L]]
+            native <- .Call(
+                C_dtatools_stata_compare, flipped, y, NULL, scalar, threads
+            )
+            if (!is.null(native)) return(native)
+        }
+    }
+    if (length(x) == length(y)) {
+        native <- .Call(
+            C_dtatools_stata_compare, op_code, x, y, NULL, threads
+        )
+        if (!is.null(native)) return(native)
+    }
+    NULL
+}
+
+.stata_compare_scalar <- function(value) {
+    # Decode a length-one operand to the kernel's (value, rank) pair,
+    # where rank 0 is finite, 1 is `.`, and 2 through 27 are `.a`-`.z`.
+    # NULL means the scalar is outside the kernel's domain (character
+    # input, or a non-canonical NaN whose error the fallback owns).
+    if (!(is.double(value) || is.integer(value) || is.logical(value))) {
+        return(NULL)
+    }
+    decoded <- as.double(value)
+    # Finite scalars are by far the common case; skip the missing-code
+    # table for them (NaN keeps NULL so the fallback owns its error).
+    if (!is.na(decoded)) {
+        if (is.nan(decoded)) return(NULL)
+        return(c(decoded, 0))
+    }
+    code <- .tab_missing_codes(decoded)
+    if (is.na(code)) return(c(decoded, 0))
+    if (code == 0L) return(c(0, 1))
+    if (code >= 97L && code <= 122L) return(c(0, code - 95L))
+    NULL
 }
 
 #' @export
@@ -882,9 +978,11 @@ vec_cast.double.stata_numeric <- function(
     names(values) <- names(result)
     missing_codes <- .tab_missing_codes(values)
     computational_nan <- !is.na(missing_codes) & missing_codes == 256L
-    values[computational_nan | is.infinite(values)] <- NA_real_
-
-    missing_codes <- .tab_missing_codes(values)
+    invalid_result <- computational_nan | is.infinite(values)
+    if (any(invalid_result)) {
+        values[invalid_result] <- NA_real_
+        missing_codes <- .tab_missing_codes(values)
+    }
     observed <- is.na(missing_codes)
     encoded <- .encode_stata_temporal(values, observed, temporal)
     outside_double <- observed &
@@ -898,8 +996,9 @@ vec_cast.double.stata_numeric <- function(
     }
     for (storage in .stata_storage_candidates(minimum)) {
         if (!any(.invalid_stata_observed(encoded, observed, storage))) {
-            return(.construct_stata_numeric(
-                values, NULL, storage, temporal = temporal
+            return(.construct_stata_numeric_trusted(
+                values, encoded, missing_codes, storage,
+                temporal = temporal
             ))
         }
     }
