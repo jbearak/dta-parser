@@ -188,6 +188,28 @@ stata_storage_type <- function(x) {
     result
 }
 
+# `.stata_computed()` has already classified missing payloads and
+# proved that every observed encoded value fits the chosen storage.
+.construct_stata_numeric_trusted <- function(
+    values, encoded, missing_codes, storage,
+    temporal = .stata_temporal_none
+) {
+    result <- if (identical(storage, "double")) {
+        values
+    } else {
+        .Call(
+            C_dtatools_construct_numeric_trusted,
+            encoded, missing_codes,
+            match(storage, .stata_storage) - 1L,
+            temporal
+        )
+    }
+    attr(result, "stata.storage") <- storage
+    attr(result, "class") <- .stata_storage_class(storage)
+    names(result) <- names(values)
+    result
+}
+
 .encode_stata_temporal <- function(values, observed, temporal) {
     if (identical(temporal, .stata_temporal_none)) return(values)
 
@@ -956,9 +978,11 @@ vec_cast.double.stata_numeric <- function(
     names(values) <- names(result)
     missing_codes <- .tab_missing_codes(values)
     computational_nan <- !is.na(missing_codes) & missing_codes == 256L
-    values[computational_nan | is.infinite(values)] <- NA_real_
-
-    missing_codes <- .tab_missing_codes(values)
+    invalid_result <- computational_nan | is.infinite(values)
+    if (any(invalid_result)) {
+        values[invalid_result] <- NA_real_
+        missing_codes <- .tab_missing_codes(values)
+    }
     observed <- is.na(missing_codes)
     encoded <- .encode_stata_temporal(values, observed, temporal)
     outside_double <- observed &
@@ -972,8 +996,9 @@ vec_cast.double.stata_numeric <- function(
     }
     for (storage in .stata_storage_candidates(minimum)) {
         if (!any(.invalid_stata_observed(encoded, observed, storage))) {
-            return(.construct_stata_numeric(
-                values, NULL, storage, temporal = temporal
+            return(.construct_stata_numeric_trusted(
+                values, encoded, missing_codes, storage,
+                temporal = temporal
             ))
         }
     }

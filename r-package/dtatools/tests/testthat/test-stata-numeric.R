@@ -886,6 +886,42 @@ test_that("arithmetic preserves tags and returns bare logical comparisons", {
     expect_identical(!stata_int(c(0, 1, NA_real_)), c(TRUE, FALSE, NA))
 })
 
+test_that("computed results preserve Stata construction semantics", {
+    constructors <- list(
+        byte = stata_byte,
+        int = stata_int,
+        long = stata_long,
+        float = stata_float
+    )
+    input <- setNames(
+        c(1, NA_real_, tagged_missing("a"), tagged_missing("z")),
+        letters[1:4]
+    )
+
+    for (storage in names(constructors)) {
+        source <- constructors[[storage]](input)
+        result <- source + 0
+
+        expect_identical(stata_storage_type(result), storage, info = storage)
+        expect_identical(names(result), names(input), info = storage)
+        expect_identical(as.double(result), as.double(source), info = storage)
+        expect_identical(
+            missing_tag(result), missing_tag(source), info = storage
+        )
+        expect_true(
+            dtatools:::.is_unmaterialized_numeric_altrep(result),
+            info = storage
+        )
+    }
+
+    promoted <- stata_int(c(32740, 1)) / 2
+    expect_identical(stata_storage_type(promoted), "float")
+    expect_identical(as.double(promoted), c(16370, 0.5))
+    expect_identical(
+        as.double(stata_int(c(1, -1)) / 0), c(NA_real_, NA_real_)
+    )
+})
+
 test_that("Complex group members use value-dependent storage", {
     argument <- Arg(stata_int(-1))
     modulus <- Mod(stata_int(-32767))

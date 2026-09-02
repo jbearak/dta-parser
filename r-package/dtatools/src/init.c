@@ -2446,6 +2446,39 @@ static void write_numeric_observed(
     }
 }
 
+static void write_numeric_observed_trusted(
+    unsigned char *output, R_xlen_t index, int kind, double value
+) {
+    switch (kind) {
+    case NUMERIC_BYTE: {
+        int8_t encoded = (int8_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_INT: {
+        int16_t encoded = (int16_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_LONG: {
+        int32_t encoded = (int32_t) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    case NUMERIC_FLOAT: {
+        float encoded = (float) value;
+        memcpy(output + (size_t) index * sizeof(encoded), &encoded,
+               sizeof(encoded));
+        return;
+    }
+    default:
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+}
+
 SEXP C_dtatools_construct_numeric(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -2573,6 +2606,69 @@ SEXP C_dtatools_construct_numeric(
         } else {
             write_numeric_observed(output, index, kind, element);
         }
+    }
+
+    void *data = dtatools_numeric_alloc(
+        output, (size_t) length, kind, temporal, missing_count
+    );
+    if (data == NULL) {
+        UNPROTECT(1);
+        Rf_error("could not allocate compact Stata numeric storage");
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(data, R_NilValue, backing));
+    R_RegisterCFinalizerEx(external, numeric_finalize, TRUE);
+    SEXP result = PROTECT(R_new_altrep(
+        dtatools_numeric_class, external, R_NilValue
+    ));
+    UNPROTECT(3);
+    return result;
+}
+
+SEXP C_dtatools_construct_numeric_trusted(
+    SEXP value, SEXP missing_codes, SEXP kind_value, SEXP temporal_value
+) {
+    if (TYPEOF(value) != REALSXP || TYPEOF(missing_codes) != INTSXP ||
+        XLENGTH(value) != XLENGTH(missing_codes)) {
+        Rf_error("invalid trusted Stata numeric construction buffers");
+    }
+    if (TYPEOF(kind_value) != INTSXP || XLENGTH(kind_value) != 1) {
+        Rf_error("invalid compact Stata numeric storage type");
+    }
+    int kind = INTEGER(kind_value)[0];
+    if (TYPEOF(temporal_value) != INTSXP ||
+        XLENGTH(temporal_value) != 1 ||
+        INTEGER(temporal_value)[0] < 0 || INTEGER(temporal_value)[0] > 2) {
+        Rf_error("invalid compact Stata temporal storage type");
+    }
+    int temporal = INTEGER(temporal_value)[0];
+    size_t width = numeric_kind_width(kind);
+    R_xlen_t length = XLENGTH(value);
+    if ((size_t) length > SIZE_MAX / width ||
+        (size_t) length * width > (size_t) R_XLEN_T_MAX) {
+        Rf_error("compact Stata numeric vector is too long");
+    }
+
+    R_xlen_t byte_length = (R_xlen_t) ((size_t) length * width);
+    SEXP backing = PROTECT(Rf_allocVector(RAWSXP, byte_length));
+    unsigned char *output = RAW(backing);
+    size_t missing_count = 0;
+    for (R_xlen_t index = 0; index < length; index++) {
+        if ((index & 16383) == 0) R_CheckUserInterrupt();
+        int code = INTEGER_ELT(missing_codes, index);
+        if (code == NA_INTEGER) {
+            write_numeric_observed_trusted(
+                output, index, kind, REAL_ELT(value, index)
+            );
+            continue;
+        }
+        int offset = code == 0 ? 0 : code >= 'a' && code <= 'z'
+            ? code - 'a' + 1 : -1;
+        if (offset < 0) {
+            UNPROTECT(1);
+            Rf_error("invalid trusted Stata numeric missing code");
+        }
+        missing_count++;
+        write_numeric_missing(output, index, kind, offset);
     }
 
     void *data = dtatools_numeric_alloc(
@@ -7055,6 +7151,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_ephemeral_altstring, 1},
     {"C_dtatools_construct_numeric",
      (DL_FUNC) &C_dtatools_construct_numeric, 3},
+    {"C_dtatools_construct_numeric_trusted",
+     (DL_FUNC) &C_dtatools_construct_numeric_trusted, 4},
     {"C_dtatools_gather_numeric",
      (DL_FUNC) &C_dtatools_gather_numeric, 4},
     {"C_dtatools_gather_numeric_columns",
