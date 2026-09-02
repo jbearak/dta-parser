@@ -247,13 +247,6 @@ dta_append <- function(sources, force = TRUE,
                 metadata_owners[[plan_index]] <- candidate
                 next
             }
-            if (is.logical(metadata_owners[[plan_index]]) &&
-                !is.logical(candidate)) {
-                # A logical column is an untyped missing placeholder.
-                # Structural and user metadata therefore belong to the
-                # first contributor that supplies a concrete type.
-                metadata_owners[[plan_index]] <- candidate
-            }
             merged <- tryCatch(
                 .append_common_prototype(prototype, candidate),
                 error = function(condition) NULL
@@ -308,11 +301,15 @@ dta_append <- function(sources, force = TRUE,
 .append_restore_owned_metadata <- function(prototype, owner) {
     result <- .metadata_copy(prototype)
     owned <- c(
-        "format.stata", "label", "value.label.name", "notes",
-        "stata.note.numbers", "stata.characteristics"
+        "label", "value.label.name", "notes", "stata.note.numbers",
+        "stata.characteristics"
     )
     for (my_name in owned) {
         attr(result, my_name) <- attr(owner, my_name, exact = TRUE)
+    }
+    owner_format <- attr(owner, "format.stata", exact = TRUE)
+    if (!is.null(owner_format) || !inherits(prototype, "stata_temporal")) {
+        attr(result, "format.stata") <- owner_format
     }
     if (is.null(attr(owner, "labels", exact = TRUE))) {
         attr(result, "labels") <- NULL
@@ -335,6 +332,12 @@ dta_append <- function(sources, force = TRUE,
 }
 
 .append_common_prototype <- function(left, right) {
+    if (inherits(left, .stata_metadata_vector_class)) {
+        left <- .stata_metadata_vector_base(left)
+    }
+    if (inherits(right, .stata_metadata_vector_class)) {
+        right <- .stata_metadata_vector_base(right)
+    }
     left_storage <- stata_storage_type(left)
     right_storage <- stata_storage_type(right)
     left_declared <- !is.null(left_storage) &&

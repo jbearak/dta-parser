@@ -230,6 +230,34 @@ test_that("logical placeholders do not clear temporal structure", {
     expect_identical(is_missing(result$v), c(TRUE, FALSE))
 })
 
+test_that("a logical first contributor retains its user metadata", {
+    first <- tibble::tibble(v = c(TRUE, FALSE))
+    var_label(first$v) <- "logical first"
+    attr(first$v, "notes") <- "first note"
+    first$v <- dtatools:::.as_stata_metadata_vector(first$v)
+    second <- tibble::tibble(v = stata_byte(c(1, 0)))
+    var_label(second$v) <- "second"
+    attr(second$v, "notes") <- "second note"
+    second$v <- dtatools:::.as_stata_metadata_vector(second$v)
+
+    result <- dta_append(list(first, second))
+    expect_identical(as.numeric(result$v), c(1, 0, 1, 0))
+    expect_identical(var_label(result$v), "logical first")
+    expect_identical(attr(result$v, "notes"), "first note")
+
+    wrong <- tibble::tibble(v = stata_string("x"))
+    var_label(wrong$v) <- "dropped owner"
+    right <- tibble::tibble(v = stata_byte(1))
+    var_label(right$v) <- "later compatible"
+    expect_message(
+        result <- dta_append(list(tibble::tibble(v = NA), wrong, right)),
+        "stored differently"
+    )
+    expect_identical(as.numeric(result$v), c(NA, NA, 1))
+    expect_null(var_label(result$v))
+    expect_null(attr(result$v, "format.stata"))
+})
+
 test_that("a variable label survives a missing-fill contribution", {
     first <- tibble::tibble(v = stata_string("ab"))
     var_label(first$v) <- "kept"
