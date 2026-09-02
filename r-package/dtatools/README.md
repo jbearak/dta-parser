@@ -29,9 +29,9 @@ declared Stata storage type.
 | `labelbook()` | Structured reports on named value-label tables, assignments, mappings, and problems. |
 | `codebook()` | Structured variable metadata, observed-data summaries, missingness relationships, and problems. |
 | `factor_from_labels()` | Intentional one-way conversion of a labelled numeric variable to an ordinary R factor. |
-| `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
-| `stata_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
-| `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
+| `dta_byte()`, `dta_int()`, `dta_long()`, `dta_float()`, `dta_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
+| `dta_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
+| `dta_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
 | `.a` through `.z`, `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values. |
 | `is_missing()`, `is_mi()` | Classify Stata system and extended numeric missing values and empty strings; `is_mi()` is an alias for `is_missing()` that matches Stata's `mi()` shorthand. Use either in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
@@ -370,7 +370,7 @@ re-baselining until the profile freezes.
 
 Dataset and variable labels, numbered notes, arbitrary characteristics,
 display formats, and resolved value-label mappings are retained as attributes. Use
-`stata_notes()` and `stata_characteristics()` to inspect them, and pass a
+`dta_notes()` and `dta_characteristics()` to inspect them, and pass a
 column name as `variable` for variable scope. Stata daily dates become `Date`;
 `%tc` and `%tC` values become UTC `POSIXct`.
 
@@ -390,14 +390,14 @@ Inspect storage without materializing a compact column, or declare storage for
 a derived vector:
 
 ```r
-stata_storage_type(cars$foreign)
+dta_storage_type(cars$foreign)
 
-status <- stata_byte(c(1, 2, NA_real_, tagged_missing("a")))
-empty_status <- stata_byte(.size = 1000)
+status <- dta_byte(c(1, 2, NA_real_, tagged_missing("a")))
+empty_status <- dta_byte(.size = 1000)
 ```
 
-The five constructors are `stata_byte()`, `stata_int()`, `stata_long()`,
-`stata_float()`, and `stata_double()`. They reject values that the requested
+The five constructors are `dta_byte()`, `dta_int()`, `dta_long()`,
+`dta_float()`, and `dta_double()`. They reject values that the requested
 type cannot store and name a wider constructor in the error. Float construction
 rounds values to binary32.
 
@@ -574,7 +574,7 @@ Use the installed help for exact behavior and examples:
 ?read_arrow # read a .arrow dataset and check it for file corruption
 ?dta_merge # Stata-identity merges with relationship checks and _merge
 ?datasig   # order-sensitive data signatures for files and data frames
-?stata_byte # construct and inspect declared Stata numeric storage
+?dta_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
 ?tagged_missing    # create, inspect, and select extended missing values
 ?factor_from_labels # one-way conversion to an ordinary factor

@@ -10,7 +10,7 @@
 #' removes a note or characteristic. Adding a note uses one more than the
 #' highest existing number, matching Stata's next-number behavior.
 #'
-#' `renumber_stata_notes()` preserves the current number order and assigns
+#' `renumber_dta_notes()` preserves the current number order and assigns
 #' consecutive numbers beginning at `start`. R differs from Stata's command
 #' language by returning the changed object instead of modifying a dataset in
 #' place.
@@ -42,18 +42,18 @@
 #' @param start First number assigned while renumbering.
 #' @param name One characteristic name.
 #' @param names Characteristic names to drop. `NULL` drops all characteristics.
-#' @return `stata_notes()` and `stata_characteristics()` return named character
+#' @return `dta_notes()` and `dta_characteristics()` return named character
 #'   vectors. Singular getters return one string or `NULL`. Mutation helpers
 #'   return the changed object.
 #' @examples
 #' survey <- data.frame(age = c(20, 30))
-#' survey <- set_stata_note(survey, 2, "Cleaned after interview")
-#' survey <- add_stata_note(survey, "Checked by supervisor", variable = "age")
-#' survey <- set_stata_characteristic(survey, "source", "baseline")
-#' stata_notes(survey)
-#' stata_characteristics(survey)
+#' survey <- set_dta_note(survey, 2, "Cleaned after interview")
+#' survey <- add_dta_note(survey, "Checked by supervisor", variable = "age")
+#' survey <- set_dta_characteristic(survey, "source", "baseline")
+#' dta_notes(survey)
+#' dta_characteristics(survey)
 #' @export
-stata_notes <- function(x, variable = NULL) {
+dta_notes <- function(x, variable = NULL) {
     target <- .stata_metadata_target(x, variable)
     notes <- attr(target$value, "notes", exact = TRUE)
     if (is.null(notes)) return(stats::setNames(character(), character()))
@@ -71,21 +71,21 @@ stata_notes <- function(x, variable = NULL) {
     stats::setNames(notes[order], as.character(numbers[order]))
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-stata_note <- function(x, number, variable = NULL) {
+dta_note <- function(x, number, variable = NULL) {
     number <- .stata_note_number(number)
-    notes <- stata_notes(x, variable)
+    notes <- dta_notes(x, variable)
     match <- match(as.character(number), names(notes))
     if (is.na(match)) NULL else unname(notes[[match]])
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-set_stata_note <- function(x, number, value, variable = NULL) {
+set_dta_note <- function(x, number, value, variable = NULL) {
     number <- .stata_note_number(number)
     value <- .stata_metadata_value(value)
-    notes <- stata_notes(x, variable)
+    notes <- dta_notes(x, variable)
     key <- as.character(number)
     if (is.null(value)) {
         notes <- notes[names(notes) != key]
@@ -98,36 +98,36 @@ set_stata_note <- function(x, number, value, variable = NULL) {
     .stata_set_notes(x, variable, notes)
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-add_stata_note <- function(x, value, variable = NULL) {
+add_dta_note <- function(x, value, variable = NULL) {
     if (is.null(value)) {
         stop("`value` must be one non-missing string", call. = FALSE)
     }
-    notes <- stata_notes(x, variable)
+    notes <- dta_notes(x, variable)
     number <- if (length(notes)) max(as.integer(names(notes))) + 1L else 1L
     if (number > 9999L) stop("Stata note number 9,999 is already in use", call. = FALSE)
-    set_stata_note(x, number, value, variable)
+    set_dta_note(x, number, value, variable)
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-drop_stata_notes <- function(x, numbers = NULL, variable = NULL) {
+drop_dta_notes <- function(x, numbers = NULL, variable = NULL) {
     if (is.null(numbers)) {
         notes <- stats::setNames(character(), character())
     } else {
         numbers <- vapply(numbers, .stata_note_number, integer(1))
-        notes <- stata_notes(x, variable)
+        notes <- dta_notes(x, variable)
         notes <- notes[!(as.integer(names(notes)) %in% numbers)]
     }
     .stata_set_notes(x, variable, notes)
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-renumber_stata_notes <- function(x, start = 1L, variable = NULL) {
+renumber_dta_notes <- function(x, start = 1L, variable = NULL) {
     start <- .stata_note_number(start)
-    notes <- stata_notes(x, variable)
+    notes <- dta_notes(x, variable)
     if (length(notes) && start + length(notes) - 1L > 9999L) {
         stop("Renumbered notes would exceed Stata note number 9,999", call. = FALSE)
     }
@@ -135,9 +135,9 @@ renumber_stata_notes <- function(x, start = 1L, variable = NULL) {
     .stata_set_notes(x, variable, notes)
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-stata_characteristics <- function(x, variable = NULL) {
+dta_characteristics <- function(x, variable = NULL) {
     target <- .stata_metadata_target(x, variable)
     characteristics <- attr(target$value, "stata.characteristics", exact = TRUE)
     if (is.null(characteristics)) return(stats::setNames(character(), character()))
@@ -156,21 +156,21 @@ stata_characteristics <- function(x, variable = NULL) {
     characteristics
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-stata_characteristic <- function(x, name, variable = NULL) {
+dta_characteristic <- function(x, name, variable = NULL) {
     name <- .stata_characteristic_name(name)
-    values <- stata_characteristics(x, variable)
+    values <- dta_characteristics(x, variable)
     match <- match(name, names(values))
     if (is.na(match)) NULL else unname(values[[match]])
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-set_stata_characteristic <- function(x, name, value, variable = NULL) {
+set_dta_characteristic <- function(x, name, value, variable = NULL) {
     name <- .stata_characteristic_name(name)
     value <- .stata_metadata_value(value)
-    characteristics <- stata_characteristics(x, variable)
+    characteristics <- dta_characteristics(x, variable)
     match <- match(name, names(characteristics))
     if (is.null(value)) {
         if (!is.na(match)) characteristics <- characteristics[-match]
@@ -182,9 +182,9 @@ set_stata_characteristic <- function(x, name, value, variable = NULL) {
     .stata_set_characteristics(x, variable, characteristics)
 }
 
-#' @rdname stata_notes
+#' @rdname dta_notes
 #' @export
-drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
+drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     if (is.null(names)) {
         characteristics <- stats::setNames(character(), character())
     } else {
@@ -192,7 +192,7 @@ drop_stata_characteristics <- function(x, names = NULL, variable = NULL) {
             stop("`names` must be a character vector or NULL", call. = FALSE)
         }
         names <- vapply(names, .stata_characteristic_name, character(1))
-        characteristics <- stata_characteristics(x, variable)
+        characteristics <- dta_characteristics(x, variable)
         characteristics <- characteristics[!(base::names(characteristics) %in% names)]
     }
     .stata_set_characteristics(x, variable, characteristics)
@@ -639,12 +639,12 @@ vec_cast.ordered.dtatools_stata_metadata_vector <-
     result
 }
 
-# `stata_string` declares coercion pairs only with itself and `character`,
+# `dta_string` declares coercion pairs only with itself and `character`,
 # but read_dta() wraps a labelled or noted string column in the metadata
 # vector class. Combining a bare owned string with a wrapped one - which
 # happens whenever ragged sources are appended - therefore had no common
 # type. Delegating to the shared metadata helpers strips the marker and
-# lets the `stata_string` pair resolve the storage width, then restores
+# lets the `dta_string` pair resolve the storage width, then restores
 # the notes and characteristics.
 
 #' @export

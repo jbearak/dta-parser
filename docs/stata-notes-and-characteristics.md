@@ -35,24 +35,24 @@ be read.
 
 ## R
 
-Use `stata_notes()` and `stata_characteristics()` to list metadata. Pass a
+Use `dta_notes()` and `dta_characteristics()` to list metadata. Pass a
 column name or one-based position as `variable` to select variable scope.
 
 ```r
-survey <- set_stata_note(survey, 3, "Checked after import")
-survey <- add_stata_note(survey, "Reviewed", variable = "age")
-survey <- set_stata_characteristic(survey, "source", "baseline")
+survey <- set_dta_note(survey, 3, "Checked after import")
+survey <- add_dta_note(survey, "Reviewed", variable = "age")
+survey <- set_dta_characteristic(survey, "source", "baseline")
 
-stata_notes(survey)                         # named by note number
-stata_note(survey, 3)
-stata_characteristics(survey)
-stata_characteristic(survey, "source")
+dta_notes(survey)                         # named by note number
+dta_note(survey, 3)
+dta_characteristics(survey)
+dta_characteristic(survey, "source")
 ```
 
-`set_stata_note()` and `set_stata_characteristic()` replace an existing value.
-Passing `NULL` removes that key. `drop_stata_notes()` and
-`drop_stata_characteristics()` remove selected keys or all keys.
-`renumber_stata_notes()` closes gaps explicitly; reading, writing, and the
+`set_dta_note()` and `set_dta_characteristic()` replace an existing value.
+Passing `NULL` removes that key. `drop_dta_notes()` and
+`drop_dta_characteristics()` remove selected keys or all keys.
+`renumber_dta_notes()` closes gaps explicitly; reading, writing, and the
 other setters do not renumber. Every mutation helper returns a changed copy,
 unlike Stata commands that modify the current dataset.
 

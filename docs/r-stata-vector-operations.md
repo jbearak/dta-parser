@@ -63,7 +63,7 @@ Set operations preserve stable first-occurrence order and drop names. Union keep
 Every imported Stata string variable uses an owned vector class. Construct one explicitly with:
 
 ```r
-stata_string(x, storage = NULL)
+dta_string(x, storage = NULL)
 ```
 
 `storage` accepts `str1` through `str2045` or `strL`. When omitted, dtatools selects the smallest fixed storage from the maximum UTF-8 byte width and uses `strL` above 2,045 bytes. Owned Stata strings reject `NA_character_`; use `""` for Stata string missing.

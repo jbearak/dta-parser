@@ -15,8 +15,8 @@ test_that("imported temporal columns retain storage through supported mutation",
     expect_s3_class(values, "stata_temporal")
     expect_s3_class(shifted, "Date")
     expect_s3_class(selected, "Date")
-    expect_identical(stata_storage_type(shifted), "double")
-    expect_identical(stata_storage_type(selected), "double")
+    expect_identical(dta_storage_type(shifted), "double")
+    expect_identical(dta_storage_type(selected), "double")
     expect_identical(
         as.character(selected), c("1960-01-01", "2020-01-02")
     )
@@ -34,9 +34,9 @@ test_that("datetime arithmetic promotes using Stata millisecond values", {
     haven::write_dta(data.frame(value = input), path, version = 15)
     values <- read_dta(path)$value
 
-    expect_identical(stata_storage_type(values), "long")
+    expect_identical(dta_storage_type(values), "long")
     shifted <- values + 315619200
-    expect_identical(stata_storage_type(shifted), "double")
+    expect_identical(dta_storage_type(shifted), "double")
     expect_identical(as.double(shifted), c(0, 1))
 })
 
@@ -48,8 +48,8 @@ test_that("integer datetime backing round-trips fractional R seconds", {
 
     byte_value <- read_dta(byte_path)$foreign[53]
     int_value <- read_dta(int_path)$price[1]
-    expect_identical(stata_storage_type(byte_value), "byte")
-    expect_identical(stata_storage_type(int_value), "int")
+    expect_identical(dta_storage_type(byte_value), "byte")
+    expect_identical(dta_storage_type(int_value), "int")
 
     long_input <- structure(
         c(-315619200L, -315619199L),
@@ -68,8 +68,8 @@ test_that("integer datetime backing round-trips fractional R seconds", {
     on.exit(unlink(long_path), add = TRUE)
 
     long_values <- read_dta(long_path)$value
-    expect_identical(stata_storage_type(long_values), "long")
-    expect_identical(stata_storage_type(long_values[1]), "long")
+    expect_identical(dta_storage_type(long_values), "long")
+    expect_identical(dta_storage_type(long_values[1]), "long")
     expected_first <- -315619200 + 0.001
     expect_identical(as.double(long_values[1]), expected_first)
 })

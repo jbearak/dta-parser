@@ -36,11 +36,11 @@
 #'   logical value.
 #' @examples
 #' x <- c(1, tagged_missing("a"), NA_real_)
-#' column <- stata_byte(c(1, NA_real_, tagged_missing("a")))
+#' column <- dta_byte(c(1, NA_real_, tagged_missing("a")))
 #' dta_in(x, column)
 #' dta_match(x, column)
 #' dta_identical(column, x)
-#' dta_union(column, stata_int(c(2, tagged_missing("b"))))
+#' dta_union(column, dta_int(c(2, tagged_missing("b"))))
 #' @name dta_match
 #' @export
 dta_identical <- function(x, y) {
@@ -173,7 +173,7 @@ dta_union <- function(x, y) {
 
 .dta_union_numeric_storage <- function(x, y) {
     storages <- vapply(list(x, y), function(value) {
-        storage <- stata_storage_type(value)
+        storage <- dta_storage_type(value)
         if (!is.null(storage)) return(storage)
         if (is.double(value)) return("double")
         observed <- value[!is.na(value)]
@@ -280,7 +280,7 @@ dta_union <- function(x, y) {
     }
     if (identical(kind, "date")) return("%td")
     if (identical(kind, "datetime")) return("%tc")
-    .default_stata_format(stata_storage_type(result))
+    .default_stata_format(dta_storage_type(result))
 }
 
 #' @rdname dta_match

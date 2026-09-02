@@ -2388,7 +2388,7 @@ static void write_numeric_observed(
                     ? "long" : "double");
             Rf_error(
                 "Stata byte storage cannot represent the value; "
-                "use `stata_%s()`", wider
+                "use `dta_%s()`", wider
             );
         }
         int8_t encoded = (int8_t) value;
@@ -2404,7 +2404,7 @@ static void write_numeric_observed(
                     ? "long" : "double";
             Rf_error(
                 "Stata int storage cannot represent the value; "
-                "use `stata_%s()`", wider
+                "use `dta_%s()`", wider
             );
         }
         int16_t encoded = (int16_t) value;
@@ -2417,7 +2417,7 @@ static void write_numeric_observed(
             value < -2147483647.0 || value > 2147483620.0) {
             Rf_error(
                 "Stata long storage cannot represent the value; "
-                "use `stata_double()`"
+                "use `dta_double()`"
             );
         }
         int32_t encoded = (int32_t) value;
@@ -2433,7 +2433,7 @@ static void write_numeric_observed(
             value > (double) maximum) {
             Rf_error(
                 "Stata float storage cannot represent the value; "
-                "use `stata_double()`"
+                "use `dta_double()`"
             );
         }
         float encoded = (float) value;
@@ -2580,7 +2580,7 @@ SEXP C_dtatools_construct_numeric(
             Rf_error("No Stata numeric storage can represent `x`");
         }
         Rf_error(
-            "Stata %s storage cannot represent `x`; use `stata_%s(x)`",
+            "Stata %s storage cannot represent `x`; use `dta_%s(x)`",
             storage_name, recommendation
         );
     }
@@ -4929,7 +4929,7 @@ static void validate_materialized_numeric_replacement(
         Rf_error("No Stata numeric storage can represent `x`");
     }
     Rf_error(
-        "Stata %s storage cannot represent `x`; use `stata_%s(x)`",
+        "Stata %s storage cannot represent `x`; use `dta_%s(x)`",
         storage_name, recommendation
     );
 }

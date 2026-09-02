@@ -57,7 +57,7 @@ shared_names <- sprintf("s%d", 1:60)
 master <- tibble::new_tibble(c(
     list(caseid = caseid),
     setNames(lapply(seq_len(60L), function(index) {
-        stata_int(sample.int(500, n_master, replace = TRUE))
+        dta_int(sample.int(500, n_master, replace = TRUE))
     }), shared_names),
     setNames(lapply(seq_len(90L), function(index) {
         rnorm(n_master)
@@ -67,10 +67,10 @@ master <- tibble::new_tibble(c(
 using <- tibble::new_tibble(c(
     list(
         caseid = rep(caseid[mothers], births_per),
-        bidx = stata_byte(unlist(lapply(births_per, seq_len)))
+        bidx = dta_byte(unlist(lapply(births_per, seq_len)))
     ),
     setNames(lapply(seq_len(60L), function(index) {
-        stata_int(sample.int(500, n_using, replace = TRUE))
+        dta_int(sample.int(500, n_using, replace = TRUE))
     }), shared_names),
     setNames(lapply(seq_len(48L), function(index) {
         rnorm(n_using)

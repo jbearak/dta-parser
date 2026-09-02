@@ -80,7 +80,7 @@ non-regular destinations are rejected. Output is always little-endian.
 
 \examples{
 path <- tempfile(fileext = ".dta")
-data <- data.frame(answer = stata_byte(c(1, tagged_missing("a"))))
+data <- data.frame(answer = dta_byte(c(1, tagged_missing("a"))))
 save_dta(data, path)
 read_dta(path)
 unlink(path)

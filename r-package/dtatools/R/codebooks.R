@@ -301,7 +301,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         ))
         missing_masks[[as.character(position)]] <- .codebook_missing(column)
         if (notes) {
-            variable_notes <- stata_notes(data, variable = position)
+            variable_notes <- dta_notes(data, variable = position)
             if (length(variable_notes)) note_rows[[length(note_rows) + 1L]] <- data.frame(
                 position, variable = name, number = as.integer(names(variable_notes)),
                 text = unname(variable_notes), stringsAsFactors = FALSE
@@ -385,7 +385,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         "categorical"
     } else if (numeric) "continuous" else "examples"
     storage <- if (inherits(x, "stata_numeric") || inherits(x, "stata_temporal")) {
-        stata_storage_type(x)
+        dta_storage_type(x)
     } else typeof(x)
     type <- if (is.ordered(x)) "ordered factor" else if (is.factor(x)) "factor" else {
         paste(class(x), collapse = "/")
@@ -500,7 +500,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
             "Date variable contains noninteger values")
     }
     declared <- if (inherits(x, "stata_numeric") || inherits(x, "stata_temporal")) {
-        stata_storage_type(x)
+        dta_storage_type(x)
     } else NULL
     if (!is.null(declared) && is.numeric(x)) {
         observed <- .book_numeric_data(x[!missing])

@@ -168,7 +168,7 @@ test_that("codebook distinguishes duplicate names by position", {
 
 test_that("codebook detects duplicate rows under Stata missing identity", {
     data <- data.frame(
-        x = stata_double(c(
+        x = dta_double(c(
             1, 1, NA_real_, NA_real_, tagged_missing("a"),
             tagged_missing("a"), tagged_missing("b")
         )),

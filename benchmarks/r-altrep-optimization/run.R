@@ -24,7 +24,7 @@ compact <- dtatools:::.is_unmaterialized_numeric_altrep
 
 result <- switch(operation,
     serialize = {
-        x <- stata_byte(rep(c(-1, 0, 1, NA_real_), 2500000L))
+        x <- dta_byte(rep(c(-1, 0, 1, NA_real_), 2500000L))
         before <- compact(x)
         timing <- system.time(raw <- serialize(x, NULL, version = 3))
         restored <- unserialize(raw)
@@ -38,14 +38,14 @@ result <- switch(operation,
     },
     construct = {
         x <- as.double(rep(-100:100, length.out = 1000000L))
-        measured <- profile_allocations(stata_int(x), 1024^2)
+        measured <- profile_allocations(dta_int(x), 1024^2)
         data.frame(
             operation, label, allocation_bytes = measured$bytes,
             result_compact = compact(measured$value)
         )
     },
     recode = {
-        x <- stata_int(rep(c(1, 2, 3, NA_real_), 2500000L))
+        x <- dta_int(rep(c(1, 2, 3, NA_real_), 2500000L))
         gc(reset = TRUE)
         timing <- system.time(y <- dtatools::recode(x, `1` = 4))
         heap <- gc()
@@ -59,11 +59,11 @@ result <- switch(operation,
         )
     },
     `compact-operations` = {
-        x <- stata_int(rep(c(1, 2, 3, NA_real_), 250000L))
+        x <- dta_int(rep(c(1, 2, 3, NA_real_), 250000L))
         selected <- profile_allocations(
             x[seq.int(1L, length(x), 2L)], 100 * 1024
         )
-        x <- stata_int(rep(c(1, 2, 3, NA_real_), 250000L))
+        x <- dta_int(rep(c(1, 2, 3, NA_real_), 250000L))
         copied <- profile_allocations(rlang::duplicate(x), 100 * 1024)
         data.frame(
             operation, label,

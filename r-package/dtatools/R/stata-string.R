@@ -9,7 +9,7 @@
 #'   `"str2045"`, or `"strL"`.
 #' @return A character vector with declared Stata string storage.
 #' @export
-stata_string <- function(x = character(), storage = NULL) {
+dta_string <- function(x = character(), storage = NULL) {
     if (!is.character(x) || !is.null(dim(x))) {
         stop("`x` must be a character vector", call. = FALSE)
     }
@@ -43,7 +43,7 @@ stata_string <- function(x = character(), storage = NULL) {
     }
     if (.stata_string_storage_width(storage) < required) {
         stop(sprintf(
-            "Stata %s storage cannot represent `x`; use `stata_string(x, storage = %s)`",
+            "Stata %s storage cannot represent `x`; use `dta_string(x, storage = %s)`",
             storage, if (required > 2045L) '"strL"' else paste0('"str', required, '"')
         ), call. = FALSE)
     }
