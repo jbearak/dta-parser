@@ -20,8 +20,9 @@ copy_data(data)
 accepts grouped and rowwise tibbles.}
 
 \item{variable}{Exactly one unquoted target name, or one nonempty,
-non-missing character string, which is what \code{!!name} unquotes to. An
-empty string, \code{NA}, a character vector of length other than one, a call,
+non-missing character string, which is what \code{!!name} unquotes to and
+what a \code{.(name)} call supplies in place. An empty string, \code{NA}, a
+character vector of length other than one, a call other than \code{.()},
 \code{...}, and a missing argument are errors.}
 
 \item{values}{A value expression or one-sided formula. It may reference a
@@ -79,14 +80,21 @@ in a string. No \code{rlang::inject()} wrapper is needed, because
 scalar, and one nonempty, non-missing string is accepted in the \code{variable}
 position. A literal \code{gen(data, "adjusted", value)} names a column the same
 way. An empty string, \code{NA}, a character vector of length other than one, a
-call such as \code{a + 1}, \code{...}, and a missing argument are errors.
+call other than \code{.()}, \code{...}, and a missing argument are errors.
 
-In the \code{values} and \code{where} expressions a runtime name is reached through
-the mask's \code{.data} pronoun instead: \code{values = .data[[name]]} and
+\code{.(name)} is the one spelling that works in every position. It is
+evaluated where it sits, so it can stand inside a larger expression the
+way \verb{!!} cannot: \code{values = income + .(name)} reads the column that \code{name}
+holds. The argument is evaluated in the caller's environment, never in
+the data mask, so a column sharing the variable's name cannot shadow it,
+and it must be one nonempty, non-missing string.
+
+In the \code{values} and \code{where} expressions a runtime name is also reached
+through the mask's \code{.data} pronoun: \code{values = .data[[name]]} and
 \code{where = !is_missing(.data[[name]])}. Note the asymmetry, which is the
 surprising part: \code{.data[[name]]} works in \code{values} and \code{where} but not in
 the \code{variable} position, because \code{variable} names a target rather than
-reading a column. Use \code{!!name} there.
+reading a column. Use \code{!!name} or \code{.(name)} there.
 
 \code{values} and \code{where} use a data mask built from the dataset before the
 mutation. Columns win over objects in the calling environment; use \code{.env}

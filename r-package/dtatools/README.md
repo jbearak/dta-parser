@@ -510,23 +510,37 @@ confirm_var(survey, "missing", on_failure = "false")
 `gen()`, `repl()`, `replace_values()`, and `set_var_label()` capture their
 variable-name argument the way Stata's `generate` and `replace` do, so the name
 is normally written unquoted. When the name is only known at run time, unquote
-it with rlang's `!!` operator. These functions capture with `rlang::enquo()`,
-which already applies quasiquotation, so no `rlang::inject()` wrapper is
-needed. Inside the `values` and `where` expressions, the `.data` pronoun reads
-a column whose name is a string; it does not work in the name position, which
-names a target rather than reading a column.
+it with rlang's `!!` operator or write `.(name)`. These functions capture with
+`rlang::enquo()`, which already applies quasiquotation, so no `rlang::inject()`
+wrapper is needed. Inside the `values` and `where` expressions, `.(name)` and
+the `.data` pronoun both read a column whose name is a string; `!!` and
+`.data[[name]]` do not work in the name position, which names a target rather
+than reading a column, while `.(name)` works everywhere and may sit inside a
+larger expression.
 
 ```r
-target_name <- "cluster"
-source_name <- "wm1"
+target_name <- "income"
+source_name <- "identifier"
 
 repl(survey, !!target_name, .data[[source_name]])
 repl(survey, !!target_name, 0, where = is_missing(.data[[source_name]]))
 gen(survey, !!paste0(target_name, "_flag"), .data[[source_name]] > 0)
-set_var_label(survey, !!target_name, "Cluster number")
+set_var_label(survey, !!target_name, "Total income")
+
+# `.(name)` is evaluated where it sits, in the caller's environment
+repl(survey, .(target_name), .(source_name) + 1)
 
 # `!!rlang::sym(name)` is the equivalent older spelling and still works
 repl(survey, !!rlang::sym(target_name), 1)
+```
+
+`set_var_labels()` and `set_val_labels()` update columns by name in `...`.
+A column named at run time takes a `.(name) := value` tag there, or supply a
+named list through `.labels`:
+
+```r
+set_var_labels(survey, .(target_name) := "Total income", identifier = "ID")
+set_val_labels(survey, .(source_name) := c(low = 1, high = 2))
 ```
 
 Use the installed help for exact behavior and examples:
