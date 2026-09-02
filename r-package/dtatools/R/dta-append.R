@@ -59,10 +59,10 @@
 #' @return The stacked observations in the requested container,
 #'   carrying the reconciled Stata metadata.
 #' @export
-append_stata_rows <- function(sources, force = TRUE,
-                              dataset_notes = c("first", "none", "all"),
-                              output = c("default", "tibble", "data.table"),
-                              .name_repair = "unique") {
+dta_append <- function(sources, force = TRUE,
+                       dataset_notes = c("first", "none", "all"),
+                       output = c("default", "tibble", "data.table"),
+                       .name_repair = "unique") {
     the_sources <- .append_normalize_sources(sources)
     dataset_notes <- rlang::arg_match(dataset_notes, .APPEND_NOTE_POLICIES)
     if (!isTRUE(force) && !isFALSE(force)) {
@@ -276,16 +276,30 @@ append_stata_rows <- function(sources, force = TRUE,
                 data[[my_name]]
             }
             if (!is.null(buffers[[my_name]])) {
-                if (!is.null(value) && rows > 0L &&
-                    .append_fits_buffer(value, prototype)) {
-                    buffer <- buffers[[my_name]]
-                    # Clear the list slot first. While the list still
-                    # references the buffer, `[<-` would duplicate the
-                    # whole column on every source instead of writing
-                    # the destination range in place.
-                    buffers[my_name] <- list(NULL)
-                    buffer[span] <- .append_buffer_values(value)
-                    buffers[[my_name]] <- buffer
+                if (!is.null(value) && rows > 0L) {
+                    # A value that does not already share the buffer's
+                    # layout is cast to the prototype first. A cast the
+                    # prototype cannot represent leaves the range at its
+                    # missing initialization, which is what the pieces
+                    # path does for the same out-of-range source.
+                    writable <- if (.append_fits_buffer(value, prototype)) {
+                        value
+                    } else {
+                        tryCatch(
+                            vctrs::vec_cast(value, prototype),
+                            error = function(condition) NULL
+                        )
+                    }
+                    if (!is.null(writable)) {
+                        buffer <- buffers[[my_name]]
+                        # Clear the list slot first. While the list still
+                        # references the buffer, `[<-` would duplicate
+                        # the whole column on every source instead of
+                        # writing the destination range in place.
+                        buffers[my_name] <- list(NULL)
+                        buffer[span] <- .append_buffer_values(writable)
+                        buffers[[my_name]] <- buffer
+                    }
                 }
                 next
             }
@@ -343,10 +357,11 @@ append_stata_rows <- function(sources, force = TRUE,
     if (inherits(prototype, "stata_string")) {
         return(is.character(value) && !inherits(value, "stata_temporal"))
     }
-    # Any declared Stata numeric may widen into the buffer: the plan's
-    # prototype is the sources' common type on Stata's lossless
-    # lattice, so it represents every contributor's values exactly. A
-    # bare double carries no such guarantee and takes the general path.
+    # Any declared Stata numeric may widen into the buffer without a
+    # cast: the plan's prototype is the sources' common type on Stata's
+    # lossless lattice, so it represents every contributor's values
+    # exactly. A bare double carries no such guarantee, so the caller
+    # casts it to the prototype before writing.
     !is.null(stata_storage_type(value)) &&
         !inherits(value, "stata_temporal") && is.null(names(value))
 }
