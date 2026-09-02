@@ -88,8 +88,9 @@
 #' column reads.
 #' `options(dtatools.shadow_check = FALSE)` disables the check. A stored or
 #' inline one-sided formula evaluates its right-hand side in the same data
-#' mask and uses the formula environment as its fallback. Two-sided
-#' formulas are rejected.
+#' mask and uses the formula environment as its fallback; a formula is a
+#' request to read the data, so its symbols are exempt from the check and
+#' columns win. Two-sided formulas are rejected.
 #'
 #' `where = NULL` selects every row. A logical result must have size one or the
 #' dataset row count; missing logical values do not select a row. Numeric row
@@ -822,18 +823,22 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         return(found)
     }
     for (index in seq.int(2L, length.out = length(expression) - 1L)) {
-        argument <- expression[[index]]
-        if (identical(argument, quote(expr = ))) next
-        found <- .masked_symbols(argument, found)
+        if (identical(expression[[index]], quote(expr = ))) next
+        found <- .masked_symbols(expression[[index]], found)
     }
     if (is.call(head)) found <- .masked_symbols(head, found)
     found
 }
 
 # A function binding is skipped: a masked symbol reads a vector, and a
-# recode script is often named after the column it builds.
+# recode script is often named after the column it builds. The walk
+# stops after the global environment or at a package namespace, so
+# `pi`, `T`, and package constants never count as shadows.
 .bound_in_caller_chain <- function(name, environment) {
     while (!identical(environment, emptyenv())) {
+        if (identical(environment, baseenv()) || isNamespace(environment)) {
+            return(FALSE)
+        }
         if (exists(name, envir = environment, inherits = FALSE)) {
             return(!is.function(get(name, envir = environment,
                                     inherits = FALSE)))
@@ -1002,7 +1007,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             expression[[2L]],
             columns,
             rlang::quo_get_env(quo),
-            extras, shadow
+            extras, shadow = FALSE
         ))
     }
     value <- .eval_in_mutation_data(quo, columns, extras = extras,
@@ -1014,7 +1019,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         columns,
         formula$environment,
         .row_counter_extras(formula$expression, extras, row_count),
-        shadow
+        shadow = FALSE
     )
 }
 
@@ -1553,7 +1558,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     access <- NULL
     column <- NULL
 
-    if (!rlang::quo_is_missing(where)) {
+    # A formula body is exempt: `~` asks for the data mask outright.
+    if (!rlang::quo_is_missing(where) &&
+        !rlang::is_formula(rlang::quo_get_expr(where))) {
         .check_shadowed_symbols(
             rlang::quo_get_expr(where), original$columns,
             rlang::quo_get_env(where)

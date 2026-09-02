@@ -136,8 +136,9 @@ the column it builds is not flagged either; and the right-hand side of
 column reads.
 \code{options(dtatools.shadow_check = FALSE)} disables the check. A stored or
 inline one-sided formula evaluates its right-hand side in the same data
-mask and uses the formula environment as its fallback. Two-sided
-formulas are rejected.
+mask and uses the formula environment as its fallback; a formula is a
+request to read the data, so its symbols are exempt from the check and
+columns win. Two-sided formulas are rejected.
 
 \code{where = NULL} selects every row. A logical result must have size one or the
 dataset row count; missing logical values do not select a row. Numeric row

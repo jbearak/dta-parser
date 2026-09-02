@@ -75,7 +75,11 @@ test_that("data masks, formulas, and alias calls use the right environments", {
     repl(data, x, value_rule, where = selection_rule)
     expect_identical(data$x, c(102L, 2L, 112L))
 
-    gen(data, from_column, constant)
+    expect_error(
+        gen(data, from_column, constant),
+        "`constant` is both a column and an object"
+    )
+    gen(data, from_column, .data$constant)
     expect_identical(as.double(data$from_column), c(10, 20, 30))
     gen(data, from_environment, .env$constant)
     expect_identical(as.double(data$from_environment), rep(100, 3))
@@ -2123,10 +2127,13 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 test_that("plain-expression evaluation matches tidy-eval semantics", {
     data <- data.frame(x = stata_byte(c(1, 2, 3)), y = c(10, 20, 30))
 
-    # Columns mask the calling environment.
+    # A symbol that is both a column and a local is an error; the pronouns
+    # pick one.
     y <- c(999, 999, 999)
-    gen(data, column_wins, y + 1)
+    expect_error(gen(data, column_wins, y + 1), "`y` is both a column")
+    gen(data, column_wins, .data$y + 1)
     expect_identical(as.double(data$column_wins), c(11, 21, 31))
+    rm(y)
 
     # Environment lookups still reach the caller.
     scale_factor <- 2
@@ -2480,7 +2487,6 @@ test_that("a symbol bound as both column and object is an error", {
     expect_error(repl(data, x, rows), message)
     expect_error(gen(data, y, x + rows), message)
     expect_error(repl(data, x, 9, where = rows == 0), message)
-    expect_error(repl(data, x, 9, where = ~ rows), message)
     expect_identical(data$x, c(1, 2, 3))
 
     # The fused comparison path, which reads columns without evaluating
@@ -2496,10 +2502,10 @@ test_that("a symbol bound as both column and object is an error", {
     expect_identical(as.double(fused$x), c(1, 2, 3))
 
     # Namespace qualifiers are not column reads.
-    data <- data.frame(x = c(1, 2, 3), stats = c(0, 0, 0))
+    namespace_data <- data.frame(x = c(1, 2, 3), stats = c(0, 0, 0))
     stats <- 5
-    repl(data, x, stats::median(x))
-    expect_identical(data$x, c(2, 2, 2))
+    repl(namespace_data, x, stats::median(x))
+    expect_identical(namespace_data$x, c(2, 2, 2))
 
     # Both explicit spellings pass, and each reads what it names.
     repl(data, x, 9, where = .env$rows)
@@ -2526,10 +2532,30 @@ test_that("a symbol bound as both column and object is an error", {
     repl(data, x, holder$value)
     expect_identical(data$x, c(7, 7))
 
-    # Bindings in base and attached packages are not consulted.
+    # Bindings in base and attached packages are not consulted, even when
+    # the capture frame sits inside a package namespace.
     data <- data.frame(x = c(1, 2), pi = c(3, 3), T = c(1, 1))
     repl(data, x, pi + T)
     expect_identical(data$x, c(4, 4))
+    in_namespace <- function(data) repl(data, x, pi + T)
+    environment(in_namespace) <- asNamespace("stats")
+    in_namespace(data)
+    expect_identical(data$x, c(4, 4))
+
+    # A one-sided formula asks for the data mask outright, so its body is
+    # exempt on the fused `where` path and the general path alike.
+    data <- data.frame(x = c(1, 2), rows = c(0, 1), y = c(5, 5))
+    rows <- c(TRUE, TRUE)
+    y <- 100
+    expect_error(repl(data, x, 0, where = rows == 1), "`rows` is both")
+    repl(data, x, 0, where = ~ rows == 1)
+    expect_identical(data$x, c(1, 0))
+    repl(data, x, ~ y + 1)
+    expect_identical(data$x, c(6, 6))
+    stored <- ~ y + 2
+    repl(data, x, stored)
+    expect_identical(data$x, c(7, 7))
+    rm(rows, y)
 
     # A function binding does not count: a script may share its column's name.
     data <- data.frame(x = c(1, 2), income = c(5, 6))
