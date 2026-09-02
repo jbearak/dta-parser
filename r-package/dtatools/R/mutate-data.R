@@ -75,10 +75,21 @@
 #' reading a column. Use `!!name` or `.(name)` there.
 #'
 #' `values` and `where` use a data mask built from the dataset before the
-#' mutation. Columns win over objects in the calling environment; use `.env`
-#' for an environment value when names collide. A stored or inline one-sided
-#' formula evaluates its right-hand side in the same data mask and uses the
-#' formula environment as its fallback. Two-sided formulas are rejected.
+#' mutation. Columns win over objects in the calling environment. When a
+#' bare symbol in either expression is both a column and an object bound
+#' anywhere from the calling frame up to the global environment, the call
+#' is an error rather than a silent choice: write `.data$name` for the
+#' column or `.env$name` for the object. Bindings in attached packages and
+#' base are not consulted, so a column named `pi` or `T` is not flagged;
+#' an object that is a function does not count, so a script named after
+#' the column it builds is not flagged either; and the right-hand side of
+#' `$`, the body of `.()`, and function positions are never treated as
+#' column reads.
+#' `options(dtatools.shadow_check = FALSE)` disables the check. A stored or
+#' inline one-sided formula evaluates its right-hand side in the same data
+#' mask and uses the formula environment as its fallback; a formula is a
+#' request to read the data, so its symbols are exempt from the check and
+#' columns win. Two-sided formulas are rejected.
 #'
 #' `where = NULL` selects every row. A logical result must have size one or the
 #' dataset row count; missing logical values do not select a row. Numeric row
@@ -703,6 +714,93 @@ gen <- function(data, ..., where = NULL) {
     TRUE
 }
 
+# A bare symbol in `values` or `where` resolves to a column first and to
+# the calling environment second, so a local that happens to share a
+# column's name is shadowed without a word. When one symbol is bound in
+# both places the expression is ambiguous to a reader as well as to the
+# evaluator, so it is an error naming the two spellings that are not.
+# `.mutate_data()` runs it on `where` before building the fused
+# comparison plan, since that plan reads columns without evaluating.
+# The environment search runs from the capture frame up to and including
+# the global environment, not into attached packages or base, so column
+# names like `pi` or `T` do not trip it, and a binding that is a function
+# does not count, since a masked symbol reads a vector. `options(
+# dtatools.shadow_check = FALSE)` turns the check off.
+.SHADOW_CHECK_SKIP <- c(".data", ".env", ".")
+
+.masked_symbols <- function(expression, found = character()) {
+    if (is.symbol(expression)) {
+        name <- as.character(expression)
+        if (nzchar(name) && !(name %in% .SHADOW_CHECK_SKIP)) {
+            found <- c(found, name)
+        }
+        return(found)
+    }
+    if (!is.call(expression)) return(found)
+    head <- expression[[1L]]
+    if (identical(head, quote(.))) return(found)
+    if (identical(head, quote(`$`)) || identical(head, quote(`@`))) {
+        return(.masked_symbols(expression[[2L]], found))
+    }
+    if (identical(head, quote(`~`))) return(found)
+    if (identical(head, quote(`function`))) return(found)
+    if (identical(head, quote(`::`)) || identical(head, quote(`:::`))) {
+        return(found)
+    }
+    for (index in seq.int(2L, length.out = length(expression) - 1L)) {
+        if (identical(expression[[index]], quote(expr = ))) next
+        found <- .masked_symbols(expression[[index]], found)
+    }
+    if (is.call(head)) found <- .masked_symbols(head, found)
+    found
+}
+
+# A function binding is skipped: a masked symbol reads a vector, and a
+# recode script is often named after the column it builds. The walk
+# stops after the global environment or at a package namespace, so
+# `pi`, `T`, and package constants never count as shadows.
+.bound_in_caller_chain <- function(name, environment) {
+    while (!identical(environment, emptyenv())) {
+        if (identical(environment, baseenv()) || isNamespace(environment)) {
+            return(FALSE)
+        }
+        if (exists(name, envir = environment, inherits = FALSE)) {
+            return(!is.function(get(name, envir = environment,
+                                    inherits = FALSE)))
+        }
+        if (identical(environment, globalenv())) return(FALSE)
+        environment <- parent.env(environment)
+    }
+    FALSE
+}
+
+.check_shadowed_symbols <- function(expression, columns, environment) {
+    if (!is.environment(environment)) return(invisible(NULL))
+    if (!isTRUE(getOption("dtatools.shadow_check", TRUE))) {
+        return(invisible(NULL))
+    }
+    symbols <- unique(.masked_symbols(expression))
+    if (length(symbols) == 0L) return(invisible(NULL))
+    is_column <- if (is.environment(columns)) {
+        vapply(
+            symbols, exists, logical(1L),
+            envir = columns, inherits = FALSE, USE.NAMES = FALSE
+        )
+    } else {
+        symbols %in% names(columns)
+    }
+    for (name in symbols[is_column]) {
+        if (.bound_in_caller_chain(name, environment)) {
+            stop(sprintf(paste(
+                "`%s` is both a column and an object in the calling",
+                "environment; write `.data$%s` for the column or",
+                "`.env$%s` for the object"
+            ), name, name, name), call. = FALSE)
+        }
+    }
+    invisible(NULL)
+}
+
 .eval_plain_mutation <- function(expression, columns, environment) {
     if (!is.environment(columns)) {
         return(eval(expression, columns, environment))
@@ -713,12 +811,19 @@ gen <- function(data, ..., where = NULL) {
     eval(expression, new.env(parent = columns))
 }
 
-.eval_in_mutation_data <- function(expression, columns, environment = NULL) {
+.eval_in_mutation_data <- function(expression, columns, environment = NULL,
+                                   shadow_check = TRUE) {
     # Plain expressions -- no `.data`/`.env` pronouns and no embedded
     # quosures -- have identical semantics under base evaluation with the
     # columns masking the expression environment. Skipping the rlang data
     # mask there removes the dominant per-call cost of `gen()`/`repl()`.
     if (is.null(environment)) {
+        if (shadow_check && rlang::is_quosure(expression)) {
+            .check_shadowed_symbols(
+                rlang::quo_get_expr(expression), columns,
+                rlang::quo_get_env(expression)
+            )
+        }
         if (rlang::is_quosure(expression) &&
             .plain_mutation_expression(rlang::quo_get_expr(expression))) {
             return(.eval_plain_mutation(
@@ -726,8 +831,13 @@ gen <- function(data, ..., where = NULL) {
                 rlang::quo_get_env(expression)
             ))
         }
-    } else if (.plain_mutation_expression(expression)) {
-        return(.eval_plain_mutation(expression, columns, environment))
+    } else {
+        if (shadow_check) {
+            .check_shadowed_symbols(expression, columns, environment)
+        }
+        if (.plain_mutation_expression(expression)) {
+            return(.eval_plain_mutation(expression, columns, environment))
+        }
     }
     reader_environment <- if (!is.null(environment)) {
         environment
@@ -770,7 +880,8 @@ gen <- function(data, ..., where = NULL) {
         return(.eval_in_mutation_data(
             expression[[2L]],
             columns,
-            rlang::quo_get_env(quo)
+            rlang::quo_get_env(quo),
+            shadow_check = FALSE
         ))
     }
     value <- .eval_in_mutation_data(quo, columns)
@@ -779,7 +890,8 @@ gen <- function(data, ..., where = NULL) {
     .eval_in_mutation_data(
         formula$expression,
         columns,
-        formula$environment
+        formula$environment,
+        shadow_check = FALSE
     )
 }
 
@@ -807,10 +919,14 @@ gen <- function(data, ..., where = NULL) {
     value
 }
 
+# `.mutate_data()` has already shadow-checked a non-formula `where` in
+# full, and a formula body is exempt, so the operand is not checked here.
 .fused_comparison_scalar <- function(expression, columns, environment) {
-    value <- .eval_in_mutation_data(expression, columns, environment)
+    value <- .eval_in_mutation_data(expression, columns, environment,
+                                    shadow_check = FALSE)
+    if (length(value) != 1L) return(NULL)
     scalar <- .stata_compare_scalar(value)
-    if (length(value) != 1L || is.null(scalar)) return(NULL)
+    if (is.null(scalar)) return(NULL)
     list(value = value, scalar = scalar)
 }
 
@@ -1032,6 +1148,14 @@ gen <- function(data, ..., where = NULL) {
     access <- NULL
     column <- NULL
 
+    # A formula body is exempt: `~` asks for the data mask outright.
+    if (!rlang::quo_is_missing(where) &&
+        !rlang::is_formula(rlang::quo_get_expr(where))) {
+        .check_shadowed_symbols(
+            rlang::quo_get_expr(where), original$columns,
+            rlang::quo_get_env(where)
+        )
+    }
     fused <- if (generate) NULL else {
         .fused_comparison_plan(where, original$columns, original$nrow)
     }

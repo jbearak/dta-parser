@@ -113,10 +113,21 @@ the \code{variable} position, because \code{variable} names a target rather than
 reading a column. Use \code{!!name} or \code{.(name)} there.
 
 \code{values} and \code{where} use a data mask built from the dataset before the
-mutation. Columns win over objects in the calling environment; use \code{.env}
-for an environment value when names collide. A stored or inline one-sided
-formula evaluates its right-hand side in the same data mask and uses the
-formula environment as its fallback. Two-sided formulas are rejected.
+mutation. Columns win over objects in the calling environment. When a
+bare symbol in either expression is both a column and an object bound
+anywhere from the calling frame up to the global environment, the call
+is an error rather than a silent choice: write \code{.data$name} for the
+column or \code{.env$name} for the object. Bindings in attached packages and
+base are not consulted, so a column named \code{pi} or \code{T} is not flagged;
+an object that is a function does not count, so a script named after
+the column it builds is not flagged either; and the right-hand side of
+\code{$}, the body of \code{.()}, and function positions are never treated as
+column reads.
+\code{options(dtatools.shadow_check = FALSE)} disables the check. A stored or
+inline one-sided formula evaluates its right-hand side in the same data
+mask and uses the formula environment as its fallback; a formula is a
+request to read the data, so its symbols are exempt from the check and
+columns win. Two-sided formulas are rejected.
 
 \code{where = NULL} selects every row. A logical result must have size one or the
 dataset row count; missing logical values do not select a row. Numeric row

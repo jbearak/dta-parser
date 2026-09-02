@@ -73,7 +73,11 @@ test_that("data masks, formulas, and alias calls use the right environments", {
     repl(data, x, value_rule, where = selection_rule)
     expect_identical(data$x, c(102L, 2L, 112L))
 
-    gen(data, from_column, constant)
+    expect_error(
+        gen(data, from_column, constant),
+        "`constant` is both a column and an object"
+    )
+    gen(data, from_column, .data$constant)
     expect_identical(as.double(data$from_column), c(10, 20, 30))
     gen(data, from_environment, .env$constant)
     expect_identical(as.double(data$from_environment), rep(100, 3))
@@ -1808,10 +1812,13 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 test_that("plain-expression evaluation matches tidy-eval semantics", {
     data <- data.frame(x = stata_byte(c(1, 2, 3)), y = c(10, 20, 30))
 
-    # Columns mask the calling environment.
+    # A symbol that is both a column and a local is an error; the pronouns
+    # pick one.
     y <- c(999, 999, 999)
-    gen(data, column_wins, y + 1)
+    expect_error(gen(data, column_wins, y + 1), "`y` is both a column")
+    gen(data, column_wins, .data$y + 1)
     expect_identical(as.double(data$column_wins), c(11, 21, 31))
+    rm(y)
 
     # Environment lookups still reach the caller.
     scale_factor <- 2
@@ -2154,4 +2161,118 @@ test_that("mutation dots must be one target pair and at most one where", {
     expect_error(gen(data, .("") := 1), "nonempty")
     expect_error(gen(data, .(1) := 1), "nonempty")
     expect_identical(data, data.frame(x = 1:2, y = 3:4))
+})
+
+test_that("a symbol bound as both column and object is an error", {
+    data <- data.frame(x = c(1, 2, 3), rows = c(0, 0, 0))
+    rows <- c(TRUE, FALSE, TRUE)
+    message <- "`rows` is both a column and an object"
+
+    expect_error(repl(data, x, 9, where = rows), message)
+    expect_error(repl(data, x, rows), message)
+    expect_error(gen(data, y, x + rows), message)
+    expect_error(repl(data, x, 9, where = rows == 0), message)
+    expect_identical(data$x, c(1, 2, 3))
+
+    # The fused comparison path, which reads columns without evaluating
+    # the expression, is checked too.
+    fused <- data.frame(
+        x = stata_byte(c(1, 2, 3)), rows = stata_byte(c(0, 0, 0))
+    )
+    expect_error(repl(fused, x, 9, where = rows == 0), message)
+    expect_error(repl(fused, x, 9, where = x == rows), message)
+    cutoff <- 2
+    fused$cutoff <- stata_byte(c(0, 0, 0))
+    expect_error(repl(fused, x, 9, where = x > cutoff), "`cutoff` is both")
+    expect_identical(as.double(fused$x), c(1, 2, 3))
+
+    # Namespace qualifiers are not column reads.
+    namespace_data <- data.frame(x = c(1, 2, 3), stats = c(0, 0, 0))
+    stats <- 5
+    repl(namespace_data, x, stats::median(x))
+    expect_identical(namespace_data$x, c(2, 2, 2))
+
+    # Both explicit spellings pass, and each reads what it names.
+    repl(data, x, 9, where = .env$rows)
+    expect_identical(data$x, c(9, 2, 9))
+    repl(data, x, 5, where = .data$rows == 0)
+    expect_identical(data$x, c(5, 5, 5))
+    repl(data, x, .data$rows + 1)
+    expect_identical(data$x, c(1, 1, 1))
+    repl(data, x, .env$rows)
+    expect_identical(data$x, c(1, 0, 1))
+
+    # `.()` is evaluated in the caller's environment, never as a column read.
+    name <- "x"
+    data <- data.frame(x = c(1, 2), name = c("a", "b"))
+    repl(data, x, .(name) + 1)
+    expect_identical(data$x, c(2, 3))
+
+    # Function positions and `$` right-hand sides are not column reads.
+    data <- data.frame(x = c(1, 2), sum = c(0, 0), value = c(5, 6))
+    sum <- 3
+    holder <- list(value = 7)
+    repl(data, x, sum(value))
+    expect_identical(data$x, c(11, 11))
+    repl(data, x, holder$value)
+    expect_identical(data$x, c(7, 7))
+
+    # Bindings in base and attached packages are not consulted, even when
+    # the capture frame sits inside a package namespace.
+    data <- data.frame(x = c(1, 2), pi = c(3, 3), T = c(1, 1))
+    repl(data, x, pi + T)
+    expect_identical(data$x, c(4, 4))
+    in_namespace <- function(data) repl(data, x, pi + T)
+    environment(in_namespace) <- asNamespace("stats")
+    in_namespace(data)
+    expect_identical(data$x, c(4, 4))
+
+    # A one-sided formula asks for the data mask outright, so its body is
+    # exempt on the fused `where` path and the general path alike.
+    data <- data.frame(x = c(1, 2), rows = c(0, 1), y = c(5, 5))
+    rows <- c(TRUE, TRUE)
+    y <- 100
+    expect_error(repl(data, x, 0, where = rows == 1), "`rows` is both")
+    repl(data, x, 0, where = ~ rows == 1)
+    expect_identical(data$x, c(1, 0))
+    repl(data, x, ~ y + 1)
+    expect_identical(data$x, c(6, 6))
+    stored <- ~ y + 2
+    repl(data, x, stored)
+    expect_identical(data$x, c(7, 7))
+    rm(rows, y)
+
+    # The fused plan's scalar operand is exempt under a formula too.
+    compact <- data.frame(x = stata_byte(c(1, 5, 9)), cutoff = c(4, 4, 4))
+    cutoff <- 100
+    expect_error(repl(compact, x, 0, where = x > cutoff), "`cutoff` is both")
+    repl(compact, x, 0, where = ~ x > cutoff)
+    expect_identical(as.double(compact$x), c(1, 0, 0))
+    rm(cutoff)
+
+    # A function binding does not count: a script may share its column's name.
+    data <- data.frame(x = c(1, 2), income = c(5, 6))
+    income <- function(data) repl(data, x, income * 2)
+    income(data)
+    expect_identical(data$x, c(10, 12))
+
+    # The check follows the capture frame up to the global environment.
+    data <- data.frame(x = c(1, 2), offset = c(10, 20))
+    outer <- function(data) {
+        offset <- 1
+        inner <- function(data) repl(data, x, x + offset)
+        inner(data)
+    }
+    expect_error(outer(data), "`offset` is both a column")
+    no_local <- function(data) repl(data, x, x + offset)
+    no_local(data)
+    expect_identical(data$x, c(11, 22))
+
+    # The option turns the check off, and columns win as before.
+    data <- data.frame(x = c(1, 2, 3), rows = c(0, 0, 0))
+    rows <- c(TRUE, FALSE, TRUE)
+    withr::with_options(list(dtatools.shadow_check = FALSE), {
+        repl(data, x, rows)
+    })
+    expect_identical(data$x, c(0, 0, 0))
 })
