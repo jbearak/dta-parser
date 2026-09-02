@@ -23,8 +23,8 @@ standard_arrow_fixture <- function() {
         dt = as.difftime(c(1.5, NA, -2, 0), units = "hours")
     )
     attr(data, "label") <- "standard fixture"
-    data <- set_stata_note(data, 1L, "first note")
-    data <- set_stata_note(data, 2L, "second note")
+    data <- set_dta_note(data, 1L, "first note")
+    data <- set_dta_note(data, 2L, "second note")
     attr(data, "stata.note.numbers") <- NULL
     attr(data$x, "label") <- "a double"
     data
@@ -106,11 +106,11 @@ test_that("compression variants round-trip identically", {
 
 test_that("profiled Stata columns keep raw missing storage bit-exactly", {
     data <- tibble::tibble(
-        b = stata_byte(c(-5, NA, tagged_missing("a"), tagged_missing("z"))),
-        i = stata_int(c(3000, tagged_missing("q"), NA, 1)),
-        l = stata_long(c(1234567, NA, tagged_missing("c"), -1)),
-        f = stata_float(c(1.5, tagged_missing("m"), NA, -2.25)),
-        d = stata_double(c(1.5, NA, tagged_missing("z"), 3e300))
+        b = dta_byte(c(-5, NA, tagged_missing("a"), tagged_missing("z"))),
+        i = dta_int(c(3000, tagged_missing("q"), NA, 1)),
+        l = dta_long(c(1234567, NA, tagged_missing("c"), -1)),
+        f = dta_float(c(1.5, tagged_missing("m"), NA, -2.25)),
+        d = dta_double(c(1.5, NA, tagged_missing("z"), 3e300))
     )
     path <- arrow_tempfile()
     dta <- tempfile(fileext = ".dta")
@@ -124,8 +124,8 @@ test_that("profiled Stata columns keep raw missing storage bit-exactly", {
     reference <- read_dta(dta)
     for (name in names(data)) {
         expect_identical(
-            stata_storage_type(actual[[name]]),
-            stata_storage_type(data[[name]]),
+            dta_storage_type(actual[[name]]),
+            dta_storage_type(data[[name]]),
             info = name
         )
         expect_identical(
@@ -146,8 +146,8 @@ test_that("profiled Stata columns keep raw missing storage bit-exactly", {
 
 test_that("profiled columns read back as compact ALTREP by default", {
     data <- tibble::tibble(
-        b = stata_byte(c(1, NA, tagged_missing("a"))),
-        d = stata_double(c(1.5, NA, 3))
+        b = dta_byte(c(1, NA, tagged_missing("a"))),
+        d = dta_double(c(1.5, NA, 3))
     )
     path <- arrow_tempfile()
     save_arrow(data, path)
@@ -302,7 +302,7 @@ test_that("deferred string columns are written without materializing", {
 })
 
 test_that("owned Stata strings are writable and signable", {
-    data <- tibble::tibble(s = stata_string(c("alpha", "", "é"), "str5"))
+    data <- tibble::tibble(s = dta_string(c("alpha", "", "é"), "str5"))
     path <- arrow_tempfile()
 
     save_arrow(data, path)
@@ -318,7 +318,7 @@ test_that("compact ALTREP columns are written without materializing", {
     dta <- tempfile(fileext = ".dta")
     path <- arrow_tempfile()
     on.exit(unlink(dta), add = TRUE)
-    save_dta(tibble::tibble(v = stata_int(c(1, NA, tagged_missing("k")))), dta)
+    save_dta(tibble::tibble(v = dta_int(c(1, NA, tagged_missing("k")))), dta)
 
     imported <- read_dta(dta)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(imported$v))
@@ -328,7 +328,7 @@ test_that("compact ALTREP columns are written without materializing", {
     actual <- read_arrow(path)
     expect_identical(missing_tag(actual$v), missing_tag(imported$v))
     expect_identical(as.double(actual$v), as.double(imported$v))
-    expect_identical(stata_storage_type(actual$v), "int")
+    expect_identical(dta_storage_type(actual$v), "int")
 })
 
 test_that("compact datetime timezone adjustment matches eager writing", {
@@ -577,7 +577,7 @@ test_that("temporal classes and empty value-label tables round-trip", {
     attr(elapsed, "labels") <- c(one_hour = 1)
     empty_labels <- setNames(double(), character())
     labelled <- labelled_for_test(c(1, 2), labels = empty_labels)
-    stata <- stata_long(c(1, 2))
+    stata <- dta_long(c(1, 2))
     attr(stata, "labels") <- empty_labels
     data <- tibble::tibble(
         day = day,
@@ -611,8 +611,8 @@ test_that("temporal classes and empty value-label tables round-trip", {
 
 test_that("profiled storage uses its materialized R type for selection", {
     data <- tibble::tibble(
-        b = stata_byte(1), i = stata_int(1), l = stata_long(1),
-        f = stata_float(1), d = stata_double(1),
+        b = dta_byte(1), i = dta_int(1), l = dta_long(1),
+        f = dta_float(1), d = dta_double(1),
         ordinary_integer = 1L, ordinary_double = 1
     )
     path <- arrow_tempfile()
@@ -629,7 +629,7 @@ test_that("profiled storage uses its materialized R type for selection", {
 })
 
 test_that("declared Stata storage overrides mismatched compact backing", {
-    value <- stata_byte(c(1, 2, NA))
+    value <- dta_byte(c(1, 2, NA))
     attr(value, "stata.storage") <- "int"
     class(value) <- dtatools:::.stata_storage_class("int")
     data <- tibble::tibble(x = value)
@@ -637,7 +637,7 @@ test_that("declared Stata storage overrides mismatched compact backing", {
     save_arrow(data, path)
 
     actual <- read_arrow(path)
-    expect_identical(stata_storage_type(actual$x), "int")
+    expect_identical(dta_storage_type(actual$x), "int")
     expect_identical(as.double(actual$x), as.double(data$x))
     expect_identical(datasig(actual), datasig(data))
 })
@@ -666,7 +666,7 @@ test_that("invalid NaNs in Stata storage become system missing", {
 })
 
 test_that("value labels on profiled columns round-trip", {
-    column <- stata_long(c(1, 2, NA))
+    column <- dta_long(c(1, 2, NA))
     attr(column, "labels") <- c(yes = 1, no = 2)
     data <- tibble::tibble(vote = column)
     path <- arrow_tempfile()
@@ -674,7 +674,7 @@ test_that("value labels on profiled columns round-trip", {
 
     actual <- read_arrow(path)
     expect_identical(val_labels(actual$vote), c(yes = 1, no = 2))
-    expect_identical(stata_storage_type(actual$vote), "long")
+    expect_identical(dta_storage_type(actual$vote), "long")
 })
 
 test_that("integer-coded value labels work in Arrow and datasig", {
@@ -693,7 +693,7 @@ test_that("integer-coded value labels work in Arrow and datasig", {
 })
 
 test_that("display formats round-trip on profiled columns", {
-    column <- stata_double(c(1.5, 2.5))
+    column <- dta_double(c(1.5, 2.5))
     attr(column, "format.stata") <- "%9.2f"
     data <- tibble::tibble(amount = column)
     path <- arrow_tempfile()
@@ -768,7 +768,7 @@ test_that("corrupted buffers fail checksum verification by default", {
 })
 
 test_that("newer profile versions are a hard error with an escape hatch", {
-    data <- tibble::tibble(sv = stata_byte(c(3, 7)))
+    data <- tibble::tibble(sv = dta_byte(c(3, 7)))
     path <- arrow_tempfile()
     save_arrow(data, path)
 
@@ -793,7 +793,7 @@ test_that("newer profile versions are a hard error with an escape hatch", {
 })
 
 test_that("profile = FALSE reads raw storage arrays without Stata semantics", {
-    data <- tibble::tibble(sv = stata_byte(c(3, NA, tagged_missing("a"))))
+    data <- tibble::tibble(sv = dta_byte(c(3, NA, tagged_missing("a"))))
     path <- arrow_tempfile()
     save_arrow(data, path)
 
@@ -937,11 +937,11 @@ test_that("save_arrow reports custom row metadata the profile drops", {
 
 test_that("dta_merge accepts .arrow paths in either position", {
     master <- tibble::tibble(
-        id = stata_byte(c(1, NA_real_, tagged_missing("a"))),
+        id = dta_byte(c(1, NA_real_, tagged_missing("a"))),
         score = c(10, 20, 30)
     )
     using <- tibble::tibble(
-        id = stata_byte(c(tagged_missing("a"), 7)),
+        id = dta_byte(c(tagged_missing("a"), 7)),
         grp = c("x", "y")
     )
     master_dta <- tempfile(fileext = ".dta")
@@ -983,7 +983,7 @@ test_that("the arrow package is an independent oracle for written files", {
         lgl = c(TRUE, NA, FALSE),
         num = c(1.5, NaN, -2),
         s = c("a", NA, "c"),
-        sv = stata_byte(c(3, NA, tagged_missing("a"))),
+        sv = dta_byte(c(3, NA, tagged_missing("a"))),
         elapsed = as.difftime(c(1.5, NA, -2), units = "hours")
     )
     path <- arrow_tempfile()
@@ -1209,7 +1209,7 @@ test_that("Arrow selection parses profile metadata only for predicates", {
 test_that("predicate and datasig projections validate every field document", {
     marker <- "unselected-profile-corruption-marker"
     data <- tibble::tibble(selected = 1:2, unselected = 3:4)
-    data <- set_stata_note(data, 1L, marker, variable = "unselected")
+    data <- set_dta_note(data, 1L, marker, variable = "unselected")
     path <- arrow_tempfile()
     save_arrow(data, path)
 

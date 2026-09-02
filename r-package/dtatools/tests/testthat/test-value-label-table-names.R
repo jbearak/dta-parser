@@ -3,7 +3,7 @@ value_label_name <- function(x) {
 }
 
 named_labelled <- function(values, labels, table = NULL) {
-    result <- stata_long(values)
+    result <- dta_long(values)
     attr(result, "labels") <- labels
     attr(result, "class") <- c(
         "stata_numeric", "stata_long", "haven_labelled", "vctrs_vctr",
@@ -314,7 +314,7 @@ test_that("empty mappings are usable and missing mappings are malformed", {
     empty <- named_labelled(
         c(1, 2), stats::setNames(double(), character()), "empty_table"
     )
-    missing <- stata_long(c(1, 2))
+    missing <- dta_long(c(1, 2))
     attr(missing, "value.label.name") <- "missing_table"
 
     for (writer in list(save_dta, save_arrow)) {

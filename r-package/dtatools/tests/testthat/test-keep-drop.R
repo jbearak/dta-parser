@@ -284,7 +284,7 @@ test_that("structural mutation uses values installed by repl", {
 })
 
 test_that("surviving columns keep Stata values and metadata", {
-    values <- stata_byte(c(1, tagged_missing("a"), NA_real_))
+    values <- dta_byte(c(1, tagged_missing("a"), NA_real_))
     attr(values, "label") <- "Status"
     attr(values, "labels") <- c(Active = 1)
     data <- data.frame(discard = 1:3, status = values)
@@ -293,7 +293,7 @@ test_that("surviving columns keep Stata values and metadata", {
     keep_vars(data, status)
 
     expect_identical(serialize(data$status, NULL), before)
-    expect_identical(stata_storage_type(data$status), "byte")
+    expect_identical(dta_storage_type(data$status), "byte")
     expect_identical(missing_tag(data$status), c(NA, "a", NA))
     expect_identical(var_label(data$status), "Status")
     expect_identical(val_labels(data$status), c(Active = 1))

@@ -1,7 +1,7 @@
 overlay_table <- function(names_out = FALSE) {
     path <- withr::local_tempfile(fileext = ".dta", .local_envir = parent.frame())
     save_dta(
-        data.frame(id = stata_int(1:5), v = stata_int(1:5), w = stata_int(6:10)),
+        data.frame(id = dta_int(1:5), v = dta_int(1:5), w = dta_int(6:10)),
         path
     )
     read_dta(path, encoding = "UTF-8", output = "tibble")

@@ -55,7 +55,7 @@
 #' This is normally the expected result: Stata's collision can silently make a
 #' later label-based recode operate on unrelated text.
 #'
-#' Every merge generates a `_merge` variable, a `stata_byte` column using
+#' Every merge generates a `_merge` variable, a `dta_byte` column using
 #' Stata's `_merge` codes with value labels `x only (1)`, `y only (2)`, and
 #' `matched (3)`. Merging errors if either input already has a `_merge`
 #' column. The result keeps the dataset label and arbitrary characteristics
@@ -98,11 +98,11 @@
 #'   columns only in `y`, and `_merge`, in that order.
 #' @examples
 #' master <- tibble::tibble(
-#'     id = stata_byte(c(1, NA_real_, tagged_missing("a"))),
+#'     id = dta_byte(c(1, NA_real_, tagged_missing("a"))),
 #'     score = c(10, 20, 30)
 #' )
 #' using <- tibble::tibble(
-#'     id = stata_byte(c(tagged_missing("a"), 7)),
+#'     id = dta_byte(c(tagged_missing("a"), 7)),
 #'     group = c("x", "y")
 #' )
 #' dta_merge(master, using, by = "id", relationship = "1:1")
@@ -253,7 +253,7 @@ dta_merge <- function(x, y, by, relationship,
     for (name in y_only) {
         columns[[name]] <- y_only_columns[[name]]
     }
-    indicator <- stata_byte(merge_codes)
+    indicator <- dta_byte(merge_codes)
     val_labels(indicator) <- c(
         "x only (1)" = 1,
         "y only (2)" = 2,
@@ -308,8 +308,8 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_dataset_note_plan <- function(x, y) {
-    x_notes <- stata_notes(x)
-    y_notes <- stata_notes(y)
+    x_notes <- dta_notes(x)
+    y_notes <- dta_notes(y)
     if (!length(x_notes) && !length(y_notes)) {
         return(list(notes = NULL, numbers = NULL))
     }
@@ -436,9 +436,9 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_stata_metadata <- function(x, y) {
-    notes <- .dta_merge_nonempty_metadata(stata_notes(x), stata_notes(y))
+    notes <- .dta_merge_nonempty_metadata(dta_notes(x), dta_notes(y))
     characteristics <- .dta_merge_nonempty_metadata(
-        stata_characteristics(x), stata_characteristics(y)
+        dta_characteristics(x), dta_characteristics(y)
     )
     list(
         notes = notes$value,
@@ -614,14 +614,14 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_has_compact_storage <- function(value) {
-    !identical(stata_storage_type(value), "double") &&
+    !identical(dta_storage_type(value), "double") &&
         .is_unmaterialized_numeric_altrep(value)
 }
 
 .dta_merge_same_compact_storage <- function(x, y) {
     .dta_merge_has_compact_storage(x) &&
         .dta_merge_has_compact_storage(y) &&
-        identical(stata_storage_type(x), stata_storage_type(y)) &&
+        identical(dta_storage_type(x), dta_storage_type(y)) &&
         identical(
             .temporal_kind_or_missing(x),
             .temporal_kind_or_missing(y)
@@ -629,8 +629,8 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_same_double_storage <- function(x, y) {
-    identical(stata_storage_type(x), "double") &&
-        identical(stata_storage_type(y), "double") &&
+    identical(dta_storage_type(x), "double") &&
+        identical(dta_storage_type(y), "double") &&
         identical(
             .temporal_kind_or_missing(x),
             .temporal_kind_or_missing(y)
@@ -638,7 +638,7 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_restore_gathered <- function(value, prototype) {
-    storage <- stata_storage_type(prototype)
+    storage <- dta_storage_type(prototype)
     if (inherits(prototype, "stata_temporal")) {
         return(.attach_stata_temporal(value, prototype, storage))
     }
@@ -685,7 +685,7 @@ dta_merge <- function(x, y, by, relationship,
     if (!is.character(value)) return(value)
     missing_rows <- which(is.na(rows))
     if (length(missing_rows) == 0L) return(value)
-    fill <- if (inherits(value, "stata_string")) stata_string("") else ""
+    fill <- if (inherits(value, "stata_string")) dta_string("") else ""
     vctrs::vec_assign(value, missing_rows, fill)
 }
 
@@ -699,7 +699,7 @@ dta_merge <- function(x, y, by, relationship,
         )
         return(.dta_merge_restore_gathered(gathered, value))
     }
-    if (identical(stata_storage_type(value), "double")) {
+    if (identical(dta_storage_type(value), "double")) {
         gathered <- .stata_data(value)[rows]
         return(.dta_merge_restore_gathered(gathered, value))
     }
@@ -720,7 +720,7 @@ dta_merge <- function(x, y, by, relationship,
     if (count == 0L) return(result)
 
     storage <- vapply(values, function(value) {
-        storage <- stata_storage_type(value)
+        storage <- dta_storage_type(value)
         if (is.null(storage)) "" else storage
     }, character(1))
     compact <- vapply(
@@ -835,8 +835,8 @@ dta_merge <- function(x, y, by, relationship,
     }
 
     ordinary <- !native & vapply(seq_len(count), function(index) {
-        is.null(stata_storage_type(x[[index]])) &&
-            is.null(stata_storage_type(y[[index]]))
+        is.null(dta_storage_type(x[[index]])) &&
+            is.null(dta_storage_type(y[[index]]))
     }, logical(1))
     if (any(ordinary)) {
         gathered <- vctrs::vec_slice(

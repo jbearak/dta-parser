@@ -338,8 +338,8 @@ dta_append <- function(sources, force = TRUE,
     if (inherits(right, .stata_metadata_vector_class)) {
         right <- .stata_metadata_vector_base(right)
     }
-    left_storage <- stata_storage_type(left)
-    right_storage <- stata_storage_type(right)
+    left_storage <- dta_storage_type(left)
+    right_storage <- dta_storage_type(right)
     left_declared <- !is.null(left_storage) &&
         !inherits(left, "stata_temporal")
     right_declared <- !is.null(right_storage) &&
@@ -359,7 +359,7 @@ dta_append <- function(sources, force = TRUE,
 
 .append_promote_bare_numeric <- function(prototype) {
     widened <- .restore_stata_variable_metadata(
-        stata_double(), prototype, names = NULL
+        dta_double(), prototype, names = NULL
     )
     .as_stata_metadata_vector(widened)
 }
@@ -488,7 +488,7 @@ dta_append <- function(sources, force = TRUE,
     if (inherits(prototype, "stata_string")) {
         return(structure(character(total_rows), dtatools.buffer = "string"))
     }
-    storage <- stata_storage_type(prototype)
+    storage <- dta_storage_type(prototype)
     if (is.null(storage)) return(NULL)
     structure(
         rep(NA_real_, total_rows), dtatools.buffer = "numeric",
@@ -509,7 +509,7 @@ dta_append <- function(sources, force = TRUE,
     # lossless lattice, so it represents every contributor's values
     # exactly. A bare double carries no such guarantee, so the caller
     # casts it to the prototype before writing.
-    !is.null(stata_storage_type(value)) &&
+    !is.null(dta_storage_type(value)) &&
         !inherits(value, "stata_temporal") && is.null(names(value))
 }
 
@@ -524,7 +524,7 @@ dta_append <- function(sources, force = TRUE,
     if (is.null(writable) || inherits(prototype, "stata_string")) {
         return(writable)
     }
-    storage <- stata_storage_type(prototype)
+    storage <- dta_storage_type(prototype)
     if (is.null(storage)) {
         return(writable)
     }
@@ -586,7 +586,7 @@ dta_append <- function(sources, force = TRUE,
                                    schemas, my_name, force) {
     # Stata numerics, including temporals, need observation-level range
     # validation in addition to vctrs' type compatibility check.
-    if (!is.null(stata_storage_type(prototype))) {
+    if (!is.null(dta_storage_type(prototype))) {
         for (my_index in seq_along(the_pieces)) {
             cast <- .append_cast_to_buffer(the_pieces[[my_index]], prototype)
             if (is.null(cast)) {
@@ -634,13 +634,13 @@ dta_append <- function(sources, force = TRUE,
     if (inherits(prototype, "stata_string")) {
         return(vctrs::vec_cast(rep("", rows), prototype))
     }
-    storage <- stata_storage_type(prototype)
+    storage <- dta_storage_type(prototype)
     if (!is.null(storage) && storage %in%
         c("byte", "int", "long", "float", "double")) {
         constructor <- switch(
             storage,
-            byte = stata_byte, int = stata_int, long = stata_long,
-            float = stata_float, double = stata_double
+            byte = dta_byte, int = dta_int, long = dta_long,
+            float = dta_float, double = dta_double
         )
         return(vctrs::vec_cast(constructor(.size = rows), prototype))
     }

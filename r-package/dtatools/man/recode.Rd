@@ -42,7 +42,7 @@ storage-bearing Stata vector cannot contain \code{NaN}, so inserting one through
 a replacement, \code{.default}, or \code{.missing} errors. Use \code{NA_real_} for
 system missing or \code{\link[=tagged_missing]{tagged_missing()}} for an extended missing value. Arithmetic is
 different: undefined results become system missing as described in
-\code{\link[=stata_byte]{stata_byte()}}.
+\code{\link[=dta_byte]{dta_byte()}}.
 
 A recode from numeric to a non-numeric type cannot retain tagged-NA payloads.
 If \code{.x} contains missing values and the result is non-numeric, supply

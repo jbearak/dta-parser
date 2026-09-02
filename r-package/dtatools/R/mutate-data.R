@@ -1129,9 +1129,9 @@ gen <- function(data, ..., where = NULL) {
     # A real metadata copy must revoke exclusive patch ownership; this internal
     # cast must not.
     prototype <- if (inherits(target, "stata_temporal")) {
-        .stata_temporal_ptype(stata_storage_type(target), target)
+        .stata_temporal_ptype(dta_storage_type(target), target)
     } else if (inherits(target, "stata_numeric")) {
-        .stata_ptype(stata_storage_type(target), target)
+        .stata_ptype(dta_storage_type(target), target)
     } else {
         target[integer()]
     }
@@ -1294,7 +1294,7 @@ gen <- function(data, ..., where = NULL) {
             call. = FALSE
         )
     }
-    declared <- stata_storage_type(values)
+    declared <- dta_storage_type(values)
     base_date <- inherits(values, "Date") &&
         !inherits(values, "stata_temporal")
     base_datetime <- inherits(values, "POSIXct") &&

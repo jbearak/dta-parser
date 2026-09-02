@@ -1,7 +1,7 @@
 test_that("datasig is container-independent and shaped as rows:columns:digest", {
     data <- tibble::tibble(
-        id = stata_long(c(1, 2, 3, 4)),
-        score = stata_double(c(1.5, NA_real_, tagged_missing("a"), 4.5)),
+        id = dta_long(c(1, 2, 3, 4)),
+        score = dta_double(c(1.5, NA_real_, tagged_missing("a"), 4.5)),
         city = c("ny", "la", "", "sf")
     )
     attr(data, "label") <- "signature fixture"
@@ -33,14 +33,14 @@ test_that("datasig is container-independent and shaped as rows:columns:digest", 
 
 test_that("datasig detects changes Stata's datasignature misses", {
     base <- tibble::tibble(
-        x = stata_int(c(1, 2, 3)),
-        y = stata_int(c(10, 20, 30))
+        x = dta_int(c(1, 2, 3)),
+        y = dta_int(c(10, 20, 30))
     )
     signature <- datasig(base)
 
     # Two values swapped within one column.
     swapped_values <- base
-    swapped_values$x <- stata_int(c(2, 1, 3))
+    swapped_values$x <- dta_int(c(2, 1, 3))
     expect_false(identical(datasig(swapped_values), signature))
 
     # Rows reordered (Stata's signature is sort-invariant).
@@ -53,14 +53,14 @@ test_that("datasig detects changes Stata's datasignature misses", {
 })
 
 test_that("datasig covers names, storage types, labels, and metadata", {
-    base <- tibble::tibble(x = stata_byte(c(1, 2, 3)))
+    base <- tibble::tibble(x = dta_byte(c(1, 2, 3)))
     signature <- datasig(base)
 
     renamed <- base
     names(renamed) <- "z"
     expect_false(identical(datasig(renamed), signature))
 
-    widened <- tibble::tibble(x = stata_int(c(1, 2, 3)))
+    widened <- tibble::tibble(x = dta_int(c(1, 2, 3)))
     expect_false(identical(datasig(widened), signature))
 
     labelled <- base
@@ -75,10 +75,10 @@ test_that("datasig covers names, storage types, labels, and metadata", {
     attr(noted, "notes") <- "a note"
     expect_false(identical(datasig(noted), signature))
 
-    variable_noted <- set_stata_note(base, 2, "variable note", variable = "x")
+    variable_noted <- set_dta_note(base, 2, "variable note", variable = "x")
     expect_false(identical(datasig(variable_noted), signature))
 
-    characterized <- set_stata_characteristic(
+    characterized <- set_dta_characteristic(
         base, "source", "survey", variable = "x"
     )
     expect_false(identical(datasig(characterized), signature))
@@ -91,7 +91,7 @@ test_that("datasig covers names, storage types, labels, and metadata", {
 test_that("datasig recomputes from current content", {
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
-    data <- tibble::tibble(x = stata_double(c(1, 2, 3)))
+    data <- tibble::tibble(x = dta_double(c(1, 2, 3)))
     save_dta(data, path)
     loaded <- read_dta(path)
     signature <- datasig(loaded)
@@ -159,7 +159,7 @@ test_that("readers record the disk signature as a datasig attribute", {
     bare_path <- tempfile(fileext = ".arrow")
     on.exit(unlink(c(dta_path, arrow_path, bare_path)), add = TRUE)
     data <- tibble::tibble(
-        x = stata_double(c(1, 2, tagged_missing("a"))),
+        x = dta_double(c(1, 2, tagged_missing("a"))),
         g = c("a", "b", "c")
     )
     save_dta(data, dta_path)

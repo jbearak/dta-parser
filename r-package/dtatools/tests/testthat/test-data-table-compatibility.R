@@ -50,7 +50,7 @@ test_that("save_arrow restores tibble and data-table provenance", {
     }, character(1))
     on.exit(unlink(paths), add = TRUE)
 
-    table <- data.table::data.table(x = stata_byte(c(1, 2)))
+    table <- data.table::data.table(x = dta_byte(c(1, 2)))
     tibble <- tibble::tibble(x = 1:2)
     frame <- data.frame(x = 1:2)
     expect_silent(save_arrow(table, paths[[1L]]))
@@ -158,7 +158,7 @@ test_that("metadata changes preserve data-table lookup state", {
 
     data <- set_var_label(data, value, "Value")
     data <- set_val_labels(data, value = c(Four = 4))
-    data <- set_stata_note(data, 1L, "dataset note")
+    data <- set_dta_note(data, 1L, "dataset note")
     dataset_label(data) <- "Dataset"
 
     expect_s3_class(data, "data.table")
@@ -257,7 +257,7 @@ test_that("dta_merge follows x or an explicit output container", {
 test_that("dataset metadata never marks a data.table with the frame class", {
     skip_if_not_installed("data.table")
     .datatable.aware <- TRUE
-    data <- data.frame(x = stata_byte(c(1, 2)), y = c(3, 4))
+    data <- data.frame(x = dta_byte(c(1, 2)), y = c(3, 4))
     dataset_label(data) <- "Example label"
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
@@ -277,7 +277,7 @@ test_that("dataset metadata never marks a data.table with the frame class", {
 test_that("dataset metadata setters keep data.table output ordinary", {
     skip_if_not_installed("data.table")
     .datatable.aware <- TRUE
-    data <- data.frame(x = stata_byte(c(1, 2)))
+    data <- data.frame(x = dta_byte(c(1, 2)))
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
     save_dta(data, path)

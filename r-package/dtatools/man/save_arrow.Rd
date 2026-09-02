@@ -102,7 +102,7 @@ Symbolic-link, directory, and other non-regular destinations are rejected.
 
 \examples{
 path <- tempfile(fileext = ".arrow")
-data <- data.frame(answer = stata_byte(c(1, tagged_missing("a"))))
+data <- data.frame(answer = dta_byte(c(1, tagged_missing("a"))))
 save_arrow(data, path)
 read_arrow(path)
 unlink(path)

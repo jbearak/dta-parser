@@ -8,8 +8,8 @@
 #' eagerly.
 #' Dataset and variable labels, numbered notes, arbitrary Stata
 #' characteristics, display formats, value labels, `strL` content, and Stata
-#' system/extended missing values are retained. Use [stata_notes()] and
-#' [stata_characteristics()] at dataset or variable scope.
+#' system/extended missing values are retained. Use [dta_notes()] and
+#' [dta_characteristics()] at dataset or variable scope.
 #' Stata stores named value-label definitions at dataset scope and assigns a
 #' definition to each labelled variable. `read_dta()` instead gives each
 #' variable its resolved code-to-text mapping in `labels`. An imported table
@@ -33,7 +33,7 @@
 #' itself does not require a Stata-specific class. Imported Stata numeric and
 #' string columns carry owned classes so their storage declarations survive
 #' supported operations. Stata strings use `""` for missing values and never
-#' contain `NA_character_`; see [stata_string()].
+#' contain `NA_character_`; see [dta_string()].
 #' Assigning one to an R integer vector widens that vector
 #' to double because R integers have only `NA_integer_`. This does not reflect
 #' a Stata limitation: Stata `byte`, `int`, and `long` storage each encode all
@@ -82,9 +82,9 @@
 #' new vector, following the same behavior as haven-compatible vectors.
 #'
 #' @section Stata storage declarations:
-#' [stata_storage_type()] reports `"byte"`, `"int"`, `"long"`, `"float"`, or
-#' `"double"` without materializing compact backing. Use [stata_byte()],
-#' [stata_int()], [stata_long()], [stata_float()], and [stata_double()] to
+#' [dta_storage_type()] reports `"byte"`, `"int"`, `"long"`, `"float"`, or
+#' `"double"` without materializing compact backing. Use [dta_byte()],
+#' [dta_int()], [dta_long()], [dta_float()], and [dta_double()] to
 #' declare storage for derived vectors. Constructors and explicit casts reject
 #' unrepresentable values and name the wider constructor to use. Float
 #' construction rounds to binary32, as Stata does.
@@ -174,7 +174,7 @@
 #'   over the decoded columns (no second read of the file) and equals
 #'   `datasig(file)`. Requires reading the complete file: incompatible with
 #'   `col_select`, `skip`, and `n_max`.
-#' @return A tibble or data table with owned `stata_string` columns. `%td` columns and legacy or custom formats beginning `%d`
+#' @return A tibble or data table with owned `dta_string` columns. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
 #'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
 #'   `format.stata` attribute. String storage and metadata survive supported

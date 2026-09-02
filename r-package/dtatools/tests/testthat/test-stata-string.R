@@ -1,19 +1,19 @@
 test_that("stata_string infers UTF-8 byte storage and validates declarations", {
     expect_identical(
-        attr(stata_string(c("a", "é")), "stata.string.storage"),
+        attr(dta_string(c("a", "é")), "stata.string.storage"),
         "str2"
     )
     expect_identical(
-        attr(stata_string(strrep("x", 2046)), "stata.string.storage"),
+        attr(dta_string(strrep("x", 2046)), "stata.string.storage"),
         "strL"
     )
-    expect_error(stata_string(NA_character_), "use `\\\"\\\"`")
-    expect_error(stata_string("wide", "str2"), "str4")
-    expect_error(stata_string("x", "str0"), "str1.*str2045")
+    expect_error(dta_string(NA_character_), "use `\\\"\\\"`")
+    expect_error(dta_string("wide", "str2"), "str4")
+    expect_error(dta_string("x", "str0"), "str1.*str2045")
 })
 
 test_that("Stata strings restore metadata through slicing and conversion", {
-    x <- stata_string(stats::setNames(c("a", "bb", "c"), letters[1:3]))
+    x <- dta_string(stats::setNames(c("a", "bb", "c"), letters[1:3]))
     attr(x, "label") <- "Answer"
     attr(x, "format.stata") <- "%9s"
 
@@ -34,8 +34,8 @@ test_that("Stata strings restore metadata through slicing and conversion", {
 })
 
 test_that("Stata string concatenation widens and replacement stays strict", {
-    narrow <- stata_string("a", "str1")
-    wide <- stata_string("wide", "str4")
+    narrow <- dta_string("a", "str1")
+    wide <- dta_string("wide", "str4")
     attr(narrow, "label") <- "Left"
 
     combined <- vctrs::vec_c(narrow, wide)
@@ -51,7 +51,7 @@ test_that("Stata string concatenation widens and replacement stays strict", {
 })
 
 test_that("common type with bare character can hold values chosen later", {
-    value <- stata_string(c("alpha", "beta"), storage = "str5")
+    value <- dta_string(c("alpha", "beta"), storage = "str5")
     result <- dplyr::if_else(value == "alpha", "recoded", value)
 
     expect_s3_class(result, "stata_string")
@@ -60,7 +60,7 @@ test_that("common type with bare character can hold values chosen later", {
 })
 
 test_that("Stata string sorting preserves metadata and rejects partial sorting", {
-    value <- stata_string(c("b", "", "a"), storage = "str3")
+    value <- dta_string(c("b", "", "a"), storage = "str3")
     attr(value, "label") <- "Text"
 
     result <- sort(value, method = "shell")
@@ -72,16 +72,16 @@ test_that("Stata string sorting preserves metadata and rejects partial sorting",
 })
 
 test_that("Stata restoration drops unknown attributes once", {
-    numeric <- stata_int(c(1, 2))
+    numeric <- dta_int(c(1, 2))
     attr(numeric, "mystery") <- "unknown"
     expect_warning(
         restored <- numeric[c(2, 2, 1)],
         "Dropped unknown attribute.*mystery"
     )
     expect_null(attr(restored, "mystery", exact = TRUE))
-    expect_identical(stata_storage_type(restored), "int")
+    expect_identical(dta_storage_type(restored), "int")
 
-    string <- stata_string(c("a", "b"))
+    string <- dta_string(c("a", "b"))
     attr(string, "mystery") <- "unknown"
     expect_warning(empty <- string[integer()], "Dropped unknown attribute")
     expect_null(attr(empty, "mystery", exact = TRUE))

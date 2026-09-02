@@ -1,8 +1,8 @@
 compact_constructors <- list(
-    byte = stata_byte,
-    int = stata_int,
-    long = stata_long,
-    float = stata_float
+    byte = dta_byte,
+    int = dta_int,
+    long = dta_long,
+    float = dta_float
 )
 
 mixed_values <- function(constructor) {
@@ -80,7 +80,7 @@ test_that("native comparisons keep every missing code distinct and ordered", {
 })
 
 test_that("narrow storage understands constants it cannot represent", {
-    value <- stata_byte(c(-5, 0, 5, NA_real_, tagged_missing("a")))
+    value <- dta_byte(c(-5, 0, 5, NA_real_, tagged_missing("a")))
 
     # 5.5 and 200 are not representable as Stata bytes, yet comparisons
     # must still work on the byte's decoded value.
@@ -93,7 +93,7 @@ test_that("narrow storage understands constants it cannot represent", {
 })
 
 test_that("scalar-on-the-left comparisons flip correctly", {
-    value <- mixed_values(stata_int)
+    value <- mixed_values(dta_int)
 
     expect_identical(5 == value, value == 5)
     expect_identical(5 != value, value != 5)
@@ -104,8 +104,8 @@ test_that("scalar-on-the-left comparisons flip correctly", {
 })
 
 test_that("compact-versus-compact comparisons agree elementwise", {
-    x <- stata_byte(c(1, 2, NA_real_, tagged_missing("a"), 5))
-    y <- stata_long(c(1, 3, NA_real_, tagged_missing("b"), 4))
+    x <- dta_byte(c(1, 2, NA_real_, tagged_missing("a"), 5))
+    y <- dta_long(c(1, 3, NA_real_, tagged_missing("b"), 4))
 
     expect_identical(x == y, c(TRUE, FALSE, TRUE, FALSE, FALSE))
     expect_identical(x < y, c(FALSE, TRUE, FALSE, TRUE, FALSE))
@@ -113,8 +113,8 @@ test_that("compact-versus-compact comparisons agree elementwise", {
 })
 
 test_that("comparisons never materialize compact operands", {
-    value <- mixed_values(stata_byte)
-    other <- mixed_values(stata_long)
+    value <- mixed_values(dta_byte)
+    other <- mixed_values(dta_long)
 
     invisible(value == 5)
     invisible(5 < value)
@@ -139,13 +139,13 @@ test_that("the native kernel is engaged for compact storage", {
     # Eager doubles compare natively too, classifying NA_real_ and
     # tagged NaNs from the decoded payload bits.
     expect_identical(
-        dtatools:::.stata_compare_native("==", stata_double(c(1, 2)), 1),
+        dtatools:::.stata_compare_native("==", dta_double(c(1, 2)), 1),
         c(TRUE, FALSE)
     )
 })
 
 test_that("decoded double vectors compare natively with full semantics", {
-    value <- stata_double(c(
+    value <- dta_double(c(
         -5, 0, 5, NA_real_, tagged_missing("a"), tagged_missing("z")
     ))
 
@@ -165,7 +165,7 @@ test_that("decoded double vectors compare natively with full semantics", {
     )
 
     # Mixed compact-vs-double pairs of equal length also stay native.
-    compact <- stata_byte(c(
+    compact <- dta_byte(c(
         -5, NA_real_, 5, 3, tagged_missing("a"), tagged_missing("z")
     ))
     expect_identical(
@@ -186,7 +186,7 @@ test_that("decoded double vectors compare natively with full semantics", {
 
 test_that("multi-threaded comparisons match single-threaded results", {
     length_over_threshold <- 600000L
-    value <- stata_long(seq_len(length_over_threshold))
+    value <- dta_long(seq_len(length_over_threshold))
     expected <- seq_len(length_over_threshold) <= 300000L
 
     previous <- options(dtatools.threads = 2L)
@@ -202,8 +202,8 @@ test_that("multi-threaded comparisons match single-threaded results", {
 })
 
 test_that("fallback-owned errors survive the native fast path", {
-    value <- mixed_values(stata_byte)
+    value <- mixed_values(dta_byte)
 
     expect_error(value == NaN, "noncanonical NaN")
-    expect_error(value == stata_byte(c(1, 2)), class = "vctrs_error")
+    expect_error(value == dta_byte(c(1, 2)), class = "vctrs_error")
 })

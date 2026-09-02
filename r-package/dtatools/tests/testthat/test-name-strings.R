@@ -164,7 +164,7 @@ test_that("`set_var_label()` accepts a runtime string name", {
 
 test_that("a string target leaves a compact column unmaterialized", {
     data <- data.frame(income = c(10, 20))
-    gen(data, !!"compact", stata_float(income))
+    gen(data, !!"compact", dta_float(income))
     expect_true(
         dtatools:::.is_unmaterialized_numeric_altrep(data$compact)
     )

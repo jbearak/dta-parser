@@ -58,51 +58,51 @@
 #' Comparisons keep Stata's ordering of missing values and are unaffected.
 #'
 #' @param x For a constructor, a logical, integer, or double vector to encode.
-#'   For `stata_storage_type()`, a vector to inspect.
+#'   For `dta_storage_type()`, a vector to inspect.
 #' @param .size A non-negative whole number of system missing values to
 #'   allocate. Do not supply both `x` and `.size`.
 #' @return A double vector carrying its declared Stata storage type.
-#'   `stata_storage_type()` returns that type as one string, or `NULL` for a
+#'   `dta_storage_type()` returns that type as one string, or `NULL` for a
 #'   vector without a declared type.
 #' @examples
-#' codes <- stata_byte(c(1, 2, NA_real_, tagged_missing("a")))
-#' stata_storage_type(codes)
-#' missing <- stata_int(.size = 100)
-#' undefined <- stata_byte(0) / stata_byte(0)
+#' codes <- dta_byte(c(1, 2, NA_real_, tagged_missing("a")))
+#' dta_storage_type(codes)
+#' missing <- dta_int(.size = 100)
+#' undefined <- dta_byte(0) / dta_byte(0)
 #' is.na(undefined)
-#' try(stata_byte(NaN))
+#' try(dta_byte(NaN))
 #' @export
-stata_byte <- function(x = NULL, .size = NULL) {
+dta_byte <- function(x = NULL, .size = NULL) {
     .construct_stata_numeric(x, .size, "byte")
 }
 
-#' @rdname stata_byte
+#' @rdname dta_byte
 #' @export
-stata_int <- function(x = NULL, .size = NULL) {
+dta_int <- function(x = NULL, .size = NULL) {
     .construct_stata_numeric(x, .size, "int")
 }
 
-#' @rdname stata_byte
+#' @rdname dta_byte
 #' @export
-stata_long <- function(x = NULL, .size = NULL) {
+dta_long <- function(x = NULL, .size = NULL) {
     .construct_stata_numeric(x, .size, "long")
 }
 
-#' @rdname stata_byte
+#' @rdname dta_byte
 #' @export
-stata_float <- function(x = NULL, .size = NULL) {
+dta_float <- function(x = NULL, .size = NULL) {
     .construct_stata_numeric(x, .size, "float")
 }
 
-#' @rdname stata_byte
+#' @rdname dta_byte
 #' @export
-stata_double <- function(x = NULL, .size = NULL) {
+dta_double <- function(x = NULL, .size = NULL) {
     .construct_stata_numeric(x, .size, "double")
 }
 
-#' @rdname stata_byte
+#' @rdname dta_byte
 #' @export
-stata_storage_type <- function(x) {
+dta_storage_type <- function(x) {
     attr(x, "stata.storage", exact = TRUE)
 }
 
@@ -286,7 +286,7 @@ stata_storage_type <- function(x) {
     }
     stop(
         sprintf(
-            "Stata %s storage cannot represent `x`; use `stata_%s(x)`",
+            "Stata %s storage cannot represent `x`; use `dta_%s(x)`",
             storage, recommendation
         ),
         call. = FALSE
@@ -451,7 +451,7 @@ as.character.stata_numeric <- function(x, ...) {
     plain_attributes$class <- NULL
     plain_attributes$stata.storage <- NULL
     if (length(plain_attributes) == 0L &&
-        identical(stata_storage_type(value), storage) &&
+        identical(dta_storage_type(value), storage) &&
         identical(class(value), desired$class)) {
         return(value)
     }
@@ -832,7 +832,7 @@ as.data.frame.stata_numeric <- function(
 
 #' @export
 vec_restore.stata_numeric <- function(x, to, ...) {
-    storage <- stata_storage_type(to)
+    storage <- dta_storage_type(to)
     if (.compact_stata_storage_matches(x, storage)) {
         return(.restore_stata_metadata(x, to, storage))
     }
@@ -844,8 +844,8 @@ vec_restore.stata_numeric <- function(x, to, ...) {
 vec_ptype2.stata_numeric.stata_numeric <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    left <- stata_storage_type(x)
-    right <- stata_storage_type(y)
+    left <- dta_storage_type(x)
+    right <- dta_storage_type(y)
     storage <- .stata_promote(left, right)
     prototype <- if (identical(storage, right)) y else x
     .stata_common_ptype(
@@ -857,14 +857,14 @@ vec_ptype2.stata_numeric.stata_numeric <- function(
 vec_ptype2.stata_numeric.double <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_ptype(stata_storage_type(x), x)
+    .stata_ptype(dta_storage_type(x), x)
 }
 
 #' @export
 vec_ptype2.double.stata_numeric <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_ptype(stata_storage_type(y), y)
+    .stata_ptype(dta_storage_type(y), y)
 }
 
 #' @export
@@ -880,7 +880,7 @@ vec_ptype2.stata_numeric.logical <- vec_ptype2.stata_numeric.double
 vec_ptype2.logical.stata_numeric <- vec_ptype2.double.stata_numeric
 
 .cast_to_stata <- function(x, to) {
-    storage <- stata_storage_type(to)
+    storage <- dta_storage_type(to)
     value <- .construct_stata_numeric(x, NULL, storage)
     .restore_stata_metadata(value, to, storage)
 }
@@ -1066,25 +1066,25 @@ vec_arith.stata_numeric.MISSING <- function(op, x, y, ...) {
     if (identical(op, "!")) return(!.stata_data(x))
     if (!identical(op, "-")) vctrs::stop_incompatible_op(op, x, y)
     result <- .collapse_missing(suppressWarnings(-.stata_data(x)))
-    .stata_computed(result, stata_storage_type(x))
+    .stata_computed(result, dta_storage_type(x))
 }
 
 #' @export
 vec_arith.stata_numeric.stata_numeric <- function(op, x, y, ...) {
     minimum <- .stata_promote(
-        stata_storage_type(x), stata_storage_type(y)
+        dta_storage_type(x), dta_storage_type(y)
     )
     .stata_arith_base(op, x, y, minimum)
 }
 
 #' @export
 vec_arith.stata_numeric.numeric <- function(op, x, y, ...) {
-    .stata_arith_base(op, x, y, stata_storage_type(x))
+    .stata_arith_base(op, x, y, dta_storage_type(x))
 }
 
 #' @export
 vec_arith.numeric.stata_numeric <- function(op, x, y, ...) {
-    .stata_arith_base(op, x, y, stata_storage_type(y))
+    .stata_arith_base(op, x, y, dta_storage_type(y))
 }
 
 #' @export
@@ -1110,7 +1110,7 @@ vec_math.stata_numeric <- function(.fn, .x, ...) {
     } else {
         .collapse_missing(result)
     }
-    .stata_computed(result, stata_storage_type(.x))
+    .stata_computed(result, dta_storage_type(.x))
 }
 
 #' @export
@@ -1124,7 +1124,7 @@ Summary.stata_numeric <- function(..., na.rm = FALSE) {
     declared <- Filter(
         function(value) inherits(value, "stata_numeric"), inputs
     )
-    storage <- vapply(declared, stata_storage_type, character(1))
+    storage <- vapply(declared, dta_storage_type, character(1))
     minimum <- Reduce(.stata_promote, storage)
     operation <- getExportedValue("base", .Generic)
     arguments <- c(lapply(inputs, function(value) {
@@ -1146,7 +1146,7 @@ Summary.stata_numeric <- function(..., na.rm = FALSE) {
 #' @export
 mean.stata_numeric <- function(x, ..., na.rm = FALSE) {
     result <- suppressWarnings(mean(.stata_data(x), ..., na.rm = na.rm))
-    .stata_computed(.collapse_missing(result), stata_storage_type(x))
+    .stata_computed(.collapse_missing(result), dta_storage_type(x))
 }
 
 #' @export
@@ -1154,7 +1154,7 @@ median.stata_numeric <- function(x, na.rm = FALSE, ...) {
     result <- suppressWarnings(stats::median(
         .stata_data(x), na.rm = na.rm, ...
     ))
-    .stata_computed(result, stata_storage_type(x))
+    .stata_computed(result, dta_storage_type(x))
 }
 
 #' @export
@@ -1166,7 +1166,7 @@ quantile.stata_numeric <- function(
         .stata_data(x), probs = probs, na.rm = na.rm, names = names,
         type = type, ...
     ))
-    .stata_computed(result, stata_storage_type(x))
+    .stata_computed(result, dta_storage_type(x))
 }
 
 #' @export
@@ -1183,7 +1183,7 @@ is.na.stata_numeric <- function(x) {
 Complex.stata_numeric <- function(z) {
     operation <- getExportedValue("base", .Generic)
     result <- suppressWarnings(operation(.stata_data(z)))
-    .stata_computed(result, stata_storage_type(z))
+    .stata_computed(result, dta_storage_type(z))
 }
 
 .stata_temporal_kind <- function(x) {
@@ -1239,7 +1239,7 @@ Complex.stata_numeric <- function(z) {
         temporal = .stata_temporal_code(prototype)
     )
     .attach_stata_temporal(
-        result, prototype, stata_storage_type(result),
+        result, prototype, dta_storage_type(result),
         result_names = names(value)
     )
 }
@@ -1304,7 +1304,7 @@ unique.stata_temporal <- unique.stata_numeric
 
 #' @export
 vec_restore.stata_temporal <- function(x, to, ...) {
-    .restore_stata_temporal(x, to, stata_storage_type(to))
+    .restore_stata_temporal(x, to, dta_storage_type(to))
 }
 
 .extend_stata_temporal <- function(x, i, value, scalar = FALSE) {
@@ -1329,7 +1329,7 @@ vec_restore.stata_temporal <- function(x, to, ...) {
     }
     data <- .base_stata_temporal(x)
     result <- if (missing(i)) data[] else data[i]
-    .restore_stata_temporal(result, x, stata_storage_type(x))
+    .restore_stata_temporal(result, x, dta_storage_type(x))
 }
 
 #' @export
@@ -1339,7 +1339,7 @@ vec_restore.stata_temporal <- function(x, to, ...) {
              call. = FALSE)
     }
     result <- .base_stata_temporal(x)[[i]]
-    .restore_stata_temporal(result, x, stata_storage_type(x))
+    .restore_stata_temporal(result, x, dta_storage_type(x))
 }
 
 #' @export
@@ -1358,7 +1358,7 @@ vec_restore.stata_temporal <- function(x, to, ...) {
         value
     }
     if (missing(i)) data[] <- replacement else data[i] <- replacement
-    .restore_stata_temporal(data, x, stata_storage_type(x))
+    .restore_stata_temporal(data, x, dta_storage_type(x))
 }
 
 #' @export
@@ -1377,7 +1377,7 @@ vec_restore.stata_temporal <- function(x, to, ...) {
         value
     }
     data[[i]] <- replacement
-    .restore_stata_temporal(data, x, stata_storage_type(x))
+    .restore_stata_temporal(data, x, dta_storage_type(x))
 }
 
 #' @export
@@ -1388,9 +1388,9 @@ vec_ptype2.stata_temporal.stata_temporal <- function(
         vctrs::stop_incompatible_type(x, y, x_arg = x_arg, y_arg = y_arg)
     }
     storage <- .stata_promote(
-        stata_storage_type(x), stata_storage_type(y)
+        dta_storage_type(x), dta_storage_type(y)
     )
-    prototype <- if (identical(storage, stata_storage_type(y))) y else x
+    prototype <- if (identical(storage, dta_storage_type(y))) y else x
     .reconcile_stata_metadata(
         .stata_temporal_ptype(storage, prototype),
         x,
@@ -1404,14 +1404,14 @@ vec_ptype2.stata_temporal.stata_temporal <- function(
 vec_ptype2.stata_temporal.logical <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype(stata_storage_type(x), x)
+    .stata_temporal_ptype(dta_storage_type(x), x)
 }
 
 #' @export
 vec_ptype2.logical.stata_temporal <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype(stata_storage_type(y), y)
+    .stata_temporal_ptype(dta_storage_type(y), y)
 }
 
 .stata_temporal_ptype2_base <- function(
@@ -1420,7 +1420,7 @@ vec_ptype2.logical.stata_temporal <- function(
     if (!identical(.stata_temporal_kind(typed), base_kind)) {
         vctrs::stop_incompatible_type(x, y, x_arg = x_arg, y_arg = y_arg)
     }
-    .stata_temporal_ptype(stata_storage_type(typed), typed)
+    .stata_temporal_ptype(dta_storage_type(typed), typed)
 }
 
 #' @export
@@ -1460,7 +1460,7 @@ vec_cast.stata_temporal.stata_temporal <- function(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
     }
-    .restore_stata_temporal(x, to, stata_storage_type(to))
+    .restore_stata_temporal(x, to, dta_storage_type(to))
 }
 
 #' @export
@@ -1472,7 +1472,7 @@ vec_cast.stata_temporal.logical <- function(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
     }
-    .restore_stata_temporal(as.double(x), to, stata_storage_type(to))
+    .restore_stata_temporal(as.double(x), to, dta_storage_type(to))
 }
 
 .cast_base_to_stata_temporal <- function(
@@ -1483,7 +1483,7 @@ vec_cast.stata_temporal.logical <- function(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
     }
-    .restore_stata_temporal(x, to, stata_storage_type(to))
+    .restore_stata_temporal(x, to, dta_storage_type(to))
 }
 
 #' @export
@@ -1535,7 +1535,7 @@ vec_cast.POSIXct.stata_temporal <- function(
     )
     Reduce(
         .stata_promote,
-        vapply(declared, stata_storage_type, character(1))
+        vapply(declared, dta_storage_type, character(1))
     )
 }
 
@@ -1593,7 +1593,7 @@ Summary.stata_temporal <- function(..., na.rm = FALSE) {
 #' @export
 mean.stata_temporal <- function(x, ..., na.rm = FALSE) {
     result <- mean(.base_stata_temporal(x), ..., na.rm = na.rm)
-    .computed_stata_temporal(result, x, stata_storage_type(x))
+    .computed_stata_temporal(result, x, dta_storage_type(x))
 }
 
 #' @export
@@ -1617,7 +1617,7 @@ c.stata_temporal <- function(..., recursive = FALSE) {
 #' @export
 rep.stata_temporal <- function(x, ...) {
     result <- rep(.base_stata_temporal(x), ...)
-    .restore_stata_temporal(result, x, stata_storage_type(x))
+    .restore_stata_temporal(result, x, dta_storage_type(x))
 }
 
 .stata_temporal_op <- function(op, e1, e2) {
@@ -1641,7 +1641,7 @@ rep.stata_temporal <- function(x, ...) {
     }
     prototype <- if (inherits(e1, "stata_temporal")) e1 else e2
     .computed_stata_temporal(
-        result, prototype, stata_storage_type(prototype)
+        result, prototype, dta_storage_type(prototype)
     )
 }
 

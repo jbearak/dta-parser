@@ -6,11 +6,11 @@ merge_indicator_labels <- c(
 
 test_that("1:1 merges match keys under Stata missing-code identity", {
     master <- tibble::tibble(
-        id = stata_byte(c(1, NA_real_, tagged_missing("a"))),
+        id = dta_byte(c(1, NA_real_, tagged_missing("a"))),
         master_value = c("m1", "m2", "m3")
     )
     using <- tibble::tibble(
-        id = stata_byte(c(tagged_missing("a"), NA_real_, 7)),
+        id = dta_byte(c(tagged_missing("a"), NA_real_, 7)),
         using_value = c("u1", "u2", "u3")
     )
 
@@ -28,7 +28,7 @@ test_that("1:1 merges match keys under Stata missing-code identity", {
     expect_identical(result$master_value, c("m1", "m2", "m3", ""))
     expect_identical(result$using_value, c("", "u2", "u1", "u3"))
 
-    expect_identical(stata_storage_type(result$`_merge`), "byte")
+    expect_identical(dta_storage_type(result$`_merge`), "byte")
     expect_identical(as.double(result$`_merge`), c(1, 3, 3, 2))
     expect_identical(val_labels(result$`_merge`), merge_indicator_labels)
 })
@@ -36,11 +36,11 @@ test_that("1:1 merges match keys under Stata missing-code identity", {
 test_that("compact gathers retain exact missing counts", {
     master <- tibble::tibble(
         id = c(1L, 2L),
-        master_value = stata_byte(c(NA_real_, 20))
+        master_value = dta_byte(c(NA_real_, 20))
     )
     using <- tibble::tibble(
         id = c(2L, 3L),
-        using_value = stata_byte(c(NA_real_, 40))
+        using_value = dta_byte(c(NA_real_, 40))
     )
 
     result <- dta_merge(master, using, by = "id", relationship = "1:1")
@@ -61,9 +61,9 @@ test_that("compact gathers retain exact missing counts", {
 
 test_that("each of the 27 Stata missing codes matches only itself", {
     codes <- c(NA_real_, tagged_missing(letters))
-    master <- tibble::tibble(id = stata_double(codes), row = seq_along(codes))
+    master <- tibble::tibble(id = dta_double(codes), row = seq_along(codes))
     scramble <- rev(seq_along(codes))
-    using <- tibble::tibble(id = stata_double(codes[scramble]),
+    using <- tibble::tibble(id = dta_double(codes[scramble]),
                             match = scramble)
 
     result <- dta_merge(master, using, by = "id", relationship = "1:1")
@@ -120,14 +120,14 @@ test_that("character missing keys require Stata's empty string", {
 test_that("key columns coalesce storage and metadata", {
     master <- tibble::tibble(
         id = set_var_labels(
-            set_val_labels(stata_byte(c(1, 2)), One = 1),
+            set_val_labels(dta_byte(c(1, 2)), One = 1),
             "Identifier"
         ),
         master_value = c("a", "b")
     )
     using <- tibble::tibble(
         id = set_var_labels(
-            set_val_labels(stata_int(c(2, 200)), TwoHundred = 200),
+            set_val_labels(dta_int(c(2, 200)), TwoHundred = 200),
             "Ident (using)"
         ),
         using_value = c("c", "d")
@@ -146,13 +146,13 @@ test_that("key columns coalesce storage and metadata", {
     )
 
     expect_identical(as.double(result$id), c(1, 2, 200))
-    expect_identical(stata_storage_type(result$id), "int")
+    expect_identical(dta_storage_type(result$id), "int")
     expect_identical(var_label(result$id), "Identifier")
     expect_identical(val_labels(result$id), c(One = 1, TwoHundred = 200))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result$id))
 
     conflicting <- tibble::tibble(
-        id = set_val_labels(stata_byte(1), Uno = 1)
+        id = set_val_labels(dta_byte(1), Uno = 1)
     )
     warnings <- testthat::capture_warnings(
         dta_merge(master, conflicting, by = "id", relationship = "1:1")
@@ -190,10 +190,10 @@ test_that("ordinary coalesced columns use y's label when x has none", {
 })
 
 test_that("coalesced variables reconcile notes and characteristics x first", {
-    master_id <- set_stata_note(c("a", "b"), 4, "master note")
-    master_id <- set_stata_characteristic(master_id, "source", "master")
-    using_id <- set_stata_note(c("b", "c"), 8, "using note")
-    using_id <- set_stata_characteristic(using_id, "source", "using")
+    master_id <- set_dta_note(c("a", "b"), 4, "master note")
+    master_id <- set_dta_characteristic(master_id, "source", "master")
+    using_id <- set_dta_note(c("b", "c"), 8, "using note")
+    using_id <- set_dta_characteristic(using_id, "source", "using")
 
     expect_warning(
         result <- dta_merge(
@@ -203,8 +203,8 @@ test_that("coalesced variables reconcile notes and characteristics x first", {
         ),
         "notes or characteristics differ.*metadata wins"
     )
-    expect_identical(stata_notes(result$id), c(`4` = "master note"))
-    expect_identical(stata_characteristics(result$id), c(source = "master"))
+    expect_identical(dta_notes(result$id), c(`4` = "master note"))
+    expect_identical(dta_characteristics(result$id), c(source = "master"))
 
     expect_no_warning(
         fallback <- dta_merge(
@@ -213,20 +213,20 @@ test_that("coalesced variables reconcile notes and characteristics x first", {
             by = "id", relationship = "1:1"
         )
     )
-    expect_identical(stata_notes(fallback$id), c(`8` = "using note"))
-    expect_identical(stata_characteristics(fallback$id), c(source = "using"))
+    expect_identical(dta_notes(fallback$id), c(`8` = "using note"))
+    expect_identical(dta_characteristics(fallback$id), c(source = "using"))
 })
 
 test_that("explicit empty metadata falls back without a conflict warning", {
-    master_id <- set_stata_note(c("a", "b"), 1, "temporary")
-    master_id <- set_stata_characteristic(master_id, "source", "temporary")
+    master_id <- set_dta_note(c("a", "b"), 1, "temporary")
+    master_id <- set_dta_characteristic(master_id, "source", "temporary")
     attr(master_id, "notes") <- character()
     attr(master_id, "stata.note.numbers") <- integer()
     attr(master_id, "stata.characteristics") <- stats::setNames(
         character(), character()
     )
-    using_id <- set_stata_note(c("b", "c"), 8, "using note")
-    using_id <- set_stata_characteristic(using_id, "source", "using")
+    using_id <- set_dta_note(c("b", "c"), 8, "using note")
+    using_id <- set_dta_characteristic(using_id, "source", "using")
 
     expect_no_warning(
         result <- dta_merge(
@@ -235,8 +235,8 @@ test_that("explicit empty metadata falls back without a conflict warning", {
             by = "id", relationship = "1:1"
         )
     )
-    expect_identical(stata_notes(result$id), c(`8` = "using note"))
-    expect_identical(stata_characteristics(result$id), c(source = "using"))
+    expect_identical(dta_notes(result$id), c(`8` = "using note"))
+    expect_identical(dta_characteristics(result$id), c(source = "using"))
 })
 
 test_that("coalesced metadata scanning stays width-linear", {
@@ -271,14 +271,14 @@ test_that("coalesced metadata scanning stays width-linear", {
 test_that("coalesced variables with matching metadata merge silently", {
     master <- tibble::tibble(
         id = set_var_labels(
-            set_val_labels(stata_byte(c(1, 2)), One = 1),
+            set_val_labels(dta_byte(c(1, 2)), One = 1),
             "Identifier"
         ),
         score = c(10, 20)
     )
     using <- tibble::tibble(
         id = set_var_labels(
-            set_val_labels(stata_int(c(1, 2)), One = 1),
+            set_val_labels(dta_int(c(1, 2)), One = 1),
             "Identifier"
         ),
         group = c("a", "b")
@@ -289,7 +289,7 @@ test_that("coalesced variables with matching metadata merge silently", {
     )
 
     unlabelled_using <- tibble::tibble(
-        id = stata_int(c(1, 2)),
+        id = dta_int(c(1, 2)),
         group = c("a", "b")
     )
     warnings <- testthat::capture_warnings(
@@ -306,11 +306,11 @@ test_that("coalesced variables with matching metadata merge silently", {
 test_that("overlapping non-key variables follow the master-wins rule", {
     master <- tibble::tibble(
         id = c(1, 2),
-        score = stata_byte(c(10, NA_real_))
+        score = dta_byte(c(10, NA_real_))
     )
     using <- tibble::tibble(
         id = c(2, 3),
-        score = stata_int(c(99, 300))
+        score = dta_int(c(99, 300))
     )
 
     expect_warning(
@@ -320,7 +320,7 @@ test_that("overlapping non-key variables follow the master-wins rule", {
 
     expect_identical(names(result), c("id", "score", "_merge"))
     expect_identical(as.double(result$score), c(10, NA_real_, 300))
-    expect_identical(stata_storage_type(result$score), "int")
+    expect_identical(dta_storage_type(result$score), "int")
 
     wide_master <- tibble::tibble(
         id = 1, a = 1, b = 1, c = 1, d = 1, e = 1, f = 1, g = 1
@@ -337,10 +337,10 @@ test_that("overlapping non-key variables follow the master-wins rule", {
 
 test_that("compact variables retain values across merge partitions", {
     constructors <- list(
-        byte = stata_byte,
-        int = stata_int,
-        long = stata_long,
-        float = stata_float
+        byte = dta_byte,
+        int = dta_int,
+        long = dta_long,
+        float = dta_float
     )
     master <- tibble::tibble(id = c(1, 2))
     using <- tibble::tibble(id = c(2, 3))
@@ -358,7 +358,7 @@ test_that("compact variables retain values across merge partitions", {
     ))
 
     for (name in names(constructors)) {
-        expect_identical(stata_storage_type(result[[name]]), name)
+        expect_identical(dta_storage_type(result[[name]]), name)
         expect_true(
             dtatools:::.is_unmaterialized_numeric_altrep(result[[name]])
         )
@@ -374,24 +374,24 @@ test_that("Stata doubles retain values and metadata across merge partitions", {
         id = c(1, 2),
         ordinary_x = c("a", "b"),
         double_x = set_var_labels(
-            stata_double(c(10, tagged_missing("a"))),
+            dta_double(c(10, tagged_missing("a"))),
             "Master double"
         ),
         ordinary_shared = c(100L, 200L),
         shared = set_val_labels(
-            stata_double(c(1, NA_real_)), One = 1
+            dta_double(c(1, NA_real_)), One = 1
         )
     )
     using <- tibble::tibble(
         id = c(2, 3),
         ordinary_y = c(TRUE, FALSE),
         double_y = set_var_labels(
-            stata_double(c(20, 30)),
+            dta_double(c(20, 30)),
             "Using double"
         ),
         ordinary_shared = c(999L, 300L),
         shared = set_val_labels(
-            stata_double(c(99, 3)), Three = 3
+            dta_double(c(99, 3)), Three = 3
         )
     )
 
@@ -409,7 +409,7 @@ test_that("Stata doubles retain values and metadata across merge partitions", {
     expect_identical(
         vapply(
             result[c("double_x", "double_y", "shared")],
-            stata_storage_type,
+            dta_storage_type,
             character(1)
         ),
         c(double_x = "double", double_y = "double", shared = "double")
@@ -438,7 +438,7 @@ test_that("compact coalescing handles legacy and modern missing layouts", {
         id = c(1, 2), value = legacy$b[c(1L, 4L)]
     )
     using <- tibble::tibble(
-        id = c(2, 3), value = stata_byte(c(2, tagged_missing("a")))
+        id = c(2, 3), value = dta_byte(c(2, tagged_missing("a")))
     )
 
     result <- suppressWarnings(dta_merge(
@@ -605,9 +605,9 @@ test_that("inputs and by keys are validated", {
 
 test_that("zero-row inputs merge cleanly", {
     master <- tibble::tibble(
-        id = stata_byte(double()), master_value = character()
+        id = dta_byte(double()), master_value = character()
     )
-    using <- tibble::tibble(id = stata_byte(c(1, 2)),
+    using <- tibble::tibble(id = dta_byte(c(1, 2)),
                             using_value = c("a", "b"))
 
     result <- dta_merge(master, using, by = "id", relationship = "1:1")
@@ -617,19 +617,19 @@ test_that("zero-row inputs merge cleanly", {
 
     empty <- dta_merge(
         master,
-        tibble::tibble(id = stata_byte(double()), using_value = character()),
+        tibble::tibble(id = dta_byte(double()), using_value = character()),
         by = "id",
         relationship = "1:1"
     )
     expect_identical(nrow(empty), 0L)
-    expect_identical(stata_storage_type(empty$`_merge`), "byte")
+    expect_identical(dta_storage_type(empty$`_merge`), "byte")
 
     compact_empty <- suppressWarnings(dta_merge(
         tibble::tibble(
-            id = stata_byte(double()), value = stata_byte(double())
+            id = dta_byte(double()), value = dta_byte(double())
         ),
         tibble::tibble(
-            id = stata_byte(double()), value = stata_byte(double())
+            id = dta_byte(double()), value = dta_byte(double())
         ),
         by = "id", relationship = "1:1"
     ))
@@ -658,7 +658,7 @@ test_that("temporal keys merge with promoted storage", {
     expect_match(warnings, "value labels differ", all = FALSE)
 
     expect_s3_class(result$id, "Date")
-    expect_identical(stata_storage_type(result$id), "int")
+    expect_identical(dta_storage_type(result$id), "int")
     expect_identical(
         sort(as.double(result$id)),
         sort(c(as.double(byte_date), as.double(int_date)))
@@ -682,17 +682,17 @@ test_that("dataset notes append master then using with stable numbering", {
     )
     expect_null(attr(result, "stata.note.numbers", exact = TRUE))
     expect_identical(
-        stata_notes(result),
+        dta_notes(result),
         c(`1` = "master note", `2` = "using note")
     )
 })
 
 test_that("dataset-note merge preserves one side and renumbers using notes", {
     empty <- tibble::tibble(id = 1)
-    master <- set_stata_note(empty, 3, "master three")
-    master <- set_stata_note(master, 7, "same text")
-    using <- set_stata_note(empty, 2, "same text")
-    using <- set_stata_note(using, 8, "using eight")
+    master <- set_dta_note(empty, 3, "master three")
+    master <- set_dta_note(master, 7, "same text")
+    using <- set_dta_note(empty, 2, "same text")
+    using <- set_dta_note(using, 8, "using eight")
 
     master_only <- dta_merge(
         master, empty, by = "id", relationship = "1:1"
@@ -710,16 +710,16 @@ test_that("dataset-note merge preserves one side and renumbers using notes", {
         explicit_empty, empty, by = "id", relationship = "1:1"
     )
 
-    expect_identical(stata_notes(master_only), stata_notes(master))
+    expect_identical(dta_notes(master_only), dta_notes(master))
     expect_identical(
         attr(master_only, "stata.note.numbers", exact = TRUE), c(3L, 7L)
     )
-    expect_identical(stata_notes(using_only), stata_notes(using))
+    expect_identical(dta_notes(using_only), dta_notes(using))
     expect_identical(
         attr(using_only, "stata.note.numbers", exact = TRUE), c(2L, 8L)
     )
     expect_identical(
-        stata_notes(combined),
+        dta_notes(combined),
         c(
             `3` = "master three", `7` = "same text",
             `8` = "same text", `9` = "using eight"
@@ -730,8 +730,8 @@ test_that("dataset-note merge preserves one side and renumbers using notes", {
 })
 
 test_that("dataset-note merge rejects Stata note-number exhaustion", {
-    master <- set_stata_note(tibble::tibble(id = 1), 9999, "last")
-    using <- set_stata_note(tibble::tibble(id = 1), 1, "using")
+    master <- set_dta_note(tibble::tibble(id = 1), 9999, "last")
+    using <- set_dta_note(tibble::tibble(id = 1), 1, "using")
 
     expect_error(
         dta_merge(master, using, by = "id", relationship = "1:1"),
@@ -759,9 +759,9 @@ test_that("base, tibble, and data.table inputs merge identically", {
             data.table = data.table::as.data.table(data)
         )
         dataset_label(data) <- paste(side, "dataset")
-        data <- set_stata_note(data, 2, paste(side, "note"))
-        data <- set_stata_characteristic(data, "source", side)
-        data[["shared"]] <- set_stata_note(
+        data <- set_dta_note(data, 2, paste(side, "note"))
+        data <- set_dta_characteristic(data, "source", side)
+        data[["shared"]] <- set_dta_note(
             data[["shared"]], 4, paste(side, "variable note")
         )
         data
@@ -796,15 +796,15 @@ test_that("base, tibble, and data.table inputs merge identically", {
             }
             expect_identical(data_values(result), data_values(reference),
                              info = info)
-            expect_identical(stata_notes(result), stata_notes(reference),
+            expect_identical(dta_notes(result), dta_notes(reference),
                              info = info)
             expect_identical(
-                stata_notes(result$shared), stata_notes(reference$shared),
+                dta_notes(result$shared), dta_notes(reference$shared),
                 info = info
             )
             expect_identical(
-                stata_characteristics(result),
-                stata_characteristics(reference), info = info
+                dta_characteristics(result),
+                dta_characteristics(reference), info = info
             )
             expect_equal(x, x_before, info = info)
             expect_equal(y, y_before, info = info)
@@ -856,11 +856,11 @@ test_that("plain keyed data.tables retain their values, aliases, and keys", {
 
 test_that("master and using accept DTA file paths in any combination", {
     master <- tibble::tibble(
-        id = stata_byte(c(1, tagged_missing("a"))),
+        id = dta_byte(c(1, tagged_missing("a"))),
         master_value = c(10, 20)
     )
     using <- tibble::tibble(
-        id = stata_byte(c(tagged_missing("a"), 7)),
+        id = dta_byte(c(tagged_missing("a"), 7)),
         using_value = c("u1", "u2")
     )
     master_path <- tempfile(fileext = ".dta")
@@ -900,12 +900,12 @@ test_that("master and using accept DTA file paths in any combination", {
 
 test_that("every x and y source combination merges identically", {
     master <- tibble::tibble(
-        id = stata_byte(c(1, 2, NA_real_, tagged_missing("a"), 5)),
-        score = stata_int(c(10, 20, 30, 40, 50)),
+        id = dta_byte(c(1, 2, NA_real_, tagged_missing("a"), 5)),
+        score = dta_int(c(10, 20, 30, 40, 50)),
         city = c("ny", "la", "", "sf", "dc")
     )
     using <- tibble::tibble(
-        id = stata_byte(c(2, tagged_missing("a"), 7, NA_real_, 6)),
+        id = dta_byte(c(2, tagged_missing("a"), 7, NA_real_, 6)),
         group = c("g1", "g2", "g3", "g4", "g5")
     )
 
@@ -976,12 +976,12 @@ test_that("Arrow URLs with query strings dispatch to read_arrow", {
 test_that("multiple keys match jointly under missing-code identity", {
     master <- tibble::tibble(
         region = c(1, 1, 2),
-        wave = stata_byte(c(1, tagged_missing("a"), 1)),
+        wave = dta_byte(c(1, tagged_missing("a"), 1)),
         master_value = c("a", "b", "c")
     )
     using <- tibble::tibble(
         region = c(1, 1, 2),
-        wave = stata_byte(c(tagged_missing("a"), tagged_missing("b"), 1)),
+        wave = dta_byte(c(tagged_missing("a"), tagged_missing("b"), 1)),
         using_value = c("x", "y", "z")
     )
 
@@ -995,13 +995,13 @@ test_that("multiple keys match jointly under missing-code identity", {
 
 test_that("unmatched rows fill string columns with the empty string", {
     master <- tibble::tibble(
-        id = stata_long(c(1, 2)),
-        master_name = stata_string(c("a", "b")),
+        id = dta_long(c(1, 2)),
+        master_name = dta_string(c("a", "b")),
         plain_name = c("p", "q")
     )
     using <- tibble::tibble(
-        id = stata_long(c(2, 3)),
-        using_name = stata_string(c("c", "d"))
+        id = dta_long(c(2, 3)),
+        using_name = dta_string(c("c", "d"))
     )
 
     result <- dta_merge(master, using, by = "id", relationship = "1:1")

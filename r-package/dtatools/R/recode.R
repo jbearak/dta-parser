@@ -27,7 +27,7 @@
 #' a replacement, `.default`, or `.missing` errors. Use `NA_real_` for system
 #' missing or [tagged_missing()] for an extended missing value. Arithmetic is
 #' different: undefined results become system missing as described in
-#' [stata_byte()].
+#' [dta_byte()].
 #'
 #' A recode from numeric to a non-numeric type cannot retain tagged-NA
 #' payloads. If `.x` contains missing values and the result is non-numeric,
