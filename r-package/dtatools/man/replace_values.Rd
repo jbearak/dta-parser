@@ -7,11 +7,11 @@
 \alias{copy_data}
 \title{Generate and replace variables by reference}
 \usage{
-replace_values(data, variable, values, where = NULL)
+replace_values(data, ..., where = NULL)
 
-repl(data, variable, values, where = NULL)
+repl(data, ..., where = NULL)
 
-gen(data, variable, values, where = NULL)
+gen(data, ..., where = NULL)
 
 copy_data(data)
 }
@@ -19,17 +19,19 @@ copy_data(data)
 \item{data}{An ungrouped data frame or tibble to mutate. \code{copy_data()} also
 accepts grouped and rowwise tibbles.}
 
-\item{variable}{Exactly one unquoted target name, or one nonempty,
-non-missing character string, which is what \code{!!name} unquotes to and
-what a \code{.(name)} call supplies in place. An empty string, \code{NA}, a
-character vector of length other than one, a call other than \code{.()},
-\code{...}, and a missing argument are errors.}
-
-\item{values}{A value expression or one-sided formula. It may reference a
-column whose name is a string through the mask's \code{.data} pronoun.}
+\item{...}{The target and its values, as one tagged pair
+\code{variable = values} or as the two positional arguments \verb{variable, values}, optionally followed by one untagged \code{where}. \code{variable} is
+exactly one unquoted name, or one nonempty, non-missing character
+string, which is what \code{!!name} unquotes to and what a \code{.(name)} call
+supplies in place. An empty string, \code{NA}, a character vector of length
+other than one, a call other than \code{.()}, \code{...}, and a missing argument
+are errors. \code{values} is a value expression or one-sided formula. It may
+reference a column whose name is a string through the mask's \code{.data}
+pronoun.}
 
 \item{where}{\code{NULL}, a logical expression, valid row positions, or a
-one-sided formula.}
+one-sided formula. It may also be supplied as the last untagged
+argument in \code{...}.}
 }
 \value{
 \code{gen()} and \code{replace_values()} return \code{data} invisibly.
@@ -71,6 +73,17 @@ supported ways to access generated columns.
 them before mutation. \code{copy_data()} accepts them and preserves their class.
 }
 \details{
+The target and its values arrive through \code{...} in one of two shapes.
+The tagged shape names the target on the left of \code{=}:
+\code{gen(data, adjusted = income + 5)}. The positional shape is the
+Stata-shaped spelling with the same meaning: \code{gen(data, adjusted, income + 5)}. Exactly one target is set per call; two tags, a tag after
+an untagged argument, or more than one trailing argument is an error.
+\code{where} may follow either shape as a further untagged argument or be
+given by name, but not both. Because the pair lives in \code{...}, the
+formals \code{variable} and \code{values} no longer exist, so
+\code{gen(data, values = 1)} generates a column called \code{values}, and no
+argument is partially matched: \code{where} must be spelled in full.
+
 \code{variable} must be one unquoted name or one string. Tidy-evaluation
 injection is supported, so \code{gen(data, !!name, value)} handles a name stored
 in a string. No \code{rlang::inject()} wrapper is needed, because
@@ -80,7 +93,10 @@ in a string. No \code{rlang::inject()} wrapper is needed, because
 scalar, and one nonempty, non-missing string is accepted in the \code{variable}
 position. A literal \code{gen(data, "adjusted", value)} names a column the same
 way. An empty string, \code{NA}, a character vector of length other than one, a
-call other than \code{.()}, \code{...}, and a missing argument are errors.
+call other than \code{.()}, \code{...}, and a missing argument are errors. In the
+tagged shape the same runtime names are spelled as tags:
+\code{gen(data, !!name := value)}, \code{gen(data, .(name) := value)}, and
+\code{gen(data, "adjusted" = value)}.
 
 \code{.(name)} is the one spelling that works in every position. It is
 evaluated where it sits, so it can stand inside a larger expression the
@@ -177,18 +193,22 @@ copying.
 }
 \examples{
 survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
-replace_values(survey, income, income * 2, where = eligible)
-gen(survey, adjusted, income + 5)
+gen(survey, adjusted = income + 5)
+replace_values(survey, income = income * 2, where = eligible)
+# The positional, Stata-shaped spelling means the same thing
+gen(survey, tripled, income * 3)
+replace_values(survey, tripled, 0, eligible)
 independent <- copy_data(survey)
-repl(independent, income, 0)
+repl(independent, income = 0)
 
 # A name known only at run time, in each position that accepts one
 target_name <- "adjusted"
 source_name <- "income"
-repl(survey, !!target_name, 0)
-repl(survey, !!rlang::sym(target_name), 1)
-gen(survey, doubled, .data[[source_name]] * 2)
-repl(survey, doubled, 0, where = .data[[source_name]] > 15)
+repl(survey, !!target_name := 0)
+repl(survey, .(target_name) := 1)
+repl(survey, !!target_name, 2)
+gen(survey, doubled = .data[[source_name]] * 2)
+repl(survey, doubled = 0, where = .data[[source_name]] > 15)
 }
 \references{
 StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
