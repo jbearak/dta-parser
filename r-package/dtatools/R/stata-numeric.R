@@ -49,6 +49,14 @@
 #' result's declared storage. Arithmetic results that are `NaN`, infinite, or
 #' outside Stata's double range become Stata system missing.
 #'
+#' Missing operands follow Stata. Any arithmetic operator, unary minus, and
+#' any `Math` or `Summary` function other than the rounding family yields
+#' system missing `.` where an operand is missing, whatever its tag: in Stata
+#' `.a + 1`, `-.a`, `.a + .b`, and `sqrt(.a)` are all `.`. The rounding
+#' functions `round()`, `signif()`, `floor()`, `ceiling()`, and `trunc()`
+#' return a tagged missing unchanged, as Stata's `round(.a)` is `.a`.
+#' Comparisons keep Stata's ordering of missing values and are unaffected.
+#'
 #' @param x For a constructor, a logical, integer, or double vector to encode.
 #'   For `stata_storage_type()`, a vector to inspect.
 #' @param .size A non-negative whole number of system missing values to
@@ -1012,7 +1020,39 @@ vec_cast.double.stata_numeric <- function(
     args <- vctrs::vec_recycle_common(left, right)
     operation <- getExportedValue("base", op)
     result <- suppressWarnings(operation(args[[1L]], args[[2L]]))
-    .stata_computed(result, minimum)
+    missing_operand <- is.na(args[[1L]]) | is.na(args[[2L]])
+    .stata_computed(.collapse_missing(result, missing_operand), minimum)
+}
+
+# Stata collapses a tagged missing operand to system missing `.` in
+# arithmetic. Base R operators happen to carry the tag through the NaN
+# payload, so replace every missing result position with plain `NA_real_`.
+# `where` defaults to the missing positions of `result` itself, which covers
+# cumulative functions and reductions as well as elementwise operations.
+.collapse_missing <- function(result, where = is.na(result)) {
+    if (!is.numeric(result) || !any(where)) {
+        return(result)
+    }
+    result[where] <- NA_real_
+    result
+}
+
+# Stata's rounding functions return a tagged missing unchanged:
+# `round(.a)` is `.a`.
+.stata_tag_preserving_math <- c(
+    "round", "signif", "floor", "ceiling", "trunc"
+)
+
+# Copy the missing values of `source` back into `result`, so a rounding
+# function returns each tagged missing unchanged even though base `round()`
+# and `signif()` discard the NaN payload.
+.restore_missing <- function(result, source) {
+    where <- is.na(source)
+    if (!is.numeric(result) || !any(where)) {
+        return(result)
+    }
+    result[where] <- source[where]
+    result
 }
 
 #' @export
@@ -1025,7 +1065,7 @@ vec_arith.stata_numeric.MISSING <- function(op, x, y, ...) {
     if (identical(op, "+")) return(x)
     if (identical(op, "!")) return(!.stata_data(x))
     if (!identical(op, "-")) vctrs::stop_incompatible_op(op, x, y)
-    result <- suppressWarnings(-.stata_data(x))
+    result <- .collapse_missing(suppressWarnings(-.stata_data(x)))
     .stata_computed(result, stata_storage_type(x))
 }
 
@@ -1065,6 +1105,11 @@ vec_math.stata_numeric <- function(.fn, .x, ...) {
     if (length(.x) == 0L && .fn %in% c("min", "max", "range")) {
         return(result)
     }
+    result <- if (.fn %in% .stata_tag_preserving_math) {
+        .restore_missing(result, .stata_data(.x))
+    } else {
+        .collapse_missing(result)
+    }
     .stata_computed(result, stata_storage_type(.x))
 }
 
@@ -1095,13 +1140,13 @@ Summary.stata_numeric <- function(..., na.rm = FALSE) {
     if (empty_extreme) {
         return(result)
     }
-    .stata_computed(result, minimum)
+    .stata_computed(.collapse_missing(result), minimum)
 }
 
 #' @export
 mean.stata_numeric <- function(x, ..., na.rm = FALSE) {
     result <- suppressWarnings(mean(.stata_data(x), ..., na.rm = na.rm))
-    .stata_computed(result, stata_storage_type(x))
+    .stata_computed(.collapse_missing(result), stata_storage_type(x))
 }
 
 #' @export

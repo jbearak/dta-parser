@@ -874,16 +874,87 @@ test_that("arithmetic promotes from operand storage according to result values",
     }
 })
 
-test_that("arithmetic preserves tags and returns bare logical comparisons", {
+test_that("arithmetic collapses tags and returns bare logical comparisons", {
     values <- stata_int(c(1, tagged_missing("a"), NA_real_))
     result <- values + 1
 
     expect_identical(stata_storage_type(result), "int")
     expect_identical(as.double(result)[1], 2)
-    expect_identical(missing_tag(result), c(NA_character_, "a", NA))
+    expect_identical(is.na(result), c(FALSE, TRUE, TRUE))
+    expect_identical(missing_tag(result), c(NA_character_, NA, NA))
     expect_identical(values == 1, c(TRUE, FALSE, FALSE))
     expect_null(stata_storage_type(values == 1))
     expect_identical(!stata_int(c(0, 1, NA_real_)), c(TRUE, FALSE, NA))
+})
+
+test_that("missing operands yield system missing whatever their tag", {
+    tagged <- stata_int(c(1L, tagged_missing("a")))
+    expect_identical(missing_tag(tagged), c(NA_character_, "a"))
+
+    year <- stata_int(tagged_missing("a")) - 1900
+    expect_true(is_missing(year))
+    expect_identical(missing_tag(year), NA_character_)
+
+    both_tagged <- stata_double(tagged_missing("a")) +
+        stata_double(tagged_missing("b"))
+    expect_true(is.na(both_tagged))
+    expect_identical(missing_tag(both_tagged), NA_character_)
+    expect_identical(
+        missing_tag(stata_double(tagged_missing("b")) + tagged_missing("a")),
+        NA_character_
+    )
+    expect_identical(
+        missing_tag(1 - stata_int(tagged_missing("a"))), NA_character_
+    )
+
+    negated <- -stata_int(c(1, tagged_missing("a")))
+    expect_identical(as.double(negated), c(-1, NA_real_))
+    expect_identical(missing_tag(negated), c(NA_character_, NA))
+
+    mixed <- stata_int(c(1, tagged_missing("a"), NA_real_, 5)) * 2
+    expect_identical(as.double(mixed), c(2, NA_real_, NA_real_, 10))
+    expect_identical(missing_tag(mixed), rep(NA_character_, 4L))
+    expect_identical(stata_storage_type(mixed), "int")
+
+    tagged_bytes <- stata_byte(c(2, tagged_missing("a"))) * stata_byte(3)
+    expect_identical(stata_storage_type(tagged_bytes), "byte")
+    expect_identical(
+        stata_storage_type(stata_byte(100) * stata_byte(3)), "int"
+    )
+    expect_identical(
+        stata_storage_type(stata_int(c(1, tagged_missing("a"))) / 2),
+        "float"
+    )
+})
+
+test_that("rounding keeps a missing tag and other math functions drop it", {
+    values <- stata_double(c(2.5, tagged_missing("a"), NA_real_))
+
+    for (rounding in c("round", "signif", "floor", "ceiling", "trunc")) {
+        rounded <- getExportedValue("base", rounding)(values)
+        expect_identical(
+            missing_tag(rounded), c(NA_character_, "a", NA), info = rounding
+        )
+    }
+    expect_identical(missing_tag(round(values, 1)), c(NA_character_, "a", NA))
+
+    for (dropping in c("sqrt", "exp", "log", "abs", "sign", "cumsum")) {
+        dropped <- getExportedValue("base", dropping)(values)
+        expect_identical(is.na(dropped), c(FALSE, TRUE, TRUE), info = dropping)
+        expect_identical(
+            missing_tag(dropped), rep(NA_character_, 3L), info = dropping
+        )
+    }
+
+    for (reduction in c("sum", "mean", "min", "max")) {
+        reduced <- getExportedValue("base", reduction)(values)
+        expect_true(is.na(reduced), info = reduction)
+        expect_identical(missing_tag(reduced), NA_character_, info = reduction)
+        expect_false(
+            is.na(getExportedValue("base", reduction)(values, na.rm = TRUE)),
+            info = reduction
+        )
+    }
 })
 
 test_that("computed results preserve Stata construction semantics", {
@@ -904,9 +975,13 @@ test_that("computed results preserve Stata construction semantics", {
 
         expect_identical(stata_storage_type(result), storage, info = storage)
         expect_identical(names(result), names(input), info = storage)
-        expect_identical(as.double(result), as.double(source), info = storage)
         expect_identical(
-            missing_tag(result), missing_tag(source), info = storage
+            as.double(result)[1], as.double(source)[1], info = storage
+        )
+        expect_identical(is.na(result), is.na(source), info = storage)
+        expect_identical(
+            unname(missing_tag(result)), rep(NA_character_, 4L),
+            info = storage
         )
         expect_true(
             dtatools:::.is_unmaterialized_numeric_altrep(result),
