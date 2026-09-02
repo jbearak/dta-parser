@@ -188,7 +188,13 @@ test_that("grouping keeps a dibble a dibble", {
         class(dplyr::mutate(data, next_value = value + 1L)),
         c("tbl_df", "tbl", "data.frame")
     )
-    expect_error(gen(grouped, y = value + 1L), "ungrouped")
+    # Group-wise assignment uses the dplyr groups, and the result stays a
+    # grouped dibble.
+    gen(grouped, within = .n)
+    expect_identical(as.double(grouped$within), c(1, 1, 2))
+    expect_true(is_dibble(grouped))
+    expect_identical(dplyr::group_vars(grouped), "group")
+    expect_error(gen(grouped, again = 1, by = group), "already grouped")
 })
 
 test_that("readers, save_arrow, and dta_merge take the dibble container", {
