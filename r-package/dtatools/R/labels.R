@@ -567,9 +567,55 @@ set_var_label <- function(data, variable, label) {
 
 #' @rdname var_label
 #' @export
+.is_runtime_name_tag <- function(argument) {
+    is.call(argument) && length(argument) == 3L &&
+        identical(argument[[1L]], quote(`:=`)) &&
+        .is_runtime_name_call(argument[[2L]])
+}
+
+# `.(name) := value` in the plural setters. rlang rejects a call on the
+# left of `:=` before it evaluates anything, so the tags are resolved here
+# first: each `.()` left-hand side is evaluated in the caller's environment
+# and becomes an ordinary argument name, then `rlang::dots_list()` runs on
+# the rewritten call and keeps its own handling of `!!`, `!!!`, homonyms
+# and empty arguments unchanged.
+.dots_list_with_runtime_names <- function(quoted, environment, plain) {
+    arguments <- as.list(quoted)
+    if (!any(vapply(arguments, .is_runtime_name_tag, logical(1L)))) {
+        # No `.()` tag, so nothing needs rewriting. Taking the ordinary
+        # path here keeps every existing call byte-identical in behavior,
+        # including dots forwarded from an enclosing function, whose
+        # promises belong to that caller rather than to this frame.
+        return(plain())
+    }
+    names(arguments) <- if (is.null(names(arguments))) {
+        rep("", length(arguments))
+    } else {
+        names(arguments)
+    }
+    for (index in seq_along(arguments)) {
+        argument <- arguments[[index]]
+        if (!.is_runtime_name_tag(argument)) next
+        names(arguments)[[index]] <- .runtime_name_call_value(
+            argument[[2L]], environment
+        )
+        arguments[[index]] <- argument[[3L]]
+    }
+    call <- as.call(c(
+        quote(rlang::dots_list), arguments,
+        list(.homonyms = "keep", .ignore_empty = "none")
+    ))
+    eval(call, environment)
+}
+
 set_var_labels <- function(.data, ..., .labels = NULL) {
-    dots <- rlang::dots_list(
-        ..., .homonyms = "keep", .ignore_empty = "none"
+    dots <- .dots_list_with_runtime_names(
+        substitute(...()), parent.frame(),
+        function() {
+            rlang::dots_list(
+                ..., .homonyms = "keep", .ignore_empty = "none"
+            )
+        }
     )
     if (!is.data.frame(.data)) {
         if (!is.null(.labels) && length(dots) > 0L) {
@@ -604,8 +650,13 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
 #' @rdname var_label
 #' @export
 set_val_labels <- function(.data, ..., .labels = NULL) {
-    dots <- rlang::dots_list(
-        ..., .homonyms = "keep", .ignore_empty = "none"
+    dots <- .dots_list_with_runtime_names(
+        substitute(...()), parent.frame(),
+        function() {
+            rlang::dots_list(
+                ..., .homonyms = "keep", .ignore_empty = "none"
+            )
+        }
     )
     if (!is.data.frame(.data)) {
         if (!is.null(.labels) && length(dots) > 0L) {
