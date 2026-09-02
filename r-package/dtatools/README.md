@@ -36,10 +36,16 @@ declared Stata storage type.
 | `is_missing()`, `is_mi()` | Classify Stata system and extended numeric missing values and empty strings; `is_mi()` is an alias for `is_missing()` that matches Stata's `mi()` shorthand. Use either in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
-## Tibbles and data tables
+## Dibbles, tibbles, and data tables
 
-Readers return tibbles by default. Set one session-wide default or override it
-for one DTA read:
+Readers return dibbles by default: tibbles that carry dtatools reference state
+from creation, so `gen()` and the other by-reference operations find it ready.
+A dibble prints and subsets as a tibble; ordinary replacement and the dplyr
+verbs return plain tibbles, and `group_by()` returns a grouped dibble.
+`dibble()` builds one like `tibble::tibble()`, `as_dibble()` converts a data
+frame, tibble, or data table (a data table is copied, since a dibble cannot
+share its self-reference), and `is_dibble()` tests for one. Set one
+session-wide default or override it for one read:
 
 ```r
 options(dtatools.output = "data.table")
@@ -51,10 +57,11 @@ The data.table package remains optional. Requesting data-table output without
 it installed is an error. Direct reader construction retains compact numeric
 and dictionary-string columns; it does not build a tibble and convert it.
 
-`save_arrow()` records whether its input is an ordinary tibble or data table.
-`read_arrow()` restores that container by default. An explicit `output`
+`save_arrow()` records whether its input is an ordinary dibble, tibble, or data
+table. `read_arrow()` restores that container by default. An explicit `output`
 argument overrides the stored choice. Older Arrow files and files saved from a
-plain data frame use `dtatools.output`, then fall back to a tibble.
+plain data frame use `dtatools.output`, then fall back to a dibble; a recorded
+container this release does not know reads as a tibble.
 
 Exported whole-table operations support ordinary data tables. `gen()` installs
 a physical column, and `repl()` invalidates keys or secondary indexes that use

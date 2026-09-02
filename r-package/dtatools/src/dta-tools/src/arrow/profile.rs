@@ -1158,11 +1158,11 @@ fn validate_dataset_document_inner(
     if document
         .output_container
         .as_deref()
-        .is_some_and(|value| !matches!(value, "tibble" | "data.table"))
+        .is_some_and(|value| !matches!(value, "dibble" | "tibble" | "data.table"))
     {
         return Err(malformed(
             version,
-            "dataset output_container must be `tibble` or `data.table`",
+            "dataset output_container must be `dibble`, `tibble`, or `data.table`",
         ));
     }
     validate_notes(version, "dataset", &document.notes)?;
@@ -1582,7 +1582,7 @@ mod tests {
             .expect("old documents remain readable");
         assert_eq!(absent.output_container, None);
 
-        for container in ["tibble", "data.table"] {
+        for container in ["dibble", "tibble", "data.table"] {
             let json = format!(r#"{{"version":0,"output_container":"{container}"}}"#);
             let document = parse_dataset_document("0", Some(&json))
                 .expect("supported output container parses");

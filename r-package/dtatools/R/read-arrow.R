@@ -56,10 +56,12 @@
 #'   which also disables checksum verification: the checksums are profile
 #'   metadata.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
-#' @param output Output container. An explicit `"tibble"` or `"data.table"`
-#'   overrides stored Arrow provenance. `"default"` restores a container
-#'   recorded by [save_arrow()] and otherwise uses the `dtatools.output` option,
-#'   falling back to `"tibble"`. `profile = FALSE` ignores stored provenance.
+#' @param output Output container. An explicit `"dibble"`, `"tibble"`, or
+#'   `"data.table"` overrides stored Arrow provenance. `"default"` restores a
+#'   container recorded by [save_arrow()] and otherwise uses the
+#'   `dtatools.output` option, falling back to `"dibble"`. A recorded
+#'   container this release does not know reads as a tibble.
+#'   `profile = FALSE` ignores stored provenance.
 #' @param use_numeric_altrep Whether profiled byte, int, long, and float
 #'   columns should retain their compact Stata storage through ALTREP. Set to
 #'   `FALSE` to create eager R double vectors while reading.
@@ -79,12 +81,12 @@
 #'   signature validates every field document even for a predicate-free
 #'   projection.
 #'   Requires a file written with checksums; only file paths are supported.
-#' @return A tibble or data table.
+#' @return A [dibble][dibble()], tibble, or data table.
 #' @export
 read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
                        verify = TRUE, profile = TRUE,
                        .name_repair = "unique",
-                       output = c("default", "tibble", "data.table"),
+                       output = c("default", "dibble", "tibble", "data.table"),
                        use_numeric_altrep = getOption(
                            "dtatools.numeric_altrep", TRUE
                        ),
@@ -162,7 +164,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     if (keep_source_rows) {
         attr(result, "dtatools.source.rows") <- source_rows
     }
-    result
+    .complete_output_container(result, output, stored_output)
 }
 
 .arrow_metadata <- function(snapshot, profile = TRUE,

@@ -48,8 +48,9 @@
 #' destination only after the file is closed.
 #' Symbolic-link, directory, and other non-regular destinations are rejected.
 #'
-#' @param data A data frame, tibble, or data table. Ordinary tibble and
-#'   data-table containers are recorded for restoration by [read_arrow()].
+#' @param data A data frame, tibble, dibble, or data table. Ordinary dibble,
+#'   tibble, and data-table containers are recorded for restoration by
+#'   [read_arrow()].
 #' @param path Local output path. If the final filename has no extension,
 #'   `.arrow` is appended with a warning.
 #' @param compression Per-buffer body compression: `"uncompressed"`, `"lz4"`
@@ -92,7 +93,12 @@ save_arrow <- function(data, path,
         .dta_write_warn(write_warning$message, write_warning$class)
     }
     compression <- .arrow_write_compression(compression)
-    specification <- .prepare_arrow_write(write_data, label, adjust_tz)
+    # The snapshot of a dibble is a plain tibble, so the container to record
+    # is read off the caller's object.
+    specification <- .prepare_arrow_write(
+        write_data, label, adjust_tz,
+        output_container = .stored_output_container(original_data)
+    )
     destination <- resolved_path$path
     write_warnings <- attr(specification, "write_warnings", exact = TRUE)
     write_warnings <- .emit_dta_write_preflight_warnings(write_warnings)
@@ -526,7 +532,9 @@ save_arrow <- function(data, path,
     ))
 }
 
-.prepare_arrow_write <- function(data, label, adjust_tz) {
+.prepare_arrow_write <- function(data, label, adjust_tz,
+                                 output_container =
+                                     .stored_output_container(data)) {
     if (!is.data.frame(data)) {
         .dta_write_abort("`data` must be a data frame or tibble",
                          "dtatools_write_argument_error")
@@ -590,13 +598,6 @@ save_arrow <- function(data, path,
             adjust_tz = adjust_tz
         )
     )
-    output_container <- if (inherits(data, "data.table")) {
-        "data.table"
-    } else if (inherits(data, "tbl_df")) {
-        "tibble"
-    } else {
-        NULL
-    }
     specification <- list(
         label, .arrow_stata_metadata_payload(notes, characteristics),
         unname(columns), value_label_plan$tables, output_container

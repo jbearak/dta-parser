@@ -15,8 +15,9 @@ save_arrow(
 )
 }
 \arguments{
-\item{data}{A data frame, tibble, or data table. Ordinary tibble and
-data-table containers are recorded for restoration by \code{\link[=read_arrow]{read_arrow()}}.}
+\item{data}{A data frame, tibble, dibble, or data table. Ordinary dibble,
+tibble, and data-table containers are recorded for restoration by
+\code{\link[=read_arrow]{read_arrow()}}.}
 
 \item{path}{Local output path. If the final filename has no extension,
 \code{.arrow} is appended with a warning.}

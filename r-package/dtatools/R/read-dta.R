@@ -164,9 +164,9 @@
 #'   Character-column ALTREP is unaffected.
 #' @param .name_repair Name repair passed to [tibble::as_tibble()].
 #' @param output Output container. `"default"` uses the `dtatools.output`
-#'   option, falling back to `"tibble"`. Supply `"tibble"` or `"data.table"`
-#'   to override the option. Data-table output requires the suggested
-#'   data.table package.
+#'   option, falling back to `"dibble"`. Supply `"dibble"`, `"tibble"`, or
+#'   `"data.table"` to override the option. Data-table output requires the
+#'   suggested data.table package.
 #' @param datasig Whether to record the file's [datasig()] signature in the
 #'   result's `datasig` attribute, as a load-time record of what the file on
 #'   disk signed as; it is never updated afterwards, so it is not a claim
@@ -174,7 +174,8 @@
 #'   over the decoded columns (no second read of the file) and equals
 #'   `datasig(file)`. Requires reading the complete file: incompatible with
 #'   `col_select`, `skip`, and `n_max`.
-#' @return A tibble or data table with owned `stata_string` columns. `%td` columns and legacy or custom formats beginning `%d`
+#' @return A [dibble][dibble()], tibble, or data table with owned
+#'   `stata_string` columns. `%td` columns and legacy or custom formats beginning `%d`
 #'   have class `Date`; `%tc` and `%tC` columns have classes `POSIXct` and
 #'   `POSIXt` in UTC. Other Stata temporal formats remain numeric with their
 #'   `format.stata` attribute. String storage and metadata survive supported
@@ -182,7 +183,7 @@
 #' @export
 read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
                      n_max = Inf, .name_repair = "unique",
-                     output = c("default", "tibble", "data.table"),
+                     output = c("default", "dibble", "tibble", "data.table"),
                      threads = getOption("dtatools.threads", 0L),
                      use_numeric_altrep = getOption(
                          "dtatools.numeric_altrep", TRUE
@@ -337,7 +338,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (keep_source_rows) {
         attr(result, "dtatools.source.rows") <- source_rows
     }
-    result
+    .complete_output_container(result, output)
 }
 
 .normalize_use_numeric_altrep <- function(value) {
