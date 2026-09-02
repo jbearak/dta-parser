@@ -471,3 +471,18 @@ test_that("values outside Stata double storage obey force", {
         "incompatible storage"
     )
 })
+
+test_that("a character source holding NA obeys force like the pieces path", {
+    declared <- tibble::tibble(s = stata_string(c("a", "b")))
+    with_na <- tibble::tibble(s = c("cc", NA))
+
+    expect_message(
+        result <- dta_append(list(declared, with_na)),
+        "those observations are missing"
+    )
+    expect_identical(as.character(result$s), c("a", "b", "", ""))
+    expect_error(
+        dta_append(list(declared, with_na), force = FALSE),
+        "incompatible storage"
+    )
+})

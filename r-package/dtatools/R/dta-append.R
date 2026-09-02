@@ -498,7 +498,11 @@ dta_append <- function(sources, force = TRUE,
 
 .append_fits_buffer <- function(value, prototype) {
     if (inherits(prototype, "stata_string")) {
-        return(is.character(value) && !inherits(value, "stata_temporal"))
+        # `NA_character_` has no Stata string encoding. Sending it through
+        # the cast lets the source fail the same way it does on the pieces
+        # path, instead of erroring when the finished buffer is encoded.
+        return(is.character(value) && !inherits(value, "stata_temporal") &&
+            !anyNA(value))
     }
     # Any declared Stata numeric may widen into the buffer without a
     # cast: the plan's prototype is the sources' common type on Stata's
