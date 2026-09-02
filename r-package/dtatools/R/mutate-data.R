@@ -362,9 +362,13 @@ gen <- function(data, ..., where = NULL) {
     if (is.environment(state)) state else NULL
 }
 
+# The bare column list. Every dibble snapshot and reference-state
+# construction passes through here, so this is one shallow copy with its
+# attributes cleared rather than a closure call per column.
 .plain_data_columns <- function(data) {
     physical <- unclass(data)
-    unname(lapply(seq_along(physical), function(index) physical[[index]]))
+    attributes(physical) <- NULL
+    physical
 }
 
 .reference_names <- function(data) {
@@ -525,6 +529,14 @@ gen <- function(data, ..., where = NULL) {
 .reference_snapshot <- function(data) {
     state <- .reference_state(data)
     if (is.null(state)) return(data)
+    if (!isTRUE(state$physical_overlay) && state$generated_count == 0L) {
+        # A fresh dibble: every column is physical, so the snapshot is the
+        # object minus its mark. Dropping the attribute shallow-copies the
+        # list, which is what every `[` and dplyr call on a read result pays.
+        attr(data, ".dtatools_ref_state") <- NULL
+        class(data) <- state$classes
+        return(data)
+    }
     result <- .data_columns(data)
     source_attributes <- attributes(data)
     source_attributes$.dtatools_ref_state <- NULL
@@ -1435,14 +1447,11 @@ copy_data <- function(data) {
     state <- .reference_state(data)
     if (is.null(state)) return(NULL)
     if (!isTRUE(state$physical_overlay)) {
-        # `locations` also indexes generated columns, which live past the
-        # end of the physical object, so confirm the hit is a physical one.
-        location <- state$locations[[name]]
-        physical <- attr(data, "names", exact = TRUE)
-        if (!is.null(location) && location <= length(physical) &&
-            identical(physical[[location]], name)) {
-            return(list(.subset2(data, location)))
-        }
+        # Physical columns are read straight off the object; `.subset2()`
+        # matches names exactly and returns NULL for a generated or absent
+        # column, which the store lookup below then resolves.
+        value <- .subset2(data, name)
+        if (!is.null(value)) return(list(value))
     }
     if (exists(name, envir = state$columns, inherits = FALSE)) {
         return(list(state$columns[[name]]))
@@ -1681,12 +1690,22 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     .reference_delegate(.data, sys.call(), dplyr::transmute, parent.frame())
 }
 
+# Grouping changes only dplyr metadata, so a dibble stays a dibble: the
+# grouped or ungrouped snapshot is marked again, and `state$classes` then
+# records the grouping for later snapshots. The result is a fresh object
+# either way, so the mark never touches the caller's dataset.
+.regroup_reference_data <- function(data, result) {
+    if (is_dibble(data) && !is_dibble(result)) .as_dibble(result) else result
+}
+
 #' @export
 group_by.dtatools_ref_data <- function(
     .data, ..., .add = FALSE,
     .drop = dplyr::group_by_drop_default(.data)
 ) {
-    .reference_delegate(.data, sys.call(), dplyr::group_by, parent.frame())
+    .regroup_reference_data(.data, .reference_delegate(
+        .data, sys.call(), dplyr::group_by, parent.frame()
+    ))
 }
 
 #' @export
@@ -1703,7 +1722,9 @@ distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
 
 #' @export
 ungroup.dtatools_ref_data <- function(x, ...) {
-    .reference_delegate(x, sys.call(), dplyr::ungroup, parent.frame())
+    .regroup_reference_data(x, .reference_delegate(
+        x, sys.call(), dplyr::ungroup, parent.frame()
+    ))
 }
 
 #' @export
