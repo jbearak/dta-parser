@@ -2,7 +2,7 @@ test_that("reference mutation exports one coherent API", {
     expect_identical(repl, replace_values)
     expect_identical(
         formals(replace_values),
-        as.pairlist(alist(data = , variable = , values = , where = NULL))
+        as.pairlist(alist(data = , ... = , where = NULL))
     )
     expect_identical(formals(repl), formals(replace_values))
     expect_identical(formals(gen), formals(replace_values))
@@ -2075,4 +2075,83 @@ test_that("fused row-value errors roll back before the fallback error", {
         "cannot contain `NaN` or unsupported missing tags"
     )
     expect_identical(serialize(data, NULL), before)
+})
+
+test_that("targets and values arrive as one tagged pair", {
+    data <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
+    expect_silent(gen(data, adjusted = income + 5))
+    expect_identical(as.double(data$adjusted), c(15, 25))
+    expect_silent(repl(data, adjusted = 0, where = eligible))
+    expect_identical(as.double(data$adjusted), c(0, 25))
+    # A trailing untagged argument is `where`, in both shapes.
+    expect_silent(replace_values(data, adjusted = 1, !eligible))
+    expect_identical(as.double(data$adjusted), c(0, 1))
+    expect_silent(replace_values(data, adjusted, 2, eligible))
+    expect_identical(as.double(data$adjusted), c(2, 1))
+    # A name held in a string, spelled as a tag.
+    target <- "adjusted"
+    expect_silent(repl(data, !!target := 3))
+    expect_identical(as.double(data$adjusted), c(3, 3))
+    expect_silent(repl(data, .(target) := 4, where = eligible))
+    expect_identical(as.double(data$adjusted), c(4, 3))
+    expect_silent(repl(data, "adjusted" = 5))
+    expect_identical(as.double(data$adjusted), c(5, 5))
+    # `values` inside a `.() :=` tag keeps the mask and its own `!!`.
+    scale <- 10
+    expect_silent(gen(data, .(paste0("scaled_", target)) := income * !!scale))
+    expect_identical(as.double(data$scaled_adjusted), c(100, 200))
+    # Former argument names are ordinary column names.
+    expect_silent(gen(data, values = 1))
+    expect_identical(as.double(data$values), c(1, 1))
+    expect_silent(gen(data, variable = 2, where = eligible))
+    expect_identical(as.double(data$variable), c(2, NA))
+})
+
+test_that("tagged pairs reach reference, data.table, and compact targets", {
+    referenced <- data.frame(x = 1:2)
+    gen(referenced, y = x * 2L)
+    expect_silent(gen(referenced, z = y + 1L))
+    expect_identical(as.double(referenced$z), c(3, 5))
+    expect_silent(repl(referenced, z = 0L, where = x == 1L))
+    expect_identical(as.double(referenced$z), c(0, 5))
+
+    table <- data.table::data.table(x = 1:2)
+    expect_silent(gen(table, y = x + 1L))
+    expect_silent(repl(table, y = 0L, x == 2L))
+    expect_identical(as.double(table$y), c(2, 0))
+
+    compact <- read_dta(fixture("all_types_v118.dta"))
+    target <- names(compact)[vapply(
+        compact,
+        function(column) isTRUE(stata_storage_type(column) == "int"),
+        logical(1)
+    )][[1L]]
+    original <- as.double(compact[[target]])
+    expect_silent(repl(compact, .(target) := 0, where = 1))
+    expect_true(
+        dtatools:::.is_unmaterialized_numeric_altrep(compact[[target]])
+    )
+    expect_identical(as.double(compact[[target]]), c(0, original[-1L]))
+})
+
+test_that("mutation dots must be one target pair and at most one where", {
+    data <- data.frame(x = 1:2, y = 3:4)
+    shape <- "`...` must be `variable, values` or one `variable = values`"
+    expect_error(gen(data), shape)
+    expect_error(gen(data, x, y = 1), shape)
+    expect_error(gen(data, a = 1, b = 2), shape)
+    expect_error(gen(data, a = 1, x, y = 2), shape)
+    expect_error(gen(data, a, 1, x > 1, y), shape)
+    expect_error(repl(data, x = 1, x > 1, where = y > 3), shape)
+    expect_error(repl(data, x, 1, where = y > 3, y), shape)
+    # Empty arguments are rejected rather than dropped.
+    expect_error(gen(data, a = ), "`values` is required")
+    expect_error(gen(data, a, ), "`values` is required")
+    expect_error(gen(data, a, 1, ), shape)
+    expect_error(repl(data, x = 1, ), shape)
+    # Named `variable`/`values` arguments are gone: this is two tags.
+    expect_error(gen(data, variable = a, values = 1), shape)
+    expect_error(gen(data, .("") := 1), "nonempty")
+    expect_error(gen(data, .(1) := 1), "nonempty")
+    expect_identical(data, data.frame(x = 1:2, y = 3:4))
 })

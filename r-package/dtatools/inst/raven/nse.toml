@@ -9,23 +9,27 @@
 
 schema = 1
 
-# gen(survey, adjusted, income + 5): `variable`, `values`, and `where` are
-# quoted with rlang::enquo() and evaluated against the data mask, while `data`
-# is an ordinary argument that should still be checked.
+# gen(survey, adjusted = income + 5) and gen(survey, adjusted, income + 5):
+# the target and its values arrive in `...`, optionally followed by `where`,
+# and every dot is quoted and evaluated against the data mask, as is a named
+# `where`. `data` is an ordinary argument that should still be checked.
 [[function]]
 name = "gen"
-formals = ["data", "variable", "values", "where"]
-captured = ["variable", "values", "where"]
+formals = ["data", "...", "where"]
+captured = ["where"]
+captured_dots = true
 
 [[function]]
 name = "repl"
-formals = ["data", "variable", "values", "where"]
-captured = ["variable", "values", "where"]
+formals = ["data", "...", "where"]
+captured = ["where"]
+captured_dots = true
 
 [[function]]
 name = "replace_values"
-formals = ["data", "variable", "values", "where"]
-captured = ["variable", "values", "where"]
+formals = ["data", "...", "where"]
+captured = ["where"]
+captured_dots = true
 
 # keep_vars(survey, id, age) and drop_vars(survey, temporary): every argument
 # in `...` is quoted with rlang::enquos() and interpreted as a column

@@ -34,6 +34,18 @@
 #' `gen()` and `replace_values()` reject grouped and rowwise tibbles. Ungroup
 #' them before mutation. `copy_data()` accepts them and preserves their class.
 #'
+#' The target and its values arrive through `...` in one of two shapes.
+#' The tagged shape names the target on the left of `=`:
+#' `gen(data, adjusted = income + 5)`. The positional shape is the
+#' Stata-shaped spelling with the same meaning: `gen(data, adjusted,
+#' income + 5)`. Exactly one target is set per call; two tags, a tag after
+#' an untagged argument, or more than one trailing argument is an error.
+#' `where` may follow either shape as a further untagged argument or be
+#' given by name, but not both. Because the pair lives in `...`, the
+#' formals `variable` and `values` no longer exist, so
+#' `gen(data, values = 1)` generates a column called `values`, and no
+#' argument is partially matched: `where` must be spelled in full.
+#'
 #' `variable` must be one unquoted name or one string. Tidy-evaluation
 #' injection is supported, so `gen(data, !!name, value)` handles a name stored
 #' in a string. No `rlang::inject()` wrapper is needed, because
@@ -43,7 +55,10 @@
 #' scalar, and one nonempty, non-missing string is accepted in the `variable`
 #' position. A literal `gen(data, "adjusted", value)` names a column the same
 #' way. An empty string, `NA`, a character vector of length other than one, a
-#' call other than `.()`, `...`, and a missing argument are errors.
+#' call other than `.()`, `...`, and a missing argument are errors. In the
+#' tagged shape the same runtime names are spelled as tags:
+#' `gen(data, !!name := value)`, `gen(data, .(name) := value)`, and
+#' `gen(data, "adjusted" = value)`.
 #'
 #' `.(name)` is the one spelling that works in every position. It is
 #' evaluated where it sits, so it can stand inside a larger expression the
@@ -140,39 +155,54 @@
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
-#' @param variable Exactly one unquoted target name, or one nonempty,
-#'   non-missing character string, which is what `!!name` unquotes to and
-#'   what a `.(name)` call supplies in place. An empty string, `NA`, a
-#'   character vector of length other than one, a call other than `.()`,
-#'   `...`, and a missing argument are errors.
-#' @param values A value expression or one-sided formula. It may reference a
-#'   column whose name is a string through the mask's `.data` pronoun.
+#' @param ... The target and its values, as one tagged pair
+#'   `variable = values` or as the two positional arguments `variable,
+#'   values`, optionally followed by one untagged `where`. `variable` is
+#'   exactly one unquoted name, or one nonempty, non-missing character
+#'   string, which is what `!!name` unquotes to and what a `.(name)` call
+#'   supplies in place. An empty string, `NA`, a character vector of length
+#'   other than one, a call other than `.()`, `...`, and a missing argument
+#'   are errors. `values` is a value expression or one-sided formula. It may
+#'   reference a column whose name is a string through the mask's `.data`
+#'   pronoun.
 #' @param where `NULL`, a logical expression, valid row positions, or a
-#'   one-sided formula.
+#'   one-sided formula. It may also be supplied as the last untagged
+#'   argument in `...`.
 #' @return `gen()` and `replace_values()` return `data` invisibly.
 #'   `copy_data()` returns an independent data frame or tibble.
 #' @references
 #' StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
 #' @examples
 #' survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
-#' replace_values(survey, income, income * 2, where = eligible)
-#' gen(survey, adjusted, income + 5)
+#' gen(survey, adjusted = income + 5)
+#' replace_values(survey, income = income * 2, where = eligible)
+#' # The positional, Stata-shaped spelling means the same thing
+#' gen(survey, tripled, income * 3)
+#' replace_values(survey, tripled, 0, eligible)
 #' independent <- copy_data(survey)
-#' repl(independent, income, 0)
+#' repl(independent, income = 0)
 #'
 #' # A name known only at run time, in each position that accepts one
 #' target_name <- "adjusted"
 #' source_name <- "income"
-#' repl(survey, !!target_name, 0)
-#' repl(survey, !!rlang::sym(target_name), 1)
-#' gen(survey, doubled, .data[[source_name]] * 2)
-#' repl(survey, doubled, 0, where = .data[[source_name]] > 15)
+#' repl(survey, !!target_name := 0)
+#' repl(survey, .(target_name) := 1)
+#' repl(survey, !!target_name, 2)
+#' gen(survey, doubled = .data[[source_name]] * 2)
+#' repl(survey, doubled = 0, where = .data[[source_name]] > 15)
 #' @export
-replace_values <- function(data, variable, values, where = NULL) {
-    variable <- rlang::enquo(variable)
-    values <- rlang::enquo(values)
-    where <- rlang::enquo(where)
-    .mutate_data(data, variable, values, where, generate = FALSE)
+replace_values <- function(data, ..., where = NULL) {
+    arguments <- .mutation_arguments(
+        substitute(...()), rlang::enquo(where), missing(where),
+        function() .capture_positional_pair(...),
+        function() .capture_positional_triple(...),
+        function() rlang::enquos(..., .ignore_empty = "none"),
+        function() rlang::enquos0(...)
+    )
+    .mutate_data(
+        data, arguments$variable, arguments$values, arguments$where,
+        generate = FALSE
+    )
 }
 
 #' @rdname replace_values
@@ -181,11 +211,139 @@ repl <- replace_values
 
 #' @rdname replace_values
 #' @export
-gen <- function(data, variable, values, where = NULL) {
-    variable <- rlang::enquo(variable)
-    values <- rlang::enquo(values)
-    where <- rlang::enquo(where)
-    .mutate_data(data, variable, values, where, generate = TRUE)
+gen <- function(data, ..., where = NULL) {
+    arguments <- .mutation_arguments(
+        substitute(...()), rlang::enquo(where), missing(where),
+        function() .capture_positional_pair(...),
+        function() .capture_positional_triple(...),
+        function() rlang::enquos(..., .ignore_empty = "none"),
+        function() rlang::enquos0(...)
+    )
+    .mutate_data(
+        data, arguments$variable, arguments$values, arguments$where,
+        generate = TRUE
+    )
+}
+
+.MUTATION_SHAPE_MESSAGE <- paste(
+    "`...` must be `variable, values` or one `variable = values` pair,",
+    "optionally followed by `where`"
+)
+
+# `gen()` and `replace_values()` take their target and value through
+# `...`, in one of two shapes: the positional pair `variable, values`, or
+# one tagged pair `variable = values`. Either may be followed by one
+# untagged `where`. Placing the pair in `...` is what lets a tag name the
+# target, and it also removes partial matching of `variable`, `values`,
+# and `where`, so a column called `val` or `w` can be a target.
+#
+# The shape is read from the unevaluated dots first. The common shapes
+# are then captured by forwarding `...` into a fixed-arity helper, which
+# costs a fraction of `rlang::enquos()` and matters because `repl()` is
+# often called in tight loops. Untagged dots of any other count take
+# `rlang::enquos()` so its own errors apply. Tagged dots are captured with
+# `rlang::enquos0()`, which is cheaper still and, unlike `enquos()`, lets
+# a `.(name) := value` tag through: rlang rejects a call on the left of
+# `:=` before evaluating anything. Each dot is then re-quoted in its own
+# frame so `!!` and `:=` inside it keep their ordinary meaning.
+.mutation_arguments <- function(quoted, where, where_missing, pair, triple,
+                                quosures, quosures0) {
+    count <- length(quoted)
+    tags <- names(quoted)
+    if (is.null(tags)) tags <- rep("", count)
+    tagged <- nzchar(tags)
+    empty <- vapply(
+        as.list(quoted), function(dot) identical(dot, quote(expr = )),
+        logical(1L)
+    )
+    assigned <- vapply(
+        as.list(quoted),
+        function(dot) is.call(dot) && identical(dot[[1L]], quote(`:=`)),
+        logical(1L)
+    )
+    if (!any(tagged) && !any(assigned)) {
+        if (!any(empty) && (count == 2L || (count == 3L && where_missing))) {
+            captured <- if (count == 2L) pair() else triple()
+            return(list(
+                variable = captured[[1L]], values = captured[[2L]],
+                where = if (count == 3L) captured[[3L]] else where
+            ))
+        }
+        dots <- quosures()
+    } else {
+        dots <- .mutation_dots_with_runtime_names(quosures0())
+    }
+    tags <- names(dots)
+    if (is.null(tags)) tags <- rep("", length(dots))
+    tagged <- nzchar(tags)
+    count <- length(dots)
+    if (count == 0L) stop(.MUTATION_SHAPE_MESSAGE, call. = FALSE)
+    if (tagged[[1L]]) {
+        variable <- rlang::new_quosure(tags[[1L]], emptyenv())
+        values <- dots[[1L]]
+        rest <- dots[-1L]
+        rest_tagged <- tagged[-1L]
+    } else {
+        variable <- dots[[1L]]
+        if (count >= 2L && tagged[[2L]]) {
+            stop(.MUTATION_SHAPE_MESSAGE, call. = FALSE)
+        }
+        values <- if (count >= 2L) {
+            dots[[2L]]
+        } else {
+            rlang::new_quosure(rlang::missing_arg(), emptyenv())
+        }
+        rest <- dots[-(1:2)]
+        rest_tagged <- tagged[-(1:2)]
+    }
+    if (any(rest_tagged) || length(rest) > 1L) {
+        stop(.MUTATION_SHAPE_MESSAGE, call. = FALSE)
+    }
+    if (length(rest) == 1L) {
+        if (!where_missing || rlang::quo_is_missing(rest[[1L]])) {
+            stop(.MUTATION_SHAPE_MESSAGE, call. = FALSE)
+        }
+        where <- rest[[1L]]
+    }
+    list(variable = variable, values = values, where = where)
+}
+
+.capture_positional_pair <- function(variable, values) {
+    list(rlang::enquo(variable), rlang::enquo(values))
+}
+
+.capture_positional_triple <- function(variable, values, where) {
+    list(rlang::enquo(variable), rlang::enquo(values), rlang::enquo(where))
+}
+
+.mutation_dots_with_runtime_names <- function(quosures) {
+    labels <- names(quosures)
+    if (is.null(labels)) labels <- rep("", length(quosures))
+    result <- vector("list", length(quosures))
+    for (index in seq_along(quosures)) {
+        quosure <- quosures[[index]]
+        if (rlang::quo_is_missing(quosure)) {
+            result[[index]] <- quosure
+            next
+        }
+        expression <- rlang::quo_get_expr(quosure)
+        frame <- rlang::quo_get_env(quosure)
+        if (.is_runtime_name_tag(expression)) {
+            labels[[index]] <- .runtime_name_call_value(
+                expression[[2L]], frame
+            )
+            expression <- expression[[3L]]
+        }
+        # The function object heads the call, because a constant's
+        # quosure carries the empty environment, where `::` is unbound.
+        requoted <- eval(as.call(list(rlang::quos, expression)), frame)
+        if (!nzchar(labels[[index]]) && !is.null(names(requoted))) {
+            labels[[index]] <- names(requoted)[[1L]]
+        }
+        result[[index]] <- requoted[[1L]]
+    }
+    names(result) <- labels
+    result
 }
 
 .reference_state <- function(data) {
