@@ -84,6 +84,14 @@ storage type, then widen only when the computed values require it. This is
 value-dependent: integer overflow or a fractional result may change the
 result's declared storage. Arithmetic results that are \code{NaN}, infinite, or
 outside Stata's double range become Stata system missing.
+
+Missing operands follow Stata. Any arithmetic operator, unary minus, and
+any \code{Math} or \code{Summary} function other than the rounding family yields
+system missing \code{.} where an operand is missing, whatever its tag: in Stata
+\code{.a + 1}, \code{-.a}, \code{.a + .b}, and \code{sqrt(.a)} are all \code{.}. The rounding
+functions \code{round()}, \code{signif()}, \code{floor()}, \code{ceiling()}, and \code{trunc()}
+return a tagged missing unchanged, as Stata's \code{round(.a)} is \code{.a}.
+Comparisons keep Stata's ordering of missing values and are unaffected.
 }
 
 \examples{

@@ -403,7 +403,10 @@ rounds values to binary32.
 
 Subset assignment, `replace()`, `dplyr::if_else()`, and `dplyr::mutate()`
 retain declared storage. Arithmetic widens only when its result values require
-it. Base `ifelse()` strips the declaration because it takes attributes from the
+it. As in Stata, a missing operand makes the result system missing `.`
+whatever its tag (`.a + 1`, `-.a`, `.a + .b`, and `sqrt(.a)` are all `.`);
+only the rounding functions `round()`, `signif()`, `floor()`, `ceiling()`, and `trunc()`
+return a tagged missing unchanged. Comparisons are unaffected. Base `ifelse()` strips the declaration because it takes attributes from the
 condition; pass its result to a constructor to declare storage again. Encoding
 materializes doubles temporarily, so the memory reduction is steady-state
 rather than a reduction in peak memory during construction.
