@@ -122,11 +122,11 @@ rows in theirs. Sort afterward if key order matters.
 }
 \examples{
 master <- tibble::tibble(
-    id = stata_byte(c(1, NA_real_, tagged_missing("a"))),
+    id = dta_byte(c(1, NA_real_, tagged_missing("a"))),
     score = c(10, 20, 30)
 )
 using <- tibble::tibble(
-    id = stata_byte(c(tagged_missing("a"), 7)),
+    id = dta_byte(c(tagged_missing("a"), 7)),
     group = c("x", "y")
 )
 dta_merge(master, using, by = "id", relationship = "1:1")

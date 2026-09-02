@@ -106,8 +106,8 @@ test_that("data-frame replacement syntax follows R copy semantics", {
 
 test_that("label replacement isolates metadata, not untouched values", {
     data <- data.frame(
-        labelled = stata_byte(1:3),
-        untouched = stata_byte(4:6)
+        labelled = dta_byte(1:3),
+        untouched = dta_byte(4:6)
     )
     alias <- data
 
@@ -122,7 +122,7 @@ test_that("label replacement isolates metadata, not untouched values", {
 })
 
 test_that("dataset-label replacement detaches reference state", {
-    data <- data.frame(x = stata_byte(1:3))
+    data <- data.frame(x = dta_byte(1:3))
     gen(data, y, x + 1)
     alias <- data
 
@@ -606,7 +606,7 @@ test_that("aggregate operations keep metadata proxies unmaterialized", {
         list(
             results = lapply(results[1:3], as.double),
             storage = vapply(
-                results[1:3], stata_storage_type, character(1)
+                results[1:3], dta_storage_type, character(1)
             ),
             any_na = results$any_na,
             aggregate_mask = aggregate_mask,

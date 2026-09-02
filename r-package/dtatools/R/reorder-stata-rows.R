@@ -1,6 +1,6 @@
 #' Reorder a table's rows in place through Stata storage
 #'
-#' Gathers every column the way [slice_stata_rows()] does — compact
+#' Gathers every column the way [slice_dta_rows()] does — compact
 #' Stata numeric columns through the native kernel, other columns
 #' through vctrs — then replaces the table's column pointers in
 #' place, so the table object keeps its identity and every reference
@@ -25,7 +25,7 @@
 #'   secondary indexes are cleared because a permutation invalidates
 #'   them.
 #' @export
-reorder_stata_rows <- function(data, rows) {
+reorder_dta_rows <- function(data, rows) {
     plan <- .reorder_column_plan(data)
     count <- plan$nrow
     locations <- vctrs::vec_as_location(

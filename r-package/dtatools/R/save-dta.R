@@ -53,7 +53,7 @@
 #' @return `data`, invisibly.
 #' @examples
 #' path <- tempfile(fileext = ".dta")
-#' data <- data.frame(answer = stata_byte(c(1, tagged_missing("a"))))
+#' data <- data.frame(answer = dta_byte(c(1, tagged_missing("a"))))
 #' save_dta(data, path)
 #' read_dta(path)
 #' unlink(path)
@@ -926,7 +926,7 @@ save_dta <- function(data, path, version = 19L,
         sprintf("variable label for `%s`", name)
     )
     stata_metadata <- .stata_metadata_payload(
-        stata_notes(column), stata_characteristics(column)
+        dta_notes(column), dta_characteristics(column)
     )
     if (identical(kind, "factor")) {
         format <- .prepare_write_format(
@@ -1052,8 +1052,8 @@ save_dta <- function(data, path, version = 19L,
         ))
     }
     label <- .write_text(label, "label")
-    notes <- stata_notes(data)
-    characteristics <- stata_characteristics(data)
+    notes <- dta_notes(data)
+    characteristics <- dta_characteristics(data)
     value_label_plan <- .new_write_value_label_plan(
         data,
         factor_value_labels = TRUE,

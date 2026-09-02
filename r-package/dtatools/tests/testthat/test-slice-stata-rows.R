@@ -1,10 +1,10 @@
-test_that("slice_stata_rows matches imported Stata column slicing", {
+test_that("slice_dta_rows matches imported Stata column slicing", {
     data <- read_dta(fixture("all_types_v118.dta"))
     class(data) <- "data.frame"
-    data <- set_stata_note(data, 4, "dataset note")
-    data <- set_stata_characteristic(data, "source", "fixture")
-    data <- set_stata_note(data, 7, "variable note", variable = "v_double")
-    data <- set_stata_characteristic(
+    data <- set_dta_note(data, 4, "dataset note")
+    data <- set_dta_characteristic(data, "source", "fixture")
+    data <- set_dta_note(data, 7, "variable note", variable = "v_double")
+    data <- set_dta_characteristic(
         data, "role", "measure", variable = "v_double"
     )
     row.names(data) <- paste0("row", seq_len(nrow(data)))
@@ -31,18 +31,18 @@ test_that("slice_stata_rows matches imported Stata column slicing", {
     for (container in list(data, tibble::as_tibble(data))) {
         for (rows in locations) {
             expected <- container[rows, , drop = FALSE]
-            actual <- slice_stata_rows(container, rows)
+            actual <- slice_dta_rows(container, rows)
 
             expect_identical(actual, expected, info = deparse(rows))
         }
     }
     character_rows <- c("row5", "row2", "row2")
     expect_identical(
-        slice_stata_rows(data, character_rows),
+        slice_dta_rows(data, character_rows),
         data[character_rows, , drop = FALSE]
     )
 
-    selected <- slice_stata_rows(data, c(5L, 2L, NA_integer_, 2L))
+    selected <- slice_dta_rows(data, c(5L, 2L, NA_integer_, 2L))
     expect_true(all(vapply(
         data[compact_names],
         dtatools:::.is_unmaterialized_numeric_altrep,
@@ -65,17 +65,17 @@ test_that("slice_stata_rows matches imported Stata column slicing", {
     )))
 })
 
-test_that("slice_stata_rows preserves every numeric storage and missing tag", {
+test_that("slice_dta_rows preserves every numeric storage and missing tag", {
     values <- c(1, NA_real_, tagged_missing("a"), tagged_missing("z"), -1)
     data <- data.frame(
-        byte = stata_byte(values),
-        int = stata_int(values),
-        long = stata_long(values),
-        float = stata_float(values),
-        double = stata_double(values)
+        byte = dta_byte(values),
+        int = dta_int(values),
+        long = dta_long(values),
+        float = dta_float(values),
+        double = dta_double(values)
     )
-    data <- set_stata_note(data, 3, "numeric note", variable = "int")
-    data <- set_stata_characteristic(
+    data <- set_dta_note(data, 3, "numeric note", variable = "int")
+    data <- set_dta_characteristic(
         data, "source", "generated", variable = "int"
     )
     attr(data$float, "label") <- "Float value"
@@ -84,11 +84,11 @@ test_that("slice_stata_rows preserves every numeric storage and missing tag", {
 
     rows <- c(4L, 2L, 3L, NA_integer_, 1L, 4L)
     expected <- data[rows, , drop = FALSE]
-    actual <- slice_stata_rows(data, rows)
+    actual <- slice_dta_rows(data, rows)
 
     expect_identical(actual, expected)
     expect_identical(
-        vapply(actual, stata_storage_type, character(1)),
+        vapply(actual, dta_storage_type, character(1)),
         c(
             byte = "byte", int = "int", long = "long",
             float = "float", double = "double"
@@ -108,7 +108,7 @@ test_that("slice_stata_rows preserves every numeric storage and missing tag", {
     }
 })
 
-test_that("slice_stata_rows preserves temporal and ordinary columns", {
+test_that("slice_dta_rows preserves temporal and ordinary columns", {
     date_path <- fixture_with_temporal_storage("foreign")
     time_path <- fixture_with_temporal_storage("price", "%tc")
     on.exit(unlink(c(date_path, time_path)), add = TRUE)
@@ -126,17 +126,17 @@ test_that("slice_stata_rows preserves temporal and ordinary columns", {
 
     rows <- c(5L, 2L, NA_integer_, 2L)
     expected <- data[rows, , drop = FALSE]
-    actual <- slice_stata_rows(data, rows)
+    actual <- slice_dta_rows(data, rows)
 
     expect_identical(actual, expected)
     expect_s3_class(actual$dates, "Date")
     expect_s3_class(actual$times, "POSIXct")
-    expect_identical(stata_storage_type(actual$dates), "byte")
-    expect_identical(stata_storage_type(actual$times), "int")
+    expect_identical(dta_storage_type(actual$dates), "byte")
+    expect_identical(dta_storage_type(actual$times), "int")
 })
 
-test_that("slice_stata_rows handles named and empty columns", {
-    named <- stata_int(c(1, 2, NA_real_, tagged_missing("a"), 5))
+test_that("slice_dta_rows handles named and empty columns", {
+    named <- dta_int(c(1, 2, NA_real_, tagged_missing("a"), 5))
     names(named) <- letters[seq_along(named)]
     data <- structure(
         list(named = named),
@@ -146,7 +146,7 @@ test_that("slice_stata_rows handles named and empty columns", {
     rows <- c(5L, 2L, NA_integer_, 2L)
 
     expect_identical(
-        slice_stata_rows(data, rows),
+        slice_dta_rows(data, rows),
         data[rows, , drop = FALSE]
     )
 
@@ -155,7 +155,7 @@ test_that("slice_stata_rows handles named and empty columns", {
     # columns are present. Guard that the shortcut stays safe.
     empty_columns <- data.frame(row.names = letters[1:4])
     attr(empty_columns, "label") <- "Empty-column dataset"
-    sliced <- slice_stata_rows(empty_columns, c(4L, 1L))
+    sliced <- slice_dta_rows(empty_columns, c(4L, 1L))
     expect_identical(
         attr(sliced, "label", exact = TRUE), "Empty-column dataset"
     )
@@ -166,17 +166,17 @@ test_that("slice_stata_rows handles named and empty columns", {
              exact = TRUE)
     )
     expect_identical(
-        slice_stata_rows(data[integer(), , drop = FALSE], integer()),
+        slice_dta_rows(data[integer(), , drop = FALSE], integer()),
         data[integer(), , drop = FALSE]
     )
 })
 
-test_that("slice_stata_rows slices ordinary data.tables", {
+test_that("slice_dta_rows slices ordinary data.tables", {
     skip_if_not_installed("data.table")
     data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
-    data <- set_stata_note(data, 4, "dataset note")
-    data <- set_stata_characteristic(data, "source", "fixture")
-    data <- set_stata_note(data, 7, "variable note", variable = "v_double")
+    data <- set_dta_note(data, 4, "dataset note")
+    data <- set_dta_characteristic(data, "source", "fixture")
+    data <- set_dta_note(data, 7, "variable note", variable = "v_double")
     data.table::setattr(data, "sorted", "v_byte")
 
     frame <- as.data.frame(data)
@@ -189,7 +189,7 @@ test_that("slice_stata_rows slices ordinary data.tables", {
     )
     for (rows in locations) {
         expected <- frame[rows, , drop = FALSE]
-        actual <- slice_stata_rows(data, rows)
+        actual <- slice_dta_rows(data, rows)
 
         expect_identical(
             class(actual), c("data.table", "data.frame"),
@@ -202,7 +202,7 @@ test_that("slice_stata_rows slices ordinary data.tables", {
         )
     }
 
-    selected <- slice_stata_rows(data, c(5L, 2L, NA_integer_, 2L))
+    selected <- slice_dta_rows(data, c(5L, 2L, NA_integer_, 2L))
     compact_names <- c("v_byte", "v_int", "v_long", "v_float")
     expect_true(all(vapply(
         as.list(selected)[compact_names],
@@ -219,23 +219,23 @@ test_that("slice_stata_rows slices ordinary data.tables", {
         attr(selected, "notes"), attr(data, "notes")
     )
     expect_identical(
-        stata_characteristic(selected, "source"), "fixture"
+        dta_characteristic(selected, "source"), "fixture"
     )
     expect_silent(data.table::set(
         selected, j = "v_byte", value = as.list(selected)$v_byte
     ))
 
     tagged_table <- data.table::data.table(
-        value = stata_int(c(1, NA_real_, tagged_missing("a")))
+        value = dta_int(c(1, NA_real_, tagged_missing("a")))
     )
-    tagged <- slice_stata_rows(tagged_table, c(3L, 1L, 2L))
+    tagged <- slice_dta_rows(tagged_table, c(3L, 1L, 2L))
     expect_identical(missing_tag(tagged$value), c("a", NA, NA))
-    expect_identical(stata_storage_type(tagged$value), "int")
+    expect_identical(dta_storage_type(tagged$value), "int")
 })
 
-test_that("slice_stata_rows validates its container and locations", {
+test_that("slice_dta_rows validates its container and locations", {
     expect_error(
-        slice_stata_rows(1:3, 1L),
+        slice_dta_rows(1:3, 1L),
         "must be a base data frame, tibble, or data.table"
     )
     subclass <- structure(
@@ -243,7 +243,7 @@ test_that("slice_stata_rows validates its container and locations", {
         class = c("custom_data_frame", "data.frame")
     )
     expect_error(
-        slice_stata_rows(subclass, 1L),
+        slice_dta_rows(subclass, 1L),
         "ordinary base data frame, tibble, or data.table"
     )
     table_subclass <- data.table::data.table(x = 1:3)
@@ -252,20 +252,20 @@ test_that("slice_stata_rows validates its container and locations", {
         c("custom_table", class(table_subclass))
     )
     expect_error(
-        slice_stata_rows(table_subclass, 1L),
+        slice_dta_rows(table_subclass, 1L),
         "ordinary base data frame, tibble, or data.table"
     )
     expect_error(
-        slice_stata_rows(data.frame(x = 1:3), 4L),
+        slice_dta_rows(data.frame(x = 1:3), 4L),
         "Location 4"
     )
     expect_error(
-        slice_stata_rows(data.frame(x = 1:3), "unknown"),
+        slice_dta_rows(data.frame(x = 1:3), "unknown"),
         "doesn't exist"
     )
 })
 
-test_that("reorder_stata_rows permutes a data.table in place", {
+test_that("reorder_dta_rows permutes a data.table in place", {
     skip_if_not_installed("data.table")
     data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
     data.table::setattr(data, "sorted", "v_byte")
@@ -276,7 +276,7 @@ test_that("reorder_stata_rows permutes a data.table in place", {
     compact_names <- c("v_byte", "v_int", "v_long", "v_float")
 
     before <- data.table::address(data)
-    result <- withVisible(reorder_stata_rows(data, rows))
+    result <- withVisible(reorder_dta_rows(data, rows))
     expect_false(result$visible)
     expect_identical(data.table::address(data), before)
     # Checked before any content comparison: base identical() reads
@@ -294,29 +294,29 @@ test_that("reorder_stata_rows permutes a data.table in place", {
     ))
 
     tagged_table <- data.table::data.table(
-        value = stata_int(c(1, NA_real_, tagged_missing("a")))
+        value = dta_int(c(1, NA_real_, tagged_missing("a")))
     )
-    reorder_stata_rows(tagged_table, c(3L, 1L, 2L))
+    reorder_dta_rows(tagged_table, c(3L, 1L, 2L))
     expect_identical(missing_tag(tagged_table$value), c("a", NA, NA))
-    expect_identical(stata_storage_type(tagged_table$value), "int")
+    expect_identical(dta_storage_type(tagged_table$value), "int")
 })
 
-test_that("reorder_stata_rows permutes other ordinary containers", {
+test_that("reorder_dta_rows permutes other ordinary containers", {
     rows <- c(3L, 1L, 2L)
-    frame <- data.frame(x = stata_int(1:3), label = c("a", "b", "c"))
-    reorder_stata_rows(frame, rows)
+    frame <- data.frame(x = dta_int(1:3), label = c("a", "b", "c"))
+    reorder_dta_rows(frame, rows)
     expect_identical(as.double(vctrs::vec_data(frame$x)), c(3, 1, 2))
     expect_identical(frame$label, c("c", "a", "b"))
     expect_identical(row.names(frame), c("1", "2", "3"))
 
-    table <- tibble::tibble(x = stata_int(1:3), label = c("a", "b", "c"))
-    reorder_stata_rows(table, rows)
+    table <- tibble::tibble(x = dta_int(1:3), label = c("a", "b", "c"))
+    reorder_dta_rows(table, rows)
     expect_identical(as.double(vctrs::vec_data(table$x)), c(3, 1, 2))
     expect_identical(table$label, c("c", "a", "b"))
     expect_s3_class(table, "tbl_df")
 })
 
-test_that("reorder_stata_rows permutes reference-state columns", {
+test_that("reorder_dta_rows permutes reference-state columns", {
     data <- read_dta(fixture("all_types_v118.dta"), output = "tibble")
     rows <- rev(seq_len(nrow(data)))
     expected <- vctrs::vec_slice(
@@ -328,7 +328,7 @@ test_that("reorder_stata_rows permutes reference-state columns", {
     # A generated column lives only in the reference state, so the
     # overlay and the physical columns must move together.
     alias <- data
-    reorder_stata_rows(data, rows)
+    reorder_dta_rows(data, rows)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(
         as.list(data)$v_byte
     ))
@@ -339,7 +339,7 @@ test_that("reorder_stata_rows permutes reference-state columns", {
     expect_identical(as.double(vctrs::vec_data(alias$doubled)), expected * 2)
 })
 
-test_that("reorder_stata_rows permutes a structural reference state", {
+test_that("reorder_dta_rows permutes a structural reference state", {
     data <- read_dta(fixture("all_types_v118.dta"), output = "tibble")
     rows <- rev(seq_len(nrow(data)))
     expected <- vctrs::vec_slice(
@@ -354,7 +354,7 @@ test_that("reorder_stata_rows permutes a structural reference state", {
     expect_true(isTRUE(state$physical_overlay))
     names_before <- names(data)
 
-    reorder_stata_rows(data, rows)
+    reorder_dta_rows(data, rows)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(
         as.list(data)$v_byte
     ))
@@ -364,27 +364,27 @@ test_that("reorder_stata_rows permutes a structural reference state", {
     expect_identical(as.double(vctrs::vec_data(data$tripled)), expected * 3)
 })
 
-test_that("reorder_stata_rows validates its container and permutation", {
+test_that("reorder_dta_rows validates its container and permutation", {
     expect_error(
-        reorder_stata_rows(1:3, 1:3),
+        reorder_dta_rows(1:3, 1:3),
         "base data frame, tibble, or data.table"
     )
     expect_error(
-        reorder_stata_rows(
+        reorder_dta_rows(
             dplyr::group_by(tibble::tibble(x = 1:3), x), 1:3
         ),
         "ordinary base data frame"
     )
     data <- data.table::data.table(x = 1:3)
     expect_error(
-        reorder_stata_rows(data, c(1L, 1L, 2L)),
+        reorder_dta_rows(data, c(1L, 1L, 2L)),
         "every row exactly once"
     )
     expect_error(
-        reorder_stata_rows(data, 1:2),
+        reorder_dta_rows(data, 1:2),
         "every row exactly once"
     )
-    expect_error(reorder_stata_rows(data, c(NA_integer_, 2L, 3L)))
-    expect_error(reorder_stata_rows(data, c(1L, 2L, 4L)))
+    expect_error(reorder_dta_rows(data, c(NA_integer_, 2L, 3L)))
+    expect_error(reorder_dta_rows(data, c(1L, 2L, 4L)))
     expect_identical(data$x, 1:3)
 })

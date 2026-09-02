@@ -1,6 +1,6 @@
 test_that("save_dta writes a typed release-118 dataset and returns its input invisibly", {
     data <- data.frame(
-        answer = stata_byte(c(-5, tagged_missing("a"))),
+        answer = dta_byte(c(-5, tagged_missing("a"))),
         stringsAsFactors = FALSE
     )
     attr(data, "label") <- "writer tracer bullet"
@@ -14,7 +14,7 @@ test_that("save_dta writes a typed release-118 dataset and returns its input inv
     actual <- read_dta(path, use_numeric_altrep = FALSE)
     expect_identical(attr(actual, "label", exact = TRUE), "writer tracer bullet")
     expect_identical(var_label(actual$answer), "the answer")
-    expect_identical(stata_storage_type(actual$answer), "byte")
+    expect_identical(dta_storage_type(actual$answer), "byte")
     expect_identical(missing_tag(actual$answer), c(NA_character_, "a"))
     expect_identical(as.double(actual$answer[[1L]]), -5)
 })
@@ -88,7 +88,7 @@ test_that("bare logical columns write as Stata bytes", {
 
     expect_silent(save_dta(data, path))
     actual <- read_dta(path, use_numeric_altrep = FALSE)
-    expect_identical(stata_storage_type(actual$flag), "byte")
+    expect_identical(dta_storage_type(actual$flag), "byte")
     expect_identical(as.double(actual$flag), c(1, 0, NA_real_))
 })
 
@@ -103,7 +103,7 @@ test_that("compact reader storage and materialized fallbacks write identically",
     )), add = TRUE)
 
     source <- data.frame(
-        narrow = stata_byte(c(-5, 100, tagged_missing("b"))),
+        narrow = dta_byte(c(-5, 100, tagged_missing("b"))),
         text = c("alpha", "beta", "alpha")
     )
     expect_silent(save_dta(source, source_path))
@@ -183,7 +183,7 @@ test_that("compact datetimes preserve millisecond integer storage", {
 
     direct <- read_dta(direct_path, use_numeric_altrep = FALSE)$dt
     fallback <- read_dta(materialized_path, use_numeric_altrep = FALSE)$dt
-    expect_identical(stata_storage_type(direct), "int")
+    expect_identical(dta_storage_type(direct), "int")
     expect_identical(as.double(direct), observed)
     expect_identical(as.double(fallback), observed)
 })
@@ -282,7 +282,7 @@ test_that("legacy compact numerics widen around modern missing ranges", {
     )
     for (output in c(direct_output, via_arrow_output)) {
         actual <- read_dta(output, use_numeric_altrep = FALSE)$i
-        expect_identical(stata_storage_type(actual), "long")
+        expect_identical(dta_storage_type(actual), "long")
         expect_identical(as.double(actual), as.double(legacy$i))
         expect_identical(missing_tag(actual), missing_tag(legacy$i))
     }
@@ -395,7 +395,7 @@ test_that("ordered and unordered factors become labelled long integers", {
         class = "dtatools_write_factor_warning"
     )
     actual <- read_dta(path, use_numeric_altrep = FALSE)
-    expect_identical(stata_storage_type(actual$group), "long")
+    expect_identical(dta_storage_type(actual$group), "long")
     expect_identical(as.double(actual$group), c(2, 1, NA_real_))
     expect_identical(val_labels(actual$group), c(a = 1, b = 2, unused = 3))
     expect_identical(as.double(actual$rank), c(1, 2, 1))
@@ -545,7 +545,7 @@ test_that("timezone adjustment retains extreme finite datetimes for native warni
 })
 
 test_that("value labels and ordered dataset notes round-trip", {
-    x <- stata_long(c(-1, 1, tagged_missing("c"), NA_real_))
+    x <- dta_long(c(-1, 1, tagged_missing("c"), NA_real_))
     val_labels(x) <- c(
         missing_c = tagged_missing("c"), positive = 1, negative = -1
     )
@@ -564,7 +564,7 @@ test_that("value labels and ordered dataset notes round-trip", {
 })
 
 test_that("empty value-label text from source metadata round-trips", {
-    x <- stata_int(c(1201, 1213))
+    x <- dta_int(c(1201, 1213))
     attr(x, "labels") <- stats::setNames(c(1201, 1213), c("", ""))
     attr(x, "class") <- c(
         "stata_numeric", "stata_int", "haven_labelled", "vctrs_vctr", "double"
@@ -581,7 +581,7 @@ test_that("empty value-label text from source metadata round-trips", {
 })
 
 test_that("an attached empty value-label table round-trips", {
-    x <- stata_double(c(1, 2))
+    x <- dta_double(c(1, 2))
     attr(x, "labels") <- stats::setNames(double(), character())
     attr(x, "class") <- c(
         "stata_numeric", "stata_double", "haven_labelled", "vctrs_vctr",
@@ -600,7 +600,7 @@ test_that("an attached empty value-label table round-trips", {
 })
 
 test_that("duplicate value-label keys from source metadata round-trip stably", {
-    x <- stata_byte(c(tagged_missing("a"), tagged_missing("b")))
+    x <- dta_byte(c(tagged_missing("a"), tagged_missing("b")))
     attr(x, "labels") <- c(
         `Don't know` = tagged_missing("b"),
         Refused = tagged_missing("a"),
@@ -625,7 +625,7 @@ test_that("duplicate value-label keys from source metadata round-trip stably", {
 })
 
 test_that("value-label text limits count UTF-8 bytes before touching the destination", {
-    x <- stata_long(1)
+    x <- dta_long(1)
     overlong_text <- iconv(
         strrep("é", 16001L),
         from = "UTF-8",
@@ -945,7 +945,7 @@ test_that("generic ALTSTRING metadata stays rooted through native writing", {
     }
     note_text <- paste0("note-", strrep("n", 12000L))
     label_text <- paste0("label-", strrep("l", 12000L))
-    x <- stata_long(c(1, 2))
+    x <- dta_long(c(1, 2))
     attr(x, "labels") <- stats::setNames(c(1, 2), c(label_text, label_text))
     data <- data.frame(x = x)
     attr(data, "notes") <- c(note_text, note_text)
@@ -979,7 +979,7 @@ test_that("generic ALTSTRING metadata stays rooted through native writing", {
 })
 
 test_that("numeric Stata calendar formats that remain numeric are preserved", {
-    x <- stata_int(c(0, 1, NA_real_))
+    x <- dta_int(c(0, 1, NA_real_))
     attr(x, "format.stata") <- "%tmcY_m"
     data <- data.frame(x = x)
     path <- tempfile(fileext = ".dta")

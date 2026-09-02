@@ -149,7 +149,7 @@
 #' data.table's `list()`.
 #'
 #' `gen()` appends one variable and does not implement Stata's `before()` or
-#' `after()` placement. A declared `stata_*()` result keeps its numeric storage;
+#' `after()` placement. A declared `dta_*()` result keeps its numeric storage;
 #' otherwise logical, integer, double, and `Date` results use Stata `float`
 #' storage. Ordinary `POSIXct` results use Stata `double` storage so their
 #' millisecond datetime representation is not rounded. `Date` and `POSIXct`
@@ -178,7 +178,7 @@
 #' Topic \tab Stata \tab dtatools \cr
 #' Existing name \tab Error \tab Error before mutation \cr
 #' Numeric default \tab `float`, or `double` after `set type` \tab `float`; `POSIXct` uses `double` \cr
-#' Explicit storage \tab Type prefix \tab `stata_*()` value expression \cr
+#' Explicit storage \tab Type prefix \tab `dta_*()` value expression \cr
 #' Strings \tab Smallest fitting `str#` or `strL` \tab Declared width, otherwise smallest UTF-8-byte width or `strL` \cr
 #' Rows outside `if` \tab Numeric `.` or string `""` \tab Same \cr
 #' Expression with `if` \tab Evaluated only for selected observations \tab Evaluated once for all rows, then selected \cr
@@ -1062,13 +1062,17 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     value
 }
 
+# `.mutate_data()` has already shadow-checked a non-formula `where` in
+# full, and a formula body is exempt, so the operand is not checked here.
 .fused_comparison_scalar <- function(expression, columns, environment) {
     # `.N` is a scalar too, but it lives outside the columns; leave that
     # comparison to the general path rather than teach the plan about it.
     if (.mentions_row_counters(expression)) return(NULL)
-    value <- .eval_in_mutation_data(expression, columns, environment)
+    value <- .eval_in_mutation_data(expression, columns, environment,
+                                    shadow = FALSE)
+    if (length(value) != 1L) return(NULL)
     scalar <- .stata_compare_scalar(value)
-    if (length(value) != 1L || is.null(scalar)) return(NULL)
+    if (is.null(scalar)) return(NULL)
     list(value = value, scalar = scalar)
 }
 
@@ -1570,9 +1574,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # A real metadata copy must revoke exclusive patch ownership; this internal
     # cast must not.
     prototype <- if (inherits(target, "stata_temporal")) {
-        .stata_temporal_ptype(stata_storage_type(target), target)
+        .stata_temporal_ptype(dta_storage_type(target), target)
     } else if (inherits(target, "stata_numeric")) {
-        .stata_ptype(stata_storage_type(target), target)
+        .stata_ptype(dta_storage_type(target), target)
     } else {
         target[integer()]
     }
@@ -1815,7 +1819,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             call. = FALSE
         )
     }
-    declared <- stata_storage_type(values)
+    declared <- dta_storage_type(values)
     base_date <- inherits(values, "Date") &&
         !inherits(values, "stata_temporal")
     base_datetime <- inherits(values, "POSIXct") &&

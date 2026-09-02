@@ -149,18 +149,18 @@ profile_memory <- function(code, prefix) {
 rows <- 5000000L
 small_rows <- 50000L
 repetitions <- 100L
-warmup <- data.frame(compact = stata_byte(1:2))
+warmup <- data.frame(compact = dta_byte(1:2))
 for (iteration in seq_len(5L)) {
     replace_values(warmup, compact, 2, where = 1)
 }
-small <- data.frame(compact = stata_byte(rep(1, small_rows)))
+small <- data.frame(compact = dta_byte(rep(1, small_rows)))
 small_replacement_time <- system.time(
     for (iteration in seq_len(repetitions)) {
         replace_values(small, compact, 2, where = small_rows)
     }
 )[["elapsed"]] / repetitions
 data <- data.frame(
-    compact = stata_byte(rep(1, rows)),
+    compact = dta_byte(rep(1, rows)),
     untouched = runif(rows)
 )
 untouched_trace <- tracemem(data$untouched)
@@ -244,7 +244,7 @@ stopifnot(
     all_false_plan_allocation < compact_byte_bytes
 )
 
-explicit_rows <- stata_long(seq_len(rows))
+explicit_rows <- dta_long(seq_len(rows))
 integer_explicit_rows <- seq_len(rows)
 integer_explicit_plan_time <- system.time(
     for (iteration in seq_len(3L)) {
@@ -282,7 +282,7 @@ position_vector_replacement_time <- position_vector_profile$elapsed
 largest_position_vector_allocation <- position_vector_profile$largest
 
 selected_count <- rows - 1L
-selected_rows <- stata_long(seq_len(selected_count))
+selected_rows <- dta_long(seq_len(selected_count))
 integer_selected_rows <- seq_len(selected_count)
 selected_replacement <- rep.int(2L, selected_count)
 integer_selected_time <- system.time(
@@ -301,7 +301,7 @@ selected_position_row_reads <- dtatools:::.reference_row_reads(FALSE)
 selected_vector_replacement_time <- selected_profile$elapsed
 largest_selected_vector_allocation <- selected_profile$largest
 
-compact_replacement <- stata_byte(rep(3, rows))
+compact_replacement <- dta_byte(rep(3, rows))
 compact_vector_profile <- profile_memory(
     replace_values(data, compact, .env$compact_replacement),
     "dtatools-reference-compact-vector-replacement-"
@@ -340,7 +340,7 @@ stopifnot(
 )
 
 late_missing <- data.frame(
-    compact = stata_byte(c(rep(1, rows - 1L), NA_real_))
+    compact = dta_byte(c(rep(1, rows - 1L), NA_real_))
 )
 late_missing_time <- system.time(
     for (iteration in seq_len(repetitions)) {
@@ -354,7 +354,7 @@ stopifnot(
 )
 
 cleared_missing <- data.frame(
-    compact = stata_byte(c(rep(1, rows - 1L), NA_real_))
+    compact = dta_byte(c(rep(1, rows - 1L), NA_real_))
 )
 missing_cycle_time <- system.time(
     for (iteration in seq_len(repetitions)) {
@@ -369,7 +369,7 @@ stopifnot(
     missing_cycle_time < max(0.002, replacement_time * 10)
 )
 
-proxy_source <- stata_byte(rep(1, rows))
+proxy_source <- dta_byte(rep(1, rows))
 proxy <- data.frame(compact = dtatools:::.metadata_copy(proxy_source))
 proxy_profile <- profile_memory(
     replace_values(proxy, compact, 2, where = rows),
@@ -392,7 +392,7 @@ stopifnot(
 
 compact_trace <- tracemem(data$compact)
 generation_profile <- profile_memory(
-    gen(data, generated, stata_byte(3)),
+    gen(data, generated, dta_byte(3)),
     "dtatools-reference-generation-"
 )
 generation_time <- generation_profile$elapsed
@@ -402,17 +402,17 @@ stopifnot(
     identical(tracemem(data$untouched), untouched_trace),
     dtatools:::.is_unmaterialized_numeric_altrep(data$compact),
     dtatools:::.is_unmaterialized_numeric_altrep(data$generated),
-    identical(stata_storage_type(data$generated), "byte"),
+    identical(dta_storage_type(data$generated), "byte"),
     largest_generation_allocation < full_double_bytes
 )
 
 integer_generation_values <- seq_len(rows)
 direct_float_profile <- profile_memory(
-    direct_float <- stata_float(integer_generation_values),
+    direct_float <- dta_float(integer_generation_values),
     "dtatools-reference-direct-float-construction-"
 )
 direct_float_time <- direct_float_profile$elapsed
-integer_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
+integer_generation_data <- data.frame(anchor = dta_byte(rep(1, rows)))
 integer_generation_trace <- tracemem(integer_generation_data$anchor)
 integer_generation_profile <- profile_memory(
     gen(integer_generation_data, generated, integer_generation_values),
@@ -421,7 +421,7 @@ integer_generation_profile <- profile_memory(
 integer_generation_time <- integer_generation_profile$elapsed
 largest_integer_generation_allocation <- integer_generation_profile$largest
 
-position_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
+position_generation_data <- data.frame(anchor = dta_byte(rep(1, rows)))
 position_generation_profile <- profile_memory(
     gen(
         position_generation_data, generated, integer_generation_values,
@@ -433,8 +433,8 @@ position_vector_generation_time <- position_generation_profile$elapsed
 largest_position_generation_allocation <- position_generation_profile$largest
 total_position_generation_allocation <- position_generation_profile$total
 
-compact_generation_values <- stata_byte(rep(2, rows))
-compact_generation_data <- data.frame(anchor = stata_byte(rep(1, rows)))
+compact_generation_values <- dta_byte(rep(2, rows))
+compact_generation_data <- data.frame(anchor = dta_byte(rep(1, rows)))
 compact_generation_profile <- profile_memory(
     gen(compact_generation_data, generated, compact_generation_values),
     "dtatools-reference-compact-vector-generation-"
@@ -480,7 +480,7 @@ stopifnot(
 temporal_generation_values <- as.POSIXct(
     "2000-01-01", tz = "UTC"
 ) + seq_len(rows)
-temporal_generation_data <- data.frame(anchor = stata_byte(.size = rows))
+temporal_generation_data <- data.frame(anchor = dta_byte(.size = rows))
 temporal_generation_profile <- profile_memory(
     gen(
         temporal_generation_data, generated,
@@ -498,7 +498,7 @@ stopifnot(
     ),
     inherits(temporal_generation_data$generated, "stata_datetime"),
     identical(
-        stata_storage_type(temporal_generation_data$generated), "double"
+        dta_storage_type(temporal_generation_data$generated), "double"
     ),
     largest_temporal_generation_allocation <= full_double_bytes * 1.01,
     total_temporal_generation_allocation < full_double_bytes * 2,
@@ -506,7 +506,7 @@ stopifnot(
 )
 
 character_generation_data <- data.frame(
-    anchor = stata_byte(rep(1, rows))
+    anchor = dta_byte(rep(1, rows))
 )
 character_generation_profile <- profile_memory(
     gen(character_generation_data, generated, "x"),
@@ -539,7 +539,7 @@ full_character_fill_time <- median(vapply(
     double(1)
 ))
 full_character_data <- data.frame(
-    anchor = stata_byte(rep(1, rows))
+    anchor = dta_byte(rep(1, rows))
 )
 full_character_profile <- profile_memory(
     gen(full_character_data, generated, .env$full_character_values),
@@ -548,7 +548,7 @@ full_character_profile <- profile_memory(
 full_character_generation_time <- median(vapply(
     seq_len(full_character_timing_repetitions),
     function(iteration) {
-        timed_data <- data.frame(anchor = stata_byte(.size = rows))
+        timed_data <- data.frame(anchor = dta_byte(.size = rows))
         system.time(
             gen(timed_data, generated, .env$full_character_values)
         )[["elapsed"]]
@@ -575,7 +575,7 @@ stopifnot(
 )
 
 sparse_character_data <- data.frame(
-    anchor = stata_byte(rep(1, rows))
+    anchor = dta_byte(rep(1, rows))
 )
 sparse_character_profile <- profile_memory(
     gen(sparse_character_data, generated, "wide", where = rows),
@@ -607,7 +607,7 @@ selected_character_values <- rep(
     c("x", "wide"), length.out = selected_count
 )
 selected_character_data <- data.frame(
-    anchor = stata_byte(rep(1, rows))
+    anchor = dta_byte(rep(1, rows))
 )
 invisible(dtatools:::.reference_row_reads(TRUE))
 selected_character_profile <- profile_memory(
@@ -665,7 +665,7 @@ scalar_dictionary_cache <- dtatools:::.dictstring_cached_count(
     scalar_dictionary_source
 )
 scalar_dictionary_generation_data <- data.frame(
-    anchor = stata_byte(.size = rows)
+    anchor = dta_byte(.size = rows)
 )
 scalar_dictionary_generation_profile <- profile_memory(
     gen(
@@ -736,7 +736,7 @@ stopifnot(
         ordinary_scalar_replacement_time * 1.75
 )
 dictionary_generation_data <- data.frame(
-    anchor = stata_byte(.size = rows)
+    anchor = dta_byte(.size = rows)
 )
 dictionary_generation_profile <- profile_memory(
     gen(
@@ -809,7 +809,7 @@ rm(
 near_unique_rows <- min(rows, 1000000L)
 near_unique_values <- sprintf("unique-%07d", seq_len(near_unique_rows))
 near_unique_ordinary_data <- data.frame(
-    anchor = stata_byte(.size = near_unique_rows)
+    anchor = dta_byte(.size = near_unique_rows)
 )
 near_unique_ordinary_profile <- profile_memory(
     gen(
@@ -835,7 +835,7 @@ unlink(near_unique_path)
 stopifnot(dtatools:::.is_unmaterialized_dictstring(near_unique_source))
 near_unique_cache <- dtatools:::.dictstring_cached_count(near_unique_source)
 near_unique_dictionary_data <- data.frame(
-    anchor = stata_byte(.size = near_unique_rows)
+    anchor = dta_byte(.size = near_unique_rows)
 )
 near_unique_dictionary_profile <- profile_memory(
     gen(

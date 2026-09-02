@@ -144,10 +144,10 @@ behavior as haven-compatible vectors.
 }
 
 \section{Stata storage declarations}{
-\code{stata_storage_type()} reports \code{"byte"}, \code{"int"},
+\code{dta_storage_type()} reports \code{"byte"}, \code{"int"},
 \code{"long"}, \code{"float"}, or \code{"double"} without materializing
-compact backing. Use \code{stata_byte()}, \code{stata_int()},
-\code{stata_long()}, \code{stata_float()}, and \code{stata_double()} to
+compact backing. Use \code{dta_byte()}, \code{dta_int()},
+\code{dta_long()}, \code{dta_float()}, and \code{dta_double()} to
 declare storage for derived vectors. Constructors and explicit casts reject
 unrepresentable values and name the wider constructor to use. Float
 construction rounds to binary32, as Stata does.

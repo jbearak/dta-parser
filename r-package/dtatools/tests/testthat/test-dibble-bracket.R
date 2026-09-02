@@ -62,7 +62,7 @@ test_that("several assignments apply left to right", {
 })
 
 test_that("each assignment in j commits or fails on its own", {
-    data <- dibble(x = stata_byte(c(1, 2, 3)))
+    data <- dibble(x = dta_byte(c(1, 2, 3)))
     before <- names(data)
     expect_error(data[2, `:=`(y = 1, x = 1000)], "byte")
     expect_identical(names(data), c(before, "y"))
@@ -173,7 +173,7 @@ test_that("the shadow check fires in i and in values", {
 })
 
 test_that("a compact target stays compact after a bracket replacement", {
-    data <- dibble(id = c(1, 1, 2), x = stata_int(1:3))
+    data <- dibble(id = c(1, 1, 2), x = dta_int(1:3))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     data[2, x := 9L]
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
@@ -186,7 +186,7 @@ test_that("a compact target stays compact after a bracket replacement", {
     expect_identical(as.double(data$x), c(1, 7, 7))
     expect_identical(stata_storage_type(data$x), "int")
 
-    data[, y := stata_byte(.n)]
+    data[, y := dta_byte(.n)]
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$y))
     expect_identical(stata_storage_type(data$y), "byte")
 })

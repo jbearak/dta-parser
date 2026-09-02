@@ -78,10 +78,10 @@ any future change to it will be documented as producing new signatures.
 }
 
 \examples{
-data <- data.frame(answer = stata_byte(c(1, tagged_missing("a"))))
+data <- data.frame(answer = dta_byte(c(1, tagged_missing("a"))))
 datasig(data)
 
 # Swapped values change the signature (Stata's datasignature misses this).
-swapped <- data.frame(answer = stata_byte(c(tagged_missing("a"), 1)))
+swapped <- data.frame(answer = dta_byte(c(tagged_missing("a"), 1)))
 datasig(swapped)
 }

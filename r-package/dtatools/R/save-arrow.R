@@ -73,7 +73,7 @@
 #' @return `data`, invisibly.
 #' @examples
 #' path <- tempfile(fileext = ".arrow")
-#' data <- data.frame(answer = stata_byte(c(1, tagged_missing("a"))))
+#' data <- data.frame(answer = dta_byte(c(1, tagged_missing("a"))))
 #' save_arrow(data, path)
 #' read_arrow(path)
 #' unlink(path)
@@ -363,8 +363,8 @@ save_arrow <- function(data, path,
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
                                         value_label_index) {
     .arrow_validate_stata_metadata_utf8(column, sprintf("Column `%s`", name))
-    characteristics <- stata_characteristics(column)
-    notes <- stata_notes(column)
+    characteristics <- dta_characteristics(column)
+    notes <- dta_notes(column)
     variable_label <- .arrow_utf8(
         .write_text(
             attr(column, "label", exact = TRUE),
@@ -563,8 +563,8 @@ save_arrow <- function(data, path,
     }
     label <- .arrow_utf8(.write_text(label, "label"), "Dataset label")
     .arrow_validate_stata_metadata_utf8(data, "Dataset")
-    notes <- stata_notes(data)
-    characteristics <- stata_characteristics(data)
+    notes <- dta_notes(data)
+    characteristics <- dta_characteristics(data)
     value_label_plan <- .new_write_value_label_plan(
         data,
         validate_column = function(column, name, index) {

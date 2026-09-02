@@ -70,9 +70,9 @@ strings and numerics or dates and datetimes, are errors.
 }
 \examples{
 x <- c(1, tagged_missing("a"), NA_real_)
-column <- stata_byte(c(1, NA_real_, tagged_missing("a")))
+column <- dta_byte(c(1, NA_real_, tagged_missing("a")))
 dta_in(x, column)
 dta_match(x, column)
 dta_identical(column, x)
-dta_union(column, stata_int(c(2, tagged_missing("b"))))
+dta_union(column, dta_int(c(2, tagged_missing("b"))))
 }

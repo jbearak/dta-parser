@@ -107,7 +107,7 @@ The earlier report included fresh-process compact times and separate repeated co
 | `dta_merge()`, standard R | 0.1468 s | 0.657 GB |
 | dplyr, standard R | 0.1019 s | 0.742 GB |
 
-The fixture has 61 compact byte or int columns and 138 `stata_double` columns. At the checkpoint, compact byte, int, long, and float columns used the merge-private parallel gather, while Stata doubles did not. `.stata_merge_slice()` stripped metadata with `.stata_data(x)`, subset one double column, then restored the class and attributes. See the pinned checkpoint's [`R/stata-merge.R`](https://github.com/jbearak/dta-tools/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtatools/R/stata-merge.R#L461-L474), [`.stata_data()`](https://github.com/jbearak/dta-tools/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtatools/R/stata-numeric.R#L306-L325), and [metadata restoration](https://github.com/jbearak/dta-tools/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtatools/R/stata-numeric.R#L344-L355).
+The fixture has 61 compact byte or int columns and 138 `dta_double` columns. At the checkpoint, compact byte, int, long, and float columns used the merge-private parallel gather, while Stata doubles did not. `.stata_merge_slice()` stripped metadata with `.stata_data(x)`, subset one double column, then restored the class and attributes. See the pinned checkpoint's [`R/stata-merge.R`](https://github.com/jbearak/dta-tools/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtatools/R/stata-merge.R#L461-L474), [`.stata_data()`](https://github.com/jbearak/dta-tools/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtatools/R/stata-numeric.R#L306-L325), and [metadata restoration](https://github.com/jbearak/dta-tools/blob/21a06a28f6e4d7ca5f75646f10ac6b2cfcd133c2/r-package/dtatools/R/stata-numeric.R#L344-L355).
 
 The compact fixture profile over 20 joins assigned 1.186 seconds of self time to `.stata_merge_slice()`, 0.323 seconds to `.metadata_copy()`, and 0.250 seconds to `.stata_merge_coalesce_columns()`. Matching took 0.256 seconds. Per-column double slicing and attribute handling, not compact-byte copying, dominated this fixture.
 
@@ -127,7 +127,7 @@ There is no reason to fork `vec_locate_matches()` for this work. Keep vctrs as t
 
 ## Implementation outcome
 
-The implementation following this research batched ordinary disjoint and coalesced columns through data-frame-level vctrs operations. It also generalized the existing private native gather to accept `stata_double` sources, attach metadata directly to fresh results, and copy those columns in the same worker batch as compact storage. No dplyr or vctrs source code was copied.
+The implementation following this research batched ordinary disjoint and coalesced columns through data-frame-level vctrs operations. It also generalized the existing private native gather to accept `dta_double` sources, attach metadata directly to fresh results, and copy those columns in the same worker batch as compact storage. No dplyr or vctrs source code was copied.
 
 Nine-iteration medians on the same fixture after those changes were:
 

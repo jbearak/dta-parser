@@ -56,7 +56,7 @@ Full-length integer and compact-byte generation cases apply the same allocation
 limit and catch coercion or validation temporaries that scalar generation cannot
 expose. The integer case also uses a compact position sequence and limits total
 profiled allocation to less than one double column. Its runtime is bounded by
-an independent `stata_float()` construction, so validation and encoding cannot
+an independent `dta_float()` construction, so validation and encoding cannot
 return to separate full-vector passes. Scalar, full-vector, and sparse character
 generation may allocate their result vector once, but cannot
 allocate a second full-length character-vector header. The full-vector case is

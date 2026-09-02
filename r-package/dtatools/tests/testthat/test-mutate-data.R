@@ -112,7 +112,7 @@ test_that("values and selection see the unchanged dataset", {
     gen(data, created, source * 2)
     expect_identical(as.double(data$created), c(22, 24, 26, 28))
 
-    for (constructor in list(identity, stata_byte)) {
+    for (constructor in list(identity, dta_byte)) {
         target <- constructor(c(2L, 1L, 1L))
         direct <- data.frame(x = target)
         replace_values(direct, x, 9, where = x)
@@ -140,17 +140,17 @@ test_that("where has documented logical and position semantics", {
     compact_positions <- data.frame(x = 1:3)
     replace_values(
         compact_positions, x, c(8L, 9L),
-        where = stata_byte(c(3, 1))
+        where = dta_byte(c(3, 1))
     )
     expect_identical(compact_positions$x, c(9L, 2L, 8L))
 
     replace_values(
         compact_positions, x, c(6L, 7L, 5L),
-        where = stata_long(c(3, 1, 3))
+        where = dta_long(c(3, 1, 3))
     )
     expect_identical(compact_positions$x, c(6L, 2L, 5L))
 
-    all_rows <- data.frame(x = stata_byte(1:3))
+    all_rows <- data.frame(x = dta_byte(1:3))
     replace_values(all_rows, x, 4, where = rep(TRUE, 3))
     expect_identical(as.double(all_rows$x), rep(4, 3))
 
@@ -201,10 +201,10 @@ test_that("where has documented logical and position semantics", {
 })
 
 test_that("full-dataset values are gathered by selected row", {
-    rows <- stata_long(c(5, 2, 5))
+    rows <- dta_long(c(5, 2, 5))
     values <- 11:15
 
-    replaced <- data.frame(x = stata_byte(1:5))
+    replaced <- data.frame(x = dta_byte(1:5))
     replace_values(replaced, x, values, where = rows)
     expect_identical(as.double(replaced$x), c(1, 12, 3, 4, 15))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(replaced$x))
@@ -216,14 +216,14 @@ test_that("full-dataset values are gathered by selected row", {
 
     strings <- data.frame(x = 1:5)
     string_values <- structure(letters[1:5], label = "letters")
-    gen(strings, y, string_values, where = stata_long(c(3, 1)))
+    gen(strings, y, string_values, where = dta_long(c(3, 1)))
     expect_identical(as.character(strings$y), c("a", "", "c", "", ""))
     expect_identical(attr(strings$y, "label"), "letters")
     expect_identical(attr(strings$y, "stata.string.storage"), "str1")
 })
 
 test_that("metadata-bearing numerics remain valid row positions", {
-    rows <- set_stata_note(c(3, 1), 2L, "selection note")
+    rows <- set_dta_note(c(3, 1), 2L, "selection note")
     data <- data.frame(value = 1:3)
 
     replace_values(data, value, c(30L, 10L), where = rows)
@@ -237,8 +237,8 @@ test_that("metadata-bearing numerics remain valid row positions", {
 })
 
 test_that("compact selected positions use one native patch plan", {
-    data <- data.frame(value = stata_byte(rep(1, 10)))
-    rows <- stata_long(c(2, 5, 9))
+    data <- data.frame(value = dta_byte(rep(1, 10)))
+    rows <- dta_long(c(2, 5, 9))
     expect_identical(dtatools:::.reference_row_reads(TRUE), 0)
     replace_values(data, value, c(3, 4, 5), where = rows)
     row_reads <- dtatools:::.reference_row_reads(FALSE)
@@ -252,7 +252,7 @@ test_that("excluded full-dataset values do not affect validation", {
     replace_values(ordinary, x, c(1.5, 9, Inf), where = 2L)
     expect_identical(ordinary$x, c(1L, 9L, 3L))
 
-    materialized <- data.frame(x = stata_byte(1:3))
+    materialized <- data.frame(x = dta_byte(1:3))
     invisible(dtatools:::.force_altrep_materialization(materialized$x))
     replace_values(materialized, x, c(101, 9, 101), where = 2L)
     expect_identical(as.double(materialized$x), c(1, 9, 3))
@@ -297,9 +297,9 @@ test_that("native mutation writers reject untrusted row plans", {
     generate_character <- get(
         "C_dtatools_generate_character", namespace
     )
-    generated_attributes <- attributes(stata_byte(double()))
+    generated_attributes <- attributes(dta_byte(double()))
 
-    target <- stata_byte(1:3)
+    target <- dta_byte(1:3)
     expect_error(.Call(patch, target, 0L, 9), "mutation row")
     expect_error(.Call(patch, target, 4L, 9), "mutation row")
     expect_identical(as.double(target), c(1, 2, 3))
@@ -389,7 +389,7 @@ test_that("native write interrupts roll back values and compact state", {
             interrupt_patch <- function(compact) {
                 size <- 100000L
                 target <- if (compact) {
-                    stata_float(rep.int(1L, size))
+                    dta_float(rep.int(1L, size))
                 } else {
                     rep(1, size)
                 }
@@ -610,7 +610,7 @@ test_that("native generation interrupts leave reference state unchanged", {
             load_package(package_path)
             interrupt_generation <- function(character, existing) {
                 size <- 20000000L
-                data <- data.frame(anchor = stata_byte(.size = size))
+                data <- data.frame(anchor = dta_byte(.size = size))
                 if (existing) gen(data, prior, 1)
                 values <- if (character) "x" else seq_len(size)
                 before <- serialize(data, NULL)
@@ -651,7 +651,7 @@ test_that("native generation interrupts leave reference state unchanged", {
                     source = rep(dictionary, length.out = size)
                 ), path)
                 source <- read_arrow(path)$source
-                data <- data.frame(anchor = stata_byte(.size = size))
+                data <- data.frame(anchor = dta_byte(.size = size))
                 before <- serialize(data, NULL)
                 cache_before <- dtatools:::.dictstring_cached_count(source)
                 parent <- Sys.getpid()
@@ -764,10 +764,10 @@ test_that("generic ALTREP detachment interrupts before installation", {
 
 test_that("compact replacement patches every storage without materializing", {
     constructors <- list(
-        byte = stata_byte,
-        int = stata_int,
-        long = stata_long,
-        float = stata_float
+        byte = dta_byte,
+        int = dta_int,
+        long = dta_long,
+        float = dta_float
     )
     for (storage in names(constructors)) {
         target <- constructors[[storage]](c(
@@ -785,7 +785,7 @@ test_that("compact replacement patches every storage without materializing", {
             where = c(1, 2, 3)
         )
         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$target))
-        expect_identical(stata_storage_type(data$target), storage)
+        expect_identical(dta_storage_type(data$target), storage)
         expect_equal(as.double(data$target)[c(1, 4, 5)],
                      c(9, tagged_missing("a"), tagged_missing("z")))
         expect_true(is_tagged_missing(data$target[[2]], "b"))
@@ -797,19 +797,19 @@ test_that("compact replacement patches every storage without materializing", {
 })
 
 test_that("compact validation is strict and atomic", {
-    data <- data.frame(x = stata_byte(c(1, 2, 3)))
+    data <- data.frame(x = dta_byte(c(1, 2, 3)))
     for (bad in list(101, 1.5, NaN, Inf)) {
         before <- serialize(data$x, NULL)
         expect_error(replace_values(data, x, bad, where = 2))
         expect_identical(serialize(data$x, NULL), before)
         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     }
-    expect_error(replace_values(data, x, 101, where = 2), "stata_int")
-    expect_identical(stata_storage_type(data$x), "byte")
+    expect_error(replace_values(data, x, 101, where = 2), "dta_int")
+    expect_identical(dta_storage_type(data$x), "byte")
 })
 
 test_that("compact replacement updates the missing-value cache", {
-    data <- data.frame(x = stata_byte(1:3))
+    data <- data.frame(x = dta_byte(1:3))
     expect_false(anyNA(data$x))
     replace_values(data, x, NA_real_, where = 2)
     expect_true(anyNA(data$x))
@@ -817,12 +817,12 @@ test_that("compact replacement updates the missing-value cache", {
     expect_false(anyNA(data$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
 
-    late_missing <- data.frame(x = stata_byte(c(1, 2, NA_real_)))
+    late_missing <- data.frame(x = dta_byte(c(1, 2, NA_real_)))
     replace_values(late_missing, x, 9, where = 1)
     expect_true(anyNA(late_missing$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(late_missing$x))
 
-    duplicate <- data.frame(x = stata_byte(1:3))
+    duplicate <- data.frame(x = dta_byte(1:3))
     replace_values(
         duplicate, x, c(NA_real_, 2), where = c(1, 1)
     )
@@ -830,20 +830,20 @@ test_that("compact replacement updates the missing-value cache", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(duplicate$x))
 
     generated <- data.frame(x = 1:3)
-    gen(generated, y, stata_byte(1), where = 2)
+    gen(generated, y, dta_byte(1), where = 2)
     expect_true(anyNA(generated$y))
     replace_values(generated, y, 1, where = c(1, 3))
     expect_false(anyNA(generated$y))
 
     restored <- unserialize(serialize(
-        data.frame(x = stata_byte(c(NA_real_, 1))), NULL
+        data.frame(x = dta_byte(c(NA_real_, 1))), NULL
     ))
     replace_values(restored, x, 1, where = 1)
     expect_false(anyNA(restored$x))
 
     arrow_path <- tempfile(fileext = ".arrow")
     on.exit(unlink(arrow_path), add = TRUE)
-    save_arrow(data.frame(x = stata_byte(c(NA_real_, 1))), arrow_path)
+    save_arrow(data.frame(x = dta_byte(c(NA_real_, 1))), arrow_path)
     arrow <- read_arrow(arrow_path)
     replace_values(arrow, x, 1, where = 1)
     expect_false(anyNA(arrow$x))
@@ -853,7 +853,7 @@ test_that("DTA-loaded compact and temporal columns use native patching", {
     data <- read_dta(fixture("all_types_v118.dta"))
     compact <- names(data)[vapply(
         data,
-        function(column) isTRUE(stata_storage_type(column) %in%
+        function(column) isTRUE(dta_storage_type(column) %in%
             c("byte", "int", "long", "float")),
         logical(1)
     )]
@@ -914,7 +914,7 @@ test_that("ordinary, materialized, temporal, and character columns mutate", {
     replace_values(self_replacement, text, text)
     expect_identical(self_replacement$text, c("", "value"))
 
-    compact <- stata_int(1:3)
+    compact <- dta_int(1:3)
     dtatools:::.force_altrep_materialization(compact)
     materialized <- data.frame(x = compact)
     replace_values(materialized, x, 7, where = 1)
@@ -962,14 +962,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(names(data), c("x", "eligible", "generated"))
     expect_identical(names(alias), names(data))
     expect_identical(as.double(data$generated), c(2, NA, 6))
-    expect_identical(stata_storage_type(data$generated), "float")
+    expect_identical(dta_storage_type(data$generated), "float")
     expect_s3_class(data, "tbl_df")
     expect_equal(dim(data), c(3L, 3L))
     expect_error(gen(data, generated, 1), "already exists")
     expect_identical(ncol(data), 3L)
 
-    gen(data, declared, stata_int(x))
-    expect_identical(stata_storage_type(data$declared), "int")
+    gen(data, declared, dta_int(x))
+    expect_identical(dta_storage_type(data$declared), "int")
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$declared))
 
     dates <- as.Date("2020-01-01") + 0:2
@@ -987,14 +987,14 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(as.double(temporal$datetime), as.double(datetimes))
     expect_s3_class(temporal$date, "stata_date")
     expect_s3_class(temporal$datetime, "stata_datetime")
-    expect_identical(stata_storage_type(temporal$date), "float")
-    expect_identical(stata_storage_type(temporal$datetime), "double")
+    expect_identical(dta_storage_type(temporal$date), "float")
+    expect_identical(dta_storage_type(temporal$datetime), "double")
 
-    compact_source <- data.frame(x = stata_byte(1:3))
+    compact_source <- data.frame(x = dta_byte(1:3))
     gen(compact_source, y, x)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact_source$y))
-    expect_identical(stata_storage_type(compact_source$y), "byte")
+    expect_identical(dta_storage_type(compact_source$y), "byte")
     expect_identical(as.double(compact_source$y), c(1, 2, 3))
 
     integer_source <- data.frame(x = 1:3)
@@ -1005,7 +1005,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(integer_source$y))
     expect_identical(as.double(integer_source$y), c(4, 2, 3))
 
-    labelled <- stata_byte(c(1, 2, 3))
+    labelled <- dta_byte(c(1, 2, 3))
     attr(labelled, "label") <- "Generated label"
     attr(labelled, "labels") <- c(One = 1)
     attr(labelled, "format.stata") <- "%8.0g"
@@ -1047,7 +1047,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
         label = "Authored string",
         stata.string.storage = "str5"
     )
-    gen(strings, y, authored_string, where = stata_long(c(3, 1, 3)))
+    gen(strings, y, authored_string, where = dta_long(c(3, 1, 3)))
     expect_identical(as.character(strings$y), c("one", "", "three"))
     expect_identical(attr(strings$y, "label"), "Authored string")
     expect_identical(attr(strings$y, "stata.string.storage"), "str5")
@@ -1087,17 +1087,17 @@ test_that("gen preserves metadata on otherwise supported numeric classes", {
         labelled = set_val_labels(c(1, 2, 1), One = 1, Two = 2)
     )
     for (kind in names(sources)) {
-        source <- set_stata_note(sources[[kind]], 3L, "source note")
-        source <- set_stata_characteristic(source, "source", kind)
+        source <- set_dta_note(sources[[kind]], 3L, "source note")
+        source <- set_dta_characteristic(source, "source", kind)
         data <- data.frame(anchor = 1:3)
 
         gen(data, copied, .env$source)
 
         expect_identical(
-            stata_notes(data$copied), c(`3` = "source note"), info = kind
+            dta_notes(data$copied), c(`3` = "source note"), info = kind
         )
         expect_identical(
-            stata_characteristics(data$copied), c(source = kind), info = kind
+            dta_characteristics(data$copied), c(source = kind), info = kind
         )
         if (identical(kind, "date")) {
             expect_s3_class(data$copied, "stata_date")
@@ -1137,7 +1137,7 @@ test_that("repeated gen appends ordered reference-state bindings", {
 
 test_that("copy_data isolates every mutable column backing", {
     data <- data.frame(
-        compact = stata_long(c(1, tagged_missing("a"), 3)),
+        compact = dta_long(c(1, tagged_missing("a"), 3)),
         ordinary = c(4, 5, 6),
         string = c("a", "b", "c")
     )
@@ -1270,7 +1270,7 @@ test_that("copy_data isolates every mutable column backing", {
 })
 
 test_that("subsets, metadata proxies, and serialized data stay isolated", {
-    source <- data.frame(x = stata_int(c(1, 2, 3)))
+    source <- data.frame(x = dta_int(c(1, 2, 3)))
     subset <- source[1:2, , drop = FALSE]
     replace_values(subset, x, 9, where = 1)
     expect_identical(as.double(source$x), c(1, 2, 3))
@@ -1297,7 +1297,7 @@ test_that("detached metadata payloads do not retain former proxy owners", {
     finalized <- new.env(parent = emptyenv())
     finalized$done <- FALSE
     make_downstream_proxy <- function() {
-        source <- stata_byte(rep(1, 100))
+        source <- dta_byte(rep(1, 100))
         proxy <- dtatools:::.metadata_copy(source)
         tracker <- new.env(parent = emptyenv())
         reg.finalizer(
@@ -1324,7 +1324,7 @@ test_that("detached metadata payloads do not retain former proxy owners", {
 })
 
 test_that("downstream metadata proxies revoke exclusive patch ownership", {
-    first <- data.frame(x = dtatools:::.metadata_copy(stata_byte(1:3)))
+    first <- data.frame(x = dtatools:::.metadata_copy(dta_byte(1:3)))
     replace_values(first, x, 4, where = 1)
     second <- data.frame(x = dtatools:::.metadata_copy(first$x))
 
@@ -1336,14 +1336,14 @@ test_that("downstream metadata proxies revoke exclusive patch ownership", {
 })
 
 test_that("metadata copies remain isolated from later source patches", {
-    compact_source <- data.frame(x = stata_byte(1:3))
+    compact_source <- data.frame(x = dta_byte(1:3))
     compact_copy <- copy_data(compact_source)
     set_var_labels(compact_copy, x = "Copy")
     replace_values(compact_source, x, 9, where = 1)
     expect_identical(as.double(compact_source$x), c(9, 2, 3))
     expect_identical(as.double(compact_copy$x), c(1, 2, 3))
 
-    materialized_source <- data.frame(x = stata_byte(1:3))
+    materialized_source <- data.frame(x = dta_byte(1:3))
     materialized_copy <- copy_data(materialized_source)
     set_var_labels(materialized_copy, x = "Copy")
     invisible(dtatools:::.force_altrep_materialization(
@@ -1486,7 +1486,7 @@ test_that("metadata copies remain isolated from later source patches", {
 })
 
 test_that("writable access detaches shared materialized payloads", {
-    numeric <- stata_byte(1:3)
+    numeric <- dta_byte(1:3)
     invisible(dtatools:::.force_altrep_materialization(numeric))
     numeric_copy <- dtatools:::.metadata_copy(numeric)
     numeric <- dtatools:::.mutate_first_numeric_altrep(numeric, 99)
@@ -1568,7 +1568,7 @@ test_that("is_missing masks preserve dictionary-string caches and aliases", {
 })
 
 test_that("materialized metadata-proxy copies remain independent", {
-    numeric <- dtatools:::.metadata_copy(stata_byte(1:3))
+    numeric <- dtatools:::.metadata_copy(dta_byte(1:3))
     invisible(dtatools:::.force_altrep_materialization(numeric))
     numeric_copy <- dtatools:::.metadata_copy(numeric)
     numeric_data <- data.frame(x = numeric)
@@ -1616,7 +1616,7 @@ test_that("materialized metadata proxies release former sources", {
     save_arrow(data.frame(text = c("a", "b", "a")), path)
     string <- read_arrow(path)$text
     retained <- list(
-        numeric = materialized_chain(stata_byte(1:3), "numeric"),
+        numeric = materialized_chain(dta_byte(1:3), "numeric"),
         string = materialized_chain(string, "string")
     )
     for (iteration in seq_len(5L)) {
@@ -1647,8 +1647,8 @@ test_that("copy_data keeps Arrow dictionary strings independent and compact", {
 })
 
 test_that("generated variables participate in package writes", {
-    data <- data.frame(x = stata_byte(1:3))
-    gen(data, y, stata_int(x * 10))
+    data <- data.frame(x = dta_byte(1:3))
+    gen(data, y, dta_int(x * 10))
     path <- tempfile(fileext = ".dta")
     arrow_path <- tempfile(fileext = ".arrow")
     on.exit(unlink(c(path, arrow_path)), add = TRUE)
@@ -1727,7 +1727,7 @@ test_that("reference data preserves base and tibble access semantics", {
 })
 
 test_that("target-vector aliases observe replacement while row subsets isolate", {
-    column <- stata_int(1:3)
+    column <- dta_int(1:3)
     left <- data.frame(x = column)
     right <- data.frame(x = column)
     replace_values(left, x, 9, where = 1)
@@ -1773,7 +1773,7 @@ test_that(".n and .N describe the whole dataset without groups", {
 
     # `.N` on the right of a comparison stays off the fused patch path
     # and still selects correctly.
-    compact <- data.frame(x = stata_int(1:4))
+    compact <- data.frame(x = dta_int(1:4))
     repl(compact, x = 0L, where = x == .N)
     expect_identical(as.double(compact$x), c(1, 2, 3, 0))
 })
@@ -1933,7 +1933,7 @@ test_that("bysort sorts by reference and then groups", {
 
     # Stata total order puts `.` and `.a` after every finite value.
     compact <- data.frame(
-        id = stata_byte(c(NA, 2, 1, NA)), x = stata_int(1:4)
+        id = stata_byte(c(NA, 2, 1, NA)), x = dta_int(1:4)
     )
     compact$id[1] <- tagged_missing("a")
     gen(compact, n = .n, bysort = id)
@@ -2004,7 +2004,7 @@ test_that("a grouped tibble supplies the assignment groups", {
 })
 
 test_that("compact targets stay compact under by", {
-    data <- data.frame(id = c(1, 1, 2, 2), x = stata_int(1:4))
+    data <- data.frame(id = c(1, 1, 2, 2), x = dta_int(1:4))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     repl(data, x = 0L, where = .n == .N, by = id)
     expect_identical(as.double(data$x), c(1, 0, 3, 0))
@@ -2106,7 +2106,7 @@ test_that("sparse compact replacement and generation keep existing payloads", {
         "R was built without memory profiling"
     )
     size <- 1000000L
-    data <- data.frame(x = stata_byte(rep(1, size)), keep = runif(size))
+    data <- data.frame(x = dta_byte(rep(1, size)), keep = runif(size))
     keep_trace <- tracemem(data$keep)
     on.exit(untracemem(data$keep), add = TRUE)
     before <- object.size(data$x)
@@ -2125,7 +2125,7 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 })
 
 test_that("plain-expression evaluation matches tidy-eval semantics", {
-    data <- data.frame(x = stata_byte(c(1, 2, 3)), y = c(10, 20, 30))
+    data <- data.frame(x = dta_byte(c(1, 2, 3)), y = c(10, 20, 30))
 
     # A symbol that is both a column and a local is an error; the pronouns
     # pick one.
@@ -2165,7 +2165,7 @@ test_that("plain-expression evaluation matches tidy-eval semantics", {
 })
 
 test_that("plain expressions evaluate against reference-state columns", {
-    data <- data.frame(x = stata_byte(c(1, 2, 3)))
+    data <- data.frame(x = dta_byte(c(1, 2, 3)))
     offset <- 5
     gen(data, seed_column, x)
     expect_false(is.null(attr(data, ".dtatools_ref_state", exact = TRUE)))
@@ -2177,10 +2177,10 @@ test_that("plain expressions evaluate against reference-state columns", {
 
 test_that("materialized compact replacements retain Stata semantics", {
     constructors <- list(
-        byte = stata_byte,
-        int = stata_int,
-        long = stata_long,
-        float = stata_float
+        byte = dta_byte,
+        int = dta_int,
+        long = dta_long,
+        float = dta_float
     )
     for (storage in names(constructors)) {
         target <- constructors[[storage]](c(
@@ -2203,7 +2203,7 @@ test_that("materialized compact replacements retain Stata semantics", {
             dtatools:::.is_unmaterialized_numeric_altrep(data$target),
             info = storage
         )
-        expect_identical(stata_storage_type(data$target), storage)
+        expect_identical(dta_storage_type(data$target), storage)
         expect_equal(
             as.double(data$target),
             c(9, tagged_missing("b"), NA_real_,
@@ -2227,10 +2227,10 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
     cases <- list(
         list(value = NaN, message = "cannot contain `NaN` or infinities"),
         list(value = Inf, message = "cannot contain `NaN` or infinities"),
-        list(value = 101, message = "cannot represent `x`; use `stata_int")
+        list(value = 101, message = "cannot represent `x`; use `dta_int")
     )
     for (case in cases) {
-        data <- data.frame(x = stata_byte(1:3))
+        data <- data.frame(x = dta_byte(1:3))
         invisible(dtatools:::.force_altrep_materialization(data$x))
         before <- serialize(data, NULL)
 
@@ -2241,7 +2241,7 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
         expect_identical(serialize(data, NULL), before)
     }
 
-    data <- data.frame(x = stata_byte(1:3))
+    data <- data.frame(x = dta_byte(1:3))
     invisible(dtatools:::.force_altrep_materialization(data$x))
     before <- serialize(data, NULL)
     expect_error(replace_values(data, x, 1:2), "has size")
@@ -2250,12 +2250,12 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
 
 test_that("fused comparison replacement matches the general path", {
     make_data <- function() data.frame(
-        x = stata_byte(c(1, 2, 3, 4, 5, 6)),
-        y = stata_byte(c(
+        x = dta_byte(c(1, 2, 3, 4, 5, 6)),
+        y = dta_byte(c(
             -1, 0, 1, NA_real_, tagged_missing("a"),
             tagged_missing("z")
         )),
-        z = stata_long(c(
+        z = dta_long(c(
             0, 0, 0, NA_real_, tagged_missing("b"),
             tagged_missing("z")
         ))
@@ -2297,8 +2297,8 @@ test_that("fused comparison replacement matches the general path", {
 test_that("fused comparison replacement handles full-row values", {
     replacement <- c(9, NaN, 7, 6, 5, 4)
     fused <- data.frame(
-        x = stata_byte(1:6),
-        y = stata_byte(c(1, 0, 1, 0, 1, 0))
+        x = dta_byte(1:6),
+        y = dta_byte(c(1, 0, 1, 0, 1, 0))
     )
     general <- copy_data(fused)
 
@@ -2311,12 +2311,12 @@ test_that("fused comparison replacement handles full-row values", {
 })
 
 test_that("fused comparison replacement handles empty and full matches", {
-    empty <- data.frame(x = stata_byte(1:3), y = stata_byte(1:3))
+    empty <- data.frame(x = dta_byte(1:3), y = dta_byte(1:3))
     before <- serialize(empty, NULL)
     replace_values(empty, x, 9, where = y < 0)
     expect_identical(serialize(empty, NULL), before)
 
-    full <- data.frame(x = stata_byte(1:3), y = stata_byte(1:3))
+    full <- data.frame(x = dta_byte(1:3), y = dta_byte(1:3))
     replace_values(full, x, tagged_missing("c"), where = y >= 1)
     expect_true(all(is_tagged_missing(full$x, "c")))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(full$x))
@@ -2324,8 +2324,8 @@ test_that("fused comparison replacement handles empty and full matches", {
 
 test_that("fused replacement preserves recycling errors and shared data", {
     bad <- data.frame(
-        x = stata_byte(1:4),
-        y = stata_byte(c(1, 0, 1, 0))
+        x = dta_byte(1:4),
+        y = dta_byte(c(1, 0, 1, 0))
     )
     before <- serialize(bad, NULL)
     expect_error(
@@ -2335,8 +2335,8 @@ test_that("fused replacement preserves recycling errors and shared data", {
     expect_identical(serialize(bad, NULL), before)
 
     source <- data.frame(
-        x = stata_byte(1:4),
-        y = stata_byte(c(1, 0, 1, 0))
+        x = dta_byte(1:4),
+        y = dta_byte(c(1, 0, 1, 0))
     )
     independent <- copy_data(source)
     replace_values(source, x, 9, where = y == 1)
@@ -2351,8 +2351,8 @@ test_that("fused replacement preserves recycling errors and shared data", {
 test_that("threaded fused replacement matches the general path", {
     size <- 600000L
     fused <- data.frame(
-        x = stata_byte(rep(1, size)),
-        y = stata_long(seq_len(size))
+        x = dta_byte(rep(1, size)),
+        y = dta_long(seq_len(size))
     )
     general <- copy_data(fused)
     previous <- options(dtatools.threads = 2L)
@@ -2371,7 +2371,7 @@ test_that("fused comparison evaluates scalar operands once", {
         calls <<- calls + 1L
         1
     }
-    data <- data.frame(x = stata_byte(1:3), y = stata_byte(1:3))
+    data <- data.frame(x = dta_byte(1:3), y = dta_byte(1:3))
 
     replace_values(data, x, 9, where = y > cutoff())
 
@@ -2387,8 +2387,8 @@ test_that("fused comparison evaluates scalar operands once", {
 test_that("fused row-value errors roll back before the fallback error", {
     values <- c(9, NaN, 7)
     data <- data.frame(
-        x = stata_byte(1:3),
-        y = stata_byte(c(1, 1, 0))
+        x = dta_byte(1:3),
+        y = dta_byte(c(1, 1, 0))
     )
     before <- serialize(data, NULL)
 
@@ -2445,7 +2445,7 @@ test_that("tagged pairs reach reference, data.table, and compact targets", {
     compact <- read_dta(fixture("all_types_v118.dta"))
     target <- names(compact)[vapply(
         compact,
-        function(column) isTRUE(stata_storage_type(column) == "int"),
+        function(column) isTRUE(dta_storage_type(column) == "int"),
         logical(1)
     )][[1L]]
     original <- as.double(compact[[target]])
@@ -2492,12 +2492,12 @@ test_that("a symbol bound as both column and object is an error", {
     # The fused comparison path, which reads columns without evaluating
     # the expression, is checked too.
     fused <- data.frame(
-        x = stata_byte(c(1, 2, 3)), rows = stata_byte(c(0, 0, 0))
+        x = dta_byte(c(1, 2, 3)), rows = dta_byte(c(0, 0, 0))
     )
     expect_error(repl(fused, x, 9, where = rows == 0), message)
     expect_error(repl(fused, x, 9, where = x == rows), message)
     cutoff <- 2
-    fused$cutoff <- stata_byte(c(0, 0, 0))
+    fused$cutoff <- dta_byte(c(0, 0, 0))
     expect_error(repl(fused, x, 9, where = x > cutoff), "`cutoff` is both")
     expect_identical(as.double(fused$x), c(1, 2, 3))
 
@@ -2556,6 +2556,14 @@ test_that("a symbol bound as both column and object is an error", {
     repl(data, x, stored)
     expect_identical(data$x, c(7, 7))
     rm(rows, y)
+
+    # The fused plan's scalar operand is exempt under a formula too.
+    compact <- data.frame(x = dta_byte(c(1, 5, 9)), cutoff = c(4, 4, 4))
+    cutoff <- 100
+    expect_error(repl(compact, x, 0, where = x > cutoff), "`cutoff` is both")
+    repl(compact, x, 0, where = ~ x > cutoff)
+    expect_identical(as.double(compact$x), c(1, 0, 0))
+    rm(cutoff)
 
     # A function binding does not count: a script may share its column's name.
     data <- data.frame(x = c(1, 2), income = c(5, 6))

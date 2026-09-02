@@ -1,7 +1,7 @@
 test_that("dta_identical compares numeric values across storage and bare vectors", {
     values <- c(1, 2, -0)
     constructors <- list(
-        stata_byte, stata_int, stata_long, stata_float, stata_double
+        dta_byte, dta_int, dta_long, dta_float, dta_double
     )
 
     for (left in constructors) {
@@ -10,14 +10,14 @@ test_that("dta_identical compares numeric values across storage and bare vectors
             expect_true(dta_identical(left(values), right(values)))
         }
     }
-    expect_false(dta_identical(stata_byte(c(1, 2)), stata_byte(c(2, 1))))
-    expect_false(dta_identical(stata_byte(1), c(1, 2)))
+    expect_false(dta_identical(dta_byte(c(1, 2)), dta_byte(c(2, 1))))
+    expect_false(dta_identical(dta_byte(1), c(1, 2)))
 })
 
 test_that("dta_identical distinguishes every Stata missing code", {
     values <- c(NA_real_, tagged_missing(letters))
 
-    expect_true(dta_identical(stata_double(values), values))
+    expect_true(dta_identical(dta_double(values), values))
     for (index in seq_along(values)) {
         expect_true(dta_identical(values[[index]], values[[index]]))
         expect_false(dta_identical(
@@ -27,8 +27,8 @@ test_that("dta_identical distinguishes every Stata missing code", {
 })
 
 test_that("dta_identical compares strings exactly", {
-    expect_true(dta_identical(stata_string(c("a", "")), c("a", "")))
-    expect_false(dta_identical(stata_string(""), " "))
+    expect_true(dta_identical(dta_string(c("a", "")), c("a", "")))
+    expect_false(dta_identical(dta_string(""), " "))
     expect_false(dta_identical(c("a", "b"), c("A", "b")))
 })
 
@@ -63,12 +63,12 @@ test_that("dta_identical keeps date and datetime identity domains separate", {
 
 test_that("dta_identical returns false for incompatible kinds", {
     expect_false(dta_identical(1, "1"))
-    expect_false(dta_identical(stata_string("1"), stata_byte(1)))
+    expect_false(dta_identical(dta_string("1"), dta_byte(1)))
 })
 
 test_that("dta_identical handles empty vectors and NULL without recycling", {
-    expect_true(dta_identical(numeric(), stata_double()))
-    expect_true(dta_identical(character(), stata_string()))
+    expect_true(dta_identical(numeric(), dta_double()))
+    expect_true(dta_identical(character(), dta_string()))
     expect_false(dta_identical(numeric(), character()))
     expect_true(dta_identical(NULL, NULL))
     expect_false(dta_identical(NULL, numeric()))
@@ -76,12 +76,12 @@ test_that("dta_identical handles empty vectors and NULL without recycling", {
 })
 
 test_that("dta_identical ignores names, classes, and variable metadata", {
-    x <- stata_byte(c(left = 1, right = tagged_missing("a")))
+    x <- dta_byte(c(left = 1, right = tagged_missing("a")))
     attr(x, "label") <- "first label"
     attr(x, "format.stata") <- "%8.0g"
     attr(x, "labels") <- c(one = 1)
 
-    y <- stata_double(c(other = 1, missing = tagged_missing("a")))
+    y <- dta_double(c(other = 1, missing = tagged_missing("a")))
     attr(y, "label") <- "second label"
     attr(y, "format.stata") <- "%12.0g"
     attr(y, "labels") <- c(uno = 1)

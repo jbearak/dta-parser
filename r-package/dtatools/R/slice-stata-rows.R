@@ -20,7 +20,7 @@
 #'   secondary indexes are dropped because a row selection invalidates
 #'   them.
 #' @export
-slice_stata_rows <- function(data, rows) {
+slice_dta_rows <- function(data, rows) {
     if (!is.data.frame(data)) {
         stop(
             "`data` must be a base data frame, tibble, or data.table",

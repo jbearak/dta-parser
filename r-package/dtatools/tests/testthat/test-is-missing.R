@@ -80,15 +80,15 @@ test_that("is_missing supports semantic atomic classes", {
 })
 
 test_that("is_missing treats Stata metadata markers as transparent", {
-    numeric <- set_stata_note(c(1, NA_real_), 1L, "numeric note")
-    character <- set_stata_characteristic(
+    numeric <- set_dta_note(c(1, NA_real_), 1L, "numeric note")
+    character <- set_dta_characteristic(
         c("seen", "", NA_character_), "source", "survey"
     )
 
     expect_identical(is_missing(numeric), c(FALSE, TRUE))
     expect_identical(is_missing(character), c(FALSE, TRUE, TRUE))
 
-    custom <- set_stata_note(
+    custom <- set_dta_note(
         structure(c(1, NA_real_), class = "custom"),
         1L,
         "custom note"
@@ -166,7 +166,7 @@ test_that("compact non-Stata float NaNs match eager R missing semantics", {
 
 test_that("is_missing matches compact and eager Arrow numerics", {
     data <- tibble::tibble(
-        value = stata_int(c(1, NA_real_, tagged_missing("m"), 2))
+        value = dta_int(c(1, NA_real_, tagged_missing("m"), 2))
     )
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
