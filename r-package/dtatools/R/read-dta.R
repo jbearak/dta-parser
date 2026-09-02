@@ -270,7 +270,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
 
 .read_dta_impl <- function(file, encoding, selection, skip, n_max,
                            .name_repair, output, materialization, threads,
-                           use_numeric_altrep, record_datasig) {
+                           use_numeric_altrep, record_datasig,
+                           keep_source_rows = FALSE) {
     encoding <- .validate_dta_encoding(encoding)
     row_window <- .normalize_row_window(skip, n_max)
     threads <- .normalize_threads(threads)
@@ -307,6 +308,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
         use_numeric_altrep,
         encoding
     )
+    source_rows <- attr(native, "dtatools.source.rows", exact = TRUE)
+    attr(native, "dtatools.source.rows") <- NULL
     if (!is.null(column_indices)) {
         names(native) <- selected_names
     }
@@ -330,7 +333,11 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     result <- .copy_stata_metadata_attributes(native, result)
     if (record_datasig) attr(result, "datasig") <- disk_signature
-    .repair_data_table_container(result)
+    result <- .repair_data_table_container(result)
+    if (keep_source_rows) {
+        attr(result, "dtatools.source.rows") <- source_rows
+    }
+    result
 }
 
 .normalize_use_numeric_altrep <- function(value) {

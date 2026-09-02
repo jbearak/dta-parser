@@ -111,6 +111,8 @@ pub struct ArrowReadResult {
     /// from shared tables.
     pub value_label_reference_counts: HashMap<String, usize>,
     pub row_count: u64,
+    /// Complete source rows when a zero-row schema read requested the count.
+    pub source_row_count: Option<u64>,
     pub columns: Vec<ArrowReadColumn>,
     pub stored_signature: Option<String>,
 }
@@ -1329,6 +1331,7 @@ struct PreparedRead {
     dictionaries: HashMap<i64, ArrayData>,
     plans: Vec<BlockPlan>,
     produced: u64,
+    source_row_count: Option<u64>,
     stored_signature: Option<String>,
 }
 
@@ -1402,8 +1405,9 @@ fn prepare_read<R: Read + Seek>(
     let mut plans = Vec::new();
     let mut produced = 0_u64;
     let mut seen_rows = 0_u64;
+    let count_source_rows = limit == 0;
     for (batch_index, block) in footer.record_blocks.iter().enumerate() {
-        if produced >= limit {
+        if produced >= limit && !count_source_rows {
             break;
         }
         if interrupt() {
@@ -1414,6 +1418,9 @@ fn prepare_read<R: Read + Seek>(
         seen_rows = seen_rows
             .checked_add(header.rows)
             .ok_or_else(|| invalid("row count overflow"))?;
+        if count_source_rows {
+            continue;
+        }
         if header.rows == 0 {
             plans.push(BlockPlan {
                 batch_index,
@@ -1514,6 +1521,7 @@ fn prepare_read<R: Read + Seek>(
         dictionaries,
         plans,
         produced,
+        source_row_count: count_source_rows.then_some(seen_rows),
         stored_signature,
     })
 }
@@ -1884,6 +1892,7 @@ fn finish_result(mut prepared: PreparedRead, mut columns: Vec<ArrowReadColumn>) 
         dataset,
         value_label_reference_counts: prepared.value_label_reference_counts,
         row_count: prepared.produced,
+        source_row_count: prepared.source_row_count,
         columns,
         stored_signature: prepared.stored_signature,
     }

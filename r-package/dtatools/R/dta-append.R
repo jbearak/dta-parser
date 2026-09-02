@@ -131,23 +131,45 @@ dta_append <- function(sources, force = TRUE,
     schema <- switch(
         kind,
         frame = source[0L, , drop = FALSE],
-        dta = read_dta(source, n_max = 0L),
-        arrow = read_arrow(source, n_max = 0L)
+        dta = .append_read_dta_schema(source),
+        arrow = .append_read_arrow_schema(source)
     )
+    rows <- if (identical(kind, "frame")) {
+        nrow(source)
+    } else {
+        source_rows <- attr(schema, "dtatools.source.rows", exact = TRUE)
+        if (!is.numeric(source_rows) || length(source_rows) != 1L ||
+            is.na(source_rows) || source_rows < 0 ||
+            source_rows > .Machine$integer.max) {
+            stop("file source has too many rows for an R data frame",
+                 call. = FALSE)
+        }
+        as.integer(source_rows)
+    }
+    attr(schema, "dtatools.source.rows") <- NULL
     list(
         kind = kind, source = source, index = index, schema = schema,
-        rows = .append_source_rows(kind, source)
+        rows = rows
     )
 }
 
-# The header carries no observation count, so one narrow column is
-# read to size the result. Reading a single variable costs a fraction
-# of a second across two hundred survey files and lets pass two write
-# straight into a buffer allocated at the final row count.
-.append_source_rows <- function(kind, source) {
-    if (identical(kind, "frame")) return(nrow(source))
-    reader <- if (identical(kind, "arrow")) read_arrow else read_dta
-    nrow(reader(source, col_select = 1L))
+.append_read_dta_schema <- function(source) {
+    .read_dta_impl(
+        source, NULL, rlang::quo(NULL), 0, 0, "unique", "tibble",
+        materialization = "direct",
+        threads = getOption("dtatools.threads", 0L),
+        use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
+        record_datasig = FALSE, keep_source_rows = TRUE
+    )
+}
+
+.append_read_arrow_schema <- function(source) {
+    .read_arrow_impl(
+        source, rlang::quo(NULL), 0, 0, TRUE, TRUE, "unique", "default",
+        getOption("dtatools.numeric_altrep", TRUE),
+        getOption("dtatools.threads", 0L), FALSE,
+        keep_source_rows = TRUE
+    )
 }
 
 .append_read_data <- function(entry) {
@@ -160,32 +182,57 @@ dta_append <- function(sources, force = TRUE,
 }
 
 .append_build_plan <- function(schemas, force) {
+    source_count <- length(schemas)
     the_names <- character(0)
-    for (my_schema in schemas) {
-        the_names <- c(the_names, setdiff(names(my_schema$schema), the_names))
+    occurrences <- integer(0)
+    source_columns <- vector("list", source_count)
+    for (my_index in seq_len(source_count)) {
+        source_names <- names(schemas[[my_index]]$schema)
+        if (is.null(source_names)) source_names <- rep("", ncol(
+            schemas[[my_index]]$schema
+        ))
+        source_names[is.na(source_names)] <- ""
+        source_occurrences <- .append_name_occurrences(source_names)
+        source_columns[[my_index]] <- rep(NA_integer_, length(the_names))
+        for (my_column in seq_along(source_names)) {
+            plan_index <- which(
+                the_names == source_names[[my_column]] &
+                    occurrences == source_occurrences[[my_column]]
+            )
+            if (!length(plan_index)) {
+                the_names <- c(the_names, source_names[[my_column]])
+                occurrences <- c(
+                    occurrences, source_occurrences[[my_column]]
+                )
+                source_columns <- lapply(source_columns, function(columns) {
+                    c(columns, NA_integer_)
+                })
+                plan_index <- length(the_names)
+            }
+            source_columns[[my_index]][[plan_index[[1L]]]] <- my_column
+        }
     }
 
-    source_count <- length(schemas)
     prototypes <- vector("list", length(the_names))
-    names(prototypes) <- the_names
     # A source is dropped for one variable when its storage cannot
     # meet the accumulated prototype; those rows take missing values.
     dropped <- vector("list", length(the_names))
-    names(dropped) <- the_names
 
-    for (my_name in the_names) {
+    for (plan_index in seq_along(the_names)) {
+        my_name <- the_names[[plan_index]]
         prototype <- NULL
         conflicting <- integer(0)
         for (my_index in seq_len(source_count)) {
-            value <- schemas[[my_index]]$schema[[my_name]]
-            if (is.null(value)) next
+            my_column <- source_columns[[my_index]][[plan_index]]
+            if (is.na(my_column)) next
+            value <- schemas[[my_index]]$schema[[my_column]]
             candidate <- vctrs::vec_ptype(value)
             if (is.null(prototype)) {
                 prototype <- candidate
                 next
             }
             merged <- tryCatch(
-                vctrs::vec_ptype2(prototype, candidate),
+                .append_common_prototype(prototype, candidate),
                 error = function(condition) NULL
             )
             if (is.null(merged)) {
@@ -207,8 +254,8 @@ dta_append <- function(sources, force = TRUE,
             }
             prototype <- merged
         }
-        prototypes[[my_name]] <- prototype
-        dropped[[my_name]] <- conflicting
+        prototypes[[plan_index]] <- prototype
+        dropped[[plan_index]] <- conflicting
         if (length(conflicting)) {
             message(sprintf(
                 paste0(
@@ -227,7 +274,30 @@ dta_append <- function(sources, force = TRUE,
         }
     }
 
-    list(names = the_names, prototypes = prototypes, dropped = dropped)
+    list(
+        names = the_names, prototypes = prototypes, dropped = dropped,
+        source_columns = source_columns
+    )
+}
+
+.append_name_occurrences <- function(the_names) {
+    as.integer(ave(seq_along(the_names), the_names, FUN = seq_along))
+}
+
+.append_common_prototype <- function(left, right) {
+    left_storage <- stata_storage_type(left)
+    right_storage <- stata_storage_type(right)
+    left_declared <- !is.null(left_storage) &&
+        !inherits(left, "stata_temporal")
+    right_declared <- !is.null(right_storage) &&
+        !inherits(right, "stata_temporal")
+    left_bare <- is.numeric(left) && is.null(left_storage) &&
+        !inherits(left, "stata_temporal")
+    right_bare <- is.numeric(right) && is.null(right_storage) &&
+        !inherits(right, "stata_temporal")
+    if (left_declared && right_bare) right <- stata_double()
+    if (right_declared && left_bare) left <- stata_double()
+    vctrs::vec_ptype2(left, right)
 }
 
 # Pass two. One source is held at a time: its columns are cast to the
@@ -248,15 +318,13 @@ dta_append <- function(sources, force = TRUE,
     # each source writes into its own row range. Anything else keeps
     # its per-source pieces for the general vctrs concatenation.
     buffers <- vector("list", length(plan$names))
-    names(buffers) <- plan$names
     pieces <- vector("list", length(plan$names))
-    names(pieces) <- plan$names
-    for (my_name in plan$names) {
-        buffers[[my_name]] <- .append_allocate_buffer(
-            plan$prototypes[[my_name]], total_rows
-        )
-        if (is.null(buffers[[my_name]])) {
-            pieces[[my_name]] <- vector("list", source_count)
+    for (plan_index in seq_along(plan$names)) {
+        buffers[plan_index] <- list(.append_allocate_buffer(
+            plan$prototypes[[plan_index]], total_rows
+        ))
+        if (is.null(buffers[[plan_index]])) {
+            pieces[plan_index] <- list(vector("list", source_count))
         }
     }
 
@@ -268,14 +336,16 @@ dta_append <- function(sources, force = TRUE,
         } else {
             integer(0)
         }
-        for (my_name in plan$names) {
-            prototype <- plan$prototypes[[my_name]]
-            value <- if (my_index %in% plan$dropped[[my_name]]) {
+        for (plan_index in seq_along(plan$names)) {
+            prototype <- plan$prototypes[[plan_index]]
+            my_column <- plan$source_columns[[my_index]][[plan_index]]
+            value <- if (my_index %in% plan$dropped[[plan_index]] ||
+                is.na(my_column)) {
                 NULL
             } else {
-                data[[my_name]]
+                data[[my_column]]
             }
-            if (!is.null(buffers[[my_name]])) {
+            if (!is.null(buffers[[plan_index]])) {
                 if (!is.null(value) && rows > 0L) {
                     # A value that does not already share the buffer's
                     # layout is cast to the prototype first. A cast the
@@ -291,19 +361,19 @@ dta_append <- function(sources, force = TRUE,
                         )
                     }
                     if (!is.null(writable)) {
-                        buffer <- buffers[[my_name]]
+                        buffer <- buffers[[plan_index]]
                         # Clear the list slot first. While the list still
                         # references the buffer, `[<-` would duplicate
                         # the whole column on every source instead of
                         # writing the destination range in place.
-                        buffers[my_name] <- list(NULL)
+                        buffers[plan_index] <- list(NULL)
                         buffer[span] <- .append_buffer_values(writable)
-                        buffers[[my_name]] <- buffer
+                        buffers[[plan_index]] <- buffer
                     }
                 }
                 next
             }
-            pieces[[my_name]][[my_index]] <- if (is.null(value)) {
+            pieces[[plan_index]][[my_index]] <- if (is.null(value)) {
                 .append_missing_column(prototype, rows)
             } else {
                 value
@@ -315,13 +385,12 @@ dta_append <- function(sources, force = TRUE,
     columns <- vector("list", length(plan$names))
     names(columns) <- plan$names
     for (my_index in seq_along(plan$names)) {
-        my_name <- plan$names[[my_index]]
         buffer <- buffers[[my_index]]
         if (is.null(buffer)) {
             columns[[my_index]] <- .append_combine_pieces(
-                pieces[[my_name]], plan$prototypes[[my_name]], row_counts
+                pieces[[my_index]], plan$prototypes[[my_index]], row_counts
             )
-            pieces[my_name] <- list(NULL)
+            pieces[my_index] <- list(NULL)
             next
         }
         # Release the list's reference before encoding. A held double
@@ -330,7 +399,7 @@ dta_append <- function(sources, force = TRUE,
         # result until the whole frame was built.
         buffers[my_index] <- list(NULL)
         columns[[my_index]] <- .append_finish_buffer(
-            buffer, plan$prototypes[[my_name]]
+            buffer, plan$prototypes[[my_index]]
         )
         rm(buffer)
     }

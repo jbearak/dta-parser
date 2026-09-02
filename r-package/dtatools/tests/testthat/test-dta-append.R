@@ -20,6 +20,39 @@ test_that("the result is the union of variables in first-appearance order", {
     expect_identical(as.numeric(result$id), c(1, 2, 3, 4))
 })
 
+test_that("duplicate source columns survive planning until name repair", {
+    first <- data.frame(
+        left = stata_byte(c(1, 2)), right = stata_long(c(10, 20))
+    )
+    names(first) <- c("v", "v")
+    second <- data.frame(
+        left = stata_byte(3), right = stata_long(30), extra = "kept"
+    )
+    names(second) <- c("v", "v", "extra")
+
+    result <- dta_append(list(first, second))
+    expect_identical(names(result), c("v...1", "v...2", "extra"))
+    expect_identical(as.numeric(result[[1L]]), c(1, 2, 3))
+    expect_identical(as.numeric(result[[2L]]), c(10, 20, 30))
+
+    minimal <- dta_append(list(first, second), .name_repair = "minimal")
+    expect_identical(names(minimal), c("v", "v", "extra"))
+    expect_identical(as.numeric(minimal[[1L]]), c(1, 2, 3))
+    expect_identical(as.numeric(minimal[[2L]]), c(10, 20, 30))
+
+    one_occurrence <- dta_append(list(
+        first, data.frame(v = stata_byte(4))
+    ))
+    expect_identical(as.numeric(one_occurrence[[1L]]), c(1, 2, 4))
+    expect_identical(is_missing(one_occurrence[[2L]]), c(FALSE, FALSE, TRUE))
+
+    blank <- first
+    names(blank) <- c("", "")
+    expect_identical(
+        names(dta_append(blank, .name_repair = "minimal")), c("", "")
+    )
+})
+
 test_that("a source missing a variable contributes missing values", {
     result <- dta_append(list(master_frame(), using_frame()))
 
@@ -145,6 +178,13 @@ test_that(".dta and .arrow paths append like in-memory frames", {
     arrow <- file.path(directory, "using.arrow")
     save_dta(master_frame(), dta)
     save_arrow(using_frame(), arrow)
+
+    dta_schema <- dtatools:::.append_read_schema(dta, 1L)
+    arrow_schema <- dtatools:::.append_read_schema(arrow, 2L)
+    expect_identical(dta_schema$rows, 2L)
+    expect_identical(arrow_schema$rows, 2L)
+    expect_null(attr(read_dta(dta, n_max = 0L), "dtatools.source.rows"))
+    expect_null(attr(read_arrow(arrow, n_max = 0L), "dtatools.source.rows"))
 
     from_memory <- dta_append(list(master_frame(), using_frame()))
     from_files <- dta_append(list(dta, arrow))
@@ -273,12 +313,20 @@ test_that("a buffered column keeps values that do not fit the buffer", {
     expect_identical(as.character(result$s), c("a", "b", "cc", "dd"))
 })
 
-test_that("a buffered value the prototype cannot hold becomes missing", {
-    # Matching .append_combine_pieces: one source out of the promoted
-    # storage's range is missing instead of failing the whole append.
+test_that("an undeclared numeric widens a declared Stata prototype", {
     declared <- tibble::tibble(v = stata_byte(c(1, 2)))
     wide <- tibble::tibble(v = c(50000, 60000))
 
     result <- dta_append(list(declared, wide))
-    expect_identical(as.numeric(result$v), c(1, 2, NA, NA))
+    expect_identical(stata_storage_type(result$v), "double")
+    expect_identical(as.numeric(result$v), c(1, 2, 50000, 60000))
+
+    reversed <- dta_append(list(wide, declared))
+    expect_identical(stata_storage_type(reversed$v), "double")
+    expect_identical(as.numeric(reversed$v), c(50000, 60000, 1, 2))
+
+    integers <- tibble::tibble(v = c(50000L, 60000L))
+    result <- dta_append(list(declared, integers))
+    expect_identical(stata_storage_type(result$v), "double")
+    expect_identical(as.numeric(result$v), c(1, 2, 50000, 60000))
 })
