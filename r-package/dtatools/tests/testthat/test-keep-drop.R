@@ -330,3 +330,32 @@ test_that("later reference mutations see a consistent overlay", {
     expect_identical(names(restored), names(data))
     expect_identical(as.data.frame(restored), as.data.frame(data))
 })
+
+test_that("renaming a data.table carries its key and indexes over", {
+    skip_if_not_installed("data.table")
+    data <- data.table::data.table(a = 1:2, b = 3:4, c = 5:6)
+    data.table::setkeyv(data, "a")
+    data.table::setindexv(data, "b")
+    data.table::setindexv(data, c("b", "c"))
+
+    rename_vars(data, x = a, y = b)
+
+    expect_named(data, c("x", "y", "c"))
+    expect_identical(data.table::key(data), "x")
+    expect_identical(
+        data.table::indices(data, vectors = TRUE),
+        list("y", c("y", "c"))
+    )
+})
+
+test_that("renaming every data.table column carries its key over", {
+    skip_if_not_installed("data.table")
+    data <- data.table::data.table(a = 1:2, b = 3:4)
+    data.table::setkeyv(data, "a")
+    data.table::setindexv(data, "b")
+
+    rename_vars(data, .names = c("first", "second"))
+
+    expect_identical(data.table::key(data), "first")
+    expect_identical(data.table::indices(data), "second")
+})

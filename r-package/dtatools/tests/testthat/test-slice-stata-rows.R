@@ -150,11 +150,20 @@ test_that("slice_stata_rows handles named and empty columns", {
         data[rows, , drop = FALSE]
     )
 
+    # Zero-column frames take a shortcut through base `[`, which keeps
+    # dataset-level metadata there even though it drops it once
+    # columns are present. Guard that the shortcut stays safe.
     empty_columns <- data.frame(row.names = letters[1:4])
     attr(empty_columns, "label") <- "Empty-column dataset"
+    sliced <- slice_stata_rows(empty_columns, c(4L, 1L))
     expect_identical(
-        slice_stata_rows(empty_columns, c(4L, 1L)),
-        empty_columns[c(4L, 1L), , drop = FALSE]
+        attr(sliced, "label", exact = TRUE), "Empty-column dataset"
+    )
+    expect_identical(dim(sliced), c(2L, 0L))
+    expect_identical(
+        attr(sliced, "row.names", exact = TRUE),
+        attr(empty_columns[c(4L, 1L), , drop = FALSE], "row.names",
+             exact = TRUE)
     )
     expect_identical(
         slice_stata_rows(data[integer(), , drop = FALSE], integer()),
@@ -163,6 +172,7 @@ test_that("slice_stata_rows handles named and empty columns", {
 })
 
 test_that("slice_stata_rows slices ordinary data.tables", {
+    skip_if_not_installed("data.table")
     data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
     data <- set_stata_note(data, 4, "dataset note")
     data <- set_stata_characteristic(data, "source", "fixture")
@@ -256,6 +266,7 @@ test_that("slice_stata_rows validates its container and locations", {
 })
 
 test_that("reorder_stata_rows permutes a data.table in place", {
+    skip_if_not_installed("data.table")
     data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
     data.table::setattr(data, "sorted", "v_byte")
     frame <- as.data.frame(data)

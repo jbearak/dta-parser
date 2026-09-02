@@ -255,6 +255,7 @@ test_that("dta_merge follows x or an explicit output container", {
 })
 
 test_that("dataset metadata never marks a data.table with the frame class", {
+    skip_if_not_installed("data.table")
     .datatable.aware <- TRUE
     data <- data.frame(x = stata_byte(c(1, 2)), y = c(3, 4))
     dataset_label(data) <- "Example label"
@@ -274,6 +275,7 @@ test_that("dataset metadata never marks a data.table with the frame class", {
 })
 
 test_that("dataset metadata setters keep data.table output ordinary", {
+    skip_if_not_installed("data.table")
     .datatable.aware <- TRUE
     data <- data.frame(x = stata_byte(c(1, 2)))
     path <- tempfile(fileext = ".dta")
