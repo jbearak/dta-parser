@@ -548,7 +548,9 @@ repl(survey, income, 0, where = .env$rows)   # the local, unambiguously
 
 Bindings in attached packages and base are not consulted, so a column named
 `pi` or `T` is not flagged, and a function binding does not count, so a
-recode script named after the column it builds is not flagged either.
+recode script named after the column it builds is not flagged either. A
+one-sided formula asks for the data mask outright, so `where = ~ rows`
+reads the column without complaint.
 `options(dtatools.shadow_check = FALSE)` turns the check off.
 
 `set_var_labels()` and `set_val_labels()` update columns by name in `...`.
