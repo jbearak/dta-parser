@@ -400,13 +400,72 @@ gen <- function(data, variable, values, where = NULL) {
     )
 }
 
+.RUNTIME_NAME_MESSAGE <-
+    "`.()` takes one nonempty, non-missing string naming a column"
+
+# `.(name)` reads a column whose name is known only at run time. It is
+# recognised in every position dtatools evaluates: in `values` and `where`
+# it reads that column, and in the name position it names the target. The
+# argument is evaluated in the caller's environment rather than in the data
+# mask, so a column sharing a name with a local variable cannot shadow it.
+# `.()` is unambiguous here: `.` is not a legal Stata variable name, so no
+# column read from a `.dta` file can collide with it. data.table spells
+# `list()` as `.()`, but only inside `[.data.table`, which this mask is not.
+.is_runtime_name_call <- function(expression) {
+    is.call(expression) && identical(expression[[1L]], quote(.))
+}
+
+.validated_runtime_name <- function(name) {
+    if (!is.character(name) || length(name) != 1L || is.na(name) ||
+        !nzchar(name)) {
+        stop(.RUNTIME_NAME_MESSAGE, call. = FALSE)
+    }
+    name
+}
+
+.runtime_name_call_value <- function(expression, environment) {
+    if (length(expression) != 2L) {
+        stop(.RUNTIME_NAME_MESSAGE, call. = FALSE)
+    }
+    if (!is.environment(environment)) environment <- parent.frame()
+    .validated_runtime_name(eval(expression[[2L]], environment))
+}
+
+.has_mutation_column <- function(columns, name) {
+    if (is.environment(columns)) {
+        return(exists(name, envir = columns, inherits = FALSE))
+    }
+    name %in% names(columns)
+}
+
+.mutation_column <- function(columns, name) {
+    if (is.environment(columns)) {
+        return(get(name, envir = columns, inherits = FALSE))
+    }
+    columns[[name]]
+}
+
+.runtime_name_reader <- function(columns, environment) {
+    function(x) {
+        name <- .runtime_name_call_value(
+            as.call(list(quote(.), substitute(x))), environment
+        )
+        if (!.has_mutation_column(columns, name)) {
+            stop(sprintf("Column `%s` does not exist", name), call. = FALSE)
+        }
+        .mutation_column(columns, name)
+    }
+}
+
 # `!!` is the supported escape for a name held in a string. `rlang::enquo()`
 # already applies quasiquotation, so `gen(data, !!name, value)` needs no
 # `rlang::inject()` wrapper. Unquoting a character string yields a character
 # scalar rather than a symbol, which is why one length-one character is
-# accepted here alongside a symbol. No `.()` escape is offered: `.()` already
-# means `list()` in data.table, which this package sits directly on, and `!!`
-# covers the need without a second spelling.
+# accepted here alongside a symbol.
+#
+# `.(name)` reaches the same place and is the one spelling that works in
+# every position: `!!` unquotes at capture, so it cannot appear inside a
+# larger expression the way `y + .(name)` can.
 .unquoted_variable_name <- function(variable) {
     message <- paste(
         "`variable` must be one unquoted column name or one nonempty,",
@@ -420,6 +479,11 @@ gen <- function(data, variable, values, where = NULL) {
             stop(message, call. = FALSE)
         }
         return(expression)
+    }
+    if (.is_runtime_name_call(expression)) {
+        return(.runtime_name_call_value(
+            expression, rlang::quo_get_env(variable)
+        ))
     }
     if (!is.symbol(expression) || identical(expression, quote(...))) {
         stop(message, call. = FALSE)
@@ -461,6 +525,7 @@ gen <- function(data, variable, values, where = NULL) {
             !identical(expression, quote(.env)))
     }
     if (rlang::is_quosure(expression)) return(FALSE)
+    if (.is_runtime_name_call(expression)) return(FALSE)
     if (is.call(expression) || is.pairlist(expression)) {
         for (index in seq_along(expression)) {
             if (identical(expression[[index]], quote(expr = ))) next
@@ -498,17 +563,27 @@ gen <- function(data, variable, values, where = NULL) {
     } else if (.plain_mutation_expression(expression)) {
         return(.eval_plain_mutation(expression, columns, environment))
     }
+    reader_environment <- if (!is.null(environment)) {
+        environment
+    } else if (rlang::is_quosure(expression)) {
+        rlang::quo_get_env(expression)
+    } else {
+        parent.frame()
+    }
     if (!is.environment(columns)) {
+        mask <- rlang::as_data_mask(columns)
+        mask$. <- .runtime_name_reader(columns, reader_environment)
         return(if (is.null(environment)) {
-            rlang::eval_tidy(expression, data = columns)
+            rlang::eval_tidy(expression, data = mask)
         } else {
-            rlang::eval_tidy(expression, data = columns, env = environment)
+            rlang::eval_tidy(expression, data = mask, env = environment)
         })
     }
     previous_parent <- parent.env(columns)
     on.exit(parent.env(columns) <- previous_parent, add = TRUE)
     mask <- rlang::new_data_mask(columns)
     mask$.data <- rlang::as_data_pronoun(columns)
+    mask$. <- .runtime_name_reader(columns, reader_environment)
     if (is.null(environment)) {
         rlang::eval_tidy(expression, data = mask)
     } else {
