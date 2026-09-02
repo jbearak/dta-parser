@@ -862,6 +862,87 @@ unsafe fn run_raw_int_pair<T>(
     }
 }
 
+const DOUBLE_SIGN_BIT: u64 = 0x8000_0000_0000_0000;
+const DOUBLE_QUIET_NAN_BIT: u64 = 0x0008_0000_0000_0000;
+const DOUBLE_TAG_BITS: u64 = 0x0000_00ff_0000_0000;
+const DOUBLE_IGNORED_BITS: u64 = DOUBLE_SIGN_BIT | DOUBLE_QUIET_NAN_BIT | DOUBLE_TAG_BITS;
+const DOUBLE_TAGGED_NA_LAYOUT: u64 = 0x7ff0_0000_0000_07a2;
+
+/// Missing rank of one decoded double, from its haven-style NaN tag
+/// byte: 1 for `.` and 2 through 27 for `.a` through `.z`. The caller
+/// separately verifies the payload is canonical; wrapped arithmetic on
+/// an invalid tag never reaches the output.
+fn double_missing_rank(bits: u64) -> u8 {
+    let tag = ((bits & DOUBLE_TAG_BITS) >> 32) as u8;
+    if tag == 0 {
+        1
+    } else {
+        tag.wrapping_sub(b'a').wrapping_add(2)
+    }
+}
+
+fn double_payload_canonical(bits: u64) -> bool {
+    let tag = ((bits & DOUBLE_TAG_BITS) >> 32) as u8;
+    bits & !DOUBLE_IGNORED_BITS == DOUBLE_TAGGED_NA_LAYOUT & !DOUBLE_IGNORED_BITS
+        && (tag == 0 || tag.is_ascii_lowercase())
+}
+
+/// Compare decoded-double storage against a scalar in one branch-light
+/// pass. Finite elements use the IEEE compare directly; missing
+/// elements resolve by rank against the scalar's rank. Returns `false`
+/// when a noncanonical NaN payload appears, leaving the decoding loop
+/// (and its error path) to run.
+unsafe fn compare_raw_double_scalar(
+    op: c_int,
+    base: *const f64,
+    scalar: ComparedElement,
+    output: *mut c_int,
+    length: usize,
+) -> bool {
+    let mut valid = true;
+    macro_rules! scalar_loop {
+        ($finite:expr, $missing:expr) => {
+            for index in 0..length {
+                let value = base.add(index).read_unaligned();
+                if value.is_nan() {
+                    let bits = value.to_bits();
+                    valid &= double_payload_canonical(bits);
+                    let rank = double_missing_rank(bits);
+                    output.add(index).write(c_int::from($missing(rank)));
+                } else {
+                    output.add(index).write(c_int::from($finite(value)));
+                }
+            }
+        };
+    }
+    if scalar.rank == 0 {
+        let s = scalar.value;
+        // A missing element outranks every finite scalar, so its result
+        // depends only on the operator.
+        match op {
+            0 => scalar_loop!(|v: f64| v == s, |_| false),
+            1 => scalar_loop!(|v: f64| v != s, |_| true),
+            2 => scalar_loop!(|v: f64| v < s, |_| false),
+            3 => scalar_loop!(|v: f64| v <= s, |_| false),
+            4 => scalar_loop!(|v: f64| v > s, |_| true),
+            _ => scalar_loop!(|v: f64| v >= s, |_| true),
+        }
+    } else {
+        // A finite element ranks below every missing scalar, so its
+        // result also depends only on the operator.
+        let r = scalar.rank;
+        match op {
+            0 => scalar_loop!(|_| false, |rank: u8| rank == r),
+            1 => scalar_loop!(|_| true, |rank: u8| rank != r),
+            2 => scalar_loop!(|_| true, |rank: u8| rank < r),
+            3 => scalar_loop!(|_| true, |rank: u8| rank <= r),
+            4 => scalar_loop!(|_| false, |rank: u8| rank > r),
+            _ => scalar_loop!(|_| false, |rank: u8| rank >= r),
+        }
+    }
+    valid
+}
+
 /// Compare integer storage in raw order without decoding elements.
 /// Returns `None` when the operands need the decoding loop: float or
 /// double storage, millisecond temporal scalars, or operand pairs whose
@@ -987,6 +1068,15 @@ pub unsafe extern "C" fn dtatools_numeric_compare(
         }
         if let Some(done) = unsafe { compare_raw_int(op, x, y, scalar, output, length) } {
             return done;
+        }
+        if y.is_none() && matches!(x.storage, CompareStorage::Double) {
+            // A false return means a noncanonical NaN payload; fall
+            // through so the decoding loop reports the failure and the
+            // R fallback owns its error.
+            let base = (x.values as *const u8).cast::<f64>();
+            if unsafe { compare_raw_double_scalar(op, base, scalar, output, length) } {
+                return true;
+            }
         }
         let available = std::thread::available_parallelism().map_or(1, usize::from);
         let requested = if threads <= 0 {
