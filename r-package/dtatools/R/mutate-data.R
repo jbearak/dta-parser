@@ -87,8 +87,9 @@
 #' column reads.
 #' `options(dtatools.shadow_check = FALSE)` disables the check. A stored or
 #' inline one-sided formula evaluates its right-hand side in the same data
-#' mask and uses the formula environment as its fallback. Two-sided
-#' formulas are rejected.
+#' mask and uses the formula environment as its fallback; a formula is a
+#' request to read the data, so its symbols are exempt from the check and
+#' columns win. Two-sided formulas are rejected.
 #'
 #' `where = NULL` selects every row. A logical result must have size one or the
 #' dataset row count; missing logical values do not select a row. Numeric row
@@ -747,18 +748,22 @@ gen <- function(data, ..., where = NULL) {
         return(found)
     }
     for (index in seq.int(2L, length.out = length(expression) - 1L)) {
-        argument <- expression[[index]]
-        if (identical(argument, quote(expr = ))) next
-        found <- .masked_symbols(argument, found)
+        if (identical(expression[[index]], quote(expr = ))) next
+        found <- .masked_symbols(expression[[index]], found)
     }
     if (is.call(head)) found <- .masked_symbols(head, found)
     found
 }
 
 # A function binding is skipped: a masked symbol reads a vector, and a
-# recode script is often named after the column it builds.
+# recode script is often named after the column it builds. The walk
+# stops after the global environment or at a package namespace, so
+# `pi`, `T`, and package constants never count as shadows.
 .bound_in_caller_chain <- function(name, environment) {
     while (!identical(environment, emptyenv())) {
+        if (identical(environment, baseenv()) || isNamespace(environment)) {
+            return(FALSE)
+        }
         if (exists(name, envir = environment, inherits = FALSE)) {
             return(!is.function(get(name, envir = environment,
                                     inherits = FALSE)))
@@ -806,13 +811,14 @@ gen <- function(data, ..., where = NULL) {
     eval(expression, new.env(parent = columns))
 }
 
-.eval_in_mutation_data <- function(expression, columns, environment = NULL) {
+.eval_in_mutation_data <- function(expression, columns, environment = NULL,
+                                   shadow_check = TRUE) {
     # Plain expressions -- no `.data`/`.env` pronouns and no embedded
     # quosures -- have identical semantics under base evaluation with the
     # columns masking the expression environment. Skipping the rlang data
     # mask there removes the dominant per-call cost of `gen()`/`repl()`.
     if (is.null(environment)) {
-        if (rlang::is_quosure(expression)) {
+        if (shadow_check && rlang::is_quosure(expression)) {
             .check_shadowed_symbols(
                 rlang::quo_get_expr(expression), columns,
                 rlang::quo_get_env(expression)
@@ -826,7 +832,9 @@ gen <- function(data, ..., where = NULL) {
             ))
         }
     } else {
-        .check_shadowed_symbols(expression, columns, environment)
+        if (shadow_check) {
+            .check_shadowed_symbols(expression, columns, environment)
+        }
         if (.plain_mutation_expression(expression)) {
             return(.eval_plain_mutation(expression, columns, environment))
         }
@@ -872,7 +880,8 @@ gen <- function(data, ..., where = NULL) {
         return(.eval_in_mutation_data(
             expression[[2L]],
             columns,
-            rlang::quo_get_env(quo)
+            rlang::quo_get_env(quo),
+            shadow_check = FALSE
         ))
     }
     value <- .eval_in_mutation_data(quo, columns)
@@ -881,7 +890,8 @@ gen <- function(data, ..., where = NULL) {
     .eval_in_mutation_data(
         formula$expression,
         columns,
-        formula$environment
+        formula$environment,
+        shadow_check = FALSE
     )
 }
 
@@ -1134,7 +1144,9 @@ gen <- function(data, ..., where = NULL) {
     access <- NULL
     column <- NULL
 
-    if (!rlang::quo_is_missing(where)) {
+    # A formula body is exempt: `~` asks for the data mask outright.
+    if (!rlang::quo_is_missing(where) &&
+        !rlang::is_formula(rlang::quo_get_expr(where))) {
         .check_shadowed_symbols(
             rlang::quo_get_expr(where), original$columns,
             rlang::quo_get_env(where)
