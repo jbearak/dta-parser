@@ -35,7 +35,15 @@ test_that("duplicate source columns survive planning until name repair", {
     expect_identical(as.numeric(result[[1L]]), c(1, 2, 3))
     expect_identical(as.numeric(result[[2L]]), c(10, 20, 30))
 
-    minimal <- dta_append(list(first, second), .name_repair = "minimal")
+    # Duplicate names cannot index a dibble's reference state, so the
+    # default container refuses them and a tibble carries them through.
+    expect_error(
+        dta_append(list(first, second), .name_repair = "minimal"),
+        "unique, non-missing column names"
+    )
+    minimal <- dta_append(
+        list(first, second), .name_repair = "minimal", output = "tibble"
+    )
     expect_identical(names(minimal), c("v", "v", "extra"))
     expect_identical(as.numeric(minimal[[1L]]), c(1, 2, 3))
     expect_identical(as.numeric(minimal[[2L]]), c(10, 20, 30))
@@ -49,7 +57,8 @@ test_that("duplicate source columns survive planning until name repair", {
     blank <- first
     names(blank) <- c("", "")
     expect_identical(
-        names(dta_append(blank, .name_repair = "minimal")), c("", "")
+        names(dta_append(blank, .name_repair = "minimal", output = "tibble")),
+        c("", "")
     )
 })
 
