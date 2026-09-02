@@ -7142,6 +7142,63 @@ SEXP C_dtatools_replace_table_columns(SEXP data, SEXP columns) {
     return R_NilValue;
 }
 
+/* Commits one already gathered set of columns back into a table, and into
+   the reference-state column store when the table carries an overlay.
+   Every column reaches its destination or none does: the plan is fully
+   validated and every binding symbol interned before the commit loop,
+   which then only rebinds existing bindings and so cannot allocate. */
+SEXP C_dtatools_replace_reference_columns(
+    SEXP data, SEXP store, SEXP locations, SEXP names, SEXP columns
+) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(columns) != VECSXP ||
+        TYPEOF(locations) != INTSXP || TYPEOF(names) != STRSXP) {
+        Rf_error("internal column replacement requires a valid plan");
+    }
+    R_xlen_t count = XLENGTH(columns);
+    if (XLENGTH(locations) != count || XLENGTH(names) != count) {
+        Rf_error("internal column replacement requires matching plan lengths");
+    }
+    if (store != R_NilValue && TYPEOF(store) != ENVSXP) {
+        Rf_error("internal column replacement requires a column store");
+    }
+
+    /* Validate the whole plan and intern every binding symbol first. The
+       commit loop below then only overwrites list elements and rebinds
+       bindings the caller has already checked exist, so it cannot
+       allocate or fail part way through. */
+    SEXP symbols = PROTECT(Rf_allocVector(VECSXP, count));
+    for (R_xlen_t index = 0; index < count; index++) {
+        int location = INTEGER_ELT(locations, index);
+        if (location != NA_INTEGER &&
+            (location < 1 || (R_xlen_t) location > XLENGTH(data))) {
+            Rf_error("internal column replacement location is out of range");
+        }
+        SEXP name = STRING_ELT(names, index);
+        if (name == NA_STRING) {
+            if (location == NA_INTEGER) {
+                Rf_error("internal column replacement targets nothing");
+            }
+            continue;
+        }
+        if (store == R_NilValue || LENGTH(name) == 0) {
+            Rf_error("internal column replacement has no column store");
+        }
+        SET_VECTOR_ELT(symbols, index, Rf_installChar(name));
+    }
+
+    for (R_xlen_t index = 0; index < count; index++) {
+        SEXP column = VECTOR_ELT(columns, index);
+        int location = INTEGER_ELT(locations, index);
+        if (location != NA_INTEGER) {
+            SET_VECTOR_ELT(data, (R_xlen_t) location - 1, column);
+        }
+        SEXP symbol = VECTOR_ELT(symbols, index);
+        if (symbol != R_NilValue) Rf_defineVar(symbol, column, store);
+    }
+    UNPROTECT(1);
+    return R_NilValue;
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata", (DL_FUNC) &C_dtatools_metadata, 5},
     {"C_dtatools_read", (DL_FUNC) &C_dtatools_read, 8},
@@ -7173,6 +7230,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_gather_numeric_columns, 4},
     {"C_dtatools_replace_table_columns",
      (DL_FUNC) &C_dtatools_replace_table_columns, 2},
+    {"C_dtatools_replace_reference_columns",
+     (DL_FUNC) &C_dtatools_replace_reference_columns, 5},
     {"C_dtatools_is_numeric_altrep",
      (DL_FUNC) &C_dtatools_is_numeric_altrep, 1},
     {"C_dtatools_is_altrep", (DL_FUNC) &C_dtatools_is_altrep, 1},

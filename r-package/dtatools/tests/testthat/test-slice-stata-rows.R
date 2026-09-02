@@ -290,11 +290,79 @@ test_that("reorder_stata_rows permutes a data.table in place", {
     expect_identical(stata_storage_type(tagged_table$value), "int")
 })
 
+test_that("reorder_stata_rows permutes other ordinary containers", {
+    rows <- c(3L, 1L, 2L)
+    frame <- data.frame(x = stata_int(1:3), label = c("a", "b", "c"))
+    reorder_stata_rows(frame, rows)
+    expect_identical(as.double(vctrs::vec_data(frame$x)), c(3, 1, 2))
+    expect_identical(frame$label, c("c", "a", "b"))
+    expect_identical(row.names(frame), c("1", "2", "3"))
+
+    table <- tibble::tibble(x = stata_int(1:3), label = c("a", "b", "c"))
+    reorder_stata_rows(table, rows)
+    expect_identical(as.double(vctrs::vec_data(table$x)), c(3, 1, 2))
+    expect_identical(table$label, c("c", "a", "b"))
+    expect_s3_class(table, "tbl_df")
+})
+
+test_that("reorder_stata_rows permutes reference-state columns", {
+    data <- read_dta(fixture("all_types_v118.dta"), output = "tibble")
+    rows <- rev(seq_len(nrow(data)))
+    expected <- vctrs::vec_slice(
+        as.double(vctrs::vec_data(data$v_byte)), rows
+    )
+    gen(data, doubled, v_byte * 2)
+    expect_s3_class(data, "dtatools_ref_data")
+    names_before <- names(data)
+    # A generated column lives only in the reference state, so the
+    # overlay and the physical columns must move together.
+    alias <- data
+    reorder_stata_rows(data, rows)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(
+        as.list(data)$v_byte
+    ))
+    expect_identical(names(data), names_before)
+    expect_identical(as.double(vctrs::vec_data(data$v_byte)), expected)
+    expect_identical(as.double(vctrs::vec_data(data$doubled)), expected * 2)
+    # Reference semantics: the reorder is visible through every binding.
+    expect_identical(as.double(vctrs::vec_data(alias$doubled)), expected * 2)
+})
+
+test_that("reorder_stata_rows permutes a structural reference state", {
+    data <- read_dta(fixture("all_types_v118.dta"), output = "tibble")
+    rows <- rev(seq_len(nrow(data)))
+    expected <- vctrs::vec_slice(
+        as.double(vctrs::vec_data(data$v_byte)), rows
+    )
+    gen(data, doubled, v_byte * 2)
+    gen(data, tripled, v_byte * 3)
+    # Dropping one of the logical columns leaves more of them than the
+    # tibble physically holds, which is what forces a structural state.
+    drop_vars(data, v_int)
+    state <- attr(data, ".dtatools_ref_state", exact = TRUE)
+    expect_true(isTRUE(state$physical_overlay))
+    names_before <- names(data)
+
+    reorder_stata_rows(data, rows)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(
+        as.list(data)$v_byte
+    ))
+    expect_identical(names(data), names_before)
+    expect_identical(as.double(vctrs::vec_data(data$v_byte)), expected)
+    expect_identical(as.double(vctrs::vec_data(data$doubled)), expected * 2)
+    expect_identical(as.double(vctrs::vec_data(data$tripled)), expected * 3)
+})
+
 test_that("reorder_stata_rows validates its container and permutation", {
-    frame <- data.frame(x = 1:3)
     expect_error(
-        reorder_stata_rows(frame, 1:3),
-        "ordinary data.table"
+        reorder_stata_rows(1:3, 1:3),
+        "base data frame, tibble, or data.table"
+    )
+    expect_error(
+        reorder_stata_rows(
+            dplyr::group_by(tibble::tibble(x = 1:3), x), 1:3
+        ),
+        "ordinary base data frame"
     )
     data <- data.table::data.table(x = 1:3)
     expect_error(

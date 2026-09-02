@@ -1,4 +1,4 @@
-#' Reorder a data.table's rows in place through Stata storage
+#' Reorder a table's rows in place through Stata storage
 #'
 #' Gathers every column the way [slice_stata_rows()] does — compact
 #' Stata numeric columns through the native kernel, other columns
@@ -8,20 +8,26 @@
 #' gathered columns are installed without copying, so compact numeric
 #' columns stay unmaterialized.
 #'
-#' @param data An ordinary data.table, modified by reference.
+#' A base data frame or tibble that [gen()] has given reference
+#' semantics is reordered too: its generated columns live in the
+#' reference-state overlay rather than in the object, and they are
+#' permuted alongside the physical ones.
+#'
+#' @param data An ordinary base data frame, tibble, or data.table,
+#'   modified by reference. A table carrying a dtatools reference
+#'   state is accepted when the container underneath it is one of
+#'   those.
 #' @param rows A permutation of `seq_len(nrow(data))` following
 #'   [vctrs::vec_as_location()] semantics, without missing locations.
 #'   Every row must be selected exactly once: an in-place reorder
 #'   cannot change the row count.
-#' @return `data`, invisibly. The data.table `sorted` marker and
+#' @return `data`, invisibly. For a data.table the `sorted` marker and
 #'   secondary indexes are cleared because a permutation invalidates
 #'   them.
 #' @export
 reorder_stata_rows <- function(data, rows) {
-    if (!.ordinary_data_table(data)) {
-        stop("`data` must be an ordinary data.table", call. = FALSE)
-    }
-    count <- nrow(data)
+    plan <- .reorder_column_plan(data)
+    count <- plan$nrow
     locations <- vctrs::vec_as_location(
         rows, n = count, missing = "error", arg = "rows"
     )
@@ -29,11 +35,80 @@ reorder_stata_rows <- function(data, rows) {
         stop("`rows` must select every row exactly once", call. = FALSE)
     }
     columns <- .dta_merge_slice_columns(
-        vctrs::new_data_frame(as.list(data), n = count),
+        vctrs::new_data_frame(plan$columns, n = count),
         locations, fill_string_missing = FALSE
     )
-    .Call(C_dtatools_replace_table_columns, data, columns)
-    data.table::setattr(data, "sorted", NULL)
-    data.table::setattr(data, "index", NULL)
+    .Call(
+        C_dtatools_replace_reference_columns, data, plan$store,
+        plan$locations, plan$names, unname(columns)
+    )
+    if (plan$data_table) {
+        data.table::setattr(data, "sorted", NULL)
+        data.table::setattr(data, "index", NULL)
+    }
     invisible(data)
+}
+
+# Works out, for every logical column, where its reordered replacement
+# has to be written: a physical position in `data`, a binding in the
+# reference-state column store, or — for a physical column mirrored by
+# a reference state — both. `locations` and `names` carry `NA` for the
+# destinations a column does not have.
+.reorder_column_plan <- function(data) {
+    if (!is.data.frame(data)) {
+        stop(
+            "`data` must be a base data frame, tibble, or data.table",
+            call. = FALSE
+        )
+    }
+    state <- .reference_state(data)
+    classes <- if (is.null(state)) class(data) else state$classes
+    base_classes <- setdiff(classes, "dtatools_stata_metadata")
+    data_table <- identical(base_classes, c("data.table", "data.frame"))
+    if (!data_table &&
+        !identical(base_classes, "data.frame") &&
+        !identical(base_classes, c("tbl_df", "tbl", "data.frame"))) {
+        stop(
+            paste0(
+                "`data` must be an ordinary base data frame, tibble, ",
+                "or data.table"
+            ),
+            call. = FALSE
+        )
+    }
+    if (is.null(state)) {
+        columns <- .plain_data_columns(data)
+        names(columns) <- attr(data, "names", exact = TRUE)
+        count <- length(columns)
+        return(list(
+            columns = columns,
+            store = NULL,
+            locations = seq_len(count),
+            names = rep(NA_character_, count),
+            nrow = base::nrow(data),
+            data_table = data_table
+        ))
+    }
+    columns <- .data_columns(data)
+    count <- length(columns)
+    physical <- if (isTRUE(state$physical_overlay)) {
+        0L
+    } else {
+        state$physical_count
+    }
+    store <- state$columns
+    absent <- !vapply(names(columns), exists, logical(1),
+                      envir = store, inherits = FALSE)
+    if (any(absent)) {
+        stop("`data` has a reference state without its own columns",
+             call. = FALSE)
+    }
+    list(
+        columns = columns,
+        store = store,
+        locations = c(seq_len(physical), rep(NA_integer_, count - physical)),
+        names = names(columns),
+        nrow = state$nrow,
+        data_table = data_table
+    )
 }
