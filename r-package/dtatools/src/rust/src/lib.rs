@@ -62,7 +62,7 @@ extern "C" {
 
     fn dtatools_check_interrupt() -> c_int;
     fn dtatools_alloc_vector(kind: c_int, length: RLen, result: *mut Sexp) -> c_int;
-    fn dtatools_preserve_object(object: Sexp);
+    fn dtatools_preserve_object(object: Sexp) -> c_int;
     fn dtatools_release_object(object: Sexp);
     fn dtatools_make_char(
         value: *const c_char,
@@ -1637,7 +1637,9 @@ impl ProtectGuard {
         self.objects
             .try_reserve(1)
             .map_err(|_| "R could not track a preserved native vector".to_owned())?;
-        dtatools_preserve_object(value);
+        if dtatools_preserve_object(value) == 0 {
+            return Err("R could not preserve a native vector".to_owned());
+        }
         self.objects.push(value);
         Ok(())
     }

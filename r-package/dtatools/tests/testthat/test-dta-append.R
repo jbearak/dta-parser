@@ -209,6 +209,25 @@ test_that("value-label tables merge and the first contributor wins text", {
 
     result <- dta_append(list(first, second))
     expect_identical(val_labels(result$v), c(yes = 1, no = 2))
+
+    unlabeled <- tibble::tibble(v = stata_byte(1))
+    result <- dta_append(list(unlabeled, second))
+    expect_null(val_labels(result$v))
+})
+
+test_that("logical placeholders do not clear temporal structure", {
+    path <- fixture_with_temporal_storage("foreign", "%tc")
+    withr::defer(unlink(path))
+    value <- read_dta(path, n_max = 1L)$foreign
+
+    result <- dta_append(list(
+        tibble::tibble(v = NA), tibble::tibble(v = value)
+    ))
+
+    expect_s3_class(result$v, "stata_datetime")
+    expect_identical(attr(result$v, "tzone"), "UTC")
+    expect_identical(attr(result$v, "format.stata"), "%tc")
+    expect_identical(is_missing(result$v), c(TRUE, FALSE))
 })
 
 test_that("a variable label survives a missing-fill contribution", {

@@ -50,8 +50,8 @@ source, which is quadratic in total rows.
 
 Each element may be a base data frame, tibble, or data.table
 already in memory, a path to a \code{.dta} file, or a path to an
-\code{.arrow} file. File sources are read once, in a first pass for
-their schema alone and in a second pass for their observations, so
+\code{.arrow} file. File sources are read in two passes: the first reads
+their schema alone, and the second reads their observations, so
 peak memory is roughly the result plus the largest single source
 rather than every source at once.
 }
@@ -81,4 +81,3 @@ Stata does not define what happens to dataset-level notes on
 defaults to \code{"first"}. Use \code{"all"} to concatenate every source's
 notes in source order, or \code{"none"} to drop them.
 }
-

@@ -3037,8 +3037,19 @@ int dtatools_is_null(SEXP value) {
     return Rf_isNull(value);
 }
 
-void dtatools_preserve_object(SEXP object) {
-    if (object != NULL) R_PreserveObject(object);
+typedef struct {
+    SEXP object;
+} preserve_object_context;
+
+static void preserve_object_call(void *data) {
+    preserve_object_context *context = (preserve_object_context *) data;
+    R_PreserveObject(context->object);
+}
+
+int dtatools_preserve_object(SEXP object) {
+    if (object == NULL) return 0;
+    preserve_object_context context = {object};
+    return R_ToplevelExec(preserve_object_call, &context);
 }
 
 void dtatools_release_object(SEXP object) {

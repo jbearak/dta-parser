@@ -17,8 +17,8 @@
 #'
 #' Each element may be a base data frame, tibble, or data.table
 #' already in memory, a path to a `.dta` file, or a path to an
-#' `.arrow` file. File sources are read once, in a first pass for
-#' their schema alone and in a second pass for their observations, so
+#' `.arrow` file. File sources are read in two passes: the first reads
+#' their schema alone, and the second reads their observations, so
 #' peak memory is roughly the result plus the largest single source
 #' rather than every source at once.
 #'
@@ -247,6 +247,13 @@ dta_append <- function(sources, force = TRUE,
                 metadata_owners[[plan_index]] <- candidate
                 next
             }
+            if (is.logical(metadata_owners[[plan_index]]) &&
+                !is.logical(candidate)) {
+                # A logical column is an untyped missing placeholder.
+                # Structural and user metadata therefore belong to the
+                # first contributor that supplies a concrete type.
+                metadata_owners[[plan_index]] <- candidate
+            }
             merged <- tryCatch(
                 .append_common_prototype(prototype, candidate),
                 error = function(condition) NULL
@@ -302,10 +309,13 @@ dta_append <- function(sources, force = TRUE,
     result <- .metadata_copy(prototype)
     owned <- c(
         "format.stata", "label", "value.label.name", "notes",
-        "stata.note.numbers", "stata.characteristics", "tzone", "units"
+        "stata.note.numbers", "stata.characteristics"
     )
     for (my_name in owned) {
         attr(result, my_name) <- attr(owner, my_name, exact = TRUE)
+    }
+    if (is.null(attr(owner, "labels", exact = TRUE))) {
+        attr(result, "labels") <- NULL
     }
     result
 }
