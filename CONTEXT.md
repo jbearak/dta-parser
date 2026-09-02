@@ -35,6 +35,14 @@ _Avoid_: Drop-in replacement
 The table class a dataset operation returns, independently of the column representations and Stata metadata it contains. Readers produce tibbles or data tables; operations that follow an input may also preserve a base data frame.
 _Avoid_: Output format, dataset type
 
+**Dibble**:
+A tibble that carries dtatools reference state from its creation, so that bracket mutation and group-wise assignment are available on it. Readers return dibbles by default; `gen()` and `replace_values()` accept any data frame and do not require one.
+_Avoid_: Reference tibble, dtatools table
+
+**Group-wise assignment**:
+Evaluating one generation or replacement separately within each group of a dataset, in Stata's `by varlist:` order: the group is formed first, then the row selection and values are evaluated on that group's rows, with `.n` and `.N` as the within-group row number and row count. Groups come from `by`, from `bysort`, or from dplyr grouping.
+_Avoid_: Grouped mutate, by-group operation
+
 **Stored output container**:
 The supported output container recorded in a standalone `.arrow` dataset and restored by default when the dataset is read. It excludes runtime data-table state such as keys, indexes, allocation capacity, and self-reference.
 _Avoid_: Stored table state, serialized data table
