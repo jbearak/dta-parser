@@ -34,9 +34,23 @@
 #' `gen()` and `replace_values()` reject grouped and rowwise tibbles. Ungroup
 #' them before mutation. `copy_data()` accepts them and preserves their class.
 #'
-#' `variable` must be one unquoted name. Tidy-evaluation injection is supported,
-#' so `gen(data, !!rlang::sym(name), value)` handles a name stored in a string.
-#' A quoted target is rejected.
+#' `variable` must be one unquoted name or one string. Tidy-evaluation
+#' injection is supported, so `gen(data, !!name, value)` handles a name stored
+#' in a string. No `rlang::inject()` wrapper is needed, because
+#' `rlang::enquo()` already applies quasiquotation. The older
+#' `gen(data, !!rlang::sym(name), value)` is equivalent and still works, but
+#' `rlang::sym()` is not required: unquoting a string yields a character
+#' scalar, and one nonempty, non-missing string is accepted in the `variable`
+#' position. A literal `gen(data, "adjusted", value)` names a column the same
+#' way. An empty string, `NA`, a character vector of length other than one, a
+#' call such as `a + 1`, `...`, and a missing argument are errors.
+#'
+#' In the `values` and `where` expressions a runtime name is reached through
+#' the mask's `.data` pronoun instead: `values = .data[[name]]` and
+#' `where = !is_missing(.data[[name]])`. Note the asymmetry, which is the
+#' surprising part: `.data[[name]]` works in `values` and `where` but not in
+#' the `variable` position, because `variable` names a target rather than
+#' reading a column. Use `!!name` there.
 #'
 #' `values` and `where` use a data mask built from the dataset before the
 #' mutation. Columns win over objects in the calling environment; use `.env`
@@ -119,8 +133,12 @@
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
-#' @param variable Exactly one unquoted target name.
-#' @param values A value expression or one-sided formula.
+#' @param variable Exactly one unquoted target name, or one nonempty,
+#'   non-missing character string, which is what `!!name` unquotes to. An
+#'   empty string, `NA`, a character vector of length other than one, a call,
+#'   `...`, and a missing argument are errors.
+#' @param values A value expression or one-sided formula. It may reference a
+#'   column whose name is a string through the mask's `.data` pronoun.
 #' @param where `NULL`, a logical expression, valid row positions, or a
 #'   one-sided formula.
 #' @return `gen()` and `replace_values()` return `data` invisibly.
@@ -133,6 +151,14 @@
 #' gen(survey, adjusted, income + 5)
 #' independent <- copy_data(survey)
 #' repl(independent, income, 0)
+#'
+#' # A name known only at run time, in each position that accepts one
+#' target_name <- "adjusted"
+#' source_name <- "income"
+#' repl(survey, !!target_name, 0)
+#' repl(survey, !!rlang::sym(target_name), 1)
+#' gen(survey, doubled, .data[[source_name]] * 2)
+#' repl(survey, doubled, 0, where = .data[[source_name]] > 15)
 #' @export
 replace_values <- function(data, variable, values, where = NULL) {
     variable <- rlang::enquo(variable)
@@ -374,13 +400,93 @@ gen <- function(data, variable, values, where = NULL) {
     )
 }
 
-.unquoted_variable_name <- function(variable) {
-    if (rlang::quo_is_missing(variable)) {
-        stop("`variable` must be one unquoted column name", call. = FALSE)
+.RUNTIME_NAME_MESSAGE <-
+    "`.()` takes one nonempty, non-missing string naming a column"
+
+# `.(name)` reads a column whose name is known only at run time. It is
+# recognised in every position dtatools evaluates: in `values` and `where`
+# it reads that column, and in the name position it names the target. The
+# argument is evaluated in the caller's environment rather than in the data
+# mask, so a column sharing a name with a local variable cannot shadow it.
+# `.()` is unambiguous here: `.` is not a legal Stata variable name, so no
+# column read from a `.dta` file can collide with it. data.table spells
+# `list()` as `.()`, but only inside `[.data.table`, which this mask is not.
+.is_runtime_name_call <- function(expression) {
+    is.call(expression) && identical(expression[[1L]], quote(.))
+}
+
+.validated_runtime_name <- function(name) {
+    if (!is.character(name) || length(name) != 1L || is.na(name) ||
+        !nzchar(name)) {
+        stop(.RUNTIME_NAME_MESSAGE, call. = FALSE)
     }
+    name
+}
+
+.runtime_name_call_value <- function(expression, environment) {
+    if (length(expression) != 2L) {
+        stop(.RUNTIME_NAME_MESSAGE, call. = FALSE)
+    }
+    if (!is.environment(environment)) environment <- parent.frame()
+    .validated_runtime_name(eval(expression[[2L]], environment))
+}
+
+.has_mutation_column <- function(columns, name) {
+    if (is.environment(columns)) {
+        return(exists(name, envir = columns, inherits = FALSE))
+    }
+    name %in% names(columns)
+}
+
+.mutation_column <- function(columns, name) {
+    if (is.environment(columns)) {
+        return(get(name, envir = columns, inherits = FALSE))
+    }
+    columns[[name]]
+}
+
+.runtime_name_reader <- function(columns, environment) {
+    function(x) {
+        name <- .runtime_name_call_value(
+            as.call(list(quote(.), substitute(x))), environment
+        )
+        if (!.has_mutation_column(columns, name)) {
+            stop(sprintf("Column `%s` does not exist", name), call. = FALSE)
+        }
+        .mutation_column(columns, name)
+    }
+}
+
+# `!!` is the supported escape for a name held in a string. `rlang::enquo()`
+# already applies quasiquotation, so `gen(data, !!name, value)` needs no
+# `rlang::inject()` wrapper. Unquoting a character string yields a character
+# scalar rather than a symbol, which is why one length-one character is
+# accepted here alongside a symbol.
+#
+# `.(name)` reaches the same place and is the one spelling that works in
+# every position: `!!` unquotes at capture, so it cannot appear inside a
+# larger expression the way `y + .(name)` can.
+.unquoted_variable_name <- function(variable) {
+    message <- paste(
+        "`variable` must be one unquoted column name or one nonempty,",
+        "non-missing string"
+    )
+    if (rlang::quo_is_missing(variable)) stop(message, call. = FALSE)
     expression <- rlang::quo_get_expr(variable)
+    if (is.character(expression)) {
+        if (length(expression) != 1L || is.na(expression) ||
+            !nzchar(expression)) {
+            stop(message, call. = FALSE)
+        }
+        return(expression)
+    }
+    if (.is_runtime_name_call(expression)) {
+        return(.runtime_name_call_value(
+            expression, rlang::quo_get_env(variable)
+        ))
+    }
     if (!is.symbol(expression) || identical(expression, quote(...))) {
-        stop("`variable` must be one unquoted column name", call. = FALSE)
+        stop(message, call. = FALSE)
     }
     as.character(expression)
 }
@@ -419,6 +525,7 @@ gen <- function(data, variable, values, where = NULL) {
             !identical(expression, quote(.env)))
     }
     if (rlang::is_quosure(expression)) return(FALSE)
+    if (.is_runtime_name_call(expression)) return(FALSE)
     if (is.call(expression) || is.pairlist(expression)) {
         for (index in seq_along(expression)) {
             if (identical(expression[[index]], quote(expr = ))) next
@@ -456,17 +563,27 @@ gen <- function(data, variable, values, where = NULL) {
     } else if (.plain_mutation_expression(expression)) {
         return(.eval_plain_mutation(expression, columns, environment))
     }
+    reader_environment <- if (!is.null(environment)) {
+        environment
+    } else if (rlang::is_quosure(expression)) {
+        rlang::quo_get_env(expression)
+    } else {
+        parent.frame()
+    }
     if (!is.environment(columns)) {
+        mask <- rlang::as_data_mask(columns)
+        mask$. <- .runtime_name_reader(columns, reader_environment)
         return(if (is.null(environment)) {
-            rlang::eval_tidy(expression, data = columns)
+            rlang::eval_tidy(expression, data = mask)
         } else {
-            rlang::eval_tidy(expression, data = columns, env = environment)
+            rlang::eval_tidy(expression, data = mask, env = environment)
         })
     }
     previous_parent <- parent.env(columns)
     on.exit(parent.env(columns) <- previous_parent, add = TRUE)
     mask <- rlang::new_data_mask(columns)
     mask$.data <- rlang::as_data_pronoun(columns)
+    mask$. <- .runtime_name_reader(columns, reader_environment)
     if (is.null(environment)) {
         rlang::eval_tidy(expression, data = mask)
     } else {

@@ -19,9 +19,13 @@ copy_data(data)
 \item{data}{An ungrouped data frame or tibble to mutate. \code{copy_data()} also
 accepts grouped and rowwise tibbles.}
 
-\item{variable}{Exactly one unquoted target name.}
+\item{variable}{Exactly one unquoted target name, or one nonempty,
+non-missing character string, which is what \code{!!name} unquotes to. An
+empty string, \code{NA}, a character vector of length other than one, a call,
+\code{...}, and a missing argument are errors.}
 
-\item{values}{A value expression or one-sided formula.}
+\item{values}{A value expression or one-sided formula. It may reference a
+column whose name is a string through the mask's \code{.data} pronoun.}
 
 \item{where}{\code{NULL}, a logical expression, valid row positions, or a
 one-sided formula.}
@@ -66,9 +70,23 @@ supported ways to access generated columns.
 them before mutation. \code{copy_data()} accepts them and preserves their class.
 }
 \details{
-\code{variable} must be one unquoted name. Tidy-evaluation injection is supported,
-so \code{gen(data, !!rlang::sym(name), value)} handles a name stored in a string.
-A quoted target is rejected.
+\code{variable} must be one unquoted name or one string. Tidy-evaluation
+injection is supported, so \code{gen(data, !!name, value)} handles a name stored
+in a string. No \code{rlang::inject()} wrapper is needed, because
+\code{rlang::enquo()} already applies quasiquotation. The older
+\code{gen(data, !!rlang::sym(name), value)} is equivalent and still works, but
+\code{rlang::sym()} is not required: unquoting a string yields a character
+scalar, and one nonempty, non-missing string is accepted in the \code{variable}
+position. A literal \code{gen(data, "adjusted", value)} names a column the same
+way. An empty string, \code{NA}, a character vector of length other than one, a
+call such as \code{a + 1}, \code{...}, and a missing argument are errors.
+
+In the \code{values} and \code{where} expressions a runtime name is reached through
+the mask's \code{.data} pronoun instead: \code{values = .data[[name]]} and
+\code{where = !is_missing(.data[[name]])}. Note the asymmetry, which is the
+surprising part: \code{.data[[name]]} works in \code{values} and \code{where} but not in
+the \code{variable} position, because \code{variable} names a target rather than
+reading a column. Use \code{!!name} there.
 
 \code{values} and \code{where} use a data mask built from the dataset before the
 mutation. Columns win over objects in the calling environment; use \code{.env}
@@ -132,16 +150,22 @@ The native path keeps compact rollback bytes until the write commits so an
 interrupt restores the original payload and missing-value cache.
 A metadata proxy first detaches by copying its compact native payload so an
 independent source remains unchanged; it still avoids a full R double copy.
-Ordinary and materialized numeric columns and character columns are patched in their
-existing R representation. Replacing a dictionary-backed string materializes
-that target character column, but does not copy the data frame.
-Dictionary-backed replacement values are validated through a read-only native
-reader, so a successful mutation, error, or interrupt does not populate a
-shared source cache. \code{copy_data()} keeps unmaterialized compact numeric and
-dictionary-string columns compact, and deep-copies dataset attributes such as
-names and grouped-tibble metadata. It rejects columns or attributes containing
-environments, functions, bytecode, external pointers, or weak references
-because those objects cannot be isolated by ordinary R copying.
+Materialized compact numeric columns are validated against their declared
+storage and patched directly in their decoded R buffer. A \code{where} expression
+that is one comparison of a Stata numeric column with a scalar or another
+Stata numeric column is fused with compact-target replacement, avoiding a
+logical selection vector. Other selections keep the general path. Ordinary
+numeric columns and character columns are patched in their existing R
+representation. Replacing a dictionary-backed string materializes that
+target character column, but does not copy the data frame.
+Dictionary-backed replacement values are validated through a read-only
+native reader, so a successful mutation, error, or interrupt does not
+populate a shared source cache. \code{copy_data()} keeps unmaterialized compact
+numeric and dictionary-string columns compact, and deep-copies dataset
+attributes such as names and grouped-tibble metadata. It rejects columns or
+attributes containing environments, functions, bytecode, external pointers,
+or weak references because those objects cannot be isolated by ordinary R
+copying.
 }
 \examples{
 survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
@@ -149,6 +173,14 @@ replace_values(survey, income, income * 2, where = eligible)
 gen(survey, adjusted, income + 5)
 independent <- copy_data(survey)
 repl(independent, income, 0)
+
+# A name known only at run time, in each position that accepts one
+target_name <- "adjusted"
+source_name <- "income"
+repl(survey, !!target_name, 0)
+repl(survey, !!rlang::sym(target_name), 1)
+gen(survey, doubled, .data[[source_name]] * 2)
+repl(survey, doubled, 0, where = .data[[source_name]] > 15)
 }
 \references{
 StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
