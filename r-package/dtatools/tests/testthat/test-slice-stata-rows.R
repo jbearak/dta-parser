@@ -162,10 +162,71 @@ test_that("slice_stata_rows handles named and empty columns", {
     )
 })
 
+test_that("slice_stata_rows slices ordinary data.tables", {
+    data <- read_dta(fixture("all_types_v118.dta"), output = "data.table")
+    data <- set_stata_note(data, 4, "dataset note")
+    data <- set_stata_characteristic(data, "source", "fixture")
+    data <- set_stata_note(data, 7, "variable note", variable = "v_double")
+    data.table::setattr(data, "sorted", "v_byte")
+
+    frame <- as.data.frame(data)
+    class(frame) <- "data.frame"
+    locations <- list(
+        c(5L, 2L, NA_integer_, 2L),
+        -c(1L, 3L),
+        rep(c(TRUE, FALSE), length.out = nrow(data)),
+        integer()
+    )
+    for (rows in locations) {
+        expected <- frame[rows, , drop = FALSE]
+        actual <- slice_stata_rows(data, rows)
+
+        expect_identical(
+            class(actual), c("data.table", "data.frame"),
+            info = deparse(rows)
+        )
+        expect_null(attr(actual, "sorted"))
+        expect_null(attr(actual, "index"))
+        expect_identical(
+            as.list(actual), as.list(expected), info = deparse(rows)
+        )
+    }
+
+    selected <- slice_stata_rows(data, c(5L, 2L, NA_integer_, 2L))
+    compact_names <- c("v_byte", "v_int", "v_long", "v_float")
+    expect_true(all(vapply(
+        as.list(selected)[compact_names],
+        dtatools:::.is_unmaterialized_numeric_altrep,
+        logical(1)
+    )))
+    expect_true(all(vapply(
+        as.list(data)[compact_names],
+        dtatools:::.is_unmaterialized_numeric_altrep,
+        logical(1)
+    )))
+    expect_identical(attr(data, "sorted"), "v_byte")
+    expect_identical(
+        attr(selected, "notes"), attr(data, "notes")
+    )
+    expect_identical(
+        stata_characteristic(selected, "source"), "fixture"
+    )
+    expect_silent(data.table::set(
+        selected, j = "v_byte", value = as.list(selected)$v_byte
+    ))
+
+    tagged_table <- data.table::data.table(
+        value = stata_int(c(1, NA_real_, tagged_missing("a")))
+    )
+    tagged <- slice_stata_rows(tagged_table, c(3L, 1L, 2L))
+    expect_identical(missing_tag(tagged$value), c("a", NA, NA))
+    expect_identical(stata_storage_type(tagged$value), "int")
+})
+
 test_that("slice_stata_rows validates its container and locations", {
     expect_error(
         slice_stata_rows(1:3, 1L),
-        "must be a base data frame or tibble"
+        "must be a base data frame, tibble, or data.table"
     )
     subclass <- structure(
         data.frame(x = 1:3),
@@ -173,12 +234,16 @@ test_that("slice_stata_rows validates its container and locations", {
     )
     expect_error(
         slice_stata_rows(subclass, 1L),
-        "ordinary base data frame or tibble"
+        "ordinary base data frame, tibble, or data.table"
     )
-    table <- data.table::data.table(x = 1:3)
+    table_subclass <- data.table::data.table(x = 1:3)
+    data.table::setattr(
+        table_subclass, "class",
+        c("custom_table", class(table_subclass))
+    )
     expect_error(
-        slice_stata_rows(table, 1L),
-        "ordinary base data frame or tibble"
+        slice_stata_rows(table_subclass, 1L),
+        "ordinary base data frame, tibble, or data.table"
     )
     expect_error(
         slice_stata_rows(data.frame(x = 1:3), 4L),
