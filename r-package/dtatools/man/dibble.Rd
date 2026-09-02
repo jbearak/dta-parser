@@ -71,3 +71,7 @@ grouped <- dplyr::group_by(frame, x)
 is_dibble(grouped)
 dplyr::group_vars(grouped)
 }
+\seealso{
+\link{dibble-bracket} for \code{survey[i, y := value]}, the assignment
+shape only a dibble supports.
+}
