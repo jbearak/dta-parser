@@ -212,3 +212,11 @@ test_that("inspectors reject noncanonical NaN payloads", {
         list(tag = NA_character_, selected = FALSE)
     )
 })
+
+test_that("extended missing constants match the tagged missing constructor", {
+    constants <- mget(paste0(".", letters), asNamespace("dtatools"))
+
+    expect_identical(unname(unlist(constants)), tagged_missing(letters))
+    expect_identical(.a, tagged_missing("a"))
+    expect_identical(.z, tagged_missing("z"))
+})

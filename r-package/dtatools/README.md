@@ -32,7 +32,7 @@ declared Stata storage type.
 | `stata_byte()`, `stata_int()`, `stata_long()`, `stata_float()`, `stata_double()` | Declare a vector's Stata storage type with validation; byte, int, long, and float use compact backing. |
 | `stata_string()` | Construct an owned Stata string vector with validated fixed-width or `strL` storage and preserved variable metadata. |
 | `stata_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
-| `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values `.a` through `.z`. |
+| `.a` through `.z`, `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values. |
 | `is_missing()`, `is_mi()` | Classify Stata system and extended numeric missing values and empty strings; `is_mi()` is an alias for `is_missing()` that matches Stata's `mi()` shorthand. Use either in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
