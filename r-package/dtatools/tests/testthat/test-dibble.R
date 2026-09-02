@@ -14,7 +14,9 @@ test_that("dibble() builds a tibble that carries reference state", {
     expect_identical(dim(data), c(3L, 2L))
     expect_identical(data$x, 1:3)
     expect_identical(data[["y"]], c("a", "b", "c"))
-    expect_identical(as.data.frame(data), data.frame(x = 1:3, y = c("a", "b", "c")))
+    expect_identical(
+        as.data.frame(data), data.frame(x = 1:3, y = c("a", "b", "c"))
+    )
 
     alias <- data
     gen(data, z = x * 2)
@@ -258,7 +260,9 @@ test_that("readers, save_arrow, and dta_merge take the dibble container", {
     expect_identical(
         class(read_arrow(arrow_path)), c("tbl_df", "tbl", "data.frame")
     )
-    expect_identical(class(read_arrow(arrow_path, output = "dibble")), dibble_classes)
+    expect_identical(
+        class(read_arrow(arrow_path, output = "dibble")), dibble_classes
+    )
 
     master <- dibble(id = 1:2, x = c(1, 2))
     using <- dibble(id = 1:2, y = c(3, 4))

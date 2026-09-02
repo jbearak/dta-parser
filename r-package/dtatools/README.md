@@ -512,6 +512,45 @@ confirm_var(survey, "missing", on_failure = "false")
 #> [1] FALSE
 ```
 
+### Generate and replace
+
+`gen()` appends a variable and `repl()` (an alias of `replace_values()`)
+replaces selected values, both by reference. The target and its values are
+one tagged pair, or the positional pair that reads like the Stata line:
+
+```r
+gen(survey, adjusted = income + 5)
+repl(survey, adjusted = 0, where = !eligible)
+gen(survey, adjusted, income + 5)            # the same, Stata-shaped
+```
+
+Stata's `by varlist:` prefix is the `by` argument. Groups are formed first,
+then `where` and the values are evaluated on each group's rows, with `.n`
+and `.N` as the within-group row number and count, so `bysort id: replace
+last = _n == _N` becomes one line. `bysort` sorts the dataset by reference
+on the listed columns and then groups by them; `by` never sorts. A tibble
+grouped with `dplyr::group_by()` supplies its groups the same way.
+
+```r
+gen(survey, last = .n == .N, bysort = id)
+gen(survey, share = income / sum(income), by = c(region, year))
+```
+
+A dibble also accepts data.table's bracket form. `i` selects rows, `j`
+holds one or more `:=` assignments, and `by` or `bysort` group. Unlike
+`gen()` and `repl()`, `:=` creates a missing column and overwrites an
+existing one; several assignments apply left to right, and rows are
+selected once for the whole call.
+
+```r
+survey[income < 0, income := NA]
+survey[, `:=`(adjusted = income + 5, flag = income > 0)]
+survey[, last := .n == .N, bysort = id]
+```
+
+Only a dibble supports the bracket form. On a data table it runs
+data.table's own `:=`, which ignores declared Stata storage.
+
 ### Programming with variable names
 
 `gen()`, `repl()`, `replace_values()`, and `set_var_label()` capture their
