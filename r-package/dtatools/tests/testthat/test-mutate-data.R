@@ -41,10 +41,14 @@ test_that("matrix columns use data-frame row sizes", {
 
 test_that("targets are bare names and support tidy injection", {
     data <- data.frame(x = 1:2)
-    expect_error(replace_values(data, "x", 0), "unquoted")
     expect_error(replace_values(data, , 0), "unquoted")
     expect_error(replace_values(data, unknown, 0), "does not exist")
-    expect_error(gen(data, "new", 0), "unquoted")
+
+    # One string names a column, because `!!name` unquotes to one.
+    expect_silent(replace_values(data, "x", 0L))
+    expect_identical(data$x, c(0L, 0L))
+    expect_silent(gen(data, "quoted", 0))
+    expect_identical(as.double(data$quoted), c(0, 0))
 
     target <- rlang::sym("x")
     expect_silent(replace_values(data, !!target, 4L))

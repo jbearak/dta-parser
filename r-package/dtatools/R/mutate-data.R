@@ -34,9 +34,23 @@
 #' `gen()` and `replace_values()` reject grouped and rowwise tibbles. Ungroup
 #' them before mutation. `copy_data()` accepts them and preserves their class.
 #'
-#' `variable` must be one unquoted name. Tidy-evaluation injection is supported,
-#' so `gen(data, !!rlang::sym(name), value)` handles a name stored in a string.
-#' A quoted target is rejected.
+#' `variable` must be one unquoted name or one string. Tidy-evaluation
+#' injection is supported, so `gen(data, !!name, value)` handles a name stored
+#' in a string. No `rlang::inject()` wrapper is needed, because
+#' `rlang::enquo()` already applies quasiquotation. The older
+#' `gen(data, !!rlang::sym(name), value)` is equivalent and still works, but
+#' `rlang::sym()` is not required: unquoting a string yields a character
+#' scalar, and one nonempty, non-missing string is accepted in the `variable`
+#' position. A literal `gen(data, "adjusted", value)` names a column the same
+#' way. An empty string, `NA`, a character vector of length other than one, a
+#' call such as `a + 1`, `...`, and a missing argument are errors.
+#'
+#' In the `values` and `where` expressions a runtime name is reached through
+#' the mask's `.data` pronoun instead: `values = .data[[name]]` and
+#' `where = !is_missing(.data[[name]])`. Note the asymmetry, which is the
+#' surprising part: `.data[[name]]` works in `values` and `where` but not in
+#' the `variable` position, because `variable` names a target rather than
+#' reading a column. Use `!!name` there.
 #'
 #' `values` and `where` use a data mask built from the dataset before the
 #' mutation. Columns win over objects in the calling environment; use `.env`
@@ -119,8 +133,12 @@
 #'
 #' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
 #'   accepts grouped and rowwise tibbles.
-#' @param variable Exactly one unquoted target name.
-#' @param values A value expression or one-sided formula.
+#' @param variable Exactly one unquoted target name, or one nonempty,
+#'   non-missing character string, which is what `!!name` unquotes to. An
+#'   empty string, `NA`, a character vector of length other than one, a call,
+#'   `...`, and a missing argument are errors.
+#' @param values A value expression or one-sided formula. It may reference a
+#'   column whose name is a string through the mask's `.data` pronoun.
 #' @param where `NULL`, a logical expression, valid row positions, or a
 #'   one-sided formula.
 #' @return `gen()` and `replace_values()` return `data` invisibly.
@@ -133,6 +151,14 @@
 #' gen(survey, adjusted, income + 5)
 #' independent <- copy_data(survey)
 #' repl(independent, income, 0)
+#'
+#' # A name known only at run time, in each position that accepts one
+#' target_name <- "adjusted"
+#' source_name <- "income"
+#' repl(survey, !!target_name, 0)
+#' repl(survey, !!rlang::sym(target_name), 1)
+#' gen(survey, doubled, .data[[source_name]] * 2)
+#' repl(survey, doubled, 0, where = .data[[source_name]] > 15)
 #' @export
 replace_values <- function(data, variable, values, where = NULL) {
     variable <- rlang::enquo(variable)
@@ -374,13 +400,29 @@ gen <- function(data, variable, values, where = NULL) {
     )
 }
 
+# `!!` is the supported escape for a name held in a string. `rlang::enquo()`
+# already applies quasiquotation, so `gen(data, !!name, value)` needs no
+# `rlang::inject()` wrapper. Unquoting a character string yields a character
+# scalar rather than a symbol, which is why one length-one character is
+# accepted here alongside a symbol. No `.()` escape is offered: `.()` already
+# means `list()` in data.table, which this package sits directly on, and `!!`
+# covers the need without a second spelling.
 .unquoted_variable_name <- function(variable) {
-    if (rlang::quo_is_missing(variable)) {
-        stop("`variable` must be one unquoted column name", call. = FALSE)
-    }
+    message <- paste(
+        "`variable` must be one unquoted column name or one nonempty,",
+        "non-missing string"
+    )
+    if (rlang::quo_is_missing(variable)) stop(message, call. = FALSE)
     expression <- rlang::quo_get_expr(variable)
+    if (is.character(expression)) {
+        if (length(expression) != 1L || is.na(expression) ||
+            !nzchar(expression)) {
+            stop(message, call. = FALSE)
+        }
+        return(expression)
+    }
     if (!is.symbol(expression) || identical(expression, quote(...))) {
-        stop("`variable` must be one unquoted column name", call. = FALSE)
+        stop(message, call. = FALSE)
     }
     as.character(expression)
 }
