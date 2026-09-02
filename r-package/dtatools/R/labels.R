@@ -22,8 +22,18 @@
 #' They also accept vectors for pipeline use. Unknown, duplicate, unnamed, or
 #' overlapping column updates fail atomically.
 #'
-#' `set_var_label()` sets the variable label of one column named without
-#' quotes, mirroring Stata's `label variable`.
+#' `set_var_label()` sets the variable label of one column, mirroring Stata's
+#' `label variable`. Its `variable` argument follows the same rule as in
+#' `gen()` and `replace_values()`: one unquoted name, or one nonempty,
+#' non-missing string. A name known only at run time therefore needs only the
+#' tidy-evaluation escape, as in
+#' `set_var_label(data, !!name, "Cluster number")`; no `rlang::inject()`
+#' wrapper is required, and `rlang::sym()` is optional, so the older
+#' `!!rlang::sym(name)` spelling remains equivalent. There is no `.data`
+#' pronoun for this argument, because it names a target rather than reading a
+#' column. `set_var_labels()` and `set_val_labels()` take a programmatic named
+#' list through `.labels` instead, and `keep_vars()`, `drop_vars()`, and
+#' `rename_vars()` take `tidyselect::all_of()` or `.names`.
 #'
 #' The data-frame forms of `set_var_label()`, `set_var_labels()`, and
 #' `set_val_labels()` mutate by reference, as `gen()` and `replace_values()` do.
@@ -79,7 +89,8 @@
 #'   variable label or one or more named value-label codes.
 #' @param .labels A programmatic label value for a vector, or a named list of
 #'   column updates for a data frame.
-#' @param variable One unquoted column name.
+#' @param variable One unquoted column name, or one nonempty, non-missing
+#'   character string, which is what `!!name` unquotes to.
 #' @param label One variable label, or `NULL` to remove it.
 #' @return Getters return the metadata described above. Replacement functions
 #'   and `set_*()` functions return the updated vector or data frame. Data-frame
@@ -99,6 +110,10 @@
 #' )
 #' var_label(survey)
 #' val_labels(survey$status)
+#'
+#' # A column name known only at run time
+#' stratum_name <- "stratum"
+#' set_var_label(survey, !!stratum_name, "Sampling stratum")
 #' @export
 var_label <- function(x) {
     .validate_label_object(x)

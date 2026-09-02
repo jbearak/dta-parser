@@ -505,6 +505,30 @@ confirm_var(survey, "missing", on_failure = "false")
 #> [1] FALSE
 ```
 
+### Programming with variable names
+
+`gen()`, `repl()`, `replace_values()`, and `set_var_label()` capture their
+variable-name argument the way Stata's `generate` and `replace` do, so the name
+is normally written unquoted. When the name is only known at run time, unquote
+it with rlang's `!!` operator. These functions capture with `rlang::enquo()`,
+which already applies quasiquotation, so no `rlang::inject()` wrapper is
+needed. Inside the `values` and `where` expressions, the `.data` pronoun reads
+a column whose name is a string; it does not work in the name position, which
+names a target rather than reading a column.
+
+```r
+target_name <- "cluster"
+source_name <- "wm1"
+
+repl(survey, !!target_name, .data[[source_name]])
+repl(survey, !!target_name, 0, where = is_missing(.data[[source_name]]))
+gen(survey, !!paste0(target_name, "_flag"), .data[[source_name]] > 0)
+set_var_label(survey, !!target_name, "Cluster number")
+
+# `!!rlang::sym(name)` is the equivalent older spelling and still works
+repl(survey, !!rlang::sym(target_name), 1)
+```
+
 Use the installed help for exact behavior and examples:
 
 ```r

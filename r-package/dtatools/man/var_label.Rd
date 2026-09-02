@@ -38,7 +38,8 @@ set_val_labels(.data, ..., .labels = NULL)
 \item{value}{New label metadata. Data-frame replacement forms require a
 named list or \code{NULL}.}
 
-\item{variable}{One unquoted column name.}
+\item{variable}{One unquoted column name, or one nonempty, non-missing
+character string, which is what \code{!!name} unquotes to.}
 
 \item{label}{One variable label, or \code{NULL} to remove it.}
 
@@ -82,8 +83,18 @@ named column updates in \code{...} and a programmatic named list in \code{.label
 They also accept vectors for pipeline use. Unknown, duplicate, unnamed, or
 overlapping column updates fail atomically.
 
-\code{set_var_label()} sets the variable label of one column named without
-quotes, mirroring Stata's \verb{label variable}.
+\code{set_var_label()} sets the variable label of one column, mirroring Stata's
+\verb{label variable}. Its \code{variable} argument follows the same rule as in
+\code{gen()} and \code{replace_values()}: one unquoted name, or one nonempty,
+non-missing string. A name known only at run time therefore needs only the
+tidy-evaluation escape, as in
+\code{set_var_label(data, !!name, "Cluster number")}; no \code{rlang::inject()}
+wrapper is required, and \code{rlang::sym()} is optional, so the older
+\code{!!rlang::sym(name)} spelling remains equivalent. There is no \code{.data}
+pronoun for this argument, because it names a target rather than reading a
+column. \code{set_var_labels()} and \code{set_val_labels()} take a programmatic named
+list through \code{.labels} instead, and \code{keep_vars()}, \code{drop_vars()}, and
+\code{rename_vars()} take \code{tidyselect::all_of()} or \code{.names}.
 
 The data-frame forms of \code{set_var_label()}, \code{set_var_labels()}, and
 \code{set_val_labels()} mutate by reference, as \code{gen()} and \code{replace_values()} do.
@@ -147,4 +158,8 @@ survey <- set_var_labels(
 )
 var_label(survey)
 val_labels(survey$status)
+
+# A column name known only at run time
+stratum_name <- "stratum"
+set_var_label(survey, !!stratum_name, "Sampling stratum")
 }
