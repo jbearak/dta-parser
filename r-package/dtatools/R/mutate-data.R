@@ -1022,8 +1022,35 @@ copy_data <- function(data) {
     columns
 }
 
+# Reads one visible column without building a snapshot of the whole
+# table. Physical columns of an ordinary overlay still live in the
+# object itself, so they are read from there; generated columns and
+# every column of a structural overlay come from the store. Returns the
+# column wrapped in a list, or NULL when the name is not an exact match,
+# which sends the caller back to the general snapshot path.
+.reference_column <- function(data, name) {
+    state <- .reference_state(data)
+    if (is.null(state)) return(NULL)
+    if (!isTRUE(state$physical_overlay)) {
+        # `locations` also indexes generated columns, which live past the
+        # end of the physical object, so confirm the hit is a physical one.
+        location <- state$locations[[name]]
+        physical <- attr(data, "names", exact = TRUE)
+        if (!is.null(location) && location <= length(physical) &&
+            identical(physical[[location]], name)) {
+            return(list(.subset2(data, location)))
+        }
+    }
+    if (exists(name, envir = state$columns, inherits = FALSE)) {
+        return(list(state$columns[[name]]))
+    }
+    NULL
+}
+
 #' @export
 `$.dtatools_ref_data` <- function(x, name) {
+    found <- .reference_column(x, as.character(name))
+    if (!is.null(found)) return(found[[1L]])
     call <- sys.call()
     call[[1L]] <- quote(`$`)
     call[[2L]] <- .reference_snapshot(x)
@@ -1032,6 +1059,20 @@ copy_data <- function(data) {
 
 #' @export
 `[[.dtatools_ref_data` <- function(x, i, ..., exact = TRUE) {
+    if (...length() == 0L && isTRUE(exact) && length(i) == 1L) {
+        name <- if (is.character(i)) {
+            i
+        } else if (is.numeric(i) && !is.na(i)) {
+            names <- .reference_names(x)
+            if (i >= 1 && i <= length(names)) names[[i]] else NULL
+        } else {
+            NULL
+        }
+        if (!is.null(name)) {
+            found <- .reference_column(x, name)
+            if (!is.null(found)) return(found[[1L]])
+        }
+    }
     .reference_snapshot(x)[[i, ..., exact = exact]]
 }
 
