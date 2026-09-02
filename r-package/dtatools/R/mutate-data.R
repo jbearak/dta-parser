@@ -239,6 +239,9 @@
 #'   `copy_data()` returns an independent data frame or tibble.
 #' @references
 #' StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
+#' @seealso [dibble-bracket] for `data[i, y := value]` on a [dibble], which
+#'   creates or overwrites in one call and takes the same `by`, `bysort`,
+#'   and grouped input.
 #' @examples
 #' survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
 #' gen(survey, adjusted = income + 5)
@@ -1395,13 +1398,36 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     view
 }
 
+# The `where` half of `.grouped_mutation()` on its own: each group's rows
+# as validated group-relative positions, or `NULL` for the whole group.
+# The bracket form calls it once and hands the result to every assignment
+# in the same `j`, so rows are chosen before any assignment writes.
+.grouped_selection <- function(where, columns, groups) {
+    view <- .mutation_group_view(columns)
+    lapply(seq_along(groups$rows), function(index) {
+        rows <- groups$rows[[index]]
+        size <- length(rows)
+        if (size == 0L) return(NULL)
+        view$rows <- rows
+        view$cache <- new.env(hash = TRUE, parent = emptyenv())
+        selected <- .eval_mutation_expression(
+            where, view$columns, "where",
+            list(.n = seq_len(size), .N = size), shadow = FALSE
+        )
+        .mutation_rows(selected, size)
+    })
+}
+
 # Evaluates `where` and `values` once per group and gathers the results
 # into one selected-row vector and one aligned value vector for the
 # shared write path. Duplicate positions from a numeric `where` keep the
 # last value, as the ungrouped path does; when every row is selected the
 # values are put into row order and `rows` becomes `NULL`, so the native
 # writers see the same plain full-column write as an ungrouped call.
-.grouped_mutation <- function(where, values, columns, groups, row_count) {
+# `selected` is a `.grouped_selection()` result; when given, `where` is
+# not evaluated again.
+.grouped_mutation <- function(where, values, columns, groups, row_count,
+                              selected = NULL) {
     view <- .mutation_group_view(columns)
     count <- length(groups$rows)
     row_pieces <- vector("list", count)
@@ -1414,14 +1440,17 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         view$rows <- rows
         view$cache <- new.env(hash = TRUE, parent = emptyenv())
         extras <- list(.n = seq_len(size), .N = size)
-        selected <- .eval_mutation_expression(
-            where, view$columns, "where", extras, shadow = FALSE
-        )
+        group_rows <- if (is.null(selected)) {
+            .mutation_rows(.eval_mutation_expression(
+                where, view$columns, "where", extras, shadow = FALSE
+            ), size)
+        } else {
+            selected[[index]]
+        }
         evaluated <- .eval_mutation_expression(
             values, view$columns, "values", extras, shadow = first
         )
         first <- FALSE
-        group_rows <- .mutation_rows(selected, size)
         mode <- .mutation_value_mode(
             evaluated, group_rows, size,
             group = .mutation_group_label(groups$keys, index)
@@ -1552,25 +1581,24 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     result
 }
 
-.mutate_data <- function(data, variable, values, where, generate,
-                         by = NULL, bysort = NULL) {
+# Selects the rows of one bracket call, `data[i, j, by]`, before any of
+# its assignments writes: `i` is evaluated once, with the shadow check
+# and `.n`/`.N` of `where`, and the groups it was evaluated under are
+# kept so each assignment reuses them. The result is `.mutate_data()`'s
+# `selection`. `bysort` sorts the dataset here, once, as the grouped
+# `gen()` path does.
+.mutation_selection <- function(data, where, by, bysort) {
     .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE
     )
-    target <- .mutation_name(variable, generate, original)
     groups <- if (grouped_input || !is.null(by) || !is.null(bysort)) {
         .mutation_groups(data, original, by, bysort, grouped_input)
     } else {
         NULL
     }
     if (!is.null(groups)) original <- groups$original
-    state <- .reference_state(data)
-    access <- NULL
-    column <- NULL
-
-    # A formula body is exempt: `~` asks for the data mask outright.
     if (!rlang::quo_is_missing(where) &&
         !rlang::is_formula(rlang::quo_get_expr(where))) {
         .check_shadowed_symbols(
@@ -1578,17 +1606,75 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             rlang::quo_get_env(where)
         )
     }
+    if (!is.null(groups)) {
+        return(list(
+            groups = groups,
+            group_rows = .grouped_selection(where, original$columns, groups)
+        ))
+    }
+    selected <- .eval_mutation_expression(
+        where, original$columns, "where",
+        .row_counter_extras(where, NULL, original$nrow),
+        row_count = original$nrow
+    )
+    list(groups = NULL, rows = .mutation_rows(selected, original$nrow))
+}
+
+# `selection` is a `.mutation_selection()` result. When given, `where` is
+# not evaluated again and the groups it carries stand in for `by` and
+# `bysort`, so every assignment in one `data[i, j]` writes to the rows
+# `i` chose before the first of them wrote. `where` still arrives so
+# `values` can be given `.n` and `.N` on the same terms.
+.mutate_data <- function(data, variable, values, where, generate,
+                         by = NULL, bysort = NULL, selection = NULL) {
+    .reject_data_table_subclass(data)
+    grouped_input <- inherits(data, "grouped_df")
+    original <- .as_mutation_data(
+        data, allow_grouped = TRUE, allow_rowwise = FALSE
+    )
+    target <- .mutation_name(variable, generate, original)
+    groups <- if (!is.null(selection)) {
+        selection$groups
+    } else if (grouped_input || !is.null(by) || !is.null(bysort)) {
+        .mutation_groups(data, original, by, bysort, grouped_input)
+    } else {
+        NULL
+    }
+    if (is.null(selection) && !is.null(groups)) original <- groups$original
+    state <- .reference_state(data)
+    access <- NULL
+    column <- NULL
+
+    # A formula body is exempt: `~` asks for the data mask outright.
+    if (is.null(selection) && !rlang::quo_is_missing(where) &&
+        !rlang::is_formula(rlang::quo_get_expr(where))) {
+        .check_shadowed_symbols(
+            rlang::quo_get_expr(where), original$columns,
+            rlang::quo_get_env(where)
+        )
+    }
     # The fused comparison patch reads the whole target column, so it
-    # cannot serve a per-group selection.
-    fused <- if (generate || !is.null(groups)) NULL else {
+    # cannot serve a per-group selection, and there is nothing to fuse
+    # once the rows were selected up front.
+    fused <- if (generate || !is.null(groups) || !is.null(selection)) {
+        NULL
+    } else {
         .fused_comparison_plan(where, original$columns, original$nrow)
     }
     if (!is.null(groups)) {
         gathered <- .grouped_mutation(
-            where, values, original$columns, groups, original$nrow
+            where, values, original$columns, groups, original$nrow,
+            selected = selection$group_rows
         )
         selected <- gathered$rows
         evaluated <- gathered$values
+    } else if (!is.null(selection)) {
+        evaluated <- .eval_mutation_expression(
+            values, original$columns, "values",
+            .mutation_row_counters(where, values, original$nrow),
+            row_count = original$nrow
+        )
+        selected <- selection$rows
     } else if (is.null(fused)) {
         extras <- .mutation_row_counters(where, values, original$nrow)
         selected <- .eval_mutation_expression(
@@ -1915,13 +2001,8 @@ copy_data <- function(data) {
     .reference_snapshot(x)[[i, ..., exact = exact]]
 }
 
-#' @export
-`[.dtatools_ref_data` <- function(x, i, j, ..., drop) {
-    call <- sys.call()
-    call[[1L]] <- quote(`[`)
-    call[[2L]] <- .reference_snapshot(x)
-    eval(call, parent.frame())
-}
+# `[.dtatools_ref_data` is defined in dibble.R beside its documentation:
+# it is the bracket mutation entry as well as the snapshot delegate.
 
 #' @export
 names.dtatools_ref_data <- function(x) {
@@ -1960,8 +2041,31 @@ as.list.dtatools_ref_data <- function(x, ...) {
     as.list(.data_columns(x), ...)
 }
 
+# The `[` primitive marks its result visible after S3 dispatch, so a
+# bracket assignment cannot return invisibly the way `gen()` does. As
+# data.table does for its `:=`, the assignment records the dataset it
+# just mutated and the next top-level print of that dataset is skipped,
+# which is the autoprint of the assignment's own result. The record is
+# dropped at that first print, so a `print(data)` or bare `data` on the
+# next line prints, and a print from inside a function or a test never
+# skips, because it sits deeper in the call stack.
+.bracket_print <- new.env(parent = emptyenv())
+.bracket_print$skip <- NULL
+
+.suppress_bracket_autoprint <- function(x) {
+    .bracket_print$skip <- .reference_state(x)
+}
+
+.skip_bracket_autoprint <- function(x, frames) {
+    skip <- .bracket_print$skip
+    if (is.null(skip)) return(FALSE)
+    .bracket_print$skip <- NULL
+    identical(skip, .reference_state(x)) && frames <= 2L
+}
+
 #' @export
 print.dtatools_ref_data <- function(x, ...) {
+    if (.skip_bracket_autoprint(x, sys.nframe())) return(invisible(x))
     print(.reference_snapshot(x), ...)
     invisible(x)
 }
