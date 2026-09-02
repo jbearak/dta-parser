@@ -534,6 +534,23 @@ repl(survey, .(target_name), .(source_name) + 1)
 repl(survey, !!rlang::sym(target_name), 1)
 ```
 
+Inside `values` and `where`, columns win over objects in the calling
+environment. A bare symbol that is both a column and an object bound anywhere
+from the calling frame up to the global environment is an error, because
+either reading is defensible and the wrong one fails silently. Write
+`.data$name` for the column or `.env$name` for the object:
+
+```r
+rows <- survey$income < 9000
+repl(survey, income, 0, where = rows)        # error if `rows` is a column
+repl(survey, income, 0, where = .env$rows)   # the local, unambiguously
+```
+
+Bindings in attached packages and base are not consulted, so a column named
+`pi` or `T` is not flagged, and a function binding does not count, so a
+recode script named after the column it builds is not flagged either.
+`options(dtatools.shadow_check = FALSE)` turns the check off.
+
 `set_var_labels()` and `set_val_labels()` update columns by name in `...`.
 A column named at run time takes a `.(name) := value` tag there, or supply a
 named list through `.labels`:
