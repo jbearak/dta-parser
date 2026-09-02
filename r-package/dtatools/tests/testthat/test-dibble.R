@@ -312,10 +312,13 @@ test_that("readers, save_arrow, and dta_merge take the dibble container", {
 test_that("a file recording an unknown container still reads", {
     skip_if_not_installed("arrow")
     path <- tempfile(fileext = ".arrow")
-    on.exit(unlink(path), add = TRUE)
+    future <- tempfile(fileext = ".arrow")
+    on.exit(unlink(c(path, future)), add = TRUE)
     save_arrow(dibble(x = 1:2), path)
     # Rewrite the recorded container to a value this release does not
-    # know, as a file from a newer dtatools might carry.
+    # know, as a file from a newer dtatools might carry. The copy goes to
+    # a second path: arrow memory-maps the source, so overwriting it in
+    # place is refused on Windows and reads back zeros elsewhere.
     table <- arrow::read_ipc_file(path, as_data_frame = FALSE)
     metadata <- table$metadata
     key <- grep("dataset", names(metadata), value = TRUE)[[1L]]
@@ -325,8 +328,8 @@ test_that("a file recording an unknown container still reads", {
     )
     expect_true(grepl("matrix", metadata[[key]], fixed = TRUE))
     table$metadata <- metadata
-    arrow::write_ipc_file(table, path, compression = "uncompressed")
-    restored <- read_arrow(path, verify = FALSE)
+    arrow::write_ipc_file(table, future, compression = "uncompressed")
+    restored <- read_arrow(future, verify = FALSE)
     expect_false(is_dibble(restored))
     expect_identical(class(restored), c("tbl_df", "tbl", "data.frame"))
     expect_identical(restored$x, 1:2)
