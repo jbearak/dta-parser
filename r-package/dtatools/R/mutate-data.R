@@ -718,6 +718,8 @@ gen <- function(data, ..., where = NULL) {
 # column's name is shadowed without a word. When one symbol is bound in
 # both places the expression is ambiguous to a reader as well as to the
 # evaluator, so it is an error naming the two spellings that are not.
+# `.mutate_data()` runs it on `where` before building the fused
+# comparison plan, since that plan reads columns without evaluating.
 # The environment search runs from the capture frame up to and including
 # the global environment, not into attached packages or base, so column
 # names like `pi` or `T` do not trip it, and a binding that is a function
@@ -741,6 +743,9 @@ gen <- function(data, ..., where = NULL) {
     }
     if (identical(head, quote(`~`))) return(found)
     if (identical(head, quote(`function`))) return(found)
+    if (identical(head, quote(`::`)) || identical(head, quote(`:::`))) {
+        return(found)
+    }
     for (index in seq.int(2L, length.out = length(expression) - 1L)) {
         argument <- expression[[index]]
         if (identical(argument, quote(expr = ))) next
@@ -1129,6 +1134,12 @@ gen <- function(data, ..., where = NULL) {
     access <- NULL
     column <- NULL
 
+    if (!rlang::quo_is_missing(where)) {
+        .check_shadowed_symbols(
+            rlang::quo_get_expr(where), original$columns,
+            rlang::quo_get_env(where)
+        )
+    }
     fused <- if (generate) NULL else {
         .fused_comparison_plan(where, original$columns, original$nrow)
     }

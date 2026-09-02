@@ -2168,6 +2168,24 @@ test_that("a symbol bound as both column and object is an error", {
     expect_error(repl(data, x, 9, where = ~ rows), message)
     expect_identical(data$x, c(1, 2, 3))
 
+    # The fused comparison path, which reads columns without evaluating
+    # the expression, is checked too.
+    fused <- data.frame(
+        x = stata_byte(c(1, 2, 3)), rows = stata_byte(c(0, 0, 0))
+    )
+    expect_error(repl(fused, x, 9, where = rows == 0), message)
+    expect_error(repl(fused, x, 9, where = x == rows), message)
+    cutoff <- 2
+    fused$cutoff <- stata_byte(c(0, 0, 0))
+    expect_error(repl(fused, x, 9, where = x > cutoff), "`cutoff` is both")
+    expect_identical(as.double(fused$x), c(1, 2, 3))
+
+    # Namespace qualifiers are not column reads.
+    data <- data.frame(x = c(1, 2, 3), stats = c(0, 0, 0))
+    stats <- 5
+    repl(data, x, stats::median(x))
+    expect_identical(data$x, c(2, 2, 2))
+
     # Both explicit spellings pass, and each reads what it names.
     repl(data, x, 9, where = .env$rows)
     expect_identical(data$x, c(9, 2, 9))
