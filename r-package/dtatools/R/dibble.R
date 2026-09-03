@@ -116,9 +116,13 @@ is_dibble <- function(x) {
 # conversion, which materializes compact dictionary-string columns. Building
 # the tibble from the bare column list keeps them compact; dataset
 # attributes follow, minus data.table's runtime state, which a tibble
-# cannot hold.
+# cannot hold. The columns are deep-copied rather than shared: a later
+# by-reference replacement through the dibble would otherwise rewrite the
+# data.table's own vectors while its key and index attributes still
+# describe the old values, so a keyed lookup could return the wrong rows.
+# `.deep_copy_value()` keeps compact columns compact.
 .data_table_as_tibble <- function(x) {
-    columns <- .plain_data_columns(x)
+    columns <- lapply(.plain_data_columns(x), .deep_copy_value)
     names(columns) <- attr(x, "names", exact = TRUE)
     result <- tibble::as_tibble(columns, .name_repair = "minimal")
     source_attributes <- attributes(x)

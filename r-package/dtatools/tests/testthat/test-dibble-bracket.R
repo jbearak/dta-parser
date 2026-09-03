@@ -253,7 +253,9 @@ test_that("the autoprint skip does not outlive its top-level statement", {
         "cat('E\\n')",
         "invisible(data[, w := 0])",
         "data",                       # prints
-        "cat('F\\n')"
+        "cat('F\\n')",
+        "print(data[, v := 1])",      # explicit print shows the result
+        "cat('G\\n')"
     ), script)
     skip_if_not_installed("callr")
     # callr passes the parent's library paths to the child on every
@@ -263,7 +265,7 @@ test_that("the autoprint skip does not outlive its top-level statement", {
         script, libpath = .libPaths(), show = FALSE, fail_on_status = TRUE
     )$stdout
     output <- strsplit(output, "\r?\n")[[1L]]
-    markers <- match(c("A", "B", "C", "D", "E", "F"), output)
+    markers <- match(c("A", "B", "C", "D", "E", "F", "G"), output)
     expect_false(anyNA(markers), info = paste(output, collapse = "\n"))
     section <- function(index) {
         # `seq.int(a, b)` counts down when `b < a`, so size the run first.
@@ -273,7 +275,7 @@ test_that("the autoprint skip does not outlive its top-level statement", {
     expect_identical(
         section(1L), character(), info = paste(output, collapse = "\n")
     )
-    for (index in 2:5) {
+    for (index in 2:6) {
         expect_true(
             any(grepl("tibble", section(index), fixed = TRUE)),
             info = paste("section", index)

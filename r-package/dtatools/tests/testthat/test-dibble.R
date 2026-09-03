@@ -97,6 +97,16 @@ test_that("as_dibble copies a data table without its runtime state", {
     gen(converted, doubled = id * 2)
     expect_identical(names(table), c("id", "value"))
 
+    # The dibble owns its columns: a replacement through it leaves the
+    # data.table's vectors, and therefore its key, untouched.
+    repl(converted, id = c(9L, 8L))
+    expect_identical(table$id, c(1L, 2L))
+    expect_identical(data.table::key(table), "id")
+    # data.table's `[` treats a caller outside a data.table-aware
+    # namespace as base `[`, so check the keyed order directly.
+    expect_identical(table$value[match(1L, table$id)], "a")
+    expect_true(!is.unsorted(table$id))
+
     subclass <- data.table::data.table(x = 1)
     class(subclass) <- c("custom", class(subclass))
     expect_error(as_dibble(subclass), "ordinary data.table")

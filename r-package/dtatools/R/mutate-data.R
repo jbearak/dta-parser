@@ -899,8 +899,14 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 .eval_plain_mutation <- function(expression, columns, environment,
                                  extras = NULL) {
     if (!is.environment(columns)) {
-        if (!is.null(extras)) columns <- c(columns, extras)
-        return(eval(expression, columns, environment))
+        if (is.null(extras)) return(eval(expression, columns, environment))
+        # A column list may itself hold a `.n` or `.N` column. Layering the
+        # counters in a child frame keeps the columns uniquely named and
+        # lets the counters win, as they do on the reference-state path.
+        frame <- list2env(extras, new.env(
+            parent = list2env(columns, new.env(parent = environment))
+        ))
+        return(eval(expression, frame))
     }
     previous_parent <- parent.env(columns)
     on.exit(parent.env(columns) <- previous_parent, add = TRUE)
@@ -946,9 +952,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         parent.frame()
     }
     if (!is.environment(columns)) {
-        mask <- rlang::as_data_mask(
-            if (is.null(extras)) columns else c(columns, extras)
-        )
+        mask <- if (is.null(extras)) {
+            rlang::as_data_mask(columns)
+        } else {
+            bottom <- list2env(columns, new.env(parent = emptyenv()))
+            rlang::new_data_mask(
+                list2env(extras, new.env(parent = bottom)), top = bottom
+            )
+        }
+        if (!is.null(extras)) mask$.data <- rlang::as_data_pronoun(columns)
         mask$. <- .runtime_name_reader(columns, reader_environment)
         return(if (is.null(environment)) {
             rlang::eval_tidy(expression, data = mask)
@@ -1498,6 +1510,26 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     list(rows = all_rows, values = gathered)
 }
 
+# A replacement that rewrote a grouping column leaves the `grouped_df`
+# metadata describing the old values. Rebuild it in place from the
+# current columns, keeping the `.drop` setting, so a following dplyr verb
+# or `.N` assignment partitions the rows the way the data now reads.
+.regroup_after_replacement <- function(data, state) {
+    snapshot <- if (is.null(state)) data else .reference_snapshot(data)
+    # The snapshot reads attributes off `data`, so rewriting the attribute
+    # on the object is what every binding and later snapshot observes.
+    regrouped <- dplyr::group_by(
+        dplyr::ungroup(snapshot),
+        dplyr::across(dplyr::all_of(dplyr::group_vars(data))),
+        .drop = dplyr::group_by_drop_default(data)
+    )
+    .Call(
+        C_dtatools_set_attribute, data, "groups",
+        attr(regrouped, "groups", exact = TRUE)
+    )
+    invisible(NULL)
+}
+
 # `list_unchop()` finds the common type of the pieces but drops bare
 # attributes such as a variable label; restore them when every piece
 # agrees, so a grouped `gen()` keeps the label an ungrouped one would.
@@ -1754,6 +1786,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             patch()
         }
         if (!is.null(state)) state$columns[[target$name]] <- column
+        if (grouped_input && target$name %in% dplyr::group_vars(data)) {
+            .regroup_after_replacement(data, state)
+        }
     }
     if (generate) {
         .append_generated_column(state, target$name, column)
@@ -2081,16 +2116,25 @@ as.list.dtatools_ref_data <- function(x, ...) {
     invisible(NULL)
 }
 
-.skip_bracket_autoprint <- function(x, frames) {
+# Implicit autoprint calls `print` through the function object itself, so
+# the outer call's head is a closure rather than the symbol `print`; an
+# explicit `print(data[, y := 1])` arrives with the symbol. Only the former
+# is the assignment's own echo, so only it is skipped, as data.table does.
+# The record is spent either way, so a stale one cannot outlive its
+# statement.
+.skip_bracket_autoprint <- function(x, frames, call) {
     skip <- .bracket_print$skip
     if (is.null(skip)) return(FALSE)
     .bracket_print$skip <- NULL
-    identical(skip, .reference_state(x)) && frames <= 2L
+    identical(skip, .reference_state(x)) && frames <= 2L &&
+        is.call(call) && is.function(call[[1L]])
 }
 
 #' @export
 print.dtatools_ref_data <- function(x, ...) {
-    if (.skip_bracket_autoprint(x, sys.nframe())) return(invisible(x))
+    if (.skip_bracket_autoprint(x, sys.nframe(), sys.call(1L))) {
+        return(invisible(x))
+    }
     print(.reference_snapshot(x), ...)
     invisible(x)
 }

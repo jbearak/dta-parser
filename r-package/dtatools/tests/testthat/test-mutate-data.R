@@ -2598,3 +2598,42 @@ test_that("a symbol bound as both column and object is an error", {
     })
     expect_identical(data$x, c(0, 0, 0))
 })
+
+test_that("replacing a grouping column rebuilds the dplyr groups", {
+    grouped <- dplyr::group_by(
+        tibble::tibble(id = c(1, 1, 2), x = 1:3), id
+    )
+    repl(grouped, id = 1)
+    expect_identical(dplyr::group_vars(grouped), "id")
+    groups <- attr(grouped, "groups", exact = TRUE)
+    expect_identical(groups$id, 1)
+    expect_identical(as.integer(groups$.rows[[1L]]), 1:3)
+    expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+    gen(grouped, size = .N)
+    expect_identical(as.double(grouped$size), c(3, 3, 3))
+
+    # A grouped dibble keeps the rebuilt groups in its snapshot too.
+    dib <- dplyr::group_by(dibble(id = c("a", "b", "b"), x = 1:3), id)
+    dib[, id := "b"]
+    expect_true(is_dibble(dib))
+    expect_identical(attr(dib, "groups", exact = TRUE)$id, "b")
+    expect_identical(dplyr::summarise(dib, n = dplyr::n())$n, 3L)
+})
+
+test_that("row counters mask a column named .n or .N", {
+    data <- data.frame(.n = c(100, 200), .N = c(7, 7), x = 1:2)
+    gen(data, row = .n)
+    gen(data, count = .N)
+    expect_identical(as.double(data$row), c(1, 2))
+    expect_identical(as.double(data$count), c(2, 2))
+    # The pronoun still reaches the column.
+    gen(data, from_column = .data$.n)
+    expect_identical(as.double(data$from_column), c(100, 200))
+    repl(data, x = 0L, where = .data$.N == 7 & .n == 2)
+    expect_identical(data$x, c(1L, 0L))
+
+    skip_if_not_installed("data.table")
+    table <- data.table::data.table(.n = c(100, 200), x = 1:2)
+    gen(table, row = .n)
+    expect_identical(as.double(table$row), c(1, 2))
+})
