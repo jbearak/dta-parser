@@ -775,6 +775,50 @@ test_that("reframe, group_modify, and nest_by return dibbles", {
     nested <- dplyr::nest_by(data, g)
     expect_true(is_dibble(nested))
     expect_type(nested$data, "list")
+    group_nested <- dplyr::group_nest(grouped)
+    expect_true(is_dibble(group_nested))
+    expect_identical(attr(group_nested$g, "stata.string.storage"), "str1")
+    expect_type(group_nested$data, "list")
+    by_key <- dplyr::group_nest(data, g, .key = "rows")
+    expect_true(is_dibble(by_key))
+    expect_identical(names(by_key), c("g", "rows"))
+})
+
+test_that("a := value with declared storage widens the column to it", {
+    data <- dibble(x = dta_byte(1:3), s = c("a", "b", "c"))
+    data[, x := dta_double(1)]
+    expect_identical(dta_storage_type(data$x), "double")
+    expect_identical(as.double(data$x), c(1, 1, 1))
+    data <- dibble(x = dta_byte(1:3))
+    data[2, x := dta_double(1000)]
+    expect_identical(dta_storage_type(data$x), "double")
+    expect_identical(as.double(data$x), c(1, 1000, 3))
+    # Typed arithmetic declares storage too.
+    data <- dibble(x = dta_int(1:3), y = dta_long(1:3))
+    data[, x := y * 2L]
+    expect_identical(dta_storage_type(data$x), "long")
+    # A narrower declaration keeps the column's storage.
+    data <- dibble(x = dta_long(1:3))
+    data[1, x := dta_byte(7)]
+    expect_identical(dta_storage_type(data$x), "long")
+    expect_identical(as.double(data$x), c(7, 2, 3))
+    # Strings widen to a declared `str#` as well.
+    data <- dibble(s = c("a", "b"))
+    data[1, s := dta_string("z", "str20")]
+    expect_identical(attr(data$s, "stata.string.storage"), "str20")
+    expect_identical(as.character(data$s), c("z", "b"))
+    data[2, s := dta_string("y", "str5")]
+    expect_identical(attr(data$s, "stata.string.storage"), "str20")
+    # Variable metadata survives the widening.
+    labelled <- dibble(x = dta_byte(1:2))
+    var_label(labelled$x) <- "Count"
+    labelled[, x := dta_double(0.5)]
+    expect_identical(var_label(labelled$x), "Count")
+    expect_identical(dta_storage_type(labelled$x), "double")
+    # replace_values() stays strict about the target's storage.
+    strict <- dibble(x = dta_byte(1:2))
+    replace_values(strict, x, dta_double(1))
+    expect_identical(dta_storage_type(strict$x), "byte")
 })
 
 test_that("difftime arithmetic with Stata numerics works", {

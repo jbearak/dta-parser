@@ -46,7 +46,9 @@
 #' above 2^24 lose digits, and dtatools goes to `double` instead. A value
 #' that already carries storage, from a `dta_*()` call or Stata-typed
 #' arithmetic, keeps that storage. Row or cell assignment, as in
-#' `data[1, "x"] <- 1000L`, promotes the same way. [replace_values()] and
+#' `data[1, "x"] <- 1000L`, promotes the same way, and a `:=` whose value
+#' declares wider storage than the column widens the column to it, as
+#' `data[1, x := dta_double(1)]` makes `x` a `double`. [replace_values()] and
 #' `repl()` do not promote; they reject values that do not fit. Nor does
 #' `[<-` on a Stata vector taken out of the dibble, as in
 #' `data$x[1] <- 1000L`, which is the vector's own strict assignment.

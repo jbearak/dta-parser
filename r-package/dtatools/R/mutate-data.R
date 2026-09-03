@@ -1783,12 +1783,20 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (is.null(column)) {
             column <- .data_column_at(access, target$location)
         }
-        if (promote &&
-            !.replacement_fits(values, column, rows, value_mode)) {
-            # `:=` promotes: the column is rebuilt at the narrowest
-            # storage that holds the current and new values together.
+        declared <- if (promote) {
+            .wider_declared_storage(values, column)
+        } else {
+            NULL
+        }
+        if (!is.null(declared) ||
+            (promote &&
+             !.replacement_fits(values, column, rows, value_mode))) {
+            # `:=` promotes: the column is rebuilt at the storage the
+            # right-hand side declares when that is wider, and otherwise
+            # at the narrowest storage that holds the current and new
+            # values together.
             promoted <- .promoted_replacement(
-                values, column, rows, value_mode, original$nrow
+                values, column, rows, value_mode, original$nrow, declared
             )
             .set_data_column_at(access, target$location, promoted)
             if (grouped_input) .regroup_after_replacement(data, state)
@@ -2594,8 +2602,11 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # promotes an overflowing `long` to `float`, where integers above 2^24
 # lose digits. Prior variable metadata is restored on the result. Other
 # combinations, including a change of kind between numeric and string,
-# take the storage a fresh column would.
-.promoted_column <- function(values, prior, row_count, caller) {
+# take the storage a fresh column would. `declared` names storage the
+# caller has already settled on, such as a `:=` right-hand side's, and
+# stands in for the prior column's.
+.promoted_column <- function(values, prior, row_count, caller,
+                             declared = NULL) {
     # An explicit `dta_*()` or arithmetic result already carries the
     # storage the user asked for; a column no storage holds passes through.
     if (.stata_typed_column(values) || .stata_untypable_column(values)) {
@@ -2612,7 +2623,9 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     if (typeof(prior) == "character") {
         text <- as.character(values)
         text[is.na(text)] <- ""
-        declared <- attr(prior, "stata.string.storage", exact = TRUE)
+        if (is.null(declared)) {
+            declared <- attr(prior, "stata.string.storage", exact = TRUE)
+        }
         required <- .stata_string_required_width(text)
         storage <- if (.stata_string_storage_width(declared) >= required) {
             declared
@@ -2622,7 +2635,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(.new_stata_string(enc2utf8(text), storage, prior))
     }
     doubles <- as.double(values)
-    declared <- dta_storage_type(prior)
+    if (is.null(declared)) declared <- dta_storage_type(prior)
     storage <- if (.stata_storage_holds(doubles, declared)) {
         declared
     } else {
@@ -2659,9 +2672,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 }
 
 # The whole column after `values` replace the selected `rows` of
-# `target`, typed by promotion from `target`'s storage.
+# `target`, typed by promotion from `target`'s storage, or from
+# `declared` when the right-hand side settled a wider one.
 .promoted_replacement <- function(values, target, rows, value_mode,
-                                  row_count) {
+                                  row_count, declared = NULL) {
     current <- if (typeof(target) == "character") {
         text <- as.character(target)
         text[is.na(text)] <- ""
@@ -2688,7 +2702,35 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     } else {
         replacement
     }
-    .promoted_column(current, target, row_count, "`:=`")
+    .promoted_column(current, target, row_count, "`:=`", declared)
+}
+
+# The storage a `:=` right-hand side declares, through a `dta_*()` call
+# or Stata-typed arithmetic, when it is wider than `target`'s: the value
+# the user typed names the storage they want, and a column that holds
+# both must be at least that wide. `NULL` when the right-hand side is
+# bare, declares the target's storage or narrower, or is not of the
+# target's kind, so the ordinary fit check decides.
+.wider_declared_storage <- function(values, target) {
+    if (!.promotable_pair(values, target)) return(NULL)
+    if (typeof(target) == "character") {
+        declared <- attr(values, "stata.string.storage", exact = TRUE)
+        current <- attr(target, "stata.string.storage", exact = TRUE)
+        if (is.null(declared) || !is.character(declared) ||
+            length(declared) != 1L || is.na(declared)) {
+            return(NULL)
+        }
+        wider <- .stata_string_storage_width(declared) >
+            .stata_string_storage_width(current)
+        return(if (wider) declared else NULL)
+    }
+    if (!inherits(values, "stata_numeric")) return(NULL)
+    declared <- match(dta_storage_type(values), .stata_storage)
+    current <- match(dta_storage_type(target), .stata_storage)
+    if (is.na(declared) || is.na(current) || declared <= current) {
+        return(NULL)
+    }
+    .stata_storage[[declared]]
 }
 
 # `prior` has declared storage of the same kind as `values`: numeric for
@@ -2858,6 +2900,14 @@ group_modify.dtatools_ref_data <- function(.data, .f, ..., .keep = FALSE) {
 nest_by.dtatools_ref_data <- function(.data, ..., .key = "data",
                                       .keep = FALSE) {
     .closed_reference_verb(.data, sys.call(), dplyr::nest_by, parent.frame())
+}
+
+#' @export
+group_nest.dtatools_ref_data <- function(.tbl, ..., .key = "data",
+                                         keep = FALSE) {
+    .closed_reference_verb(
+        .tbl, sys.call(), dplyr::group_nest, parent.frame()
+    )
 }
 
 #' @export
