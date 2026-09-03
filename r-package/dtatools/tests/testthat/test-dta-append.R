@@ -210,18 +210,170 @@ test_that("formats come from the first contributor after promotion", {
     expect_identical(attr(result$v, "format.stata"), "%8.0g")
 })
 
-test_that("value-label tables merge and the first contributor wins text", {
-    first <- tibble::tibble(v = dta_byte(c(1, 2)))
-    val_labels(first$v) <- c(yes = 1)
-    second <- tibble::tibble(v = dta_byte(c(2, 3)))
-    val_labels(second$v) <- c(no = 2)
+labelled_byte <- function(values, labels, table = NULL) {
+    result <- dta_byte(values)
+    val_labels(result) <- labels
+    if (!is.null(table)) attr(result, "value.label.name") <- table
+    result
+}
 
-    result <- dta_append(list(first, second))
-    expect_identical(val_labels(result$v), c(yes = 1, no = 2))
+test_that("the first source to define a value-label table owns it", {
+    # Stata's `append` keeps the master's `xl` and drops the using
+    # file's definition of the same name with "(label xl already
+    # defined)"; the two are never merged.
+    first <- tibble::tibble(v = labelled_byte(c(1, 2), c(yes = 1), "xl"))
+    second <- tibble::tibble(v = labelled_byte(c(2, 3), c(no = 2), "xl"))
+
+    expect_silent(result <- dta_append(list(first, second)))
+    expect_identical(val_labels(result$v), c(yes = 1))
+    expect_identical(attr(result$v, "value.label.name"), "xl")
+
+    # Conflicting text for a shared code is not a warning either: the
+    # later definition is discarded whole.
+    third <- tibble::tibble(v = labelled_byte(1, c(oui = 1), "xl"))
+    expect_silent(result <- dta_append(list(first, third)))
+    expect_identical(val_labels(result$v), c(yes = 1))
 
     unlabeled <- tibble::tibble(v = dta_byte(1))
     result <- dta_append(list(unlabeled, second))
     expect_null(val_labels(result$v))
+    expect_null(attr(result$v, "value.label.name"))
+})
+
+test_that("a variable takes the owning definition of its table name", {
+    # The shape from the MICS corpus: one source defines `labb` for
+    # `ma7m`, a later source assigns its own `labb` to other variables.
+    # Stata displays the first `labb` for all of them.
+    months <- c(January = 1, February = 2, March = 3)
+    yes_no <- c(yes = 1, no = 2)
+    first <- tibble::tibble(ma7m = labelled_byte(c(1, 3), months, "labb"))
+    second <- tibble::tibble(
+        ma6a2 = labelled_byte(1, yes_no, "labb"),
+        cm11c = labelled_byte(2, yes_no, "labb"),
+        y = labelled_byte(1, c(why = 1), "yl")
+    )
+
+    result <- dta_append(list(first, second))
+    for (my_name in c("ma7m", "ma6a2", "cm11c")) {
+        expect_identical(val_labels(result[[my_name]]), months, info = my_name)
+        expect_identical(
+            attr(result[[my_name]], "value.label.name"), "labb", info = my_name
+        )
+    }
+    # A table the master does not define is taken from the later
+    # source that does.
+    expect_identical(val_labels(result$y), c(why = 1))
+    expect_identical(attr(result$y, "value.label.name"), "yl")
+
+    # Every variable sharing `labb` now carries the same definition, so
+    # writing the result never falls back to per-variable table names.
+    path <- withr::local_tempfile(fileext = ".dta")
+    expect_no_warning(save_dta(result, path))
+    written <- read_dta(path)
+    expect_identical(val_labels(written$ma6a2), months)
+    expect_identical(attr(written$ma6a2, "value.label.name"), "labb")
+})
+
+test_that("unnamed labels define a table named after the variable", {
+    # `save_dta()` names an unnamed table after its variable, so the
+    # append treats an unnamed first contributor as owning that name.
+    first <- tibble::tibble(v = labelled_byte(1, c(one = 1)))
+    named_later <- tibble::tibble(
+        v = labelled_byte(2, c(two = 2), "vl"),
+        w = labelled_byte(2, c(deux = 2), "v")
+    )
+
+    result <- dta_append(list(first, named_later))
+    expect_identical(val_labels(result$v), c(one = 1))
+    expect_null(attr(result$v, "value.label.name"))
+    # `w` is assigned the table `v`, which the first source owns.
+    expect_identical(val_labels(result$w), c(one = 1))
+    expect_identical(attr(result$w, "value.label.name"), "v")
+
+    # The same rule from the other direction: an unnamed later
+    # contributor's table `v` is discarded when the master defines `v`.
+    owner <- tibble::tibble(w = labelled_byte(1, c(uno = 1), "v"))
+    result <- dta_append(list(owner, first))
+    expect_identical(val_labels(result$w), c(uno = 1))
+    expect_identical(val_labels(result$v), c(uno = 1))
+    expect_null(attr(result$v, "value.label.name"))
+})
+
+test_that("value-label ownership survives a file round trip", {
+    directory <- withr::local_tempdir()
+    first <- tibble::tibble(
+        x = labelled_byte(1, c(one = 1), "xl"),
+        u = dta_byte(1)
+    )
+    second <- tibble::tibble(
+        x = labelled_byte(2, c(two = 2), "xl"),
+        u = labelled_byte(2, c(two = 2), "ul")
+    )
+    master <- file.path(directory, "master.dta")
+    using <- file.path(directory, "using.dta")
+    save_dta(first, master)
+    save_dta(second, using)
+
+    result <- dta_append(list(master, using))
+    expect_identical(val_labels(result$x), c(one = 1))
+    expect_identical(attr(result$x, "value.label.name"), "xl")
+    expect_null(val_labels(result$u))
+})
+
+test_that("a widened string format takes the new width and keeps its flag", {
+    widen <- function(master_format, using_storage = "str20",
+                      using_format = NULL) {
+        first <- tibble::tibble(v = dta_string("ab", storage = "str2"))
+        attr(first$v, "format.stata") <- master_format
+        second <- tibble::tibble(v = dta_string("abc", storage = using_storage))
+        if (!is.null(using_format)) {
+            attr(second$v, "format.stata") <- using_format
+        }
+        result <- dta_append(list(first, second))
+        expect_identical(
+            attr(result$v, "stata.string.storage"), using_storage
+        )
+        attr(result$v, "format.stata")
+    }
+
+    # The using source's format is never taken.
+    expect_identical(widen("%9s", using_format = "%25s"), "%20s")
+    expect_identical(widen("%-9s", using_format = "%20s"), "%-20s")
+    expect_identical(widen("%9s", using_format = "%-30s"), "%20s")
+    expect_identical(widen("%~9s"), "%~20s")
+    # A master width wider than the new storage is still reset, and the
+    # width never drops below Stata's default of 9.
+    expect_identical(widen("%12s", using_storage = "str10"), "%10s")
+    expect_identical(widen("%12s", using_storage = "str5"), "%9s")
+    expect_identical(widen("%-12s", using_storage = "str5"), "%-9s")
+    # Widening to strL takes strL's default width.
+    expect_identical(widen("%-3s", using_storage = "strL"), "%-9s")
+})
+
+test_that("a string format is kept when storage does not widen", {
+    first <- tibble::tibble(v = dta_string("abcde", storage = "str12"))
+    attr(first$v, "format.stata") <- "%5s"
+    second <- tibble::tibble(v = dta_string("ab", storage = "str2"))
+    attr(second$v, "format.stata") <- "%20s"
+
+    result <- dta_append(list(first, second))
+    expect_identical(attr(result$v, "stata.string.storage"), "str12")
+    expect_identical(attr(result$v, "format.stata"), "%5s")
+
+    same <- tibble::tibble(v = dta_string("xy", storage = "str12"))
+    attr(same$v, "format.stata") <- "%-40s"
+    result <- dta_append(list(first, same))
+    expect_identical(attr(result$v, "format.stata"), "%5s")
+
+    long <- tibble::tibble(v = dta_string("xy", storage = "strL"))
+    attr(long$v, "format.stata") <- "%-15s"
+    result <- dta_append(list(long, second))
+    expect_identical(attr(result$v, "stata.string.storage"), "strL")
+    expect_identical(attr(result$v, "format.stata"), "%-15s")
+
+    unformatted <- tibble::tibble(v = dta_string("ab", storage = "str2"))
+    result <- dta_append(list(unformatted, first))
+    expect_null(attr(result$v, "format.stata"))
 })
 
 test_that("logical placeholders do not clear temporal structure", {

@@ -33,12 +33,28 @@
 #' too wide to re-encode, say - is treated the same way.
 #'
 #' @section Metadata:
-#' Variable labels, value labels, formats, and variable-level notes
-#' come from the first source that contributes the variable.
-#' Combining is delegated to the package's own coercion rules, so two
-#' sources that give the same code different label text keep the first
-#' contributor's text and warn. Value-label tables that disagree only
-#' by covering different codes are merged.
+#' Variable labels, formats, and variable-level notes come from the
+#' first source that contributes the variable.
+#'
+#' Value-label tables are owned by table name, as in Stata. Sources are
+#' walked in order and the first to define a table name owns that
+#' definition; a later source's definition of the same name is
+#' discarded, not merged, even when it labels different codes. Each
+#' variable keeps the table name its first contributor assigned to it,
+#' taken from `value.label.name` or, when that is absent, the variable's
+#' own name, and its labels are the owning definition of that name. The
+#' owning definition may come from a different variable in a different
+#' source, and a name the first source does not define is taken from
+#' the first later source that does. A variable whose first contributor
+#' has no labels stays unlabelled.
+#'
+#' A display format follows the master's, with one exception that
+#' matches Stata: when a string's storage widens from `strN` to `strM`,
+#' the format takes the width of the new storage (`M`, or `9` when `M`
+#' is smaller or the result is `strL`) and keeps the master's
+#' justification flag, so `%-9s` on a `str9` that widens to `str20`
+#' becomes `%-20s`. A string whose storage does not widen, a `strL`, and
+#' a numeric promoted along the lattice keep the master's format.
 #'
 #' Stata does not define what happens to dataset-level notes on
 #' `append`, and it keeps the master's. `dataset_notes` therefore
@@ -235,6 +251,7 @@ dta_append <- function(sources, force = TRUE,
 
     prototypes <- vector("list", length(the_names))
     metadata_owners <- vector("list", length(the_names))
+    label_tables <- .append_value_label_tables(schemas)
     # A source is dropped for one variable when its storage cannot
     # meet the accumulated prototype; those rows take missing values.
     dropped <- vector("list", length(the_names))
@@ -277,7 +294,7 @@ dta_append <- function(sources, force = TRUE,
             prototype <- merged
         }
         prototypes[[plan_index]] <- .append_restore_owned_metadata(
-            prototype, metadata_owners[[plan_index]]
+            prototype, metadata_owners[[plan_index]], my_name, label_tables
         )
         dropped[[plan_index]] <- conflicting
         if (length(conflicting)) {
@@ -304,23 +321,118 @@ dta_append <- function(sources, force = TRUE,
     )
 }
 
-.append_restore_owned_metadata <- function(prototype, owner) {
+# Stata defines value-label tables at dataset scope and `append` keeps
+# the first definition of each table name; a later file's definition of
+# the same name is dropped with "(label xl already defined)". The
+# registry is keyed by table name, so walking sources in order and
+# keeping the first definition reproduces that. A variable that carries
+# labels but no `value.label.name` defines a table named after itself,
+# which is the name `save_dta()` gives it.
+.append_value_label_tables <- function(schemas) {
+    tables <- new.env(hash = TRUE, parent = emptyenv())
+    for (my_schema in schemas) {
+        schema <- my_schema$schema
+        column_names <- names(schema)
+        for (my_column in seq_along(schema)) {
+            value <- schema[[my_column]]
+            labels <- attr(value, "labels", exact = TRUE)
+            if (is.null(labels)) next
+            table_name <- .append_value_label_table_name(
+                value, column_names[[my_column]]
+            )
+            key <- paste0("x", enc2utf8(table_name))
+            if (!exists(key, tables, inherits = FALSE)) {
+                assign(key, labels, tables)
+            }
+        }
+    }
+    tables
+}
+
+.append_value_label_table_name <- function(value, column_name) {
+    table_name <- attr(value, "value.label.name", exact = TRUE)
+    if (is.character(table_name) && length(table_name) == 1L &&
+        !is.na(table_name) && nzchar(table_name)) {
+        return(table_name)
+    }
+    if (is.null(column_name) || is.na(column_name)) "" else column_name
+}
+
+.append_restore_owned_metadata <- function(prototype, owner, variable_name,
+                                           label_tables) {
     result <- .metadata_copy(prototype)
-    owned <- c(
-        "label", "value.label.name", "notes", "stata.note.numbers",
-        "stata.characteristics"
-    )
+    owned <- c("label", "notes", "stata.note.numbers", "stata.characteristics")
     for (my_name in owned) {
         attr(result, my_name) <- attr(owner, my_name, exact = TRUE)
     }
     owner_format <- attr(owner, "format.stata", exact = TRUE)
     if (!is.null(owner_format) || !inherits(prototype, "stata_temporal")) {
-        attr(result, "format.stata") <- owner_format
+        attr(result, "format.stata") <- .append_widened_string_format(
+            owner_format, owner, prototype
+        )
     }
-    if (is.null(attr(owner, "labels", exact = TRUE))) {
-        attr(result, "labels") <- NULL
+    # The variable keeps the table name its first contributor assigned
+    # and takes that table's owning definition, which may have come from
+    # another variable in an earlier source.
+    labels <- NULL
+    table_name <- NULL
+    if (!is.null(attr(owner, "labels", exact = TRUE))) {
+        table_name <- .append_value_label_table_name(owner, variable_name)
+        labels <- get0(
+            paste0("x", enc2utf8(table_name)), label_tables, inherits = FALSE
+        )
     }
-    result
+    attr(result, "labels") <- labels
+    attr(result, "value.label.name") <- if (
+        is.null(labels) || identical(table_name, variable_name)
+    ) {
+        NULL
+    } else {
+        table_name
+    }
+    .apply_haven_labelled_class(result, !is.null(labels))
+}
+
+# Stata keeps the master's display format through `append` except when
+# a string's storage widens, where it resets the width to the new
+# storage's default (the width, or 9 when that is smaller or the result
+# is strL) and keeps the master's justification flag. A format that is
+# not of the `%[-|~]Ns` shape is left alone.
+.append_widened_string_format <- function(owner_format, owner, prototype) {
+    if (!is.character(owner_format) || length(owner_format) != 1L ||
+        !inherits(prototype, "stata_string")) {
+        return(owner_format)
+    }
+    owner_storage <- attr(owner, "stata.string.storage", exact = TRUE)
+    result_storage <- attr(prototype, "stata.string.storage", exact = TRUE)
+    if (is.null(owner_storage) || is.null(result_storage) ||
+        identical(owner_storage, "strL") ||
+        identical(owner_storage, result_storage)) {
+        return(owner_format)
+    }
+    pattern <- "^%([-~]?)[0-9]+s$"
+    if (!grepl(pattern, owner_format)) return(owner_format)
+    flag <- sub(pattern, "\\1", owner_format)
+    width <- if (identical(result_storage, "strL")) {
+        9L
+    } else {
+        max(9L, .stata_string_storage_width(result_storage))
+    }
+    sprintf("%%%s%ds", flag, width)
+}
+
+# Value labels are resolved by table name after the storage prototype
+# is settled, so the coercion rules must not merge or warn about them
+# on the way.
+.append_without_value_labels <- function(value) {
+    if (is.null(attr(value, "labels", exact = TRUE)) &&
+        is.null(attr(value, "value.label.name", exact = TRUE))) {
+        return(value)
+    }
+    value <- .metadata_copy(value)
+    attr(value, "labels") <- NULL
+    attr(value, "value.label.name") <- NULL
+    .apply_haven_labelled_class(value, FALSE)
 }
 
 .append_name_occurrences <- function(the_names) {
@@ -344,6 +456,8 @@ dta_append <- function(sources, force = TRUE,
     if (inherits(right, .stata_metadata_vector_class)) {
         right <- .stata_metadata_vector_base(right)
     }
+    left <- .append_without_value_labels(left)
+    right <- .append_without_value_labels(right)
     left_storage <- dta_storage_type(left)
     right_storage <- dta_storage_type(right)
     left_declared <- !is.null(left_storage) &&
