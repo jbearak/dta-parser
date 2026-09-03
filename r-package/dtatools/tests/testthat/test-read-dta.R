@@ -34,9 +34,16 @@ test_that("read_dta extends the haven-compatible public signature", {
 
 test_that("numeric ALTREP can be disabled explicitly or by option", {
     path <- fixture("all_types_v118.dta")
+    # The rust-vectors collector builds a tibble, and a dibble's reference
+    # state is never identical() across two reads, so the direct collector
+    # is compared as a tibble throughout this file.
     reference <- dtatools:::.read_dta_rust_vectors(path)
-    explicit <- read_dta(path, use_numeric_altrep = FALSE, threads = 1L)
-    parallel <- read_dta(path, use_numeric_altrep = FALSE, threads = 4L)
+    explicit <- read_dta(
+        path, use_numeric_altrep = FALSE, threads = 1L, output = "tibble"
+    )
+    parallel <- read_dta(
+        path, use_numeric_altrep = FALSE, threads = 4L, output = "tibble"
+    )
 
     expect_identical(explicit, reference)
     expect_identical(parallel, explicit)
@@ -49,7 +56,7 @@ test_that("numeric ALTREP can be disabled explicitly or by option", {
 
     previous <- options(dtatools.numeric_altrep = FALSE)
     on.exit(options(previous), add = TRUE)
-    from_option <- read_dta(path)
+    from_option <- read_dta(path, output = "tibble")
     expect_identical(from_option, explicit)
     expect_false(any(vapply(
         from_option[numeric_columns],
@@ -61,7 +68,8 @@ test_that("numeric ALTREP can be disabled explicitly or by option", {
         path,
         col_select = c(v_byte, v_double),
         n_max = 0,
-        use_numeric_altrep = FALSE
+        use_numeric_altrep = FALSE,
+        output = "tibble"
     )
     expect_identical(empty, dtatools:::.read_dta_rust_vectors(
         path, col_select = c(v_byte, v_double), n_max = 0
@@ -677,7 +685,10 @@ test_that("internal metadata projection is bounded and preserves attributes", {
 
 test_that("an empty projection retains the selected row count", {
     path <- fixture("auto_v118.dta")
-    result <- read_dta(path, col_select = character(), skip = 2, n_max = 3)
+    result <- read_dta(
+        path, col_select = character(), skip = 2, n_max = 3,
+        output = "tibble"
+    )
     rust_vectors <- dtatools:::.read_dta_rust_vectors(
         path, col_select = character(), skip = 2, n_max = 3
     )
@@ -689,7 +700,8 @@ test_that("an empty projection retains the selected row count", {
 test_that("the largest exact skip is deterministic in both collectors", {
     path <- fixture("auto_v118.dta")
     actual <- read_dta(
-        path, col_select = c("make", "price"), skip = 2^53, n_max = 3
+        path, col_select = c("make", "price"), skip = 2^53, n_max = 3,
+        output = "tibble"
     )
     rust_vectors <- dtatools:::.read_dta_rust_vectors(
         path, col_select = c("make", "price"), skip = 2^53, n_max = 3
@@ -738,7 +750,7 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
     path <- normalizePath(fixture("auto_v118.dta"))
     reference <- dtatools:::.read_dta_rust_vectors(path)
 
-    encoded <- serialize(read_dta(path), NULL)
+    encoded <- serialize(read_dta(path, output = "tibble"), NULL)
     invisible(gc())
     expect_identical(unserialize(encoded), reference)
 
@@ -823,7 +835,7 @@ test_that("native numerics use width-aware storage with R value semantics", {
         name <- fixture_names[[case]]
         path <- normalizePath(paths[[case]])
         actual <- read_dta(path)
-        eager <- read_dta(path, use_numeric_altrep = FALSE)
+        eager <- read_dta(path, use_numeric_altrep = FALSE, output = "tibble")
         reference <- dtatools:::.read_dta_rust_vectors(path)
         expect_identical(eager, reference, info = paste(name, "eager"))
         storage <- attr(dtatools:::.dta_metadata(path), "dta_storage")
@@ -974,8 +986,8 @@ test_that("explicit encodings apply consistently to strL text", {
     on.exit(unlink(path), add = TRUE)
     writeBin(bytes, path)
 
-    cp1252 <- read_dta(path, encoding = "CP1252")
-    latin1 <- read_dta(path, encoding = "latin-1")
+    cp1252 <- read_dta(path, encoding = "CP1252", output = "tibble")
+    latin1 <- read_dta(path, encoding = "latin-1", output = "tibble")
     expect_identical(cp1252, dtatools:::.read_dta_rust_vectors(
         path, encoding = "windows_1252"
     ))
@@ -995,7 +1007,7 @@ test_that("explicit UTF-8 replaces malformed sequences in both collectors", {
     on.exit(unlink(path), add = TRUE)
     writeBin(bytes, path)
 
-    direct <- read_dta(path, encoding = "UTF-8")
+    direct <- read_dta(path, encoding = "UTF-8", output = "tibble")
     rust_vectors <- dtatools:::.read_dta_rust_vectors(
         path, encoding = "UTF8"
     )

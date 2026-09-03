@@ -4,7 +4,7 @@
 \usage{
 read_dta(file, encoding = NULL, col_select = NULL, skip = 0,
   n_max = Inf, .name_repair = "unique",
-  output = c("default", "tibble", "data.table"),
+  output = c("default", "dibble", "tibble", "data.table"),
   threads = getOption("dtatools.threads", 0L),
   use_numeric_altrep = getOption("dtatools.numeric_altrep", TRUE),
   datasig = FALSE)
@@ -35,9 +35,9 @@ convention. Non-negative values must be whole numbers no larger than
 \code{2^53}.}
 \item{.name_repair}{Name repair passed to \code{tibble::as_tibble()}.}
 \item{output}{Output container. \code{"default"} uses the
-\code{dtatools.output} option, falling back to \code{"tibble"}. Supply
-\code{"tibble"} or \code{"data.table"} to override the option. Data-table
-output requires the suggested data.table package.}
+\code{dtatools.output} option, falling back to \code{"dibble"}. Supply
+\code{"dibble"}, \code{"tibble"}, or \code{"data.table"} to override the
+option. Data-table output requires the suggested data.table package.}
 \item{threads}{Number of decoder threads. Zero selects an automatic count for
 sufficiently large files in any supported Stata release. One always uses the
 serial decoder. For selected \code{strL} columns, workers decode observation
@@ -55,7 +55,8 @@ decoded columns (no second read of the file) and equals \code{datasig(file)}.
 Requires reading the complete file: incompatible with \code{col_select},
 \code{skip}, and \code{n_max}.}
 }
-\value{A tibble or data table containing native numeric and owned Stata string vectors. Numeric
+\value{A \link{dibble}, tibble, or data table containing native numeric and
+owned Stata string vectors. Numeric
 columns carry their declared Stata storage type. Byte, int, long, and float
 columns retain their compact Stata storage width until R requests a
 materialized double vector; source doubles are created eagerly.

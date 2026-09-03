@@ -2,7 +2,9 @@ test_that("reference mutation exports one coherent API", {
     expect_identical(repl, replace_values)
     expect_identical(
         formals(replace_values),
-        as.pairlist(alist(data = , ... = , where = NULL))
+        as.pairlist(alist(
+            data = , ... = , where = NULL, by = NULL, bysort = NULL
+        ))
     )
     expect_identical(formals(repl), formals(replace_values))
     expect_identical(formals(gen), formals(replace_values))
@@ -1740,20 +1742,340 @@ test_that("target-vector aliases observe replacement while row subsets isolate",
     expect_identical(as.double(left$x), c(9, 8, 3))
 })
 
-test_that("grouped and rowwise inputs fail before reference mutation", {
-    grouped <- dplyr::group_by(tibble::tibble(x = 1:2), x)
+test_that("rowwise inputs fail before reference mutation", {
     rowwise <- dplyr::rowwise(tibble::tibble(x = 1:2))
-    for (data in list(grouped, rowwise)) {
-        before <- serialize(data, NULL)
-        expect_error(replace_values(data, x, 1L), "ungrouped")
-        expect_error(gen(data, y, 1L), "ungrouped")
-        expect_identical(serialize(data, NULL), before)
+    before <- serialize(rowwise, NULL)
+    expect_error(replace_values(rowwise, x, 1L), "ungrouped")
+    expect_error(gen(rowwise, y, 1L), "ungrouped")
+    expect_identical(serialize(rowwise, NULL), before)
 
-        isolated <- copy_data(data)
-        expect_identical(class(isolated), class(data))
-        expect_identical(dplyr::group_vars(isolated), dplyr::group_vars(data))
-        expect_identical(as.data.frame(isolated), as.data.frame(data))
-    }
+    isolated <- copy_data(rowwise)
+    expect_identical(class(isolated), class(rowwise))
+    expect_identical(as.data.frame(isolated), as.data.frame(rowwise))
+})
+
+test_that(".n and .N describe the whole dataset without groups", {
+    data <- data.frame(x = c(5, 6, 7))
+    gen(data, row = .n)
+    gen(data, count = .N)
+    expect_identical(as.double(data$row), c(1, 2, 3))
+    expect_identical(as.double(data$count), c(3, 3, 3))
+
+    repl(data, x = 0, where = .n == .N)
+    expect_identical(data$x, c(5, 6, 0))
+    repl(data, x = -1, where = ~ .n == 1)
+    expect_identical(data$x, c(-1, 6, 0))
+
+    # A caller object named `.N` is not a shadowing conflict.
+    .N <- 99
+    gen(data, again = .N)
+    expect_identical(as.double(data$again), c(3, 3, 3))
+
+    # `.N` on the right of a comparison stays off the fused patch path
+    # and still selects correctly.
+    compact <- data.frame(x = dta_int(1:4))
+    repl(compact, x = 0L, where = x == .N)
+    expect_identical(as.double(compact$x), c(1, 2, 3, 0))
+})
+
+test_that("by evaluates where and values within each group", {
+    data <- data.frame(id = c(2, 1, 2, 1, 3), x = c(1, 2, 3, 4, 5))
+    gen(data, n = .n, by = id)
+    gen(data, count = .N, by = id)
+    expect_identical(as.double(data$n), c(1, 1, 2, 2, 1))
+    expect_identical(as.double(data$count), c(2, 2, 2, 2, 1))
+
+    gen(data, centred = x - mean(x), by = id)
+    expect_identical(as.double(data$centred), c(-1, -1, 1, 1, 0))
+
+    # Rows a group's `where` leaves out hold missing after gen(), and are
+    # untouched by repl().
+    gen(data, high = x, where = x > 2, by = id)
+    expect_identical(as.double(data$high), c(NA, NA, 3, 4, 5))
+    repl(data, x = 0, where = x == max(x), by = id)
+    expect_identical(data$x, c(1, 2, 0, 0, 0))
+
+    # Numeric positions count within the group.
+    gen(data, first = 1, where = 1, by = id)
+    expect_identical(as.double(data$first), c(1, 1, NA, NA, 1))
+
+    # Row order is the dataset's own; nothing was sorted.
+    expect_identical(data$id, c(2, 1, 2, 1, 3))
+    expect_identical(names(data), c(
+        "id", "x", "n", "count", "centred", "high", "first"
+    ))
+})
+
+test_that("by accepts every column-name spelling", {
+    make <- function() data.frame(
+        g1 = c(1, 1, 2, 2), g2 = c("a", "b", "a", "a"), x = 1:4
+    )
+    # (1,a) (1,b) (2,a) (2,a): the fourth row is the second of its group.
+    expected_pair <- c(1, 1, 1, 2)
+
+    single <- make()
+    gen(single, n = .N, by = g1)
+    expect_identical(as.double(single$n), c(2, 2, 2, 2))
+
+    pair <- make()
+    gen(pair, n = .n, by = c(g1, g2))
+    expect_identical(as.double(pair$n), expected_pair)
+
+    strings <- make()
+    gen(strings, n = .n, by = c("g1", "g2"))
+    expect_identical(as.double(strings$n), expected_pair)
+
+    name <- "g1"
+    injected <- make()
+    gen(injected, n = .N, by = !!name)
+    expect_identical(as.double(injected$n), c(2, 2, 2, 2))
+
+    runtime <- make()
+    gen(runtime, n = .N, by = .(name))
+    expect_identical(as.double(runtime$n), c(2, 2, 2, 2))
+
+    names <- c("g1", "g2")
+    vector_injected <- make()
+    gen(vector_injected, n = .n, by = !!names)
+    expect_identical(as.double(vector_injected$n), expected_pair)
+
+    bad <- make()
+    expect_error(gen(bad, n = 1, by = absent), "does not exist")
+    expect_error(gen(bad, n = 1, by = c()), "at least one column")
+    expect_error(gen(bad, n = 1, by = g1 + 1), "column names")
+    expect_error(gen(bad, n = 1, by = .(1)), "nonempty, non-missing string")
+    expect_false("n" %in% names(bad))
+})
+
+test_that("groups follow Stata's by order, not data.table's", {
+    # data.table applies `i` first, so `.N` counts the selected rows and
+    # `.n == .N` would mark the last *selected* row of each group. Stata
+    # forms the group first: `.N` is the group's size and the row must be
+    # the group's last row *and* pass the condition.
+    data <- data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5))
+    gen(data, last = 0)
+    repl(data, last = 1, where = .n == .N & v < 3, by = id)
+    expect_identical(as.double(data$last), c(0, 1, 0, 0))
+
+    .datatable.aware <- TRUE
+    reference <- data.table::as.data.table(
+        data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5), last = 0)
+    )
+    reference[v < 3, last := as.double(seq_len(.N) == .N), by = id]
+    expect_identical(reference$last, c(0, 1, 1, 0))
+    expect_false(identical(as.double(data$last), reference$last))
+
+    # `.N` under a `where` is still the group's row count.
+    counts <- data.frame(id = c(1, 1, 2, 2), v = c(5, 1, 1, 5))
+    gen(counts, n = .N, where = v < 3, by = id)
+    expect_identical(as.double(counts$n), c(NA, 2, 2, NA))
+})
+
+test_that("per-group value sizes must be 1, the selection, or .N", {
+    data <- data.frame(id = c(1, 1, 2), x = 1:3)
+    expect_error(
+        gen(data, y = 1:3, by = id),
+        paste0(
+            "size 3 in group id = 1; expected size 1, the group's ",
+            "selected-row count \\(2\\), or the group's row count \\(2\\)"
+        )
+    )
+    expect_false("y" %in% names(data))
+
+    expect_error(
+        repl(data, x = c(1L, 2L), where = x == 3, by = id),
+        "size 2 in group id = 2"
+    )
+    expect_identical(data$x, 1:3)
+
+    # A group that selects no rows may evaluate `values` to `NULL`; the
+    # empty piece must stay aligned with its rows rather than vanish.
+    sparse <- data.frame(id = c(1, 1, 2, 2), x = c(1, 2, 3, 4))
+    repl(sparse, x = if (.N == 2 && any(x > 2)) 0 else NULL,
+         where = x > 2, by = id)
+    expect_identical(sparse$x, c(1, 2, 0, 0))
+
+    # Within a group, a `.N`-length value is indexed by the selection.
+    pairs <- data.frame(id = c(1, 1, 2, 2), x = 1:4)
+    gen(pairs, z = c(10, 20), where = .n == 2, by = id)
+    expect_identical(as.double(pairs$z), c(NA, 20, NA, 20))
+
+    strings <- data.frame(id = c("a", "a", "b"), x = 1:3)
+    expect_error(gen(strings, y = 1:3, by = id), 'group id = "a"')
+})
+
+test_that("missing values in a by column form their own groups", {
+    data <- data.frame(
+        id = dta_byte(c(1, NA, 1, NA, 2, NA)), x = dta_int(1:6)
+    )
+    data$id[4] <- tagged_missing("a")
+    gen(data, n = .N, by = id)
+    # `.` and `.a` are distinct groups, as in Stata.
+    expect_identical(as.double(data$n), c(2, 2, 2, 1, 1, 2))
+
+    # Groups are visited in order of first appearance, so `.a` (one row)
+    # is the first group two values do not fit.
+    expect_error(gen(data, y = 1:2, by = id), "group id = \\.a;")
+
+    plain <- data.frame(id = c(NA, 1, NA, 1), x = 1:4)
+    gen(plain, n = .N, by = id)
+    expect_identical(as.double(plain$n), c(2, 2, 2, 2))
+    expect_error(gen(plain, y = 1:3, by = id), "group id = \\.;")
+})
+
+test_that("bysort sorts by reference and then groups", {
+    data <- data.frame(id = c(2, 1, 2, 1), t = c(1, 2, 2, 1), x = 1:4)
+    alias <- data
+    repl(data, x = 0L, where = t == 1, bysort = c(id, t))
+    expect_identical(data$id, c(1, 1, 2, 2))
+    expect_identical(data$t, c(1, 2, 1, 2))
+    expect_identical(data$x, c(0L, 2L, 0L, 3L))
+    # Sorting on both keys and then grouping by both leaves one row per
+    # group here, so `.n == 1` everywhere; grouping by `id` alone after a
+    # two-key sort is a preceding sort plus `by`.
+    gen(data, first = .n == 1, bysort = c(id, t))
+    expect_identical(as.double(data$first), c(1, 1, 1, 1))
+    expect_identical(alias$x, data$x)
+    expect_identical(alias$id, data$id)
+
+    # Stata total order puts `.` and `.a` after every finite value.
+    compact <- data.frame(
+        id = dta_byte(c(NA, 2, 1, NA)), x = dta_int(1:4)
+    )
+    compact$id[1] <- tagged_missing("a")
+    gen(compact, n = .n, bysort = id)
+    expect_identical(as.double(compact$x), c(3, 2, 4, 1))
+    expect_identical(as.double(compact$n), c(1, 1, 1, 1))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$x))
+
+    # An already sorted dataset is left alone, and `by` never sorts.
+    sorted <- data.frame(id = c(1, 1, 2), x = 1:3)
+    gen(sorted, n = .n, bysort = id)
+    expect_identical(sorted$x, 1:3)
+    unsorted <- data.frame(id = c(2, 1), x = 1:2)
+    gen(unsorted, n = .n, by = id)
+    expect_identical(unsorted$id, c(2, 1))
+
+    name <- "id"
+    runtime <- data.frame(id = c(2, 1), x = 1:2)
+    gen(runtime, n = .n, bysort = .(name))
+    expect_identical(runtime$id, c(1, 2))
+    injected <- data.frame(id = c(2, 1), x = 1:2)
+    gen(injected, n = .n, bysort = !!name)
+    expect_identical(injected$id, c(1, 2))
+})
+
+test_that("by and bysort are exclusive and reject a grouped input", {
+    data <- data.frame(id = c(1, 2), x = 1:2)
+    expect_error(gen(data, y = 1, by = id, bysort = id), "not both")
+    expect_error(repl(data, x = 1L, by = id, bysort = id), "not both")
+
+    grouped <- dplyr::group_by(tibble::tibble(id = c(1, 2), x = 1:2), id)
+    before <- serialize(grouped, NULL)
+    expect_error(
+        gen(grouped, y = 1, by = id),
+        "`data` is already grouped; drop `by`/`bysort` or ungroup"
+    )
+    expect_error(repl(grouped, x = 1L, bysort = id), "already grouped")
+    expect_identical(serialize(grouped, NULL), before)
+})
+
+test_that("a grouped tibble supplies the assignment groups", {
+    grouped <- dplyr::group_by(
+        tibble::tibble(id = c(1, 2, 1, 3), x = c(1, 2, 3, 4)), id
+    )
+    gen(grouped, total = sum(x))
+    gen(grouped, n = .n)
+    expect_identical(as.double(grouped$total), c(4, 2, 4, 4))
+    expect_identical(as.double(grouped$n), c(1, 1, 2, 1))
+    repl(grouped, x = 0, where = .n == .N)
+    expect_identical(grouped$x, c(1, 0, 0, 0))
+    expect_s3_class(grouped, "grouped_df")
+    expect_identical(dplyr::group_vars(grouped), "id")
+    expect_identical(
+        dplyr::summarise(grouped, n = dplyr::n())$n, c(2L, 1L, 1L)
+    )
+
+    # `.drop = FALSE` may record empty groups; they contribute nothing.
+    factor_grouped <- dplyr::group_by(
+        tibble::tibble(f = factor(c("a", "a"), levels = c("a", "b")), x = 1:2),
+        f, .drop = FALSE
+    )
+    gen(factor_grouped, n = .N)
+    expect_identical(as.double(factor_grouped$n), c(2, 2))
+
+    isolated <- copy_data(grouped)
+    expect_s3_class(isolated, "grouped_df")
+    expect_identical(dplyr::group_vars(isolated), "id")
+    expect_identical(as.data.frame(isolated), as.data.frame(grouped))
+})
+
+test_that("compact targets stay compact under by", {
+    data <- data.frame(id = c(1, 1, 2, 2), x = dta_int(1:4))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
+    repl(data, x = 0L, where = .n == .N, by = id)
+    expect_identical(as.double(data$x), c(1, 0, 3, 0))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
+
+    repl(data, x = dta_int(9L), by = id)
+    expect_identical(as.double(data$x), c(9, 9, 9, 9))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
+    expect_error(repl(data, x = 1e6, where = .n == 1, by = id), "int")
+    expect_identical(as.double(data$x), c(9, 9, 9, 9))
+
+    gen(data, y = dta_byte(.n), by = id)
+    expect_identical(dta_storage_type(data$y), "byte")
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$y))
+})
+
+test_that("data.table containers support by and bysort", {
+    table <- data.table::data.table(id = c(2, 1, 2), x = c(1, 2, 3))
+    gen(table, total = sum(x), by = id)
+    expect_identical(as.double(table$total), c(4, 2, 4))
+    # Group 2 is rows 1 and 3, group 1 is row 2 alone.
+    repl(table, x = 0, where = .n == .N, by = id)
+    expect_identical(table$x, c(1, 0, 0))
+    expect_s3_class(table, "data.table")
+    expect_false(inherits(table, "dtatools_ref_data"))
+
+    data.table::setkey(table, id)
+    repl(table, x = 9, where = .n == 1, by = id)
+    expect_identical(table$x, c(9, 9, 0))
+    expect_identical(data.table::key(table), "id")
+
+    sorted <- data.table::data.table(id = c(2, 1, 2), x = 1:3)
+    gen(sorted, n = .n, bysort = id)
+    expect_identical(sorted$id, c(1, 2, 2))
+    expect_identical(as.double(sorted$n), c(1, 1, 2))
+    expect_null(data.table::key(sorted))
+})
+
+test_that("the shadow check still fires inside grouped expressions", {
+    x <- 5
+    data <- data.frame(id = c(1, 1, 2), x = 1:3)
+    expect_error(gen(data, y = x + 1, by = id), "both a column and an object")
+    expect_error(repl(data, x = 0L, where = x > 1, by = id),
+                 "both a column and an object")
+    expect_false("y" %in% names(data))
+    expect_identical(data$x, 1:3)
+
+    gen(data, y = .data$x + .env$x, by = id)
+    expect_identical(as.double(data$y), c(6, 7, 8))
+
+    name <- "x"
+    gen(data, z = .(name) * 2, where = .data[[name]] > 1, by = id)
+    expect_identical(as.double(data$z), c(NA, 4, 6))
+})
+
+test_that("grouped gen keeps value attributes and string storage", {
+    data <- data.frame(id = c(1, 2, 1), x = c(1, 2, 3))
+    gen(data, labelled = structure(x, label = "L"), by = id)
+    expect_identical(attr(data$labelled, "label"), "L")
+
+    gen(data, text = paste0("g", id, .n), by = id)
+    expect_identical(as.character(data$text), c("g11", "g21", "g12"))
+    gen(data, some = "s", where = .n == 1, by = id)
+    expect_identical(as.character(data$some), c("s", "s", ""))
 })
 
 test_that("ordinary assignments and metadata helpers materialize current state", {
@@ -2275,4 +2597,55 @@ test_that("a symbol bound as both column and object is an error", {
         repl(data, x, rows)
     })
     expect_identical(data$x, c(0, 0, 0))
+})
+
+test_that("replacing a grouping column rebuilds the dplyr groups", {
+    grouped <- dplyr::group_by(
+        tibble::tibble(id = c(1, 1, 2), x = 1:3), id
+    )
+    repl(grouped, id = 1)
+    expect_identical(dplyr::group_vars(grouped), "id")
+    groups <- attr(grouped, "groups", exact = TRUE)
+    expect_identical(groups$id, 1)
+    expect_identical(as.integer(groups$.rows[[1L]]), 1:3)
+    expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+    gen(grouped, size = .N)
+    expect_identical(as.double(grouped$size), c(3, 3, 3))
+
+    # A grouped dibble keeps the rebuilt groups in its snapshot too.
+    dib <- dplyr::group_by(dibble(id = c("a", "b", "b"), x = 1:3), id)
+    dib[, id := "b"]
+    expect_true(is_dibble(dib))
+    expect_identical(attr(dib, "groups", exact = TRUE)$id, "b")
+    expect_identical(dplyr::summarise(dib, n = dplyr::n())$n, 3L)
+})
+
+test_that("an aliased grouping column is regrouped after replacement", {
+    shared <- dta_int(c(1L, 1L, 2L))
+    grouped <- dplyr::group_by(tibble::tibble(id = shared, x = shared), id)
+    # `x` and `id` share one compact vector; replacing `x` rewrites `id`.
+    repl(grouped, x = 1L)
+    expect_identical(as.double(grouped$id), c(1, 1, 1))
+    expect_identical(
+        as.double(attr(grouped, "groups", exact = TRUE)$id), 1
+    )
+    expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+})
+
+test_that("row counters mask a column named .n or .N", {
+    data <- data.frame(.n = c(100, 200), .N = c(7, 7), x = 1:2)
+    gen(data, row = .n)
+    gen(data, count = .N)
+    expect_identical(as.double(data$row), c(1, 2))
+    expect_identical(as.double(data$count), c(2, 2))
+    # The pronoun still reaches the column.
+    gen(data, from_column = .data$.n)
+    expect_identical(as.double(data$from_column), c(100, 200))
+    repl(data, x = 0L, where = .data$.N == 7 & .n == 2)
+    expect_identical(data$x, c(1L, 0L))
+
+    skip_if_not_installed("data.table")
+    table <- data.table::data.table(.n = c(100, 200), x = 1:2)
+    gen(table, row = .n)
+    expect_identical(as.double(table$row), c(1, 2))
 })

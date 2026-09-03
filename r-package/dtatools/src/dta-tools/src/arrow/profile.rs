@@ -1155,14 +1155,17 @@ fn validate_dataset_document_inner(
             format!("dataset document version {}", document.version),
         ));
     }
+    // `output_container` is a reader hint, not part of the data. A value this
+    // release does not know, written by a newer dtatools, must not fail the
+    // read: the R resolver falls back to a tibble. Only its shape is checked.
     if document
         .output_container
         .as_deref()
-        .is_some_and(|value| !matches!(value, "tibble" | "data.table"))
+        .is_some_and(|value| value.is_empty() || value.trim() != value)
     {
         return Err(malformed(
             version,
-            "dataset output_container must be `tibble` or `data.table`",
+            "dataset output_container must be a nonempty name without surrounding whitespace",
         ));
     }
     validate_notes(version, "dataset", &document.notes)?;
@@ -1582,16 +1585,22 @@ mod tests {
             .expect("old documents remain readable");
         assert_eq!(absent.output_container, None);
 
-        for container in ["tibble", "data.table"] {
+        for container in ["dibble", "tibble", "data.table"] {
             let json = format!(r#"{{"version":0,"output_container":"{container}"}}"#);
             let document = parse_dataset_document("0", Some(&json))
                 .expect("supported output container parses");
             assert_eq!(document.output_container.as_deref(), Some(container));
         }
 
-        let error =
+        // A container from a newer release is preserved for the reader to
+        // fall back on rather than rejected.
+        let future =
             parse_dataset_document("0", Some(r#"{"version":0,"output_container":"matrix"}"#))
-                .expect_err("unknown output containers are rejected");
+                .expect("unknown output containers are preserved");
+        assert_eq!(future.output_container.as_deref(), Some("matrix"));
+
+        let error = parse_dataset_document("0", Some(r#"{"version":0,"output_container":""}"#))
+            .expect_err("an empty output container is malformed");
         assert!(error.to_string().contains("output_container"));
     }
 

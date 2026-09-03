@@ -265,13 +265,24 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
 
 .stata_update_target <- function(x, variable, update) {
     if (is.data.frame(x)) .reject_data_table_subclass(x, "x")
+    # A reference dataset is edited through its snapshot: copying the
+    # marked object would share one reference state between the input
+    # and the result, so a later `gen()` on either would write to both.
+    # A dibble is re-marked afterwards; the result is a new object either
+    # way.
+    dibble_input <- is_dibble(x)
+    if (inherits(x, "dtatools_ref_data")) x <- .reference_snapshot(x)
     target <- .stata_metadata_target(x, variable)
     changed <- .metadata_copy(target$value)
     changed <- update(changed)
-    if (is.null(target$index)) return(.as_stata_metadata_frame(changed))
-    result <- .metadata_copy(x)
-    result[[target$index]] <- changed
-    .as_stata_metadata_frame(result)
+    result <- if (is.null(target$index)) {
+        .as_stata_metadata_frame(changed)
+    } else {
+        result <- .metadata_copy(x)
+        result[[target$index]] <- changed
+        .as_stata_metadata_frame(result)
+    }
+    if (dibble_input) .as_dibble(result) else result
 }
 
 .stata_set_notes <- function(x, variable, notes) {
@@ -361,6 +372,17 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         present <- FALSE
     }
     classes <- if (present) c(marker, classes) else classes
+    if (is.data.frame(value) && "dtatools_ref_data" %in% classes) {
+        # A reference dataset dispatches `[` for bracket mutation, so its
+        # class must stay first; the marker's `[` runs from the snapshot.
+        # The state's own class vector carries the marker so a snapshot
+        # keeps dataset metadata behavior.
+        classes <- c("dtatools_ref_data", setdiff(classes, "dtatools_ref_data"))
+        state <- .reference_state(value)
+        if (!is.null(state)) {
+            state$classes <- setdiff(classes, "dtatools_ref_data")
+        }
+    }
     if (length(classes)) {
         class(value) <- classes
     } else {

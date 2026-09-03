@@ -31,8 +31,9 @@
 #' the ordinary data-frame method.
 #' `unclass()` and direct inspection of internal attributes are likewise not
 #' supported ways to access generated columns.
-#' `gen()` and `replace_values()` reject grouped and rowwise tibbles. Ungroup
-#' them before mutation. `copy_data()` accepts them and preserves their class.
+#' `gen()` and `replace_values()` accept a grouped tibble and treat its dplyr
+#' groups as assignment groups (see below). They reject rowwise tibbles;
+#' `copy_data()` accepts both and preserves their class.
 #'
 #' The target and its values arrive through `...` in one of two shapes.
 #' The tagged shape names the target on the left of `=`:
@@ -101,6 +102,52 @@
 #' one, the selected-row count, or the full dataset row count. Full-length
 #' values are indexed by the selected row positions.
 #'
+#' Two mask variables stand beside the columns in `values` and `where`:
+#' `.N` is the row count and `.n` the row number, `1` through `.N`. Both
+#' are exempt from the shadow check, so a caller object called `.N` is
+#' never consulted. Without groups they describe the whole dataset, so
+#' `repl(d, last = 1, where = .n == .N)` marks the final row.
+#'
+#' @section Group-wise assignment:
+#' `by` and `bysort` evaluate the mutation separately within groups, as
+#' Stata's `by varlist:` prefix does. Groups are formed first. Then, for
+#' each group, `where` is evaluated on that group's rows and `values`
+#' against that group's columns, with `.N` the group's row count and `.n`
+#' the within-group row number. Per group, `values` must have size one,
+#' the group's selected-row count, or `.N`; anything else is an error
+#' naming the group's key values. The per-group results are gathered into
+#' one full-length assignment and written through the same path as an
+#' ungrouped call, so storage validation, compact patching, transactions,
+#' and data.table handling are unchanged. Rows a group's `where` does not
+#' select are left alone by `replace_values()` and hold missing after
+#' `gen()`, which still appends the new column once.
+#'
+#' This is Stata's order of operations, not data.table's. data.table's
+#' `dt[i, j, by]` applies `i` first and groups only the surviving rows,
+#' so under a non-empty `i` its `.N` counts selected rows and its groups
+#' omit any group `i` empties. Here `.N` counts the group's rows whatever
+#' `where` selects, and `where = .n == .N` marks each group's last row.
+#' `.SD`, `.GRP`, and `.BY` are not provided; summaries stay with dplyr.
+#'
+#' `by` groups the dataset in its current row order and never sorts.
+#' `bysort` first sorts the dataset by reference on every listed column,
+#' in Stata's total order for `stata_*()` columns (finite values, then `.`,
+#' then `.a` through `.z`), and then groups by those same columns, so the
+#' rows within each group are the sorted rows and `.n` follows the sort.
+#' Stata's parenthesized sort-only keys are not supported: `bysort id
+#' (date):` is an `arrange()` or `reorder_dta_rows()` line followed by
+#' `by = id`. Group identity uses Stata value identity for `stata_*()`
+#' columns and ordinary identity otherwise, so missing values form their
+#' own group, as in Stata, and each extended missing code its own.
+#'
+#' A grouped tibble supplies its dplyr groups. Giving `by` or `bysort` to
+#' one is an error rather than a precedence rule; ungroup it first.
+#' Supplying both `by` and `bysort` is also an error. Column names follow
+#' the package's usual rules: `by = g`, `by = c(g1, g2)`, `by = c("g1",
+#' "g2")`, `by = !!name`, and `by = .(name)`, where `.()` evaluates its
+#' argument to a string as it does everywhere else in dtatools, not
+#' data.table's `list()`.
+#'
 #' `gen()` appends one variable and does not implement Stata's `before()` or
 #' `after()` placement. A declared `dta_*()` result keeps its numeric storage;
 #' otherwise logical, integer, double, and `Date` results use Stata `float`
@@ -117,7 +164,8 @@
 #' above 2,045 UTF-8 bytes. Numeric rows excluded by `where` contain
 #' system missing. Excluded string rows contain `""`, Stata's string missing.
 #' Wrap the value expression in a Stata constructor to request explicit numeric
-#' storage. Stata `by`, `[in]`, and `:lblname` authoring are not supported.
+#' storage. Stata `[in]` and `:lblname` authoring are not supported; the
+#' `by varlist:` prefix is `by`/`bysort`.
 #' Unlike Stata's default `replace`, `replace_values()` never promotes a target
 #' to wider storage. It rejects values that do not fit the declared storage.
 #' Character `NA` replacement values are normalized to `""`, Stata's string
@@ -164,8 +212,9 @@
 #' or weak references because those objects cannot be isolated by ordinary R
 #' copying.
 #'
-#' @param data An ungrouped data frame or tibble to mutate. `copy_data()` also
-#'   accepts grouped and rowwise tibbles.
+#' @param data A data frame or tibble to mutate. A grouped tibble's groups
+#'   become the assignment groups. Rowwise tibbles are rejected;
+#'   `copy_data()` accepts them.
 #' @param ... The target and its values, as one tagged pair
 #'   `variable = values` or as the two positional arguments `variable,
 #'   values`, optionally followed by one untagged `where`. `variable` is
@@ -178,11 +227,21 @@
 #'   pronoun.
 #' @param where `NULL`, a logical expression, valid row positions, or a
 #'   one-sided formula. It may also be supplied as the last untagged
-#'   argument in `...`.
+#'   argument in `...`. Under groups it is evaluated per group, and row
+#'   positions count within the group.
+#' @param by `NULL`, or the columns to group by, as bare names, strings,
+#'   `c()` of those, `!!name`, or `.(name)`. Rows keep their current
+#'   order. Not allowed with `bysort` or on a grouped tibble.
+#' @param bysort `NULL`, or the columns to sort the dataset by, by
+#'   reference, and then group by. Same spellings as `by`. Not allowed with
+#'   `by` or on a grouped tibble.
 #' @return `gen()` and `replace_values()` return `data` invisibly.
 #'   `copy_data()` returns an independent data frame or tibble.
 #' @references
 #' StataCorp, \href{https://www.stata.com/manuals/dgenerate.pdf}{generate manual}.
+#' @seealso [dibble-bracket] for `data[i, y := value]` on a [dibble], which
+#'   creates or overwrites in one call and takes the same `by`, `bysort`,
+#'   and grouped input.
 #' @examples
 #' survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
 #' gen(survey, adjusted = income + 5)
@@ -201,8 +260,16 @@
 #' repl(survey, !!target_name, 2)
 #' gen(survey, doubled = .data[[source_name]] * 2)
 #' repl(survey, doubled = 0, where = .data[[source_name]] > 15)
+#'
+#' # Group-wise assignment in Stata's `by varlist:` order
+#' panel <- data.frame(id = c(2, 1, 2, 1), t = c(1, 1, 2, 2), x = 1:4)
+#' gen(panel, rows = .N, by = id)               # each group's row count
+#' gen(panel, last = .n == .N, by = id)         # each group's last row
+#' gen(panel, above = x - mean(x), by = id)     # centred within group
+#' repl(panel, x = 0, where = .n == 1, bysort = c(id, t))  # sorts first
 #' @export
-replace_values <- function(data, ..., where = NULL) {
+replace_values <- function(data, ..., where = NULL, by = NULL,
+                           bysort = NULL) {
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
         function() .capture_positional_pair(...),
@@ -210,9 +277,13 @@ replace_values <- function(data, ..., where = NULL) {
         function() rlang::enquos(..., .ignore_empty = "none"),
         function() rlang::enquos0(...)
     )
+    # `missing()` keeps the two extra quosure captures off the ungrouped
+    # path, which `repl()` in a loop depends on.
     .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
-        generate = FALSE
+        generate = FALSE,
+        by = if (missing(by)) NULL else rlang::enquo(by),
+        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
     )
 }
 
@@ -222,7 +293,7 @@ repl <- replace_values
 
 #' @rdname replace_values
 #' @export
-gen <- function(data, ..., where = NULL) {
+gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
         function() .capture_positional_pair(...),
@@ -232,7 +303,9 @@ gen <- function(data, ..., where = NULL) {
     )
     .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
-        generate = TRUE
+        generate = TRUE,
+        by = if (missing(by)) NULL else rlang::enquo(by),
+        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
     )
 }
 
@@ -362,9 +435,13 @@ gen <- function(data, ..., where = NULL) {
     if (is.environment(state)) state else NULL
 }
 
+# The bare column list. Every dibble snapshot and reference-state
+# construction passes through here, so this is one shallow copy with its
+# attributes cleared rather than a closure call per column.
 .plain_data_columns <- function(data) {
     physical <- unclass(data)
-    unname(lapply(seq_along(physical), function(index) physical[[index]]))
+    attributes(physical) <- NULL
+    physical
 }
 
 .reference_names <- function(data) {
@@ -525,6 +602,14 @@ gen <- function(data, ..., where = NULL) {
 .reference_snapshot <- function(data) {
     state <- .reference_state(data)
     if (is.null(state)) return(data)
+    if (!isTRUE(state$physical_overlay) && state$generated_count == 0L) {
+        # A fresh dibble: every column is physical, so the snapshot is the
+        # object minus its mark. Dropping the attribute shallow-copies the
+        # list, which is what every `[` and dplyr call on a read result pays.
+        attr(data, ".dtatools_ref_state") <- NULL
+        class(data) <- state$classes
+        return(data)
+    }
     result <- .data_columns(data)
     source_attributes <- attributes(data)
     source_attributes$.dtatools_ref_state <- NULL
@@ -538,12 +623,17 @@ gen <- function(data, ..., where = NULL) {
     result
 }
 
-.as_mutation_data <- function(data, allow_grouped = FALSE) {
+# `gen()` and `replace_values()` accept a grouped tibble, whose dplyr
+# groups become the assignment groups. The column-structure verbs still
+# reject one, and a rowwise tibble is rejected everywhere but in
+# `copy_data()`, because a row is not a group.
+.as_mutation_data <- function(data, allow_grouped = FALSE,
+                              allow_rowwise = allow_grouped) {
     if (!is.data.frame(data)) {
         stop("`data` must be a data frame or tibble", call. = FALSE)
     }
-    if (!allow_grouped &&
-        (inherits(data, "grouped_df") || inherits(data, "rowwise_df"))) {
+    if ((!allow_grouped && inherits(data, "grouped_df")) ||
+        (!allow_rowwise && inherits(data, "rowwise_df"))) {
         stop("`data` must be an ungrouped data frame or tibble", call. = FALSE)
     }
     state <- .reference_state(data)
@@ -726,7 +816,7 @@ gen <- function(data, ..., where = NULL) {
 # names like `pi` or `T` do not trip it, and a binding that is a function
 # does not count, since a masked symbol reads a vector. `options(
 # dtatools.shadow_check = FALSE)` turns the check off.
-.SHADOW_CHECK_SKIP <- c(".data", ".env", ".")
+.SHADOW_CHECK_SKIP <- c(".data", ".env", ".", ".n", ".N")
 
 .masked_symbols <- function(expression, found = character()) {
     if (is.symbol(expression)) {
@@ -801,24 +891,39 @@ gen <- function(data, ..., where = NULL) {
     invisible(NULL)
 }
 
-.eval_plain_mutation <- function(expression, columns, environment) {
+# `extras` holds the mask variables that are not columns, `.n` and `.N`,
+# on the ungrouped path. They are layered in front of the columns rather
+# than written into a reference state's column store, so nothing that
+# enumerates columns ever sees them. A grouped evaluation binds them in
+# its own group environment instead and passes no extras.
+.eval_plain_mutation <- function(expression, columns, environment,
+                                 extras = NULL) {
     if (!is.environment(columns)) {
-        return(eval(expression, columns, environment))
+        if (is.null(extras)) return(eval(expression, columns, environment))
+        # A column list may itself hold a `.n` or `.N` column. Layering the
+        # counters in a child frame keeps the columns uniquely named and
+        # lets the counters win, as they do on the reference-state path.
+        frame <- list2env(extras, new.env(
+            parent = list2env(columns, new.env(parent = environment))
+        ))
+        return(eval(expression, frame))
     }
     previous_parent <- parent.env(columns)
     on.exit(parent.env(columns) <- previous_parent, add = TRUE)
     parent.env(columns) <- environment
-    eval(expression, new.env(parent = columns))
+    frame <- new.env(parent = columns)
+    if (!is.null(extras)) list2env(extras, frame)
+    eval(expression, frame)
 }
 
 .eval_in_mutation_data <- function(expression, columns, environment = NULL,
-                                   shadow_check = TRUE) {
+                                   extras = NULL, shadow = TRUE) {
     # Plain expressions -- no `.data`/`.env` pronouns and no embedded
     # quosures -- have identical semantics under base evaluation with the
     # columns masking the expression environment. Skipping the rlang data
     # mask there removes the dominant per-call cost of `gen()`/`repl()`.
     if (is.null(environment)) {
-        if (shadow_check && rlang::is_quosure(expression)) {
+        if (shadow && rlang::is_quosure(expression)) {
             .check_shadowed_symbols(
                 rlang::quo_get_expr(expression), columns,
                 rlang::quo_get_env(expression)
@@ -828,15 +933,15 @@ gen <- function(data, ..., where = NULL) {
             .plain_mutation_expression(rlang::quo_get_expr(expression))) {
             return(.eval_plain_mutation(
                 rlang::quo_get_expr(expression), columns,
-                rlang::quo_get_env(expression)
+                rlang::quo_get_env(expression), extras
             ))
         }
     } else {
-        if (shadow_check) {
-            .check_shadowed_symbols(expression, columns, environment)
-        }
+        if (shadow) .check_shadowed_symbols(expression, columns, environment)
         if (.plain_mutation_expression(expression)) {
-            return(.eval_plain_mutation(expression, columns, environment))
+            return(.eval_plain_mutation(
+                expression, columns, environment, extras
+            ))
         }
     }
     reader_environment <- if (!is.null(environment)) {
@@ -847,7 +952,15 @@ gen <- function(data, ..., where = NULL) {
         parent.frame()
     }
     if (!is.environment(columns)) {
-        mask <- rlang::as_data_mask(columns)
+        mask <- if (is.null(extras)) {
+            rlang::as_data_mask(columns)
+        } else {
+            bottom <- list2env(columns, new.env(parent = emptyenv()))
+            rlang::new_data_mask(
+                list2env(extras, new.env(parent = bottom)), top = bottom
+            )
+        }
+        if (!is.null(extras)) mask$.data <- rlang::as_data_pronoun(columns)
         mask$. <- .runtime_name_reader(columns, reader_environment)
         return(if (is.null(environment)) {
             rlang::eval_tidy(expression, data = mask)
@@ -857,7 +970,13 @@ gen <- function(data, ..., where = NULL) {
     }
     previous_parent <- parent.env(columns)
     on.exit(parent.env(columns) <- previous_parent, add = TRUE)
-    mask <- rlang::new_data_mask(columns)
+    mask <- if (is.null(extras)) {
+        rlang::new_data_mask(columns)
+    } else {
+        rlang::new_data_mask(
+            list2env(extras, new.env(parent = columns)), top = columns
+        )
+    }
     mask$.data <- rlang::as_data_pronoun(columns)
     mask$. <- .runtime_name_reader(columns, reader_environment)
     if (is.null(environment)) {
@@ -867,7 +986,41 @@ gen <- function(data, ..., where = NULL) {
     }
 }
 
-.eval_mutation_expression <- function(quo, columns, argument) {
+# `all.names()` walks the call in C, so this costs under a microsecond
+# on the ungrouped path and lets `.n`/`.N` be built only when mentioned.
+# A quosure is a two-element call, so its expression is read directly
+# rather than through the slower `rlang::quo_get_expr()`.
+.mentions_row_counters <- function(expression) {
+    if (inherits(expression, "quosure")) {
+        expression <- .subset2(expression, 2L)
+    }
+    names <- all.names(expression)
+    any(names == ".n") || any(names == ".N")
+}
+
+# The ungrouped `.n`/`.N` pair, or `NULL` when neither `where` nor
+# `values` mentions one. Decided once per call: a stored formula hides
+# its body behind a symbol, so `.eval_mutation_expression()` looks again
+# when it unwraps one.
+.mutation_row_counters <- function(where, values, row_count) {
+    names <- c(
+        all.names(.subset2(where, 2L)), all.names(.subset2(values, 2L))
+    )
+    if (!any(names == ".n") && !any(names == ".N")) return(NULL)
+    list(.n = seq_len(row_count), .N = row_count)
+}
+
+.row_counter_extras <- function(expression, extras, row_count) {
+    if (!is.null(extras) || is.null(row_count)) return(extras)
+    if (!.mentions_row_counters(expression)) return(NULL)
+    list(.n = seq_len(row_count), .N = row_count)
+}
+
+# `extras` supplies `.n` and `.N`, for one group or for the whole dataset;
+# `row_count` lets a stored formula's body have them built on demand.
+.eval_mutation_expression <- function(quo, columns, argument,
+                                      extras = NULL, shadow = TRUE,
+                                      row_count = NULL) {
     if (rlang::quo_is_missing(quo)) {
         stop(sprintf("`%s` is required", argument), call. = FALSE)
     }
@@ -881,17 +1034,19 @@ gen <- function(data, ..., where = NULL) {
             expression[[2L]],
             columns,
             rlang::quo_get_env(quo),
-            shadow_check = FALSE
+            extras, shadow = FALSE
         ))
     }
-    value <- .eval_in_mutation_data(quo, columns)
+    value <- .eval_in_mutation_data(quo, columns, extras = extras,
+                                    shadow = shadow)
     formula <- .formula_expression(value, argument)
     if (is.null(formula)) return(value)
     .eval_in_mutation_data(
         formula$expression,
         columns,
         formula$environment,
-        shadow_check = FALSE
+        .row_counter_extras(formula$expression, extras, row_count),
+        shadow = FALSE
     )
 }
 
@@ -922,8 +1077,11 @@ gen <- function(data, ..., where = NULL) {
 # `.mutate_data()` has already shadow-checked a non-formula `where` in
 # full, and a formula body is exempt, so the operand is not checked here.
 .fused_comparison_scalar <- function(expression, columns, environment) {
+    # `.N` is a scalar too, but it lives outside the columns; leave that
+    # comparison to the general path rather than teach the plan about it.
+    if (.mentions_row_counters(expression)) return(NULL)
     value <- .eval_in_mutation_data(expression, columns, environment,
-                                    shadow_check = FALSE)
+                                    shadow = FALSE)
     if (length(value) != 1L) return(NULL)
     scalar <- .stata_compare_scalar(value)
     if (is.null(scalar)) return(NULL)
@@ -1051,7 +1209,9 @@ gen <- function(data, ..., where = NULL) {
     if (is.null(rows)) row_count else length(rows)
 }
 
-.mutation_value_mode <- function(values, rows, row_count) {
+# `group` names the group whose sizes are being checked, so a grouped
+# error points at the offending key values instead of the whole dataset.
+.mutation_value_mode <- function(values, rows, row_count, group = NULL) {
     size <- vctrs::vec_size(values)
     selected <- .mutation_selected_count(rows, row_count)
     if (size == 1L) return("scalar")
@@ -1059,13 +1219,333 @@ gen <- function(data, ..., where = NULL) {
     if (size == selected || (selected == 0L && size == 0L)) {
         return("selected")
     }
+    if (is.null(group)) {
+        stop(sprintf(
+            paste0(
+                "`values` has size %s; expected size 1, the selected-row ",
+                "count (%s), or the data row count (%s)"
+            ),
+            size, selected, row_count
+        ), call. = FALSE)
+    }
     stop(sprintf(
         paste0(
-            "`values` has size %s; expected size 1, the selected-row ",
-            "count (%s), or the data row count (%s)"
+            "`values` has size %s in group %s; expected size 1, the ",
+            "group's selected-row count (%s), or the group's row count (%s)"
         ),
-        size, selected, row_count
+        size, group, selected, row_count
     ), call. = FALSE)
+}
+
+# Group-wise assignment follows Stata's `by varlist:` rather than
+# data.table's `by`: the groups are formed first, then `where` and
+# `values` are evaluated on each group's rows, so `.N` is the group's row
+# count even under a `where` that selects only some of its rows.
+# data.table applies `i` first and groups only the surviving rows. The
+# groups come from `by`, from `bysort`, or from the dplyr grouping of a
+# `grouped_df`; combining the two sources is an error rather than a
+# precedence rule. Each group's selection and values are gathered into
+# one row vector and one value vector and handed to the ungrouped write
+# path, so storage validation, compact patching, and transactions are
+# shared rather than duplicated.
+.MUTATION_GROUPED_MESSAGE <-
+    "`data` is already grouped; drop `by`/`bysort` or ungroup"
+
+.mutation_group_expression <- function(expression, environment, argument) {
+    message <- sprintf(paste(
+        "`%s` must be column names: a bare name, a string, `c()` of",
+        "those, `!!name`, or `.(name)`"
+    ), argument)
+    if (is.symbol(expression)) return(as.character(expression))
+    if (is.character(expression)) {
+        if (anyNA(expression) || !all(nzchar(expression))) {
+            stop(message, call. = FALSE)
+        }
+        return(expression)
+    }
+    if (.is_runtime_name_call(expression)) {
+        return(.runtime_name_call_value(expression, environment))
+    }
+    if (is.call(expression) &&
+        .selection_call_is(expression[[1L]], "c", "base")) {
+        return(unlist(lapply(
+            as.list(expression)[-1L], .mutation_group_expression,
+            environment = environment, argument = argument
+        ), use.names = FALSE))
+    }
+    stop(message, call. = FALSE)
+}
+
+.mutation_group_names <- function(quo, columns, argument) {
+    names <- .mutation_group_expression(
+        rlang::quo_get_expr(quo), rlang::quo_get_env(quo), argument
+    )
+    if (length(names) == 0L) {
+        stop(sprintf("`%s` must name at least one column", argument),
+             call. = FALSE)
+    }
+    for (name in names) {
+        if (!.has_mutation_column(columns, name)) {
+            stop(sprintf("Column `%s` does not exist", name), call. = FALSE)
+        }
+    }
+    unique(names)
+}
+
+# Resolves the assignment groups as a list of integer row vectors plus
+# the key data frame used to name a group in an error. Returns `NULL`
+# when the call is ungrouped or the dataset is empty, and otherwise the
+# `original` column view to evaluate against, which `bysort` refreshes
+# after reordering the dataset.
+.mutation_groups <- function(data, original, by, bysort, grouped_input) {
+    if (!is.null(by) && rlang::quo_is_null(by)) by <- NULL
+    if (!is.null(bysort) && rlang::quo_is_null(bysort)) bysort <- NULL
+    if (!is.null(by) && !is.null(bysort)) {
+        stop("supply either `by` or `bysort`, not both", call. = FALSE)
+    }
+    if (grouped_input) {
+        if (!is.null(by) || !is.null(bysort)) {
+            stop(.MUTATION_GROUPED_MESSAGE, call. = FALSE)
+        }
+        if (original$nrow == 0L) return(NULL)
+        groups <- attr(data, "groups", exact = TRUE)
+        if (!is.data.frame(groups) || !".rows" %in% names(groups)) {
+            stop("`data` has grouped-tibble metadata without groups",
+                 call. = FALSE)
+        }
+        rows <- lapply(seq_len(nrow(groups)), function(index) {
+            as.integer(groups$.rows[[index]])
+        })
+        keys <- groups[setdiff(names(groups), ".rows")]
+        return(list(rows = rows, keys = keys, original = original))
+    }
+    if (is.null(by) && is.null(bysort)) return(NULL)
+    argument <- if (is.null(by)) "bysort" else "by"
+    names <- .mutation_group_names(
+        if (is.null(by)) bysort else by, original$columns, argument
+    )
+    if (original$nrow == 0L) return(NULL)
+    key_columns <- function() {
+        keys <- lapply(names, .mutation_column, columns = original$columns)
+        names(keys) <- names
+        vctrs::new_data_frame(keys, n = original$nrow)
+    }
+    if (!is.null(bysort)) {
+        # `vec_order()` is stable and, through `vec_proxy_order()`, sorts
+        # Stata numeric columns in Stata's total order with system and
+        # extended missing after every finite value.
+        order <- vctrs::vec_order(key_columns())
+        if (!identical(order, seq_len(original$nrow))) {
+            reorder_dta_rows(data, order)
+            # The sort permuted every column by reference; a plain data
+            # frame's column list was snapshotted before it.
+            original <- .as_mutation_data(data, allow_grouped = TRUE)
+        }
+    }
+    located <- vctrs::vec_group_loc(key_columns())
+    list(
+        rows = lapply(located$loc, as.integer),
+        keys = located$key,
+        original = original
+    )
+}
+
+# Names one group in an error the way Stata prints it: missing codes as
+# `.`, `.a`, and so on, strings in quotes.
+.mutation_group_label <- function(keys, index) {
+    parts <- vapply(names(keys), function(name) {
+        piece <- vctrs::vec_slice(keys[[name]], index)
+        text <- if (inherits(piece, "stata_numeric")) {
+            code <- .tab_missing_codes(as.double(piece))
+            if (!is.na(code)) .tab_missing_name(code) else
+                format(as.double(piece))
+        } else if (is.character(piece)) {
+            encodeString(piece, quote = "\"")
+        } else if (is.numeric(piece) && is.na(piece)) {
+            "."
+        } else {
+            format(piece)
+        }
+        paste0(name, " = ", text)
+    }, character(1L))
+    paste(parts, collapse = ", ")
+}
+
+.mutation_group_slice <- function(column, rows) {
+    .dta_merge_slice(column, rows, fill_string_missing = FALSE)
+}
+
+# A column view over one group at a time. Every column is an active
+# binding that slices the full column to the current group's rows on
+# first use and caches the slice until the group changes, so an
+# expression pays for the columns it reads and nothing else, and a
+# runtime name through `.data[[name]]` or `.(name)` still resolves.
+.mutation_group_view <- function(columns) {
+    view <- new.env(parent = emptyenv())
+    view$rows <- integer()
+    view$cache <- new.env(hash = TRUE, parent = emptyenv())
+    view$columns <- new.env(hash = TRUE, parent = emptyenv())
+    column_names <- if (is.environment(columns)) {
+        ls(columns, all.names = TRUE, sorted = FALSE)
+    } else {
+        names(columns)
+    }
+    for (name in column_names) {
+        local({
+            column_name <- name
+            makeActiveBinding(column_name, function(value) {
+                if (!missing(value)) {
+                    stop(
+                        "columns cannot be assigned inside `values` or `where`",
+                        call. = FALSE
+                    )
+                }
+                hit <- view$cache[[column_name]]
+                if (is.null(hit)) {
+                    hit <- .mutation_group_slice(
+                        .mutation_column(columns, column_name), view$rows
+                    )
+                    view$cache[[column_name]] <- hit
+                }
+                hit
+            }, view$columns)
+        })
+    }
+    view
+}
+
+# The `where` half of `.grouped_mutation()` on its own: each group's rows
+# as validated group-relative positions, or `NULL` for the whole group.
+# The bracket form calls it once and hands the result to every assignment
+# in the same `j`, so rows are chosen before any assignment writes.
+.grouped_selection <- function(where, columns, groups) {
+    view <- .mutation_group_view(columns)
+    lapply(seq_along(groups$rows), function(index) {
+        rows <- groups$rows[[index]]
+        size <- length(rows)
+        if (size == 0L) return(NULL)
+        view$rows <- rows
+        view$cache <- new.env(hash = TRUE, parent = emptyenv())
+        selected <- .eval_mutation_expression(
+            where, view$columns, "where",
+            list(.n = seq_len(size), .N = size), shadow = FALSE
+        )
+        .mutation_rows(selected, size)
+    })
+}
+
+# Evaluates `where` and `values` once per group and gathers the results
+# into one selected-row vector and one aligned value vector for the
+# shared write path. Duplicate positions from a numeric `where` keep the
+# last value, as the ungrouped path does; when every row is selected the
+# values are put into row order and `rows` becomes `NULL`, so the native
+# writers see the same plain full-column write as an ungrouped call.
+# `selected` is a `.grouped_selection()` result; when given, `where` is
+# not evaluated again.
+.grouped_mutation <- function(where, values, columns, groups, row_count,
+                              selected = NULL) {
+    view <- .mutation_group_view(columns)
+    count <- length(groups$rows)
+    row_pieces <- vector("list", count)
+    value_pieces <- vector("list", count)
+    kept <- logical(count)
+    first <- TRUE
+    for (index in seq_len(count)) {
+        rows <- groups$rows[[index]]
+        size <- length(rows)
+        if (size == 0L) next
+        kept[[index]] <- TRUE
+        view$rows <- rows
+        view$cache <- new.env(hash = TRUE, parent = emptyenv())
+        extras <- list(.n = seq_len(size), .N = size)
+        group_rows <- if (is.null(selected)) {
+            .mutation_rows(.eval_mutation_expression(
+                where, view$columns, "where", extras, shadow = FALSE
+            ), size)
+        } else {
+            selected[[index]]
+        }
+        evaluated <- .eval_mutation_expression(
+            values, view$columns, "values", extras, shadow = first
+        )
+        first <- FALSE
+        mode <- .mutation_value_mode(
+            evaluated, group_rows, size,
+            group = .mutation_group_label(groups$keys, index)
+        )
+        if (is.null(group_rows)) {
+            positions <- seq_len(size)
+        } else if (inherits(group_rows, "stata_numeric")) {
+            positions <- as.integer(.stata_data(group_rows))
+        } else {
+            positions <- as.integer(group_rows)
+        }
+        piece <- switch(mode,
+            scalar = vctrs::vec_recycle(evaluated, length(positions)),
+            row = vctrs::vec_slice(evaluated, positions),
+            selected = evaluated
+        )
+        row_pieces[index] <- list(rows[positions])
+        # Single-bracket assignment keeps a `NULL` piece, which a group
+        # that selects no rows and evaluates `values` to `NULL` produces.
+        value_pieces[index] <- list(piece)
+    }
+    # `.drop = FALSE` grouping can carry empty groups; they contribute
+    # nothing. A dataset with rows always has at least one nonempty group.
+    row_pieces <- row_pieces[kept]
+    value_pieces <- value_pieces[kept]
+    all_rows <- unlist(row_pieces, use.names = FALSE)
+    gathered <- .mutation_gather_values(value_pieces)
+    if (anyDuplicated(all_rows) > 0L) {
+        last <- !duplicated(all_rows, fromLast = TRUE)
+        all_rows <- all_rows[last]
+        gathered <- vctrs::vec_slice(gathered, last)
+    }
+    order <- order(all_rows)
+    all_rows <- all_rows[order]
+    gathered <- vctrs::vec_slice(gathered, order)
+    if (length(all_rows) == row_count) {
+        return(list(rows = NULL, values = gathered))
+    }
+    list(rows = all_rows, values = gathered)
+}
+
+# A replacement that rewrote a grouping column leaves the `grouped_df`
+# metadata describing the old values. Rebuild it in place from the
+# current columns, keeping the `.drop` setting, so a following dplyr verb
+# or `.N` assignment partitions the rows the way the data now reads.
+.regroup_after_replacement <- function(data, state) {
+    snapshot <- if (is.null(state)) data else .reference_snapshot(data)
+    # The snapshot reads attributes off `data`, so rewriting the attribute
+    # on the object is what every binding and later snapshot observes.
+    regrouped <- dplyr::group_by(
+        dplyr::ungroup(snapshot),
+        dplyr::across(dplyr::all_of(dplyr::group_vars(data))),
+        .drop = dplyr::group_by_drop_default(data)
+    )
+    .Call(
+        C_dtatools_set_attribute, data, "groups",
+        attr(regrouped, "groups", exact = TRUE)
+    )
+    invisible(NULL)
+}
+
+# `list_unchop()` finds the common type of the pieces but drops bare
+# attributes such as a variable label; restore them when every piece
+# agrees, so a grouped `gen()` keeps the label an ungrouped one would.
+.mutation_gather_values <- function(pieces) {
+    result <- vctrs::list_unchop(pieces)
+    if (is.object(result)) return(result)
+    first <- attributes(pieces[[1L]])
+    first$names <- NULL
+    if (length(first) == 0L) return(result)
+    for (piece in pieces[-1L]) {
+        other <- attributes(piece)
+        other$names <- NULL
+        if (!identical(other, first)) return(result)
+    }
+    attributes(result) <- first
+    result
 }
 
 .validate_numeric_values <- function(values) {
@@ -1140,15 +1620,24 @@ gen <- function(data, ..., where = NULL) {
     result
 }
 
-.mutate_data <- function(data, variable, values, where, generate) {
+# Selects the rows of one bracket call, `data[i, j, by]`, before any of
+# its assignments writes: `i` is evaluated once, with the shadow check
+# and `.n`/`.N` of `where`, and the groups it was evaluated under are
+# kept so each assignment reuses them. The result is `.mutate_data()`'s
+# `selection`. `bysort` sorts the dataset here, once, as the grouped
+# `gen()` path does.
+.mutation_selection <- function(data, where, by, bysort) {
     .reject_data_table_subclass(data)
-    original <- .as_mutation_data(data)
-    target <- .mutation_name(variable, generate, original)
-    state <- .reference_state(data)
-    access <- NULL
-    column <- NULL
-
-    # A formula body is exempt: `~` asks for the data mask outright.
+    grouped_input <- inherits(data, "grouped_df")
+    original <- .as_mutation_data(
+        data, allow_grouped = TRUE, allow_rowwise = FALSE
+    )
+    groups <- if (grouped_input || !is.null(by) || !is.null(bysort)) {
+        .mutation_groups(data, original, by, bysort, grouped_input)
+    } else {
+        NULL
+    }
+    if (!is.null(groups)) original <- groups$original
     if (!rlang::quo_is_missing(where) &&
         !rlang::is_formula(rlang::quo_get_expr(where))) {
         .check_shadowed_symbols(
@@ -1156,19 +1645,90 @@ gen <- function(data, ..., where = NULL) {
             rlang::quo_get_env(where)
         )
     }
-    fused <- if (generate) NULL else {
+    if (!is.null(groups)) {
+        return(list(
+            groups = groups,
+            group_rows = .grouped_selection(where, original$columns, groups)
+        ))
+    }
+    selected <- .eval_mutation_expression(
+        where, original$columns, "where",
+        .row_counter_extras(where, NULL, original$nrow),
+        row_count = original$nrow
+    )
+    list(groups = NULL, rows = .mutation_rows(selected, original$nrow))
+}
+
+# `selection` is a `.mutation_selection()` result. When given, `where` is
+# not evaluated again and the groups it carries stand in for `by` and
+# `bysort`, so every assignment in one `data[i, j]` writes to the rows
+# `i` chose before the first of them wrote. `where` still arrives so
+# `values` can be given `.n` and `.N` on the same terms.
+.mutate_data <- function(data, variable, values, where, generate,
+                         by = NULL, bysort = NULL, selection = NULL) {
+    .reject_data_table_subclass(data)
+    grouped_input <- inherits(data, "grouped_df")
+    original <- .as_mutation_data(
+        data, allow_grouped = TRUE, allow_rowwise = FALSE
+    )
+    target <- .mutation_name(variable, generate, original)
+    groups <- if (!is.null(selection)) {
+        selection$groups
+    } else if (grouped_input || !is.null(by) || !is.null(bysort)) {
+        .mutation_groups(data, original, by, bysort, grouped_input)
+    } else {
+        NULL
+    }
+    if (is.null(selection) && !is.null(groups)) original <- groups$original
+    state <- .reference_state(data)
+    access <- NULL
+    column <- NULL
+
+    # A formula body is exempt: `~` asks for the data mask outright.
+    if (is.null(selection) && !rlang::quo_is_missing(where) &&
+        !rlang::is_formula(rlang::quo_get_expr(where))) {
+        .check_shadowed_symbols(
+            rlang::quo_get_expr(where), original$columns,
+            rlang::quo_get_env(where)
+        )
+    }
+    # The fused comparison patch reads the whole target column, so it
+    # cannot serve a per-group selection, and there is nothing to fuse
+    # once the rows were selected up front.
+    fused <- if (generate || !is.null(groups) || !is.null(selection)) {
+        NULL
+    } else {
         .fused_comparison_plan(where, original$columns, original$nrow)
     }
-    if (is.null(fused)) {
+    if (!is.null(groups)) {
+        gathered <- .grouped_mutation(
+            where, values, original$columns, groups, original$nrow,
+            selected = selection$group_rows
+        )
+        selected <- gathered$rows
+        evaluated <- gathered$values
+    } else if (!is.null(selection)) {
+        evaluated <- .eval_mutation_expression(
+            values, original$columns, "values",
+            .mutation_row_counters(where, values, original$nrow),
+            row_count = original$nrow
+        )
+        selected <- selection$rows
+    } else if (is.null(fused)) {
+        extras <- .mutation_row_counters(where, values, original$nrow)
         selected <- .eval_mutation_expression(
-            where, original$columns, "where"
+            where, original$columns, "where", extras,
+            row_count = original$nrow
         )
         evaluated <- .eval_mutation_expression(
-            values, original$columns, "values"
+            values, original$columns, "values", extras,
+            row_count = original$nrow
         )
     } else {
         evaluated <- .eval_mutation_expression(
-            values, original$columns, "values"
+            values, original$columns, "values",
+            .mutation_row_counters(where, values, original$nrow),
+            row_count = original$nrow
         )
         access <- .column_access(data)
         column <- .data_column_at(access, target$location)
@@ -1226,6 +1786,11 @@ gen <- function(data, ..., where = NULL) {
             patch()
         }
         if (!is.null(state)) state$columns[[target$name]] <- column
+        # Rebuild after every grouped replacement, not only one that names
+        # a grouping column: a target can share its vector with a key
+        # under the package's alias semantics, so the key may have changed
+        # without being named.
+        if (grouped_input) .regroup_after_replacement(data, state)
     }
     if (generate) {
         .append_generated_column(state, target$name, column)
@@ -1439,14 +2004,11 @@ copy_data <- function(data) {
     state <- .reference_state(data)
     if (is.null(state)) return(NULL)
     if (!isTRUE(state$physical_overlay)) {
-        # `locations` also indexes generated columns, which live past the
-        # end of the physical object, so confirm the hit is a physical one.
-        location <- state$locations[[name]]
-        physical <- attr(data, "names", exact = TRUE)
-        if (!is.null(location) && location <= length(physical) &&
-            identical(physical[[location]], name)) {
-            return(list(.subset2(data, location)))
-        }
+        # Physical columns are read straight off the object; `.subset2()`
+        # matches names exactly and returns NULL for a generated or absent
+        # column, which the store lookup below then resolves.
+        value <- .subset2(data, name)
+        if (!is.null(value)) return(list(value))
     }
     if (exists(name, envir = state$columns, inherits = FALSE)) {
         return(list(state$columns[[name]]))
@@ -1483,13 +2045,8 @@ copy_data <- function(data) {
     .reference_snapshot(x)[[i, ..., exact = exact]]
 }
 
-#' @export
-`[.dtatools_ref_data` <- function(x, i, j, ..., drop) {
-    call <- sys.call()
-    call[[1L]] <- quote(`[`)
-    call[[2L]] <- .reference_snapshot(x)
-    eval(call, parent.frame())
-}
+# `[.dtatools_ref_data` is defined in dibble.R beside its documentation:
+# it is the bracket mutation entry as well as the snapshot delegate.
 
 #' @export
 names.dtatools_ref_data <- function(x) {
@@ -1528,8 +2085,58 @@ as.list.dtatools_ref_data <- function(x, ...) {
     as.list(.data_columns(x), ...)
 }
 
+# The `[` primitive marks its result visible after S3 dispatch, so a
+# bracket assignment cannot return invisibly the way `gen()` does. As
+# data.table does for its `:=`, the assignment records the dataset it
+# just mutated, and the next top-level print of that dataset is skipped,
+# which is the autoprint of the assignment's own result. The record is
+# dropped at that first print, so a `print(data)` or bare `data` on the
+# next line prints, and a print from inside a function or a test never
+# skips, because it sits deeper in the call stack.
+#
+# The autoprint only happens when the bracket call is itself the
+# top-level statement. Inside `<-`, a loop, `invisible()`, or a function
+# body nothing consumes the record, and left alone it would swallow the
+# user's next bare `data`. A task callback clears the record when the
+# top-level statement that set it finishes, so it can never outlive that
+# statement. The callback is registered once per statement and removes
+# itself, so an idle session carries no callback.
+.bracket_print <- new.env(parent = emptyenv())
+.bracket_print$skip <- NULL
+.bracket_print$callback <- FALSE
+
+.suppress_bracket_autoprint <- function(x) {
+    .bracket_print$skip <- .reference_state(x)
+    if (!.bracket_print$callback) {
+        .bracket_print$callback <- TRUE
+        addTaskCallback(function(...) {
+            .bracket_print$skip <- NULL
+            .bracket_print$callback <- FALSE
+            FALSE
+        }, name = "dtatools_bracket_autoprint")
+    }
+    invisible(NULL)
+}
+
+# Implicit autoprint calls `print` through the function object itself, so
+# the outer call's head is a closure rather than the symbol `print`; an
+# explicit `print(data[, y := 1])` arrives with the symbol. Only the former
+# is the assignment's own echo, so only it is skipped, as data.table does.
+# The record is spent either way, so a stale one cannot outlive its
+# statement.
+.skip_bracket_autoprint <- function(x, frames, call) {
+    skip <- .bracket_print$skip
+    if (is.null(skip)) return(FALSE)
+    .bracket_print$skip <- NULL
+    identical(skip, .reference_state(x)) && frames <= 2L &&
+        is.call(call) && is.function(call[[1L]])
+}
+
 #' @export
 print.dtatools_ref_data <- function(x, ...) {
+    if (.skip_bracket_autoprint(x, sys.nframe(), sys.call(1L))) {
+        return(invisible(x))
+    }
     print(.reference_snapshot(x), ...)
     invisible(x)
 }
@@ -1685,12 +2292,22 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     .reference_delegate(.data, sys.call(), dplyr::transmute, parent.frame())
 }
 
+# Grouping changes only dplyr metadata, so a dibble stays a dibble: the
+# grouped or ungrouped snapshot is marked again, and `state$classes` then
+# records the grouping for later snapshots. The result is a fresh object
+# either way, so the mark never touches the caller's dataset.
+.regroup_reference_data <- function(data, result) {
+    if (is_dibble(data) && !is_dibble(result)) .as_dibble(result) else result
+}
+
 #' @export
 group_by.dtatools_ref_data <- function(
     .data, ..., .add = FALSE,
     .drop = dplyr::group_by_drop_default(.data)
 ) {
-    .reference_delegate(.data, sys.call(), dplyr::group_by, parent.frame())
+    .regroup_reference_data(.data, .reference_delegate(
+        .data, sys.call(), dplyr::group_by, parent.frame()
+    ))
 }
 
 #' @export
@@ -1707,7 +2324,9 @@ distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
 
 #' @export
 ungroup.dtatools_ref_data <- function(x, ...) {
-    .reference_delegate(x, sys.call(), dplyr::ungroup, parent.frame())
+    .regroup_reference_data(x, .reference_delegate(
+        x, sys.call(), dplyr::ungroup, parent.frame()
+    ))
 }
 
 #' @export

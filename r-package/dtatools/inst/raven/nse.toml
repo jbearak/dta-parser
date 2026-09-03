@@ -12,23 +12,24 @@ schema = 1
 # gen(survey, adjusted = income + 5) and gen(survey, adjusted, income + 5):
 # the target and its values arrive in `...`, optionally followed by `where`,
 # and every dot is quoted and evaluated against the data mask, as is a named
-# `where`. `data` is an ordinary argument that should still be checked.
+# `where`. `by` and `bysort` are quoted column names. `data` is an ordinary
+# argument that should still be checked.
 [[function]]
 name = "gen"
-formals = ["data", "...", "where"]
-captured = ["where"]
+formals = ["data", "...", "where", "by", "bysort"]
+captured = ["where", "by", "bysort"]
 captured_dots = true
 
 [[function]]
 name = "repl"
-formals = ["data", "...", "where"]
-captured = ["where"]
+formals = ["data", "...", "where", "by", "bysort"]
+captured = ["where", "by", "bysort"]
 captured_dots = true
 
 [[function]]
 name = "replace_values"
-formals = ["data", "...", "where"]
-captured = ["where"]
+formals = ["data", "...", "where", "by", "bysort"]
+captured = ["where", "by", "bysort"]
 captured_dots = true
 
 # keep_vars(survey, id, age) and drop_vars(survey, temporary): every argument

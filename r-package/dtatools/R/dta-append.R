@@ -53,7 +53,9 @@
 #'   error.
 #' @param dataset_notes How to resolve dataset-level notes and
 #'   characteristics: `"first"`, `"all"`, or `"none"`.
-#' @param output `"default"`, `"tibble"`, or `"data.table"`.
+#' @param output `"default"`, `"dibble"`, `"tibble"`, or `"data.table"`.
+#'   `"default"` follows the container the first source resolves to: a
+#'   file's recorded container, else the `dtatools.output` option.
 #' @param .name_repair Name repair applied to the result, as in
 #'   [read_dta()].
 #' @return The stacked observations in the requested container,
@@ -61,7 +63,7 @@
 #' @export
 dta_append <- function(sources, force = TRUE,
                        dataset_notes = c("first", "none", "all"),
-                       output = c("default", "tibble", "data.table"),
+                       output = c("default", "dibble", "tibble", "data.table"),
                        .name_repair = "unique") {
     the_sources <- .append_normalize_sources(sources)
     dataset_notes <- rlang::arg_match(dataset_notes, .APPEND_NOTE_POLICIES)
@@ -82,14 +84,18 @@ dta_append <- function(sources, force = TRUE,
         filled$columns, n = filled$row_count
     )
     result <- .append_apply_dataset_metadata(result, schemas, dataset_notes)
-    stored <- if (inherits(schemas[[1L]]$schema, "data.table")) {
-        "data.table"
+    # A file schema was read with `output`, so its container is already the
+    # resolved choice. An in-memory frame records nothing and leaves the
+    # decision to `output` and the option.
+    stored <- if (identical(schemas[[1L]]$kind, "frame")) {
+        NULL
     } else {
-        "tibble"
+        .stored_output_container(schemas[[1L]]$schema)
     }
-    .as_stata_metadata_frame(
+    result <- .as_stata_metadata_frame(
         .finalize_output_container(result, output, .name_repair, stored)
     )
+    .complete_output_container(result, output, stored)
 }
 
 .append_normalize_sources <- function(sources) {

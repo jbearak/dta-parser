@@ -91,9 +91,10 @@
 #'   same names as `keep`. Any other match result is an error naming each
 #'   disallowed match result and its row count.
 #' @param output Result container. `"x"` preserves the resolved `x` input's
-#'   base data-frame, tibble, or data-table class. Supply `"tibble"` or
-#'   `"data.table"` to override it.
-#' @return A data frame, tibble, or data table with the key columns, the
+#'   base data-frame, tibble, dibble, or data-table class. Supply `"dibble"`,
+#'   `"tibble"`, or `"data.table"` to override it.
+#' @return A data frame, tibble, dibble, or data table with the key columns,
+#'   the
 #'   remaining columns of `x`, the
 #'   columns only in `y`, and `_merge`, in that order.
 #' @examples
@@ -110,7 +111,10 @@
 dta_merge <- function(x, y, by, relationship,
                       keep = c("x", "y", "match"),
                       assert = NULL,
-                      output = c("x", "tibble", "data.table")) {
+                      output = c("x", "dibble", "tibble", "data.table")) {
+    # A dibble `x` snapshots to a plain tibble, so its container is read
+    # before the snapshot; a file path leaves it to the reader.
+    x_container <- if (is.data.frame(x)) .stored_output_container(x)
     x <- .resolve_merge_input(x, "x")
     y <- .resolve_merge_input(y, "y")
     .reject_data_table_subclass(x, "x")
@@ -262,17 +266,22 @@ dta_merge <- function(x, y, by, relationship,
     columns[["_merge"]] <- indicator
 
     result <- vctrs::new_data_frame(columns, n = length(merge_codes))
-    result <- .dta_merge_output_container(result, x, output)
+    selected <- .dta_merge_selected_container(x, x_container, output)
+    result <- .dta_merge_output_container(result, selected)
     dataset_label(result) <- dataset_label(x)
     result <- .copy_stata_metadata_attributes(x, result)
     attr(result, "notes") <- dataset_notes$notes
     attr(result, "stata.note.numbers") <- dataset_notes$numbers
-    .repair_data_table_container(result)
+    result <- .repair_data_table_container(result)
+    if (identical(selected, "dibble")) .as_dibble(result) else result
 }
 
-.dta_merge_output_container <- function(result, x, output) {
-    selected <- if (!identical(output, "x")) {
-        output
+.dta_merge_selected_container <- function(x, x_container, output) {
+    if (!identical(output, "x")) return(output)
+    if (!is.null(x_container)) return(x_container)
+    # `x` came from a file, so it is the reader's finished container.
+    if (is_dibble(x)) {
+        "dibble"
     } else if (.ordinary_data_table(x)) {
         "data.table"
     } else if (inherits(x, "tbl_df")) {
@@ -280,7 +289,12 @@ dta_merge <- function(x, y, by, relationship,
     } else {
         "data.frame"
     }
-    if (identical(selected, "tibble")) return(tibble::as_tibble(result))
+}
+
+.dta_merge_output_container <- function(result, selected) {
+    if (selected %in% c("tibble", "dibble")) {
+        return(tibble::as_tibble(result))
+    }
     if (identical(selected, "data.table")) {
         .normalize_output_container("data.table")
         class(result) <- c("data.table", "data.frame")

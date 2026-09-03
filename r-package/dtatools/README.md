@@ -10,7 +10,7 @@ declared Stata storage type.
 
 | Function | Purpose |
 | --- | --- |
-| `read_dta()` | Read a DTA file into a tibble or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
+| `read_dta()` | Read a DTA file into a dibble, tibble, or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
 | `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
 | `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |
@@ -36,10 +36,16 @@ declared Stata storage type.
 | `is_missing()`, `is_mi()` | Classify Stata system and extended numeric missing values and empty strings; `is_mi()` is an alias for `is_missing()` that matches Stata's `mi()` shorthand. Use either in `where` expressions for `gen()` and `replace_values()`. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
-## Tibbles and data tables
+## Dibbles, tibbles, and data tables
 
-Readers return tibbles by default. Set one session-wide default or override it
-for one DTA read:
+Readers return dibbles by default: tibbles that carry dtatools reference state
+from creation, so `gen()` and the other by-reference operations find it ready.
+A dibble prints and subsets as a tibble; ordinary replacement and the dplyr
+verbs return plain tibbles, and `group_by()` returns a grouped dibble.
+`dibble()` builds one like `tibble::tibble()`, `as_dibble()` converts a data
+frame, tibble, or data table (a data table is copied, since a dibble cannot
+share its self-reference), and `is_dibble()` tests for one. Set one
+session-wide default or override it for one read:
 
 ```r
 options(dtatools.output = "data.table")
@@ -51,10 +57,11 @@ The data.table package remains optional. Requesting data-table output without
 it installed is an error. Direct reader construction retains compact numeric
 and dictionary-string columns; it does not build a tibble and convert it.
 
-`save_arrow()` records whether its input is an ordinary tibble or data table.
-`read_arrow()` restores that container by default. An explicit `output`
+`save_arrow()` records whether its input is an ordinary dibble, tibble, or data
+table. `read_arrow()` restores that container by default. An explicit `output`
 argument overrides the stored choice. Older Arrow files and files saved from a
-plain data frame use `dtatools.output`, then fall back to a tibble.
+plain data frame use `dtatools.output`, then fall back to a dibble; a recorded
+container this release does not know reads as a tibble.
 
 Exported whole-table operations support ordinary data tables. `gen()` installs
 a physical column, and `repl()` invalidates keys or secondary indexes that use
@@ -507,6 +514,45 @@ confirm_var(survey, "inc")
 confirm_var(survey, "missing", on_failure = "false")
 #> [1] FALSE
 ```
+
+### Generate and replace
+
+`gen()` appends a variable and `repl()` (an alias of `replace_values()`)
+replaces selected values, both by reference. The target and its values are
+one tagged pair, or the positional pair that reads like the Stata line:
+
+```r
+gen(survey, adjusted = income + 5)
+repl(survey, adjusted = 0, where = !eligible)
+gen(survey, adjusted, income + 5)            # the same, Stata-shaped
+```
+
+Stata's `by varlist:` prefix is the `by` argument. Groups are formed first,
+then `where` and the values are evaluated on each group's rows, with `.n`
+and `.N` as the within-group row number and count, so `bysort id: replace
+last = _n == _N` becomes one line. `bysort` sorts the dataset by reference
+on the listed columns and then groups by them; `by` never sorts. A tibble
+grouped with `dplyr::group_by()` supplies its groups the same way.
+
+```r
+gen(survey, last = .n == .N, bysort = id)
+gen(survey, share = income / sum(income), by = c(region, year))
+```
+
+A dibble also accepts data.table's bracket form. `i` selects rows, `j`
+holds one or more `:=` assignments, and `by` or `bysort` group. Unlike
+`gen()` and `repl()`, `:=` creates a missing column and overwrites an
+existing one; several assignments apply left to right, and rows are
+selected once for the whole call.
+
+```r
+survey[income < 0, income := NA]
+survey[, `:=`(adjusted = income + 5, flag = income > 0)]
+survey[, last := .n == .N, bysort = id]
+```
+
+Only a dibble supports the bracket form. On a data table it runs
+data.table's own `:=`, which ignores declared Stata storage.
 
 ### Programming with variable names
 

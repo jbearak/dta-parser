@@ -11,7 +11,7 @@ dta_merge(
   relationship,
   keep = c("x", "y", "match"),
   assert = NULL,
-  output = c("x", "tibble", "data.table")
+  output = c("x", "dibble", "tibble", "data.table")
 )
 }
 \arguments{
@@ -42,12 +42,14 @@ The default keeps every row, as Stata does.}
 same names as \code{keep}. Any other match result is an error naming each
 disallowed match result and its row count.}
 
-\item{output}{Result container. \code{"x"} preserves the resolved \code{x}
-input's base data-frame, tibble, or data-table class. Supply \code{"tibble"}
-or \code{"data.table"} to override it.}
+\item{output}{Result container. \code{"x"} preserves the resolved \code{x} input's
+base data-frame, tibble, dibble, or data-table class. Supply \code{"dibble"},
+\code{"tibble"}, or \code{"data.table"} to override it.}
 }
 \value{
-A data frame, tibble, or data table with the key columns, the remaining columns of \code{x}, the
+A data frame, tibble, dibble, or data table with the key columns,
+the
+remaining columns of \code{x}, the
 columns only in \code{y}, and \verb{_merge}, in that order.
 }
 \description{

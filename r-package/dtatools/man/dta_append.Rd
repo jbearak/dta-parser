@@ -8,7 +8,7 @@ dta_append(
   sources,
   force = TRUE,
   dataset_notes = c("first", "none", "all"),
-  output = c("default", "tibble", "data.table"),
+  output = c("default", "dibble", "tibble", "data.table"),
   .name_repair = "unique"
 )
 }
@@ -24,7 +24,9 @@ error.}
 \item{dataset_notes}{How to resolve dataset-level notes and
 characteristics: \code{"first"}, \code{"all"}, or \code{"none"}.}
 
-\item{output}{\code{"default"}, \code{"tibble"}, or \code{"data.table"}.}
+\item{output}{\code{"default"}, \code{"dibble"}, \code{"tibble"}, or \code{"data.table"}.
+\code{"default"} follows the container the first source resolves to: a
+file's recorded container, else the \code{dtatools.output} option.}
 
 \item{.name_repair}{Name repair applied to the result, as in
 \code{\link[=read_dta]{read_dta()}}.}
@@ -81,3 +83,4 @@ Stata does not define what happens to dataset-level notes on
 defaults to \code{"first"}. Use \code{"all"} to concatenate every source's
 notes in source order, or \code{"none"} to drop them.
 }
+

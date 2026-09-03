@@ -11,11 +11,11 @@
 #' logical, and character locations are supported, as are repeated and missing
 #' locations. Character locations match row names.
 #'
-#' @param data An ordinary base data frame, tibble, or data.table. Other
-#'   data-frame subclasses are not supported.
+#' @param data An ordinary base data frame, tibble, data.table, or
+#'   [dibble][dibble()]. Other data-frame subclasses are not supported.
 #' @param rows A row subscript accepted by [vctrs::vec_as_location()].
-#' @return The selected rows in the same base data-frame, tibble, or
-#'   data.table container. A data.table result is a new over-allocated
+#' @return The selected rows in the same base data-frame, tibble,
+#'   data.table, or dibble container. A data.table result is a new over-allocated
 #'   data.table; the input is left untouched, and any `sorted` marker or
 #'   secondary indexes are dropped because a row selection invalidates
 #'   them.
@@ -26,6 +26,34 @@ slice_dta_rows <- function(data, rows) {
             "`data` must be a base data frame, tibble, or data.table",
             call. = FALSE
         )
+    }
+    if (inherits(data, "dtatools_ref_data")) {
+        # Slice the complete visible dataset, then return it in the same
+        # container: a dibble yields a dibble, and a base frame that gained
+        # reference state through `gen()` yields a base frame.
+        snapshot <- .reference_snapshot(data)
+        grouped <- inherits(snapshot, "grouped_df")
+        if (grouped) {
+            # The `groups` attribute indexes rows of the old data, so slice
+            # the plain tibble and regroup the result on its own rows. The
+            # grouping is stripped by hand because `ungroup()` would also
+            # drop the dataset label, notes, and characteristics.
+            classes <- class(snapshot)
+            group_vars <- dplyr::group_vars(snapshot)
+            drop <- dplyr::group_by_drop_default(snapshot)
+            attr(snapshot, "groups") <- NULL
+            class(snapshot) <- setdiff(classes, "grouped_df")
+        }
+        result <- slice_dta_rows(snapshot, rows)
+        if (grouped) {
+            regrouped <- dplyr::group_by(
+                result, dplyr::across(dplyr::all_of(group_vars)),
+                .drop = drop
+            )
+            attr(result, "groups") <- attr(regrouped, "groups", exact = TRUE)
+            class(result) <- classes
+        }
+        return(if (is_dibble(data)) .as_dibble(result) else result)
     }
     base_classes <- setdiff(class(data), "dtatools_stata_metadata")
     data_table <- .ordinary_data_table(data)

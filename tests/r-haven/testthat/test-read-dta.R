@@ -368,7 +368,9 @@ test_that("all bundled fixtures agree with haven", {
     expect_gt(length(paths), 20L)
 
     for (path in paths) {
-        actual <- read_dta(path)
+        # The Rust-vector collector builds a tibble, so compare against a
+        # tibble read; the default dibble carries reference state on top.
+        actual <- read_dta(path, output = "tibble")
         rust_vectors <- dtatools:::.read_dta_rust_vectors(path)
         expected <- without_haven_note_count(haven::read_dta(path))
         info <- basename(path)
@@ -442,7 +444,8 @@ test_that("dataset-note cardinality, ordering, and empty values are semantic", {
             variant, col_select = make, skip = 2, n_max = 3
         ))
         actual <- read_dta(
-            variant, col_select = make, skip = 2, n_max = 3
+            variant, col_select = make, skip = 2, n_max = 3,
+            output = "tibble"
         )
         rust_vectors <- dtatools:::.read_dta_rust_vectors(
             variant, col_select = make, skip = 2, n_max = 3
@@ -469,7 +472,8 @@ test_that("projection, renaming, and row bounds match haven", {
         path,
         col_select = c(origin = foreign, make, price),
         skip = 5,
-        n_max = 4
+        n_max = 4,
+        output = "tibble"
     )
     rust_vectors <- dtatools:::.read_dta_rust_vectors(
         path,
@@ -512,7 +516,9 @@ test_that("safe row-window inputs align with haven in both collectors", {
         arguments <- c(
             list(path, col_select = c("make", "price")), cases[[name]]
         )
-        actual <- do.call(read_dta, arguments)
+        actual <- do.call(
+            read_dta, c(arguments, list(output = "tibble"))
+        )
         rust_vectors <- do.call(
             dtatools:::.read_dta_rust_vectors, arguments
         )
@@ -535,7 +541,7 @@ test_that("normalized windows cover empty data and zero-column projections", {
     haven::write_dta(data.frame(number = double(), text = character()), empty)
 
     for (n_max in list(0L, NA, Inf, -Inf, -1)) {
-        actual <- read_dta(empty, n_max = n_max)
+        actual <- read_dta(empty, n_max = n_max, output = "tibble")
         rust_vectors <- dtatools:::.read_dta_rust_vectors(
             empty, n_max = n_max
         )
@@ -554,7 +560,9 @@ test_that("normalized windows cover empty data and zero-column projections", {
         arguments <- c(
             list(path, col_select = character()), windows[[name]]
         )
-        actual <- do.call(read_dta, arguments)
+        actual <- do.call(
+            read_dta, c(arguments, list(output = "tibble"))
+        )
         rust_vectors <- do.call(
             dtatools:::.read_dta_rust_vectors, arguments
         )
@@ -575,7 +583,7 @@ test_that("repeated string patterns can diverge without changing values", {
                 "alpha", "beta", rep(c("delta", "epsilon", "zeta"), 8L))
     haven::write_dta(data.frame(value = values), path, version = 15)
 
-    actual <- read_dta(path)
+    actual <- read_dta(path, output = "tibble")
     expect_identical(as.vector(actual$value), values)
     expect_identical(actual, dtatools:::.read_dta_rust_vectors(path))
 })
@@ -666,7 +674,7 @@ test_that("legacy and custom daily-date formats match haven", {
     }), check.names = FALSE)
     haven::write_dta(input, path, version = 15)
 
-    actual <- read_dta(path)
+    actual <- read_dta(path, output = "tibble")
     rust_vectors <- dtatools:::.read_dta_rust_vectors(path)
     expected <- haven::read_dta(path)
 
@@ -701,7 +709,8 @@ test_that("legacy and custom daily-date formats match haven", {
         path,
         col_select = all_of(selected_names),
         skip = 1,
-        n_max = 2
+        n_max = 2,
+        output = "tibble"
     )
     selected_rust_vectors <- dtatools:::.read_dta_rust_vectors(
         path,
@@ -736,7 +745,9 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
         writeBin(bytes, path)
 
         for (encoding in c("Windows-1252", "ISO-8859-1")) {
-            actual <- read_dta(path, encoding = encoding)
+            actual <- read_dta(
+                path, encoding = encoding, output = "tibble"
+            )
             rust_vectors <- dtatools:::.read_dta_rust_vectors(
                 path, encoding = encoding
             )
@@ -770,8 +781,12 @@ test_that("explicit encodings match haven across ordinary textual surfaces", {
     note_bytes <- replace_first_byte(
         note_bytes, "From Consumer Reports with permission", 0x80
     )
-    cp1252 <- read_dta(note_bytes, encoding = "Windows-1252")
-    latin1 <- read_dta(note_bytes, encoding = "ISO-8859-1")
+    cp1252 <- read_dta(
+        note_bytes, encoding = "Windows-1252", output = "tibble"
+    )
+    latin1 <- read_dta(
+        note_bytes, encoding = "ISO-8859-1", output = "tibble"
+    )
     expect_identical(cp1252, dtatools:::.read_dta_rust_vectors(
         note_bytes, encoding = "CP1252"
     ))

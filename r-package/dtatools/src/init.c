@@ -4419,6 +4419,19 @@ SEXP C_dtatools_mark_reference_data(
     return data;
 }
 
+// Replaces one attribute on an object in place. Reference datasets are
+// shared by every binding that holds them, so grouping metadata that a
+// replacement invalidated must be rewritten on the object itself rather
+// than on a copy that only one binding would see.
+SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value) {
+    if (TYPEOF(object) != VECSXP || TYPEOF(name) != STRSXP ||
+        XLENGTH(name) != 1) {
+        Rf_error("invalid attribute assignment");
+    }
+    Rf_setAttrib(object, Rf_install(CHAR(STRING_ELT(name, 0))), value);
+    return object;
+}
+
 static SEXP dictstring_compact_copy(SEXP value) {
     SEXP source = unmaterialized_dictstring_source(value);
     if (source == R_NilValue) return R_NilValue;
@@ -7260,6 +7273,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_dtatools_metadata_view", (DL_FUNC) &C_dtatools_metadata_view, 1},
     {"C_dtatools_mark_reference_data",
      (DL_FUNC) &C_dtatools_mark_reference_data, 3},
+    {"C_dtatools_set_attribute", (DL_FUNC) &C_dtatools_set_attribute, 3},
     {"C_dtatools_deep_copy_value",
      (DL_FUNC) &C_dtatools_deep_copy_value, 1},
     {"C_dtatools_reference_contents",
