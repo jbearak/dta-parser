@@ -4,3 +4,5 @@
 ^src/Makevars$
 ^src/Makevars\.win$
 ^\.DS_Store$
+^tests/testthat/testthat-problems\.rds$
+^tests/testthat/_problems$

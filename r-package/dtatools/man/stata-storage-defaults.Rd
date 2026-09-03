@@ -52,8 +52,11 @@ the narrowest Stata storage that holds every new value exactly: \code{byte},
 ladder: Stata promotes an overflowing \code{long} to \code{float}, where integers
 above 2^24 lose digits, and dtatools goes to \code{double} instead. A value
 that already carries storage, from a \verb{dta_*()} call or Stata-typed
-arithmetic, keeps that storage. \code{\link[=replace_values]{replace_values()}} and \code{repl()} do not
-promote; they reject values that do not fit.
+arithmetic, keeps that storage. Row or cell assignment, as in
+\code{data[1, "x"] <- 1000L}, promotes the same way. \code{\link[=replace_values]{replace_values()}} and
+\code{repl()} do not promote; they reject values that do not fit. Nor does
+\verb{[<-} on a Stata vector taken out of the dibble, as in
+\code{data$x[1] <- 1000L}, which is the vector's own strict assignment.
 }
 
 \section{Bare tibbles and data frames}{

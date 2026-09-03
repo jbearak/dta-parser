@@ -707,3 +707,94 @@ test_that("Stata numerics coerce to integer and logical and add to dates", {
     stamp <- as.POSIXct("2024-01-01", tz = "UTC")
     expect_identical(stamp + dta_int(60), stamp + 60)
 })
+
+test_that("bracket assignment and partial replacement promote storage", {
+    data <- dibble(x = dta_byte(c(1, 2)), s = c("a", "b"), n = 1:2)
+    data[, x := 1000L]
+    expect_identical(dta_storage_type(data$x), "int")
+    expect_identical(as.double(data$x), c(1000, 1000))
+    data[1, x := 100000L]
+    expect_identical(dta_storage_type(data$x), "long")
+    expect_identical(as.double(data$x), c(100000, 1000))
+    # 100000 and 0.5 both fit float exactly, so float is the narrowest.
+    data[2, x := 0.5]
+    expect_identical(dta_storage_type(data$x), "float")
+    data[1, x := 0.1]
+    expect_identical(dta_storage_type(data$x), "double")
+    data[1, s := "longer"]
+    expect_identical(attr(data$s, "stata.string.storage"), "str6")
+    expect_identical(as.character(data$s), c("longer", "b"))
+    # A fitting value keeps the storage and the compact path.
+    compact <- dibble(x = dta_byte(1:3))
+    compact[2, x := 9L]
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$x))
+    expect_identical(dta_storage_type(compact$x), "byte")
+    # replace_values() stays strict.
+    expect_error(replace_values(compact, x, 1000L, where = 1), "byte")
+    # Cell assignment through `[<-` promotes too, and untouched compact
+    # columns keep their vectors.
+    cells <- dibble(x = dta_byte(c(1, 2)), y = dta_byte(c(3, 4)),
+                    s = c("a", "b"))
+    y_before <- cells$y
+    cells[1, "x"] <- 1000L
+    expect_true(is_dibble(cells))
+    expect_identical(dta_storage_type(cells$x), "int")
+    expect_identical(as.double(cells$x), c(1000, 2))
+    expect_identical(cells$y, y_before)
+    cells[2, "s"] <- "long"
+    expect_identical(attr(cells$s, "stata.string.storage"), "str4")
+    expect_identical(as.character(cells$s), c("a", "long"))
+    cells[1, "y"] <- 5L
+    expect_identical(dta_storage_type(cells$y), "byte")
+    expect_error(cells[1, "x"] <- "text")
+})
+
+test_that("overwriting a typed column with an untypable one passes through", {
+    data <- dibble(x = 1:3, s = c("a", "b", "c"))
+    listed <- dplyr::mutate(data, x = as.list(as.integer(x)))
+    expect_type(listed$x, "list")
+    spanned <- dplyr::mutate(
+        data, x = as.difftime(as.double(x), units = "days")
+    )
+    expect_s3_class(spanned$x, "difftime")
+    data$s <- as.raw(1:3)
+    expect_type(data$s, "raw")
+    expect_true(is_dibble(data))
+})
+
+test_that("reframe, group_modify, and nest_by return dibbles", {
+    data <- dibble(g = c("a", "a", "b"), v = c(1, 2, 3))
+    reframed <- dplyr::reframe(data, total = sum(as.double(v)), .by = g)
+    expect_true(is_dibble(reframed))
+    expect_identical(dta_storage_type(reframed$total), "double")
+    grouped <- dplyr::group_by(data, g)
+    modified <- dplyr::group_modify(grouped, ~ dplyr::mutate(.x, w = 1L))
+    expect_true(is_dibble(modified))
+    expect_identical(dplyr::group_vars(modified), "g")
+    expect_identical(dta_storage_type(modified$w), "long")
+    nested <- dplyr::nest_by(data, g)
+    expect_true(is_dibble(nested))
+    expect_type(nested$data, "list")
+})
+
+test_that("difftime arithmetic with Stata numerics works", {
+    data <- dibble(span = as.difftime(1:2, units = "days"), id = 1:2)
+    result <- dplyr::mutate(data, later = span + id, scaled = span * id)
+    expect_s3_class(result$later, "difftime")
+    expect_identical(as.double(result$later), c(2, 4))
+    expect_s3_class(result$scaled, "difftime")
+    expect_identical(
+        dta_long(2L) + as.difftime(1, units = "days"),
+        as.difftime(3, units = "days")
+    )
+})
+
+test_that("the first gen on a tibble types columns transactionally", {
+    tbl <- tibble::tibble(ok = 1:2, bad = c(Inf, Inf))
+    alias <- tbl
+    expect_error(gen(tbl, y = 1))
+    expect_identical(tbl$ok, 1:2)
+    expect_identical(alias$ok, 1:2)
+    expect_false(is_dibble(tbl))
+    expect_identical(names(tbl), c("ok", "bad"))
+})

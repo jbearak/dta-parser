@@ -7,3 +7,5 @@ __pycache__/
 # Local artifacts produced before the package rename.
 /dtaparser.Rcheck/
 /dtaparser_*.tar.gz
+testthat-problems.rds
+_problems/

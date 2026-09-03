@@ -286,7 +286,7 @@ NULL
         .mutate_data(
             x, rlang::new_quosure(assignment$name, emptyenv()),
             assignment$values, where, generate = !exists,
-            selection = selection
+            selection = selection, promote = TRUE
         )
     }
     # `[` forces its result visible after dispatch, so `invisible()` alone

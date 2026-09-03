@@ -1155,12 +1155,23 @@ vec_arith.POSIXct.stata_numeric <- function(op, x, y, ...) {
     vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
 }
 
-# When a Stata numeric meets a class with its own Ops method, such as
-# `Date`, this side is chosen, so dispatch continues through vctrs to the
-# `vec_arith` methods above instead of R's incompatible-methods warning.
+#' @export
+vec_arith.stata_numeric.difftime <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+}
+
+#' @export
+vec_arith.difftime.stata_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+}
+
+# When a Stata numeric meets a date, datetime, or difftime, which have
+# their own Ops methods, this side is chosen, so dispatch continues
+# through vctrs to the `vec_arith` methods above instead of R's
+# incompatible-methods warning. Other classes keep R's default choice.
 #' @export
 chooseOpsMethod.stata_numeric <- function(x, y, mx, my, cl, reverse) {
-    TRUE
+    inherits(y, c("Date", "POSIXct", "difftime"))
 }
 
 #' @export

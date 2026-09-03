@@ -1672,7 +1672,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # `i` chose before the first of them wrote. `where` still arrives so
 # `values` can be given `.n` and `.N` on the same terms.
 .mutate_data <- function(data, variable, values, where, generate,
-                         by = NULL, bysort = NULL, selection = NULL) {
+                         by = NULL, bysort = NULL, selection = NULL,
+                         promote = FALSE) {
     .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
     original <- .as_mutation_data(
@@ -1780,6 +1781,17 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (is.null(access)) access <- .column_access(data)
         if (is.null(column)) {
             column <- .data_column_at(access, target$location)
+        }
+        if (promote &&
+            !.replacement_fits(values, column, rows, value_mode)) {
+            # `:=` promotes: the column is rebuilt at the narrowest
+            # storage that holds the current and new values together.
+            promoted <- .promoted_replacement(
+                values, column, rows, value_mode, original$nrow
+            )
+            .set_data_column_at(access, target$location, promoted)
+            if (grouped_input) .regroup_after_replacement(data, state)
+            return(invisible(data))
         }
         replacement <- .cast_replacement(
             values, column, rows, value_mode
@@ -2211,8 +2223,62 @@ print.dtatools_ref_data <- function(x, ...) {
 `[<-.dtatools_ref_data` <- function(x, i, j, ..., value) {
     call <- sys.call()
     call[[1L]] <- quote(`[<-`)
-    call[[2L]] <- .reference_snapshot(x)
-    .typed_reference_replacement(x, eval(call, parent.frame()), "`[<-`")
+    call$value <- value
+    snapshot <- .reference_snapshot(x)
+    call[[2L]] <- snapshot
+    result <- if (is_dibble(x)) {
+        .bracket_replace_promoting(snapshot, call, parent.frame())
+    } else {
+        eval(call, parent.frame())
+    }
+    .typed_reference_replacement(x, result, "`[<-`")
+}
+
+# Row or cell assignment into a typed column runs the column's own strict
+# `[<-`, which refuses a value its storage cannot hold before the dibble
+# can promote. The strict path is tried first, since it keeps compact
+# columns compact. If it fails, the assignment is redone on a copy whose
+# typed numeric and string columns are bare R vectors, columns the
+# assignment did not touch get their typed vectors back, and the changed
+# ones are promoted from their prior storage by the caller.
+.bracket_replace_promoting <- function(snapshot, call, environment) {
+    strict <- tryCatch(eval(call, environment), error = identity)
+    if (!inherits(strict, "error")) return(strict)
+    bare <- snapshot
+    bare_columns <- list()
+    column_names <- names(snapshot)
+    for (index in seq_along(column_names)) {
+        column <- .subset2(snapshot, index)
+        plain <- if (inherits(column, "stata_numeric") &&
+            !inherits(column, "stata_temporal")) {
+            as.double(.stata_snapshot(column))
+        } else if (is.character(column) &&
+            !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
+            text <- as.character(column)
+            text[is.na(text)] <- ""
+            text
+        } else {
+            NULL
+        }
+        if (is.null(plain)) next
+        bare[[index]] <- plain
+        bare_columns[[column_names[[index]]]] <- plain
+    }
+    if (length(bare_columns) == 0L) stop(strict)
+    call[[2L]] <- bare
+    result <- eval(call, environment)
+    result_names <- names(result)
+    for (name in names(bare_columns)) {
+        index <- match(name, result_names)
+        if (is.na(index)) next
+        if (identical(
+            rlang::obj_address(.subset2(result, index)),
+            rlang::obj_address(bare_columns[[name]])
+        )) {
+            result[[index]] <- .subset2(snapshot, name)
+        }
+    }
+    result
 }
 
 #' @export
@@ -2462,14 +2528,24 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # the typed columns on the same terms.
 .type_physical_columns_in_place <- function(data, row_count) {
     column_names <- attr(data, "names", exact = TRUE)
+    # Every column is typed before any is installed, so a column no Stata
+    # storage holds leaves the tibble as it was.
+    typed <- vector("list", length(column_names))
+    changed <- logical(length(column_names))
     for (index in seq_along(column_names)) {
         column <- .subset2(data, index)
-        typed <- .typed_column_named(
+        typed[[index]] <- .typed_column_named(
             column, row_count, "gen()", column_names[[index]]
         )
-        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
-            .Call(C_dtatools_set_data_column, data, as.integer(index), typed)
-        }
+        changed[[index]] <- !identical(
+            rlang::obj_address(typed[[index]]), rlang::obj_address(column)
+        )
+    }
+    for (index in which(changed)) {
+        .Call(
+            C_dtatools_set_data_column, data, as.integer(index),
+            typed[[index]]
+        )
     }
     invisible(NULL)
 }
@@ -2484,8 +2560,13 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # take the storage a fresh column would.
 .promoted_column <- function(values, prior, row_count, caller) {
     # An explicit `dta_*()` or arithmetic result already carries the
-    # storage the user asked for.
-    if (.stata_typed_column(values)) return(values)
+    # storage the user asked for; a column no storage holds passes through.
+    if (is.character(values)) {
+        values <- .drop_stale_string_declaration(values)
+    }
+    if (.stata_typed_column(values) || .stata_untypable_column(values)) {
+        return(values)
+    }
     if (!.promotable_pair(values, prior)) {
         return(.typed_column(values, row_count, caller))
     }
@@ -2511,6 +2592,81 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     .restore_stata_metadata(
         .construct_stata_numeric(doubles, NULL, storage), prior, storage
     )
+}
+
+# Whether replacement `values` for the selected `rows` fit `target`'s
+# declared storage. Pairs the promotion rule does not cover report `TRUE`
+# so the strict replacement path handles or refuses them as before.
+.replacement_fits <- function(values, target, rows, value_mode) {
+    if (!.promotable_pair(values, target)) return(TRUE)
+    if (identical(value_mode, "row") && !is.null(rows)) {
+        slice_rows <- if (inherits(rows, "stata_numeric")) {
+            .stata_data(rows)
+        } else {
+            rows
+        }
+        values <- vctrs::vec_slice(values, slice_rows)
+    }
+    if (typeof(target) == "character") {
+        text <- as.character(values)
+        text[is.na(text)] <- ""
+        declared <- attr(target, "stata.string.storage", exact = TRUE)
+        return(.stata_string_storage_width(declared) >=
+            .stata_string_required_width(text))
+    }
+    .stata_storage_holds(
+        as.double(vctrs::vec_data(values)), dta_storage_type(target)
+    )
+}
+
+# The whole column after `values` replace the selected `rows` of
+# `target`, typed by promotion from `target`'s storage.
+.promoted_replacement <- function(values, target, rows, value_mode,
+                                  row_count) {
+    current <- if (typeof(target) == "character") {
+        text <- as.character(target)
+        text[is.na(text)] <- ""
+        text
+    } else {
+        as.double(.stata_snapshot(target))
+    }
+    replacement <- if (typeof(target) == "character") {
+        text <- as.character(values)
+        text[is.na(text)] <- ""
+        text
+    } else {
+        as.double(vctrs::vec_data(values))
+    }
+    positions <- if (is.null(rows)) {
+        seq_len(row_count)
+    } else if (inherits(rows, "stata_numeric")) {
+        .stata_data(rows)
+    } else {
+        rows
+    }
+    current[positions] <- if (identical(value_mode, "row")) {
+        replacement[positions]
+    } else {
+        replacement
+    }
+    .promoted_column(current, target, row_count, "`:=`")
+}
+
+# A bare character vector carrying a `stata.string.storage` declaration
+# its values no longer fit, as base `[<-` leaves behind when it widens an
+# element of a `gen()` string. The declaration is stale and is dropped so
+# promotion can redo it; a `stata_string` always fits by construction.
+.drop_stale_string_declaration <- function(values) {
+    declared <- attr(values, "stata.string.storage", exact = TRUE)
+    if (is.null(declared) || inherits(values, "stata_string")) return(values)
+    text <- as.character(values)
+    text[is.na(text)] <- ""
+    if (.stata_string_storage_width(declared) >=
+        .stata_string_required_width(text)) {
+        return(values)
+    }
+    attr(values, "stata.string.storage") <- NULL
+    values
 }
 
 # `prior` has declared storage of the same kind as `values`: numeric for
@@ -2638,6 +2794,27 @@ summarise.dtatools_ref_data <- function(
 #' @export
 distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
     .closed_reference_verb(.data, sys.call(), dplyr::distinct, parent.frame())
+}
+
+#' @export
+reframe.dtatools_ref_data <- function(.data, ..., .by = NULL) {
+    .typed_reference_verb(
+        .data, sys.call(), dplyr::reframe, parent.frame(), "`reframe()`"
+    )
+}
+
+#' @export
+group_modify.dtatools_ref_data <- function(.data, .f, ..., .keep = FALSE) {
+    .typed_reference_verb(
+        .data, sys.call(), dplyr::group_modify, parent.frame(),
+        "`group_modify()`"
+    )
+}
+
+#' @export
+nest_by.dtatools_ref_data <- function(.data, ..., .key = "data",
+                                      .keep = FALSE) {
+    .closed_reference_verb(.data, sys.call(), dplyr::nest_by, parent.frame())
 }
 
 #' @export
