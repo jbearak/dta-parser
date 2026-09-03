@@ -71,12 +71,28 @@ too wide to re-encode, say - is treated the same way.
 
 \section{Metadata}{
 
-Variable labels, value labels, formats, and variable-level notes
-come from the first source that contributes the variable.
-Combining is delegated to the package's own coercion rules, so two
-sources that give the same code different label text keep the first
-contributor's text and warn. Value-label tables that disagree only
-by covering different codes are merged.
+Variable labels, formats, and variable-level notes come from the
+first source that contributes the variable.
+
+Value-label tables are owned by table name, as in Stata. Sources are
+walked in order and the first to define a table name owns that
+definition; a later source's definition of the same name is
+discarded, not merged, even when it labels different codes. Each
+variable keeps the table name its first contributor assigned to it,
+taken from \code{value.label.name} or, when that is absent, the variable's
+own name, and its labels are the owning definition of that name. The
+owning definition may come from a different variable in a different
+source, and a name the first source does not define is taken from
+the first later source that does. A variable whose first contributor
+has no labels stays unlabelled.
+
+A display format follows the master's, with one exception that
+matches Stata: when a string's storage widens from \code{strN} to \code{strM},
+the format takes the width of the new storage (\code{M}, or \code{9} when \code{M}
+is smaller or the result is \code{strL}) and keeps the master's
+justification flag, so \verb{\%-9s} on a \code{str9} that widens to \code{str20}
+becomes \verb{\%-20s}. A string whose storage does not widen, a \code{strL}, and
+a numeric promoted along the lattice keep the master's format.
 
 Stata does not define what happens to dataset-level notes on
 \code{append}, and it keeps the master's. \code{dataset_notes} therefore
