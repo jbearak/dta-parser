@@ -798,3 +798,32 @@ test_that("the first gen on a tibble types columns transactionally", {
     expect_false(is_dibble(tbl))
     expect_identical(names(tbl), c("ok", "bad"))
 })
+
+test_that("a stale string declaration is redone on entering a dibble", {
+    left <- dibble(id = 1:2, s = c("a", "b"))
+    # A join pads the str1 column with NA; the dibble restores Stata's ""
+    # and keeps the width that fits.
+    joined <- dplyr::full_join(left, tibble::tibble(id = 3L), by = "id")
+    expect_true(is_dibble(joined))
+    expect_identical(as.character(joined$s), c("a", "b", ""))
+    expect_identical(attr(joined$s, "stata.string.storage"), "str1")
+    # rbind() carries the first frame's declaration onto wider values.
+    stacked <- rbind(left, tibble::tibble(id = 3L, s = "longer"))
+    expect_identical(attr(stacked$s, "stata.string.storage"), "str6")
+    expect_identical(as.character(stacked$s), c("a", "b", "longer"))
+    bound <- dplyr::bind_rows(left, tibble::tibble(id = 3L, s = "wide"))
+    expect_identical(attr(bound$s, "stata.string.storage"), "str4")
+    # A malformed declaration is replaced, not trusted.
+    bad <- tibble::tibble(
+        s = structure(c("a", "b"), stata.string.storage = "str0")
+    )
+    fixed <- as_dibble(bad)
+    expect_identical(attr(fixed$s, "stata.string.storage"), "str1")
+    # The repaired column survives an Arrow round trip.
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(joined, path)
+    back <- read_arrow(path)
+    expect_identical(as.character(back$s), c("a", "b", ""))
+    expect_identical(attr(back$s, "stata.string.storage"), "str1")
+})

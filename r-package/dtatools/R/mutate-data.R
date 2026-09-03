@@ -1595,12 +1595,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         # operations would populate it before the mutation can commit.
         return(values)
     }
-    # `replace_values()` normalizes character `NA` to `""`, Stata's string
-    # missing, before the cast, which refuses `NA` for a declared string.
-    if (typeof(target) == "character" && typeof(values) == "character" &&
-        !is.object(values) && anyNA(values)) {
-        values[is.na(values)] <- ""
-    }
     # Fallback casts and string-width checks apply only to selected values.
     # Direct compact targets gather the same full vector in native code above.
     if (identical(value_mode, "row")) {
@@ -1610,6 +1604,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             rows
         }
         values <- vctrs::vec_slice(values, slice_rows)
+    }
+    # `replace_values()` normalizes character `NA` to `""`, Stata's string
+    # missing, before the cast, which refuses `NA` for a declared string.
+    # After slicing, so a sparse replacement scans only its selected rows.
+    if (typeof(target) == "character" && typeof(values) == "character" &&
+        !is.object(values) && anyNA(values)) {
+        values[is.na(values)] <- ""
     }
     .validate_numeric_values(values)
     # Build Stata prototypes from metadata rather than proxying the target.
@@ -2456,8 +2457,30 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 .stata_typed_column <- function(column) {
     inherits(column, c("stata_numeric", "stata_temporal", "factor")) ||
         (typeof(column) == "logical" && !is.object(column)) ||
-        (is.character(column) &&
-         !is.null(attr(column, "stata.string.storage", exact = TRUE)))
+        (is.character(column) && .string_declaration_holds(column))
+}
+
+# Whether a character column's `stata.string.storage` declaration is
+# valid for its values: well formed, wide enough, and with no `NA`, which
+# Stata strings spell `""`. A join or `rbind()` can carry a declaration
+# onto values it no longer describes, and such a column is retyped rather
+# than trusted. A `stata_string` vector and a compact dictionary string
+# hold by construction and are not scanned.
+.string_declaration_holds <- function(column) {
+    declared <- attr(column, "stata.string.storage", exact = TRUE)
+    if (is.null(declared)) return(FALSE)
+    if (inherits(column, "stata_string") ||
+        .is_unmaterialized_dictstring(column)) {
+        return(TRUE)
+    }
+    valid <- is.character(declared) && length(declared) == 1L &&
+        !is.na(declared) && (identical(declared, "strL") || grepl(
+            "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
+            declared
+        ))
+    if (!valid || anyNA(column)) return(FALSE)
+    .stata_string_storage_width(declared) >=
+        .stata_string_required_width(column)
 }
 
 # A column no Stata storage can hold: raw, list, complex, a matrix, or a
@@ -2489,6 +2512,12 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         attr(proxy, "stata.string.storage") <- storage
         class(proxy) <- c("stata_string", "vctrs_vctr", "character")
         return(proxy)
+    }
+    if (is.character(column) &&
+        !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
+        # A stale declaration: `NA` becomes `""` and the width is redone.
+        column <- as.character(column)
+        column[is.na(column)] <- ""
     }
     .generated_column(column, NULL, row_count, caller)
 }
@@ -2561,11 +2590,13 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 .promoted_column <- function(values, prior, row_count, caller) {
     # An explicit `dta_*()` or arithmetic result already carries the
     # storage the user asked for; a column no storage holds passes through.
-    if (is.character(values)) {
-        values <- .drop_stale_string_declaration(values)
-    }
     if (.stata_typed_column(values) || .stata_untypable_column(values)) {
         return(values)
+    }
+    if (is.character(values) &&
+        !is.null(attr(values, "stata.string.storage", exact = TRUE))) {
+        # A stale declaration is redone from the values.
+        attr(values, "stata.string.storage") <- NULL
     }
     if (!.promotable_pair(values, prior)) {
         return(.typed_column(values, row_count, caller))
@@ -2650,23 +2681,6 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         replacement
     }
     .promoted_column(current, target, row_count, "`:=`")
-}
-
-# A bare character vector carrying a `stata.string.storage` declaration
-# its values no longer fit, as base `[<-` leaves behind when it widens an
-# element of a `gen()` string. The declaration is stale and is dropped so
-# promotion can redo it; a `stata_string` always fits by construction.
-.drop_stale_string_declaration <- function(values) {
-    declared <- attr(values, "stata.string.storage", exact = TRUE)
-    if (is.null(declared) || inherits(values, "stata_string")) return(values)
-    text <- as.character(values)
-    text[is.na(text)] <- ""
-    if (.stata_string_storage_width(declared) >=
-        .stata_string_required_width(text)) {
-        return(values)
-    }
-    attr(values, "stata.string.storage") <- NULL
-    values
 }
 
 # `prior` has declared storage of the same kind as `values`: numeric for
