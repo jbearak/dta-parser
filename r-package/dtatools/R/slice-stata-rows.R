@@ -31,7 +31,22 @@ slice_dta_rows <- function(data, rows) {
         # Slice the complete visible dataset, then return it in the same
         # container: a dibble yields a dibble, and a base frame that gained
         # reference state through `gen()` yields a base frame.
-        result <- slice_dta_rows(.reference_snapshot(data), rows)
+        snapshot <- .reference_snapshot(data)
+        grouped <- inherits(snapshot, "grouped_df")
+        if (grouped) {
+            # The `groups` attribute indexes rows of the old data, so slice
+            # the ungrouped tibble and regroup the result on its own rows.
+            group_vars <- dplyr::group_vars(snapshot)
+            drop <- dplyr::group_by_drop_default(snapshot)
+            snapshot <- dplyr::ungroup(snapshot)
+        }
+        result <- slice_dta_rows(snapshot, rows)
+        if (grouped) {
+            result <- dplyr::group_by(
+                result, dplyr::across(dplyr::all_of(group_vars)),
+                .drop = drop
+            )
+        }
         return(if (is_dibble(data)) .as_dibble(result) else result)
     }
     base_classes <- setdiff(class(data), "dtatools_stata_metadata")

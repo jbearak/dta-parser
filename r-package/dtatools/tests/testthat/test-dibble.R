@@ -411,3 +411,16 @@ test_that("slice_dta_rows accepts the default read container", {
     expect_identical(class(plain), "data.frame")
     expect_identical(as.double(plain$y), c(2, 3))
 })
+
+test_that("slice_dta_rows keeps a grouped dibble's grouping", {
+    data <- dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = 1:4), g)
+    sliced <- slice_dta_rows(data, c(2L, 4L))
+    expect_true(is_dibble(sliced))
+    expect_identical(dplyr::group_vars(sliced), "g")
+    expect_identical(as.double(sliced$x), c(2, 4))
+    expect_identical(dplyr::group_size(sliced), c(1L, 1L))
+    repl(sliced, x = .N)
+    expect_identical(as.double(sliced$x), c(1, 1))
+    expect_identical(dplyr::group_vars(data), "g")
+    expect_identical(nrow(data), 4L)
+})
