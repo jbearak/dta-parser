@@ -7,14 +7,14 @@
 slice_dta_rows(data, rows)
 }
 \arguments{
-\item{data}{An ordinary base data frame, tibble, or data.table. Other
-data-frame subclasses are not supported.}
+\item{data}{An ordinary base data frame, tibble, data.table, or
+\link{dibble}. Other data-frame subclasses are not supported.}
 
 \item{rows}{A row subscript accepted by \code{\link[vctrs:vec_as_location]{vctrs::vec_as_location()}}.}
 }
 \value{
-The selected rows in the same base data-frame, tibble, or
-data.table container. A data.table result is a new over-allocated
+The selected rows in the same base data-frame, tibble,
+data.table, or dibble container. A data.table result is a new over-allocated
 data.table; the input is left untouched, and any \code{sorted} marker or
 secondary indexes are dropped because a row selection invalidates
 them.

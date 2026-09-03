@@ -368,3 +368,41 @@ test_that("unknown stored containers fall back to a tibble", {
         "dibble.*tibble.*data.table"
     )
 })
+
+test_that("dataset metadata setters keep a dibble's bracket dispatch", {
+    data <- set_dta_note(dibble(x = 1:2), 1, "a note")
+    expect_true(is_dibble(data))
+    expect_identical(class(data)[[1L]], "dtatools_ref_data")
+    expect_s3_class(data, "dtatools_stata_metadata")
+    data[x > 1, y := 9]
+    expect_identical(as.double(data$y), c(NA, 9))
+    expect_identical(dta_notes(data)[[1L]], "a note")
+    # The snapshot still carries the marker, so a subset keeps the notes.
+    subset <- data[1, ]
+    expect_s3_class(subset, "dtatools_stata_metadata")
+    expect_identical(dta_notes(subset)[[1L]], "a note")
+    with_characteristic <- set_dta_characteristic(dibble(x = 1), "k", "v")
+    expect_identical(class(with_characteristic)[[1L]], "dtatools_ref_data")
+    with_characteristic[, z := 1]
+    expect_identical(as.double(with_characteristic$z), 1)
+})
+
+test_that("slice_dta_rows accepts the default read container", {
+    path <- fixture("auto_v118.dta")
+    data <- read_dta(path)
+    expect_true(is_dibble(data))
+    sliced <- slice_dta_rows(data, 1:2)
+    expect_true(is_dibble(sliced))
+    expect_identical(nrow(sliced), 2L)
+    expect_identical(
+        as.data.frame(sliced),
+        as.data.frame(slice_dta_rows(read_dta(path, output = "tibble"), 1:2))
+    )
+    expect_identical(dta_notes(sliced), dta_notes(data))
+    gen(data, flag = 1)
+    marked <- data.frame(x = 1:3)
+    gen(marked, y = x)
+    plain <- slice_dta_rows(marked, 2:3)
+    expect_identical(class(plain), "data.frame")
+    expect_identical(as.double(plain$y), c(2, 3))
+})

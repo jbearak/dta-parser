@@ -11,11 +11,11 @@
 #' logical, and character locations are supported, as are repeated and missing
 #' locations. Character locations match row names.
 #'
-#' @param data An ordinary base data frame, tibble, or data.table. Other
-#'   data-frame subclasses are not supported.
+#' @param data An ordinary base data frame, tibble, data.table, or
+#'   [dibble][dibble()]. Other data-frame subclasses are not supported.
 #' @param rows A row subscript accepted by [vctrs::vec_as_location()].
-#' @return The selected rows in the same base data-frame, tibble, or
-#'   data.table container. A data.table result is a new over-allocated
+#' @return The selected rows in the same base data-frame, tibble,
+#'   data.table, or dibble container. A data.table result is a new over-allocated
 #'   data.table; the input is left untouched, and any `sorted` marker or
 #'   secondary indexes are dropped because a row selection invalidates
 #'   them.
@@ -26,6 +26,13 @@ slice_dta_rows <- function(data, rows) {
             "`data` must be a base data frame, tibble, or data.table",
             call. = FALSE
         )
+    }
+    if (inherits(data, "dtatools_ref_data")) {
+        # Slice the complete visible dataset, then return it in the same
+        # container: a dibble yields a dibble, and a base frame that gained
+        # reference state through `gen()` yields a base frame.
+        result <- slice_dta_rows(.reference_snapshot(data), rows)
+        return(if (is_dibble(data)) .as_dibble(result) else result)
     }
     base_classes <- setdiff(class(data), "dtatools_stata_metadata")
     data_table <- .ordinary_data_table(data)
