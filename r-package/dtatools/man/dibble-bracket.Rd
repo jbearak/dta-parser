@@ -74,6 +74,9 @@ assignment that overwrites the column \code{i} reads does not move the rows
 of the assignments after it. \code{j} is not a general expression, and
 \code{.SD}, \code{.GRP}, and \code{.BY} are not provided; summaries stay with dplyr.
 
+\code{by} may also be given positionally, as data.table's third slot:
+\code{data[, total := sum(x), id]} is \code{data[, total := sum(x), by = id]}.
+
 \code{by}, \code{bysort}, and a grouped dibble behave exactly as in
 \code{\link[=replace_values]{replace_values()}}: groups are formed first, then \code{i} and each value
 are evaluated on each group's rows, which is Stata's \verb{by varlist:}
@@ -92,6 +95,7 @@ survey <- dibble(id = 1:4, income = c(10, 20, 30, 40))
 survey[income > 20, adjusted := income * 1.1]
 survey[, adjusted := 0][id == 1, adjusted := 1]
 survey[, `:=`(rows = .N, last = .n == .N), by = id]
+survey[, first := .n == 1, id]
 survey[, c("a", "b") := list(id * 2, id * 3)]
 name <- "flag"
 survey[id > 2, .(name) := TRUE]

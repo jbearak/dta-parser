@@ -35,17 +35,23 @@ slice_dta_rows <- function(data, rows) {
         grouped <- inherits(snapshot, "grouped_df")
         if (grouped) {
             # The `groups` attribute indexes rows of the old data, so slice
-            # the ungrouped tibble and regroup the result on its own rows.
+            # the plain tibble and regroup the result on its own rows. The
+            # grouping is stripped by hand because `ungroup()` would also
+            # drop the dataset label, notes, and characteristics.
+            classes <- class(snapshot)
             group_vars <- dplyr::group_vars(snapshot)
             drop <- dplyr::group_by_drop_default(snapshot)
-            snapshot <- dplyr::ungroup(snapshot)
+            attr(snapshot, "groups") <- NULL
+            class(snapshot) <- setdiff(classes, "grouped_df")
         }
         result <- slice_dta_rows(snapshot, rows)
         if (grouped) {
-            result <- dplyr::group_by(
+            regrouped <- dplyr::group_by(
                 result, dplyr::across(dplyr::all_of(group_vars)),
                 .drop = drop
             )
+            attr(result, "groups") <- attr(regrouped, "groups", exact = TRUE)
+            class(result) <- classes
         }
         return(if (is_dibble(data)) .as_dibble(result) else result)
     }

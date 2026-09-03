@@ -135,6 +135,12 @@ test_that("by, bysort, and grouped dibbles follow Stata's order", {
     data[, centred := x - mean(x), by = "id"]
     expect_identical(as.double(data$centred), c(-1, -1, 1, 1))
 
+    # data.table's third slot is `by`.
+    data[, positional := .N, id]
+    expect_identical(as.double(data$positional), c(2, 2, 2, 2))
+    expect_error(data[, y := 1, id, id], "takes `i`, `j`")
+    expect_error(data[, y := 1, id, by = id], "takes `i`, `j`")
+
     data[.n == 1, first := x, bysort = id]
     expect_identical(as.double(data$id), c(1, 1, 2, 2))
     expect_identical(as.double(data$x), c(2, 4, 1, 3))

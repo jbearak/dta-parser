@@ -180,6 +180,9 @@ is_dibble <- function(x) {
 #' of the assignments after it. `j` is not a general expression, and
 #' `.SD`, `.GRP`, and `.BY` are not provided; summaries stay with dplyr.
 #'
+#' `by` may also be given positionally, as data.table's third slot:
+#' `data[, total := sum(x), id]` is `data[, total := sum(x), by = id]`.
+#'
 #' `by`, `bysort`, and a grouped dibble behave exactly as in
 #' [replace_values()]: groups are formed first, then `i` and each value
 #' are evaluated on each group's rows, which is Stata's `by varlist:`
@@ -211,6 +214,7 @@ is_dibble <- function(x) {
 #' survey[income > 20, adjusted := income * 1.1]
 #' survey[, adjusted := 0][id == 1, adjusted := 1]
 #' survey[, `:=`(rows = .N, last = .n == .N), by = id]
+#' survey[, first := .n == 1, id]
 #' survey[, c("a", "b") := list(id * 2, id * 3)]
 #' name <- "flag"
 #' survey[id > 2, .(name) := TRUE]
@@ -237,7 +241,15 @@ NULL
         call[[2L]] <- .reference_snapshot(x)
         return(eval(call, parent.frame()))
     }
-    if (...length() > 0L || !missing(drop)) {
+    # data.table's third slot is `by`, so `data[i, j, id]` puts `id` in
+    # `...`; one unnamed dot is that positional `by`.
+    dots <- rlang::enquos(...)
+    by_quo <- if (missing(by)) NULL else rlang::enquo(by)
+    positional_by <- length(dots) == 1L && !nzchar(names(dots)[[1L]]) &&
+        is.null(by_quo)
+    if (positional_by) {
+        by_quo <- dots[[1L]]
+    } else if (length(dots) > 0L || !missing(drop)) {
         stop("`[` with `:=` takes `i`, `j`, `by`, and `bysort` only",
              call. = FALSE)
     }
@@ -248,7 +260,7 @@ NULL
     }
     selection <- .mutation_selection(
         x, where,
-        by = if (missing(by)) NULL else rlang::enquo(by),
+        by = by_quo,
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
     )
     for (assignment in assignments) {

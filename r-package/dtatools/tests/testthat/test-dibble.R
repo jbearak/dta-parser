@@ -412,6 +412,29 @@ test_that("slice_dta_rows accepts the default read container", {
     expect_identical(as.double(plain$y), c(2, 3))
 })
 
+test_that("dataset-scoped metadata setters give a dibble its own state", {
+    data <- read_dta(fixture("auto_v118.dta"))
+    changed <- set_dta_note(data, 1, "note")
+    expect_true(is_dibble(changed))
+    expect_identical(dta_notes(changed), c(`1` = "note"))
+    gen(changed, y = 1)
+    expect_true("y" %in% names(changed))
+    expect_false("y" %in% names(data))
+    gen(data, z = 2)
+    expect_false("z" %in% names(changed))
+    expect_identical(dta_notes(data), dta_notes(read_dta(fixture("auto_v118.dta"))))
+})
+
+test_that("slicing a grouped dibble keeps dataset metadata", {
+    data <- dplyr::group_by(read_dta(fixture("auto_v118.dta")), foreign)
+    sliced <- slice_dta_rows(data, 1:3)
+    expect_true(is_dibble(sliced))
+    expect_identical(dplyr::group_vars(sliced), "foreign")
+    expect_identical(attr(sliced, "label"), attr(data, "label"))
+    expect_identical(dta_notes(sliced), dta_notes(data))
+    expect_identical(nrow(sliced), 3L)
+})
+
 test_that("slice_dta_rows keeps a grouped dibble's grouping", {
     data <- dplyr::group_by(dibble(g = c(1, 1, 2, 2), x = 1:4), g)
     sliced <- slice_dta_rows(data, c(2L, 4L))
