@@ -134,7 +134,9 @@ test_that("compact reader storage and materialized fallbacks write identically",
         c(-5, 99, tagged_missing("b"))
     )
 
-    changed_string <- compact["text"]
+    # A bare tibble: a dibble would type the character column and refuse
+    # the NA that this write is meant to warn about.
+    changed_string <- tibble::as_tibble(compact["text"])
     changed_string$text <- as.character(changed_string$text)
     changed_string$text[[2L]] <- NA_character_
     expect_warning(

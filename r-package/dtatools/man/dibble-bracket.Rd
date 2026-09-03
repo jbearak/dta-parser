@@ -88,7 +88,7 @@ groups, several assignments run column by column across all groups, so
 
 Without \verb{:=} the brackets are ordinary tibble subsetting of the current
 contents: \code{data[1, ]}, \code{data[, "x"]}, \code{data["x"]}, and \code{data[i, cols]}
-return plain tibbles, following copy-on-modify.
+return a new dibble holding the selection, following copy-on-modify.
 }
 \examples{
 survey <- dibble(id = 1:4, income = c(10, 20, 30, 40))

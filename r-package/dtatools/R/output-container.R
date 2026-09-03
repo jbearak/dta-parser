@@ -3,8 +3,10 @@
 # The containers a reader can build, and the values `save_arrow()` records.
 .output_containers <- c("dibble", "tibble", "data.table")
 
-.normalize_output_container <- function(output, stored = NULL) {
+.normalize_output_container <- function(output, stored = NULL,
+                                        profiled = TRUE) {
     output <- rlang::arg_match(output, .output_container_choices)
+    requested <- output
     if (identical(output, "default")) {
         output <- if (!is.null(stored)) {
             # A stored value this release does not know (a file written by a
@@ -30,6 +32,12 @@
             call. = FALSE
         )
     }
+    # Data without the dtatools profile has no Stata semantics to carry,
+    # so it does not become a dibble unless the caller asks for one.
+    if (!profiled && identical(requested, "default") &&
+        identical(output, "dibble")) {
+        output <- "tibble"
+    }
     if (identical(output, "data.table") &&
         !requireNamespace("data.table", quietly = TRUE)) {
         stop(
@@ -41,8 +49,8 @@
 }
 
 .finalize_output_container <- function(native, output, .name_repair,
-                                       stored = NULL) {
-    output <- .normalize_output_container(output, stored)
+                                       stored = NULL, profiled = TRUE) {
+    output <- .normalize_output_container(output, stored, profiled)
     source_names <- names(native)
     if (is.null(source_names)) source_names <- rep("", length(native))
     repaired <- vctrs::vec_as_names(
@@ -65,8 +73,9 @@
 # data.table repair so that no later attribute helper snapshots it away.
 # `output` is the caller's request, resolved again here so the reader does
 # not have to thread the normalized value through.
-.complete_output_container <- function(result, output, stored = NULL) {
-    resolved <- .normalize_output_container(output, stored)
+.complete_output_container <- function(result, output, stored = NULL,
+                                       profiled = TRUE) {
+    resolved <- .normalize_output_container(output, stored, profiled)
     if (identical(resolved, "dibble")) .as_dibble(result) else result
 }
 

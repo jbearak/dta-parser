@@ -154,8 +154,11 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
         attr(native, "dtatools.output.container", exact = TRUE)
     }
     attr(native, "dtatools.output.container") <- NULL
+    profiled <- identical(attr(native, "dtatools.profiled", exact = TRUE), 1L)
+    attr(native, "dtatools.profiled") <- NULL
     result <- .finalize_output_container(
-        native, output, .name_repair, stored = stored_output
+        native, output, .name_repair, stored = stored_output,
+        profiled = profiled
     )
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
     result <- .copy_stata_metadata_attributes(native, result)
@@ -164,7 +167,7 @@ read_arrow <- function(file, col_select = NULL, skip = 0, n_max = Inf,
     if (keep_source_rows) {
         attr(result, "dtatools.source.rows") <- source_rows
     }
-    .complete_output_container(result, output, stored_output)
+    .complete_output_container(result, output, stored_output, profiled)
 }
 
 .arrow_metadata <- function(snapshot, profile = TRUE,

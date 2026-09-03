@@ -36,8 +36,12 @@ The table class a dataset operation returns, independently of the column represe
 _Avoid_: Output format, dataset type
 
 **Dibble**:
-A tibble that carries dtatools reference state from its creation, so that bracket mutation and group-wise assignment are available on it. Readers return dibbles by default; `gen()` and `replace_values()` accept any data frame and do not require one.
+A tibble that is a Stata dataset: every numeric and string column carries Stata storage, every dataset operation on it returns a dibble, and it carries dtatools reference state from its creation, so that bracket mutation and group-wise assignment are available on it. Readers return dibbles by default; `gen()` and `replace_values()` accept any data frame and do not require one.
 _Avoid_: Reference tibble, dtatools table
+
+**Storage promotion**:
+Widening a typed column to the narrowest Stata storage that holds every new value exactly when an operation overwrites it with values its declared storage cannot hold. Stata's `replace` instead promotes through `float`, where large integers lose digits.
+_Avoid_: Type widening, upcasting
 
 **Group-wise assignment**:
 Evaluating one generation or replacement separately within each group of a dataset, in Stata's `by varlist:` order: the group is formed first, then the row selection and values are evaluated on that group's rows, with `.n` and `.N` as the within-group row number and row count. Groups come from `by`, from `bysort`, or from dplyr grouping.

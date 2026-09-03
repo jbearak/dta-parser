@@ -333,6 +333,19 @@ as.character.stata_numeric <- function(x, ...) {
     as.character(.stata_snapshot(x), ...)
 }
 
+# Integer and logical views of a Stata numeric: Stata missing codes become
+# `NA`, as `as.double()` makes them. `long` is the storage of every bare
+# R integer in a dibble, so `as.integer()` is the way back.
+#' @export
+as.integer.stata_numeric <- function(x, ...) {
+    as.integer(.stata_snapshot(x), ...)
+}
+
+#' @export
+as.logical.stata_numeric <- function(x, ...) {
+    as.logical(.stata_snapshot(x), ...)
+}
+
 .stata_data <- function(x) {
     value_names <- names(x)
     value <- .metadata_view(x)
@@ -912,6 +925,26 @@ vec_cast.double.stata_numeric <- function(
     as.double(x)
 }
 
+#' @export
+vec_cast.integer.stata_numeric <- function(
+    x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
+) {
+    vctrs::vec_cast(
+        .stata_snapshot(x), integer(), x_arg = x_arg, to_arg = to_arg,
+        call = call
+    )
+}
+
+#' @export
+vec_cast.logical.stata_numeric <- function(
+    x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
+) {
+    vctrs::vec_cast(
+        .stata_snapshot(x), logical(), x_arg = x_arg, to_arg = to_arg,
+        call = call
+    )
+}
+
 .stata_subscript_extends <- function(x, i) {
     size <- length(x)
     if (is.character(i)) {
@@ -1096,6 +1129,38 @@ vec_arith.logical.stata_numeric <- vec_arith.numeric.stata_numeric
 #' @export
 vec_arith.stata_numeric.default <- function(op, x, y, ...) {
     vctrs::stop_incompatible_op(op, x, y)
+}
+
+# A Stata numeric beside a date or datetime takes part as its double
+# values, so `as.Date("2024-01-01") + id` on a dibble's `long` id column
+# is a date. Without these, R sees two Ops methods and falls back to the
+# internal arithmetic with a warning and a numeric result.
+#' @export
+vec_arith.stata_numeric.Date <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+}
+
+#' @export
+vec_arith.Date.stata_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+}
+
+#' @export
+vec_arith.stata_numeric.POSIXct <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+}
+
+#' @export
+vec_arith.POSIXct.stata_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+}
+
+# When a Stata numeric meets a class with its own Ops method, such as
+# `Date`, this side is chosen, so dispatch continues through vctrs to the
+# `vec_arith` methods above instead of R's incompatible-methods warning.
+#' @export
+chooseOpsMethod.stata_numeric <- function(x, y, mx, my, cl, reverse) {
+    TRUE
 }
 
 #' @export

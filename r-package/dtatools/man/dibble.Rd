@@ -40,12 +40,22 @@ attaches that state, so a dibble and a tibble that has been through
 \code{gen()} are the same kind of object: \code{is_dibble()} is \code{TRUE} for both,
 and \code{gen()} on a plain tibble is one way to obtain a dibble.
 
-A dibble prints, subsets, and joins as a tibble. Ordinary replacement
-(\verb{$<-}, \verb{[[<-}, \verb{[<-}, \verb{names<-}) and most dplyr verbs return plain
-tibbles holding the current contents, following copy-on-modify;
-\code{\link[dplyr:group_by]{dplyr::group_by()}} and \code{\link[dplyr:ungroup]{dplyr::ungroup()}} return a grouped or ungrouped
-dibble. \code{\link[tibble:as_tibble]{tibble::as_tibble()}} returns a tibble snapshot. \code{as_dibble()} of
-a grouped tibble keeps its grouping.
+A dibble is a Stata dataset held in a tibble, and two invariants follow.
+Every numeric and string column carries Stata storage: \code{dibble()} and
+\code{as_dibble()} type bare columns by the mapping in
+\link{stata-storage-defaults}, and so does every operation that adds or
+changes a column, including \code{\link[dplyr:mutate]{dplyr::mutate()}}, \code{transform()}, and the
+replacement operators \verb{$<-}, \verb{[[<-}, and \verb{[<-}. Logical columns stay
+logical and factors stay factors. And every dataset operation on a
+dibble returns a dibble: dplyr verbs, joins with a dibble on the left,
+\code{bind_rows()} with a dibble first, base \code{subset()}, \code{transform()},
+\code{within()}, \code{head()}, \code{rbind()}, \code{cbind()}, and \code{[} subsetting. Each
+result is a fresh object holding the current contents, following
+copy-on-modify; the input is unchanged. Columns an operation leaves
+alone are the same vectors, so compact columns stay compact.
+\code{\link[tibble:as_tibble]{tibble::as_tibble()}} returns a tibble snapshot, and \code{with()} returns
+its expression's value. \code{as_dibble()} of a grouped tibble keeps its
+grouping.
 
 \code{as_dibble()} returns a dibble as is. Otherwise it returns a new object
 and leaves its argument unchanged: a tibble or data frame is shallow
@@ -73,5 +83,6 @@ dplyr::group_vars(grouped)
 }
 \seealso{
 \link{dibble-bracket} for \code{survey[i, y := value]}, the assignment
-shape only a dibble supports.
+shape only a dibble supports; \link{stata-storage-defaults} for the Stata
+storage a dibble gives its columns.
 }

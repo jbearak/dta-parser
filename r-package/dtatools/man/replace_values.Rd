@@ -196,22 +196,23 @@ argument to a string as it does everywhere else in dtatools, not
 data.table's \code{list()}.
 
 \code{gen()} appends one variable and does not implement Stata's \code{before()} or
-\code{after()} placement. A declared \verb{dta_*()} result keeps its numeric storage;
-otherwise logical, integer, double, and \code{Date} results use Stata \code{float}
-storage. Ordinary \code{POSIXct} results use Stata \code{double} storage so their
-millisecond datetime representation is not rounded. \code{Date} and \code{POSIXct}
-results retain their temporal class and receive the corresponding Stata
-temporal declaration. Standard \code{haven_labelled} results preserve their label
-metadata. Other classed numeric results, including \code{difftime} and
-\code{bit64::integer64}, are rejected because their physical representation does
-not have Stata numeric semantics. Convert them explicitly to a bare numeric
-or one of the supported labelled, temporal, or Stata types before generation.
-Character results keep a valid declared \code{stata.string.storage}. Otherwise,
-they use the smallest \code{str1} through \code{str2045} width that fits, or \code{strL}
-above 2,045 UTF-8 bytes. Numeric rows excluded by \code{where} contain
-system missing. Excluded string rows contain \code{""}, Stata's string missing.
-Wrap the value expression in a Stata constructor to request explicit numeric
-storage. Stata \verb{[in]} and \verb{:lblname} authoring are not supported; the
+\code{after()} placement. The new column takes the storage in
+\link{stata-storage-defaults}: a declared \verb{dta_*()} result keeps its storage,
+bare integer results are \code{long}, bare double results are \code{double},
+logical results stay logical, \code{Date} and \code{POSIXct} results keep their
+class with a Stata date or datetime declaration, and character results
+keep a valid declared \code{stata.string.storage} or take the smallest
+\code{str1} through \code{str2045} width that fits, or \code{strL} above 2,045 UTF-8
+bytes. Standard \code{haven_labelled} results preserve their label metadata.
+Other classed numeric results, including \code{difftime} and
+\code{bit64::integer64}, are rejected because their physical representation
+does not have Stata numeric semantics; convert them first. Numeric rows
+excluded by \code{where} contain system missing. Excluded string rows contain
+\code{""}, Stata's string missing, and excluded logical rows \code{NA}. Wrap the
+value expression in a Stata constructor to request other storage. On a
+plain tibble the first \code{gen()} makes it a \link{dibble} and types its
+existing columns the same way; a base data frame keeps bare columns.
+Stata \verb{[in]} and \verb{:lblname} authoring are not supported; the
 \verb{by varlist:} prefix is \code{by}/\code{bysort}.
 Unlike Stata's default \code{replace}, \code{replace_values()} never promotes a target
 to wider storage. It rejects values that do not fit the declared storage.
@@ -224,7 +225,7 @@ The table records the deliberate first-release choices relative to Stata's
 \tabular{lll}{
 Topic \tab Stata \tab dtatools \cr
 Existing name \tab Error \tab Error before mutation \cr
-Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{float}; \code{POSIXct} uses \code{double} \cr
+Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{double}; integer results \code{long} (see \link{stata-storage-defaults}) \cr
 Explicit storage \tab Type prefix \tab \verb{dta_*()} value expression \cr
 Strings \tab Smallest fitting \code{str#} or \code{strL} \tab Declared width, otherwise smallest UTF-8-byte width or \code{strL} \cr
 Rows outside \code{if} \tab Numeric \code{.} or string \code{""} \tab Same \cr

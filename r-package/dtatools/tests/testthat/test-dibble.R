@@ -12,11 +12,14 @@ test_that("dibble() builds a tibble that carries reference state", {
     expect_identical(state$generated_count, 0L)
     expect_identical(names(data), c("x", "y"))
     expect_identical(dim(data), c(3L, 2L))
-    expect_identical(data$x, 1:3)
-    expect_identical(data[["y"]], c("a", "b", "c"))
-    expect_identical(
-        as.data.frame(data), data.frame(x = 1:3, y = c("a", "b", "c"))
-    )
+    # Every column of a dibble carries Stata storage from construction.
+    expect_identical(dta_storage_type(data$x), "long")
+    expect_identical(as.integer(data$x), 1:3)
+    expect_identical(attr(data[["y"]], "stata.string.storage"), "str1")
+    expect_identical(as.character(data[["y"]]), c("a", "b", "c"))
+    plain <- as.data.frame(data)
+    expect_identical(class(plain), "data.frame")
+    expect_identical(as.integer(plain$x), 1:3)
 
     alias <- data
     gen(data, z = x * 2)
@@ -51,8 +54,11 @@ test_that("as_dibble converts frames, tibbles, and data tables", {
     from_frame <- as_dibble(frame)
     expect_identical(class(from_frame), dibble_classes)
     expect_identical(attr(from_frame, "label", exact = TRUE), "frame label")
-    expect_identical(from_frame$x, 1:2)
+    expect_identical(dta_storage_type(from_frame$x), "long")
+    expect_identical(as.integer(from_frame$x), 1:2)
+    # The source is untouched: its columns stay bare R vectors.
     expect_identical(class(frame), "data.frame")
+    expect_identical(frame$x, 1:2)
 
     tbl <- tibble::tibble(x = 1:2)
     from_tibble <- as_dibble(tbl)
@@ -174,7 +180,8 @@ test_that("grouping keeps a dibble a dibble", {
     expect_false(inherits(data, "grouped_df"))
 
     summarised <- dplyr::summarise(grouped, total = sum(value))
-    expect_identical(summarised$total, c(4L, 2L))
+    expect_true(is_dibble(summarised))
+    expect_identical(as.integer(summarised$total), c(4L, 2L))
 
     ungrouped <- dplyr::ungroup(grouped)
     expect_true(is_dibble(ungrouped))
@@ -190,16 +197,14 @@ test_that("grouping keeps a dibble a dibble", {
         dplyr::group_vars(dplyr::ungroup(from_grouped)), character()
     )
 
-    # Reconstruction from a grouped dibble template restores dplyr grouping,
-    # and other verbs still return plain tibbles.
+    # A dibble is closed under dplyr verbs: reconstruction from a grouped
+    # dibble template gives a grouped dibble, and from an ungrouped one a
+    # dibble.
     expect_identical(
         class(dplyr::filter(grouped, value > 1)),
-        c("grouped_df", "tbl_df", "tbl", "data.frame")
+        c("dtatools_ref_data", "grouped_df", "tbl_df", "tbl", "data.frame")
     )
-    expect_identical(
-        class(dplyr::mutate(data, next_value = value + 1L)),
-        c("tbl_df", "tbl", "data.frame")
-    )
+    expect_identical(class(dplyr::filter(data, value > 1)), dibble_classes)
     # Group-wise assignment uses the dplyr groups, and the result stays a
     # grouped dibble.
     gen(grouped, within = .n)
@@ -342,7 +347,10 @@ test_that("a file recording an unknown container still reads", {
     restored <- read_arrow(future, verify = FALSE)
     expect_false(is_dibble(restored))
     expect_identical(class(restored), c("tbl_df", "tbl", "data.frame"))
-    expect_identical(restored$x, 1:2)
+    # The column was typed when the dibble was built, so the file holds a
+    # Stata long and the tibble reads it back as one.
+    expect_identical(dta_storage_type(restored$x), "long")
+    expect_identical(as.integer(restored$x), 1:2)
 })
 
 test_that("unknown stored containers fall back to a tibble", {
@@ -446,4 +454,256 @@ test_that("slice_dta_rows keeps a grouped dibble's grouping", {
     expect_identical(as.double(sliced$x), c(1, 1))
     expect_identical(dplyr::group_vars(data), "g")
     expect_identical(nrow(data), 4L)
+})
+
+test_that("mutate and transmute type new columns as gen() does", {
+    data <- dibble(
+        id = 1:3, income = c(10, 20, 30), name = c("a", "bb", "ccc")
+    )
+    result <- dplyr::mutate(
+        data,
+        flag = id > 1,
+        count = id * 2L,
+        adjusted = income * 1.1,
+        declared = dta_int(id),
+        day = as.Date("2024-01-01") + id,
+        stamp = as.POSIXct("2024-01-01 12:00:00", tz = "UTC") + id,
+        label = paste0(name, "!"),
+        kind = factor(name)
+    )
+    expect_true(is_dibble(result))
+    expect_identical(class(result), dibble_classes)
+    # The input follows copy-on-modify: nothing was added to it.
+    expect_identical(names(data), c("id", "income", "name"))
+    expect_true(is_dibble(data))
+
+    # One mapping from bare R vectors: logical stays logical, integer
+    # is long, double is double, Date is a float date, POSIXct a double
+    # datetime, character the smallest fitting width.
+    expect_identical(result$flag, c(FALSE, TRUE, TRUE))
+    expect_identical(dta_storage_type(result$count), "long")
+    expect_identical(dta_storage_type(result$adjusted), "double")
+    expect_identical(dta_storage_type(result$declared), "int")
+    expect_identical(dta_storage_type(result$day), "float")
+    expect_s3_class(result$day, "stata_date")
+    expect_identical(dta_storage_type(result$stamp), "double")
+    expect_s3_class(result$stamp, "stata_datetime")
+    expect_identical(
+        attr(result$label, "stata.string.storage", exact = TRUE), "str4"
+    )
+    expect_true(is.factor(result$kind))
+    expect_identical(as.double(result$adjusted), c(11, 22, 33))
+
+    # The result matches what gen() gives the same expression.
+    generated <- dibble(id = 1:3)
+    gen(generated, count = id * 2L)
+    expect_identical(
+        attributes(result$count), attributes(generated$count)
+    )
+
+    # Input columns the verb leaves alone are the same vectors.
+    expect_identical(result$id, data$id)
+    expect_identical(result$income, data$income)
+    expect_identical(result$name, data$name)
+
+    # A changed column keeps its storage when the new values fit and is
+    # widened to the narrowest storage that holds them exactly otherwise;
+    # a declared column that arithmetic preserved keeps its storage.
+    changed <- dplyr::mutate(
+        result,
+        declared = declared + 1L, id = id + 0.5, name = paste0(name, "xyz")
+    )
+    expect_identical(dta_storage_type(changed$declared), "int")
+    expect_identical(dta_storage_type(changed$id), "double")
+    expect_identical(
+        attr(changed$name, "stata.string.storage", exact = TRUE), "str6"
+    )
+    narrowed <- dplyr::mutate(dibble(x = c(100000, 2)), x = c(1, 2))
+    expect_identical(dta_storage_type(narrowed$x), "double")
+    widened <- dplyr::mutate(dibble(x = dta_byte(1:3)), x = x * 1000L)
+    expect_identical(dta_storage_type(widened$x), "int")
+    fractional <- dplyr::mutate(dibble(x = dta_int(1:3)), x = x + 0.5)
+    expect_identical(dta_storage_type(fractional$x), "float")
+    huge <- dplyr::mutate(dibble(x = dta_long(1:3)), x = x + 2^40)
+    expect_identical(dta_storage_type(huge$x), "double")
+
+    transmuted <- dplyr::transmute(data, doubled = income * 2)
+    expect_true(is_dibble(transmuted))
+    expect_identical(names(transmuted), "doubled")
+    expect_identical(dta_storage_type(transmuted$doubled), "double")
+
+    # The verb's result is a dibble, so bracket assignment follows on.
+    transmuted[doubled > 20, big := 1]
+    expect_identical(as.double(transmuted$big), c(NA, 1, 1))
+
+    # Long strings take strL. Columns no Stata storage can hold pass
+    # through unchanged; save_dta() refuses them, as it does today.
+    long <- dplyr::mutate(data, text = strrep("x", 3000))
+    expect_identical(
+        attr(long$text, "stata.string.storage", exact = TRUE), "strL"
+    )
+    carried <- dplyr::mutate(
+        data,
+        span = as.difftime(as.double(id), units = "days"),
+        listed = as.list(id), bytes = as.raw(id)
+    )
+    expect_true(is_dibble(carried))
+    expect_s3_class(carried$span, "difftime")
+    expect_type(carried$listed, "list")
+    expect_type(carried$bytes, "raw")
+    expect_error(gen(data, span = as.difftime(1, units = "days")))
+
+    # A grouped dibble stays grouped and evaluates within groups.
+    grouped <- dplyr::group_by(dibble(g = c(1, 1, 2), v = c(1, 2, 3)), g)
+    per_group <- dplyr::mutate(grouped, total = sum(v))
+    expect_true(is_dibble(per_group))
+    expect_identical(dplyr::group_vars(per_group), "g")
+    expect_identical(as.double(per_group$total), c(3, 3, 3))
+    expect_identical(dta_storage_type(per_group$total), "double")
+
+    # A base frame carrying reference state is not a dibble and gets the
+    # ordinary result.
+    frame <- data.frame(x = 1:2)
+    gen(frame, y = x + 1L)
+    plain <- dplyr::mutate(frame, z = 1)
+    expect_identical(class(plain), "data.frame")
+    expect_identical(plain$z, c(1, 1))
+})
+
+test_that("mutate keeps untouched compact columns compact", {
+    data <- read_dta(fixture("all_types_v118.dta"))
+    result <- dplyr::mutate(data, extra = 1)
+    expect_true(is_dibble(result))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(result$v_byte))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(result$v_str5))
+    expect_identical(dta_storage_type(result$extra), "double")
+    expect_identical(
+        attributes(result$v_int), attributes(data$v_int)
+    )
+})
+
+test_that("a dibble is closed under dataset operations", {
+    data <- dibble(id = 1:3, x = c(1.5, 2, 3), s = c("a", "b", "c"))
+    other <- tibble::tibble(id = 1:3, z = c(TRUE, FALSE, TRUE))
+    closed <- list(
+        arrange = dplyr::arrange(data, dplyr::desc(x)),
+        select = dplyr::select(data, x),
+        slice = dplyr::slice(data, 1:2),
+        relocate = dplyr::relocate(data, s),
+        rename = dplyr::rename(data, value = x),
+        distinct = dplyr::distinct(data, s),
+        summarise = dplyr::summarise(data, n = dplyr::n()),
+        left_join = dplyr::left_join(data, other, by = "id"),
+        bind_rows = dplyr::bind_rows(data, data),
+        subset = subset(data, x > 1),
+        transform = transform(data, w = x + 1),
+        within = within(data, w <- x + 1),
+        head = head(data, 2),
+        rbind = rbind(data, data),
+        cbind = cbind(data, extra = 10:12),
+        bracket_rows = data[1:2, ],
+        bracket_cols = data[c("id", "s")]
+    )
+    for (name in names(closed)) {
+        expect_true(is_dibble(closed[[name]]), info = name)
+    }
+    # New columns from base verbs and joins carry Stata storage; the
+    # logical from the join stays logical.
+    expect_identical(dta_storage_type(closed$transform$w), "double")
+    expect_identical(dta_storage_type(closed$within$w), "double")
+    expect_identical(dta_storage_type(closed$cbind$extra), "long")
+    expect_identical(closed$left_join$z, other$z)
+    expect_identical(dta_storage_type(closed$summarise$n), "long")
+    # Non-dataset results are returned as they are.
+    expect_identical(with(data, sum(as.double(x))), 6.5)
+    expect_identical(as.list(data)$s, data$s)
+})
+
+test_that("replacement operators type their columns and keep the dibble", {
+    data <- dibble(id = 1:3)
+    data$score <- c(1.5, 2, 3)
+    data[["count"]] <- 4:6
+    data[["flag"]] <- c(TRUE, NA, FALSE)
+    data[, "text"] <- c("x", "yy", "zzz")
+    expect_true(is_dibble(data))
+    expect_identical(dta_storage_type(data$score), "double")
+    expect_identical(dta_storage_type(data$count), "long")
+    expect_identical(data$flag, c(TRUE, NA, FALSE))
+    expect_identical(
+        attr(data$text, "stata.string.storage", exact = TRUE), "str3"
+    )
+    # Overwriting keeps fitting storage and widens otherwise.
+    data$count <- c(1L, 2L, 3L)
+    expect_identical(dta_storage_type(data$count), "long")
+    data$id <- data$id + 0.5
+    expect_identical(dta_storage_type(data$id), "double")
+    names(data)[1] <- "key"
+    expect_true(is_dibble(data))
+    expect_identical(names(data)[1], "key")
+    # A tibble that becomes a dibble at its first gen() types its
+    # existing columns for every binding.
+    tbl <- tibble::tibble(n = 1:2, s = c("a", "b"), keep = c(TRUE, FALSE))
+    alias <- tbl
+    gen(tbl, y = n * 2L)
+    expect_true(is_dibble(tbl))
+    expect_identical(dta_storage_type(alias$n), "long")
+    expect_identical(attr(alias$s, "stata.string.storage"), "str1")
+    expect_identical(alias$keep, c(TRUE, FALSE))
+})
+
+test_that("logical columns stay logical in a dibble", {
+    data <- dibble(flag = c(TRUE, FALSE, TRUE), x = 1:3)
+    expect_identical(data$flag, c(TRUE, FALSE, TRUE))
+    expect_identical(nrow(dplyr::filter(data, flag)), 2L)
+    gen(data, y = 1, where = flag)
+    expect_identical(as.double(data$y), c(1, NA, 1))
+    data[flag, z := x]
+    expect_identical(as.double(data$z), c(1, NA, 3))
+    gen(data, w = x > 1)
+    expect_identical(data$w, c(FALSE, TRUE, TRUE))
+    gen(data, v = TRUE, where = x == 2)
+    expect_identical(data$v, c(NA, TRUE, NA))
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(data, path)
+    expect_identical(dta_storage_type(read_dta(path)$flag), "byte")
+})
+
+test_that("Arrow strings enter a dibble compact with an inferred width", {
+    skip_if_not_installed("arrow")
+    path <- tempfile(fileext = ".arrow")
+    on.exit(unlink(path), add = TRUE)
+    save_arrow(data.frame(text = c("alpha", "b", "alpha"), n = 1:3), path)
+    data <- read_arrow(path)
+    expect_true(is_dibble(data))
+    expect_s3_class(data$text, "stata_string")
+    expect_identical(attr(data$text, "stata.string.storage"), "str5")
+    expect_true(dtatools:::.is_unmaterialized_dictstring(data$text))
+    expect_identical(dta_storage_type(data$n), "long")
+    # Plain Arrow files, and unprofiled reads, carry no Stata semantics
+    # and default to a tibble; an explicit dibble request types them.
+    plain <- tempfile(fileext = ".arrow")
+    on.exit(unlink(plain), add = TRUE)
+    arrow::write_ipc_file(data.frame(x = 1:2), plain)
+    expect_identical(class(read_arrow(plain)), c("tbl_df", "tbl", "data.frame"))
+    expect_identical(read_arrow(plain)$x, 1:2)
+    typed <- read_arrow(plain, output = "dibble")
+    expect_true(is_dibble(typed))
+    expect_identical(dta_storage_type(typed$x), "long")
+    expect_identical(
+        class(read_arrow(path, profile = FALSE)),
+        c("tbl_df", "tbl", "data.frame")
+    )
+})
+
+test_that("Stata numerics coerce to integer and logical and add to dates", {
+    long <- dta_long(c(1, 2, tagged_missing("a")))
+    expect_identical(as.integer(long), c(1L, 2L, NA))
+    expect_identical(vctrs::vec_cast(long, integer()), c(1L, 2L, NA))
+    expect_identical(as.logical(dta_byte(c(1, 0, NA))), c(TRUE, FALSE, NA))
+    day <- as.Date("2024-01-01")
+    expect_identical(day + dta_long(1:2), day + 1:2)
+    expect_identical(dta_long(1:2) + day, day + 1:2)
+    stamp <- as.POSIXct("2024-01-01", tz = "UTC")
+    expect_identical(stamp + dta_int(60), stamp + 60)
 })

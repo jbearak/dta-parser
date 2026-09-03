@@ -6342,6 +6342,32 @@ SEXP C_dtatools_dictstring_cached_count(SEXP value) {
     return Rf_ScalarReal((double) count);
 }
 
+/* The widest UTF-8 byte length in a dictionary string's dictionary, read
+   without materializing the column, so a dibble can declare `str#`
+   storage for an Arrow string while it stays compact. */
+SEXP C_dtatools_dictstring_max_width(SEXP value) {
+    SEXP source = unmaterialized_dictstring_source(value);
+    if (source == R_NilValue) {
+        Rf_error("value is not an unmaterialized dictionary string");
+    }
+    dictstring_data *data = dictstring_storage(source);
+    SEXP cache = dictstring_cache(source);
+    R_xlen_t value_count = XLENGTH(cache);
+    size_t maximum = 0;
+    for (R_xlen_t id = 0; id < value_count; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        const char *bytes = NULL;
+        int length = 0;
+        if (!dtatools_dictstring_bytes(
+                data, (uint32_t) id, &bytes, &length
+            ) || bytes == NULL || length < 0) {
+            Rf_error("invalid dtatools string-dictionary value");
+        }
+        if ((size_t) length > maximum) maximum = (size_t) length;
+    }
+    return Rf_ScalarReal((double) maximum);
+}
+
 SEXP C_dtatools_numeric_storage_matches(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -6550,7 +6576,8 @@ static int is_missing_supported_class(SEXP value) {
             Rf_inherits(value, "POSIXct") ||
             Rf_inherits(value, "haven_labelled");
     case STRSXP:
-        return metadata_only || Rf_inherits(value, "haven_labelled");
+        return metadata_only || Rf_inherits(value, "haven_labelled") ||
+            Rf_inherits(value, "stata_string");
     default:
         return 0;
     }
@@ -7306,6 +7333,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_is_unmaterialized_dictstring, 1},
     {"C_dtatools_dictstring_cached_count",
      (DL_FUNC) &C_dtatools_dictstring_cached_count, 1},
+    {"C_dtatools_dictstring_max_width",
+     (DL_FUNC) &C_dtatools_dictstring_max_width, 1},
     {"C_dtatools_numeric_storage_matches",
      (DL_FUNC) &C_dtatools_numeric_storage_matches, 3},
     {"C_dtatools_force_altrep_materialization",

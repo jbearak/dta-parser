@@ -40,15 +40,14 @@ use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
     attach_source_rows, attach_stata_metadata, attach_variable_attribute_view, boundary,
-    check_interrupt,
-    coarse_interrupt, direct_r_missing_code, fill_string_region, label_attribute_from_entries,
-    missing_from_code, numeric_altrep_storage, observed_value, parse_stata_metadata_sexp,
-    poll_interrupt, r_char, r_missing, scalar_string, set_attr, set_class, set_symbol_attr,
-    should_preserve_value_label_name, string_vector, temporal_kind, write_numeric_value,
-    NumericKind, ProtectGuard, RLen, RNumericData, RStringData, R_ClassSymbol, R_NaInt, R_NaReal,
-    R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp, TemporalKind, DAYS_1960_TO_1970, INTEGER,
-    INTSXP, LGLSXP, LOGICAL, REAL, REALSXP, SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT,
-    STRSXP, VECSXP,
+    check_interrupt, coarse_interrupt, direct_r_missing_code, fill_string_region,
+    label_attribute_from_entries, missing_from_code, numeric_altrep_storage, observed_value,
+    parse_stata_metadata_sexp, poll_interrupt, r_char, r_missing, scalar_integer, scalar_string,
+    set_attr, set_class, set_symbol_attr, should_preserve_value_label_name, string_vector,
+    temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen, RNumericData, RStringData,
+    R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp,
+    TemporalKind, DAYS_1960_TO_1970, INTEGER, INTSXP, LGLSXP, LOGICAL, REAL, REALSXP,
+    SECONDS_1960_TO_1970, SET_STRING_ELT, SET_VECTOR_ELT, STRSXP, VECSXP,
 };
 
 /// One column handed from C for `save_arrow()`. Field meanings depend on
@@ -806,8 +805,7 @@ unsafe fn value_label_table(
         .map_err(|_| "could not allocate value labels".to_owned())?;
     for (index, (&code, text)) in codes.iter().zip(texts).enumerate() {
         poll_interrupt(index)?;
-        let label = text
-            .ok_or_else(|| format!("table `{name}` has a missing value-label text"))?;
+        let label = text.ok_or_else(|| format!("table `{name}` has a missing value-label text"))?;
         let entry = match missing_from_code(direct_r_missing_code(code))? {
             Some(tag) => ValueLabelEntry {
                 value: 0,
@@ -3341,7 +3339,8 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             snapshot.read_with_source_row_count(&options, &mut coarse_interrupt)
         } else {
             snapshot.read(&options, &mut coarse_interrupt)
-        }.map_err(|error| error.to_string())?;
+        }
+        .map_err(|error| error.to_string())?;
         let profiled = result.profile_version.is_some();
         let row_count = usize::try_from(result.row_count)
             .map_err(|_| "the selection has too many rows".to_owned())?;
@@ -3488,13 +3487,16 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             let value = scalar_string(&output_container, &mut guard)?;
             set_attr(frame, "dtatools.output.container", value)?;
         }
+        {
+            // Whether the file carried the dtatools profile: an unprofiled
+            // read never acquires Stata semantics, so the R side does not
+            // make a dibble of it by default.
+            let mut guard = ProtectGuard::new();
+            let value = scalar_integer(c_int::from(profiled), &mut guard)?;
+            set_attr(frame, "dtatools.profiled", value)?;
+        }
         let mut guard = ProtectGuard::new();
-        attach_stata_metadata(
-            frame,
-            &dataset_notes,
-            &dataset_characteristics,
-            &mut guard,
-        )?;
+        attach_stata_metadata(frame, &dataset_notes, &dataset_characteristics, &mut guard)?;
         if let Some(signature) = &result.stored_signature {
             let mut guard = ProtectGuard::new();
             let signature = scalar_string(signature, &mut guard)?;
@@ -3596,7 +3598,9 @@ pub unsafe extern "C" fn dtatools_arrow_metadata_rust(
                     let value = match (entry.value, entry.tag) {
                         (Some(value), None) => f64::from(value),
                         (None, Some(tag)) => r_missing(tag),
-                        _ => return Err("value-label entry must contain exactly one code".to_owned()),
+                        _ => {
+                            return Err("value-label entry must contain exactly one code".to_owned())
+                        }
                     };
                     Ok((value, entry.label))
                 }),

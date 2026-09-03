@@ -445,7 +445,7 @@ test_that("native write interrupts roll back values and compact state", {
             interrupt_dictionary <- function(
                 shared, mutate_proxy = FALSE, source_values = FALSE
             ) {
-                source <- read_arrow(dictionary_path)
+                source <- read_arrow(dictionary_path, output = "tibble")
                 if (mutate_proxy) {
                     alias <- source
                     data <- source
@@ -962,7 +962,7 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(names(data), c("x", "eligible", "generated"))
     expect_identical(names(alias), names(data))
     expect_identical(as.double(data$generated), c(2, NA, 6))
-    expect_identical(dta_storage_type(data$generated), "float")
+    expect_identical(dta_storage_type(data$generated), "double")
     expect_s3_class(data, "tbl_df")
     expect_equal(dim(data), c(3L, 3L))
     expect_error(gen(data, generated, 1), "already exists")
@@ -1356,7 +1356,7 @@ test_that("metadata copies remain isolated from later source patches", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data.frame(text = c("a", "b", "a")), path)
-    string_source <- read_arrow(path)
+    string_source <- read_arrow(path, output = "tibble")
     expect_true(dtatools:::.is_unmaterialized_dictstring(
         string_source$text
     ))
@@ -1374,7 +1374,9 @@ test_that("metadata copies remain isolated from later source patches", {
     expect_identical(as.character(missing_source$text), c("a", "", "a"))
     expect_identical(as.character(missing_alias$text), c("a", "b", "a"))
 
-    full_source <- read_arrow(path)
+    # A dibble declares the Arrow string as str1 and replace_values()
+    # holds it to that width, so the widening cases use a tibble.
+    full_source <- read_arrow(path, output = "tibble")
     full_copy <- copy_data(full_source)
     set_var_labels(full_copy, text = "Copy")
     replace_values(full_source, text, "changed")
@@ -1384,7 +1386,7 @@ test_that("metadata copies remain isolated from later source patches", {
     expect_true(dtatools:::.is_unmaterialized_dictstring(full_copy$text))
     expect_identical(as.character(full_copy$text), c("a", "b", "a"))
 
-    direct_identity <- read_arrow(path)
+    direct_identity <- read_arrow(path, output = "tibble")
     direct_cache <- dtatools:::.dictstring_cached_count(direct_identity$text)
     replace_values(direct_identity, text, text)
     expect_identical(
@@ -1394,7 +1396,9 @@ test_that("metadata copies remain isolated from later source patches", {
     expect_identical(as.character(direct_identity$text), c("a", "b", "a"))
 
     proxy_identity <- data.frame(
-        text = dtatools:::.metadata_copy(read_arrow(path)$text)
+        text = dtatools:::.metadata_copy(
+            read_arrow(path, output = "tibble")$text
+        )
     )
     proxy_cache <- dtatools:::.dictstring_cached_count(proxy_identity$text)
     replace_values(proxy_identity, text, text)
@@ -1513,7 +1517,7 @@ test_that("is_missing masks preserve dictionary-string caches and aliases", {
         target = seq_len(6L)
     ), path)
 
-    replaced <- read_arrow(path)
+    replaced <- read_arrow(path, output = "tibble")
     replaced_alias <- replaced
     replaced_text_alias <- replaced$text
     replaced_cache <- dtatools:::.dictstring_cached_count(replaced$text)
@@ -1579,7 +1583,9 @@ test_that("materialized metadata-proxy copies remain independent", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data.frame(text = c("a", "b", "a")), path)
-    string <- dtatools:::.metadata_copy(read_arrow(path)$text)
+    string <- dtatools:::.metadata_copy(
+        read_arrow(path, output = "tibble")$text
+    )
     invisible(dtatools:::.force_altrep_materialization(string))
     string_copy <- dtatools:::.metadata_copy(string)
     string_data <- data.frame(text = string)
@@ -1614,7 +1620,7 @@ test_that("materialized metadata proxies release former sources", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data.frame(text = c("a", "b", "a")), path)
-    string <- read_arrow(path)$text
+    string <- read_arrow(path, output = "tibble")$text
     retained <- list(
         numeric = materialized_chain(dta_byte(1:3), "numeric"),
         string = materialized_chain(string, "string")
@@ -1633,7 +1639,7 @@ test_that("copy_data keeps Arrow dictionary strings independent and compact", {
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
     save_arrow(data.frame(text = rep(c("alpha", "beta"), 50)), path)
-    source <- read_arrow(path)
+    source <- read_arrow(path, output = "tibble")
     dictionary <- which(vapply(
         source, dtatools:::.is_unmaterialized_dictstring, logical(1)
     ))
@@ -1716,7 +1722,7 @@ test_that("reference data preserves base and tibble access semantics", {
     expect_identical(names(grouped), c("x", "y"))
     expect_identical(dplyr::group_vars(grouped), "y")
     expect_identical(
-        dplyr::summarise(grouped, n = dplyr::n())$n,
+        as.integer(dplyr::summarise(grouped, n = dplyr::n())$n),
         rep(1L, 3)
     )
     expect_s3_class(dplyr::rowwise(tbl), "rowwise_df")
@@ -1989,11 +1995,12 @@ test_that("a grouped tibble supplies the assignment groups", {
     expect_identical(as.double(grouped$total), c(4, 2, 4, 4))
     expect_identical(as.double(grouped$n), c(1, 1, 2, 1))
     repl(grouped, x = 0, where = .n == .N)
-    expect_identical(grouped$x, c(1, 0, 0, 0))
+    expect_identical(as.double(grouped$x), c(1, 0, 0, 0))
     expect_s3_class(grouped, "grouped_df")
     expect_identical(dplyr::group_vars(grouped), "id")
     expect_identical(
-        dplyr::summarise(grouped, n = dplyr::n())$n, c(2L, 1L, 1L)
+        as.integer(dplyr::summarise(grouped, n = dplyr::n())$n),
+        c(2L, 1L, 1L)
     )
 
     # `.drop = FALSE` may record empty groups; they contribute nothing.
@@ -2125,7 +2132,7 @@ test_that("sparse compact replacement and generation keep existing payloads", {
 
     x_trace <- tracemem(data$x)
     on.exit(untracemem(data$x), add = TRUE)
-    gen(data, added, 3)
+    gen(data, added, 3L)
     expect_identical(tracemem(data$x), x_trace)
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$added))
@@ -2616,8 +2623,10 @@ test_that("replacing a grouping column rebuilds the dplyr groups", {
     dib <- dplyr::group_by(dibble(id = c("a", "b", "b"), x = 1:3), id)
     dib[, id := "b"]
     expect_true(is_dibble(dib))
-    expect_identical(attr(dib, "groups", exact = TRUE)$id, "b")
-    expect_identical(dplyr::summarise(dib, n = dplyr::n())$n, 3L)
+    expect_identical(
+        as.character(attr(dib, "groups", exact = TRUE)$id), "b"
+    )
+    expect_identical(as.integer(dplyr::summarise(dib, n = dplyr::n())$n), 3L)
 })
 
 test_that("an aliased grouping column is regrouped after replacement", {
