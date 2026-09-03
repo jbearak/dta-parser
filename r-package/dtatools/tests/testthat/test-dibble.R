@@ -381,6 +381,11 @@ test_that("dataset metadata setters keep a dibble's bracket dispatch", {
     subset <- data[1, ]
     expect_s3_class(subset, "dtatools_stata_metadata")
     expect_identical(dta_notes(subset)[[1L]], "a note")
+    variable_scoped <- set_dta_note(dibble(x = 1:2), 1, "on x", variable = "x")
+    expect_true(is_dibble(variable_scoped))
+    variable_scoped[x > 1, y := 5]
+    expect_identical(as.double(variable_scoped$y), c(NA, 5))
+    expect_identical(dta_notes(variable_scoped, "x")[[1L]], "on x")
     with_characteristic <- set_dta_characteristic(dibble(x = 1), "k", "v")
     expect_identical(class(with_characteristic)[[1L]], "dtatools_ref_data")
     with_characteristic[, z := 1]

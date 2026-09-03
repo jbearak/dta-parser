@@ -1786,9 +1786,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             patch()
         }
         if (!is.null(state)) state$columns[[target$name]] <- column
-        if (grouped_input && target$name %in% dplyr::group_vars(data)) {
-            .regroup_after_replacement(data, state)
-        }
+        # Rebuild after every grouped replacement, not only one that names
+        # a grouping column: a target can share its vector with a key
+        # under the package's alias semantics, so the key may have changed
+        # without being named.
+        if (grouped_input) .regroup_after_replacement(data, state)
     }
     if (generate) {
         .append_generated_column(state, target$name, column)

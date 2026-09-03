@@ -269,9 +269,13 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     changed <- .metadata_copy(target$value)
     changed <- update(changed)
     if (is.null(target$index)) return(.as_stata_metadata_frame(changed))
+    # `[[<-` on a reference dataset returns a plain snapshot, so a dibble
+    # is re-marked afterwards; the result is a new object either way.
+    dibble_input <- is_dibble(x)
     result <- .metadata_copy(x)
     result[[target$index]] <- changed
-    .as_stata_metadata_frame(result)
+    result <- .as_stata_metadata_frame(result)
+    if (dibble_input && !is_dibble(result)) .as_dibble(result) else result
 }
 
 .stata_set_notes <- function(x, variable, notes) {

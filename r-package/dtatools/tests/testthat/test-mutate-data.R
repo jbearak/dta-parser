@@ -2620,6 +2620,18 @@ test_that("replacing a grouping column rebuilds the dplyr groups", {
     expect_identical(dplyr::summarise(dib, n = dplyr::n())$n, 3L)
 })
 
+test_that("an aliased grouping column is regrouped after replacement", {
+    shared <- dta_int(c(1L, 1L, 2L))
+    grouped <- dplyr::group_by(tibble::tibble(id = shared, x = shared), id)
+    # `x` and `id` share one compact vector; replacing `x` rewrites `id`.
+    repl(grouped, x = 1L)
+    expect_identical(as.double(grouped$id), c(1, 1, 1))
+    expect_identical(
+        as.double(attr(grouped, "groups", exact = TRUE)$id), 1
+    )
+    expect_identical(dplyr::summarise(grouped, n = dplyr::n())$n, 3L)
+})
+
 test_that("row counters mask a column named .n or .N", {
     data <- data.frame(.n = c(100, 200), .N = c(7, 7), x = 1:2)
     gen(data, row = .n)
