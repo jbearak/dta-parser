@@ -2464,15 +2464,14 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # valid for its values: well formed, wide enough, and with no `NA`, which
 # Stata strings spell `""`. A join or `rbind()` can carry a declaration
 # onto values it no longer describes, and such a column is retyped rather
-# than trusted. A `stata_string` vector and a compact dictionary string
-# hold by construction and are not scanned.
+# than trusted. That includes a `stata_string` vector: `full_join()` and
+# `bind_rows()` pad one with `NA` while vctrs keeps its class, so the
+# class is no proof. A compact dictionary string holds by construction,
+# with no `NA` and a width read from its dictionary, and is not scanned.
 .string_declaration_holds <- function(column) {
     declared <- attr(column, "stata.string.storage", exact = TRUE)
     if (is.null(declared)) return(FALSE)
-    if (inherits(column, "stata_string") ||
-        .is_unmaterialized_dictstring(column)) {
-        return(TRUE)
-    }
+    if (.is_unmaterialized_dictstring(column)) return(TRUE)
     valid <- is.character(declared) && length(declared) == 1L &&
         !is.na(declared) && (identical(declared, "strL") || grepl(
             "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
@@ -2483,14 +2482,18 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         .stata_string_required_width(column)
 }
 
-# A column no Stata storage can hold: raw, list, complex, a matrix, or a
-# classed numeric such as `difftime` or `integer64` whose values are not
-# Stata's. A dibble carries it unchanged, and `save_dta()` refuses it
-# with its own message. `gen()` is stricter and rejects such a result,
-# because it is the Stata command.
+# A column no Stata storage can hold: raw, list, complex, a matrix, a
+# classed character other than a Stata string, or a classed numeric such
+# as `difftime` or `integer64` whose values are not Stata's. A dibble
+# carries it unchanged, and `save_dta()` refuses it with its own message.
+# `gen()` is stricter and rejects such a result, because it is the Stata
+# command. A `stata_string` whose declaration no longer holds is typable:
+# it is retyped from its values.
 .stata_untypable_column <- function(column) {
     if (!is.null(dim(column))) return(TRUE)
-    if (typeof(column) == "character") return(is.object(column))
+    if (typeof(column) == "character") {
+        return(is.object(column) && !inherits(column, "stata_string"))
+    }
     if (!(typeof(column) %in% c("logical", "integer", "double"))) {
         return(TRUE)
     }
@@ -2515,9 +2518,14 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     }
     if (is.character(column) &&
         !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
-        # A stale declaration: `NA` becomes `""` and the width is redone.
-        column <- as.character(column)
-        column[is.na(column)] <- ""
+        # A stale declaration: `NA` becomes `""`, the width is redone from
+        # the values, and the variable's other metadata comes along.
+        text <- as.character(column)
+        text[is.na(text)] <- ""
+        kept <- attributes(column)
+        kept[c("names", "class", "stata.string.storage")] <- NULL
+        if (length(kept)) attributes(text) <- c(attributes(text), kept)
+        column <- text
     }
     .generated_column(column, NULL, row_count, caller)
 }
@@ -2753,7 +2761,28 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     if (!is_dibble(data) || !is.data.frame(result) || is_dibble(result)) {
         return(result)
     }
-    .as_dibble(result, caller)
+    .as_dibble(.isolate_shared_columns(result, data), caller)
+}
+
+# A column the operation left alone, as `select()`, `relocate()`,
+# `mutate()` of another column, or `bind_cols()` do, is the same vector
+# in the result and in the source, and a by-reference `:=` or `repl()`
+# through either dibble would reach the other. Each such column becomes
+# a copy-on-write view of the source's: a compact column stays compact
+# behind a metadata proxy whose first write on either side detaches, and
+# a plain vector is copied. Columns the operation rebuilt are already the
+# result's own.
+.isolate_shared_columns <- function(result, data) {
+    source_addresses <- vapply(
+        .data_columns(data), rlang::obj_address, character(1)
+    )
+    for (index in seq_len(length(result))) {
+        column <- .subset2(result, index)
+        if (rlang::obj_address(column) %in% source_addresses) {
+            result[[index]] <- .metadata_copy(column)
+        }
+    }
+    result
 }
 
 # `mutate()`, `transmute()`, `transform()`, `within()`, and the
@@ -2781,11 +2810,11 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 }
 
 # Grouping changes only dplyr metadata, so a dibble stays a dibble: the
-# grouped or ungrouped snapshot is marked again, and `state$classes` then
+# grouped or ungrouped snapshot is closed again, and `state$classes` then
 # records the grouping for later snapshots. The result is a fresh object
 # either way, so the mark never touches the caller's dataset.
 .regroup_reference_data <- function(data, result) {
-    if (is_dibble(data) && !is_dibble(result)) .as_dibble(result) else result
+    .close_dibble(data, result)
 }
 
 #' @export

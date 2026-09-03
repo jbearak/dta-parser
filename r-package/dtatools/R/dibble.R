@@ -26,8 +26,10 @@
 #' `bind_rows()` with a dibble first, base `subset()`, `transform()`,
 #' `within()`, `head()`, `rbind()`, `cbind()`, and `[` subsetting. Each
 #' result is a fresh object holding the current contents, following
-#' copy-on-modify; the input is unchanged. Columns an operation leaves
-#' alone are the same vectors, so compact columns stay compact.
+#' copy-on-modify; the input is unchanged, and a by-reference `:=` or
+#' [replace_values()] on either the input or the result leaves the other
+#' as it was. Columns an operation leaves alone are shared copy-on-write,
+#' so compact columns stay compact.
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.

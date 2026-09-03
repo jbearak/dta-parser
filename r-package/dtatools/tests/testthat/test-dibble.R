@@ -827,3 +827,139 @@ test_that("a stale string declaration is redone on entering a dibble", {
     expect_identical(as.character(back$s), c("a", "b", ""))
     expect_identical(attr(back$s, "stata.string.storage"), "str1")
 })
+
+test_that("a derived dibble owns its columns", {
+    source <- dibble(x = 1:3, s = c("a", "b", "c"), flag = c(TRUE, FALSE, TRUE))
+    derived <- list(
+        select = dplyr::select(source, x, s),
+        relocate = dplyr::relocate(source, s),
+        mutate = dplyr::mutate(source, y = x + 1L),
+        rename = dplyr::rename(source, id = x),
+        group_by = dplyr::group_by(source, flag),
+        bind_cols = dplyr::bind_cols(source, dibble(z = 4:6)),
+        noted = add_dta_note(source, "a note", variable = "s")
+    )
+    for (name in names(derived)) {
+        piece <- derived[[name]]
+        x_name <- if (identical(name, "rename")) "id" else "x"
+        expect_true(is_dibble(piece), info = name)
+        # A by-reference write through the derived dibble stays there.
+        piece[, !!x_name := 9L]
+        repl(piece, s = "z")
+        expect_identical(as.integer(source$x), 1:3, info = name)
+        expect_identical(as.character(source$s), c("a", "b", "c"), info = name)
+        expect_identical(
+            as.integer(piece[[x_name]]), c(9L, 9L, 9L), info = name
+        )
+        expect_identical(as.character(piece$s), c("z", "z", "z"), info = name)
+    }
+    # And a write through the source leaves an earlier derived dibble alone.
+    piece <- dplyr::select(source, x, flag)
+    source[, x := 0L]
+    repl(source, flag = FALSE)
+    expect_identical(as.integer(piece$x), 1:3)
+    expect_identical(piece$flag, c(TRUE, FALSE, TRUE))
+    expect_identical(as.integer(source$x), c(0L, 0L, 0L))
+    # Compact columns stay compact on both sides until one is written.
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(dibble(n = 1:4, s = c("aa", "bb", "aa", "cc")), path)
+    data <- read_dta(path)
+    piece <- dplyr::select(data, n, s)
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(piece$n))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(piece$s))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$n))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(data$s))
+    piece[n == 2L, n := 20L]
+    repl(piece, s = "dd", where = n == 20L)
+    expect_identical(as.integer(data$n), 1:4)
+    expect_identical(as.character(data$s), c("aa", "bb", "aa", "cc"))
+    expect_identical(as.integer(piece$n), c(1L, 20L, 3L, 4L))
+    expect_identical(as.character(piece$s), c("aa", "dd", "aa", "cc"))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$n))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(data$s))
+})
+
+test_that("a stata_string column padded with NA is retyped on closure", {
+    left <- dibble(id = 1:2, s = dta_string(c("a", "b")))
+    right <- dibble(id = 2:4, t = dta_string(c("x", "y", "z")))
+    joined <- dplyr::full_join(left, right, by = "id")
+    expect_true(is_dibble(joined))
+    expect_false(anyNA(joined$s))
+    expect_identical(as.character(joined$s), c("a", "b", "", ""))
+    expect_identical(joined$s == "", c(FALSE, FALSE, TRUE, TRUE))
+    expect_identical(attr(joined$s, "stata.string.storage"), "str1")
+    expect_identical(as.character(joined$t), c("", "x", "y", "z"))
+    righted <- dplyr::right_join(left, right, by = "id")
+    expect_identical(as.character(righted$s), c("b", "", ""))
+    bound <- dplyr::bind_rows(left, dibble(id = 5L))
+    expect_identical(as.character(bound$s), c("a", "b", ""))
+    expect_identical(attr(bound$s, "stata.string.storage"), "str1")
+    # The declaration also gives way when the padding column is wider.
+    wider <- dplyr::bind_rows(
+        left, dibble(id = 5L, s = dta_string("long"))
+    )
+    expect_identical(attr(wider$s, "stata.string.storage"), "str4")
+    expect_identical(as.character(wider$s), c("a", "b", "long"))
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    expect_no_warning(save_dta(joined, path))
+    expect_identical(as.character(read_dta(path)$s), c("a", "b", "", ""))
+})
+
+test_that("subsetting keeps compact dictionary strings compact", {
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(dibble(n = 1:5, s = c("aa", "bb", "aa", "cc", "bb")), path)
+    data <- read_dta(path)
+    compact <- function(value) dtatools:::.is_unmaterialized_dictstring(value)
+    expect_true(compact(data$s))
+
+    filtered <- dplyr::filter(data, n > 2L)
+    expect_true(compact(filtered$s))
+    expect_true(compact(data$s))
+    expect_identical(as.character(filtered$s), c("aa", "cc", "bb"))
+    expect_identical(attr(filtered$s, "stata.string.storage"), "str2")
+    expect_true(inherits(filtered$s, "stata_string"))
+
+    sliced <- vctrs::vec_slice(data$s, c(5L, 1L))
+    expect_true(compact(sliced))
+    expect_identical(as.character(sliced), c("bb", "aa"))
+
+    bracket <- data$s[c(2, 4)]
+    expect_true(compact(bracket))
+    expect_identical(as.character(bracket), c("bb", "cc"))
+    expect_true(compact(data$s[-1L]))
+    expect_true(compact(data$s[data$n %% 2L == 1L]))
+    odd <- data$s[data$n %% 2L == 1L]
+    expect_identical(as.character(odd), c("aa", "aa", "bb"))
+    rows <- data[2:3, ]
+    expect_true(is_dibble(rows))
+    expect_true(compact(rows$s))
+    expect_true(compact(data$s))
+    expect_identical(as.character(rows$s), c("bb", "aa"))
+    expect_identical(as.character(head(data, 2)$s), c("aa", "bb"))
+    expect_true(compact(head(data, 2)$s))
+    expect_identical(as.character(dplyr::arrange(data, dplyr::desc(n))$s),
+        c("bb", "cc", "aa", "bb", "aa"))
+    expect_true(compact(dplyr::arrange(data, dplyr::desc(n))$s))
+
+    # An index outside the vector needs `NA`, which the dictionary cannot
+    # hold, so that subset materializes as R's `[` would.
+    beyond <- data$s[c(1L, 9L)]
+    expect_false(compact(beyond))
+    expect_identical(as.character(beyond), c("aa", NA))
+    expect_identical(as.character(data$s[[3L]]), "aa")
+    expect_identical(as.character(data$s), c("aa", "bb", "aa", "cc", "bb"))
+
+    # A subset is its own vector: writing into it leaves the source alone.
+    piece <- dplyr::filter(data, n <= 2L)
+    repl(piece, s = "zz")
+    expect_identical(as.character(piece$s), c("zz", "zz"))
+    expect_identical(as.character(data$s), c("aa", "bb", "aa", "cc", "bb"))
+    expect_true(compact(data$s))
+    # And the source can still be written after subsets were taken.
+    repl(data, s = "yy", where = n == 4L)
+    expect_identical(as.character(data$s), c("aa", "bb", "aa", "yy", "bb"))
+    expect_identical(as.character(filtered$s), c("aa", "cc", "bb"))
+})

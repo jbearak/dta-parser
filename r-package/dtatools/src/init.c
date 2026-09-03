@@ -60,6 +60,9 @@ extern int dtatools_dictstring_bytes(
     void *, uint32_t, const char **, int *
 );
 extern void *dtatools_dictstring_clone(const void *);
+extern void *dtatools_dictstring_gather(
+    const void *, const uint32_t *, size_t
+);
 
 typedef struct {
     const char *name;
@@ -175,6 +178,7 @@ static SEXP metadata_proxy_source(SEXP value);
 static SEXP metadata_proxy_owner(SEXP value);
 static void metadata_proxy_set_state(SEXP value, SEXP source, SEXP owner);
 static SEXP dictstring_compact_copy(SEXP value);
+static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call);
 static size_t numeric_kind_width(int kind);
 static int string_declared_width(SEXP declared, const char *message);
 static size_t reference_string_width(SEXP value, const char *operation);
@@ -4324,6 +4328,15 @@ static void metadata_string_set_elt(
     SET_STRING_ELT(metadata_string_materialize(value), index, replacement);
 }
 
+static SEXP metadata_string_extract_subset(
+    SEXP value, SEXP index, SEXP call
+) {
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    SEXP source = unmaterialized_dictstring_source(value);
+    if (source == R_NilValue) return NULL;
+    return dictstring_extract_subset(source, index, call);
+}
+
 static SEXP metadata_proxy(
     SEXP value, R_altrep_class_t proxy_class, int isolate
 ) {
@@ -4432,6 +4445,15 @@ SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value) {
     return object;
 }
 
+/* R's duplicate of a compact dictionary string that several bindings
+   share, as `attr(x, "label") <- ...` on a read column or a fresh subset
+   asks for. Without this method R would materialize the copy. */
+static SEXP dictstring_duplicate(SEXP value, Rboolean deep) {
+    (void) deep;
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    return dictstring_compact_copy(value);
+}
+
 static SEXP dictstring_compact_copy(SEXP value) {
     SEXP source = unmaterialized_dictstring_source(value);
     if (source == R_NilValue) return R_NilValue;
@@ -4449,6 +4471,69 @@ static SEXP dictstring_compact_copy(SEXP value) {
         dtatools_dictstring_class, external, R_NilValue
     ));
     DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(3);
+    return result;
+}
+
+/* `x[i]` on a compact dictionary string stays compact: the selected value
+   ids are gathered over a private copy of the dictionary, so the result
+   owns its payload and the source is untouched. An index outside the
+   vector would need `NA`, which the dictionary cannot hold, so such a
+   subset falls back to R's default and materializes. */
+static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
+    (void) call;
+    if (R_altrep_data2(value) != R_NilValue ||
+        (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP)) {
+        return NULL;
+    }
+    dictstring_data *data = dictstring_storage(value);
+    R_xlen_t length = XLENGTH(index);
+    if ((size_t) length > SIZE_MAX / sizeof(uint32_t)) {
+        Rf_error("compact dictionary-string subset is too long");
+    }
+    SEXP ids = PROTECT(Rf_allocVector(
+        RAWSXP, (R_xlen_t) ((size_t) length * sizeof(uint32_t))
+    ));
+    uint32_t *output = (uint32_t *) RAW(ids);
+    for (R_xlen_t i = 0; i < length; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t source = -1;
+        if (TYPEOF(index) == INTSXP) {
+            int candidate = INTEGER_ELT(index, i);
+            if (candidate != NA_INTEGER && candidate > 0 &&
+                (size_t) candidate <= data->length) source = candidate - 1;
+        } else {
+            double candidate = REAL_ELT(index, i);
+            if (R_FINITE(candidate) && candidate >= 1 &&
+                candidate <= (double) data->length) {
+                source = (R_xlen_t) candidate - 1;
+            }
+        }
+        if (source < 0) {
+            UNPROTECT(1);
+            return NULL;
+        }
+        output[i] = data->value_ids[source];
+    }
+    SEXP source_cache = dictstring_cache(value);
+    R_xlen_t cardinality = XLENGTH(source_cache);
+    SEXP cache = PROTECT(Rf_allocVector(VECSXP, cardinality));
+    for (R_xlen_t id = 0; id < cardinality; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        SET_VECTOR_ELT(cache, id, VECTOR_ELT(source_cache, id));
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, cache));
+    R_RegisterCFinalizerEx(external, dictstring_finalize, TRUE);
+    void *gathered = dtatools_dictstring_gather(
+        data, output, (size_t) length
+    );
+    if (gathered == NULL) {
+        Rf_error("could not subset compact dictionary-string storage");
+    }
+    R_SetExternalPtrAddr(external, gathered);
+    SEXP result = R_new_altrep(
+        dtatools_dictstring_class, external, R_NilValue
+    );
     UNPROTECT(3);
     return result;
 }
@@ -7408,6 +7493,12 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     R_set_altvec_Dataptr_or_null_method(
         dtatools_dictstring_class, dictstring_dataptr_or_null
     );
+    R_set_altrep_Duplicate_method(
+        dtatools_dictstring_class, dictstring_duplicate
+    );
+    R_set_altvec_Extract_subset_method(
+        dtatools_dictstring_class, dictstring_extract_subset
+    );
     R_set_altstring_Elt_method(dtatools_dictstring_class, dictstring_value);
     R_set_altstring_Set_elt_method(dtatools_dictstring_class, dictstring_set_elt);
     R_set_altstring_No_NA_method(dtatools_dictstring_class, dictstring_no_na);
@@ -7464,6 +7555,9 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     );
     R_set_altvec_Dataptr_or_null_method(
         dtatools_metadata_string_class, metadata_string_dataptr_or_null
+    );
+    R_set_altvec_Extract_subset_method(
+        dtatools_metadata_string_class, metadata_string_extract_subset
     );
     R_set_altstring_Elt_method(
         dtatools_metadata_string_class, metadata_string_value

@@ -68,11 +68,17 @@ dta_string <- function(x = character(), storage = NULL) {
     x
 }
 
+# The bare character data behind a Stata string, read through a metadata
+# view so that a compact dictionary string from a reader stays compact:
+# stripping the attributes of the vector itself would materialize it.
+# Subsetting the view keeps the result compact too, so `filter()`,
+# `vec_slice()`, and `[` on a read column never expand it.
 .stata_string_data <- function(x) {
     value_names <- names(x)
-    attributes(x) <- NULL
-    names(x) <- value_names
-    x
+    value <- .metadata_view(x)
+    attributes(value) <- NULL
+    names(value) <- value_names
+    value
 }
 
 #' @export
