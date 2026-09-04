@@ -349,3 +349,23 @@ test_that("promotion invalidates affected data-table keys and indexes", {
     expect_null(data.table::key(strings))
     expect_identical(strings[list("wide"), on = "x"]$y, 1L)
 })
+
+test_that("clearing a replaced data-table key preserves unrelated indexes", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    for (replacement in c(5, 1000)) {
+        data <- data.table::data.table(x = dta_byte(1:3), z = c(3L, 1L, 2L))
+        data.table::setkeyv(data, "x")
+        data.table::setindexv(data, "z")
+        suppressMessages(repl(data, x = replacement, where = 1L))
+        expect_null(data.table::key(data))
+        expect_identical(data.table::indices(data), "z")
+        expect_identical(as.integer(data[z == 3L]$x), as.integer(replacement))
+        data.table::setkeyv(data, "x")
+        data.table::setindexv(data, "z")
+        suppressMessages(repl(data, x = replacement, where = x == 2))
+        expect_null(data.table::key(data))
+        expect_identical(data.table::indices(data), "z")
+        expect_identical(as.integer(data[z == 1L]$x), as.integer(replacement))
+    }
+})

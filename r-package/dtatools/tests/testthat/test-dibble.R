@@ -1722,3 +1722,28 @@ test_that("unnamed computations use their natural names in the mask", {
     expect_identical(nrow(result), 1L)
     expect_identical(as.character(result$x), "")
 })
+
+test_that("mask promotion sees prior clauses' storage and metadata", {
+    narrow <- dta_byte(1:2)
+    var_label(narrow) <- "old"
+    wide <- dta_double(1:2)
+    var_label(wide) <- "new"
+    data <- dibble(x = narrow)
+    values <- c(1, 2)
+    result <- dplyr::mutate(data, x = wide, x = values, seen = var_label(x))
+    expect_identical(dta_storage_type(result$x), "double")
+    expect_identical(var_label(result$x), "new")
+    expect_identical(as.character(result$seen), c("new", "new"))
+    result <- dplyr::mutate(data, x = wide,
+        dplyr::across(x, ~ as.double(.x)), seen = var_label(x))
+    expect_identical(dta_storage_type(result$x), "double")
+    expect_identical(as.character(result$seen), c("new", "new"))
+    result <- dplyr::mutate(data, x = wide,
+        tibble::tibble(x = values), seen = var_label(x))
+    expect_identical(dta_storage_type(result$x), "double")
+    expect_identical(as.character(result$seen), c("new", "new"))
+    # A removal also removes the old column's metadata from later typing.
+    result <- dplyr::mutate(data, x = NULL, x = values)
+    expect_identical(dta_storage_type(result$x), "double")
+    expect_null(var_label(result$x))
+})

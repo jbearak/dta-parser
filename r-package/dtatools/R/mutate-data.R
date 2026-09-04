@@ -1911,6 +1911,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         replacement <- .cast_replacement(
             values, column, rows, value_mode
         )
+        # No selected group supplied a value. vctrs accepts NULL here, but
+        # the native patcher requires a vector even for an empty selection.
+        if (is.null(replacement) &&
+            .mutation_selected_count(rows, original$nrow) == 0L) {
+            return(invisible(data))
+        }
     }
 
     if (!generate) {
@@ -1953,8 +1959,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     suspendInterrupts({
         result <- patch()
         if (is.null(result)) return(NULL)
-        if (target %in% key_columns) data.table::setkeyv(data, NULL)
-        if (any(affected_indexes)) {
+        key_changed <- target %in% key_columns
+        if (key_changed) data.table::setkeyv(data, NULL)
+        if (key_changed || any(affected_indexes)) {
             retained <- index_columns[!affected_indexes]
             data.table::setindexv(data, NULL)
             for (columns in retained) data.table::setindexv(data, columns)
@@ -1971,8 +1978,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
     suspendInterrupts({
         result <- patch()
-        if (target %in% key_columns) data.table::setkeyv(data, NULL)
-        if (any(affected_indexes)) {
+        key_changed <- target %in% key_columns
+        if (key_changed) data.table::setkeyv(data, NULL)
+        if (key_changed || any(affected_indexes)) {
             retained <- index_columns[!affected_indexes]
             data.table::setindexv(data, NULL)
             for (columns in retained) data.table::setindexv(data, columns)
@@ -3300,19 +3308,29 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     force(label)
     function(value) {
         if (is.null(value)) return(NULL)
+        # rlang's mask top holds the live column bindings, including earlier
+        # clauses. Read only the target; caller bindings must not supply it.
+        mask <- rlang::env_get(parent.frame(), ".top_env", default = NULL)
+        prior <- function(target) {
+            if (is.environment(mask)) {
+                rlang::env_get(mask, target, default = NULL)
+            } else {
+                before[[target]]
+            }
+        }
         if (is.data.frame(value)) {
             if (!is.null(name)) return(value)
             columns <- names(value)
             for (index in seq_along(columns)) {
                 value[[index]] <- .typed_mask_value(
-                    .subset2(value, index), before[[columns[[index]]]],
+                    .subset2(value, index), prior(columns[[index]]),
                     caller
                 )
             }
             return(value)
         }
         target <- if (is.null(name)) label else name
-        result <- .typed_mask_value(value, before[[target]], caller)
+        result <- .typed_mask_value(value, prior(target), caller)
         if (!is.null(name)) return(result)
         vctrs::new_data_frame(
             stats::setNames(list(result), target), n = vctrs::vec_size(result)

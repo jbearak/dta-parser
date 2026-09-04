@@ -2860,3 +2860,17 @@ test_that("unselected replacement groups do not contribute value types", {
     expect_identical(dta_storage_type(data$x), "byte")
     expect_identical(as.integer(data$x), c(1L, 6L))
 })
+
+test_that("strict grouped zero-selection replacement is a no-op", {
+    for (value in list(dta_byte(1:2), dta_int(1:2), dta_long(1:2),
+                       dta_float(1:2), dta_double(1:2), dta_string(c("a", "b")))) {
+        data <- dibble(g = 1:2, x = value)
+        alias <- data
+        replacement <- if (is.character(value)) "z" else 5L
+        expect_no_error(replace_values(data, x = replacement, where = FALSE,
+                                      by = g, promote = FALSE))
+        expect_identical(as.vector(data$x), as.vector(value))
+        expect_identical(dta_storage_type(data$x), dta_storage_type(value))
+        expect_identical(data, alias)
+    }
+})
