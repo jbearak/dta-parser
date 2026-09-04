@@ -290,3 +290,33 @@ test_that("dataset metadata setters keep data.table output ordinary", {
     result[, extra := 1]
     expect_identical(result$extra, c(1, 1))
 })
+
+test_that("setDT() on a read result drops the stale reference state", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(data.frame(hh1 = dta_long(1:3)), path)
+
+    data <- read_dta(path, encoding = "UTF-8")
+    # The regression needs a real dibble going in, or the case below
+    # would pass without ever exercising a stale mark.
+    expect_true(inherits(data, "dtatools_ref_data"))
+    expect_true(is.environment(
+        attr(data, ".dtatools_ref_state", exact = TRUE)
+    ))
+    data.table::setDT(data)
+
+    # `setDT()` rewrites the class in place and leaves the mark behind,
+    # so the mutators must judge the object by its class alone.
+    expect_false(inherits(data, "dtatools_ref_data"))
+    expect_null(dtatools:::.reference_state(data))
+
+    gen(data, cluster = NA_real_)
+    expect_identical(names(data), c("hh1", "cluster"))
+    set_var_label(data, cluster, "Cluster ID")
+    expect_identical(var_label(data, cluster), "Cluster ID")
+    repl(data, cluster = hh1)
+    expect_identical(as.double(data$cluster), c(1, 2, 3))
+    expect_true(dtatools:::.ordinary_data_table(data))
+})

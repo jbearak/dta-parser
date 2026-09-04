@@ -437,7 +437,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     result
 }
 
+# The `dtatools_ref_data` class is what makes the state authoritative,
+# because the mark sets both together. An in-place converter that rewrites
+# the class alone, as `data.table::setDT()` does, leaves the attribute on
+# an object the state no longer describes; honouring it there would have
+# the mutators read a column list that is no longer the object's own.
 .reference_state <- function(data) {
+    if (!inherits(data, "dtatools_ref_data")) return(NULL)
     state <- attr(data, ".dtatools_ref_state", exact = TRUE)
     if (is.environment(state)) state else NULL
 }
