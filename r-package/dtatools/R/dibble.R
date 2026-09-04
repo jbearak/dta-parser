@@ -308,6 +308,12 @@ NULL
         rlang::enquo(i)
     }
     target_expr <- substitute(x)
+    # The primitive has already evaluated x for dispatch. Do not run a
+    # getter expression again; its result can always be assigned explicitly.
+    binding <- if (is.call(target_expr) && is.symbol(target_expr[[1L]]) &&
+        as.character(target_expr[[1L]]) %in% c("$", "[[")) {
+        .capture_mutation_binding(target_expr, parent.frame())
+    } else NULL
     original_x <- x
     if (.has_column_overlay(x)) {
         x <- .prepare_column_operation(x, length(.reference_names(x)))
@@ -335,7 +341,7 @@ NULL
     # would autoprint the dataset after every assignment. Recorded after
     # the last write so a failed assignment still shows its error only.
     .suppress_bracket_autoprint(x)
-    .return_mutation(original_x, x, target_expr, parent.frame())
+    .return_mutation(original_x, x, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 # Reads `j` as one or more `:=` assignments, or `NULL` when `j` is

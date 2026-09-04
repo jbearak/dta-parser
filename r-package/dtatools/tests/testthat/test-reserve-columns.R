@@ -232,3 +232,64 @@ test_that("no-op selections still rebuild legacy overlays", {
         }
     }
 })
+
+test_that("get and get0 destinations are evaluated only once", {
+    withr::local_options(dtatools.alloccol = 0L)
+    for (getter in c("get", "get0")) {
+        a <- data.frame(x = 1:2)
+        b <- data.frame(z = 3:4)
+        calls <- 0L
+        name <- function() { calls <<- calls + 1L; c("a", "b")[[calls]] }
+        call <- substitute(gen(FUN(name()), y = .data$x + 1L), list(FUN = as.name(getter)))
+        expect_warning(eval(call), "reallocation")
+        expect_identical(calls, 1L)
+        expect_physical_table(a, c("x", "y"))
+        expect_physical_table(b, "z")
+        e1 <- new.env(); e2 <- new.env()
+        e1$a <- data.frame(x = 1:2); e2$a <- data.frame(z = 3:4)
+        calls <- 0L
+        environment <- function() { calls <<- calls + 1L; if (calls == 1L) e1 else e2 }
+        call <- substitute(gen(FUN("a", envir = environment()), y = .data$x + 1L), list(FUN = as.name(getter)))
+        expect_warning(eval(call), "reallocation")
+        expect_identical(calls, 1L)
+        expect_physical_table(e1$a, c("x", "y"))
+        expect_physical_table(e2$a, "z")
+    }
+})
+
+test_that("captured extraction indices do not change when values run", {
+    withr::local_options(dtatools.alloccol = 0L)
+    box <- list(a = data.frame(x = 1:2), b = data.frame(z = 3:4))
+    index <- "a"
+    values <- function() { index <<- "b"; 1L }
+    expect_warning(gen(box[[index]], y = values()), "reallocation")
+    expect_physical_table(box$a, c("x", "y"))
+    expect_physical_table(box$b, "z")
+    expect_identical(index, "b")
+})
+
+test_that("a changed getter destination is never overwritten", {
+    withr::local_options(dtatools.alloccol = 0L)
+    a <- data.frame(x = 1:2)
+    values <- function() { a <<- data.frame(z = 3:4); 1L }
+    warnings <- character()
+    result <- withCallingHandlers(gen(get("a"), y = values()), warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
+    })
+    expect_true(any(grepl("target changed", warnings)))
+    expect_physical_table(a, "z")
+    expect_physical_table(result, c("x", "y"))
+})
+
+test_that("bracket dispatch does not reevaluate computed getters", {
+    withr::local_options(dtatools.alloccol = 0L)
+    a <- dibble(x = 1:2)
+    b <- dibble(z = 3:4)
+    calls <- 0L
+    name <- function() { calls <<- calls + 1L; c("a", "b")[[calls]] }
+    expect_warning(result <- get(name())[, y := 1L], "reallocation")
+    expect_identical(calls, 1L)
+    expect_physical_table(a, "x")
+    expect_physical_table(b, "z")
+    expect_physical_table(result, c("x", "y"))
+})

@@ -24,8 +24,8 @@ them.
 Gathers every column the way \code{\link[=slice_dta_rows]{slice_dta_rows()}} does — compact
 Stata numeric columns through the native kernel, other columns
 through vctrs — then replaces the table's column pointers in
-place, so the table object keeps its identity and every reference
-to it sees the new row order. Unlike \code{data.table::set()}, the
+place when no legacy rebuild is needed, so the table object keeps its
+identity and every reference sees the new row order. Unlike \code{data.table::set()}, the
 gathered columns are installed without copying, so compact numeric
 columns stay unmaterialized.
 }

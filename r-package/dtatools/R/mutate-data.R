@@ -281,6 +281,10 @@
 #' @export
 replace_values <- function(data, ..., where = NULL, by = NULL,
                            bysort = NULL, promote = TRUE) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
         function() .capture_positional_pair(...),
@@ -297,7 +301,7 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
         promote = .validate_promote(promote), report_promotion = TRUE
     )
-    .return_mutation(data, result, substitute(data), parent.frame())
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 .validate_promote <- function(promote) {
@@ -314,6 +318,10 @@ repl <- replace_values
 #' @rdname replace_values
 #' @export
 gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
         function() .capture_positional_pair(...),
@@ -327,7 +335,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
     )
-    .return_mutation(data, result, substitute(data), parent.frame())
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 .MUTATION_SHAPE_MESSAGE <- paste(

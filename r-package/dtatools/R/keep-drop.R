@@ -31,17 +31,25 @@
 #' names(survey)
 #' @export
 keep_vars <- function(data, ...) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = TRUE)
-    .return_mutation(data, result, substitute(data), parent.frame())
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 #' @rdname keep_vars
 #' @export
 drop_vars <- function(data, ...) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = FALSE)
-    .return_mutation(data, result, substitute(data), parent.frame())
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 #' Reorder variables by reference
@@ -68,9 +76,13 @@ drop_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 order_vars <- function(data, ...) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
     result <- .order_vars_by_reference(data, dots)
-    .return_mutation(data, result, substitute(data), parent.frame())
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 #' Rename variables by reference
@@ -104,6 +116,10 @@ order_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 rename_vars <- function(data, ..., .names = NULL) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
     if (!is.null(.names)) {
         if (length(dots) > 0L) {
@@ -112,10 +128,10 @@ rename_vars <- function(data, ..., .names = NULL) {
             )
         }
         result <- .rename_all_vars_by_reference(data, .names)
-        return(.return_mutation(data, result, substitute(data), parent.frame()))
+        return(.return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame()))
     }
     result <- .rename_vars_by_reference(data, dots)
-    .return_mutation(data, result, substitute(data), parent.frame())
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 .rename_all_vars_by_reference <- function(data, new_names) {

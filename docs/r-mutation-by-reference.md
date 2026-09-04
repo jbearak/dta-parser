@@ -41,18 +41,18 @@ names(copy)          # `copy` has the new column too
 copy$adjusted[1]
 ```
 
-Nothing was assigned. `gen()` returns the dataset invisibly, so `survey <- gen(survey, ...)` also works and is harmless, but it is misleading: the assignment is not what made the change, and writing it that way suggests the unmodified original still exists somewhere. It does not.
+This prepared dibble had spare capacity, so the append changed the existing table. `gen()` returns the updated dataset invisibly. Assigning that return value is useful when preparation or reallocation may be needed; in that case earlier aliases retain the original table.
 
-The same holds inside a function, which is the payoff for a translated script:
+Inside a function, return the updated table so the caller receives it even when capacity changes:
 
 ```r
 add_flags <- function(data) {
-    gen(data, poor = income < 1000)
-    repl(data, poor = NA, where = is_missing(income))
+    data <- gen(data, poor = income < 1000)
+    data <- repl(data, poor = NA, where = is_missing(income))
     invisible(data)
 }
 
-add_flags(survey)    # `survey` now has `poor`
+survey <- add_flags(survey)    # receives a rebuilt table if capacity changes
 ```
 
 ## Which operations write by reference
@@ -106,7 +106,7 @@ snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
 
 **Column capacity and aliases.** Constructors and readers reserve 5,000 spare column-pointer slots by default. Set `options(dtatools.alloccol = 5000L)` to change the number. Every column remains in the physical list: `unclass()`, `.subset()`, `attributes()`, `bind_rows()`, `bind_cols()`, purrr, JSON, and `write.csv()` all see the complete table. Within capacity, structural mutation preserves outer identity. When preparation or reallocation is necessary, the operation warns, shallow-copies the table without copying column payloads, and rebinds its target. Aliases retain the old complete table.
 
-Automatic rebinding supports a symbol, simple `$` and `[[` extractions, and `get()` or `get0()`. For other expressions assign the return value. Within a function, only the local parameter is rebound; return the table and assign the result in the caller when capacity changes.
+Automatic rebinding supports a symbol, simple `$` and `[[` extractions, and `get()` or `get0()`. Function entry points capture these destinations before values run. Bracket `:=` dispatch receives an already evaluated table, so assign its result for computed getter expressions. For other expressions assign the return value. Within a function, only the local parameter is rebound; return the table and assign the result in the caller when capacity changes.
 
 Use `data <- reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))` to prepare a base data frame, tibble, dibble, or data table explicitly. It preserves the container, rebuilds legacy overlays, and repairs a serialized dibble's current-object bookkeeping. Base `readRDS()` and `unserialize()` discard spare capacity: call and assign `reserve_columns()` before relying on dibble replacement aliases. `read_dta()` and `read_arrow()` already return prepared tables.
 

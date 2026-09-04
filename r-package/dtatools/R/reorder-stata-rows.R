@@ -3,8 +3,8 @@
 #' Gathers every column the way [slice_dta_rows()] does — compact
 #' Stata numeric columns through the native kernel, other columns
 #' through vctrs — then replaces the table's column pointers in
-#' place, so the table object keeps its identity and every reference
-#' to it sees the new row order. Unlike `data.table::set()`, the
+#' place when no legacy rebuild is needed, so the table object keeps its
+#' identity and every reference sees the new row order. Unlike `data.table::set()`, the
 #' gathered columns are installed without copying, so compact numeric
 #' columns stay unmaterialized.
 #'
@@ -23,6 +23,8 @@
 #' @export
 reorder_dta_rows <- function(data, rows) {
     target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
     original_data <- data
     if (.has_column_overlay(data)) {
         data <- .prepare_column_operation(data, length(.reference_names(data)))
@@ -47,7 +49,7 @@ reorder_dta_rows <- function(data, rows) {
         data.table::setattr(data, "sorted", NULL)
         data.table::setattr(data, "index", NULL)
     }
-    .return_mutation(original_data, data, target_expr, parent.frame())
+    .return_mutation(original_data, data, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 # Works out, for every logical column, where its reordered replacement

@@ -77,7 +77,7 @@ tbl[income < 0, income := NA]                         # error: tibbles have no `
 gen(tbl, flag = income > 0)               # by reference — and `tbl` is still a tibble
 ```
 
-The last line is the one to remember: `gen()` writes into `tbl` itself, so every binding to it sees `flag`, but `tbl` is a tibble before the call and a tibble after. Its existing columns are untouched; only `flag` takes Stata storage, as it would on a base data frame. `is_dibble(tbl)` is `FALSE`. `tbl <- as_dibble(tbl)` is how you ask for the Stata dataset.
+The first `gen()` prepares and rebinds this unprepared `tbl`, with a warning. Earlier aliases keep the original table. `tbl` remains a tibble and includes `flag`. Its existing columns are untouched; only `flag` takes Stata storage, as it would on a base data frame. `is_dibble(tbl)` is `FALSE`. `tbl <- as_dibble(tbl)` is how you ask for the Stata dataset.
 
 One consequence to expect: the expressions `gen()` evaluates on a tibble see the tibble's own columns, so `gen(tbl, n = .N, by = g)` on a bare character `g` treats `NA` and `""` as two groups. In a dibble they are one Stata string value and one group. Stata's collation applies where a Stata dataset is.
 

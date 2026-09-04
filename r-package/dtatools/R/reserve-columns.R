@@ -13,7 +13,10 @@
 #' the mutation target. Other aliases retain the old complete table.
 #'
 #' Automatic rebinding supports a symbol, simple `$` or `[[` extraction,
-#' and `get()` or `get0()`. Otherwise assign the returned result yourself.
+#' and `get()` or `get0()`. Destinations are captured before values run.
+#' Bracket `:=` receives an already-evaluated table: assign its result for
+#' computed getter expressions. Otherwise assign unsupported target results
+#' yourself.
 #' Rebinding a function parameter changes only that local parameter: return
 #' and assign the rebuilt table in the caller when capacity changes.
 #'
@@ -79,39 +82,76 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
     reserve_columns(data, n = max(0, columns - length(data)) + spare)
 }
 
-# Return and rebind only after a successful operation. Simple extraction
-# targets deliberately exclude calls in indices and nested replacement
-# expressions, which might rerun user code while writing the result.
-.return_mutation <- function(before, result, target, env) {
-    if (identical(rlang::obj_address(before), rlang::obj_address(result))) {
-        return(invisible(result))
+# Capture extraction/get destinations before values run. In particular, never
+# reevaluate a get() name or environment expression while rebinding.
+.capture_mutation_binding <- function(target, env) {
+    if (!is.call(target) || !is.symbol(target[[1L]])) return(NULL)
+    head <- as.character(target[[1L]])
+    if (head %in% c("$", "[[") && length(target) == 3L &&
+        is.symbol(target[[2L]]) &&
+        (is.symbol(target[[3L]]) || is.atomic(target[[3L]]))) {
+        container <- eval(target[[2L]], env)
+        key <- if (head == "$") as.character(target[[3L]]) else eval(target[[3L]], env)
+        value <- if (head == "$") do.call(`$`, list(container, key)) else container[[key]]
+        return(list(kind = "extraction", data = value, container = target[[2L]],
+                    key = key, head = head, env = env))
     }
+    if (!head %in% c("get", "get0")) return(NULL)
+    fun <- get(head, envir = env, mode = "function")
+    if (!identical(fun, get(head, envir = baseenv()))) return(NULL)
+    call <- match.call(fun, target)
+    args <- lapply(as.list(call)[-1L], eval, envir = env)
+    where <- args$envir
+    if (is.null(where)) {
+        pos <- args$pos
+        where <- if (is.null(pos) || identical(pos, -1L) || identical(pos, -1)) {
+            env
+        } else as.environment(pos)
+    }
+    args$envir <- where
+    args$pos <- NULL
+    value <- do.call(fun, args, envir = env)
+    inherits <- if (is.null(args$inherits)) TRUE else args$inherits
+    mode <- if (is.null(args$mode)) "any" else args$mode
+    if (isTRUE(inherits)) {
+        while (!identical(where, emptyenv()) &&
+               !exists(args$x, envir = where, mode = mode, inherits = FALSE)) {
+            where <- parent.env(where)
+        }
+    }
+    list(kind = "get", data = value, name = args$x, env = where)
+}
+
+.same_mutation_object <- function(x, y) {
+    identical(rlang::obj_address(x), rlang::obj_address(y))
+}
+
+.return_mutation <- function(before, result, target, env) {
+    if (.same_mutation_object(before, result)) return(invisible(result))
     if (is.symbol(target)) {
-        assign(as.character(target), result, envir = env)
-    } else if (is.call(target) && is.symbol(target[[1L]])) {
-        head <- as.character(target[[1L]])
-        if (head %in% c("$", "[[") && length(target) == 3L &&
-            is.symbol(target[[2L]]) &&
-            (is.symbol(target[[3L]]) || is.atomic(target[[3L]]))) {
-            eval(as.call(list(quote(`<-`), target, result)), envir = env)
-        } else if (head %in% c("get", "get0")) {
-            fun <- get(head, envir = baseenv())
-            call <- match.call(fun, target)
-            name <- eval(call$x, env)
-            where <- if (!is.null(call$envir)) {
-                eval(call$envir, env)
-            } else if (!is.null(call$pos)) {
-                pos <- eval(call$pos, env)
-                if (identical(pos, -1L) || identical(pos, -1)) env else as.environment(pos)
-            } else env
-            inherits <- if (is.null(call$inherits)) TRUE else eval(call$inherits, env)
-            if (is.character(name) && length(name) == 1L && is.environment(where)) {
-                if (isTRUE(inherits)) {
-                    while (!exists(name, envir = where, inherits = FALSE) &&
-                           !identical(where, emptyenv())) where <- parent.env(where)
-                }
-                if (!identical(where, emptyenv())) assign(name, result, envir = where)
-            }
+        current <- get0(as.character(target), envir = env, inherits = TRUE)
+        if (.same_mutation_object(current, before)) {
+            assign(as.character(target), result, envir = env)
+        } else {
+            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
+        }
+    } else if (is.list(target) && identical(target$kind, "get")) {
+        current <- get0(target$name, envir = target$env, inherits = FALSE)
+        if (.same_mutation_object(current, before)) {
+            assign(target$name, result, envir = target$env)
+        } else {
+            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
+        }
+    } else if (is.list(target) && identical(target$kind, "extraction")) {
+        container <- eval(target$container, target$env)
+        current <- if (target$head == "$") {
+            do.call(`$`, list(container, target$key))
+        } else container[[target$key]]
+        if (.same_mutation_object(current, before)) {
+            destination <- as.call(list(as.name(target$head), target$container, target$key))
+            eval(as.call(list(quote(`<-`), destination, result)), envir = target$env)
+        } else {
+            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
         }
     }
     invisible(result)

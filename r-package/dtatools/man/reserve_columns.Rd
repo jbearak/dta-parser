@@ -29,7 +29,10 @@ or reallocation is needed, they warn, shallow-copy the table, and rebind
 the mutation target. Other aliases retain the old complete table.
 
 Automatic rebinding supports a symbol, simple \code{$} or \code{[[} extraction,
-and \code{get()} or \code{get0()}. Otherwise assign the returned result yourself.
+and \code{get()} or \code{get0()}. Destinations are captured before values run.
+Bracket \verb{:=} receives an already-evaluated table: assign its result for
+computed getter expressions. Otherwise assign unsupported target results
+yourself.
 Rebinding a function parameter changes only that local parameter: return
 and assign the rebuilt table in the caller when capacity changes.
 

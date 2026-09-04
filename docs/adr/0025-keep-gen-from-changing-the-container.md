@@ -1,8 +1,8 @@
 ---
-
-> ADR [0026](0026-reserve-physical-columns-and-rebind-on-reallocation.md) supersedes the guarantee that every binding sees structural changes when preparation or reallocation is needed.
 status: accepted
 ---
+
+> ADR [0026](0026-reserve-physical-columns-and-rebind-on-reallocation.md) supersedes the guarantee that every binding sees structural changes when preparation or reallocation is needed.
 
 # Keep `gen()` from changing the container it was handed
 
