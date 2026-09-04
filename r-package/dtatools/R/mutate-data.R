@@ -1833,7 +1833,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (is.null(column)) {
             column <- .data_column_at(access, target$location)
         }
-        declared <- if (promote) {
+        # A selection of no rows changes no value, so it declares nothing.
+        declared <- if (promote &&
+            .mutation_selected_count(rows, original$nrow) > 0L) {
             .wider_declared_storage(values, column)
         } else {
             NULL
@@ -2388,23 +2390,16 @@ vec_proxy.dtatools_ref_data <- function(x, ...) {
 }
 
 #' @export
-# vctrs and dplyr restore a result to its first input alone, so a
-# `bind_cols()`, `bind_rows()`, or join can carry columns shared with
-# any other input; every column is isolated.
 #' @export
 vec_restore.dtatools_ref_data <- function(x, to, ...) {
-    .close_dibble(
-        to, vctrs::vec_restore(x, .reference_snapshot(to), ...),
-        sources = NULL
-    )
+    .close_dibble(to, vctrs::vec_restore(x, .reference_snapshot(to), ...))
 }
 
 #' @export
 dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
     .close_dibble(
         template,
-        dplyr::dplyr_reconstruct(data, .reference_snapshot(template)),
-        sources = NULL
+        dplyr::dplyr_reconstruct(data, .reference_snapshot(template))
     )
 }
 
@@ -2901,7 +2896,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # reference frame it returns what the ordinary implementation did. A
 # non-data-frame result, such as `with()`'s, is returned as is.
 .close_dibble <- function(data, result, caller = "as_dibble()",
-                          sources = list(data)) {
+                          sources = NULL) {
     if (!is_dibble(data) || !is.data.frame(result) || is_dibble(result)) {
         return(result)
     }
@@ -2915,8 +2910,13 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # becomes a copy-on-write view: a compact column stays compact behind a
 # metadata proxy whose first write on either side detaches, and a plain
 # vector is copied. Columns the operation rebuilt are already the
-# result's own. `sources = NULL` isolates every column, for the vctrs and
-# dplyr hooks that see only the first input of a `bind_cols()` or join.
+# result's own. `sources = NULL`, the default, isolates every column:
+# a data-masked verb such as `mutate(d, copied = other$flag)` can bring
+# in a vector from any frame, and the vctrs and dplyr hooks see only the
+# first input of a `bind_cols()` or join, so the inputs the closure can
+# name are rarely the only ones. A caller that knows every input, as
+# `cbind()` and `rbind()` do, passes them so untouched columns are left
+# as they are.
 .isolate_shared_columns <- function(result, sources) {
     isolate_all <- is.null(sources)
     source_addresses <- if (!isolate_all) {

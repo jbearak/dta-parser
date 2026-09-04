@@ -810,6 +810,12 @@ test_that("a := value with declared storage widens the column to it", {
     data <- dibble(x = dta_int(1:3), y = dta_long(1:3))
     data[, x := y * 2L]
     expect_identical(dta_storage_type(data$x), "long")
+    # A selection of no rows changes nothing, storage included.
+    untouched <- dibble(x = dta_byte(1:2), s = c("a", "b"))
+    untouched[FALSE, x := dta_double(1)]
+    untouched[FALSE, s := dta_string("z", "str20")]
+    expect_identical(dta_storage_type(untouched$x), "byte")
+    expect_identical(attr(untouched$s, "stata.string.storage"), "str1")
     # A narrower declaration keeps the column's storage.
     data <- dibble(x = dta_long(1:3))
     data[1, x := dta_byte(7)]
@@ -1087,6 +1093,13 @@ test_that("column binding isolates every input, not only the first", {
     joined <- dplyr::left_join(left, joined_source, by = "x")
     repl(joined, w = FALSE)
     expect_identical(joined_source$w, c(TRUE, TRUE))
+    # A data-masked verb can bring a vector in from any frame.
+    masked <- dplyr::mutate(left, copied = right$flag)
+    masked[, copied := FALSE]
+    expect_identical(right$flag, c(TRUE, FALSE))
+    keyed <- dplyr::group_by(left, g = right$flag)
+    keyed[, g := FALSE]
+    expect_identical(right$flag, c(TRUE, FALSE))
     # bind_rows() with a single input shares nothing that can leak either.
     rows <- dplyr::bind_rows(left, tibble::tibble(x = 3L))
     rows[, x := 0L]
