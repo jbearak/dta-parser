@@ -8,7 +8,7 @@
 #' `as_dibble()` converts a data frame, tibble, or data table; `is_dibble()`
 #' tests for one.
 #'
-#' Reference state is what lets [gen()], [replace_values()], [keep_vars()],
+#' Reference state is what lets [gen()], \code{\link[=replace_values]{replace_values()}}, [keep_vars()],
 #' and the other by-reference operations change a dataset in place so that
 #' every binding to it sees the change. On a plain tibble the first `gen()`
 #' attaches that state, so a dibble and a tibble that has been through
@@ -33,7 +33,7 @@
 #'
 #' The replacement operators are the exception: `$<-`, `[[<-`, `[<-`,
 #' `names<-`, `dimnames<-`, and `row.names<-` on a dibble write by
-#' reference, as [gen()], [replace_values()], and `:=` do, so every binding
+#' reference, as [gen()], \code{\link[=replace_values]{replace_values()}}, and `:=` do, so every binding
 #' to the dataset sees the change and a replacement inside a function
 #' reaches the caller's dibble. Because R
 #' spells `var_label(data$x) <- "Age"` as a `$<-` call, every metadata
@@ -176,7 +176,7 @@ is_dibble <- function(x) {
 #' A dibble supports data.table's assignment shape, `data[i, j, by]`, with
 #' `j` one or more `:=` assignments:
 #' `data[income > 20, adjusted := income * 1.1]`. The assignment happens by
-#' reference, as with [gen()] and [replace_values()], and the call returns
+#' reference, as with [gen()] and \code{\link[=replace_values]{replace_values()}}, and the call returns
 #' the dibble so brackets chain:
 #' `data[i, y := 1][j, z := 2]`. Because `[` always makes its result
 #' visible, the dataset would print after every assignment; as data.table
@@ -193,7 +193,7 @@ is_dibble <- function(x) {
 #'
 #' `i` is `where`: `NULL` or missing selects every row, and a logical
 #' expression or numeric row positions follow the rules of
-#' [replace_values()], including the shadow check and the `.n`/`.N` mask
+#' \code{\link[=replace_values]{replace_values()}}, including the shadow check and the `.n`/`.N` mask
 #' variables. Each right-hand side of `:=` is `values`, evaluated in the
 #' same data mask. Unlike `gen()`, which refuses an existing name, and
 #' `replace_values()`, which refuses a new one, `:=` creates a column that
@@ -222,7 +222,7 @@ is_dibble <- function(x) {
 #' `data[, total := sum(x), id]` is `data[, total := sum(x), by = id]`.
 #'
 #' `by`, `bysort`, and a grouped dibble behave exactly as in
-#' [replace_values()]: groups are formed first, then `i` and each value
+#' \code{\link[=replace_values]{replace_values()}}: groups are formed first, then `i` and each value
 #' are evaluated on each group's rows, which is Stata's `by varlist:`
 #' order rather than data.table's; see the group-wise assignment section
 #' there for `.n`/`.N`, sorting, and the `by`-plus-grouped error. Under
@@ -235,14 +235,14 @@ is_dibble <- function(x) {
 #' return a new dibble holding the selection, following copy-on-modify.
 #'
 #' @param x A dibble.
-#' @param i Row selection, as `where` in [replace_values()]: missing or
+#' @param i Row selection, as `where` in \code{\link[=replace_values]{replace_values()}}: missing or
 #'   `NULL` for every row, a logical expression, or row positions.
 #'   Without `:=` in `j`, ordinary tibble row indexing.
 #' @param j One or more `:=` assignments, or, without `:=`, ordinary
 #'   tibble column indexing.
 #' @param ... Passed to tibble's `[` when `j` is not an assignment.
 #'   Not allowed otherwise.
-#' @param by,bysort Assignment groups, as in [replace_values()]. Only
+#' @param by,bysort Assignment groups, as in \code{\link[=replace_values]{replace_values()}}. Only
 #'   allowed with a `:=` in `j`.
 #' @param drop Passed to tibble's `[` when `j` is not an assignment.
 #' @return With a `:=` in `j`, `x` invisibly, mutated. Otherwise the
@@ -257,7 +257,7 @@ is_dibble <- function(x) {
 #' name <- "flag"
 #' survey[id > 2, .(name) := TRUE]
 #' survey[1, ]
-#' @seealso [dibble], [replace_values()]
+#' @seealso [dibble], \code{\link[=replace_values]{replace_values()}}
 #' @name dibble-bracket
 NULL
 
