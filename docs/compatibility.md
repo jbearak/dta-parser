@@ -1,6 +1,6 @@
 # DTA compatibility
 
-The TypeScript and Rust parsers are independent implementations. The R package uses the Rust parser and converts its result into R vectors and a dibble, a tibble that carries Stata storage and dtatools reference state. All three interfaces are checked against the same fixtures and case inventory.
+The TypeScript and Rust parsers are independent implementations. The R package uses the Rust parser and materializes its result as R vectors in a dibble, a tibble that carries Stata storage and dtatools reference state, then applies the container the call asked for: a dibble, a plain tibble, or a data table. All three interfaces are checked against the same fixtures and case inventory.
 
 ## Supported releases
 

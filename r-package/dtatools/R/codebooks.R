@@ -385,7 +385,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         "categorical"
     } else if (numeric) "continuous" else "examples"
     storage <- if (inherits(x, "stata_numeric") || inherits(x, "stata_temporal")) {
-        dta_storage_type(x)
+        .declared_stata_storage(x)
     } else typeof(x)
     type <- if (is.ordered(x)) "ordered factor" else if (is.factor(x)) "factor" else {
         paste(class(x), collapse = "/")
@@ -500,7 +500,7 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
             "Date variable contains noninteger values")
     }
     declared <- if (inherits(x, "stata_numeric") || inherits(x, "stata_temporal")) {
-        dta_storage_type(x)
+        .declared_stata_storage(x)
     } else NULL
     if (!is.null(declared) && is.numeric(x)) {
         observed <- .book_numeric_data(x[!missing])

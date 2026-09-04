@@ -146,7 +146,8 @@ behavior as haven-compatible vectors.
 \section{Stata storage declarations}{
 \code{dta_storage_type()} reports \code{"byte"}, \code{"int"},
 \code{"long"}, \code{"float"}, or \code{"double"} without materializing
-compact backing. Use \code{dta_byte()}, \code{dta_int()},
+compact backing, and \code{"str1"} through
+\code{"str2045"} or \code{"strL"} for a declared Stata string. Use \code{dta_byte()}, \code{dta_int()},
 \code{dta_long()}, \code{dta_float()}, and \code{dta_double()} to
 declare storage for derived vectors. Constructors and explicit casts reject
 unrepresentable values and name the wider constructor to use. Float

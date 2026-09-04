@@ -458,8 +458,8 @@ dta_append <- function(sources, force = TRUE,
     }
     left <- .append_without_value_labels(left)
     right <- .append_without_value_labels(right)
-    left_storage <- dta_storage_type(left)
-    right_storage <- dta_storage_type(right)
+    left_storage <- .declared_stata_storage(left)
+    right_storage <- .declared_stata_storage(right)
     left_declared <- !is.null(left_storage) &&
         !inherits(left, "stata_temporal")
     right_declared <- !is.null(right_storage) &&
@@ -608,7 +608,7 @@ dta_append <- function(sources, force = TRUE,
     if (inherits(prototype, "stata_string")) {
         return(structure(character(total_rows), dtatools.buffer = "string"))
     }
-    storage <- dta_storage_type(prototype)
+    storage <- .declared_stata_storage(prototype)
     if (is.null(storage)) return(NULL)
     structure(
         rep(NA_real_, total_rows), dtatools.buffer = "numeric",
@@ -629,7 +629,7 @@ dta_append <- function(sources, force = TRUE,
     # lossless lattice, so it represents every contributor's values
     # exactly. A bare double carries no such guarantee, so the caller
     # casts it to the prototype before writing.
-    !is.null(dta_storage_type(value)) &&
+    !is.null(.declared_stata_storage(value)) &&
         !inherits(value, "stata_temporal") && is.null(names(value))
 }
 
@@ -648,7 +648,7 @@ dta_append <- function(sources, force = TRUE,
     if (is.null(writable) || inherits(prototype, "stata_string")) {
         return(writable)
     }
-    storage <- dta_storage_type(prototype)
+    storage <- .declared_stata_storage(prototype)
     if (is.null(storage)) {
         return(writable)
     }
@@ -710,7 +710,7 @@ dta_append <- function(sources, force = TRUE,
                                    schemas, my_name, force) {
     # Stata numerics, including temporals, need observation-level range
     # validation in addition to vctrs' type compatibility check.
-    if (!is.null(dta_storage_type(prototype))) {
+    if (!is.null(.declared_stata_storage(prototype))) {
         for (my_index in seq_along(the_pieces)) {
             cast <- .append_cast_to_buffer(the_pieces[[my_index]], prototype)
             if (is.null(cast)) {
@@ -758,7 +758,7 @@ dta_append <- function(sources, force = TRUE,
     if (inherits(prototype, "stata_string")) {
         return(vctrs::vec_cast(rep("", rows), prototype))
     }
-    storage <- dta_storage_type(prototype)
+    storage <- .declared_stata_storage(prototype)
     if (!is.null(storage) && storage %in%
         c("byte", "int", "long", "float", "double")) {
         constructor <- switch(

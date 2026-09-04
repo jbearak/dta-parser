@@ -628,14 +628,14 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_has_compact_storage <- function(value) {
-    !identical(dta_storage_type(value), "double") &&
+    !identical(.declared_stata_storage(value), "double") &&
         .is_unmaterialized_numeric_altrep(value)
 }
 
 .dta_merge_same_compact_storage <- function(x, y) {
     .dta_merge_has_compact_storage(x) &&
         .dta_merge_has_compact_storage(y) &&
-        identical(dta_storage_type(x), dta_storage_type(y)) &&
+        identical(.declared_stata_storage(x), .declared_stata_storage(y)) &&
         identical(
             .temporal_kind_or_missing(x),
             .temporal_kind_or_missing(y)
@@ -643,8 +643,8 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_same_double_storage <- function(x, y) {
-    identical(dta_storage_type(x), "double") &&
-        identical(dta_storage_type(y), "double") &&
+    identical(.declared_stata_storage(x), "double") &&
+        identical(.declared_stata_storage(y), "double") &&
         identical(
             .temporal_kind_or_missing(x),
             .temporal_kind_or_missing(y)
@@ -652,7 +652,7 @@ dta_merge <- function(x, y, by, relationship,
 }
 
 .dta_merge_restore_gathered <- function(value, prototype) {
-    storage <- dta_storage_type(prototype)
+    storage <- .declared_stata_storage(prototype)
     if (inherits(prototype, "stata_temporal")) {
         return(.attach_stata_temporal(value, prototype, storage))
     }
@@ -713,7 +713,7 @@ dta_merge <- function(x, y, by, relationship,
         )
         return(.dta_merge_restore_gathered(gathered, value))
     }
-    if (identical(dta_storage_type(value), "double")) {
+    if (identical(.declared_stata_storage(value), "double")) {
         gathered <- .stata_data(value)[rows]
         return(.dta_merge_restore_gathered(gathered, value))
     }
@@ -734,7 +734,7 @@ dta_merge <- function(x, y, by, relationship,
     if (count == 0L) return(result)
 
     storage <- vapply(values, function(value) {
-        storage <- dta_storage_type(value)
+        storage <- .declared_stata_storage(value)
         if (is.null(storage)) "" else storage
     }, character(1))
     compact <- vapply(
@@ -849,8 +849,8 @@ dta_merge <- function(x, y, by, relationship,
     }
 
     ordinary <- !native & vapply(seq_len(count), function(index) {
-        is.null(dta_storage_type(x[[index]])) &&
-            is.null(dta_storage_type(y[[index]]))
+        is.null(.declared_stata_storage(x[[index]])) &&
+            is.null(.declared_stata_storage(y[[index]]))
     }, logical(1))
     if (any(ordinary)) {
         gathered <- vctrs::vec_slice(

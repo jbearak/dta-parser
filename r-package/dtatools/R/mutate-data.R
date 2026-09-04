@@ -1671,9 +1671,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # A real metadata copy must revoke exclusive patch ownership; this internal
     # cast must not.
     prototype <- if (inherits(target, "stata_temporal")) {
-        .stata_temporal_ptype(dta_storage_type(target), target)
+        .stata_temporal_ptype(.declared_stata_storage(target), target)
     } else if (inherits(target, "stata_numeric")) {
-        .stata_ptype(dta_storage_type(target), target)
+        .stata_ptype(.declared_stata_storage(target), target)
     } else {
         target[integer()]
     }
@@ -1984,7 +1984,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             caller
         ), call. = FALSE)
     }
-    declared <- dta_storage_type(values)
+    declared <- .declared_stata_storage(values)
     base_date <- inherits(values, "Date") &&
         !inherits(values, "stata_temporal")
     base_datetime <- inherits(values, "POSIXct") &&
@@ -2849,7 +2849,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(.new_stata_string(enc2utf8(text), storage, prior))
     }
     doubles <- as.double(values)
-    if (is.null(declared)) declared <- dta_storage_type(prior)
+    if (is.null(declared)) declared <- .declared_stata_storage(prior)
     # Promotion only widens: the search starts at the declared storage,
     # so a `dta_float()` value beside a retained integer float cannot
     # hold goes to `double` rather than back to `long`.
@@ -2884,7 +2884,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
             .stata_string_required_width(text))
     }
     .stata_storage_holds(
-        as.double(vctrs::vec_data(values)), dta_storage_type(target)
+        as.double(vctrs::vec_data(values)), .declared_stata_storage(target)
     )
 }
 
@@ -2942,8 +2942,8 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(if (wider) declared else NULL)
     }
     if (!inherits(values, "stata_numeric")) return(NULL)
-    declared <- match(dta_storage_type(values), .stata_storage)
-    current <- match(dta_storage_type(target), .stata_storage)
+    declared <- match(.declared_stata_storage(values), .stata_storage)
+    current <- match(.declared_stata_storage(target), .stata_storage)
     if (is.na(declared) || is.na(current) || declared <= current) {
         return(NULL)
     }

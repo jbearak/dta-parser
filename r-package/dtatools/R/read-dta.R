@@ -83,7 +83,8 @@
 #'
 #' @section Stata storage declarations:
 #' [dta_storage_type()] reports `"byte"`, `"int"`, `"long"`, `"float"`, or
-#' `"double"` without materializing compact backing. Use [dta_byte()],
+#' `"double"` without materializing compact backing, and `"str1"` through
+#' `"str2045"` or `"strL"` for a declared Stata string. Use [dta_byte()],
 #' [dta_int()], [dta_long()], [dta_float()], and [dta_double()] to
 #' declare storage for derived vectors. Constructors and explicit casts reject
 #' unrepresentable values and name the wider constructor to use. Float
