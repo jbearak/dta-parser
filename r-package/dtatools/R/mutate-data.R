@@ -1836,9 +1836,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (is.null(column)) {
             column <- .data_column_at(access, target$location)
         }
-        # A selection of no rows changes no value, so it declares nothing.
-        declared <- if (promote &&
-            .mutation_selected_count(rows, original$nrow) > 0L) {
+        # A `:=` that selects no rows changes nothing and returns here:
+        # it neither declares storage nor promotes, and it skips the
+        # strict patch, whose scalar width check `replace_values()` keeps
+        # for its own zero-row calls.
+        if (promote &&
+            .mutation_selected_count(rows, original$nrow) == 0L) {
+            return(invisible(data))
+        }
+        declared <- if (promote) {
             .wider_declared_storage(values, column)
         } else {
             NULL
@@ -2573,18 +2579,23 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # onto values it no longer describes, and such a column is retyped rather
 # than trusted. That includes a `stata_string` vector: `full_join()` and
 # `bind_rows()` pad one with `NA` while vctrs keeps its class, so the
-# class is no proof. A compact dictionary string holds by construction,
-# with no `NA` and a width read from its dictionary, and is not scanned.
+# class is no proof. A compact dictionary string has no `NA` by
+# construction and its width is read from the dictionary, so it is
+# checked without being materialized.
 .string_declaration_holds <- function(column) {
     declared <- attr(column, "stata.string.storage", exact = TRUE)
     if (is.null(declared)) return(FALSE)
-    if (.is_unmaterialized_dictstring(column)) return(TRUE)
     valid <- is.character(declared) && length(declared) == 1L &&
         !is.na(declared) && (identical(declared, "strL") || grepl(
             "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
             declared
         ))
-    if (!valid || anyNA(column)) return(FALSE)
+    if (!valid) return(FALSE)
+    if (.is_unmaterialized_dictstring(column)) {
+        return(.stata_string_storage_width(declared) >=
+            max(1L, .dictstring_max_width(column)))
+    }
+    if (anyNA(column)) return(FALSE)
     .stata_string_storage_width(declared) >=
         .stata_string_required_width(column)
 }
@@ -2728,9 +2739,16 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # stands in for the prior column's.
 .promoted_column <- function(values, prior, row_count, caller,
                              declared = NULL) {
+    # A bare logical replacing a Stata numeric is a fitting replacement,
+    # as `replace x = x > 1` is in Stata, so it keeps the column's
+    # storage rather than turning the column logical.
+    logical_over_numeric <- typeof(values) == "logical" &&
+        !is.object(values) && inherits(prior, "stata_numeric") &&
+        !inherits(prior, "stata_temporal")
     # An explicit `dta_*()` or arithmetic result already carries the
     # storage the user asked for; a column no storage holds passes through.
-    if (.stata_typed_column(values) || .stata_untypable_column(values)) {
+    if (!logical_over_numeric &&
+        (.stata_typed_column(values) || .stata_untypable_column(values))) {
         return(values)
     }
     if (is.character(values) &&

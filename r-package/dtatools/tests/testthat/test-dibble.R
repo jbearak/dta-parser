@@ -768,6 +768,24 @@ test_that("bracket assignment and partial replacement promote storage", {
     expect_identical(as.double(once$x), c(1000, 5, 3))
 })
 
+test_that("a logical overwriting a Stata numeric keeps its storage", {
+    data <- dibble(x = dta_byte(1:3), n = dta_long(1:3))
+    flagged <- dplyr::mutate(data, x = x > 1)
+    expect_identical(dta_storage_type(flagged$x), "byte")
+    expect_identical(as.double(flagged$x), c(0, 1, 1))
+    data$n <- c(TRUE, FALSE, NA)
+    expect_identical(dta_storage_type(data$n), "long")
+    expect_identical(as.double(data$n), c(1, 0, NA))
+    data[, x := x == 2]
+    expect_identical(dta_storage_type(data$x), "byte")
+    expect_identical(as.double(data$x), c(0, 1, 0))
+    # A logical replacing a logical, a date, or a factor stays logical.
+    mixed <- dibble(flag = c(TRUE, FALSE), day = as.Date("2024-01-01") + 0:1)
+    mixed <- dplyr::mutate(mixed, flag = !flag, day = day > as.Date("2024-01-01"))
+    expect_identical(mixed$flag, c(FALSE, TRUE))
+    expect_identical(mixed$day, c(FALSE, TRUE))
+})
+
 test_that("overwriting a typed column with an untypable one passes through", {
     data <- dibble(x = 1:3, s = c("a", "b", "c"))
     listed <- dplyr::mutate(data, x = as.list(as.integer(x)))
@@ -816,12 +834,21 @@ test_that("a := value with declared storage widens the column to it", {
     data <- dibble(x = dta_int(1:3), y = dta_long(1:3))
     data[, x := y * 2L]
     expect_identical(dta_storage_type(data$x), "long")
-    # A selection of no rows changes nothing, storage included.
+    # A selection of no rows changes nothing, storage included, and a
+    # compact column stays compact.
     untouched <- dibble(x = dta_byte(1:2), s = c("a", "b"))
     untouched[FALSE, x := dta_double(1)]
     untouched[FALSE, s := dta_string("z", "str20")]
+    untouched[FALSE, s := "longer"]
     expect_identical(dta_storage_type(untouched$x), "byte")
     expect_identical(attr(untouched$s, "stata.string.storage"), "str1")
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(dibble(s = c("a", "b")), path)
+    compact <- read_dta(path)
+    compact[FALSE, s := "longer"]
+    expect_true(dtatools:::.is_unmaterialized_dictstring(compact$s))
+    expect_identical(attr(compact$s, "stata.string.storage"), "str1")
     # A narrower declaration keeps the column's storage.
     data <- dibble(x = dta_long(1:3))
     data[1, x := dta_byte(7)]
@@ -927,6 +954,19 @@ test_that("a stale string declaration is redone on entering a dibble", {
     )
     fixed <- as_dibble(bad)
     expect_identical(attr(fixed$s, "stata.string.storage"), "str1")
+    # A compact column's stale declaration is checked against the
+    # dictionary and repaired without materializing it.
+    dta_path <- tempfile(fileext = ".dta")
+    on.exit(unlink(dta_path), add = TRUE)
+    save_dta(dibble(s = c("a", "long")), dta_path)
+    compact <- read_dta(dta_path, output = "tibble")
+    attr(compact$s, "stata.string.storage") <- "str1"
+    expect_true(dtatools:::.is_unmaterialized_dictstring(compact$s))
+    repaired <- as_dibble(compact)
+    expect_true(dtatools:::.is_unmaterialized_dictstring(repaired$s))
+    expect_identical(attr(repaired$s, "stata.string.storage"), "str4")
+    expect_identical(as.character(repaired$s), c("a", "long"))
+    expect_no_warning(save_dta(repaired, dta_path))
     # The repaired column survives an Arrow round trip.
     path <- tempfile(fileext = ".arrow")
     on.exit(unlink(path), add = TRUE)
