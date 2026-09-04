@@ -270,7 +270,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
     # and the result, so a later `gen()` on either would write to both.
     # A dibble is re-marked afterwards; the result is a new object either
     # way.
-    dibble_input <- is_dibble(x)
+    source <- x
     if (inherits(x, "dtatools_ref_data")) x <- .reference_snapshot(x)
     target <- .stata_metadata_target(x, variable)
     changed <- .metadata_copy(target$value)
@@ -282,7 +282,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         result[[target$index]] <- changed
         .as_stata_metadata_frame(result)
     }
-    if (dibble_input) .as_dibble(result) else result
+    .close_dibble(source, result)
 }
 
 .stata_set_notes <- function(x, variable, notes) {

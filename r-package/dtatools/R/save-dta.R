@@ -6,7 +6,8 @@
 #'
 #' @section Conversions and metadata:
 #' Bare logical, integer, and double columns use Stata `byte`, `long`, and
-#' `double` storage. A valid `stata.storage` declaration takes precedence.
+#' `double` storage, the mapping in [stata-storage-defaults]. A valid
+#' `stata.storage` declaration takes precedence.
 #' Compatible Stata display formats, dataset and variable labels, value labels,
 #' tagged missing codes, dates, datetimes, long strings, numbered notes, and
 #' arbitrary Stata characteristics at dataset and variable scope are retained.

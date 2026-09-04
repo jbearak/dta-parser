@@ -782,8 +782,11 @@ test_that("native numerics use width-aware storage with R value semantics", {
     actual <- read_dta(path)
 
     numeric_columns <- vapply(reference, is.numeric, logical(1))
+    # `.subset()` reads the columns as read: `[` on a dibble returns a new
+    # dibble whose shared columns sit behind copy-on-write proxies.
     expect_true(all(vapply(
-        actual[numeric_columns], dtatools:::.is_numeric_altrep, logical(1)
+        .subset(actual, numeric_columns), dtatools:::.is_numeric_altrep,
+        logical(1)
     )))
     expect_false(dtatools:::.is_numeric_altrep(actual$make))
 
@@ -903,7 +906,7 @@ test_that("native numerics use width-aware storage with R value semantics", {
         altrep_indices <- which(storage %in% c("byte", "int", "long", "float"))
         eager_indices <- which(storage == "double")
         expect_true(all(vapply(
-            actual[altrep_indices],
+            .subset(actual, altrep_indices),
             dtatools:::.is_numeric_altrep,
             logical(1)
         )), info = name)

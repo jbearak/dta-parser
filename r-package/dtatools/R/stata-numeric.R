@@ -24,12 +24,16 @@
 #' serialized as its current R doubles so any prior writable access is kept.
 #'
 #' @section Vector operations:
-#' Subset assignment, [replace()], `dplyr::if_else()`, `dplyr::mutate()`, and
-#' vctrs concatenation retain declared storage and re-encode compact results.
-#' Extending a vector with another declared Stata numeric uses their common
-#' storage type and combines compatible metadata. This supports base data-frame
-#' reconstruction such as right and full [merge()] calls. Extending with a bare
-#' value remains strict, like replacement within the existing vector.
+#' Subset assignment and [replace()] retain declared storage and re-encode
+#' compact results; a value the storage cannot hold is an error. Extending a
+#' vector with another declared Stata numeric, through vctrs concatenation,
+#' `dplyr::if_else()`, `dplyr::bind_rows()`, or a join, uses their common
+#' storage type and combines compatible metadata. This supports base
+#' data-frame reconstruction such as right and full [merge()] calls.
+#' Extending with a bare R vector uses the common storage with that vector's
+#' own Stata storage from [stata-storage-defaults]: `long` for an integer,
+#' `double` for a double, and the declared storage for a logical, so
+#' `vec_c(dta_byte(1), 1000L)` is a `long` rather than an error.
 #' Stata-backed `Date` and `POSIXct` vectors use the same extension rule when
 #' both inputs have the same temporal kind.
 #' Base `ifelse()` takes attributes from its condition, so it returns a bare
@@ -331,6 +335,19 @@ as.double.stata_numeric <- function(x, ...) {
 #' @export
 as.character.stata_numeric <- function(x, ...) {
     as.character(.stata_snapshot(x), ...)
+}
+
+# Integer and logical views of a Stata numeric: Stata missing codes become
+# `NA`, as `as.double()` makes them. `long` is the storage of every bare
+# R integer in a dibble, so `as.integer()` is the way back.
+#' @export
+as.integer.stata_numeric <- function(x, ...) {
+    as.integer(.stata_snapshot(x), ...)
+}
+
+#' @export
+as.logical.stata_numeric <- function(x, ...) {
+    as.logical(.stata_snapshot(x), ...)
 }
 
 .stata_data <- function(x) {
@@ -853,18 +870,33 @@ vec_ptype2.stata_numeric.stata_numeric <- function(
     )
 }
 
+# A bare R vector meets a Stata numeric at the storage the mapping in
+# `?stata-storage-defaults` gives it: `long` for an integer, `double` for
+# a double, and, for a logical, whatever the Stata side declares, since
+# 0 and 1 fit every storage. The common type is the promotion of the two,
+# so `vec_c(dta_byte(1), 1000L)` is a `long` and never a failed cast.
+.stata_bare_ptype <- function(typed, bare) {
+    declared <- dta_storage_type(typed)
+    storage <- switch(typeof(bare),
+        integer = .stata_promote(declared, "long"),
+        double = .stata_promote(declared, "double"),
+        declared
+    )
+    .stata_ptype(storage, typed)
+}
+
 #' @export
 vec_ptype2.stata_numeric.double <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_ptype(dta_storage_type(x), x)
+    .stata_bare_ptype(x, y)
 }
 
 #' @export
 vec_ptype2.double.stata_numeric <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_ptype(dta_storage_type(y), y)
+    .stata_bare_ptype(y, x)
 }
 
 #' @export
@@ -912,6 +944,26 @@ vec_cast.double.stata_numeric <- function(
     as.double(x)
 }
 
+#' @export
+vec_cast.integer.stata_numeric <- function(
+    x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
+) {
+    vctrs::vec_cast(
+        .stata_snapshot(x), integer(), x_arg = x_arg, to_arg = to_arg,
+        call = call
+    )
+}
+
+#' @export
+vec_cast.logical.stata_numeric <- function(
+    x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
+) {
+    vctrs::vec_cast(
+        .stata_snapshot(x), logical(), x_arg = x_arg, to_arg = to_arg,
+        call = call
+    )
+}
+
 .stata_subscript_extends <- function(x, i) {
     size <- length(x)
     if (is.character(i)) {
@@ -929,12 +981,11 @@ vec_cast.double.stata_numeric <- function(
     FALSE
 }
 
+# Extending a Stata numeric takes the common storage of the vector and
+# the value, a declared one or a bare one at its own mapping, so base
+# `rbind()` appending an integer 1000 to a `byte` column yields a `long`.
 .extend_stata_numeric <- function(x, i, value, scalar = FALSE) {
-    prototype <- if (inherits(value, "stata_numeric")) {
-        vctrs::vec_ptype2(x, value)
-    } else {
-        vctrs::vec_ptype(x)
-    }
+    prototype <- vctrs::vec_ptype2(x, value)
     data <- .stata_data(x)
     replacement <- .stata_data(vctrs::vec_cast(value, prototype))
     if (scalar) data[[i]] <- replacement else data[i] <- replacement
@@ -1096,6 +1147,49 @@ vec_arith.logical.stata_numeric <- vec_arith.numeric.stata_numeric
 #' @export
 vec_arith.stata_numeric.default <- function(op, x, y, ...) {
     vctrs::stop_incompatible_op(op, x, y)
+}
+
+# A Stata numeric beside a date or datetime takes part as its double
+# values, so `as.Date("2024-01-01") + id` on a dibble's `long` id column
+# is a date. Without these, R sees two Ops methods and falls back to the
+# internal arithmetic with a warning and a numeric result.
+#' @export
+vec_arith.stata_numeric.Date <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+}
+
+#' @export
+vec_arith.Date.stata_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+}
+
+#' @export
+vec_arith.stata_numeric.POSIXct <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+}
+
+#' @export
+vec_arith.POSIXct.stata_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+}
+
+#' @export
+vec_arith.stata_numeric.difftime <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+}
+
+#' @export
+vec_arith.difftime.stata_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+}
+
+# When a Stata numeric meets a date, datetime, or difftime, which have
+# their own Ops methods, this side is chosen, so dispatch continues
+# through vctrs to the `vec_arith` methods above instead of R's
+# incompatible-methods warning. Other classes keep R's default choice.
+#' @export
+chooseOpsMethod.stata_numeric <- function(x, y, mx, my, cl, reverse) {
+    inherits(y, c("Date", "POSIXct", "difftime"))
 }
 
 #' @export

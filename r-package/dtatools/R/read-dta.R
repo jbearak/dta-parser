@@ -249,6 +249,10 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     .Call(C_dtatools_dictstring_cached_count, value)
 }
 
+.dictstring_max_width <- function(value) {
+    .Call(C_dtatools_dictstring_max_width, value)
+}
+
 .force_altrep_materialization <- function(value) {
     .Call(C_dtatools_force_altrep_materialization, value)
 }

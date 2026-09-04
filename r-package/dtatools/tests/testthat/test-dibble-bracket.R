@@ -7,7 +7,9 @@ test_that("one := creates a missing column and overwrites an existing one", {
     expect_true(is_dibble(result))
     expect_identical(names(data), c("x", "y"))
     expect_identical(as.double(data$y), c(2, 4, 6))
-    expect_identical(dta_storage_type(data$y), "float")
+    # Arithmetic on the typed `double` column declares `double`; a bare
+    # double would take Stata's `generate` default of `float`.
+    expect_identical(dta_storage_type(data$y), "double")
 
     data[, y := 0]
     expect_identical(as.double(data$y), c(0, 0, 0))
@@ -64,15 +66,27 @@ test_that("several assignments apply left to right", {
 test_that("each assignment in j commits or fails on its own", {
     data <- dibble(x = dta_byte(c(1, 2, 3)))
     before <- names(data)
-    expect_error(data[2, `:=`(y = 1, x = 1000)], "byte")
+    # A value the column's kind cannot take fails; promotion widens
+    # storage, not kind.
+    expect_error(
+        data[2, `:=`(y = 1, x = "text")], "logical, integer, or double"
+    )
     expect_identical(names(data), c(before, "y"))
     expect_identical(as.double(data$y), c(NA, 1, NA))
     expect_identical(as.double(data$x), c(1, 2, 3))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
 
     # A failure in the first assignment leaves the rest unwritten.
-    expect_error(data[2, `:=`(x = 1000, z = 1)], "byte")
+    expect_error(
+        data[2, `:=`(x = "text", z = 1)], "logical, integer, or double"
+    )
     expect_false("z" %in% names(data))
+
+    # An out-of-range value promotes the column instead of failing.
+    data[2, `:=`(x = 1000, z = 1)]
+    expect_identical(dta_storage_type(data$x), "int")
+    expect_identical(as.double(data$x), c(1, 1000, 3))
+    expect_true("z" %in% names(data))
 })
 
 test_that("rows are selected once before any assignment writes", {
@@ -110,7 +124,9 @@ test_that("the target name takes .(), !!, strings, and string vectors", {
 
     # A single name never takes the list form; `list()` is its value and
     # is rejected as a value type rather than split across columns.
-    expect_error(data[, y := list(1, 2)], "numeric, logical, or character")
+    expect_error(
+        data[, y := list(1, 2)], "numeric, logical, character, or a factor"
+    )
 
     expect_error(data[, c("a", "b") := 1], "`list\\(\\)` of 2")
     expect_error(data[, c("a", "b") := list(1)], "`list\\(\\)` of 2")
@@ -197,21 +213,29 @@ test_that("a compact target stays compact after a bracket replacement", {
     expect_identical(dta_storage_type(data$y), "byte")
 })
 
-test_that("brackets without := subset the snapshot as before", {
+test_that("brackets without := subset the current contents into a dibble", {
     data <- dibble(x = c(1, 2, 3), y = c("a", "b", "c"))
     gen(data, z = x * 2)
     snapshot <- tibble::as_tibble(data)
-    expect_identical(data[1, ], snapshot[1, ])
-    expect_identical(data[, "x"], snapshot[, "x"])
-    expect_identical(data["x"], snapshot["x"])
+    # A dibble is closed under subsetting: the pieces are the snapshot's,
+    # held in a fresh dibble.
+    as_plain <- function(value) tibble::as_tibble(value)
+    expect_true(is_dibble(data[1, ]))
+    expect_identical(as_plain(data[1, ]), snapshot[1, ])
+    expect_identical(as_plain(data[, "x"]), snapshot[, "x"])
+    expect_identical(as_plain(data["x"]), snapshot["x"])
     expect_identical(data[["z"]], snapshot[["z"]])
-    expect_identical(data[data$x > 1, c("x", "y")],
+    expect_identical(as_plain(data[data$x > 1, c("x", "y")]),
                      snapshot[snapshot$x > 1, c("x", "y")])
-    expect_identical(data[2], snapshot[2])
-    expect_identical(data[[2, "y"]], "b")
+    expect_identical(as_plain(data[2]), snapshot[2])
+    expect_identical(as.character(data[[2, "y"]]), "b")
     expect_identical(data[, "x", drop = TRUE], snapshot[, "x", drop = TRUE])
     expect_error(data[, "missing"], "missing")
-    expect_false(inherits(data[1, ], "dtatools_ref_data"))
+    expect_identical(names(data), c("x", "y", "z"))
+    # The subset is its own dataset: assigning into it leaves the source.
+    piece <- data[1:2, ]
+    piece[, w := 1]
+    expect_identical(names(piece), c("x", "y", "z", "w"))
     expect_identical(names(data), c("x", "y", "z"))
 })
 

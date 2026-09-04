@@ -1559,6 +1559,38 @@ pub unsafe extern "C" fn dtatools_dictstring_bytes(
     1
 }
 
+/// A dictionary's value strings with the views into them that
+/// `dtatools_dictstring_bytes` serves.
+type Dictionary = (AHashMap<String, u32>, Vec<(*const u8, usize)>);
+
+/// An independent copy of a dictionary-string payload's dictionary. `None`
+/// when an allocation fails or an id has no value.
+fn clone_dictionary(source: &DictStringData) -> Option<Dictionary> {
+    let mut values = AHashMap::new();
+    if values.try_reserve(source._values.len()).is_err() {
+        return None;
+    }
+    for (value, &id) in &source._values {
+        let mut copy = String::new();
+        if copy.try_reserve_exact(value.len()).is_err() {
+            return None;
+        }
+        copy.push_str(value);
+        values.insert(copy, id);
+    }
+
+    let mut views = Vec::new();
+    if views.try_reserve_exact(values.len()).is_err() {
+        return None;
+    }
+    views.resize(values.len(), (ptr::null(), 0));
+    for (value, &id) in &values {
+        let slot = views.get_mut(id as usize)?;
+        *slot = (value.as_ptr(), value.len());
+    }
+    Some((values, views))
+}
+
 #[no_mangle]
 /// Clone a live dictionary-string payload for an independent R ALTREP vector.
 ///
@@ -1577,32 +1609,48 @@ pub unsafe extern "C" fn dtatools_dictstring_clone(data: *const c_void) -> *mut 
         return ptr::null_mut();
     }
     ids.extend_from_slice(std::slice::from_raw_parts(source.value_ids, source.length));
-
-    let mut values = AHashMap::new();
-    if values.try_reserve(source._values.len()).is_err() {
+    let Some((values, views)) = clone_dictionary(source) else {
         return ptr::null_mut();
-    }
-    for (value, &id) in &source._values {
-        let mut copy = String::new();
-        if copy.try_reserve_exact(value.len()).is_err() {
-            return ptr::null_mut();
-        }
-        copy.push_str(value);
-        values.insert(copy, id);
-    }
-
-    let mut views = Vec::new();
-    if views.try_reserve_exact(values.len()).is_err() {
-        return ptr::null_mut();
-    }
-    views.resize(values.len(), (ptr::null(), 0));
-    for (value, &id) in &values {
-        let Some(slot) = views.get_mut(id as usize) else {
-            return ptr::null_mut();
-        };
-        *slot = (value.as_ptr(), value.len());
-    }
+    };
     Box::into_raw(Box::new(DictStringData::new(ids, values, views))).cast::<c_void>()
+}
+
+#[no_mangle]
+/// Build a dictionary-string payload over `source`'s dictionary whose rows
+/// are the `count` value ids in `ids`, so an R subset of a compact string
+/// column stays compact.
+///
+/// # Safety
+///
+/// `data` must point to a live `DictStringData`, and `ids` to `count`
+/// readable `u32` values. The caller owns the returned pointer and must
+/// transfer it to R or release it with `dtatools_dictstring_free`.
+pub unsafe extern "C" fn dtatools_dictstring_gather(
+    data: *const c_void,
+    ids: *const u32,
+    count: usize,
+) -> *mut c_void {
+    if data.is_null() || (ids.is_null() && count > 0) {
+        return ptr::null_mut();
+    }
+    let source = &*data.cast::<DictStringData>();
+    let mut row_ids = Vec::new();
+    if row_ids.try_reserve_exact(count).is_err() {
+        return ptr::null_mut();
+    }
+    if count > 0 {
+        row_ids.extend_from_slice(std::slice::from_raw_parts(ids, count));
+    }
+    if row_ids
+        .iter()
+        .any(|&id| id as usize >= source.value_views.len())
+    {
+        return ptr::null_mut();
+    }
+    let Some((values, views)) = clone_dictionary(source) else {
+        return ptr::null_mut();
+    };
+    Box::into_raw(Box::new(DictStringData::new(row_ids, values, views))).cast::<c_void>()
 }
 
 #[no_mangle]

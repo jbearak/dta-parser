@@ -13,10 +13,13 @@
 #' standalone alias to the former generic ALTREP column, including one held by
 #' a previously created subset, remains unchanged.
 #' `gen()` attaches package-owned reference state to the same data-frame or
-#' tibble object. Existing columns remain in the data frame;
-#' generated columns live in the attached state until an ordinary R assignment
-#' materializes a complete copy. This lets `gen()` grow the visible column set
-#' without searching for or rebinding a name in the caller. Base extraction and
+#' tibble object. Existing columns remain in the data frame. A dibble is
+#' built with spare capacity for 256 more columns, and `gen()` appends to
+#' its column list in place while that lasts; beyond it, and on a tibble
+#' that became a dibble at its first `gen()`, generated columns live in
+#' the attached state until an ordinary R assignment materializes a
+#' complete copy. This lets `gen()` grow the visible column set without
+#' searching for or rebinding a name in the caller. Base extraction and
 #' data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
 #' metadata helpers operate on the complete visible dataset. The delegated
 #' dplyr verbs are `arrange()`, `distinct()`, `filter()`, `group_by()`,
@@ -149,22 +152,26 @@
 #' data.table's `list()`.
 #'
 #' `gen()` appends one variable and does not implement Stata's `before()` or
-#' `after()` placement. A declared `dta_*()` result keeps its numeric storage;
-#' otherwise logical, integer, double, and `Date` results use Stata `float`
-#' storage. Ordinary `POSIXct` results use Stata `double` storage so their
-#' millisecond datetime representation is not rounded. `Date` and `POSIXct`
-#' results retain their temporal class and receive the corresponding Stata
-#' temporal declaration. Standard `haven_labelled` results preserve their label
-#' metadata. Other classed numeric results, including `difftime` and
-#' `bit64::integer64`, are rejected because their physical representation does
-#' not have Stata numeric semantics. Convert them explicitly to a bare numeric
-#' or one of the supported labelled, temporal, or Stata types before generation.
-#' Character results keep a valid declared `stata.string.storage`. Otherwise,
-#' they use the smallest `str1` through `str2045` width that fits, or `strL`
-#' above 2,045 UTF-8 bytes. Numeric rows excluded by `where` contain
-#' system missing. Excluded string rows contain `""`, Stata's string missing.
-#' Wrap the value expression in a Stata constructor to request explicit numeric
-#' storage. Stata `[in]` and `:lblname` authoring are not supported; the
+#' `after()` placement. The new column takes the storage in
+#' [stata-storage-defaults]: a declared `dta_*()` result keeps its storage,
+#' bare integer results are `long`, bare double results take Stata's
+#' `generate` default of `float`, or `double` under
+#' `options(dtatools.generate_type = "double")`, the equivalent of Stata's
+#' `set type double`; logical results stay logical, `Date` and `POSIXct`
+#' results keep their class with a Stata date or datetime declaration, and
+#' character results
+#' keep a valid declared `stata.string.storage` or take the smallest
+#' `str1` through `str2045` width that fits, or `strL` above 2,045 UTF-8
+#' bytes. Standard `haven_labelled` results preserve their label metadata.
+#' Other classed numeric results, including `difftime` and
+#' `bit64::integer64`, are rejected because their physical representation
+#' does not have Stata numeric semantics; convert them first. Numeric rows
+#' excluded by `where` contain system missing. Excluded string rows contain
+#' `""`, Stata's string missing, and excluded logical rows `NA`. Wrap the
+#' value expression in a Stata constructor to request other storage. On a
+#' plain tibble the first `gen()` makes it a [dibble] and types its
+#' existing columns the same way; a base data frame keeps bare columns.
+#' Stata `[in]` and `:lblname` authoring are not supported; the
 #' `by varlist:` prefix is `by`/`bysort`.
 #' Unlike Stata's default `replace`, `replace_values()` never promotes a target
 #' to wider storage. It rejects values that do not fit the declared storage.
@@ -177,7 +184,7 @@
 #' \tabular{lll}{
 #' Topic \tab Stata \tab dtatools \cr
 #' Existing name \tab Error \tab Error before mutation \cr
-#' Numeric default \tab `float`, or `double` after `set type` \tab `float`; `POSIXct` uses `double` \cr
+#' Numeric default \tab `float`, or `double` after `set type` \tab `float`, or `double` under `options(dtatools.generate_type = "double")`; integer results `long` (see [stata-storage-defaults]) \cr
 #' Explicit storage \tab Type prefix \tab `dta_*()` value expression \cr
 #' Strings \tab Smallest fitting `str#` or `strL` \tab Declared width, otherwise smallest UTF-8-byte width or `strL` \cr
 #' Rows outside `if` \tab Numeric `.` or string `""` \tab Same \cr
@@ -592,6 +599,42 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         state$locations[[name]] <- state$physical_count + state$generated_count
     }
     invisible(NULL)
+}
+
+# `gen()` on a dibble with spare column capacity appends the new column
+# to the physical list itself, so every reader of that list, vctrs'
+# binders included, sees the complete dataset. The state records it as
+# one more physical column.
+.append_physical_column <- function(state, name, column) {
+    state$columns[[name]] <- column
+    if (is.environment(state$locations)) {
+        state$locations[[name]] <- state$physical_count + 1L
+    }
+    state$physical_count <- state$physical_count + 1L
+    state$physical_names <- c(state$physical_names, name)
+    invisible(NULL)
+}
+
+# Whether `gen()` can grow `data`'s physical column list in place: a
+# dibble built with spare capacity whose columns are all physical. Once
+# a generated column lives in the state, later ones follow it there so
+# the recorded locations stay in order.
+.can_append_physical_column <- function(data, state) {
+    !isTRUE(state$physical_overlay) && state$generated_count == 0L &&
+        inherits(data, "tbl_df") && !.ordinary_data_table(data)
+}
+
+# Spare slots a dibble's column list is built with: a pointer each, so
+# they cost little. `gen()` fills them in place; beyond them, generated
+# columns live in the reference state and reach non-generic consumers
+# through `as_tibble()` or `as.data.frame()`, as `gen()` documents.
+.dibble_column_capacity <- 256L
+
+.reserve_column_capacity <- function(x) {
+    .Call(
+        C_dtatools_reserve_column_capacity, x,
+        as.double(length(x) + .dibble_column_capacity)
+    )
 }
 
 .mark_reference_data <- function(data, state) {
@@ -1535,10 +1578,16 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # agrees, so a grouped `gen()` keeps the label an ungrouped one would.
 .mutation_gather_values <- function(pieces) {
     result <- vctrs::list_unchop(pieces)
-    if (is.object(result)) return(result)
     first <- attributes(pieces[[1L]])
     first$names <- NULL
     if (length(first) == 0L) return(result)
+    # A classed result, such as a factor or a Stata vector, keeps the
+    # attributes of its common type; the pieces' own are restored only
+    # when they agree and describe that same class, which is how a
+    # factor's variable label survives a grouped `gen()`.
+    if (is.object(result) && !identical(first$class, class(result))) {
+        return(result)
+    }
     for (piece in pieces[-1L]) {
         other <- attributes(piece)
         other$names <- NULL
@@ -1604,6 +1653,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         }
         values <- vctrs::vec_slice(values, slice_rows)
     }
+    # `replace_values()` normalizes character `NA` to `""`, Stata's string
+    # missing, before the cast, which refuses `NA` for a declared string.
+    # After slicing, so a sparse replacement scans only its selected rows.
+    if (typeof(target) == "character" && typeof(values) == "character" &&
+        !is.object(values) && anyNA(values)) {
+        values[is.na(values)] <- ""
+    }
     .validate_numeric_values(values)
     # Build Stata prototypes from metadata rather than proxying the target.
     # A real metadata copy must revoke exclusive patch ownership; this internal
@@ -1665,9 +1721,29 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # `i` chose before the first of them wrote. `where` still arrives so
 # `values` can be given `.n` and `.N` on the same terms.
 .mutate_data <- function(data, variable, values, where, generate,
-                         by = NULL, bysort = NULL, selection = NULL) {
+                         by = NULL, bysort = NULL, selection = NULL,
+                         promote = FALSE) {
     .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
+    # A tibble becomes a dibble at its first `gen()`, and its columns are
+    # typed before `where`, `values`, and the groups are evaluated, so the
+    # expression sees the dataset the dibble will hold: a character key
+    # with `NA` and `""` is one group, not two. The typing is rolled back
+    # if anything before the mark fails.
+    if (generate && is.null(.reference_state(data)) &&
+        inherits(data, "tbl_df") && !.ordinary_data_table(data)) {
+        first_gen <- .type_physical_columns_in_place(data, base::nrow(data))
+        committed <- FALSE
+        on.exit(
+            if (!committed) .restore_physical_columns(data, first_gen),
+            add = TRUE
+        )
+        if (grouped_input && length(first_gen$indices)) {
+            .regroup_after_replacement(data, NULL)
+        }
+    } else {
+        committed <- TRUE
+    }
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE
     )
@@ -1758,7 +1834,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     values <- evaluated
 
     if (generate) {
-        column <- .generated_column(values, rows, original$nrow)
+        column <- .generated_column(
+            values, rows, original$nrow, generate = TRUE
+        )
         if (.ordinary_data_table(data)) {
             data.table::set(data, j = target$name, value = column)
             return(invisible(data))
@@ -1768,6 +1846,36 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (is.null(access)) access <- .column_access(data)
         if (is.null(column)) {
             column <- .data_column_at(access, target$location)
+        }
+        # A `:=` that selects no rows changes nothing and returns here:
+        # it neither declares storage nor promotes, and it skips the
+        # strict patch, whose scalar width check `replace_values()` keeps
+        # for its own zero-row calls.
+        if (promote &&
+            .mutation_selected_count(rows, original$nrow) == 0L) {
+            return(invisible(data))
+        }
+        declared <- if (promote) {
+            .wider_declared_storage(values, column)
+        } else {
+            NULL
+        }
+        if (!is.null(declared) ||
+            (promote &&
+             !.replacement_fits(values, column, rows, value_mode))) {
+            # Promotion widens storage; it admits no value Stata cannot
+            # hold at any width, and says so as `repl()` does.
+            .validate_numeric_values(values)
+            # `:=` promotes: the column is rebuilt at the storage the
+            # right-hand side declares when that is wider, and otherwise
+            # at the narrowest storage that holds the current and new
+            # values together.
+            promoted <- .promoted_replacement(
+                values, column, rows, value_mode, original$nrow, declared
+            )
+            .set_data_column_at(access, target$location, promoted)
+            if (grouped_input) .regroup_after_replacement(data, state)
+            return(invisible(data))
         }
         replacement <- .cast_replacement(
             values, column, rows, value_mode
@@ -1793,8 +1901,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (grouped_input) .regroup_after_replacement(data, state)
     }
     if (generate) {
-        .append_generated_column(state, target$name, column)
+        appended <- .can_append_physical_column(data, state) &&
+            .Call(C_dtatools_append_data_column, data, target$name, column)
+        if (appended) {
+            .append_physical_column(state, target$name, column)
+        } else {
+            .append_generated_column(state, target$name, column)
+        }
         if (is.null(.reference_state(data))) .mark_reference_data(data, state)
+        committed <- TRUE
     }
     invisible(data)
 }
@@ -1852,12 +1967,16 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         all(classes %in% c("haven_labelled", "vctrs_vctr", typeof(values)))
 }
 
-.generated_numeric <- function(values, rows, row_count) {
+.generated_numeric <- function(values, rows, row_count, caller = "gen()",
+                               generate = FALSE) {
     if (!.generated_numeric_class_supported(values)) {
-        stop(
-            "`gen()` does not support this classed numeric result; convert it explicitly",
-            call. = FALSE
-        )
+        stop(sprintf(
+            paste(
+                "`%s` does not support this classed numeric result;",
+                "convert it explicitly"
+            ),
+            caller
+        ), call. = FALSE)
     }
     declared <- dta_storage_type(values)
     base_date <- inherits(values, "Date") &&
@@ -1872,8 +1991,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         # Stata datetimes are millisecond counts and require double storage to
         # preserve ordinary POSIXct values.
         "double"
-    } else {
+    } else if (base_date) {
         "float"
+    } else if (generate && typeof(values) == "double" &&
+        !is.object(values)) {
+        .generate_storage()
+    } else {
+        .bare_stata_storage(values)
     }
     prototype <- if (base_date) {
         structure(values, class = unique(c(
@@ -1920,19 +2044,72 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
 }
 
-.generated_column <- function(values, rows, row_count) {
-    if (is.factor(values) || !is.null(dim(values))) {
-        stop("`gen()` values must be numeric, logical, or character",
-             call. = FALSE)
-    }
+# `generate` marks `gen()` and a new column through `:=`, the two Stata
+# commands, whose bare double result takes Stata's `generate` default
+# rather than the container mapping; see `.generate_storage()`.
+.generated_column <- function(values, rows, row_count, caller = "gen()",
+                              generate = FALSE) {
+    message <- sprintf(
+        "`%s` values must be numeric, logical, character, or a factor",
+        caller
+    )
+    if (!is.null(dim(values))) stop(message, call. = FALSE)
     if (typeof(values) == "character") {
         return(.generated_character(values, rows, row_count))
     }
-    if (typeof(values) %in% c("logical", "integer", "double")) {
-        return(.generated_numeric(values, rows, row_count))
+    if (is.factor(values)) {
+        return(.generated_factor(values, rows, row_count))
     }
-    stop("`gen()` values must be numeric, logical, or character",
-         call. = FALSE)
+    if (typeof(values) == "logical" && !is.object(values)) {
+        return(.generated_logical(values, rows, row_count))
+    }
+    if (typeof(values) %in% c("logical", "integer", "double")) {
+        return(.generated_numeric(
+            values, rows, row_count, caller, generate
+        ))
+    }
+    stop(message, call. = FALSE)
+}
+
+# A factor result stays a factor, which `save_dta()` writes as a
+# value-labelled `long`, so `gen()` and `mutate()` agree on it. Rows
+# outside `where` are `NA`, and the levels and other attributes are kept.
+.generated_factor <- function(values, rows, row_count) {
+    codes <- .generated_logical(unclass(values), rows, row_count)
+    kept <- attributes(values)
+    kept$names <- NULL
+    attributes(codes) <- c(list(levels = kept$levels), kept[
+        setdiff(names(kept), "levels")
+    ])
+    codes
+}
+
+# A bare logical result stays logical (see `.stata_typed_column()`). Rows
+# outside `where` hold `NA`, as numeric rows hold system missing. Value
+# attributes other than names, such as a label, are kept.
+.generated_logical <- function(values, rows, row_count) {
+    value_attributes <- attributes(values)
+    value_attributes$names <- NULL
+    data <- as.vector(values)
+    size <- length(data)
+    # Size rules as `.mutation_value_mode()`: one value recycles, a
+    # full-length vector is indexed by the selected rows, and otherwise
+    # the values are the selected rows' values in order.
+    result <- if (is.null(rows)) {
+        if (size == 1L) rep(data, row_count) else data
+    } else {
+        filled <- rep(NA, row_count)
+        filled[rows] <- if (size == 1L) {
+            data
+        } else if (size == row_count) {
+            data[rows]
+        } else {
+            data
+        }
+        filled
+    }
+    if (length(value_attributes)) attributes(result) <- value_attributes
+    result
 }
 
 .deep_copy_value <- function(value) {
@@ -2148,43 +2325,112 @@ print.dtatools_ref_data <- function(x, ...) {
 `$<-.dtatools_ref_data` <- function(x, name, value) {
     result <- .reference_snapshot(x)
     result[[name]] <- value
-    result
+    .typed_reference_replacement(x, result, "`$<-`")
 }
 
 #' @export
 `[[<-.dtatools_ref_data` <- function(x, i, ..., value) {
     result <- .reference_snapshot(x)
     result[[i, ...]] <- value
-    result
+    .typed_reference_replacement(x, result, "`[[<-`")
 }
 
 #' @export
 `[<-.dtatools_ref_data` <- function(x, i, j, ..., value) {
     call <- sys.call()
     call[[1L]] <- quote(`[<-`)
-    call[[2L]] <- .reference_snapshot(x)
-    eval(call, parent.frame())
+    # `data["s"] <- NULL` deletes a column; `call$value <- NULL` would
+    # delete the argument instead.
+    call["value"] <- list(value)
+    snapshot <- .reference_snapshot(x)
+    call[[2L]] <- snapshot
+    # The subscripts are evaluated once here, so the promoting retry
+    # below does not run `i` or `j` a second time; an empty argument, as
+    # in `x[i, ] <- v`, stays empty.
+    argument_names <- names(call)
+    for (index in seq_along(call)[-(1:2)]) {
+        if (identical(argument_names[[index]], "value")) next
+        # An empty argument cannot be bound to a name, so it is tested
+        # on the call itself. `call[index] <- list(...)` keeps a `NULL`
+        # subscript in place, where `[[<-` would delete the argument and
+        # select everything.
+        empty <- is.symbol(call[[index]]) && !nzchar(as.character(call[[index]]))
+        if (!empty) call[index] <- list(eval(call[[index]], parent.frame()))
+    }
+    result <- if (is_dibble(x)) {
+        .bracket_replace_promoting(snapshot, call, parent.frame())
+    } else {
+        eval(call, parent.frame())
+    }
+    .typed_reference_replacement(x, result, "`[<-`")
+}
+
+# Row or cell assignment into a typed column runs the column's own strict
+# `[<-`, which refuses a value its storage cannot hold before the dibble
+# can promote. The strict path is tried first, since it keeps compact
+# columns compact. If it fails, the assignment is redone on a copy whose
+# typed numeric and string columns are bare R vectors, columns the
+# assignment did not touch get their typed vectors back, and the changed
+# ones are promoted from their prior storage by the caller.
+.bracket_replace_promoting <- function(snapshot, call, environment) {
+    strict <- tryCatch(eval(call, environment), error = identity)
+    if (!inherits(strict, "error")) return(strict)
+    bare <- snapshot
+    bare_columns <- list()
+    column_names <- names(snapshot)
+    for (index in seq_along(column_names)) {
+        column <- .subset2(snapshot, index)
+        plain <- if (inherits(column, "stata_numeric") &&
+            !inherits(column, "stata_temporal")) {
+            as.double(.stata_snapshot(column))
+        } else if (is.character(column) &&
+            !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
+            text <- as.character(column)
+            text[is.na(text)] <- ""
+            text
+        } else {
+            NULL
+        }
+        if (is.null(plain)) next
+        bare[[index]] <- plain
+        bare_columns[[column_names[[index]]]] <- plain
+    }
+    if (length(bare_columns) == 0L) stop(strict)
+    call[[2L]] <- bare
+    result <- eval(call, environment)
+    result_names <- names(result)
+    for (name in names(bare_columns)) {
+        index <- match(name, result_names)
+        if (is.na(index)) next
+        if (identical(
+            rlang::obj_address(.subset2(result, index)),
+            rlang::obj_address(bare_columns[[name]])
+        )) {
+            result[[index]] <- .subset2(snapshot, name)
+        }
+    }
+    result
 }
 
 #' @export
 `names<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     names(result) <- value
-    result
+    .close_dibble(x, result)
 }
 
 #' @export
 `dimnames<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     dimnames(result) <- value
-    result
+    .close_dibble(x, result)
 }
 
 #' @export
 `row.names<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     row.names(result) <- value
-    result
+    .close_dibble(x, result)
 }
 
 #' @export
@@ -2198,18 +2444,43 @@ vec_proxy.dtatools_ref_data <- function(x, ...) {
 }
 
 #' @export
+#' @export
 vec_restore.dtatools_ref_data <- function(x, to, ...) {
-    vctrs::vec_restore(x, .reference_snapshot(to), ...)
+    .close_dibble(to, vctrs::vec_restore(x, .reference_snapshot(to), ...))
 }
 
 #' @export
 dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
-    dplyr::dplyr_reconstruct(data, .reference_snapshot(template))
+    .close_dibble(
+        template,
+        dplyr::dplyr_reconstruct(data, .reference_snapshot(template))
+    )
+}
+
+# dplyr's grouped and rowwise row slicing, which `semi_join()`,
+# `anti_join()`, and the `rows_*()` verbs use, builds its result without
+# passing through `dplyr_reconstruct()`, so the dibble closes here.
+#' @export
+dplyr_row_slice.dtatools_ref_data <- function(data, i, ...) {
+    .close_dibble(
+        data, dplyr::dplyr_row_slice(.reference_snapshot(data), i, ...)
+    )
+}
+
+# Likewise for column modification on a grouped dibble, which
+# `rows_update()` and `rows_patch()` use: changed columns are typed as
+# `mutate()` types them.
+#' @export
+dplyr_col_modify.dtatools_ref_data <- function(data, cols) {
+    .typed_reference_replacement(
+        data, dplyr::dplyr_col_modify(.reference_snapshot(data), cols),
+        "`dplyr_col_modify()`"
+    )
 }
 
 #' @export
 select.dtatools_ref_data <- function(.data, ...) {
-    dplyr::select(.reference_snapshot(.data), ...)
+    .close_dibble(.data, dplyr::select(.reference_snapshot(.data), ...))
 }
 
 .reference_delegate <- function(data, call, generic, environment) {
@@ -2218,9 +2489,16 @@ select.dtatools_ref_data <- function(.data, ...) {
     eval(call, environment)
 }
 
-# Base and dplyr methods share one boundary: reference state is materialized to
-# a shallow, complete data-frame snapshot before the ordinary implementation
-# runs. The returned transformation follows normal copy-on-modify semantics.
+# Base and dplyr methods share one boundary: reference state is
+# materialized to a shallow, complete data-frame snapshot before the
+# ordinary implementation runs. The result follows copy-on-modify. A
+# dibble input closes the result back into a dibble, so a dataset
+# operation on a dibble yields a dibble; any other reference frame gets
+# the ordinary result.
+.closed_reference_verb <- function(data, call, generic, environment) {
+    .close_dibble(data, .reference_delegate(data, call, generic, environment))
+}
+
 #' @export
 with.dtatools_ref_data <- function(data, expr, ...) {
     .reference_delegate(data, sys.call(), base::with, parent.frame())
@@ -2228,76 +2506,757 @@ with.dtatools_ref_data <- function(data, expr, ...) {
 
 #' @export
 within.dtatools_ref_data <- function(data, expr, ...) {
-    .reference_delegate(data, sys.call(), base::within, parent.frame())
+    .typed_reference_verb(
+        data, sys.call(), base::within, parent.frame(), "`within()`"
+    )
 }
 
 #' @export
 subset.dtatools_ref_data <- function(x, ...) {
-    .reference_delegate(x, sys.call(), base::subset, parent.frame())
+    .closed_reference_verb(x, sys.call(), base::subset, parent.frame())
 }
 
 #' @export
 transform.dtatools_ref_data <- function(`_data`, ...) {
-    .reference_delegate(`_data`, sys.call(), base::transform, parent.frame())
+    .typed_reference_verb(
+        `_data`, sys.call(), base::transform, parent.frame(), "`transform()`"
+    )
 }
 
 #' @export
 rbind.dtatools_ref_data <- function(..., deparse.level = 1) {
-    values <- lapply(list(...), .reference_snapshot)
-    do.call(base::rbind, c(values, list(deparse.level = deparse.level)))
+    inputs <- list(...)
+    values <- lapply(inputs, .reference_snapshot)
+    .close_dibble(inputs[[1L]], do.call(
+        base::rbind, c(values, list(deparse.level = deparse.level))
+    ))
 }
 
 #' @export
 cbind.dtatools_ref_data <- function(..., deparse.level = 1) {
-    values <- lapply(list(...), .reference_snapshot)
-    do.call(base::cbind, c(values, list(deparse.level = deparse.level)))
+    inputs <- list(...)
+    values <- lapply(inputs, .reference_snapshot)
+    .close_dibble(inputs[[1L]], do.call(
+        base::cbind, c(values, list(deparse.level = deparse.level))
+    ))
 }
 
 #' @export
 arrange.dtatools_ref_data <- function(.data, ..., .by_group = FALSE) {
-    .reference_delegate(.data, sys.call(), dplyr::arrange, parent.frame())
+    .closed_reference_verb(.data, sys.call(), dplyr::arrange, parent.frame())
 }
 
 #' @export
 filter.dtatools_ref_data <- function(
     .data, ..., .by = NULL, .preserve = FALSE
 ) {
-    .reference_delegate(.data, sys.call(), dplyr::filter, parent.frame())
+    .closed_reference_verb(.data, sys.call(), dplyr::filter, parent.frame())
 }
 
 #' @export
 slice.dtatools_ref_data <- function(.data, ..., .by = NULL, .preserve = FALSE) {
-    .reference_delegate(.data, sys.call(), dplyr::slice, parent.frame())
+    .closed_reference_verb(.data, sys.call(), dplyr::slice, parent.frame())
 }
 
 #' @export
 relocate.dtatools_ref_data <- function(
     .data, ..., .before = NULL, .after = NULL
 ) {
-    .reference_delegate(.data, sys.call(), dplyr::relocate, parent.frame())
+    .closed_reference_verb(.data, sys.call(), dplyr::relocate, parent.frame())
 }
 
 #' @export
 rename.dtatools_ref_data <- function(.data, ...) {
-    .reference_delegate(.data, sys.call(), dplyr::rename, parent.frame())
+    .closed_reference_verb(.data, sys.call(), dplyr::rename, parent.frame())
 }
 
 #' @export
-mutate.dtatools_ref_data <- function(.data, ...) {
-    .reference_delegate(.data, sys.call(), dplyr::mutate, parent.frame())
+mutate.dtatools_ref_data <- function(
+    .data, ..., .by = NULL, .keep = c("all", "used", "unused", "none"),
+    .before = NULL, .after = NULL
+) {
+    .typed_mask_verb(
+        .data, "mutate", rlang::enquos(..., .ignore_empty = "all"),
+        list(
+            .by = rlang::enquo(.by), .keep = .keep,
+            .before = rlang::enquo(.before), .after = rlang::enquo(.after)
+        ),
+        "mutate()"
+    )
 }
 
 #' @export
 transmute.dtatools_ref_data <- function(.data, ...) {
-    .reference_delegate(.data, sys.call(), dplyr::transmute, parent.frame())
+    .typed_mask_verb(
+        .data, "transmute", rlang::enquos(..., .ignore_empty = "all"),
+        list(), "transmute()"
+    )
+}
+
+# The container mapping from a bare R vector to Stata storage, shared by
+# `dibble()`, the dplyr verbs, the replacement operators, and the
+# promotion ladder; `?stata-storage-defaults` states it for users. It
+# follows the R type: `float` cannot hold every R double or every R
+# integer, so the mapping is lossless. Dates and datetimes are decided by
+# the caller, which knows their class. `gen()` and a new column through
+# `:=` are the exception, in `.generate_storage()`.
+.bare_stata_storage <- function(values) {
+    switch(typeof(vctrs::vec_data(values)),
+        logical = "byte",
+        integer = "long",
+        "double"
+    )
+}
+
+# Stata's `generate` stores an untyped numeric result as `float`, or as
+# `double` after `set type double`. `gen()` and a new column through `:=`
+# translate that command, so a bare double result takes this storage,
+# read from `options(dtatools.generate_type = )`, rather than the
+# container mapping (ADR 0022). Bare integers stay `long`: they come from
+# R, not from a translated Stata line, and `float` loses them above 2^24.
+.generate_storage <- function() {
+    storage <- getOption("dtatools.generate_type", "float")
+    if (!is.character(storage) || length(storage) != 1L ||
+        is.na(storage) || !(storage %in% c("float", "double"))) {
+        stop(
+            paste0(
+                "`dtatools.generate_type` must be \"float\" or ",
+                "\"double\"; got ", paste(deparse(storage), collapse = " ")
+            ),
+            call. = FALSE
+        )
+    }
+    storage
+}
+
+# A column a dibble holds as is: one carrying Stata storage; a factor,
+# which `save_dta()` writes as a value-labelled `long`; or a bare logical.
+# Stata has no boolean type, and typing a flag as `byte` would break
+# `filter(data, flag)`, `which(flag)`, and `where = flag`, so logicals
+# stay logical and become `byte` only when written. A `gen()` string
+# carries its declaration as an attribute without the `stata_string`
+# class, so the attribute is the test for strings.
+.stata_typed_column <- function(column) {
+    inherits(column, c("stata_numeric", "stata_temporal", "factor")) ||
+        (typeof(column) == "logical" && !is.object(column)) ||
+        (is.character(column) && .string_declaration_holds(column))
+}
+
+# Whether a character column's `stata.string.storage` declaration is
+# valid for its values: well formed, wide enough, and with no `NA`, which
+# Stata strings spell `""`. A join or `rbind()` can carry a declaration
+# onto values it no longer describes, and such a column is retyped rather
+# than trusted. That includes a `stata_string` vector: `full_join()` and
+# `bind_rows()` pad one with `NA` while vctrs keeps its class, so the
+# class is no proof. A compact dictionary string has no `NA` by
+# construction and its width is read from the dictionary, so it is
+# checked without being materialized.
+.string_declaration_holds <- function(column) {
+    declared <- attr(column, "stata.string.storage", exact = TRUE)
+    if (is.null(declared)) return(FALSE)
+    valid <- is.character(declared) && length(declared) == 1L &&
+        !is.na(declared) && (identical(declared, "strL") || grepl(
+            "^str([1-9]|[1-9][0-9]{1,2}|1[0-9]{3}|20[0-3][0-9]|204[0-5])$",
+            declared
+        ))
+    if (!valid) return(FALSE)
+    if (.is_unmaterialized_dictstring(column)) {
+        return(.stata_string_storage_width(declared) >=
+            max(1L, .dictstring_max_width(column)))
+    }
+    if (anyNA(column)) return(FALSE)
+    .stata_string_storage_width(declared) >=
+        .stata_string_required_width(column)
+}
+
+# A column no Stata storage can hold: raw, list, complex, a matrix, a
+# classed character other than a Stata string, or a classed numeric such
+# as `difftime` or `integer64` whose values are not Stata's. A dibble
+# carries it unchanged, and `save_dta()` refuses it with its own message.
+# `gen()` is stricter and rejects such a result, because it is the Stata
+# command. A `stata_string` whose declaration no longer holds is typable:
+# it is retyped from its values.
+.stata_untypable_column <- function(column) {
+    if (!is.null(dim(column))) return(TRUE)
+    if (typeof(column) == "character") {
+        return(is.object(column) && !inherits(column, "stata_string"))
+    }
+    if (!(typeof(column) %in% c("logical", "integer", "double"))) {
+        return(TRUE)
+    }
+    !.generated_numeric_class_supported(column)
+}
+
+# The Stata-typed form of one column entering a dibble. A typed column is
+# returned as is. A compact Arrow string is declared through a metadata
+# proxy with the width read from its dictionary, so it stays compact and
+# the source vector is untouched. Anything else takes `gen()`'s storage
+# for its values. `caller` names the entry point in errors.
+.typed_column <- function(column, row_count, caller) {
+    if (.stata_typed_column(column)) return(column)
+    if (.is_unmaterialized_dictstring(column)) {
+        storage <- .normalize_stata_string_storage(
+            NULL, .dictstring_max_width(column)
+        )
+        proxy <- .metadata_copy(column)
+        attr(proxy, "stata.string.storage") <- storage
+        class(proxy) <- c("stata_string", "vctrs_vctr", "character")
+        return(proxy)
+    }
+    if (is.character(column) &&
+        !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
+        # A stale declaration: `NA` becomes `""`, the width is redone from
+        # the values, and the variable's other metadata comes along.
+        text <- as.character(column)
+        text[is.na(text)] <- ""
+        kept <- attributes(column)
+        kept[c("names", "class", "stata.string.storage")] <- NULL
+        if (length(kept)) attributes(text) <- c(attributes(text), kept)
+        column <- text
+    }
+    .generated_column(column, NULL, row_count, caller)
+}
+
+# Types every untyped column of a data frame so that a dibble's columns
+# all carry Stata storage. Typed columns are left as the same vectors, so
+# compact columns from a reader stay compact.
+.type_dibble_columns <- function(data, caller = "as_dibble()") {
+    row_count <- nrow(data)
+    column_names <- names(data)
+    for (index in seq_along(column_names)) {
+        column <- .subset2(data, index)
+        typed <- .typed_column_named(
+            column, row_count, caller, column_names[[index]]
+        )
+        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
+            data[[index]] <- typed
+        }
+    }
+    data
+}
+
+# The same for a column entering a dibble from construction or a verb,
+# where a column no Stata storage can hold passes through unchanged.
+.typed_column_named <- function(column, row_count, caller, name) {
+    if (.stata_typed_column(column) ||
+        .is_unmaterialized_dictstring(column) ||
+        !.stata_untypable_column(column)) {
+        return(.typed_column(column, row_count, caller))
+    }
+    column
+}
+
+# A tibble that acquires reference state at its first `gen()` becomes a
+# dibble, so its physical columns are typed in place first: every
+# binding to the tibble already observes the generated column, and sees
+# the typed columns on the same terms.
+.type_physical_columns_in_place <- function(data, row_count) {
+    column_names <- attr(data, "names", exact = TRUE)
+    # Every column is typed before any is installed, so a column no Stata
+    # storage holds leaves the tibble as it was.
+    typed <- vector("list", length(column_names))
+    changed <- logical(length(column_names))
+    for (index in seq_along(column_names)) {
+        column <- .subset2(data, index)
+        typed[[index]] <- .typed_column_named(
+            column, row_count, "gen()", column_names[[index]]
+        )
+        changed[[index]] <- !identical(
+            rlang::obj_address(typed[[index]]), rlang::obj_address(column)
+        )
+    }
+    indices <- which(changed)
+    # Every column is recorded, not only the typed ones: a `bysort` may
+    # permute the whole list before the generation fails, and the rollback
+    # must leave every column under the same row order.
+    originals <- .plain_data_columns(data)
+    groups <- attr(data, "groups", exact = TRUE)
+    for (index in indices) {
+        .Call(
+            C_dtatools_set_data_column, data, as.integer(index),
+            typed[[index]]
+        )
+    }
+    invisible(list(indices = indices, originals = originals, groups = groups))
+}
+
+# Undoes `.type_physical_columns_in_place()` and any by-reference sort
+# when the first `gen()` fails after it: the tibble gets its original
+# column vectors and grouping back.
+.restore_physical_columns <- function(data, plan) {
+    for (index in seq_along(plan$originals)) {
+        .Call(
+            C_dtatools_set_data_column, data, as.integer(index),
+            plan$originals[[index]]
+        )
+    }
+    if (inherits(data, "grouped_df")) {
+        .Call(C_dtatools_set_attribute, data, "groups", plan$groups)
+    }
+    invisible(NULL)
+}
+
+# Column `values` that replaced `prior` in a dibble. A prior column with
+# declared storage keeps it when the new values fit, as Stata's `replace`
+# does. When they do not, the column takes the narrowest storage that
+# holds every new value exactly, which is not Stata's ladder: Stata
+# promotes an overflowing `long` to `float`, where integers above 2^24
+# lose digits. Prior variable metadata is restored on the result. Other
+# combinations, including a change of kind between numeric and string,
+# take the storage a fresh column would. `declared` names storage the
+# caller has already settled on, such as a `:=` right-hand side's, and
+# stands in for the prior column's.
+.promoted_column <- function(values, prior, row_count, caller,
+                             declared = NULL) {
+    # A bare logical replacing a Stata numeric is a fitting replacement,
+    # as `replace x = x > 1` is in Stata, so it keeps the column's
+    # storage rather than turning the column logical.
+    logical_over_numeric <- typeof(values) == "logical" &&
+        !is.object(values) && inherits(prior, "stata_numeric") &&
+        !inherits(prior, "stata_temporal")
+    # An explicit `dta_*()` or arithmetic result already carries the
+    # storage the user asked for; a column no storage holds passes through.
+    if (!logical_over_numeric &&
+        (.stata_typed_column(values) || .stata_untypable_column(values))) {
+        return(values)
+    }
+    if (is.character(values) &&
+        !is.null(attr(values, "stata.string.storage", exact = TRUE))) {
+        # A stale declaration is redone from the values.
+        attr(values, "stata.string.storage") <- NULL
+    }
+    if (!.promotable_pair(values, prior)) {
+        return(.typed_column(values, row_count, caller))
+    }
+    if (typeof(prior) == "character") {
+        text <- as.character(values)
+        text[is.na(text)] <- ""
+        if (is.null(declared)) {
+            declared <- attr(prior, "stata.string.storage", exact = TRUE)
+        }
+        required <- .stata_string_required_width(text)
+        storage <- if (.stata_string_storage_width(declared) >= required) {
+            declared
+        } else {
+            .normalize_stata_string_storage(NULL, required)
+        }
+        return(.new_stata_string(enc2utf8(text), storage, prior))
+    }
+    doubles <- as.double(values)
+    if (is.null(declared)) declared <- dta_storage_type(prior)
+    # Promotion only widens: the search starts at the declared storage,
+    # so a `dta_float()` value beside a retained integer float cannot
+    # hold goes to `double` rather than back to `long`.
+    storage <- if (.stata_storage_holds(doubles, declared)) {
+        declared
+    } else {
+        .narrowest_stata_storage(doubles, from = declared)
+    }
+    .restore_stata_metadata(
+        .construct_stata_numeric(doubles, NULL, storage), prior, storage
+    )
+}
+
+# Whether replacement `values` for the selected `rows` fit `target`'s
+# declared storage. Pairs the promotion rule does not cover report `TRUE`
+# so the strict replacement path handles or refuses them as before.
+.replacement_fits <- function(values, target, rows, value_mode) {
+    if (!.promotable_pair(values, target)) return(TRUE)
+    if (identical(value_mode, "row") && !is.null(rows)) {
+        slice_rows <- if (inherits(rows, "stata_numeric")) {
+            .stata_data(rows)
+        } else {
+            rows
+        }
+        values <- vctrs::vec_slice(values, slice_rows)
+    }
+    if (typeof(target) == "character") {
+        text <- as.character(values)
+        text[is.na(text)] <- ""
+        declared <- attr(target, "stata.string.storage", exact = TRUE)
+        return(.stata_string_storage_width(declared) >=
+            .stata_string_required_width(text))
+    }
+    .stata_storage_holds(
+        as.double(vctrs::vec_data(values)), dta_storage_type(target)
+    )
+}
+
+# The whole column after `values` replace the selected `rows` of
+# `target`, typed by promotion from `target`'s storage, or from
+# `declared` when the right-hand side settled a wider one.
+.promoted_replacement <- function(values, target, rows, value_mode,
+                                  row_count, declared = NULL) {
+    current <- if (typeof(target) == "character") {
+        text <- as.character(target)
+        text[is.na(text)] <- ""
+        text
+    } else {
+        as.double(.stata_snapshot(target))
+    }
+    replacement <- if (typeof(target) == "character") {
+        text <- as.character(values)
+        text[is.na(text)] <- ""
+        text
+    } else {
+        as.double(vctrs::vec_data(values))
+    }
+    positions <- if (is.null(rows)) {
+        seq_len(row_count)
+    } else if (inherits(rows, "stata_numeric")) {
+        .stata_data(rows)
+    } else {
+        rows
+    }
+    current[positions] <- if (identical(value_mode, "row")) {
+        replacement[positions]
+    } else {
+        replacement
+    }
+    .promoted_column(current, target, row_count, "`:=`", declared)
+}
+
+# The storage a `:=` right-hand side declares, through a `dta_*()` call
+# or Stata-typed arithmetic, when it is wider than `target`'s: the value
+# the user typed names the storage they want, and a column that holds
+# both must be at least that wide. `NULL` when the right-hand side is
+# bare, declares the target's storage or narrower, or is not of the
+# target's kind, so the ordinary fit check decides.
+.wider_declared_storage <- function(values, target) {
+    if (!.promotable_pair(values, target)) return(NULL)
+    if (typeof(target) == "character") {
+        declared <- attr(values, "stata.string.storage", exact = TRUE)
+        current <- attr(target, "stata.string.storage", exact = TRUE)
+        if (is.null(declared) || !is.character(declared) ||
+            length(declared) != 1L || is.na(declared)) {
+            return(NULL)
+        }
+        wider <- .stata_string_storage_width(declared) >
+            .stata_string_storage_width(current)
+        return(if (wider) declared else NULL)
+    }
+    if (!inherits(values, "stata_numeric")) return(NULL)
+    declared <- match(dta_storage_type(values), .stata_storage)
+    current <- match(dta_storage_type(target), .stata_storage)
+    if (is.na(declared) || is.na(current) || declared <= current) {
+        return(NULL)
+    }
+    .stata_storage[[declared]]
+}
+
+# `prior` has declared storage of the same kind as `values`: numeric for
+# numeric, string for string. Temporal and factor columns are not
+# promoted; they are retyped from their new values.
+.promotable_pair <- function(values, prior) {
+    if (is.factor(values) || !is.null(dim(values))) return(FALSE)
+    if (is.character(prior) &&
+        !is.null(attr(prior, "stata.string.storage", exact = TRUE))) {
+        return(is.character(values))
+    }
+    if (!inherits(prior, "stata_numeric") ||
+        inherits(prior, "stata_temporal")) return(FALSE)
+    typeof(values) %in% c("logical", "integer", "double") &&
+        (!is.object(values) || inherits(values, "stata_numeric"))
+}
+
+.stata_storage_holds <- function(doubles, storage) {
+    codes <- .tab_missing_codes(doubles)
+    observed <- is.na(codes)
+    if (any(!is.na(codes) & codes == 256L)) return(FALSE)
+    if (any(.invalid_stata_observed(doubles, observed, storage))) {
+        return(FALSE)
+    }
+    if (!identical(storage, "float") || !any(observed)) return(TRUE)
+    candidate <- doubles[observed]
+    rounded <- as.double(.construct_stata_numeric(candidate, NULL, "float"))
+    all(rounded == candidate)
+}
+
+.narrowest_stata_storage <- function(doubles, from = "byte") {
+    start <- match(from, .stata_storage)
+    if (is.na(start)) start <- 1L
+    for (storage in .stata_storage[start:length(.stata_storage)]) {
+        if (.stata_storage_holds(doubles, storage)) return(storage)
+    }
+    "double"
+}
+
+# After an operation on a dibble's snapshot, every column that is not the
+# same vector as before is typed: a new column as `gen()` would type it, a
+# replaced column by promotion from its prior storage. Columns the
+# operation left alone are recognized by address and untouched.
+.retype_changed_columns <- function(result, before, caller) {
+    result_names <- names(result)
+    row_count <- nrow(result)
+    for (index in seq_along(result_names)) {
+        column <- .subset2(result, index)
+        prior <- before[[result_names[[index]]]]
+        if (!is.null(prior) &&
+            identical(rlang::obj_address(prior), rlang::obj_address(column))) {
+            next
+        }
+        typed <- if (is.null(prior)) {
+            .typed_column_named(
+                column, row_count, caller, result_names[[index]]
+            )
+        } else {
+            .promoted_column(column, prior, row_count, caller)
+        }
+        if (!identical(rlang::obj_address(typed), rlang::obj_address(column))) {
+            result[[index]] <- typed
+        }
+    }
+    result
+}
+
+# A dataset operation on a dibble returns a dibble; on any other
+# reference frame it returns what the ordinary implementation did. A
+# non-data-frame result, such as `with()`'s, is returned as is.
+.close_dibble <- function(data, result, caller = "as_dibble()",
+                          sources = NULL) {
+    if (!is_dibble(data) || !is.data.frame(result) || is_dibble(result)) {
+        return(result)
+    }
+    .as_dibble(.isolate_shared_columns(result, sources), caller)
+}
+
+# A column the operation left alone, as `select()`, `relocate()`,
+# `mutate()` of another column, or `cbind()` do, is the same vector in
+# the result and in one of the `sources`, and a by-reference `:=` or
+# `repl()` through the dibble would reach that frame. Each such column
+# becomes a copy-on-write view: a compact column stays compact behind a
+# metadata proxy whose first write on either side detaches, and a plain
+# vector is copied. Columns the operation rebuilt are already the
+# result's own. `sources = NULL`, the default, isolates every column:
+# a data-masked verb such as `mutate(d, copied = other$flag)` can bring
+# in a vector from any frame, `cbind(d, x = other$x)` takes bare vectors,
+# and the vctrs and dplyr hooks see only the first input of a
+# `bind_cols()` or join, so the inputs a closure can name are rarely the
+# only ones. A caller that does know every vector its result could share
+# passes them, frames or vectors, so untouched columns are left as they
+# are.
+.isolate_shared_columns <- function(result, sources) {
+    isolate_all <- is.null(sources)
+    source_addresses <- if (!isolate_all) {
+        unlist(lapply(sources, function(source) {
+            if (is.data.frame(source)) {
+                vapply(
+                    .data_columns(source), rlang::obj_address, character(1)
+                )
+            } else {
+                rlang::obj_address(source)
+            }
+        }))
+    }
+    for (index in seq_len(length(result))) {
+        column <- .subset2(result, index)
+        if (isolate_all || rlang::obj_address(column) %in% source_addresses) {
+            result[[index]] <- .metadata_copy(column)
+        }
+    }
+    result
+}
+
+# `transform()`, `within()`, `group_modify()`, and the replacement
+# operators on a dibble: the ordinary implementation runs on the
+# snapshot, then changed columns are typed and the result is closed back
+# into a dibble. Other reference frames get the plain result.
+.typed_reference_verb <- function(data, call, generic, environment,
+                                  caller) {
+    if (!is_dibble(data)) {
+        return(.reference_delegate(data, call, generic, environment))
+    }
+    before <- .data_columns(data)
+    result <- .reference_delegate(data, call, generic, environment)
+    .close_dibble(
+        data, .retype_changed_columns(result, before, caller), caller
+    )
+}
+
+# The data-masking verbs: each `...` expression is typed as its result
+# enters the data mask, so a later expression, the row comparison of
+# `distinct()`, or the grouping of `group_by()` and `nest_by()` sees the
+# Stata column the result will hold. A bare double `y = c(NA, 1)` is a
+# Stata `double` when `z = y > 0` reads it, so `z` is `TRUE` where Stata's
+# missing order says so, and `NA` and `""` in a computed string key form
+# one group.
+#
+# The hook is a `(` call around each expression, evaluated in an
+# environment where `(` is the typer; `(` is the one call head R's
+# deparser does not show as a function, so `mutate(d, x + 1)` still names
+# its column `x + 1` once the parentheses are stripped, and dplyr's
+# "In argument" bullets are rewritten the same way. Symbols, `.data`
+# references, and `NULL` are left alone: they select or remove columns
+# rather than compute them. `across()`, `if_any()`, and `if_all()` are
+# left for dplyr to expand, and their columns are typed after the verb as
+# every other changed column is.
+.typed_mask_verb <- function(data, generic, dots, arguments, caller) {
+    # The call is evaluated where `generic` names the dplyr function, so
+    # dplyr reports errors as "Error in `mutate()`" rather than against
+    # an inlined function object.
+    environment <- new.env(parent = baseenv())
+    environment[[generic]] <- getExportedValue("dplyr", generic)
+    if (!is_dibble(data)) {
+        call <- rlang::call2(generic, .reference_snapshot(data), !!!dots,
+                             !!!arguments)
+        return(eval(call, environment))
+    }
+    before <- .data_columns(data)
+    wrapped <- .wrap_mask_expressions(dots, before, caller)
+    call <- rlang::call2(
+        generic, .reference_snapshot(data), !!!wrapped$dots, !!!arguments
+    )
+    result <- .relabel_mask_conditions(
+        eval(call, environment), wrapped$labels
+    )
+    result <- .unwrap_mask_names(result, wrapped$renames)
+    .close_dibble(
+        data, .retype_changed_columns(result, before, caller), caller
+    )
+}
+
+.wrap_mask_expressions <- function(dots, before, caller) {
+    names <- rlang::names2(dots)
+    labels <- character()
+    renames <- character()
+    for (index in seq_along(dots)) {
+        quosure <- dots[[index]]
+        if (!.mask_expression_typable(quosure)) next
+        name <- names[[index]]
+        typer <- .mask_value_typer(
+            before, caller, if (nzchar(name)) name else NULL
+        )
+        environment <- new.env(parent = rlang::quo_get_env(quosure))
+        environment[["("]] <- typer
+        wrapped <- rlang::new_quosure(
+            rlang::call2("(", quosure), environment
+        )
+        inner <- .mask_expression_label(quosure)
+        outer <- .mask_expression_label(wrapped)
+        if (nzchar(name)) {
+            labels[[paste0(name, " = ", outer)]] <- paste0(name, " = ", inner)
+        } else {
+            labels[[outer]] <- inner
+            renames[[outer]] <- inner
+        }
+        dots[[index]] <- wrapped
+    }
+    list(dots = dots, labels = labels, renames = renames)
+}
+
+.mask_expression_typable <- function(quosure) {
+    if (rlang::quo_is_missing(quosure) || rlang::quo_is_null(quosure) ||
+        rlang::quo_is_symbol(quosure)) {
+        return(FALSE)
+    }
+    expression <- rlang::quo_get_expr(quosure)
+    if (!is.call(expression)) return(TRUE)
+    if (rlang::is_call(expression, c("$", "[["), n = 2L) &&
+        identical(expression[[2L]], quote(.data))) {
+        return(FALSE)
+    }
+    !rlang::is_call(
+        expression, c("across", "if_any", "if_all"), ns = c("", "dplyr")
+    )
+}
+
+# dplyr names an unnamed column and its condition bullets by
+# `rlang::as_label()` of the expression with infix folding turned off.
+.mask_expression_label <- function(quosure) {
+    rlang::with_options(
+        "rlang:::use_as_label_infix" = FALSE,
+        rlang::as_label(rlang::quo_get_expr(quosure))
+    )
+}
+
+# Types one result as it enters the mask. A named expression that
+# overwrites a column promotes from that column; an unnamed data frame
+# result is unpacked by dplyr, so each of its columns is typed against
+# the column of the same name.
+.mask_value_typer <- function(before, caller, name) {
+    function(value) {
+        if (is.null(value)) return(NULL)
+        if (is.data.frame(value)) {
+            if (!is.null(name)) return(value)
+            columns <- names(value)
+            for (index in seq_along(columns)) {
+                value[[index]] <- .typed_mask_value(
+                    .subset2(value, index), before[[columns[[index]]]],
+                    caller
+                )
+            }
+            return(value)
+        }
+        .typed_mask_value(value, if (is.null(name)) NULL else before[[name]],
+                          caller)
+    }
+}
+
+.typed_mask_value <- function(value, prior, caller) {
+    if (is.null(prior)) {
+        return(.typed_column_named(value, length(value), caller, NULL))
+    }
+    .promoted_column(value, prior, length(value), caller)
+}
+
+# dplyr's "In argument: `y = (x + 1)`." bullets name the wrapped
+# expression; the parentheses are stripped so the message reads as the
+# user wrote the call.
+.relabel_mask_conditions <- function(expression, labels) {
+    if (length(labels) == 0L) return(expression)
+    relabel <- function(condition) {
+        for (field in c("message", "body")) {
+            text <- condition[[field]]
+            if (!is.character(text)) next
+            for (index in seq_along(labels)) {
+                text <- gsub(
+                    paste0("`", names(labels)[[index]], "`"),
+                    paste0("`", labels[[index]], "`"),
+                    text, fixed = TRUE
+                )
+            }
+            condition[[field]] <- text
+        }
+        condition
+    }
+    withCallingHandlers(
+        tryCatch(expression, error = function(condition) {
+            rlang::cnd_signal(relabel(condition))
+        }),
+        warning = function(condition) {
+            rlang::cnd_signal(relabel(condition))
+            invokeRestart("muffleWarning")
+        }
+    )
+}
+
+# An unnamed expression names its column `(x + 1)`; it becomes `x + 1`.
+.unwrap_mask_names <- function(result, renames) {
+    for (index in seq_along(renames)) {
+        outer <- names(renames)[[index]]
+        inner <- renames[[index]]
+        current <- names(result)
+        if (outer %in% current && !(inner %in% current)) {
+            result <- dplyr::rename(result, !!inner := !!outer)
+        }
+    }
+    result
+}
+
+.typed_reference_replacement <- function(data, result, caller) {
+    if (!is_dibble(data)) return(result)
+    before <- .data_columns(data)
+    .close_dibble(
+        data, .retype_changed_columns(result, before, caller), caller
+    )
 }
 
 # Grouping changes only dplyr metadata, so a dibble stays a dibble: the
-# grouped or ungrouped snapshot is marked again, and `state$classes` then
+# grouped or ungrouped snapshot is closed again, and `state$classes` then
 # records the grouping for later snapshots. The result is a fresh object
 # either way, so the mark never touches the caller's dataset.
 .regroup_reference_data <- function(data, result) {
-    if (is_dibble(data) && !is_dibble(result)) .as_dibble(result) else result
+    .close_dibble(data, result)
 }
 
 #' @export
@@ -2305,21 +3264,67 @@ group_by.dtatools_ref_data <- function(
     .data, ..., .add = FALSE,
     .drop = dplyr::group_by_drop_default(.data)
 ) {
-    .regroup_reference_data(.data, .reference_delegate(
-        .data, sys.call(), dplyr::group_by, parent.frame()
-    ))
+    # `group_by(d, g = x > 1)` computes a key as `mutate()` would, and
+    # the key is typed before the groups form, so `NA` and `""` in a
+    # computed string key make one group.
+    .typed_mask_verb(
+        .data, "group_by", rlang::enquos(..., .ignore_empty = "all"),
+        list(.add = .add, .drop = .drop), "`group_by()`"
+    )
 }
 
 #' @export
 summarise.dtatools_ref_data <- function(
     .data, ..., .by = NULL, .groups = NULL
 ) {
-    .reference_delegate(.data, sys.call(), dplyr::summarise, parent.frame())
+    .typed_mask_verb(
+        .data, "summarise", rlang::enquos(..., .ignore_empty = "all"),
+        list(.by = rlang::enquo(.by), .groups = .groups), "`summarise()`"
+    )
 }
 
 #' @export
 distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
-    .reference_delegate(.data, sys.call(), dplyr::distinct, parent.frame())
+    # `distinct(d, y = x * 2)` computes as `mutate()` does; the computed
+    # key is typed before rows are compared.
+    .typed_mask_verb(
+        .data, "distinct", rlang::enquos(..., .ignore_empty = "all"),
+        list(.keep_all = .keep_all), "`distinct()`"
+    )
+}
+
+#' @export
+reframe.dtatools_ref_data <- function(.data, ..., .by = NULL) {
+    .typed_mask_verb(
+        .data, "reframe", rlang::enquos(..., .ignore_empty = "all"),
+        list(.by = rlang::enquo(.by)), "`reframe()`"
+    )
+}
+
+#' @export
+group_modify.dtatools_ref_data <- function(.data, .f, ..., .keep = FALSE) {
+    .typed_reference_verb(
+        .data, sys.call(), dplyr::group_modify, parent.frame(),
+        "`group_modify()`"
+    )
+}
+
+#' @export
+nest_by.dtatools_ref_data <- function(.data, ..., .key = "data",
+                                      .keep = FALSE) {
+    .typed_mask_verb(
+        .data, "nest_by", rlang::enquos(..., .ignore_empty = "all"),
+        list(.key = .key, .keep = .keep), "`nest_by()`"
+    )
+}
+
+#' @export
+group_nest.dtatools_ref_data <- function(.tbl, ..., .key = "data",
+                                         keep = FALSE) {
+    .typed_mask_verb(
+        .tbl, "group_nest", rlang::enquos(..., .ignore_empty = "all"),
+        list(.key = .key, keep = keep), "`group_nest()`"
+    )
 }
 
 #' @export
@@ -2331,5 +3336,7 @@ ungroup.dtatools_ref_data <- function(x, ...) {
 
 #' @export
 rowwise.dtatools_ref_data <- function(data, ...) {
-    .reference_delegate(data, sys.call(), dplyr::rowwise, parent.frame())
+    .regroup_reference_data(data, .reference_delegate(
+        data, sys.call(), dplyr::rowwise, parent.frame()
+    ))
 }

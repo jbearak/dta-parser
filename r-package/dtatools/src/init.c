@@ -60,6 +60,9 @@ extern int dtatools_dictstring_bytes(
     void *, uint32_t, const char **, int *
 );
 extern void *dtatools_dictstring_clone(const void *);
+extern void *dtatools_dictstring_gather(
+    const void *, const uint32_t *, size_t
+);
 
 typedef struct {
     const char *name;
@@ -175,6 +178,7 @@ static SEXP metadata_proxy_source(SEXP value);
 static SEXP metadata_proxy_owner(SEXP value);
 static void metadata_proxy_set_state(SEXP value, SEXP source, SEXP owner);
 static SEXP dictstring_compact_copy(SEXP value);
+static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call);
 static size_t numeric_kind_width(int kind);
 static int string_declared_width(SEXP declared, const char *message);
 static size_t reference_string_width(SEXP value, const char *operation);
@@ -4324,6 +4328,15 @@ static void metadata_string_set_elt(
     SET_STRING_ELT(metadata_string_materialize(value), index, replacement);
 }
 
+static SEXP metadata_string_extract_subset(
+    SEXP value, SEXP index, SEXP call
+) {
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    SEXP source = unmaterialized_dictstring_source(value);
+    if (source == R_NilValue) return NULL;
+    return dictstring_extract_subset(source, index, call);
+}
+
 static SEXP metadata_proxy(
     SEXP value, R_altrep_class_t proxy_class, int isolate
 ) {
@@ -4432,6 +4445,15 @@ SEXP C_dtatools_set_attribute(SEXP object, SEXP name, SEXP value) {
     return object;
 }
 
+/* R's duplicate of a compact dictionary string that several bindings
+   share, as `attr(x, "label") <- ...` on a read column or a fresh subset
+   asks for. Without this method R would materialize the copy. */
+static SEXP dictstring_duplicate(SEXP value, Rboolean deep) {
+    (void) deep;
+    if (R_altrep_data2(value) != R_NilValue) return NULL;
+    return dictstring_compact_copy(value);
+}
+
 static SEXP dictstring_compact_copy(SEXP value) {
     SEXP source = unmaterialized_dictstring_source(value);
     if (source == R_NilValue) return R_NilValue;
@@ -4449,6 +4471,69 @@ static SEXP dictstring_compact_copy(SEXP value) {
         dtatools_dictstring_class, external, R_NilValue
     ));
     DUPLICATE_ATTRIB(result, value);
+    UNPROTECT(3);
+    return result;
+}
+
+/* `x[i]` on a compact dictionary string stays compact: the selected value
+   ids are gathered over a private copy of the dictionary, so the result
+   owns its payload and the source is untouched. An index outside the
+   vector would need `NA`, which the dictionary cannot hold, so such a
+   subset falls back to R's default and materializes. */
+static SEXP dictstring_extract_subset(SEXP value, SEXP index, SEXP call) {
+    (void) call;
+    if (R_altrep_data2(value) != R_NilValue ||
+        (TYPEOF(index) != INTSXP && TYPEOF(index) != REALSXP)) {
+        return NULL;
+    }
+    dictstring_data *data = dictstring_storage(value);
+    R_xlen_t length = XLENGTH(index);
+    if ((size_t) length > SIZE_MAX / sizeof(uint32_t)) {
+        Rf_error("compact dictionary-string subset is too long");
+    }
+    SEXP ids = PROTECT(Rf_allocVector(
+        RAWSXP, (R_xlen_t) ((size_t) length * sizeof(uint32_t))
+    ));
+    uint32_t *output = (uint32_t *) RAW(ids);
+    for (R_xlen_t i = 0; i < length; i++) {
+        if ((i & 16383) == 0) R_CheckUserInterrupt();
+        R_xlen_t source = -1;
+        if (TYPEOF(index) == INTSXP) {
+            int candidate = INTEGER_ELT(index, i);
+            if (candidate != NA_INTEGER && candidate > 0 &&
+                (size_t) candidate <= data->length) source = candidate - 1;
+        } else {
+            double candidate = REAL_ELT(index, i);
+            if (R_FINITE(candidate) && candidate >= 1 &&
+                candidate <= (double) data->length) {
+                source = (R_xlen_t) candidate - 1;
+            }
+        }
+        if (source < 0) {
+            UNPROTECT(1);
+            return NULL;
+        }
+        output[i] = data->value_ids[source];
+    }
+    SEXP source_cache = dictstring_cache(value);
+    R_xlen_t cardinality = XLENGTH(source_cache);
+    SEXP cache = PROTECT(Rf_allocVector(VECSXP, cardinality));
+    for (R_xlen_t id = 0; id < cardinality; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        SET_VECTOR_ELT(cache, id, VECTOR_ELT(source_cache, id));
+    }
+    SEXP external = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, cache));
+    R_RegisterCFinalizerEx(external, dictstring_finalize, TRUE);
+    void *gathered = dtatools_dictstring_gather(
+        data, output, (size_t) length
+    );
+    if (gathered == NULL) {
+        Rf_error("could not subset compact dictionary-string storage");
+    }
+    R_SetExternalPtrAddr(external, gathered);
+    SEXP result = R_new_altrep(
+        dtatools_dictstring_class, external, R_NilValue
+    );
     UNPROTECT(3);
     return result;
 }
@@ -5821,6 +5906,92 @@ static int can_resize_reference_columns(
 #endif
 }
 
+/* A dibble's column list with room to grow: `gen()` appends a new column
+   in place while capacity remains, so every reader of the physical list,
+   vctrs' binders included, sees the complete dataset. The result is a
+   shallow copy of `x` with `capacity` slots, `XLENGTH(x)` of them in use.
+   R 4.6 has resizable vectors for this; earlier R records the allocated
+   length as the true length, as data.table's over-allocation does. */
+/* A dibble's column list with room to grow: `gen()` appends a new column
+   in place while capacity remains, so every reader of the physical list,
+   vctrs' binders included, sees the complete dataset. The result is a
+   shallow copy of `x` with `capacity` slots, `XLENGTH(x)` of them in use.
+   R 4.6 has resizable vectors for this; earlier R records the allocated
+   length as the true length, as data.table's over-allocation does. */
+/* Which columns of a result list another object also holds. R's own
+   reference counts answer this the way copy-on-modify does: a vector a
+   verb built for this result is held by the list alone, while one it
+   carried over from an input is held by that input too. */
+SEXP C_dtatools_shared_columns(SEXP columns) {
+    if (TYPEOF(columns) != VECSXP) Rf_error("`columns` must be a list");
+    R_xlen_t length = XLENGTH(columns);
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, length));
+    for (R_xlen_t index = 0; index < length; index++) {
+        LOGICAL(result)[index] = MAYBE_SHARED(VECTOR_ELT(columns, index));
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
+    if (TYPEOF(x) != VECSXP) Rf_error("`x` must be a list");
+    double requested = Rf_asReal(capacity_value);
+    R_xlen_t length = XLENGTH(x);
+    if (!R_FINITE(requested) || requested < (double) length ||
+        requested > (double) R_XLEN_T_MAX || requested != floor(requested)) {
+        Rf_error("invalid column capacity");
+    }
+    R_xlen_t capacity = (R_xlen_t) requested;
+#if R_VERSION >= R_Version(4, 6, 0)
+    SEXP result = PROTECT(R_allocResizableVector(VECSXP, capacity));
+    R_resizeVector(result, length);
+#else
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, capacity));
+    SETLENGTH(result, length);
+    SET_TRUELENGTH(result, capacity);
+    SET_GROWABLE_BIT(result);
+#endif
+    for (R_xlen_t index = 0; index < length; index++) {
+        SET_VECTOR_ELT(result, index, VECTOR_ELT(x, index));
+    }
+    SHALLOW_DUPLICATE_ATTRIB(result, x);
+    UNPROTECT(1);
+    return result;
+}
+
+/* Appends `column` as the last physical column of `data`, in place, when
+   the list has capacity for it; returns FALSE otherwise so the caller
+   keeps the column in the reference state instead. Data tables grow
+   through their own `set()`, so this serves tibbles only. */
+SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(name) != STRSXP ||
+        XLENGTH(name) != 1 || Rf_inherits(data, "data.table")) {
+        Rf_error("invalid column append");
+    }
+    SEXP current_names = PROTECT(Rf_getAttrib(data, R_NamesSymbol));
+    R_xlen_t length = XLENGTH(data);
+    if (TYPEOF(current_names) != STRSXP ||
+        XLENGTH(current_names) != length) {
+        Rf_error("invalid column append names");
+    }
+    if (!can_resize_reference_columns(data, current_names, length + 1)) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(0);
+    }
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, length + 1));
+    for (R_xlen_t index = 0; index < length; index++) {
+        SET_STRING_ELT(names, index, STRING_ELT(current_names, index));
+    }
+    SET_STRING_ELT(names, length, STRING_ELT(name, 0));
+    /* Everything below is a committed plan: the resize cannot fail once
+       capacity is known, and the element and names are already built. */
+    resize_reference_vector(data, length + 1);
+    SET_VECTOR_ELT(data, length, column);
+    Rf_setAttrib(data, R_NamesSymbol, names);
+    UNPROTECT(2);
+    return Rf_ScalarLogical(1);
+}
+
 SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
     if (TYPEOF(data) != VECSXP || XLENGTH(length) != 1) {
         Rf_error("invalid reference column selection capacity query");
@@ -6342,6 +6513,32 @@ SEXP C_dtatools_dictstring_cached_count(SEXP value) {
     return Rf_ScalarReal((double) count);
 }
 
+/* The widest UTF-8 byte length in a dictionary string's dictionary, read
+   without materializing the column, so a dibble can declare `str#`
+   storage for an Arrow string while it stays compact. */
+SEXP C_dtatools_dictstring_max_width(SEXP value) {
+    SEXP source = unmaterialized_dictstring_source(value);
+    if (source == R_NilValue) {
+        Rf_error("value is not an unmaterialized dictionary string");
+    }
+    dictstring_data *data = dictstring_storage(source);
+    SEXP cache = dictstring_cache(source);
+    R_xlen_t value_count = XLENGTH(cache);
+    size_t maximum = 0;
+    for (R_xlen_t id = 0; id < value_count; id++) {
+        if ((id & 16383) == 0) R_CheckUserInterrupt();
+        const char *bytes = NULL;
+        int length = 0;
+        if (!dtatools_dictstring_bytes(
+                data, (uint32_t) id, &bytes, &length
+            ) || bytes == NULL || length < 0) {
+            Rf_error("invalid dtatools string-dictionary value");
+        }
+        if ((size_t) length > maximum) maximum = (size_t) length;
+    }
+    return Rf_ScalarReal((double) maximum);
+}
+
 SEXP C_dtatools_numeric_storage_matches(
     SEXP value, SEXP kind_value, SEXP temporal_value
 ) {
@@ -6550,7 +6747,8 @@ static int is_missing_supported_class(SEXP value) {
             Rf_inherits(value, "POSIXct") ||
             Rf_inherits(value, "haven_labelled");
     case STRSXP:
-        return metadata_only || Rf_inherits(value, "haven_labelled");
+        return metadata_only || Rf_inherits(value, "haven_labelled") ||
+            Rf_inherits(value, "stata_string");
     default:
         return 0;
     }
@@ -7290,6 +7488,10 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_patch_data_column, 5},
     {"C_dtatools_set_data_column",
      (DL_FUNC) &C_dtatools_set_data_column, 3},
+    {"C_dtatools_reserve_column_capacity",
+     (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
+    {"C_dtatools_append_data_column",
+     (DL_FUNC) &C_dtatools_append_data_column, 3},
     {"C_dtatools_can_select_data_columns",
      (DL_FUNC) &C_dtatools_can_select_data_columns, 2},
     {"C_dtatools_select_data_columns",
@@ -7306,6 +7508,8 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_is_unmaterialized_dictstring, 1},
     {"C_dtatools_dictstring_cached_count",
      (DL_FUNC) &C_dtatools_dictstring_cached_count, 1},
+    {"C_dtatools_dictstring_max_width",
+     (DL_FUNC) &C_dtatools_dictstring_max_width, 1},
     {"C_dtatools_numeric_storage_matches",
      (DL_FUNC) &C_dtatools_numeric_storage_matches, 3},
     {"C_dtatools_force_altrep_materialization",
@@ -7379,6 +7583,12 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     R_set_altvec_Dataptr_or_null_method(
         dtatools_dictstring_class, dictstring_dataptr_or_null
     );
+    R_set_altrep_Duplicate_method(
+        dtatools_dictstring_class, dictstring_duplicate
+    );
+    R_set_altvec_Extract_subset_method(
+        dtatools_dictstring_class, dictstring_extract_subset
+    );
     R_set_altstring_Elt_method(dtatools_dictstring_class, dictstring_value);
     R_set_altstring_Set_elt_method(dtatools_dictstring_class, dictstring_set_elt);
     R_set_altstring_No_NA_method(dtatools_dictstring_class, dictstring_no_na);
@@ -7435,6 +7645,9 @@ void attribute_visible R_init_dtatools(DllInfo *dll) {
     );
     R_set_altvec_Dataptr_or_null_method(
         dtatools_metadata_string_class, metadata_string_dataptr_or_null
+    );
+    R_set_altvec_Extract_subset_method(
+        dtatools_metadata_string_class, metadata_string_extract_subset
     );
     R_set_altstring_Elt_method(
         dtatools_metadata_string_class, metadata_string_value

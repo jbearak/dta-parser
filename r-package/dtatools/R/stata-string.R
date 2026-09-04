@@ -2,7 +2,11 @@
 #'
 #' Creates an owned Stata string vector whose fixed-width or `strL` storage
 #' declaration survives supported vector operations. Stata strings use `""`
-#' for missing values, so `NA_character_` is rejected.
+#' for missing values, so `NA_character_` is rejected here and in subset
+#' assignment; a vctrs coercion into a Stata string, as a join's padding or
+#' `vec_c()` performs, spells `NA` as `""`. Replacement within the vector
+#' must fit the declared width, while extending it, as base `rbind()` does,
+#' widens the declaration to the common storage.
 #'
 #' @param x A character vector without missing values.
 #' @param storage `NULL` to infer the narrowest storage, `"str1"` through
@@ -68,11 +72,17 @@ dta_string <- function(x = character(), storage = NULL) {
     x
 }
 
+# The bare character data behind a Stata string, read through a metadata
+# view so that a compact dictionary string from a reader stays compact:
+# stripping the attributes of the vector itself would materialize it.
+# Subsetting the view keeps the result compact too, so `filter()`,
+# `vec_slice()`, and `[` on a read column never expand it.
 .stata_string_data <- function(x) {
     value_names <- names(x)
-    attributes(x) <- NULL
-    names(x) <- value_names
-    x
+    value <- .metadata_view(x)
+    attributes(value) <- NULL
+    names(value) <- value_names
+    value
 }
 
 #' @export
@@ -134,14 +144,24 @@ vec_ptype2.stata_string.character <- .stata_string_ptype2
 #' @export
 vec_ptype2.character.stata_string <- .stata_string_ptype2
 
+# The vctrs cast into a Stata string. `NA` becomes `""`, which is how
+# Stata spells a missing string: a join pads the unmatched side with `NA`
+# and a `vec_c()` can carry one in, and the result must still be a Stata
+# string. `dta_string()` and subset assignment stay strict, since there
+# the `NA` is the user's own.
 .cast_stata_string <- function(x, to) {
     storage <- attr(to, "stata.string.storage", exact = TRUE)
     value <- as.character(x)
+    value[is.na(value)] <- ""
+    .normalize_stata_string_storage(storage, .stata_string_required_width(value))
+    .new_stata_string(value, storage, to)
+}
+
+.reject_missing_stata_string <- function(value) {
     if (anyNA(value)) {
         stop("Stata strings cannot contain `NA_character_`; use `\"\"`", call. = FALSE)
     }
-    .normalize_stata_string_storage(storage, .stata_string_required_width(value))
-    .new_stata_string(value, storage, to)
+    invisible(NULL)
 }
 
 #' @export
@@ -152,27 +172,46 @@ vec_cast.stata_string.character <- function(x, to, ...) .cast_stata_string(x, to
 vec_cast.character.stata_string <- function(x, to, ...) as.character(x)
 
 #' @export
+# Replacement within the vector is strict: the value must fit the declared
+# width. Extending the vector, as base `rbind()` does when it appends a
+# second frame's rows, takes the common storage of the vector and the
+# value, so a wider string widens the declaration as concatenation would.
+.stata_string_replacement_storage <- function(x, i, value) {
+    if (!missing(i) && .stata_subscript_extends(x, i)) {
+        .stata_string_common_storage(x, value)
+    } else {
+        attr(x, "stata.string.storage", exact = TRUE)
+    }
+}
+
+#' @export
 `[<-.stata_string` <- function(x, i, ..., value) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
-    replacement <- as.character(.cast_stata_string(value, x))
+    .reject_missing_stata_string(value)
+    storage <- .stata_string_replacement_storage(x, i, value)
+    replacement <- as.character(.cast_stata_string(
+        value, .new_stata_string(character(), storage, x)
+    ))
     data <- .stata_string_data(x)
     if (missing(i)) data[] <- replacement else data[i] <- replacement
-    if (anyNA(data)) {
-        stop("Stata strings cannot contain `NA_character_`; use `\"\"`", call. = FALSE)
-    }
-    .new_stata_string(data, attr(x, "stata.string.storage", exact = TRUE), x)
+    # The value's own `NA` was rejected above; any left is a gap the
+    # extension opened, which Stata spells `""`.
+    data[is.na(data)] <- ""
+    .new_stata_string(data, storage, x)
 }
 
 #' @export
 `[[<-.stata_string` <- function(x, i, ..., value) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
-    replacement <- as.character(.cast_stata_string(value, x))
+    .reject_missing_stata_string(value)
+    storage <- .stata_string_replacement_storage(x, i, value)
+    replacement <- as.character(.cast_stata_string(
+        value, .new_stata_string(character(), storage, x)
+    ))
     data <- .stata_string_data(x)
     data[[i]] <- replacement
-    if (anyNA(data)) {
-        stop("Stata strings cannot contain `NA_character_`; use `\"\"`", call. = FALSE)
-    }
-    .new_stata_string(data, attr(x, "stata.string.storage", exact = TRUE), x)
+    data[is.na(data)] <- ""
+    .new_stata_string(data, storage, x)
 }
 
 #' @export

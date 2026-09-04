@@ -23,8 +23,11 @@ test_that("drop_vars removes physical and generated columns", {
     expect_named(data, c("a", "c"))
     expect_named(alias, c("a", "c"))
     expect_s3_class(data, "tbl_df")
-    expect_identical(data$a, 1:2)
-    expect_identical(data$c, 5:6)
+    # The tibble became a dibble at its first gen(), so its integer
+    # columns carry Stata long storage.
+    expect_identical(dta_storage_type(data$a), "long")
+    expect_identical(as.integer(data$a), 1:2)
+    expect_identical(as.integer(data$c), 5:6)
 })
 
 test_that("physical-only selection mutates ordinary data aliases", {

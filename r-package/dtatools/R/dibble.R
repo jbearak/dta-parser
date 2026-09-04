@@ -15,12 +15,30 @@
 #' `gen()` are the same kind of object: `is_dibble()` is `TRUE` for both,
 #' and `gen()` on a plain tibble is one way to obtain a dibble.
 #'
-#' A dibble prints, subsets, and joins as a tibble. Ordinary replacement
-#' (`$<-`, `[[<-`, `[<-`, `names<-`) and most dplyr verbs return plain
-#' tibbles holding the current contents, following copy-on-modify;
-#' [dplyr::group_by()] and [dplyr::ungroup()] return a grouped or ungrouped
-#' dibble. [tibble::as_tibble()] returns a tibble snapshot. `as_dibble()` of
-#' a grouped tibble keeps its grouping.
+#' A dibble is a Stata dataset held in a tibble, and two invariants follow.
+#' Every numeric and string column carries Stata storage: `dibble()` and
+#' `as_dibble()` type bare columns by the mapping in
+#' [stata-storage-defaults], and so does every operation that adds or
+#' changes a column, including [dplyr::mutate()], `transform()`, and the
+#' replacement operators `$<-`, `[[<-`, and `[<-`. Logical columns stay
+#' logical and factors stay factors. And every dataset operation on a
+#' dibble returns a dibble: dplyr verbs, joins with a dibble on the left,
+#' `bind_rows()` with a dibble first, base `subset()`, `transform()`,
+#' `within()`, `head()`, `rbind()`, `cbind()`, and `[` subsetting. Each
+#' result is a fresh object holding the current contents, following
+#' copy-on-modify; the input is unchanged, and a by-reference `:=` or
+#' [replace_values()] on either the input or the result leaves the other
+#' as it was, and leaves any other frame the operation drew columns from
+#' as it was. Columns an operation leaves alone are shared copy-on-write,
+#' so compact columns stay compact. A dibble is built with spare capacity
+#' for 256 more columns, so [gen()] appends to its column list in place
+#' and `bind_rows()`, `bind_cols()`, and other consumers that read the
+#' list directly see every column; past that capacity, and on a tibble
+#' that became a dibble at its first `gen()`, such consumers need
+#' [tibble::as_tibble()], as documented under [gen()].
+#' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
+#' its expression's value. `as_dibble()` of a grouped tibble keeps its
+#' grouping.
 #'
 #' `as_dibble()` returns a dibble as is. Otherwise it returns a new object
 #' and leaves its argument unchanged: a tibble or data frame is shallow
@@ -52,14 +70,15 @@
 #' is_dibble(grouped)
 #' dplyr::group_vars(grouped)
 #' @seealso [dibble-bracket] for `survey[i, y := value]`, the assignment
-#'   shape only a dibble supports.
+#'   shape only a dibble supports; [stata-storage-defaults] for the Stata
+#'   storage a dibble gives its columns.
 #' @name dibble
 NULL
 
 #' @rdname dibble
 #' @export
 dibble <- function(...) {
-    .as_dibble(tibble::tibble(...))
+    .as_dibble(tibble::tibble(...), "dibble()")
 }
 
 #' @rdname dibble
@@ -89,7 +108,7 @@ is_dibble <- function(x) {
 # or rowwise tibble keeps its class, so `state$classes` records the grouping
 # and dplyr sees it again on the snapshot. The shallow copy leaves the
 # caller's object untouched by the in-place mark.
-.as_dibble <- function(x) {
+.as_dibble <- function(x, caller = "as_dibble()") {
     .reject_data_table_subclass(x, "x")
     x <- if (inherits(x, "tbl_df")) {
         .Call(C_dtatools_metadata_copy, x)
@@ -109,6 +128,10 @@ is_dibble <- function(x) {
             call. = FALSE
         )
     }
+    x <- .type_dibble_columns(x, caller)
+    # Spare column slots let `gen()` append in place, so the physical
+    # list stays the complete dataset for every reader.
+    x <- .reserve_column_capacity(x)
     .mark_reference_data(x, .new_reference_state(x))
 }
 
@@ -162,9 +185,10 @@ is_dibble <- function(x) {
 #' same data mask. Unlike `gen()`, which refuses an existing name, and
 #' `replace_values()`, which refuses a new one, `:=` creates a column that
 #' is absent and overwrites one that exists, as a user of the data.table
-#' shape expects; a new column takes `gen()`'s storage rules and an
-#' existing one `replace_values()`'s, so a declared `stata_*()` target
-#' still rejects values that do not fit. `data[i, y := 1]` is otherwise
+#' shape expects; a new column takes `gen()`'s storage rules, including
+#' Stata's `generate` default of `float` for a bare double, and an existing
+#' one is promoted from its storage as [dplyr::mutate()] does, so a
+#' declared `dta_*()` target widens only when the values do not fit. `data[i, y := 1]` is otherwise
 #' `repl(data, y = 1, where = i)` or `gen(data, y = 1, where = i)`.
 #'
 #' `j` may carry several assignments: `` `:=`(y = v, z = w) ``, or
@@ -194,7 +218,7 @@ is_dibble <- function(x) {
 #'
 #' Without `:=` the brackets are ordinary tibble subsetting of the current
 #' contents: `data[1, ]`, `data[, "x"]`, `data["x"]`, and `data[i, cols]`
-#' return plain tibbles, following copy-on-modify.
+#' return a new dibble holding the selection, following copy-on-modify.
 #'
 #' @param x A dibble.
 #' @param i Row selection, as `where` in [replace_values()]: missing or
@@ -239,7 +263,7 @@ NULL
         call <- sys.call()
         call[[1L]] <- quote(`[`)
         call[[2L]] <- .reference_snapshot(x)
-        return(eval(call, parent.frame()))
+        return(.close_dibble(x, eval(call, parent.frame())))
     }
     # data.table's third slot is `by`, so `data[i, j, id]` puts `id` in
     # `...`; one unnamed dot is that positional `by`.
@@ -274,7 +298,7 @@ NULL
         .mutate_data(
             x, rlang::new_quosure(assignment$name, emptyenv()),
             assignment$values, where, generate = !exists,
-            selection = selection
+            selection = selection, promote = TRUE
         )
     }
     # `[` forces its result visible after dispatch, so `invisible()` alone

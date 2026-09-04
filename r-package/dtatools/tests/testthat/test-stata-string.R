@@ -48,6 +48,19 @@ test_that("Stata string concatenation widens and replacement stays strict", {
     expect_error(narrow[1] <- NA_character_, "use `\\\"\\\"`")
     narrow[2] <- "b"
     expect_identical(as.character(narrow), c("a", "b"))
+    # Extending the vector takes the common storage, as concatenation
+    # does, and a gap the extension opens is Stata's `""`.
+    narrow[4] <- "wide"
+    expect_identical(attr(narrow, "stata.string.storage"), "str4")
+    expect_identical(as.character(narrow), c("a", "b", "", "wide"))
+    expect_error(narrow[5] <- NA_character_, "NA_character_")
+    # A vctrs cast spells `NA` as `""`, as a join's padding needs.
+    padded <- vctrs::vec_cast(c("x", NA), dta_string("a"))
+    expect_identical(as.character(padded), c("x", ""))
+    expect_identical(
+        as.character(vctrs::vec_c(dta_string("a"), NA_character_)),
+        c("a", "")
+    )
 })
 
 test_that("common type with bare character can hold values chosen later", {
