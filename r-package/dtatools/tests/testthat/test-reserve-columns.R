@@ -293,3 +293,19 @@ test_that("bracket dispatch does not reevaluate computed getters", {
     expect_physical_table(b, "z")
     expect_physical_table(result, c("x", "y"))
 })
+
+test_that("literal bracket getters rebind without rerunning their lookup", {
+    withr::local_options(dtatools.alloccol = 0L)
+    for (getter in c("get", "get0")) {
+        a <- dibble(x = 1:2)
+        alias <- a
+        call <- substitute(FUN("a")[, y := 1L], list(FUN = as.name(getter)))
+        expect_warning(eval(call), "reallocation")
+        expect_physical_table(a, c("x", "y"))
+        expect_physical_table(alias, "x")
+        e <- new.env(); e$a <- dibble(x = 1:2)
+        call <- substitute(FUN("a", envir = e)[, y := 1L], list(FUN = as.name(getter)))
+        expect_warning(eval(call), "reallocation")
+        expect_physical_table(e$a, c("x", "y"))
+    }
+})

@@ -308,11 +308,15 @@ NULL
         rlang::enquo(i)
     }
     target_expr <- substitute(x)
-    # The primitive has already evaluated x for dispatch. Do not run a
-    # getter expression again; its result can always be assigned explicitly.
-    binding <- if (is.call(target_expr) && is.symbol(target_expr[[1L]]) &&
-        as.character(target_expr[[1L]]) %in% c("$", "[[")) {
-        .capture_mutation_binding(target_expr, parent.frame())
+    # The primitive has already evaluated x for dispatch. Resolve only simple
+    # destinations now, and pass x so the getter itself is not run again.
+    simple_target <- is.call(target_expr) && is.symbol(target_expr[[1L]]) &&
+        as.character(target_expr[[1L]]) %in% c("$", "[[", "get", "get0") &&
+        all(vapply(as.list(target_expr)[-1L], function(arg) {
+            is.atomic(arg) || is.symbol(arg)
+        }, logical(1)))
+    binding <- if (simple_target) {
+        .capture_mutation_binding(target_expr, parent.frame(), value = x)
     } else NULL
     original_x <- x
     if (.has_column_overlay(x)) {

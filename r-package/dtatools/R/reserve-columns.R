@@ -84,7 +84,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
 
 # Capture extraction/get destinations before values run. In particular, never
 # reevaluate a get() name or environment expression while rebinding.
-.capture_mutation_binding <- function(target, env) {
+.capture_mutation_binding <- function(target, env, value) {
     if (!is.call(target) || !is.symbol(target[[1L]])) return(NULL)
     head <- as.character(target[[1L]])
     if (head %in% c("$", "[[") && length(target) == 3L &&
@@ -92,7 +92,9 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
         (is.symbol(target[[3L]]) || is.atomic(target[[3L]]))) {
         container <- eval(target[[2L]], env)
         key <- if (head == "$") as.character(target[[3L]]) else eval(target[[3L]], env)
-        value <- if (head == "$") do.call(`$`, list(container, key)) else container[[key]]
+        if (missing(value)) {
+            value <- if (head == "$") do.call(`$`, list(container, key)) else container[[key]]
+        }
         return(list(kind = "extraction", data = value, container = target[[2L]],
                     key = key, head = head, env = env))
     }
@@ -110,7 +112,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
     }
     args$envir <- where
     args$pos <- NULL
-    value <- do.call(fun, args, envir = env)
+    if (missing(value)) value <- do.call(fun, args, envir = env)
     inherits <- if (is.null(args$inherits)) TRUE else args$inherits
     mode <- if (is.null(args$mode)) "any" else args$mode
     if (isTRUE(inherits)) {
