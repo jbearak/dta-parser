@@ -31,10 +31,11 @@
 #' drew columns from as it was. Columns an operation leaves alone are
 #' shared copy-on-write, so compact columns stay compact.
 #'
-#' The replacement operators are the exception: `$<-`, `[[<-`, `[<-`, and
-#' `names<-` on a dibble write by reference, as [gen()], [replace_values()],
-#' and `:=` do, so every binding to the dataset sees the change and a
-#' replacement inside a function reaches the caller's dibble. Because R
+#' The replacement operators are the exception: `$<-`, `[[<-`, `[<-`,
+#' `names<-`, `dimnames<-`, and `row.names<-` on a dibble write by
+#' reference, as [gen()], [replace_values()], and `:=` do, so every binding
+#' to the dataset sees the change and a replacement inside a function
+#' reaches the caller's dibble. Because R
 #' spells `var_label(data$x) <- "Age"` as a `$<-` call, every metadata
 #' setter used in replacement form is by reference on a dibble too:
 #' [var_label<-], [val_labels<-], and `attr<-` on `format.stata`, notes, or

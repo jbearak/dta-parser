@@ -56,10 +56,11 @@ leaves the other as it was, and leaves any other frame the operation
 drew columns from as it was. Columns an operation leaves alone are
 shared copy-on-write, so compact columns stay compact.
 
-The replacement operators are the exception: \verb{$<-}, \verb{[[<-}, \verb{[<-}, and
-\verb{names<-} on a dibble write by reference, as \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}},
-and \verb{:=} do, so every binding to the dataset sees the change and a
-replacement inside a function reaches the caller's dibble. Because R
+The replacement operators are the exception: \verb{$<-}, \verb{[[<-}, \verb{[<-},
+\verb{names<-}, \verb{dimnames<-}, and \verb{row.names<-} on a dibble write by
+reference, as \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, and \verb{:=} do, so every binding
+to the dataset sees the change and a replacement inside a function
+reaches the caller's dibble. Because R
 spells \code{var_label(data$x) <- "Age"} as a \verb{$<-} call, every metadata
 setter used in replacement form is by reference on a dibble too:
 \link{var_label<-}, \link{val_labels<-}, and \verb{attr<-} on \code{format.stata}, notes, or

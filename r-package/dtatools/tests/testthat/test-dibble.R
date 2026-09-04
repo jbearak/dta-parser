@@ -1551,6 +1551,15 @@ test_that("by-reference replacement isolates other frames and vectors", {
     expect_identical(dta_storage_type(cells$b), "double")
     expect_error(cells$a <- 1:2)
     expect_identical(names(cells), c("a", "b"))
+    # Row names and dimnames follow too.
+    named <- dibble(x = 1:2)
+    named_alias <- named
+    row.names(named) <- c("a", "b")
+    expect_identical(row.names(named_alias), c("a", "b"))
+    dimnames(named) <- list(c("c", "d"), "y")
+    expect_identical(row.names(named_alias), c("c", "d"))
+    expect_identical(names(named_alias), "y")
+    expect_true(is_dibble(named_alias))
     # A grouped dibble regroups when a key changes.
     grouped <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
     grouped$h <- 1L

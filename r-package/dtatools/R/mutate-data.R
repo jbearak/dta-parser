@@ -2333,7 +2333,7 @@ print.dtatools_ref_data <- function(x, ...) {
 # reference state, so the object every binding holds is the one that
 # changed and R's rebinding in the calling frame is a no-op. That is what
 # makes R's replacement-function forms by reference too: `val_labels(d$x)
-# <- v` is `d <- `$<-`(d, "x", `val_labels<-`(d$x, v))`, so a metadata
+# <- v` is ``d <- `$<-`(d, "x", `val_labels<-`(d$x, v))``, so a metadata
 # setter used on a dibble's column inside a function reaches the caller's
 # dataset and every alias of it (ADR 0023). A reference frame that is not
 # a dibble gets the ordinary copy.
@@ -2441,13 +2441,18 @@ print.dtatools_ref_data <- function(x, ...) {
 }
 
 # A replacement on a grouped snapshot goes through dplyr's `[<-` and
-# `$<-` methods, which recompute or drop the groups; the dibble takes the
-# result's grouping and classes as its own.
+# `$<-` methods, which recompute or drop the groups, and `row.names<-` or
+# `dimnames<-` may have changed the row names; the dibble takes the
+# result's grouping, row names, and classes as its own.
 .sync_replacement_attributes <- function(x, result) {
     state <- .reference_state(x)
     .Call(
         C_dtatools_set_attribute, x, "groups",
         attr(result, "groups", exact = TRUE)
+    )
+    .Call(
+        C_dtatools_set_attribute, x, "row.names",
+        attr(result, "row.names", exact = TRUE)
     )
     classes <- class(result)
     if (!identical(classes, state$classes)) {
@@ -2526,7 +2531,7 @@ print.dtatools_ref_data <- function(x, ...) {
 `row.names<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     row.names(result) <- value
-    .close_dibble(x, result)
+    .install_replacement(x, result, NULL, "`row.names<-`")
 }
 
 #' @export
