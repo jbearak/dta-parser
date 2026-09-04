@@ -5906,6 +5906,92 @@ static int can_resize_reference_columns(
 #endif
 }
 
+/* A dibble's column list with room to grow: `gen()` appends a new column
+   in place while capacity remains, so every reader of the physical list,
+   vctrs' binders included, sees the complete dataset. The result is a
+   shallow copy of `x` with `capacity` slots, `XLENGTH(x)` of them in use.
+   R 4.6 has resizable vectors for this; earlier R records the allocated
+   length as the true length, as data.table's over-allocation does. */
+/* A dibble's column list with room to grow: `gen()` appends a new column
+   in place while capacity remains, so every reader of the physical list,
+   vctrs' binders included, sees the complete dataset. The result is a
+   shallow copy of `x` with `capacity` slots, `XLENGTH(x)` of them in use.
+   R 4.6 has resizable vectors for this; earlier R records the allocated
+   length as the true length, as data.table's over-allocation does. */
+/* Which columns of a result list another object also holds. R's own
+   reference counts answer this the way copy-on-modify does: a vector a
+   verb built for this result is held by the list alone, while one it
+   carried over from an input is held by that input too. */
+SEXP C_dtatools_shared_columns(SEXP columns) {
+    if (TYPEOF(columns) != VECSXP) Rf_error("`columns` must be a list");
+    R_xlen_t length = XLENGTH(columns);
+    SEXP result = PROTECT(Rf_allocVector(LGLSXP, length));
+    for (R_xlen_t index = 0; index < length; index++) {
+        LOGICAL(result)[index] = MAYBE_SHARED(VECTOR_ELT(columns, index));
+    }
+    UNPROTECT(1);
+    return result;
+}
+
+SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
+    if (TYPEOF(x) != VECSXP) Rf_error("`x` must be a list");
+    double requested = Rf_asReal(capacity_value);
+    R_xlen_t length = XLENGTH(x);
+    if (!R_FINITE(requested) || requested < (double) length ||
+        requested > (double) R_XLEN_T_MAX || requested != floor(requested)) {
+        Rf_error("invalid column capacity");
+    }
+    R_xlen_t capacity = (R_xlen_t) requested;
+#if R_VERSION >= R_Version(4, 6, 0)
+    SEXP result = PROTECT(R_allocResizableVector(VECSXP, capacity));
+    R_resizeVector(result, length);
+#else
+    SEXP result = PROTECT(Rf_allocVector(VECSXP, capacity));
+    SETLENGTH(result, length);
+    SET_TRUELENGTH(result, capacity);
+    SET_GROWABLE_BIT(result);
+#endif
+    for (R_xlen_t index = 0; index < length; index++) {
+        SET_VECTOR_ELT(result, index, VECTOR_ELT(x, index));
+    }
+    SHALLOW_DUPLICATE_ATTRIB(result, x);
+    UNPROTECT(1);
+    return result;
+}
+
+/* Appends `column` as the last physical column of `data`, in place, when
+   the list has capacity for it; returns FALSE otherwise so the caller
+   keeps the column in the reference state instead. Data tables grow
+   through their own `set()`, so this serves tibbles only. */
+SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
+    if (TYPEOF(data) != VECSXP || TYPEOF(name) != STRSXP ||
+        XLENGTH(name) != 1 || Rf_inherits(data, "data.table")) {
+        Rf_error("invalid column append");
+    }
+    SEXP current_names = PROTECT(Rf_getAttrib(data, R_NamesSymbol));
+    R_xlen_t length = XLENGTH(data);
+    if (TYPEOF(current_names) != STRSXP ||
+        XLENGTH(current_names) != length) {
+        Rf_error("invalid column append names");
+    }
+    if (!can_resize_reference_columns(data, current_names, length + 1)) {
+        UNPROTECT(1);
+        return Rf_ScalarLogical(0);
+    }
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, length + 1));
+    for (R_xlen_t index = 0; index < length; index++) {
+        SET_STRING_ELT(names, index, STRING_ELT(current_names, index));
+    }
+    SET_STRING_ELT(names, length, STRING_ELT(name, 0));
+    /* Everything below is a committed plan: the resize cannot fail once
+       capacity is known, and the element and names are already built. */
+    resize_reference_vector(data, length + 1);
+    SET_VECTOR_ELT(data, length, column);
+    Rf_setAttrib(data, R_NamesSymbol, names);
+    UNPROTECT(2);
+    return Rf_ScalarLogical(1);
+}
+
 SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
     if (TYPEOF(data) != VECSXP || XLENGTH(length) != 1) {
         Rf_error("invalid reference column selection capacity query");
@@ -7402,6 +7488,10 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_patch_data_column, 5},
     {"C_dtatools_set_data_column",
      (DL_FUNC) &C_dtatools_set_data_column, 3},
+    {"C_dtatools_reserve_column_capacity",
+     (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
+    {"C_dtatools_append_data_column",
+     (DL_FUNC) &C_dtatools_append_data_column, 3},
     {"C_dtatools_can_select_data_columns",
      (DL_FUNC) &C_dtatools_can_select_data_columns, 2},
     {"C_dtatools_select_data_columns",

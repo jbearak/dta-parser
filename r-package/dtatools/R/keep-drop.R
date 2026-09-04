@@ -385,6 +385,7 @@ rename_vars <- function(data, ..., .names = NULL) {
     data, original, retained_columns, source_names = names(retained_columns)
 ) {
     state <- original$state
+    dibble_input <- is_dibble(data)
     source_classes <- if (is.null(state)) class(data) else state$classes
     can_materialize <- .Call(
         C_dtatools_can_select_data_columns,
@@ -440,6 +441,11 @@ rename_vars <- function(data, ..., .names = NULL) {
         })
     } else {
         select()
+    }
+    # A dibble whose list could be resized has lost its mark to the
+    # materialization; it is a dibble still, over the new column set.
+    if (dibble_input && is.null(.reference_state(data))) {
+        .mark_reference_data(data, .new_reference_state(data))
     }
     invisible(data)
 }

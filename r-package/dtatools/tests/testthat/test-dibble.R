@@ -1007,3 +1007,97 @@ test_that("subsetting keeps compact dictionary strings compact", {
     expect_identical(as.character(data$s), c("aa", "bb", "aa", "yy", "bb"))
     expect_identical(as.character(filtered$s), c("aa", "cc", "bb"))
 })
+
+test_that("generated columns reach consumers that read the column list", {
+    data <- dibble(x = 1:2)
+    gen(data, y = x * 2L)
+    gen(data, s = "a")
+    expect_true(is_dibble(data))
+    expect_identical(names(data), c("x", "y", "s"))
+    # The physical list holds every column, so vctrs' binders see them.
+    expect_identical(names(unclass(data)), c("x", "y", "s"))
+    stacked <- dplyr::bind_rows(data, data)
+    expect_true(is_dibble(stacked))
+    expect_identical(names(stacked), c("x", "y", "s"))
+    expect_identical(as.integer(stacked$y), c(2L, 4L, 2L, 4L))
+    beside <- dplyr::bind_cols(data, dibble(z = 3:4))
+    expect_identical(names(beside), c("x", "y", "s", "z"))
+    expect_identical(names(vctrs::vec_rbind(data, data)), c("x", "y", "s"))
+    expect_identical(names(purrr::map(data, class)), c("x", "y", "s"))
+    # Other bindings to the same object see the appended columns too.
+    alias <- data
+    gen(data, w = 1L)
+    expect_identical(names(alias), c("x", "y", "s", "w"))
+    expect_identical(as.integer(alias$w), c(1L, 1L))
+    # A tibble that becomes a dibble at its first gen() has no spare
+    # capacity, so that column lives in the state and later ones follow.
+    tbl <- tibble::tibble(a = 1:2)
+    gen(tbl, b = a)
+    gen(tbl, c = a)
+    expect_identical(names(tbl), c("a", "b", "c"))
+    expect_identical(names(unclass(tbl)), "a")
+    # Such a dibble hands non-generic consumers its snapshot, as documented.
+    expect_identical(
+        names(dplyr::bind_rows(tibble::as_tibble(tbl), tbl)),
+        c("a", "b", "c")
+    )
+    state <- dtatools:::.reference_state(tbl)
+    expect_identical(state$generated_count, 2L)
+    expect_identical(names(dtatools:::.data_columns(tbl)), c("a", "b", "c"))
+})
+
+test_that("column binding isolates every input, not only the first", {
+    left <- dibble(x = 1:2)
+    right <- tibble::tibble(flag = c(TRUE, FALSE), s = c("a", "b"))
+    other <- dibble(z = dta_long(5:6))
+    bound <- dplyr::bind_cols(left, right, other)
+    repl(bound, flag = FALSE)
+    repl(bound, s = "z")
+    bound[, z := 0L]
+    expect_identical(right$flag, c(TRUE, FALSE))
+    expect_identical(right$s, c("a", "b"))
+    expect_identical(as.integer(other$z), 5:6)
+    expect_identical(bound$flag, c(FALSE, FALSE))
+    stacked <- cbind(left, right)
+    repl(stacked, flag = FALSE)
+    expect_identical(right$flag, c(TRUE, FALSE))
+    joined <- dplyr::left_join(
+        left, tibble::tibble(x = 1:2, w = c(TRUE, TRUE)), by = "x"
+    )
+    joined_source <- tibble::tibble(x = 1:2, w = c(TRUE, TRUE))
+    joined <- dplyr::left_join(left, joined_source, by = "x")
+    repl(joined, w = FALSE)
+    expect_identical(joined_source$w, c(TRUE, TRUE))
+    # bind_rows() with a single input shares nothing that can leak either.
+    rows <- dplyr::bind_rows(left, tibble::tibble(x = 3L))
+    rows[, x := 0L]
+    expect_identical(as.integer(left$x), 1:2)
+})
+
+test_that("the first gen on a tibble evaluates against typed columns", {
+    tbl <- tibble::tibble(g = c(NA_character_, ""), v = 1:2)
+    gen(tbl, n = .N, by = g)
+    # NA and "" are one Stata string value, so one group of two.
+    expect_true(is_dibble(tbl))
+    expect_identical(as.integer(tbl$n), c(2L, 2L))
+    expect_identical(as.character(tbl$g), c("", ""))
+    grouped <- dplyr::group_by(
+        tibble::tibble(g = c(NA_character_, ""), v = 1:2), g
+    )
+    gen(grouped, n = .N)
+    expect_identical(as.integer(grouped$n), c(2L, 2L))
+    expect_identical(nrow(attr(grouped, "groups")), 1L)
+    flagged <- tibble::tibble(g = c(NA_character_, ""), v = 1:2)
+    gen(flagged, empty = g == "")
+    expect_identical(flagged$empty, c(TRUE, TRUE))
+    # A failing first gen leaves the tibble as it was, grouping included.
+    bad <- dplyr::group_by(
+        tibble::tibble(g = c(NA_character_, "b"), v = 1:2), g
+    )
+    alias <- bad
+    expect_error(gen(bad, y = stop("boom")), "boom")
+    expect_false(is_dibble(bad))
+    expect_identical(bad$g, c(NA_character_, "b"))
+    expect_identical(alias$g, c(NA_character_, "b"))
+    expect_identical(nrow(attr(bad, "groups")), 2L)
+})

@@ -13,10 +13,12 @@
 #' standalone alias to the former generic ALTREP column, including one held by
 #' a previously created subset, remains unchanged.
 #' `gen()` attaches package-owned reference state to the same data-frame or
-#' tibble object. Existing columns remain in the data frame;
-#' generated columns live in the attached state until an ordinary R assignment
-#' materializes a complete copy. This lets `gen()` grow the visible column set
-#' without searching for or rebinding a name in the caller. Base extraction and
+#' tibble object. Existing columns remain in the data frame. A dibble is
+#' built with spare column capacity, and `gen()` appends to its column list
+#' in place while that lasts; otherwise generated columns live in the
+#' attached state until an ordinary R assignment materializes a complete
+#' copy. This lets `gen()` grow the visible column set without searching
+#' for or rebinding a name in the caller. Base extraction and
 #' data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
 #' metadata helpers operate on the complete visible dataset. The delegated
 #' dplyr verbs are `arrange()`, `distinct()`, `filter()`, `group_by()`,
@@ -593,6 +595,40 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         state$locations[[name]] <- state$physical_count + state$generated_count
     }
     invisible(NULL)
+}
+
+# `gen()` on a dibble with spare column capacity appends the new column
+# to the physical list itself, so every reader of that list, vctrs'
+# binders included, sees the complete dataset. The state records it as
+# one more physical column.
+.append_physical_column <- function(state, name, column) {
+    state$columns[[name]] <- column
+    if (is.environment(state$locations)) {
+        state$locations[[name]] <- state$physical_count + 1L
+    }
+    state$physical_count <- state$physical_count + 1L
+    state$physical_names <- c(state$physical_names, name)
+    invisible(NULL)
+}
+
+# Whether `gen()` can grow `data`'s physical column list in place: a
+# dibble built with spare capacity whose columns are all physical. Once
+# a generated column lives in the state, later ones follow it there so
+# the recorded locations stay in order.
+.can_append_physical_column <- function(data, state) {
+    !isTRUE(state$physical_overlay) && state$generated_count == 0L &&
+        inherits(data, "tbl_df") && !.ordinary_data_table(data)
+}
+
+# Spare slots a dibble's column list is built with. `gen()` fills them
+# in place; beyond them, generated columns live in the reference state.
+.dibble_column_capacity <- 64L
+
+.reserve_column_capacity <- function(x) {
+    .Call(
+        C_dtatools_reserve_column_capacity, x,
+        as.double(length(x) + .dibble_column_capacity)
+    )
 }
 
 .mark_reference_data <- function(data, state) {
@@ -1677,6 +1713,25 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                          promote = FALSE) {
     .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
+    # A tibble becomes a dibble at its first `gen()`, and its columns are
+    # typed before `where`, `values`, and the groups are evaluated, so the
+    # expression sees the dataset the dibble will hold: a character key
+    # with `NA` and `""` is one group, not two. The typing is rolled back
+    # if anything before the mark fails.
+    if (generate && is.null(.reference_state(data)) &&
+        inherits(data, "tbl_df") && !.ordinary_data_table(data)) {
+        first_gen <- .type_physical_columns_in_place(data, base::nrow(data))
+        committed <- FALSE
+        on.exit(
+            if (!committed) .restore_physical_columns(data, first_gen),
+            add = TRUE
+        )
+        if (grouped_input && length(first_gen$indices)) {
+            .regroup_after_replacement(data, NULL)
+        }
+    } else {
+        committed <- TRUE
+    }
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE
     )
@@ -1772,12 +1827,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             data.table::set(data, j = target$name, value = column)
             return(invisible(data))
         }
-        if (is.null(state)) {
-            if (inherits(data, "tbl_df")) {
-                .type_physical_columns_in_place(data, original$nrow)
-            }
-            state <- .new_reference_state(data)
-        }
+        if (is.null(state)) state <- .new_reference_state(data)
     } else {
         if (is.null(access)) access <- .column_access(data)
         if (is.null(column)) {
@@ -1826,8 +1876,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (grouped_input) .regroup_after_replacement(data, state)
     }
     if (generate) {
-        .append_generated_column(state, target$name, column)
+        appended <- .can_append_physical_column(data, state) &&
+            .Call(C_dtatools_append_data_column, data, target$name, column)
+        if (appended) {
+            .append_physical_column(state, target$name, column)
+        } else {
+            .append_generated_column(state, target$name, column)
+        }
         if (is.null(.reference_state(data))) .mark_reference_data(data, state)
+        committed <- TRUE
     }
     invisible(data)
 }
@@ -2322,15 +2379,23 @@ vec_proxy.dtatools_ref_data <- function(x, ...) {
 }
 
 #' @export
+# vctrs and dplyr restore a result to its first input alone, so a
+# `bind_cols()`, `bind_rows()`, or join can carry columns shared with
+# any other input; every column is isolated.
+#' @export
 vec_restore.dtatools_ref_data <- function(x, to, ...) {
-    .close_dibble(to, vctrs::vec_restore(x, .reference_snapshot(to), ...))
+    .close_dibble(
+        to, vctrs::vec_restore(x, .reference_snapshot(to), ...),
+        sources = NULL
+    )
 }
 
 #' @export
 dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
     .close_dibble(
         template,
-        dplyr::dplyr_reconstruct(data, .reference_snapshot(template))
+        dplyr::dplyr_reconstruct(data, .reference_snapshot(template)),
+        sources = NULL
     )
 }
 
@@ -2385,7 +2450,7 @@ rbind.dtatools_ref_data <- function(..., deparse.level = 1) {
     values <- lapply(inputs, .reference_snapshot)
     .close_dibble(inputs[[1L]], do.call(
         base::rbind, c(values, list(deparse.level = deparse.level))
-    ))
+    ), sources = inputs)
 }
 
 #' @export
@@ -2394,7 +2459,7 @@ cbind.dtatools_ref_data <- function(..., deparse.level = 1) {
     values <- lapply(inputs, .reference_snapshot)
     .close_dibble(inputs[[1L]], do.call(
         base::cbind, c(values, list(deparse.level = deparse.level))
-    ))
+    ), sources = inputs)
 }
 
 #' @export
@@ -2586,11 +2651,29 @@ transmute.dtatools_ref_data <- function(.data, ...) {
             rlang::obj_address(typed[[index]]), rlang::obj_address(column)
         )
     }
-    for (index in which(changed)) {
+    indices <- which(changed)
+    originals <- lapply(indices, function(index) .subset2(data, index))
+    groups <- attr(data, "groups", exact = TRUE)
+    for (index in indices) {
         .Call(
             C_dtatools_set_data_column, data, as.integer(index),
             typed[[index]]
         )
+    }
+    invisible(list(indices = indices, originals = originals, groups = groups))
+}
+
+# Undoes `.type_physical_columns_in_place()` when the first `gen()` fails
+# after it: the tibble gets its original columns and grouping back.
+.restore_physical_columns <- function(data, plan) {
+    for (offset in seq_along(plan$indices)) {
+        .Call(
+            C_dtatools_set_data_column, data,
+            as.integer(plan$indices[[offset]]), plan$originals[[offset]]
+        )
+    }
+    if (length(plan$indices) && inherits(data, "grouped_df")) {
+        .Call(C_dtatools_set_attribute, data, "groups", plan$groups)
     }
     invisible(NULL)
 }
@@ -2799,28 +2882,34 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # A dataset operation on a dibble returns a dibble; on any other
 # reference frame it returns what the ordinary implementation did. A
 # non-data-frame result, such as `with()`'s, is returned as is.
-.close_dibble <- function(data, result, caller = "as_dibble()") {
+.close_dibble <- function(data, result, caller = "as_dibble()",
+                          sources = list(data)) {
     if (!is_dibble(data) || !is.data.frame(result) || is_dibble(result)) {
         return(result)
     }
-    .as_dibble(.isolate_shared_columns(result, data), caller)
+    .as_dibble(.isolate_shared_columns(result, sources), caller)
 }
 
 # A column the operation left alone, as `select()`, `relocate()`,
-# `mutate()` of another column, or `bind_cols()` do, is the same vector
-# in the result and in the source, and a by-reference `:=` or `repl()`
-# through either dibble would reach the other. Each such column becomes
-# a copy-on-write view of the source's: a compact column stays compact
-# behind a metadata proxy whose first write on either side detaches, and
-# a plain vector is copied. Columns the operation rebuilt are already the
-# result's own.
-.isolate_shared_columns <- function(result, data) {
-    source_addresses <- vapply(
-        .data_columns(data), rlang::obj_address, character(1)
-    )
+# `mutate()` of another column, or `cbind()` do, is the same vector in
+# the result and in one of the `sources`, and a by-reference `:=` or
+# `repl()` through the dibble would reach that frame. Each such column
+# becomes a copy-on-write view: a compact column stays compact behind a
+# metadata proxy whose first write on either side detaches, and a plain
+# vector is copied. Columns the operation rebuilt are already the
+# result's own. `sources = NULL` isolates every column, for the vctrs and
+# dplyr hooks that see only the first input of a `bind_cols()` or join.
+.isolate_shared_columns <- function(result, sources) {
+    isolate_all <- is.null(sources)
+    source_addresses <- if (!isolate_all) {
+        unlist(lapply(sources, function(source) {
+            if (!is.data.frame(source)) return(character())
+            vapply(.data_columns(source), rlang::obj_address, character(1))
+        }))
+    }
     for (index in seq_len(length(result))) {
         column <- .subset2(result, index)
-        if (rlang::obj_address(column) %in% source_addresses) {
+        if (isolate_all || rlang::obj_address(column) %in% source_addresses) {
             result[[index]] <- .metadata_copy(column)
         }
     }

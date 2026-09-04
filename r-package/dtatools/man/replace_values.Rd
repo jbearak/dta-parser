@@ -61,10 +61,12 @@ Aliases to the same dataset object observe the installed vector. A
 standalone alias to the former generic ALTREP column, including one held by
 a previously created subset, remains unchanged.
 \code{gen()} attaches package-owned reference state to the same data-frame or
-tibble object. Existing columns remain in the data frame;
-generated columns live in the attached state until an ordinary R assignment
-materializes a complete copy. This lets \code{gen()} grow the visible column set
-without searching for or rebinding a name in the caller. Base extraction and
+tibble object. Existing columns remain in the data frame. A dibble is
+built with spare column capacity, and \code{gen()} appends to its column list
+in place while that lasts; otherwise generated columns live in the
+attached state until an ordinary R assignment materializes a complete
+copy. This lets \code{gen()} grow the visible column set without searching
+for or rebinding a name in the caller. Base extraction and
 data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
 metadata helpers operate on the complete visible dataset. The delegated
 dplyr verbs are \code{arrange()}, \code{distinct()}, \code{filter()}, \code{group_by()},

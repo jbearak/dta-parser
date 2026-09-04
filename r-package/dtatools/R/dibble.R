@@ -28,8 +28,12 @@
 #' result is a fresh object holding the current contents, following
 #' copy-on-modify; the input is unchanged, and a by-reference `:=` or
 #' [replace_values()] on either the input or the result leaves the other
+#' as it was, and leaves any other frame the operation drew columns from
 #' as it was. Columns an operation leaves alone are shared copy-on-write,
-#' so compact columns stay compact.
+#' so compact columns stay compact. A dibble is built with spare column
+#' capacity, so [gen()] appends to its column list in place and
+#' `bind_rows()`, `bind_cols()`, and other consumers that read the list
+#' directly see every column.
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
@@ -123,6 +127,9 @@ is_dibble <- function(x) {
         )
     }
     x <- .type_dibble_columns(x, caller)
+    # Spare column slots let `gen()` append in place, so the physical
+    # list stays the complete dataset for every reader.
+    x <- .reserve_column_capacity(x)
     .mark_reference_data(x, .new_reference_state(x))
 }
 
