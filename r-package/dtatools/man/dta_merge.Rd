@@ -18,8 +18,8 @@ dta_merge(
 \item{x, y}{Data frames to merge, or file paths read with \code{\link[=read_dta]{read_dta()}} or
 \code{\link[=read_arrow]{read_arrow()}}, in any combination. \code{x} supplies the retained values for
 overlapping variables, dataset label, and dataset characteristics.
-Base data frames, tibbles, and data.tables are accepted without mutation;
-by default, the result follows the resolved \code{x} input's container.
+Base data frames, tibbles, and data.tables are accepted without mutation.
+By default, the result follows the resolved \code{x} input's container.
 Passing paths
 mirrors Stata's \verb{merge ... using filename} and keeps only the merged
 result in the caller's workspace. A path ending in \code{.arrow} is read with
@@ -61,6 +61,8 @@ bucket. Keys containing R \code{NaN} are rejected because \code{NaN} has no Stat
 missing identity; use \code{NA_real_} or \code{\link[=tagged_missing]{tagged_missing()}}.
 Character keys containing \code{NA_character_} are also rejected because Stata
 has only the empty string for a missing string; use \code{""} instead.
+Unmatched rows fill string columns with \code{""} for the same reason, while
+numeric columns fill with system missing.
 }
 \details{
 \code{x} plays the role of Stata's master dataset and \code{y} the using dataset.
@@ -107,7 +109,7 @@ substitutes one variable's mapping for another solely because names match.
 This is normally the expected result: Stata's collision can silently make a
 later label-based recode operate on unrelated text.
 
-Every merge generates a \verb{_merge} variable, a \code{stata_byte} column using
+Every merge generates a \verb{_merge} variable, a \code{dta_byte} column using
 Stata's \verb{_merge} codes with value labels \verb{x only (1)}, \verb{y only (2)}, and
 \code{matched (3)}. Merging errors if either input already has a \verb{_merge}
 column. The result keeps the dataset label and arbitrary characteristics
