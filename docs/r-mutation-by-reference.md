@@ -29,7 +29,7 @@ Stata works the other way. There is one dataset in memory, `replace x = x * 2` c
 
 ## What dtatools does instead
 
-A **dibble** — the container `read_dta()` returns — carries package-owned reference state. Operations that write through that state modify *the dataset itself*, so every name bound to it sees the change:
+A **dibble**, the container `read_dta()` returns, supports mutation by reference. Within its reserved column capacity, every name bound to it sees the change:
 
 ```r
 survey <- read_dta("survey.dta")
@@ -98,13 +98,17 @@ snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
 
 `copy_data()` deep-copies the columns, their compact backing, and mutable dataset metadata. It rejects columns or attributes holding environments, functions, bytecode, external pointers, or weak references, because those cannot be isolated by copying.
 
-**Functions do not need to return the dataset.** They may, invisibly, for chaining; the caller does not have to assign it. Conversely, passing a dibble to a function you did not write is a way to have it modified — pass `copy_data()` if that is not wanted.
+**Return tables from functions that can change capacity.** Within reserved capacity, a function mutates its argument in place. If preparation or reallocation is needed, only its local parameter is rebound. Return the updated table and assign it in the caller. Passing a prepared dibble to another function can modify it; use `copy_data()` for isolation.
 
 **There is no undo.** A mutation commits. Interrupting one is safe — compact columns keep rollback bytes until the write commits, so `Ctrl-C` restores the original payload — but a completed `repl()` cannot be reversed except by writing the old values back.
 
 **A `[` assignment does not print.** `[` always makes its result visible, so a bracket assignment at the console would print the whole dataset. As data.table does, dtatools skips the next top-level print of the mutated dataset, so `survey[income < 0, income := NA]` prints nothing and a bare `survey` on the next line prints as usual. The skip lasts only for the statement that made the assignment.
 
-**A few consumers need a snapshot.** A dibble is built with spare capacity for 256 more columns, and `gen()` appends into it in place, so the physical column list stays complete for everything that reads it. Past that capacity — and on a tibble or data frame that acquired reference state at its first `gen()` — generated columns live in the attached reference state until an ordinary R assignment materializes a full copy. Code that bypasses S3 methods and reads a data frame's internal column-pointer array does not see those columns: `dplyr::bind_rows()`, `unclass()`, and direct attribute inspection are the ones to watch. Pass `tibble::as_tibble(data)` or `as.data.frame(data)` to such a consumer. Base extraction, the data mask, the package's writers, the metadata helpers, and the dplyr verbs that dispatch on the dibble — `mutate()`, `filter()`, `select()`, `arrange()`, `summarise()`, the joins — all see the complete dataset. `bind_rows()` is the exception among the dplyr verbs, because it reads the column array directly rather than through a method; it is named above for that reason and is not covered by this guarantee.
+**Column capacity and aliases.** Constructors and readers reserve 5,000 spare column-pointer slots by default. Set `options(dtatools.alloccol = 5000L)` to change the number. Every column remains in the physical list: `unclass()`, `.subset()`, `attributes()`, `bind_rows()`, `bind_cols()`, purrr, JSON, and `write.csv()` all see the complete table. Within capacity, structural mutation preserves outer identity. When preparation or reallocation is necessary, the operation warns, shallow-copies the table without copying column payloads, and rebinds its target. Aliases retain the old complete table.
+
+Automatic rebinding supports a symbol, simple `$` and `[[` extractions, and `get()` or `get0()`. For other expressions assign the return value. Within a function, only the local parameter is rebound; return the table and assign the result in the caller when capacity changes.
+
+Use `data <- reserve_columns(data, n = getOption("dtatools.alloccol", 5000L))` to prepare a base data frame, tibble, dibble, or data table explicitly. It preserves the container, rebuilds legacy overlays, and repairs a serialized dibble's current-object bookkeeping. Base `readRDS()` and `unserialize()` discard spare capacity: call and assign `reserve_columns()` before relying on dibble replacement aliases. `read_dta()` and `read_arrow()` already return prepared tables.
 
 **ALTREP columns from elsewhere are detached.** A generic ALTREP column created by base R or another package is converted to an ordinary vector before replacement, because its private caches cannot be safely invalidated. A standalone alias to that former column keeps the old values.
 

@@ -1,4 +1,4 @@
-#' Dibbles: tibbles that carry dtatools reference state
+#' Dibbles: Stata datasets with by-reference mutation
 #'
 #' A dibble is a tibble that is a Stata dataset. It is the default
 #' container of [read_dta()], [read_arrow()], and [dta_append()], and the
@@ -8,15 +8,12 @@
 #' tests for one. Those are the only ways to get one: no operation turns a
 #' table you already have into a dibble behind your back.
 #'
-#' Reference state is what lets [gen()], \code{\link[=replace_values]{replace_values()}}, [keep_vars()],
-#' and the other by-reference operations change a dataset in place so that
-#' every binding to it sees the change. Any data frame, tibble, or data
-#' table acquires that state at its first [gen()], and keeps the class it
-#' had: reference state is not dibble-ness. A tibble stays a tibble, with
-#' its existing columns untouched and R's own semantics for `$<-` and the
-#' other replacement operators; only the column `gen()` writes takes Stata
-#' storage, as it does on a data frame. `is_dibble()` reports `FALSE`
-#' throughout. Call `as_dibble()` when you want the Stata dataset.
+#' [gen()], \code{\link[=replace_values]{replace_values()}}, [keep_vars()],
+#' and the other by-reference operations change a prepared dataset in place.
+#' Within capacity, every binding sees the change. [gen()] keeps an ordinary
+#' tibble or data frame's existing columns unchanged and types only its new
+#' column; `is_dibble()` remains `FALSE`. Call `as_dibble()` to type the
+#' whole dataset and opt into dibble replacement behavior.
 #'
 #' A dibble is a Stata dataset held in a tibble, and two invariants follow.
 #' Every numeric and string column carries Stata storage: `dibble()` and
@@ -38,7 +35,8 @@
 #' `names<-`, `dimnames<-`, and `row.names<-` on a dibble write by
 #' reference, as [gen()], \code{\link[=replace_values]{replace_values()}}, and `:=` do, so every binding
 #' to the dataset sees the change and a replacement inside a function
-#' reaches the caller's dibble. Because R
+#' reaches the caller's dibble while capacity remains. Reallocation rebinds
+#' only the local parameter; return and assign that result in the caller. Because R
 #' spells `var_label(data$x) <- "Age"` as a `$<-` call, every metadata
 #' setter used in replacement form is by reference on a dibble too:
 #' [var_label<-], [val_labels<-], and `attr<-` on `format.stata`, notes, or
@@ -46,12 +44,11 @@
 #' the frame it came from is never reached. Use [copy_data()] for an
 #' independent dataset and [tibble::as_tibble()] for a copy with R's
 #' semantics. On a tibble or data frame that is not a dibble the operators
-#' keep R's copy-on-modify behaviour. A dibble is built with spare capacity
-#' for 256 more columns, so [gen()] appends to its column list in place
-#' and `bind_rows()`, `bind_cols()`, and other consumers that read the
-#' list directly see every column; past that capacity, and on a tibble or
-#' data frame that acquired reference state at its first `gen()`, such
-#' consumers need [tibble::as_tibble()], as documented under [gen()].
+#' keep R's copy-on-modify behaviour. A dibble reserves 5,000 spare column
+#' pointer slots by default, controlled by `dtatools.alloccol`. All columns
+#' stay physically present. Preparation or reallocation warns and may
+#' separate aliases; see [reserve_columns()] for target rebinding and the
+#' base R serialization boundary.
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
@@ -64,8 +61,8 @@
 #' allocation capacity are left behind. In every case compact Stata numeric
 #' and dictionary-string columns stay compact.
 #'
-#' A dibble needs unique, non-empty column names, because its reference
-#' state indexes columns by name. Readers repair names before building one,
+#' A dibble needs unique, non-empty column names to identify columns.
+#' Readers repair names before building one,
 #' so only `.name_repair = "minimal"` can produce names a dibble rejects;
 #' request `output = "tibble"` for such a read.
 #'
@@ -310,6 +307,11 @@ NULL
     } else {
         rlang::enquo(i)
     }
+    target_expr <- substitute(x)
+    original_x <- x
+    if (.has_column_overlay(x)) {
+        x <- .prepare_column_operation(x, length(.reference_names(x)))
+    }
     selection <- .mutation_selection(
         x, where,
         by = by_quo,
@@ -323,7 +325,7 @@ NULL
             .as_mutation_data(x, allow_grouped = TRUE)$columns,
             assignment$name
         )
-        .mutate_data(
+        x <- .mutate_data(
             x, rlang::new_quosure(assignment$name, emptyenv()),
             assignment$values, where, generate = !exists,
             selection = selection, promote = TRUE
@@ -333,7 +335,7 @@ NULL
     # would autoprint the dataset after every assignment. Recorded after
     # the last write so a failed assignment still shows its error only.
     .suppress_bracket_autoprint(x)
-    invisible(x)
+    .return_mutation(original_x, x, target_expr, parent.frame())
 }
 
 # Reads `j` as one or more `:=` assignments, or `NULL` when `j` is

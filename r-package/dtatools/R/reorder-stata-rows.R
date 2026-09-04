@@ -8,15 +8,11 @@
 #' gathered columns are installed without copying, so compact numeric
 #' columns stay unmaterialized.
 #'
-#' A base data frame or tibble that [gen()] has given reference
-#' semantics is reordered too: its generated columns live in the
-#' reference-state overlay rather than in the object, and they are
-#' permuted alongside the physical ones.
+#' Legacy tables with columns outside their physical list are rebuilt first.
+#' This warns and may separate aliases; see [reserve_columns()].
 #'
-#' @param data An ordinary base data frame, tibble, or data.table,
-#'   modified by reference. A table carrying a dtatools reference
-#'   state is accepted when the container underneath it is one of
-#'   those.
+#' @param data An ordinary base data frame, tibble, dibble, or data.table,
+#'   modified by reference, or rebuilt when a legacy table requires it.
 #' @param rows A permutation of `seq_len(nrow(data))` following
 #'   [vctrs::vec_as_location()] semantics, without missing locations.
 #'   Every row must be selected exactly once: an in-place reorder
@@ -26,6 +22,11 @@
 #'   them.
 #' @export
 reorder_dta_rows <- function(data, rows) {
+    target_expr <- substitute(data)
+    original_data <- data
+    if (.has_column_overlay(data)) {
+        data <- .prepare_column_operation(data, length(.reference_names(data)))
+    }
     plan <- .reorder_column_plan(data)
     count <- plan$nrow
     locations <- vctrs::vec_as_location(
@@ -46,7 +47,7 @@ reorder_dta_rows <- function(data, rows) {
         data.table::setattr(data, "sorted", NULL)
         data.table::setattr(data, "index", NULL)
     }
-    invisible(data)
+    .return_mutation(original_data, data, target_expr, parent.frame())
 }
 
 # Works out, for every logical column, where its reordered replacement

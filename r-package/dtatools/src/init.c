@@ -1650,12 +1650,8 @@ static SEXP numeric_materialize(SEXP value, Rboolean writeable) {
 
 static void *numeric_dataptr(SEXP value, Rboolean writeable) {
     SEXP materialized = numeric_materialize(value, writeable);
-#if R_VERSION >= R_Version(4, 6, 0)
     return writeable ? DATAPTR_RW(materialized) : (void *) DATAPTR_RO(materialized);
-#else
-    (void) writeable;
-    return DATAPTR(materialized);
-#endif
+
 }
 
 static const void *numeric_dataptr_or_null(SEXP value) {
@@ -2943,11 +2939,8 @@ static SEXP dictstring_materialize_for_patch(SEXP value, SEXP private_cache) {
 
 static void *dictstring_dataptr(SEXP value, Rboolean writeable) {
     SEXP materialized = dictstring_materialize(value, writeable);
-#if R_VERSION >= R_Version(4, 6, 0)
     return DATAPTR_RW(materialized);
-#else
-    return DATAPTR(materialized);
-#endif
+
 }
 
 static const void *dictstring_dataptr_or_null(SEXP value) {
@@ -4197,12 +4190,8 @@ static SEXP metadata_real_materialize(SEXP value) {
 
 static void *metadata_real_dataptr(SEXP value, Rboolean writeable) {
     SEXP materialized = metadata_real_materialize(value);
-#if R_VERSION >= R_Version(4, 6, 0)
     return writeable ? DATAPTR_RW(materialized) : (void *) DATAPTR_RO(materialized);
-#else
-    (void) writeable;
-    return DATAPTR(materialized);
-#endif
+
 }
 
 static const void *metadata_real_dataptr_or_null(SEXP value) {
@@ -4310,11 +4299,8 @@ static SEXP metadata_string_materialize_for_patch(
 static void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
     (void) writeable;
     SEXP materialized = metadata_string_materialize(value);
-#if R_VERSION >= R_Version(4, 6, 0)
     return DATAPTR_RW(materialized);
-#else
-    return DATAPTR(materialized);
-#endif
+
 }
 
 static const void *metadata_string_dataptr_or_null(SEXP value) {
@@ -5494,11 +5480,8 @@ static SEXP apply_vector_patch_transaction(void *data) {
     int *logical_output = NULL;
     SEXP string_output = R_NilValue;
     if (transaction->type == REALSXP) {
-#if R_VERSION >= R_Version(4, 6, 0)
         real_output = (double *) DATAPTR_RW(transaction->target);
-#else
-        real_output = REAL(transaction->target);
-#endif
+
     } else if (transaction->type == INTSXP) {
         integer_output = INTEGER(transaction->target);
     } else if (transaction->type == LGLSXP) {
@@ -5875,11 +5858,8 @@ SEXP C_dtatools_set_data_column(SEXP data, SEXP location, SEXP column) {
 }
 
 static void resize_reference_vector(SEXP value, R_xlen_t length) {
-#if R_VERSION >= R_Version(4, 6, 0)
     R_resizeVector(value, length);
-#else
-    SETLENGTH(value, length);
-#endif
+
 }
 
 static int can_resize_reference_columns(
@@ -5887,7 +5867,6 @@ static int can_resize_reference_columns(
 ) {
     R_xlen_t old_length = XLENGTH(data);
     int is_data_table = Rf_inherits(data, "data.table");
-#if R_VERSION >= R_Version(4, 6, 0)
     return new_length == old_length ||
         (!ALTREP(data) &&
          R_isResizable(data) &&
@@ -5895,29 +5874,9 @@ static int can_resize_reference_columns(
          (!is_data_table ||
           (R_isResizable(current_names) &&
            new_length <= R_maxLength(current_names))));
-#else
-    return new_length == old_length ||
-        (!ALTREP(data) &&
-         TRUELENGTH(data) > 0 &&
-         (R_xlen_t) TRUELENGTH(data) >= new_length &&
-         (!is_data_table ||
-          (TRUELENGTH(current_names) > 0 &&
-           (R_xlen_t) TRUELENGTH(current_names) >= new_length)));
-#endif
+
 }
 
-/* A dibble's column list with room to grow: `gen()` appends a new column
-   in place while capacity remains, so every reader of the physical list,
-   vctrs' binders included, sees the complete dataset. The result is a
-   shallow copy of `x` with `capacity` slots, `XLENGTH(x)` of them in use.
-   R 4.6 has resizable vectors for this; earlier R records the allocated
-   length as the true length, as data.table's over-allocation does. */
-/* A dibble's column list with room to grow: `gen()` appends a new column
-   in place while capacity remains, so every reader of the physical list,
-   vctrs' binders included, sees the complete dataset. The result is a
-   shallow copy of `x` with `capacity` slots, `XLENGTH(x)` of them in use.
-   R 4.6 has resizable vectors for this; earlier R records the allocated
-   length as the true length, as data.table's over-allocation does. */
 /* Which columns of a result list another object also holds. R's own
    reference counts answer this the way copy-on-modify does: a vector a
    verb built for this result is held by the list alone, while one it
@@ -5933,6 +5892,11 @@ SEXP C_dtatools_shared_columns(SEXP columns) {
     return result;
 }
 
+SEXP C_dtatools_column_capacity(SEXP x) {
+    if (TYPEOF(x) != VECSXP) Rf_error("`x` must be a list");
+    return Rf_ScalarReal(R_isResizable(x) ? (double) R_maxLength(x) : -1);
+}
+
 SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
     if (TYPEOF(x) != VECSXP) Rf_error("`x` must be a list");
     double requested = Rf_asReal(capacity_value);
@@ -5942,15 +5906,9 @@ SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
         Rf_error("invalid column capacity");
     }
     R_xlen_t capacity = (R_xlen_t) requested;
-#if R_VERSION >= R_Version(4, 6, 0)
     SEXP result = PROTECT(R_allocResizableVector(VECSXP, capacity));
     R_resizeVector(result, length);
-#else
-    SEXP result = PROTECT(Rf_allocVector(VECSXP, capacity));
-    SETLENGTH(result, length);
-    SET_TRUELENGTH(result, capacity);
-    SET_GROWABLE_BIT(result);
-#endif
+
     for (R_xlen_t index = 0; index < length; index++) {
         SET_VECTOR_ELT(result, index, VECTOR_ELT(x, index));
     }
@@ -5960,9 +5918,8 @@ SEXP C_dtatools_reserve_column_capacity(SEXP x, SEXP capacity_value) {
 }
 
 /* Appends `column` as the last physical column of `data`, in place, when
-   the list has capacity for it; returns FALSE otherwise so the caller
-   keeps the column in the reference state instead. Data tables grow
-   through their own `set()`, so this serves tibbles only. */
+   the list has capacity for it; returns FALSE for an unprepared target.
+   Data tables grow through their own `set()`. */
 SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
     if (TYPEOF(data) != VECSXP || TYPEOF(name) != STRSXP ||
         XLENGTH(name) != 1 || Rf_inherits(data, "data.table")) {
@@ -6009,12 +5966,6 @@ SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
     int can_resize = can_resize_reference_columns(
         data, current_names, (R_xlen_t) requested
     );
-    if (!can_resize && Rf_inherits(data, "data.table")) {
-        Rf_error(
-            "`data` is a non-resizable data.table; call "
-            "`data.table::setalloccol()` after restoring it"
-        );
-    }
     return Rf_ScalarLogical(can_resize);
 }
 
@@ -6057,29 +6008,22 @@ SEXP C_dtatools_select_data_columns(
     int can_resize = can_resize_reference_columns(
         data, current_names, new_length
     );
-    if ((!can_resize && TYPEOF(state) != ENVSXP) ||
-        (can_resize && state != R_NilValue)) {
-        Rf_error("invalid reference column selection state");
+    if (!can_resize) {
+        Rf_error("column selection requires a prepared physical table");
     }
-    int keep_state = !can_resize;
-    R_xlen_t installed_length = can_resize
-        ? new_length
-        : (new_length < old_length ? new_length : old_length);
+    int keep_state = state != R_NilValue;
+    R_xlen_t installed_length = new_length;
     int protect_count = 2;
     SEXP committed_names = current_names;
     if (!is_data_table) {
         committed_names = PROTECT(Rf_allocVector(
-            STRSXP, can_resize ? new_length : old_length
+            STRSXP, new_length
         ));
         protect_count++;
         for (R_xlen_t index = 0; index < installed_length; index++) {
             SET_STRING_ELT(
                 committed_names, index, STRING_ELT(planned_names, index)
             );
-        }
-        for (R_xlen_t index = installed_length;
-             index < XLENGTH(committed_names); index++) {
-            SET_STRING_ELT(committed_names, index, R_BlankString);
         }
     }
 
@@ -6105,7 +6049,7 @@ SEXP C_dtatools_select_data_columns(
         Rf_setAttrib(data, index_symbol, R_NilValue);
     }
 
-    if (can_resize && new_length != old_length) {
+    if (new_length != old_length) {
         resize_reference_vector(data, new_length);
         if (is_data_table) {
             resize_reference_vector(current_names, new_length);
@@ -6114,22 +6058,11 @@ SEXP C_dtatools_select_data_columns(
     for (R_xlen_t index = 0; index < installed_length; index++) {
         SET_VECTOR_ELT(data, index, VECTOR_ELT(columns, index));
     }
-    if (!can_resize) {
-        for (R_xlen_t index = installed_length; index < old_length; index++) {
-            SET_VECTOR_ELT(data, index, R_NilValue);
-        }
-    }
     if (is_data_table) {
         for (R_xlen_t index = 0; index < installed_length; index++) {
             SET_STRING_ELT(
                 current_names, index, STRING_ELT(planned_names, index)
             );
-        }
-        if (!can_resize) {
-            for (R_xlen_t index = installed_length;
-                 index < old_length; index++) {
-                SET_STRING_ELT(current_names, index, R_BlankString);
-            }
         }
     }
     Rf_setAttrib(data, R_NamesSymbol, committed_names);
@@ -6560,11 +6493,8 @@ SEXP C_dtatools_force_altrep_materialization(SEXP value) {
         !(TYPEOF(value) == REALSXP || TYPEOF(value) == STRSXP)) {
         Rf_error("internal materialization probe requires an ALTREP vector");
     }
-#if R_VERSION >= R_Version(4, 6, 0)
     (void) DATAPTR_RO(value);
-#else
-    (void) DATAPTR(value);
-#endif
+
     return value;
 }
 
@@ -6573,11 +6503,8 @@ SEXP C_dtatools_mutate_first_numeric_altrep(SEXP value, SEXP replacement) {
         TYPEOF(replacement) != REALSXP || XLENGTH(replacement) != 1) {
         Rf_error("internal writable ALTREP probe requires a nonempty numeric ALTREP vector");
     }
-#if R_VERSION >= R_Version(4, 6, 0)
     double *data = (double *) DATAPTR_RW(value);
-#else
-    double *data = REAL(value);
-#endif
+
     data[0] = REAL(replacement)[0];
     return value;
 }
@@ -7488,6 +7415,7 @@ static const R_CallMethodDef CallEntries[] = {
      (DL_FUNC) &C_dtatools_patch_data_column, 5},
     {"C_dtatools_set_data_column",
      (DL_FUNC) &C_dtatools_set_data_column, 3},
+    {"C_dtatools_column_capacity", (DL_FUNC) &C_dtatools_column_capacity, 1},
     {"C_dtatools_reserve_column_capacity",
      (DL_FUNC) &C_dtatools_reserve_column_capacity, 2},
     {"C_dtatools_append_data_column",

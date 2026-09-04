@@ -57,7 +57,7 @@ test_that("targets are bare names and support tidy injection", {
     # One string names a column, because `!!name` unquotes to one.
     expect_silent(replace_values(data, "x", 0L))
     expect_identical(data$x, c(0L, 0L))
-    expect_silent(gen(data, "quoted", 0))
+    expect_warning(gen(data, "quoted", 0), "reallocation")
     expect_identical(as.double(data$quoted), c(0, 0))
 
     target <- rlang::sym("x")
@@ -974,6 +974,7 @@ test_that("base numeric ALTREP columns remain internally consistent", {
 
 test_that("gen appends one variable with Stata missing and storage rules", {
     data <- tibble::tibble(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE))
+    data <- reserve_columns(data)
     alias <- data
     result <- withVisible(gen(data, generated, x * 2, where = eligible))
     expect_false(result$visible)
@@ -2134,7 +2135,7 @@ test_that("grouped gen keeps value attributes and string storage", {
 })
 
 test_that("ordinary assignments and metadata helpers materialize current state", {
-    data <- data.frame(x = 1:3)
+    data <- reserve_columns(data.frame(x = 1:3))
     alias <- data
     gen(data, y, x + 1)
 
@@ -2472,7 +2473,7 @@ test_that("fused row-value errors roll back before the fallback error", {
 
 test_that("targets and values arrive as one tagged pair", {
     data <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
-    expect_silent(gen(data, adjusted = income + 5))
+    expect_warning(gen(data, adjusted = income + 5), "reallocation")
     expect_identical(as.double(data$adjusted), c(15, 25))
     expect_silent(repl(data, adjusted = 0, where = eligible))
     expect_identical(as.double(data$adjusted), c(0, 25))

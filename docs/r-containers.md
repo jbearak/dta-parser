@@ -4,7 +4,7 @@
 
 | Container | What it is |
 | --- | --- |
-| **dibble** | A tibble that is a Stata dataset. Every numeric and string column carries Stata storage, every dataset operation on it returns a dibble, and it carries reference state from its creation. The default result of `read_dta()`, `read_arrow()`, and `dta_append()`. |
+| **dibble** | A tibble that is a Stata dataset. Every numeric and string column carries Stata storage, every dataset operation on it returns a dibble, and it supports mutation by reference from its creation. The default result of `read_dta()`, `read_arrow()`, and `dta_append()`. |
 | **tibble** | An ordinary `tbl_df`. Columns may carry Stata storage — the readers' columns do — but nothing enforces it. |
 | **data.frame** | A base data frame, with the same caveat. |
 | **data.table** | An ordinary data table, with keys, indexes, and its own `[` semantics. Available when the optional `data.table` package is installed. |
@@ -31,7 +31,7 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 | Joins, `bind_rows()` | Copy → dibble when the dibble is first | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `copy_data()`, `tibble::as_tibble()` | Copy, independent | Copy, independent | Copy, independent | Copy, independent |
 
-`gen()` never changes what kind of table it was handed. A tibble gains reference state — that is what lets the write land in place — but stays a tibble, with R's own semantics for the replacement operators and its existing columns untouched, exactly as a base data frame does however often `gen()` has run on it. `is_dibble()` reports `FALSE` throughout. Call `as_dibble()` when you want the Stata dataset.
+`gen()` never changes what kind of table it was handed. A tibble is prepared for mutation by reference but stays a tibble, with R's own semantics for the replacement operators and its existing columns untouched, exactly as a base data frame does however often `gen()` has run on it. `is_dibble()` reports `FALSE` throughout. Call `as_dibble()` when you want the Stata dataset.
 
 Two rows deserve emphasis. `$<-` and its relatives are by reference **only** on a dibble; this is the one place where a dibble stops behaving like an ordinary tibble, and it is what makes `var_label(data$x) <- "Age"` reach every binding of the dataset. And `[i, y := v]` is a dibble form: on a data table the brackets are data.table's, with data.table's storage and promotion rules, and on the other two containers there is no `:=` to find. `gen()` and `repl()` are the spellings that mean the same thing on all four.
 
@@ -83,7 +83,7 @@ One consequence to expect: the expressions `gen()` evaluates on a tibble see the
 
 ## Restrictions
 
-A dibble needs unique, non-empty column names, because its reference state indexes columns by name. The readers repair names first, so only `.name_repair = "minimal"` can produce names a dibble rejects; ask for `output = "tibble"` for such a read.
+A dibble needs unique, non-empty column names, to identify columns. The readers repair names first, so only `.name_repair = "minimal"` can produce names a dibble rejects; ask for `output = "tibble"` for such a read.
 
 Rowwise tibbles are rejected by `gen()` and `repl()`; `copy_data()` accepts them. Custom `data.table` subclasses are rejected by mutating and table-producing operations, because dtatools cannot know their invariants. A data table converted with `as_dibble()` is copied rather than shared — a dibble cannot hold data.table's self-reference — and its keys, indexes, and allocation capacity are left behind. Keys, indexes, allocation capacity, and `.internal.selfref` are runtime state and are never stored in `.arrow` files.
 
@@ -93,3 +93,5 @@ Rowwise tibbles are rejected by `gen()` and `repl()`; `copy_data()` accepts them
 - [Where dtatools diverges from Stata](./r-stata-divergences.md)
 - [Stata vector operations](./r-stata-vector-operations.md) — the rules columns follow outside a dibble
 - `?dibble`, `?"dibble-bracket"`, `?"stata-storage-defaults"`, `?replace_values` in R
+
+Constructors and readers reserve 5,000 spare column-pointer slots, controlled by `dtatools.alloccol`. Reallocation warns and may separate aliases. See [column capacity and aliases](r-mutation-by-reference.md) for `reserve_columns()`, function parameters, and preparation after base R serialization.

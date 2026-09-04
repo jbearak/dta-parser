@@ -2,9 +2,9 @@
 #'
 #' `gen()` and `replace_values()` modify a data frame or tibble by reference.
 #' `repl()` is a direct alias for `replace_values()`. The return value is the
-#' supplied dataset, invisibly, so assignment is neither needed nor advised.
-#' Aliases of the dataset or the same target vector observe later generation
-#' and replacement. This includes column-only subsets that share their column
+#' updated dataset, invisibly. Within reserved capacity, aliases observe
+#' generation and replacement. Preparation or reallocation can separate
+#' aliases; assign the returned table when calling through a function. This includes column-only subsets that share their column
 #' payload. Row subsets have new payloads and remain independent. Use
 #' `copy_data()` when isolation is required. Generic ALTREP columns created by
 #' base R or another package are detached to ordinary vectors before
@@ -15,28 +15,15 @@
 #' replacement form such as `var_label(data$x) <-`, write by reference as
 #' well. A standalone alias to the former generic ALTREP column, including
 #' one held by a previously created subset, remains unchanged.
-#' `gen()` attaches package-owned reference state to the same data-frame or
-#' tibble object. Existing columns remain in the data frame. A dibble is
-#' built with spare capacity for 256 more columns, and `gen()` appends to
-#' its column list in place while that lasts; beyond it, and on a tibble
-#' or data frame that acquired reference state at its first `gen()`,
-#' generated columns live in the attached state until an ordinary R
-#' assignment materializes a complete copy. This lets `gen()` grow the visible column set without
-#' searching for or rebinding a name in the caller. Base extraction and
-#' data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
-#' metadata helpers operate on the complete visible dataset. The delegated
-#' dplyr verbs are `arrange()`, `distinct()`, `filter()`, `group_by()`,
-#' `mutate()`, `relocate()`, `rename()`, `rowwise()`, `select()`, `slice()`,
-#' `summarise()`, `transmute()`, and `ungroup()`. Consumers that
-#' bypass S3 methods and inspect a data frame's internal column-pointer array do
-#' not see generated columns; pass `as.data.frame(data)` or
-#' `tibble::as_tibble(data)` to such a consumer. This includes non-generic
-#' combiners such as `dplyr::bind_rows()` and other dplyr verbs. Base `rbind()`
-#' and `cbind()` delegate when a reference dataset is the first argument; when
-#' it is later, convert it explicitly because base dispatch has already chosen
-#' the ordinary data-frame method.
-#' `unclass()` and direct inspection of internal attributes are likewise not
-#' supported ways to access generated columns.
+#' Every generated column is stored in the physical column list, so direct
+#' consumers such as `unclass()`, `dplyr::bind_rows()`, `purrr::map()`, and
+#' `write.csv()` see the complete dataset. Constructors and readers reserve
+#' 5,000 spare column-pointer slots by default, controlled by
+#' `options(dtatools.alloccol = 5000L)`. When capacity is exhausted or a
+#' table needs preparation, the operation warns, shallow-copies the table,
+#' and rebinds a supported target. Aliases retain the old complete table.
+#' See [reserve_columns()] for supported targets, function parameters, and
+#' the required preparation after base R serialization.
 #' `gen()` and `replace_values()` accept a grouped tibble and treat its dplyr
 #' groups as assignment groups (see below). They reject rowwise tibbles;
 #' `copy_data()` accepts both and preserves their class.
@@ -303,13 +290,14 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
     )
     # `missing()` keeps the two extra quosure captures off the ungrouped
     # path, which `repl()` in a loop depends on.
-    .mutate_data(
+    result <- .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
         generate = FALSE,
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
         promote = .validate_promote(promote), report_promotion = TRUE
     )
+    .return_mutation(data, result, substitute(data), parent.frame())
 }
 
 .validate_promote <- function(promote) {
@@ -333,12 +321,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         function() rlang::enquos(..., .ignore_empty = "none"),
         function() rlang::enquos0(...)
     )
-    .mutate_data(
+    result <- .mutate_data(
         data, arguments$variable, arguments$values, arguments$where,
         generate = TRUE,
         by = if (missing(by)) NULL else rlang::enquo(by),
         bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
     )
+    .return_mutation(data, result, substitute(data), parent.frame())
 }
 
 .MUTATION_SHAPE_MESSAGE <- paste(
@@ -655,20 +644,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # the recorded locations stay in order.
 .can_append_physical_column <- function(data, state) {
     !isTRUE(state$physical_overlay) && state$generated_count == 0L &&
-        inherits(data, "tbl_df") && !.ordinary_data_table(data)
+        !.ordinary_data_table(data)
 }
 
-# Spare slots a dibble's column list is built with: a pointer each, so
-# they cost little. `gen()` fills them in place; beyond them, generated
-# columns live in the reference state and reach non-generic consumers
-# through `as_tibble()` or `as.data.frame()`, as `gen()` documents.
-.dibble_column_capacity <- 256L
-
-.reserve_column_capacity <- function(x) {
-    .Call(
-        C_dtatools_reserve_column_capacity, x,
-        as.double(length(x) + .dibble_column_capacity)
-    )
+.reserve_column_capacity <- function(x, n = getOption("dtatools.alloccol", 5000L)) {
+    n <- .validate_alloccol(n, length(x))
+    .Call(C_dtatools_reserve_column_capacity, x, as.double(length(x)) + n)
 }
 
 # The state records the object it marks. R shallow-duplicates a shared
@@ -1768,6 +1749,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         data, allow_grouped = TRUE, allow_rowwise = FALSE
     )
     target <- .mutation_name(variable, generate, original)
+    if (.has_column_overlay(data)) {
+        data <- .prepare_column_operation(data, length(.reference_names(data)))
+        original <- .as_mutation_data(data, allow_grouped = TRUE)
+    }
     groups <- if (!is.null(selection)) {
         selection$groups
     } else if (grouped_input || !is.null(by) || !is.null(bysort)) {
@@ -1857,6 +1842,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         column <- .generated_column(
             values, rows, original$nrow, generate = TRUE
         )
+        data <- .prepare_column_operation(data, length(data) + 1L)
+        state <- .reference_state(data)
         if (.ordinary_data_table(data)) {
             data.table::set(data, j = target$name, value = column)
             return(invisible(data))
@@ -1924,16 +1911,16 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         # without being named.
         if (grouped_input) .regroup_after_replacement(data, state)
     }
-    if (generate) {
+    if (generate) suspendInterrupts({
         appended <- .can_append_physical_column(data, state) &&
             .Call(C_dtatools_append_data_column, data, target$name, column)
         if (appended) {
             .append_physical_column(state, target$name, column)
         } else {
-            .append_generated_column(state, target$name, column)
+            stop("internal error: prepared table cannot append a column")
         }
         if (is.null(.reference_state(data))) .mark_reference_data(data, state)
-    }
+    })
     invisible(data)
 }
 
@@ -2401,10 +2388,9 @@ print.dtatools_ref_data <- function(x, ...) {
 # so `x` may be a copy of the object the caller's other bindings hold;
 # the reference state names that object, and the result's columns are
 # installed into it as `keep_vars()` installs a selection: into its
-# physical list when the list can be resized, so every consumer that
-# reads the list sees the new columns, and as a structural overlay
-# otherwise. The installed object is returned, so the binding assigned
-# to holds the same object as every alias. Columns the replacement left
+# physical list when capacity allows, or into a shallow rebuilt table.
+# The installed object is returned for R's replacement assignment; other
+# aliases keep the old complete table when rebuilding was necessary. Columns the replacement left
 # alone are recognized by address and untouched; a changed column is
 # typed by promotion from its prior storage, or as a new column; and one
 # that is still the very vector the caller passed as `value` is wrapped
@@ -2440,7 +2426,7 @@ print.dtatools_ref_data <- function(x, ...) {
         }
     }
     original <- .as_mutation_data(target, allow_grouped = TRUE)
-    .install_column_selection(target, original, columns)
+    target <- .install_column_selection(target, original, columns)
     .sync_replacement_attributes(target, result)
     invisible(target)
 }

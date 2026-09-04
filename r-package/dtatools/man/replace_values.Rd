@@ -63,9 +63,9 @@ the column and so has no prior storage to widen.}
 \description{
 \code{gen()} and \code{replace_values()} modify a data frame or tibble by reference.
 \code{repl()} is a direct alias for \code{replace_values()}. The return value is the
-supplied dataset, invisibly, so assignment is neither needed nor advised.
-Aliases of the dataset or the same target vector observe later generation
-and replacement. This includes column-only subsets that share their column
+updated dataset, invisibly. Within reserved capacity, aliases observe
+generation and replacement. Preparation or reallocation can separate
+aliases; assign the returned table when calling through a function. This includes column-only subsets that share their column
 payload. Row subsets have new payloads and remain independent. Use
 \code{copy_data()} when isolation is required. Generic ALTREP columns created by
 base R or another package are detached to ordinary vectors before
@@ -76,28 +76,15 @@ Aliases to the same dataset object observe the installed vector. On a
 replacement form such as \verb{var_label(data$x) <-}, write by reference as
 well. A standalone alias to the former generic ALTREP column, including
 one held by a previously created subset, remains unchanged.
-\code{gen()} attaches package-owned reference state to the same data-frame or
-tibble object. Existing columns remain in the data frame. A dibble is
-built with spare capacity for 256 more columns, and \code{gen()} appends to
-its column list in place while that lasts; beyond it, and on a tibble
-or data frame that acquired reference state at its first \code{gen()},
-generated columns live in the attached state until an ordinary R
-assignment materializes a complete copy. This lets \code{gen()} grow the visible column set without
-searching for or rebinding a name in the caller. Base extraction and
-data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
-metadata helpers operate on the complete visible dataset. The delegated
-dplyr verbs are \code{arrange()}, \code{distinct()}, \code{filter()}, \code{group_by()},
-\code{mutate()}, \code{relocate()}, \code{rename()}, \code{rowwise()}, \code{select()}, \code{slice()},
-\code{summarise()}, \code{transmute()}, and \code{ungroup()}. Consumers that
-bypass S3 methods and inspect a data frame's internal column-pointer array do
-not see generated columns; pass \code{as.data.frame(data)} or
-\code{tibble::as_tibble(data)} to such a consumer. This includes non-generic
-combiners such as \code{dplyr::bind_rows()} and other dplyr verbs. Base \code{rbind()}
-and \code{cbind()} delegate when a reference dataset is the first argument; when
-it is later, convert it explicitly because base dispatch has already chosen
-the ordinary data-frame method.
-\code{unclass()} and direct inspection of internal attributes are likewise not
-supported ways to access generated columns.
+Every generated column is stored in the physical column list, so direct
+consumers such as \code{unclass()}, \code{dplyr::bind_rows()}, \code{purrr::map()}, and
+\code{write.csv()} see the complete dataset. Constructors and readers reserve
+5,000 spare column-pointer slots by default, controlled by
+\code{options(dtatools.alloccol = 5000L)}. When capacity is exhausted or a
+table needs preparation, the operation warns, shallow-copies the table,
+and rebinds a supported target. Aliases retain the old complete table.
+See \code{\link[=reserve_columns]{reserve_columns()}} for supported targets, function parameters, and
+the required preparation after base R serialization.
 \code{gen()} and \code{replace_values()} accept a grouped tibble and treat its dplyr
 groups as assignment groups (see below). They reject rowwise tibbles;
 \code{copy_data()} accepts both and preserves their class.

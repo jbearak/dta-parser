@@ -4,7 +4,7 @@
 \alias{dibble}
 \alias{as_dibble}
 \alias{is_dibble}
-\title{Dibbles: tibbles that carry dtatools reference state}
+\title{Dibbles: Stata datasets with by-reference mutation}
 \usage{
 dibble(...)
 
@@ -33,15 +33,12 @@ tests for one. Those are the only ways to get one: no operation turns a
 table you already have into a dibble behind your back.
 }
 \details{
-Reference state is what lets \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, \code{\link[=keep_vars]{keep_vars()}},
-and the other by-reference operations change a dataset in place so that
-every binding to it sees the change. Any data frame, tibble, or data
-table acquires that state at its first \code{\link[=gen]{gen()}}, and keeps the class it
-had: reference state is not dibble-ness. A tibble stays a tibble, with
-its existing columns untouched and R's own semantics for \verb{$<-} and the
-other replacement operators; only the column \code{gen()} writes takes Stata
-storage, as it does on a data frame. \code{is_dibble()} reports \code{FALSE}
-throughout. Call \code{as_dibble()} when you want the Stata dataset.
+\code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, \code{\link[=keep_vars]{keep_vars()}},
+and the other by-reference operations change a prepared dataset in place.
+Within capacity, every binding sees the change. \code{\link[=gen]{gen()}} keeps an ordinary
+tibble or data frame's existing columns unchanged and types only its new
+column; \code{is_dibble()} remains \code{FALSE}. Call \code{as_dibble()} to type the
+whole dataset and opt into dibble replacement behavior.
 
 A dibble is a Stata dataset held in a tibble, and two invariants follow.
 Every numeric and string column carries Stata storage: \code{dibble()} and
@@ -63,7 +60,8 @@ The replacement operators are the exception: \verb{$<-}, \verb{[[<-}, \verb{[<-}
 \verb{names<-}, \verb{dimnames<-}, and \verb{row.names<-} on a dibble write by
 reference, as \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, and \verb{:=} do, so every binding
 to the dataset sees the change and a replacement inside a function
-reaches the caller's dibble. Because R
+reaches the caller's dibble while capacity remains. Reallocation rebinds
+only the local parameter; return and assign that result in the caller. Because R
 spells \code{var_label(data$x) <- "Age"} as a \verb{$<-} call, every metadata
 setter used in replacement form is by reference on a dibble too:
 \link{var_label<-}, \link{val_labels<-}, and \verb{attr<-} on \code{format.stata}, notes, or
@@ -71,12 +69,11 @@ characteristics. A vector assigned in is copied on its first write, so
 the frame it came from is never reached. Use \code{\link[=copy_data]{copy_data()}} for an
 independent dataset and \code{\link[tibble:as_tibble]{tibble::as_tibble()}} for a copy with R's
 semantics. On a tibble or data frame that is not a dibble the operators
-keep R's copy-on-modify behaviour. A dibble is built with spare capacity
-for 256 more columns, so \code{\link[=gen]{gen()}} appends to its column list in place
-and \code{bind_rows()}, \code{bind_cols()}, and other consumers that read the
-list directly see every column; past that capacity, and on a tibble or
-data frame that acquired reference state at its first \code{gen()}, such
-consumers need \code{\link[tibble:as_tibble]{tibble::as_tibble()}}, as documented under \code{\link[=gen]{gen()}}.
+keep R's copy-on-modify behaviour. A dibble reserves 5,000 spare column
+pointer slots by default, controlled by \code{dtatools.alloccol}. All columns
+stay physically present. Preparation or reallocation warns and may
+separate aliases; see \code{\link[=reserve_columns]{reserve_columns()}} for target rebinding and the
+base R serialization boundary.
 \code{\link[tibble:as_tibble]{tibble::as_tibble()}} returns a tibble snapshot, and \code{with()} returns
 its expression's value. \code{as_dibble()} of a grouped tibble keeps its
 grouping.
@@ -89,8 +86,8 @@ self-reference or its over-allocated column slots; keys, indexes, and
 allocation capacity are left behind. In every case compact Stata numeric
 and dictionary-string columns stay compact.
 
-A dibble needs unique, non-empty column names, because its reference
-state indexes columns by name. Readers repair names before building one,
+A dibble needs unique, non-empty column names to identify columns.
+Readers repair names before building one,
 so only \code{.name_repair = "minimal"} can produce names a dibble rejects;
 request \code{output = "tibble"} for such a read.
 }

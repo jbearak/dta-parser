@@ -700,7 +700,8 @@ test_that("replacement operators type their columns and keep the dibble", {
     expect_identical(alias$n, 1:2)
     expect_null(attr(alias$s, "stata.string.storage", exact = TRUE))
     expect_identical(alias$keep, c(TRUE, FALSE))
-    expect_identical(dta_storage_type(alias$y), "long")
+    expect_false("y" %in% names(alias))
+    expect_identical(dta_storage_type(tbl$y), "long")
 })
 
 test_that("logical columns stay logical in a dibble", {
@@ -1249,34 +1250,24 @@ test_that("generated columns reach consumers that read the column list", {
     gen(data, w = 1L)
     expect_identical(names(alias), c("x", "y", "s", "w"))
     expect_identical(as.integer(alias$w), c(1L, 1L))
-    # Past the spare capacity, generated columns live in the state, and
-    # the visible dataset is still complete.
+    # Past capacity, the rebound table is physically complete too.
+    withr::local_options(dtatools.alloccol = 2L)
     wide <- dibble(x = 1L)
-    capacity <- dtatools:::.dibble_column_capacity
-    for (index in seq_len(capacity + 1L)) {
-        gen(wide, !!paste0("v", index), x)
-    }
-    last <- paste0("v", capacity + 1L)
-    expect_identical(length(names(wide)), capacity + 2L)
-    expect_identical(length(unclass(wide)), capacity + 1L)
-    expect_identical(names(wide)[[capacity + 2L]], last)
-    expect_identical(as.integer(wide[[last]]), 1L)
-    expect_identical(ncol(tibble::as_tibble(wide)), capacity + 2L)
-    # A tibble that becomes a dibble at its first gen() has no spare
-    # capacity, so that column lives in the state and later ones follow.
+    gen(wide, v1 = x)
+    gen(wide, v2 = x)
+    alias <- wide
+    expect_warning(gen(wide, v3 = x), "reallocation")
+    expect_identical(length(unclass(wide)), 4L)
+    expect_identical(names(wide), c("x", "v1", "v2", "v3"))
+    expect_identical(names(alias), c("x", "v1", "v2"))
     tbl <- tibble::tibble(a = 1:2)
-    gen(tbl, b = a)
+    expect_warning(gen(tbl, b = a), "reallocation")
     gen(tbl, c = a)
-    expect_identical(names(tbl), c("a", "b", "c"))
-    expect_identical(names(unclass(tbl)), "a")
-    # Such a dibble hands non-generic consumers its snapshot, as documented.
-    expect_identical(
-        names(dplyr::bind_rows(tibble::as_tibble(tbl), tbl)),
-        c("a", "b", "c")
-    )
+    expect_identical(names(unclass(tbl)), c("a", "b", "c"))
+    expect_identical(names(dplyr::bind_rows(tbl, tbl)), c("a", "b", "c"))
     state <- dtatools:::.reference_state(tbl)
-    expect_identical(state$generated_count, 2L)
-    expect_identical(names(dtatools:::.data_columns(tbl)), c("a", "b", "c"))
+    expect_identical(state$generated_count, 0L)
+    expect_false(state$physical_overlay)
 })
 
 test_that("column binding isolates every input, not only the first", {

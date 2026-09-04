@@ -22,7 +22,8 @@ drop_vars(data, ...)
 \code{keep_vars()} retains selected columns and \code{drop_vars()} removes selected
 columns. Both functions mutate the supplied data frame or tibble by
 reference and return it invisibly. Other bindings to the same dataset see
-the structural change. Use \code{copy_data()} first when isolation is required.
+the structural change while capacity remains. Preparation may separate
+aliases; see \code{\link[=reserve_columns]{reserve_columns()}}. Use \code{copy_data()} for isolation.
 }
 \details{
 Selections accept bare names, \code{first:last} ranges, \code{c()}, and
@@ -33,14 +34,10 @@ error. \code{keep_vars()} treats the selection as a Stata varlist: it preserves
 the surviving columns' original relative order rather than reordering them
 to match the selection expression.
 
-Physical columns and columns created by \code{gen()} share one visible namespace.
-Callers do not need to inspect or change dtatools reference state. Surviving
-columns keep their vectors unchanged, including Stata storage declarations,
-tagged missing values, variable labels, and value-label tables.
-A \code{data.table} restored by \code{readRDS()} or \code{unserialize()} must first have its
-by-reference column capacity restored with \code{data.table::setalloccol()}.
-\code{keep_vars()} and \code{drop_vars()} reject a non-resizable \code{data.table} before
-mutation because R cannot shrink that object itself by reference.
+Every surviving column stays physically present and keeps its vector,
+including Stata storage, tagged missing values, and labels.
+Serialized tables and legacy overlays are rebuilt when necessary.
+Reallocation warns and rebinds the supported target; see \code{\link[=reserve_columns]{reserve_columns()}}.
 }
 \examples{
 survey <- data.frame(id = 1:2, age = c(20, 30), temporary = 0)

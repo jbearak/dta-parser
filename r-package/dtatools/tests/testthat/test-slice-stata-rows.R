@@ -339,7 +339,7 @@ test_that("reorder_dta_rows permutes reference-state columns", {
     expect_identical(as.double(vctrs::vec_data(alias$doubled)), expected * 2)
 })
 
-test_that("reorder_dta_rows permutes a structural reference state", {
+test_that("reorder_dta_rows permutes a physically complete generated table", {
     data <- read_dta(fixture("all_types_v118.dta"), output = "tibble")
     rows <- rev(seq_len(nrow(data)))
     expected <- vctrs::vec_slice(
@@ -347,11 +347,10 @@ test_that("reorder_dta_rows permutes a structural reference state", {
     )
     gen(data, doubled, v_byte * 2)
     gen(data, tripled, v_byte * 3)
-    # Dropping one of the logical columns leaves more of them than the
-    # tibble physically holds, which is what forces a structural state.
+    # Structural operations keep all surviving columns physically present.
     drop_vars(data, v_int)
     state <- attr(data, ".dtatools_ref_state", exact = TRUE)
-    expect_true(isTRUE(state$physical_overlay))
+    expect_false(isTRUE(state$physical_overlay))
     names_before <- names(data)
 
     reorder_dta_rows(data, rows)

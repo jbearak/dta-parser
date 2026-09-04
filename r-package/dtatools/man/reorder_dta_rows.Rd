@@ -7,10 +7,8 @@
 reorder_dta_rows(data, rows)
 }
 \arguments{
-\item{data}{An ordinary base data frame, tibble, or data.table,
-modified by reference. A table carrying a dtatools reference
-state is accepted when the container underneath it is one of
-those.}
+\item{data}{An ordinary base data frame, tibble, dibble, or data.table,
+modified by reference, or rebuilt when a legacy table requires it.}
 
 \item{rows}{A permutation of \code{seq_len(nrow(data))} following
 \code{\link[vctrs:vec_as_location]{vctrs::vec_as_location()}} semantics, without missing locations.
@@ -32,8 +30,6 @@ gathered columns are installed without copying, so compact numeric
 columns stay unmaterialized.
 }
 \details{
-A base data frame or tibble that \code{\link[=gen]{gen()}} has given reference
-semantics is reordered too: its generated columns live in the
-reference-state overlay rather than in the object, and they are
-permuted alongside the physical ones.
+Legacy tables with columns outside their physical list are rebuilt first.
+This warns and may separate aliases; see \code{\link[=reserve_columns]{reserve_columns()}}.
 }
