@@ -3354,14 +3354,28 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         for (field in c("message", "body")) {
             text <- condition[[field]]
             if (!is.character(text)) next
-            for (index in seq_along(labels)) {
-                text <- gsub(
-                    paste0("`", names(labels)[[index]], "`"),
-                    paste0("`", labels[[index]], "`"),
-                    text, fixed = TRUE
-                )
-            }
-            condition[[field]] <- text
+            from <- paste0("In argument: `", names(labels), "`.")
+            to <- paste0("In argument: `", labels, "`.")
+            condition[[field]] <- vapply(text, function(message) {
+                if (is.na(message)) return(message)
+                # Warnings can arrive with their cause already rendered into
+                # the message. Rewrite only the generated annotation before
+                # that cause, never the user's warning text below it.
+                lines <- strsplit(paste0(message, "\n"), "\n", fixed = TRUE)[[1L]]
+                for (index in seq_along(lines)) {
+                    line <- lines[[index]]
+                    if (startsWith(line, "Caused by ")) break
+                    prefix <- if (startsWith(line, "\u2139 ")) "\u2139 " else
+                        if (startsWith(line, "i ")) "i " else ""
+                    annotation <- substring(line, nchar(prefix) + 1L)
+                    replacement <- match(annotation, from)
+                    if (!is.na(replacement)) {
+                        lines[[index]] <- paste0(prefix, to[[replacement]])
+                    }
+                }
+                paste(lines, collapse = "\n")
+            }, character(1), USE.NAMES = FALSE)
+            names(condition[[field]]) <- names(text)
         }
         condition
     }

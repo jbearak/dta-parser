@@ -1747,3 +1747,42 @@ test_that("mask promotion sees prior clauses' storage and metadata", {
     expect_identical(dta_storage_type(result$x), "double")
     expect_null(var_label(result$x))
 })
+
+test_that("mask warning labels leave caller-binding messages unchanged", {
+    for (unicode in c(TRUE, FALSE)) {
+        withr::local_options(cli.unicode = unicode)
+        for (delayed in c(FALSE, TRUE)) {
+            env <- new.env(parent = environment())
+            env$input <- dibble(x = 1:2)
+            user_text <- paste0(
+                "user supplied `(values)` literally\n",
+                "In argument: `(values)`.\n"
+            )
+            env$user_text <- user_text
+            if (delayed) {
+                delayedAssign("values", {
+                    warning(user_text, call. = FALSE)
+                    1:2
+                }, eval.env = env, assign.env = env)
+            } else {
+                getter <- function(value) {
+                    warning(user_text, call. = FALSE)
+                    1:2
+                }
+                environment(getter) <- env
+                makeActiveBinding("values", getter, env)
+            }
+            message <- NULL
+            withCallingHandlers(
+                eval(quote(dplyr::mutate(input, values)), env),
+                warning = function(w) {
+                    message <<- conditionMessage(w)
+                    invokeRestart("muffleWarning")
+                }
+            )
+            expect_match(message, "In argument: `values`.", fixed = TRUE)
+            expect_match(message, "user supplied `(values)` literally", fixed = TRUE)
+            expect_match(message, "In argument: `(values)`.", fixed = TRUE)
+        }
+    }
+})
