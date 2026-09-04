@@ -91,7 +91,12 @@ data-table subclasses whose invariants dtatools cannot know.
 aliases and aliases of a target column observe the change. Call `copy_data()`
 first when the original dataset, its compact storage, and its metadata must
 remain independent. See `?replace_values` for selection, evaluation, formula,
-grouping, and Stata compatibility details.
+grouping, and Stata compatibility details, and
+[mutation by reference](../../docs/r-mutation-by-reference.md) for what writing
+by reference means and how it changes a workflow.
+[Containers](../../docs/r-containers.md) tabulates what `gen()`, `repl()`,
+`:=`, `mutate()`, and the replacement operators do on a dibble, tibble, data
+frame, and data table, and the column types each produces.
 
 `order_vars()` and `rename_vars()` mutate by reference too, as Stata's `order`
 and `rename` do: `order_vars()` moves the selected columns to the front and
@@ -721,6 +726,12 @@ Additional measurements and their provenance live in the repository's [dated ben
 
 The reader covers Stata 5 through 19. The writer targets Stata 18/19 and does
 not emit older formats. See the shared [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact format releases, encodings, missing-value behavior, and intentional differences from haven.
+
+`dtatools` takes Stata's behavior as its compatibility target.
+[Where dtatools diverges from Stata](../../docs/r-stata-divergences.md) lists
+the places it deliberately does something else — the `generate` default's
+reach, the promotion ladder, merge result order, colliding value-label table
+names, `labelbook`'s deterministic listing, and the rest — and why.
 
 ## Contributing
 
