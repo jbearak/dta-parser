@@ -2454,7 +2454,7 @@ rbind.dtatools_ref_data <- function(..., deparse.level = 1) {
     values <- lapply(inputs, .reference_snapshot)
     .close_dibble(inputs[[1L]], do.call(
         base::rbind, c(values, list(deparse.level = deparse.level))
-    ), sources = inputs)
+    ))
 }
 
 #' @export
@@ -2463,7 +2463,7 @@ cbind.dtatools_ref_data <- function(..., deparse.level = 1) {
     values <- lapply(inputs, .reference_snapshot)
     .close_dibble(inputs[[1L]], do.call(
         base::cbind, c(values, list(deparse.level = deparse.level))
-    ), sources = inputs)
+    ))
 }
 
 #' @export
@@ -2912,17 +2912,23 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # vector is copied. Columns the operation rebuilt are already the
 # result's own. `sources = NULL`, the default, isolates every column:
 # a data-masked verb such as `mutate(d, copied = other$flag)` can bring
-# in a vector from any frame, and the vctrs and dplyr hooks see only the
-# first input of a `bind_cols()` or join, so the inputs the closure can
-# name are rarely the only ones. A caller that knows every input, as
-# `cbind()` and `rbind()` do, passes them so untouched columns are left
-# as they are.
+# in a vector from any frame, `cbind(d, x = other$x)` takes bare vectors,
+# and the vctrs and dplyr hooks see only the first input of a
+# `bind_cols()` or join, so the inputs a closure can name are rarely the
+# only ones. A caller that does know every vector its result could share
+# passes them, frames or vectors, so untouched columns are left as they
+# are.
 .isolate_shared_columns <- function(result, sources) {
     isolate_all <- is.null(sources)
     source_addresses <- if (!isolate_all) {
         unlist(lapply(sources, function(source) {
-            if (!is.data.frame(source)) return(character())
-            vapply(.data_columns(source), rlang::obj_address, character(1))
+            if (is.data.frame(source)) {
+                vapply(
+                    .data_columns(source), rlang::obj_address, character(1)
+                )
+            } else {
+                rlang::obj_address(source)
+            }
         }))
     }
     for (index in seq_len(length(result))) {

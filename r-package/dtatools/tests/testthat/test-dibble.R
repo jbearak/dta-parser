@@ -1086,6 +1086,16 @@ test_that("column binding isolates every input, not only the first", {
     stacked <- cbind(left, right)
     repl(stacked, flag = FALSE)
     expect_identical(right$flag, c(TRUE, FALSE))
+    # cbind() takes bare vectors too.
+    vectors <- cbind(left, flag = right$flag, z = other$z)
+    repl(vectors, flag = FALSE)
+    vectors[, z := 0L]
+    expect_identical(right$flag, c(TRUE, FALSE))
+    expect_identical(as.integer(other$z), 5:6)
+    expect_identical(vectors$flag, c(FALSE, FALSE))
+    stacked_rows <- rbind(left, dibble(x = 3L))
+    stacked_rows[, x := 0L]
+    expect_identical(as.integer(left$x), 1:2)
     joined <- dplyr::left_join(
         left, tibble::tibble(x = 1:2, w = c(TRUE, TRUE)), by = "x"
     )
