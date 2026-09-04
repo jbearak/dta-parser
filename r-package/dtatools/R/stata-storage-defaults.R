@@ -76,12 +76,13 @@
 #' holds. Row or cell assignment, as in
 #' `data[1, "x"] <- 1000L`, promotes the same way, and a `:=` whose value
 #' declares wider storage than the column widens the column to it, as
-#' `data[1, x := dta_double(1)]` makes `x` a `double`. [replace_values()]
-#' and `repl()` promote the same way, and translate the message Stata's
-#' `replace` prints: \code{variable `x` was byte now int}. Pass
-#' `promote = FALSE` to hold the column to its declared storage and get an
-#' error instead. An assignment that selects no rows promotes nothing, as
-#' Stata's `(0 real changes made)` does not. Promotion does not reach
+#' `data[1, x := dta_double(1)]` makes `x` a `double`.
+#' \code{\link[=replace_values]{replace_values()}} and `repl()` promote the
+#' same way, and translate the message Stata's `replace` prints:
+#' \code{variable `x` was byte now int}. Pass `promote = FALSE` to hold the
+#' column to its declared storage and get an error instead. An assignment
+#' that selects no rows promotes nothing, as Stata's
+#' `(0 real changes made)` does not. Promotion does not reach
 #' `[<-` on a Stata vector taken out of the dibble, as in
 #' `data$x[1] <- 1000L`, which is the vector's own strict assignment.
 #'

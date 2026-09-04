@@ -84,12 +84,13 @@ write by reference, so the promoted column is what every binding
 holds. Row or cell assignment, as in
 \code{data[1, "x"] <- 1000L}, promotes the same way, and a \verb{:=} whose value
 declares wider storage than the column widens the column to it, as
-\code{data[1, x := dta_double(1)]} makes \code{x} a \code{double}. \code{\link[=replace_values]{replace_values()}}
-and \code{repl()} promote the same way, and translate the message Stata's
-\code{replace} prints: \code{variable `x` was byte now int}. Pass
-\code{promote = FALSE} to hold the column to its declared storage and get an
-error instead. An assignment that selects no rows promotes nothing, as
-Stata's \verb{(0 real changes made)} does not. Promotion does not reach
+\code{data[1, x := dta_double(1)]} makes \code{x} a \code{double}.
+\code{\link[=replace_values]{replace_values()}} and \code{repl()} promote the
+same way, and translate the message Stata's \code{replace} prints:
+\code{variable `x` was byte now int}. Pass \code{promote = FALSE} to hold the
+column to its declared storage and get an error instead. An assignment
+that selects no rows promotes nothing, as Stata's
+\verb{(0 real changes made)} does not. Promotion does not reach
 \verb{[<-} on a Stata vector taken out of the dibble, as in
 \code{data$x[1] <- 1000L}, which is the vector's own strict assignment.
 }

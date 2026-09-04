@@ -145,7 +145,11 @@ jobs:
           rustup default "$RUSTUP_TOOLCHAIN"
       - name: Install package and declared test dependencies
         shell: Rscript {0}
-        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "dplyr", "callr", "data.table", "httpuv", "arrow"))
+        run: install.packages(c("readr", "rlang", "tibble", "tidyselect", "testthat", "dplyr", "callr", "data.table", "httpuv", "arrow", "roxygen2"))
+      - name: Check generated documentation is up to date
+        if: runner.os == 'Linux'
+        shell: bash
+        run: scripts/check-r-roxygen.sh
       - name: Test Rust source hash validation
         if: runner.os == 'Linux'
         shell: bash
