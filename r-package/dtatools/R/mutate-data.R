@@ -19,9 +19,9 @@
 #' tibble object. Existing columns remain in the data frame. A dibble is
 #' built with spare capacity for 256 more columns, and `gen()` appends to
 #' its column list in place while that lasts; beyond it, and on a tibble
-#' that became a dibble at its first `gen()`, generated columns live in
-#' the attached state until an ordinary R assignment materializes a
-#' complete copy. This lets `gen()` grow the visible column set without
+#' or data frame that acquired reference state at its first `gen()`,
+#' generated columns live in the attached state until an ordinary R
+#' assignment materializes a complete copy. This lets `gen()` grow the visible column set without
 #' searching for or rebinding a name in the caller. Base extraction and
 #' data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
 #' metadata helpers operate on the complete visible dataset. The delegated
@@ -171,9 +171,11 @@
 #' does not have Stata numeric semantics; convert them first. Numeric rows
 #' excluded by `where` contain system missing. Excluded string rows contain
 #' `""`, Stata's string missing, and excluded logical rows `NA`. Wrap the
-#' value expression in a Stata constructor to request other storage. On a
-#' plain tibble the first `gen()` makes it a [dibble] and types its
-#' existing columns the same way; a base data frame keeps bare columns.
+#' value expression in a Stata constructor to request other storage.
+#' `gen()` never changes what kind of table it was handed: a tibble stays
+#' a tibble and a data frame a data frame, with their existing columns
+#' untouched. Only the column `gen()` writes is typed. Call
+#' [as_dibble()] for a Stata dataset, where every column is typed.
 #' Stata `[in]` and `:lblname` authoring are not supported; the
 #' `by varlist:` prefix is `by`/`bysort`.
 #' `replace_values()` promotes, as Stata's `replace` does: a target whose
@@ -569,7 +571,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     columns
 }
 
-.new_reference_state <- function(data) {
+.new_reference_state <- function(data, dibble = FALSE) {
     state <- new.env(parent = emptyenv())
     physical <- .plain_data_columns(data)
     physical_names <- attr(data, "names", exact = TRUE)
@@ -589,10 +591,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     state$generated_tail <- NULL
     state$nrow <- base::nrow(data)
     state$classes <- class(data)
+    state$dibble <- dibble
     state
 }
 
-.new_structural_reference_state <- function(columns, row_count, classes) {
+.new_structural_reference_state <- function(columns, row_count, classes,
+                                            dibble = FALSE) {
     state <- new.env(parent = emptyenv())
     column_store <- new.env(hash = TRUE, parent = emptyenv())
     column_names <- names(columns)
@@ -609,6 +613,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     state$generated_tail <- NULL
     state$nrow <- row_count
     state$classes <- classes
+    state$dibble <- dibble
     state
 }
 
@@ -1759,25 +1764,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
                          promote = FALSE, report_promotion = FALSE) {
     .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
-    # A tibble becomes a dibble at its first `gen()`, and its columns are
-    # typed before `where`, `values`, and the groups are evaluated, so the
-    # expression sees the dataset the dibble will hold: a character key
-    # with `NA` and `""` is one group, not two. The typing is rolled back
-    # if anything before the mark fails.
-    if (generate && is.null(.reference_state(data)) &&
-        inherits(data, "tbl_df") && !.ordinary_data_table(data)) {
-        first_gen <- .type_physical_columns_in_place(data, base::nrow(data))
-        committed <- FALSE
-        on.exit(
-            if (!committed) .restore_physical_columns(data, first_gen),
-            add = TRUE
-        )
-        if (grouped_input && length(first_gen$indices)) {
-            .regroup_after_replacement(data, NULL)
-        }
-    } else {
-        committed <- TRUE
-    }
     original <- .as_mutation_data(
         data, allow_grouped = TRUE, allow_rowwise = FALSE
     )
@@ -1947,7 +1933,6 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             .append_generated_column(state, target$name, column)
         }
         if (is.null(.reference_state(data))) .mark_reference_data(data, state)
-        committed <- TRUE
     }
     invisible(data)
 }
@@ -2875,56 +2860,6 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(.typed_column(column, row_count, caller))
     }
     column
-}
-
-# A tibble that acquires reference state at its first `gen()` becomes a
-# dibble, so its physical columns are typed in place first: every
-# binding to the tibble already observes the generated column, and sees
-# the typed columns on the same terms.
-.type_physical_columns_in_place <- function(data, row_count) {
-    column_names <- attr(data, "names", exact = TRUE)
-    # Every column is typed before any is installed, so a column no Stata
-    # storage holds leaves the tibble as it was.
-    typed <- vector("list", length(column_names))
-    changed <- logical(length(column_names))
-    for (index in seq_along(column_names)) {
-        column <- .subset2(data, index)
-        typed[[index]] <- .typed_column_named(
-            column, row_count, "gen()", column_names[[index]]
-        )
-        changed[[index]] <- !identical(
-            rlang::obj_address(typed[[index]]), rlang::obj_address(column)
-        )
-    }
-    indices <- which(changed)
-    # Every column is recorded, not only the typed ones: a `bysort` may
-    # permute the whole list before the generation fails, and the rollback
-    # must leave every column under the same row order.
-    originals <- .plain_data_columns(data)
-    groups <- attr(data, "groups", exact = TRUE)
-    for (index in indices) {
-        .Call(
-            C_dtatools_set_data_column, data, as.integer(index),
-            typed[[index]]
-        )
-    }
-    invisible(list(indices = indices, originals = originals, groups = groups))
-}
-
-# Undoes `.type_physical_columns_in_place()` and any by-reference sort
-# when the first `gen()` fails after it: the tibble gets its original
-# column vectors and grouping back.
-.restore_physical_columns <- function(data, plan) {
-    for (index in seq_along(plan$originals)) {
-        .Call(
-            C_dtatools_set_data_column, data, as.integer(index),
-            plan$originals[[index]]
-        )
-    }
-    if (inherits(data, "grouped_df")) {
-        .Call(C_dtatools_set_attribute, data, "groups", plan$groups)
-    }
-    invisible(NULL)
 }
 
 # The Stata storage a column declares, numeric or string, or `NULL` when

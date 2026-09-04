@@ -398,7 +398,8 @@ rename_vars <- function(data, ..., .names = NULL) {
         .new_structural_reference_state(
             retained_columns,
             original$nrow,
-            source_classes
+            source_classes,
+            dibble = dibble_input
         )
     }
     if (!is.null(final_state)) final_state$object <- data
@@ -446,7 +447,7 @@ rename_vars <- function(data, ..., .names = NULL) {
     # A dibble whose list could be resized has lost its mark to the
     # materialization; it is a dibble still, over the new column set.
     if (dibble_input && is.null(.reference_state(data))) {
-        .mark_reference_data(data, .new_reference_state(data))
+        .mark_reference_data(data, .new_reference_state(data, dibble = TRUE))
     }
     invisible(data)
 }

@@ -98,10 +98,11 @@ that selects no rows promotes nothing, as Stata's
 \section{Bare tibbles and data frames}{
 
 Only a dibble carries this contract. A tibble or data frame that has
-been through \code{\link[=gen]{gen()}} carries reference state, and a tibble becomes a
-dibble at that point with its existing columns typed, but a base data
-frame stays a data frame with bare columns. \code{\link[=save_dta]{save_dta()}} types bare
-columns by the same mapping when it writes them, with logical as \code{byte}.
+been through \code{\link[=gen]{gen()}} carries reference state, but it is still a tibble
+or a data frame: its existing columns stay bare, and only the columns
+\code{\link[=gen]{gen()}} itself writes take Stata storage. \code{\link[=as_dibble]{as_dibble()}} is what types
+the whole dataset. \code{\link[=save_dta]{save_dta()}} types bare columns by the same mapping
+when it writes them, with logical as \code{byte}.
 
 Plain Arrow files written by other tools, and files read with
 \code{profile = FALSE}, carry no Stata semantics and read as tibbles by

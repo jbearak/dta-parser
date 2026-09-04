@@ -24,21 +24,24 @@ table, or dibble. For \code{is_dibble()}, any object.}
 returns \code{TRUE} or \code{FALSE}.
 }
 \description{
-A dibble is a tibble that carries dtatools reference state from its
-creation rather than acquiring it at the first \code{\link[=gen]{gen()}}. It is the default
+A dibble is a tibble that is a Stata dataset. It is the default
 container of \code{\link[=read_dta]{read_dta()}}, \code{\link[=read_arrow]{read_arrow()}}, and \code{\link[=dta_append]{dta_append()}}, and the
 container \code{\link[=dta_merge]{dta_merge()}} returns for a dibble \code{x}. \code{dibble()} builds one
 from columns with the argument semantics of \code{\link[tibble:tibble]{tibble::tibble()}};
 \code{as_dibble()} converts a data frame, tibble, or data table; \code{is_dibble()}
-tests for one.
+tests for one. Those are the only ways to get one: no operation turns a
+table you already have into a dibble behind your back.
 }
 \details{
 Reference state is what lets \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, \code{\link[=keep_vars]{keep_vars()}},
 and the other by-reference operations change a dataset in place so that
-every binding to it sees the change. On a plain tibble the first \code{gen()}
-attaches that state, so a dibble and a tibble that has been through
-\code{gen()} are the same kind of object: \code{is_dibble()} is \code{TRUE} for both,
-and \code{gen()} on a plain tibble is one way to obtain a dibble.
+every binding to it sees the change. Any data frame, tibble, or data
+table acquires that state at its first \code{\link[=gen]{gen()}}, and keeps the class it
+had: reference state is not dibble-ness. A tibble stays a tibble, with
+its existing columns untouched and R's own semantics for \verb{$<-} and the
+other replacement operators; only the column \code{gen()} writes takes Stata
+storage, as it does on a data frame. \code{is_dibble()} reports \code{FALSE}
+throughout. Call \code{as_dibble()} when you want the Stata dataset.
 
 A dibble is a Stata dataset held in a tibble, and two invariants follow.
 Every numeric and string column carries Stata storage: \code{dibble()} and
@@ -71,9 +74,9 @@ semantics. On a tibble or data frame that is not a dibble the operators
 keep R's copy-on-modify behaviour. A dibble is built with spare capacity
 for 256 more columns, so \code{\link[=gen]{gen()}} appends to its column list in place
 and \code{bind_rows()}, \code{bind_cols()}, and other consumers that read the
-list directly see every column; past that capacity, and on a tibble
-that became a dibble at its first \code{gen()}, such consumers need
-\code{\link[tibble:as_tibble]{tibble::as_tibble()}}, as documented under \code{\link[=gen]{gen()}}.
+list directly see every column; past that capacity, and on a tibble or
+data frame that acquired reference state at its first \code{gen()}, such
+consumers need \code{\link[tibble:as_tibble]{tibble::as_tibble()}}, as documented under \code{\link[=gen]{gen()}}.
 \code{\link[tibble:as_tibble]{tibble::as_tibble()}} returns a tibble snapshot, and \code{with()} returns
 its expression's value. \code{as_dibble()} of a grouped tibble keeps its
 grouping.

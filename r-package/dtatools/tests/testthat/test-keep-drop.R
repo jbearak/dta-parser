@@ -23,10 +23,9 @@ test_that("drop_vars removes physical and generated columns", {
     expect_named(data, c("a", "c"))
     expect_named(alias, c("a", "c"))
     expect_s3_class(data, "tbl_df")
-    # The tibble became a dibble at its first gen(), so its integer
-    # columns carry Stata long storage.
-    expect_identical(dta_storage_type(data$a), "long")
-    expect_identical(as.integer(data$a), 1:2)
+    # gen() left the tibble a tibble, so its own columns stay bare.
+    expect_false(is_dibble(data))
+    expect_identical(data$a, 1:2)
     expect_identical(as.integer(data$c), 5:6)
 })
 
