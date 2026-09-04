@@ -1328,3 +1328,33 @@ test_that("wide Arrow temporal counts are rejected instead of rounded", {
         )
     }
 })
+
+test_that("declared strings take the same default format as save_dta", {
+    data <- dibble(
+        narrow = dta_string(c("a", "b")),
+        wide = dta_string(c(strrep("x", 17L), "y")),
+        huge = dta_string(c(strrep("z", 2046L), "y")),
+        n = dta_byte(c(1, 2))
+    )
+    arrow_path <- arrow_tempfile()
+    dta_path <- tempfile(fileext = ".dta")
+
+    save_arrow(data, arrow_path)
+    save_dta(data, dta_path)
+    from_arrow <- read_arrow(arrow_path)
+    from_dta <- read_dta(dta_path)
+
+    formats <- function(x) {
+        vapply(x, function(column) {
+            format <- attr(column, "format.stata", exact = TRUE)
+            if (is.null(format)) NA_character_ else format
+        }, character(1))
+    }
+    expect_identical(
+        formats(from_arrow),
+        c(narrow = "%9s", wide = "%17s", huge = "%9s", n = "%8.0g")
+    )
+    expect_identical(formats(from_dta), formats(from_arrow))
+    expect_identical(datasig(from_arrow), datasig(data))
+    expect_identical(datasig(from_dta), datasig(data))
+})

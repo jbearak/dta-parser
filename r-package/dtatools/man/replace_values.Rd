@@ -57,9 +57,12 @@ payload. Row subsets have new payloads and remain independent. Use
 \code{copy_data()} when isolation is required. Generic ALTREP columns created by
 base R or another package are detached to ordinary vectors before
 replacement because their private caches cannot be invalidated safely.
-Aliases to the same dataset object observe the installed vector. A
-standalone alias to the former generic ALTREP column, including one held by
-a previously created subset, remains unchanged.
+Aliases to the same dataset object observe the installed vector. On a
+\link{dibble}, the replacement operators \verb{$<-}, \verb{[[<-}, \verb{[<-}, \verb{names<-},
+\verb{dimnames<-}, and \verb{row.names<-}, and so every setter used in
+replacement form such as \verb{var_label(data$x) <-}, write by reference as
+well. A standalone alias to the former generic ALTREP column, including
+one held by a previously created subset, remains unchanged.
 \code{gen()} attaches package-owned reference state to the same data-frame or
 tibble object. Existing columns remain in the data frame. A dibble is
 built with spare capacity for 256 more columns, and \code{gen()} appends to

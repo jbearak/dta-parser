@@ -50,12 +50,25 @@ logical and factors stay factors. And every dataset operation on a
 dibble returns a dibble: dplyr verbs, joins with a dibble on the left,
 \code{bind_rows()} with a dibble first, base \code{subset()}, \code{transform()},
 \code{within()}, \code{head()}, \code{rbind()}, \code{cbind()}, and \code{[} subsetting. Each
-result is a fresh object holding the current contents, following
-copy-on-modify; the input is unchanged, and a by-reference \verb{:=} or
-\code{\link[=replace_values]{replace_values()}} on either the input or the result leaves the other
-as it was, and leaves any other frame the operation drew columns from
-as it was. Columns an operation leaves alone are shared copy-on-write,
-so compact columns stay compact. A dibble is built with spare capacity
+result is a fresh object holding the current contents; the input is
+unchanged, and a by-reference write on either the input or the result
+leaves the other as it was, and leaves any other frame the operation
+drew columns from as it was. Columns an operation leaves alone are
+shared copy-on-write, so compact columns stay compact.
+
+The replacement operators are the exception: \verb{$<-}, \verb{[[<-}, \verb{[<-},
+\verb{names<-}, \verb{dimnames<-}, and \verb{row.names<-} on a dibble write by
+reference, as \code{\link[=gen]{gen()}}, \code{\link[=replace_values]{replace_values()}}, and \verb{:=} do, so every binding
+to the dataset sees the change and a replacement inside a function
+reaches the caller's dibble. Because R
+spells \code{var_label(data$x) <- "Age"} as a \verb{$<-} call, every metadata
+setter used in replacement form is by reference on a dibble too:
+\link{var_label<-}, \link{val_labels<-}, and \verb{attr<-} on \code{format.stata}, notes, or
+characteristics. A vector assigned in is copied on its first write, so
+the frame it came from is never reached. Use \code{\link[=copy_data]{copy_data()}} for an
+independent dataset and \code{\link[tibble:as_tibble]{tibble::as_tibble()}} for a copy with R's
+semantics. On a tibble or data frame that is not a dibble the operators
+keep R's copy-on-modify behaviour. A dibble is built with spare capacity
 for 256 more columns, so \code{\link[=gen]{gen()}} appends to its column list in place
 and \code{bind_rows()}, \code{bind_cols()}, and other consumers that read the
 list directly see every column; past that capacity, and on a tibble

@@ -173,7 +173,7 @@ dta_union <- function(x, y) {
 
 .dta_union_numeric_storage <- function(x, y) {
     storages <- vapply(list(x, y), function(value) {
-        storage <- dta_storage_type(value)
+        storage <- .declared_stata_storage(value)
         if (!is.null(storage)) return(storage)
         if (is.double(value)) return("double")
         observed <- value[!is.na(value)]
@@ -280,7 +280,7 @@ dta_union <- function(x, y) {
     }
     if (identical(kind, "date")) return("%td")
     if (identical(kind, "datetime")) return("%tc")
-    .default_stata_format(dta_storage_type(result))
+    .default_stata_format(.declared_stata_storage(result))
 }
 
 #' @rdname dta_match

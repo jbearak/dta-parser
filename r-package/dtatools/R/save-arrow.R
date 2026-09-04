@@ -424,6 +424,17 @@ save_arrow <- function(data, path,
                 }
                 string_storage <- if (declared == "strL") 0L else
                     as.integer(sub("^str", "", declared))
+                # A declared Stata string is a Stata column, so it takes the
+                # same default display format `save_dta()` would write. Without
+                # this the two containers disagree for a declared string
+                # column that carries no explicit format.
+                if (!nzchar(format)) {
+                    format <- if (identical(declared, "strL")) {
+                        .default_stata_format("strL")
+                    } else {
+                        .default_stata_format("fixed", string_storage)
+                    }
+                }
             }
             # Unmaterialized dictionary-string columns are already UTF-8 and
             # export natively; enc2utf8() would materialize every CHARSXP.

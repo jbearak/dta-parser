@@ -9,9 +9,12 @@
 #' `copy_data()` when isolation is required. Generic ALTREP columns created by
 #' base R or another package are detached to ordinary vectors before
 #' replacement because their private caches cannot be invalidated safely.
-#' Aliases to the same dataset object observe the installed vector. A
-#' standalone alias to the former generic ALTREP column, including one held by
-#' a previously created subset, remains unchanged.
+#' Aliases to the same dataset object observe the installed vector. On a
+#' [dibble], the replacement operators `$<-`, `[[<-`, `[<-`, `names<-`,
+#' `dimnames<-`, and `row.names<-`, and so every setter used in
+#' replacement form such as `var_label(data$x) <-`, write by reference as
+#' well. A standalone alias to the former generic ALTREP column, including
+#' one held by a previously created subset, remains unchanged.
 #' `gen()` attaches package-owned reference state to the same data-frame or
 #' tibble object. Existing columns remain in the data frame. A dibble is
 #' built with spare capacity for 256 more columns, and `gen()` appends to
@@ -643,8 +646,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
 }
 
+# The state records the object it marks. R shallow-duplicates a shared
+# object before dispatching a replacement operator, so the method's `x`
+# can be a copy; the recorded object is the one every binding holds, and
+# by-reference replacement installs into it and returns it.
 .mark_reference_data <- function(data, state) {
     classes <- unique(c("dtatools_ref_data", state$classes))
+    state$object <- data
     .Call(C_dtatools_mark_reference_data, data, state, classes)
 }
 
@@ -1671,9 +1679,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # A real metadata copy must revoke exclusive patch ownership; this internal
     # cast must not.
     prototype <- if (inherits(target, "stata_temporal")) {
-        .stata_temporal_ptype(dta_storage_type(target), target)
+        .stata_temporal_ptype(.declared_stata_storage(target), target)
     } else if (inherits(target, "stata_numeric")) {
-        .stata_ptype(dta_storage_type(target), target)
+        .stata_ptype(.declared_stata_storage(target), target)
     } else {
         target[integer()]
     }
@@ -1984,7 +1992,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             caller
         ), call. = FALSE)
     }
-    declared <- dta_storage_type(values)
+    declared <- .declared_stata_storage(values)
     base_date <- inherits(values, "Date") &&
         !inherits(values, "stata_temporal")
     base_datetime <- inherits(values, "POSIXct") &&
@@ -2324,21 +2332,29 @@ print.dtatools_ref_data <- function(x, ...) {
     invisible(x)
 }
 
-# Ordinary R replacement has a caller binding to receive its result. Materialize
-# the complete visible dataset first, then preserve normal copy-on-modify
-# behavior instead of changing shared reference state as a side effect.
+# The replacement operators on a dibble write by reference, as `gen()`,
+# `repl()`, and `:=` do. The ordinary tibble replacement runs on the
+# snapshot, the changed columns are typed and promoted as `mutate()` types
+# them, and the result's columns are installed into the dibble's own
+# reference state, so the object every binding holds is the one that
+# changed and R's rebinding in the calling frame is a no-op. That is what
+# makes R's replacement-function forms by reference too: `val_labels(d$x)
+# <- v` is ``d <- `$<-`(d, "x", `val_labels<-`(d$x, v))``, so a metadata
+# setter used on a dibble's column inside a function reaches the caller's
+# dataset and every alias of it (ADR 0023). A reference frame that is not
+# a dibble gets the ordinary copy.
 #' @export
 `$<-.dtatools_ref_data` <- function(x, name, value) {
     result <- .reference_snapshot(x)
     result[[name]] <- value
-    .typed_reference_replacement(x, result, "`$<-`")
+    .install_replacement(x, result, value, "`$<-`")
 }
 
 #' @export
 `[[<-.dtatools_ref_data` <- function(x, i, ..., value) {
     result <- .reference_snapshot(x)
     result[[i, ...]] <- value
-    .typed_reference_replacement(x, result, "`[[<-`")
+    .install_replacement(x, result, value, "`[[<-`")
 }
 
 #' @export
@@ -2368,7 +2384,91 @@ print.dtatools_ref_data <- function(x, ...) {
     } else {
         eval(call, parent.frame())
     }
-    .typed_reference_replacement(x, result, "`[<-`")
+    .install_replacement(x, result, value, "`[<-`")
+}
+
+# Installs a replacement's result into the dibble itself. R
+# shallow-duplicates a shared object before it dispatches a replacement,
+# so `x` may be a copy of the object the caller's other bindings hold;
+# the reference state names that object, and the result's columns are
+# installed into it as `keep_vars()` installs a selection: into its
+# physical list when the list can be resized, so every consumer that
+# reads the list sees the new columns, and as a structural overlay
+# otherwise. The installed object is returned, so the binding assigned
+# to holds the same object as every alias. Columns the replacement left
+# alone are recognized by address and untouched; a changed column is
+# typed by promotion from its prior storage, or as a new column; and one
+# that is still the very vector the caller passed as `value` is wrapped
+# copy-on-write, so a later `:=` through this dibble cannot reach the
+# frame the vector came from.
+.install_replacement <- function(x, result, value, caller) {
+    if (!is_dibble(x)) return(result)
+    if (!is.data.frame(result)) return(result)
+    state <- .reference_state(x)
+    if (nrow(result) != state$nrow) {
+        stop(sprintf("%s cannot change a dibble's row count", caller),
+             call. = FALSE)
+    }
+    names <- names(result)
+    if (is.null(names) || anyNA(names) || any(names == "") ||
+        anyDuplicated(names) > 0L) {
+        stop(
+            sprintf("%s needs unique, non-missing column names", caller),
+            call. = FALSE
+        )
+    }
+    target <- state$object
+    if (is.null(target)) target <- x
+    before <- .data_columns(target)
+    typed <- .retype_changed_columns(result, before, caller)
+    columns <- .data_columns(typed)
+    shared <- .value_addresses(value)
+    if (length(shared)) {
+        for (index in seq_along(columns)) {
+            if (rlang::obj_address(columns[[index]]) %in% shared) {
+                columns[[index]] <- .metadata_copy(columns[[index]])
+            }
+        }
+    }
+    original <- .as_mutation_data(target, allow_grouped = TRUE)
+    .install_column_selection(target, original, columns)
+    .sync_replacement_attributes(target, result)
+    invisible(target)
+}
+
+.value_addresses <- function(value) {
+    if (is.null(value)) return(character())
+    if (is.data.frame(value) || (is.list(value) && !is.object(value))) {
+        return(vapply(
+            .plain_data_columns(value), rlang::obj_address, character(1)
+        ))
+    }
+    rlang::obj_address(value)
+}
+
+# A replacement on a grouped snapshot goes through dplyr's `[<-` and
+# `$<-` methods, which recompute or drop the groups, and `row.names<-` or
+# `dimnames<-` may have changed the row names; the dibble takes the
+# result's grouping, row names, and classes as its own.
+.sync_replacement_attributes <- function(x, result) {
+    state <- .reference_state(x)
+    .Call(
+        C_dtatools_set_attribute, x, "groups",
+        attr(result, "groups", exact = TRUE)
+    )
+    .Call(
+        C_dtatools_set_attribute, x, "row.names",
+        attr(result, "row.names", exact = TRUE)
+    )
+    classes <- class(result)
+    if (!identical(classes, state$classes)) {
+        state$classes <- classes
+        .Call(
+            C_dtatools_set_attribute, x, "class",
+            unique(c("dtatools_ref_data", classes))
+        )
+    }
+    invisible(NULL)
 }
 
 # Row or cell assignment into a typed column runs the column's own strict
@@ -2418,25 +2518,26 @@ print.dtatools_ref_data <- function(x, ...) {
     result
 }
 
+# `names(d)[1] <- "k"` renames by reference, as `rename_vars()` does.
 #' @export
 `names<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     names(result) <- value
-    .close_dibble(x, result)
+    .install_replacement(x, result, NULL, "`names<-`")
 }
 
 #' @export
 `dimnames<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     dimnames(result) <- value
-    .close_dibble(x, result)
+    .install_replacement(x, result, NULL, "`dimnames<-`")
 }
 
 #' @export
 `row.names<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     row.names(result) <- value
-    .close_dibble(x, result)
+    .install_replacement(x, result, NULL, "`row.names<-`")
 }
 
 #' @export
@@ -2849,7 +2950,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(.new_stata_string(enc2utf8(text), storage, prior))
     }
     doubles <- as.double(values)
-    if (is.null(declared)) declared <- dta_storage_type(prior)
+    if (is.null(declared)) declared <- .declared_stata_storage(prior)
     # Promotion only widens: the search starts at the declared storage,
     # so a `dta_float()` value beside a retained integer float cannot
     # hold goes to `double` rather than back to `long`.
@@ -2884,7 +2985,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
             .stata_string_required_width(text))
     }
     .stata_storage_holds(
-        as.double(vctrs::vec_data(values)), dta_storage_type(target)
+        as.double(vctrs::vec_data(values)), .declared_stata_storage(target)
     )
 }
 
@@ -2942,8 +3043,8 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(if (wider) declared else NULL)
     }
     if (!inherits(values, "stata_numeric")) return(NULL)
-    declared <- match(dta_storage_type(values), .stata_storage)
-    current <- match(dta_storage_type(target), .stata_storage)
+    declared <- match(.declared_stata_storage(values), .stata_storage)
+    current <- match(.declared_stata_storage(target), .stata_storage)
     if (is.na(declared) || is.na(current) || declared <= current) {
         return(NULL)
     }
