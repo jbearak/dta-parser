@@ -308,3 +308,5 @@ importFrom(vctrs,vec_restore)
 importFrom(stats,median)
 importFrom(stats,quantile)
 if (getRversion() >= "4.3.0") S3method(chooseOpsMethod,stata_numeric)
+
+export(reserve_columns)

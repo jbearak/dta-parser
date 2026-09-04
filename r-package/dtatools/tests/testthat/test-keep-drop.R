@@ -1,5 +1,6 @@
 test_that("keep_vars keeps physical order and resolves generated columns", {
     data <- data.frame(a = 1:2, b = 3:4, c = 5:6)
+    data <- reserve_columns(data)
     alias <- data
     gen(data, generated, a + b)
 
@@ -15,6 +16,7 @@ test_that("keep_vars keeps physical order and resolves generated columns", {
 
 test_that("drop_vars removes physical and generated columns", {
     data <- tibble::tibble(a = 1:2, b = 3:4, c = 5:6)
+    data <- reserve_columns(data)
     alias <- data
     gen(data, generated, a + b)
 
@@ -31,6 +33,7 @@ test_that("drop_vars removes physical and generated columns", {
 
 test_that("physical-only selection mutates ordinary data aliases", {
     data <- data.frame(a = 1:2, b = 3:4, c = 5:6)
+    data <- reserve_columns(data)
     alias <- data
     kept_a <- data$a
     kept_c <- data$c
@@ -63,7 +66,7 @@ test_that("same-size selection materializes generated columns", {
     drop_vars(data, b)
 
     expect_named(data, c("a", "generated"))
-    expect_false(inherits(data, "dtatools_ref_data"))
+    expect_true(inherits(data, "dtatools_ref_data"))
     expect_identical(as.double(data$generated), c(4, 6))
     gen(data, later, generated + a)
     expect_identical(as.double(data$later), c(5, 8))
@@ -100,6 +103,7 @@ test_that("ALTREP data-frame wrappers support structural mutation", {
         row.names = 1L,
         class = "data.frame"
     )
+    data <- reserve_columns(data)
     alias <- data
 
     drop_vars(data, v00100)
@@ -243,6 +247,7 @@ test_that("validated keep-all is a structural no-op", {
     data <- data.table::data.table(a = 1:2, b = 3:4, c = 5:6)
     data.table::setkeyv(data, "a")
     data.table::setindexv(data, "b")
+    data <- reserve_columns(data)
     alias <- data
 
     keep_vars(data, c, a:b)
@@ -252,21 +257,16 @@ test_that("validated keep-all is a structural no-op", {
     expect_identical(data.table::indices(data), "b")
 })
 
-test_that("non-resizable data.tables fail before mutation", {
+test_that("serialized data.tables reallocate and preserve old aliases", {
     skip_if_not_installed("data.table")
-    data <- unserialize(serialize(
-        data.table::data.table(a = 1:2, b = 3:4),
-        NULL
-    ))
-    before <- serialize(data, NULL)
-
-    expect_error(drop_vars(data, b), "non-resizable data.table")
-
-    expect_identical(serialize(data, NULL), before)
-
-    expect_error(drop_vars(data, a, b), "non-resizable data.table")
-
-    expect_identical(serialize(data, NULL), before)
+    data <- unserialize(serialize(data.table::data.table(a = 1:2, b = 3:4), NULL))
+    alias <- data
+    expect_warning(drop_vars(data, b), "reallocation")
+    expect_named(data, "a")
+    expect_named(alias, c("a", "b"))
+    expect_identical(length(unclass(data)), 1L)
+    expect_silent(drop_vars(data, a))
+    expect_identical(ncol(data), 0L)
 })
 
 test_that("structural mutation uses values installed by repl", {

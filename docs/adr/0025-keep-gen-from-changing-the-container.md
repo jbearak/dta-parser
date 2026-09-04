@@ -2,6 +2,8 @@
 status: accepted
 ---
 
+> ADR [0026](0026-reserve-physical-columns-and-rebind-on-reallocation.md) supersedes the guarantee that every binding sees structural changes when preparation or reallocation is needed.
+
 # Keep `gen()` from changing the container it was handed
 
 `gen()` and the other by-reference operations no longer turn a tibble into a dibble. Every container still acquires reference state at its first `gen()` — that is what lets the write land in the dataset so every binding sees it — but reference state is not dibble-ness. A tibble stays a tibble and a data frame a data frame, with their existing columns untouched, R's own copy-on-modify semantics for `$<-` and the other replacement operators, and `is_dibble()` reporting `FALSE`. Only the column `gen()` writes takes Stata storage, as it always did on a data frame. `dibble()`, `as_dibble()`, and the readers are the only ways to get a dibble. Dibble-ness is now recorded explicitly in the reference state rather than inferred from "reference state plus `tbl_df`", which is what made the conversion unavoidable.

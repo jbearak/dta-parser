@@ -119,7 +119,7 @@ test_that("the `.data` pronoun does not name a target", {
 test_that("the downstream call shapes work without inject or sym", {
     # Shape one: a resolved runtime name in both the target and the value
     # source, formerly `inject(repl(data, cluster, !!sym(name)))`.
-    data <- data.frame(cluster = c(1, 2), hh1 = c(5, 6))
+    data <- reserve_columns(data.frame(cluster = c(1, 2), hh1 = c(5, 6)))
     hh1_name <- resolve_var_name(data, "hh1")
     target_name <- resolve_var_name(data, "cluster")
     repl(data, !!target_name, .data[[hh1_name]])

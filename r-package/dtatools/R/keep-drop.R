@@ -3,7 +3,8 @@
 #' `keep_vars()` retains selected columns and `drop_vars()` removes selected
 #' columns. Both functions mutate the supplied data frame or tibble by
 #' reference and return it invisibly. Other bindings to the same dataset see
-#' the structural change. Use `copy_data()` first when isolation is required.
+#' the structural change while capacity remains. Preparation may separate
+#' aliases; see [reserve_columns()]. Use `copy_data()` for isolation.
 #'
 #' Selections accept bare names, `first:last` ranges, `c()`, and
 #' `tidyselect::all_of()` for a character vector. Every requested name must
@@ -13,14 +14,10 @@
 #' the surviving columns' original relative order rather than reordering them
 #' to match the selection expression.
 #'
-#' Physical columns and columns created by `gen()` share one visible namespace.
-#' Callers do not need to inspect or change dtatools reference state. Surviving
-#' columns keep their vectors unchanged, including Stata storage declarations,
-#' tagged missing values, variable labels, and value-label tables.
-#' A `data.table` restored by `readRDS()` or `unserialize()` must first have its
-#' by-reference column capacity restored with `data.table::setalloccol()`.
-#' `keep_vars()` and `drop_vars()` reject a non-resizable `data.table` before
-#' mutation because R cannot shrink that object itself by reference.
+#' Every surviving column stays physically present and keeps its vector,
+#' including Stata storage, tagged missing values, and labels.
+#' Serialized tables and legacy overlays are rebuilt when necessary.
+#' Reallocation warns and rebinds the supported target; see [reserve_columns()].
 #'
 #' @param data An ungrouped data frame or tibble to mutate.
 #' @param ... Column names, name ranges, `c()`, or
@@ -34,15 +31,25 @@
 #' names(survey)
 #' @export
 keep_vars <- function(data, ...) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
-    .select_vars_by_reference(data, dots, keep = TRUE)
+    result <- .select_vars_by_reference(data, dots, keep = TRUE)
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 #' @rdname keep_vars
 #' @export
 drop_vars <- function(data, ...) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
-    .select_vars_by_reference(data, dots, keep = FALSE)
+    result <- .select_vars_by_reference(data, dots, keep = FALSE)
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 #' Reorder variables by reference
@@ -69,8 +76,13 @@ drop_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 order_vars <- function(data, ...) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
-    .order_vars_by_reference(data, dots)
+    result <- .order_vars_by_reference(data, dots)
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 #' Rename variables by reference
@@ -104,6 +116,10 @@ order_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 rename_vars <- function(data, ..., .names = NULL) {
+    target_expr <- substitute(data)
+    binding <- .capture_mutation_binding(target_expr, parent.frame())
+    if (!is.null(binding)) data <- binding$data
+
     dots <- rlang::enquos(...)
     if (!is.null(.names)) {
         if (length(dots) > 0L) {
@@ -111,9 +127,11 @@ rename_vars <- function(data, ..., .names = NULL) {
                 "supply either `...` or `.names`, not both", call. = FALSE
             )
         }
-        return(.rename_all_vars_by_reference(data, .names))
+        result <- .rename_all_vars_by_reference(data, .names)
+        return(.return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame()))
     }
-    .rename_vars_by_reference(data, dots)
+    result <- .rename_vars_by_reference(data, dots)
+    .return_mutation(data, result, if (is.null(binding)) target_expr else binding, parent.frame())
 }
 
 .rename_all_vars_by_reference <- function(data, new_names) {
@@ -140,7 +158,7 @@ rename_vars <- function(data, ..., .names = NULL) {
         stop("`.names` must be distinct", call. = FALSE)
     }
     source_names <- names(columns)
-    if (identical(new_names, source_names)) return(invisible(data))
+    if (identical(new_names, source_names) && !.has_column_overlay(data)) return(invisible(data))
     names(columns) <- new_names
     .install_column_selection(data, original, columns, source_names)
 }
@@ -183,7 +201,7 @@ rename_vars <- function(data, ..., .names = NULL) {
             call. = FALSE
         )
     }
-    if (identical(final_names, current_names)) return(invisible(data))
+    if (identical(final_names, current_names) && !.has_column_overlay(data)) return(invisible(data))
     names(columns) <- final_names
     .install_column_selection(data, original, columns, current_names)
 }
@@ -347,7 +365,8 @@ rename_vars <- function(data, ..., .names = NULL) {
         .data_columns(data)
     }
     selected_locations <- .resolve_selections(selections, names(columns))
-    if (keep && length(selected_locations) == length(columns)) {
+    if (keep && length(selected_locations) == length(columns) &&
+        !.has_column_overlay(data)) {
         return(invisible(data))
     }
     locations <- seq_along(columns)
@@ -372,37 +391,29 @@ rename_vars <- function(data, ..., .names = NULL) {
     ordered_locations <- c(
         moved_locations, locations[!locations %in% moved_locations]
     )
-    if (identical(ordered_locations, locations)) return(invisible(data))
+    if (identical(ordered_locations, locations) && !.has_column_overlay(data)) return(invisible(data))
     .install_column_selection(data, original, columns[ordered_locations])
 }
 
 # Commits `retained_columns` as the table's complete column set, by
 # reference. The caller has already resolved which columns survive and
-# in which order; this installs them, materializing when the physical
-# object can be resized and falling back to a structural reference
-# state when it cannot.
+# in which order; prepare or reallocate first if needed, then install one
+# complete physical list. Legacy overlays are only read during preparation.
 .install_column_selection <- function(
     data, original, retained_columns, source_names = names(retained_columns)
 ) {
     state <- original$state
     dibble_input <- is_dibble(data)
     source_classes <- if (is.null(state)) class(data) else state$classes
-    can_materialize <- .Call(
-        C_dtatools_can_select_data_columns,
-        data,
-        as.double(length(retained_columns))
-    )
-    final_state <- if (can_materialize) {
-        NULL
-    } else {
-        .new_structural_reference_state(
-            retained_columns,
-            original$nrow,
-            source_classes,
-            dibble = dibble_input
-        )
+    data <- .prepare_column_operation(data, length(retained_columns))
+    final_state <- NULL
+    if (!is.null(state) || dibble_input) {
+        planned <- retained_columns
+        attr(planned, "row.names") <- .set_row_names(original$nrow)
+        class(planned) <- source_classes
+        final_state <- .new_reference_state(planned, dibble = dibble_input)
+        final_state$object <- data
     }
-    if (!is.null(final_state)) final_state$object <- data
     reference_classes <- unique(c("dtatools_ref_data", source_classes))
 
     select <- function() .Call(
@@ -443,11 +454,6 @@ rename_vars <- function(data, ..., .names = NULL) {
         })
     } else {
         select()
-    }
-    # A dibble whose list could be resized has lost its mark to the
-    # materialization; it is a dibble still, over the new column set.
-    if (dibble_input && is.null(.reference_state(data))) {
-        .mark_reference_data(data, .new_reference_state(data, dibble = TRUE))
     }
     invisible(data)
 }

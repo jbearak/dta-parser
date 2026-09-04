@@ -76,7 +76,9 @@
 .complete_output_container <- function(result, output, stored = NULL,
                                        profiled = TRUE) {
     resolved <- .normalize_output_container(output, stored, profiled)
-    if (identical(resolved, "dibble")) .as_dibble(result) else result
+    if (identical(resolved, "dibble")) return(.as_dibble(result))
+    if (identical(resolved, "data.table")) return(reserve_columns(result))
+    .reserve_column_capacity(result)
 }
 
 # The value `save_arrow()` records so `read_arrow()` can rebuild the same

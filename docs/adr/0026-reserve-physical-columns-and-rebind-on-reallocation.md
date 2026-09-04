@@ -1,0 +1,9 @@
+# Reserve physical columns and rebind on reallocation
+
+Every successful structural operation leaves one complete physical table: `length(unclass(data)) == length(names(data)) == ncol(data)`. Generated and structural overlays hid columns from direct consumers and could crash `write.csv()`, so no operation creates them now. Legacy overlays remain readable for preparation.
+
+We require R 4.6 and follow data.table's allocation model: reserve 5,000 spare column-pointer slots by default, consume them in place with `R_resizeVector()`, and shallow-copy and rebind the mutation target when preparation or reallocation is needed. `R_resizeVector()` cannot enlarge the allocation created by `R_allocResizableVector()`. Increasing only the old fixed reserve would postpone the defect. Keeping an overlay would preserve a stronger alias promise by violating the physical-table invariant.
+
+`dtatools.alloccol` controls spare slots. `reserve_columns()` returns a rebuilt table without copying column payloads and preserves its container. Automatic operations warn when reallocation can separate aliases, rebind symbols, simple `$` or `[[` extractions, and `get()` or `get0()` targets, and return the rebuilt table. Rebinding a parameter affects only that function's local binding, so its caller must assign the returned table.
+
+This supersedes ADR 0025's stronger structural alias claim when allocation changes. Old aliases retain an internally complete table. Base serialization discards resizability and can detach the reference state's recorded object from the returned object. After base `readRDS()` or `unserialize()`, users assign `reserve_columns()` before relying on dibble replacement aliases; the package's readers prepare their results already. User documentation describes these observable behaviors rather than the internal reference environment.

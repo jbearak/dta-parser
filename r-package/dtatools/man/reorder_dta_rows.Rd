@@ -7,10 +7,8 @@
 reorder_dta_rows(data, rows)
 }
 \arguments{
-\item{data}{An ordinary base data frame, tibble, or data.table,
-modified by reference. A table carrying a dtatools reference
-state is accepted when the container underneath it is one of
-those.}
+\item{data}{An ordinary base data frame, tibble, dibble, or data.table,
+modified by reference, or rebuilt when a legacy table requires it.}
 
 \item{rows}{A permutation of \code{seq_len(nrow(data))} following
 \code{\link[vctrs:vec_as_location]{vctrs::vec_as_location()}} semantics, without missing locations.
@@ -26,14 +24,12 @@ them.
 Gathers every column the way \code{\link[=slice_dta_rows]{slice_dta_rows()}} does — compact
 Stata numeric columns through the native kernel, other columns
 through vctrs — then replaces the table's column pointers in
-place, so the table object keeps its identity and every reference
-to it sees the new row order. Unlike \code{data.table::set()}, the
+place when no legacy rebuild is needed, so the table object keeps its
+identity and every reference sees the new row order. Unlike \code{data.table::set()}, the
 gathered columns are installed without copying, so compact numeric
 columns stay unmaterialized.
 }
 \details{
-A base data frame or tibble that \code{\link[=gen]{gen()}} has given reference
-semantics is reordered too: its generated columns live in the
-reference-state overlay rather than in the object, and they are
-permuted alongside the physical ones.
+Legacy tables with columns outside their physical list are rebuilt first.
+This warns and may separate aliases; see \code{\link[=reserve_columns]{reserve_columns()}}.
 }
