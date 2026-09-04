@@ -98,6 +98,10 @@ system missing \code{.} where an operand is missing, whatever its tag: in Stata
 functions \code{round()}, \code{signif()}, \code{floor()}, \code{ceiling()}, and \code{trunc()}
 return a tagged missing unchanged, as Stata's \code{round(.a)} is \code{.a}.
 Comparisons keep Stata's ordering of missing values and are unaffected.
+
+\code{summary()} returns an ordinary R numeric summary. It excludes system and
+tagged missings from the descriptive statistics and counts them together
+as \code{NA} values. Its arguments follow \code{\link[base:summary.default]{base::summary.default()}}.
 }
 
 \examples{
