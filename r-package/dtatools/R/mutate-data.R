@@ -9,7 +9,10 @@
 #' `copy_data()` when isolation is required. Generic ALTREP columns created by
 #' base R or another package are detached to ordinary vectors before
 #' replacement because their private caches cannot be invalidated safely.
-#' Aliases to the same dataset object observe the installed vector. A
+#' Aliases to the same dataset object observe the installed vector. On a
+#' [dibble], the replacement operators `$<-`, `[[<-`, and `[<-`, and so
+#' every setter used in replacement form such as `var_label(data$x) <-`,
+#' write by reference as well. A
 #' standalone alias to the former generic ALTREP column, including one held by
 #' a previously created subset, remains unchanged.
 #' `gen()` attaches package-owned reference state to the same data-frame or
@@ -637,8 +640,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
 }
 
+# The state records the object it marks. R shallow-duplicates a shared
+# object before dispatching a replacement operator, so the method's `x`
+# can be a copy; the recorded object is the one every binding holds, and
+# by-reference replacement installs into it and returns it.
 .mark_reference_data <- function(data, state) {
     classes <- unique(c("dtatools_ref_data", state$classes))
+    state$object <- data
     .Call(C_dtatools_mark_reference_data, data, state, classes)
 }
 
@@ -2318,21 +2326,29 @@ print.dtatools_ref_data <- function(x, ...) {
     invisible(x)
 }
 
-# Ordinary R replacement has a caller binding to receive its result. Materialize
-# the complete visible dataset first, then preserve normal copy-on-modify
-# behavior instead of changing shared reference state as a side effect.
+# The replacement operators on a dibble write by reference, as `gen()`,
+# `repl()`, and `:=` do. The ordinary tibble replacement runs on the
+# snapshot, the changed columns are typed and promoted as `mutate()` types
+# them, and the result's columns are installed into the dibble's own
+# reference state, so the object every binding holds is the one that
+# changed and R's rebinding in the calling frame is a no-op. That is what
+# makes R's replacement-function forms by reference too: `val_labels(d$x)
+# <- v` is `d <- `$<-`(d, "x", `val_labels<-`(d$x, v))`, so a metadata
+# setter used on a dibble's column inside a function reaches the caller's
+# dataset and every alias of it (ADR 0023). A reference frame that is not
+# a dibble gets the ordinary copy.
 #' @export
 `$<-.dtatools_ref_data` <- function(x, name, value) {
     result <- .reference_snapshot(x)
     result[[name]] <- value
-    .typed_reference_replacement(x, result, "`$<-`")
+    .install_replacement(x, result, value, "`$<-`")
 }
 
 #' @export
 `[[<-.dtatools_ref_data` <- function(x, i, ..., value) {
     result <- .reference_snapshot(x)
     result[[i, ...]] <- value
-    .typed_reference_replacement(x, result, "`[[<-`")
+    .install_replacement(x, result, value, "`[[<-`")
 }
 
 #' @export
@@ -2362,7 +2378,86 @@ print.dtatools_ref_data <- function(x, ...) {
     } else {
         eval(call, parent.frame())
     }
-    .typed_reference_replacement(x, result, "`[<-`")
+    .install_replacement(x, result, value, "`[<-`")
+}
+
+# Installs a replacement's result into the dibble itself. R
+# shallow-duplicates a shared object before it dispatches a replacement,
+# so `x` may be a copy of the object the caller's other bindings hold;
+# the reference state names that object, and the result's columns are
+# installed into it as `keep_vars()` installs a selection: into its
+# physical list when the list can be resized, so every consumer that
+# reads the list sees the new columns, and as a structural overlay
+# otherwise. The installed object is returned, so the binding assigned
+# to holds the same object as every alias. Columns the replacement left
+# alone are recognized by address and untouched; a changed column is
+# typed by promotion from its prior storage, or as a new column; and one
+# that is still the very vector the caller passed as `value` is wrapped
+# copy-on-write, so a later `:=` through this dibble cannot reach the
+# frame the vector came from.
+.install_replacement <- function(x, result, value, caller) {
+    if (!is_dibble(x)) return(result)
+    if (!is.data.frame(result)) return(result)
+    state <- .reference_state(x)
+    if (nrow(result) != state$nrow) {
+        stop(sprintf("%s cannot change a dibble's row count", caller),
+             call. = FALSE)
+    }
+    names <- names(result)
+    if (is.null(names) || anyNA(names) || any(names == "") ||
+        anyDuplicated(names) > 0L) {
+        stop(
+            sprintf("%s needs unique, non-missing column names", caller),
+            call. = FALSE
+        )
+    }
+    target <- state$object
+    if (is.null(target)) target <- x
+    before <- .data_columns(target)
+    typed <- .retype_changed_columns(result, before, caller)
+    columns <- .data_columns(typed)
+    shared <- .value_addresses(value)
+    if (length(shared)) {
+        for (index in seq_along(columns)) {
+            if (rlang::obj_address(columns[[index]]) %in% shared) {
+                columns[[index]] <- .metadata_copy(columns[[index]])
+            }
+        }
+    }
+    original <- .as_mutation_data(target, allow_grouped = TRUE)
+    .install_column_selection(target, original, columns)
+    .sync_replacement_attributes(target, result)
+    invisible(target)
+}
+
+.value_addresses <- function(value) {
+    if (is.null(value)) return(character())
+    if (is.data.frame(value) || (is.list(value) && !is.object(value))) {
+        return(vapply(
+            .plain_data_columns(value), rlang::obj_address, character(1)
+        ))
+    }
+    rlang::obj_address(value)
+}
+
+# A replacement on a grouped snapshot goes through dplyr's `[<-` and
+# `$<-` methods, which recompute or drop the groups; the dibble takes the
+# result's grouping and classes as its own.
+.sync_replacement_attributes <- function(x, result) {
+    state <- .reference_state(x)
+    .Call(
+        C_dtatools_set_attribute, x, "groups",
+        attr(result, "groups", exact = TRUE)
+    )
+    classes <- class(result)
+    if (!identical(classes, state$classes)) {
+        state$classes <- classes
+        .Call(
+            C_dtatools_set_attribute, x, "class",
+            unique(c("dtatools_ref_data", classes))
+        )
+    }
+    invisible(NULL)
 }
 
 # Row or cell assignment into a typed column runs the column's own strict
@@ -2412,18 +2507,19 @@ print.dtatools_ref_data <- function(x, ...) {
     result
 }
 
+# `names(d)[1] <- "k"` renames by reference, as `rename_vars()` does.
 #' @export
 `names<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     names(result) <- value
-    .close_dibble(x, result)
+    .install_replacement(x, result, NULL, "`names<-`")
 }
 
 #' @export
 `dimnames<-.dtatools_ref_data` <- function(x, value) {
     result <- .reference_snapshot(x)
     dimnames(result) <- value
-    .close_dibble(x, result)
+    .install_replacement(x, result, NULL, "`dimnames<-`")
 }
 
 #' @export

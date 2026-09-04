@@ -401,6 +401,7 @@ rename_vars <- function(data, ..., .names = NULL) {
             source_classes
         )
     }
+    if (!is.null(final_state)) final_state$object <- data
     reference_classes <- unique(c("dtatools_ref_data", source_classes))
 
     select <- function() .Call(
