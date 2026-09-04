@@ -33,7 +33,14 @@ Stata commands modify the dataset in memory. dtatools splits this: `gen()`, `rep
 
 **Promotion goes to the narrowest storage that is exact, not up Stata's ladder.** When `mutate()`, `:=`, `transform()`, `within()`, or a replacement operator overwrites a typed column with values its storage cannot hold, the column takes the narrowest of `byte`, `int`, `long`, `float`, `double` that holds every new value exactly. Stata's `replace` promotes an overflowing `long` to `float`, where integers above 2^24 lose digits; dtatools goes to `double` instead. A silent loss of precision is not worth reproducing.
 
-`replace_values()` and `repl()` diverge further: they never promote at all, and reject a value the declared storage cannot hold. `replace` in Stata is the command that changes values in place, and a value that does not fit is normally a mistake in the translated logic rather than a request to widen the column. `:=` on an existing column promotes, because a user of the bracket shape expects `mutate()`'s behavior there.
+`replace_values()` and `repl()` diverge further, and in the opposite direction: they never promote at all, and reject a value the declared storage cannot hold. Note that this is *stricter* than Stata, not a copy of it. Stata's `replace` widens the variable automatically and reports it — `replace x = 1000` on a `byte` prints `x was byte now int` — so a translated line that Stata accepts with a message is an error here:
+
+```r
+repl(data, x = 1000)      #> Stata byte storage cannot represent the value; use `dta_int()`
+data[, x := 1000]         #> promotes; `x` is now int
+```
+
+The intent ([ADR 0021](./adr/0021-make-dibbles-stata-typed-and-closed.md)) is to offer both contracts under two spellings: `repl()` holds a column to its declared storage, while `:=` and `mutate()` follow dplyr's rule that the right-hand side defines the column. There is no opt-in argument on `repl()`; widen the value (`repl(data, x = dta_int(1000))`), use `:=`, or declare wider storage when the column is created. One consequence worth knowing: a bare Arrow string read into a dibble carries the width of its dictionary, so `repl()` refuses a wider replacement string where it previously accepted one.
 
 Two more mapping choices are R-side rather than Stata-side, and are stated here because they surprise Stata users. Logical columns stay logical rather than becoming `byte`, because R idioms on flags (`filter(data, flag)`, `where = flag`) need a logical; `save_dta()` writes them as `byte`. Factors stay factors and are written as value-labelled `long`.
 
