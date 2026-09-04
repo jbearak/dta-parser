@@ -14,11 +14,12 @@
 #' a previously created subset, remains unchanged.
 #' `gen()` attaches package-owned reference state to the same data-frame or
 #' tibble object. Existing columns remain in the data frame. A dibble is
-#' built with spare column capacity, and `gen()` appends to its column list
-#' in place while that lasts; otherwise generated columns live in the
-#' attached state until an ordinary R assignment materializes a complete
-#' copy. This lets `gen()` grow the visible column set without searching
-#' for or rebinding a name in the caller. Base extraction and
+#' built with spare capacity for 256 more columns, and `gen()` appends to
+#' its column list in place while that lasts; beyond it, and on a tibble
+#' that became a dibble at its first `gen()`, generated columns live in
+#' the attached state until an ordinary R assignment materializes a
+#' complete copy. This lets `gen()` grow the visible column set without
+#' searching for or rebinding a name in the caller. Base extraction and
 #' data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
 #' metadata helpers operate on the complete visible dataset. The delegated
 #' dplyr verbs are `arrange()`, `distinct()`, `filter()`, `group_by()`,
@@ -620,9 +621,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         inherits(data, "tbl_df") && !.ordinary_data_table(data)
 }
 
-# Spare slots a dibble's column list is built with. `gen()` fills them
-# in place; beyond them, generated columns live in the reference state.
-.dibble_column_capacity <- 64L
+# Spare slots a dibble's column list is built with: a pointer each, so
+# they cost little. `gen()` fills them in place; beyond them, generated
+# columns live in the reference state and reach non-generic consumers
+# through `as_tibble()` or `as.data.frame()`, as `gen()` documents.
+.dibble_column_capacity <- 256L
 
 .reserve_column_capacity <- function(x) {
     .Call(
@@ -2291,7 +2294,9 @@ print.dtatools_ref_data <- function(x, ...) {
 `[<-.dtatools_ref_data` <- function(x, i, j, ..., value) {
     call <- sys.call()
     call[[1L]] <- quote(`[<-`)
-    call$value <- value
+    # `data["s"] <- NULL` deletes a column; `call$value <- NULL` would
+    # delete the argument instead.
+    call["value"] <- list(value)
     snapshot <- .reference_snapshot(x)
     call[[2L]] <- snapshot
     # The subscripts are evaluated once here, so the promoting retry

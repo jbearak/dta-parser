@@ -55,10 +55,12 @@ copy-on-modify; the input is unchanged, and a by-reference \verb{:=} or
 \code{\link[=replace_values]{replace_values()}} on either the input or the result leaves the other
 as it was, and leaves any other frame the operation drew columns from
 as it was. Columns an operation leaves alone are shared copy-on-write,
-so compact columns stay compact. A dibble is built with spare column
-capacity, so \code{\link[=gen]{gen()}} appends to its column list in place and
-\code{bind_rows()}, \code{bind_cols()}, and other consumers that read the list
-directly see every column.
+so compact columns stay compact. A dibble is built with spare capacity
+for 256 more columns, so \code{\link[=gen]{gen()}} appends to its column list in place
+and \code{bind_rows()}, \code{bind_cols()}, and other consumers that read the
+list directly see every column; past that capacity, and on a tibble
+that became a dibble at its first \code{gen()}, such consumers need
+\code{\link[tibble:as_tibble]{tibble::as_tibble()}}, as documented under \code{\link[=gen]{gen()}}.
 \code{\link[tibble:as_tibble]{tibble::as_tibble()}} returns a tibble snapshot, and \code{with()} returns
 its expression's value. \code{as_dibble()} of a grouped tibble keeps its
 grouping.

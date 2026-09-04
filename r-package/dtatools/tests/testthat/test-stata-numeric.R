@@ -575,24 +575,38 @@ test_that("common types follow the Stata storage promotion lattice", {
     }
 })
 
-test_that("declared storage wins over bare numeric and logical vectors", {
-    prototypes <- list(double(), integer(), logical())
-
-    for (prototype in prototypes) {
+test_that("bare vectors meet declared storage at their own mapping", {
+    # A logical fits any storage, so the declared side wins; an integer
+    # is a `long` and a double a `double`, and the common type is the
+    # promotion of the pair.
+    expected <- c(logical = "int", integer = "long", double = "double")
+    for (kind in names(expected)) {
+        prototype <- vector(kind)
         expect_identical(
             dta_storage_type(vctrs::vec_ptype2(dta_int(), prototype)),
-            "int"
+            expected[[kind]], info = kind
         )
         expect_identical(
             dta_storage_type(vctrs::vec_ptype2(prototype, dta_int())),
-            "int"
+            expected[[kind]], info = kind
         )
     }
+    expect_identical(
+        dta_storage_type(vctrs::vec_ptype2(dta_double(), 1L)), "double"
+    )
+    expect_identical(
+        dta_storage_type(vctrs::vec_ptype2(dta_float(), 1L)), "double"
+    )
 
-    combined <- vctrs::vec_c(dta_byte(c(1, 2)), 3L, TRUE)
+    combined <- vctrs::vec_c(dta_byte(c(1, 2)), TRUE)
     expect_identical(dta_storage_type(combined), "byte")
-    expect_identical(as.double(combined), c(1, 2, 3, 1))
+    expect_identical(as.double(combined), c(1, 2, 1))
     expect_true(dtatools:::.is_numeric_altrep(combined))
+    widened <- vctrs::vec_c(dta_byte(c(1, 2)), 1000L)
+    expect_identical(dta_storage_type(widened), "long")
+    expect_identical(as.double(widened), c(1, 2, 1000))
+    fractional <- vctrs::vec_c(dta_byte(1), 0.5)
+    expect_identical(dta_storage_type(fractional), "double")
 })
 
 test_that("casts into declared storage are strict and preserve missing tags", {
@@ -620,8 +634,11 @@ test_that("assignment and vctrs recodes re-encode compact storage", {
     values <- dta_byte(c(1, 2, 3, tagged_missing("a")))
     values[2] <- 10
     replaced <- replace(values, 1, 20)
+    # A typed literal keeps the declared storage; a bare double would
+    # widen the result to `double` by the mapping in
+    # `?stata-storage-defaults`.
     conditional <- dplyr::if_else(
-        c(TRUE, FALSE, FALSE, FALSE), 30, values
+        c(TRUE, FALSE, FALSE, FALSE), dta_byte(30), values
     )
 
     for (result in list(values, replaced, conditional)) {
@@ -637,9 +654,12 @@ test_that("assignment and vctrs recodes re-encode compact storage", {
         values[1] <- 101
     }, "dta_int\\(x\\)")
     expect_error(replace(values, 1, 101), "dta_int\\(x\\)")
+    widened <- dplyr::if_else(rep(TRUE, length(values)), 101, values)
+    expect_identical(dta_storage_type(widened), "double")
+    expect_identical(as.double(widened)[1:3], c(101, 101, 101))
     expect_error(
-        dplyr::if_else(rep(TRUE, length(values)), 101, values),
-        "dta_int\\(x\\)"
+        dplyr::if_else(rep(TRUE, length(values)), dta_byte(1), 1000L),
+        NA
     )
 })
 

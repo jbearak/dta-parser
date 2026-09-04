@@ -60,12 +60,16 @@ serialized as its current R doubles so any prior writable access is kept.
 }
 \section{Vector operations}{
 
-Subset assignment, \code{\link[=replace]{replace()}}, \code{dplyr::if_else()}, \code{dplyr::mutate()}, and
-vctrs concatenation retain declared storage and re-encode compact results.
-Extending a vector with another declared Stata numeric uses their common
-storage type and combines compatible metadata. This supports base data-frame
-reconstruction such as right and full \code{\link[=merge]{merge()}} calls. Extending with a bare
-value remains strict, like replacement within the existing vector.
+Subset assignment and \code{\link[=replace]{replace()}} retain declared storage and re-encode
+compact results; a value the storage cannot hold is an error. Extending a
+vector with another declared Stata numeric, through vctrs concatenation,
+\code{dplyr::if_else()}, \code{dplyr::bind_rows()}, or a join, uses their common
+storage type and combines compatible metadata. This supports base
+data-frame reconstruction such as right and full \code{\link[=merge]{merge()}} calls.
+Extending with a bare R vector uses the common storage with that vector's
+own Stata storage from \link{stata-storage-defaults}: \code{long} for an integer,
+\code{double} for a double, and the declared storage for a logical, so
+\code{vec_c(dta_byte(1), 1000L)} is a \code{long} rather than an error.
 Stata-backed \code{Date} and \code{POSIXct} vectors use the same extension rule when
 both inputs have the same temporal kind.
 Base \code{ifelse()} takes attributes from its condition, so it returns a bare

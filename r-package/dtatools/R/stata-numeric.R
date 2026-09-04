@@ -24,12 +24,16 @@
 #' serialized as its current R doubles so any prior writable access is kept.
 #'
 #' @section Vector operations:
-#' Subset assignment, [replace()], `dplyr::if_else()`, `dplyr::mutate()`, and
-#' vctrs concatenation retain declared storage and re-encode compact results.
-#' Extending a vector with another declared Stata numeric uses their common
-#' storage type and combines compatible metadata. This supports base data-frame
-#' reconstruction such as right and full [merge()] calls. Extending with a bare
-#' value remains strict, like replacement within the existing vector.
+#' Subset assignment and [replace()] retain declared storage and re-encode
+#' compact results; a value the storage cannot hold is an error. Extending a
+#' vector with another declared Stata numeric, through vctrs concatenation,
+#' `dplyr::if_else()`, `dplyr::bind_rows()`, or a join, uses their common
+#' storage type and combines compatible metadata. This supports base
+#' data-frame reconstruction such as right and full [merge()] calls.
+#' Extending with a bare R vector uses the common storage with that vector's
+#' own Stata storage from [stata-storage-defaults]: `long` for an integer,
+#' `double` for a double, and the declared storage for a logical, so
+#' `vec_c(dta_byte(1), 1000L)` is a `long` rather than an error.
 #' Stata-backed `Date` and `POSIXct` vectors use the same extension rule when
 #' both inputs have the same temporal kind.
 #' Base `ifelse()` takes attributes from its condition, so it returns a bare
@@ -866,18 +870,33 @@ vec_ptype2.stata_numeric.stata_numeric <- function(
     )
 }
 
+# A bare R vector meets a Stata numeric at the storage the mapping in
+# `?stata-storage-defaults` gives it: `long` for an integer, `double` for
+# a double, and, for a logical, whatever the Stata side declares, since
+# 0 and 1 fit every storage. The common type is the promotion of the two,
+# so `vec_c(dta_byte(1), 1000L)` is a `long` and never a failed cast.
+.stata_bare_ptype <- function(typed, bare) {
+    declared <- dta_storage_type(typed)
+    storage <- switch(typeof(bare),
+        integer = .stata_promote(declared, "long"),
+        double = .stata_promote(declared, "double"),
+        declared
+    )
+    .stata_ptype(storage, typed)
+}
+
 #' @export
 vec_ptype2.stata_numeric.double <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_ptype(dta_storage_type(x), x)
+    .stata_bare_ptype(x, y)
 }
 
 #' @export
 vec_ptype2.double.stata_numeric <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_ptype(dta_storage_type(y), y)
+    .stata_bare_ptype(y, x)
 }
 
 #' @export

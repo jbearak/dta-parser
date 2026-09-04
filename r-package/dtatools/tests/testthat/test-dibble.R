@@ -1048,12 +1048,25 @@ test_that("generated columns reach consumers that read the column list", {
     beside <- dplyr::bind_cols(data, dibble(z = 3:4))
     expect_identical(names(beside), c("x", "y", "s", "z"))
     expect_identical(names(vctrs::vec_rbind(data, data)), c("x", "y", "s"))
-    expect_identical(names(purrr::map(data, class)), c("x", "y", "s"))
+    expect_identical(names(lapply(data, class)), c("x", "y", "s"))
     # Other bindings to the same object see the appended columns too.
     alias <- data
     gen(data, w = 1L)
     expect_identical(names(alias), c("x", "y", "s", "w"))
     expect_identical(as.integer(alias$w), c(1L, 1L))
+    # Past the spare capacity, generated columns live in the state, and
+    # the visible dataset is still complete.
+    wide <- dibble(x = 1L)
+    capacity <- dtatools:::.dibble_column_capacity
+    for (index in seq_len(capacity + 1L)) {
+        gen(wide, !!paste0("v", index), x)
+    }
+    last <- paste0("v", capacity + 1L)
+    expect_identical(length(names(wide)), capacity + 2L)
+    expect_identical(length(unclass(wide)), capacity + 1L)
+    expect_identical(names(wide)[[capacity + 2L]], last)
+    expect_identical(as.integer(wide[[last]]), 1L)
+    expect_identical(ncol(tibble::as_tibble(wide)), capacity + 2L)
     # A tibble that becomes a dibble at its first gen() has no spare
     # capacity, so that column lives in the state and later ones follow.
     tbl <- tibble::tibble(a = 1:2)
@@ -1110,6 +1123,24 @@ test_that("column binding isolates every input, not only the first", {
     keyed <- dplyr::group_by(left, g = right$flag)
     keyed[, g := FALSE]
     expect_identical(right$flag, c(TRUE, FALSE))
+    # Binding a bare column onto a narrow Stata column widens it by the
+    # bare vector's own mapping instead of failing the cast.
+    widened <- dplyr::bind_rows(
+        dibble(x = dta_byte(1)), tibble::tibble(x = 1000L)
+    )
+    expect_true(is_dibble(widened))
+    expect_identical(dta_storage_type(widened$x), "long")
+    expect_identical(as.double(widened$x), c(1, 1000))
+    joined_wide <- dplyr::full_join(
+        dibble(id = 1L, x = dta_byte(1)), tibble::tibble(id = 2L, x = 0.5),
+        by = c("id", "x")
+    )
+    expect_identical(dta_storage_type(joined_wide$x), "double")
+    # `data["s"] <- NULL` deletes a column.
+    dropped <- dibble(x = 1:2, s = c("a", "b"))
+    dropped["s"] <- NULL
+    expect_true(is_dibble(dropped))
+    expect_identical(names(dropped), "x")
     # bind_rows() with a single input shares nothing that can leak either.
     rows <- dplyr::bind_rows(left, tibble::tibble(x = 3L))
     rows[, x := 0L]

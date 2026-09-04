@@ -30,10 +30,12 @@
 #' [replace_values()] on either the input or the result leaves the other
 #' as it was, and leaves any other frame the operation drew columns from
 #' as it was. Columns an operation leaves alone are shared copy-on-write,
-#' so compact columns stay compact. A dibble is built with spare column
-#' capacity, so [gen()] appends to its column list in place and
-#' `bind_rows()`, `bind_cols()`, and other consumers that read the list
-#' directly see every column.
+#' so compact columns stay compact. A dibble is built with spare capacity
+#' for 256 more columns, so [gen()] appends to its column list in place
+#' and `bind_rows()`, `bind_cols()`, and other consumers that read the
+#' list directly see every column; past that capacity, and on a tibble
+#' that became a dibble at its first `gen()`, such consumers need
+#' [tibble::as_tibble()], as documented under [gen()].
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
