@@ -2028,13 +2028,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 
 .generated_column <- function(values, rows, row_count, caller = "gen()") {
     message <- sprintf(
-        "`%s` values must be numeric, logical, or character", caller
+        "`%s` values must be numeric, logical, character, or a factor",
+        caller
     )
-    if (is.factor(values) || !is.null(dim(values))) {
-        stop(message, call. = FALSE)
-    }
+    if (!is.null(dim(values))) stop(message, call. = FALSE)
     if (typeof(values) == "character") {
         return(.generated_character(values, rows, row_count))
+    }
+    if (is.factor(values)) {
+        return(.generated_factor(values, rows, row_count))
     }
     if (typeof(values) == "logical" && !is.object(values)) {
         return(.generated_logical(values, rows, row_count))
@@ -2043,6 +2045,19 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         return(.generated_numeric(values, rows, row_count, caller))
     }
     stop(message, call. = FALSE)
+}
+
+# A factor result stays a factor, which `save_dta()` writes as a
+# value-labelled `long`, so `gen()` and `mutate()` agree on it. Rows
+# outside `where` are `NA`, and the levels and other attributes are kept.
+.generated_factor <- function(values, rows, row_count) {
+    codes <- .generated_logical(unclass(values), rows, row_count)
+    kept <- attributes(values)
+    kept$names <- NULL
+    attributes(codes) <- c(list(levels = kept$levels), kept[
+        setdiff(names(kept), "levels")
+    ])
+    codes
 }
 
 # A bare logical result stays logical (see `.stata_typed_column()`). Rows
@@ -3025,9 +3040,11 @@ group_by.dtatools_ref_data <- function(
     .data, ..., .add = FALSE,
     .drop = dplyr::group_by_drop_default(.data)
 ) {
-    .regroup_reference_data(.data, .reference_delegate(
-        .data, sys.call(), dplyr::group_by, parent.frame()
-    ))
+    # `group_by(d, g = x > 1)` computes a key as `mutate()` would, so
+    # changed columns are typed the same way.
+    .typed_reference_verb(
+        .data, sys.call(), dplyr::group_by, parent.frame(), "`group_by()`"
+    )
 }
 
 #' @export
@@ -3039,7 +3056,11 @@ summarise.dtatools_ref_data <- function(
 
 #' @export
 distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
-    .closed_reference_verb(.data, sys.call(), dplyr::distinct, parent.frame())
+    # `distinct(d, y = x * 2)` computes as `mutate()` does, so its new
+    # or overwritten columns are typed the same way.
+    .typed_reference_verb(
+        .data, sys.call(), dplyr::distinct, parent.frame(), "`distinct()`"
+    )
 }
 
 #' @export

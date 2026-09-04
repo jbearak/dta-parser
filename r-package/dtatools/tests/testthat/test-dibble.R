@@ -768,6 +768,45 @@ test_that("bracket assignment and partial replacement promote storage", {
     expect_identical(as.double(once$x), c(1000, 5, 3))
 })
 
+test_that("gen and := accept factors as mutate does", {
+    data <- dibble(x = 1:3)
+    gen(data, f = factor(c("a", "b", "a")))
+    expect_s3_class(data$f, "factor")
+    expect_identical(levels(data$f), c("a", "b"))
+    expect_identical(as.character(data$f), c("a", "b", "a"))
+    data[x > 1L, g := factor("z")]
+    expect_s3_class(data$g, "factor")
+    expect_identical(as.character(data$g), c(NA, "z", "z"))
+    labelled <- factor(c("lo", "hi", "lo"), levels = c("lo", "hi"))
+    attr(labelled, "label") <- "Level"
+    gen(data, h = labelled)
+    expect_identical(attr(data$h, "label"), "Level")
+    expect_identical(levels(data$h), c("lo", "hi"))
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(data, path)
+    back <- read_dta(path)
+    expect_identical(dta_storage_type(back$f), "long")
+    expect_identical(as.double(back$f), c(1, 2, 1))
+    expect_identical(as.double(back$g), c(NA, 1, 1))
+})
+
+test_that("computed distinct and group_by type columns as mutate does", {
+    data <- dibble(x = dta_byte(1:3), s = c("a", "b", "a"))
+    unique_wide <- dplyr::distinct(data, x = 1000L)
+    expect_true(is_dibble(unique_wide))
+    expect_identical(dta_storage_type(unique_wide$x), "int")
+    keyed <- dplyr::group_by(data, x = 1000L)
+    expect_true(is_dibble(keyed))
+    expect_identical(dta_storage_type(keyed$x), "int")
+    fresh <- dplyr::group_by(data, big = as.integer(x) * 1000L)
+    expect_identical(dta_storage_type(fresh$big), "long")
+    expect_identical(dplyr::group_vars(fresh), "big")
+    by_flag <- dplyr::distinct(data, flag = x > 1, .keep_all = TRUE)
+    expect_identical(by_flag$flag, c(FALSE, TRUE))
+    expect_identical(dta_storage_type(by_flag$x), "byte")
+})
+
 test_that("a logical overwriting a Stata numeric keeps its storage", {
     data <- dibble(x = dta_byte(1:3), n = dta_long(1:3))
     flagged <- dplyr::mutate(data, x = x > 1)
@@ -781,7 +820,9 @@ test_that("a logical overwriting a Stata numeric keeps its storage", {
     expect_identical(as.double(data$x), c(0, 1, 0))
     # A logical replacing a logical, a date, or a factor stays logical.
     mixed <- dibble(flag = c(TRUE, FALSE), day = as.Date("2024-01-01") + 0:1)
-    mixed <- dplyr::mutate(mixed, flag = !flag, day = day > as.Date("2024-01-01"))
+    mixed <- dplyr::mutate(
+        mixed, flag = !flag, day = day > as.Date("2024-01-01")
+    )
     expect_identical(mixed$flag, c(FALSE, TRUE))
     expect_identical(mixed$day, c(FALSE, TRUE))
 })
