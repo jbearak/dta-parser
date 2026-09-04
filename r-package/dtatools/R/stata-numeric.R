@@ -61,6 +61,10 @@
 #' return a tagged missing unchanged, as Stata's `round(.a)` is `.a`.
 #' Comparisons keep Stata's ordering of missing values and are unaffected.
 #'
+#' `summary()` returns an ordinary R numeric summary. It excludes system and
+#' tagged missings from the descriptive statistics and counts them together
+#' as `NA` values. Its arguments follow [base::summary.default()].
+#'
 #' @param x For a constructor, a logical, integer, or double vector to encode.
 #'   For `dta_storage_type()`, a vector to inspect.
 #' @param .size A non-negative whole number of system missing values to
@@ -1245,6 +1249,11 @@ Summary.stata_numeric <- function(..., na.rm = FALSE) {
         return(result)
     }
     .stata_computed(.collapse_missing(result), minimum)
+}
+
+#' @export
+summary.stata_numeric <- function(object, ...) {
+    summary(.stata_data(object), ...)
 }
 
 #' @export
