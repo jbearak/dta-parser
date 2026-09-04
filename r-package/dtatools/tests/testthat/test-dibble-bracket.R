@@ -7,6 +7,8 @@ test_that("one := creates a missing column and overwrites an existing one", {
     expect_true(is_dibble(result))
     expect_identical(names(data), c("x", "y"))
     expect_identical(as.double(data$y), c(2, 4, 6))
+    # Arithmetic on the typed `double` column declares `double`; a bare
+    # double would take Stata's `generate` default of `float`.
     expect_identical(dta_storage_type(data$y), "double")
 
     data[, y := 0]

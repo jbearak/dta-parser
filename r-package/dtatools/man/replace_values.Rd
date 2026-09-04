@@ -201,9 +201,12 @@ data.table's \code{list()}.
 \code{gen()} appends one variable and does not implement Stata's \code{before()} or
 \code{after()} placement. The new column takes the storage in
 \link{stata-storage-defaults}: a declared \verb{dta_*()} result keeps its storage,
-bare integer results are \code{long}, bare double results are \code{double},
-logical results stay logical, \code{Date} and \code{POSIXct} results keep their
-class with a Stata date or datetime declaration, and character results
+bare integer results are \code{long}, bare double results take Stata's
+\code{generate} default of \code{float}, or \code{double} under
+\code{options(dtatools.generate_type = "double")}, the equivalent of Stata's
+\verb{set type double}; logical results stay logical, \code{Date} and \code{POSIXct}
+results keep their class with a Stata date or datetime declaration, and
+character results
 keep a valid declared \code{stata.string.storage} or take the smallest
 \code{str1} through \code{str2045} width that fits, or \code{strL} above 2,045 UTF-8
 bytes. Standard \code{haven_labelled} results preserve their label metadata.
@@ -228,7 +231,7 @@ The table records the deliberate first-release choices relative to Stata's
 \tabular{lll}{
 Topic \tab Stata \tab dtatools \cr
 Existing name \tab Error \tab Error before mutation \cr
-Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{double}; integer results \code{long} (see \link{stata-storage-defaults}) \cr
+Numeric default \tab \code{float}, or \code{double} after \verb{set type} \tab \code{float}, or \code{double} under \code{options(dtatools.generate_type = "double")}; integer results \code{long} (see \link{stata-storage-defaults}) \cr
 Explicit storage \tab Type prefix \tab \verb{dta_*()} value expression \cr
 Strings \tab Smallest fitting \code{str#} or \code{strL} \tab Declared width, otherwise smallest UTF-8-byte width or \code{strL} \cr
 Rows outside \code{if} \tab Numeric \code{.} or string \code{""} \tab Same \cr

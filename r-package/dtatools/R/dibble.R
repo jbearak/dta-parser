@@ -185,9 +185,10 @@ is_dibble <- function(x) {
 #' same data mask. Unlike `gen()`, which refuses an existing name, and
 #' `replace_values()`, which refuses a new one, `:=` creates a column that
 #' is absent and overwrites one that exists, as a user of the data.table
-#' shape expects; a new column takes `gen()`'s storage rules and an
-#' existing one `replace_values()`'s, so a declared `stata_*()` target
-#' still rejects values that do not fit. `data[i, y := 1]` is otherwise
+#' shape expects; a new column takes `gen()`'s storage rules, including
+#' Stata's `generate` default of `float` for a bare double, and an existing
+#' one is promoted from its storage as [dplyr::mutate()] does, so a
+#' declared `dta_*()` target widens only when the values do not fit. `data[i, y := 1]` is otherwise
 #' `repl(data, y = 1, where = i)` or `gen(data, y = 1, where = i)`.
 #'
 #' `j` may carry several assignments: `` `:=`(y = v, z = w) ``, or

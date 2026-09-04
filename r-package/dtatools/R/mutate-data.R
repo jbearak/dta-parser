@@ -154,9 +154,12 @@
 #' `gen()` appends one variable and does not implement Stata's `before()` or
 #' `after()` placement. The new column takes the storage in
 #' [stata-storage-defaults]: a declared `dta_*()` result keeps its storage,
-#' bare integer results are `long`, bare double results are `double`,
-#' logical results stay logical, `Date` and `POSIXct` results keep their
-#' class with a Stata date or datetime declaration, and character results
+#' bare integer results are `long`, bare double results take Stata's
+#' `generate` default of `float`, or `double` under
+#' `options(dtatools.generate_type = "double")`, the equivalent of Stata's
+#' `set type double`; logical results stay logical, `Date` and `POSIXct`
+#' results keep their class with a Stata date or datetime declaration, and
+#' character results
 #' keep a valid declared `stata.string.storage` or take the smallest
 #' `str1` through `str2045` width that fits, or `strL` above 2,045 UTF-8
 #' bytes. Standard `haven_labelled` results preserve their label metadata.
@@ -181,7 +184,7 @@
 #' \tabular{lll}{
 #' Topic \tab Stata \tab dtatools \cr
 #' Existing name \tab Error \tab Error before mutation \cr
-#' Numeric default \tab `float`, or `double` after `set type` \tab `double`; integer results `long` (see [stata-storage-defaults]) \cr
+#' Numeric default \tab `float`, or `double` after `set type` \tab `float`, or `double` under `options(dtatools.generate_type = "double")`; integer results `long` (see [stata-storage-defaults]) \cr
 #' Explicit storage \tab Type prefix \tab `dta_*()` value expression \cr
 #' Strings \tab Smallest fitting `str#` or `strL` \tab Declared width, otherwise smallest UTF-8-byte width or `strL` \cr
 #' Rows outside `if` \tab Numeric `.` or string `""` \tab Same \cr
@@ -1831,7 +1834,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     values <- evaluated
 
     if (generate) {
-        column <- .generated_column(values, rows, original$nrow)
+        column <- .generated_column(
+            values, rows, original$nrow, generate = TRUE
+        )
         if (.ordinary_data_table(data)) {
             data.table::set(data, j = target$name, value = column)
             return(invisible(data))
@@ -1959,7 +1964,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         all(classes %in% c("haven_labelled", "vctrs_vctr", typeof(values)))
 }
 
-.generated_numeric <- function(values, rows, row_count, caller = "gen()") {
+.generated_numeric <- function(values, rows, row_count, caller = "gen()",
+                               generate = FALSE) {
     if (!.generated_numeric_class_supported(values)) {
         stop(sprintf(
             paste(
@@ -1984,6 +1990,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         "double"
     } else if (base_date) {
         "float"
+    } else if (generate && typeof(values) == "double" &&
+        !is.object(values)) {
+        .generate_storage()
     } else {
         .bare_stata_storage(values)
     }
@@ -2032,7 +2041,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
 }
 
-.generated_column <- function(values, rows, row_count, caller = "gen()") {
+# `generate` marks `gen()` and a new column through `:=`, the two Stata
+# commands, whose bare double result takes Stata's `generate` default
+# rather than the container mapping; see `.generate_storage()`.
+.generated_column <- function(values, rows, row_count, caller = "gen()",
+                              generate = FALSE) {
     message <- sprintf(
         "`%s` values must be numeric, logical, character, or a factor",
         caller
@@ -2048,7 +2061,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         return(.generated_logical(values, rows, row_count))
     }
     if (typeof(values) %in% c("logical", "integer", "double")) {
-        return(.generated_numeric(values, rows, row_count, caller))
+        return(.generated_numeric(
+            values, rows, row_count, caller, generate
+        ))
     }
     stop(message, call. = FALSE)
 }
@@ -2575,19 +2590,40 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     )
 }
 
-# The one mapping from a bare R vector to Stata storage, shared by
-# `dibble()`, `gen()`, `:=`, the dplyr verbs, and the replacement
-# operators; `?stata-storage-defaults` states it for users. It follows the
-# R type rather than Stata's `generate` default of `float`: `float` cannot
-# hold every R double or every R integer, and one lossless rule is easier
-# to hold in mind than one rule per verb. Dates and datetimes are decided
-# by the caller, which knows their class.
+# The container mapping from a bare R vector to Stata storage, shared by
+# `dibble()`, the dplyr verbs, the replacement operators, and the
+# promotion ladder; `?stata-storage-defaults` states it for users. It
+# follows the R type: `float` cannot hold every R double or every R
+# integer, so the mapping is lossless. Dates and datetimes are decided by
+# the caller, which knows their class. `gen()` and a new column through
+# `:=` are the exception, in `.generate_storage()`.
 .bare_stata_storage <- function(values) {
     switch(typeof(vctrs::vec_data(values)),
         logical = "byte",
         integer = "long",
         "double"
     )
+}
+
+# Stata's `generate` stores an untyped numeric result as `float`, or as
+# `double` after `set type double`. `gen()` and a new column through `:=`
+# translate that command, so a bare double result takes this storage,
+# read from `options(dtatools.generate_type = )`, rather than the
+# container mapping (ADR 0022). Bare integers stay `long`: they come from
+# R, not from a translated Stata line, and `float` loses them above 2^24.
+.generate_storage <- function() {
+    storage <- getOption("dtatools.generate_type", "float")
+    if (!is.character(storage) || length(storage) != 1L ||
+        is.na(storage) || !(storage %in% c("float", "double"))) {
+        stop(
+            paste0(
+                "`dtatools.generate_type` must be \"float\" or ",
+                "\"double\"; got ", paste(deparse(storage), collapse = " ")
+            ),
+            call. = FALSE
+        )
+    }
+    storage
 }
 
 # A column a dibble holds as is: one carrying Stata storage; a factor,

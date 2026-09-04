@@ -456,6 +456,48 @@ test_that("slice_dta_rows keeps a grouped dibble's grouping", {
     expect_identical(nrow(data), 4L)
 })
 
+test_that("gen() and a new := column take Stata's generate default", {
+    data <- dibble(id = 1:3)
+    gen(data, adjusted = c(1.1, 2.2, 3.3))
+    gen(data, missing = NA_real_)
+    data[, count := id * 2L]
+    data[, second := 0.5]
+    expect_identical(dta_storage_type(data$adjusted), "float")
+    expect_identical(dta_storage_type(data$missing), "float")
+    expect_identical(dta_storage_type(data$count), "long")
+    expect_identical(dta_storage_type(data$second), "float")
+    # The value is what `float` holds, as Stata's `generate` stores it.
+    expect_identical(
+        as.double(data$adjusted), as.double(dta_float(c(1.1, 2.2, 3.3)))
+    )
+    # A result that carries storage keeps it: a constructor, or
+    # arithmetic on a typed column, which follows the Stata lattice.
+    gen(data, declared = dta_double(id))
+    gen(data, computed = id * 1.1)
+    expect_identical(dta_storage_type(data$declared), "double")
+    expect_identical(dta_storage_type(data$computed), "double")
+    # `options(dtatools.generate_type = "double")` is `set type double`.
+    withr::local_options(dtatools.generate_type = "double")
+    gen(data, wide = c(1.1, 2.2, 3.3))
+    data[, wider := 0.5]
+    expect_identical(dta_storage_type(data$wide), "double")
+    expect_identical(dta_storage_type(data$wider), "double")
+    expect_identical(as.double(data$wide), c(1.1, 2.2, 3.3))
+    gen(data, narrow = dta_float(id))
+    expect_identical(dta_storage_type(data$narrow), "float")
+    withr::local_options(dtatools.generate_type = "float")
+    # Every R entry point keeps the container mapping.
+    via_mutate <- dplyr::mutate(data, m = c(1.1, 2.2, 3.3))
+    expect_identical(dta_storage_type(via_mutate$m), "double")
+    data$dollar <- c(1.1, 2.2, 3.3)
+    expect_identical(dta_storage_type(data$dollar), "double")
+    # Overwriting through `:=` promotes from the column, not the default.
+    data[, dollar := 0.5]
+    expect_identical(dta_storage_type(data$dollar), "double")
+    withr::local_options(dtatools.generate_type = "long")
+    expect_error(gen(data, bad = 1), "must be \"float\" or \"double\"")
+})
+
 test_that("mutate and transmute type new columns as gen() does", {
     data <- dibble(
         id = 1:3, income = c(10, 20, 30), name = c("a", "bb", "ccc")

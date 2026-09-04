@@ -2,11 +2,12 @@
 #'
 #' Every numeric and string column of a [dibble] carries Stata storage, and
 #' every dataset operation on a dibble returns a dibble. This page states
-#' the one mapping from bare R vectors to Stata storage that dtatools
-#' applies wherever a column enters a dibble: `dibble()`, `as_dibble()`,
-#' the readers, [gen()], `data[i, y := value]`, [dplyr::mutate()] and the
-#' other dplyr verbs, base `transform()` and `within()`, and the
-#' replacement operators `$<-`, `[[<-`, and `[<-`.
+#' the mapping from bare R vectors to Stata storage that dtatools applies
+#' wherever a column enters a dibble: `dibble()`, `as_dibble()`, the
+#' readers, [dplyr::mutate()] and the other dplyr verbs, base
+#' `transform()` and `within()`, and the replacement operators `$<-`,
+#' `[[<-`, and `[<-`. [gen()] and a new column through `data[i, y :=
+#' value]` translate Stata's `generate`, and follow it for bare doubles.
 #'
 #' @section The mapping:
 #' \tabular{ll}{
@@ -21,12 +22,31 @@
 #' factor \tab Stays a factor; [save_dta()] writes a value-labelled `long` \cr
 #' }
 #'
-#' The mapping follows the R type, not Stata's `generate` default of
-#' `float`: `float` cannot hold every R double, or every R integer above
-#' 2^24, so `double` and `long` keep the values exact. Wrap a value in
-#' [dta_float()] or another constructor to choose storage. Logical columns
-#' stay logical because Stata has no boolean type and R idioms on flags,
-#' such as `filter(data, flag)` and `where = flag`, need a logical.
+#' The mapping follows the R type: `float` cannot hold every R double, or
+#' every R integer above 2^24, so `double` and `long` keep the values
+#' exact. Wrap a value in [dta_float()] or another constructor to choose
+#' storage. Logical columns stay logical because Stata has no boolean type
+#' and R idioms on flags, such as `filter(data, flag)` and `where = flag`,
+#' need a logical.
+#'
+#' @section Stata's generate default:
+#' [gen()] and `data[i, y := value]` on a column that does not exist are
+#' translations of Stata's `generate`, and a bare double result takes its
+#' default: `float`, or `double` under
+#' `options(dtatools.generate_type = "double")`, the equivalent of Stata's
+#' `set type double`. A translated Stata line then keeps the storage the
+#' original produced without restating it, and [dta_double()] is the
+#' explicit `generate double`. A result that already carries storage keeps
+#' it: a `dta_*()` value, or arithmetic on a typed column, which declares
+#' the storage of the Stata lattice described under [dta_byte()], so
+#' `gen(data, y = x * 2)` on a `double` column is `double`. The default
+#' reaches a bare double: a literal, `NA_real_`, or the result of a base
+#' function that drops the class. Bare integer results stay `long`, since
+#' an R integer comes from R rather than from a Stata line and `float`
+#' cannot hold one above 2^24. Every other entry point, including
+#' [dplyr::mutate()] and the replacement operators, is an R operation on
+#' the container and uses the mapping above, so the same expression can
+#' take `float` through `gen()` and `double` through `mutate()`.
 #'
 #' Columns no Stata storage can hold, such as raw, list, `difftime`, or
 #' `bit64::integer64` columns, pass through a dibble unchanged and are

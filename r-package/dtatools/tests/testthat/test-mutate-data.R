@@ -962,6 +962,8 @@ test_that("gen appends one variable with Stata missing and storage rules", {
     expect_identical(names(data), c("x", "eligible", "generated"))
     expect_identical(names(alias), names(data))
     expect_identical(as.double(data$generated), c(2, NA, 6))
+    # The tibble's `x` is typed `double` first, and arithmetic on it
+    # declares `double`; a bare double result would be `float`.
     expect_identical(dta_storage_type(data$generated), "double")
     expect_s3_class(data, "tbl_df")
     expect_equal(dim(data), c(3L, 3L))

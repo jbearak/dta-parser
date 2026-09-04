@@ -6,11 +6,11 @@
 \description{
 Every numeric and string column of a \link{dibble} carries Stata storage, and
 every dataset operation on a dibble returns a dibble. This page states
-the one mapping from bare R vectors to Stata storage that dtatools
-applies wherever a column enters a dibble: \code{dibble()}, \code{as_dibble()},
-the readers, \code{\link[=gen]{gen()}}, \code{data[i, y := value]}, \code{\link[dplyr:mutate]{dplyr::mutate()}} and the
-other dplyr verbs, base \code{transform()} and \code{within()}, and the
-replacement operators \verb{$<-}, \verb{[[<-}, and \verb{[<-}.
+the mapping from bare R vectors to Stata storage that dtatools applies
+wherever a column enters a dibble: \code{dibble()}, \code{as_dibble()}, the
+readers, \code{\link[dplyr:mutate]{dplyr::mutate()}} and the other dplyr verbs, base
+\code{transform()} and \code{within()}, and the replacement operators \verb{$<-},
+\verb{[[<-}, and \verb{[<-}. \code{\link[=gen]{gen()}} and a new column through \code{data[i, y := value]} translate Stata's \code{generate}, and follow it for bare doubles.
 }
 \section{The mapping}{
 
@@ -26,12 +26,33 @@ character \tab Smallest fitting \code{str1} through \code{str2045}, or \code{str
 factor \tab Stays a factor; \code{\link[=save_dta]{save_dta()}} writes a value-labelled \code{long} \cr
 }
 
-The mapping follows the R type, not Stata's \code{generate} default of
-\code{float}: \code{float} cannot hold every R double, or every R integer above
-2^24, so \code{double} and \code{long} keep the values exact. Wrap a value in
-\code{\link[=dta_float]{dta_float()}} or another constructor to choose storage. Logical columns
-stay logical because Stata has no boolean type and R idioms on flags,
-such as \code{filter(data, flag)} and \code{where = flag}, need a logical.
+The mapping follows the R type: \code{float} cannot hold every R double, or
+every R integer above 2^24, so \code{double} and \code{long} keep the values
+exact. Wrap a value in \code{\link[=dta_float]{dta_float()}} or another constructor to choose
+storage. Logical columns stay logical because Stata has no boolean type
+and R idioms on flags, such as \code{filter(data, flag)} and \code{where = flag},
+need a logical.
+}
+
+\section{Stata's generate default}{
+
+\code{\link[=gen]{gen()}} and \code{data[i, y := value]} on a column that does not exist are
+translations of Stata's \code{generate}, and a bare double result takes its
+default: \code{float}, or \code{double} under
+\code{options(dtatools.generate_type = "double")}, the equivalent of Stata's
+\verb{set type double}. A translated Stata line then keeps the storage the
+original produced without restating it, and \code{\link[=dta_double]{dta_double()}} is the
+explicit \verb{generate double}. A result that already carries storage keeps
+it: a \verb{dta_*()} value, or arithmetic on a typed column, which declares
+the storage of the Stata lattice described under \code{\link[=dta_byte]{dta_byte()}}, so
+\code{gen(data, y = x * 2)} on a \code{double} column is \code{double}. The default
+reaches a bare double: a literal, \code{NA_real_}, or the result of a base
+function that drops the class. Bare integer results stay \code{long}, since
+an R integer comes from R rather than from a Stata line and \code{float}
+cannot hold one above 2^24. Every other entry point, including
+\code{\link[dplyr:mutate]{dplyr::mutate()}} and the replacement operators, is an R operation on
+the container and uses the mapping above, so the same expression can
+take \code{float} through \code{gen()} and \code{double} through \code{mutate()}.
 
 Columns no Stata storage can hold, such as raw, list, \code{difftime}, or
 \code{bit64::integer64} columns, pass through a dibble unchanged and are
