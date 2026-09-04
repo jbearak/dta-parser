@@ -3,11 +3,19 @@ test_that("reference mutation exports one coherent API", {
     expect_identical(
         formals(replace_values),
         as.pairlist(alist(
-            data = , ... = , where = NULL, by = NULL, bysort = NULL
+            data = , ... = , where = NULL, by = NULL, bysort = NULL,
+            promote = TRUE
         ))
     )
     expect_identical(formals(repl), formals(replace_values))
-    expect_identical(formals(gen), formals(replace_values))
+    # `gen()` creates the column, so it has no prior storage to widen and
+    # takes no `promote`; the rest of the surface is shared.
+    expect_identical(
+        formals(gen),
+        as.pairlist(alist(
+            data = , ... = , where = NULL, by = NULL, bysort = NULL
+        ))
+    )
 
     data <- data.frame(x = c(1, 2, 3), eligible = c(TRUE, FALSE, TRUE))
     alias <- data
@@ -270,7 +278,9 @@ test_that("excluded full-dataset values do not affect validation", {
     ))
     zero_before <- serialize(zero_selection, NULL)
     expect_error(
-        replace_values(zero_selection, text, "wide", where = FALSE),
+        replace_values(
+            zero_selection, text, "wide", where = FALSE, promote = FALSE
+        ),
         "do not fit"
     )
     expect_identical(serialize(zero_selection, NULL), zero_before)
@@ -797,14 +807,20 @@ test_that("compact replacement patches every storage without materializing", {
 })
 
 test_that("compact validation is strict and atomic", {
+    # `promote = FALSE` asks for the strict contract; the promoting
+    # default is covered by the `repl()` promotion tests below.
     data <- data.frame(x = dta_byte(c(1, 2, 3)))
     for (bad in list(101, 1.5, NaN, Inf)) {
         before <- serialize(data$x, NULL)
-        expect_error(replace_values(data, x, bad, where = 2))
+        expect_error(
+            replace_values(data, x, bad, where = 2, promote = FALSE)
+        )
         expect_identical(serialize(data$x, NULL), before)
         expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
     }
-    expect_error(replace_values(data, x, 101, where = 2), "dta_int")
+    expect_error(
+        replace_values(data, x, 101, where = 2, promote = FALSE), "dta_int"
+    )
     expect_identical(dta_storage_type(data$x), "byte")
 })
 
@@ -924,7 +940,9 @@ test_that("ordinary, materialized, temporal, and character columns mutate", {
     fixed <- data.frame(text = c("a", "b"))
     attr(fixed$text, "stata.string.storage") <- "str2"
     before <- serialize(fixed, NULL)
-    expect_error(replace_values(fixed, text, "long"), "do not fit")
+    expect_error(
+        replace_values(fixed, text, "long", promote = FALSE), "do not fit"
+    )
     expect_identical(serialize(fixed, NULL), before)
 })
 
@@ -1432,20 +1450,37 @@ test_that("metadata copies remain isolated from later source patches", {
     ))
     narrow_before <- serialize(narrow, NULL)
     expect_error(
-        replace_values(narrow, text, .env$dictionary_values),
+        replace_values(narrow, text, .env$dictionary_values,
+                       promote = FALSE),
         "do not fit"
     )
     expect_identical(serialize(narrow, NULL), narrow_before)
     expect_identical(
         dtatools:::.dictstring_cached_count(dictionary_values), values_cache
     )
+    # The strict path only ever reads the selected rows, so the source
+    # dictionary's shared cache stays empty.
     replace_values(
-        narrow, text, .env$dictionary_values, where = 2L
+        narrow, text, .env$dictionary_values, where = 2L, promote = FALSE
     )
     expect_identical(as.character(narrow$text), c("a", "x", "c"))
     expect_identical(
         dtatools:::.dictstring_cached_count(dictionary_values), values_cache
     )
+
+    # Promotion follows the storage the right-hand side declares, as `:=`
+    # does, so a `str4` value widens a `str1` target whatever rows it
+    # reaches. Rebuilding the column reads the values, which is what
+    # populates the source cache.
+    widened <- data.frame(text = structure(
+        c("a", "b", "c"), stata.string.storage = "str1"
+    ))
+    expect_message(
+        replace_values(widened, text, .env$dictionary_values, where = 2L),
+        "was str1 now str4"
+    )
+    expect_identical(as.character(widened$text), c("a", "x", "c"))
+    expect_identical(dta_storage_type(widened$text), "str4")
 
     generated_values <- read_arrow(wide_path)$text
     generated_cache <- dtatools:::.dictstring_cached_count(generated_values)
@@ -2029,8 +2064,19 @@ test_that("compact targets stay compact under by", {
     repl(data, x = dta_int(9L), by = id)
     expect_identical(as.double(data$x), c(9, 9, 9, 9))
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
-    expect_error(repl(data, x = 1e6, where = .n == 1, by = id), "int")
+    expect_error(
+        repl(data, x = 1e6, where = .n == 1, by = id, promote = FALSE), "int"
+    )
     expect_identical(as.double(data$x), c(9, 9, 9, 9))
+    expect_true(dtatools:::.is_unmaterialized_numeric_altrep(data$x))
+
+    widened <- copy_data(data)
+    expect_message(
+        repl(widened, x = 1e6, where = .n == 1, by = id),
+        "was int now long"
+    )
+    expect_identical(as.double(widened$x), c(1e6, 9, 1e6, 9))
+    expect_identical(dta_storage_type(widened$x), "long")
 
     gen(data, y = dta_byte(.n), by = id)
     expect_identical(dta_storage_type(data$y), "byte")
@@ -2251,7 +2297,7 @@ test_that("materialized compact replacement keeps fallback errors atomic", {
         before <- serialize(data, NULL)
 
         expect_error(
-            replace_values(data, x, case$value, where = 2),
+            replace_values(data, x, case$value, where = 2, promote = FALSE),
             case$message
         )
         expect_identical(serialize(data, NULL), before)
@@ -2409,8 +2455,17 @@ test_that("fused row-value errors roll back before the fallback error", {
     before <- serialize(data, NULL)
 
     expect_error(
-        replace_values(data, x, .env$values, where = y == 1),
+        replace_values(data, x, .env$values, where = y == 1,
+                       promote = FALSE),
         "cannot contain `NaN` or unsupported missing tags"
+    )
+    expect_identical(serialize(data, NULL), before)
+
+    # Promotion screens the values before it rebuilds the column, so the
+    # roll back precedes a different message.
+    expect_error(
+        replace_values(data, x, .env$values, where = y == 1),
+        "cannot contain `NaN` or infinities"
     )
     expect_identical(serialize(data, NULL), before)
 })
@@ -2659,4 +2714,131 @@ test_that("row counters mask a column named .n or .N", {
     table <- data.table::data.table(.n = c(100, 200), x = 1:2)
     gen(table, row = .n)
     expect_identical(as.double(table$row), c(1, 2))
+})
+
+test_that("`repl()` promotes as Stata's `replace` does, and reports it", {
+    # The expected storage and messages are Stata 18.0 MP's, recorded in
+    # `conformance/stata/replace-promotion.do`. One row differs from Stata
+    # deliberately: a `float` given a value needing binary64 goes to
+    # `double` here, where Stata keeps `float` and rounds it silently.
+    cases <- list(
+        list(column = dta_byte(c(1, 1)), value = 200,
+             storage = "int", note = "variable `x` was byte now int"),
+        list(column = dta_int(c(1, 1)), value = 40000,
+             storage = "long", note = "variable `x` was int now long"),
+        list(column = dta_byte(c(1, 1)), value = 1.5,
+             storage = "float", note = "variable `x` was byte now float"),
+        list(column = dta_int(c(1, 1)), value = 1.5,
+             storage = "float", note = "variable `x` was int now float"),
+        list(column = dta_long(c(1, 1)), value = 3e9,
+             storage = "double", note = "variable `x` was long now double"),
+        list(column = dta_long(c(1, 1)), value = 1.5,
+             storage = "double", note = "variable `x` was long now double"),
+        list(column = dta_float(c(1, 1)), value = 1.234567890123456,
+             storage = "double", note = "variable `x` was float now double")
+    )
+    for (case in cases) {
+        data <- dibble(x = case$column)
+        expect_message(
+            replace_values(data, x = case$value),
+            case$note, fixed = TRUE
+        )
+        expect_identical(
+            attr(data$x, "stata.storage"), case$storage,
+            info = case$note
+        )
+        expect_equal(as.double(data$x), rep(case$value, 2), info = case$note)
+    }
+})
+
+test_that("`repl()` reports nothing when the storage does not change", {
+    data <- dibble(x = dta_byte(c(1, 2)))
+    expect_no_message(replace_values(data, x = 5))
+    expect_identical(attr(data$x, "stata.storage"), "byte")
+})
+
+test_that("`repl()` widens a string target to the smallest fitting width", {
+    data <- dibble(s = dta_string(c("abc", "abc")))
+    expect_message(
+        replace_values(data, s = "abcdefgh"),
+        "variable `s` was str3 now str8", fixed = TRUE
+    )
+    expect_identical(attr(data$s, "stata.string.storage"), "str8")
+})
+
+test_that("`repl()` promotes nothing when no rows are selected", {
+    # Stata reports `(0 real changes made)` and leaves the storage alone.
+    data <- dibble(x = dta_byte(c(1, 2, 3)))
+    expect_no_message(replace_values(data, x = 1000, where = FALSE))
+    expect_identical(attr(data$x, "stata.storage"), "byte")
+    expect_equal(as.double(data$x), c(1, 2, 3))
+})
+
+test_that("`repl()` promotes the whole column when some rows are selected", {
+    data <- dibble(x = dta_byte(c(1, 2, 3)))
+    expect_message(
+        replace_values(data, x = 1000, where = .n > 1),
+        "variable `x` was byte now int", fixed = TRUE
+    )
+    expect_identical(attr(data$x, "stata.storage"), "int")
+    expect_equal(as.double(data$x), c(1, 1000, 1000))
+})
+
+test_that("`promote = FALSE` keeps the target at its declared storage", {
+    data <- dibble(x = dta_byte(c(1, 2, 3)))
+    expect_error(
+        replace_values(data, x = 1000, promote = FALSE),
+        "cannot represent the value"
+    )
+    expect_identical(attr(data$x, "stata.storage"), "byte")
+    expect_equal(as.double(data$x), c(1, 2, 3))
+
+    expect_error(replace_values(data, x = 1, promote = NA), "must be")
+    expect_error(replace_values(data, x = 1, promote = 1), "must be")
+})
+
+test_that("`repl()` promotion keeps variable metadata", {
+    data <- dibble(x = dta_byte(c(1, 2)))
+    var_label(data$x) <- "Age"
+    suppressMessages(replace_values(data, x = 1000))
+    expect_identical(attr(data$x, "stata.storage"), "int")
+    expect_identical(attr(data$x, "label"), "Age")
+})
+
+test_that("`:=` promotes silently, unlike `repl()`", {
+    data <- dibble(x = dta_byte(c(1, 2)))
+    expect_no_message(data[, x := 1000])
+    expect_identical(attr(data$x, "stata.storage"), "int")
+})
+
+test_that("promotion never narrows the integers a column can hold", {
+    # 3e9 is exactly representable in float, so a ladder that only asks
+    # whether the values in hand fit would stop at float and leave a
+    # column that silently rounds the next long-range integer. `long`
+    # carries 31 bits of integer precision and `float` 24, so `long`
+    # skips `float`, as Stata's `replace` does and as the arithmetic
+    # lattice in `.stata_promote()` already did.
+    expect_identical(
+        dtatools:::.narrowest_stata_storage(c(1, 3e9), from = "long"),
+        "double"
+    )
+    expect_identical(
+        dtatools:::.narrowest_stata_storage(c(1, 1.5), from = "long"),
+        "double"
+    )
+    # `byte` and `int` are unaffected: their whole ranges are float-exact.
+    expect_identical(
+        dtatools:::.narrowest_stata_storage(c(1, 1.5), from = "byte"),
+        "float"
+    )
+    expect_identical(
+        dtatools:::.narrowest_stata_storage(c(1, 1.5), from = "int"),
+        "float"
+    )
+    data <- dibble(x = dta_long(c(1, 2)))
+    expect_message(
+        replace_values(data, x = 3e9),
+        "variable `x` was long now double", fixed = TRUE
+    )
+    expect_equal(as.double(data$x), c(3e9, 3e9))
 })

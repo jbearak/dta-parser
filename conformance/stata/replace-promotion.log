@@ -1,0 +1,208 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      18.0
+___/   /   /___/   /   /___/       MP—Parallel Edition
+
+ Statistics and Data Science       Copyright 1985-2023 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-STATA-PC        https://www.stata.com
+                                   979-696-4600        stata@stata.com
+
+Stata license: 14-user 8-core network perpetual
+Serial number: 501806222941
+  Licensed to: Guttmacher Institute
+               Guttmacher Institute
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. More than 2 billion observations are allowed; see help obs_advice.
+      4. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do replace-promotion.do 
+
+. * Records what Stata's `replace` does to a variable's storage type, so the
+. * promotion rule in dtatools can be compared against a measurement rather
+. * than against recollection. Run with:
+. *
+. *     stata -b do conformance/stata/replace-promotion.do
+. *
+. * and compare the result against replace-promotion.log, which was produced
+. * by Stata 18.0 MP.
+. clear
+
+. set obs 3
+Number of observations (_N) was 0, now 3.
+
+. 
+. * Out of range for the declared type: Stata widens to the next type that
+. * holds the value, and says so.
+. gen byte  range_byte = 1
+
+. replace   range_byte = 200
+variable range_byte was byte now int
+(3 real changes made)
+
+. describe  range_byte
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+range_byte      int     %8.0g                 
+
+. 
+. gen int   range_int = 1
+
+. replace   range_int = 40000
+variable range_int was int now long
+(3 real changes made)
+
+. describe  range_int
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+range_int       long    %8.0g                 
+
+. 
+. gen long  range_long = 1
+
+. replace   range_long = 3000000000
+variable range_long was long now double
+(3 real changes made)
+
+. describe  range_long
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+range_long      double  %12.0g                
+
+. 
+. * Not an integer, in an integer type: Stata widens byte and int to float,
+. * and long to double, because a long can exceed float's precision.
+. gen byte  frac_byte = 1
+
+. replace   frac_byte = 1.5
+variable frac_byte was byte now float
+(3 real changes made)
+
+. describe  frac_byte
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+frac_byte       float   %8.0g                 
+
+. 
+. gen int   frac_int = 1
+
+. replace   frac_int = 1.5
+variable frac_int was int now float
+(3 real changes made)
+
+. describe  frac_int
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+frac_int        float   %8.0g                 
+
+. 
+. gen long  frac_long = 1
+
+. replace   frac_long = 1.5
+variable frac_long was long now double
+(3 real changes made)
+
+. describe  frac_long
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+frac_long       double  %12.0g                
+
+. 
+. * Precision alone never promotes: a float keeps float and rounds, silently.
+. gen float prec_float = 1
+
+. replace   prec_float = 1.234567890123456
+(3 real changes made)
+
+. describe  prec_float
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+prec_float      float   %9.0g                 
+
+. display %20.15f prec_float[1]
+   1.234567880630493
+
+. 
+. * Beyond float's range: no promotion either, and the value becomes missing.
+. gen float over_float = 1
+
+. replace   over_float = 1e40
+(3 real changes made, 3 to missing)
+
+. describe  over_float
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+over_float      float   %9.0g                 
+
+. display   over_float[1]
+.
+
+. 
+. * Strings widen to the smallest str# that fits.
+. gen str3  s = "abc"
+
+. replace   s = "abcdefgh"
+variable s was str3 now str8
+(3 real changes made)
+
+. describe  s
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+s               str8    %9s                   
+
+. 
+. * No rows selected: no promotion, no message beyond the change count.
+. gen byte  none_byte = 1
+
+. replace   none_byte = 1000 if 0
+(0 real changes made)
+
+. describe  none_byte
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+none_byte       byte    %8.0g                 
+
+. 
+. * Stata's `generate` default is float, so a literal above 2^24 loses digits
+. * at creation. This is the precision trap `dtatools.generate_type` exists
+. * to escape; it is not a promotion.
+. gen       gen_default = 16777217
+
+. describe  gen_default
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+gen_default     float   %9.0g                 
+
+. display %20.0f gen_default[1]
+            16777216
+
+. 
+end of do-file

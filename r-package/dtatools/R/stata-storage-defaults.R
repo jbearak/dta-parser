@@ -61,17 +61,28 @@
 #' column keeps that storage if every new value fits it. Otherwise it takes
 #' the narrowest Stata storage that holds every new value exactly: `byte`,
 #' `int`, `long`, `float`, then `double` for numbers; the smallest fitting
-#' `str#` or `strL` for strings. This is promotion, not Stata's `replace`
-#' ladder: Stata promotes an overflowing `long` to `float`, where integers
-#' above 2^24 lose digits, and dtatools goes to `double` instead. A value
+#' `str#` or `strL` for strings, and never a storage that narrows the
+#' integers the column can hold, so an overflowing `long` goes to `double`
+#' rather than through `float`, which carries seven fewer bits of integer
+#' precision. This is Stata's `replace` ladder, which widens when the
+#' declared type cannot represent a value at all, through range or through
+#' integrality; `conformance/stata/replace-promotion.do` records it. The
+#' one difference is precision, which never promotes in Stata: a `float`
+#' given a value needing binary64 keeps `float` there and rounds, and goes
+#' to `double` here, keeping the value exact. A value
 #' that already carries storage, from a `dta_*()` call or Stata-typed
 #' arithmetic, keeps that storage. On a dibble the replacement operators
 #' write by reference, so the promoted column is what every binding
 #' holds. Row or cell assignment, as in
 #' `data[1, "x"] <- 1000L`, promotes the same way, and a `:=` whose value
 #' declares wider storage than the column widens the column to it, as
-#' `data[1, x := dta_double(1)]` makes `x` a `double`. \code{\link[=replace_values]{replace_values()}} and
-#' `repl()` do not promote; they reject values that do not fit. Nor does
+#' `data[1, x := dta_double(1)]` makes `x` a `double`.
+#' \code{\link[=replace_values]{replace_values()}} and `repl()` promote the
+#' same way, and translate the message Stata's `replace` prints:
+#' \code{variable `x` was byte now int}. Pass `promote = FALSE` to hold the
+#' column to its declared storage and get an error instead. An assignment
+#' that selects no rows promotes nothing, as Stata's
+#' `(0 real changes made)` does not. Promotion does not reach
 #' `[<-` on a Stata vector taken out of the dibble, as in
 #' `data$x[1] <- 1000L`, which is the vector's own strict assignment.
 #'

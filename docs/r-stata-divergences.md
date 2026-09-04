@@ -31,16 +31,28 @@ Stata commands modify the dataset in memory. dtatools splits this: `gen()`, `rep
 
 **Bare integer results are `long`, not `float`.** Stata's untyped `generate` produces `float` whatever the expression. An R integer vector comes from R rather than from a translated Stata line, and `float` cannot represent integers above 2^24, so `gen(data, y = 1L:n())` stores `long`.
 
-**Promotion goes to the narrowest storage that is exact, not up Stata's ladder.** When `mutate()`, `:=`, `transform()`, `within()`, or a replacement operator overwrites a typed column with values its storage cannot hold, the column takes the narrowest of `byte`, `int`, `long`, `float`, `double` that holds every new value exactly. Stata's `replace` promotes an overflowing `long` to `float`, where integers above 2^24 lose digits; dtatools goes to `double` instead. A silent loss of precision is not worth reproducing.
+**Promotion is Stata's, except that precision promotes too.** When `mutate()`, `:=`, `transform()`, `within()`, a replacement operator, or `repl()` overwrites a typed column with values its storage cannot hold, the column takes the narrowest of `byte`, `int`, `long`, `float`, `double` that holds every new value exactly and never narrows the integers the column can hold — so an overflowing `long` goes to `double` rather than through `float`, which carries seven fewer bits of integer precision.
 
-`replace_values()` and `repl()` diverge further, and in the opposite direction: they never promote at all, and reject a value the declared storage cannot hold. Note that this is *stricter* than Stata, not a copy of it. Stata's `replace` widens the variable automatically and reports it — `replace x = 1000` on a `byte` prints `x was byte now int` — so a translated line that Stata accepts with a message is an error here:
+That matches Stata on every case in [`conformance/stata/replace-promotion.do`](../conformance/stata/replace-promotion.do), which was measured against Stata 18.0 MP rather than recalled. Stata widens when the declared type cannot represent a value **at all** — through range (`byte` given 200 becomes `int`) or through integrality (`byte` given 1.5 becomes `float`, `long` given 1.5 becomes `double`). Stata never widens for **precision**, and this is the one place dtatools differs:
 
 ```r
-repl(data, x = 1000)      #> Stata byte storage cannot represent the value; use `dta_int()`
-data[, x := 1000]         #> promotes; `x` is now int
+# Stata: `replace z = 1.234567890123456` on a float stays float and
+#         stores 1.234567880630493, with no message.
+repl(data, z = 1.234567890123456)   #> variable `z` was float now double
 ```
 
-The intent ([ADR 0021](./adr/0021-make-dibbles-stata-typed-and-closed.md)) is to offer both contracts under two spellings: `repl()` holds a column to its declared storage, while `:=` and `mutate()` follow dplyr's rule that the right-hand side defines the column. There is no opt-in argument on `repl()`; widen the value (`repl(data, x = dta_int(1000))`), use `:=`, or declare wider storage when the column is created. One consequence worth knowing: a bare Arrow string read into a dibble carries the width of its dictionary, so `repl()` refuses a wider replacement string where it previously accepted one.
+Stata's silence there is a data loss, not a convenience, so dtatools promotes and keeps the value exact. The same asymmetry appears in Stata's `generate` default: `gen x = 16777217` creates a `float` holding `16777216`, silently. `options(dtatools.generate_type = "double")` is the way out, as `set type double` is in Stata.
+
+**`replace_values()` reports its promotions; `:=` and `mutate()` do not.** `replace_values()` and its short name `repl()` translate Stata's `replace`, so they print what Stata prints:
+
+```r
+repl(data, x = 1000)      #> variable `x` was byte now int
+data[, x := 1000]         #> promotes to int, silently
+```
+
+`:=` and `mutate()` follow dplyr's contract that the right-hand side defines the column, and R verbs are expected to be quiet, so they promote without a message. An assignment that selects no rows promotes nothing, as Stata's `(0 real changes made)` does not. Pass `promote = FALSE` to `replace_values()` or `repl()` to hold a column to its declared storage and get an error instead — useful when a translated script should fail loudly rather than widen. Suppress the note with `suppressMessages()`.
+
+One consequence worth knowing: a bare Arrow string read into a dibble carries the width of its dictionary, so a wider replacement string widens the declared `str#`.
 
 Two more mapping choices are R-side rather than Stata-side, and are stated here because they surprise Stata users. Logical columns stay logical rather than becoming `byte`, because R idioms on flags (`filter(data, flag)`, `where = flag`) need a logical; `save_dta()` writes them as `byte`. Factors stay factors and are written as value-labelled `long`.
 

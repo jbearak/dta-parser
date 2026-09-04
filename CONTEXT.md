@@ -44,7 +44,7 @@ The Stata storage a bare double result takes through `gen()` or a new column cre
 _Avoid_: Default storage, float default
 
 **Storage promotion**:
-Widening a typed column to the narrowest Stata storage that holds every new value exactly when an operation overwrites it with values its declared storage cannot hold. Stata's `replace` instead promotes through `float`, where large integers lose digits.
+Widening a typed column to the narrowest Stata storage that holds every new value exactly, and never one that narrows the integers the column can hold, when an operation overwrites it with values its declared storage cannot hold. It matches Stata's `replace` except that precision promotes here, where Stata keeps `float` and rounds. `replace_values()` reports the change as Stata does; the other spellings promote silently.
 _Avoid_: Type widening, upcasting
 
 **Group-wise assignment**:

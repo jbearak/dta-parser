@@ -176,8 +176,15 @@
 #' existing columns the same way; a base data frame keeps bare columns.
 #' Stata `[in]` and `:lblname` authoring are not supported; the
 #' `by varlist:` prefix is `by`/`bysort`.
-#' Unlike Stata's default `replace`, `replace_values()` never promotes a target
-#' to wider storage. It rejects values that do not fit the declared storage.
+#' `replace_values()` promotes, as Stata's `replace` does: a target whose
+#' declared storage cannot hold a value is widened to the narrowest storage
+#' that does, and the change is reported the way Stata reports it:
+#' \code{variable `x` was byte now int}. The ladder is the one described
+#' under [stata-storage-defaults], which keeps every value exact and so
+#' differs from Stata's in two cases; an assignment that selects no rows
+#' promotes nothing, as Stata's `(0 real changes made)` does not. Pass
+#' `promote = FALSE` to hold the column to its declared storage and raise
+#' an error instead, which was the behaviour before promotion was added.
 #' Character `NA` replacement values are normalized to `""`, Stata's string
 #' missing value.
 #'
@@ -245,6 +252,11 @@
 #' @param bysort `NULL`, or the columns to sort the dataset by, by
 #'   reference, and then group by. Same spellings as `by`. Not allowed with
 #'   `by` or on a grouped tibble.
+#' @param promote Whether `replace_values()` widens a target whose declared
+#'   storage cannot represent a value, as Stata's `replace` does, reporting
+#'   the change. `FALSE` holds the column to its declared storage and
+#'   errors on a value that does not fit. Ignored by `gen()`, which creates
+#'   the column and so has no prior storage to widen.
 #' @return `gen()` and `replace_values()` return `data` invisibly.
 #'   `copy_data()` returns an independent data frame or tibble.
 #' @references
@@ -279,7 +291,7 @@
 #' repl(panel, x = 0, where = .n == 1, bysort = c(id, t))  # sorts first
 #' @export
 replace_values <- function(data, ..., where = NULL, by = NULL,
-                           bysort = NULL) {
+                           bysort = NULL, promote = TRUE) {
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
         function() .capture_positional_pair(...),
@@ -293,8 +305,16 @@ replace_values <- function(data, ..., where = NULL, by = NULL,
         data, arguments$variable, arguments$values, arguments$where,
         generate = FALSE,
         by = if (missing(by)) NULL else rlang::enquo(by),
-        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort)
+        bysort = if (missing(bysort)) NULL else rlang::enquo(bysort),
+        promote = .validate_promote(promote), report_promotion = TRUE
     )
+}
+
+.validate_promote <- function(promote) {
+    if (!rlang::is_bool(promote)) {
+        stop("`promote` must be `TRUE` or `FALSE`", call. = FALSE)
+    }
+    promote
 }
 
 #' @rdname replace_values
@@ -1736,7 +1756,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # `values` can be given `.n` and `.N` on the same terms.
 .mutate_data <- function(data, variable, values, where, generate,
                          by = NULL, bysort = NULL, selection = NULL,
-                         promote = FALSE) {
+                         promote = FALSE, report_promotion = FALSE) {
     .reject_data_table_subclass(data)
     grouped_input <- inherits(data, "grouped_df")
     # A tibble becomes a dibble at its first `gen()`, and its columns are
@@ -1861,10 +1881,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (is.null(column)) {
             column <- .data_column_at(access, target$location)
         }
-        # A `:=` that selects no rows changes nothing and returns here:
-        # it neither declares storage nor promotes, and it skips the
-        # strict patch, whose scalar width check `replace_values()` keeps
-        # for its own zero-row calls.
+        # An assignment that selects no rows changes nothing and returns
+        # here: it neither declares storage nor promotes. Stata's
+        # `replace` behaves the same way, reporting `(0 real changes
+        # made)` and leaving the storage alone, so `repl()` takes this
+        # path as `:=` does.
         if (promote &&
             .mutation_selected_count(rows, original$nrow) == 0L) {
             return(invisible(data))
@@ -1887,6 +1908,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             promoted <- .promoted_replacement(
                 values, column, rows, value_mode, original$nrow, declared
             )
+            if (report_promotion) {
+                .report_storage_promotion(target$name, column, promoted)
+            }
             .set_data_column_at(access, target$location, promoted)
             if (grouped_input) .regroup_after_replacement(data, state)
             return(invisible(data))
@@ -2903,12 +2927,39 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     invisible(NULL)
 }
 
+# The Stata storage a column declares, numeric or string, or `NULL` when
+# it declares none.
+.promotion_storage_label <- function(column) {
+    if (typeof(column) == "character") {
+        attr(column, "stata.string.storage", exact = TRUE)
+    } else {
+        .declared_stata_storage(column)
+    }
+}
+
+# Stata's `replace` announces a widening as `variable x was byte now
+# int`, and `repl()` translates that command, so it says the same. Only a
+# real change of declared storage is reported; a column that keeps its
+# storage says nothing, as Stata does.
+.report_storage_promotion <- function(name, prior, promoted) {
+    was <- .promotion_storage_label(prior)
+    now <- .promotion_storage_label(promoted)
+    if (is.null(was) || is.null(now) || identical(was, now)) {
+        return(invisible(NULL))
+    }
+    message(sprintf("variable `%s` was %s now %s", name, was, now))
+    invisible(NULL)
+}
+
 # Column `values` that replaced `prior` in a dibble. A prior column with
 # declared storage keeps it when the new values fit, as Stata's `replace`
 # does. When they do not, the column takes the narrowest storage that
-# holds every new value exactly, which is not Stata's ladder: Stata
-# promotes an overflowing `long` to `float`, where integers above 2^24
-# lose digits. Prior variable metadata is restored on the result. Other
+# holds every new value exactly, without ever narrowing the integers the
+# column can hold. `conformance/stata/replace-promotion.do` records what
+# Stata does, and the two agree except on precision: a `float` given a
+# value needing binary64 keeps `float` in Stata, which rounds it, and
+# goes to `double` here, which does not. Prior variable metadata is
+# restored on the result. Other
 # combinations, including a change of kind between numeric and string,
 # take the storage a fresh column would. `declared` names storage the
 # caller has already settled on, such as a `:=` right-hand side's, and
@@ -2969,6 +3020,18 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # so the strict replacement path handles or refuses them as before.
 .replacement_fits <- function(values, target, rows, value_mode) {
     if (!.promotable_pair(values, target)) return(TRUE)
+    # The dictionary's widest entry answers the question for a compact
+    # Arrow string without populating its shared cache, which the
+    # `as.character()` below would. Only a dictionary too wide for the
+    # target has to look at the values themselves.
+    if (typeof(target) == "character" &&
+        .is_unmaterialized_dictstring(values)) {
+        declared <- attr(target, "stata.string.storage", exact = TRUE)
+        if (.stata_string_storage_width(declared) >=
+            max(1L, .dictstring_max_width(values))) {
+            return(TRUE)
+        }
+    }
     if (identical(value_mode, "row") && !is.null(rows)) {
         slice_rows <- if (inherits(rows, "stata_numeric")) {
             .stata_data(rows)
@@ -3082,7 +3145,17 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 .narrowest_stata_storage <- function(doubles, from = "byte") {
     start <- match(from, .stata_storage)
     if (is.na(start)) start <- 1L
-    for (storage in .stata_storage[start:length(.stata_storage)]) {
+    ladder <- .stata_storage[start:length(.stata_storage)]
+    # `float` carries 24 bits of integer precision and `long` carries 31,
+    # so `long` to `float` narrows the integers the column can hold even
+    # when the values in hand happen to be float-exact, and it leaves a
+    # column that silently rounds the next long-range integer written to
+    # it. Stata's `replace` sends an overflowing `long` to `double` for
+    # the same reason, and the arithmetic lattice in `.stata_promote()`
+    # already pairs `long` with `float` as `double`. `byte` and `int` are
+    # unaffected: their whole ranges are float-exact.
+    if (identical(from, "long")) ladder <- setdiff(ladder, "float")
+    for (storage in ladder) {
         if (.stata_storage_holds(doubles, storage)) return(storage)
     }
     "double"
