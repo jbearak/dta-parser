@@ -1327,3 +1327,82 @@ test_that("the first gen on a tibble evaluates against typed columns", {
     expect_identical(alias$g, c(NA_character_, "b"))
     expect_identical(nrow(attr(bad, "groups")), 2L)
 })
+
+test_that("data-masking verbs type each result as it enters the mask", {
+    data <- dibble(id = 1:2)
+    later <- dplyr::mutate(data, y = c(NA_real_, 1), z = y > 0)
+    expect_identical(later$z, c(TRUE, TRUE))
+    expect_identical(dta_storage_type(later$y), "double")
+    summarised <- dplyr::summarise(
+        dibble(id = 1L), s = NA_character_, missing = s == ""
+    )
+    expect_true(is_dibble(summarised))
+    expect_identical(as.character(summarised$s), "")
+    expect_identical(summarised$missing, TRUE)
+    keyed <- dplyr::distinct(
+        data, k = dplyr::if_else(id == 1L, NA_character_, "")
+    )
+    expect_identical(nrow(keyed), 1L)
+    nested <- dplyr::nest_by(
+        data, k = dplyr::if_else(id == 1L, NA_character_, "")
+    )
+    expect_true(is_dibble(nested))
+    expect_identical(nrow(nested), 1L)
+    expect_identical(nrow(nested$data[[1L]]), 2L)
+    by_nest <- dplyr::group_nest(
+        data, k = dplyr::if_else(id == 1L, NA_character_, "")
+    )
+    expect_true(is_dibble(by_nest))
+    expect_identical(nrow(by_nest), 1L)
+    grouped <- dplyr::group_by(
+        data, k = dplyr::if_else(id == 1L, NA_character_, "")
+    )
+    expect_identical(dplyr::n_groups(grouped), 1L)
+})
+
+test_that("mask typing keeps dplyr's names, arguments, and messages", {
+    data <- dibble(x = c(1, 2, 3), g = c(1, 1, 2))
+    unnamed <- dplyr::mutate(data, x + 1, .data$g, .keep = "used")
+    expect_identical(names(unnamed), c("x", "g", "x + 1"))
+    expect_identical(dta_storage_type(unnamed[["x + 1"]]), "double")
+    keyed <- dplyr::group_by(data, x > 1)
+    expect_identical(dplyr::group_vars(keyed), "x > 1")
+    by_group <- dplyr::mutate(data, big = 2^40, .by = g, .after = x)
+    expect_identical(names(by_group), c("x", "big", "g"))
+    expect_identical(dta_storage_type(by_group$big), "double")
+    unpacked <- dplyr::mutate(data, tibble::tibble(a = 1L, b = "q"))
+    expect_identical(dta_storage_type(unpacked$a), "long")
+    expect_identical(
+        attr(unpacked$b, "stata.string.storage", exact = TRUE), "str1"
+    )
+    across <- dplyr::mutate(data, dplyr::across(c(x), ~ .x * 2))
+    expect_identical(as.double(across$x), c(2, 4, 6))
+    name <- "zz"
+    injected <- dplyr::mutate(data, !!name := x + 1)
+    expect_identical(dta_storage_type(injected$zz), "double")
+    removed <- dplyr::mutate(data, g = NULL)
+    expect_identical(names(removed), "x")
+    error <- rlang::catch_cnd(dplyr::mutate(data, y = stop("boom"), .by = g))
+    expect_match(conditionMessage(error), "In argument: `y = stop(\"boom\")`.",
+                 fixed = TRUE)
+    expect_match(conditionMessage(error), "In group 1: `g = 1`.", fixed = TRUE)
+    expect_match(rlang::format_error_call(error$call), "mutate()", fixed = TRUE)
+    warning <- rlang::catch_cnd(
+        dplyr::mutate(data, y = as.integer("a")), "warning"
+    )
+    expect_match(
+        conditionMessage(warning), "In argument: `y = as.integer(\"a\")`.",
+        fixed = TRUE
+    )
+})
+
+test_that("grouped gen() keeps a factor's attributes", {
+    data <- dibble(
+        g = c(1, 1, 2),
+        f = structure(factor(c("a", "b", "a")), label = "Letter")
+    )
+    gen(data, h = .data$f, by = g)
+    expect_identical(levels(data$h), c("a", "b"))
+    expect_identical(attr(data$h, "label"), "Letter")
+    expect_identical(as.character(data$h), c("a", "b", "a"))
+})

@@ -1575,10 +1575,16 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # agrees, so a grouped `gen()` keeps the label an ungrouped one would.
 .mutation_gather_values <- function(pieces) {
     result <- vctrs::list_unchop(pieces)
-    if (is.object(result)) return(result)
     first <- attributes(pieces[[1L]])
     first$names <- NULL
     if (length(first) == 0L) return(result)
+    # A classed result, such as a factor or a Stata vector, keeps the
+    # attributes of its common type; the pieces' own are restored only
+    # when they agree and describe that same class, which is how a
+    # factor's variable label survives a grouped `gen()`.
+    if (is.object(result) && !identical(first$class, class(result))) {
+        return(result)
+    }
     for (piece in pieces[-1L]) {
         other <- attributes(piece)
         other$names <- NULL
@@ -2547,16 +2553,25 @@ rename.dtatools_ref_data <- function(.data, ...) {
 }
 
 #' @export
-mutate.dtatools_ref_data <- function(.data, ...) {
-    .typed_reference_verb(
-        .data, sys.call(), dplyr::mutate, parent.frame(), "mutate()"
+mutate.dtatools_ref_data <- function(
+    .data, ..., .by = NULL, .keep = c("all", "used", "unused", "none"),
+    .before = NULL, .after = NULL
+) {
+    .typed_mask_verb(
+        .data, "mutate", rlang::enquos(..., .ignore_empty = "all"),
+        list(
+            .by = rlang::enquo(.by), .keep = .keep,
+            .before = rlang::enquo(.before), .after = rlang::enquo(.after)
+        ),
+        "mutate()"
     )
 }
 
 #' @export
 transmute.dtatools_ref_data <- function(.data, ...) {
-    .typed_reference_verb(
-        .data, sys.call(), dplyr::transmute, parent.frame(), "transmute()"
+    .typed_mask_verb(
+        .data, "transmute", rlang::enquos(..., .ignore_empty = "all"),
+        list(), "transmute()"
     )
 }
 
@@ -3003,10 +3018,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     result
 }
 
-# `mutate()`, `transmute()`, `transform()`, `within()`, and the
-# replacement operators on a dibble: the ordinary implementation runs on
-# the snapshot, then changed columns are typed and the result is closed
-# back into a dibble. Other reference frames get the plain result.
+# `transform()`, `within()`, `group_modify()`, and the replacement
+# operators on a dibble: the ordinary implementation runs on the
+# snapshot, then changed columns are typed and the result is closed back
+# into a dibble. Other reference frames get the plain result.
 .typed_reference_verb <- function(data, call, generic, environment,
                                   caller) {
     if (!is_dibble(data)) {
@@ -3017,6 +3032,176 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     .close_dibble(
         data, .retype_changed_columns(result, before, caller), caller
     )
+}
+
+# The data-masking verbs: each `...` expression is typed as its result
+# enters the data mask, so a later expression, the row comparison of
+# `distinct()`, or the grouping of `group_by()` and `nest_by()` sees the
+# Stata column the result will hold. A bare double `y = c(NA, 1)` is a
+# Stata `double` when `z = y > 0` reads it, so `z` is `TRUE` where Stata's
+# missing order says so, and `NA` and `""` in a computed string key form
+# one group.
+#
+# The hook is a `(` call around each expression, evaluated in an
+# environment where `(` is the typer; `(` is the one call head R's
+# deparser does not show as a function, so `mutate(d, x + 1)` still names
+# its column `x + 1` once the parentheses are stripped, and dplyr's
+# "In argument" bullets are rewritten the same way. Symbols, `.data`
+# references, and `NULL` are left alone: they select or remove columns
+# rather than compute them. `across()`, `if_any()`, and `if_all()` are
+# left for dplyr to expand, and their columns are typed after the verb as
+# every other changed column is.
+.typed_mask_verb <- function(data, generic, dots, arguments, caller) {
+    # The call is evaluated where `generic` names the dplyr function, so
+    # dplyr reports errors as "Error in `mutate()`" rather than against
+    # an inlined function object.
+    environment <- new.env(parent = baseenv())
+    environment[[generic]] <- getExportedValue("dplyr", generic)
+    if (!is_dibble(data)) {
+        call <- rlang::call2(generic, .reference_snapshot(data), !!!dots,
+                             !!!arguments)
+        return(eval(call, environment))
+    }
+    before <- .data_columns(data)
+    wrapped <- .wrap_mask_expressions(dots, before, caller)
+    call <- rlang::call2(
+        generic, .reference_snapshot(data), !!!wrapped$dots, !!!arguments
+    )
+    result <- .relabel_mask_conditions(
+        eval(call, environment), wrapped$labels
+    )
+    result <- .unwrap_mask_names(result, wrapped$renames)
+    .close_dibble(
+        data, .retype_changed_columns(result, before, caller), caller
+    )
+}
+
+.wrap_mask_expressions <- function(dots, before, caller) {
+    names <- rlang::names2(dots)
+    labels <- character()
+    renames <- character()
+    for (index in seq_along(dots)) {
+        quosure <- dots[[index]]
+        if (!.mask_expression_typable(quosure)) next
+        name <- names[[index]]
+        typer <- .mask_value_typer(
+            before, caller, if (nzchar(name)) name else NULL
+        )
+        environment <- new.env(parent = rlang::quo_get_env(quosure))
+        environment[["("]] <- typer
+        wrapped <- rlang::new_quosure(
+            rlang::call2("(", quosure), environment
+        )
+        inner <- .mask_expression_label(quosure)
+        outer <- .mask_expression_label(wrapped)
+        if (nzchar(name)) {
+            labels[[paste0(name, " = ", outer)]] <- paste0(name, " = ", inner)
+        } else {
+            labels[[outer]] <- inner
+            renames[[outer]] <- inner
+        }
+        dots[[index]] <- wrapped
+    }
+    list(dots = dots, labels = labels, renames = renames)
+}
+
+.mask_expression_typable <- function(quosure) {
+    if (rlang::quo_is_missing(quosure) || rlang::quo_is_null(quosure) ||
+        rlang::quo_is_symbol(quosure)) {
+        return(FALSE)
+    }
+    expression <- rlang::quo_get_expr(quosure)
+    if (!is.call(expression)) return(TRUE)
+    if (rlang::is_call(expression, c("$", "[["), n = 2L) &&
+        identical(expression[[2L]], quote(.data))) {
+        return(FALSE)
+    }
+    !rlang::is_call(
+        expression, c("across", "if_any", "if_all"), ns = c("", "dplyr")
+    )
+}
+
+# dplyr names an unnamed column and its condition bullets by
+# `rlang::as_label()` of the expression with infix folding turned off.
+.mask_expression_label <- function(quosure) {
+    rlang::with_options(
+        "rlang:::use_as_label_infix" = FALSE,
+        rlang::as_label(rlang::quo_get_expr(quosure))
+    )
+}
+
+# Types one result as it enters the mask. A named expression that
+# overwrites a column promotes from that column; an unnamed data frame
+# result is unpacked by dplyr, so each of its columns is typed against
+# the column of the same name.
+.mask_value_typer <- function(before, caller, name) {
+    function(value) {
+        if (is.null(value)) return(NULL)
+        if (is.data.frame(value)) {
+            if (!is.null(name)) return(value)
+            columns <- names(value)
+            for (index in seq_along(columns)) {
+                value[[index]] <- .typed_mask_value(
+                    .subset2(value, index), before[[columns[[index]]]],
+                    caller
+                )
+            }
+            return(value)
+        }
+        .typed_mask_value(value, if (is.null(name)) NULL else before[[name]],
+                          caller)
+    }
+}
+
+.typed_mask_value <- function(value, prior, caller) {
+    if (is.null(prior)) {
+        return(.typed_column_named(value, length(value), caller, NULL))
+    }
+    .promoted_column(value, prior, length(value), caller)
+}
+
+# dplyr's "In argument: `y = (x + 1)`." bullets name the wrapped
+# expression; the parentheses are stripped so the message reads as the
+# user wrote the call.
+.relabel_mask_conditions <- function(expression, labels) {
+    if (length(labels) == 0L) return(expression)
+    relabel <- function(condition) {
+        for (field in c("message", "body")) {
+            text <- condition[[field]]
+            if (!is.character(text)) next
+            for (index in seq_along(labels)) {
+                text <- gsub(
+                    paste0("`", names(labels)[[index]], "`"),
+                    paste0("`", labels[[index]], "`"),
+                    text, fixed = TRUE
+                )
+            }
+            condition[[field]] <- text
+        }
+        condition
+    }
+    withCallingHandlers(
+        tryCatch(expression, error = function(condition) {
+            rlang::cnd_signal(relabel(condition))
+        }),
+        warning = function(condition) {
+            rlang::cnd_signal(relabel(condition))
+            invokeRestart("muffleWarning")
+        }
+    )
+}
+
+# An unnamed expression names its column `(x + 1)`; it becomes `x + 1`.
+.unwrap_mask_names <- function(result, renames) {
+    for (index in seq_along(renames)) {
+        outer <- names(renames)[[index]]
+        inner <- renames[[index]]
+        current <- names(result)
+        if (outer %in% current && !(inner %in% current)) {
+            result <- dplyr::rename(result, !!inner := !!outer)
+        }
+    }
+    result
 }
 
 .typed_reference_replacement <- function(data, result, caller) {
@@ -3040,10 +3225,12 @@ group_by.dtatools_ref_data <- function(
     .data, ..., .add = FALSE,
     .drop = dplyr::group_by_drop_default(.data)
 ) {
-    # `group_by(d, g = x > 1)` computes a key as `mutate()` would, so
-    # changed columns are typed the same way.
-    .typed_reference_verb(
-        .data, sys.call(), dplyr::group_by, parent.frame(), "`group_by()`"
+    # `group_by(d, g = x > 1)` computes a key as `mutate()` would, and
+    # the key is typed before the groups form, so `NA` and `""` in a
+    # computed string key make one group.
+    .typed_mask_verb(
+        .data, "group_by", rlang::enquos(..., .ignore_empty = "all"),
+        list(.add = .add, .drop = .drop), "`group_by()`"
     )
 }
 
@@ -3051,22 +3238,27 @@ group_by.dtatools_ref_data <- function(
 summarise.dtatools_ref_data <- function(
     .data, ..., .by = NULL, .groups = NULL
 ) {
-    .closed_reference_verb(.data, sys.call(), dplyr::summarise, parent.frame())
+    .typed_mask_verb(
+        .data, "summarise", rlang::enquos(..., .ignore_empty = "all"),
+        list(.by = rlang::enquo(.by), .groups = .groups), "`summarise()`"
+    )
 }
 
 #' @export
 distinct.dtatools_ref_data <- function(.data, ..., .keep_all = FALSE) {
-    # `distinct(d, y = x * 2)` computes as `mutate()` does, so its new
-    # or overwritten columns are typed the same way.
-    .typed_reference_verb(
-        .data, sys.call(), dplyr::distinct, parent.frame(), "`distinct()`"
+    # `distinct(d, y = x * 2)` computes as `mutate()` does; the computed
+    # key is typed before rows are compared.
+    .typed_mask_verb(
+        .data, "distinct", rlang::enquos(..., .ignore_empty = "all"),
+        list(.keep_all = .keep_all), "`distinct()`"
     )
 }
 
 #' @export
 reframe.dtatools_ref_data <- function(.data, ..., .by = NULL) {
-    .typed_reference_verb(
-        .data, sys.call(), dplyr::reframe, parent.frame(), "`reframe()`"
+    .typed_mask_verb(
+        .data, "reframe", rlang::enquos(..., .ignore_empty = "all"),
+        list(.by = rlang::enquo(.by)), "`reframe()`"
     )
 }
 
@@ -3081,14 +3273,18 @@ group_modify.dtatools_ref_data <- function(.data, .f, ..., .keep = FALSE) {
 #' @export
 nest_by.dtatools_ref_data <- function(.data, ..., .key = "data",
                                       .keep = FALSE) {
-    .closed_reference_verb(.data, sys.call(), dplyr::nest_by, parent.frame())
+    .typed_mask_verb(
+        .data, "nest_by", rlang::enquos(..., .ignore_empty = "all"),
+        list(.key = .key, .keep = .keep), "`nest_by()`"
+    )
 }
 
 #' @export
 group_nest.dtatools_ref_data <- function(.tbl, ..., .key = "data",
                                          keep = FALSE) {
-    .closed_reference_verb(
-        .tbl, sys.call(), dplyr::group_nest, parent.frame()
+    .typed_mask_verb(
+        .tbl, "group_nest", rlang::enquos(..., .ignore_empty = "all"),
+        list(.key = .key, keep = keep), "`group_nest()`"
     )
 }
 

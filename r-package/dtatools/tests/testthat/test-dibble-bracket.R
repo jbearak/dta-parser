@@ -122,7 +122,9 @@ test_that("the target name takes .(), !!, strings, and string vectors", {
 
     # A single name never takes the list form; `list()` is its value and
     # is rejected as a value type rather than split across columns.
-    expect_error(data[, y := list(1, 2)], "numeric, logical, character, or a factor")
+    expect_error(
+        data[, y := list(1, 2)], "numeric, logical, character, or a factor"
+    )
 
     expect_error(data[, c("a", "b") := 1], "`list\\(\\)` of 2")
     expect_error(data[, c("a", "b") := list(1)], "`list\\(\\)` of 2")
