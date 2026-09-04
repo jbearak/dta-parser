@@ -2408,6 +2408,27 @@ dplyr_reconstruct.dtatools_ref_data <- function(data, template) {
     )
 }
 
+# dplyr's grouped and rowwise row slicing, which `semi_join()`,
+# `anti_join()`, and the `rows_*()` verbs use, builds its result without
+# passing through `dplyr_reconstruct()`, so the dibble closes here.
+#' @export
+dplyr_row_slice.dtatools_ref_data <- function(data, i, ...) {
+    .close_dibble(
+        data, dplyr::dplyr_row_slice(.reference_snapshot(data), i, ...)
+    )
+}
+
+# Likewise for column modification on a grouped dibble, which
+# `rows_update()` and `rows_patch()` use: changed columns are typed as
+# `mutate()` types them.
+#' @export
+dplyr_col_modify.dtatools_ref_data <- function(data, cols) {
+    .typed_reference_replacement(
+        data, dplyr::dplyr_col_modify(.reference_snapshot(data), cols),
+        "`dplyr_col_modify()`"
+    )
+}
+
 #' @export
 select.dtatools_ref_data <- function(.data, ...) {
     .close_dibble(.data, dplyr::select(.reference_snapshot(.data), ...))

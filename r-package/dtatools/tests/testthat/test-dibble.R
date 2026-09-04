@@ -846,6 +846,39 @@ test_that("a := value with declared storage widens the column to it", {
     expect_identical(dta_storage_type(strict$x), "byte")
 })
 
+test_that("grouped and rowwise row verbs return dibbles", {
+    grouped <- dplyr::group_by(dibble(g = c("a", "b"), v = 1:2), g)
+    kept <- dplyr::semi_join(grouped, tibble::tibble(g = "a"), by = "g")
+    expect_true(is_dibble(kept))
+    expect_s3_class(kept, "grouped_df")
+    expect_identical(as.integer(kept$v), 1L)
+    dropped <- dplyr::anti_join(grouped, tibble::tibble(g = "a"), by = "g")
+    expect_true(is_dibble(dropped))
+    expect_identical(as.integer(dropped$v), 2L)
+    keyed <- dplyr::group_by(dibble(id = 1:2, v = 1:2), id)
+    updated <- dplyr::rows_update(
+        keyed, tibble::tibble(id = 1L, v = 9L), by = "id"
+    )
+    expect_true(is_dibble(updated))
+    expect_identical(dta_storage_type(updated$v), "long")
+    expect_identical(as.integer(updated$v), c(9L, 2L))
+    updated[, v := 0L]
+    expect_identical(as.integer(updated$v), c(0L, 0L))
+    expect_identical(as.integer(keyed$v), 1:2)
+    patched <- dplyr::rows_patch(
+        dplyr::group_by(dibble(id = 1:2, flag = c(NA, TRUE)), id),
+        tibble::tibble(id = 1L, flag = FALSE), by = "id"
+    )
+    expect_true(is_dibble(patched))
+    expect_identical(patched$flag, c(FALSE, TRUE))
+    wise <- dplyr::rows_delete(
+        dplyr::rowwise(dibble(id = 1:2)), tibble::tibble(id = 1L), by = "id"
+    )
+    expect_true(is_dibble(wise))
+    expect_s3_class(wise, "rowwise_df")
+    expect_identical(as.integer(wise$id), 2L)
+})
+
 test_that("difftime arithmetic with Stata numerics works", {
     data <- dibble(span = as.difftime(1:2, units = "days"), id = 1:2)
     result <- dplyr::mutate(data, later = span + id, scaled = span * id)
@@ -1136,6 +1169,29 @@ test_that("column binding isolates every input, not only the first", {
         by = c("id", "x")
     )
     expect_identical(dta_storage_type(joined_wide$x), "double")
+    # A Stata string key meeting a bare character key in an outer join
+    # is padded with Stata's `""`, and the result is a dibble.
+    keyed <- dplyr::full_join(
+        dibble(id = 1:2, s = dta_string(c("a", "b"))),
+        tibble::tibble(s = c("b", "c"), w = 1:2), by = "s"
+    )
+    expect_true(is_dibble(keyed))
+    expect_identical(as.character(keyed$s), c("a", "b", "c"))
+    expect_identical(as.integer(keyed$id), c(1L, 2L, NA))
+    righted <- dplyr::right_join(
+        dibble(s = dta_string(c("a", "b")), v = 1:2),
+        tibble::tibble(s = c("b", "c")), by = "s"
+    )
+    expect_identical(as.character(righted$s), c("b", "c"))
+    expect_identical(as.integer(righted$v), c(2L, NA))
+    # Base rbind() widens by the same mapping.
+    stacked_num <- rbind(dibble(x = dta_byte(1)), data.frame(x = 1000L))
+    expect_true(is_dibble(stacked_num))
+    expect_identical(dta_storage_type(stacked_num$x), "long")
+    expect_identical(as.double(stacked_num$x), c(1, 1000))
+    stacked_str <- rbind(dibble(s = dta_string("a")), data.frame(s = "longer"))
+    expect_identical(attr(stacked_str$s, "stata.string.storage"), "str6")
+    expect_identical(as.character(stacked_str$s), c("a", "longer"))
     # `data["s"] <- NULL` deletes a column.
     dropped <- dibble(x = 1:2, s = c("a", "b"))
     dropped["s"] <- NULL

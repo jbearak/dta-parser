@@ -981,12 +981,11 @@ vec_cast.logical.stata_numeric <- function(
     FALSE
 }
 
+# Extending a Stata numeric takes the common storage of the vector and
+# the value, a declared one or a bare one at its own mapping, so base
+# `rbind()` appending an integer 1000 to a `byte` column yields a `long`.
 .extend_stata_numeric <- function(x, i, value, scalar = FALSE) {
-    prototype <- if (inherits(value, "stata_numeric")) {
-        vctrs::vec_ptype2(x, value)
-    } else {
-        vctrs::vec_ptype(x)
-    }
+    prototype <- vctrs::vec_ptype2(x, value)
     data <- .stata_data(x)
     replacement <- .stata_data(vctrs::vec_cast(value, prototype))
     if (scalar) data[[i]] <- replacement else data[i] <- replacement

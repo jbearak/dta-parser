@@ -731,10 +731,18 @@ test_that("extension promotes declared inputs without weakening assignment", {
         val_labels(extended), c(One = 1, TwoHundred = 200)
     )
 
+    # Replacement within the vector stays strict; extension takes the
+    # common storage with the bare value's own mapping, `double` here.
     strict <- dta_byte(1)
     expect_error({
-        strict[3] <- 101
+        strict[1] <- 101
     }, "dta_int\\(x\\)")
+    strict[3] <- 101
+    expect_identical(dta_storage_type(strict), "double")
+    expect_identical(as.double(strict), c(1, NA, 101))
+    longer <- dta_byte(1)
+    longer[2] <- 1000L
+    expect_identical(dta_storage_type(longer), "long")
 
     fractional <- dta_byte(c(1, 2))
     expect_error({

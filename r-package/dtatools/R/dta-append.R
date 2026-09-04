@@ -504,9 +504,9 @@ dta_append <- function(sources, force = TRUE,
 
 .append_fits_buffer <- function(value, prototype) {
     if (inherits(prototype, "stata_string")) {
-        # `NA_character_` has no Stata string encoding. Sending it through
-        # the cast lets the source fail the same way it does on the pieces
-        # path, instead of erroring when the finished buffer is encoded.
+        # `NA_character_` has no Stata string encoding, so such a source
+        # goes to `.append_cast_to_buffer()`, which refuses it the way the
+        # pieces path does.
         return(is.character(value) && !inherits(value, "stata_temporal") &&
             !anyNA(value))
     }
@@ -523,6 +523,10 @@ dta_append <- function(sources, force = TRUE,
     if (inherits(value, .stata_metadata_vector_class)) {
         value <- .stata_metadata_vector_base(value)
     }
+    # `NA_character_` has no Stata string encoding, and the vctrs cast
+    # would spell it `""`; here it is a source the plan cannot write, so
+    # `force` decides between missing rows and an error as for numerics.
+    if (inherits(prototype, "stata_string") && anyNA(value)) return(NULL)
     writable <- tryCatch(
         vctrs::vec_cast(value, prototype),
         error = function(condition) NULL
