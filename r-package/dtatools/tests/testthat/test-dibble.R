@@ -763,9 +763,11 @@ test_that("bracket assignment and partial replacement promote storage", {
     data[1, x := 100000L]
     expect_identical(dta_storage_type(data$x), "long")
     expect_identical(as.double(data$x), c(100000, 1000))
-    # 100000 and 0.5 both fit float exactly, so float is the narrowest.
+    # 100000 and 0.5 both fit float exactly, but `long` never promotes
+    # through `float`, which carries seven fewer bits of integer
+    # precision, so the column goes straight to `double`.
     data[2, x := 0.5]
-    expect_identical(dta_storage_type(data$x), "float")
+    expect_identical(dta_storage_type(data$x), "double")
     data[1, x := 0.1]
     expect_identical(dta_storage_type(data$x), "double")
     data[1, s := "longer"]
@@ -776,8 +778,15 @@ test_that("bracket assignment and partial replacement promote storage", {
     compact[2, x := 9L]
     expect_true(dtatools:::.is_unmaterialized_numeric_altrep(compact$x))
     expect_identical(dta_storage_type(compact$x), "byte")
-    # replace_values() stays strict.
-    expect_error(replace_values(compact, x, 1000L, where = 1), "byte")
+    # replace_values() promotes by default and is strict on request.
+    expect_error(
+        replace_values(compact, x, 1000L, where = 1, promote = FALSE),
+        "byte"
+    )
+    expect_message(
+        replace_values(compact, x, 1000L, where = 1),
+        "variable `x` was byte now int", fixed = TRUE
+    )
     # Cell assignment through `[<-` promotes too, and untouched compact
     # columns keep their vectors.
     cells <- dibble(x = dta_byte(c(1, 2)), y = dta_byte(c(3, 4)),
@@ -961,9 +970,17 @@ test_that("a := value with declared storage widens the column to it", {
     big[2, x := dta_float(1)]
     expect_identical(dta_storage_type(big$x), "double")
     expect_identical(as.double(big$x), c(16777217, 1))
-    # replace_values() stays strict about the target's storage.
+    # `replace_values()` honours a wider declared right-hand side as `:=`
+    # does, and `promote = FALSE` holds the column to its own storage.
+    widened <- dibble(x = dta_byte(1:2))
+    expect_message(
+        replace_values(widened, x, dta_double(1)),
+        "variable `x` was byte now double", fixed = TRUE
+    )
+    expect_identical(dta_storage_type(widened$x), "double")
+
     strict <- dibble(x = dta_byte(1:2))
-    replace_values(strict, x, dta_double(1))
+    replace_values(strict, x, dta_double(1), promote = FALSE)
     expect_identical(dta_storage_type(strict$x), "byte")
 })
 

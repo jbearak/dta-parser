@@ -9,7 +9,7 @@
 | **data.frame** | A base data frame, with the same caveat. |
 | **data.table** | An ordinary data table, with keys, indexes, and its own `[` semantics. Available when the optional `data.table` package is installed. |
 
-Choose a reader's container with `output = ` on the call, or session-wide with `options(dtatools.output = )`. `as_dibble()`, `tibble::as_tibble()`, `as.data.frame()`, and `data.table::as.data.table()` convert. `save_arrow()` records which of the four its input was, and `read_arrow()` restores it by default.
+Choose a reader's container with `output = ` on the call, or session-wide with `options(dtatools.output = )`. `as_dibble()`, `tibble::as_tibble()`, `as.data.frame()`, and `data.table::as.data.table()` convert. `save_arrow()` records which of three its input was — dibble, tibble, or data table — and `read_arrow()` restores that by default. A plain data frame records no choice: it, and files written before the container was recorded, read back as `options(dtatools.output)` names, falling back to a dibble.
 
 ## Where the write lands
 
@@ -55,7 +55,7 @@ Only a **dibble** types its columns. Every operation that adds or changes a colu
 | `haven_labelled` | Keeps its label metadata | Keeps its label metadata | Keeps its label metadata |
 | `difftime`, `bit64::integer64`, raw, list | Rejected by `gen()` | Passes through untyped; `save_dta()` refuses it | Unchanged |
 
-Overwriting a column that already has declared storage follows one rule on a dibble: keep that storage if every new value fits, otherwise take the narrowest storage that holds every value exactly — `byte`, `int`, `long`, `float`, `double`, or the smallest fitting `str#`. `mutate()`, `:=`, `transform()`, `within()`, and the replacement operators promote this way. `replace_values()` and `repl()` never promote; they reject a value the declared storage cannot hold. So does `[<-` applied to a Stata vector taken out of the dataset, as in `data$x[1] <- 1000L`, which is the vector's own strict assignment rather than a dataset operation.
+Overwriting a column that already has declared storage follows one rule on a dibble: keep that storage if every new value fits, otherwise take the narrowest storage that holds every value exactly — `byte`, `int`, `long`, `float`, `double`, or the smallest fitting `str#` — never narrowing the integers the column can hold, so an overflowing `long` goes to `double` rather than through `float`. `mutate()`, `:=`, `transform()`, `within()`, the replacement operators, and `replace_values()`/`repl()` all promote this way. Only `repl()` reports the change, as Stata's `replace` does (``variable `x` was byte now int``); pass `promote = FALSE` to make it reject a value the declared storage cannot hold instead. Rejection is still what you get from `[<-` applied to a Stata vector taken out of the dataset, as in `data$x[1] <- 1000L`, which is the vector's own strict assignment rather than a dataset operation.
 
 The full mapping, including the reasoning, is `?"stata-storage-defaults"`. The `gen()`/`mutate()` split is [ADR 0022](./adr/0022-give-gen-statas-generate-default.md) and is listed in [the divergences page](./r-stata-divergences.md#storage-types).
 

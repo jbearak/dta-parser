@@ -22,13 +22,13 @@ captured_dots = true
 
 [[function]]
 name = "repl"
-formals = ["data", "...", "where", "by", "bysort"]
+formals = ["data", "...", "where", "by", "bysort", "promote"]
 captured = ["where", "by", "bysort"]
 captured_dots = true
 
 [[function]]
 name = "replace_values"
-formals = ["data", "...", "where", "by", "bysort"]
+formals = ["data", "...", "where", "by", "bysort", "promote"]
 captured = ["where", "by", "bysort"]
 captured_dots = true
 

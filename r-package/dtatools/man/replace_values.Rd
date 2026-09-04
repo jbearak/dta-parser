@@ -7,9 +7,16 @@
 \alias{copy_data}
 \title{Generate and replace variables by reference}
 \usage{
-replace_values(data, ..., where = NULL, by = NULL, bysort = NULL)
+replace_values(
+  data,
+  ...,
+  where = NULL,
+  by = NULL,
+  bysort = NULL,
+  promote = TRUE
+)
 
-repl(data, ..., where = NULL, by = NULL, bysort = NULL)
+repl(data, ..., where = NULL, by = NULL, bysort = NULL, promote = TRUE)
 
 gen(data, ..., where = NULL, by = NULL, bysort = NULL)
 
@@ -42,6 +49,12 @@ order. Not allowed with \code{bysort} or on a grouped tibble.}
 \item{bysort}{\code{NULL}, or the columns to sort the dataset by, by
 reference, and then group by. Same spellings as \code{by}. Not allowed with
 \code{by} or on a grouped tibble.}
+
+\item{promote}{Whether \code{replace_values()} widens a target whose declared
+storage cannot represent a value, as Stata's \code{replace} does, reporting
+the change. \code{FALSE} holds the column to its declared storage and
+errors on a value that does not fit. Ignored by \code{gen()}, which creates
+the column and so has no prior storage to widen.}
 }
 \value{
 \code{gen()} and \code{replace_values()} return \code{data} invisibly.
@@ -223,8 +236,15 @@ plain tibble the first \code{gen()} makes it a \link{dibble} and types its
 existing columns the same way; a base data frame keeps bare columns.
 Stata \verb{[in]} and \verb{:lblname} authoring are not supported; the
 \verb{by varlist:} prefix is \code{by}/\code{bysort}.
-Unlike Stata's default \code{replace}, \code{replace_values()} never promotes a target
-to wider storage. It rejects values that do not fit the declared storage.
+\code{replace_values()} promotes, as Stata's \code{replace} does: a target whose
+declared storage cannot hold a value is widened to the narrowest storage
+that does, and the change is reported the way Stata reports it:
+\code{variable `x` was byte now int}. The ladder is the one described
+under \link{stata-storage-defaults}, which keeps every value exact and so
+differs from Stata's in two cases; an assignment that selects no rows
+promotes nothing, as Stata's \verb{(0 real changes made)} does not. Pass
+\code{promote = FALSE} to hold the column to its declared storage and raise
+an error instead, which was the behaviour before promotion was added.
 Character \code{NA} replacement values are normalized to \code{""}, Stata's string
 missing value.
 
