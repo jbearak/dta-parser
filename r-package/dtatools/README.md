@@ -1,20 +1,22 @@
 # dtatools
 
-`dtatools` reads Stata `.dta` files into R tibbles or data tables and writes standalone Stata
-18/19 datasets. Use it instead of `haven::read_dta()` for Stata imports. The
-read interface accepts haven's common arguments and returns compatible values,
-labels, dates, and tagged missing values. Numeric columns also retain their
-declared Stata storage type.
+`dtatools` reads Stata `.dta` files into R dibbles, tibbles, or data tables
+and writes standalone Stata 18/19 datasets. Use it instead of
+`haven::read_dta()` for Stata imports. The read interface accepts haven's
+common arguments and returns compatible values, labels, dates, and tagged
+missing values. Numeric columns also retain their declared Stata storage type.
 
 ## Functions
 
 | Function | Purpose |
 | --- | --- |
+| `dibble()`, `as_dibble()`, `is_dibble()` | Build, convert, or test a dibble: a tibble that is a Stata dataset, carrying reference state and Stata storage on every numeric and string column. |
 | `read_dta()` | Read a DTA file into a dibble, tibble, or data table with labels, display formats, notes, tagged missing values, and compact numeric columns. |
 | `save_dta()` | Write a standalone Stata 18/19 dataset, preserving storage types, labels, notes, and missing codes. |
 | `save_arrow()` | Write a standalone `.arrow` dataset, preserving supported Stata and ordinary R column classes and metadata. |
 | `read_arrow()` | Read a `.arrow` dataset and check it for accidental file corruption by default. |
 | `dta_merge()` | Merge two datasets, or `.dta`/`.arrow` files, with Stata `merge` semantics: distinct missing codes, a declared relationship, and a `_merge` indicator. |
+| `dta_append()` | Stack data frames, `.dta`, and `.arrow` sources with Stata `append` semantics: the union of variables, missing values for absent ones, widening string storage, and lossless numeric promotion. |
 | `dta_identical()` | Compare equal-length vectors in order using Stata value identity while ignoring storage, class, names, and metadata. |
 | `dta_match()`, `dta_in()` | Match bare or Stata-backed values while keeping `.`, `.a` through `.z`, and finite values distinct. |
 | `dta_union()`, `dta_intersect()`, `dta_setdiff()`, `dta_setequal()` | Apply Stata identity to stable set operations with symmetric bare-vector support and package-owned metadata handling. |
@@ -23,6 +25,8 @@ declared Stata storage type.
 | `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
 | `replace_values()`, `repl()` | Replace selected values by reference without widening declared Stata storage. |
 | `keep_vars()`, `drop_vars()` | Keep or drop variables by reference, including variables created by `gen()`. |
+| `order_vars()`, `rename_vars()` | Move variables to the front, or rename them, by reference, as Stata's `order` and `rename` do. |
+| `slice_dta_rows()`, `reorder_dta_rows()` | Select rows into a new table, or permute a table's rows in place, gathering compact Stata columns in native code. |
 | `resolve_var_name()`, `confirm_var()` | Resolve or check an exact variable name or unique abbreviation, with configurable failure behavior. |
 | `copy_data()` | Make an isolated copy, including compact column backing and mutable dataset metadata. |
 | `tab()` | Label-aware frequency tables that can keep `.`, `.a` through `.z`, and `NaN` as separate categories. |
@@ -34,18 +38,31 @@ declared Stata storage type.
 | `dta_storage_type()` | Report a column's declared storage type without materializing its compact backing. |
 | `.a` through `.z`, `tagged_missing()`, `missing_tag()`, `is_tagged_missing()` | Create, extract, and select extended missing values. |
 | `is_missing()`, `is_mi()` | Classify Stata system and extended numeric missing values and empty strings; `is_mi()` is an alias for `is_missing()` that matches Stata's `mi()` shorthand. Use either in `where` expressions for `gen()` and `replace_values()`. |
+| `dta_notes()`, `dta_note()`, `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()` | Read and edit numbered Stata notes at dataset or variable scope. |
+| `dta_characteristics()`, `dta_characteristic()`, `set_dta_characteristic()`, `drop_dta_characteristics()` | Read and edit arbitrary Stata characteristics at dataset or variable scope. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
 ## Dibbles, tibbles, and data tables
 
-Readers return dibbles by default: tibbles that carry dtatools reference state
-from creation, so `gen()` and the other by-reference operations find it ready.
-A dibble prints and subsets as a tibble; ordinary replacement and the dplyr
-verbs return plain tibbles, and `group_by()` returns a grouped dibble.
+Readers return dibbles by default: a dibble is a Stata dataset held in a
+tibble. It carries dtatools reference state from creation, so `gen()` and the
+other by-reference operations find it ready, and two invariants follow. Every
+numeric and string column carries Stata storage: `dibble()`, `as_dibble()`,
+and every operation that adds or changes a column give a bare column the
+storage that `?"stata-storage-defaults"` maps its R type to. Logical columns
+stay logical and factors stay factors. And every dataset operation on a dibble
+returns a dibble: the dplyr verbs, joins and `bind_rows()` with a dibble first, base
+`subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()`, and `[`
+subsetting. Each result is a fresh object following copy-on-modify, so a
+by-reference `:=` or `replace_values()` on the input or the result leaves the
+other as it was; untouched columns are shared copy-on-write, so compact
+columns stay compact. `tibble::as_tibble()` returns a tibble snapshot.
+
 `dibble()` builds one like `tibble::tibble()`, `as_dibble()` converts a data
 frame, tibble, or data table (a data table is copied, since a dibble cannot
-share its self-reference), and `is_dibble()` tests for one. Set one
-session-wide default or override it for one read:
+share its self-reference), and `is_dibble()` tests for one. `as_dibble()` of a
+grouped tibble keeps its grouping. Set one session-wide default container or
+override it for one read:
 
 ```r
 options(dtatools.output = "data.table")
@@ -75,6 +92,28 @@ aliases and aliases of a target column observe the change. Call `copy_data()`
 first when the original dataset, its compact storage, and its metadata must
 remain independent. See `?replace_values` for selection, evaluation, formula,
 grouping, and Stata compatibility details.
+
+`order_vars()` and `rename_vars()` mutate by reference too, as Stata's `order`
+and `rename` do: `order_vars()` moves the selected columns to the front and
+leaves the rest in their existing relative order, and `rename_vars()` takes
+`new_name = old_name` pairs, or a complete `.names` vector. Both leave the
+column vectors, their storage declarations, and their metadata untouched, and
+both reach columns created by `gen()`.
+
+`slice_dta_rows()` returns the selected rows in the input's container, and
+`reorder_dta_rows()` applies a permutation to a table in place, so every
+reference to it sees the new order. Both gather compact Stata numeric columns
+through the native kernel rather than dispatching `[` once per column, which
+matters for wide data, and leave compact columns unmaterialized. For a data
+table they drop the `sorted` marker and secondary indexes, which a row
+selection or permutation invalidates.
+
+```r
+order_vars(survey, region)
+rename_vars(survey, age_years = v1)
+reorder_dta_rows(survey, order(survey$id))
+first_ten <- slice_dta_rows(survey, 1:10)
+```
 
 ## Why use dtatools?
 
@@ -346,6 +385,31 @@ in Stata source before comparing exact merge output. The
 [label metadata guide](../../docs/r-label-metadata.md#compatibility-with-stata-merge)
 explains the representation and writer behavior.
 
+## Append datasets
+
+```r
+stacked <- dta_append(list(round1, "round2.dta", "round3.arrow"))
+```
+
+`dta_append()` stacks sources the way Stata's `append using ..., force` does.
+The result holds the union of the sources' variables in first-appearance
+order, a source that lacks a variable contributes that variable's missing
+value for its own rows, string storage widens to the widest contributor, and
+numeric storage promotes along Stata's lossless lattice. Variable labels,
+formats, and variable-level notes come from the first source that contributes
+the variable, and value-label tables are owned by table name, as in Stata.
+
+Sources are taken as one list rather than a master and a using pair, so the
+schema union is resolved in a single pass instead of reallocating the result
+once per source. File sources are read in two passes — schema first, then
+observations — so peak memory is roughly the result plus the largest single
+source. A string/numeric conflict follows Stata's `force`: the first
+contributor's type wins, the conflicting sources' rows hold missing, and a
+message names them. `force = FALSE` makes that an error. Stata does not define
+what `append` does with dataset-level notes and keeps the master's, so
+`dataset_notes` defaults to `"first"`; `"all"` concatenates and `"none"` drops
+them.
+
 ## Verify source data
 
 ```r
@@ -378,8 +442,13 @@ re-baselining until the profile freezes.
 Dataset and variable labels, numbered notes, arbitrary characteristics,
 display formats, and resolved value-label mappings are retained as attributes. Use
 `dta_notes()` and `dta_characteristics()` to inspect them, and pass a
-column name as `variable` for variable scope. Stata daily dates become `Date`;
-`%tc` and `%tC` values become UTC `POSIXct`.
+column name as `variable` for variable scope. `dta_note()` and
+`dta_characteristic()` read one entry; `set_dta_note()`, `add_dta_note()`,
+`set_dta_characteristic()`, `drop_dta_notes()`, `drop_dta_characteristics()`,
+and `renumber_dta_notes()` return a changed copy. See the
+[notes and characteristics guide](../../docs/stata-notes-and-characteristics.md)
+for validation rules and Stata's numbering behavior. Stata daily dates become
+`Date`; `%tc` and `%tC` values become UTC `POSIXct`.
 
 System missing `.` becomes `NA_real_`. Extended `.a` through `.z` values use the tagged-NA payloads understood by haven:
 
@@ -531,8 +600,12 @@ Stata's `by varlist:` prefix is the `by` argument. Groups are formed first,
 then `where` and the values are evaluated on each group's rows, with `.n`
 and `.N` as the within-group row number and count, so `bysort id: replace
 last = _n == _N` becomes one line. `bysort` sorts the dataset by reference
-on the listed columns and then groups by them; `by` never sorts. A tibble
-grouped with `dplyr::group_by()` supplies its groups the same way.
+on the listed columns, in Stata's total order for declared Stata columns
+(finite values, then `.`, then `.a` through `.z`), and then groups by them;
+`by` never sorts. A tibble grouped with `dplyr::group_by()` supplies its
+groups the same way. Stata's parenthesized sort-only keys have no direct
+equivalent: write `bysort id (date):` as `dplyr::arrange()` or
+`reorder_dta_rows()` followed by `by = id`.
 
 ```r
 gen(survey, last = .n == .N, bysort = id)
@@ -615,10 +688,12 @@ Use the installed help for exact behavior and examples:
 
 ```r
 ?read_dta  # inputs, selection, encoding, threads, compact vectors, labels, and missing values
+?dibble    # the default container, its Stata-storage and closure invariants
 ?save_dta # standalone Stata 18/19 output, conversions, and metadata
 ?save_arrow # write a standalone .arrow dataset with supported Stata and R classes
 ?read_arrow # read a .arrow dataset and check it for file corruption
 ?dta_merge # Stata-identity merges with relationship checks and _merge
+?dta_append # Stata-semantics stacking of data frames and files
 ?datasig   # order-sensitive data signatures for files and data frames
 ?dta_byte # construct and inspect declared Stata numeric storage
 ?recode    # recoding without losing unmatched missing tags
@@ -628,6 +703,12 @@ Use the installed help for exact behavior and examples:
 ?var_label          # dataset, variable, and value-label metadata
 ?resolve_var_name    # resolve variable names and abbreviations
 ?confirm_var         # check variable names and abbreviations
+?"stata-storage-defaults" # the Stata storage a dibble gives its columns
+?order_vars          # move variables to the front by reference
+?rename_vars         # rename variables by reference
+?slice_dta_rows      # select rows through Stata storage
+?reorder_dta_rows    # permute a table's rows in place
+?dta_notes           # read and edit notes and characteristics
 ```
 
 ## Performance controls

@@ -1,6 +1,6 @@
 # DTA compatibility
 
-The TypeScript and Rust parsers are independent implementations. The R package uses the Rust parser and converts its result into R vectors and a tibble. All three interfaces are checked against the same fixtures and case inventory.
+The TypeScript and Rust parsers are independent implementations. The R package uses the Rust parser and converts its result into R vectors and a dibble, a tibble that carries Stata storage and dtatools reference state. All three interfaces are checked against the same fixtures and case inventory.
 
 ## Supported releases
 
@@ -77,7 +77,7 @@ R exposes Stata byte, int, and long columns as doubles because R integers have o
 | --- | --- | --- | --- |
 | Whole-file bytes | `ArrayBuffer` helpers | Byte-slice functions | Raw vector or resolved input source |
 | Seekable file access | Node `DtaFile` | `DtaFile<Read + Seek>` | Internal path-based reader |
-| Main result | Metadata plus rows or columns | Storage-preserving column model | Tibble |
+| Main result | Metadata plus rows or columns | Storage-preserving column model | Dibble, tibble, or data table |
 | Dates and times | Original numeric value and format | Original numeric value and format | `%td` and `%d*` become `Date`; `%tc` and `%tC` become UTC `POSIXct` |
 | Value labels | Tables keyed by numeric code | Ordered table entries | `haven_labelled` attributes |
 | Cancellation | `AbortSignal` for Node reads | Cooperative callback | R user interrupts |
