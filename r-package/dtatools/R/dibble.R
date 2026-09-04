@@ -121,7 +121,14 @@ is_dibble <- function(x) {
     # that went through `gen()` carries reference state and is still a
     # tibble; only `as_dibble()`, `dibble()`, and the readers build the
     # Stata dataset, and only they set the flag.
-    !is.null(state) && isTRUE(state$dibble)
+    if (is.null(state)) return(FALSE)
+    # Serialized pre-0025 dibbles have no explicit flag. Preserve a stored
+    # FALSE on ordinary containers that acquired state through gen().
+    if (is.null(state$dibble)) {
+        "tbl_df" %in% state$classes
+    } else {
+        isTRUE(state$dibble)
+    }
 }
 
 # Builds the dibble from a data frame carrying no reference state. A grouped

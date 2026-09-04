@@ -1637,3 +1637,32 @@ test_that("by-reference replacement isolates other frames and vectors", {
     )
     expect_true(is_dibble(both_alias))
 })
+
+
+test_that("serialized legacy dibbles retain typing and closure", {
+    legacy <- dibble(x = 1:3)
+    state <- dtatools:::.reference_state(legacy)
+    state$dibble <- NULL
+    restored <- unserialize(serialize(legacy, NULL))
+    expect_true(is_dibble(restored))
+    restored$x <- c(4, 5, 6)
+    expect_true(is_dibble(restored))
+    expect_identical(dta_storage_type(restored$x), "long")
+    expect_identical(as.double(restored$x), c(4, 5, 6))
+    restored[["x"]] <- 7:9
+    expect_identical(dta_storage_type(restored$x), "long")
+    restored[1, "x"] <- 10L
+    expect_identical(dta_storage_type(restored$x), "long")
+    expect_identical(as.integer(restored$x), c(10L, 8L, 9L))
+    closed <- dplyr::mutate(restored, y = x + 1)
+    expect_true(is_dibble(closed))
+    expect_identical(dta_storage_type(closed$y), "long")
+    gen(restored, z = 1)
+    expect_identical(dta_storage_type(restored$z), "float")
+    # This checks the restored mutation target, not aliases across serialization.
+
+    ordinary <- tibble::tibble(x = 1:3)
+    gen(ordinary, y = 1)
+    expect_identical(dtatools:::.reference_state(ordinary)$dibble, FALSE)
+    expect_false(is_dibble(unserialize(serialize(ordinary, NULL))))
+})

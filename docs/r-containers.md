@@ -17,7 +17,7 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 
 | Operation | dibble | tibble | data.frame | data.table |
 | --- | --- | --- | --- | --- |
-| `gen(data, y = v)` | Reference | Reference; stays a tibble with bare existing columns | Reference; stays a base data frame with bare existing columns | Reference; installs a physical column |
+| `gen(data, y = v)` | Reference | Reference; stays a tibble with existing columns unchanged | Reference; stays a base data frame with existing columns unchanged | Reference; installs a physical column |
 | `repl(data, y = v, where = )` | Reference | Reference | Reference | Reference; invalidates keys and indexes on the changed column only |
 | `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()` | Reference | Reference | Reference | Reference |
 | `reorder_dta_rows(data, perm)` | Reference | Reference | Reference | Reference; drops the `sorted` marker and secondary indexes |
