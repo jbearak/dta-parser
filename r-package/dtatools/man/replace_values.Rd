@@ -80,9 +80,9 @@ one held by a previously created subset, remains unchanged.
 tibble object. Existing columns remain in the data frame. A dibble is
 built with spare capacity for 256 more columns, and \code{gen()} appends to
 its column list in place while that lasts; beyond it, and on a tibble
-that became a dibble at its first \code{gen()}, generated columns live in
-the attached state until an ordinary R assignment materializes a
-complete copy. This lets \code{gen()} grow the visible column set without
+or data frame that acquired reference state at its first \code{gen()},
+generated columns live in the attached state until an ordinary R
+assignment materializes a complete copy. This lets \code{gen()} grow the visible column set without
 searching for or rebinding a name in the caller. Base extraction and
 data-mask helpers, core dplyr verbs, tibble conversion, package writers, and
 metadata helpers operate on the complete visible dataset. The delegated
@@ -231,9 +231,11 @@ Other classed numeric results, including \code{difftime} and
 does not have Stata numeric semantics; convert them first. Numeric rows
 excluded by \code{where} contain system missing. Excluded string rows contain
 \code{""}, Stata's string missing, and excluded logical rows \code{NA}. Wrap the
-value expression in a Stata constructor to request other storage. On a
-plain tibble the first \code{gen()} makes it a \link{dibble} and types its
-existing columns the same way; a base data frame keeps bare columns.
+value expression in a Stata constructor to request other storage.
+\code{gen()} never changes what kind of table it was handed: a tibble stays
+a tibble and a data frame a data frame, with their existing columns
+untouched. Only the column \code{gen()} writes is typed. Call
+\code{\link[=as_dibble]{as_dibble()}} for a Stata dataset, where every column is typed.
 Stata \verb{[in]} and \verb{:lblname} authoring are not supported; the
 \verb{by varlist:} prefix is \code{by}/\code{bysort}.
 \code{replace_values()} promotes, as Stata's \code{replace} does: a target whose

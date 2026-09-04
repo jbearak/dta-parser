@@ -17,7 +17,7 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 
 | Operation | dibble | tibble | data.frame | data.table |
 | --- | --- | --- | --- | --- |
-| `gen(data, y = v)` | Reference | Reference; the tibble becomes a dibble and its columns are typed | Reference; stays a base data frame with bare existing columns | Reference; installs a physical column |
+| `gen(data, y = v)` | Reference | Reference; stays a tibble with existing columns unchanged | Reference; stays a base data frame with existing columns unchanged | Reference; installs a physical column |
 | `repl(data, y = v, where = )` | Reference | Reference | Reference | Reference; invalidates keys and indexes on the changed column only |
 | `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()` | Reference | Reference | Reference | Reference |
 | `reorder_dta_rows(data, perm)` | Reference | Reference | Reference | Reference; drops the `sorted` marker and secondary indexes |
@@ -31,7 +31,7 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 | Joins, `bind_rows()` | Copy → dibble when the dibble is first | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `copy_data()`, `tibble::as_tibble()` | Copy, independent | Copy, independent | Copy, independent | Copy, independent |
 
-One qualification on the tibble column: `gen()` on a plain tibble makes it a dibble, so from that call onward it follows the dibble column, replacement operators included. A base data frame keeps R's semantics for those operators however often `gen()` has run on it.
+`gen()` never changes what kind of table it was handed. A tibble gains reference state — that is what lets the write land in place — but stays a tibble, with R's own semantics for the replacement operators and its existing columns untouched, exactly as a base data frame does however often `gen()` has run on it. `is_dibble()` reports `FALSE` throughout. Call `as_dibble()` when you want the Stata dataset.
 
 Two rows deserve emphasis. `$<-` and its relatives are by reference **only** on a dibble; this is the one place where a dibble stops behaving like an ordinary tibble, and it is what makes `var_label(data$x) <- "Age"` reach every binding of the dataset. And `[i, y := v]` is a dibble form: on a data table the brackets are data.table's, with data.table's storage and promotion rules, and on the other two containers there is no `:=` to find. `gen()` and `repl()` are the spellings that mean the same thing on all four.
 
@@ -74,10 +74,12 @@ tbl2 <- dplyr::mutate(tbl, adjusted = income * 1.1)   # a copy; `adjusted` is a 
 tbl$region <- 1:nrow(tbl)                             # a copy; nothing else sees it
 tbl[income < 0, income := NA]                         # error: tibbles have no `:=`
 
-gen(tbl, flag = income > 0)               # by reference — and `tbl` is now a dibble
+gen(tbl, flag = income > 0)               # by reference — and `tbl` is still a tibble
 ```
 
-The last line is the one to remember: `gen()` on a plain tibble attaches reference state and types the existing columns, so the tibble becomes a dibble at that point. `is_dibble()` reports it. A base data frame stays a base data frame, with reference state but bare existing columns.
+The last line is the one to remember: `gen()` writes into `tbl` itself, so every binding to it sees `flag`, but `tbl` is a tibble before the call and a tibble after. Its existing columns are untouched; only `flag` takes Stata storage, as it would on a base data frame. `is_dibble(tbl)` is `FALSE`. `tbl <- as_dibble(tbl)` is how you ask for the Stata dataset.
+
+One consequence to expect: the expressions `gen()` evaluates on a tibble see the tibble's own columns, so `gen(tbl, n = .N, by = g)` on a bare character `g` treats `NA` and `""` as two groups. In a dibble they are one Stata string value and one group. Stata's collation applies where a Stata dataset is.
 
 ## Restrictions
 

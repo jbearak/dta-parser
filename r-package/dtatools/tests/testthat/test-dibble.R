@@ -44,8 +44,11 @@ test_that("is_dibble distinguishes dibbles from other reference frames", {
 
     marked <- tibble::tibble(x = 1:2)
     gen(marked, y = x + 1)
-    expect_true(is_dibble(marked))
-    expect_identical(class(marked), dibble_classes)
+    expect_s3_class(marked, "dtatools_ref_data")
+    expect_false(is_dibble(marked))
+    expect_identical(
+        class(marked), c("dtatools_ref_data", "tbl_df", "tbl", "data.frame")
+    )
 })
 
 test_that("as_dibble converts frames, tibbles, and data tables", {
@@ -687,15 +690,17 @@ test_that("replacement operators type their columns and keep the dibble", {
     names(data)[1] <- "key"
     expect_true(is_dibble(data))
     expect_identical(names(data)[1], "key")
-    # A tibble that becomes a dibble at its first gen() types its
-    # existing columns for every binding.
+    # gen() on a tibble leaves the tibble a tibble and its existing
+    # columns bare; only the generated column is typed.
     tbl <- tibble::tibble(n = 1:2, s = c("a", "b"), keep = c(TRUE, FALSE))
     alias <- tbl
     gen(tbl, y = n * 2L)
-    expect_true(is_dibble(tbl))
-    expect_identical(dta_storage_type(alias$n), "long")
-    expect_identical(attr(alias$s, "stata.string.storage"), "str1")
+    expect_false(is_dibble(tbl))
+    expect_s3_class(tbl, "tbl_df")
+    expect_identical(alias$n, 1:2)
+    expect_null(attr(alias$s, "stata.string.storage", exact = TRUE))
     expect_identical(alias$keep, c(TRUE, FALSE))
+    expect_identical(dta_storage_type(alias$y), "long")
 })
 
 test_that("logical columns stay logical in a dibble", {
@@ -1029,14 +1034,20 @@ test_that("difftime arithmetic with Stata numerics works", {
     )
 })
 
-test_that("the first gen on a tibble types columns transactionally", {
-    tbl <- tibble::tibble(ok = 1:2, bad = c(Inf, Inf))
+test_that("the first gen on a tibble leaves its columns alone", {
+    tbl <- tibble::tibble(ok = 1:2, bad = c(Inf, Inf), typed = dta_byte(1:2))
     alias <- tbl
-    expect_error(gen(tbl, y = 1))
+    gen(tbl, y = 1)
+    # `bad` holds values no Stata storage can carry, and gen() never
+    # looks at it: existing columns are not the subject of the call.
     expect_identical(tbl$ok, 1:2)
     expect_identical(alias$ok, 1:2)
+    expect_identical(alias$bad, c(Inf, Inf))
     expect_false(is_dibble(tbl))
-    expect_identical(names(tbl), c("ok", "bad"))
+    expect_identical(dta_storage_type(alias$typed), "byte")
+    expect_identical(as.integer(alias$typed), 1:2)
+    expect_identical(names(tbl), c("ok", "bad", "typed", "y"))
+    expect_identical(dta_storage_type(tbl$y), "float")
 })
 
 test_that("a stale string declaration is redone on entering a dibble", {
@@ -1351,33 +1362,43 @@ test_that("column binding isolates every input, not only the first", {
     expect_identical(as.integer(left$x), 1:2)
 })
 
-test_that("the first gen on a tibble evaluates against typed columns", {
+test_that("gen on a tibble evaluates against the tibble's own columns", {
+    # Stata's collation of `NA` with "" applies where a Stata dataset is.
+    # A tibble is not one, so R's own semantics hold and the two are two
+    # groups, exactly as on a base data frame.
     tbl <- tibble::tibble(g = c(NA_character_, ""), v = 1:2)
     gen(tbl, n = .N, by = g)
-    # NA and "" are one Stata string value, so one group of two.
-    expect_true(is_dibble(tbl))
-    expect_identical(as.integer(tbl$n), c(2L, 2L))
-    expect_identical(as.character(tbl$g), c("", ""))
+    expect_false(is_dibble(tbl))
+    expect_identical(as.integer(tbl$n), c(1L, 1L))
+    expect_identical(tbl$g, c(NA_character_, ""))
     grouped <- dplyr::group_by(
         tibble::tibble(g = c(NA_character_, ""), v = 1:2), g
     )
     gen(grouped, n = .N)
-    expect_identical(as.integer(grouped$n), c(2L, 2L))
-    expect_identical(nrow(attr(grouped, "groups")), 1L)
+    expect_identical(as.integer(grouped$n), c(1L, 1L))
+    expect_identical(nrow(attr(grouped, "groups")), 2L)
     flagged <- tibble::tibble(g = c(NA_character_, ""), v = 1:2)
     gen(flagged, empty = g == "")
-    expect_identical(flagged$empty, c(TRUE, TRUE))
-    # A failing first gen with `bysort` undoes the sort on every column,
-    # typed or not, so rows stay aligned.
+    expect_identical(flagged$empty, c(NA, TRUE))
+    # `as_dibble()` is what makes it a Stata dataset; then Stata's
+    # collation applies.
+    typed <- as_dibble(tibble::tibble(g = c(NA_character_, ""), v = 1:2))
+    gen(typed, n = .N, by = g)
+    expect_identical(as.integer(typed$n), c(2L, 2L))
+    # `bysort` sorts by reference before the values are computed, and a
+    # later failure does not undo the sort. Rows stay aligned across
+    # every column, and a tibble behaves here as a data frame and a
+    # dibble do.
     sorted <- tibble::tibble(
         k = c(2L, 1L), flag = c(TRUE, FALSE), f = factor(c("b", "a"))
     )
     expect_error(gen(sorted, y = Inf, bysort = k))
     expect_false(is_dibble(sorted))
-    expect_identical(sorted$k, c(2L, 1L))
-    expect_identical(sorted$flag, c(TRUE, FALSE))
-    expect_identical(as.character(sorted$f), c("b", "a"))
-    # A failing first gen leaves the tibble as it was, grouping included.
+    expect_identical(names(sorted), c("k", "flag", "f"))
+    expect_identical(sorted$k, c(1L, 2L))
+    expect_identical(sorted$flag, c(FALSE, TRUE))
+    expect_identical(as.character(sorted$f), c("a", "b"))
+    # A failing gen leaves the tibble as it was, grouping included.
     bad <- dplyr::group_by(
         tibble::tibble(g = c(NA_character_, "b"), v = 1:2), g
     )
@@ -1617,4 +1638,33 @@ test_that("by-reference replacement isolates other frames and vectors", {
         as.double(dplyr::summarise(both_alias, n = dplyr::n())$n), 2
     )
     expect_true(is_dibble(both_alias))
+})
+
+
+test_that("serialized legacy dibbles retain typing and closure", {
+    legacy <- dibble(x = 1:3)
+    state <- dtatools:::.reference_state(legacy)
+    state$dibble <- NULL
+    restored <- unserialize(serialize(legacy, NULL))
+    expect_true(is_dibble(restored))
+    restored$x <- c(4, 5, 6)
+    expect_true(is_dibble(restored))
+    expect_identical(dta_storage_type(restored$x), "long")
+    expect_identical(as.double(restored$x), c(4, 5, 6))
+    restored[["x"]] <- 7:9
+    expect_identical(dta_storage_type(restored$x), "long")
+    restored[1, "x"] <- 10L
+    expect_identical(dta_storage_type(restored$x), "long")
+    expect_identical(as.integer(restored$x), c(10L, 8L, 9L))
+    closed <- dplyr::mutate(restored, y = x + 1)
+    expect_true(is_dibble(closed))
+    expect_identical(dta_storage_type(closed$y), "long")
+    gen(restored, z = 1)
+    expect_identical(dta_storage_type(restored$z), "float")
+    # This checks the restored mutation target, not aliases across serialization.
+
+    ordinary <- tibble::tibble(x = 1:3)
+    gen(ordinary, y = 1)
+    expect_identical(dtatools:::.reference_state(ordinary)$dibble, FALSE)
+    expect_false(is_dibble(unserialize(serialize(ordinary, NULL))))
 })

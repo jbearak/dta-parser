@@ -88,10 +88,11 @@
 #'
 #' @section Bare tibbles and data frames:
 #' Only a dibble carries this contract. A tibble or data frame that has
-#' been through [gen()] carries reference state, and a tibble becomes a
-#' dibble at that point with its existing columns typed, but a base data
-#' frame stays a data frame with bare columns. [save_dta()] types bare
-#' columns by the same mapping when it writes them, with logical as `byte`.
+#' been through [gen()] carries reference state, but it is still a tibble
+#' or a data frame: its existing columns stay unchanged, and only the columns
+#' [gen()] itself writes take Stata storage. [as_dibble()] is what types
+#' the whole dataset. [save_dta()] types bare columns by the same mapping
+#' when it writes them, with logical as `byte`.
 #'
 #' Plain Arrow files written by other tools, and files read with
 #' `profile = FALSE`, carry no Stata semantics and read as tibbles by

@@ -1,19 +1,22 @@
 #' Dibbles: tibbles that carry dtatools reference state
 #'
-#' A dibble is a tibble that carries dtatools reference state from its
-#' creation rather than acquiring it at the first [gen()]. It is the default
+#' A dibble is a tibble that is a Stata dataset. It is the default
 #' container of [read_dta()], [read_arrow()], and [dta_append()], and the
 #' container [dta_merge()] returns for a dibble `x`. `dibble()` builds one
 #' from columns with the argument semantics of [tibble::tibble()];
 #' `as_dibble()` converts a data frame, tibble, or data table; `is_dibble()`
-#' tests for one.
+#' tests for one. Those are the only ways to get one: no operation turns a
+#' table you already have into a dibble behind your back.
 #'
 #' Reference state is what lets [gen()], \code{\link[=replace_values]{replace_values()}}, [keep_vars()],
 #' and the other by-reference operations change a dataset in place so that
-#' every binding to it sees the change. On a plain tibble the first `gen()`
-#' attaches that state, so a dibble and a tibble that has been through
-#' `gen()` are the same kind of object: `is_dibble()` is `TRUE` for both,
-#' and `gen()` on a plain tibble is one way to obtain a dibble.
+#' every binding to it sees the change. Any data frame, tibble, or data
+#' table acquires that state at its first [gen()], and keeps the class it
+#' had: reference state is not dibble-ness. A tibble stays a tibble, with
+#' its existing columns untouched and R's own semantics for `$<-` and the
+#' other replacement operators; only the column `gen()` writes takes Stata
+#' storage, as it does on a data frame. `is_dibble()` reports `FALSE`
+#' throughout. Call `as_dibble()` when you want the Stata dataset.
 #'
 #' A dibble is a Stata dataset held in a tibble, and two invariants follow.
 #' Every numeric and string column carries Stata storage: `dibble()` and
@@ -46,9 +49,9 @@
 #' keep R's copy-on-modify behaviour. A dibble is built with spare capacity
 #' for 256 more columns, so [gen()] appends to its column list in place
 #' and `bind_rows()`, `bind_cols()`, and other consumers that read the
-#' list directly see every column; past that capacity, and on a tibble
-#' that became a dibble at its first `gen()`, such consumers need
-#' [tibble::as_tibble()], as documented under [gen()].
+#' list directly see every column; past that capacity, and on a tibble or
+#' data frame that acquired reference state at its first `gen()`, such
+#' consumers need [tibble::as_tibble()], as documented under [gen()].
 #' [tibble::as_tibble()] returns a tibble snapshot, and `with()` returns
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
@@ -114,7 +117,18 @@ as_dibble <- function(x) {
 is_dibble <- function(x) {
     if (!inherits(x, "dtatools_ref_data")) return(FALSE)
     state <- .reference_state(x)
-    !is.null(state) && "tbl_df" %in% state$classes
+    # Dibble-ness is recorded, not inferred from the container. A tibble
+    # that went through `gen()` carries reference state and is still a
+    # tibble; only `as_dibble()`, `dibble()`, and the readers build the
+    # Stata dataset, and only they set the flag.
+    if (is.null(state)) return(FALSE)
+    # Serialized pre-0025 dibbles have no explicit flag. Preserve a stored
+    # FALSE on ordinary containers that acquired state through gen().
+    if (is.null(state$dibble)) {
+        "tbl_df" %in% state$classes
+    } else {
+        isTRUE(state$dibble)
+    }
 }
 
 # Builds the dibble from a data frame carrying no reference state. A grouped
@@ -145,7 +159,7 @@ is_dibble <- function(x) {
     # Spare column slots let `gen()` append in place, so the physical
     # list stays the complete dataset for every reader.
     x <- .reserve_column_capacity(x)
-    .mark_reference_data(x, .new_reference_state(x))
+    .mark_reference_data(x, .new_reference_state(x, dibble = TRUE))
 }
 
 # `tibble::as_tibble()` on a data.table goes through data.table's own
