@@ -113,3 +113,28 @@ test_that("Stata restoration drops unknown attributes once", {
     expect_null(attr(empty, "mystery", exact = TRUE))
     expect_s3_class(empty, "stata_string")
 })
+
+test_that("Stata string subset and restore padding use empty missing strings", {
+    for (storage in c("str3", "strL")) {
+        value <- dta_string(c(a = "a", b = "bb"), storage)
+        attr(value, "label") <- "Text"
+        attr(value, "format.stata") <- "%9s"
+        results <- list(
+            value[c(1L, 3L, NA_integer_)],
+            value[c("a", "absent", NA_character_)],
+            value[c(TRUE, NA, TRUE)],
+            vctrs::vec_slice(value, c(1L, NA_integer_, NA_integer_)),
+            vctrs::vec_restore(c("a", NA_character_, NA_character_), value)
+        )
+        for (result in results) {
+            expect_identical(unname(as.character(result)), c("a", "", ""))
+            expect_identical(dta_storage_type(result), storage)
+            expect_identical(attr(result, "label"), "Text")
+            expect_identical(attr(result, "format.stata"), "%9s")
+        }
+        expect_identical(names(results[[1L]]), c("a", "", ""))
+        expect_identical(as.character(vctrs::vec_init(value, 2L)), c("", ""))
+        expect_length(value[integer()], 0L)
+        expect_error(value[1L] <- NA_character_, "NA_character_")
+    }
+})

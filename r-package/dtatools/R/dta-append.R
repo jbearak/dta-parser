@@ -96,6 +96,20 @@ dta_append <- function(sources, force = TRUE,
     plan <- .append_build_plan(schemas, force)
     filled <- .append_fill_columns(schemas, plan)
 
+    source_names <- names(filled$columns)
+    repaired_names <- vctrs::vec_as_names(
+        source_names, repair = .name_repair, repair_arg = ".name_repair"
+    )
+    for (index in which(source_names != repaired_names)) {
+        column <- filled$columns[[index]]
+        if (!is.null(attr(column, "labels", exact = TRUE)) &&
+            is.null(attr(column, "value.label.name", exact = TRUE))) {
+            column <- .metadata_copy(column)
+            attr(column, "value.label.name") <- source_names[[index]]
+            filled$columns[[index]] <- column
+        }
+    }
+    names(filled$columns) <- repaired_names
     result <- vctrs::new_data_frame(
         filled$columns, n = filled$row_count
     )
@@ -109,7 +123,7 @@ dta_append <- function(sources, force = TRUE,
         .stored_output_container(schemas[[1L]]$schema)
     }
     result <- .as_stata_metadata_frame(
-        .finalize_output_container(result, output, .name_repair, stored)
+        .finalize_output_container(result, output, "minimal", stored)
     )
     .complete_output_container(result, output, stored)
 }

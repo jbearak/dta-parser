@@ -2843,3 +2843,20 @@ test_that("promotion never narrows the integers a column can hold", {
     )
     expect_equal(as.double(data$x), c(3e9, 3e9))
 })
+
+test_that("unselected replacement groups do not contribute value types", {
+    data <- dibble(grp = 1:2, x = dta_byte(1:2))
+    expect_no_error(repl(data, x = if (as.integer(grp[[1]]) == 1L) "bad" else 5L,
+                         where = FALSE, by = grp))
+    expect_identical(as.integer(data$x), 1:2)
+    expect_identical(dta_storage_type(data$x), "byte")
+    expect_no_error(repl(data, x = if (as.integer(grp[[1]]) == 1L) "bad" else 5L,
+                         where = grp == 2L, by = grp))
+    expect_identical(as.integer(data$x), c(1L, 5L))
+    expect_identical(dta_storage_type(data$x), "byte")
+    expect_no_error(repl(data,
+        x = if (as.integer(grp[[1]]) == 1L) dta_double(1000) else dta_byte(6),
+        where = grp == 2L, by = grp))
+    expect_identical(dta_storage_type(data$x), "byte")
+    expect_identical(as.integer(data$x), c(1L, 6L))
+})

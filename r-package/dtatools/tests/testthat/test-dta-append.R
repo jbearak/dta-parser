@@ -647,3 +647,31 @@ test_that("a character source holding NA obeys force like the pieces path", {
         "incompatible storage"
     )
 })
+
+test_that("append name repair preserves implicit label-table identity", {
+    value <- dta_byte(1)
+    val_labels(value) <- c(one = 1)
+    shared <- value
+    attr(shared, "value.label.name") <- "v"
+    source <- tibble::tibble(v = value, w = shared)
+    for (output in c("dibble", "tibble", "data.table")) {
+        if (output == "data.table") skip_if_not_installed("data.table")
+        calls <- 0L
+        repair <- function(names) { calls <<- calls + 1L; toupper(names) }
+        result <- dta_append(source, output = output, .name_repair = repair)
+        expect_identical(calls, 1L)
+        expect_identical(names(result), c("V", "W"))
+        expect_identical(attr(result$V, "value.label.name"), "v")
+        expect_identical(attr(result$W, "value.label.name"), "v")
+        expect_identical(val_labels(result$V), c(one = 1))
+        path <- tempfile(fileext = ".dta")
+        save_dta(result, path)
+        restored <- read_dta(path)
+        expect_identical(attr(restored$V, "value.label.name"), "v")
+        expect_identical(attr(restored$W, "value.label.name"), "v")
+        unlink(path)
+    }
+    unchanged <- dta_append(source)
+    expect_null(attr(unchanged$v, "value.label.name"))
+    expect_null(attr(source$v, "value.label.name"))
+})

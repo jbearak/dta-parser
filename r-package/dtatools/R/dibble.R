@@ -318,6 +318,7 @@ NULL
     binding <- if (simple_target) {
         .capture_mutation_binding(target_expr, parent.frame(), value = x)
     } else NULL
+    destination <- if (is.null(binding)) target_expr else binding
     original_x <- x
     if (.has_column_overlay(x)) {
         x <- .prepare_column_operation(x, length(.reference_names(x)))
@@ -340,12 +341,18 @@ NULL
             assignment$values, where, generate = !exists,
             selection = selection, promote = TRUE
         )
+        # Each completed assignment must reach its destination before another
+        # RHS runs or fails, including when its column list was reallocated.
+        destination <- .rebind_mutation(
+            original_x, x, destination, parent.frame()
+        )
+        original_x <- x
     }
     # `[` forces its result visible after dispatch, so `invisible()` alone
     # would autoprint the dataset after every assignment. Recorded after
     # the last write so a failed assignment still shows its error only.
     .suppress_bracket_autoprint(x)
-    .return_mutation(original_x, x, if (is.null(binding)) target_expr else binding, parent.frame())
+    invisible(x)
 }
 
 # Reads `j` as one or more `:=` assignments, or `NULL` when `j` is

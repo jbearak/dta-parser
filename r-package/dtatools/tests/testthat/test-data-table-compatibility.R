@@ -320,3 +320,32 @@ test_that("setDT() on a read result drops the stale reference state", {
     expect_identical(as.double(data$cluster), c(1, 2, 3))
     expect_true(dtatools:::.ordinary_data_table(data))
 })
+
+test_that("promotion invalidates affected data-table keys and indexes", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    keyed <- data.table::data.table(x = dta_byte(1:3), y = 11:13)
+    data.table::setkeyv(keyed, "x")
+    alias <- keyed
+    suppressMessages(repl(keyed, x = 1000, where = x == 1))
+    expect_null(data.table::key(keyed))
+    expect_null(data.table::key(alias))
+    expect_identical(keyed[list(1000), on = "x"]$y, 11L)
+    expect_identical(dta_storage_type(keyed$x), "int")
+
+    indexed <- data.table::data.table(
+        x = dta_byte(c(3, 1, 2)), y = 11:13, z = c(3, 1, 2)
+    )
+    data.table::setindexv(indexed, "x")
+    data.table::setindexv(indexed, "z")
+    suppressMessages(repl(indexed, x = 1000, where = x == 1))
+    expect_identical(data.table::indices(indexed), "z")
+    expect_identical(indexed[x == 1000]$y, 12L)
+    expect_identical(indexed[z == 1]$y, 12L)
+
+    strings <- data.table::data.table(x = dta_string(c("a", "b")), y = 1:2)
+    data.table::setkeyv(strings, "x")
+    suppressMessages(repl(strings, x = "wide", where = 1L))
+    expect_null(data.table::key(strings))
+    expect_identical(strings[list("wide"), on = "x"]$y, 1L)
+})

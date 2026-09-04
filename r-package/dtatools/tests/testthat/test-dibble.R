@@ -1213,7 +1213,7 @@ test_that("subsetting keeps compact dictionary strings compact", {
     # hold, so that subset materializes as R's `[` would.
     beyond <- data$s[c(1L, 9L)]
     expect_false(compact(beyond))
-    expect_identical(as.character(beyond), c("aa", NA))
+    expect_identical(as.character(beyond), c("aa", ""))
     expect_identical(as.character(data$s[[3L]]), "aa")
     expect_identical(as.character(data$s), c("aa", "bb", "aa", "cc", "bb"))
 
@@ -1658,4 +1658,67 @@ test_that("serialized legacy dibbles retain typing and closure", {
     gen(ordinary, y = 1)
     expect_identical(dtatools:::.reference_state(ordinary)$dibble, FALSE)
     expect_false(is_dibble(unserialize(serialize(ordinary, NULL))))
+})
+
+test_that("across results are typed before later mask expressions", {
+    data <- dibble(g = c(1L, 1L), x = c("a", "b"))
+    for (input in list(data, dplyr::group_by(data, g), dplyr::rowwise(data))) {
+        result <- dplyr::mutate(
+            input, dplyr::across(x, ~ NA_character_), missing = x == ""
+        )
+        expect_identical(as.character(result$x), c("", ""))
+        expect_identical(result$missing, c(TRUE, TRUE))
+    }
+    result <- dplyr::mutate(data, dplyr::across(x, ~ NA_character_),
+                            missing = x == "", .by = g)
+    expect_identical(result$missing, c(TRUE, TRUE))
+    result <- dplyr::summarise(data, dplyr::across(x, ~ NA_character_),
+                              missing = x == "")
+    expect_identical(result$missing, TRUE)
+    result <- dplyr::reframe(data, dplyr::across(x, ~ NA_character_),
+                            missing = x == "")
+    expect_identical(result$missing, TRUE)
+    result <- dplyr::mutate(
+        data, dplyr::across(x, list(text = ~ NA_character_), .names = "{.col}_{.fn}"),
+        missing = x_text == ""
+    )
+    expect_identical(result$missing, c(TRUE, TRUE))
+})
+
+test_that("caller-backed symbols are typed on entry to the data mask", {
+    data <- dibble(x = 1:2)
+    values <- c(NA_real_, 1)
+    strings <- c(NA_character_, "")
+    result <- dplyr::mutate(data, y = values, z = y > 0,
+                            text = strings, missing = text == "")
+    expect_identical(result$z, c(TRUE, TRUE))
+    expect_identical(result$missing, c(TRUE, TRUE))
+    expect_identical(dta_storage_type(result$y), "double")
+    expect_identical(nrow(dplyr::distinct(data, strings)), 1L)
+    expect_identical(nrow(dplyr::group_keys(dplyr::group_by(data, strings))), 1L)
+    x <- c(NA_real_, 1)
+    result <- dplyr::mutate(data, y = x, z = y > 0)
+    expect_identical(as.integer(result$y), 1:2)
+    expect_identical(result$z, c(TRUE, TRUE))
+})
+
+test_that("unnamed computations use their natural names in the mask", {
+    data <- dibble(x = 1:2, `x + 1` = 0L)
+    result <- dplyr::mutate(data, x + 1, later = `x + 1` * 10)
+    expect_identical(names(result), c("x", "x + 1", "later"))
+    expect_identical(as.integer(result$`x + 1`), 2:3)
+    expect_identical(as.integer(result$later), c(20L, 30L))
+    result <- dplyr::mutate(data, x + 1, `x + 1` = 9L)
+    expect_identical(names(result), c("x", "x + 1"))
+    expect_identical(as.integer(result$`x + 1`), c(9L, 9L))
+    result <- dplyr::summarise(data, sum(x), `sum(x)` = 9L)
+    expect_identical(names(result), "sum(x)")
+    expect_identical(as.integer(result$`sum(x)`), 9L)
+    result <- dplyr::mutate(data, tibble::tibble(y = c(NA_real_, 1)), z = y > 0)
+    expect_identical(result$z, c(TRUE, TRUE))
+    expect_identical(names(result), c("x", "x + 1", "y", "z"))
+    result <- dplyr::distinct(dibble(x = 1:2),
+        dplyr::across(x, ~ dplyr::if_else(.x == 1, NA_character_, "")))
+    expect_identical(nrow(result), 1L)
+    expect_identical(as.character(result$x), "")
 })
