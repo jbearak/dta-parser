@@ -43,14 +43,14 @@ repl(data, z = 1.234567890123456)   #> variable `z` was float now double
 
 Stata's silence there is a data loss, not a convenience, so dtatools promotes and keeps the value exact. The same asymmetry appears in Stata's `generate` default: `gen x = 16777217` creates a `float` holding `16777216`, silently. `options(dtatools.generate_type = "double")` is the way out, as `set type double` is in Stata.
 
-**`repl()` reports its promotions; `:=` and `mutate()` do not.** `repl()` translates Stata's `replace`, so it prints what Stata prints:
+**`replace_values()` reports its promotions; `:=` and `mutate()` do not.** `replace_values()` and its short name `repl()` translate Stata's `replace`, so they print what Stata prints:
 
 ```r
 repl(data, x = 1000)      #> variable `x` was byte now int
 data[, x := 1000]         #> promotes to int, silently
 ```
 
-`:=` and `mutate()` follow dplyr's contract that the right-hand side defines the column, and R verbs are expected to be quiet, so they promote without a message. An assignment that selects no rows promotes nothing, as Stata's `(0 real changes made)` does not. Pass `promote = FALSE` to `repl()` to hold a column to its declared storage and get an error instead — useful when a translated script should fail loudly rather than widen. Suppress the note with `suppressMessages()`.
+`:=` and `mutate()` follow dplyr's contract that the right-hand side defines the column, and R verbs are expected to be quiet, so they promote without a message. An assignment that selects no rows promotes nothing, as Stata's `(0 real changes made)` does not. Pass `promote = FALSE` to `replace_values()` or `repl()` to hold a column to its declared storage and get an error instead — useful when a translated script should fail loudly rather than widen. Suppress the note with `suppressMessages()`.
 
 One consequence worth knowing: a bare Arrow string read into a dibble carries the width of its dictionary, so a wider replacement string widens the declared `str#`.
 
