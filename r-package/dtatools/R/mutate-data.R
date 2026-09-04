@@ -2292,6 +2292,15 @@ print.dtatools_ref_data <- function(x, ...) {
     call$value <- value
     snapshot <- .reference_snapshot(x)
     call[[2L]] <- snapshot
+    # The subscripts are evaluated once here, so the promoting retry
+    # below does not run `i` or `j` a second time; an empty argument, as
+    # in `x[i, ] <- v`, stays empty.
+    argument_names <- names(call)
+    for (index in seq_along(call)[-(1:2)]) {
+        if (identical(argument_names[[index]], "value")) next
+        empty <- is.symbol(call[[index]]) && !nzchar(as.character(call[[index]]))
+        if (!empty) call[[index]] <- eval(call[[index]], parent.frame())
+    }
     result <- if (is_dibble(x)) {
         .bracket_replace_promoting(snapshot, call, parent.frame())
     } else {
@@ -2652,7 +2661,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         )
     }
     indices <- which(changed)
-    originals <- lapply(indices, function(index) .subset2(data, index))
+    # Every column is recorded, not only the typed ones: a `bysort` may
+    # permute the whole list before the generation fails, and the rollback
+    # must leave every column under the same row order.
+    originals <- .plain_data_columns(data)
     groups <- attr(data, "groups", exact = TRUE)
     for (index in indices) {
         .Call(
@@ -2663,16 +2675,17 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     invisible(list(indices = indices, originals = originals, groups = groups))
 }
 
-# Undoes `.type_physical_columns_in_place()` when the first `gen()` fails
-# after it: the tibble gets its original columns and grouping back.
+# Undoes `.type_physical_columns_in_place()` and any by-reference sort
+# when the first `gen()` fails after it: the tibble gets its original
+# column vectors and grouping back.
 .restore_physical_columns <- function(data, plan) {
-    for (offset in seq_along(plan$indices)) {
+    for (index in seq_along(plan$originals)) {
         .Call(
-            C_dtatools_set_data_column, data,
-            as.integer(plan$indices[[offset]]), plan$originals[[offset]]
+            C_dtatools_set_data_column, data, as.integer(index),
+            plan$originals[[index]]
         )
     }
-    if (length(plan$indices) && inherits(data, "grouped_df")) {
+    if (inherits(data, "grouped_df")) {
         .Call(C_dtatools_set_attribute, data, "groups", plan$groups)
     }
     invisible(NULL)
@@ -2719,10 +2732,13 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     }
     doubles <- as.double(values)
     if (is.null(declared)) declared <- dta_storage_type(prior)
+    # Promotion only widens: the search starts at the declared storage,
+    # so a `dta_float()` value beside a retained integer float cannot
+    # hold goes to `double` rather than back to `long`.
     storage <- if (.stata_storage_holds(doubles, declared)) {
         declared
     } else {
-        .narrowest_stata_storage(doubles)
+        .narrowest_stata_storage(doubles, from = declared)
     }
     .restore_stata_metadata(
         .construct_stata_numeric(doubles, NULL, storage), prior, storage
@@ -2844,8 +2860,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     all(rounded == candidate)
 }
 
-.narrowest_stata_storage <- function(doubles) {
-    for (storage in .stata_storage) {
+.narrowest_stata_storage <- function(doubles, from = "byte") {
+    start <- match(from, .stata_storage)
+    if (is.na(start)) start <- 1L
+    for (storage in .stata_storage[start:length(.stata_storage)]) {
         if (.stata_storage_holds(doubles, storage)) return(storage)
     }
     "double"

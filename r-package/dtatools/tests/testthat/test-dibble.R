@@ -747,6 +747,19 @@ test_that("bracket assignment and partial replacement promote storage", {
     cells[1, "y"] <- 5L
     expect_identical(dta_storage_type(cells$y), "byte")
     expect_error(cells[1, "x"] <- "text")
+    # Subscripts are evaluated once, even when the promoting retry runs.
+    counter <- 0L
+    pick <- function() {
+        counter <<- counter + 1L
+        counter
+    }
+    once <- dibble(x = dta_byte(c(1, 2, 3)))
+    once[pick(), "x"] <- 1000L
+    expect_identical(counter, 1L)
+    expect_identical(as.double(once$x), c(1000, 2, 3))
+    once[pick(), ] <- list(5L)
+    expect_identical(counter, 2L)
+    expect_identical(as.double(once$x), c(1000, 5, 3))
 })
 
 test_that("overwriting a typed column with an untypable one passes through", {
@@ -815,6 +828,12 @@ test_that("a := value with declared storage widens the column to it", {
     labelled[, x := dta_double(0.5)]
     expect_identical(var_label(labelled$x), "Count")
     expect_identical(dta_storage_type(labelled$x), "double")
+    # A declared float beside a retained integer float cannot hold goes
+    # up to double, never back down the ladder.
+    big <- dibble(x = dta_long(c(16777217L, 2L)))
+    big[2, x := dta_float(1)]
+    expect_identical(dta_storage_type(big$x), "double")
+    expect_identical(as.double(big$x), c(16777217, 1))
     # replace_values() stays strict about the target's storage.
     strict <- dibble(x = dta_byte(1:2))
     replace_values(strict, x, dta_double(1))
@@ -1090,6 +1109,16 @@ test_that("the first gen on a tibble evaluates against typed columns", {
     flagged <- tibble::tibble(g = c(NA_character_, ""), v = 1:2)
     gen(flagged, empty = g == "")
     expect_identical(flagged$empty, c(TRUE, TRUE))
+    # A failing first gen with `bysort` undoes the sort on every column,
+    # typed or not, so rows stay aligned.
+    sorted <- tibble::tibble(
+        k = c(2L, 1L), flag = c(TRUE, FALSE), f = factor(c("b", "a"))
+    )
+    expect_error(gen(sorted, y = Inf, bysort = k))
+    expect_false(is_dibble(sorted))
+    expect_identical(sorted$k, c(2L, 1L))
+    expect_identical(sorted$flag, c(TRUE, FALSE))
+    expect_identical(as.character(sorted$f), c("b", "a"))
     # A failing first gen leaves the tibble as it was, grouping included.
     bad <- dplyr::group_by(
         tibble::tibble(g = c(NA_character_, "b"), v = 1:2), g
