@@ -1567,4 +1567,37 @@ test_that("by-reference replacement isolates other frames and vectors", {
     grouped$g <- c(1, 2)
     expect_identical(dplyr::n_groups(grouped), 2L)
     expect_true(is_dibble(grouped))
+    # Renaming a key through `names<-` renames the grouping too, so later
+    # grouped work finds the key.
+    renamed <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
+    renamed_alias <- renamed
+    names(renamed) <- c("x", "k")
+    expect_identical(dplyr::group_vars(renamed_alias), "k")
+    expect_identical(
+        names(attr(renamed_alias, "groups", exact = TRUE)),
+        c("k", ".rows")
+    )
+    gen(renamed_alias, z = x + 1)
+    replace_values(renamed_alias, z, 0, where = k == 1)
+    expect_identical(as.double(renamed_alias$z), c(0, 0))
+    expect_identical(
+        as.double(dplyr::summarise(renamed_alias, n = dplyr::n())$n), 2
+    )
+    expect_true(is_dibble(renamed_alias))
+    # `dimnames<-` renames the same way.
+    both <- dplyr::group_by(dibble(x = 1:2, g = c(1, 1)), g)
+    both_alias <- both
+    suppressWarnings(dimnames(both) <- list(row.names(both), c("x", "k")))
+    expect_identical(dplyr::group_vars(both_alias), "k")
+    expect_identical(
+        names(attr(both_alias, "groups", exact = TRUE)),
+        c("k", ".rows")
+    )
+    gen(both_alias, z = x + 1)
+    replace_values(both_alias, z, 0, where = k == 1)
+    expect_identical(as.double(both_alias$z), c(0, 0))
+    expect_identical(
+        as.double(dplyr::summarise(both_alias, n = dplyr::n())$n), 2
+    )
+    expect_true(is_dibble(both_alias))
 })

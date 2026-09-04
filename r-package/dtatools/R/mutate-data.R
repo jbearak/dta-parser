@@ -10,11 +10,11 @@
 #' base R or another package are detached to ordinary vectors before
 #' replacement because their private caches cannot be invalidated safely.
 #' Aliases to the same dataset object observe the installed vector. On a
-#' [dibble], the replacement operators `$<-`, `[[<-`, and `[<-`, and so
-#' every setter used in replacement form such as `var_label(data$x) <-`,
-#' write by reference as well. A
-#' standalone alias to the former generic ALTREP column, including one held by
-#' a previously created subset, remains unchanged.
+#' [dibble], the replacement operators `$<-`, `[[<-`, `[<-`, `names<-`,
+#' `dimnames<-`, and `row.names<-`, and so every setter used in
+#' replacement form such as `var_label(data$x) <-`, write by reference as
+#' well. A standalone alias to the former generic ALTREP column, including
+#' one held by a previously created subset, remains unchanged.
 #' `gen()` attaches package-owned reference state to the same data-frame or
 #' tibble object. Existing columns remain in the data frame. A dibble is
 #' built with spare capacity for 256 more columns, and `gen()` appends to
