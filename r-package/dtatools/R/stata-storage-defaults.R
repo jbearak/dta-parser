@@ -89,7 +89,7 @@
 #' @section Bare tibbles and data frames:
 #' Only a dibble carries this contract. A tibble or data frame that has
 #' been through [gen()] carries reference state, but it is still a tibble
-#' or a data frame: its existing columns stay bare, and only the columns
+#' or a data frame: its existing columns stay unchanged, and only the columns
 #' [gen()] itself writes take Stata storage. [as_dibble()] is what types
 #' the whole dataset. [save_dta()] types bare columns by the same mapping
 #' when it writes them, with logical as `byte`.

@@ -99,7 +99,7 @@ that selects no rows promotes nothing, as Stata's
 
 Only a dibble carries this contract. A tibble or data frame that has
 been through \code{\link[=gen]{gen()}} carries reference state, but it is still a tibble
-or a data frame: its existing columns stay bare, and only the columns
+or a data frame: its existing columns stay unchanged, and only the columns
 \code{\link[=gen]{gen()}} itself writes take Stata storage. \code{\link[=as_dibble]{as_dibble()}} is what types
 the whole dataset. \code{\link[=save_dta]{save_dta()}} types bare columns by the same mapping
 when it writes them, with logical as \code{byte}.

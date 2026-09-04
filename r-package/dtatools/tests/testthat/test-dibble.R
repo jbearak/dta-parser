@@ -1035,7 +1035,7 @@ test_that("difftime arithmetic with Stata numerics works", {
 })
 
 test_that("the first gen on a tibble leaves its columns alone", {
-    tbl <- tibble::tibble(ok = 1:2, bad = c(Inf, Inf))
+    tbl <- tibble::tibble(ok = 1:2, bad = c(Inf, Inf), typed = dta_byte(1:2))
     alias <- tbl
     gen(tbl, y = 1)
     # `bad` holds values no Stata storage can carry, and gen() never
@@ -1044,7 +1044,9 @@ test_that("the first gen on a tibble leaves its columns alone", {
     expect_identical(alias$ok, 1:2)
     expect_identical(alias$bad, c(Inf, Inf))
     expect_false(is_dibble(tbl))
-    expect_identical(names(tbl), c("ok", "bad", "y"))
+    expect_identical(dta_storage_type(alias$typed), "byte")
+    expect_identical(as.integer(alias$typed), 1:2)
+    expect_identical(names(tbl), c("ok", "bad", "typed", "y"))
     expect_identical(dta_storage_type(tbl$y), "float")
 })
 
