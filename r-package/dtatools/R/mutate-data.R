@@ -2305,8 +2305,12 @@ print.dtatools_ref_data <- function(x, ...) {
     argument_names <- names(call)
     for (index in seq_along(call)[-(1:2)]) {
         if (identical(argument_names[[index]], "value")) next
+        # An empty argument cannot be bound to a name, so it is tested
+        # on the call itself. `call[index] <- list(...)` keeps a `NULL`
+        # subscript in place, where `[[<-` would delete the argument and
+        # select everything.
         empty <- is.symbol(call[[index]]) && !nzchar(as.character(call[[index]]))
-        if (!empty) call[[index]] <- eval(call[[index]], parent.frame())
+        if (!empty) call[index] <- list(eval(call[[index]], parent.frame()))
     }
     result <- if (is_dibble(x)) {
         .bracket_replace_promoting(snapshot, call, parent.frame())

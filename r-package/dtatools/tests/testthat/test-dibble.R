@@ -760,6 +760,12 @@ test_that("bracket assignment and partial replacement promote storage", {
     once[pick(), ] <- list(5L)
     expect_identical(counter, 2L)
     expect_identical(as.double(once$x), c(1000, 5, 3))
+    # A `NULL` subscript selects nothing, as it does on a tibble.
+    none <- NULL
+    once[none, "x"] <- 9L
+    expect_identical(as.double(once$x), c(1000, 5, 3))
+    once[1, none] <- 9L
+    expect_identical(as.double(once$x), c(1000, 5, 3))
 })
 
 test_that("overwriting a typed column with an untypable one passes through", {
