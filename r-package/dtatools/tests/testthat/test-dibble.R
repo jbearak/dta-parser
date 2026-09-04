@@ -494,11 +494,16 @@ test_that("gen() and a new := column take Stata's generate default", {
     # Overwriting through `:=` promotes from the column, not the default.
     data[, dollar := 0.5]
     expect_identical(dta_storage_type(data$dollar), "double")
+    # Promotion widens storage; a value no storage holds is refused with
+    # `repl()`'s message and the column is untouched.
+    expect_error(data[, count := 0 / 0], "cannot contain `NaN`")
+    expect_error(data[1, count := Inf], "cannot contain `NaN`")
+    expect_identical(as.double(data$count), c(2, 4, 6))
     withr::local_options(dtatools.generate_type = "long")
     expect_error(gen(data, bad = 1), "must be \"float\" or \"double\"")
 })
 
-test_that("mutate and transmute type new columns as gen() does", {
+test_that("mutate and transmute type new columns by the container mapping", {
     data <- dibble(
         id = 1:3, income = c(10, 20, 30), name = c("a", "bb", "ccc")
     )
@@ -1271,9 +1276,6 @@ test_that("column binding isolates every input, not only the first", {
     stacked_rows <- rbind(left, dibble(x = 3L))
     stacked_rows[, x := 0L]
     expect_identical(as.integer(left$x), 1:2)
-    joined <- dplyr::left_join(
-        left, tibble::tibble(x = 1:2, w = c(TRUE, TRUE)), by = "x"
-    )
     joined_source <- tibble::tibble(x = 1:2, w = c(TRUE, TRUE))
     joined <- dplyr::left_join(left, joined_source, by = "x")
     repl(joined, w = FALSE)

@@ -1863,6 +1863,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         if (!is.null(declared) ||
             (promote &&
              !.replacement_fits(values, column, rows, value_mode))) {
+            # Promotion widens storage; it admits no value Stata cannot
+            # hold at any width, and says so as `repl()` does.
+            .validate_numeric_values(values)
             # `:=` promotes: the column is rebuilt at the storage the
             # right-hand side declares when that is wider, and otherwise
             # at the narrowest storage that holds the current and new
