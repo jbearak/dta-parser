@@ -25,12 +25,25 @@
 #' dibble returns a dibble: dplyr verbs, joins with a dibble on the left,
 #' `bind_rows()` with a dibble first, base `subset()`, `transform()`,
 #' `within()`, `head()`, `rbind()`, `cbind()`, and `[` subsetting. Each
-#' result is a fresh object holding the current contents, following
-#' copy-on-modify; the input is unchanged, and a by-reference `:=` or
-#' [replace_values()] on either the input or the result leaves the other
-#' as it was, and leaves any other frame the operation drew columns from
-#' as it was. Columns an operation leaves alone are shared copy-on-write,
-#' so compact columns stay compact. A dibble is built with spare capacity
+#' result is a fresh object holding the current contents; the input is
+#' unchanged, and a by-reference write on either the input or the result
+#' leaves the other as it was, and leaves any other frame the operation
+#' drew columns from as it was. Columns an operation leaves alone are
+#' shared copy-on-write, so compact columns stay compact.
+#'
+#' The replacement operators are the exception: `$<-`, `[[<-`, `[<-`,
+#' `names<-`, `dimnames<-`, and `row.names<-` on a dibble write by
+#' reference, as [gen()], [replace_values()], and `:=` do, so every binding
+#' to the dataset sees the change and a replacement inside a function
+#' reaches the caller's dibble. Because R
+#' spells `var_label(data$x) <- "Age"` as a `$<-` call, every metadata
+#' setter used in replacement form is by reference on a dibble too:
+#' [var_label<-], [val_labels<-], and `attr<-` on `format.stata`, notes, or
+#' characteristics. A vector assigned in is copied on its first write, so
+#' the frame it came from is never reached. Use [copy_data()] for an
+#' independent dataset and [tibble::as_tibble()] for a copy with R's
+#' semantics. On a tibble or data frame that is not a dibble the operators
+#' keep R's copy-on-modify behaviour. A dibble is built with spare capacity
 #' for 256 more columns, so [gen()] appends to its column list in place
 #' and `bind_rows()`, `bind_cols()`, and other consumers that read the
 #' list directly see every column; past that capacity, and on a tibble
@@ -188,8 +201,9 @@ is_dibble <- function(x) {
 #' shape expects; a new column takes `gen()`'s storage rules, including
 #' Stata's `generate` default of `float` for a bare double, and an existing
 #' one is promoted from its storage as [dplyr::mutate()] does, so a
-#' declared `dta_*()` target widens only when the values do not fit. `data[i, y := 1]` is otherwise
-#' `repl(data, y = 1, where = i)` or `gen(data, y = 1, where = i)`.
+#' declared `dta_*()` target widens only when the values do not fit.
+#' `data[i, y := 1]` is otherwise `repl(data, y = 1, where = i)` or
+#' `gen(data, y = 1, where = i)`.
 #'
 #' `j` may carry several assignments: `` `:=`(y = v, z = w) ``, or
 #' `c("y", "z") := list(v, w)` with one value expression per name. Names

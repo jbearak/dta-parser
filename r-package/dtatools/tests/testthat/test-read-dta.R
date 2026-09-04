@@ -754,14 +754,21 @@ test_that("native strings serialize and preserve copy-on-modify semantics", {
     invisible(gc())
     expect_identical(unserialize(encoded), reference)
 
+    # A dibble's replacement operators write by reference, so a second
+    # binding is an alias; `copy_data()` gives an independent dataset,
+    # and the reader's own vectors are never written through.
     original <- read_dta(path)
-    modified <- original
+    alias <- original
+    modified <- copy_data(original)
     modified$make[[1L]] <- "replacement"
     expect_identical(
         as.character(original$make[[1L]]),
         as.character(reference$make[[1L]])
     )
     expect_identical(as.character(modified$make[[1L]]), "replacement")
+    alias$make[[1L]] <- "aliased"
+    expect_identical(as.character(original$make[[1L]]), "aliased")
+    expect_identical(as.character(reference$make[[1L]]), "AMC Concord")
 
     with_missing <- read_dta(path)$make
     expect_false(anyNA(with_missing))

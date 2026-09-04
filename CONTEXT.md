@@ -36,7 +36,7 @@ The table class a dataset operation returns, independently of the column represe
 _Avoid_: Output format, dataset type
 
 **Dibble**:
-A tibble that is a Stata dataset: every numeric and string column carries Stata storage, every dataset operation on it returns a dibble, and it carries dtatools reference state from its creation, so that bracket mutation and group-wise assignment are available on it. Readers return dibbles by default; `gen()` and `replace_values()` accept any data frame and do not require one.
+A tibble that is a Stata dataset: every numeric and string column carries Stata storage, every dataset operation on it returns a dibble, and it carries dtatools reference state from its creation, so that bracket mutation and group-wise assignment are available on it. Everything that writes to a dibble writes by reference, the replacement operators `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, and `row.names<-` included, so a metadata setter such as `var_label(data$x) <- "Age"` reaches every binding of the dataset. Readers return dibbles by default; `gen()` and `replace_values()` accept any data frame and do not require one.
 _Avoid_: Reference tibble, dtatools table
 
 **Generate default**:
