@@ -261,3 +261,35 @@ test_that("codebooks accept DTA and Arrow paths", {
     expect_identical(labelbook(arrow)$tables$table, dta_labelbook$tables$table)
     expect_identical(codebook(arrow, foreign)$variables$variable, "foreign")
 })
+
+test_that("codebook reports declared string storage and a wide declaration", {
+    data <- dibble(
+        fixed = dta_string(c("ab", "cd"), "str20"),
+        snug = dta_string(c("ab", "cd")),
+        long = dta_string(c(strrep("x", 2046L), "y")),
+        bare = c("ab", "cd"),
+        count = dta_byte(c(1, 2))
+    )
+
+    result <- codebook(data)
+    storage <- stats::setNames(
+        result$variables$storage, result$variables$variable
+    )
+    expect_identical(storage[["fixed"]], "str20")
+    expect_identical(storage[["snug"]], "str2")
+    expect_identical(storage[["long"]], "strL")
+    # `dibble()` declares a bare character column, so it reports `str2` too.
+    expect_identical(storage[["bare"]], "str2")
+    expect_identical(storage[["count"]], "byte")
+    expect_identical(
+        codebook(data.frame(plain = c("ab", "cd")))$variables$storage,
+        "character"
+    )
+
+    problems <- codebook(data, problems = TRUE)$diagnostics
+    wide <- problems[problems$code == "string_storage_wider_than_required", ]
+    expect_identical(wide$variable, "fixed")
+    expect_identical(
+        wide$details[[1L]][[1L]], list(declared = "str20", required = 2L)
+    )
+})

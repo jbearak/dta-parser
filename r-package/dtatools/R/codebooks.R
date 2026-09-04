@@ -386,6 +386,11 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
     } else if (numeric) "continuous" else "examples"
     storage <- if (inherits(x, "stata_numeric") || inherits(x, "stata_temporal")) {
         .declared_stata_storage(x)
+    } else if (is.character(x) && !is.null(dta_storage_type(x))) {
+        # Stata's codebook names a string variable's storage `str8` or `strL`,
+        # and a `gen()` string carries the declaration without the
+        # `stata_string` class, so the declaration is the test.
+        dta_storage_type(x)
     } else typeof(x)
     type <- if (is.ordered(x)) "ordered factor" else if (is.factor(x)) "factor" else {
         paste(class(x), collapse = "/")
@@ -473,11 +478,18 @@ codebook <- function(data, ..., .vars = NULL, where = NULL, all = FALSE,
         add("leading_blanks", any(grepl("^\\s", observed)), "Strings contain leading blanks")
         add("trailing_blanks", any(grepl("\\s$", observed)), "Strings contain trailing blanks")
         add("embedded_blanks", any(grepl("\\S\\s+\\S", observed)), "Strings contain embedded blanks")
-        width <- attr(x, "stata.string.storage", exact = TRUE)
+        declared <- attr(x, "stata.string.storage", exact = TRUE)
+        # The declaration is `str8` or `strL`, never a number. Only a fixed
+        # width can be compared with the bytes the values need.
+        width <- if (is.character(declared) && length(declared) == 1L &&
+            !is.na(declared) && grepl("^str[0-9]+$", declared)) {
+            as.integer(sub("^str", "", declared))
+        } else NULL
         needed <- if (length(observed)) max(nchar(enc2utf8(observed), type = "bytes")) else 0L
-        add("string_storage_wider_than_required", is.numeric(width) && width > needed,
+        add("string_storage_wider_than_required",
+            !is.null(width) && width > needed,
             "Declared string storage is wider than required", "suggestion",
-            list(declared = width, required = needed))
+            list(declared = declared, required = needed))
         add("few_unique_strings", length(unique(observed[observed != ""])) <= 9L &&
                 length(unique(observed[observed != ""])) > 0L,
             "String variable has few unique values and may be better represented as labelled numeric data",
