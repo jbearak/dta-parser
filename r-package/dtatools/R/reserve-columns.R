@@ -96,7 +96,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
             value <- if (head == "$") do.call(`$`, list(container, key)) else container[[key]]
         }
         return(list(kind = "extraction", data = value, container = target[[2L]],
-                    key = key, head = head, env = env))
+                    original_container = container, key = key, head = head, env = env))
     }
     if (!head %in% c("get", "get0")) return(NULL)
     fun <- get(head, envir = env, mode = "function")
@@ -145,7 +145,12 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
             warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
         }
     } else if (is.list(target) && identical(target$kind, "extraction")) {
-        container <- eval(target$container, target$env)
+        container <- get0(as.character(target$container), envir = target$env,
+                          inherits = TRUE)
+        if (!.same_mutation_object(container, target$original_container)) {
+            warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
+            return(invisible(result))
+        }
         current <- if (target$head == "$") {
             do.call(`$`, list(container, target$key))
         } else container[[target$key]]

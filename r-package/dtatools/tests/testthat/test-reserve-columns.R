@@ -309,3 +309,39 @@ test_that("literal bracket getters rebind without rerunning their lookup", {
         expect_physical_table(e$a, c("x", "y"))
     }
 })
+
+test_that("replaced extraction containers are never read or overwritten", {
+    withr::local_options(dtatools.alloccol = 0L)
+    for (extraction in c("$", "[[")) {
+        for (replacement in list(42L, list(data = data.frame(z = 3:4)))) {
+            box <- list(data = data.frame(x = 1:2))
+            original <- box$data
+            values <- function() { box <<- replacement; 1L }
+            target <- as.call(list(as.name(extraction), quote(box), "data"))
+            call <- substitute(gen(TARGET, y = values()), list(TARGET = target))
+            warnings <- character()
+            result <- withCallingHandlers(eval(call), warning = function(w) {
+                warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
+            })
+            expect_true(any(grepl("target changed", warnings)))
+            expect_identical(box, replacement)
+            expect_physical_table(original, "x")
+            expect_physical_table(result, c("x", "y"))
+        }
+        # A new container holding the same original table is still a changed
+        # destination. Rebinding must not modify it behind the values' back.
+        box <- list(data = data.frame(x = 1:2))
+        original <- box$data
+        values <- function() { box <<- list(data = original, sibling = 99L); 1L }
+        target <- as.call(list(as.name(extraction), quote(box), "data"))
+        call <- substitute(gen(TARGET, y = values()), list(TARGET = target))
+        warnings <- character()
+        result <- withCallingHandlers(eval(call), warning = function(w) {
+            warnings <<- c(warnings, conditionMessage(w)); invokeRestart("muffleWarning")
+        })
+        expect_true(any(grepl("target changed", warnings)))
+        expect_physical_table(box$data, "x")
+        expect_identical(box$sibling, 99L)
+        expect_physical_table(result, c("x", "y"))
+    }
+})
