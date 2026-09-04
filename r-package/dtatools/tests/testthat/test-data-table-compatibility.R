@@ -299,6 +299,12 @@ test_that("setDT() on a read result drops the stale reference state", {
     save_dta(data.frame(hh1 = dta_long(1:3)), path)
 
     data <- read_dta(path, encoding = "UTF-8")
+    # The regression needs a real dibble going in, or the case below
+    # would pass without ever exercising a stale mark.
+    expect_true(inherits(data, "dtatools_ref_data"))
+    expect_true(is.environment(
+        attr(data, ".dtatools_ref_state", exact = TRUE)
+    ))
     data.table::setDT(data)
 
     # `setDT()` rewrites the class in place and leaves the mark behind,
