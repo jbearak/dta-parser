@@ -30,8 +30,10 @@ allocate. Do not supply both \code{x} and \code{.size}.}
 }
 \value{
 A double vector carrying its declared Stata storage type.
-\code{dta_storage_type()} returns that type as one string, or \code{NULL} for a
-vector without a declared type.
+\code{dta_storage_type()} returns that type as one string: one of the five
+numeric widths for a declared numeric vector, or \code{"str1"} through
+\code{"str2045"} or \code{"strL"} for a declared Stata string. It returns \code{NULL}
+for a vector without a declared type.
 }
 \description{
 The storage-named constructors create numeric vectors whose declared Stata

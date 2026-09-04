@@ -12,6 +12,19 @@ test_that("stata_string infers UTF-8 byte storage and validates declarations", {
     expect_error(dta_string("x", "str0"), "str1.*str2045")
 })
 
+test_that("dta_storage_type reports declared string storage", {
+    expect_identical(dta_storage_type(dta_string(c("a", "bb"))), "str2")
+    expect_identical(
+        dta_storage_type(dta_string(strrep("x", 2046))), "strL"
+    )
+    # A `gen()` string carries the declaration without the `stata_string`
+    # class, so the attribute alone has to be enough.
+    bare <- structure("ab", `stata.string.storage` = "str4")
+    expect_identical(dta_storage_type(bare), "str4")
+    expect_null(dta_storage_type("undeclared"))
+    expect_identical(dta_storage_type(dta_int(1)), "int")
+})
+
 test_that("Stata strings restore metadata through slicing and conversion", {
     x <- dta_string(stats::setNames(c("a", "bb", "c"), letters[1:3]))
     attr(x, "label") <- "Answer"
