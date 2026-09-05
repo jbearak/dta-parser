@@ -65,6 +65,27 @@ test_that("format setters support literal and runtime target forms", {
     expect_identical(set_var_formats(x, .formats = "%9.0g"), changed)
 })
 
+test_that("singular vector formats accept positional or named values without mutation", {
+    for (x in list(1:2, dta_float(1:2), dta_string(c("a", "b")))) {
+        alias <- x
+        positional <- set_var_format(x, "%9.0g")
+        named <- withVisible(set_var_format(x, format = "%9.0g"))
+        expect_true(named$visible)
+        expect_identical(named$value, positional)
+        expect_identical(attr(named$value, "format.stata"), "%9.0g")
+        expect_null(attr(alias, "format.stata"))
+        expect_null(attr(x, "format.stata"))
+        labelled_alias <- named$value
+        expect_null(attr(set_var_format(named$value, format = NULL), "format.stata"))
+        expect_null(attr(set_var_format(named$value, NULL), "format.stata"))
+        expect_identical(attr(labelled_alias, "format.stata"), "%9.0g")
+        expect_error(set_var_format(x), "Supply a vector `format`")
+        expect_error(set_var_format(x, "%9.0g", format = "%8.0g"), "not both")
+        expect_error(set_var_format(x, NULL, format = NULL), "not both")
+        expect_null(attr(alias, "format.stata"))
+    }
+})
+
 test_that("metadata bundles restore downstream runtime column metadata atomically", {
     for (make in metadata_containers()) {
         data <- make(x = 1:2)

@@ -43,16 +43,19 @@
 #'
 #' `set_var_format()` edits one column's `format.stata` metadata.
 #' `set_var_formats()` edits several columns atomically, using named arguments
-#' or a named list in `.formats`. Both return a data frame invisibly and edit
-#' the supplied table by reference, including inside functions, on dibbles,
+#' or a named list in `.formats`. On data frames, both return the table invisibly
+#' and edit it by reference, including inside functions, on dibbles,
 #' tibbles, base data frames, and ordinary data tables. No column values,
 #' storage types, or container classes change. Use [copy_data()] for isolation.
 #'
 #' Target names follow [set_var_label()]: a bare name, a quoted string,
 #' `!!name`, or `.(name)`. The plural form also accepts two positional arguments
 #' `set_var_formats(data, variable, format)` and runtime tags `.(name) := format`.
-#' For a vector, `set_var_format(x, format)` and
+#' For a vector, `set_var_format(x, "%9.0g")`,
+#' `set_var_format(x, format = "%9.0g")`, and
 #' `set_var_formats(x, .formats = format)` return a copy that must be assigned.
+#' Supply exactly one format to the singular vector form; use an explicit
+#' `NULL` to remove it.
 #'
 #' A format is a nonempty string beginning with `%`, with at most 56 UTF-8
 #' bytes. The setter records display metadata; it does not interpret Stata's
@@ -75,10 +78,15 @@
 #' @export
 set_var_format <- function(data, variable, format) {
     if (!is.data.frame(data)) {
-        if (!missing(variable) && missing(format)) {
-            return(set_dta_metadata(data, format.stata = variable))
+        if (missing(variable) && missing(format)) {
+            stop("Supply a vector `format`, or NULL to remove it", call. = FALSE)
         }
-        stop("`data` must be a data frame", call. = FALSE)
+        if (!missing(variable) && !missing(format)) {
+            stop("Supply a vector format in the second argument or `format`, not both",
+                 call. = FALSE)
+        }
+        value <- if (missing(variable)) format else variable
+        return(set_dta_metadata(data, format.stata = value))
     }
     name <- .unquoted_variable_name(rlang::enquo(variable))
     .set_format_updates(data, stats::setNames(list(format), name))

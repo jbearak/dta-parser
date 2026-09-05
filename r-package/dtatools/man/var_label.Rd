@@ -163,9 +163,11 @@ for the label table and retains unrelated classes.
 An imported nondefault or shared Stata table name may be carried separately
 in \code{attr(x, "value.label.name")}. The attribute is a serialization hint, not
 shared semantic state. Each vector's \code{labels} mapping is authoritative in R.
-Setters retain the hint while value labels remain and remove it when all
-value labels are removed. Use \code{\link[=set_dta_metadata]{set_dta_metadata()}} to set the hint and mapping together. This does
-not create a shared table registry.
+Value-label setters retain the hint while value labels remain and remove
+it when the mapping is cleared. Use \code{\link[=set_dta_metadata]{set_dta_metadata()}} to set the hint and
+raw mapping together. That helper preserves an explicitly named zero-length
+mapping and its hint as an empty table; clearing with \code{labels = NULL} removes
+both. This does not create a shared table registry.
 
 See the
 \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}

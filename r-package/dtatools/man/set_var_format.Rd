@@ -27,8 +27,8 @@ The updated object, invisibly for data frames.
 \description{
 \code{set_var_format()} edits one column's \code{format.stata} metadata.
 \code{set_var_formats()} edits several columns atomically, using named arguments
-or a named list in \code{.formats}. Both return a data frame invisibly and edit
-the supplied table by reference, including inside functions, on dibbles,
+or a named list in \code{.formats}. On data frames, both return the table invisibly
+and edit it by reference, including inside functions, on dibbles,
 tibbles, base data frames, and ordinary data tables. No column values,
 storage types, or container classes change. Use \code{\link[=copy_data]{copy_data()}} for isolation.
 }
@@ -36,8 +36,11 @@ storage types, or container classes change. Use \code{\link[=copy_data]{copy_dat
 Target names follow \code{\link[=set_var_label]{set_var_label()}}: a bare name, a quoted string,
 \code{!!name}, or \code{.(name)}. The plural form also accepts two positional arguments
 \code{set_var_formats(data, variable, format)} and runtime tags \code{.(name) := format}.
-For a vector, \code{set_var_format(x, format)} and
+For a vector, \code{set_var_format(x, "\%9.0g")},
+\code{set_var_format(x, format = "\%9.0g")}, and
 \code{set_var_formats(x, .formats = format)} return a copy that must be assigned.
+Supply exactly one format to the singular vector form; use an explicit
+\code{NULL} to remove it.
 
 A format is a nonempty string beginning with \verb{\%}, with at most 56 UTF-8
 bytes. The setter records display metadata; it does not interpret Stata's
