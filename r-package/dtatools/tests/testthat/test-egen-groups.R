@@ -5,7 +5,7 @@ test_that("group IDs sort mixed keys and tags select first eligible rows", {
     expect_identical(as.double(dta_group_tag(g, s)), c(1, 1, 1, 0, 0, 0))
     expect_identical(as.double(dta_group_id(g, s, missing = TRUE)),
                      c(4, 1, 3, 1, 5, 2))
-    expect_s3_class(dta_group_tag(g), "stata_byte")
+    expect_s3_class(dta_group_tag(g), "dta_byte")
     expect_identical(attr(dta_group_id(g, s), "label"), "group(g s)")
     expect_identical(as.double(dta_group_id(list(g = g, s = s))),
                      as.double(dta_group_id(g, s)))
@@ -94,7 +94,7 @@ test_that("autotype uses Stata integer storage thresholds", {
     for (case in list(c(0, "byte"), c(100, "byte"), c(101, "int"),
                       c(32740, "int"), c(32741, "long"))) {
         result <- dta_group_id(seq_len(as.integer(case[1])), autotype = TRUE)
-        expect_s3_class(result, paste0("stata_", case[2]))
+        expect_s3_class(result, paste0("dta_", case[2]))
     }
     expect_identical(dtatools:::.dta_group_storage(2147483620), "long")
     expect_identical(dtatools:::.dta_group_storage(2147483621), "double")

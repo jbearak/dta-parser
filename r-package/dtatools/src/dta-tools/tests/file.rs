@@ -792,7 +792,7 @@ fn pipelined_cancellation_does_not_dispatch_the_ready_block() {
 
 #[test]
 fn file_and_slice_reject_invalid_signatures_identically() {
-    for bytes in [b"xot a dta".as_slice(), b"<stata_dat>".as_slice()] {
+    for bytes in [b"xot a dta".as_slice(), b"<dta_dat>".as_slice()] {
         assert_eq!(
             dta_tools::parse_metadata(bytes),
             Err(DtaError::InvalidSignature)

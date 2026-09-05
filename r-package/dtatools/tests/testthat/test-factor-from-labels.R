@@ -22,7 +22,7 @@ test_that("factor_from_labels has an ordinary factor interface", {
             names = names(actual),
             variable_label = attr(actual, "label", exact = TRUE),
             value_labels = attr(actual, "labels", exact = TRUE),
-            stata_format = attr(actual, "format.stata", exact = TRUE),
+            dta_format = attr(actual, "format.stata", exact = TRUE),
             provenance = attr(actual, "provenance", exact = TRUE),
             classes = class(actual)
         ),
@@ -32,7 +32,7 @@ test_that("factor_from_labels has an ordinary factor interface", {
             names = names(x),
             variable_label = "Response",
             value_labels = NULL,
-            stata_format = NULL,
+            dta_format = NULL,
             provenance = NULL,
             classes = "factor"
         )

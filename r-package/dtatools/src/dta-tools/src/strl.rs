@@ -355,7 +355,7 @@ mod tests {
                 byte_offset: 0,
             }],
             section_offsets: SectionOffsets {
-                stata_data: 0,
+                dta_data: 0,
                 map: 1,
                 variable_types: 2,
                 varnames: 3,
@@ -367,7 +367,7 @@ mod tests {
                 data: 9,
                 strls: 0,
                 value_labels: 0,
-                stata_data_close: 0,
+                dta_data_close: 0,
                 end_of_file: 0,
             },
             obs_length: 8,

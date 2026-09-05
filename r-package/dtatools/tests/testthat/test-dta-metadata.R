@@ -187,7 +187,7 @@ test_that("base and tibble subsetting preserve Stata metadata", {
         cleared <- drop_dta_characteristics(cleared)
         cleared <- drop_dta_notes(cleared, variable = "x")
         cleared <- drop_dta_characteristics(cleared, variable = "x")
-        expect_false(inherits(cleared, "dtatools_stata_metadata"))
+        expect_false(inherits(cleared, "dtatools_dta_metadata"))
     }
 })
 
@@ -233,7 +233,7 @@ test_that("vctrs preserves metadata on supported plain vector types", {
         )
         expect_identical(cast_to_plain, plain, info = kind)
         expect_false(
-            inherits(cast_to_plain, "dtatools_stata_metadata_vector"),
+            inherits(cast_to_plain, "dtatools_dta_metadata_vector"),
             info = kind
         )
         expect_length(dta_notes(cast_to_plain), 0L)
@@ -242,7 +242,7 @@ test_that("vctrs preserves metadata on supported plain vector types", {
 
     ordinary <- vctrs::vec_c("a", "b")
     expect_null(attr(ordinary, "class", exact = TRUE))
-    expect_false(inherits(ordinary, "dtatools_stata_metadata_vector"))
+    expect_false(inherits(ordinary, "dtatools_dta_metadata_vector"))
 })
 
 test_that("dplyr recode treats metadata vector markers as transparent", {
@@ -342,10 +342,10 @@ test_that("Arrow writes labelled numeric vectors with Stata metadata", {
 })
 
 test_that("wide subsets restore only metadata-bearing variables", {
-    original <- dtatools:::.copy_stata_metadata_attributes
+    original <- dtatools:::.copy_dta_metadata_attributes
     calls <- 0L
     testthat::local_mocked_bindings(
-        .copy_stata_metadata_attributes = function(...) {
+        .copy_dta_metadata_attributes = function(...) {
             calls <<- calls + 1L
             original(...)
         },
@@ -362,7 +362,7 @@ test_that("wide subsets restore only metadata-bearing variables", {
         )
         attr(data, "notes") <- "dataset"
         attr(data, "stata.note.numbers") <- 1L
-        data <- dtatools:::.as_stata_metadata_frame(data)
+        data <- dtatools:::.as_dta_metadata_frame(data)
         calls <- 0L
         subset <- data[rev(names(data))]
         work <- c(work, calls)
@@ -378,7 +378,7 @@ test_that("wide subsets restore only metadata-bearing variables", {
     )
     attr(data[[1L]], "stata.characteristics") <- c(role = "first")
     attr(data[[8000L]], "stata.characteristics") <- c(role = "last")
-    data <- dtatools:::.as_stata_metadata_frame(data)
+    data <- dtatools:::.as_dta_metadata_frame(data)
     calls <- 0L
     subset <- data[rev(names(data))]
     expect_identical(calls, 3L)
@@ -454,7 +454,7 @@ test_that("legacy decoded metadata survives R access and Arrow round trips", {
 })
 
 test_that("native metadata envelopes validate counts before allocation", {
-    marker <- paste0(intToUtf8(30L), "dtatools:stata-metadata:1")
+    marker <- paste0(intToUtf8(30L), "dtatools:dta-metadata:1")
     path <- tempfile(fileext = ".dta")
     on.exit(unlink(path), add = TRUE)
     specification <- function(metadata) list("", metadata, list(), "", list())
@@ -491,11 +491,11 @@ test_that("empty write metadata uses one native sentinel at high column counts",
     arrow <- dtatools:::.prepare_arrow_write(data, NULL, TRUE)
     expect_null(dta[[2L]])
     expect_true(all(vapply(dta[[3L]], function(column) {
-        is.null(column[["stata_metadata"]])
+        is.null(column[["dta_metadata"]])
     }, logical(1))))
     expect_null(arrow[[2L]])
     expect_true(all(vapply(arrow[[3L]], function(column) {
-        is.null(column[["stata_metadata"]])
+        is.null(column[["dta_metadata"]])
     }, logical(1))))
 
     paths <- c(

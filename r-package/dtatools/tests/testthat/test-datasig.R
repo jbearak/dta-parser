@@ -114,7 +114,7 @@ test_that("datasig validates its inputs", {
 
     narrow <- c(1, 5e6)
     attr(narrow, "stata.storage") <- "int"
-    class(narrow) <- dtatools:::.stata_storage_class("int")
+    class(narrow) <- dtatools:::.dta_storage_class("int")
     expect_error(
         datasig(tibble::tibble(narrow = narrow)),
         "cannot compute datasig after lossy numeric replacements in `narrow` (1)",

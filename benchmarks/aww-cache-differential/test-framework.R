@@ -260,7 +260,7 @@ if (!is.na(stata)) {
         stata = stata, timeout = 120L, stata_requests = 1000L,
         stata_row_window = 25000L
     )
-    stata_metadata <- list(
+    dta_metadata <- list(
         columns = 12L, formats = rep("%8.0g", 12L), storage = rep("int", 12L)
     )
     stata_item <- list(
@@ -268,11 +268,11 @@ if (!is.na(stata)) {
     )
     stata_info <- aww_stata_info(stata_options, work, dir)
     row_probe <- aww_stata_row_count(
-        stata_item, stata_metadata, stata_options, work, dir, stata_info, 1L
+        stata_item, dta_metadata, stata_options, work, dir, stata_info, 1L
     )
     stopifnot(identical(row_probe$state, "complete"), row_probe$rows == 74)
     result <- aww_adjudicate(
-        disputes, stata_metadata, stata_item, stata_options, work, dir, stata_info
+        disputes, dta_metadata, stata_item, stata_options, work, dir, stata_info
     )
     stopifnot(identical(result$state, "complete"))
     stopifnot(identical(result$ownership, rep("haven-wrong", 4L)))

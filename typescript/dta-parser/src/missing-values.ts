@@ -51,25 +51,25 @@ function bytes_to_double(bytes: number[]): number {
 }
 
 /** System missing (.) as a JS number. */
-export const STATA_MISSING: number =
+export const DTA_MISSING: number =
     bytes_to_double(
         [0x7f, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     );
 
 /** Extended missing .a as a JS number. */
-export const STATA_MISSING_A: number =
+export const DTA_MISSING_A: number =
     bytes_to_double(
         [0x7f, 0xe0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
     );
 
 /** Extended missing .b as a JS number. */
-export const STATA_MISSING_B: number =
+export const DTA_MISSING_B: number =
     bytes_to_double(
         [0x7f, 0xe0, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]
     );
 
 /** Extended missing .z as a JS number. */
-export const STATA_MISSING_Z: number =
+export const DTA_MISSING_Z: number =
     bytes_to_double(
         [0x7f, 0xe0, 0x1a, 0x00, 0x00, 0x00, 0x00, 0x00]
     );

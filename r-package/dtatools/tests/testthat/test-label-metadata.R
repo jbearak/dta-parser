@@ -513,7 +513,7 @@ test_that("value-label setters preserve Date and POSIXct classes", {
 test_that("removing value labels retains unrelated numeric classes", {
     values <- structure(
         c(0, 1),
-        class = c("stata_custom", "vctrs_vctr")
+        class = c("dta_custom", "vctrs_vctr")
     )
 
     labelled <- set_val_labels(values, No = 0, Yes = 1)
@@ -522,8 +522,8 @@ test_that("removing value labels retains unrelated numeric classes", {
     expect_identical(
         list(labelled_class = class(labelled), removed_class = class(removed)),
         list(
-            labelled_class = c("stata_custom", "vctrs_vctr"),
-            removed_class = c("stata_custom", "vctrs_vctr")
+            labelled_class = c("dta_custom", "vctrs_vctr"),
+            removed_class = c("dta_custom", "vctrs_vctr")
         )
     )
 })

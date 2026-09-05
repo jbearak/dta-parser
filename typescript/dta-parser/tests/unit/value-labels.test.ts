@@ -114,7 +114,7 @@ describe('parse_value_labels', () => {
             const bytes = Buffer.concat([section, Buffer.from('</stata_dta>')]);
             const { metadata } = load_fixture('auto_v118.dta');
             metadata.section_offsets.value_labels = 0;
-            metadata.section_offsets.stata_data_close = section.length;
+            metadata.section_offsets.dta_data_close = section.length;
             metadata.section_offsets.end_of_file = bytes.length;
             const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length);
             const labels = parse_value_labels(buffer, metadata).get('invalid_utf8')!;
@@ -125,7 +125,7 @@ describe('parse_value_labels', () => {
         it('rejects a truncated section even when the first table is intact', () => {
             const { buffer, metadata } = load_fixture('auto_v118.dta');
             expect(() => parse_value_labels(
-                buffer.slice(0, metadata.section_offsets.stata_data_close - 1), metadata
+                buffer.slice(0, metadata.section_offsets.dta_data_close - 1), metadata
             )).toThrow();
         });
     });

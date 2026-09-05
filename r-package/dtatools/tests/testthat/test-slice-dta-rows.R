@@ -246,6 +246,18 @@ test_that("slice_dta_rows validates its container and locations", {
         slice_dta_rows(subclass, 1L),
         "ordinary base data frame, tibble, or data.table"
     )
+    expect_error(
+        slice_dta_rows(data.frame(x = 1:3), 4L),
+        "Location 4"
+    )
+    expect_error(
+        slice_dta_rows(data.frame(x = 1:3), "unknown"),
+        "doesn't exist"
+    )
+})
+
+test_that("slice_dta_rows rejects data.table subclasses", {
+    skip_if_not_installed("data.table")
     table_subclass <- data.table::data.table(x = 1:3)
     data.table::setattr(
         table_subclass, "class",
@@ -254,14 +266,6 @@ test_that("slice_dta_rows validates its container and locations", {
     expect_error(
         slice_dta_rows(table_subclass, 1L),
         "ordinary base data frame, tibble, or data.table"
-    )
-    expect_error(
-        slice_dta_rows(data.frame(x = 1:3), 4L),
-        "Location 4"
-    )
-    expect_error(
-        slice_dta_rows(data.frame(x = 1:3), "unknown"),
-        "doesn't exist"
     )
 })
 
@@ -363,7 +367,7 @@ test_that("reorder_dta_rows permutes a physically complete generated table", {
     expect_identical(as.double(vctrs::vec_data(data$tripled)), expected * 3)
 })
 
-test_that("reorder_dta_rows validates its container and permutation", {
+test_that("reorder_dta_rows validates its container", {
     expect_error(
         reorder_dta_rows(1:3, 1:3),
         "base data frame, tibble, or data.table"
@@ -374,6 +378,10 @@ test_that("reorder_dta_rows validates its container and permutation", {
         ),
         "ordinary base data frame"
     )
+})
+
+test_that("reorder_dta_rows validates data.table permutations", {
+    skip_if_not_installed("data.table")
     data <- data.table::data.table(x = 1:3)
     expect_error(
         reorder_dta_rows(data, c(1L, 1L, 2L)),

@@ -151,16 +151,16 @@ test_that("compact reader storage and materialized fallbacks write identically",
 test_that("compact datetimes preserve millisecond integer storage", {
     raw <- c(1, 999, 1001)
     observed <- raw / 1000 - 315619200
-    datetimes <- dtatools:::.construct_stata_numeric(
+    datetimes <- dtatools:::.construct_dta_numeric(
         observed, NULL, "int", temporal = 2L
     )
     prototype <- structure(
         double(),
         format.stata = "%tc",
         tzone = "UTC",
-        class = c("stata_temporal", "stata_datetime", "POSIXct", "POSIXt")
+        class = c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt")
     )
-    datetimes <- dtatools:::.attach_stata_temporal(
+    datetimes <- dtatools:::.attach_dta_temporal(
         datetimes, prototype, "int"
     )
     compact <- structure(
@@ -569,7 +569,7 @@ test_that("empty value-label text from source metadata round-trips", {
     x <- dta_int(c(1201, 1213))
     attr(x, "labels") <- stats::setNames(c(1201, 1213), c("", ""))
     attr(x, "class") <- c(
-        "stata_numeric", "stata_int", "haven_labelled", "vctrs_vctr", "double"
+        "dta_numeric", "dta_int", "haven_labelled", "vctrs_vctr", "double"
     )
     data <- data.frame(x = x)
     path <- tempfile(fileext = ".dta")
@@ -586,7 +586,7 @@ test_that("an attached empty value-label table round-trips", {
     x <- dta_double(c(1, 2))
     attr(x, "labels") <- stats::setNames(double(), character())
     attr(x, "class") <- c(
-        "stata_numeric", "stata_double", "haven_labelled", "vctrs_vctr",
+        "dta_numeric", "dta_double", "haven_labelled", "vctrs_vctr",
         "double"
     )
     path <- tempfile(fileext = ".dta")
@@ -609,7 +609,7 @@ test_that("duplicate value-label keys from source metadata round-trip stably", {
         `Not ascertained` = tagged_missing("a")
     )
     attr(x, "class") <- c(
-        "stata_numeric", "stata_byte", "haven_labelled", "vctrs_vctr", "double"
+        "dta_numeric", "dta_byte", "haven_labelled", "vctrs_vctr", "double"
     )
     path <- tempfile(fileext = ".dta")
     arrow <- tempfile(fileext = ".arrow")
@@ -778,8 +778,8 @@ test_that("Stata reserved variable names are rejected", {
         "long", "in", "if", "strL", "using", "with", "str1", "str2045",
         "str2046"
     )
-    expect_false(any(dtatools:::.valid_stata_names(reserved)))
-    expect_true(all(dtatools:::.valid_stata_names(c(
+    expect_false(any(dtatools:::.valid_dta_names(reserved)))
+    expect_true(all(dtatools:::.valid_dta_names(c(
         "_r_test", "x١", "str0", "str00", "str01", "str02046"
     ))))
     for (name in reserved) {

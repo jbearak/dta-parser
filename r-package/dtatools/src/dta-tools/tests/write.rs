@@ -700,7 +700,7 @@ fn large_value_label_payloads_poll_for_interrupts() {
 }
 
 #[test]
-fn rejects_reserved_stata_variable_names() {
+fn rejects_reserved_dta_variable_names() {
     let values = [DtaWriteNumericValue::Value(1.0)];
     for name in [
         "alias", "_all", "_b", "_coef", "_cons", "_n", "_N", "_pi", "_pred", "_r_b", "_rc",

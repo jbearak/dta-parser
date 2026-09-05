@@ -11,7 +11,7 @@ test_that("storage constructors create declared compact vectors", {
         value <- constructors[[storage]](c(-1, 0, 1, NA_real_))
 
         expect_identical(dta_storage_type(value), storage, info = storage)
-        expect_s3_class(value, paste0("stata_", storage))
+        expect_s3_class(value, paste0("dta_", storage))
         expect_identical(
             as.double(value), c(-1, 0, 1, NA_real_), info = storage
         )
@@ -181,7 +181,7 @@ test_that("Stata temporal vectors use numeric missing identity", {
     path <- fixture_with_temporal_storage("price")
     on.exit(unlink(path), add = TRUE)
     prototype <- read_dta(path)$price
-    values <- dtatools:::.restore_stata_temporal(
+    values <- dtatools:::.restore_dta_temporal(
         c(1, NA_real_, tagged_missing("a")), prototype, "int"
     )
 
@@ -374,7 +374,7 @@ test_that("vctrs restoration distinguishes storage and temporal encoding", {
     date <- read_dta(path)$price
     date_proxy <- vctrs::vec_proxy(date)
 
-    expect_false(dtatools:::.compact_stata_storage_matches(
+    expect_false(dtatools:::.compact_dta_storage_matches(
         date_proxy, "int"
     ))
     plain <- vctrs::vec_restore(date_proxy, dta_int())
@@ -382,8 +382,8 @@ test_that("vctrs restoration distinguishes storage and temporal encoding", {
     expect_identical(as.double(plain), as.double(date))
 
     plain_proxy <- vctrs::vec_proxy(dta_int(c(0, 1, 2)))
-    expect_false(dtatools:::.compact_stata_storage_matches(
-        plain_proxy, "int", dtatools:::.stata_temporal_date
+    expect_false(dtatools:::.compact_dta_storage_matches(
+        plain_proxy, "int", dtatools:::.dta_temporal_date
     ))
     restored_date <- vctrs::vec_restore(plain_proxy, date[0])
     expect_true(
@@ -636,7 +636,7 @@ test_that("assignment and vctrs recodes re-encode compact storage", {
     replaced <- replace(values, 1, 20)
     # A typed literal keeps the declared storage; a bare double would
     # widen the result to `double` by the mapping in
-    # `?stata-storage-defaults`.
+    # `?dta-storage-defaults`.
     conditional <- dplyr::if_else(
         c(TRUE, FALSE, FALSE, FALSE), dta_byte(30), values
     )
@@ -800,7 +800,7 @@ test_that("value labels compose with declared storage classes", {
 
     values <- set_val_labels(values)
     expect_false(inherits(values, "haven_labelled"))
-    expect_s3_class(values, "stata_numeric")
+    expect_s3_class(values, "dta_numeric")
     expect_identical(dta_storage_type(values), "byte")
 })
 

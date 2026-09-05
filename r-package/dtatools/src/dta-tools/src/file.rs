@@ -9,15 +9,15 @@ use std::thread;
 
 use encoding_rs::CoderResult;
 
-use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
-use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
-use crate::metadata::{field_widths, resolve_type};
-use crate::selection::{resolve_columns, row_window};
-use crate::stata_metadata::{
+use crate::dta_metadata::{
     validate_raw_value_bytes, validate_raw_value_length, CharacteristicPlan,
     CharacteristicValueUse, DecodedCharacteristics, VariableTargetIndexes,
     MAX_METADATA_VALUE_BYTES,
 };
+use crate::endian::{read_i16, read_i32, read_i8, read_u16, read_u32, read_u64};
+use crate::legacy::{legacy_fixed_offsets, legacy_type, LegacyLayout, LegacyValueLabelLayout};
+use crate::metadata::{field_widths, resolve_type};
+use crate::selection::{resolve_columns, row_window};
 use crate::text::{field_bytes, is_utf8_boundary, TextDecoder, TextEncoding};
 use crate::value_labels::{frame_offset_value_label_payload, has_legacy_offset_table_framing};
 use crate::{
@@ -4341,11 +4341,11 @@ fn read_modern_header_map<R: Read + Seek>(
     }
     cursor = expect_file_tag(reader, cursor, b"</map>", "</map>", scratch)?;
     let section_offsets = SectionOffsets::from_array(map_values);
-    if section_offsets.stata_data != 0 {
+    if section_offsets.dta_data != 0 {
         return Err(DtaError::MapOffsetMismatch {
-            section: "stata_data",
+            section: "dta_data",
             expected: 0,
-            actual: section_offsets.stata_data,
+            actual: section_offsets.dta_data,
         });
     }
     ensure_absolute("map", section_offsets.map, map_start)?;
@@ -4389,14 +4389,14 @@ fn read_modern_schema_core<R: Read + Seek>(
     let header = read_modern_header_map(reader, scratch)?;
     let encoding = encoding.resolve(header.format_version);
     if header.section_offsets.end_of_file > file_length
-        && file_length >= header.section_offsets.stata_data_close
+        && file_length >= header.section_offsets.dta_data_close
     {
         return Err(DtaError::Truncated {
             context: "</stata_dta>",
-            offset: error_offset(header.section_offsets.stata_data_close),
+            offset: error_offset(header.section_offsets.dta_data_close),
             needed: 12,
             available: usize::try_from(
-                file_length.saturating_sub(header.section_offsets.stata_data_close),
+                file_length.saturating_sub(header.section_offsets.dta_data_close),
             )
             .unwrap_or(usize::MAX),
         });
@@ -4867,7 +4867,7 @@ fn read_legacy_metadata<R: Read + Seek>(
         characteristics,
         variables,
         section_offsets: SectionOffsets {
-            stata_data: 0,
+            dta_data: 0,
             map: 0,
             variable_types,
             varnames,
@@ -4879,7 +4879,7 @@ fn read_legacy_metadata<R: Read + Seek>(
             data: cursor,
             strls: value_labels,
             value_labels,
-            stata_data_close: file_length,
+            dta_data_close: file_length,
             end_of_file: file_length,
         },
         obs_length,
@@ -5699,7 +5699,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
             .map_err(|_| DtaError::ArithmeticOverflow("value-label table name width"))?
     };
     let section_end = if modern {
-        metadata.section_offsets.stata_data_close
+        metadata.section_offsets.dta_data_close
     } else {
         metadata.section_offsets.end_of_file
     };
@@ -5995,7 +5995,7 @@ fn read_offset_value_labels_streaming<R: Read + Seek, F: FnMut() -> bool>(
         if !section_scan {
             "value-label table"
         } else if modern {
-            "stata_data_close"
+            "dta_data_close"
         } else {
             "end_of_file"
         },
@@ -6916,7 +6916,7 @@ mod tests {
     }
 
     fn unterminated_characteristic_record(width: usize, byte_order: ByteOrder) -> Vec<u8> {
-        let value_length = crate::stata_metadata::MAX_METADATA_VALUE_BYTES + 2;
+        let value_length = crate::dta_metadata::MAX_METADATA_VALUE_BYTES + 2;
         let payload_length = width * 2 + value_length;
         let mut bytes = b"<characteristics><ch>".to_vec();
         let length = u32::try_from(payload_length).expect("test payload fits u32");

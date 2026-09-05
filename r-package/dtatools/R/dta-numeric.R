@@ -31,7 +31,7 @@
 #' storage type and combines compatible metadata. This supports base
 #' data-frame reconstruction such as right and full [merge()] calls.
 #' Extending with a bare R vector uses the common storage with that vector's
-#' own Stata storage from [stata-storage-defaults]: `long` for an integer,
+#' own Stata storage from [dta-storage-defaults]: `long` for an integer,
 #' `double` for a double, and the declared storage for a logical, so
 #' `vec_c(dta_byte(1), 1000L)` is a `long` rather than an error.
 #' Stata-backed `Date` and `POSIXct` vectors use the same extension rule when
@@ -83,67 +83,67 @@
 #' try(dta_byte(NaN))
 #' @export
 dta_byte <- function(x = NULL, .size = NULL) {
-    .construct_stata_numeric(x, .size, "byte")
+    .construct_dta_numeric(x, .size, "byte")
 }
 
 #' @rdname dta_byte
 #' @export
 dta_int <- function(x = NULL, .size = NULL) {
-    .construct_stata_numeric(x, .size, "int")
+    .construct_dta_numeric(x, .size, "int")
 }
 
 #' @rdname dta_byte
 #' @export
 dta_long <- function(x = NULL, .size = NULL) {
-    .construct_stata_numeric(x, .size, "long")
+    .construct_dta_numeric(x, .size, "long")
 }
 
 #' @rdname dta_byte
 #' @export
 dta_float <- function(x = NULL, .size = NULL) {
-    .construct_stata_numeric(x, .size, "float")
+    .construct_dta_numeric(x, .size, "float")
 }
 
 #' @rdname dta_byte
 #' @export
 dta_double <- function(x = NULL, .size = NULL) {
-    .construct_stata_numeric(x, .size, "double")
+    .construct_dta_numeric(x, .size, "double")
 }
 
 #' @rdname dta_byte
 #' @export
 dta_storage_type <- function(x) {
-    storage <- .declared_stata_storage(x)
+    storage <- .declared_dta_storage(x)
     if (!is.null(storage)) return(storage)
     attr(x, "stata.string.storage", exact = TRUE)
 }
 
 # The numeric declaration alone. Internal callers dispatch on the five Stata
 # numeric widths, so they must not see a `str#` or `strL` string declaration.
-.declared_stata_storage <- function(x) {
+.declared_dta_storage <- function(x) {
     attr(x, "stata.storage", exact = TRUE)
 }
 
-.stata_storage <- c("byte", "int", "long", "float", "double")
+.dta_storage <- c("byte", "int", "long", "float", "double")
 
-.stata_temporal_none <- 0L
-.stata_temporal_date <- 1L
-.stata_temporal_datetime <- 2L
+.dta_temporal_none <- 0L
+.dta_temporal_date <- 1L
+.dta_temporal_datetime <- 2L
 
-.stata_storage_class <- function(storage) {
-    c("stata_numeric", paste0("stata_", storage), "vctrs_vctr", "double")
+.dta_storage_class <- function(storage) {
+    c("dta_numeric", paste0("dta_", storage), "vctrs_vctr", "double")
 }
 
-.compact_stata_storage_matches <- function(
-    value, storage, temporal = .stata_temporal_none
+.compact_dta_storage_matches <- function(
+    value, storage, temporal = .dta_temporal_none
 ) {
     .Call(
         C_dtatools_numeric_storage_matches,
-        value, match(storage, .stata_storage) - 1L, temporal
+        value, match(storage, .dta_storage) - 1L, temporal
     )
 }
 
-.normalize_stata_size <- function(size) {
+.normalize_dta_size <- function(size) {
     if (!is.numeric(size) || length(size) != 1L || is.na(size) ||
         !is.finite(size) || size < 0 || size != floor(size) ||
         size > .Machine$integer.max) {
@@ -152,14 +152,14 @@ dta_storage_type <- function(x) {
     as.integer(size)
 }
 
-.construct_stata_numeric <- function(
-    x, .size, storage, temporal = .stata_temporal_none
+.construct_dta_numeric <- function(
+    x, .size, storage, temporal = .dta_temporal_none
 ) {
     if (!is.null(x) && !is.null(.size)) {
         stop("Supply `x` or `.size`, not both", call. = FALSE)
     }
     if (!is.null(.size)) {
-        x <- rep(NA_real_, .normalize_stata_size(.size))
+        x <- rep(NA_real_, .normalize_dta_size(.size))
     } else if (is.null(x)) {
         x <- double()
     }
@@ -171,29 +171,29 @@ dta_storage_type <- function(x) {
     value_names <- names(x)
     values <- as.double(x)
     if (!identical(storage, "double") &&
-        identical(temporal, .stata_temporal_none)) {
+        identical(temporal, .dta_temporal_none)) {
         result <- .Call(
             C_dtatools_construct_numeric,
             values,
-            match(storage, .stata_storage) - 1L,
+            match(storage, .dta_storage) - 1L,
             temporal
         )
         attr(result, "stata.storage") <- storage
-        attr(result, "class") <- .stata_storage_class(storage)
+        attr(result, "class") <- .dta_storage_class(storage)
         names(result) <- value_names
         return(result)
     }
     missing_codes <- .tab_missing_codes(values)
-    stata_missing <- !is.na(missing_codes) &
+    dta_missing <- !is.na(missing_codes) &
         (missing_codes == 0L |
          (missing_codes >= utf8ToInt("a") &
           missing_codes <= utf8ToInt("z")))
-    invalid_missing <- !is.na(missing_codes) & !stata_missing
+    invalid_missing <- !is.na(missing_codes) & !dta_missing
     observed <- is.na(missing_codes)
-    encoded <- .encode_stata_temporal(values, observed, temporal)
-    invalid_observed <- .invalid_stata_observed(encoded, observed, storage)
+    encoded <- .encode_dta_temporal(values, observed, temporal)
+    invalid_observed <- .invalid_dta_observed(encoded, observed, storage)
     if (any(invalid_missing | invalid_observed)) {
-        .stop_unrepresentable_stata(
+        .stop_unrepresentable_dta(
             encoded, observed, storage, any(invalid_missing)
         )
     }
@@ -204,21 +204,21 @@ dta_storage_type <- function(x) {
         .Call(
             C_dtatools_construct_numeric,
             encoded,
-            match(storage, .stata_storage) - 1L,
+            match(storage, .dta_storage) - 1L,
             temporal
         )
     }
     attr(result, "stata.storage") <- storage
-    attr(result, "class") <- .stata_storage_class(storage)
+    attr(result, "class") <- .dta_storage_class(storage)
     names(result) <- value_names
     result
 }
 
-# `.stata_computed()` has already classified missing payloads and
+# `.dta_computed()` has already classified missing payloads and
 # proved that every observed encoded value fits the chosen storage.
-.construct_stata_numeric_trusted <- function(
+.construct_dta_numeric_trusted <- function(
     values, encoded, missing_codes, storage,
-    temporal = .stata_temporal_none
+    temporal = .dta_temporal_none
 ) {
     result <- if (identical(storage, "double")) {
         values
@@ -226,23 +226,23 @@ dta_storage_type <- function(x) {
         .Call(
             C_dtatools_construct_numeric_trusted,
             encoded, missing_codes,
-            match(storage, .stata_storage) - 1L,
+            match(storage, .dta_storage) - 1L,
             temporal
         )
     }
     attr(result, "stata.storage") <- storage
-    attr(result, "class") <- .stata_storage_class(storage)
+    attr(result, "class") <- .dta_storage_class(storage)
     names(result) <- names(values)
     result
 }
 
-.encode_stata_temporal <- function(values, observed, temporal) {
-    if (identical(temporal, .stata_temporal_none)) return(values)
+.encode_dta_temporal <- function(values, observed, temporal) {
+    if (identical(temporal, .dta_temporal_none)) return(values)
 
     encoded <- values
-    if (identical(temporal, .stata_temporal_date)) {
+    if (identical(temporal, .dta_temporal_date)) {
         encoded[observed] <- encoded[observed] + 3653
-    } else if (identical(temporal, .stata_temporal_datetime)) {
+    } else if (identical(temporal, .dta_temporal_datetime)) {
         source_values <- (encoded[observed] + 315619200) * 1000
         rounded <- round(source_values)
         decoded <- rounded / 1000 - 315619200
@@ -256,7 +256,7 @@ dta_storage_type <- function(x) {
     encoded
 }
 
-.invalid_stata_observed <- function(values, observed, storage) {
+.invalid_dta_observed <- function(values, observed, storage) {
     invalid <- rep(FALSE, length(values))
     if (!any(observed)) return(invalid)
     candidate <- values[observed]
@@ -268,7 +268,7 @@ dta_storage_type <- function(x) {
         long = is.finite(candidate) & candidate == floor(candidate) &
             candidate >= -2147483647 & candidate <= 2147483620,
         float = is.finite(candidate) &
-            abs(candidate) <= .stata_float_max,
+            abs(candidate) <= .dta_float_max,
         double = is.finite(candidate) &
             abs(candidate) <= .Machine$double.xmax / 2
     )
@@ -276,9 +276,9 @@ dta_storage_type <- function(x) {
     invalid
 }
 
-.stata_float_max <- 2^126 * (2 - 2^-23)
+.dta_float_max <- 2^126 * (2 - 2^-23)
 
-.stop_unrepresentable_stata <- function(
+.stop_unrepresentable_dta <- function(
     values, observed, storage, invalid_missing = FALSE
 ) {
     candidates <- values[observed]
@@ -295,8 +295,8 @@ dta_storage_type <- function(x) {
     recommendation <- switch(storage,
         byte = .wider_from_byte(candidates),
         int = .wider_from_int(candidates),
-        long = if (.fits_stata_double(candidates)) "double" else NULL,
-        float = if (.fits_stata_double(candidates)) "double" else NULL,
+        long = if (.fits_dta_double(candidates)) "double" else NULL,
+        float = if (.fits_dta_double(candidates)) "double" else NULL,
         double = NULL
     )
     if (is.null(recommendation)) {
@@ -320,10 +320,10 @@ dta_storage_type <- function(x) {
             values >= -2147483647 & values <= 2147483620)) {
         return("long")
     }
-    if (all(is.finite(values) & abs(values) <= .stata_float_max)) {
+    if (all(is.finite(values) & abs(values) <= .dta_float_max)) {
         return("float")
     }
-    if (.fits_stata_double(values)) "double" else NULL
+    if (.fits_dta_double(values)) "double" else NULL
 }
 
 .wider_from_int <- function(values) {
@@ -331,40 +331,40 @@ dta_storage_type <- function(x) {
             values >= -2147483647 & values <= 2147483620)) {
         return("long")
     }
-    if (all(is.finite(values) & abs(values) <= .stata_float_max)) {
+    if (all(is.finite(values) & abs(values) <= .dta_float_max)) {
         return("float")
     }
-    if (.fits_stata_double(values)) "double" else NULL
+    if (.fits_dta_double(values)) "double" else NULL
 }
 
-.fits_stata_double <- function(values) {
+.fits_dta_double <- function(values) {
     all(is.finite(values) & abs(values) <= .Machine$double.xmax / 2)
 }
 
 #' @export
-as.double.stata_numeric <- function(x, ...) {
-    as.double(.stata_snapshot(x))
+as.double.dta_numeric <- function(x, ...) {
+    as.double(.dta_snapshot(x))
 }
 
 #' @export
-as.character.stata_numeric <- function(x, ...) {
-    as.character(.stata_snapshot(x), ...)
+as.character.dta_numeric <- function(x, ...) {
+    as.character(.dta_snapshot(x), ...)
 }
 
 # Integer and logical views of a Stata numeric: Stata missing codes become
 # `NA`, as `as.double()` makes them. `long` is the storage of every bare
 # R integer in a dibble, so `as.integer()` is the way back.
 #' @export
-as.integer.stata_numeric <- function(x, ...) {
-    as.integer(.stata_snapshot(x), ...)
+as.integer.dta_numeric <- function(x, ...) {
+    as.integer(.dta_snapshot(x), ...)
 }
 
 #' @export
-as.logical.stata_numeric <- function(x, ...) {
-    as.logical(.stata_snapshot(x), ...)
+as.logical.dta_numeric <- function(x, ...) {
+    as.logical(.dta_snapshot(x), ...)
 }
 
-.stata_data <- function(x) {
+.dta_data <- function(x) {
     value_names <- names(x)
     value <- .metadata_view(x)
     attributes(value) <- NULL
@@ -372,7 +372,7 @@ as.logical.stata_numeric <- function(x, ...) {
     value
 }
 
-.stata_snapshot <- function(x) {
+.dta_snapshot <- function(x) {
     value_names <- names(x)
     value <- .metadata_copy(x)
     attributes(value) <- NULL
@@ -380,7 +380,7 @@ as.logical.stata_numeric <- function(x, ...) {
     value
 }
 
-.stata_promote <- function(left, right) {
+.dta_promote <- function(left, right) {
     if (identical(left, right)) return(left)
     pair <- sort(c(left, right))
     key <- paste(pair, collapse = ":")
@@ -399,33 +399,33 @@ as.logical.stata_numeric <- function(x, ...) {
     )
 }
 
-.stata_classes_from <- function(prototype, storage) {
+.dta_classes_from <- function(prototype, storage) {
     classes <- class(prototype)
-    storage_classes <- paste0("stata_", .stata_storage)
+    storage_classes <- paste0("dta_", .dta_storage)
     location <- classes %in% storage_classes
     if (any(location)) {
-        classes[location] <- paste0("stata_", storage)
+        classes[location] <- paste0("dta_", storage)
         return(classes)
     }
-    .stata_storage_class(storage)
+    .dta_storage_class(storage)
 }
 
-.replace_stata_attributes <- function(value, desired) {
+.replace_dta_attributes <- function(value, desired) {
     value <- .metadata_copy(value)
     for (name in names(attributes(value))) attr(value, name) <- NULL
     for (name in names(desired)) attr(value, name) <- desired[[name]]
     value
 }
 
-.stata_variable_attribute_names <- c(
+.dta_variable_attribute_names <- c(
     "stata.storage", "stata.string.storage", "format.stata", "label",
     "labels", "value.label.name", "notes", "stata.note.numbers",
     "stata.characteristics", "tzone", "units"
 )
 
-.restore_stata_variable_metadata <- function(value, prototype, names = names(value)) {
+.restore_dta_variable_metadata <- function(value, prototype, names = names(value)) {
     source <- attributes(prototype)
-    known <- c("names", "class", .stata_variable_attribute_names)
+    known <- c("names", "class", .dta_variable_attribute_names)
     unknown <- setdiff(names(source), known)
     if (length(unknown)) {
         warning(sprintf(
@@ -434,20 +434,20 @@ as.logical.stata_numeric <- function(x, ...) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
-    for (name in intersect(names(source), .stata_variable_attribute_names)) {
+    for (name in intersect(names(source), .dta_variable_attribute_names)) {
         attr(value, name) <- source[[name]]
     }
     if (!is.null(names)) base::names(value) <- names
     value
 }
 
-.stata_attribute_plan <- function(
+.dta_attribute_plan <- function(
     prototype, storage, result_names = NULL,
-    temporal = inherits(prototype, "stata_temporal"), labelled = FALSE
+    temporal = inherits(prototype, "dta_temporal"), labelled = FALSE
 ) {
     source <- attributes(prototype)
     unknown <- setdiff(
-        names(source), c("names", "class", .stata_variable_attribute_names)
+        names(source), c("names", "class", .dta_variable_attribute_names)
     )
     if (length(unknown)) {
         warning(sprintf(
@@ -456,12 +456,12 @@ as.logical.stata_numeric <- function(x, ...) {
             paste(unknown, collapse = ", ")
         ), call. = FALSE)
     }
-    desired <- source[intersect(names(source), .stata_variable_attribute_names)]
+    desired <- source[intersect(names(source), .dta_variable_attribute_names)]
     desired$stata.storage <- storage
     classes <- if (temporal) {
         class(prototype)
     } else {
-        .stata_classes_from(prototype, storage)
+        .dta_classes_from(prototype, storage)
     }
     if (labelled && !temporal && !is.null(desired$labels) &&
         !"haven_labelled" %in% classes) {
@@ -473,8 +473,8 @@ as.logical.stata_numeric <- function(x, ...) {
     desired
 }
 
-.restore_stata_metadata <- function(value, prototype, storage) {
-    desired <- .stata_attribute_plan(
+.restore_dta_metadata <- function(value, prototype, storage) {
+    desired <- .dta_attribute_plan(
         prototype, storage, result_names = names(value), temporal = FALSE
     )
     plain_attributes <- desired
@@ -482,22 +482,22 @@ as.logical.stata_numeric <- function(x, ...) {
     plain_attributes$class <- NULL
     plain_attributes$stata.storage <- NULL
     if (length(plain_attributes) == 0L &&
-        identical(.declared_stata_storage(value), storage) &&
+        identical(.declared_dta_storage(value), storage) &&
         identical(class(value), desired$class)) {
         return(value)
     }
-    .replace_stata_attributes(value, desired)
+    .replace_dta_attributes(value, desired)
 }
 
-.stata_ptype <- function(storage, prototype) {
-    .restore_stata_metadata(
-        .construct_stata_numeric(double(), NULL, storage),
+.dta_ptype <- function(storage, prototype) {
+    .restore_dta_metadata(
+        .construct_dta_numeric(double(), NULL, storage),
         prototype,
         storage
     )
 }
 
-.stata_value_label_keys <- function(labels) {
+.dta_value_label_keys <- function(labels) {
     if (is.null(labels)) return(character())
 
     missing_codes <- .tab_missing_codes(labels)
@@ -510,14 +510,14 @@ as.logical.stata_numeric <- function(x, ...) {
     keys
 }
 
-.stata_combine_value_labels <- function(
+.dta_combine_value_labels <- function(
     x_labels, y_labels, x_arg = "", y_arg = ""
 ) {
     if (is.null(x_labels)) return(y_labels)
     if (is.null(y_labels)) return(x_labels)
 
-    x_keys <- .stata_value_label_keys(x_labels)
-    y_keys <- .stata_value_label_keys(y_labels)
+    x_keys <- .dta_value_label_keys(x_labels)
+    y_keys <- .dta_value_label_keys(y_labels)
     shared <- match(y_keys, x_keys, nomatch = 0L)
     conflicts <- shared > 0L &
         names(y_labels) != names(x_labels)[pmax(shared, 1L)]
@@ -535,10 +535,10 @@ as.logical.stata_numeric <- function(x, ...) {
     c(x_labels, y_labels[shared == 0L])
 }
 
-.reconcile_stata_metadata <- function(
+.reconcile_dta_metadata <- function(
     result, x, y, x_arg = "", y_arg = ""
 ) {
-    labels <- .stata_combine_value_labels(
+    labels <- .dta_combine_value_labels(
         attr(x, "labels", exact = TRUE),
         attr(y, "labels", exact = TRUE),
         x_arg,
@@ -554,7 +554,7 @@ as.logical.stata_numeric <- function(x, ...) {
     }
 
     result <- .metadata_copy(result)
-    result <- .reconcile_stata_metadata_attributes(result, x, y)
+    result <- .reconcile_dta_metadata_attributes(result, x, y)
     attr(result, "labels") <- labels
     attr(result, "label") <- variable_label
     attr(result, "value.label.name") <- if (is.null(labels)) {
@@ -565,11 +565,11 @@ as.logical.stata_numeric <- function(x, ...) {
     .apply_haven_labelled_class(result, !is.null(labels))
 }
 
-.stata_common_ptype <- function(
+.dta_common_ptype <- function(
     x, y, storage, prototype, x_arg = "", y_arg = ""
 ) {
-    .reconcile_stata_metadata(
-        .stata_ptype(storage, prototype),
+    .reconcile_dta_metadata(
+        .dta_ptype(storage, prototype),
         x,
         y,
         x_arg,
@@ -578,15 +578,15 @@ as.logical.stata_numeric <- function(x, ...) {
 }
 
 #' @export
-vec_proxy.stata_numeric <- function(x, ...) {
-    .stata_snapshot(x)
+vec_proxy.dta_numeric <- function(x, ...) {
+    .dta_snapshot(x)
 }
 
-.stata_identity_parts <- function(x, operation = "operation") {
-    values <- if (inherits(x, "stata_temporal")) {
-        as.double(.base_stata_temporal(x))
-    } else if (inherits(x, "stata_numeric")) {
-        as.double(.stata_snapshot(x))
+.dta_identity_parts <- function(x, operation = "operation") {
+    values <- if (inherits(x, "dta_temporal")) {
+        as.double(.base_dta_temporal(x))
+    } else if (inherits(x, "dta_numeric")) {
+        as.double(.dta_snapshot(x))
     } else {
         as.double(x)
     }
@@ -619,24 +619,24 @@ vec_proxy.stata_numeric <- function(x, ...) {
     list(rank = rank, value = values)
 }
 
-.stata_identity_proxy <- function(x, operation) {
-    parts <- .stata_identity_parts(x, operation)
+.dta_identity_proxy <- function(x, operation) {
+    parts <- .dta_identity_parts(x, operation)
     data.frame(rank = parts$rank, value = parts$value)
 }
 
 #' @export
-vec_proxy_equal.stata_numeric <- function(x, ...) {
-    .stata_identity_proxy(x, "vctrs equality")
+vec_proxy_equal.dta_numeric <- function(x, ...) {
+    .dta_identity_proxy(x, "vctrs equality")
 }
 
 #' @export
-vec_proxy_order.stata_numeric <- function(x, ...) {
-    .stata_identity_proxy(x, "vctrs ordering")
+vec_proxy_order.dta_numeric <- function(x, ...) {
+    .dta_identity_proxy(x, "vctrs ordering")
 }
 
-.stata_compare <- function(op, x, y) {
-    if (inherits(x, "stata_temporal") && inherits(y, "stata_temporal") &&
-        !identical(.stata_temporal_kind(x), .stata_temporal_kind(y))) {
+.dta_compare <- function(op, x, y) {
+    if (inherits(x, "dta_temporal") && inherits(y, "dta_temporal") &&
+        !identical(.dta_temporal_kind(x), .dta_temporal_kind(y))) {
         vctrs::stop_incompatible_type(x, y)
     }
     if (length(x) == 0L || length(y) == 0L) return(logical())
@@ -646,13 +646,13 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
         # materialized recycle of compatible inputs on the fast path.
         vctrs::vec_recycle(if (length(x) == size) y else x, size)
     }
-    native <- .stata_compare_native(op, x, y)
+    native <- .dta_compare_native(op, x, y)
     if (!is.null(native)) return(native)
     # Identity parts zero the payload of every missing entry, so one
     # lexicographic (rank, value) comparison covers finite values and
     # missing codes together; length-one operands broadcast for free.
-    left <- .stata_identity_parts(x, op)
-    right <- .stata_identity_parts(y, op)
+    left <- .dta_identity_parts(x, op)
+    right <- .dta_identity_parts(y, op)
     equal <- left$rank == right$rank & left$value == right$value
     switch(op,
         "==" = equal,
@@ -669,7 +669,7 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
     )
 }
 
-.stata_compare_native <- function(op, x, y) {
+.dta_compare_native <- function(op, x, y) {
     # Native kernel over compact Stata storage: compares raw bytes in
     # parallel without materializing either operand into doubles. Every
     # unsupported shape returns NULL so the materializing fallback keeps
@@ -685,35 +685,35 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
     }
     threads <- as.integer(threads)
     if (length(y) == 1L) {
-        scalar <- .stata_compare_scalar(y)
+        scalar <- .dta_compare_scalar(y)
         if (!is.null(scalar)) {
             native <- .Call(
-                C_dtatools_stata_compare, op_code, x, NULL, scalar, threads
+                C_dtatools_dta_compare, op_code, x, NULL, scalar, threads
             )
             if (!is.null(native)) return(native)
         }
     }
     if (length(x) == 1L) {
-        scalar <- .stata_compare_scalar(x)
+        scalar <- .dta_compare_scalar(x)
         if (!is.null(scalar)) {
             # Flip the operator so the compact vector stays on the left.
             flipped <- c(0L, 1L, 4L, 5L, 2L, 3L)[[op_code + 1L]]
             native <- .Call(
-                C_dtatools_stata_compare, flipped, y, NULL, scalar, threads
+                C_dtatools_dta_compare, flipped, y, NULL, scalar, threads
             )
             if (!is.null(native)) return(native)
         }
     }
     if (length(x) == length(y)) {
         native <- .Call(
-            C_dtatools_stata_compare, op_code, x, y, NULL, threads
+            C_dtatools_dta_compare, op_code, x, y, NULL, threads
         )
         if (!is.null(native)) return(native)
     }
     NULL
 }
 
-.stata_compare_scalar <- function(value) {
+.dta_compare_scalar <- function(value) {
     # Decode a length-one operand to the kernel's (value, rank) pair,
     # where rank 0 is finite, 1 is `.`, and 2 through 27 are `.a`-`.z`.
     # NULL means the scalar is outside the kernel's domain (character
@@ -736,22 +736,22 @@ vec_proxy_order.stata_numeric <- function(x, ...) {
 }
 
 #' @export
-Ops.stata_numeric <- function(e1, e2) {
+Ops.dta_numeric <- function(e1, e2) {
     if (!.Generic %in% c("==", "!=", "<", "<=", ">", ">=")) {
         return(NextMethod())
     }
-    .stata_compare(.Generic, e1, e2)
+    .dta_compare(.Generic, e1, e2)
 }
 
-.stata_order_locations <- function(x, decreasing = FALSE, method = "auto") {
-    parts <- .stata_identity_parts(x, "order")
+.dta_order_locations <- function(x, decreasing = FALSE, method = "auto") {
+    parts <- .dta_identity_parts(x, "order")
     method <- match.arg(method, c("auto", "shell", "radix"))
     order(parts$rank, parts$value, decreasing = decreasing, method = method)
 }
 
 #' @export
-xtfrm.stata_numeric <- function(x) {
-    parts <- .stata_identity_parts(x, "order")
+xtfrm.dta_numeric <- function(x) {
+    parts <- .dta_identity_parts(x, "order")
     if (length(x) == 0L) return(double())
     locations <- order(parts$rank, parts$value, method = "radix")
     ordered_rank <- parts$rank[locations]
@@ -768,7 +768,7 @@ xtfrm.stata_numeric <- function(x) {
 }
 
 #' @export
-sort.stata_numeric <- function(
+sort.dta_numeric <- function(
     x, decreasing = FALSE, na.last = NA, ..., partial = NULL,
     method = "auto"
 ) {
@@ -784,13 +784,13 @@ sort.stata_numeric <- function(
             call. = FALSE
         )
     }
-    x[.stata_order_locations(
+    x[.dta_order_locations(
         x, decreasing = decreasing, method = method
     )]
 }
 
 #' @export
-duplicated.stata_numeric <- function(
+duplicated.dta_numeric <- function(
     x, incomparables = FALSE, fromLast = FALSE, nmax = NA, ...
 ) {
     key <- .dta_identity_key(x, "numeric", "x")
@@ -809,7 +809,7 @@ duplicated.stata_numeric <- function(
 }
 
 #' @export
-anyDuplicated.stata_numeric <- function(x, incomparables = FALSE, ...) {
+anyDuplicated.dta_numeric <- function(x, incomparables = FALSE, ...) {
     key <- .dta_identity_key(x, "numeric", "x")
     incomparable_key <- if (identical(incomparables, FALSE)) {
         FALSE
@@ -820,7 +820,7 @@ anyDuplicated.stata_numeric <- function(x, incomparables = FALSE, ...) {
 }
 
 #' @export
-unique.stata_numeric <- function(
+unique.dta_numeric <- function(
     x, incomparables = FALSE, fromLast = FALSE, nmax = NA, ...
 ) {
     x[!duplicated(
@@ -833,7 +833,7 @@ unique.stata_numeric <- function(
 }
 
 #' @export
-as.data.frame.stata_numeric <- function(
+as.data.frame.dta_numeric <- function(
     x, row.names = NULL, optional = FALSE, ...,
     nm = paste(deparse(substitute(x), width.cutoff = 500L), collapse = " ")
 ) {
@@ -862,123 +862,123 @@ as.data.frame.stata_numeric <- function(
 }
 
 #' @export
-vec_restore.stata_numeric <- function(x, to, ...) {
-    storage <- .declared_stata_storage(to)
-    if (.compact_stata_storage_matches(x, storage)) {
-        return(.restore_stata_metadata(x, to, storage))
+vec_restore.dta_numeric <- function(x, to, ...) {
+    storage <- .declared_dta_storage(to)
+    if (.compact_dta_storage_matches(x, storage)) {
+        return(.restore_dta_metadata(x, to, storage))
     }
-    value <- .construct_stata_numeric(x, NULL, storage)
-    .restore_stata_metadata(value, to, storage)
+    value <- .construct_dta_numeric(x, NULL, storage)
+    .restore_dta_metadata(value, to, storage)
 }
 
 #' @export
-vec_ptype2.stata_numeric.stata_numeric <- function(
+vec_ptype2.dta_numeric.dta_numeric <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    left <- .declared_stata_storage(x)
-    right <- .declared_stata_storage(y)
-    storage <- .stata_promote(left, right)
+    left <- .declared_dta_storage(x)
+    right <- .declared_dta_storage(y)
+    storage <- .dta_promote(left, right)
     prototype <- if (identical(storage, right)) y else x
-    .stata_common_ptype(
+    .dta_common_ptype(
         x, y, storage, prototype, x_arg = x_arg, y_arg = y_arg
     )
 }
 
 # A bare R vector meets a Stata numeric at the storage the mapping in
-# `?stata-storage-defaults` gives it: `long` for an integer, `double` for
+# `?dta-storage-defaults` gives it: `long` for an integer, `double` for
 # a double, and, for a logical, whatever the Stata side declares, since
 # 0 and 1 fit every storage. The common type is the promotion of the two,
 # so `vec_c(dta_byte(1), 1000L)` is a `long` and never a failed cast.
-.stata_bare_ptype <- function(typed, bare) {
-    declared <- .declared_stata_storage(typed)
+.dta_bare_ptype <- function(typed, bare) {
+    declared <- .declared_dta_storage(typed)
     storage <- switch(typeof(bare),
-        integer = .stata_promote(declared, "long"),
-        double = .stata_promote(declared, "double"),
+        integer = .dta_promote(declared, "long"),
+        double = .dta_promote(declared, "double"),
         declared
     )
-    .stata_ptype(storage, typed)
+    .dta_ptype(storage, typed)
 }
 
 #' @export
-vec_ptype2.stata_numeric.double <- function(
+vec_ptype2.dta_numeric.double <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_bare_ptype(x, y)
+    .dta_bare_ptype(x, y)
 }
 
 #' @export
-vec_ptype2.double.stata_numeric <- function(
+vec_ptype2.double.dta_numeric <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_bare_ptype(y, x)
+    .dta_bare_ptype(y, x)
 }
 
 #' @export
-vec_ptype2.stata_numeric.integer <- vec_ptype2.stata_numeric.double
+vec_ptype2.dta_numeric.integer <- vec_ptype2.dta_numeric.double
 
 #' @export
-vec_ptype2.integer.stata_numeric <- vec_ptype2.double.stata_numeric
+vec_ptype2.integer.dta_numeric <- vec_ptype2.double.dta_numeric
 
 #' @export
-vec_ptype2.stata_numeric.logical <- vec_ptype2.stata_numeric.double
+vec_ptype2.dta_numeric.logical <- vec_ptype2.dta_numeric.double
 
 #' @export
-vec_ptype2.logical.stata_numeric <- vec_ptype2.double.stata_numeric
+vec_ptype2.logical.dta_numeric <- vec_ptype2.double.dta_numeric
 
-.cast_to_stata <- function(x, to) {
-    storage <- .declared_stata_storage(to)
-    value <- .construct_stata_numeric(x, NULL, storage)
-    .restore_stata_metadata(value, to, storage)
+.cast_to_dta <- function(x, to) {
+    storage <- .declared_dta_storage(to)
+    value <- .construct_dta_numeric(x, NULL, storage)
+    .restore_dta_metadata(value, to, storage)
 }
 
 #' @export
-vec_cast.stata_numeric.stata_numeric <- function(
+vec_cast.dta_numeric.dta_numeric <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
-    .cast_to_stata(x, to)
+    .cast_to_dta(x, to)
 }
 
 #' @export
-vec_cast.stata_numeric.double <- function(
+vec_cast.dta_numeric.double <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
-    .cast_to_stata(x, to)
+    .cast_to_dta(x, to)
 }
 
 #' @export
-vec_cast.stata_numeric.integer <- vec_cast.stata_numeric.double
+vec_cast.dta_numeric.integer <- vec_cast.dta_numeric.double
 
 #' @export
-vec_cast.stata_numeric.logical <- vec_cast.stata_numeric.double
+vec_cast.dta_numeric.logical <- vec_cast.dta_numeric.double
 
 #' @export
-vec_cast.double.stata_numeric <- function(
+vec_cast.double.dta_numeric <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
     as.double(x)
 }
 
 #' @export
-vec_cast.integer.stata_numeric <- function(
+vec_cast.integer.dta_numeric <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
     vctrs::vec_cast(
-        .stata_snapshot(x), integer(), x_arg = x_arg, to_arg = to_arg,
+        .dta_snapshot(x), integer(), x_arg = x_arg, to_arg = to_arg,
         call = call
     )
 }
 
 #' @export
-vec_cast.logical.stata_numeric <- function(
+vec_cast.logical.dta_numeric <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
     vctrs::vec_cast(
-        .stata_snapshot(x), logical(), x_arg = x_arg, to_arg = to_arg,
+        .dta_snapshot(x), logical(), x_arg = x_arg, to_arg = to_arg,
         call = call
     )
 }
 
-.stata_subscript_extends <- function(x, i) {
+.dta_subscript_extends <- function(x, i) {
     size <- length(x)
     if (is.character(i)) {
         existing <- names(x)
@@ -998,40 +998,40 @@ vec_cast.logical.stata_numeric <- function(
 # Extending a Stata numeric takes the common storage of the vector and
 # the value, a declared one or a bare one at its own mapping, so base
 # `rbind()` appending an integer 1000 to a `byte` column yields a `long`.
-.extend_stata_numeric <- function(x, i, value, scalar = FALSE) {
+.extend_dta_numeric <- function(x, i, value, scalar = FALSE) {
     prototype <- vctrs::vec_ptype2(x, value)
-    data <- .stata_data(x)
-    replacement <- .stata_data(vctrs::vec_cast(value, prototype))
+    data <- .dta_data(x)
+    replacement <- .dta_data(vctrs::vec_cast(value, prototype))
     if (scalar) data[[i]] <- replacement else data[i] <- replacement
     vctrs::vec_restore(data, prototype)
 }
 
 #' @export
-`[<-.stata_numeric` <- function(x, i, ..., value) {
+`[<-.dta_numeric` <- function(x, i, ..., value) {
     if (missing(i)) i <- rep(TRUE, length(x))
     if (length(list(...)) > 0L) {
         stop("Stata numeric vectors do not support array subscripts",
              call. = FALSE)
     }
-    if (.stata_subscript_extends(x, i)) {
-        return(.extend_stata_numeric(x, i, value))
+    if (.dta_subscript_extends(x, i)) {
+        return(.extend_dta_numeric(x, i, value))
     }
     vctrs::vec_assign(x, i, value)
 }
 
 #' @export
-`[[<-.stata_numeric` <- function(x, i, ..., value) {
+`[[<-.dta_numeric` <- function(x, i, ..., value) {
     if (length(list(...)) > 0L) {
         stop("Stata numeric vectors do not support array subscripts",
              call. = FALSE)
     }
-    if (.stata_subscript_extends(x, i)) {
-        return(.extend_stata_numeric(x, i, value, scalar = TRUE))
+    if (.dta_subscript_extends(x, i)) {
+        return(.extend_dta_numeric(x, i, value, scalar = TRUE))
     }
     vctrs::vec_assign(x, i, value)
 }
 
-.stata_storage_candidates <- function(minimum) {
+.dta_storage_candidates <- function(minimum) {
     switch(minimum,
         byte = c("byte", "int", "long", "float", "double"),
         int = c("int", "long", "float", "double"),
@@ -1041,8 +1041,8 @@ vec_cast.logical.stata_numeric <- function(
     )
 }
 
-.stata_computed <- function(
-    result, minimum, temporal = .stata_temporal_none
+.dta_computed <- function(
+    result, minimum, temporal = .dta_temporal_none
 ) {
     if (typeof(result) == "logical" || typeof(result) == "complex") {
         return(result)
@@ -1057,7 +1057,7 @@ vec_cast.logical.stata_numeric <- function(
         missing_codes <- .tab_missing_codes(values)
     }
     observed <- is.na(missing_codes)
-    encoded <- .encode_stata_temporal(values, observed, temporal)
+    encoded <- .encode_dta_temporal(values, observed, temporal)
     outside_double <- observed &
         (!is.finite(encoded) |
          abs(encoded) > .Machine$double.xmax / 2)
@@ -1065,11 +1065,11 @@ vec_cast.logical.stata_numeric <- function(
         values[outside_double] <- NA_real_
         missing_codes <- .tab_missing_codes(values)
         observed <- is.na(missing_codes)
-        encoded <- .encode_stata_temporal(values, observed, temporal)
+        encoded <- .encode_dta_temporal(values, observed, temporal)
     }
-    for (storage in .stata_storage_candidates(minimum)) {
-        if (!any(.invalid_stata_observed(encoded, observed, storage))) {
-            return(.construct_stata_numeric_trusted(
+    for (storage in .dta_storage_candidates(minimum)) {
+        if (!any(.invalid_dta_observed(encoded, observed, storage))) {
+            return(.construct_dta_numeric_trusted(
                 values, encoded, missing_codes, storage,
                 temporal = temporal
             ))
@@ -1079,14 +1079,14 @@ vec_cast.logical.stata_numeric <- function(
          call. = FALSE)
 }
 
-.stata_arith_base <- function(op, x, y, minimum) {
-    left <- if (inherits(x, "stata_numeric")) .stata_data(x) else x
-    right <- if (inherits(y, "stata_numeric")) .stata_data(y) else y
+.dta_arith_base <- function(op, x, y, minimum) {
+    left <- if (inherits(x, "dta_numeric")) .dta_data(x) else x
+    right <- if (inherits(y, "dta_numeric")) .dta_data(y) else y
     args <- vctrs::vec_recycle_common(left, right)
     operation <- getExportedValue("base", op)
     result <- suppressWarnings(operation(args[[1L]], args[[2L]]))
     missing_operand <- is.na(args[[1L]]) | is.na(args[[2L]])
-    .stata_computed(.collapse_missing(result, missing_operand), minimum)
+    .dta_computed(.collapse_missing(result, missing_operand), minimum)
 }
 
 # Stata collapses a tagged missing operand to system missing `.` in
@@ -1104,7 +1104,7 @@ vec_cast.logical.stata_numeric <- function(
 
 # Stata's rounding functions return a tagged missing unchanged:
 # `round(.a)` is `.a`.
-.stata_tag_preserving_math <- c(
+.dta_tag_preserving_math <- c(
     "round", "signif", "floor", "ceiling", "trunc"
 )
 
@@ -1121,45 +1121,45 @@ vec_cast.logical.stata_numeric <- function(
 }
 
 #' @export
-vec_arith.stata_numeric <- function(op, x, y, ...) {
-    UseMethod("vec_arith.stata_numeric", y)
+vec_arith.dta_numeric <- function(op, x, y, ...) {
+    UseMethod("vec_arith.dta_numeric", y)
 }
 
 #' @export
-vec_arith.stata_numeric.MISSING <- function(op, x, y, ...) {
+vec_arith.dta_numeric.MISSING <- function(op, x, y, ...) {
     if (identical(op, "+")) return(x)
-    if (identical(op, "!")) return(!.stata_data(x))
+    if (identical(op, "!")) return(!.dta_data(x))
     if (!identical(op, "-")) vctrs::stop_incompatible_op(op, x, y)
-    result <- .collapse_missing(suppressWarnings(-.stata_data(x)))
-    .stata_computed(result, .declared_stata_storage(x))
+    result <- .collapse_missing(suppressWarnings(-.dta_data(x)))
+    .dta_computed(result, .declared_dta_storage(x))
 }
 
 #' @export
-vec_arith.stata_numeric.stata_numeric <- function(op, x, y, ...) {
-    minimum <- .stata_promote(
-        .declared_stata_storage(x), .declared_stata_storage(y)
+vec_arith.dta_numeric.dta_numeric <- function(op, x, y, ...) {
+    minimum <- .dta_promote(
+        .declared_dta_storage(x), .declared_dta_storage(y)
     )
-    .stata_arith_base(op, x, y, minimum)
+    .dta_arith_base(op, x, y, minimum)
 }
 
 #' @export
-vec_arith.stata_numeric.numeric <- function(op, x, y, ...) {
-    .stata_arith_base(op, x, y, .declared_stata_storage(x))
+vec_arith.dta_numeric.numeric <- function(op, x, y, ...) {
+    .dta_arith_base(op, x, y, .declared_dta_storage(x))
 }
 
 #' @export
-vec_arith.numeric.stata_numeric <- function(op, x, y, ...) {
-    .stata_arith_base(op, x, y, .declared_stata_storage(y))
+vec_arith.numeric.dta_numeric <- function(op, x, y, ...) {
+    .dta_arith_base(op, x, y, .declared_dta_storage(y))
 }
 
 #' @export
-vec_arith.stata_numeric.logical <- vec_arith.stata_numeric.numeric
+vec_arith.dta_numeric.logical <- vec_arith.dta_numeric.numeric
 
 #' @export
-vec_arith.logical.stata_numeric <- vec_arith.numeric.stata_numeric
+vec_arith.logical.dta_numeric <- vec_arith.numeric.dta_numeric
 
 #' @export
-vec_arith.stata_numeric.default <- function(op, x, y, ...) {
+vec_arith.dta_numeric.default <- function(op, x, y, ...) {
     vctrs::stop_incompatible_op(op, x, y)
 }
 
@@ -1168,33 +1168,33 @@ vec_arith.stata_numeric.default <- function(op, x, y, ...) {
 # is a date. Without these, R sees two Ops methods and falls back to the
 # internal arithmetic with a warning and a numeric result.
 #' @export
-vec_arith.stata_numeric.Date <- function(op, x, y, ...) {
-    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+vec_arith.dta_numeric.Date <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .dta_snapshot(x), y, ...)
 }
 
 #' @export
-vec_arith.Date.stata_numeric <- function(op, x, y, ...) {
-    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+vec_arith.Date.dta_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .dta_snapshot(y), ...)
 }
 
 #' @export
-vec_arith.stata_numeric.POSIXct <- function(op, x, y, ...) {
-    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+vec_arith.dta_numeric.POSIXct <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .dta_snapshot(x), y, ...)
 }
 
 #' @export
-vec_arith.POSIXct.stata_numeric <- function(op, x, y, ...) {
-    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+vec_arith.POSIXct.dta_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .dta_snapshot(y), ...)
 }
 
 #' @export
-vec_arith.stata_numeric.difftime <- function(op, x, y, ...) {
-    vctrs::vec_arith(op, .stata_snapshot(x), y, ...)
+vec_arith.dta_numeric.difftime <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, .dta_snapshot(x), y, ...)
 }
 
 #' @export
-vec_arith.difftime.stata_numeric <- function(op, x, y, ...) {
-    vctrs::vec_arith(op, x, .stata_snapshot(y), ...)
+vec_arith.difftime.dta_numeric <- function(op, x, y, ...) {
+    vctrs::vec_arith(op, x, .dta_snapshot(y), ...)
 }
 
 # When a Stata numeric meets a date, datetime, or difftime, which have
@@ -1202,41 +1202,41 @@ vec_arith.difftime.stata_numeric <- function(op, x, y, ...) {
 # through vctrs to the `vec_arith` methods above instead of R's
 # incompatible-methods warning. Other classes keep R's default choice.
 #' @export
-chooseOpsMethod.stata_numeric <- function(x, y, mx, my, cl, reverse) {
+chooseOpsMethod.dta_numeric <- function(x, y, mx, my, cl, reverse) {
     inherits(y, c("Date", "POSIXct", "difftime"))
 }
 
 #' @export
-vec_math.stata_numeric <- function(.fn, .x, ...) {
+vec_math.dta_numeric <- function(.fn, .x, ...) {
     operation <- getExportedValue("base", .fn)
-    result <- suppressWarnings(operation(.stata_data(.x), ...))
+    result <- suppressWarnings(operation(.dta_data(.x), ...))
     if (length(.x) == 0L && .fn %in% c("min", "max", "range")) {
         return(result)
     }
-    result <- if (.fn %in% .stata_tag_preserving_math) {
-        .restore_missing(result, .stata_data(.x))
+    result <- if (.fn %in% .dta_tag_preserving_math) {
+        .restore_missing(result, .dta_data(.x))
     } else {
         .collapse_missing(result)
     }
-    .stata_computed(result, .declared_stata_storage(.x))
+    .dta_computed(result, .declared_dta_storage(.x))
 }
 
 #' @export
-Math.stata_numeric <- function(x, ...) {
-    vec_math.stata_numeric(.Generic, x, ...)
+Math.dta_numeric <- function(x, ...) {
+    vec_math.dta_numeric(.Generic, x, ...)
 }
 
 #' @export
-Summary.stata_numeric <- function(..., na.rm = FALSE) {
+Summary.dta_numeric <- function(..., na.rm = FALSE) {
     inputs <- list(...)
     declared <- Filter(
-        function(value) inherits(value, "stata_numeric"), inputs
+        function(value) inherits(value, "dta_numeric"), inputs
     )
-    storage <- vapply(declared, .declared_stata_storage, character(1))
-    minimum <- Reduce(.stata_promote, storage)
+    storage <- vapply(declared, .declared_dta_storage, character(1))
+    minimum <- Reduce(.dta_promote, storage)
     operation <- getExportedValue("base", .Generic)
     arguments <- c(lapply(inputs, function(value) {
-        if (inherits(value, "stata_numeric")) .stata_data(value) else value
+        if (inherits(value, "dta_numeric")) .dta_data(value) else value
     }), list(na.rm = na.rm))
     empty_extreme <- sum(lengths(inputs)) == 0L &&
         .Generic %in% c("min", "max", "range")
@@ -1248,144 +1248,144 @@ Summary.stata_numeric <- function(..., na.rm = FALSE) {
     if (empty_extreme) {
         return(result)
     }
-    .stata_computed(.collapse_missing(result), minimum)
+    .dta_computed(.collapse_missing(result), minimum)
 }
 
 #' @export
-summary.stata_numeric <- function(object, ...) {
-    summary(.stata_data(object), ...)
+summary.dta_numeric <- function(object, ...) {
+    summary(.dta_data(object), ...)
 }
 
 #' @export
-mean.stata_numeric <- function(x, ..., na.rm = FALSE) {
-    result <- suppressWarnings(mean(.stata_data(x), ..., na.rm = na.rm))
-    .stata_computed(.collapse_missing(result), .declared_stata_storage(x))
+mean.dta_numeric <- function(x, ..., na.rm = FALSE) {
+    result <- suppressWarnings(mean(.dta_data(x), ..., na.rm = na.rm))
+    .dta_computed(.collapse_missing(result), .declared_dta_storage(x))
 }
 
 #' @export
-median.stata_numeric <- function(x, na.rm = FALSE, ...) {
+median.dta_numeric <- function(x, na.rm = FALSE, ...) {
     result <- suppressWarnings(stats::median(
-        .stata_data(x), na.rm = na.rm, ...
+        .dta_data(x), na.rm = na.rm, ...
     ))
-    .stata_computed(result, .declared_stata_storage(x))
+    .dta_computed(result, .declared_dta_storage(x))
 }
 
 #' @export
-quantile.stata_numeric <- function(
+quantile.dta_numeric <- function(
     x, probs = seq(0, 1, 0.25), na.rm = FALSE, names = TRUE,
     type = 7, ...
 ) {
     result <- suppressWarnings(stats::quantile(
-        .stata_data(x), probs = probs, na.rm = na.rm, names = names,
+        .dta_data(x), probs = probs, na.rm = na.rm, names = names,
         type = type, ...
     ))
-    .stata_computed(result, .declared_stata_storage(x))
+    .dta_computed(result, .declared_dta_storage(x))
 }
 
 #' @export
-anyNA.stata_numeric <- function(x, recursive = FALSE) {
-    anyNA(.stata_data(x), recursive = recursive)
+anyNA.dta_numeric <- function(x, recursive = FALSE) {
+    anyNA(.dta_data(x), recursive = recursive)
 }
 
 #' @export
-is.na.stata_numeric <- function(x) {
-    is.na(.stata_data(x))
+is.na.dta_numeric <- function(x) {
+    is.na(.dta_data(x))
 }
 
 #' @export
-Complex.stata_numeric <- function(z) {
+Complex.dta_numeric <- function(z) {
     operation <- getExportedValue("base", .Generic)
-    result <- suppressWarnings(operation(.stata_data(z)))
-    .stata_computed(result, .declared_stata_storage(z))
+    result <- suppressWarnings(operation(.dta_data(z)))
+    .dta_computed(result, .declared_dta_storage(z))
 }
 
-.stata_temporal_kind <- function(x) {
-    if (inherits(x, "stata_date")) "date" else "datetime"
+.dta_temporal_kind <- function(x) {
+    if (inherits(x, "dta_date")) "date" else "datetime"
 }
 
-.stata_temporal_code <- function(x) {
-    if (identical(.stata_temporal_kind(x), "date")) {
-        .stata_temporal_date
+.dta_temporal_code <- function(x) {
+    if (identical(.dta_temporal_kind(x), "date")) {
+        .dta_temporal_date
     } else {
-        .stata_temporal_datetime
+        .dta_temporal_datetime
     }
 }
 
-.base_stata_temporal <- function(x) {
+.base_dta_temporal <- function(x) {
     value <- .metadata_view(x)
     classes <- class(value)
     classes <- classes[!classes %in% c(
-        "stata_temporal", "stata_date", "stata_datetime"
+        "dta_temporal", "dta_date", "dta_datetime"
     )]
     attr(value, "stata.storage") <- NULL
     attr(value, "class") <- classes
     value
 }
 
-.attach_stata_temporal <- function(
+.attach_dta_temporal <- function(
     result, prototype, storage, result_names = names(result)
 ) {
-    desired <- .stata_attribute_plan(
+    desired <- .dta_attribute_plan(
         prototype, storage, result_names = result_names, temporal = TRUE
     )
-    .replace_stata_attributes(result, desired)
+    .replace_dta_attributes(result, desired)
 }
 
-.restore_stata_temporal <- function(value, prototype, storage) {
-    if (.compact_stata_storage_matches(
-        value, storage, .stata_temporal_code(prototype)
+.restore_dta_temporal <- function(value, prototype, storage) {
+    if (.compact_dta_storage_matches(
+        value, storage, .dta_temporal_code(prototype)
     )) {
-        return(.attach_stata_temporal(value, prototype, storage))
+        return(.attach_dta_temporal(value, prototype, storage))
     }
-    result <- .construct_stata_numeric(
+    result <- .construct_dta_numeric(
         as.double(value), NULL, storage,
-        temporal = .stata_temporal_code(prototype)
+        temporal = .dta_temporal_code(prototype)
     )
-    .attach_stata_temporal(
+    .attach_dta_temporal(
         result, prototype, storage, result_names = names(value)
     )
 }
 
-.computed_stata_temporal <- function(value, prototype, minimum) {
-    result <- .stata_computed(
+.computed_dta_temporal <- function(value, prototype, minimum) {
+    result <- .dta_computed(
         as.double(value), minimum,
-        temporal = .stata_temporal_code(prototype)
+        temporal = .dta_temporal_code(prototype)
     )
-    .attach_stata_temporal(
-        result, prototype, .declared_stata_storage(result),
+    .attach_dta_temporal(
+        result, prototype, .declared_dta_storage(result),
         result_names = names(value)
     )
 }
 
-.stata_temporal_ptype <- function(storage, prototype) {
-    .restore_stata_temporal(double(), prototype, storage)
+.dta_temporal_ptype <- function(storage, prototype) {
+    .restore_dta_temporal(double(), prototype, storage)
 }
 
 #' @export
-vec_proxy.stata_temporal <- function(x, ...) {
-    .stata_snapshot(x)
+vec_proxy.dta_temporal <- function(x, ...) {
+    .dta_snapshot(x)
 }
 
 #' @export
-is.na.stata_temporal <- function(x) {
-    is.na(as.double(.base_stata_temporal(x)))
+is.na.dta_temporal <- function(x) {
+    is.na(as.double(.base_dta_temporal(x)))
 }
 
 #' @export
-vec_proxy_equal.stata_temporal <- function(x, ...) {
-    .stata_identity_proxy(x, "vctrs equality")
+vec_proxy_equal.dta_temporal <- function(x, ...) {
+    .dta_identity_proxy(x, "vctrs equality")
 }
 
 #' @export
-vec_proxy_order.stata_temporal <- function(x, ...) {
-    .stata_identity_proxy(x, "vctrs ordering")
+vec_proxy_order.dta_temporal <- function(x, ...) {
+    .dta_identity_proxy(x, "vctrs ordering")
 }
 
 #' @export
-xtfrm.stata_temporal <- xtfrm.stata_numeric
+xtfrm.dta_temporal <- xtfrm.dta_numeric
 
 #' @export
-sort.stata_temporal <- function(
+sort.dta_temporal <- function(
     x, decreasing = FALSE, na.last = NA, ..., partial = NULL,
     method = "auto"
 ) {
@@ -1401,33 +1401,33 @@ sort.stata_temporal <- function(
             call. = FALSE
         )
     }
-    x[.stata_order_locations(
+    x[.dta_order_locations(
         x, decreasing = decreasing, method = method
     )]
 }
 
 #' @export
-duplicated.stata_temporal <- duplicated.stata_numeric
+duplicated.dta_temporal <- duplicated.dta_numeric
 
 #' @export
-anyDuplicated.stata_temporal <- anyDuplicated.stata_numeric
+anyDuplicated.dta_temporal <- anyDuplicated.dta_numeric
 
 #' @export
-unique.stata_temporal <- unique.stata_numeric
+unique.dta_temporal <- unique.dta_numeric
 
 #' @export
-vec_restore.stata_temporal <- function(x, to, ...) {
-    .restore_stata_temporal(x, to, .declared_stata_storage(to))
+vec_restore.dta_temporal <- function(x, to, ...) {
+    .restore_dta_temporal(x, to, .declared_dta_storage(to))
 }
 
-.extend_stata_temporal <- function(x, i, value, scalar = FALSE) {
-    prototype <- if (inherits(value, "stata_temporal")) {
+.extend_dta_temporal <- function(x, i, value, scalar = FALSE) {
+    prototype <- if (inherits(value, "dta_temporal")) {
         vctrs::vec_ptype2(x, value)
     } else {
         vctrs::vec_ptype(x)
     }
-    data <- .base_stata_temporal(x)
-    replacement <- .base_stata_temporal(
+    data <- .base_dta_temporal(x)
+    replacement <- .base_dta_temporal(
         vctrs::vec_cast(value, prototype)
     )
     if (scalar) data[[i]] <- replacement else data[i] <- replacement
@@ -1435,77 +1435,77 @@ vec_restore.stata_temporal <- function(x, to, ...) {
 }
 
 #' @export
-`[.stata_temporal` <- function(x, i, ..., drop = TRUE) {
+`[.dta_temporal` <- function(x, i, ..., drop = TRUE) {
     if (length(list(...)) > 0L) {
         stop("Stata temporal vectors do not support array subscripts",
              call. = FALSE)
     }
-    data <- .base_stata_temporal(x)
+    data <- .base_dta_temporal(x)
     result <- if (missing(i)) data[] else data[i]
-    .restore_stata_temporal(result, x, .declared_stata_storage(x))
+    .restore_dta_temporal(result, x, .declared_dta_storage(x))
 }
 
 #' @export
-`[[.stata_temporal` <- function(x, i, ...) {
+`[[.dta_temporal` <- function(x, i, ...) {
     if (length(list(...)) > 0L) {
         stop("Stata temporal vectors do not support array subscripts",
              call. = FALSE)
     }
-    result <- .base_stata_temporal(x)[[i]]
-    .restore_stata_temporal(result, x, .declared_stata_storage(x))
+    result <- .base_dta_temporal(x)[[i]]
+    .restore_dta_temporal(result, x, .declared_dta_storage(x))
 }
 
 #' @export
-`[<-.stata_temporal` <- function(x, i, ..., value) {
+`[<-.dta_temporal` <- function(x, i, ..., value) {
     if (length(list(...)) > 0L) {
         stop("Stata temporal vectors do not support array subscripts",
              call. = FALSE)
     }
-    if (!missing(i) && .stata_subscript_extends(x, i)) {
-        return(.extend_stata_temporal(x, i, value))
+    if (!missing(i) && .dta_subscript_extends(x, i)) {
+        return(.extend_dta_temporal(x, i, value))
     }
-    data <- .base_stata_temporal(x)
-    replacement <- if (inherits(value, "stata_temporal")) {
-        .base_stata_temporal(value)
+    data <- .base_dta_temporal(x)
+    replacement <- if (inherits(value, "dta_temporal")) {
+        .base_dta_temporal(value)
     } else {
         value
     }
     if (missing(i)) data[] <- replacement else data[i] <- replacement
-    .restore_stata_temporal(data, x, .declared_stata_storage(x))
+    .restore_dta_temporal(data, x, .declared_dta_storage(x))
 }
 
 #' @export
-`[[<-.stata_temporal` <- function(x, i, ..., value) {
+`[[<-.dta_temporal` <- function(x, i, ..., value) {
     if (length(list(...)) > 0L) {
         stop("Stata temporal vectors do not support array subscripts",
              call. = FALSE)
     }
-    if (.stata_subscript_extends(x, i)) {
-        return(.extend_stata_temporal(x, i, value, scalar = TRUE))
+    if (.dta_subscript_extends(x, i)) {
+        return(.extend_dta_temporal(x, i, value, scalar = TRUE))
     }
-    data <- .base_stata_temporal(x)
-    replacement <- if (inherits(value, "stata_temporal")) {
-        .base_stata_temporal(value)
+    data <- .base_dta_temporal(x)
+    replacement <- if (inherits(value, "dta_temporal")) {
+        .base_dta_temporal(value)
     } else {
         value
     }
     data[[i]] <- replacement
-    .restore_stata_temporal(data, x, .declared_stata_storage(x))
+    .restore_dta_temporal(data, x, .declared_dta_storage(x))
 }
 
 #' @export
-vec_ptype2.stata_temporal.stata_temporal <- function(
+vec_ptype2.dta_temporal.dta_temporal <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    if (!identical(.stata_temporal_kind(x), .stata_temporal_kind(y))) {
+    if (!identical(.dta_temporal_kind(x), .dta_temporal_kind(y))) {
         vctrs::stop_incompatible_type(x, y, x_arg = x_arg, y_arg = y_arg)
     }
-    storage <- .stata_promote(
-        .declared_stata_storage(x), .declared_stata_storage(y)
+    storage <- .dta_promote(
+        .declared_dta_storage(x), .declared_dta_storage(y)
     )
-    prototype <- if (identical(storage, .declared_stata_storage(y))) y else x
-    .reconcile_stata_metadata(
-        .stata_temporal_ptype(storage, prototype),
+    prototype <- if (identical(storage, .declared_dta_storage(y))) y else x
+    .reconcile_dta_metadata(
+        .dta_temporal_ptype(storage, prototype),
         x,
         y,
         x_arg,
@@ -1514,70 +1514,70 @@ vec_ptype2.stata_temporal.stata_temporal <- function(
 }
 
 #' @export
-vec_ptype2.stata_temporal.logical <- function(
+vec_ptype2.dta_temporal.logical <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype(.declared_stata_storage(x), x)
+    .dta_temporal_ptype(.declared_dta_storage(x), x)
 }
 
 #' @export
-vec_ptype2.logical.stata_temporal <- function(
+vec_ptype2.logical.dta_temporal <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype(.declared_stata_storage(y), y)
+    .dta_temporal_ptype(.declared_dta_storage(y), y)
 }
 
-.stata_temporal_ptype2_base <- function(
+.dta_temporal_ptype2_base <- function(
     typed, base_kind, x, y, x_arg, y_arg
 ) {
-    if (!identical(.stata_temporal_kind(typed), base_kind)) {
+    if (!identical(.dta_temporal_kind(typed), base_kind)) {
         vctrs::stop_incompatible_type(x, y, x_arg = x_arg, y_arg = y_arg)
     }
-    .stata_temporal_ptype(.declared_stata_storage(typed), typed)
+    .dta_temporal_ptype(.declared_dta_storage(typed), typed)
 }
 
 #' @export
-vec_ptype2.stata_temporal.Date <- function(
+vec_ptype2.dta_temporal.Date <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype2_base(x, "date", x, y, x_arg, y_arg)
+    .dta_temporal_ptype2_base(x, "date", x, y, x_arg, y_arg)
 }
 
 #' @export
-vec_ptype2.Date.stata_temporal <- function(
+vec_ptype2.Date.dta_temporal <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype2_base(y, "date", x, y, x_arg, y_arg)
+    .dta_temporal_ptype2_base(y, "date", x, y, x_arg, y_arg)
 }
 
 #' @export
-vec_ptype2.stata_temporal.POSIXct <- function(
+vec_ptype2.dta_temporal.POSIXct <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype2_base(x, "datetime", x, y, x_arg, y_arg)
+    .dta_temporal_ptype2_base(x, "datetime", x, y, x_arg, y_arg)
 }
 
 #' @export
-vec_ptype2.POSIXct.stata_temporal <- function(
+vec_ptype2.POSIXct.dta_temporal <- function(
     x, y, ..., x_arg = "", y_arg = ""
 ) {
-    .stata_temporal_ptype2_base(y, "datetime", x, y, x_arg, y_arg)
+    .dta_temporal_ptype2_base(y, "datetime", x, y, x_arg, y_arg)
 }
 
 #' @export
-vec_cast.stata_temporal.stata_temporal <- function(
+vec_cast.dta_temporal.dta_temporal <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
-    if (!identical(.stata_temporal_kind(x), .stata_temporal_kind(to))) {
+    if (!identical(.dta_temporal_kind(x), .dta_temporal_kind(to))) {
         vctrs::stop_incompatible_cast(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
     }
-    .restore_stata_temporal(x, to, .declared_stata_storage(to))
+    .restore_dta_temporal(x, to, .declared_dta_storage(to))
 }
 
 #' @export
-vec_cast.stata_temporal.logical <- function(
+vec_cast.dta_temporal.logical <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
     if (any(!is.na(x))) {
@@ -1585,43 +1585,43 @@ vec_cast.stata_temporal.logical <- function(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
     }
-    .restore_stata_temporal(as.double(x), to, .declared_stata_storage(to))
+    .restore_dta_temporal(as.double(x), to, .declared_dta_storage(to))
 }
 
-.cast_base_to_stata_temporal <- function(
+.cast_base_to_dta_temporal <- function(
     x, to, kind, x_arg, to_arg, call
 ) {
-    if (!identical(.stata_temporal_kind(to), kind)) {
+    if (!identical(.dta_temporal_kind(to), kind)) {
         vctrs::stop_incompatible_cast(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
     }
-    .restore_stata_temporal(x, to, .declared_stata_storage(to))
+    .restore_dta_temporal(x, to, .declared_dta_storage(to))
 }
 
 #' @export
-vec_cast.stata_temporal.Date <- function(
+vec_cast.dta_temporal.Date <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
-    .cast_base_to_stata_temporal(
+    .cast_base_to_dta_temporal(
         x, to, "date", x_arg, to_arg, call
     )
 }
 
 #' @export
-vec_cast.stata_temporal.POSIXct <- function(
+vec_cast.dta_temporal.POSIXct <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
-    .cast_base_to_stata_temporal(
+    .cast_base_to_dta_temporal(
         x, to, "datetime", x_arg, to_arg, call
     )
 }
 
 #' @export
-vec_cast.Date.stata_temporal <- function(
+vec_cast.Date.dta_temporal <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
-    if (!identical(.stata_temporal_kind(x), "date")) {
+    if (!identical(.dta_temporal_kind(x), "date")) {
         vctrs::stop_incompatible_cast(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
@@ -1630,10 +1630,10 @@ vec_cast.Date.stata_temporal <- function(
 }
 
 #' @export
-vec_cast.POSIXct.stata_temporal <- function(
+vec_cast.POSIXct.dta_temporal <- function(
     x, to, ..., x_arg = "", to_arg = "", call = rlang::caller_env()
 ) {
-    if (!identical(.stata_temporal_kind(x), "datetime")) {
+    if (!identical(.dta_temporal_kind(x), "datetime")) {
         vctrs::stop_incompatible_cast(
             x, to, x_arg = x_arg, to_arg = to_arg, call = call
         )
@@ -1641,27 +1641,27 @@ vec_cast.POSIXct.stata_temporal <- function(
     vctrs::vec_restore(as.double(x), to)
 }
 
-.stata_temporal_minimum <- function(inputs) {
-    .validate_stata_temporal_kinds(inputs)
+.dta_temporal_minimum <- function(inputs) {
+    .validate_dta_temporal_kinds(inputs)
     declared <- Filter(
-        function(value) inherits(value, "stata_temporal"), inputs
+        function(value) inherits(value, "dta_temporal"), inputs
     )
     Reduce(
-        .stata_promote,
-        vapply(declared, .declared_stata_storage, character(1))
+        .dta_promote,
+        vapply(declared, .declared_dta_storage, character(1))
     )
 }
 
 .temporal_kind_or_missing <- function(value) {
-    if (inherits(value, "stata_temporal")) {
-        return(.stata_temporal_kind(value))
+    if (inherits(value, "dta_temporal")) {
+        return(.dta_temporal_kind(value))
     }
     if (inherits(value, "Date")) return("date")
     if (inherits(value, "POSIXct")) return("datetime")
     NA_character_
 }
 
-.validate_stata_temporal_kinds <- function(inputs) {
+.validate_dta_temporal_kinds <- function(inputs) {
     kinds <- vapply(inputs, .temporal_kind_or_missing, character(1))
     temporal <- which(!is.na(kinds))
     if (length(temporal) < 2L) return(invisible(NULL))
@@ -1680,15 +1680,15 @@ vec_cast.POSIXct.stata_temporal <- function(
 }
 
 #' @export
-Summary.stata_temporal <- function(..., na.rm = FALSE) {
+Summary.dta_temporal <- function(..., na.rm = FALSE) {
     inputs <- list(...)
-    minimum <- .stata_temporal_minimum(inputs)
+    minimum <- .dta_temporal_minimum(inputs)
     prototype <- Filter(
-        function(value) inherits(value, "stata_temporal"), inputs
+        function(value) inherits(value, "dta_temporal"), inputs
     )[[1L]]
     arguments <- c(lapply(inputs, function(value) {
-        if (inherits(value, "stata_temporal")) {
-            .base_stata_temporal(value)
+        if (inherits(value, "dta_temporal")) {
+            .base_dta_temporal(value)
         } else {
             value
         }
@@ -1700,49 +1700,49 @@ Summary.stata_temporal <- function(..., na.rm = FALSE) {
     empty_extreme <- sum(lengths(inputs)) == 0L &&
         .Generic %in% c("min", "max", "range")
     if (empty_extreme) return(result)
-    .computed_stata_temporal(result, prototype, minimum)
+    .computed_dta_temporal(result, prototype, minimum)
 }
 
 #' @export
-mean.stata_temporal <- function(x, ..., na.rm = FALSE) {
-    result <- mean(.base_stata_temporal(x), ..., na.rm = na.rm)
-    .computed_stata_temporal(result, x, .declared_stata_storage(x))
+mean.dta_temporal <- function(x, ..., na.rm = FALSE) {
+    result <- mean(.base_dta_temporal(x), ..., na.rm = na.rm)
+    .computed_dta_temporal(result, x, .declared_dta_storage(x))
 }
 
 #' @export
-c.stata_temporal <- function(..., recursive = FALSE) {
+c.dta_temporal <- function(..., recursive = FALSE) {
     inputs <- list(...)
-    minimum <- .stata_temporal_minimum(inputs)
+    minimum <- .dta_temporal_minimum(inputs)
     prototype <- Filter(
-        function(value) inherits(value, "stata_temporal"), inputs
+        function(value) inherits(value, "dta_temporal"), inputs
     )[[1L]]
     arguments <- c(lapply(inputs, function(value) {
-        if (inherits(value, "stata_temporal")) {
-            .base_stata_temporal(value)
+        if (inherits(value, "dta_temporal")) {
+            .base_dta_temporal(value)
         } else {
             value
         }
     }), list(recursive = recursive))
     result <- do.call(base::c, arguments)
-    .restore_stata_temporal(result, prototype, minimum)
+    .restore_dta_temporal(result, prototype, minimum)
 }
 
 #' @export
-rep.stata_temporal <- function(x, ...) {
-    result <- rep(.base_stata_temporal(x), ...)
-    .restore_stata_temporal(result, x, .declared_stata_storage(x))
+rep.dta_temporal <- function(x, ...) {
+    result <- rep(.base_dta_temporal(x), ...)
+    .restore_dta_temporal(result, x, .declared_dta_storage(x))
 }
 
-.stata_temporal_op <- function(op, e1, e2) {
-    left <- if (inherits(e1, "stata_temporal")) {
-        .base_stata_temporal(e1)
+.dta_temporal_op <- function(op, e1, e2) {
+    left <- if (inherits(e1, "dta_temporal")) {
+        .base_dta_temporal(e1)
     } else {
         e1
     }
     unary <- missing(e2)
     if (!unary) {
-        right <- if (inherits(e2, "stata_temporal")) {
-            .base_stata_temporal(e2)
+        right <- if (inherits(e2, "dta_temporal")) {
+            .base_dta_temporal(e2)
         } else {
             e2
         }
@@ -1752,38 +1752,38 @@ rep.stata_temporal <- function(x, ...) {
     if (!(inherits(result, "Date") || inherits(result, "POSIXct"))) {
         return(result)
     }
-    prototype <- if (inherits(e1, "stata_temporal")) e1 else e2
-    .computed_stata_temporal(
-        result, prototype, .declared_stata_storage(prototype)
+    prototype <- if (inherits(e1, "dta_temporal")) e1 else e2
+    .computed_dta_temporal(
+        result, prototype, .declared_dta_storage(prototype)
     )
 }
 
 #' @export
-`+.stata_temporal` <- function(e1, e2) {
-    if (missing(e2)) .stata_temporal_op("+", e1) else
-        .stata_temporal_op("+", e1, e2)
+`+.dta_temporal` <- function(e1, e2) {
+    if (missing(e2)) .dta_temporal_op("+", e1) else
+        .dta_temporal_op("+", e1, e2)
 }
 
 #' @export
-`-.stata_temporal` <- function(e1, e2) {
-    if (missing(e2)) .stata_temporal_op("-", e1) else
-        .stata_temporal_op("-", e1, e2)
+`-.dta_temporal` <- function(e1, e2) {
+    if (missing(e2)) .dta_temporal_op("-", e1) else
+        .dta_temporal_op("-", e1, e2)
 }
 
 #' @export
-`==.stata_temporal` <- function(e1, e2) .stata_compare("==", e1, e2)
+`==.dta_temporal` <- function(e1, e2) .dta_compare("==", e1, e2)
 
 #' @export
-`!=.stata_temporal` <- function(e1, e2) .stata_compare("!=", e1, e2)
+`!=.dta_temporal` <- function(e1, e2) .dta_compare("!=", e1, e2)
 
 #' @export
-`<.stata_temporal` <- function(e1, e2) .stata_compare("<", e1, e2)
+`<.dta_temporal` <- function(e1, e2) .dta_compare("<", e1, e2)
 
 #' @export
-`<=.stata_temporal` <- function(e1, e2) .stata_compare("<=", e1, e2)
+`<=.dta_temporal` <- function(e1, e2) .dta_compare("<=", e1, e2)
 
 #' @export
-`>.stata_temporal` <- function(e1, e2) .stata_compare(">", e1, e2)
+`>.dta_temporal` <- function(e1, e2) .dta_compare(">", e1, e2)
 
 #' @export
-`>=.stata_temporal` <- function(e1, e2) .stata_compare(">=", e1, e2)
+`>=.dta_temporal` <- function(e1, e2) .dta_compare(">=", e1, e2)

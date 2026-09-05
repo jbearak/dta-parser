@@ -58,7 +58,7 @@ Only a **dibble** types its columns. Every operation that adds or changes a colu
 
 Overwriting a column that already has declared storage follows one rule on a dibble: keep that storage if every new value fits, otherwise take the narrowest storage that holds every value exactly — `byte`, `int`, `long`, `float`, `double`, or the smallest fitting `str#` — never narrowing the integers the column can hold, so an overflowing `long` goes to `double` rather than through `float`. `mutate()`, `:=`, `transform()`, `within()`, the replacement operators, and `replace_values()`/`repl()` all promote this way. `replace_values()` and `repl()` are the only ones that report the change, as Stata's `replace` does (``variable `x` was byte now int``); pass either of them `promote = FALSE` to make it reject a value the declared storage cannot hold instead. Rejection is still what you get from `[<-` applied to a Stata vector taken out of the dataset, as in `data$x[1] <- 1000L`, which is the vector's own strict assignment rather than a dataset operation.
 
-The full mapping, including the reasoning, is `?"stata-storage-defaults"`. The `gen()`/`mutate()` split is [ADR 0022](./adr/0022-give-gen-statas-generate-default.md) and is listed in [the divergences page](./r-stata-divergences.md#storage-types).
+The full mapping, including the reasoning, is `?"dta-storage-defaults"`. The `gen()`/`mutate()` split is [ADR 0022](./adr/0022-give-gen-statas-generate-default.md) and is listed in [the divergences page](./r-stata-divergences.md#storage-types).
 
 ## Worked comparison
 
@@ -93,6 +93,6 @@ Rowwise tibbles are rejected by `gen()` and `repl()`; `copy_data()` accepts them
 - [Mutation by reference](./r-mutation-by-reference.md)
 - [Where dtatools diverges from Stata](./r-stata-divergences.md)
 - [Stata vector operations](./r-stata-vector-operations.md) — the rules columns follow outside a dibble
-- `?dibble`, `?"dibble-bracket"`, `?"stata-storage-defaults"`, `?replace_values` in R
+- `?dibble`, `?"dibble-bracket"`, `?"dta-storage-defaults"`, `?replace_values` in R
 
 Constructors and readers reserve 5,000 spare column-pointer slots, controlled by `dtatools.alloccol`. Reallocation warns and may separate aliases. See [column capacity and aliases](r-mutation-by-reference.md) for `reserve_columns()`, function parameters, and preparation after base R serialization.

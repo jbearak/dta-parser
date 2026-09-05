@@ -18,7 +18,7 @@
           }
         ],
         "r": {
-          "class": "stata_numeric"
+          "class": "dta_numeric"
         },
         "storage": "byte",
         "value_labels": "answers",
@@ -127,7 +127,7 @@
           }
         ],
         "r": {
-          "class": "stata_numeric"
+          "class": "dta_numeric"
         },
         "storage": "int",
         "version": 0
@@ -235,7 +235,7 @@
           }
         ],
         "r": {
-          "class": "stata_numeric"
+          "class": "dta_numeric"
         },
         "storage": "long",
         "version": 0
@@ -343,7 +343,7 @@
           }
         ],
         "r": {
-          "class": "stata_numeric"
+          "class": "dta_numeric"
         },
         "storage": "float",
         "version": 0
@@ -451,7 +451,7 @@
           }
         ],
         "r": {
-          "class": "stata_numeric"
+          "class": "dta_numeric"
         },
         "storage": "double",
         "version": 0

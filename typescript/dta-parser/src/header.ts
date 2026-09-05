@@ -36,7 +36,7 @@ import {
 import {
     StataMetadataCollector,
     withLazyStataMetadata,
-} from './stata-metadata';
+} from './dta-metadata';
 import {
     StataCharacteristicFramePlan,
 } from './characteristic-payload';
@@ -402,7 +402,7 @@ function parse_dataset_label(
 // -----------------------------------------------------------
 
 const SECTION_OFFSET_KEYS: (keyof SectionOffsets)[] = [
-    'stata_data',
+    'dta_data',
     'map',
     'variable_types',
     'varnames',
@@ -414,7 +414,7 @@ const SECTION_OFFSET_KEYS: (keyof SectionOffsets)[] = [
     'data',
     'strls',
     'value_labels',
-    'stata_data_close',
+    'dta_data_close',
     'end_of_file',
 ];
 
@@ -439,7 +439,7 @@ function parse_section_map(
     }
 
     const after_map = expect_tag(bytes, my_data_start + SECTION_MAP_ENTRIES * 8, TAG_MAP_CLOSE);
-    if (my_offsets.stata_data !== 0 || my_offsets.map !== my_open
+    if (my_offsets.dta_data !== 0 || my_offsets.map !== my_open
         || my_offsets.variable_types !== after_map) {
         throw new Error('Corrupt .dta map: section offset mismatch');
     }

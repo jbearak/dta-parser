@@ -14,6 +14,10 @@ Bun and pnpm can install the same package. The Node entrypoint requires Node.js 
 
 ## Choose an entrypoint
 
+Section offsets now use `dta_data` and `dta_data_close`; the exported missing-value
+constant is `DTA_MISSING_B`. These replace their previous `stata_` and `STATA_`
+spellings.
+
 | Import | Use it when |
 | --- | --- |
 | `@jbearak/dta-parser/node` | The package should open a local file and read rows or columns on demand |

@@ -39,10 +39,10 @@ use arrow_buffer::{ArrowNativeType, Buffer, ScalarBuffer};
 use arrow_schema::{DataType, TimeUnit};
 
 use crate::{
-    attach_source_rows, attach_stata_metadata, attach_variable_attribute_view, boundary,
+    attach_dta_metadata, attach_source_rows, attach_variable_attribute_view, boundary,
     check_interrupt, coarse_interrupt, direct_r_missing_code, fill_string_region,
     label_attribute_from_entries, missing_from_code, numeric_altrep_storage, observed_value,
-    parse_stata_metadata_sexp, poll_interrupt, r_char, r_missing, scalar_integer, scalar_string,
+    parse_dta_metadata_sexp, poll_interrupt, r_char, r_missing, scalar_integer, scalar_string,
     set_attr, set_class, set_symbol_attr, should_preserve_value_label_name, string_vector,
     temporal_kind, write_numeric_value, NumericKind, ProtectGuard, RLen, RNumericData, RStringData,
     R_ClassSymbol, R_NaInt, R_NaReal, R_NaString, R_NamesSymbol, R_RowNamesSymbol, Sexp,
@@ -80,7 +80,7 @@ pub struct RArrowColumnDescriptor {
     compact_format_version: c_int,
     compact_temporal: c_int,
     value_label_index: c_int,
-    stata_metadata: Sexp,
+    dta_metadata: Sexp,
     haven_labelled: c_int,
     /// Unmaterialized dictionary-string payload (`DictStringData`), or null
     /// for eager character columns.
@@ -106,7 +106,7 @@ const _: () = {
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, compact_format_version) == 100);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, compact_temporal) == 104);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, value_label_index) == 108);
-    assert!(std::mem::offset_of!(RArrowColumnDescriptor, stata_metadata) == 112);
+    assert!(std::mem::offset_of!(RArrowColumnDescriptor, dta_metadata) == 112);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, haven_labelled) == 120);
     assert!(std::mem::offset_of!(RArrowColumnDescriptor, dictstring) == 128);
     assert!(std::mem::size_of::<RArrowColumnDescriptor>() == 136);
@@ -926,7 +926,7 @@ unsafe fn extract_column_metadata(
         } else {
             None
         };
-    let (notes, characteristics) = parse_stata_metadata_sexp(descriptor.stata_metadata)?;
+    let (notes, characteristics) = parse_dta_metadata_sexp(descriptor.dta_metadata)?;
     let value_label_index = if descriptor.value_label_index == -1 {
         None
     } else {
@@ -1590,7 +1590,7 @@ unsafe fn assemble_write_dataset(
         },
         ..DatasetDocument::default()
     };
-    (dataset.notes, dataset.characteristics) = parse_stata_metadata_sexp(dataset_metadata)?;
+    (dataset.notes, dataset.characteristics) = parse_dta_metadata_sexp(dataset_metadata)?;
 
     let value_label_names = table_descriptors
         .iter()
@@ -1959,7 +1959,7 @@ unsafe fn attach_simple_attributes(
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     if let Some(document) = attributes.document {
-        attach_stata_metadata(vector, &document.notes, &document.characteristics, guard)?;
+        attach_dta_metadata(vector, &document.notes, &document.characteristics, guard)?;
     }
     if !attributes.label().is_empty() {
         let label = scalar_string(attributes.label(), guard)?;
@@ -1975,7 +1975,7 @@ unsafe fn attach_simple_attributes(
     {
         let storage = scalar_string(storage, guard)?;
         set_attr(vector, "stata.string.storage", storage)?;
-        set_class(vector, &["stata_string", "vctrs_vctr", "character"], guard)?;
+        set_class(vector, &["dta_string", "vctrs_vctr", "character"], guard)?;
     }
     Ok(())
 }
@@ -3496,7 +3496,7 @@ pub unsafe extern "C" fn dtatools_read_arrow_rust(
             set_attr(frame, "dtatools.profiled", value)?;
         }
         let mut guard = ProtectGuard::new();
-        attach_stata_metadata(frame, &dataset_notes, &dataset_characteristics, &mut guard)?;
+        attach_dta_metadata(frame, &dataset_notes, &dataset_characteristics, &mut guard)?;
         if let Some(signature) = &result.stored_signature {
             let mut guard = ProtectGuard::new();
             let signature = scalar_string(signature, &mut guard)?;

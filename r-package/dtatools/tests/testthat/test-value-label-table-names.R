@@ -6,7 +6,7 @@ named_labelled <- function(values, labels, table = NULL) {
     result <- dta_long(values)
     attr(result, "labels") <- labels
     attr(result, "class") <- c(
-        "stata_numeric", "stata_long", "haven_labelled", "vctrs_vctr",
+        "dta_numeric", "dta_long", "haven_labelled", "vctrs_vctr",
         "double"
     )
     if (!is.null(table)) attr(result, "value.label.name") <- table
@@ -257,7 +257,7 @@ test_that("shared write mappings use one prepared vector", {
         c(
             "name", "type_code", "format", "label", "values",
             "numeric_shift", "numeric_scale", "value_label_index",
-            "stata_metadata"
+            "dta_metadata"
         )
     )
     expect_identical(
@@ -265,7 +265,7 @@ test_that("shared write mappings use one prepared vector", {
         c(
             "name", "kind", "values", "levels", "ordered", "label",
             "format", "storage", "tz", "units", "haven_labelled",
-            "string_storage", "value_label_index", "stata_metadata"
+            "string_storage", "value_label_index", "dta_metadata"
         )
     )
     expect_length(dta[[5L]], 1L)

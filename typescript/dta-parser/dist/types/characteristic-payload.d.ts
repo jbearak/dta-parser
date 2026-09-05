@@ -1,5 +1,5 @@
 import type { DtaTextDecoder } from './text-encoding';
-import { type StataMetadataCollector } from './stata-metadata';
+import { type StataMetadataCollector } from './dta-metadata';
 /** One format-specific locator supplied after a record's framing is valid. */
 export interface StataCharacteristicLocator {
     namesStart: number;

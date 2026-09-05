@@ -45,6 +45,9 @@ missing values. Numeric columns also retain their declared Stata storage type.
 | `dta_characteristics()`, `dta_characteristic()`, `set_dta_characteristic()`, `drop_dta_characteristics()` | Read and edit arbitrary Stata characteristics at dataset or variable scope. |
 | `var_label()`, `val_labels()`, `dataset_label()`, `set_var_label()`, `set_var_labels()`, `set_val_labels()` | Get and set Stata label metadata without haven or `labelled`. |
 
+Package-owned classes now use `dta_`, including `dta_numeric` and `dta_string`.
+See the [naming migration](../../docs/dta-naming.md) for class checks and saved objects.
+
 ## Dibbles, tibbles, and data tables
 
 Readers return dibbles by default: a dibble is a Stata dataset held in a
@@ -52,7 +55,7 @@ tibble. It carries dtatools reference state from creation, so `gen()` and the
 other by-reference operations find it ready, and two invariants follow. Every
 numeric and string column carries Stata storage: `dibble()`, `as_dibble()`,
 and every operation that adds or changes a column give a bare column the
-storage that `?"stata-storage-defaults"` maps its R type to. Logical columns
+storage that `?"dta-storage-defaults"` maps its R type to. Logical columns
 stay logical and factors stay factors. And every dataset operation on a dibble
 returns a dibble: the dplyr verbs, joins and `bind_rows()` with a dibble first, base
 `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()`, and `[`
@@ -716,7 +719,7 @@ Use the installed help for exact behavior and examples:
 ?var_label          # dataset, variable, and value-label metadata
 ?resolve_var_name    # resolve variable names and abbreviations
 ?confirm_var         # check variable names and abbreviations
-?"stata-storage-defaults" # the Stata storage a dibble gives its columns
+?"dta-storage-defaults" # the Stata storage a dibble gives its columns
 ?order_vars          # move variables to the front by reference
 ?rename_vars         # rename variables by reference
 ?slice_dta_rows      # select rows through Stata storage

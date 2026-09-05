@@ -14,7 +14,7 @@ const VALUE_LABELS_OPEN: &[u8] = b"<value_labels>";
 const VALUE_LABELS_CLOSE: &[u8] = b"</value_labels>";
 const LABEL_OPEN: &[u8] = b"<lbl>";
 const LABEL_CLOSE: &[u8] = b"</lbl>";
-const STATA_DATA_CLOSE: &[u8] = b"</stata_dta>";
+const DTA_DATA_CLOSE: &[u8] = b"</stata_dta>";
 const RESERVED_WIDTH: usize = 3;
 pub(crate) const MAX_VALUE_LABEL_ENTRIES: usize = 65_536;
 
@@ -756,12 +756,12 @@ pub(crate) fn parse_value_labels_section(
     }
 
     ensure_absolute_offset(
-        "stata_data_close",
+        "dta_data_close",
         cursor,
         base_offset,
-        metadata.section_offsets.stata_data_close,
+        metadata.section_offsets.dta_data_close,
     )?;
-    cursor = expect_at(bytes, cursor, STATA_DATA_CLOSE, "</stata_dta>")?;
+    cursor = expect_at(bytes, cursor, DTA_DATA_CLOSE, "</stata_dta>")?;
     ensure_absolute_offset(
         "end_of_file",
         cursor,

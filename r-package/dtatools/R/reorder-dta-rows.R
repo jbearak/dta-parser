@@ -66,7 +66,7 @@ reorder_dta_rows <- function(data, rows) {
     }
     state <- .reference_state(data)
     classes <- if (is.null(state)) class(data) else state$classes
-    base_classes <- setdiff(classes, "dtatools_stata_metadata")
+    base_classes <- setdiff(classes, "dtatools_dta_metadata")
     data_table <- identical(base_classes, c("data.table", "data.frame"))
     if (!data_table &&
         !identical(base_classes, "data.frame") &&

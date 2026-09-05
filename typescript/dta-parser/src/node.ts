@@ -998,7 +998,7 @@ function read_modern_metadata(
         throw new Error('Observation extent does not match strL offset');
     }
     if (offsets.end_of_file !== file_size
-        || offsets.stata_data_close + '</stata_dta>'.length !== file_size) {
+        || offsets.dta_data_close + '</stata_dta>'.length !== file_size) {
         throw new Error('Mapped file extent does not match file size');
     }
     if (offsets.strls + '<strls></strls>'.length > offsets.value_labels) {
@@ -1008,7 +1008,7 @@ function read_modern_metadata(
         [offsets.data, '<data>'],
         [data_end, '</data><strls>'],
         [offsets.value_labels - '</strls>'.length, '</strls>'],
-        [offsets.stata_data_close, '</stata_dta>'],
+        [offsets.dta_data_close, '</stata_dta>'],
     ] as const) {
         const actual = new Uint8Array(read_range(fd, offset, tag.length));
         for (let i = 0; i < tag.length; i++) {
@@ -1161,8 +1161,8 @@ export {
     renumberStataNotes,
     setStataCharacteristic,
     setStataNote,
-} from './stata-metadata';
-export type { StataMetadataTarget } from './stata-metadata';
+} from './dta-metadata';
+export type { StataMetadataTarget } from './dta-metadata';
 export {
     classify_missing_value,
     classify_raw_float_missing,
@@ -1171,5 +1171,5 @@ export {
     is_missing_value_object,
     make_missing_value,
     missing_type_to_label_key,
-    STATA_MISSING_B,
+    DTA_MISSING_B,
 } from './missing-values';

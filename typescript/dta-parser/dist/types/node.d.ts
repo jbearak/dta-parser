@@ -138,7 +138,7 @@ export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata
 export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
 export { is_legacy_format } from './types';
 export { apply_display_format } from './display-format';
-export { addStataNote, dropStataCharacteristics, dropStataNotes, getStataCharacteristic, getStataNote, listStataCharacteristics, listStataNotes, renumberStataNotes, setStataCharacteristic, setStataNote, } from './stata-metadata';
-export type { StataMetadataTarget } from './stata-metadata';
-export { classify_missing_value, classify_raw_float_missing, classify_raw_double_missing_at, is_missing_value, is_missing_value_object, make_missing_value, missing_type_to_label_key, STATA_MISSING_B, } from './missing-values';
+export { addStataNote, dropStataCharacteristics, dropStataNotes, getStataCharacteristic, getStataNote, listStataCharacteristics, listStataNotes, renumberStataNotes, setStataCharacteristic, setStataNote, } from './dta-metadata';
+export type { StataMetadataTarget } from './dta-metadata';
+export { classify_missing_value, classify_raw_float_missing, classify_raw_double_missing_at, is_missing_value, is_missing_value_object, make_missing_value, missing_type_to_label_key, DTA_MISSING_B, } from './missing-values';
 //# sourceMappingURL=node.d.ts.map

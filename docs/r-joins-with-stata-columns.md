@@ -52,7 +52,7 @@ Before the 0.6.0 fix, a single native Stata key worked for inner and left
 merges. A right or full merge failed if it had to add a key found only in `y`.
 After matching, `merge.data.frame()` starts with the selected `x` keys and
 fills right-only positions using subassignment. The dtatools package's strict
-`[<-.stata_numeric` method rejects assignment past the current vector length.
+`[<-.dta_numeric` method rejects assignment past the current vector length.
 For example, merging byte keys `c(1, 2)` and `c(2, 3)` with `all.y = TRUE`
 errors because the result needs another key slot. `all = TRUE` fails for the
 same reason. This happens even when both keys declare the same Stata storage
@@ -63,7 +63,7 @@ vctrs common-type rules. It promotes storage when needed, combines compatible
 value labels, restores compact backing, and leaves ordinary replacement strict.
 This is a deep vector seam: the same implementation fixes `rbind()` and
 `merge()` without a join wrapper. Regression coverage lives in
-[`test-stata-numeric.R`](../r-package/dtatools/tests/testthat/test-stata-numeric.R).
+[`test-dta-numeric.R`](../r-package/dtatools/tests/testthat/test-dta-numeric.R).
 
 Base merge still has an information limit. When no right-only key requires
 extension, `merge.data.frame()` keeps the selected `x` key and never combines
@@ -120,7 +120,7 @@ order, suffixes, `multiple`, `unmatched`, and `relationship` checks.
 This fits dtatools much better than base `merge()`. Current dtatools defines
 `vec_proxy()`, `vec_restore()`, `vec_ptype2()`, and `vec_cast()` methods for
 Stata numerics and Stata temporal vectors in
-[`stata-numeric.R`](../r-package/dtatools/R/stata-numeric.R). Vctrs applies
+[`dta-numeric.R`](../r-package/dtatools/R/dta-numeric.R). Vctrs applies
 operations to a proxy and restores the original representation afterward, as
 its [proxy and restore documentation](https://vctrs.r-lib.org/reference/vec_proxy.html)
 describes.
@@ -132,8 +132,8 @@ common-type methods choose a lossless Stata storage type, preserve the left
 variable label unless it is absent, and combine compatible value-label tables.
 Conflicting text for one value warns and the left label wins. Restoration
 re-encodes compact byte, int, long, or float storage. These rules are explicit
-in the dtatools package's [`vec_ptype2.stata_numeric.stata_numeric()` and restoration
-code](../r-package/dtatools/R/stata-numeric.R).
+in the dtatools package's [`vec_ptype2.dta_numeric.dta_numeric()` and restoration
+code](../r-package/dtatools/R/dta-numeric.R).
 
 `keep = TRUE` avoids coalescing the keys. Each side then retains its own key
 column and metadata, with suffixes where names collide. This is the safer form

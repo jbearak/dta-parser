@@ -55,7 +55,7 @@ factor_from_labels <- function(x, missing = FALSE,
         attr(x, "labels", exact = TRUE),
         "attr(x, \"labels\")"
     )
-    .warn_stata_metadata_limits(.value_label_violations(labels))
+    .warn_dta_metadata_limits(.value_label_violations(labels))
     if (temporal && !is.null(labels)) {
         labels <- .tab_label_values(labels, x)
     }

@@ -108,7 +108,7 @@ extern "C" {
     ) -> c_int;
 }
 
-const STATA_METADATA_MARKER: &str = "\u{1e}dtatools:stata-metadata:1";
+const DTA_METADATA_MARKER: &str = "\u{1e}dtatools:dta-metadata:1";
 
 fn parse_metadata_count(value: &str, context: &str) -> Result<usize, String> {
     value
@@ -116,7 +116,7 @@ fn parse_metadata_count(value: &str, context: &str) -> Result<usize, String> {
         .map_err(|_| format!("invalid internal {context} count"))
 }
 
-unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
+unsafe fn parse_dta_metadata_sexp_as<'a, N, C>(
     values: Sexp,
     note: impl Fn(u32, &'a str) -> N,
     characteristic: impl Fn(&'a str, &'a str) -> C,
@@ -136,7 +136,7 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
     if field_count < 2 {
         return Err("truncated internal Stata metadata envelope".to_owned());
     }
-    if field(0)? != STATA_METADATA_MARKER {
+    if field(0)? != DTA_METADATA_MARKER {
         return Err("invalid internal Stata metadata marker".to_owned());
     }
     let note_count = parse_metadata_count(field(1)?, "note")?;
@@ -193,10 +193,10 @@ unsafe fn parse_stata_metadata_sexp_as<'a, N, C>(
     Ok((notes, characteristics))
 }
 
-pub(crate) unsafe fn parse_stata_metadata_sexp(
+pub(crate) unsafe fn parse_dta_metadata_sexp(
     values: Sexp,
 ) -> Result<(Vec<StataNote>, Vec<StataCharacteristic>), String> {
-    parse_stata_metadata_sexp_as(
+    parse_dta_metadata_sexp_as(
         values,
         |number, text| StataNote {
             number,
@@ -211,10 +211,10 @@ pub(crate) unsafe fn parse_stata_metadata_sexp(
     )
 }
 
-unsafe fn parse_stata_metadata_sexp_borrowed<'a>(
+unsafe fn parse_dta_metadata_sexp_borrowed<'a>(
     values: Sexp,
 ) -> Result<(Vec<DtaWriteNote<'a>>, Vec<DtaWriteCharacteristic<'a>>), String> {
-    parse_stata_metadata_sexp_as(
+    parse_dta_metadata_sexp_as(
         values,
         |number, text| DtaWriteNote::numbered(number, Cow::Borrowed(text)),
         |name, value| DtaWriteCharacteristic {
@@ -707,7 +707,11 @@ fn raw_int_bounds(storage: CompareStorage) -> Option<RawIntBounds> {
     };
     Some(RawIntBounds {
         type_min,
-        first_missing: if tagged_missing_version(version) { dot } else { z },
+        first_missing: if tagged_missing_version(version) {
+            dot
+        } else {
+            z
+        },
         z,
     })
 }
@@ -752,11 +756,9 @@ fn raw_int_scalar_plan(
         };
         let integral = encoded == encoded.trunc();
         let key = encoded as i64;
-        let eq_target = (integral
-            && key as f64 == encoded
-            && key >= bounds.type_min
-            && key <= finite_max)
-            .then_some(key);
+        let eq_target =
+            (integral && key as f64 == encoded && key >= bounds.type_min && key <= finite_max)
+                .then_some(key);
         (
             eq_target,
             encoded.ceil() as i64,
@@ -820,7 +822,9 @@ unsafe fn run_raw_int_scalar_plan<T>(
             };
             for index in 0..length {
                 let raw = base.add(index).read_unaligned();
-                output.add(index).write(c_int::from((raw == target) != invert));
+                output
+                    .add(index)
+                    .write(c_int::from((raw == target) != invert));
             }
         }
         RawScalarPlan::Lt { cutoff, invert } => {
@@ -829,7 +833,9 @@ unsafe fn run_raw_int_scalar_plan<T>(
             };
             for index in 0..length {
                 let raw = base.add(index).read_unaligned();
-                output.add(index).write(c_int::from((raw < cutoff) != invert));
+                output
+                    .add(index)
+                    .write(c_int::from((raw < cutoff) != invert));
             }
         }
     }
@@ -961,15 +967,24 @@ unsafe fn compare_raw_int(
         None => {
             let plan = raw_int_scalar_plan(op, scalar, x.temporal, x_bounds)?;
             match x.storage {
-                CompareStorage::Byte(_) => {
-                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i8>(), output, length)
-                }
-                CompareStorage::Int(_) => {
-                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i16>(), output, length)
-                }
-                CompareStorage::Long(_) => {
-                    run_raw_int_scalar_plan(plan, (x.values as *const u8).cast::<i32>(), output, length)
-                }
+                CompareStorage::Byte(_) => run_raw_int_scalar_plan(
+                    plan,
+                    (x.values as *const u8).cast::<i8>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Int(_) => run_raw_int_scalar_plan(
+                    plan,
+                    (x.values as *const u8).cast::<i16>(),
+                    output,
+                    length,
+                ),
+                CompareStorage::Long(_) => run_raw_int_scalar_plan(
+                    plan,
+                    (x.values as *const u8).cast::<i32>(),
+                    output,
+                    length,
+                ),
                 CompareStorage::Float(_) | CompareStorage::Double => unreachable!(),
             }
             Some(true)
@@ -1895,7 +1910,7 @@ unsafe fn scalar_integer(value: c_int, guard: &mut ProtectGuard) -> Result<Sexp,
     Ok(vector)
 }
 
-unsafe fn attach_stata_metadata(
+unsafe fn attach_dta_metadata(
     object: Sexp,
     notes: &[StataNote],
     characteristics: &[StataCharacteristic],
@@ -2056,7 +2071,7 @@ unsafe fn attach_variable_attribute_view(
     guard: &mut ProtectGuard,
 ) -> Result<(), String> {
     check_interrupt()?;
-    attach_stata_metadata(vector, attributes.notes, attributes.characteristics, guard)?;
+    attach_dta_metadata(vector, attributes.notes, attributes.characteristics, guard)?;
     if !attributes.label.is_empty() {
         let value = scalar_string(attributes.label, guard)?;
         set_attr(vector, "label", value)?;
@@ -2073,7 +2088,7 @@ unsafe fn attach_variable_attribute_view(
     if let Some(string_storage) = string_storage {
         let value = scalar_string(&string_storage, guard)?;
         set_attr(vector, "stata.string.storage", value)?;
-        set_class(vector, &["stata_string", "vctrs_vctr", "character"], guard)?;
+        set_class(vector, &["dta_string", "vctrs_vctr", "character"], guard)?;
     }
     if let Some(table_name) = value_label_name {
         let labels = labels_attribute.ok_or_else(|| {
@@ -2090,11 +2105,11 @@ unsafe fn attach_variable_attribute_view(
     }
 
     let storage = match attributes.dta_type {
-        DtaType::Byte => Some(("byte", "stata_byte")),
-        DtaType::Int => Some(("int", "stata_int")),
-        DtaType::Long => Some(("long", "stata_long")),
-        DtaType::Float => Some(("float", "stata_float")),
-        DtaType::Double => Some(("double", "stata_double")),
+        DtaType::Byte => Some(("byte", "dta_byte")),
+        DtaType::Int => Some(("int", "dta_int")),
+        DtaType::Long => Some(("long", "dta_long")),
+        DtaType::Float => Some(("float", "dta_float")),
+        DtaType::Double => Some(("double", "dta_double")),
         DtaType::FixedString(_) | DtaType::StrL => None,
     };
     if let Some((storage_name, _)) = storage {
@@ -2104,12 +2119,12 @@ unsafe fn attach_variable_attribute_view(
 
     match (temporal_kind(attributes.format), storage) {
         (TemporalKind::Date, Some(_)) => {
-            set_class(vector, &["stata_temporal", "stata_date", "Date"], guard)?;
+            set_class(vector, &["dta_temporal", "dta_date", "Date"], guard)?;
         }
         (TemporalKind::Datetime, Some(_)) => {
             set_class(
                 vector,
-                &["stata_temporal", "stata_datetime", "POSIXct", "POSIXt"],
+                &["dta_temporal", "dta_datetime", "POSIXct", "POSIXt"],
                 guard,
             )?;
             let timezone = scalar_string("UTC", guard)?;
@@ -2119,7 +2134,7 @@ unsafe fn attach_variable_attribute_view(
             set_class(
                 vector,
                 &[
-                    "stata_numeric",
+                    "dta_numeric",
                     storage_class,
                     "haven_labelled",
                     "vctrs_vctr",
@@ -2130,7 +2145,7 @@ unsafe fn attach_variable_attribute_view(
         }
         (TemporalKind::None, Some((_, storage_class))) => set_class(
             vector,
-            &["stata_numeric", storage_class, "vctrs_vctr", "double"],
+            &["dta_numeric", storage_class, "vctrs_vctr", "double"],
             guard,
         )?,
         (TemporalKind::Date, None) => set_class(vector, &["Date"], guard)?,
@@ -2336,7 +2351,7 @@ unsafe fn attach_dataset_attributes(result: Sexp, metadata: &DtaMetadata) -> Res
     }
     check_interrupt()?;
     let mut guard = ProtectGuard::new();
-    attach_stata_metadata(
+    attach_dta_metadata(
         result,
         &metadata.notes,
         &metadata.characteristics,
@@ -3636,7 +3651,7 @@ pub struct RWriteColumnDescriptor {
     numeric_values: *const c_void,
     string_values: Sexp,
     value_label_index: c_int,
-    stata_metadata: Sexp,
+    dta_metadata: Sexp,
     numeric_shift: f64,
     numeric_scale: f64,
     direct_numeric_values: *const c_void,
@@ -3656,7 +3671,7 @@ const _: () = {
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_values) == 32);
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, string_values) == 40);
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, value_label_index) == 48);
-    assert!(std::mem::offset_of!(RWriteColumnDescriptor, stata_metadata) == 56);
+    assert!(std::mem::offset_of!(RWriteColumnDescriptor, dta_metadata) == 56);
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_shift) == 64);
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, numeric_scale) == 72);
     assert!(std::mem::offset_of!(RWriteColumnDescriptor, direct_numeric_values) == 80);
@@ -4908,7 +4923,7 @@ unsafe fn r_value_labels<'a>(
 struct RWriteRequest {
     path: *const c_char,
     dataset_label: *const c_char,
-    stata_metadata: Sexp,
+    dta_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
     value_label_tables: *const RWriteValueLabelTableDescriptor,
@@ -4922,7 +4937,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     let RWriteRequest {
         path,
         dataset_label,
-        stata_metadata,
+        dta_metadata,
         descriptors,
         column_count,
         value_label_tables,
@@ -4942,7 +4957,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
     if numeric_replacements.is_null() && column_count != 0 {
         return Err("numeric replacement output pointer is null".into());
     }
-    let (notes, characteristics) = parse_stata_metadata_sexp_borrowed(stata_metadata)?;
+    let (notes, characteristics) = parse_dta_metadata_sexp_borrowed(dta_metadata)?;
     let descriptors = if column_count == 0 {
         &[]
     } else {
@@ -5011,7 +5026,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
         }
         let dta_type = legacy_source_output_type(source, save_dta_type(descriptor.dta_type)?)?;
         let (variable_notes, variable_characteristics) =
-            parse_stata_metadata_sexp_borrowed(descriptor.stata_metadata)?;
+            parse_dta_metadata_sexp_borrowed(descriptor.dta_metadata)?;
         let value_label_index = if descriptor.value_label_index == -1 {
             None
         } else {
@@ -5093,7 +5108,7 @@ unsafe fn write_impl(request: RWriteRequest) -> Result<(), RWriteError> {
 pub unsafe extern "C" fn dtatools_write_rust(
     path: *const c_char,
     dataset_label: *const c_char,
-    stata_metadata: Sexp,
+    dta_metadata: Sexp,
     descriptors: *const RWriteColumnDescriptor,
     column_count: usize,
     value_label_tables: *const RWriteValueLabelTableDescriptor,
@@ -5107,7 +5122,7 @@ pub unsafe extern "C" fn dtatools_write_rust(
         match write_impl(RWriteRequest {
             path,
             dataset_label,
-            stata_metadata,
+            dta_metadata,
             descriptors,
             column_count,
             value_label_tables,
@@ -5216,7 +5231,7 @@ mod tests {
             label: ptr::null(),
             numeric_values: ptr::null(),
             string_values: ptr::null_mut(),
-            stata_metadata: ptr::null_mut(),
+            dta_metadata: ptr::null_mut(),
             value_label_index: -1,
             numeric_shift: shift,
             numeric_scale: scale,
@@ -5306,7 +5321,7 @@ mod tests {
     }
 
     #[test]
-    fn decoded_stata_milliseconds_snap_back_to_integer_storage() {
+    fn decoded_dta_milliseconds_snap_back_to_integer_storage() {
         for raw in [1.0, 999.0, 1_001.0] {
             let observed = observed_value(raw, TemporalKind::Datetime);
             assert_eq!(write_numeric_value(observed, 315_619_200.0, 1_000.0), raw);

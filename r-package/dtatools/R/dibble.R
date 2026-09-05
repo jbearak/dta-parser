@@ -18,7 +18,7 @@
 #' A dibble is a Stata dataset held in a tibble, and two invariants follow.
 #' Every numeric and string column carries Stata storage: `dibble()` and
 #' `as_dibble()` type bare columns by the mapping in
-#' [stata-storage-defaults], and so does every operation that adds or
+#' [dta-storage-defaults], and so does every operation that adds or
 #' changes a column, including [dplyr::mutate()], `transform()`, and the
 #' replacement operators `$<-`, `[[<-`, and `[<-`. Logical columns stay
 #' logical and factors stay factors. And every dataset operation on a
@@ -83,7 +83,7 @@
 #' is_dibble(grouped)
 #' dplyr::group_vars(grouped)
 #' @seealso [dibble-bracket] for `survey[i, y := value]`, the assignment
-#'   shape only a dibble supports; [stata-storage-defaults] for the Stata
+#'   shape only a dibble supports; [dta-storage-defaults] for the Stata
 #'   storage a dibble gives its columns.
 #' @name dibble
 NULL

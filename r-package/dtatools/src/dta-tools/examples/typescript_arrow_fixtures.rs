@@ -300,7 +300,7 @@ fn main() {
                 value: "test".into(),
             }],
             r: Some(ArrowRSemantics {
-                class: "stata_numeric".into(),
+                class: "dta_numeric".into(),
                 ..Default::default()
             }),
             ..Default::default()

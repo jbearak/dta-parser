@@ -3,7 +3,7 @@ import {
     stataMetadataValueEnd,
     type AcceptedStataCharacteristic,
     type StataMetadataCollector,
-} from './stata-metadata';
+} from './dta-metadata';
 
 /** One format-specific locator supplied after a record's framing is valid. */
 export interface StataCharacteristicLocator {

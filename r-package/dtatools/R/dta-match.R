@@ -119,28 +119,28 @@ dta_union <- function(x, y) {
         vctrs::vec_slice(y, y_locations)
     ))
     if (identical(kind, "numeric") &&
-        (inherits(x, "stata_numeric") || inherits(y, "stata_numeric"))) {
+        (inherits(x, "dta_numeric") || inherits(y, "dta_numeric"))) {
         storage <- .dta_union_numeric_storage(x, y)
         values <- c(as.double(sliced[[1L]]), as.double(sliced[[2L]]))
-        prototype <- if (inherits(x, "stata_numeric")) x else y
-        result <- .construct_stata_numeric(values, NULL, storage)
-        result <- suppressWarnings(.restore_stata_metadata(
+        prototype <- if (inherits(x, "dta_numeric")) x else y
+        result <- .construct_dta_numeric(values, NULL, storage)
+        result <- suppressWarnings(.restore_dta_metadata(
             result, prototype, storage
         ))
     } else if (kind %in% c("date", "datetime") &&
-               (inherits(x, "stata_temporal") ||
-                inherits(y, "stata_temporal"))) {
+               (inherits(x, "dta_temporal") ||
+                inherits(y, "dta_temporal"))) {
         storage <- .dta_union_numeric_storage(x, y)
         values <- c(as.double(sliced[[1L]]), as.double(sliced[[2L]]))
-        prototype <- if (inherits(x, "stata_temporal")) x else y
-        result <- suppressWarnings(.restore_stata_temporal(
+        prototype <- if (inherits(x, "dta_temporal")) x else y
+        result <- suppressWarnings(.restore_dta_temporal(
             values, prototype, storage
         ))
     } else if (identical(kind, "string") &&
-               (inherits(x, "stata_string") || inherits(y, "stata_string"))) {
-        storage <- .stata_string_common_storage(x, y)
-        prototype <- if (inherits(x, "stata_string")) x else y
-        result <- suppressWarnings(.new_stata_string(
+               (inherits(x, "dta_string") || inherits(y, "dta_string"))) {
+        storage <- .dta_string_common_storage(x, y)
+        prototype <- if (inherits(x, "dta_string")) x else y
+        result <- suppressWarnings(.new_dta_string(
             c(as.character(sliced[[1L]]), as.character(sliced[[2L]])),
             storage,
             prototype
@@ -149,9 +149,9 @@ dta_union <- function(x, y) {
         result <- suppressWarnings(vctrs::vec_c(sliced[[1L]], sliced[[2L]]))
     }
 
-    if (inherits(result, "stata_numeric") ||
-        inherits(result, "stata_temporal") ||
-        inherits(result, "stata_string")) {
+    if (inherits(result, "dta_numeric") ||
+        inherits(result, "dta_temporal") ||
+        inherits(result, "dta_string")) {
         reconciled <- .dta_union_metadata(result, x, y, kind)
         result <- reconciled$result
         conflicts <- reconciled$conflicts
@@ -173,7 +173,7 @@ dta_union <- function(x, y) {
 
 .dta_union_numeric_storage <- function(x, y) {
     storages <- vapply(list(x, y), function(value) {
-        storage <- .declared_stata_storage(value)
+        storage <- .declared_dta_storage(value)
         if (!is.null(storage)) return(storage)
         if (is.double(value)) return("double")
         observed <- value[!is.na(value)]
@@ -183,13 +183,13 @@ dta_union <- function(x, y) {
         if (all(observed >= -32767 & observed <= 32740)) return("int")
         "long"
     }, character(1))
-    .stata_promote(storages[[1L]], storages[[2L]])
+    .dta_promote(storages[[1L]], storages[[2L]])
 }
 
 .dta_unknown_attributes <- function(x) {
     setdiff(
         names(attributes(x)),
-        c("names", "class", .stata_variable_attribute_names)
+        c("names", "class", .dta_variable_attribute_names)
     )
 }
 
@@ -210,8 +210,8 @@ dta_union <- function(x, y) {
     if (is.null(labels)) {
         labels <- y_labels
     } else if (!is.null(y_labels)) {
-        x_keys <- .stata_value_label_keys(x_labels)
-        y_keys <- .stata_value_label_keys(y_labels)
+        x_keys <- .dta_value_label_keys(x_labels)
+        y_keys <- .dta_value_label_keys(y_labels)
         shared <- match(y_keys, x_keys, nomatch = 0L)
         differing <- shared > 0L &
             names(y_labels) != names(x_labels)[pmax(shared, 1L)]
@@ -257,15 +257,15 @@ dta_union <- function(x, y) {
 .dta_union_format <- function(x, y, result, kind) {
     compatible <- function(format) {
         if (is.null(format)) return(FALSE)
-        if (identical(kind, "string")) return(.valid_stata_string_format(format))
+        if (identical(kind, "string")) return(.valid_dta_string_format(format))
         if (identical(kind, "date")) {
-            return(.valid_stata_calendar_format(format, "d"))
+            return(.valid_dta_calendar_format(format, "d"))
         }
         if (identical(kind, "datetime")) {
-            return(.valid_stata_calendar_format(format, c("c", "C")))
+            return(.valid_dta_calendar_format(format, c("c", "C")))
         }
-        .valid_stata_decimal_format(format) ||
-            .valid_stata_calendar_format(format, c("w", "m", "q", "h", "y", "g", "b"))
+        .valid_dta_decimal_format(format) ||
+            .valid_dta_calendar_format(format, c("w", "m", "q", "h", "y", "g", "b"))
     }
     x_format <- attr(x, "format.stata", exact = TRUE)
     y_format <- attr(y, "format.stata", exact = TRUE)
@@ -273,14 +273,14 @@ dta_union <- function(x, y) {
     if (compatible(y_format)) return(y_format)
     if (identical(kind, "string")) {
         storage <- attr(result, "stata.string.storage", exact = TRUE)
-        return(.default_stata_format(
+        return(.default_dta_format(
             if (identical(storage, "strL")) "strL" else "fixed",
-            .stata_string_storage_width(storage)
+            .dta_string_storage_width(storage)
         ))
     }
     if (identical(kind, "date")) return("%td")
     if (identical(kind, "datetime")) return("%tc")
-    .default_stata_format(.declared_stata_storage(result))
+    .default_dta_format(.declared_dta_storage(result))
 }
 
 #' @rdname dta_match
@@ -321,8 +321,8 @@ dta_setequal <- function(x, y) {
 # Stata-backed. Extended missing codes use distinct imaginary components. A
 # bare tagged-missing operand still needs
 # dta_match() because its class carries no dispatch information.
-.mtfrm_stata_numeric <- function(x) {
-    parts <- .stata_identity_parts(x, "matching")
+.mtfrm_dta_numeric <- function(x) {
+    parts <- .dta_identity_parts(x, "matching")
     result <- as.complex(parts$value)
     result[parts$rank == 1L] <- NA_complex_
     extended <- parts$rank >= 2L
@@ -333,18 +333,18 @@ dta_setequal <- function(x, y) {
 }
 
 #' @export
-mtfrm.stata_numeric <- function(x) {
-    .mtfrm_stata_numeric(x)
+mtfrm.dta_numeric <- function(x) {
+    .mtfrm_dta_numeric(x)
 }
 
 #' @export
-mtfrm.stata_string <- function(x) {
+mtfrm.dta_string <- function(x) {
     as.character(x)
 }
 
 #' @export
-mtfrm.stata_temporal <- function(x) {
-    .mtfrm_stata_numeric(x)
+mtfrm.dta_temporal <- function(x) {
+    .mtfrm_dta_numeric(x)
 }
 
 .dta_unique_result <- function(x) {

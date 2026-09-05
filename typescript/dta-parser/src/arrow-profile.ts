@@ -1,7 +1,7 @@
 import type { FormatVersion, MissingType, MissingValue, StataCharacteristic, StataNote } from './types';
 import { byte_missing_offset, int_missing_offset, long_missing_offset, float_missing_offset,
     classify_raw_double_missing_at, make_missing_value, missing_value_from_offset } from './missing-values';
-import { listStataCharacteristics, listStataNotes } from './stata-metadata';
+import { listStataCharacteristics, listStataNotes } from './dta-metadata';
 
 export const ARROW_PROFILE_VERSION = '0';
 export const ARROW_PROFILE_VERSION_KEY = 'dtatools:profile-version';
@@ -257,7 +257,7 @@ export function validateFieldDocument(raw: unknown, field: ProfileFieldDescripto
         if (missing !== (storage === 'float' || storage === 'double' ? 'payload' : 'sentinel')) fail('declares missing encoding incompatible with Stata storage');
         if (missing_release !== undefined && storage === 'double') fail('declares source missing release for double storage');
         if (field.nullable) fail('declares raw Stata missing storage on a nullable field');
-        if (r && (r.class !== 'stata_numeric' || r.ordered !== undefined || r.tz !== undefined || r.units !== undefined)) fail('declares R semantics incompatible with Stata storage');
+        if (r && (!['dta_numeric', 'stata_numeric'].includes(r.class) || r.ordered !== undefined || r.tz !== undefined || r.units !== undefined)) fail('declares R semantics incompatible with Stata storage');
         return document;
     }
     if (missing_release !== undefined) fail('declares source missing release without Stata storage');

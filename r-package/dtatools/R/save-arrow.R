@@ -162,7 +162,7 @@ save_arrow <- function(data, path,
     enc2utf8(value)
 }
 
-.arrow_stata_metadata_payload <- function(notes, characteristics) {
+.arrow_dta_metadata_payload <- function(notes, characteristics) {
     # The source attributes passed the allocation-free bytes-encoding preflight
     # before the metadata getters validated and copied them.
     if (length(notes)) {
@@ -173,10 +173,10 @@ save_arrow <- function(data, path,
         names(characteristics) <- enc2utf8(names(characteristics))
         characteristics <- enc2utf8(characteristics)
     }
-    .stata_metadata_payload(notes, characteristics, inputs_are_utf8 = TRUE)
+    .dta_metadata_payload(notes, characteristics, inputs_are_utf8 = TRUE)
 }
 
-.arrow_validate_stata_metadata_utf8 <- function(x, what) {
+.arrow_validate_dta_metadata_utf8 <- function(x, what) {
     notes <- attr(x, "notes", exact = TRUE)
     if (is.character(notes)) {
         .arrow_reject_bytes(notes, sprintf("%s notes", what))
@@ -208,56 +208,56 @@ save_arrow <- function(data, path,
     classes <- attr(column, "class", exact = TRUE)
     if (is.factor(column)) {
         if (all(classes %in% c(
-            .stata_metadata_vector_class, "ordered", "factor"
+            .dta_metadata_vector_class, "ordered", "factor"
         ))) return("factor")
         return(NA_character_)
     }
     if (!is.null(attr(column, "stata.storage", exact = TRUE))) {
         if (identical(typeof(column), "double") && all(classes %in% c(
-            .stata_metadata_vector_class,
-            "haven_labelled", "vctrs_vctr", "stata_numeric",
-            "stata_temporal", "stata_date", "stata_datetime",
-            paste0("stata_", .stata_storage), "double",
+            .dta_metadata_vector_class,
+            "haven_labelled", "vctrs_vctr", "dta_numeric",
+            "dta_temporal", "dta_date", "dta_datetime",
+            paste0("dta_", .dta_storage), "double",
             "Date", "POSIXct", "POSIXt"
         ))) return("stata")
         return(NA_character_)
     }
     if (inherits(column, "Date")) {
         if (all(classes %in% c(
-            .stata_metadata_vector_class, "Date"
+            .dta_metadata_vector_class, "Date"
         ))) return("date")
         return(NA_character_)
     }
     if (inherits(column, "POSIXct")) {
         if (all(classes %in% c(
-            .stata_metadata_vector_class, "POSIXct", "POSIXt"
+            .dta_metadata_vector_class, "POSIXct", "POSIXt"
         ))) return("datetime")
         return(NA_character_)
     }
     if (inherits(column, "difftime")) {
         if (all(classes %in% c(
-            .stata_metadata_vector_class, "difftime"
+            .dta_metadata_vector_class, "difftime"
         ))) return("difftime")
         return(NA_character_)
     }
     if (is.character(column)) {
         if (is.null(classes) || all(
             classes %in% c(
-                .stata_metadata_vector_class,
-                "stata_string", "vctrs_vctr", "character"
+                .dta_metadata_vector_class,
+                "dta_string", "vctrs_vctr", "character"
             )
         )) return("character")
         return(NA_character_)
     }
     if (identical(typeof(column), "raw")) {
         if (is.null(classes) || all(
-            classes %in% .stata_metadata_vector_class
+            classes %in% .dta_metadata_vector_class
         )) return("raw")
         return(NA_character_)
     }
     if (identical(typeof(column), "logical")) {
         if (is.null(classes) || all(
-            classes %in% .stata_metadata_vector_class
+            classes %in% .dta_metadata_vector_class
         )) return("logical")
         return(NA_character_)
     }
@@ -265,10 +265,10 @@ save_arrow <- function(data, path,
         if (is.null(classes) || (
             inherits(column, "haven_labelled") &&
             all(classes %in% c(
-                .stata_metadata_vector_class,
+                .dta_metadata_vector_class,
                 "haven_labelled", "vctrs_vctr", "integer"
             ))
-        ) || all(classes %in% .stata_metadata_vector_class
+        ) || all(classes %in% .dta_metadata_vector_class
         )) return("integer")
         return(NA_character_)
     }
@@ -276,10 +276,10 @@ save_arrow <- function(data, path,
         if (is.null(classes) || (
             inherits(column, "haven_labelled") &&
             all(classes %in% c(
-                .stata_metadata_vector_class,
+                .dta_metadata_vector_class,
                 "haven_labelled", "vctrs_vctr", "double"
             ))
-        ) || all(classes %in% .stata_metadata_vector_class
+        ) || all(classes %in% .dta_metadata_vector_class
         )) return("double")
         return(NA_character_)
     }
@@ -314,10 +314,10 @@ save_arrow <- function(data, path,
     .prepare_write_format(column, name, "", category)
 }
 
-.prepare_arrow_write_stata <- function(column, name, adjust_tz) {
+.prepare_arrow_write_dta <- function(column, name, adjust_tz) {
     storage <- attr(column, "stata.storage", exact = TRUE)
     if (!is.character(storage) || length(storage) != 1L ||
-        !(storage %in% .stata_storage)) {
+        !(storage %in% .dta_storage)) {
         .dta_write_abort(sprintf(
             "Column `%s` has an invalid `stata.storage` declaration", name
         ))
@@ -332,17 +332,17 @@ save_arrow <- function(data, path,
     default_format <- switch(category,
         date = "%td",
         datetime = "%tc",
-        numeric = .default_stata_format(storage)
+        numeric = .default_dta_format(storage)
     )
     format <- .prepare_write_format(column, name, default_format, category)
     values <- column
     temporal <- switch(category,
-        date = .stata_temporal_date,
-        datetime = .stata_temporal_datetime,
-        .stata_temporal_none
+        date = .dta_temporal_date,
+        datetime = .dta_temporal_datetime,
+        .dta_temporal_none
     )
     if (.is_unmaterialized_numeric_altrep(values) &&
-        !.compact_stata_storage_matches(values, storage, temporal)) {
+        !.compact_dta_storage_matches(values, storage, temporal)) {
         values <- .force_altrep_materialization(values)
     }
     if (identical(category, "datetime") && adjust_tz) {
@@ -355,14 +355,14 @@ save_arrow <- function(data, path,
     }
     list(
         values = values,
-        storage_code = match(storage, .stata_storage) - 1L,
+        storage_code = match(storage, .dta_storage) - 1L,
         format = format
     )
 }
 
 .prepare_arrow_write_column <- function(column, name, kind, adjust_tz,
                                         value_label_index) {
-    .arrow_validate_stata_metadata_utf8(column, sprintf("Column `%s`", name))
+    .arrow_validate_dta_metadata_utf8(column, sprintf("Column `%s`", name))
     characteristics <- dta_characteristics(column)
     notes <- dta_notes(column)
     variable_label <- .arrow_utf8(
@@ -399,7 +399,7 @@ save_arrow <- function(data, path,
     }
 
     if (identical(kind, "stata")) {
-        prepared <- .prepare_arrow_write_stata(column, name, adjust_tz)
+        prepared <- .prepare_arrow_write_dta(column, name, adjust_tz)
         values <- prepared$values
         storage_code <- prepared$storage_code
         format <- prepared$format
@@ -430,9 +430,9 @@ save_arrow <- function(data, path,
                 # column that carries no explicit format.
                 if (!nzchar(format)) {
                     format <- if (identical(declared, "strL")) {
-                        .default_stata_format("strL")
+                        .default_dta_format("strL")
                     } else {
-                        .default_stata_format("fixed", string_storage)
+                        .default_dta_format("fixed", string_storage)
                     }
                 }
             }
@@ -465,18 +465,18 @@ save_arrow <- function(data, path,
         values, levels, ordered,
         variable_label, format, storage_code, tz, units,
         haven_labelled, string_storage, as.integer(value_label_index),
-        .arrow_stata_metadata_payload(notes, characteristics)
+        .arrow_dta_metadata_payload(notes, characteristics)
     ), c(
         "name", "kind", "values", "levels", "ordered", "label", "format",
         "storage", "tz", "units", "haven_labelled", "string_storage",
-        "value_label_index", "stata_metadata"
+        "value_label_index", "dta_metadata"
     ))
 }
 
 .arrow_known_column_attributes <- function(kind) {
     common <- c(
         "label", "format.stata", "stata.string.storage",
-        "value.label.name", .stata_metadata_attribute_names, "class"
+        "value.label.name", .dta_metadata_attribute_names, "class"
     )
     switch(kind,
         factor = c(common, "levels", "class"),
@@ -501,7 +501,7 @@ save_arrow <- function(data, path,
     }
     dataset_class <- attr(data, "class", exact = TRUE)
     ordinary_dataset_class <- setdiff(
-        dataset_class, "dtatools_stata_metadata"
+        dataset_class, "dtatools_dta_metadata"
     )
     if (identical(ordinary_dataset_class, "data.frame") ||
         identical(ordinary_dataset_class, c("tbl_df", "tbl", "data.frame")) ||
@@ -573,7 +573,7 @@ save_arrow <- function(data, path,
         ))
     }
     label <- .arrow_utf8(.write_text(label, "label"), "Dataset label")
-    .arrow_validate_stata_metadata_utf8(data, "Dataset")
+    .arrow_validate_dta_metadata_utf8(data, "Dataset")
     notes <- dta_notes(data)
     characteristics <- dta_characteristics(data)
     value_label_plan <- .new_write_value_label_plan(
@@ -610,7 +610,7 @@ save_arrow <- function(data, path,
         )
     )
     specification <- list(
-        label, .arrow_stata_metadata_payload(notes, characteristics),
+        label, .arrow_dta_metadata_payload(notes, characteristics),
         unname(columns), value_label_plan$tables, output_container
     )
     attr(specification, "write_warnings") <- c(

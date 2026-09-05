@@ -918,13 +918,13 @@ test_that("every x and y source combination merges identically", {
         arrow_path <- tempfile(fileext = ".arrow")
         save_dta(data, dta_path)
         save_arrow(data, arrow_path)
-        stata_memory <- read_dta(dta_path)
+        dta_memory <- read_dta(dta_path)
         r_memory <- tibble::as_tibble(data_values(data))
-        mixed <- stata_memory
+        mixed <- dta_memory
         for (index in seq_along(mixed)) {
             if (index %% 2L == 0L) mixed[[index]] <- r_memory[[index]]
         }
-        list(dta = dta_path, arrow = arrow_path, stata = stata_memory,
+        list(dta = dta_path, arrow = arrow_path, stata = dta_memory,
              r = r_memory, mixed = mixed)
     }
 

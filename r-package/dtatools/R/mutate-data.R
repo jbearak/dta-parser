@@ -124,12 +124,12 @@
 #'
 #' `by` groups the dataset in its current row order and never sorts.
 #' `bysort` first sorts the dataset by reference on every listed column,
-#' in Stata's total order for `stata_*()` columns (finite values, then `.`,
+#' in Stata's total order for `dta_*()` columns (finite values, then `.`,
 #' then `.a` through `.z`), and then groups by those same columns, so the
 #' rows within each group are the sorted rows and `.n` follows the sort.
 #' Stata's parenthesized sort-only keys are not supported: `bysort id
 #' (date):` is an `arrange()` or `reorder_dta_rows()` line followed by
-#' `by = id`. Group identity uses Stata value identity for `stata_*()`
+#' `by = id`. Group identity uses Stata value identity for `dta_*()`
 #' columns and ordinary identity otherwise, so missing values form their
 #' own group, as in Stata, and each extended missing code its own.
 #'
@@ -143,7 +143,7 @@
 #'
 #' `gen()` appends one variable and does not implement Stata's `before()` or
 #' `after()` placement. The new column takes the storage in
-#' [stata-storage-defaults]: a declared `dta_*()` result keeps its storage,
+#' [dta-storage-defaults]: a declared `dta_*()` result keeps its storage,
 #' bare integer results are `long`, bare double results take Stata's
 #' `generate` default of `float`, or `double` under
 #' `options(dtatools.generate_type = "double")`, the equivalent of Stata's
@@ -169,7 +169,7 @@
 #' declared storage cannot hold a value is widened to the narrowest storage
 #' that does, and the change is reported the way Stata reports it:
 #' \code{variable `x` was byte now int}. The ladder is the one described
-#' under [stata-storage-defaults], which keeps every value exact and so
+#' under [dta-storage-defaults], which keeps every value exact and so
 #' differs from Stata's in two cases; an assignment that selects no rows
 #' promotes nothing, as Stata's `(0 real changes made)` does not. Pass
 #' `promote = FALSE` to hold the column to its declared storage and raise
@@ -183,7 +183,7 @@
 #' \tabular{lll}{
 #' Topic \tab Stata \tab dtatools \cr
 #' Existing name \tab Error \tab Error before mutation \cr
-#' Numeric default \tab `float`, or `double` after `set type` \tab `float`, or `double` under `options(dtatools.generate_type = "double")`; integer results `long` (see [stata-storage-defaults]) \cr
+#' Numeric default \tab `float`, or `double` after `set type` \tab `float`, or `double` under `options(dtatools.generate_type = "double")`; integer results `long` (see [dta-storage-defaults]) \cr
 #' Explicit storage \tab Type prefix \tab `dta_*()` value expression \cr
 #' Strings \tab Smallest fitting `str#` or `strL` \tab Declared width, otherwise smallest UTF-8-byte width or `strL` \cr
 #' Rows outside `if` \tab Numeric `.` or string `""` \tab Same \cr
@@ -1138,7 +1138,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     }
     if (!present) return(NULL)
     value <- columns[[name]]
-    if (!inherits(value, "stata_numeric") || length(value) != row_count ||
+    if (!inherits(value, "dta_numeric") || length(value) != row_count ||
         !is.null(dim(value))) {
         return(NULL)
     }
@@ -1154,7 +1154,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     value <- .eval_in_mutation_data(expression, columns, environment,
                                     shadow = FALSE)
     if (length(value) != 1L) return(NULL)
-    scalar <- .stata_compare_scalar(value)
+    scalar <- .dta_compare_scalar(value)
     if (is.null(scalar)) return(NULL)
     list(value = value, scalar = scalar)
 }
@@ -1182,11 +1182,11 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
     if (is.null(left_column) && is.null(right_column)) return(NULL)
     if (!is.null(left_column) && !is.null(right_column)) {
-        if (inherits(left_column, "stata_temporal") &&
-            inherits(right_column, "stata_temporal") &&
+        if (inherits(left_column, "dta_temporal") &&
+            inherits(right_column, "dta_temporal") &&
             !identical(
-                .stata_temporal_kind(left_column),
-                .stata_temporal_kind(right_column)
+                .dta_temporal_kind(left_column),
+                .dta_temporal_kind(right_column)
             )) {
             return(NULL)
         }
@@ -1222,17 +1222,17 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 .fused_comparison_value <- function(plan) {
-    .stata_compare(plan$op, plan$original_left, plan$original_right)
+    .dta_compare(plan$op, plan$original_left, plan$original_right)
 }
 
 .fused_replacement_plan <- function(values, target, row_count) {
-    native_numeric <- inherits(target, "stata_numeric") &&
-        !inherits(target, "stata_temporal") &&
+    native_numeric <- inherits(target, "dta_numeric") &&
+        !inherits(target, "dta_temporal") &&
         typeof(values) %in% c("logical", "integer", "double") &&
-        (!is.object(values) || inherits(values, "stata_numeric"))
-    native_temporal <- inherits(target, "stata_temporal") &&
-        ((inherits(target, "stata_date") && inherits(values, "Date")) ||
-         (inherits(target, "stata_datetime") &&
+        (!is.object(values) || inherits(values, "dta_numeric"))
+    native_temporal <- inherits(target, "dta_temporal") &&
+        ((inherits(target, "dta_date") && inherits(values, "Date")) ||
+         (inherits(target, "dta_datetime") &&
           inherits(values, "POSIXct")))
     if ((!native_numeric && !native_temporal) || is.factor(values) ||
         !is.null(dim(values))) {
@@ -1240,7 +1240,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     }
     size <- vctrs::vec_size(values)
     if (size == 1L) {
-        scalar <- .stata_compare_scalar(values)
+        scalar <- .dta_compare_scalar(values)
         if (is.null(scalar)) return(NULL)
         return(list(values = NULL, scalar = scalar))
     }
@@ -1261,15 +1261,15 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 
 .mutation_rows <- function(value, row_count) {
     if (is.null(value)) return(NULL)
-    classified <- if (inherits(value, .stata_metadata_vector_class)) {
-        .stata_metadata_vector_base(value)
+    classified <- if (inherits(value, .dta_metadata_vector_class)) {
+        .dta_metadata_vector_base(value)
     } else value
-    stata_positions <- inherits(classified, "stata_numeric") &&
-        !inherits(classified, "stata_temporal")
+    dta_positions <- inherits(classified, "dta_numeric") &&
+        !inherits(classified, "dta_temporal")
     if (!is.null(dim(classified)) ||
         (!is.logical(classified) &&
          (!is.numeric(classified) ||
-          (is.object(classified) && !stata_positions)))) {
+          (is.object(classified) && !dta_positions)))) {
         stop("`where` must yield logical values or numeric row positions",
              call. = FALSE)
     }
@@ -1426,7 +1426,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 .mutation_group_label <- function(keys, index) {
     parts <- vapply(names(keys), function(name) {
         piece <- vctrs::vec_slice(keys[[name]], index)
-        text <- if (inherits(piece, "stata_numeric")) {
+        text <- if (inherits(piece, "dta_numeric")) {
             code <- .tab_missing_codes(as.double(piece))
             if (!is.na(code)) .tab_missing_name(code) else
                 format(as.double(piece))
@@ -1546,8 +1546,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         )
         if (is.null(group_rows)) {
             positions <- seq_len(size)
-        } else if (inherits(group_rows, "stata_numeric")) {
-            positions <- as.integer(.stata_data(group_rows))
+        } else if (inherits(group_rows, "dta_numeric")) {
+            positions <- as.integer(.dta_data(group_rows))
         } else {
             positions <- as.integer(group_rows)
         }
@@ -1652,13 +1652,13 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         stop("The target column has an unsupported replacement type",
              call. = FALSE)
     }
-    native_numeric <- inherits(target, "stata_numeric") &&
-        !inherits(target, "stata_temporal") &&
+    native_numeric <- inherits(target, "dta_numeric") &&
+        !inherits(target, "dta_temporal") &&
         typeof(values) %in% c("logical", "integer", "double") &&
-        (!is.object(values) || inherits(values, "stata_numeric"))
-    native_temporal <- inherits(target, "stata_temporal") &&
-        ((inherits(target, "stata_date") && inherits(values, "Date")) ||
-         (inherits(target, "stata_datetime") &&
+        (!is.object(values) || inherits(values, "dta_numeric"))
+    native_temporal <- inherits(target, "dta_temporal") &&
+        ((inherits(target, "dta_date") && inherits(values, "Date")) ||
+         (inherits(target, "dta_datetime") &&
           inherits(values, "POSIXct")))
     if ((.is_unmaterialized_numeric_altrep(target) ||
          .is_materialized_numeric_altrep(target)) &&
@@ -1679,8 +1679,8 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # Fallback casts and string-width checks apply only to selected values.
     # Direct compact targets gather the same full vector in native code above.
     if (identical(value_mode, "row")) {
-        slice_rows <- if (inherits(rows, "stata_numeric")) {
-            .stata_data(rows)
+        slice_rows <- if (inherits(rows, "dta_numeric")) {
+            .dta_data(rows)
         } else {
             rows
         }
@@ -1697,10 +1697,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # Build Stata prototypes from metadata rather than proxying the target.
     # A real metadata copy must revoke exclusive patch ownership; this internal
     # cast must not.
-    prototype <- if (inherits(target, "stata_temporal")) {
-        .stata_temporal_ptype(.declared_stata_storage(target), target)
-    } else if (inherits(target, "stata_numeric")) {
-        .stata_ptype(.declared_stata_storage(target), target)
+    prototype <- if (inherits(target, "dta_temporal")) {
+        .dta_temporal_ptype(.declared_dta_storage(target), target)
+    } else if (inherits(target, "dta_numeric")) {
+        .dta_ptype(.declared_dta_storage(target), target)
     } else {
         target[integer()]
     }
@@ -1993,10 +1993,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 }
 
 .generated_numeric_class_supported <- function(values) {
-    if (inherits(values, .stata_metadata_vector_class)) {
-        values <- .stata_metadata_vector_base(values)
+    if (inherits(values, .dta_metadata_vector_class)) {
+        values <- .dta_metadata_vector_base(values)
     }
-    if (!is.object(values) || inherits(values, "stata_numeric")) return(TRUE)
+    if (!is.object(values) || inherits(values, "dta_numeric")) return(TRUE)
     classes <- class(values)
     if (inherits(values, "Date")) {
         return(all(classes %in% "Date"))
@@ -2019,12 +2019,12 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             caller
         ), call. = FALSE)
     }
-    declared <- .declared_stata_storage(values)
+    declared <- .declared_dta_storage(values)
     base_date <- inherits(values, "Date") &&
-        !inherits(values, "stata_temporal")
+        !inherits(values, "dta_temporal")
     base_datetime <- inherits(values, "POSIXct") &&
-        !inherits(values, "stata_temporal")
-    temporal <- inherits(values, "stata_temporal") ||
+        !inherits(values, "dta_temporal")
+    temporal <- inherits(values, "dta_temporal") ||
         base_date || base_datetime
     storage <- if (!is.null(declared)) {
         declared
@@ -2038,20 +2038,20 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         !is.object(values)) {
         .generate_storage()
     } else {
-        .bare_stata_storage(values)
+        .bare_dta_storage(values)
     }
     prototype <- if (base_date) {
         structure(values, class = unique(c(
-            "stata_temporal", "stata_date", class(values)
+            "dta_temporal", "dta_date", class(values)
         )))
     } else if (base_datetime) {
         structure(values, class = unique(c(
-            "stata_temporal", "stata_datetime", class(values)
+            "dta_temporal", "dta_datetime", class(values)
         )))
     } else {
         values
     }
-    source <- if (inherits(values, "stata_numeric") &&
+    source <- if (inherits(values, "dta_numeric") &&
         !identical(storage, "double")) {
         values
     } else {
@@ -2059,9 +2059,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         # directly. Preserve their storage to avoid a full double temporary.
         vctrs::vec_data(values)
     }
-    temporal_code <- if (temporal) .stata_temporal_code(prototype) else 0L
+    temporal_code <- if (temporal) .dta_temporal_code(prototype) else 0L
     kind <- match(storage, c("byte", "int", "long", "float", "double")) - 1L
-    generated_attributes <- .stata_attribute_plan(
+    generated_attributes <- .dta_attribute_plan(
         prototype, storage, temporal = temporal, labelled = !temporal
     )
     .Call(
@@ -2125,7 +2125,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     codes
 }
 
-# A bare logical result stays logical (see `.stata_typed_column()`). Rows
+# A bare logical result stays logical (see `.dta_typed_column()`). Rows
 # outside `where` hold `NA`, as numeric rows hold system missing. Value
 # attributes other than names, such as a label, are kept.
 .generated_logical <- function(values, rows, row_count) {
@@ -2512,9 +2512,9 @@ print.dtatools_ref_data <- function(x, ...) {
     column_names <- names(snapshot)
     for (index in seq_along(column_names)) {
         column <- .subset2(snapshot, index)
-        plain <- if (inherits(column, "stata_numeric") &&
-            !inherits(column, "stata_temporal")) {
-            as.double(.stata_snapshot(column))
+        plain <- if (inherits(column, "dta_numeric") &&
+            !inherits(column, "dta_temporal")) {
+            as.double(.dta_snapshot(column))
         } else if (is.character(column) &&
             !is.null(attr(column, "stata.string.storage", exact = TRUE))) {
             text <- as.character(column)
@@ -2728,12 +2728,12 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 
 # The container mapping from a bare R vector to Stata storage, shared by
 # `dibble()`, the dplyr verbs, the replacement operators, and the
-# promotion ladder; `?stata-storage-defaults` states it for users. It
+# promotion ladder; `?dta-storage-defaults` states it for users. It
 # follows the R type: `float` cannot hold every R double or every R
 # integer, so the mapping is lossless. Dates and datetimes are decided by
 # the caller, which knows their class. `gen()` and a new column through
 # `:=` are the exception, in `.generate_storage()`.
-.bare_stata_storage <- function(values) {
+.bare_dta_storage <- function(values) {
     switch(typeof(vctrs::vec_data(values)),
         logical = "byte",
         integer = "long",
@@ -2767,10 +2767,10 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # Stata has no boolean type, and typing a flag as `byte` would break
 # `filter(data, flag)`, `which(flag)`, and `where = flag`, so logicals
 # stay logical and become `byte` only when written. A `gen()` string
-# carries its declaration as an attribute without the `stata_string`
+# carries its declaration as an attribute without the `dta_string`
 # class, so the attribute is the test for strings.
-.stata_typed_column <- function(column) {
-    inherits(column, c("stata_numeric", "stata_temporal", "factor")) ||
+.dta_typed_column <- function(column) {
+    inherits(column, c("dta_numeric", "dta_temporal", "factor")) ||
         (typeof(column) == "logical" && !is.object(column)) ||
         (is.character(column) && .string_declaration_holds(column))
 }
@@ -2779,7 +2779,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # valid for its values: well formed, wide enough, and with no `NA`, which
 # Stata strings spell `""`. A join or `rbind()` can carry a declaration
 # onto values it no longer describes, and such a column is retyped rather
-# than trusted. That includes a `stata_string` vector: `full_join()` and
+# than trusted. That includes a `dta_string` vector: `full_join()` and
 # `bind_rows()` pad one with `NA` while vctrs keeps its class, so the
 # class is no proof. A compact dictionary string has no `NA` by
 # construction and its width is read from the dictionary, so it is
@@ -2794,12 +2794,12 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         ))
     if (!valid) return(FALSE)
     if (.is_unmaterialized_dictstring(column)) {
-        return(.stata_string_storage_width(declared) >=
+        return(.dta_string_storage_width(declared) >=
             max(1L, .dictstring_max_width(column)))
     }
     if (anyNA(column)) return(FALSE)
-    .stata_string_storage_width(declared) >=
-        .stata_string_required_width(column)
+    .dta_string_storage_width(declared) >=
+        .dta_string_required_width(column)
 }
 
 # A column no Stata storage can hold: raw, list, complex, a matrix, a
@@ -2807,12 +2807,12 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # as `difftime` or `integer64` whose values are not Stata's. A dibble
 # carries it unchanged, and `save_dta()` refuses it with its own message.
 # `gen()` is stricter and rejects such a result, because it is the Stata
-# command. A `stata_string` whose declaration no longer holds is typable:
+# command. A `dta_string` whose declaration no longer holds is typable:
 # it is retyped from its values.
-.stata_untypable_column <- function(column) {
+.dta_untypable_column <- function(column) {
     if (!is.null(dim(column))) return(TRUE)
     if (typeof(column) == "character") {
-        return(is.object(column) && !inherits(column, "stata_string"))
+        return(is.object(column) && !inherits(column, "dta_string"))
     }
     if (!(typeof(column) %in% c("logical", "integer", "double"))) {
         return(TRUE)
@@ -2826,14 +2826,14 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # the source vector is untouched. Anything else takes `gen()`'s storage
 # for its values. `caller` names the entry point in errors.
 .typed_column <- function(column, row_count, caller) {
-    if (.stata_typed_column(column)) return(column)
+    if (.dta_typed_column(column)) return(column)
     if (.is_unmaterialized_dictstring(column)) {
-        storage <- .normalize_stata_string_storage(
+        storage <- .normalize_dta_string_storage(
             NULL, .dictstring_max_width(column)
         )
         proxy <- .metadata_copy(column)
         attr(proxy, "stata.string.storage") <- storage
-        class(proxy) <- c("stata_string", "vctrs_vctr", "character")
+        class(proxy) <- c("dta_string", "vctrs_vctr", "character")
         return(proxy)
     }
     if (is.character(column) &&
@@ -2871,9 +2871,9 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # The same for a column entering a dibble from construction or a verb,
 # where a column no Stata storage can hold passes through unchanged.
 .typed_column_named <- function(column, row_count, caller, name) {
-    if (.stata_typed_column(column) ||
+    if (.dta_typed_column(column) ||
         .is_unmaterialized_dictstring(column) ||
-        !.stata_untypable_column(column)) {
+        !.dta_untypable_column(column)) {
         return(.typed_column(column, row_count, caller))
     }
     column
@@ -2885,7 +2885,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     if (typeof(column) == "character") {
         attr(column, "stata.string.storage", exact = TRUE)
     } else {
-        .declared_stata_storage(column)
+        .declared_dta_storage(column)
     }
 }
 
@@ -2922,12 +2922,12 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     # as `replace x = x > 1` is in Stata, so it keeps the column's
     # storage rather than turning the column logical.
     logical_over_numeric <- typeof(values) == "logical" &&
-        !is.object(values) && inherits(prior, "stata_numeric") &&
-        !inherits(prior, "stata_temporal")
+        !is.object(values) && inherits(prior, "dta_numeric") &&
+        !inherits(prior, "dta_temporal")
     # An explicit `dta_*()` or arithmetic result already carries the
     # storage the user asked for; a column no storage holds passes through.
     if (!logical_over_numeric &&
-        (.stata_typed_column(values) || .stata_untypable_column(values))) {
+        (.dta_typed_column(values) || .dta_untypable_column(values))) {
         return(values)
     }
     if (is.character(values) &&
@@ -2944,26 +2944,26 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         if (is.null(declared)) {
             declared <- attr(prior, "stata.string.storage", exact = TRUE)
         }
-        required <- .stata_string_required_width(text)
-        storage <- if (.stata_string_storage_width(declared) >= required) {
+        required <- .dta_string_required_width(text)
+        storage <- if (.dta_string_storage_width(declared) >= required) {
             declared
         } else {
-            .normalize_stata_string_storage(NULL, required)
+            .normalize_dta_string_storage(NULL, required)
         }
-        return(.new_stata_string(enc2utf8(text), storage, prior))
+        return(.new_dta_string(enc2utf8(text), storage, prior))
     }
     doubles <- as.double(values)
-    if (is.null(declared)) declared <- .declared_stata_storage(prior)
+    if (is.null(declared)) declared <- .declared_dta_storage(prior)
     # Promotion only widens: the search starts at the declared storage,
     # so a `dta_float()` value beside a retained integer float cannot
     # hold goes to `double` rather than back to `long`.
-    storage <- if (.stata_storage_holds(doubles, declared)) {
+    storage <- if (.dta_storage_holds(doubles, declared)) {
         declared
     } else {
-        .narrowest_stata_storage(doubles, from = declared)
+        .narrowest_dta_storage(doubles, from = declared)
     }
-    .restore_stata_metadata(
-        .construct_stata_numeric(doubles, NULL, storage), prior, storage
+    .restore_dta_metadata(
+        .construct_dta_numeric(doubles, NULL, storage), prior, storage
     )
 }
 
@@ -2979,14 +2979,14 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     if (typeof(target) == "character" &&
         .is_unmaterialized_dictstring(values)) {
         declared <- attr(target, "stata.string.storage", exact = TRUE)
-        if (.stata_string_storage_width(declared) >=
+        if (.dta_string_storage_width(declared) >=
             max(1L, .dictstring_max_width(values))) {
             return(TRUE)
         }
     }
     if (identical(value_mode, "row") && !is.null(rows)) {
-        slice_rows <- if (inherits(rows, "stata_numeric")) {
-            .stata_data(rows)
+        slice_rows <- if (inherits(rows, "dta_numeric")) {
+            .dta_data(rows)
         } else {
             rows
         }
@@ -2996,11 +2996,11 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         text <- as.character(values)
         text[is.na(text)] <- ""
         declared <- attr(target, "stata.string.storage", exact = TRUE)
-        return(.stata_string_storage_width(declared) >=
-            .stata_string_required_width(text))
+        return(.dta_string_storage_width(declared) >=
+            .dta_string_required_width(text))
     }
-    .stata_storage_holds(
-        as.double(vctrs::vec_data(values)), .declared_stata_storage(target)
+    .dta_storage_holds(
+        as.double(vctrs::vec_data(values)), .declared_dta_storage(target)
     )
 }
 
@@ -3014,7 +3014,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         text[is.na(text)] <- ""
         text
     } else {
-        as.double(.stata_snapshot(target))
+        as.double(.dta_snapshot(target))
     }
     replacement <- if (typeof(target) == "character") {
         text <- as.character(values)
@@ -3025,8 +3025,8 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     }
     positions <- if (is.null(rows)) {
         seq_len(row_count)
-    } else if (inherits(rows, "stata_numeric")) {
-        .stata_data(rows)
+    } else if (inherits(rows, "dta_numeric")) {
+        .dta_data(rows)
     } else {
         rows
     }
@@ -3053,17 +3053,17 @@ transmute.dtatools_ref_data <- function(.data, ...) {
             length(declared) != 1L || is.na(declared)) {
             return(NULL)
         }
-        wider <- .stata_string_storage_width(declared) >
-            .stata_string_storage_width(current)
+        wider <- .dta_string_storage_width(declared) >
+            .dta_string_storage_width(current)
         return(if (wider) declared else NULL)
     }
-    if (!inherits(values, "stata_numeric")) return(NULL)
-    declared <- match(.declared_stata_storage(values), .stata_storage)
-    current <- match(.declared_stata_storage(target), .stata_storage)
+    if (!inherits(values, "dta_numeric")) return(NULL)
+    declared <- match(.declared_dta_storage(values), .dta_storage)
+    current <- match(.declared_dta_storage(target), .dta_storage)
     if (is.na(declared) || is.na(current) || declared <= current) {
         return(NULL)
     }
-    .stata_storage[[declared]]
+    .dta_storage[[declared]]
 }
 
 # `prior` has declared storage of the same kind as `values`: numeric for
@@ -3075,40 +3075,40 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         !is.null(attr(prior, "stata.string.storage", exact = TRUE))) {
         return(is.character(values))
     }
-    if (!inherits(prior, "stata_numeric") ||
-        inherits(prior, "stata_temporal")) return(FALSE)
+    if (!inherits(prior, "dta_numeric") ||
+        inherits(prior, "dta_temporal")) return(FALSE)
     typeof(values) %in% c("logical", "integer", "double") &&
-        (!is.object(values) || inherits(values, "stata_numeric"))
+        (!is.object(values) || inherits(values, "dta_numeric"))
 }
 
-.stata_storage_holds <- function(doubles, storage) {
+.dta_storage_holds <- function(doubles, storage) {
     codes <- .tab_missing_codes(doubles)
     observed <- is.na(codes)
     if (any(!is.na(codes) & codes == 256L)) return(FALSE)
-    if (any(.invalid_stata_observed(doubles, observed, storage))) {
+    if (any(.invalid_dta_observed(doubles, observed, storage))) {
         return(FALSE)
     }
     if (!identical(storage, "float") || !any(observed)) return(TRUE)
     candidate <- doubles[observed]
-    rounded <- as.double(.construct_stata_numeric(candidate, NULL, "float"))
+    rounded <- as.double(.construct_dta_numeric(candidate, NULL, "float"))
     all(rounded == candidate)
 }
 
-.narrowest_stata_storage <- function(doubles, from = "byte") {
-    start <- match(from, .stata_storage)
+.narrowest_dta_storage <- function(doubles, from = "byte") {
+    start <- match(from, .dta_storage)
     if (is.na(start)) start <- 1L
-    ladder <- .stata_storage[start:length(.stata_storage)]
+    ladder <- .dta_storage[start:length(.dta_storage)]
     # `float` carries 24 bits of integer precision and `long` carries 31,
     # so `long` to `float` narrows the integers the column can hold even
     # when the values in hand happen to be float-exact, and it leaves a
     # column that silently rounds the next long-range integer written to
     # it. Stata's `replace` sends an overflowing `long` to `double` for
-    # the same reason, and the arithmetic lattice in `.stata_promote()`
+    # the same reason, and the arithmetic lattice in `.dta_promote()`
     # already pairs `long` with `float` as `double`. `byte` and `int` are
     # unaffected: their whole ranges are float-exact.
     if (identical(from, "long")) ladder <- setdiff(ladder, "float")
     for (storage in ladder) {
-        if (.stata_storage_holds(doubles, storage)) return(storage)
+        if (.dta_storage_holds(doubles, storage)) return(storage)
     }
     "double"
 }

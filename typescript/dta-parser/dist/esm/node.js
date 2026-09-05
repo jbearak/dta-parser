@@ -281,10 +281,10 @@ function text_decoder(encoding) {
   }
 }
 
-// src/stata-metadata.ts
+// src/dta-metadata.ts
 var NOTE_NAME = /^note([0-9]+)$/;
-var MAX_STATA_METADATA_VALUE_BYTES = 67784;
-var MAX_DECODED_STATA_METADATA_VALUE_BYTES = 203352;
+var MAX_DTA_METADATA_VALUE_BYTES = 67784;
+var MAX_DECODED_DTA_METADATA_VALUE_BYTES = 203352;
 var TEXT_ENCODER = new TextEncoder();
 var LAZY_NOTES = /* @__PURE__ */ new WeakMap();
 var LAZY_CHARACTERISTICS = /* @__PURE__ */ new WeakMap();
@@ -520,29 +520,29 @@ function validCharacteristicName(name) {
   }
 }
 function stataMetadataValueEnd(bytes, start, length) {
-  if (length > MAX_STATA_METADATA_VALUE_BYTES + 1) {
+  if (length > MAX_DTA_METADATA_VALUE_BYTES + 1) {
     throw new Error("Characteristic value exceeds the 67,784-byte limit");
   }
   const limit = start + length;
   let end = start;
   while (end < limit && bytes[end] !== 0) end++;
-  if (end - start > MAX_STATA_METADATA_VALUE_BYTES) {
+  if (end - start > MAX_DTA_METADATA_VALUE_BYTES) {
     throw new Error("Characteristic value exceeds the 67,784-byte limit");
   }
   return end;
 }
 function validMetadataValue(value) {
-  if (typeof value !== "string" || value.includes("\0") || !utf8LengthAtMost(value, MAX_STATA_METADATA_VALUE_BYTES)) {
+  if (typeof value !== "string" || value.includes("\0") || !utf8LengthAtMost(value, MAX_DTA_METADATA_VALUE_BYTES)) {
     throw new Error("Invalid or over-limit Stata metadata value");
   }
 }
 function validExistingMetadataValue(value, kind) {
   if (typeof value !== "string" || value.includes("\0") || !codePointLengthAtMost(
     value,
-    MAX_STATA_METADATA_VALUE_BYTES
+    MAX_DTA_METADATA_VALUE_BYTES
   ) || !utf8LengthAtMost(
     value,
-    MAX_DECODED_STATA_METADATA_VALUE_BYTES
+    MAX_DECODED_DTA_METADATA_VALUE_BYTES
   )) {
     throw new Error(`Malformed Stata ${kind} metadata`);
   }
@@ -983,7 +983,7 @@ function parse_dataset_label(bytes, view, little_endian, format_version, start, 
   };
 }
 var SECTION_OFFSET_KEYS = [
-  "stata_data",
+  "dta_data",
   "map",
   "variable_types",
   "varnames",
@@ -995,7 +995,7 @@ var SECTION_OFFSET_KEYS = [
   "data",
   "strls",
   "value_labels",
-  "stata_data_close",
+  "dta_data_close",
   "end_of_file"
 ];
 function parse_section_map(bytes, view, little_endian, start) {
@@ -1013,7 +1013,7 @@ function parse_section_map(bytes, view, little_endian, start) {
     my_offsets[SECTION_OFFSET_KEYS[i]] = Number(my_big_val);
   }
   const after_map = expect_tag(bytes, my_data_start + SECTION_MAP_ENTRIES * 8, TAG_MAP_CLOSE);
-  if (my_offsets.stata_data !== 0 || my_offsets.map !== my_open || my_offsets.variable_types !== after_map) {
+  if (my_offsets.dta_data !== 0 || my_offsets.map !== my_open || my_offsets.variable_types !== after_map) {
     throw new Error("Corrupt .dta map: section offset mismatch");
   }
   for (let i = 1; i < SECTION_MAP_ENTRIES; i++) {
@@ -1570,7 +1570,7 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     throw new Error("Truncated legacy observation data");
   }
   const section_offsets = {
-    stata_data: 0,
+    dta_data: 0,
     map: 0,
     variable_types: my_variable_types_offset,
     varnames: my_varnames_offset,
@@ -1582,7 +1582,7 @@ function parse_legacy_metadata(buffer, file_size, options = {}) {
     data: my_data_offset,
     strls: my_value_labels_offset,
     value_labels: my_value_labels_offset,
-    stata_data_close: file_size,
+    dta_data_close: file_size,
     end_of_file: file_size
   };
   return {
@@ -1620,16 +1620,16 @@ function bytes_to_double(bytes) {
   });
   return my_view.getFloat64(0, false);
 }
-var STATA_MISSING = bytes_to_double(
+var DTA_MISSING = bytes_to_double(
   [127, 224, 0, 0, 0, 0, 0, 0]
 );
-var STATA_MISSING_A = bytes_to_double(
+var DTA_MISSING_A = bytes_to_double(
   [127, 224, 1, 0, 0, 0, 0, 0]
 );
-var STATA_MISSING_B = bytes_to_double(
+var DTA_MISSING_B = bytes_to_double(
   [127, 224, 2, 0, 0, 0, 0, 0]
 );
-var STATA_MISSING_Z = bytes_to_double(
+var DTA_MISSING_Z = bytes_to_double(
   [127, 224, 26, 0, 0, 0, 0, 0]
 );
 var MISSING_TYPES = Array.from(
@@ -2667,7 +2667,7 @@ function parse_value_labels(buffer, metadata2, base_offset = 0) {
   const my_decoder = text_decoder(encoding);
   const my_tag_skip = my_legacy ? 0 : VALUE_LABELS_TAG_LENGTH;
   const my_start_pos = metadata2.section_offsets.value_labels - base_offset + my_tag_skip;
-  const my_section_end = metadata2.section_offsets.stata_data_close - base_offset;
+  const my_section_end = metadata2.section_offsets.dta_data_close - base_offset;
   const section_start = metadata2.section_offsets.value_labels - base_offset;
   if (!Number.isSafeInteger(section_start) || !Number.isSafeInteger(my_section_end) || section_start < 0 || my_section_end < section_start || my_section_end > bytes.length) {
     throw new Error("Corrupt value label section: invalid bounds");
@@ -4149,7 +4149,7 @@ function validateFieldDocument(raw, field) {
     if (missing !== (storage === "float" || storage === "double" ? "payload" : "sentinel")) fail2("declares missing encoding incompatible with Stata storage");
     if (missing_release !== void 0 && storage === "double") fail2("declares source missing release for double storage");
     if (field.nullable) fail2("declares raw Stata missing storage on a nullable field");
-    if (r && (r.class !== "stata_numeric" || r.ordered !== void 0 || r.tz !== void 0 || r.units !== void 0)) fail2("declares R semantics incompatible with Stata storage");
+    if (r && (!["dta_numeric", "stata_numeric"].includes(r.class) || r.ordered !== void 0 || r.tz !== void 0 || r.units !== void 0)) fail2("declares R semantics incompatible with Stata storage");
     return document;
   }
   if (missing_release !== void 0) fail2("declares source missing release without Stata storage");
@@ -4726,9 +4726,9 @@ var ArrowFile = class _ArrowFile {
 };
 
 // src/display-format.ts
-var STATA_EPOCH_YEAR = 1960;
-var STATA_EPOCH_MONTH = 0;
-var STATA_EPOCH_DAY = 1;
+var DTA_EPOCH_YEAR = 1960;
+var DTA_EPOCH_MONTH = 0;
+var DTA_EPOCH_DAY = 1;
 var MONTH_ABBREVS = [
   "jan",
   "feb",
@@ -4836,9 +4836,9 @@ function format_date_time(value, format_code) {
 }
 function format_td(days_since_epoch) {
   const my_date = new Date(Date.UTC(
-    STATA_EPOCH_YEAR,
-    STATA_EPOCH_MONTH,
-    STATA_EPOCH_DAY + days_since_epoch
+    DTA_EPOCH_YEAR,
+    DTA_EPOCH_MONTH,
+    DTA_EPOCH_DAY + days_since_epoch
   ));
   const my_day = String(my_date.getUTCDate()).padStart(2, "0");
   const my_month = MONTH_ABBREVS[my_date.getUTCMonth()];
@@ -4866,19 +4866,19 @@ function format_tc(ms_since_epoch) {
   return `${my_date_str} ${my_hh}:${my_mm}:${my_ss}`;
 }
 function format_tw(weeks_since_epoch) {
-  const my_year = STATA_EPOCH_YEAR + Math.floor(weeks_since_epoch / 52);
+  const my_year = DTA_EPOCH_YEAR + Math.floor(weeks_since_epoch / 52);
   let my_week = weeks_since_epoch % 52 + 1;
   if (my_week <= 0) my_week += 52;
   return `${my_year}w${my_week}`;
 }
 function format_tm(months_since_epoch) {
-  const my_year = STATA_EPOCH_YEAR + Math.floor(months_since_epoch / 12);
+  const my_year = DTA_EPOCH_YEAR + Math.floor(months_since_epoch / 12);
   let my_month = months_since_epoch % 12 + 1;
   if (my_month <= 0) my_month += 12;
   return `${my_year}m${my_month}`;
 }
 function format_tq(quarters_since_epoch) {
-  const my_year = STATA_EPOCH_YEAR + Math.floor(quarters_since_epoch / 4);
+  const my_year = DTA_EPOCH_YEAR + Math.floor(quarters_since_epoch / 4);
   let my_quarter = quarters_since_epoch % 4 + 1;
   if (my_quarter <= 0) my_quarter += 4;
   return `${my_year}q${my_quarter}`;
@@ -5557,7 +5557,7 @@ function read_modern_metadata(fd, file_size, options) {
   if (!Number.isSafeInteger(data_end) || data_end + "</data>".length !== offsets.strls) {
     throw new Error("Observation extent does not match strL offset");
   }
-  if (offsets.end_of_file !== file_size || offsets.stata_data_close + "</stata_dta>".length !== file_size) {
+  if (offsets.end_of_file !== file_size || offsets.dta_data_close + "</stata_dta>".length !== file_size) {
     throw new Error("Mapped file extent does not match file size");
   }
   if (offsets.strls + "<strls></strls>".length > offsets.value_labels) {
@@ -5567,7 +5567,7 @@ function read_modern_metadata(fd, file_size, options) {
     [offsets.data, "<data>"],
     [data_end, "</data><strls>"],
     [offsets.value_labels - "</strls>".length, "</strls>"],
-    [offsets.stata_data_close, "</stata_dta>"]
+    [offsets.dta_data_close, "</stata_dta>"]
   ]) {
     const actual = new Uint8Array(read_range(fd, offset, tag.length));
     for (let i = 0; i < tag.length; i++) {
@@ -5637,8 +5637,8 @@ function read_range(fd, offset, length) {
 export {
   ArrowBuffer,
   ArrowFile,
+  DTA_MISSING_B,
   DtaFile,
-  STATA_MISSING_B,
   addStataNote,
   apply_display_format,
   classify_missing_value,

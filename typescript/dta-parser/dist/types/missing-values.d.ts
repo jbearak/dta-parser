@@ -4,13 +4,13 @@ export declare const FLOAT_MISSING_DOT_RAW = 2130706432;
 export declare const FLOAT_MISSING_STEP_RAW = 2048;
 export declare const FLOAT_MISSING_Z_RAW: number;
 /** System missing (.) as a JS number. */
-export declare const STATA_MISSING: number;
+export declare const DTA_MISSING: number;
 /** Extended missing .a as a JS number. */
-export declare const STATA_MISSING_A: number;
+export declare const DTA_MISSING_A: number;
 /** Extended missing .b as a JS number. */
-export declare const STATA_MISSING_B: number;
+export declare const DTA_MISSING_B: number;
 /** Extended missing .z as a JS number. */
-export declare const STATA_MISSING_Z: number;
+export declare const DTA_MISSING_Z: number;
 export declare function byte_missing_offset(value: number, modern: boolean): number;
 export declare function int_missing_offset(value: number, modern: boolean): number;
 export declare function long_missing_offset(value: number, modern: boolean): number;

@@ -101,7 +101,7 @@
 
 .ordinary_data_table <- function(data) {
     identical(
-        setdiff(class(data), "dtatools_stata_metadata"),
+        setdiff(class(data), "dtatools_dta_metadata"),
         c("data.table", "data.frame")
     )
 }
@@ -121,13 +121,13 @@
 
 .repair_data_table_container <- function(data) {
     if (inherits(data, "data.table") &&
-        inherits(data, "dtatools_stata_metadata")) {
+        inherits(data, "dtatools_dta_metadata")) {
         # A data.table must never carry the frame marker: its `[` method
         # would intercept data.table's non-standard evaluation. Strip a
         # stray marker (for example from an object saved by an older
         # release) while keeping the metadata attributes themselves.
         data.table::setattr(
-            data, "class", setdiff(class(data), "dtatools_stata_metadata")
+            data, "class", setdiff(class(data), "dtatools_dta_metadata")
         )
     }
     if (.ordinary_data_table(data)) data.table::setalloccol(data) else data

@@ -41,7 +41,7 @@ Stata 19 targets use release 118 through that limit and release 119 above it.
 \section{Conversions and metadata}{
 
 Bare logical, integer, and double columns use Stata \code{byte}, \code{long}, and
-\code{double} storage, the mapping in \link{stata-storage-defaults}. A valid
+\code{double} storage, the mapping in \link{dta-storage-defaults}. A valid
 \code{stata.storage} declaration takes precedence.
 Compatible Stata display formats, dataset and variable labels, value labels,
 tagged missing codes, dates, datetimes, long strings, numbered notes, and

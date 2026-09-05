@@ -1,4 +1,4 @@
-test_that("stata_string infers UTF-8 byte storage and validates declarations", {
+test_that("dta_string infers UTF-8 byte storage and validates declarations", {
     expect_identical(
         attr(dta_string(c("a", "é")), "stata.string.storage"),
         "str2"
@@ -17,7 +17,7 @@ test_that("dta_storage_type reports declared string storage", {
     expect_identical(
         dta_storage_type(dta_string(strrep("x", 2046))), "strL"
     )
-    # A `gen()` string carries the declaration without the `stata_string`
+    # A `gen()` string carries the declaration without the `dta_string`
     # class, so the attribute alone has to be enough.
     bare <- structure("ab", `stata.string.storage` = "str4")
     expect_identical(dta_storage_type(bare), "str4")
@@ -32,7 +32,7 @@ test_that("Stata strings restore metadata through slicing and conversion", {
 
     repeated <- x[c(2, 2, 1)]
     empty <- x[integer()]
-    expect_s3_class(repeated, "stata_string")
+    expect_s3_class(repeated, "dta_string")
     expect_identical(as.character(repeated), c(b = "bb", b = "bb", a = "a"))
     expect_identical(attr(repeated, "label"), "Answer")
     expect_identical(attr(empty, "stata.string.storage"), "str2")
@@ -80,7 +80,7 @@ test_that("common type with bare character can hold values chosen later", {
     value <- dta_string(c("alpha", "beta"), storage = "str5")
     result <- dplyr::if_else(value == "alpha", "recoded", value)
 
-    expect_s3_class(result, "stata_string")
+    expect_s3_class(result, "dta_string")
     expect_identical(as.character(result), c("recoded", "beta"))
     expect_identical(attr(result, "stata.string.storage", exact = TRUE), "strL")
 })
@@ -90,7 +90,7 @@ test_that("Stata string sorting preserves metadata and rejects partial sorting",
     attr(value, "label") <- "Text"
 
     result <- sort(value, method = "shell")
-    expect_s3_class(result, "stata_string")
+    expect_s3_class(result, "dta_string")
     expect_identical(as.character(result), c("", "a", "b"))
     expect_identical(attr(result, "label", exact = TRUE), "Text")
     expect_warning(sort(value, na.last = FALSE), "has no effect")
@@ -111,7 +111,7 @@ test_that("Stata restoration drops unknown attributes once", {
     attr(string, "mystery") <- "unknown"
     expect_warning(empty <- string[integer()], "Dropped unknown attribute")
     expect_null(attr(empty, "mystery", exact = TRUE))
-    expect_s3_class(empty, "stata_string")
+    expect_s3_class(empty, "dta_string")
 })
 
 test_that("Stata string subset and restore padding use empty missing strings", {

@@ -48,4 +48,4 @@ export declare function listStataCharacteristics(target: StataMetadataTarget): S
 export declare function getStataCharacteristic(target: StataMetadataTarget, name: string): string | undefined;
 export declare function setStataCharacteristic(target: StataMetadataTarget, name: string, value: string): void;
 export declare function dropStataCharacteristics(target: StataMetadataTarget, names?: readonly string[]): void;
-//# sourceMappingURL=stata-metadata.d.ts.map
+//# sourceMappingURL=dta-metadata.d.ts.map

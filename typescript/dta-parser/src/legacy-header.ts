@@ -47,7 +47,7 @@ import {
 import {
     StataMetadataCollector,
     withLazyStataMetadata,
-} from './stata-metadata';
+} from './dta-metadata';
 import {
     StataCharacteristicFramePlan,
 } from './characteristic-payload';
@@ -382,7 +382,7 @@ export function parse_legacy_metadata(
 
     // 10. Synthesize SectionOffsets
     const section_offsets: SectionOffsets = {
-        stata_data: 0,
+        dta_data: 0,
         map: 0,
         variable_types: my_variable_types_offset,
         varnames: my_varnames_offset,
@@ -394,7 +394,7 @@ export function parse_legacy_metadata(
         data: my_data_offset,
         strls: my_value_labels_offset,
         value_labels: my_value_labels_offset,
-        stata_data_close: file_size,
+        dta_data_close: file_size,
         end_of_file: file_size,
     };
 

@@ -496,7 +496,7 @@ stopifnot(
         as.double(temporal_generation_data$generated),
         as.double(temporal_generation_values)
     ),
-    inherits(temporal_generation_data$generated, "stata_datetime"),
+    inherits(temporal_generation_data$generated, "dta_datetime"),
     identical(
         dta_storage_type(temporal_generation_data$generated), "double"
     ),

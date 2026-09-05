@@ -2,7 +2,7 @@
   "schema_version": 1,
   "identity": {
     "canonical_oracle": "r-package/dtatools/src/dta-tools/tests/data/modern-canonical.json",
-    "canonical_sha256": "0686528061a7f7272c90c2616b6a72ddb9410617be1cd23e46a45d0fcbddf0e2",
+    "canonical_sha256": "c515d7b44af55f45bc9e1ff438ccd3388f259acae2cd24ed92f07406442122e4",
     "fixture_count": 22,
     "case_count": 32,
     "fixture_oracle_gate": { "binary": "observations", "test": "every_checked_fixture_matches_the_typescript_haven_oracle" },

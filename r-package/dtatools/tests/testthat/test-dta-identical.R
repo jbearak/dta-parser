@@ -37,25 +37,25 @@ test_that("dta_identical keeps date and datetime identity domains separate", {
     datetimes <- as.POSIXct(dates, tz = "UTC")
     date_prototype <- structure(
         as.Date(numeric(), origin = "1970-01-01"),
-        class = c("stata_temporal", "stata_date", "Date"),
+        class = c("dta_temporal", "dta_date", "Date"),
         stata.storage = "int",
         format.stata = "%td"
     )
     datetime_prototype <- structure(
         as.POSIXct(numeric(), origin = "1970-01-01", tz = "UTC"),
-        class = c("stata_temporal", "stata_datetime", "POSIXct", "POSIXt"),
+        class = c("dta_temporal", "dta_datetime", "POSIXct", "POSIXt"),
         stata.storage = "double",
         format.stata = "%tc"
     )
-    stata_dates <- dtatools:::.restore_stata_temporal(
+    dta_dates <- dtatools:::.restore_dta_temporal(
         dates, date_prototype, "int"
     )
-    stata_datetimes <- dtatools:::.restore_stata_temporal(
+    dta_datetimes <- dtatools:::.restore_dta_temporal(
         datetimes, datetime_prototype, "double"
     )
 
-    expect_true(dta_identical(stata_dates, dates))
-    expect_true(dta_identical(stata_datetimes, datetimes))
+    expect_true(dta_identical(dta_dates, dates))
+    expect_true(dta_identical(dta_datetimes, datetimes))
     expect_false(dta_identical(dates, datetimes))
     expect_false(dta_identical(dates, as.double(dates)))
     expect_false(dta_identical(datetimes, as.double(datetimes)))

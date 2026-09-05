@@ -323,8 +323,8 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     native[] <- lapply(native, function(column) {
         storage <- attr(column, "stata.string.storage", exact = TRUE)
         if (is.character(column) && !is.null(storage) &&
-            !inherits(column, "stata_string")) {
-            .new_stata_string(column, storage, column)
+            !inherits(column, "dta_string")) {
+            .new_dta_string(column, storage, column)
         } else {
             column
         }
@@ -337,7 +337,7 @@ read_dta <- function(file, encoding = NULL, col_select = NULL, skip = 0,
     dataset_label <- attr(native, "label", exact = TRUE)
     result <- .finalize_output_container(native, output, .name_repair)
     if (!is.null(dataset_label)) attr(result, "label") <- dataset_label
-    result <- .copy_stata_metadata_attributes(native, result)
+    result <- .copy_dta_metadata_attributes(native, result)
     if (record_datasig) attr(result, "datasig") <- disk_signature
     result <- .repair_data_table_container(result)
     if (keep_source_rows) {

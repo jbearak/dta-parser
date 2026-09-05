@@ -129,6 +129,11 @@ describe('Arrow profile documents', () => {
 
     test('checks storage, semantic class, and label references against physical fields', () => {
         const field = { name: 'x', type: 'int8', nullable: false };
+        for (const name of ['dta_numeric', 'stata_numeric']) {
+            const metadata = { version: 0, storage: 'byte', missing: 'sentinel', r: { class: name } };
+            expect(validateFieldDocument(metadata, field).r?.class).toBe(name);
+            expect(() => validateFieldDocument({ ...metadata, r: { class: name, ordered: false } }, field)).toThrow('R semantics');
+        }
         const doc = validateFieldDocument({ version: 0, storage: 'byte', missing: 'sentinel', value_labels: 'labels' }, field);
         expect(doc.storage).toBe('byte');
         expect(() => validateValueLabelReference(field, doc, validateDatasetDocument(undefined))).toThrow('missing value-label');

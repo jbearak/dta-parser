@@ -7,20 +7,20 @@ source(file.path(script_dir, "haven-parity.R"), local = TRUE)
 plain <- structure(
     c(1, 2), label = "Identifier", format.stata = "%10.0g",
     stata.storage = "double",
-    class = c("stata_numeric", "stata_double", "vctrs_vctr", "double")
+    class = c("dta_numeric", "dta_double", "vctrs_vctr", "double")
 )
 labelled <- structure(
     c(1, 2), label = "Region", format.stata = "%12.0g",
     labels = c(North = 1, South = 2), stata.storage = "long",
     class = c(
-        "stata_numeric", "stata_long", "haven_labelled", "vctrs_vctr",
+        "dta_numeric", "dta_long", "haven_labelled", "vctrs_vctr",
         "double"
     )
 )
 date <- structure(
     c(1, 2), label = "Date", format.stata = "%td",
     stata.storage = "double",
-    class = c("stata_temporal", "stata_date", "Date")
+    class = c("dta_temporal", "dta_date", "Date")
 )
 actual <- normalize_for_haven(data.frame(plain, labelled, date))
 expected <- data.frame(

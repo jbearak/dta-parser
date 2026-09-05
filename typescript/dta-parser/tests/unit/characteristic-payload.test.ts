@@ -10,7 +10,7 @@ import {
     StataMetadataCollector,
     type StataMetadataTarget,
     withLazyStataMetadata,
-} from '../../src/stata-metadata';
+} from '../../src/dta-metadata';
 import { text_decoder, type DtaTextDecoder } from '../../src/text-encoding';
 import type { VariableInfo } from '../../src/types';
 

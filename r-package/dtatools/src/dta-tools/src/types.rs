@@ -293,7 +293,7 @@ pub struct StataCharacteristic {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SectionOffsets {
     #[serde(with = "decimal_u64")]
-    pub stata_data: u64,
+    pub dta_data: u64,
     #[serde(with = "decimal_u64")]
     pub map: u64,
     #[serde(with = "decimal_u64")]
@@ -317,14 +317,14 @@ pub struct SectionOffsets {
     #[serde(with = "decimal_u64")]
     pub value_labels: u64,
     #[serde(with = "decimal_u64")]
-    pub stata_data_close: u64,
+    pub dta_data_close: u64,
     #[serde(with = "decimal_u64")]
     pub end_of_file: u64,
 }
 
 impl SectionOffsets {
     pub(crate) const NAMES: [&'static str; 14] = [
-        "stata_data",
+        "dta_data",
         "map",
         "variable_types",
         "varnames",
@@ -336,13 +336,13 @@ impl SectionOffsets {
         "data",
         "strls",
         "value_labels",
-        "stata_data_close",
+        "dta_data_close",
         "end_of_file",
     ];
 
     pub(crate) fn from_array(values: [u64; 14]) -> Self {
         Self {
-            stata_data: values[0],
+            dta_data: values[0],
             map: values[1],
             variable_types: values[2],
             varnames: values[3],
@@ -354,14 +354,14 @@ impl SectionOffsets {
             data: values[9],
             strls: values[10],
             value_labels: values[11],
-            stata_data_close: values[12],
+            dta_data_close: values[12],
             end_of_file: values[13],
         }
     }
 
     pub(crate) fn as_array(&self) -> [u64; 14] {
         [
-            self.stata_data,
+            self.dta_data,
             self.map,
             self.variable_types,
             self.varnames,
@@ -373,7 +373,7 @@ impl SectionOffsets {
             self.data,
             self.strls,
             self.value_labels,
-            self.stata_data_close,
+            self.dta_data_close,
             self.end_of_file,
         ]
     }

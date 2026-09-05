@@ -55,7 +55,7 @@ slice_dta_rows <- function(data, rows) {
         }
         return(if (is_dibble(data)) .as_dibble(result) else result)
     }
-    base_classes <- setdiff(class(data), "dtatools_stata_metadata")
+    base_classes <- setdiff(class(data), "dtatools_dta_metadata")
     data_table <- .ordinary_data_table(data)
     ordinary <- data_table ||
         identical(base_classes, "data.frame") ||

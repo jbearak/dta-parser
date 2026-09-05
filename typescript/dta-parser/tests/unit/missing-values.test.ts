@@ -5,10 +5,10 @@ import {
     classify_missing_value,
     make_missing_value,
     missing_type_to_label_key,
-    STATA_MISSING,
-    STATA_MISSING_A,
-    STATA_MISSING_B,
-    STATA_MISSING_Z,
+    DTA_MISSING,
+    DTA_MISSING_A,
+    DTA_MISSING_B,
+    DTA_MISSING_Z,
 } from '../../src/missing-values';
 
 // -----------------------------------------------------------
@@ -31,17 +31,17 @@ describe('missing-values', () => {
     // ----- Exported constants -----
 
     describe('exported constants', () => {
-        it('STATA_MISSING is a finite number', () => {
-            expect(Number.isFinite(STATA_MISSING)).toBe(true);
+        it('DTA_MISSING is a finite number', () => {
+            expect(Number.isFinite(DTA_MISSING)).toBe(true);
         });
 
-        it('STATA_MISSING < STATA_MISSING_A < STATA_MISSING_Z',
+        it('DTA_MISSING < DTA_MISSING_A < DTA_MISSING_Z',
             () => {
-                expect(STATA_MISSING).toBeLessThan(
-                    STATA_MISSING_A
+                expect(DTA_MISSING).toBeLessThan(
+                    DTA_MISSING_A
                 );
-                expect(STATA_MISSING_A).toBeLessThan(
-                    STATA_MISSING_Z
+                expect(DTA_MISSING_A).toBeLessThan(
+                    DTA_MISSING_Z
                 );
             }
         );
@@ -82,10 +82,10 @@ describe('missing-values', () => {
         });
 
         it('detects double system missing via constant', () => {
-            expect(is_missing_value(STATA_MISSING, 'double'))
+            expect(is_missing_value(DTA_MISSING, 'double'))
                 .toBe(true);
             expect(classify_missing_value(
-                STATA_MISSING, 'double'
+                DTA_MISSING, 'double'
             )).toBe('.');
         });
     });
@@ -113,18 +113,18 @@ describe('missing-values', () => {
         });
 
         it('detects double .a via constant', () => {
-            expect(is_missing_value(STATA_MISSING_A, 'double'))
+            expect(is_missing_value(DTA_MISSING_A, 'double'))
                 .toBe(true);
             expect(classify_missing_value(
-                STATA_MISSING_A, 'double'
+                DTA_MISSING_A, 'double'
             )).toBe('.a');
         });
 
         it('detects double .b via constant', () => {
-            expect(is_missing_value(STATA_MISSING_B, 'double'))
+            expect(is_missing_value(DTA_MISSING_B, 'double'))
                 .toBe(true);
             expect(classify_missing_value(
-                STATA_MISSING_B, 'double'
+                DTA_MISSING_B, 'double'
             )).toBe('.b');
         });
     });
@@ -152,10 +152,10 @@ describe('missing-values', () => {
         });
 
         it('detects double .z via constant', () => {
-            expect(is_missing_value(STATA_MISSING_Z, 'double'))
+            expect(is_missing_value(DTA_MISSING_Z, 'double'))
                 .toBe(true);
             expect(classify_missing_value(
-                STATA_MISSING_Z, 'double'
+                DTA_MISSING_Z, 'double'
             )).toBe('.z');
         });
     });
@@ -256,7 +256,7 @@ describe('missing-values', () => {
             expect(classify_missing_value(2147483621, 'long'))
                 .toBe('.');
             expect(classify_missing_value(
-                STATA_MISSING, 'double'
+                DTA_MISSING, 'double'
             )).toBe('.');
         });
 
@@ -292,10 +292,10 @@ describe('missing-values', () => {
 
     describe('is_missing_value without explicit type', () => {
         it('detects double missing without type arg', () => {
-            expect(is_missing_value(STATA_MISSING)).toBe(true);
-            expect(is_missing_value(STATA_MISSING_A))
+            expect(is_missing_value(DTA_MISSING)).toBe(true);
+            expect(is_missing_value(DTA_MISSING_A))
                 .toBe(true);
-            expect(is_missing_value(STATA_MISSING_Z))
+            expect(is_missing_value(DTA_MISSING_Z))
                 .toBe(true);
         });
 
@@ -309,11 +309,11 @@ describe('missing-values', () => {
     describe('classify_missing_value without type', () => {
         it('classifies double missing without type arg',
             () => {
-                expect(classify_missing_value(STATA_MISSING))
+                expect(classify_missing_value(DTA_MISSING))
                     .toBe('.');
-                expect(classify_missing_value(STATA_MISSING_A))
+                expect(classify_missing_value(DTA_MISSING_A))
                     .toBe('.a');
-                expect(classify_missing_value(STATA_MISSING_Z))
+                expect(classify_missing_value(DTA_MISSING_Z))
                     .toBe('.z');
             }
         );

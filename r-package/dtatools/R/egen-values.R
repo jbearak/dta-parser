@@ -77,8 +77,8 @@ dta_row_total <- function(..., missing = FALSE) {
 
 .dta_egen_numeric_supported <- function(x) {
     classes <- class(x)
-    identical(classes, c("stata_temporal", "stata_date", "Date")) ||
-        identical(classes, c("stata_temporal", "stata_datetime", "POSIXct",
+    identical(classes, c("dta_temporal", "dta_date", "Date")) ||
+        identical(classes, c("dta_temporal", "dta_datetime", "POSIXct",
                              "POSIXt")) ||
         .generated_numeric_class_supported(x)
 }
