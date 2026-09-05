@@ -2717,7 +2717,7 @@ test_that("row counters mask a column named .n or .N", {
     expect_identical(as.double(table$row), c(1, 2))
 })
 
-test_that("`repl()` promotes as Stata's `replace` does, and reports it", {
+test_that("`repl()` widens typed columns and reports the storage change", {
     # The expected storage and messages are Stata 18.0 MP's, recorded in
     # `conformance/stata/replace-promotion.do`. One row differs from Stata
     # deliberately: a `float` given a value needing binary64 goes to
@@ -2750,6 +2750,43 @@ test_that("`repl()` promotes as Stata's `replace` does, and reports it", {
         )
         expect_equal(as.double(data$x), rep(case$value, 2), info = case$note)
     }
+})
+
+test_that("float replacement preserves precision unless promotion is disabled", {
+    promoted <- dibble(x = dta_float(c(1, 2)))
+    expect_message(
+        replace_values(promoted, x = 16777217, where = 1),
+        "variable `x` was float now double", fixed = TRUE
+    )
+    expect_identical(dta_storage_type(promoted$x), "double")
+    expect_identical(as.double(promoted$x), c(16777217, 2))
+
+    fixed <- dibble(x = dta_float(c(1, 2)))
+    expect_no_message(
+        replace_values(fixed, x = 16777217, where = 1, promote = FALSE)
+    )
+    expect_identical(dta_storage_type(fixed$x), "float")
+    expect_identical(as.double(fixed$x), c(16777216, 2))
+})
+
+test_that("byte replacement preserves the R double or rejects it unchanged", {
+    promoted <- dibble(x = dta_byte(c(1, 2)))
+    expect_message(
+        replace_values(promoted, x = 0.1, where = 1),
+        "variable `x` was byte now double", fixed = TRUE
+    )
+    expect_identical(dta_storage_type(promoted$x), "double")
+    expect_identical(as.double(promoted$x), c(0.1, 2))
+
+    fixed <- dibble(x = dta_byte(c(1, 2)))
+    before <- serialize(fixed, NULL)
+    expect_error(
+        replace_values(fixed, x = 0.1, where = 1, promote = FALSE),
+        "cannot represent the value"
+    )
+    expect_identical(dta_storage_type(fixed$x), "byte")
+    expect_identical(as.double(fixed$x), c(1, 2))
+    expect_identical(serialize(fixed, NULL), before)
 })
 
 test_that("`repl()` reports nothing when the storage does not change", {
