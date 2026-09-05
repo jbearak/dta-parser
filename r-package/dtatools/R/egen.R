@@ -390,9 +390,10 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
     quo <- calculation$quo
     .egen_validate_external(rlang::quo_get_expr(quo), rlang::quo_get_env(quo),
                             original$columns)
-    values <- rows <- list()
     group_rows <- groups$rows
     if (!length(group_rows)) group_rows <- list(integer())
+    values <- rows <- vector("list", length(group_rows))
+    count <- 0L
     for (index in seq_along(group_rows)) {
         full <- group_rows[[index]]
         size <- length(full)
@@ -421,20 +422,22 @@ egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
             stop("Calculation must return one value or one value per admitted row",
                  call. = FALSE)
         }
-        values[[length(values) + 1L]] <- vctrs::vec_recycle(piece, length(admitted))
-        rows[[length(rows) + 1L]] <- admitted
+        count <- count + 1L
+        values[[count]] <- vctrs::vec_recycle(piece, length(admitted))
+        rows[[count]] <- admitted
     }
-    if (!length(values)) {
+    if (!count) {
         view$rows <- integer()
         view$cache <- new.env(hash = TRUE, parent = emptyenv())
         piece <- .egen_eval_value(quo, view$columns, 0L, calculation$shadow)
         return(list(values = vctrs::vec_slice(piece, integer()), rows = integer()))
     }
-    positions <- unlist(rows, use.names = FALSE)
+    values <- values[seq_len(count)]
+    admitted_rows <- unlist(rows[seq_len(count)], use.names = FALSE)
     result <- .mutation_gather_values(values)
-    order <- order(positions)
+    order <- order(admitted_rows)
     list(values = vctrs::vec_slice(result, order),
-         rows = if (length(positions) == original$nrow) NULL else positions[order])
+         rows = if (length(admitted_rows) == original$nrow) NULL else admitted_rows[order])
 }
 
 .egen_eval_value <- function(quo, columns, size, shadow) {

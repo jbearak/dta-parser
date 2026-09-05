@@ -92,7 +92,7 @@ eligible inputs instead.
 | Row maximum | Same selected-row values; other rows do not affect a row maximum. | `egen(d, row_high = dta_row_max(x, y), where = eligible)` | `d[eligible, row_high := dta_row_max(x, y)]` |
 | Row total | Same selected-row values; other rows do not affect a row total. | `egen(d, row_sum = dta_row_total(x, y), where = eligible)` | `d[eligible, row_sum := dta_row_total(x, y)]` |
 | Group identifier | Codes include distinct tuples from excluded rows, so selected codes can differ. | `egen(d, id = dta_group_id(household, x), where = eligible)` | `d[eligible, id := dta_group_id(household = household[eligible], x = x[eligible])]` |
-| First observation in group | An excluded first occurrence can prevent a later selected occurrence from being tagged. Excluded output rows are missing. | `egen(d, tag = dta_group_tag(household, x), where = eligible)` | Initialize `tag` to zero, then use the assignment below. |
+| First observation in group | With `gen()` or `:=`, an excluded first occurrence can prevent a later selected occurrence from being tagged; excluded output rows are missing in a new column. `egen()` instead writes zero to excluded rows. | `egen(d, tag = dta_group_tag(household, x), where = eligible)` | Initialize `tag` to zero, then use the assignment below. |
 
 For tags, initialize the new column before the selected assignment so
 excluded rows have the same zero values as `egen()`:

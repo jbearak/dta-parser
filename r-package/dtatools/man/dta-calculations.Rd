@@ -37,8 +37,8 @@ A bare double scalar for summary functions, or a bare double
 vector with one value per input row for row functions.
 }
 \description{
-These ordinary vector functions ignore Stata system and extended missing
-values and return unrounded doubles without source labels or date classes.
+By default, these ordinary vector functions ignore Stata system and extended
+missing values. They return unrounded doubles without source labels or date classes.
 Date and datetime inputs contribute their encoded Stata numeric values.
 Use them in \code{\link[=egen]{egen()}}, \code{\link[=gen]{gen()}}, or a dibble \verb{:=} assignment; assignment
 chooses storage. Wrap the result in \code{\link[=dta_double]{dta_double()}} to request double storage.

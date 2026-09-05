@@ -1,7 +1,7 @@
 #' Stata numeric calculations
 #'
-#' These ordinary vector functions ignore Stata system and extended missing
-#' values and return unrounded doubles without source labels or date classes.
+#' By default, these ordinary vector functions ignore Stata system and extended
+#' missing values. They return unrounded doubles without source labels or date classes.
 #' Date and datetime inputs contribute their encoded Stata numeric values.
 #' Use them in [egen()], [gen()], or a dibble `:=` assignment; assignment
 #' chooses storage. Wrap the result in [dta_double()] to request double storage.
