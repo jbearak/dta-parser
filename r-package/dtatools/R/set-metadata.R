@@ -145,8 +145,12 @@ set_var_formats <- function(.data, ..., .formats = NULL) {
 #' preserved. Unsupported data.table subclasses are rejected.
 #'
 #' `label`, `labels`, `value.label.name`, `format.stata`, `notes`,
-#' `stata.note.numbers`, and `stata.characteristics` use the same validation
-#' as the dedicated setters. The value-label name is one valid Stata name
+#' `stata.note.numbers`, and `stata.characteristics` validate their supported
+#' metadata shapes. Unlike [set_val_labels()], a `labels` bundle preserves raw
+#' mappings exactly, including empty display text and named zero-length mappings.
+#' It applies DTA output validation to codes, text, and size limits and rejects
+#' duplicate codes. Use it to restore imported mappings without normalization.
+#' The value-label name is one valid Stata name
 #' of at most 32 Unicode characters and requires a `labels` mapping. An
 #' explicitly named zero-length numeric mapping can declare an empty table.
 #' Set both attributes in one call to restore a named mapping atomically.
@@ -221,16 +225,18 @@ set_dta_metadata <- function(x, ..., .metadata = NULL, variable = NULL) {
         attr(changed, "format.stata") <- .normalize_dta_format(updates$format.stata)
     }
     if ("labels" %in% keys) {
-        hint <- attr(changed, "value.label.name", exact = TRUE)
-        changed <- `val_labels<-`(changed, updates$labels)
-        # A declared empty table is a numeric mapping even though the usual
-        # label setter treats an empty update as removal.
-        if (is.numeric(updates$labels) && length(updates$labels) == 0L &&
-            !is.null(names(updates$labels)) && !is.null(hint)) {
-            .validate_value_label_target(changed, updates$labels)
-            attr(changed, "labels") <- updates$labels
-            attr(changed, "value.label.name") <- hint
+        .validate_value_label_target(changed, updates$labels)
+        .prepare_write_value_labels(changed, "metadata target")
+        if (!is.null(updates$labels)) {
+            # Use nonempty temporary text only for the existing uniqueness
+            # check. The original mapping, including blank text, stays intact.
+            .normalize_value_labels(stats::setNames(
+                updates$labels, rep("label", length(updates$labels))
+            ))
+        } else {
+            attr(changed, "value.label.name") <- NULL
         }
+        changed <- .apply_haven_labelled_class(changed, !is.null(updates$labels))
     }
     if ("value.label.name" %in% keys) {
         attr(changed, "value.label.name") <- updates$value.label.name

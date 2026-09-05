@@ -29,8 +29,12 @@ preserved. Unsupported data.table subclasses are rejected.
 }
 \details{
 \code{label}, \code{labels}, \code{value.label.name}, \code{format.stata}, \code{notes},
-\code{stata.note.numbers}, and \code{stata.characteristics} use the same validation
-as the dedicated setters. The value-label name is one valid Stata name
+\code{stata.note.numbers}, and \code{stata.characteristics} validate their supported
+metadata shapes. Unlike \code{\link[=set_val_labels]{set_val_labels()}}, a \code{labels} bundle preserves raw
+mappings exactly, including empty display text and named zero-length mappings.
+It applies DTA output validation to codes, text, and size limits and rejects
+duplicate codes. Use it to restore imported mappings without normalization.
+The value-label name is one valid Stata name
 of at most 32 Unicode characters and requires a \code{labels} mapping. An
 explicitly named zero-length numeric mapping can declare an empty table.
 Set both attributes in one call to restore a named mapping atomically.

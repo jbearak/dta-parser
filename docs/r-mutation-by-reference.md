@@ -161,7 +161,9 @@ arguments, runtime tags such as `.(my_name) := "%9.0g"`, and a named list throug
 `variable`, so `variable = my_name` works directly in a loop.
 
 The metadata bundle replaces all supplied attributes together, preserving note
-number gaps. With `notes` alone, numbering starts at one. Clear complete bundles
+number gaps. Its raw `labels` update preserves empty display text and named
+zero-length mappings exactly, with DTA validation before mutation.
+`set_val_labels()` keeps its existing normalization that removes empty text. With `notes` alone, numbering starts at one. Clear complete bundles
 explicitly when restoring absent metadata:
 
 ```r

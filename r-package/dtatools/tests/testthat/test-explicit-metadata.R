@@ -144,6 +144,39 @@ test_that("declared empty label tables reject nonnumeric targets atomically", {
     expect_identical(val_labels(data$x), empty)
 })
 
+test_that("metadata bundles preserve complete raw value-label mappings", {
+    mapping <- stats::setNames(c(1, 2, tagged_missing("a")), c("", "Two", ""))
+    for (make in metadata_containers()) {
+        data <- make(x = dta_long(c(1, 2, tagged_missing("a")))); alias <- data
+        my_name <- "x"
+        set_dta_metadata(data, variable = my_name, labels = mapping,
+                         value.label.name = "codes")
+        expect_identical(val_labels(alias$x), mapping)
+        expect_identical(attr(alias$x, "value.label.name"), "codes")
+        for (writer in list(save_dta, save_arrow)) {
+            path <- tempfile(fileext = if (identical(writer, save_dta)) ".dta" else ".arrow")
+            on.exit(unlink(path), add = TRUE)
+            writer(data, path)
+            restored <- if (identical(writer, save_dta)) read_dta(path) else read_arrow(path)
+            expect_identical(val_labels(restored$x), mapping)
+            expect_identical(attr(restored$x, "value.label.name"), "codes")
+        }
+        before <- copy_data(data)
+        expect_error(set_dta_metadata(data, variable = my_name,
+                                      labels = stats::setNames(c(1, 1), c("", "One"))),
+                     "duplicate")
+        expect_error(set_dta_metadata(data, variable = my_name,
+                                      labels = stats::setNames(c(1, 2), c(NA, "Two"))),
+                     "non-missing text")
+        expect_error(set_dta_metadata(data, variable = my_name,
+                                      labels = stats::setNames(1, strrep("x", 32001L))),
+                     "32,000 UTF-8 bytes")
+        expect_identical(val_labels(data$x), val_labels(before$x))
+        set_val_labels(data, .labels = stats::setNames(list(mapping), my_name))
+        expect_identical(val_labels(data$x), c(Two = 2))
+    }
+})
+
 test_that("metadata setters isolate copied and serialized bookkeeping both ways", {
     for (change in list(
         function(x) set_var_label(x, a, "Age"),
