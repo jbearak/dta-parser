@@ -2209,6 +2209,7 @@ copy_data <- function(data) {
     )
     attributes(columns) <- copied_attributes
     if (data_table) data.table::setalloccol(columns)
+    if (is_dibble(data)) columns <- .as_dibble(columns, "copy_data()")
     columns
 }
 
