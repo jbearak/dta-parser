@@ -40,8 +40,8 @@
     { "name": "synthetic-v119-big-endian", "kind": "generated-valid", "coverage": "native-only synthetic", "gate": { "binary": "observations", "test": "decodes_big_endian_v119_observations_and_labels" } },
     { "name": "release-117-text-encoding", "kind": "derived-valid", "coverage": "fixture-backed TypeScript and Rust defaults and overrides across metadata, fixed strings, and value labels", "gate": { "binary": "encoding", "test": "auto_uses_windows_1252_for_pre_unicode_release_117" } },
     { "name": "projected-row-window", "kind": "derived-valid", "coverage": "fixture-backed TypeScript and Rust; R/haven package tests", "gate": { "binary": "conformance", "test": "every_fixture_has_exact_hash_and_slice_file_projection_parity" } },
-    { "name": "invalid-signature", "kind": "derived-rejection", "coverage": "Rust slice/file exact error parity", "gate": { "binary": "conformance", "test": "invalid_signatures_do_not_disagree_between_slice_and_file" } },
-    { "name": "truncated-observations", "kind": "derived-rejection", "coverage": "Rust slice/file exact error parity", "gate": { "binary": "conformance", "test": "truncated_closing_tag_does_not_disagree_between_slice_and_file" } },
-    { "name": "dangling-strl-pointer", "kind": "derived-rejection", "coverage": "Rust slice parser malformed-strL rejection", "gate": { "binary": "strl", "test": "rejects_partial_dangling_duplicate_and_invalid_gso_records" } }
+    { "name": "invalid-signature", "kind": "derived-rejection", "coverage": "TypeScript buffer rejection gate; Rust slice/file exact error parity", "gate": { "binary": "conformance", "test": "invalid_signatures_do_not_disagree_between_slice_and_file" } },
+    { "name": "truncated-observations", "kind": "derived-rejection", "coverage": "TypeScript observation framing rejection gate and Node boundary tests; Rust slice/file exact error parity", "gate": { "binary": "conformance", "test": "truncated_closing_tag_does_not_disagree_between_slice_and_file" } },
+    { "name": "dangling-strl-pointer", "kind": "derived-rejection", "coverage": "TypeScript buffer rejection gate and Node strL tests; Rust slice parser malformed-strL rejection", "gate": { "binary": "strl", "test": "rejects_partial_dangling_duplicate_and_invalid_gso_records" } }
   ]
 }

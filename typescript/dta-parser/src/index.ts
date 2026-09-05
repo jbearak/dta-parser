@@ -1,4 +1,9 @@
 export { parse_metadata } from './header';
+export { ArrowBuffer } from './arrow-reader';
+export type { ArrowCell, ArrowRow, ArrowType, ArrowTimeUnit, ArrowVariable,
+    ArrowMetadata, ArrowDictionary, ArrowOpenOptions, ArrowReadOptions } from './arrow-types';
+export type { ArrowFieldDocument, DatasetDocument, ArrowRSemantics,
+    ArrowValueLabelEntry } from './arrow-profile';
 export {
     parse_legacy_metadata,
     legacy_metadata_buffer_size,

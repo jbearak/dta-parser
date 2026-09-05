@@ -35,6 +35,54 @@ function load_fixture(name: string): {
 
 describe('read_rows_from_buffer', () => {
 
+    for (const tag of ['<data>', '</data>', '<strls>', '</strls>']) {
+        it(`rejects damaged ${tag} even when reading an unrelated first cell`, () => {
+            const { buffer, metadata } = load_fixture('auto_v118.dta');
+            const bytes = Buffer.from(buffer);
+            bytes[bytes.indexOf(tag)] = 88;
+            expect(() => read_rows_from_buffer(buffer, metadata, 0, 1, 0, 1)).toThrow();
+        });
+    }
+
+    it('rejects a declared observation extent inconsistent with its map', () => {
+        const { buffer, metadata } = load_fixture('auto_v118.dta');
+        metadata.nobs += 1;
+        expect(() => read_rows_from_buffer(buffer, metadata, 0, 1)).toThrow();
+    });
+
+    for (const width of [245, 251, 255, 2045]) {
+        it(`reads release-117 str${width} as a fixed string`, () => {
+            const { buffer, metadata } = load_fixture('auto_v117.dta');
+            const source = Buffer.from(buffer);
+            const dataStart = metadata.section_offsets.data + '<data>'.length;
+            const oldWidth = metadata.variables[0].byte_width;
+            const delta = (width - oldWidth) * metadata.nobs;
+            const rows: Buffer[] = [];
+            for (let row = 0; row < metadata.nobs; row++) {
+                const offset = dataStart + row * metadata.obs_length;
+                const text = Buffer.alloc(width);
+                source.copy(text, 0, offset, offset + oldWidth);
+                rows.push(text, source.subarray(offset + oldWidth, offset + metadata.obs_length));
+            }
+            const modified = Buffer.concat([
+                source.subarray(0, dataStart), ...rows,
+                source.subarray(dataStart + metadata.nobs * metadata.obs_length),
+            ]);
+            modified.writeUInt16LE(width, metadata.section_offsets.variable_types + '<variable_types>'.length);
+            for (let i = 10; i < 14; i++) {
+                const offset = metadata.section_offsets.map + '<map>'.length + i * 8;
+                modified.writeBigUInt64LE(modified.readBigUInt64LE(offset) + BigInt(delta), offset);
+            }
+            const modifiedBuffer = modified.buffer.slice(modified.byteOffset, modified.byteOffset + modified.byteLength);
+            const actual = parse_metadata(modifiedBuffer);
+            expect(actual.variables[0].type).toBe(`str${width}`);
+            expect(actual.variables[0].byte_width).toBe(width);
+            expect(read_rows_from_buffer(modifiedBuffer, actual, 0, 2)).toEqual(
+                read_rows_from_buffer(buffer, metadata, 0, 2)
+            );
+        });
+    }
+
     // ----- auto_v118.dta basic reads -----
 
     describe('auto_v118.dta', () => {
@@ -327,7 +375,7 @@ describe('read_rows_from_buffer', () => {
             }
         });
 
-        it('clips truncated short strings to the available bytes', () => {
+        it('rejects truncated short strings in observation buffers', () => {
             const { metadata } = load_fixture('all_types.dta');
             const my_string_column = metadata.variables.findIndex(
                 my_variable => my_variable.type === 'str5'
@@ -338,14 +386,28 @@ describe('read_rows_from_buffer', () => {
             const my_truncated = new Uint8Array(my_string_offset + 2);
             my_truncated.set([0x61, 0x62], my_string_offset);
 
-            expect(read_rows_from_data_buffer(
+            expect(() => read_rows_from_data_buffer(
                 my_truncated,
                 metadata,
                 0,
                 1,
                 my_string_column,
                 my_string_column + 1
-            )).toEqual([['ab']]);
+            )).toThrow('Truncated observation data');
+            const out = new Map<number, RowCell[]>([[my_string_column, []]]);
+            expect(() => read_columns_from_data_buffer(
+                my_truncated, metadata, 1, [my_string_column], out
+            )).toThrow('Truncated observation data');
+            expect(out.get(my_string_column)).toEqual([]);
+        });
+
+        it('rejects truncated strL pointers before returning placeholders', () => {
+            const { metadata } = load_fixture('all_types.dta');
+            const col = metadata.variables.findIndex(variable => variable.type === 'strL');
+            const truncated = new Uint8Array(metadata.obs_length - 1);
+            expect(() => read_rows_from_data_buffer(
+                truncated, metadata, 0, 1, col, col + 1
+            )).toThrow('Truncated observation data');
         });
     });
 

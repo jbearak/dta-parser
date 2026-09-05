@@ -1,0 +1,770 @@
+{
+  "columns": [
+    {
+      "field": {
+        "characteristics": [
+          {
+            "name": "role",
+            "value": "test"
+          }
+        ],
+        "format": "%8.0g",
+        "label": "all Stata missing codes",
+        "missing": "sentinel",
+        "notes": [
+          {
+            "number": 4,
+            "text": ""
+          }
+        ],
+        "r": {
+          "class": "dta_numeric"
+        },
+        "storage": "byte",
+        "value_labels": "answers",
+        "version": 0
+      },
+      "name": "byte",
+      "values": [
+        1,
+        {
+          "missing": "."
+        },
+        {
+          "missing": ".a"
+        },
+        {
+          "missing": ".b"
+        },
+        {
+          "missing": ".c"
+        },
+        {
+          "missing": ".d"
+        },
+        {
+          "missing": ".e"
+        },
+        {
+          "missing": ".f"
+        },
+        {
+          "missing": ".g"
+        },
+        {
+          "missing": ".h"
+        },
+        {
+          "missing": ".i"
+        },
+        {
+          "missing": ".j"
+        },
+        {
+          "missing": ".k"
+        },
+        {
+          "missing": ".l"
+        },
+        {
+          "missing": ".m"
+        },
+        {
+          "missing": ".n"
+        },
+        {
+          "missing": ".o"
+        },
+        {
+          "missing": ".p"
+        },
+        {
+          "missing": ".q"
+        },
+        {
+          "missing": ".r"
+        },
+        {
+          "missing": ".s"
+        },
+        {
+          "missing": ".t"
+        },
+        {
+          "missing": ".u"
+        },
+        {
+          "missing": ".v"
+        },
+        {
+          "missing": ".w"
+        },
+        {
+          "missing": ".x"
+        },
+        {
+          "missing": ".y"
+        },
+        {
+          "missing": ".z"
+        }
+      ]
+    },
+    {
+      "field": {
+        "characteristics": [
+          {
+            "name": "role",
+            "value": "test"
+          }
+        ],
+        "label": "all Stata missing codes",
+        "missing": "sentinel",
+        "notes": [
+          {
+            "number": 4,
+            "text": ""
+          }
+        ],
+        "r": {
+          "class": "dta_numeric"
+        },
+        "storage": "int",
+        "version": 0
+      },
+      "name": "int",
+      "values": [
+        1,
+        {
+          "missing": "."
+        },
+        {
+          "missing": ".a"
+        },
+        {
+          "missing": ".b"
+        },
+        {
+          "missing": ".c"
+        },
+        {
+          "missing": ".d"
+        },
+        {
+          "missing": ".e"
+        },
+        {
+          "missing": ".f"
+        },
+        {
+          "missing": ".g"
+        },
+        {
+          "missing": ".h"
+        },
+        {
+          "missing": ".i"
+        },
+        {
+          "missing": ".j"
+        },
+        {
+          "missing": ".k"
+        },
+        {
+          "missing": ".l"
+        },
+        {
+          "missing": ".m"
+        },
+        {
+          "missing": ".n"
+        },
+        {
+          "missing": ".o"
+        },
+        {
+          "missing": ".p"
+        },
+        {
+          "missing": ".q"
+        },
+        {
+          "missing": ".r"
+        },
+        {
+          "missing": ".s"
+        },
+        {
+          "missing": ".t"
+        },
+        {
+          "missing": ".u"
+        },
+        {
+          "missing": ".v"
+        },
+        {
+          "missing": ".w"
+        },
+        {
+          "missing": ".x"
+        },
+        {
+          "missing": ".y"
+        },
+        {
+          "missing": ".z"
+        }
+      ]
+    },
+    {
+      "field": {
+        "characteristics": [
+          {
+            "name": "role",
+            "value": "test"
+          }
+        ],
+        "label": "all Stata missing codes",
+        "missing": "sentinel",
+        "notes": [
+          {
+            "number": 4,
+            "text": ""
+          }
+        ],
+        "r": {
+          "class": "dta_numeric"
+        },
+        "storage": "long",
+        "version": 0
+      },
+      "name": "long",
+      "values": [
+        1,
+        {
+          "missing": "."
+        },
+        {
+          "missing": ".a"
+        },
+        {
+          "missing": ".b"
+        },
+        {
+          "missing": ".c"
+        },
+        {
+          "missing": ".d"
+        },
+        {
+          "missing": ".e"
+        },
+        {
+          "missing": ".f"
+        },
+        {
+          "missing": ".g"
+        },
+        {
+          "missing": ".h"
+        },
+        {
+          "missing": ".i"
+        },
+        {
+          "missing": ".j"
+        },
+        {
+          "missing": ".k"
+        },
+        {
+          "missing": ".l"
+        },
+        {
+          "missing": ".m"
+        },
+        {
+          "missing": ".n"
+        },
+        {
+          "missing": ".o"
+        },
+        {
+          "missing": ".p"
+        },
+        {
+          "missing": ".q"
+        },
+        {
+          "missing": ".r"
+        },
+        {
+          "missing": ".s"
+        },
+        {
+          "missing": ".t"
+        },
+        {
+          "missing": ".u"
+        },
+        {
+          "missing": ".v"
+        },
+        {
+          "missing": ".w"
+        },
+        {
+          "missing": ".x"
+        },
+        {
+          "missing": ".y"
+        },
+        {
+          "missing": ".z"
+        }
+      ]
+    },
+    {
+      "field": {
+        "characteristics": [
+          {
+            "name": "role",
+            "value": "test"
+          }
+        ],
+        "label": "all Stata missing codes",
+        "missing": "payload",
+        "notes": [
+          {
+            "number": 4,
+            "text": ""
+          }
+        ],
+        "r": {
+          "class": "dta_numeric"
+        },
+        "storage": "float",
+        "version": 0
+      },
+      "name": "float",
+      "values": [
+        1.5,
+        {
+          "missing": "."
+        },
+        {
+          "missing": ".a"
+        },
+        {
+          "missing": ".b"
+        },
+        {
+          "missing": ".c"
+        },
+        {
+          "missing": ".d"
+        },
+        {
+          "missing": ".e"
+        },
+        {
+          "missing": ".f"
+        },
+        {
+          "missing": ".g"
+        },
+        {
+          "missing": ".h"
+        },
+        {
+          "missing": ".i"
+        },
+        {
+          "missing": ".j"
+        },
+        {
+          "missing": ".k"
+        },
+        {
+          "missing": ".l"
+        },
+        {
+          "missing": ".m"
+        },
+        {
+          "missing": ".n"
+        },
+        {
+          "missing": ".o"
+        },
+        {
+          "missing": ".p"
+        },
+        {
+          "missing": ".q"
+        },
+        {
+          "missing": ".r"
+        },
+        {
+          "missing": ".s"
+        },
+        {
+          "missing": ".t"
+        },
+        {
+          "missing": ".u"
+        },
+        {
+          "missing": ".v"
+        },
+        {
+          "missing": ".w"
+        },
+        {
+          "missing": ".x"
+        },
+        {
+          "missing": ".y"
+        },
+        {
+          "missing": ".z"
+        }
+      ]
+    },
+    {
+      "field": {
+        "characteristics": [
+          {
+            "name": "role",
+            "value": "test"
+          }
+        ],
+        "label": "all Stata missing codes",
+        "missing": "payload",
+        "notes": [
+          {
+            "number": 4,
+            "text": ""
+          }
+        ],
+        "r": {
+          "class": "dta_numeric"
+        },
+        "storage": "double",
+        "version": 0
+      },
+      "name": "double",
+      "values": [
+        1.5,
+        {
+          "missing": "."
+        },
+        {
+          "missing": ".a"
+        },
+        {
+          "missing": ".b"
+        },
+        {
+          "missing": ".c"
+        },
+        {
+          "missing": ".d"
+        },
+        {
+          "missing": ".e"
+        },
+        {
+          "missing": ".f"
+        },
+        {
+          "missing": ".g"
+        },
+        {
+          "missing": ".h"
+        },
+        {
+          "missing": ".i"
+        },
+        {
+          "missing": ".j"
+        },
+        {
+          "missing": ".k"
+        },
+        {
+          "missing": ".l"
+        },
+        {
+          "missing": ".m"
+        },
+        {
+          "missing": ".n"
+        },
+        {
+          "missing": ".o"
+        },
+        {
+          "missing": ".p"
+        },
+        {
+          "missing": ".q"
+        },
+        {
+          "missing": ".r"
+        },
+        {
+          "missing": ".s"
+        },
+        {
+          "missing": ".t"
+        },
+        {
+          "missing": ".u"
+        },
+        {
+          "missing": ".v"
+        },
+        {
+          "missing": ".w"
+        },
+        {
+          "missing": ".x"
+        },
+        {
+          "missing": ".y"
+        },
+        {
+          "missing": ".z"
+        }
+      ]
+    },
+    {
+      "field": {
+        "r": {
+          "class": "Date"
+        },
+        "version": 0
+      },
+      "name": "date_fallback",
+      "values": [
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25,
+        1.25
+      ]
+    },
+    {
+      "field": {
+        "r": {
+          "class": "POSIXct",
+          "tz": "UTC"
+        },
+        "version": 0
+      },
+      "name": "timestamp_fallback",
+      "values": [
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001,
+        1.0000000001
+      ]
+    },
+    {
+      "field": {
+        "r": {
+          "class": "difftime",
+          "units": "hours"
+        },
+        "version": 0
+      },
+      "name": "duration_fallback",
+      "values": [
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5,
+        2.5
+      ]
+    },
+    {
+      "field": {
+        "r": {
+          "class": "character"
+        },
+        "string_storage": "strL",
+        "version": 0
+      },
+      "name": "string",
+      "values": [
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café",
+        "café"
+      ]
+    },
+    {
+      "field": {
+        "r": {
+          "class": "factor",
+          "ordered": true
+        },
+        "version": 0
+      },
+      "name": "factor",
+      "values": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ]
+    }
+  ],
+  "dataset": {
+    "characteristics": [
+      {
+        "name": "source",
+        "value": "Rust"
+      }
+    ],
+    "label": "TypeScript parity café",
+    "notes": [
+      {
+        "number": 2,
+        "text": "numbered note"
+      }
+    ],
+    "output_container": "data.frame",
+    "value_labels": {
+      "answers": [
+        {
+          "label": "yes",
+          "value": 1
+        }
+      ]
+    },
+    "version": 0
+  }
+}

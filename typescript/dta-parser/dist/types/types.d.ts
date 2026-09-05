@@ -9,18 +9,12 @@ export declare function is_legacy_format(version: FormatVersion): version is Leg
 export type DtaType = 'byte' | 'int' | 'long' | 'float' | 'double' | 'strL' | `str${number}`;
 /**
  * Return the byte width for a numeric type code in the
- * given format version. Fixed-string codes (1..244 for
- * v117, 1..2045 for v118/v119) equal their own width.
- *
- * Note: Modern Stata (16+) writes v118 type codes even
- * in saveold v117 files, so v117 accepts both code sets.
+ * given modern format version. Fixed-string codes 1..2045 equal their width.
  */
 export declare function byte_width_for_type_code(code: number, format_version: FormatVersion): number;
 /**
  * Convert a numeric type code to its DtaType label.
  *
- * Note: Modern Stata (16+) writes v118 type codes even
- * in saveold v117 files, so v117 accepts both code sets.
  */
 export declare function type_code_to_dta_type(code: number, format_version: FormatVersion): DtaType;
 export declare function byte_width_for_legacy_type_code(code: number, format_version: LegacyFormatVersion): number;

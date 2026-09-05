@@ -130,6 +130,10 @@ export declare class DtaFile {
      */
     private _resolve_strl_at;
 }
+export { ArrowFile } from './arrow-node';
+export { ArrowBuffer } from './arrow-reader';
+export type { ArrowCell, ArrowRow, ArrowType, ArrowTimeUnit, ArrowVariable, ArrowMetadata, ArrowDictionary, ArrowOpenOptions, ArrowReadOptions } from './arrow-types';
+export type { ArrowFieldDocument, DatasetDocument, ArrowRSemantics, ArrowValueLabelEntry } from './arrow-profile';
 export type { VariableInfo, Row, RowCell, MissingType, MissingValue, DtaMetadata, ParsedDtaMetadata, ParsedVariableInfo, DtaType, FormatVersion, LegacyFormatVersion, SectionOffsets, StataCharacteristic, StataNote, } from './types';
 export type { TextEncoding, TextEncodingLabel, ResolvedTextEncoding, TextEncodingOptions, } from './text-encoding';
 export { is_legacy_format } from './types';

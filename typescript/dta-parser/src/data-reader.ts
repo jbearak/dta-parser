@@ -27,7 +27,6 @@ import {
     text_decoder,
 } from './text-encoding';
 
-const DATA_TAG_LENGTH = '<data>'.length;
 const STRL_PLACEHOLDER = '__strl__';
 
 type DataBuffer = ArrayBuffer | Uint8Array;
@@ -72,6 +71,45 @@ function buffer_views(buffer: DataBuffer): BufferViews {
             ? buffer
             : new Uint8Array(buffer),
     };
+}
+
+function assert_observation_bytes(bytes: Uint8Array, start: number, count: number, width: number): void {
+    const end = start + count * width;
+    if (!Number.isSafeInteger(start) || start < 0 || !Number.isSafeInteger(end)
+        || end < start || end > bytes.length) {
+        throw new Error('Truncated observation data or unsafe observation extent');
+    }
+}
+
+function expect_data_tag(bytes: Uint8Array, offset: number, tag: string): number {
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset + tag.length > bytes.length) {
+        throw new Error(`Truncated ${tag} tag`);
+    }
+    for (let i = 0; i < tag.length; i++) {
+        if (bytes[offset + i] !== tag.charCodeAt(i)) throw new Error(`Missing ${tag} tag`);
+    }
+    return offset + tag.length;
+}
+
+/** Validate framing independently of which observations and columns are decoded. */
+function validate_data_section(bytes: Uint8Array, metadata: DtaMetadata): number {
+    const offsets = metadata.section_offsets;
+    const modern = !is_legacy_format(metadata.format_version);
+    const start = modern ? expect_data_tag(bytes, offsets.data, '<data>') : offsets.data;
+    assert_observation_bytes(bytes, start, metadata.nobs, metadata.obs_length);
+    const end = start + metadata.nobs * metadata.obs_length;
+    if (!modern) {
+        if (end !== offsets.value_labels) throw new Error('Observation extent does not match value-label offset');
+        return start;
+    }
+    if (expect_data_tag(bytes, end, '</data>') !== offsets.strls) {
+        throw new Error('Observation extent does not match strL offset');
+    }
+    const after_open = expect_data_tag(bytes, offsets.strls, '<strls>');
+    const close = offsets.value_labels - '</strls>'.length;
+    if (close < after_open) throw new Error('Invalid strL section extent');
+    expect_data_tag(bytes, close, '</strls>');
+    return start;
 }
 
 function decoder_for_metadata(
@@ -406,6 +444,8 @@ function read_rows_from_view(
     );
     if (my_col_start >= my_col_end) return out ?? [];
 
+    assert_observation_bytes(bytes, row_base_offset, my_actual_count, metadata.obs_length);
+
     const little_endian = metadata.byte_order === 'LSF';
     const modern_missing = metadata.format_version >= 113;
     const my_decoder = decoder_for_metadata(metadata);
@@ -485,11 +525,7 @@ export function read_rows_from_buffer(
 ): Row[] {
     assert_valid_row_range(start, count);
     const { view, bytes } = buffer_views(buffer);
-    const my_tag_length = is_legacy_format(metadata.format_version)
-        ? 0
-        : DATA_TAG_LENGTH;
-    const my_data_start =
-        metadata.section_offsets.data + my_tag_length;
+    const my_data_start = validate_data_section(bytes, metadata);
 
     return read_rows_from_view(
         view,
@@ -556,6 +592,7 @@ export function read_columns_from_data_buffer(
     if (count <= 0 || col_indices.length === 0) return;
 
     const { view, bytes } = buffer_views(buffer);
+    assert_observation_bytes(bytes, 0, count, metadata.obs_length);
     const little_endian = metadata.byte_order === 'LSF';
     const modern_missing = metadata.format_version >= 113;
     const my_decoder = decoder_for_metadata(metadata);

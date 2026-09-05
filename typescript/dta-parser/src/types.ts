@@ -23,19 +23,9 @@ export function is_legacy_format(
     return LEGACY_FORMAT_SET.has(version);
 }
 
-// Type codes vary by format version. v117 uses one set of
-// numeric codes; v118/v119 share another.
-
-const V117_TYPE_CODES: Record<number, { type: string; width: number }> = {
-    251: { type: 'byte',   width: 1 },
-    252: { type: 'int',    width: 2 },
-    253: { type: 'long',   width: 4 },
-    254: { type: 'float',  width: 4 },
-    255: { type: 'double', width: 8 },
-    32768: { type: 'strL', width: 8 },
-};
-
-const V118_TYPE_CODES: Record<number, { type: string; width: number }> = {
+// Releases 117–119 share modern two-byte type codes. Legacy numeric codes
+// 251–255 denote fixed-string widths in these releases.
+const MODERN_TYPE_CODES: Record<number, { type: string; width: number }> = {
     65530: { type: 'byte',   width: 1 },
     65529: { type: 'int',    width: 2 },
     65528: { type: 'long',   width: 4 },
@@ -44,9 +34,7 @@ const V118_TYPE_CODES: Record<number, { type: string; width: number }> = {
     32768: { type: 'strL',   width: 8 },
 };
 
-// Maximum fixed-string width per format version
-const MAX_STR_WIDTH_V117 = 244;
-const MAX_STR_WIDTH_V118 = 2045;
+const MAX_STR_WIDTH_MODERN = 2045;
 
 // DtaType — the logical Stata storage type
 export type DtaType =
@@ -60,32 +48,15 @@ export type DtaType =
 
 /**
  * Return the byte width for a numeric type code in the
- * given format version. Fixed-string codes (1..244 for
- * v117, 1..2045 for v118/v119) equal their own width.
- *
- * Note: Modern Stata (16+) writes v118 type codes even
- * in saveold v117 files, so v117 accepts both code sets.
+ * given modern format version. Fixed-string codes 1..2045 equal their width.
  */
 export function byte_width_for_type_code(
     code: number,
     format_version: FormatVersion
 ): number {
-    if (format_version === 117) {
-        const my_entry = V117_TYPE_CODES[code]
-            ?? V118_TYPE_CODES[code];
-        if (my_entry) return my_entry.width;
-
-        if (code >= 1 && code <= MAX_STR_WIDTH_V117) {
-            return code;
-        }
-    } else {
-        const my_entry = V118_TYPE_CODES[code];
-        if (my_entry) return my_entry.width;
-
-        if (code >= 1 && code <= MAX_STR_WIDTH_V118) {
-            return code;
-        }
-    }
+    const my_entry = MODERN_TYPE_CODES[code];
+    if (my_entry) return my_entry.width;
+    if (Number.isInteger(code) && code >= 1 && code <= MAX_STR_WIDTH_MODERN) return code;
 
     throw new Error(
         `Unknown type code ${code} for format v${format_version}`
@@ -95,29 +66,14 @@ export function byte_width_for_type_code(
 /**
  * Convert a numeric type code to its DtaType label.
  *
- * Note: Modern Stata (16+) writes v118 type codes even
- * in saveold v117 files, so v117 accepts both code sets.
  */
 export function type_code_to_dta_type(
     code: number,
     format_version: FormatVersion
 ): DtaType {
-    if (format_version === 117) {
-        const my_entry = V117_TYPE_CODES[code]
-            ?? V118_TYPE_CODES[code];
-        if (my_entry) return my_entry.type as DtaType;
-
-        if (code >= 1 && code <= MAX_STR_WIDTH_V117) {
-            return `str${code}` as DtaType;
-        }
-    } else {
-        const my_entry = V118_TYPE_CODES[code];
-        if (my_entry) return my_entry.type as DtaType;
-
-        if (code >= 1 && code <= MAX_STR_WIDTH_V118) {
-            return `str${code}` as DtaType;
-        }
-    }
+    const my_entry = MODERN_TYPE_CODES[code];
+    if (my_entry) return my_entry.type as DtaType;
+    if (Number.isInteger(code) && code >= 1 && code <= MAX_STR_WIDTH_MODERN) return `str${code}`;
 
     throw new Error(
         `Unknown type code ${code} for format v${format_version}`

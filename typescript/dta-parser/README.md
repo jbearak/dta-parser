@@ -1,6 +1,6 @@
 # @jbearak/dta-parser
 
-A TypeScript parser for Stata `.dta` files. It ships JavaScript bundles for ESM and CommonJS callers. Use the portable entrypoint when you already have the file bytes, or the Node entrypoint for filesystem-backed random access.
+A TypeScript reader for Stata `.dta` and Arrow IPC `.arrow` files. It ships JavaScript bundles for ESM and CommonJS callers. Use the portable entrypoint when you already have the file bytes, or the Node entrypoint for filesystem-backed random access.
 
 The parser began inside [Sight](https://github.com/jbearak/sight). Sight, [manuscript-markdown](https://github.com/jbearak/manuscript-markdown), and [Table Viewer](https://github.com/jbearak/table-viewer) now use the standalone package.
 
@@ -66,6 +66,9 @@ Buffer helpers expect the complete file. Callers holding only contiguous observa
 
 ## Data behavior
 
+The following describes DTA reads. Arrow's additional value types are described
+under [Read Arrow files](#read-arrow-files).
+
 The parser covers Stata 5 through 19. Numeric values remain numbers and strings remain strings. Stata system and extended missing values remain distinct:
 
 ```ts
@@ -98,6 +101,66 @@ Automatic text decoding uses Windows-1252 for pre-Unicode files and UTF-8 for Un
 The portable entrypoint includes `parse_metadata()`, `read_rows_from_buffer()`, display-format helpers, value-label parsing, `strL` helpers, missing-value helpers, and shared types. The Node entrypoint adds `DtaFile` and re-exports the portable interface.
 
 TypeScript declarations ship with the package and provide the complete interface reference.
+
+## Read Arrow files
+
+```ts
+import { ArrowFile } from '@jbearak/dta-parser/node';
+
+const file = await ArrowFile.open('survey.arrow');
+try {
+    const rows = await file.read_rows(0, 25);
+    console.log(file.variables, rows);
+    // Codes in dictionary columns index these levels, starting at zero.
+    console.log(file.dictionaries);
+} finally {
+    file.close();
+}
+```
+
+Use `ArrowBuffer.open(buffer)` from the portable entrypoint for synchronous
+reads from complete `ArrayBuffer` or `Uint8Array` file bytes. Its `read_rows()`
+and `read_columns()` methods return results directly. `ArrowFile` returns
+promises and accepts `AbortSignal` through the final read-options argument.
+Both readers support the same compressed and uncompressed files.
+
+Both expose `nobs`, `nvar`, `variables`, `metadata`, `dictionaries`, and
+`get_dictionary(columnIndex)`. Row and column indexes are zero-based.
+`read_rows(start, count, col_start?, col_end?, options?)` uses an exclusive
+column end; `read_columns(indices, options?)` returns a map of selected column
+indexes to full columns, preserving requested order and removing duplicate
+indexes. Reads past the last row return the remaining rows.
+
+Arrow cells have a separate `ArrowCell` type. Integers stored at 64 bits use
+`bigint`; other numeric values use `number`. Booleans, strings, `null`, and
+Stata missing objects remain distinct. Dictionary cells hold zero-based codes;
+their levels and orderedness are available through `get_dictionary()`.
+Temporal values retain their stored ticks. Variables describe the physical
+unit, epoch, and timezone, with `temporal_semantics` for recorded R temporal
+units. Formatting is the caller's responsibility. Convert `bigint` explicitly
+before ordinary JSON serialization.
+
+Opening a Node file reads its footer and batch headers. Row windows skip other
+batch bodies, and column projections read only selected buffers and their
+dictionaries. Compressed buffers are decoded in full when selected. Reading
+`metadata` or `variables` validates every profile field; an ordinary projected
+read validates selected field documents. Returned metadata and dictionaries
+are copies, so editing them does not change subsequent decoding.
+
+Open options default to `{ profile: true, verify: true }`. `profile: false`
+reads raw Arrow storage and disables profile checksums. `verify: false` skips
+checksums while retaining profile semantics. `max_buffer_bytes` limits each
+stored or decoded buffer to 256 MiB by default; raise it explicitly for larger
+buffers. `max_output_rows` optionally limits each read's row count. Node read
+options accept `chunk_rows`, which bounds decoded output between cancellation
+checks; one compressed buffer decode remains synchronous.
+
+See the repository's
+[Arrow compatibility contract](https://github.com/jbearak/dta-tools/blob/main/docs/compatibility.md#arrow-read-compatibility)
+for supported types, profile versions, validation, and compression coverage.
+The readers do not write files. Zstandard decoding includes MIT-licensed code
+derived from [fzstd](https://github.com/101arrowz/fzstd); its license is retained
+in the distributed bundles.
 
 ## Project links
 

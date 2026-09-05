@@ -2,6 +2,7 @@ import { describe, it, expect } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parse_metadata } from '../../src/header';
+import { parse_legacy_metadata } from '../../src/legacy-header';
 import { parse_value_labels } from '../../src/value-labels';
 import type { DtaMetadata } from '../../src/types';
 
@@ -24,11 +25,110 @@ function load_fixture(name: string): {
         my_buf.byteOffset,
         my_buf.byteOffset + my_buf.byteLength
     );
-    const my_meta = parse_metadata(my_array_buf);
+    const my_meta = my_buf[0] === 115
+        ? parse_legacy_metadata(my_array_buf, my_buf.length)
+        : parse_metadata(my_array_buf);
     return { buffer: my_array_buf, metadata: my_meta };
 }
 
 describe('parse_value_labels', () => {
+
+    describe('structural validation', () => {
+        for (const name of ['auto_v117.dta', 'auto_v118.dta', 'auto_v115.dta']) {
+            it(`${name}: rejects inconsistent declared table lengths`, () => {
+                for (const length of [0, 1, -1, 8, 0x7fffffff]) {
+                    const { buffer, metadata } = load_fixture(name);
+                    const offset = metadata.section_offsets.value_labels
+                        + (metadata.format_version === 115 ? 0 : '<value_labels><lbl>'.length);
+                    new DataView(buffer).setInt32(offset, length, metadata.byte_order === 'LSF');
+                    expect(() => parse_value_labels(buffer, metadata)).toThrow();
+                }
+            });
+        }
+
+        for (const tag of ['<value_labels>', '<lbl>', '</lbl>', '</value_labels>']) {
+            it(`rejects damaged ${tag} framing`, () => {
+                const { buffer, metadata } = load_fixture('auto_v118.dta');
+                const bytes = Buffer.from(buffer);
+                const offset = bytes.indexOf(tag, metadata.section_offsets.value_labels);
+                expect(offset).toBeGreaterThanOrEqual(0);
+                bytes[offset] = 88;
+                expect(() => parse_value_labels(buffer, metadata)).toThrow();
+            });
+        }
+
+        it('rejects unterminated modern table names', () => {
+            const { buffer, metadata } = load_fixture('auto_v118.dta');
+            const offset = metadata.section_offsets.value_labels + '<value_labels><lbl>'.length + 4;
+            new Uint8Array(buffer).fill(65, offset, offset + 129);
+            expect(() => parse_value_labels(buffer, metadata)).toThrow();
+        });
+
+        it('rejects text offsets inside a UTF-8 code point', () => {
+            const { buffer, metadata } = load_fixture('auto_v118.dta');
+            const payload = metadata.section_offsets.value_labels
+                + '<value_labels><lbl>'.length + 4 + 129 + 3;
+            const view = new DataView(buffer);
+            const text = payload + 8 + view.getInt32(payload, true) * 8;
+            new Uint8Array(buffer).set([0xc3, 0xa9], text);
+            view.setInt32(payload + 8, 1, true);
+            expect(() => parse_value_labels(buffer, metadata)).toThrow();
+            metadata.text_encoding = 'windows-1252';
+            expect(parse_value_labels(buffer, metadata).get('origin')?.get(0)).toStartWith('©');
+        });
+
+        it('rejects every continuation offset in valid two-, three-, and four-byte code points', () => {
+            for (const codePoint of ['é', '€', '😀']) {
+                const encoded = new TextEncoder().encode(codePoint);
+                for (let offset = 1; offset < encoded.length; offset++) {
+                    const { buffer, metadata } = load_fixture('auto_v118.dta');
+                    const payload = metadata.section_offsets.value_labels
+                        + '<value_labels><lbl>'.length + 4 + 129 + 3;
+                    const view = new DataView(buffer);
+                    const text = payload + 8 + view.getInt32(payload, true) * 8;
+                    new Uint8Array(buffer).set(encoded, text);
+                    view.setInt32(payload + 8, offset, true);
+                    expect(() => parse_value_labels(buffer, metadata)).toThrow('inside a UTF-8 code point');
+                }
+            }
+        });
+
+        it('decodes many labels after a long invalid continuation run', () => {
+            const count = 1000;
+            const textLength = 1024 * 1024;
+            const length = 8 + count * 8 + textLength;
+            const payload = Buffer.alloc(4 + 129 + 3 + length);
+            payload.writeInt32LE(length);
+            payload.write('invalid_utf8', 4);
+            const table = 4 + 129 + 3;
+            payload.writeInt32LE(count, table);
+            payload.writeInt32LE(textLength, table + 4);
+            for (let i = 0; i < count; i++) {
+                payload.writeInt32LE(textLength - 2, table + 8 + i * 4);
+                payload.writeInt32LE(i, table + 8 + count * 4 + i * 4);
+            }
+            payload.fill(0x80, table + 8 + count * 8, payload.length - 1);
+            const section = Buffer.concat([
+                Buffer.from('<value_labels><lbl>'), payload, Buffer.from('</lbl></value_labels>'),
+            ]);
+            const bytes = Buffer.concat([section, Buffer.from('</stata_dta>')]);
+            const { metadata } = load_fixture('auto_v118.dta');
+            metadata.section_offsets.value_labels = 0;
+            metadata.section_offsets.dta_data_close = section.length;
+            metadata.section_offsets.end_of_file = bytes.length;
+            const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length);
+            const labels = parse_value_labels(buffer, metadata).get('invalid_utf8')!;
+            expect(labels.size).toBe(count);
+            expect([...labels.values()]).toEqual(Array(count).fill('\ufffd'));
+        });
+
+        it('rejects a truncated section even when the first table is intact', () => {
+            const { buffer, metadata } = load_fixture('auto_v118.dta');
+            expect(() => parse_value_labels(
+                buffer.slice(0, metadata.section_offsets.dta_data_close - 1), metadata
+            )).toThrow();
+        });
+    });
 
     // ----- value_labels.dta -----
 
