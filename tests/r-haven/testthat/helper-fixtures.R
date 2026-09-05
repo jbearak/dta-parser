@@ -6,6 +6,15 @@ source(file.path(
     root, "r-package", "dtatools", "tests", "testthat", "helper-fixtures.R"
 ))
 
+# Haven 2.5.5 retains dataset notes but drops variable notes. Remove only
+# those variable attributes for its column comparisons; dtatools' fixture
+# tests independently assert the full note text and numbering.
+without_haven_variable_notes <- function(value) {
+    attr(value, "notes") <- NULL
+    attr(value, "stata.note.numbers") <- NULL
+    value
+}
+
 load_test_helpers <- function(file, names) {
     expressions <- parse(file.path(
         root, "r-package", "dtatools", "tests", "testthat", file

@@ -26,6 +26,15 @@ apply to `gen()`, `egen()`, and `:=`.
 
 ## Equivalent forms
 
+In these tables, the full sample means the whole dataset, or the current
+group when grouping is supplied.
+
+| Form | Without a row filter | With a row filter |
+| --- | --- | --- |
+| `gen()` | Calculates on the full sample; creates a new column. | Calculates on the full sample; creates a new column with results in selected rows and missing in excluded rows. |
+| `egen()` | Calculates on the full sample; creates a new column. | Calculates on the selected sample; creates a new column with results in selected rows and missing in excluded rows, except tag results use zero. |
+| `:=` | Calculates on the full sample; creates or replaces a column. | Calculates on the full sample; writes results to selected rows. Excluded rows are missing in a new column and unchanged in an existing column. |
+
 These forms calculate the same values when no row filter is supplied.
 Run each form on a fresh copy, or use distinct target names.
 
@@ -65,6 +74,42 @@ d[, combined := dta_row_total(!!!rlang::syms(cols))]
 rows and system missing, displayed as `.`, in excluded rows. For `:=`,
 selected rows receive the result; excluded rows are system missing for a new
 column and retain their previous values for an existing column.
+
+The next table assumes `eligible` is logical with no missing values, and
+each command starts with a fresh target. For comparison, an unfiltered
+helper expression in `gen(d, target = ..., where = eligible)` or
+`d[eligible, target := ...]` sees the full sample. Supply `by = household`
+to either form for the first four rows. The middle column describes those
+full-sample calculations; the final two columns show how to calculate on
+eligible inputs instead.
+
+| Calculation | `gen()` or `:=` with an unfiltered helper argument | `egen()` on eligible inputs | `:=` with matching selected-input values |
+| --- | --- | --- | --- |
+| Mean | Mean of all `x` in each household. | `egen(d, avg = dta_mean(x), where = eligible, by = household)` | `d[eligible, avg := dta_mean(x[eligible]), by = household]` |
+| Minimum | Minimum of all `x` in each household. | `egen(d, low = dta_min(x), where = eligible, by = household)` | `d[eligible, low := dta_min(x[eligible]), by = household]` |
+| Maximum | Maximum of all `x` in each household. | `egen(d, high = dta_max(x), where = eligible, by = household)` | `d[eligible, high := dta_max(x[eligible]), by = household]` |
+| Total | Total of all `x` in each household. | `egen(d, total = dta_total(x), where = eligible, by = household)` | `d[eligible, total := dta_total(x[eligible]), by = household]` |
+| Row maximum | Same selected-row values; other rows do not affect a row maximum. | `egen(d, row_high = dta_row_max(x, y), where = eligible)` | `d[eligible, row_high := dta_row_max(x, y)]` |
+| Row total | Same selected-row values; other rows do not affect a row total. | `egen(d, row_sum = dta_row_total(x, y), where = eligible)` | `d[eligible, row_sum := dta_row_total(x, y)]` |
+| Group identifier | Codes include distinct tuples from excluded rows, so selected codes can differ. | `egen(d, id = dta_group_id(household, x), where = eligible)` | `d[eligible, id := dta_group_id(household = household[eligible], x = x[eligible])]` |
+| First observation in group | An excluded first occurrence can prevent a later selected occurrence from being tagged. Excluded output rows are missing. | `egen(d, tag = dta_group_tag(household, x), where = eligible)` | Initialize `tag` to zero, then use the assignment below. |
+
+For tags, initialize the new column before the selected assignment so
+excluded rows have the same zero values as `egen()`:
+
+```r
+d <- dibble(household = c(1, 1, 2), x = c(2, 2, 5),
+    eligible = c(FALSE, TRUE, TRUE))
+d[, tag := dta_byte(0)]
+d[eligible, tag := dta_group_tag(household = household[eligible], x = x[eligible])]
+# tag: 0, 1, 1
+```
+
+These filtered forms compare values. The two-step tag assignment retains
+the initialized target's metadata because it replaces an existing column.
+`egen()` supplies the group or tag description automatically. Naming the
+filtered group-key arguments preserves the intended component names in
+descriptions, but the tag initialization above does not copy that metadata.
 
 For this dataset, the calculation difference is visible without grouping:
 
