@@ -19,6 +19,7 @@ R has no command prefixes, no `if`/`in` qualifiers, and no leading-underscore na
 | `generate x = exp if cond in 1/10` | `gen(data, x = exp, where = cond)` | `[in]` is a row-position selection, which `where` already accepts as numeric positions. |
 | `generate x = exp, before(y)` | `gen()` appends; use `order_vars()` | Placement is a separate concern from generation, and `order_vars()` already spells Stata's `order`. |
 | `generate x:lblname = exp` | `gen()` then `set_val_labels()` | Label authoring inside a generate expression has no natural R spelling. |
+| `generate y = x` then `label variable`, `label copy`, `label values` | `gen(data, y = x)` alone | A bare column reference copies the variable label and value labels along with the values, because in R the labels are attributes of the vector. Stata's `generate` copies values only. An arithmetic expression, `gen(data, y = x + 0)`, and `repl()` produce an unlabelled result, as in Stata. |
 | `note x: text`, `label var x "text"` | `set_dta_note()`, `set_var_label()` | See [notes and characteristics](./stata-notes-and-characteristics.md) and the [label metadata guide](./r-label-metadata.md). |
 
 Stata commands report how many missing values `generate` produced and how many real changes `replace` made. dtatools omits those counts; `repl()` reports storage promotion. They signal problems as R conditions instead: an error where Stata would refuse, a warning where a conversion loses information.
