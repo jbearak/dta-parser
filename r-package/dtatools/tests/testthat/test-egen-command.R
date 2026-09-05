@@ -73,7 +73,8 @@ test_that("egen type, placement and row positions validate before mutation", {
     expect_error(egen(d, bad = dta_mean(x), rows = c(1, 1)), "unique")
     expect_error(egen(d, bad = dta_mean(x), rows = 5), "beyond")
     expect_error(egen(d, bad = dta_mean(x), type = "str1"), "type")
-    expect_error(egen(d, bad = dta_total(x * 100), type = "byte"))
+    expect_error(egen(d, bad = dta_total(x * 100), type = "byte"),
+                 "Stata byte storage cannot represent")
     expect_identical(as.data.frame(d), before)
 })
 
@@ -93,7 +94,8 @@ test_that("egen stages bysort and commits only after success", {
     d <- dibble(g = c(2, 1, 2, 1), x = c(8, 9, 3, 1))
     alias <- d
     old <- as.data.frame(copy_data(d))
-    expect_error(egen(d, y = dta_total(x * 100), bysort = g, type = "byte"))
+    expect_error(egen(d, y = dta_total(x * 100), bysort = g, type = "byte"),
+                 "Stata byte storage cannot represent")
     expect_identical(as.data.frame(d), old)
     egen(d, y = dta_total(x), bysort = g)
     expect_equal(as.double(alias$g), c(1, 1, 2, 2))

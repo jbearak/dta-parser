@@ -25,6 +25,40 @@ test_that("group keys preserve every missing identity and signed zero", {
                      c(3, 2, 1, 4))
 })
 
+test_that("group keys compare mixed encodings by their UTF-8 text", {
+    latin <- iconv(c("é", "ö"), from = "UTF-8", to = "latin1")
+    expect_identical(Encoding(latin), rep("latin1", 2L))
+    keys <- rep(c(latin[1], "z", "é", latin[2], "ö", "a"), 200L)
+    encoding <- Encoding(keys)
+    expect_identical(as.double(dta_group_id(keys)),
+                     rep(c(3, 2, 3, 4, 4, 1), 200L))
+    expected_tags <- numeric(length(keys))
+    expected_tags[c(1L, 2L, 4L, 6L)] <- 1
+    expect_identical(as.double(dta_group_tag(keys)), expected_tags)
+    expect_identical(Encoding(keys), encoding)
+})
+
+test_that("cached group text remains rooted through GC without materializing sources", {
+    path <- tempfile(fileext = ".dta")
+    on.exit(unlink(path), add = TRUE)
+    save_dta(data.frame(text = c("é", "z", "é", "ö", "ö", "a")), path)
+    source <- read_dta(path)$text
+    expect_true(dtatools:::.is_unmaterialized_dictstring(source))
+    latin <- iconv(c("é", "z", "é", "ö", "ö", "a"),
+                   from = "UTF-8", to = "latin1")
+    columns <- list(source, latin)
+    native <- dtatools:::C_dtatools_egen_group
+    collect <- function() {
+        previous <- gctorture(TRUE)
+        on.exit(gctorture(previous))
+        .Call(native, columns, FALSE, FALSE)
+    }
+    plan <- collect()
+    expect_identical(plan$codes, c(3, 2, 3, 4, 4, 1))
+    expect_identical(plan$first, c(6L, 2L, 1L, 4L))
+    expect_true(dtatools:::.is_unmaterialized_dictstring(source))
+})
+
 test_that("group inputs and options are checked without changing sources", {
     expect_error(dta_group_id(), "at least one")
     expect_error(dta_group_id(1:2, 1), "equal lengths")

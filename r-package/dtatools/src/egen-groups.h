@@ -1,7 +1,10 @@
 /* Stable multicolumn ordering over compact readers. Scratch space contains
- * row positions only; no numeric or string payload column is materialized. */
+ * row positions and cached UTF-8 references. Source columns stay compact. */
+#include <R_ext/Memory.h>
+
 typedef struct {
     SEXP column;
+    const char **strings;
     numeric_reader numeric;
     int string;
     int allow_nan;
@@ -11,9 +14,7 @@ static int egen_key_compare(egen_key_reader *keys, R_xlen_t count,
                             R_xlen_t left, R_xlen_t right) {
     for (R_xlen_t k = 0; k < count; k++) {
         if (keys[k].string) {
-            const char *a = Rf_translateCharUTF8(STRING_ELT(keys[k].column, left));
-            const char *b = Rf_translateCharUTF8(STRING_ELT(keys[k].column, right));
-            int comparison = strcmp(a, b);
+            int comparison = strcmp(keys[k].strings[left], keys[k].strings[right]);
             if (comparison) return comparison < 0 ? -1 : 1;
         } else {
             int am, bm;
@@ -33,13 +34,22 @@ static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
     R_xlen_t count = XLENGTH(columns), n = XLENGTH(VECTOR_ELT(columns, 0));
     if (n > INT_MAX) Rf_error("Grouping currently supports at most INT_MAX rows");
     egen_key_reader *keys = (egen_key_reader *) R_alloc(count, sizeof(egen_key_reader));
+    /* Root every cached CHARSXP, including strings produced by an ALTREP
+     * element method that does not itself retain the returned string. The
+     * cached CHAR pointers then survive all allocations and GC during sort. */
+    SEXP string_roots = PROTECT(Rf_allocVector(VECSXP, count));
     for (R_xlen_t k = 0; k < count; k++) {
         SEXP column = VECTOR_ELT(columns, k);
         if (XLENGTH(column) != n) Rf_error("Grouping columns must have equal lengths");
         keys[k].column = column;
         keys[k].string = TYPEOF(column) == STRSXP;
         keys[k].allow_nan = Rf_asLogical(allow_nan) == TRUE;
-        if (!keys[k].string) keys[k].numeric = numeric_reader_create(column, n);
+        if (keys[k].string) {
+            keys[k].strings = (const char **) R_alloc(n, sizeof(const char *));
+            SEXP cache = PROTECT(Rf_allocVector(STRSXP, n));
+            SET_VECTOR_ELT(string_roots, k, cache);
+            UNPROTECT(1);
+        } else keys[k].numeric = numeric_reader_create(column, n);
     }
     R_xlen_t *order = (R_xlen_t *) R_alloc(n, sizeof(R_xlen_t));
     R_xlen_t *scratch = (R_xlen_t *) R_alloc(n, sizeof(R_xlen_t));
@@ -50,9 +60,18 @@ static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
         int eligible = 1;
         for (R_xlen_t k = 0; k < count; k++) {
             if (keys[k].string) {
-                SEXP value = STRING_ELT(keys[k].column, row);
+                const void *temporary = vmaxget();
+                SEXP value = PROTECT(STRING_ELT(keys[k].column, row));
                 if (value == NA_STRING) Rf_error("Grouping keys cannot contain NA_character_");
                 if (!missing && LENGTH(value) == 0) eligible = 0;
+                SEXP translated = Rf_mkCharCE(Rf_translateCharUTF8(value), CE_UTF8);
+                SET_STRING_ELT(VECTOR_ELT(string_roots, k), row, translated);
+                keys[k].strings[row] = CHAR(translated);
+                UNPROTECT(1);
+                /* A Latin-1/native translation may allocate a temporary
+                 * buffer. The interned, rooted copy above owns the bytes
+                 * used by the comparator, so release that buffer now. */
+                vmaxset(temporary);
             } else {
                 int code;
                 egen_numeric_at(&keys[k].numeric, row, &code, keys[k].allow_nan);
@@ -106,6 +125,6 @@ static SEXP dtatools_egen_group(SEXP columns, SEXP include_missing,
     SET_STRING_ELT(names, 0, Rf_mkChar("codes"));
     SET_STRING_ELT(names, 1, Rf_mkChar("first"));
     Rf_setAttrib(result, R_NamesSymbol, names);
-    UNPROTECT(4);
+    UNPROTECT(5);
     return result;
 }
