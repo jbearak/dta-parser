@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "dta-tools"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
