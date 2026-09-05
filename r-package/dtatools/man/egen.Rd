@@ -45,6 +45,7 @@ syntax, including bare names, strings, and tidy injection.}
 to create or overwrite a column.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{egen()} creates one column by reference using the same target spelling,
 data mask, and alias rules as \code{\link[=gen]{gen()}}. Its value functions are ordinary R
 functions, also available in \code{gen()} and dibble \verb{:=} expressions.

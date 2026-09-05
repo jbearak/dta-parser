@@ -1,5 +1,6 @@
 #' Read and edit Stata notes and characteristics
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' These helpers expose the metadata stored in Stata characteristic records.
 #' Notes retain their Stata numbers, including gaps. Numeric `note*` keys are
 #' reserved for the note API and never appear in characteristic results.
@@ -84,6 +85,7 @@ dta_note <- function(x, number, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 set_dta_note <- function(x, number, value, variable = NULL) {
+    .validate_metadata_input(x)
     number <- .dta_note_number(number)
     value <- .dta_metadata_value(value)
     notes <- dta_notes(x, variable)
@@ -102,6 +104,7 @@ set_dta_note <- function(x, number, value, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 add_dta_note <- function(x, value, variable = NULL) {
+    .validate_metadata_input(x)
     if (is.null(value)) {
         stop("`value` must be one non-missing string", call. = FALSE)
     }
@@ -114,6 +117,7 @@ add_dta_note <- function(x, value, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 drop_dta_notes <- function(x, numbers = NULL, variable = NULL) {
+    .validate_metadata_input(x)
     if (is.null(numbers)) {
         notes <- stats::setNames(character(), character())
     } else {
@@ -127,6 +131,7 @@ drop_dta_notes <- function(x, numbers = NULL, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 renumber_dta_notes <- function(x, start = 1L, variable = NULL) {
+    .validate_metadata_input(x)
     start <- .dta_note_number(start)
     notes <- dta_notes(x, variable)
     if (length(notes) && start + length(notes) - 1L > 9999L) {
@@ -169,6 +174,7 @@ dta_characteristic <- function(x, name, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 set_dta_characteristic <- function(x, name, value, variable = NULL) {
+    .validate_metadata_input(x)
     name <- .dta_characteristic_name(name)
     value <- .dta_metadata_value(value)
     characteristics <- dta_characteristics(x, variable)
@@ -186,6 +192,7 @@ set_dta_characteristic <- function(x, name, value, variable = NULL) {
 #' @rdname dta_notes
 #' @export
 drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
+    .validate_metadata_input(x)
     if (is.null(names)) {
         characteristics <- stats::setNames(character(), character())
     } else {

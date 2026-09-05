@@ -71,3 +71,27 @@ integration-output failures, two skips, and zero column-reallocation warnings.
 The keep/drop validation tests pass on unprepared fixtures. The downstream source,
 worktree state, and lockfile remained unchanged. Final installed-SHA validation
 still follows all four merges.
+
+
+## Container acceptance at #181
+
+All four ordinary containers retain one explicit mutation contract. Central entry
+validation rejects unsupported subclasses before avoidable target/update effects,
+with a working assigned `as_dibble()` conversion that discards those subclasses.
+Metadata supports grouped and rowwise containers; generation/replacement supports
+valid grouped containers; structural helpers require assigned ungrouping. Group
+rows must match the table's physical row order, partition and distinct keys. The container guide
+records every exported helper family, assigned utilities and read-only queries.
+
+data.table's last-column drop clears stored row names to match its zero-row public
+empty-table convention. Other supported containers retain n-row, zero-column tables.
+All retain the preceding capacity, copy/rebind, metadata/runtime-name, alias and
+serialization contracts. Final merged-default checks and downstream installed-SHA
+validation still follow this PR's merge.
+
+
+The #181 diagnostic against temporary migrated fertility scripts ran 497 tests
+with the same four pre-existing integration-output failures, two skips and zero
+column-reallocation warnings. Real downstream source, status and lockfile were
+unchanged. The unchanged-source installed-final-SHA suite and renv restore remain
+required after merge; this diagnostic does not replace them.

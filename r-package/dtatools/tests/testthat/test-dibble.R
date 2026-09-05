@@ -118,7 +118,11 @@ test_that("as_dibble copies a data table without its runtime state", {
 
     subclass <- data.table::data.table(x = 1)
     class(subclass) <- c("custom", class(subclass))
-    expect_error(as_dibble(subclass), "ordinary data.table")
+    converted <- as_dibble(subclass)
+    expect_true(is_dibble(converted))
+    expect_false(inherits(converted, "custom"))
+    expect_true(inherits(subclass, "custom"))
+    expect_equal(as.numeric(converted$x), 1)
 })
 
 test_that("dibble construction keeps compact columns unmaterialized", {

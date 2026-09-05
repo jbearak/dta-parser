@@ -16,6 +16,7 @@ support requires data.table 1.18.2.1 or newer.}
 A rebuilt table with the same container and \code{n} spare slots.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{reserve_columns()} returns an isolated table with \code{n} spare column
 pointer slots. Compact columns use copy-on-write backing; ordinary columns
 are copied. Assign the returned

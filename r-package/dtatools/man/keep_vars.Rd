@@ -19,6 +19,7 @@ drop_vars(data, ...)
 \code{data}, invisibly.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{keep_vars()} retains selected columns and \code{drop_vars()} removes selected
 columns. Both functions mutate the supplied data frame or tibble by
 reference and return it invisibly. Other bindings to the same dataset see

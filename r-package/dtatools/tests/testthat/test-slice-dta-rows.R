@@ -376,7 +376,7 @@ test_that("reorder_dta_rows validates its container", {
         reorder_dta_rows(
             dplyr::group_by(tibble::tibble(x = 1:3), x), 1:3
         ),
-        "ordinary base data frame"
+        "ungrouped.*assign `data <- dplyr::ungroup"
     )
 })
 

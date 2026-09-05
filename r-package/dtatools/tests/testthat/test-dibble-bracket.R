@@ -246,12 +246,20 @@ test_that("plain containers do not gain bracket assignment", {
     tbl <- tibble::tibble(x = 1)
     expect_error(tbl[1, y := 1])
     expect_identical(names(tbl), "x")
-    # A base frame with reference state is not a dibble, but it carries
-    # the class, so the method applies to it as well.
+    # Reference bookkeeping does not grant the dibble-only assignment form.
     marked <- reserve_columns(data.frame(x = c(1, 2)))
     gen(marked, y = x)
-    marked[x > 1, z := 1]
-    expect_identical(as.double(marked$z), c(NA, 1))
+    alias <- marked
+    before <- serialize(marked, NULL)
+    expect_false(is_dibble(marked))
+    expect_error(marked[x > 1, z := 1], "needs a dibble")
+    expect_identical(serialize(alias, NULL), before)
+    # Explicit, assigned conversion enables the same selective assignment
+    # on its independent dibble result.
+    converted <- as_dibble(marked)
+    converted[x > 1, z := 1]
+    expect_identical(as.double(converted$z), c(NA, 1))
+    expect_identical(serialize(alias, NULL), before)
 })
 
 test_that("the next top-level print after a bracket assignment is skipped", {

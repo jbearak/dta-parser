@@ -496,7 +496,19 @@ test_that("an unsupported loaded data.table version is rejected before mutation"
             quote(copy_data(data)),
             quote(column_capacity(data)),
             quote(can_add_columns(data, 0L)),
-            quote(set_var_format(data, x, "%9.0g")),
+            quote(set_var_format(data, .(effect("x")), effect("%9.0g"))),
+            quote(set_var_formats(data, x, effect("%9.0g"))),
+            quote(set_var_formats(data, x = effect("%9.0g"))),
+            quote(set_var_label(data, .(effect("x")), effect("Label"))),
+            quote(set_var_labels(data, x = effect("Label"))),
+            quote(set_val_labels(data, x = effect(c(One = 1L)))),
+            quote(set_dta_metadata(data, variable = effect("x"), source = effect("survey"))),
+            quote(set_dta_note(data, effect(1L), "Note", variable = "x")),
+            quote(add_dta_note(data, effect("Note"), variable = "x")),
+            quote(drop_dta_notes(data, effect(1L), variable = "x")),
+            quote(renumber_dta_notes(data, effect(2L), variable = "x")),
+            quote(set_dta_characteristic(data, effect("source"), "survey", variable = "x")),
+            quote(drop_dta_characteristics(data, effect("source"), variable = "x")),
             quote(as_dibble(data))
         )
         messages <- vapply(calls, function(call) {

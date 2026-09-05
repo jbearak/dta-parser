@@ -43,7 +43,8 @@ dibble reference-ownership bookkeeping. A copied or serialized dibble can retain
 its type while losing capacity. Assign \code{\link[=reserve_columns]{reserve_columns()}} before passing
 such a table to a function that adds or drops columns. Readers, \code{\link[=dibble]{dibble()}},
 and \code{\link[=copy_data]{copy_data()}} return prepared tables. \code{\link[=as_dibble]{as_dibble()}} prepares conversions
-from other containers; an input that is already a dibble is returned as is.
+from other containers; an ordinary dibble without additional container
+classes is returned as is.
 }
 \examples{
 data <- reserve_columns(data.frame(x = 1:3), n = 2)

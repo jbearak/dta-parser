@@ -60,12 +60,16 @@ add_flags(survey)             # the caller sees poor
 
 By reference, on any supported container (dibble, tibble, base data frame, data table):
 
-- `gen()`, `replace_values()` / `repl()`
+- `gen()`, `egen()`, `replace_values()` / `repl()`
 - `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`
 - `reorder_dta_rows()`
 - table metadata setters: `set_var_label()`, `set_var_labels()`, `set_val_labels()`,
   `set_var_format()`, `set_var_formats()`, `set_dta_metadata()`, and the note and
   characteristic setters
+
+These are ordinary containers, without additional subclass invariants. Unknown subclasses fail before runtime names, selectors, or updates are evaluated. Assign `data <- as_dibble(data)` to request conversion: it removes additional container classes, retains recognized grouping and metadata, and types numeric/string columns. Existing ordinary containers never undergo that conversion inside a helper.
+
+Grouped tibbles and dibbles support `gen()`, `egen()`, and `repl()` using their dplyr groups. Metadata setters also support rowwise tables and retain the grouping. Structural helpers and `reorder_dta_rows()` require `data <- dplyr::ungroup(data)` first; assign preparation afterwards if needed. Rowwise tables do not support value mutation. See the complete [helper and grouping matrix](r-containers.md#restrictions).
 
 By reference, on a dibble only:
 
@@ -116,6 +120,8 @@ snapshot <- tibble::as_tibble(survey)   # a plain tibble with R's semantics
 `keep_vars()` and `drop_vars()` resolve and validate their column selections before checking capacity for the resulting table. Invalid selections keep their usual diagnostics, and a validated keep-all selection is a no-op even without preparation. A selection that removes columns needs a resizable allocation. Column-selector expressions can therefore run before a capacity error; no table changes have been committed. `rename_vars()`, `order_vars()`, `reorder_dta_rows()`, value replacements, and metadata setters need no spare slots. A bracket call checks all distinct new names before its first write, so insufficient capacity cannot leave an earlier assignment committed. After that check, assignments still run sequentially; an error in a later expression does not roll back earlier successful values.
 
 Assign `data <- reserve_columns(data, n = 10L)` to allow ten extra columns on a base data frame, tibble, dibble, or data table. This preserves container and column classes, isolates columns, rebuilds legacy overlays, and creates fresh dibble bookkeeping without modifying another table's state. A data.table also needs a valid self-reference for column-name edits, even without growth; the same preparation repairs it. Structural commits give that table isolated names and matching bookkeeping so another table created by ordinary R copying remains complete. Base `readRDS()`, `unserialize()`, and ordinary table copies can discard capacity. Assign preparation before passing their results to functions that add or drop columns. The same helper contract applies to a symbol, function parameter, `$` or `[[` extraction, `get()`, `get0()`, and computed targets.
+
+Dropping the last column preserves the row count of a base data frame, tibble, or dibble. A data.table follows its own empty-table convention and becomes a zero-row, zero-column table. Its stored row names are cleared too, so later generation cannot restore rows that its public shape had lost.
 
 **ALTREP columns from elsewhere are detached.** A generic ALTREP column created by base R or another package is converted to an ordinary vector before replacement, because its private caches cannot be safely invalidated. A standalone alias to that former column keeps the old values.
 

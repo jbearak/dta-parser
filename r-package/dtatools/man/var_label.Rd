@@ -63,6 +63,7 @@ and \verb{set_*()} functions return the updated vector or data frame. Data-frame
 reference.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 Dependency-free helpers for dataset labels, variable labels, and numeric
 value-label tables. The getter and replacement names and their common call
 forms are compatible with \code{labelled}; the \verb{set_*()} functions and

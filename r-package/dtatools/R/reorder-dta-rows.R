@@ -1,5 +1,6 @@
 #' Reorder a table's rows in place through Stata storage
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' Gathers every column the way [slice_dta_rows()] does — compact
 #' Stata numeric columns through the native kernel, other columns
 #' through vctrs — then replaces the table's column pointers in
@@ -49,35 +50,16 @@ reorder_dta_rows <- function(data, rows) {
 # Validate the supported container and stage the current physical columns.
 # All commits target positions in the supplied table; no state store is written.
 .reorder_column_plan <- function(data) {
-    if (!is.data.frame(data)) {
-        stop(
-            "`data` must be a base data frame, tibble, or data.table",
-            call. = FALSE
-        )
-    }
-    state <- .reference_state(data)
-    classes <- setdiff(class(data), "dtatools_ref_data")
-    base_classes <- setdiff(classes, "dtatools_dta_metadata")
-    data_table <- identical(base_classes, c("data.table", "data.frame"))
-    if (!data_table &&
-        !identical(base_classes, "data.frame") &&
-        !identical(base_classes, c("tbl_df", "tbl", "data.frame"))) {
-        stop(
-            paste0(
-                "`data` must be an ordinary base data frame, tibble, ",
-                "or data.table"
-            ),
-            call. = FALSE
-        )
-    }
-    columns <- .data_columns(data)
+    original <- .as_mutation_data(data)
+    columns <- original$columns
+    data_table <- .data_table_container(data)
     count <- length(columns)
     list(
         columns = columns,
         store = NULL,
         locations = seq_len(count),
         names = rep(NA_character_, count),
-        nrow = abs(.row_names_info(data, 2L)),
+        nrow = original$nrow,
         data_table = data_table
     )
 }

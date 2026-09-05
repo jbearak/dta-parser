@@ -73,7 +73,10 @@ the table into a function that adds or drops columns.
 its expression's value. \code{as_dibble()} of a grouped tibble keeps its
 grouping.
 
-\code{as_dibble()} returns a dibble as is. Otherwise it returns a new object
+\code{as_dibble()} returns an ordinary dibble as is. For an additional container
+subclass it returns a new dibble without that subclass, retaining recognized
+grouped or rowwise structure and dataset metadata. The removed subclass's
+invariants are not retained. Otherwise it returns a new object
 and leaves its argument unchanged: a tibble or data frame is shallow
 copied. Shared columns detach when the dibble is explicitly mutated. A data table is
 copied into a fresh tibble, because a dibble cannot share data.table's

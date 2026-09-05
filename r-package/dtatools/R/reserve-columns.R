@@ -1,5 +1,6 @@
 #' Reserve spare column slots
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' `reserve_columns()` returns an isolated table with `n` spare column
 #' pointer slots. Compact columns use copy-on-write backing; ordinary columns
 #' are copied. Assign the returned
@@ -38,7 +39,6 @@
 #' data <- reserve_columns(data.frame(x = 1:3))
 #' gen(data, y = x + 1)
 reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
-    .reject_data_table_subclass(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
     dibble <- is_dibble(data)
@@ -119,7 +119,8 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
 #' its type while losing capacity. Assign [reserve_columns()] before passing
 #' such a table to a function that adds or drops columns. Readers, [dibble()],
 #' and [copy_data()] return prepared tables. [as_dibble()] prepares conversions
-#' from other containers; an input that is already a dibble is returned as is.
+#' from other containers; an ordinary dibble without additional container
+#' classes is returned as is.
 #'
 #' @param data A dibble, tibble, base data frame, or data table. data.table
 #'   support requires data.table 1.18.2.1 or newer.
@@ -135,7 +136,6 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
 #' gen(data, y = x + 1)
 #' can_add_columns(data, 2) # FALSE
 column_capacity <- function(data) {
-    .reject_data_table_subclass(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     capacity <- .Call(C_dtatools_column_capacity, data)
     if (capacity < 0 || !.column_resize_ready(data)) NA_real_ else capacity
@@ -144,7 +144,6 @@ column_capacity <- function(data) {
 #' @rdname column_capacity
 #' @export
 can_add_columns <- function(data, n = 1L) {
-    .reject_data_table_subclass(data)
     .as_mutation_data(data, allow_grouped = TRUE)
     n <- .validate_alloccol(n, length(data))
     !.has_column_overlay(data) && (n == 0 || .column_resize_ready(data)) && isTRUE(.Call(

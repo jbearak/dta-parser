@@ -2,14 +2,47 @@
 status: accepted
 ---
 
-> ADR [0026](0026-reserve-physical-columns-and-rebind-on-reallocation.md) supersedes the guarantee that every binding sees structural changes when preparation or reallocation is needed.
+# Keep explicit mutation independent of container conversion
 
-# Keep `gen()` from changing the container it was handed
+Explicit helpers mutate the supplied physical table on every supported container:
+ordinary base data frames, tibbles, dibbles, and data.tables. Existing columns keep
+their classes. Generation types its new column under the Stata generation rules,
+but the container remains the same. Only explicit `as_dibble()` conversion asks
+for Stata typing of the whole dataset. Ordinary replacement uses copy-and-rebind
+semantics, as recorded in [ADR 0029](0029-use-explicit-mutation-and-copy-rebind-replacement.md).
 
-`gen()` and the other by-reference operations no longer turn a tibble into a dibble. Every container still acquires reference state at its first `gen()` — that is what lets the write land in the dataset so every binding sees it — but reference state is not dibble-ness. A tibble stays a tibble and a data frame a data frame, with their existing columns untouched, R's own copy-on-modify semantics for `$<-` and the other replacement operators, and `is_dibble()` reporting `FALSE`. Only the column `gen()` writes takes Stata storage, as it always did on a data frame. `dibble()`, `as_dibble()`, and the readers are the only ways to get a dibble. Dibble-ness is now recorded explicitly in the reference state rather than inferred from "reference state plus `tbl_df`", which is what made the conversion unavoidable.
+Supporting plain containers avoids an implicit conversion that changes the meaning
+of existing columns. An expression on a bare character column still distinguishes
+`NA` and `""`; a Stata string column treats them as the same missing value. Returning
+a copy from the same explicit helper on some containers would make caller mutation
+depend on an input class, so that alternative is rejected.
 
-ADR 0021 had a tibble become a dibble at its first `gen()` and its existing columns typed at that moment. The conversion was not a class change alone: it rewrote every existing numeric and string column in place, so every alias of the tibble saw column classes it never asked for, and one `gen()` call moved the table into a container with different rules for `$<-`, `[<-`, and `[i, j := v]`. It also changed answers. On a tibble, typing `x` first turned `x * 2` into Stata arithmetic and `gen(tbl, y = x * 2)` produced a `double`; the same call on a data frame produced Stata's `generate` default, `float`. A single `gen()` was doing more than the user asked for and more than they could see.
+Support covers complete known class chains and the package's reference and metadata
+markers. Arbitrary subclasses may have invariants that a physical column commit
+cannot preserve. Helpers reject them before evaluating runtime targets or updates.
+The recovery is explicit and assigned: `data <- as_dibble(data)` discards additional
+container classes, keeps recognized grouped or rowwise structure and metadata, and
+types columns. It does not preserve the discarded subclass's invariants. A stray
+reference marker on data.table is rejected and can be recovered by the same conversion.
 
-The alternative was to keep the conversion and document it, which leaves an aggressive and invisible change of container in the most common mutation call, or to have `gen()` on a tibble return a copy, which gives up the by-reference semantics that are the point of the verb. Neither is better than making the two properties independent.
+Grouped tibbles and dibbles supply groups to `gen()`, `egen()`, and `repl()`.
+The validator checks that group rows cover the table in physical row order and agree with distinct group keys;
+value replacement rebuilds grouping after a grouping column changes. Metadata
+helpers support grouped and rowwise tables without changing their groups. Column
+structure and row-reordering helpers require assigned ungrouping first. Rowwise
+value mutation is unsupported. Assigned `copy_data()` and `reserve_columns()`
+accept valid grouped and rowwise inputs.
 
-The cost is accepted: expressions `gen()` evaluates on a tibble see the tibble's own columns, so `gen(tbl, n = .N, by = g)` on a bare character `g` groups `NA` and `""` as two groups where a dibble makes them one Stata string value and one group. That is precisely how a base data frame behaves, and it is the right answer — Stata's collation applies where a Stata dataset is. `as_dibble()` is the one call that asks for one.
+[ADR 0030](0030-require-assigned-column-preparation.md) defines capacity and assigned
+preparation. Helpers never convert or rebind a target to repair capacity. Metadata
+and same-size value edits need no spare slots; structural edits use the same early
+checks on every container. data.table requires version 1.18.2.1 or newer and retains
+its native zero-row empty-table convention: dropping its last column clears stored
+row names as well. Base data frames, tibbles, and dibbles retain their row count with
+zero columns. Copies, serialization, and later generation must agree with those shapes.
+
+This revises the original ADR 0025 and supersedes ADR 0021's automatic tibble-to-dibble
+conversion. Reference bookkeeping is separate from dibble type, and no helper routes
+writes through an object retained in shared state. Converting a function parameter
+still does not make ordinary nested attribute replacement reach its caller. Use the
+explicit metadata setters from [ADR 0028](0028-edit-metadata-on-the-supplied-table.md).
