@@ -234,6 +234,7 @@ test_that("slice_dta_rows slices ordinary data.tables", {
 })
 
 test_that("slice_dta_rows validates its container and locations", {
+    skip_if_not_installed("data.table")
     expect_error(
         slice_dta_rows(1:3, 1L),
         "must be a base data frame, tibble, or data.table"
@@ -364,6 +365,7 @@ test_that("reorder_dta_rows permutes a physically complete generated table", {
 })
 
 test_that("reorder_dta_rows validates its container and permutation", {
+    skip_if_not_installed("data.table")
     expect_error(
         reorder_dta_rows(1:3, 1:3),
         "base data frame, tibble, or data.table"
