@@ -290,9 +290,10 @@ NULL
     raw_j <- rlang::enquo0(j)
     expression <- if (rlang::quo_is_missing(raw_j)) NULL else rlang::quo_get_expr(raw_j)
     if (is.call(expression) && identical(expression[[1L]], quote(`:=`))) {
+        .require_dibble_assignment(x)
         .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE)
     }
-    assignments <- .bracket_assignments(rlang::enquo(j))
+    assignments <- .bracket_assignments(rlang::enquo(j), x)
     if (is.null(assignments)) {
         if (!missing(by) || !missing(bysort)) {
             stop("`by` and `bysort` need a `:=` assignment in `j`",
@@ -355,6 +356,16 @@ NULL
     invisible(x)
 }
 
+# A reference marker also belongs to ordinary tables after explicit helpers.
+# Only dibble type grants the package's bracket mutation syntax.
+.require_dibble_assignment <- function(data) {
+    if (!is_dibble(data)) {
+        stop("`:=` bracket assignment needs a dibble; use `gen()` or `replace_values()`",
+             call. = FALSE)
+    }
+    invisible(NULL)
+}
+
 # Reads `j` as one or more `:=` assignments, or `NULL` when `j` is
 # missing or not a `:=` call so the ordinary tibble `[` applies. Three
 # spellings: `y := v`, with `y` a bare name, string, `.(name)` call, or
@@ -363,12 +374,15 @@ NULL
 # character vector and the right side a `list()` call of the same length.
 # Each value becomes a quosure in `j`'s environment so it is evaluated as
 # `values` is in `gen()`.
-.bracket_assignments <- function(j_quo) {
+.bracket_assignments <- function(j_quo, data) {
     if (rlang::quo_is_missing(j_quo)) return(NULL)
     expression <- rlang::quo_get_expr(j_quo)
     if (!is.call(expression) || !identical(expression[[1L]], quote(`:=`))) {
         return(NULL)
     }
+    # Injection can supply the complete := call, so recheck its container
+    # before resolving the expanded expression's runtime targets or values.
+    .require_dibble_assignment(data)
     environment <- rlang::quo_get_env(j_quo)
     arguments <- as.list(expression)[-1L]
     tags <- names(arguments)

@@ -1,6 +1,7 @@
 container_factories <- function() {
     result <- list(frame = data.frame, tibble = tibble::tibble, dibble = dibble)
-    if (requireNamespace("data.table", quietly = TRUE)) {
+    if (requireNamespace("data.table", quietly = TRUE,
+                         versionCheck = list(op = ">=", version = "1.18.2.1"))) {
         result$table <- data.table::data.table
     }
     result
@@ -297,5 +298,44 @@ test_that("rowwise grouping frames reject ambiguous or inconsistent columns", {
                      "malformed grouping metadata")
         expect_identical(effects, 0L)
         expect_identical(serialize(alias, NULL), before)
+    }
+})
+
+
+test_that("non-dibble reference markers do not enable bracket assignment", {
+    for (make in list(data.frame, tibble::tibble)) for (grouped in c(FALSE, TRUE)) {
+        data <- make(g = c(1L, 1L, 2L), x = 1:3)
+        if (grouped) data <- dplyr::group_by(data, g)
+        data <- reserve_columns(data, 3L)
+        gen(data, generated = 1L)
+        expect_s3_class(data, "dtatools_ref_data")
+        expect_false(is_dibble(data))
+        alias <- data
+        before <- serialize(data, NULL)
+        effects <- 0L
+        touch <- function(value) { effects <<- effects + 1L; value }
+        assignments <- list(
+            function() data[, extra := touch(2L)],
+            function() data[touch(TRUE), x := touch(2L)],
+            function() data[, .(touch("extra")) := touch(2L)],
+            function() data[, `:=`(extra = touch(2L), another = touch(3L))],
+            function() {
+                expression <- quote(.(touch("extra")) := touch(2L))
+                data[, !!expression]
+            }
+        )
+        for (assignment in assignments) {
+            expect_error(assignment(), "needs a dibble; use `gen()` or `replace_values()`", fixed = TRUE)
+            expect_identical(effects, 0L)
+            expect_identical(serialize(alias, NULL), before)
+        }
+        for (result in list(data[], data[, ], data[1:2, , drop = FALSE])) {
+            expect_false(is_dibble(result))
+            expect_equal(as.integer(result$x), seq_len(nrow(result)))
+        }
+        repl(data, x = 5L)
+        gen(data, extra = 2L)
+        expect_equal(as.integer(alias$x), rep(5L, 3))
+        expect_equal(as.integer(alias$extra), rep(2L, 3))
     }
 })
