@@ -1,0 +1,312 @@
+[
+  {
+    "name": "bool",
+    "values": [
+      true,
+      null,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "i8",
+    "values": [
+      -128,
+      null,
+      127,
+      0
+    ]
+  },
+  {
+    "name": "i16",
+    "values": [
+      -32768,
+      null,
+      32767,
+      0
+    ]
+  },
+  {
+    "name": "i32",
+    "values": [
+      -2147483648,
+      null,
+      2147483647,
+      0
+    ]
+  },
+  {
+    "name": "i64",
+    "values": [
+      {
+        "bigint": "-9223372036854775808"
+      },
+      null,
+      {
+        "bigint": "9223372036854775807"
+      },
+      {
+        "bigint": "9007199254740993"
+      }
+    ]
+  },
+  {
+    "name": "u8",
+    "values": [
+      0,
+      null,
+      255,
+      1
+    ]
+  },
+  {
+    "name": "u16",
+    "values": [
+      0,
+      null,
+      65535,
+      1
+    ]
+  },
+  {
+    "name": "u32",
+    "values": [
+      0,
+      null,
+      4294967295,
+      1
+    ]
+  },
+  {
+    "name": "u64",
+    "values": [
+      {
+        "bigint": "0"
+      },
+      null,
+      {
+        "bigint": "18446744073709551615"
+      },
+      {
+        "bigint": "9007199254740993"
+      }
+    ]
+  },
+  {
+    "name": "f32",
+    "values": [
+      1.5,
+      null,
+      {
+        "number": "NaN"
+      },
+      {
+        "number": "Infinity"
+      }
+    ]
+  },
+  {
+    "name": "f64",
+    "values": [
+      {
+        "number": "-0"
+      },
+      null,
+      {
+        "number": "NaN"
+      },
+      {
+        "number": "-Infinity"
+      }
+    ]
+  },
+  {
+    "name": "utf8",
+    "values": [
+      "café",
+      null,
+      "",
+      "😀"
+    ]
+  },
+  {
+    "name": "large_utf8",
+    "values": [
+      "東京",
+      null,
+      "",
+      "fin"
+    ]
+  },
+  {
+    "name": "date32",
+    "values": [
+      -1,
+      null,
+      0,
+      20000
+    ]
+  },
+  {
+    "name": "timestamp_s",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "1700000000"
+      }
+    ]
+  },
+  {
+    "name": "timestamp_ms",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "1700000000000"
+      }
+    ]
+  },
+  {
+    "name": "timestamp_us",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "1700000000000000"
+      }
+    ]
+  },
+  {
+    "name": "timestamp_ns",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "1700000000000000001"
+      }
+    ]
+  },
+  {
+    "name": "duration_s",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "60"
+      }
+    ]
+  },
+  {
+    "name": "duration_ms",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "60000"
+      }
+    ]
+  },
+  {
+    "name": "duration_us",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "60000000"
+      }
+    ]
+  },
+  {
+    "name": "duration_ns",
+    "values": [
+      {
+        "bigint": "-1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "60000000001"
+      }
+    ]
+  },
+  {
+    "name": "dict_i8",
+    "values": [
+      1,
+      null,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "dict_i16",
+    "values": [
+      1,
+      null,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "dict_i32",
+    "values": [
+      1,
+      null,
+      0,
+      1
+    ]
+  },
+  {
+    "name": "dict_i64",
+    "values": [
+      {
+        "bigint": "1"
+      },
+      null,
+      {
+        "bigint": "0"
+      },
+      {
+        "bigint": "1"
+      }
+    ]
+  }
+]

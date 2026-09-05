@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parse_metadata } from '../../src/header';
+import { parse_metadata, parse_modern_metadata_header } from '../../src/header';
 import type { DtaMetadata } from '../../src/types';
 
 // -----------------------------------------------------------
@@ -30,6 +30,47 @@ const AUTO_VARNAMES = [
 ];
 
 describe('parse_metadata', () => {
+
+    it('reads all eight release-118 observation-count bytes in either byte order', () => {
+        for (const little_endian of [true, false]) {
+            const buffer = load_fixture('auto_v118.dta');
+            const bytes = Buffer.from(buffer);
+            const n = bytes.indexOf('<N>') + 3;
+            if (!little_endian) {
+                const order = bytes.indexOf('LSF');
+                bytes.write('MSF', order);
+                bytes.subarray(bytes.indexOf('<K>') + 3, bytes.indexOf('</K>')).reverse();
+                bytes.subarray(bytes.indexOf('<label>') + 7, bytes.indexOf('<label>') + 9).reverse();
+                const map = bytes.indexOf('<map>') + 5;
+                for (let i = 0; i < 14; i++) bytes.subarray(map + i * 8, map + (i + 1) * 8).reverse();
+            }
+            new DataView(buffer).setBigUint64(n, 0x10000004an, little_endian);
+            expect(parse_modern_metadata_header(buffer).nobs).toBe(0x10000004a);
+            new DataView(buffer).setBigUint64(n, 0x20000000000000n, little_endian);
+            expect(() => parse_modern_metadata_header(buffer)).toThrow('safe integer');
+        }
+    });
+
+    for (const tag of ['</K>', '</N>', '<timestamp>', '</header>', '</map>',
+        '</variable_types>', '</varnames>', '<sortlist>', '</sortlist>',
+        '</formats>', '</value_label_names>', '</variable_labels>']) {
+        it(`rejects damaged ${tag} framing`, () => {
+            const buffer = load_fixture('auto_v118.dta');
+            const bytes = Buffer.from(buffer);
+            const index = bytes.indexOf(tag);
+            expect(index).toBeGreaterThanOrEqual(0);
+            bytes[index] = 88;
+            expect(() => parse_metadata(buffer)).toThrow();
+        });
+    }
+
+    it('rejects a mapped fixed section shifted away from its tag', () => {
+        const buffer = load_fixture('auto_v118.dta');
+        const metadata = parse_metadata(buffer);
+        new DataView(buffer).setBigUint64(metadata.section_offsets.map + 5 + 3 * 8,
+            BigInt(metadata.section_offsets.varnames - 1), true);
+        expect(() => parse_metadata(buffer)).toThrow();
+    });
 
     // ----- v118 tests (primary) -----
 
@@ -564,7 +605,7 @@ describe('parse_metadata', () => {
                     malformed.byteOffset + malformed.byteLength
                 )
             )).toThrow(
-                'Corrupt .dta file: mapped data offset exceeds buffer length'
+                'Corrupt .dta map: section offsets are not increasing'
             );
         });
 

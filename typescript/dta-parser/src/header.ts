@@ -162,6 +162,21 @@ function tag_at(bytes: Uint8Array, offset: number, tag: Uint8Array): boolean {
     return true;
 }
 
+function expect_tag(bytes: Uint8Array, offset: number, tag: Uint8Array): number {
+    if (!tag_at(bytes, offset, tag)) {
+        throw new Error(`Missing ${ASCII_DECODER.decode(tag)} tag at offset ${offset}`);
+    }
+    return offset + tag.length;
+}
+
+function validate_fixed_section(
+    bytes: Uint8Array, start: number, next: number, name: string, payload_length: number
+): void {
+    const payload = expect_tag(bytes, start, encode_tag(`<${name}>`));
+    const end = expect_tag(bytes, payload + payload_length, encode_tag(`</${name}>`));
+    if (end !== next) throw new Error(`Corrupt ${name} section: mapped boundary mismatch`);
+}
+
 function frame_characteristics(
     bytes: Uint8Array,
     view: DataView,
@@ -265,19 +280,9 @@ function parse_byte_order(
     bytes: Uint8Array,
     start: number
 ): { byte_order: 'MSF' | 'LSF'; end: number } {
-    const my_open = find_bytes(
-        bytes, TAG_BYTEORDER_OPEN, start
-    );
-    if (my_open === -1) {
-        throw new Error('Missing <byteorder> tag');
-    }
-    const my_data_start = my_open + TAG_BYTEORDER_OPEN.length;
-    const my_close = find_bytes(
-        bytes, TAG_BYTEORDER_CLOSE, my_data_start
-    );
-    if (my_close === -1) {
-        throw new Error('Missing </byteorder> tag');
-    }
+    const my_data_start = expect_tag(bytes, start, TAG_BYTEORDER_OPEN);
+    const my_close = my_data_start + 3;
+    expect_tag(bytes, my_close, TAG_BYTEORDER_CLOSE);
     const my_str = ASCII_DECODER.decode(
         bytes.subarray(my_data_start, my_close)
     );
@@ -299,13 +304,7 @@ function parse_nvar(
     format_version: FormatVersion,
     start: number
 ): { nvar: number; end: number } {
-    const my_open = find_bytes(
-        bytes, TAG_K_OPEN, start
-    );
-    if (my_open === -1) {
-        throw new Error('Missing <K> tag');
-    }
-    const my_data_start = my_open + TAG_K_OPEN.length;
+    const my_data_start = expect_tag(bytes, start, TAG_K_OPEN);
 
     let my_nvar: number;
     let my_data_end: number;
@@ -323,7 +322,7 @@ function parse_nvar(
         my_data_end = my_data_start + 2;
     }
 
-    return { nvar: my_nvar, end: my_data_end };
+    return { nvar: my_nvar, end: expect_tag(bytes, my_data_end, TAG_K_CLOSE) };
 }
 
 function parse_nobs(
@@ -333,24 +332,18 @@ function parse_nobs(
     format_version: FormatVersion,
     start: number
 ): { nobs: number; end: number } {
-    const my_open = find_bytes(
-        bytes, TAG_N_OPEN, start
-    );
-    if (my_open === -1) {
-        throw new Error('Missing <N> tag');
-    }
-    const my_data_start = my_open + TAG_N_OPEN.length;
+    const my_data_start = expect_tag(bytes, start, TAG_N_OPEN);
 
     let my_nobs: number;
     let my_data_end: number;
-    if (format_version === 117 || format_version === 118) {
-        // v117, v118: uint32
+    if (format_version === 117) {
+        // v117: uint32
         my_nobs = view.getUint32(
             my_data_start, little_endian
         );
         my_data_end = my_data_start + 4;
     } else {
-        // v119: uint64
+        // v118/v119: uint64
         const my_big_nobs = view.getBigUint64(
             my_data_start, little_endian
         );
@@ -364,7 +357,7 @@ function parse_nobs(
         my_data_end = my_data_start + 8;
     }
 
-    return { nobs: my_nobs, end: my_data_end };
+    return { nobs: my_nobs, end: expect_tag(bytes, my_data_end, TAG_N_CLOSE) };
 }
 
 function parse_dataset_label(
@@ -375,13 +368,7 @@ function parse_dataset_label(
     start: number,
     decoder: DtaTextDecoder
 ): { dataset_label: string; end: number } {
-    const my_open = find_bytes(
-        bytes, TAG_LABEL_OPEN, start
-    );
-    if (my_open === -1) {
-        throw new Error('Missing <label> tag');
-    }
-    const my_data_start = my_open + TAG_LABEL_OPEN.length;
+    const my_data_start = expect_tag(bytes, start, TAG_LABEL_OPEN);
 
     // Length prefix: uint8 for v117, uint16 for v118/v119
     let my_str_len: number;
@@ -401,12 +388,8 @@ function parse_dataset_label(
     );
 
     // Skip past </label>
-    const my_close = find_bytes(
-        bytes, TAG_LABEL_CLOSE, my_str_start + my_str_len
-    );
-    if (my_close === -1) {
-        throw new Error('Missing </label> tag');
-    }
+    const my_close = my_str_start + my_str_len;
+    expect_tag(bytes, my_close, TAG_LABEL_CLOSE);
 
     return {
         dataset_label: my_label,
@@ -441,13 +424,8 @@ function parse_section_map(
     little_endian: boolean,
     start: number
 ): SectionOffsets {
-    const my_open = find_bytes(
-        bytes, TAG_MAP_OPEN, start
-    );
-    if (my_open === -1) {
-        throw new Error('Missing <map> tag');
-    }
-    const my_data_start = my_open + TAG_MAP_OPEN.length;
+    const my_open = start;
+    const my_data_start = expect_tag(bytes, start, TAG_MAP_OPEN);
 
     const my_offsets = {} as SectionOffsets;
     for (let i = 0; i < SECTION_MAP_ENTRIES; i++) {
@@ -460,6 +438,16 @@ function parse_section_map(
         my_offsets[SECTION_OFFSET_KEYS[i]] = Number(my_big_val);
     }
 
+    const after_map = expect_tag(bytes, my_data_start + SECTION_MAP_ENTRIES * 8, TAG_MAP_CLOSE);
+    if (my_offsets.stata_data !== 0 || my_offsets.map !== my_open
+        || my_offsets.variable_types !== after_map) {
+        throw new Error('Corrupt .dta map: section offset mismatch');
+    }
+    for (let i = 1; i < SECTION_MAP_ENTRIES; i++) {
+        if (my_offsets[SECTION_OFFSET_KEYS[i]] <= my_offsets[SECTION_OFFSET_KEYS[i - 1]]) {
+            throw new Error('Corrupt .dta map: section offsets are not increasing');
+        }
+    }
     return my_offsets;
 }
 
@@ -489,7 +477,9 @@ export function parse_modern_metadata_header(
     const text_encoding = resolve_text_encoding(format_version, options.encoding);
     const decoder = text_decoder(text_encoding);
     const widths = FIELD_WIDTHS[format_version as 117 | 118 | 119];
-    const { byte_order, end: after_byteorder } = parse_byte_order(bytes, 0);
+    const { byte_order, end: after_byteorder } = parse_byte_order(
+        bytes, FORMAT_SIGNATURES[format_version as 117 | 118 | 119].length
+    );
     const little_endian = byte_order === 'LSF';
     const { nvar, end: after_k } = parse_nvar(
         bytes, view, little_endian, format_version, after_byteorder
@@ -500,10 +490,12 @@ export function parse_modern_metadata_header(
     const { dataset_label, end: after_label } = parse_dataset_label(
         bytes, view, little_endian, format_version, after_n, decoder
     );
-    const timestamp_close = find_bytes(bytes, TAG_TIMESTAMP_CLOSE, after_label);
-    if (timestamp_close === -1) throw new Error('Missing </timestamp> tag');
+    const timestamp_start = expect_tag(bytes, after_label, encode_tag('<timestamp>'));
+    const timestamp_end = timestamp_start + 1 + view.getUint8(timestamp_start);
+    const after_timestamp = expect_tag(bytes, timestamp_end, TAG_TIMESTAMP_CLOSE);
+    const after_header = expect_tag(bytes, after_timestamp, encode_tag('</header>'));
     const section_offsets = parse_section_map(
-        bytes, view, little_endian, timestamp_close
+        bytes, view, little_endian, after_header
     );
     return {
         format_version,
@@ -628,6 +620,19 @@ export function parse_metadata_from_header(
             'Corrupt .dta file: mapped data offset exceeds buffer length'
         );
     }
+
+    validate_fixed_section(bytes, section_offsets.variable_types, section_offsets.varnames,
+        'variable_types', nvar * 2);
+    validate_fixed_section(bytes, section_offsets.varnames, section_offsets.sortlist,
+        'varnames', nvar * my_widths.varname);
+    validate_fixed_section(bytes, section_offsets.sortlist, section_offsets.formats,
+        'sortlist', (nvar + 1) * (format_version === 119 ? 4 : 2));
+    validate_fixed_section(bytes, section_offsets.formats, section_offsets.value_label_names,
+        'formats', nvar * my_widths.format);
+    validate_fixed_section(bytes, section_offsets.value_label_names, section_offsets.variable_labels,
+        'value_label_names', nvar * my_widths.value_label_name);
+    validate_fixed_section(bytes, section_offsets.variable_labels, section_offsets.characteristics,
+        'variable_labels', nvar * my_widths.variable_label);
 
     // 8. Parse variable type codes
     const the_type_codes = parse_variable_types(

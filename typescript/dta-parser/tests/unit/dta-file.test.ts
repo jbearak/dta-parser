@@ -782,6 +782,30 @@ describe('DtaFile', () => {
     });
 
     describe('modern metadata bounds', () => {
+        it('rejects corrupt observation and file boundaries during open', async () => {
+            const original = fs.readFileSync(path.join(FIXTURE_DIR, 'auto_v118.dta'));
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-boundaries-'));
+            const filePath = path.join(directory, 'corrupt.dta');
+            try {
+                for (const tag of ['<data>', '</data>', '<strls>', '</strls>', '</stata_dta>']) {
+                    const bytes = Buffer.from(original);
+                    bytes[bytes.indexOf(tag)] = 88;
+                    fs.writeFileSync(filePath, bytes);
+                    await expect(DtaFile.open(filePath)).rejects.toThrow('tag');
+                }
+                fs.writeFileSync(filePath, original.subarray(0, original.length - 1));
+                await expect(DtaFile.open(filePath)).rejects.toThrow('file extent');
+                fs.writeFileSync(filePath, Buffer.concat([original, Buffer.from([0])]));
+                await expect(DtaFile.open(filePath)).rejects.toThrow('file extent');
+                const bytes = Buffer.from(original);
+                bytes.writeBigUInt64LE(0x10000004an, bytes.indexOf('<N>') + 3);
+                fs.writeFileSync(filePath, bytes);
+                await expect(DtaFile.open(filePath)).rejects.toThrow('Observation extent');
+            } finally {
+                fs.rmSync(directory, { recursive: true, force: true });
+            }
+        });
+
         it('rejects an oversized map without prefix retries', async () => {
             const original = Buffer.from(fs.readFileSync(
                 path.join(FIXTURE_DIR, 'auto_v118.dta')
@@ -793,6 +817,10 @@ describe('DtaFile', () => {
             const metadata = parse_metadata(arrayBuffer);
             const mapData = metadata.section_offsets.map + '<map>'.length;
             original.writeBigUInt64LE(BigInt(65 * 1024 * 1024), mapData + 9 * 8);
+            // Keep the map ordered so the metadata allocation bound is tested.
+            for (let i = 10; i < 14; i++) {
+                original.writeBigUInt64LE(BigInt(65 * 1024 * 1024 + i), mapData + i * 8);
+            }
             const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'dta-v118-'));
             const filePath = path.join(directory, 'oversized-metadata.dta');
             const readSpy = spyOn(fs, 'readSync');
@@ -916,7 +944,7 @@ describe('DtaFile', () => {
             try {
                 fs.writeFileSync(filePath, original);
                 await expect(DtaFile.open(filePath)).rejects.toThrow(
-                    'Missing <variable_types> tag'
+                    'Corrupt .dta map: section offset mismatch'
                 );
             } finally {
                 fs.rmSync(directory, { recursive: true, force: true });

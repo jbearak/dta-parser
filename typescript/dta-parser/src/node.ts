@@ -991,7 +991,31 @@ function read_modern_metadata(
             map_buffer.byteLength
         );
     }
-    return parse_metadata_from_header(metadata_buffer, header);
+    const metadata = parse_metadata_from_header(metadata_buffer, header);
+    const offsets = metadata.section_offsets;
+    const data_end = offsets.data + DATA_TAG_LENGTH + metadata.nobs * metadata.obs_length;
+    if (!Number.isSafeInteger(data_end) || data_end + '</data>'.length !== offsets.strls) {
+        throw new Error('Observation extent does not match strL offset');
+    }
+    if (offsets.end_of_file !== file_size
+        || offsets.stata_data_close + '</stata_dta>'.length !== file_size) {
+        throw new Error('Mapped file extent does not match file size');
+    }
+    if (offsets.strls + '<strls></strls>'.length > offsets.value_labels) {
+        throw new Error('Invalid strL section extent');
+    }
+    for (const [offset, tag] of [
+        [offsets.data, '<data>'],
+        [data_end, '</data><strls>'],
+        [offsets.value_labels - '</strls>'.length, '</strls>'],
+        [offsets.stata_data_close, '</stata_dta>'],
+    ] as const) {
+        const actual = new Uint8Array(read_range(fd, offset, tag.length));
+        for (let i = 0; i < tag.length; i++) {
+            if (actual[i] !== tag.charCodeAt(i)) throw new Error(`Missing ${tag} tag`);
+        }
+    }
+    return metadata;
 }
 
 function read_value_labels(
@@ -1094,6 +1118,13 @@ function read_range(
 // -----------------------------------------------------------
 // Barrel exports
 // -----------------------------------------------------------
+
+export { ArrowFile } from './arrow-node';
+export { ArrowBuffer } from './arrow-reader';
+export type { ArrowCell, ArrowRow, ArrowType, ArrowTimeUnit, ArrowVariable,
+    ArrowMetadata, ArrowDictionary, ArrowOpenOptions, ArrowReadOptions } from './arrow-types';
+export type { ArrowFieldDocument, DatasetDocument, ArrowRSemantics,
+    ArrowValueLabelEntry } from './arrow-profile';
 
 export type {
     VariableInfo,
