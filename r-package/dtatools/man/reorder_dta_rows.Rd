@@ -21,6 +21,7 @@ secondary indexes are cleared because a permutation invalidates
 them.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 Gathers every column the way \code{\link[=slice_dta_rows]{slice_dta_rows()}} does — compact
 Stata numeric columns through the native kernel, other columns
 through vctrs — then replaces the table's column pointers in

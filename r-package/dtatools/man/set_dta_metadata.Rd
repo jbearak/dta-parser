@@ -25,7 +25,7 @@ Set named metadata attributes on a table, or on one column selected with
 an evaluated \code{variable} string or position. Every data-frame form edits
 the supplied table by reference and returns it invisibly. Vector forms
 return a copy and must be assigned. Column payloads and capacity are
-preserved. Unsupported data.table subclasses are rejected.
+preserved. Unsupported container subclasses are rejected.
 }
 \details{
 \code{label}, \code{labels}, \code{value.label.name}, \code{format.stata}, \code{notes},

@@ -137,3 +137,88 @@
     }
     if (.ordinary_data_table(data)) data.table::setalloccol(data) else data
 }
+
+# Explicit mutation supports these complete class chains plus package markers.
+# Unknown subclasses can carry invariants our physical commits cannot update.
+.mutation_container_classes <- function(data) {
+    setdiff(class(data), c("dtatools_ref_data", "dtatools_dta_metadata"))
+}
+
+.supported_mutation_container <- function(data) {
+    classes <- .mutation_container_classes(data)
+    is.list(data) &&
+        !(inherits(data, "data.table") && inherits(data, "dtatools_ref_data")) &&
+        any(vapply(list(
+        "data.frame", c("tbl_df", "tbl", "data.frame"),
+        c("grouped_df", "tbl_df", "tbl", "data.frame"),
+        c("rowwise_df", "tbl_df", "tbl", "data.frame"),
+        c("data.table", "data.frame")
+    ), identical, logical(1), classes))
+}
+
+.validate_mutation_container <- function(data, allow_grouped = FALSE,
+                                         allow_rowwise = allow_grouped) {
+    if (!is.data.frame(data) || !.supported_mutation_container(data)) {
+        stop(paste0(
+            if (.data_table_container(data)) "`data` must be an ordinary data.table " else
+                "`data` must be an ordinary base data frame, tibble, or data.table ",
+            "without additional classes. For an explicit Stata-typed conversion, ",
+            "assign `data <- as_dibble(data)` first."
+        ), call. = FALSE)
+    }
+    if (.data_table_container(data)) .require_data_table()
+    if ((!allow_grouped && inherits(data, "grouped_df")) ||
+        (!allow_rowwise && inherits(data, "rowwise_df"))) {
+        stop(paste0("`data` must be an ungrouped data frame or tibble for this helper; ",
+                    "assign `data <- dplyr::ungroup(data)` first, then assign ",
+                    "`reserve_columns(data)` if structural changes need preparation"),
+             call. = FALSE)
+    }
+    invisible(NULL)
+}
+
+# Table forms validate before resolving runtime names or evaluating updates.
+# Vector forms retain their assigned-copy APIs and their own validators.
+.validate_metadata_input <- function(data) {
+    if (is.data.frame(data)) .as_mutation_data(data, allow_grouped = TRUE)
+    invisible(NULL)
+}
+
+#' Containers supported by explicit mutation helpers
+#'
+#' Explicit table helpers mutate the supplied physical table on ordinary
+#' base data frames, tibbles, dibbles and data.tables. Additional container
+#' subclasses are rejected before runtime targets or updates are evaluated.
+#' Assign `data <- as_dibble(data)` for an explicit conversion that removes
+#' additional classes and applies Stata column typing. Helpers never perform
+#' that conversion themselves. Package metadata and reference markers are
+#' supported, except a reference marker on data.table.
+#'
+#' [gen()], [egen()] and [repl()] accept grouped tibbles and dibbles, using
+#' their validated dplyr groups. Rowwise value mutation is unsupported.
+#' [keep_vars()], [drop_vars()], [order_vars()], [rename_vars()] and
+#' [reorder_dta_rows()] require ungrouped input. Assign
+#' `data <- dplyr::ungroup(data)` first, then assign [reserve_columns()] if
+#' the structural change needs preparation.
+#'
+#' All table label, format, generic metadata, note and characteristic setters
+#' support grouped and rowwise inputs without changing their groups. This
+#' includes their add, drop and renumber variants. Vector forms of metadata
+#' setters return copies that must be assigned.
+#'
+#' [copy_data()] and [reserve_columns()] return isolated, assigned results
+#' and retain valid grouping. [column_capacity()] and [can_add_columns()]
+#' inspect all supported containers without changing them. Only a dibble
+#' has dtatools' bracket `:=`; a data.table uses its own bracket semantics.
+#'
+#' Same-size values and metadata need no spare capacity. Growth is checked
+#' before row selection, RHS evaluation or sorting. Keep/drop validate their
+#' column selectors first and then check the resulting size before committing.
+#' Copying, subsetting and serialization can require assigned preparation.
+#'
+#' A data.table needs data.table 1.18.2.1 or newer. Dropping its last column
+#' leaves zero rows, including stored row names. Base data frames, tibbles and
+#' dibbles retain their row count when all columns are dropped.
+#' @name mutation-containers
+#' @seealso [dibble], [reserve_columns()], [set_dta_metadata()]
+NULL

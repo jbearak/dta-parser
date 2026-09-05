@@ -57,6 +57,7 @@ vectors. Singular getters return one string or \code{NULL}. Mutation helpers
 return the changed object, invisibly for data frames.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 These helpers expose the metadata stored in Stata characteristic records.
 Notes retain their Stata numbers, including gaps. Numeric \verb{note*} keys are
 reserved for the note API and never appear in characteristic results.

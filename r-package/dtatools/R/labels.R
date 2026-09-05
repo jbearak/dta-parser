@@ -1,5 +1,6 @@
 #' Get and set Stata label metadata
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' Dependency-free helpers for dataset labels, variable labels, and numeric
 #' value-label tables. The getter and replacement names and their common call
 #' forms are compatible with `labelled`; the `set_*()` functions and
@@ -622,6 +623,7 @@ dataset_label <- function(data) {
 #' @rdname var_label
 #' @export
 set_var_label <- function(data, variable, label) {
+    .validate_metadata_input(data)
     if (!is.data.frame(data)) {
         # `set_var_label(x, label)`: the vector shape, mirroring the
         # non-data-frame branch of `set_var_labels()`. Any other
@@ -738,6 +740,7 @@ set_var_label <- function(data, variable, label) {
 #' @rdname var_label
 #' @export
 set_var_labels <- function(.data, ..., .labels = NULL) {
+    .validate_metadata_input(.data)
     quoted <- substitute(...())
     dots <- if (is.data.frame(.data) && is.null(.labels) &&
         .is_positional_label_dots(quoted)) {
@@ -790,6 +793,7 @@ set_var_labels <- function(.data, ..., .labels = NULL) {
 #' @rdname var_label
 #' @export
 set_val_labels <- function(.data, ..., .labels = NULL) {
+    .validate_metadata_input(.data)
     quoted <- substitute(...())
     dots <- if (is.data.frame(.data) && is.null(.labels) &&
         .is_positional_label_dots(quoted)) {

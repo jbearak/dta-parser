@@ -6047,6 +6047,8 @@ SEXP C_dtatools_append_data_column(SEXP data, SEXP name, SEXP column) {
     return Rf_ScalarLogical(1);
 }
 
+/* Return whether the physical table can hold the requested complete column
+   count without allocation. This query neither repairs nor mutates its input. */
 SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
     if (TYPEOF(data) != VECSXP || XLENGTH(length) != 1) {
         Rf_error("invalid reference column selection capacity query");
@@ -6069,7 +6071,9 @@ SEXP C_dtatools_can_select_data_columns(SEXP data, SEXP length) {
 
 /* Stage and commit a complete physical column selection on the supplied table.
    Capacity and all values are validated first. Fresh names and data.table
-   self-reference wrappers keep separate outer copies' bookkeeping untouched. */
+   self-reference wrappers keep separate outer copies' bookkeeping untouched.
+   An empty data.table has zero rows, including its stored row.names; other
+   data-frame containers retain their row count when their last column is dropped. */
 SEXP C_dtatools_select_data_columns(
     SEXP data, SEXP columns, SEXP names, SEXP state,
     SEXP base_classes, SEXP reference_classes
@@ -6117,6 +6121,11 @@ SEXP C_dtatools_select_data_columns(
     int protect_count = 2;
     SEXP committed_names;
     SEXP committed_selfref = R_NilValue;
+    SEXP empty_rows = R_NilValue;
+    if (is_data_table && new_length == 0) {
+        empty_rows = PROTECT(Rf_allocVector(INTSXP, 0));
+        protect_count++;
+    }
     SEXP selfref_symbol = Rf_install(".internal.selfref");
     if (is_data_table) {
         /* Never resize or rewrite names another outer table may share.
@@ -6173,7 +6182,10 @@ SEXP C_dtatools_select_data_columns(
     for (R_xlen_t index = 0; index < installed_length; index++) {
         SET_VECTOR_ELT(data, index, VECTOR_ELT(columns, index));
     }
-    if (is_data_table) Rf_setAttrib(data, selfref_symbol, committed_selfref);
+    if (is_data_table) {
+        Rf_setAttrib(data, selfref_symbol, committed_selfref);
+        if (new_length == 0) Rf_setAttrib(data, R_RowNamesSymbol, empty_rows);
+    }
     Rf_setAttrib(data, R_NamesSymbol, committed_names);
     UNPROTECT(protect_count);
     return data;

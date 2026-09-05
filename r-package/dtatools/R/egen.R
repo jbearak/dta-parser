@@ -1,5 +1,6 @@
 #' Generate a column from a selected calculation sample
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' `egen()` creates one column by reference using the same target spelling,
 #' data mask, and alias rules as [gen()]. Its value functions are ordinary R
 #' functions, also available in `gen()` and dibble `:=` expressions.
@@ -72,7 +73,6 @@
 #' @export
 egen <- function(data, ..., where = NULL, by = NULL, bysort = NULL,
                  rows = NULL, type = NULL, before = NULL, after = NULL) {
-    .reject_data_table_subclass(data)
     original <- .as_mutation_data(data, allow_grouped = TRUE,
                                   allow_rowwise = FALSE)
     arguments <- .mutation_arguments(

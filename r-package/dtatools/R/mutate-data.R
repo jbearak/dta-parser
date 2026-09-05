@@ -1,5 +1,6 @@
 #' Generate and replace variables by reference
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' `gen()` and `replace_values()` modify a data frame or tibble by reference.
 #' `repl()` is a direct alias for `replace_values()`. The return value is the
 #' updated dataset, invisibly. Aliases observe generation and replacement.
@@ -326,6 +327,7 @@
 #' @export
 replace_values <- function(data, ..., where = NULL, by = NULL,
                            bysort = NULL, promote = TRUE) {
+    .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -360,6 +362,7 @@ repl <- replace_values
 #' @rdname replace_values
 #' @export
 gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
+    .as_mutation_data(data, allow_grouped = TRUE, allow_rowwise = FALSE)
 
     arguments <- .mutation_arguments(
         substitute(...()), rlang::enquo(where), missing(where),
@@ -668,34 +671,99 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     result
 }
 
-# `gen()` and `replace_values()` accept a grouped tibble, whose dplyr
-# groups become the assignment groups. The column-structure verbs still
-# reject one, and a rowwise tibble is rejected everywhere but in
-# `copy_data()`, because a row is not a group.
+# Value helpers accept grouped tibbles; structural helpers require ungrouped
+# input. Metadata setters and assigned utilities also accept rowwise tibbles.
+# Validate the physical shape and grouping before caller expressions run.
 .as_mutation_data <- function(data, allow_grouped = FALSE,
                               allow_rowwise = allow_grouped) {
-    if (!is.data.frame(data)) {
-        stop("`data` must be a data frame or tibble", call. = FALSE)
-    }
-    if ((!allow_grouped && inherits(data, "grouped_df")) ||
-        (!allow_rowwise && inherits(data, "rowwise_df"))) {
-        stop("`data` must be an ungrouped data frame or tibble", call. = FALSE)
-    }
+    .validate_mutation_container(data, allow_grouped, allow_rowwise)
     state <- .reference_state(data)
     names <- .reference_names(data)
     if (is.null(names) || anyNA(names) || any(names == "") ||
         anyDuplicated(names)) {
-        stop("`data` must have unique, non-missing column names", call. = FALSE)
+        stop("`data` must have unique, non-missing column names; duplicated names are ambiguous", call. = FALSE)
     }
     row_count <- if (.has_column_overlay(data)) state$nrow else abs(.row_names_info(data, 2L))
+    if (.data_table_container(data) && length(data) == 0L && row_count != 0L) {
+        stop("An empty data.table must have zero rows; assign `data <- as_dibble(data)` to convert its public contents",
+             call. = FALSE)
+    }
     columns <- .data_columns(data)
     sizes <- vapply(columns, NROW, numeric(1))
     if (any(sizes != row_count)) {
-        stop("`data` has columns with inconsistent row counts", call. = FALSE)
+        stop("`data` has columns with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again", call. = FALSE)
+    }
+    if (inherits(data, "grouped_df") || inherits(data, "rowwise_df")) {
+        groups <- attr(data, "groups", exact = TRUE)
+        group_columns <- attr(groups, "names", exact = TRUE)
+        if (!is.data.frame(groups) || !is.list(groups) ||
+            is.null(group_columns) || anyNA(group_columns) ||
+            any(!nzchar(group_columns)) || anyDuplicated(group_columns) ||
+            !".rows" %in% group_columns) {
+            stop("`data` has malformed grouping metadata; group columns need unique, non-missing names and one `.rows` column; assign `data <- dplyr::ungroup(data)` and group again",
+                 call. = FALSE)
+        }
+        if (any(vapply(.plain_data_columns(groups), NROW, numeric(1)) !=
+                abs(.row_names_info(groups, 2L)))) {
+            stop("`data` has malformed grouping metadata with inconsistent row counts; assign `data <- dplyr::ungroup(data)` and group again",
+                 call. = FALSE)
+        }
+        if (inherits(data, "grouped_df")) {
+            dplyr::validate_grouped_df(data, check_bounds = TRUE)
+        }
+        if (!is.list(groups$.rows) ||
+            !all(vapply(groups$.rows, is.integer, logical(1)))) {
+            stop("`data` has malformed grouping metadata; assign `data <- dplyr::ungroup(data)` first",
+                 call. = FALSE)
+        }
+        group_names <- setdiff(names(groups), ".rows")
+        rows <- unlist(groups$.rows, use.names = FALSE)
+        if (!all(group_names %in% names) ||
+            any(vapply(groups$.rows, is.unsorted, logical(1), strictly = TRUE)) ||
+            !identical(sort(as.integer(rows)), seq_len(row_count)) ||
+            (inherits(data, "rowwise_df") &&
+             (!all(lengths(groups$.rows) == 1L) ||
+              !identical(as.integer(rows), seq_len(row_count))))) {
+            stop("`data` has malformed grouping metadata; assign `data <- dplyr::ungroup(data)` first",
+                 call. = FALSE)
+        }
+        if (inherits(data, "grouped_df") &&
+            vctrs::vec_duplicate_any(groups[group_names])) {
+            stop("`data` has duplicated grouping keys; assign `data <- dplyr::ungroup(data)` and group again",
+                 call. = FALSE)
+        }
+        # A complete partition is not enough: each key must describe every
+        # row assigned to it. Otherwise grouped helpers silently compute on
+        # the wrong observations after ordinary edits to grouping metadata.
+        for (name in group_names) {
+            actual <- vctrs::vec_slice(columns[[name]], rows)
+            expected <- vctrs::vec_slice(.subset2(groups, name),
+                rep.int(seq_len(nrow(groups)), lengths(groups$.rows)))
+            if (!all(vctrs::vec_equal(.grouping_key_value(actual),
+                                     .grouping_key_value(expected), na_equal = TRUE))) {
+                stop("`data` has grouping keys that do not match its rows; assign `data <- dplyr::ungroup(data)` and group again",
+                     call. = FALSE)
+            }
+        }
     }
     list(
         columns = columns, names = names, nrow = row_count, state = state
     )
+}
+
+# Label/metadata wrappers do not change a grouping key's values. Compare
+# without those wrappers while retaining factors, dates and Stata missing-code
+# identity. Copies here change attributes only, never the supplied columns.
+.grouping_key_value <- function(value) {
+    if (inherits(value, "dtatools_dta_metadata_vector")) {
+        value <- .dta_metadata_vector_base(value)
+    }
+    if (inherits(value, "haven_labelled") && !inherits(value, "dta_numeric")) {
+        value <- .metadata_copy(value)
+        classes <- setdiff(class(value), c("haven_labelled", "vctrs_vctr", typeof(value)))
+        attr(value, "class") <- if (length(classes)) classes else NULL
+    }
+    value
 }
 
 .RUNTIME_NAME_MESSAGE <-
@@ -2183,7 +2251,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 #' @rdname replace_values
 #' @export
 copy_data <- function(data) {
-    .reject_data_table_subclass(data)
+    .as_mutation_data(data, allow_grouped = TRUE)
     data_table <- .ordinary_data_table(data)
     snapshot <- .reference_snapshot(data)
     source <- .as_mutation_data(snapshot, allow_grouped = TRUE)

@@ -62,6 +62,7 @@ the column and so has no prior storage to widen.}
 \code{copy_data()} returns an independent data frame or tibble.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{gen()} and \code{replace_values()} modify a data frame or tibble by reference.
 \code{repl()} is a direct alias for \code{replace_values()}. The return value is the
 updated dataset, invisibly. Aliases observe generation and replacement.

@@ -1,5 +1,6 @@
 #' Keep or drop variables by reference
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' `keep_vars()` retains selected columns and `drop_vars()` removes selected
 #' columns. Both functions mutate the supplied data frame or tibble by
 #' reference and return it invisibly. Other bindings to the same dataset see
@@ -34,6 +35,7 @@
 #' names(survey)
 #' @export
 keep_vars <- function(data, ...) {
+    .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = TRUE)
@@ -43,6 +45,7 @@ keep_vars <- function(data, ...) {
 #' @rdname keep_vars
 #' @export
 drop_vars <- function(data, ...) {
+    .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
     result <- .select_vars_by_reference(data, dots, keep = FALSE)
@@ -73,6 +76,7 @@ drop_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 order_vars <- function(data, ...) {
+    .as_mutation_data(data)
 
     dots <- rlang::enquos(...)
     result <- .order_vars_by_reference(data, dots)
@@ -110,7 +114,6 @@ order_vars <- function(data, ...) {
 #' names(survey)
 #' @export
 rename_vars <- function(data, ..., .names = NULL) {
-    .reject_data_table_subclass(data)
     .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
 
@@ -129,7 +132,6 @@ rename_vars <- function(data, ..., .names = NULL) {
 }
 
 .rename_all_vars_by_reference <- function(data, new_names) {
-    .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
     columns <- if (is.null(original$state)) {
@@ -159,7 +161,6 @@ rename_vars <- function(data, ..., .names = NULL) {
 }
 
 .rename_vars_by_reference <- function(data, replacements) {
-    .reject_data_table_subclass(data)
     if (length(replacements) == 0L) {
         stop("`...` must name at least one variable", call. = FALSE)
     }
@@ -353,7 +354,6 @@ rename_vars <- function(data, ..., .names = NULL) {
 }
 
 .select_vars_by_reference <- function(data, selections, keep) {
-    .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
     columns <- if (is.null(original$state)) {
         original$columns
@@ -375,7 +375,6 @@ rename_vars <- function(data, ..., .names = NULL) {
 }
 
 .order_vars_by_reference <- function(data, selections) {
-    .reject_data_table_subclass(data)
     original <- .as_mutation_data(data)
     .prepare_column_operation(data, length(data))
     columns <- if (is.null(original$state)) {

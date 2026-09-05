@@ -48,7 +48,10 @@
 #' its expression's value. `as_dibble()` of a grouped tibble keeps its
 #' grouping.
 #'
-#' `as_dibble()` returns a dibble as is. Otherwise it returns a new object
+#' `as_dibble()` returns an ordinary dibble as is. For an additional container
+#' subclass it returns a new dibble without that subclass, retaining recognized
+#' grouped or rowwise structure and dataset metadata. The removed subclass's
+#' invariants are not retained. Otherwise it returns a new object
 #' and leaves its argument unchanged: a tibble or data frame is shallow
 #' copied. Shared columns detach when the dibble is explicitly mutated. A data table is
 #' copied into a fresh tibble, because a dibble cannot share data.table's
@@ -92,11 +95,11 @@ dibble <- function(...) {
 #' @rdname dibble
 #' @export
 as_dibble <- function(x) {
-    if (is_dibble(x)) return(x)
+    if (is_dibble(x) && .supported_mutation_container(x)) return(x)
     if (!is.data.frame(x)) {
         stop("`x` must be a data frame, tibble, or data table", call. = FALSE)
     }
-    if (inherits(x, "dtatools_ref_data")) {
+    if (inherits(x, "dtatools_ref_data") && !inherits(x, "data.table")) {
         # A base data frame that went through gen() carries reference state
         # without being a tibble; its current contents become the dibble.
         x <- .reference_snapshot(x)
@@ -128,6 +131,17 @@ is_dibble <- function(x) {
 # and dplyr sees it again on the snapshot. The shallow copy leaves the
 # caller's object untouched by the in-place mark.
 .as_dibble <- function(x, caller = "as_dibble()") {
+    if (is.data.frame(x) && !.supported_mutation_container(x)) {
+        x <- .metadata_copy(x)
+        class(x) <- if (inherits(x, "data.table")) {
+            c("data.table", "data.frame")
+        } else if (inherits(x, "tbl_df")) {
+            c(if (inherits(x, "grouped_df")) "grouped_df" else
+                if (inherits(x, "rowwise_df")) "rowwise_df",
+              "tbl_df", "tbl", "data.frame")
+        } else "data.frame"
+        attr(x, ".dtatools_ref_state") <- NULL
+    }
     .reject_data_table_subclass(x, "x")
     x <- if (inherits(x, "tbl_df")) {
         .Call(C_dtatools_metadata_copy, x)
@@ -147,6 +161,7 @@ is_dibble <- function(x) {
             call. = FALSE
         )
     }
+    .as_mutation_data(x, allow_grouped = TRUE)
     x <- .type_dibble_columns(x, caller)
     # Spare column slots let `gen()` append in place, so the physical
     # list stays the complete dataset for every reader.
@@ -271,6 +286,12 @@ NULL
 #' @export
 `[.dtatools_ref_data` <- function(x, i, j, ..., by = NULL, bysort = NULL,
                                   drop) {
+    .validate_mutation_container(x, allow_grouped = TRUE)
+    raw_j <- rlang::enquo0(j)
+    expression <- if (rlang::quo_is_missing(raw_j)) NULL else rlang::quo_get_expr(raw_j)
+    if (is.call(expression) && identical(expression[[1L]], quote(`:=`))) {
+        .as_mutation_data(x, allow_grouped = TRUE, allow_rowwise = FALSE)
+    }
     assignments <- .bracket_assignments(rlang::enquo(j))
     if (is.null(assignments)) {
         if (!missing(by) || !missing(bysort)) {

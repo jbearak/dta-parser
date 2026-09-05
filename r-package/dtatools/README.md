@@ -106,8 +106,12 @@ Exported whole-table operations support ordinary data tables. `gen()` installs
 a physical column, and `repl()` invalidates keys or secondary indexes that use
 the changed column while preserving unrelated lookup state. Keys, indexes,
 allocation capacity, and `.internal.selfref` are runtime state and are not
-stored in Arrow files. Mutating and table-producing operations reject custom
-data-table subclasses whose invariants dtatools cannot know.
+stored in Arrow files. Explicit mutators reject additional data-frame, tibble
+and data.table subclasses whose invariants dtatools cannot preserve. Assign
+`data <- as_dibble(data)` to request conversion, removing those classes and
+applying Stata column typing. See the
+[supported helper and grouping matrix](https://github.com/jbearak/dta-parser/blob/main/docs/r-containers.md#restrictions).
+Other table-producing operations retain their documented subclass restrictions.
 
 `gen()`, `replace_values()`, `keep_vars()`, and `drop_vars()` mutate the supplied data frame or tibble. Dataset
 aliases observe the change. Separate tables sharing a column remain isolated. Call `copy_data()`

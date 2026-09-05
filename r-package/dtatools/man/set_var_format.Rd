@@ -25,6 +25,7 @@ vector, the second argument is its new format.}
 The updated object, invisibly for data frames.
 }
 \description{
+See \link{mutation-containers} for supported classes, grouping and conversion.
 \code{set_var_format()} edits one column's \code{format.stata} metadata.
 \code{set_var_formats()} edits several columns atomically, using named arguments
 or a named list in \code{.formats}. On data frames, both return the table invisibly

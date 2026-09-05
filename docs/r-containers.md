@@ -1,6 +1,6 @@
 # Containers: what each operation does
 
-`dtatools` works with four table classes, and the same call can mean different things on each. This page states what changes in place, what returns a new object, and what column types result.
+`dtatools` supports four ordinary table containers. Explicit helpers mutate the supplied table on all four; ordinary replacement returns a changed copy. The tables below distinguish those operations and their column types.
 
 | Container | What it is |
 | --- | --- |
@@ -49,7 +49,7 @@ Grouping works the same way everywhere: `by = ` groups in current row order, `by
 
 ## What column type results
 
-Only a **dibble** types its columns. Every operation that adds or changes a column on a dibble gives a bare R vector a Stata storage type; the other three containers leave the value's own type alone, so a Stata storage type appears there only when the value already carried one — from a `dta_*()` constructor, from a reader, or from arithmetic on a column that had one.
+A dibble types the whole dataset. Plain tibbles, data frames, and data tables keep their existing column classes. `gen()` and `egen()` apply Stata generation rules to their new column on every supported container. Ordinary operations on the other containers retain their own R column semantics. The last column below describes those ordinary operations, not generation.
 
 | Value produced by the expression | `gen()`, `egen()`, and a new `:=` column | `mutate()`, `transform()`, `$<-` on a dibble | tibble, data.frame, data.table |
 | --- | --- | --- | --- |
@@ -96,7 +96,23 @@ One consequence to expect: the expressions `gen()` evaluates on a tibble see the
 
 A dibble needs unique, non-empty column names, to identify columns. The readers repair names first, so only `.name_repair = "minimal"` can produce names a dibble rejects; ask for `output = "tibble"` for such a read.
 
-Rowwise tibbles are rejected by `gen()` and `repl()`; `copy_data()` accepts them. Custom `data.table` subclasses are rejected by mutating and table-producing operations, because dtatools cannot know their invariants. A data table converted with `as_dibble()` is copied rather than shared — a dibble cannot hold data.table's self-reference — and its keys, indexes, and allocation capacity are left behind. Keys, indexes, allocation capacity, and `.internal.selfref` are runtime state and are never stored in `.arrow` files.
+Explicit helpers accept complete ordinary class chains plus dtatools' metadata and reference markers. Additional data-frame, tibble, or data.table subclasses are rejected before runtime target names, update values, or column selectors are evaluated. A data.table cannot carry the dibble reference marker. Malformed names, row counts, or grouping metadata are rejected too. These checks do not attempt to undo side effects a caller performs while constructing the table itself.
+
+Assign `data <- as_dibble(data)` to explicitly convert an unsupported subclass. Conversion removes additional container classes, keeps recognized grouped or rowwise structure and dataset metadata, and gives bare numeric/string columns Stata storage. It leaves the source unchanged and does not claim to preserve the removed subclass's invariants. An ordinary dibble is returned as is. A data.table is copied into a fresh tibble with its keys, indexes, allocation capacity, and self-reference left behind. Those properties are runtime state and are never stored in `.arrow` files.
+
+| Explicit helper family | Ungrouped ordinary containers | Grouped tibble or dibble | Rowwise tibble or dibble |
+| --- | --- | --- | --- |
+| `gen()`, `egen()`, `replace_values()` / `repl()` | By reference | By reference, using dplyr groups | Error |
+| Dibble bracket `:=` | By reference on dibbles | By reference on dibbles | Error |
+| `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()` | By reference | Error; ungroup first | Error; ungroup first |
+| `reorder_dta_rows()` | By reference | Error; ungroup first | Error; ungroup first |
+| Label, display-format, generic metadata, note and characteristic setters, including add/drop/renumber variants | By reference | By reference; groups retained | By reference; groups retained |
+| `copy_data()`, `reserve_columns()` | Assigned isolated result | Assigned isolated result; groups retained | Assigned isolated result; groups retained |
+| `column_capacity()`, `can_add_columns()` | Read-only | Read-only | Read-only |
+
+Group rows must form a valid partition in physical row order and match distinct stored group keys. Rowwise identifiers may repeat. When ordinary edits have made that metadata stale, assign `data <- dplyr::ungroup(data)` and group again. For structural edits, assign ungrouping first and then `data <- reserve_columns(data)` if preparation is needed. No helper silently drops grouping.
+
+Dropping a data.table's last column produces a zero-row, zero-column data.table, matching its own empty-table convention. Stored row names, serialization, conversion, and later generation all use zero rows. Dropping the last column of a base data frame, tibble, or dibble retains its row count; later generation fills that many rows.
 
 ## See also
 

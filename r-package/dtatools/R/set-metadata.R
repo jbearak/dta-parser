@@ -2,7 +2,7 @@
 # the supplied physical table without its state, then attach new bookkeeping
 # at commit. R copies and serialized tables may still share an old state.
 .metadata_table_snapshot <- function(data) {
-    .reject_data_table_subclass(data)
+    .validate_metadata_input(data)
     state <- .reference_state(data)
     if (!is.null(state) && (isTRUE(state$physical_overlay) ||
         !identical(state$generated_count, 0L))) {
@@ -41,6 +41,7 @@
 
 #' Set Stata display formats by reference
 #'
+#' See [mutation-containers] for supported classes, grouping and conversion.
 #' `set_var_format()` edits one column's `format.stata` metadata.
 #' `set_var_formats()` edits several columns atomically, using named arguments
 #' or a named list in `.formats`. On data frames, both return the table invisibly
@@ -78,6 +79,7 @@
 #' set_var_formats(survey, age = "%9.0g", .formats = list(income = "%10.0g"))
 #' @export
 set_var_format <- function(data, variable, format) {
+    .validate_metadata_input(data)
     if (!is.data.frame(data)) {
         if (missing(variable) && missing(format)) {
             stop("Supply a vector `format`, or NULL to remove it", call. = FALSE)
@@ -96,6 +98,7 @@ set_var_format <- function(data, variable, format) {
 #' @rdname set_var_format
 #' @export
 set_var_formats <- function(.data, ..., .formats = NULL) {
+    .validate_metadata_input(.data)
     quoted <- substitute(...())
     dots <- if (is.data.frame(.data) && is.null(.formats) &&
         .is_positional_label_dots(quoted)) {
@@ -153,7 +156,7 @@ set_var_formats <- function(.data, ..., .formats = NULL) {
 #' an evaluated `variable` string or position. Every data-frame form edits
 #' the supplied table by reference and returns it invisibly. Vector forms
 #' return a copy and must be assigned. Column payloads and capacity are
-#' preserved. Unsupported data.table subclasses are rejected.
+#' preserved. Unsupported container subclasses are rejected.
 #'
 #' `label`, `labels`, `value.label.name`, `format.stata`, `notes`,
 #' `stata.note.numbers`, and `stata.characteristics` validate their supported
@@ -200,6 +203,7 @@ set_var_formats <- function(.data, ..., .formats = NULL) {
 #' set_dta_metadata(survey, label = "Baseline", source = "interviews")
 #' @export
 set_dta_metadata <- function(x, ..., .metadata = NULL, variable = NULL) {
+    .validate_metadata_input(x)
     dots <- rlang::dots_list(..., .homonyms = "keep", .ignore_empty = "none")
     if (!is.null(.metadata) && !is.list(.metadata)) {
         stop("`.metadata` must be a named list or NULL", call. = FALSE)
