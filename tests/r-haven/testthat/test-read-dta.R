@@ -425,6 +425,7 @@ test_that("all bundled fixtures agree with haven", {
 })
 
 test_that("Haven column comparisons exclude variable notes only", {
+    skip_if_not_installed("haven")
     path <- fixture("egen_unicode_names_stata18.dta")
     actual <- read_dta(path, output = "tibble")$group_unicode
     expected <- haven::read_dta(path)$group_unicode
