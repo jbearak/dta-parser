@@ -4296,6 +4296,7 @@ static SEXP metadata_string_materialize_for_patch(
     return materialized;
 }
 
+/** Expose this proxy's decoded payload, materializing it on demand. */
 static void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
     (void) writeable;
     SEXP materialized = metadata_string_materialize(value);
@@ -4303,17 +4304,23 @@ static void *metadata_string_dataptr(SEXP value, Rboolean writeable) {
 
 }
 
+/** Return an already decoded data pointer without forcing materialization. */
 static const void *metadata_string_dataptr_or_null(SEXP value) {
     SEXP materialized = R_altrep_data2(value);
     return materialized == R_NilValue ? NULL : DATAPTR_OR_NULL(materialized);
 }
 
+/** Replace one string in this proxy's decoded payload after materialization. */
 static void metadata_string_set_elt(
     SEXP value, R_xlen_t index, SEXP replacement
 ) {
     SET_STRING_ELT(metadata_string_materialize(value), index, replacement);
 }
 
+/**
+ * Delegate supported subsets to compact dictionary storage.
+ * Return NULL for decoded or unavailable backing so R handles the fallback.
+ */
 static SEXP metadata_string_extract_subset(
     SEXP value, SEXP index, SEXP call
 ) {
@@ -4425,6 +4432,10 @@ SEXP C_dtatools_metadata_copy(SEXP value) {
     return Rf_shallow_duplicate(value);
 }
 
+/**
+ * Create a metadata view for internal reads without isolating native backing.
+ * Use C_dtatools_metadata_copy when later explicit writes need isolation.
+ */
 SEXP C_dtatools_metadata_view(SEXP value) {
     if (!ALTREP(value)) return Rf_shallow_duplicate(value);
     if (R_altrep_inherits(value, dtatools_numeric_class) ||
@@ -7029,6 +7040,7 @@ typedef struct {
     int journal_complete;
 } fused_compare_patch_transaction;
 
+/** Detect replacement of either saved ALTREP state component. */
 static int fused_compare_patch_state_changed(
     const fused_compare_patch_transaction *transaction
 ) {
@@ -7036,6 +7048,10 @@ static int fused_compare_patch_state_changed(
         R_altrep_data2(transaction->target) != transaction->saved_data2;
 }
 
+/**
+ * Restore the saved ALTREP state after detachment, or undo bytes and the
+ * missing-value count when the transaction patched its original backing.
+ */
 static void restore_fused_compare_patch(
     fused_compare_patch_transaction *transaction
 ) {
@@ -7116,6 +7132,10 @@ static SEXP apply_fused_compare_patch(void *data) {
     return Rf_ScalarLogical(1);
 }
 
+/**
+ * Roll back an unwound patch only after its undo journal is complete.
+ * Release the undo buffer on both normal return and non-local exit.
+ */
 static void cleanup_fused_compare_patch(void *data, Rboolean jump) {
     fused_compare_patch_transaction *transaction =
         (fused_compare_patch_transaction *) data;
