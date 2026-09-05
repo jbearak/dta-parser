@@ -131,6 +131,13 @@ reorder_dta_rows(survey, order(survey$id))
 first_ten <- slice_dta_rows(survey, 1:10)
 ```
 
+For a dibble with at least ten rows, `slice_dta_rows(survey, 1:10)` and
+`survey[1:10, ]` both return the first ten rows with all columns, preserving
+Stata metadata and leaving `survey` unchanged. Brackets use ordinary tibble
+subsetting; `slice_dta_rows()` batches compact Stata numeric columns in native
+code to reduce per-column overhead. Use brackets for everyday subsetting;
+consider `slice_dta_rows()` when slicing wide Stata datasets.
+
 ## Why use dtatools?
 
 Repository benchmarks compare `dtatools` with haven across a large survey corpus and one especially wide file:
