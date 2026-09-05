@@ -27,7 +27,8 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 | `$<-`, `[[<-`, `[<-`, `names<-`, `dimnames<-`, `row.names<-` | **Reference** | Copy | Copy | Copy |
 | `var_label(data$x) <- `, `val_labels(data$x) <- `, `attr(data$x, ...) <- ` | **Reference** (they are `$<-` calls) | Copy | Copy | Copy |
 | `set_var_label()`, `set_var_labels()`, `set_val_labels()` on a data frame | Reference | Reference | Reference | Reference |
-| `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()`, `set_dta_characteristic()`, `drop_dta_characteristics()` | Reference | Copy | Copy | Copy |
+| `set_var_format()`, `set_var_formats()`, `set_dta_metadata()` on a data frame | Reference | Reference | Reference | Reference |
+| `set_dta_note()`, `add_dta_note()`, `drop_dta_notes()`, `renumber_dta_notes()`, `set_dta_characteristic()`, `drop_dta_characteristics()` on a data frame | Reference | Reference | Reference | Reference |
 | `slice_dta_rows(data, i)` | Copy → dibble | Copy → tibble | Copy → data.frame | Copy → data.table |
 | `data[i, ]`, `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()` | Copy → dibble | Copy → tibble | Copy → data.frame | data.table's own behavior |
 | Joins, `bind_rows()` | Copy → dibble when the dibble is first | Copy → tibble | Copy → data.frame | Copy → data.table |
@@ -97,3 +98,22 @@ Rowwise tibbles are rejected by `gen()` and `repl()`; `copy_data()` accepts them
 - `?dibble`, `?"dibble-bracket"`, `?"dta-storage-defaults"`, `?replace_values` in R
 
 Constructors and readers reserve 5,000 spare column-pointer slots, controlled by `dtatools.alloccol`. Reallocation warns and may separate aliases. See [column capacity and aliases](r-mutation-by-reference.md) for `reserve_columns()`, function parameters, and preparation after base R serialization.
+
+## Explicit metadata updates
+
+All table metadata setters edit the supplied table, including through function
+parameters and runtime column names. They need no spare column capacity and
+preserve the existing allocation. They isolate copied reference bookkeeping
+without rebuilding the physical table. A table that already lost capacity
+still needs assigned `reserve_columns()` before a later structural operation.
+Vector forms return copies and require assignment.
+
+Use `set_var_format(data, .(my_name), "%9.0g")` for formats,
+`set_var_label(data, .(my_name), "Age")` for variable labels, and
+`set_dta_metadata(data, variable = my_name, labels = mapping,
+value.label.name = table_name)` to restore a named value-label mapping.
+`set_dta_note(data, 4L, "Checked", variable = my_name)` and
+`set_dta_characteristic(data, "source", "survey", variable = my_name)`
+edit variable notes and characteristics. See the
+[metadata migration examples](r-mutation-by-reference.md#explicit-metadata-migration)
+for complete note bundles and clearing metadata.

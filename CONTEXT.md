@@ -144,6 +144,11 @@ _Avoid_: Label attributes, factor levels, variable labels
 A human-readable description of a dataset as a whole, distinct from its file name and its variables' labels.
 _Avoid_: Variable label, file name
 
+**Explicit metadata mutation**:
+A named operation that updates metadata on the supplied table so every binding
+to that table sees the change. A vector form returns a copy that must be assigned.
+_Avoid_: Nested attribute replacement, conversion side effect
+
 **Dataset note**:
 A numbered annotation attached to a dataset as a whole, distinct from a variable note and the dataset label.
 _Avoid_: Dataset label, variable note

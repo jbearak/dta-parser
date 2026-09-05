@@ -1,6 +1,6 @@
 test_that("note accessors preserve gaps, empty text, scope, and stable renumbering", {
     data <- data.frame(x = 1:2, y = 3:4)
-    original <- data
+    original <- copy_data(data)
     data <- set_dta_note(data, 4, "four")
     data <- set_dta_note(data, 1, "")
     data <- set_dta_note(data, 2, "variable", variable = "x")
@@ -654,26 +654,7 @@ test_that("metadata helpers edit dibbles through function parameters and aliases
     }
 })
 
-test_that("metadata helpers keep copy semantics on ordinary tables and vectors", {
-    for (make in list(data.frame, tibble::tibble)) {
-        for (variable in list(NULL, "x")) {
-            original <- make(x = 1:2)
-            noted <- set_dta_note(original, 4L, "four", variable)
-            expect_length(dta_notes(original, variable), 0L)
-            added <- add_dta_note(noted, "five", variable)
-            expect_identical(dta_notes(noted, variable), c(`4` = "four"))
-            renumbered <- renumber_dta_notes(added, 1L, variable)
-            expect_identical(dta_notes(added, variable), c(`4` = "four", `5` = "five"))
-            dropped <- drop_dta_notes(renumbered, variable = variable)
-            expect_identical(dta_notes(renumbered, variable), c(`1` = "four", `2` = "five"))
-            expect_length(dta_notes(dropped, variable), 0L)
-            marked <- set_dta_characteristic(original, "source", "survey", variable)
-            expect_length(dta_characteristics(original, variable), 0L)
-            removed <- drop_dta_characteristics(marked, variable = variable)
-            expect_identical(dta_characteristics(marked, variable), c(source = "survey"))
-            expect_length(dta_characteristics(removed, variable), 0L)
-        }
-    }
+test_that("metadata helpers keep copy semantics on vectors", {
     original <- 1:2
     noted <- set_dta_note(original, 1L, "note")
     expect_length(dta_notes(original), 0L)

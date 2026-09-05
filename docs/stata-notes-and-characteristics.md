@@ -53,8 +53,10 @@ dta_characteristic(survey, "source")
 Passing `NULL` removes that key. `drop_dta_notes()` and
 `drop_dta_characteristics()` remove selected keys or all keys.
 `renumber_dta_notes()` closes gaps explicitly; reading, writing, and the
-other setters do not renumber. Every mutation helper returns a changed copy,
-unlike Stata commands that modify the current dataset.
+other setters do not renumber. Every table mutation helper edits the supplied
+table by reference and returns it invisibly, on dibbles, tibbles, base data
+frames, and ordinary data tables. Use `copy_data()` first for independent
+metadata. Vector forms return a copy that must be assigned.
 
 Frames carrying notes or characteristics have an internal restoration class.
 For both base data frames and tibbles, a data-frame-preserving `[` subset keeps

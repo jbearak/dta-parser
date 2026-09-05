@@ -62,6 +62,9 @@ By reference, on any supported container (dibble, tibble, base data frame, data 
 - `gen()`, `replace_values()` / `repl()`
 - `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`
 - `reorder_dta_rows()`
+- table metadata setters: `set_var_label()`, `set_var_labels()`, `set_val_labels()`,
+  `set_var_format()`, `set_var_formats()`, `set_dta_metadata()`, and the note and
+  characteristic setters
 
 By reference, on a dibble only:
 
@@ -74,7 +77,7 @@ Not by reference — these return a new object and leave their input alone:
 - every dplyr verb (`mutate()`, `filter()`, `arrange()`, `select()`, `group_by()`, joins, `bind_rows()`)
 - base `subset()`, `transform()`, `within()`, `head()`, `rbind()`, `cbind()`, and `[` subsetting without `:=`
 - `slice_dta_rows()`, which returns the selected rows in a new table
-- the metadata setters called in functional form (`set_var_label()`, `set_dta_note()`, and friends), which return a changed copy
+- vector forms of the metadata setters, which return a changed copy
 - `copy_data()` and `tibble::as_tibble()`, whose whole purpose is to produce an independent object
 
 On a dibble those operations still return a dibble, so the two styles mix freely. A verb's result is a fresh dataset: a later `repl()` on it does not reach the input it came from, and a `repl()` on the input does not reach the result.
@@ -127,3 +130,64 @@ The order of operations is Stata's, not data.table's. In `DT[i, j, by]`, data.ta
 - [Containers](./r-containers.md) — what each operation does on a dibble, tibble, data frame, and data table, and the column types that result
 - [Where dtatools diverges from Stata](./r-stata-divergences.md)
 - `?dibble`, `?"dibble-bracket"`, `?replace_values`, `?copy_data` in R
+
+## Explicit metadata migration
+
+Use explicit setters when a function must update its caller's table. This
+works on all four supported containers. The remaining epic changes will make
+ordinary dibble replacement follow R's copy-and-rebind rules, so conversion to
+a dibble will no longer make nested `attr<-` inside a function update its caller.
+
+```r
+set_metadata <- function(data, my_name, mapping, table_name, metadata) {
+    set_var_format(data, .(my_name), "%9.0g")
+    set_var_label(data, .(my_name), "Interview status")
+    set_dta_metadata(data, variable = my_name,
+                     labels = mapping, value.label.name = table_name)
+    set_dta_metadata(data, variable = my_name, .metadata = metadata)
+}
+metadata <- list(notes = c("First note", "Fourth note"),
+                 stata.note.numbers = c(1L, 4L),
+                 stata.characteristics = c(source = "survey"))
+survey <- dibble(status = c(1, 2))
+set_metadata(survey, "status", c(Complete = 1, Refused = 2),
+             "interview_status", metadata)
+```
+
+`set_var_format()` accepts a bare name, quoted string, `!!my_name`, or
+`.(my_name)`, just like `set_var_label()`. `set_var_formats()` supports named
+arguments, runtime tags such as `.(my_name) := "%9.0g"`, and a named list through
+`.formats`. The generic setter and note/characteristic helpers take an evaluated
+`variable`, so `variable = my_name` works directly in a loop.
+
+The metadata bundle replaces all supplied attributes together, preserving note
+number gaps. With `notes` alone, numbering starts at one. Clear complete bundles
+explicitly when restoring absent metadata:
+
+```r
+set_dta_metadata(survey, variable = "status",
+                 notes = NULL, stata.note.numbers = NULL,
+                 stata.characteristics = NULL)
+set_dta_metadata(survey, variable = "status", labels = NULL)
+set_dta_metadata(survey, label = "Dataset label", source = "interviews")
+```
+
+Clearing labels also clears `value.label.name`. A table name requires a mapping;
+a named zero-length mapping, `stats::setNames(double(), character())`, represents
+an empty table and differs from `NULL`. The name is a serialization hint, not a
+shared registry. To change notes individually, use `set_dta_note()`,
+`add_dta_note()`, `drop_dta_notes()`, and `renumber_dta_notes()`; the characteristic
+family has the same table mutation contract.
+
+Metadata updates preserve compact column backing and existing capacity. They
+repair stale shared bookkeeping on the supplied table without touching another
+table's state. Such repair does not restore capacity lost to copying or base
+serialization. Assign `survey <- reserve_columns(survey)` before subsequent
+structural growth when preparation is needed. Legacy overlay tables must be
+prepared this way before metadata mutation as well.
+
+Generic metadata cannot edit structural, runtime, or storage attributes. Use
+column/container operations for those changes. Custom metadata stays in R;
+file writers can omit attributes outside their supported metadata profiles.
+Vector setters keep their assigned-copy contract, for example
+`x <- set_var_format(x, "%9.0g")`.
