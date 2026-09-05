@@ -40,7 +40,7 @@ A tibble that is a Stata dataset: every numeric and string column carries Stata 
 _Avoid_: Reference tibble, dtatools table
 
 **Generate default**:
-The Stata storage a bare double result takes through `gen()` or a new column created by `:=`: `float`, or `double` when the `dtatools.generate_type` option is set, as after Stata's `set type double`. It applies to those two translations of Stata's `generate` and to no other way a column enters a dibble.
+The Stata storage an untyped double result takes through `gen()`, `egen()`, or a new column created by `:=`: `float`, or `double` when the `dtatools.generate_type` option is set, as after Stata's `set type double`. Function-specific declarations, such as byte tags and autotyped group identifiers, take precedence.
 _Avoid_: Default storage, float default
 
 **Storage promotion**:
@@ -50,6 +50,10 @@ _Avoid_: Type widening, upcasting
 **Group-wise assignment**:
 Evaluating one generation or replacement separately within each group of a dataset, in Stata's `by varlist:` order: the group is formed first, then the row selection and values are evaluated on that group's rows, with `.n` and `.N` as the within-group row number and row count. Groups come from `by`, from `bysort`, or from dplyr grouping.
 _Avoid_: Grouped mutate, by-group operation
+
+**Egen calculation sample**:
+The observations admitted to an extended-generation calculation. Excluded observations contribute neither values nor keys to that calculation, unlike a write selection that limits only which observations receive a result.
+_Avoid_: Write selection, nonmissing observations
 
 **Stored output container**:
 The supported output container recorded in a standalone `.arrow` dataset and restored by default when the dataset is read. It excludes runtime data-table state such as keys, indexes, allocation capacity, and self-reference.

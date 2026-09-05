@@ -1,0 +1,424 @@
+-------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jmb/repos/dta-parser/conformance/stata/egen/egen.log
+  log type:  text
+ opened on:   5 Sep 2026, 05:55:17
+
+. display "Stata " c(stata_version) " " c(flavor) "; revision " c(born_date) ";
+>  " c(os) " " c(machine_type)
+Stata 18 IC; revision 15 May 2023; Unix Mac (Apple Silicon)
+
+. input byte obs byte g double x double y byte selected str4 s
+
+          obs         g           x           y  selected          s
+  1. 1 2 3 . 1 "b"
+  2. 2 1 . .a 1 "a"
+  3. 3 2 9 2 0 "b"
+  4. 4 1 .a . 0 "a"
+  5. 5 3 16777217 -1 1 "é"
+  6. 6 3 2 . 1 "é"
+  7. 7 . 4 5 1 ""
+  8. 8 .a 8 . 1 "z"
+  9. 9 2 .z 7 1 "a"
+ 10. end
+
+. egen double mean_x = mean(x), by(g)
+(2 missing values generated)
+
+. egen double min_x = min(x), by(g)
+(2 missing values generated)
+
+. egen double max_x = max(x), by(g)
+(2 missing values generated)
+
+. egen double total_x = total(x), by(g)
+
+. egen double total_missing = total(x), by(g) missing
+(2 missing values generated)
+
+. egen double row_max = rowmax(x y)
+(2 missing values generated)
+
+. egen double row_total = rowtotal(x y)
+
+. egen double row_total_missing = rowtotal(x y), missing
+(2 missing values generated)
+
+. egen double selected_total = total(x) if selected, by(g)
+(2 missing values generated)
+
+. egen double observed = total(!missing(x)), by(g)
+
+. egen byte any_observed = max(x < .), by(g)
+
+. egen group_id = group(g s)
+(2 missing values generated)
+
+. egen group_missing = group(g s), missing
+
+. egen tag = tag(g s)
+
+. egen tag_missing = tag(g s), missing
+
+. egen tag_selected = tag(g s) if selected
+
+. egen group_label = group(g s), label lname(group_codes) autotype
+(2 missing values generated)
+
+. egen rounded_total = total(x), by(g)
+
+. bysort g: egen long ordered_min = min(x)
+(2 missing values generated)
+
+. sort obs
+
+. describe
+
+Contains data
+ Observations:             9
+    Variables:            25
+-------------------------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+obs             byte    %8.0g
+g               byte    %8.0g
+x               double  %10.0g
+y               double  %10.0g
+selected        byte    %8.0g
+s               str4    %9s
+mean_x          double  %10.0g
+min_x           double  %10.0g
+max_x           double  %10.0g
+total_x         double  %10.0g
+total_missing   double  %10.0g
+row_max         double  %10.0g
+row_total       double  %10.0g
+row_total_mis~g double  %10.0g
+selected_total  double  %10.0g
+observed        double  %10.0g
+any_observed    byte    %8.0g
+group_id        float   %9.0g                 group(g s)
+group_missing   float   %9.0g                 group(g s)
+tag             byte    %8.0g                 tag(g s)
+tag_missing     byte    %8.0g                 tag(g s)
+tag_selected    byte    %8.0g                 tag(g s)
+group_label     byte    %8.0g      group_codes
+                                              group(g s)
+rounded_total   float   %9.0g
+ordered_min     long    %12.0g
+-------------------------------------------------------------------------------
+Sorted by: obs
+     Note: Dataset has changed since last saved.
+
+. label list group_codes
+group_codes:
+           1 1 a
+           2 2 a
+           3 2 b
+           4 3 é
+
+. notes group_label
+
+. format x y mean_x min_x max_x total_x total_missing row_max row_total row_tot
+> al_missing selected_total rounded_total %24.17g
+
+. export delimited using r-package/dtatools/inst/extdata/egen_stata18.csv, repl
+> ace datafmt nolabel
+file r-package/dtatools/inst/extdata/egen_stata18.csv saved
+
+. clear
+
+. input double number str12 text byte category
+
+         number          text  category
+  1. 1.23456789 "éclair" 1
+  2. 123456789 "東京abc" 2
+  3. -0.0000123456789 "🙂hello" 3
+  4. end
+
+. label define category_labels 1 "élève" 2 "東京語" 3 "🙂🙂abc"
+
+. label values category category_labels
+
+. egen code = group(number text category), label lname(unicode_codes) truncate(
+> 3)
+
+. decode code, gen(label_text)
+
+. label list unicode_codes
+unicode_codes:
+           1 -.0000123 🙂h 🙂
+           2 1.234568 écl élè
+           3 123456789 東 東
+
+. notes code
+
+. format number %24.17g
+
+. export delimited using r-package/dtatools/inst/extdata/egen_labels_stata18.cs
+> v, replace datafmt nolabel
+file r-package/dtatools/inst/extdata/egen_labels_stata18.csv saved
+
+. clear
+
+. input byte case double a double b double c
+
+         case           a           b           c
+  1. 1 1e16 1 -1e16
+  2. 2 1e16 -1e16 1
+  3. 3 1 1e16 -1e16
+  4. 4 -1e16 1 1e16
+  5. 5 1e20 1000 -1e20
+  6. 6 1e-20 1 -1
+  7. 7 1 1e-20 -1
+  8. 8 1e16 3 -1e16
+  9. end
+
+. egen double row_total = rowtotal(a b c)
+
+. rename (a b c) (x1 x2 x3)
+
+. reshape long x, i(case) j(position)
+(j = 1 2 3)
+
+Data                               Wide   ->   Long
+-----------------------------------------------------------------------------
+Number of observations                8   ->   24
+Number of variables                   5   ->   4
+j variable (3 values)                     ->   position
+xij variables:
+                               x1 x2 x3   ->   x
+-----------------------------------------------------------------------------
+
+. egen double total = total(x), by(case)
+
+. egen double mean = mean(x), by(case)
+
+. sort case position
+
+. format x row_total total mean %26.17e
+
+. export delimited using r-package/dtatools/inst/extdata/egen_precision_stata18
+> .csv, replace datafmt nolabel
+file r-package/dtatools/inst/extdata/egen_precision_stata18.csv saved
+
+. clear
+
+. input double number
+
+         number
+  1. 1e20
+  2. -1e20
+  3. 12345678901234568
+  4. 123456789012345680
+  5. 1234567890123456800
+  6. 1e-8
+  7. 1e-20
+  8. 1.234567890123456
+  9. -1.234567890123456
+ 10. 0.9999999999
+ 11. 1e21
+ 12. -1e21
+ 13. 1e-7
+ 14. 1e-6
+ 15. -1e-8
+ 16. 1234560.1
+ 17. 12345678.9
+ 18. 9999999.9
+ 19. 999999.99
+ 20. 99999999999999
+ 21. 999999999999999
+ 22. 9999999999999999
+ 23. 1.0000000001
+ 24. 0.00000099999999
+ 25. 1e14
+ 26. 1e15
+ 27. -1e15
+ 28. 123456789012345
+ 29. 1234567890123456
+ 30. -123456789012345
+ 31. -1234567890123456
+ 32. 9.9e-8
+ 33. 1234567.8
+ 34. 12345678.1
+ 35. -1234560.1
+ 36. -1234567.8
+ 37. -12345678.1
+ 38. 0.00001
+ 39. 0.0001
+ 40. 0.00000123456789
+ 41. 0.0000123456789
+ 42. 0.000009999999
+ 43. -0.000009999999
+ 44. -0.00001
+ 45. -0.0001
+ 46. 1e100
+ 47. -1e100
+ 48. 1e300
+ 49. -1e300
+ 50. 1e-100
+ 51. -1e-100
+ 52. 1e-300
+ 53. -1e-300
+ 54. end
+
+. egen code = group(number), label lname(precision_codes)
+
+. decode code, gen(label_text)
+
+. label list precision_codes
+precision_codes:
+           1 -1.0000000000e+300
+           2 -1.0000000000e+100
+           3 -1.00000000000e+21
+           4 -1.00000000000e+20
+           5 -1234567890123456
+           6 -1000000000000000
+           7 -123456789012345
+           8 -1.23e+07
+           9 -1234568
+          10 -1234560
+          11 -1.234568
+          12 -.0001
+          13 -.00001
+          14 -1.00e-05
+          15 -1.00e-08
+          16 -1.0e-100
+          17 -1.0e-300
+          18 1.0e-300
+          19 1.0e-100
+          20 1.00e-20
+          21 1.00e-08
+          22 9.90e-08
+          23 1.00e-07
+          24 1.00e-06
+          25 1.00e-06
+          26 1.23e-06
+          27 1.00e-05
+          28 .00001
+          29 .0000123
+          30 .0001
+          31 1
+          32 1
+          33 1.234568
+          34 1000000
+          35 1234560
+          36 1234568
+          37 1.00e+07
+          38 1.23e+07
+          39 1.23e+07
+          40 99999999999999
+          41 100000000000000
+          42 123456789012345
+          43 999999999999999
+          44 1000000000000000
+          45 1234567890123456
+          46 1.00000000000e+16
+          47 1.23456789012e+16
+          48 1.23456789012e+17
+          49 1.23456789012e+18
+          50 1.00000000000e+20
+          51 1.00000000000e+21
+          52 1.0000000000e+100
+          53 1.0000000000e+300
+
+. format number %26.17e
+
+. export delimited using r-package/dtatools/inst/extdata/egen_number_labels_sta
+> ta18.csv, replace datafmt nolabel
+file r-package/dtatools/inst/extdata/egen_number_labels_stata18.csv saved
+
+. save r-package/dtatools/inst/extdata/egen_number_labels_stata18.dta, replace
+file r-package/dtatools/inst/extdata/egen_number_labels_stata18.dta saved
+
+. clear
+
+. set obs 1
+Number of observations (_N) was 0, now 1.
+
+. gen 東京東京東京東京東京東京東京東 = 1
+
+. gen 京都京都京都京都京都京都京都京 = 1
+
+. gen 大阪大阪大阪大阪大阪大阪阪大 = 1
+
+. egen group_unicode = group(東京東京東京東京東京東京東京東 京都京都京都京都京
+> 都京都京都京 大阪大阪大阪大阪大阪大阪阪大)
+
+. egen tag_unicode = tag(東京東京東京東京東京東京東京東 京都京都京都京都京都京
+> 都京都京 大阪大阪大阪大阪大阪大阪阪大)
+
+. describe group_unicode tag_unicode
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+group_unicode   float   %9.0g               * see notes
+tag_unicode     byte    %8.0g               *
+                                                tag(東京東京東京東京東京東京東
+                                                > 京東
+                                                京都京都京都京都京都京都京都京
+                                                大阪大阪大阪大阪大阪大阪阪大)
+
+. notes group_unicode
+
+group_unicode:
+  1.  group(東京東京東京東京東京東京東京東 京都京都京都京都京都京都京都京
+      大阪大阪大阪大阪大阪大阪阪大)
+
+. notes tag_unicode
+
+tag_unicode:
+  1.  tag(東京東京東京東京東京東京東京東 京都京都京都京都京都京都京都京
+      大阪大阪大阪大阪大阪大阪阪大)
+
+. gen 東京東京東京東京東京東京東京東京東京東京東京東京東京 = 1
+
+. egen tag_byte_width = tag(東京東京東京東京東京東京東京東京東京東京東京東京東
+> 京)
+
+. gen aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = 1
+
+. gen bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb = 1
+
+. gen ccccccccccccccccccccccccccccccc = 1
+
+. egen tag_ascii_long = tag(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbb
+> bbbbbbbbbbbb ccccccccccccccccccccccccccccccc)
+note: label truncated to 80 characters
+
+. describe tag_byte_width tag_ascii_long
+
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+-------------------------------------------------------------------------------
+tag_byte_width  byte    %8.0g               *
+                                                tag(東京東京東京東京東京東京東
+                                                > 京東京東京東京東京東京東京)
+tag_ascii_long  byte    %8.0g               *
+                                                tag(aaaaaaaaaaaaaaaaaaaaaaaaaaa
+                                                > aaaa
+                                                bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+                                                cccccccccccc
+
+. notes tag_byte_width
+
+tag_byte_width:
+  1.  tag(東京東京東京東京東京東京東京東京東京東京東京東京東京)
+
+. notes tag_ascii_long
+
+tag_ascii_long:
+  1.  tag(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      ccccccccccccccccccccccccccccccc)
+
+. save r-package/dtatools/inst/extdata/egen_unicode_names_stata18.dta, replace
+file r-package/dtatools/inst/extdata/egen_unicode_names_stata18.dta saved
+
+. log close
+      name:  <unnamed>
+       log:  /Users/jmb/repos/dta-parser/conformance/stata/egen/egen.log
+  log type:  text
+ closed on:   5 Sep 2026, 05:55:17
+-------------------------------------------------------------------------------

@@ -23,11 +23,27 @@ Stata commands print a report — how many missing values `generate` produced, h
 
 Stata commands modify the dataset in memory. dtatools splits this: `gen()`, `repl()`, `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`, `reorder_dta_rows()`, and `:=` modify the dataset by reference, as Stata does, while the notes, characteristics, and metadata setters called in functional form return a changed copy. Called in replacement form on a dibble — `var_label(data$x) <- "Age"` — the metadata setters are by reference again. See [mutation by reference](./r-mutation-by-reference.md).
 
+## Egen calculations
+
+`dta_mean()`, `dta_max()`, and the other migrated calculation functions are
+ordinary R functions, available in `gen()`, `egen()`, and dibble `:=`.
+The [egen guide](./r-egen.md) compares all eight forms. A filtered `egen()`
+calculates over the selected sample; `gen()` and `:=` calculate over the full
+group unless their function arguments explicitly filter the inputs.
+
+`egen()` evaluates each value expression once per admitted group instead of
+repeating expression evaluation inside a Stata ado. Errors leave the dataset
+unchanged, including a requested `bysort` permutation. Explicit integer
+storage too small for the result is an error rather than a missing-code cast.
+All-missing row maxima become system missing; the checked Stata 18 ado can
+retain the last input's missing tag. Group labels follow the per-variable
+mapping model below, without a live shared-table replacement operation.
+
 ## Storage types
 
 `?"stata-storage-defaults"` states the full mapping, and [containers](./r-containers.md#what-column-type-results) tabulates it. Three of its rules diverge from Stata.
 
-**`generate`'s default reaches only `gen()` and `:=`.** A bare double result from `gen(data, y = x * 2)` is stored as `float`, exactly as Stata's `generate` would, and `options(dtatools.generate_type = "double")` is the equivalent of `set type double`. But `dplyr::mutate()`, `transform()`, `within()`, and the replacement operators are R operations on a container, not translations of a Stata command, and they follow R's types: the same expression takes `float` through `gen()` and `double` through `mutate()`. Making `gen()` alone follow `generate` is what lets a translated Stata script keep the storage the original produced without restating `dta_float()` on every line; making the R verbs follow R types is what keeps `mutate()` from silently narrowing an R pipeline's doubles. See [ADR 0022](./adr/0022-give-gen-statas-generate-default.md).
+**Generation defaults apply at command assignment.** A bare double result from `gen(data, y = x * 2)` is stored as `float`, exactly as Stata's `generate` would, and `options(dtatools.generate_type = "double")` is the equivalent of Stata's `set type double`. New `:=` columns and untyped `egen()` results use the same default. `dplyr::mutate()`, `transform()`, `within()`, and the replacement operators follow R's types: the same expression takes `float` through `gen()` and `double` through `mutate()`. Standalone numeric calculation helpers retain double precision until assignment. See [ADR 0022](./adr/0022-give-gen-statas-generate-default.md) and [ADR 0027](./adr/0027-compose-egen-with-value-functions.md).
 
 **Bare integer results are `long`, not `float`.** Stata's untyped `generate` produces `float` whatever the expression. An R integer vector comes from R rather than from a translated Stata line, and `float` cannot represent integers above 2^24, so `gen(data, y = 1L:n())` stores `long`.
 

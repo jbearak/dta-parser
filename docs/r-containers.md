@@ -18,6 +18,7 @@ Choose a reader's container with `output = ` on the call, or session-wide with `
 | Operation | dibble | tibble | data.frame | data.table |
 | --- | --- | --- | --- | --- |
 | `gen(data, y = v)` | Reference | Reference; stays a tibble with existing columns unchanged | Reference; stays a base data frame with existing columns unchanged | Reference; installs a physical column |
+| `egen(data, y = dta_mean(x))` | Reference | Reference; stays a tibble | Reference; stays a base data frame | Reference; installs a physical column |
 | `repl(data, y = v, where = )` | Reference | Reference | Reference | Reference; invalidates keys and indexes on the changed column only |
 | `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()` | Reference | Reference | Reference | Reference |
 | `reorder_dta_rows(data, perm)` | Reference | Reference | Reference | Reference; drops the `sorted` marker and secondary indexes |
@@ -41,7 +42,7 @@ Grouping works the same way everywhere: `by = ` groups in current row order, `by
 
 Only a **dibble** types its columns. Every operation that adds or changes a column on a dibble gives a bare R vector a Stata storage type; the other three containers leave the value's own type alone, so a Stata storage type appears there only when the value already carried one — from a `dta_*()` constructor, from a reader, or from arithmetic on a column that had one.
 
-| Value produced by the expression | `gen()` and a new `:=` column | `mutate()`, `transform()`, `$<-` on a dibble | tibble, data.frame, data.table |
+| Value produced by the expression | `gen()`, `egen()`, and a new `:=` column | `mutate()`, `transform()`, `$<-` on a dibble | tibble, data.frame, data.table |
 | --- | --- | --- | --- |
 | Bare double | `float` — Stata's `generate` default; `double` under `options(dtatools.generate_type = "double")` | `double` | Bare double |
 | Bare integer | `long` | `long` | Bare integer |

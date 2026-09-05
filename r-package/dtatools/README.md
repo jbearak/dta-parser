@@ -23,6 +23,9 @@ missing values. Numeric columns also retain their declared Stata storage type.
 | `datasig()` | Order-sensitive content signature of a data frame or a `.dta` or `.arrow` file, for verifying that source data has not changed. |
 | `recode()` | Change selected values while keeping unmatched system and extended missing codes. |
 | `gen()` | Append a variable by reference from a data-mask expression or formula, optionally for selected rows. |
+| `egen()` | Generate a column by reference from a selected calculation sample, with optional grouping. |
+| `dta_mean()`, `dta_min()`, `dta_max()`, `dta_total()` | Calculate Stata summaries as ordinary functions usable in `gen()`, `egen()`, or `:=`. |
+| `dta_row_max()`, `dta_row_total()`, `dta_group_id()`, `dta_group_tag()` | Calculate across columns, assign sorted group codes, or mark each group's first row. |
 | `replace_values()`, `repl()` | Replace selected values by reference without widening declared Stata storage. |
 | `keep_vars()`, `drop_vars()` | Keep or drop variables by reference, including variables created by `gen()`. |
 | `order_vars()`, `rename_vars()` | Move variables to the front, or rename them, by reference, as Stata's `order` and `rename` do. |
@@ -97,6 +100,11 @@ by reference means and how it changes a workflow.
 [Containers](../../docs/r-containers.md) tabulates what `gen()`, `repl()`,
 `:=`, `mutate()`, and the replacement operators do on a dibble, tibble, data
 frame, and data table, and the column types each produces.
+
+The [egen guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-egen.md)
+compares `gen()`, `egen()`, and `:=` for all eight calculations. All three
+can use the same value functions; `egen()` differs by calculating over the
+selected sample when a row filter is supplied.
 
 `order_vars()` and `rename_vars()` mutate by reference too, as Stata's `order`
 and `rename` do: `order_vars()` moves the selected columns to the front and

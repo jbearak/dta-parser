@@ -4,6 +4,8 @@ OBJECTS = init.o
 
 $(SHLIB): $(RUST_LIB)
 
+init.o: egen-values.h egen-groups.h
+
 $(RUST_LIB):
 	CARGO_TARGET_DIR=$(RUST_TARGET_DIR) cargo build --manifest-path $(RUST_MANIFEST) --config rust/cargo-config.toml $(RUST_BUILD_TARGET) --release --locked --offline
 

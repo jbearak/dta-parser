@@ -43,7 +43,11 @@
 #' reaches a bare double: a literal, `NA_real_`, or the result of a base
 #' function that drops the class. Bare integer results stay `long`, since
 #' an R integer comes from R rather than from a Stata line and `float`
-#' cannot hold one above 2^24. Every other entry point, including
+#' cannot hold one above 2^24.
+#'
+#' [egen()] uses this same generation default for its untyped numeric
+#' calculation results. Byte tags, autotyped group identifiers, and explicit
+#' storage declarations take precedence. Every other entry point, including
 #' [dplyr::mutate()] and the replacement operators, is an R operation on
 #' the container and uses the mapping above, so the same expression can
 #' take `float` through `gen()` and `double` through `mutate()`.
