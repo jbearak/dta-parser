@@ -78,7 +78,7 @@
 #' double, not exact decimal arithmetic. R's 0.1 is already a binary
 #' approximation. Stata also keeps `float` on range overflow, turning
 #' 1e40 into missing, while dtatools promotes to `double`.
-#' See [replace_values()] for the policy table and examples, and the
+#' See \code{\link[=replace_values]{replace_values()}} for the policy table and examples, and the
 #' [intentional differences guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md#numeric-replacement)
 #' for Stata probes and identifier migration guidance. A value
 #' that already carries storage, from a `dta_*()` call or Stata-typed
