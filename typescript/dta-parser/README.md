@@ -90,7 +90,7 @@ descriptors cannot redirect later file reads. `DtaFile` resolves selected
 `strL` values and validates their object references. Numeric `note*` keys and
 Stata's `_lang_list` and `_lang_c` language-control keys are reserved.
 
-Automatic text decoding uses Windows-1252 for pre-Unicode files and UTF-8 for Unicode files. Callers can override it with UTF-8, Windows-1252, or ISO-8859-1. See the repository's [compatibility contract](https://github.com/jbearak/dta-tools/blob/main/docs/compatibility.md) for exact releases and language differences.
+Automatic text decoding uses Windows-1252 for pre-Unicode files and UTF-8 for Unicode files. Callers can override it with UTF-8, Windows-1252, or ISO-8859-1. See the repository's [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact releases and language differences.
 
 ## Main exports
 
@@ -152,7 +152,7 @@ options accept `chunk_rows`, which bounds decoded output between cancellation
 checks; one compressed buffer decode remains synchronous.
 
 See the repository's
-[Arrow compatibility contract](https://github.com/jbearak/dta-tools/blob/main/docs/compatibility.md#arrow-read-compatibility)
+[Arrow compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md#arrow-read-compatibility)
 for supported types, profile versions, validation, and compression coverage.
 The readers do not write files. Zstandard decoding includes MIT-licensed code
 derived from [fzstd](https://github.com/101arrowz/fzstd); its license is retained
@@ -160,9 +160,9 @@ in the distributed bundles.
 
 ## Project links
 
-- [Repository](https://github.com/jbearak/dta-tools)
-- [Contributing](https://github.com/jbearak/dta-tools/blob/main/CONTRIBUTING.md)
-- [Benchmarks](https://github.com/jbearak/dta-tools/tree/main/benchmarks)
+- [Repository](https://github.com/jbearak/dta-parser)
+- [Contributing](https://github.com/jbearak/dta-parser/blob/main/CONTRIBUTING.md)
+- [Benchmarks](https://github.com/jbearak/dta-parser/tree/main/benchmarks)
 
 ## License
 
