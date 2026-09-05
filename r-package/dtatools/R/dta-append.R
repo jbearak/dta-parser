@@ -105,7 +105,11 @@ dta_append <- function(sources, force = TRUE,
         if (!is.null(attr(column, "labels", exact = TRUE)) &&
             is.null(attr(column, "value.label.name", exact = TRUE))) {
             column <- .metadata_copy(column)
-            attr(column, "value.label.name") <- source_names[[index]]
+            attr(column, "value.label.name") <- if (nzchar(source_names[[index]])) {
+                source_names[[index]]
+            } else {
+                repaired_names[[index]]
+            }
             filled$columns[[index]] <- column
         }
     }

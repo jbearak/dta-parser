@@ -369,3 +369,24 @@ test_that("clearing a replaced data-table key preserves unrelated indexes", {
         expect_identical(as.integer(data[z == 1L]$x), as.integer(replacement))
     }
 })
+
+
+test_that("strict zero-row replacement preserves data-table lookup state", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    for (typed in c(FALSE, TRUE)) {
+        data <- data.table::data.table(
+            x = if (typed) dta_byte(1:3) else 1:3, z = c(3L, 1L, 2L)
+        )
+        data.table::setkeyv(data, "x")
+        data.table::setindexv(data, "z")
+        alias <- data
+        for (selected in list(FALSE, integer())) {
+            repl(data, x = 5L, where = selected, promote = FALSE)
+            expect_identical(data.table::key(data), "x")
+            expect_identical(data.table::indices(data), "z")
+            expect_identical(data.table::key(alias), "x")
+            expect_identical(as.integer(data$x), 1:3)
+        }
+    }
+})

@@ -675,3 +675,21 @@ test_that("append name repair preserves implicit label-table identity", {
     expect_null(attr(unchanged$v, "value.label.name"))
     expect_null(attr(source$v, "value.label.name"))
 })
+
+
+test_that("append gives blank implicit label names a stable repaired identity", {
+    value <- dta_byte(1:2)
+    val_labels(value) <- c(one = 1, two = 2)
+    source <- vctrs::new_data_frame(stats::setNames(list(value), ""))
+    for (output in c("dibble", "tibble", "data.table")) {
+        if (output == "data.table") skip_if_not_installed("data.table")
+        result <- suppressMessages(dta_append(source, output = output))
+        table_name <- names(result)[[1L]]
+        expect_identical(attr(result[[1L]], "value.label.name"), table_name)
+        repeated <- dta_append(result, output = output,
+            .name_repair = function(names) paste0("renamed_", names))
+        expect_identical(attr(repeated[[1L]], "value.label.name"), table_name)
+        expect_identical(val_labels(repeated[[1L]]), c(one = 1, two = 2))
+    }
+    expect_null(attr(source[[1L]], "value.label.name"))
+})

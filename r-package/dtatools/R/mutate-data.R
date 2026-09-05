@@ -1925,7 +1925,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             as.integer(.native_data_column_location(access, target$location)),
             column, rows, replacement
         )
-        column <- if (.ordinary_data_table(data)) {
+        # The native patcher still validates strict scalar replacements for
+        # an empty selection; do not invalidate lookup state without a write.
+        column <- if (.ordinary_data_table(data) &&
+                      .mutation_selected_count(rows, original$nrow) > 0L) {
             .data_table_replace_commit(data, target$name, patch)
         } else {
             patch()
