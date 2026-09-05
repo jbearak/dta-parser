@@ -31,4 +31,11 @@ metadata.
 \code{rows} follows \code{\link[vctrs:vec_as_location]{vctrs::vec_as_location()}} semantics. Positive, negative,
 logical, and character locations are supported, as are repeated and missing
 locations. Character locations match row names.
+
+For a dibble with at least ten rows, \code{slice_dta_rows(survey, 1:10)} and
+\code{survey[1:10, ]} both return the first ten rows with all columns, preserving
+Stata metadata and leaving \code{survey} unchanged. Brackets use ordinary tibble
+subsetting; \code{slice_dta_rows()} batches compact Stata numeric columns in native
+code to reduce per-column overhead. Use brackets for everyday subsetting;
+consider \code{slice_dta_rows()} when slicing wide Stata datasets.
 }

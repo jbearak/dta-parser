@@ -11,6 +11,13 @@
 #' logical, and character locations are supported, as are repeated and missing
 #' locations. Character locations match row names.
 #'
+#' For a dibble with at least ten rows, `slice_dta_rows(survey, 1:10)` and
+#' `survey[1:10, ]` both return the first ten rows with all columns, preserving
+#' Stata metadata and leaving `survey` unchanged. Brackets use ordinary tibble
+#' subsetting; `slice_dta_rows()` batches compact Stata numeric columns in native
+#' code to reduce per-column overhead. Use brackets for everyday subsetting;
+#' consider `slice_dta_rows()` when slicing wide Stata datasets.
+#'
 #' @param data An ordinary base data frame, tibble, data.table, or
 #'   [dibble][dibble()]. Other data-frame subclasses are not supported.
 #' @param rows A row subscript accepted by [vctrs::vec_as_location()].
