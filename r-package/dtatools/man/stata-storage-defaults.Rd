@@ -52,8 +52,10 @@ an R integer comes from R rather than from a Stata line and \code{float}
 cannot hold one above 2^24.
 
 \code{\link[=egen]{egen()}} uses this same generation default for its untyped numeric
-calculation results. Byte tags, autotyped group identifiers, and explicit
-storage declarations take precedence. Every other entry point, including
+calculation results. Autotyped group identifiers and explicit storage
+declarations take precedence over that default. For \code{\link[=dta_group_tag]{dta_group_tag()}},
+\code{egen()} always stores byte, even with an explicit constructor or \code{type}.
+Every other entry point, including
 \code{\link[dplyr:mutate]{dplyr::mutate()}} and the replacement operators, is an R operation on
 the container and uses the mapping above, so the same expression can
 take \code{float} through \code{gen()} and \code{double} through \code{mutate()}.

@@ -2,12 +2,13 @@
 egen_fixture <- function() {
     raw <- read.csv(fixture("egen_stata18.csv"), colClasses = "character",
         check.names = FALSE, na.strings = NULL, encoding = "UTF-8")
-    lapply(raw, function(x) {
-        if (identical(x, raw$s)) return(x)
+    stats::setNames(lapply(names(raw), function(name) {
+        x <- raw[[name]]
+        if (identical(name, "s")) return(x)
         out <- suppressWarnings(as.double(x))
         for (tag in letters) out[x == paste0(".", tag)] <- tagged_missing(tag)
         out
-    })
+    }), names(raw))
 }
 
 expect_egen_fixture_values <- function(actual, expected) {

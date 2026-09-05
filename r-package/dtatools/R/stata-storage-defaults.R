@@ -46,8 +46,10 @@
 #' cannot hold one above 2^24.
 #'
 #' [egen()] uses this same generation default for its untyped numeric
-#' calculation results. Byte tags, autotyped group identifiers, and explicit
-#' storage declarations take precedence. Every other entry point, including
+#' calculation results. Autotyped group identifiers and explicit storage
+#' declarations take precedence over that default. For [dta_group_tag()],
+#' `egen()` always stores byte, even with an explicit constructor or `type`.
+#' Every other entry point, including
 #' [dplyr::mutate()] and the replacement operators, is an R operation on
 #' the container and uses the mapping above, so the same expression can
 #' take `float` through `gen()` and `double` through `mutate()`.
