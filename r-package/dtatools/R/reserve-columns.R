@@ -129,7 +129,14 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
 }
 
 .return_mutation <- function(before, result, target, env) {
-    if (.same_mutation_object(before, result)) return(invisible(result))
+    .rebind_mutation(before, result, target, env)
+    invisible(result)
+}
+
+# Return the captured destination with its expected container advanced only
+# after a successful rebind. Bracket assignments reuse it for their next commit.
+.rebind_mutation <- function(before, result, target, env) {
+    if (.same_mutation_object(before, result)) return(target)
     if (is.symbol(target)) {
         current <- get0(as.character(target), envir = env, inherits = TRUE)
         if (.same_mutation_object(current, before)) {
@@ -149,7 +156,7 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
                           inherits = TRUE)
         if (!.same_mutation_object(container, target$original_container)) {
             warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
-            return(invisible(result))
+            return(target)
         }
         current <- if (target$head == "$") {
             do.call(`$`, list(container, target$key))
@@ -157,9 +164,13 @@ reserve_columns <- function(data, n = getOption("dtatools.alloccol", 5000L)) {
         if (.same_mutation_object(current, before)) {
             destination <- as.call(list(as.name(target$head), target$container, target$key))
             eval(as.call(list(quote(`<-`), destination, result)), envir = target$env)
+            target$original_container <- get0(
+                as.character(target$container), envir = target$env,
+                inherits = TRUE
+            )
         } else {
             warning("Mutation target changed during evaluation; assign the returned table.", call. = FALSE)
         }
     }
-    invisible(result)
+    target
 }

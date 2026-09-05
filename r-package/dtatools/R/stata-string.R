@@ -4,7 +4,8 @@
 #' declaration survives supported vector operations. Stata strings use `""`
 #' for missing values, so `NA_character_` is rejected here and in subset
 #' assignment; a vctrs coercion into a Stata string, as a join's padding or
-#' `vec_c()` performs, spells `NA` as `""`. Replacement within the vector
+#' `vec_c()` performs, spells `NA` as `""`. Subsetting and restoration also
+#' use `""` for missing or out-of-range padding. Replacement within the vector
 #' must fit the declared width, while extending it, as base `rbind()` does,
 #' widens the declaration to the common storage.
 #'
@@ -94,7 +95,9 @@ vec_proxy.stata_string <- function(x, ...) .stata_string_data(x)
 #' @export
 vec_restore.stata_string <- function(x, to, ...) {
     storage <- attr(to, "stata.string.storage", exact = TRUE)
-    .new_stata_string(as.character(x), storage, to)
+    value <- as.character(x)
+    if (!.is_unmaterialized_dictstring(value) && anyNA(value)) value[is.na(value)] <- ""
+    .new_stata_string(value, storage, to)
 }
 
 #' @export
@@ -102,6 +105,7 @@ vec_restore.stata_string <- function(x, to, ...) {
     if (length(list(...))) stop("Stata string vectors do not support array subscripts", call. = FALSE)
     data <- .stata_string_data(x)
     result <- if (missing(i)) data[] else data[i]
+    if (!.is_unmaterialized_dictstring(result) && anyNA(result)) result[is.na(result)] <- ""
     .new_stata_string(result, attr(x, "stata.string.storage", exact = TRUE), x)
 }
 

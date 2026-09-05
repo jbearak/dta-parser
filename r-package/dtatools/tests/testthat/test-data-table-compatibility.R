@@ -320,3 +320,73 @@ test_that("setDT() on a read result drops the stale reference state", {
     expect_identical(as.double(data$cluster), c(1, 2, 3))
     expect_true(dtatools:::.ordinary_data_table(data))
 })
+
+test_that("promotion invalidates affected data-table keys and indexes", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    keyed <- data.table::data.table(x = dta_byte(1:3), y = 11:13)
+    data.table::setkeyv(keyed, "x")
+    alias <- keyed
+    suppressMessages(repl(keyed, x = 1000, where = x == 1))
+    expect_null(data.table::key(keyed))
+    expect_null(data.table::key(alias))
+    expect_identical(keyed[list(1000), on = "x"]$y, 11L)
+    expect_identical(dta_storage_type(keyed$x), "int")
+
+    indexed <- data.table::data.table(
+        x = dta_byte(c(3, 1, 2)), y = 11:13, z = c(3, 1, 2)
+    )
+    data.table::setindexv(indexed, "x")
+    data.table::setindexv(indexed, "z")
+    suppressMessages(repl(indexed, x = 1000, where = x == 1))
+    expect_identical(data.table::indices(indexed), "z")
+    expect_identical(indexed[x == 1000]$y, 12L)
+    expect_identical(indexed[z == 1]$y, 12L)
+
+    strings <- data.table::data.table(x = dta_string(c("a", "b")), y = 1:2)
+    data.table::setkeyv(strings, "x")
+    suppressMessages(repl(strings, x = "wide", where = 1L))
+    expect_null(data.table::key(strings))
+    expect_identical(strings[list("wide"), on = "x"]$y, 1L)
+})
+
+test_that("clearing a replaced data-table key preserves unrelated indexes", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    for (replacement in c(5, 1000)) {
+        data <- data.table::data.table(x = dta_byte(1:3), z = c(3L, 1L, 2L))
+        data.table::setkeyv(data, "x")
+        data.table::setindexv(data, "z")
+        suppressMessages(repl(data, x = replacement, where = 1L))
+        expect_null(data.table::key(data))
+        expect_identical(data.table::indices(data), "z")
+        expect_identical(as.integer(data[z == 3L]$x), as.integer(replacement))
+        data.table::setkeyv(data, "x")
+        data.table::setindexv(data, "z")
+        suppressMessages(repl(data, x = replacement, where = x == 2))
+        expect_null(data.table::key(data))
+        expect_identical(data.table::indices(data), "z")
+        expect_identical(as.integer(data[z == 1L]$x), as.integer(replacement))
+    }
+})
+
+
+test_that("strict zero-row replacement preserves data-table lookup state", {
+    skip_if_not_installed("data.table")
+    .datatable.aware <- TRUE
+    for (typed in c(FALSE, TRUE)) {
+        data <- data.table::data.table(
+            x = if (typed) dta_byte(1:3) else 1:3, z = c(3L, 1L, 2L)
+        )
+        data.table::setkeyv(data, "x")
+        data.table::setindexv(data, "z")
+        alias <- data
+        for (selected in list(FALSE, integer())) {
+            repl(data, x = 5L, where = selected, promote = FALSE)
+            expect_identical(data.table::key(data), "x")
+            expect_identical(data.table::indices(data), "z")
+            expect_identical(data.table::key(alias), "x")
+            expect_identical(as.integer(data$x), 1:3)
+        }
+    }
+})

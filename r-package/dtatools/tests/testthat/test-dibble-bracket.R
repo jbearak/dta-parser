@@ -312,3 +312,53 @@ test_that("the autoprint skip does not outlive its top-level statement", {
         )
     }
 })
+
+test_that("each bracket assignment rebinds before the next expression", {
+    withr::local_options(dtatools.alloccol = 0L)
+    targets <- list(quote(data), quote(box$data), quote(box[[index]]),
+                    quote(get("data")), quote(get0("data")))
+    for (target in targets) {
+        data <- dibble(x = 1:2)
+        alias <- data
+        box <- list(data = data, other = dibble(other = 3:4))
+        index <- "data"
+        # Read the original destination from the next RHS, not the data mask.
+        observe <- function() length(names(eval(target)))
+        call <- substitute(TARGET[, `:=`(y = 1L, z = observe(), bad = stop("boom"))],
+                           list(TARGET = target))
+        expect_error(suppressWarnings(eval(call)), "boom")
+        result <- eval(target)
+        expect_identical(names(result), c("x", "y", "z"))
+        expect_identical(as.integer(result$z), rep(2L, 2))
+        expect_identical(names(alias), "x")
+        expect_identical(as.integer(alias$x), 1:2)
+        expect_identical(length(unclass(result)), 3L)
+    }
+})
+
+test_that("bracket rebinding keeps its captured destination across assignments", {
+    withr::local_options(dtatools.alloccol = 0L)
+    box <- list(data = dibble(x = 1:2), other = dibble(other = 3:4))
+    index <- "data"
+    values <- function() { index <<- "other"; 1L }
+    suppressWarnings(box[[index]][, `:=`(y = values(), z = y + 1L)])
+    expect_identical(names(box$data), c("x", "y", "z"))
+    expect_identical(names(box$other), "other")
+    expect_identical(as.integer(box$data$z), c(2L, 2L))
+
+    original <- box$data <- dibble(x = 1:2)
+    replacement <- list(data = original, sibling = 99L)
+    change <- function() { box <<- replacement; 1L }
+    warnings <- character()
+    result <- withCallingHandlers(
+        box$data[, `:=`(y = change(), z = y + 1L)],
+        warning = function(w) {
+            warnings <<- c(warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+        }
+    )
+    expect_true(any(grepl("target changed", warnings)))
+    expect_identical(box, replacement)
+    expect_identical(names(box$data), "x")
+    expect_identical(names(result), c("x", "y", "z"))
+})

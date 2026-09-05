@@ -1514,7 +1514,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
 # `selected` is a `.grouped_selection()` result; when given, `where` is
 # not evaluated again.
 .grouped_mutation <- function(where, values, columns, groups, row_count,
-                              selected = NULL) {
+                              selected = NULL, drop_unselected = FALSE) {
     view <- .mutation_group_view(columns)
     count <- length(groups$rows)
     row_pieces <- vector("list", count)
@@ -1551,6 +1551,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
         } else {
             positions <- as.integer(group_rows)
         }
+        if (drop_unselected && length(positions) == 0L) {
+            kept[[index]] <- FALSE
+            next
+        }
         piece <- switch(mode,
             scalar = vctrs::vec_recycle(evaluated, length(positions)),
             row = vctrs::vec_slice(evaluated, positions),
@@ -1565,6 +1569,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     # nothing. A dataset with rows always has at least one nonempty group.
     row_pieces <- row_pieces[kept]
     value_pieces <- value_pieces[kept]
+    if (!length(value_pieces)) return(list(rows = integer(), values = NULL))
     all_rows <- unlist(row_pieces, use.names = FALSE)
     gathered <- .mutation_gather_values(value_pieces)
     if (anyDuplicated(all_rows) > 0L) {
@@ -1792,7 +1797,7 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     if (!is.null(groups)) {
         gathered <- .grouped_mutation(
             where, values, original$columns, groups, original$nrow,
-            selected = selection$group_rows
+            selected = selection$group_rows, drop_unselected = !generate
         )
         selected <- gathered$rows
         evaluated <- gathered$values
@@ -1892,13 +1897,26 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             if (report_promotion) {
                 .report_storage_promotion(target$name, column, promoted)
             }
-            .set_data_column_at(access, target$location, promoted)
+            commit <- function() {
+                .set_data_column_at(access, target$location, promoted)
+            }
+            if (.ordinary_data_table(data)) {
+                .data_table_replace_commit(data, target$name, commit)
+            } else {
+                commit()
+            }
             if (grouped_input) .regroup_after_replacement(data, state)
             return(invisible(data))
         }
         replacement <- .cast_replacement(
             values, column, rows, value_mode
         )
+        # No selected group supplied a value. vctrs accepts NULL here, but
+        # the native patcher requires a vector even for an empty selection.
+        if (is.null(replacement) &&
+            .mutation_selected_count(rows, original$nrow) == 0L) {
+            return(invisible(data))
+        }
     }
 
     if (!generate) {
@@ -1907,7 +1925,10 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
             as.integer(.native_data_column_location(access, target$location)),
             column, rows, replacement
         )
-        column <- if (.ordinary_data_table(data)) {
+        # The native patcher still validates strict scalar replacements for
+        # an empty selection; do not invalidate lookup state without a write.
+        column <- if (.ordinary_data_table(data) &&
+                      .mutation_selected_count(rows, original$nrow) > 0L) {
             .data_table_replace_commit(data, target$name, patch)
         } else {
             patch()
@@ -1941,8 +1962,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     suspendInterrupts({
         result <- patch()
         if (is.null(result)) return(NULL)
-        if (target %in% key_columns) data.table::setkeyv(data, NULL)
-        if (any(affected_indexes)) {
+        key_changed <- target %in% key_columns
+        if (key_changed) data.table::setkeyv(data, NULL)
+        if (key_changed || any(affected_indexes)) {
             retained <- index_columns[!affected_indexes]
             data.table::setindexv(data, NULL)
             for (columns in retained) data.table::setindexv(data, columns)
@@ -1959,8 +1981,9 @@ gen <- function(data, ..., where = NULL, by = NULL, bysort = NULL) {
     )
     suspendInterrupts({
         result <- patch()
-        if (target %in% key_columns) data.table::setkeyv(data, NULL)
-        if (any(affected_indexes)) {
+        key_changed <- target %in% key_columns
+        if (key_changed) data.table::setkeyv(data, NULL)
+        if (key_changed || any(affected_indexes)) {
             retained <- index_columns[!affected_indexes]
             data.table::setindexv(data, NULL)
             for (columns in retained) data.table::setindexv(data, columns)
@@ -3193,12 +3216,14 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # The hook is a `(` call around each expression, evaluated in an
 # environment where `(` is the typer; `(` is the one call head R's
 # deparser does not show as a function, so `mutate(d, x + 1)` still names
-# its column `x + 1` once the parentheses are stripped, and dplyr's
-# "In argument" bullets are rewritten the same way. Symbols, `.data`
+# its column `x + 1` through the one-column frame below, and dplyr's
+# "In argument" bullets are relabelled. Existing-column symbols, `.data`
 # references, and `NULL` are left alone: they select or remove columns
-# rather than compute them. `across()`, `if_any()`, and `if_all()` are
-# left for dplyr to expand, and their columns are typed after the verb as
-# every other changed column is.
+# rather than compute them. Caller-backed symbols and `across()` results
+# are typed before later expressions use them. An unnamed vector is returned
+# as a one-column frame under its original expression name, so dplyr sees
+# collisions and overwrites during mask evaluation, before closing the result.
+# `if_any()` and `if_all()` return logicals and keep dplyr's expansion.
 .typed_mask_verb <- function(data, generic, dots, arguments, caller) {
     # The call is evaluated where `generic` names the dplyr function, so
     # dplyr reports errors as "Error in `mutate()`" rather than against
@@ -3218,7 +3243,6 @@ transmute.dtatools_ref_data <- function(.data, ...) {
     result <- .relabel_mask_conditions(
         eval(call, environment), wrapped$labels
     )
-    result <- .unwrap_mask_names(result, wrapped$renames)
     .close_dibble(
         data, .retype_changed_columns(result, before, caller), caller
     )
@@ -3227,13 +3251,13 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 .wrap_mask_expressions <- function(dots, before, caller) {
     names <- rlang::names2(dots)
     labels <- character()
-    renames <- character()
     for (index in seq_along(dots)) {
         quosure <- dots[[index]]
-        if (!.mask_expression_typable(quosure)) next
+        if (!.mask_expression_typable(quosure, before)) next
         name <- names[[index]]
         typer <- .mask_value_typer(
-            before, caller, if (nzchar(name)) name else NULL
+            before, caller, if (nzchar(name)) name else NULL,
+            .mask_expression_label(quosure)
         )
         environment <- new.env(parent = rlang::quo_get_env(quosure))
         environment[["("]] <- typer
@@ -3246,18 +3270,18 @@ transmute.dtatools_ref_data <- function(.data, ...) {
             labels[[paste0(name, " = ", outer)]] <- paste0(name, " = ", inner)
         } else {
             labels[[outer]] <- inner
-            renames[[outer]] <- inner
         }
         dots[[index]] <- wrapped
     }
-    list(dots = dots, labels = labels, renames = renames)
+    list(dots = dots, labels = labels)
 }
 
-.mask_expression_typable <- function(quosure) {
-    if (rlang::quo_is_missing(quosure) || rlang::quo_is_null(quosure) ||
-        rlang::quo_is_symbol(quosure)) {
+.mask_expression_typable <- function(quosure, before) {
+    if (rlang::quo_is_missing(quosure) || rlang::quo_is_null(quosure)) {
         return(FALSE)
     }
+    if (rlang::quo_is_symbol(quosure) &&
+        rlang::as_name(quosure) %in% names(before)) return(FALSE)
     expression <- rlang::quo_get_expr(quosure)
     if (!is.call(expression)) return(TRUE)
     if (rlang::is_call(expression, c("$", "[["), n = 2L) &&
@@ -3265,7 +3289,7 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         return(FALSE)
     }
     !rlang::is_call(
-        expression, c("across", "if_any", "if_all"), ns = c("", "dplyr")
+        expression, c("if_any", "if_all"), ns = c("", "dplyr")
     )
 }
 
@@ -3282,22 +3306,38 @@ transmute.dtatools_ref_data <- function(.data, ...) {
 # overwrites a column promotes from that column; an unnamed data frame
 # result is unpacked by dplyr, so each of its columns is typed against
 # the column of the same name.
-.mask_value_typer <- function(before, caller, name) {
+.mask_value_typer <- function(before, caller, name, label) {
+    force(name)
+    force(label)
     function(value) {
         if (is.null(value)) return(NULL)
+        # rlang's mask top holds the live column bindings, including earlier
+        # clauses. Read only the target; caller bindings must not supply it.
+        mask <- rlang::env_get(parent.frame(), ".top_env", default = NULL)
+        prior <- function(target) {
+            if (is.environment(mask)) {
+                rlang::env_get(mask, target, default = NULL)
+            } else {
+                before[[target]]
+            }
+        }
         if (is.data.frame(value)) {
             if (!is.null(name)) return(value)
             columns <- names(value)
             for (index in seq_along(columns)) {
                 value[[index]] <- .typed_mask_value(
-                    .subset2(value, index), before[[columns[[index]]]],
+                    .subset2(value, index), prior(columns[[index]]),
                     caller
                 )
             }
             return(value)
         }
-        .typed_mask_value(value, if (is.null(name)) NULL else before[[name]],
-                          caller)
+        target <- if (is.null(name)) label else name
+        result <- .typed_mask_value(value, prior(target), caller)
+        if (!is.null(name)) return(result)
+        vctrs::new_data_frame(
+            stats::setNames(list(result), target), n = vctrs::vec_size(result)
+        )
     }
 }
 
@@ -3317,14 +3357,28 @@ transmute.dtatools_ref_data <- function(.data, ...) {
         for (field in c("message", "body")) {
             text <- condition[[field]]
             if (!is.character(text)) next
-            for (index in seq_along(labels)) {
-                text <- gsub(
-                    paste0("`", names(labels)[[index]], "`"),
-                    paste0("`", labels[[index]], "`"),
-                    text, fixed = TRUE
-                )
-            }
-            condition[[field]] <- text
+            from <- paste0("In argument: `", names(labels), "`.")
+            to <- paste0("In argument: `", labels, "`.")
+            condition[[field]] <- vapply(text, function(message) {
+                if (is.na(message)) return(message)
+                # Warnings can arrive with their cause already rendered into
+                # the message. Rewrite only the generated annotation before
+                # that cause, never the user's warning text below it.
+                lines <- strsplit(paste0(message, "\n"), "\n", fixed = TRUE)[[1L]]
+                for (index in seq_along(lines)) {
+                    line <- lines[[index]]
+                    if (startsWith(line, "Caused by ")) break
+                    prefix <- if (startsWith(line, "\u2139 ")) "\u2139 " else
+                        if (startsWith(line, "i ")) "i " else ""
+                    annotation <- substring(line, nchar(prefix) + 1L)
+                    replacement <- match(annotation, from)
+                    if (!is.na(replacement)) {
+                        lines[[index]] <- paste0(prefix, to[[replacement]])
+                    }
+                }
+                paste(lines, collapse = "\n")
+            }, character(1), USE.NAMES = FALSE)
+            names(condition[[field]]) <- names(text)
         }
         condition
     }
@@ -3337,19 +3391,6 @@ transmute.dtatools_ref_data <- function(.data, ...) {
             invokeRestart("muffleWarning")
         }
     )
-}
-
-# An unnamed expression names its column `(x + 1)`; it becomes `x + 1`.
-.unwrap_mask_names <- function(result, renames) {
-    for (index in seq_along(renames)) {
-        outer <- names(renames)[[index]]
-        inner <- renames[[index]]
-        current <- names(result)
-        if (outer %in% current && !(inner %in% current)) {
-            result <- dplyr::rename(result, !!inner := !!outer)
-        }
-    }
-    result
 }
 
 .typed_reference_replacement <- function(data, result, caller) {

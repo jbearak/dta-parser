@@ -20,7 +20,8 @@ Creates an owned Stata string vector whose fixed-width or \code{strL} storage
 declaration survives supported vector operations. Stata strings use \code{""}
 for missing values, so \code{NA_character_} is rejected here and in subset
 assignment; a vctrs coercion into a Stata string, as a join's padding or
-\code{vec_c()} performs, spells \code{NA} as \code{""}. Replacement within the vector
+\code{vec_c()} performs, spells \code{NA} as \code{""}. Subsetting and restoration also
+use \code{""} for missing or out-of-range padding. Replacement within the vector
 must fit the declared width, while extending it, as base \code{rbind()} does,
 widens the declaration to the common storage.
 }

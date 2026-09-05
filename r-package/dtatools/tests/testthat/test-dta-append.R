@@ -647,3 +647,49 @@ test_that("a character source holding NA obeys force like the pieces path", {
         "incompatible storage"
     )
 })
+
+test_that("append name repair preserves implicit label-table identity", {
+    value <- dta_byte(1)
+    val_labels(value) <- c(one = 1)
+    shared <- value
+    attr(shared, "value.label.name") <- "v"
+    source <- tibble::tibble(v = value, w = shared)
+    for (output in c("dibble", "tibble", "data.table")) {
+        if (output == "data.table") skip_if_not_installed("data.table")
+        calls <- 0L
+        repair <- function(names) { calls <<- calls + 1L; toupper(names) }
+        result <- dta_append(source, output = output, .name_repair = repair)
+        expect_identical(calls, 1L)
+        expect_identical(names(result), c("V", "W"))
+        expect_identical(attr(result$V, "value.label.name"), "v")
+        expect_identical(attr(result$W, "value.label.name"), "v")
+        expect_identical(val_labels(result$V), c(one = 1))
+        path <- tempfile(fileext = ".dta")
+        save_dta(result, path)
+        restored <- read_dta(path)
+        expect_identical(attr(restored$V, "value.label.name"), "v")
+        expect_identical(attr(restored$W, "value.label.name"), "v")
+        unlink(path)
+    }
+    unchanged <- dta_append(source)
+    expect_null(attr(unchanged$v, "value.label.name"))
+    expect_null(attr(source$v, "value.label.name"))
+})
+
+
+test_that("append gives blank implicit label names a stable repaired identity", {
+    value <- dta_byte(1:2)
+    val_labels(value) <- c(one = 1, two = 2)
+    source <- vctrs::new_data_frame(stats::setNames(list(value), ""))
+    for (output in c("dibble", "tibble", "data.table")) {
+        if (output == "data.table") skip_if_not_installed("data.table")
+        result <- suppressMessages(dta_append(source, output = output))
+        table_name <- names(result)[[1L]]
+        expect_identical(attr(result[[1L]], "value.label.name"), table_name)
+        repeated <- dta_append(result, output = output,
+            .name_repair = function(names) paste0("renamed_", names))
+        expect_identical(attr(repeated[[1L]], "value.label.name"), table_name)
+        expect_identical(val_labels(repeated[[1L]]), c(one = 1, two = 2))
+    }
+    expect_null(attr(source[[1L]], "value.label.name"))
+})
