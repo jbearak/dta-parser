@@ -1,0 +1,38 @@
+# Explicit mutation epic, issues #178–#181
+
+The agreed design in the coordinating request supersedes the issue proposals and ADRs where they conflict. Baseline: `cb79170`, including PR #182, which already closed #178. A focused #178 follow-up PR completes metadata support under this epic's contract; it does not repeat that merged patch.
+
+## Order and acceptance
+
+1. **#178, explicit metadata mutation.** Complete note and characteristic helpers and provide an explicit by-reference setter for display formats and other supported metadata. Table setters operate on the supplied table, preserve capacity, and share one reference contract across supported table containers. They validate before mutation, protect structural/runtime attributes, and leave unrelated copies and source bookkeeping intact. Cover aliases, function calls, dataset/column scope, errors, and compact-column preservation. Preserve documented vector APIs. Document migration from nested attribute replacement. Include this plan in the PR.
+2. **#180, replacement and reference state.** Ordinary `$<-`, `[[<-`, `[<-`, names/dimnames/row-name replacement, and nested attribute replacement copy and rebind while preserving typing and validation. Explicit helpers and dibble `:=` mutate the supplied table. Remove write redirection through `state$object`; separate type identity from bookkeeping validity. Copies and serialized tables have an isolated, tested repair path. Cover both mutation directions between originals/copies, unchanged-column sharing, base attributes, stale state, serialization, and growth. Supersede ADR 0023 and update contradictory examples, including function-local replacements.
+3. **#179, capacity and repair.** Export inspectable capacity/readiness information. Establish a predictable preparation and growth policy that detects unsafe mutation before a partial commit and gives an actionable diagnostic. Assigned `reserve_columns()` repairs without changing another table's bookkeeping. Cover unprepared/full/copied/subset/serialized tables, function parameters, supported target expressions, alias separation, and complete physical columns. Document precisely when assignment is required; never restore proxy/overlay writes through an old object.
+4. **#181, supported containers.** Prefer dibble, tibble, base data frame, and ordinary data.table support when reliable under the same explicit mutation contract. Audit all exported mutators, reject unsupported inputs before mutation, preserve existing container/column classes, and require explicit assigned conversion if a container cannot be supported. Cover aliases, preparation, copying/subsetting, metadata helpers, grouping restrictions, data.table bookkeeping, and downstream fixture/function examples. Update ADR 0025 and the container guide.
+
+Metadata API availability precedes the replacement compatibility change. Reference-state ownership must be settled before capacity diagnostics can be reliable. The container audit uses those established semantics. Each PR starts from the latest merged `main` and passes independently.
+
+## Per-PR gates
+
+- Dedicated implementation agent in an isolated worktree and branch. That agent delegates two independent reviews: semantics/correctness and API/tests/docs/epic consistency.
+- Review the actual diff. Fix every actionable finding and have reviewers inspect fixes until clean; repeat this loop after external feedback changes code.
+- Run targeted regression tests, the full R build/check, generated-documentation and archive checks. Run conformance and interoperability checks for changed metadata/label/encoding behavior and native checks if their code changes. Record existing baseline warnings accurately.
+- Push and open a focused PR describing behavior, compatibility, and validation. Inspect CI, CodeRabbit summary, inline comments, and review threads on the latest pushed SHA. Wait for every required CI check and a completed CodeRabbit review covering that SHA. Resolve actionable feedback with fresh review. Absence of review is a blocker, never approval.
+- Use a normal protected PR merge, never a bypass. Confirm merge SHA and issue acceptance before proceeding from updated `main`. Existing #178 closure remains historical; its follow-up must satisfy the new acceptance criteria.
+
+## Integrated acceptance
+
+On merged `main`, rerun the package checks and an explicit matrix covering ordinary replacement alias isolation, function-local nested attributes, by-reference metadata and values, copied/shared bookkeeping in both directions, base serialization repair, capacity exhaustion, container preservation, and unsupported-input atomicity. Document PR/merge links and migration steps: use explicit metadata setters for caller mutation; return and assign ordinary replacement results; explicitly assign preparation/conversion and any operation documented to rebuild a table.
+
+## Repository gates observed
+
+No AGENTS.md applies in the repository or its ancestor directories. CONTRIBUTING.md and `.github/workflows/ci.yml` supply checks. The active main ruleset requires a PR and prohibits deletion/non-fast-forward updates; it requires zero approving GitHub reviews. The user's CI, CodeRabbit, and two-role local review gates remain mandatory regardless of that minimum.
+
+## Downstream acceptance
+
+The final merged SHA must run fertility_surveys branch `test/mics` R-backend
+tests after an isolated renv install, with its prior installation restored.
+Do not edit downstream source or its existing work. Inventory expected nested
+attribute migration failures separately; any new failure or column-reallocation
+warning is a regression to investigate. Report failing test names. The pinned
+0.7.1 baseline had 497 tests, four existing failures in
+test-integration-mics-output.R, two skips, and no reallocation warnings.

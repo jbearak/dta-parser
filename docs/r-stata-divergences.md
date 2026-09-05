@@ -24,7 +24,7 @@ R has no command prefixes, no `if`/`in` qualifiers, and no leading-underscore na
 
 Stata commands report how many missing values `generate` produced and how many real changes `replace` made. dtatools omits those counts; `repl()` reports storage promotion. They signal problems as R conditions instead: an error where Stata would refuse, a warning where a conversion loses information.
 
-Stata commands modify the dataset in memory. dtatools splits this: `gen()`, `repl()`, `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`, `reorder_dta_rows()`, and `:=` modify the dataset by reference, as Stata does, while the notes, characteristics, and metadata setters called in functional form return a changed copy. Called in replacement form on a dibble — `var_label(data$x) <- "Age"` — the metadata setters are by reference again. See [mutation by reference](./r-mutation-by-reference.md).
+Stata commands modify the dataset in memory. dtatools splits this: `gen()`, `repl()`, `keep_vars()`, `drop_vars()`, `order_vars()`, `rename_vars()`, `reorder_dta_rows()`, and `:=` modify the dataset by reference, as Stata does, and explicit metadata setters also edit every supported table by reference. Vector metadata setters return an assigned copy. Called in replacement form on a dibble — `var_label(data$x) <- "Age"` — the metadata setters are by reference again. See [mutation by reference](./r-mutation-by-reference.md).
 
 ## Egen calculations
 

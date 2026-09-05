@@ -95,9 +95,11 @@
 #' An imported nondefault or shared Stata table name may be carried separately
 #' in `attr(x, "value.label.name")`. The attribute is a serialization hint, not
 #' shared semantic state. Each vector's `labels` mapping is authoritative in R.
-#' Setters retain the hint while value labels remain and remove it when all
-#' value labels are removed. This interface does not provide a public way to
-#' create or edit named shared tables.
+#' Value-label setters retain the hint while value labels remain and remove
+#' it when the mapping is cleared. Use [set_dta_metadata()] to set the hint and
+#' raw mapping together. That helper preserves an explicitly named zero-length
+#' mapping and its hint as an empty table; clearing with `labels = NULL` removes
+#' both. This does not create a shared table registry.
 #'
 #' See the
 #' \href{https://github.com/jbearak/dta-parser/blob/main/docs/r-label-metadata.md}{R label metadata guide}
@@ -497,31 +499,33 @@ dataset_label <- function(data) {
 }
 
 .apply_variable_label_updates <- function(access, updates) {
-    locations <- match(names(updates), access$names)
+    data <- access$data
+    staged <- .metadata_table_snapshot(data)
+    locations <- match(names(updates), names(staged))
     for (index in seq_along(updates)) {
         location <- locations[[index]]
-        column <- .metadata_copy(.data_column_at(access, location))
+        column <- .metadata_copy(.subset2(staged, location))
         attr(column, "label") <- updates[[index]]
-        .set_data_column_at(access, location, column)
+        .Call(C_dtatools_set_data_column, staged, location, column)
     }
-    invisible(access$data)
+    .commit_metadata_table(data, staged, locations)
 }
 
 .apply_value_label_updates <- function(access, updates) {
-    locations <- match(names(updates), access$names)
+    data <- access$data
+    staged <- .metadata_table_snapshot(data)
+    locations <- match(names(updates), names(staged))
     for (index in seq_along(updates)) {
         location <- locations[[index]]
-        column <- .metadata_copy(.data_column_at(access, location))
+        column <- .metadata_copy(.subset2(staged, location))
         attr(column, "labels") <- updates[[index]]
         if (is.null(updates[[index]])) {
             attr(column, "value.label.name") <- NULL
         }
-        column <- .apply_haven_labelled_class(
-            column, !is.null(updates[[index]])
-        )
-        .set_data_column_at(access, location, column)
+        column <- .apply_haven_labelled_class(column, !is.null(updates[[index]]))
+        .Call(C_dtatools_set_data_column, staged, location, column)
     }
-    invisible(access$data)
+    .commit_metadata_table(data, staged, locations)
 }
 
 #' @rdname var_label

@@ -468,8 +468,11 @@ display formats, and resolved value-label mappings are retained as attributes. U
 column name as `variable` for variable scope. `dta_note()` and
 `dta_characteristic()` read one entry; `set_dta_note()`, `add_dta_note()`,
 `set_dta_characteristic()`, `drop_dta_notes()`, `drop_dta_characteristics()`,
-and `renumber_dta_notes()` return a changed copy. See the
-[notes and characteristics guide](../../docs/stata-notes-and-characteristics.md)
+and `renumber_dta_notes()` edit tables by reference and return them invisibly.
+Vector forms return a copy that must be assigned. `set_var_format()` and
+`set_var_formats()` edit display formats; `set_dta_metadata()` restores complete
+metadata bundles, including a value-label mapping and its name. See the
+[notes and characteristics guide](https://github.com/jbearak/dta-parser/blob/main/docs/stata-notes-and-characteristics.md)
 for validation rules and Stata's numbering behavior. Stata daily dates become
 `Date`; `%tc` and `%tC` values become UTC `POSIXct`.
 

@@ -101,9 +101,9 @@ The attribute is valid only with a usable `labels` mapping. An empty named
 mapping is usable and represents an empty Stata table; a table name without a
 mapping is a write error. Removing all value labels with a dtatools setter also
 removes `value.label.name`. Other metadata setters and supported reconstruction
-operations retain it. The attribute records an imported serialization detail
-only. There is no public getter, setter, or registry editor for authoring
-shared tables.
+operations retain it. The attribute is a serialization hint. `set_dta_metadata()` can author the
+hint and mapping together, including an explicitly named zero-length mapping.
+There is no shared table registry or registry editor.
 
 ### Compatibility with Stata merge
 
@@ -214,3 +214,12 @@ suite. [`test-haven-helper-interop.R`](../scripts/test-haven-helper-interop.R)
 retains the pinned 2.5.5 behavior comparison. dtatools does not suggest or
 install Haven; users can install it separately to write older DTA releases or
 read other statistical formats.
+
+Use `set_dta_metadata(data, variable = my_name, labels = mapping,
+value.label.name = table_name)` to restore a mapping and its serialization hint
+atomically. This bundle preserves raw mappings, including empty display text and
+named zero-length mappings, and applies DTA validation before mutation.
+`set_val_labels()` retains its normalization of empty text. Runtime strings
+work directly in `variable`. See the
+[metadata migration examples](r-mutation-by-reference.md#explicit-metadata-migration)
+for formats, notes, and characteristics.

@@ -689,9 +689,9 @@ test_that("dataset notes append master then using with stable numbering", {
 
 test_that("dataset-note merge preserves one side and renumbers using notes", {
     empty <- tibble::tibble(id = 1)
-    master <- set_dta_note(empty, 3, "master three")
+    master <- set_dta_note(copy_data(empty), 3, "master three")
     master <- set_dta_note(master, 7, "same text")
-    using <- set_dta_note(empty, 2, "same text")
+    using <- set_dta_note(copy_data(empty), 2, "same text")
     using <- set_dta_note(using, 8, "using eight")
 
     master_only <- dta_merge(

@@ -4,10 +4,9 @@
 #' Notes retain their Stata numbers, including gaps. Numeric `note*` keys are
 #' reserved for the note API and never appear in characteristic results.
 #'
-#' On a dibble, setters modify `x` by reference and return it invisibly, so
-#' every binding sees the change, including calls inside functions. On other
-#' data frames and vectors, setters return a copy of `x`. Use [copy_data()]
-#' first when a dibble's metadata changes should be independent.
+#' On every supported data frame, setters modify `x` by reference and return
+#' it invisibly, including calls inside functions. Vectors return an assigned
+#' copy. Use [copy_data()] first when table metadata should be independent.
 #' Supply `variable` as one column name or
 #' one-based position to work at variable scope. A missing variable is an
 #' error. Empty note text and characteristic values are retained; `NULL`
@@ -46,7 +45,7 @@
 #' @param names Characteristic names to drop. `NULL` drops all characteristics.
 #' @return `dta_notes()` and `dta_characteristics()` return named character
 #'   vectors. Singular getters return one string or `NULL`. Mutation helpers
-#'   return the changed object, invisibly for dibbles.
+#'   return the changed object, invisibly for data frames.
 #' @examples
 #' survey <- data.frame(age = c(20, 30))
 #' survey <- set_dta_note(survey, 2, "Cleaned after interview")
@@ -266,49 +265,27 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
 }
 
 .dta_update_target <- function(x, variable, update) {
-    if (is.data.frame(x)) .reject_data_table_subclass(x, "x")
-    # Stage metadata and restoration classes on a snapshot before writing
-    # into the recorded dibble. Base attribute assignment on the dibble
-    # itself would copy its physical table and lose reserved capacity.
-    state <- if (is_dibble(x)) .reference_state(x) else NULL
-    if (!is.null(state$object)) x <- state$object
-    source <- x
-    if (inherits(x, "dtatools_ref_data")) x <- .reference_snapshot(x)
-    target <- .dta_metadata_target(x, variable)
-    changed <- .metadata_copy(target$value)
-    changed <- update(changed)
-    result <- if (is.null(target$index)) {
-        .as_dta_metadata_frame(changed)
+    if (!is.data.frame(x)) {
+        target <- .dta_metadata_target(x, variable)
+        return(.as_dta_metadata_vector(update(target$value)))
+    }
+    staged <- .metadata_table_snapshot(x)
+    target <- .dta_metadata_target(staged, variable)
+    changed <- update(target$value)
+    if (is.null(target$index)) {
+        staged <- changed
     } else {
-        result <- .metadata_copy(x)
-        result[[target$index]] <- .as_dta_metadata_vector(changed)
-        .as_dta_metadata_frame(result)
+        .Call(C_dtatools_set_data_column, staged, target$index,
+              .as_dta_metadata_vector(changed))
     }
-    if (!is.null(state)) {
-        if (is.null(target$index)) {
-            for (name in .dta_metadata_attribute_names) {
-                .Call(
-                    C_dtatools_set_attribute, source, name,
-                    attr(result, name, exact = TRUE)
-                )
-            }
-        } else {
-            .set_data_column_at(
-                .column_access(source), target$index, result[[target$index]]
-            )
-        }
-        state$classes <- class(result)
-        .Call(
-            C_dtatools_set_attribute, source, "class",
-            unique(c("dtatools_ref_data", state$classes))
-        )
-        return(invisible(source))
-    }
-    .close_dibble(source, result)
+    staged <- .metadata_frame_class(staged)
+    .commit_metadata_table(x, staged, target$index,
+                           .dta_metadata_attribute_names)
 }
 
 .dta_set_notes <- function(x, variable, notes) {
     .dta_update_target(x, variable, function(target) {
+        target <- .metadata_copy(target)
         if (!length(notes)) {
             attr(target, "notes") <- NULL
             attr(target, "stata.note.numbers") <- NULL
@@ -322,6 +299,7 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
 
 .dta_set_characteristics <- function(x, variable, characteristics) {
     .dta_update_target(x, variable, function(target) {
+        target <- .metadata_copy(target)
         attr(target, "stata.characteristics") <- if (length(characteristics)) {
             characteristics
         } else NULL
@@ -404,6 +382,11 @@ drop_dta_characteristics <- function(x, names = NULL, variable = NULL) {
         if (!is.null(state)) {
             state$classes <- setdiff(classes, "dtatools_ref_data")
         }
+    }
+    if (!is.data.frame(value)) {
+        # A shared metadata proxy needs another compact wrapper before class
+        # replacement; R's default duplicate would decode its string backing.
+        value <- .metadata_copy(value)
     }
     if (length(classes)) {
         class(value) <- classes
