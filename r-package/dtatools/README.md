@@ -619,6 +619,34 @@ repl(survey, adjusted = 0, where = !eligible)
 gen(survey, adjusted, income + 5)            # the same, Stata-shaped
 ```
 
+Replacement preserves the input R double by default, widening storage for
+range, integrality, or precision. Stata can round instead. For example:
+
+```r
+data <- dtatools::dibble(x = dtatools::dta_float(1))
+dtatools::repl(data, x = 16777217)
+dtatools::dta_storage_type(data$x)  # "double"
+as.double(data$x)                  # 16777217
+```
+
+In Stata 18, `generate float x = 1` followed by `replace x = 16777217`
+keeps `float` and stores 16777216.
+
+| Input and replacement | Stata 18 | dtatools `promote = TRUE` | dtatools `promote = FALSE` |
+| --- | --- | --- | --- |
+| `float`, replace with 16777217 | `float`, 16777216 | `double`, 16777217 | `float`, 16777216 |
+| `byte`, replace with 0.1 | `float`, rounded to float | `double`, exact input R double | Error |
+
+`promote = FALSE` holds declared storage fixed. It allows float rounding but
+rejects fractional or out-of-range values in integer storage. It is not a
+general Stata-compatibility mode. Preserving an R double does not mean exact
+decimal arithmetic; 0.1 is already a binary approximation.
+See `?replace_values`, the
+[intentional differences guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md#numeric-replacement),
+and [ADR 0024](https://github.com/jbearak/dta-parser/blob/main/docs/adr/0024-promote-in-replace-values-as-stata-does.md).
+For identifiers, choose sufficient storage in Stata before assignment and
+investigate disagreements before adding casts that reproduce rounding in R.
+
 Stata's `by varlist:` prefix is the `by` argument. Groups are formed first,
 then `where` and the values are evaluated on each group's rows, with `.n`
 and `.N` as the within-group row number and count, so `bysort id: replace
@@ -746,7 +774,7 @@ The reader covers Stata 5 through 19. The writer targets Stata 18/19 and does
 not emit older formats. See the shared [compatibility contract](https://github.com/jbearak/dta-parser/blob/main/docs/compatibility.md) for exact format releases, encodings, missing-value behavior, and intentional differences from haven.
 
 `dtatools` takes Stata's behavior as its compatibility target.
-[Where dtatools diverges from Stata](../../docs/r-stata-divergences.md) lists
+[Where dtatools diverges from Stata](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md) lists
 the places it deliberately does something else — the `generate` default's
 reach, the promotion ladder, merge result order, colliding value-label table
 names, `labelbook`'s deterministic listing, and the rest — and why.

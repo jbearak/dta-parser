@@ -78,12 +78,17 @@ the narrowest Stata storage that holds every new value exactly: \code{byte},
 \code{str#} or \code{strL} for strings, and never a storage that narrows the
 integers the column can hold, so an overflowing \code{long} goes to \code{double}
 rather than through \code{float}, which carries seven fewer bits of integer
-precision. This is Stata's \code{replace} ladder, which widens when the
-declared type cannot represent a value at all, through range or through
-integrality; \code{conformance/stata/replace-promotion.do} records it. The
-one difference is precision, which never promotes in Stata: a \code{float}
-given a value needing binary64 keeps \code{float} there and rounds, and goes
-to \code{double} here, keeping the value exact. A value
+precision. Stata also widens integer storage for range or integrality,
+but dtatools additionally widens for precision. A \code{float} receiving
+16777217 becomes \code{double} here; Stata 18 keeps \code{float} and rounds to
+16777216. A \code{byte} receiving 0.1 becomes \code{double} here, but a rounded
+\code{float} in Stata. Exact preservation means retaining the input R
+double, not exact decimal arithmetic. R's 0.1 is already a binary
+approximation. Stata also keeps \code{float} on range overflow, turning
+1e40 into missing, while dtatools promotes to \code{double}.
+See \code{\link[=replace_values]{replace_values()}} for the policy table and examples, and the
+\href{https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md#numeric-replacement}{intentional differences guide}
+for Stata probes and identifier migration guidance. A value
 that already carries storage, from a \verb{dta_*()} call or Stata-typed
 arithmetic, keeps that storage. On a dibble the replacement operators
 write by reference, so the promoted column is what every binding
@@ -94,7 +99,9 @@ declares wider storage than the column widens the column to it, as
 \code{\link[=replace_values]{replace_values()}} and \code{repl()} promote the
 same way, and translate the message Stata's \code{replace} prints:
 \code{variable `x` was byte now int}. Pass \code{promote = FALSE} to hold the
-column to its declared storage and get an error instead. An assignment
+column to its declared storage: float targets can round, while integer
+targets reject fractional or out-of-range values. This is not a general
+Stata-compatibility mode or a guarantee against precision loss. An assignment
 that selects no rows promotes nothing, as Stata's
 \verb{(0 real changes made)} does not. Promotion does not reach
 \verb{[<-} on a Stata vector taken out of the dibble, as in

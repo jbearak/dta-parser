@@ -43,6 +43,27 @@ replace   prec_float = 1.234567890123456
 describe  prec_float
 display %20.15f prec_float[1]
 
+* Documentation policy examples: Stata keeps float for 2^24 + 1, and
+* widens byte to float for 0.1. Both values round to binary32.
+gen float integer_precision = 1
+replace   integer_precision = 16777217 in 1
+local integer_storage : type integer_precision
+assert "`integer_storage'" == "float"
+assert integer_precision == 16777216 in 1
+assert integer_precision == 1 in 2/3
+describe  integer_precision
+display %20.0f integer_precision[1]
+
+gen byte  decimal_precision = 1
+replace   decimal_precision = 0.1 in 1
+local decimal_storage : type decimal_precision
+assert "`decimal_storage'" == "float"
+assert decimal_precision == float(0.1) in 1
+assert decimal_precision != 0.1 in 1
+assert decimal_precision == 1 in 2/3
+describe  decimal_precision
+display %20.17f decimal_precision[1]
+
 * Beyond float's range: no promotion either, and the value becomes missing.
 gen float over_float = 1
 replace   over_float = 1e40

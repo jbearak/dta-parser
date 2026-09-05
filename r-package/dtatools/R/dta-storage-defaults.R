@@ -70,12 +70,17 @@
 #' `str#` or `strL` for strings, and never a storage that narrows the
 #' integers the column can hold, so an overflowing `long` goes to `double`
 #' rather than through `float`, which carries seven fewer bits of integer
-#' precision. This is Stata's `replace` ladder, which widens when the
-#' declared type cannot represent a value at all, through range or through
-#' integrality; `conformance/stata/replace-promotion.do` records it. The
-#' one difference is precision, which never promotes in Stata: a `float`
-#' given a value needing binary64 keeps `float` there and rounds, and goes
-#' to `double` here, keeping the value exact. A value
+#' precision. Stata also widens integer storage for range or integrality,
+#' but dtatools additionally widens for precision. A `float` receiving
+#' 16777217 becomes `double` here; Stata 18 keeps `float` and rounds to
+#' 16777216. A `byte` receiving 0.1 becomes `double` here, but a rounded
+#' `float` in Stata. Exact preservation means retaining the input R
+#' double, not exact decimal arithmetic. R's 0.1 is already a binary
+#' approximation. Stata also keeps `float` on range overflow, turning
+#' 1e40 into missing, while dtatools promotes to `double`.
+#' See \code{\link[=replace_values]{replace_values()}} for the policy table and examples, and the
+#' [intentional differences guide](https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md#numeric-replacement)
+#' for Stata probes and identifier migration guidance. A value
 #' that already carries storage, from a `dta_*()` call or Stata-typed
 #' arithmetic, keeps that storage. On a dibble the replacement operators
 #' write by reference, so the promoted column is what every binding
@@ -86,7 +91,9 @@
 #' \code{\link[=replace_values]{replace_values()}} and `repl()` promote the
 #' same way, and translate the message Stata's `replace` prints:
 #' \code{variable `x` was byte now int}. Pass `promote = FALSE` to hold the
-#' column to its declared storage and get an error instead. An assignment
+#' column to its declared storage: float targets can round, while integer
+#' targets reject fractional or out-of-range values. This is not a general
+#' Stata-compatibility mode or a guarantee against precision loss. An assignment
 #' that selects no rows promotes nothing, as Stata's
 #' `(0 real changes made)` does not. Promotion does not reach
 #' `[<-` on a Stata vector taken out of the dibble, as in

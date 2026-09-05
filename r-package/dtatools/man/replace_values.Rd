@@ -51,9 +51,10 @@ reference, and then group by. Same spellings as \code{by}. Not allowed with
 \code{by} or on a grouped tibble.}
 
 \item{promote}{Whether \code{replace_values()} widens a target whose declared
-storage cannot represent a value, as Stata's \code{replace} does, reporting
-the change. \code{FALSE} holds the column to its declared storage and
-errors on a value that does not fit. Ignored by \code{gen()}, which creates
+storage cannot preserve the input R value exactly, reporting the
+change. Defaults to \code{TRUE}. \code{FALSE} holds declared storage fixed:
+float targets can round, while integer targets reject fractional or
+out-of-range values. It is not a Stata-compatibility mode. Ignored by \code{gen()}, which creates
 the column and so has no prior storage to widen.}
 }
 \value{
@@ -225,15 +226,44 @@ untouched. Only the column \code{gen()} writes is typed. Call
 \code{\link[=as_dibble]{as_dibble()}} for a Stata dataset, where every column is typed.
 Stata \verb{[in]} and \verb{:lblname} authoring are not supported; the
 \verb{by varlist:} prefix is \code{by}/\code{bysort}.
-\code{replace_values()} promotes, as Stata's \code{replace} does: a target whose
-declared storage cannot hold a value is widened to the narrowest storage
-that does, and the change is reported the way Stata reports it:
-\code{variable `x` was byte now int}. The ladder is the one described
-under \link{dta-storage-defaults}, which keeps every value exact and so
-differs from Stata's in two cases; an assignment that selects no rows
-promotes nothing, as Stata's \verb{(0 real changes made)} does not. Pass
-\code{promote = FALSE} to hold the column to its declared storage and raise
-an error instead, which was the behaviour before promotion was added.
+\code{replace_values()} and \code{repl()} preserve the input R numeric value by
+default. A target whose declared storage cannot hold it exactly widens
+to the narrowest eligible storage, accounting for range, integrality,
+and precision without reducing the column's integer capacity. See
+\link{dta-storage-defaults} for the ladder. Promotion is reported as an R
+message, such as \code{variable `x` was byte now int}; suppress it with
+\code{suppressMessages()}. An assignment selecting no rows promotes nothing.
+
+This precision policy intentionally differs from Stata. A \code{float}
+receiving 16777217 becomes \code{double} here, preserving 16777217; Stata 18
+keeps \code{float} and rounds to 16777216. A \code{byte} receiving 0.1 becomes
+\code{double} here rather than Stata's rounded \code{float}. "Exact" means the
+input binary64 R value, not exact decimal arithmetic: R's 0.1 is already
+a binary approximation of one tenth. Promotion cannot recover digits
+lost before assignment, including an explicit \code{dta_float()} conversion.
+
+\tabular{llll}{
+Input and replacement \tab Stata 18 \tab \code{promote = TRUE} \tab \code{promote = FALSE} \cr
+\code{float}, 16777217 \tab \code{float}, 16777216 \tab \code{double}, 16777217 \tab \code{float}, 16777216 \cr
+\code{byte}, 0.1 \tab \code{float}, rounded to float \tab \code{double}, exact input R double \tab Error \cr
+}
+
+\code{promote = FALSE} disables widening and uses the declared storage's
+conversion rules. Float targets can round without an error. Integer
+targets reject fractional or out-of-range values, leaving the column
+unchanged. This is neither a general Stata-compatibility mode nor a
+guarantee against precision loss.
+
+For identifiers, choose sufficient storage in Stata before assignment,
+for example \verb{generate long cluster = source_cluster} within the \code{long}
+range, or \verb{recast double cluster} before replacing an existing column.
+Widening an already rounded identifier cannot restore lost digits.
+Investigate disagreements before adding casts that reproduce rounding
+in R. The
+\href{https://github.com/jbearak/dta-parser/blob/main/docs/r-stata-divergences.md#numeric-replacement}{intentional differences guide}
+includes the executable Stata example, migration guidance, and links to
+the Stata conformance probes and R tests. See also
+\href{https://github.com/jbearak/dta-parser/blob/main/docs/adr/0024-promote-in-replace-values-as-stata-does.md}{ADR 0024}.
 Character \code{NA} replacement values are normalized to \code{""}, Stata's string
 missing value.
 
@@ -280,6 +310,21 @@ copying.
 }
 
 \examples{
+data <- dibble(x = dta_float(1))
+repl(data, x = 16777217)
+dta_storage_type(data$x)  # "double"
+as.double(data$x)        # 16777217
+
+fixed <- dibble(x = dta_float(1))
+repl(fixed, x = 16777217, promote = FALSE)
+dta_storage_type(fixed$x)  # "float"
+as.double(fixed$x)        # 16777216
+
+fraction <- dibble(x = dta_byte(1))
+repl(fraction, x = 0.1)
+dta_storage_type(fraction$x)  # "double"
+identical(as.double(fraction$x), 0.1)  # TRUE
+
 survey <- data.frame(income = c(10, 20), eligible = c(TRUE, FALSE))
 gen(survey, adjusted = income + 5)
 replace_values(survey, income = income * 2, where = eligible)
