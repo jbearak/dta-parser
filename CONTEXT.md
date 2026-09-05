@@ -5,6 +5,15 @@ files and for working with Stata-specific values and metadata in memory. The R
 and Rust libraries are named `dtatools`; the TypeScript library keeps its
 published npm name `dtaparser`.
 
+## Shared reader language
+
+**Semantic read parity**:
+Agreement between readers on the values, Stata missing codes, and metadata
+represented by a supported dataset, together with the shared rules for
+rejecting malformed input. Each language may expose that information through
+its own documented types.
+_Avoid_: Identical API, identical in-memory representation
+
 ## R package language
 
 **Stata storage type**:

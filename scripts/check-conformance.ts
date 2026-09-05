@@ -7,6 +7,9 @@ import { parse_legacy_metadata } from '../typescript/dta-parser/src/legacy-heade
 import { read_rows_from_buffer } from '../typescript/dta-parser/src/data-reader';
 import { parse_value_labels } from '../typescript/dta-parser/src/value-labels';
 import { DtaFile } from '../typescript/dta-parser/src/node';
+import { build_gso_index, resolve_strl } from '../typescript/dta-parser/src/strl-reader';
+import { is_missing_value_object } from '../typescript/dta-parser/src/missing-values';
+import { is_legacy_format, type DtaMetadata, type FormatVersion, type RowCell } from '../typescript/dta-parser/src/types';
 
 type FixtureCase = { name: string; sha256: string };
 type Manifest = {
@@ -35,13 +38,50 @@ const manifest = JSON.parse(
 const canonicalBytes = readFileSync(
     path.join(root, manifest.identity.canonical_oracle)
 );
+type OracleCell = number | string | { missing: string };
+type OracleFixture = {
+    sha256: string;
+    metadata: DtaMetadata;
+    columns: Array<{ variable_index: number; name: string; storage_type: string; cells: OracleCell[] }>;
+    value_label_tables: Array<{ name: string; entries: Array<{ value: number; label: string }> }>;
+};
 const canonical = JSON.parse(canonicalBytes.toString('utf8')) as {
     schema_version: number;
-    fixtures: Record<string, { sha256: string }>;
+    fixtures: Record<string, OracleFixture>;
 };
 
 function invariant(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(`conformance: ${message}`);
+}
+
+/** Compare every recorded field while allowing newly exposed metadata fields. */
+function exact_recorded_fields(actual: unknown, expected: unknown, context: string): void {
+    if (Array.isArray(expected)) {
+        invariant(Array.isArray(actual) && actual.length === expected.length, `${context} array length`);
+        expected.forEach((value, index) => exact_recorded_fields(actual[index], value, `${context}[${index}]`));
+    } else if (expected !== null && typeof expected === 'object') {
+        invariant(actual !== null && typeof actual === 'object', `${context} object`);
+        for (const [key, value] of Object.entries(expected)) {
+            exact_recorded_fields((actual as Record<string, unknown>)[key], value, `${context}.${key}`);
+        }
+    } else {
+        invariant(Object.is(actual, expected), `${context}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    }
+}
+
+let verifiedCells = 0;
+function compare_cell(actual: RowCell, expected: OracleCell, storage: string, context: string): void {
+    const normalized = is_missing_value_object(actual) ? { missing: actual.missing_type } : actual;
+    if ((storage === 'float' || storage === 'double')
+        && typeof normalized === 'number' && typeof expected === 'number') {
+        invariant(Object.is(normalized, expected)
+            || Number.isFinite(normalized) && Number.isFinite(expected)
+            && Math.abs(normalized - expected) <= 1e-7 * Math.max(1, Math.abs(expected)),
+        `${context}: numeric value differs from oracle`);
+    } else {
+        exact_recorded_fields(normalized, expected, context);
+    }
+    verifiedCells++;
 }
 
 invariant(manifest.schema_version === 1, 'unsupported manifest schema');
@@ -109,11 +149,54 @@ for (const item of manifest.fixture_cases) {
         bytes.byteOffset,
         bytes.byteOffset + bytes.byteLength
     );
-    const metadata = bytes[0] === 111 || (bytes[0] >= 113 && bytes[0] <= 115)
+    const metadata = is_legacy_format(bytes[0] as FormatVersion)
         ? parse_legacy_metadata(arrayBuffer, bytes.length)
         : parse_metadata(arrayBuffer);
+    const oracle = canonical.fixtures[item.name];
+    exact_recorded_fields(metadata, oracle.metadata, `${item.name} buffer metadata`);
+    invariant(oracle.columns.length === metadata.nvar, `${item.name} oracle column count`);
+    const bufferRows = read_rows_from_buffer(arrayBuffer, metadata, 0, metadata.nobs);
+    const strlColumns = metadata.variables.flatMap((variable, index) => variable.type === 'strL' ? [index] : []);
+    if (strlColumns.length > 0) {
+        const gso = build_gso_index(arrayBuffer, metadata);
+        for (let row = 0; row < metadata.nobs; row++) {
+            for (const column of strlColumns) {
+                bufferRows[row][column] = resolve_strl(arrayBuffer, metadata, gso,
+                    metadata.section_offsets.data + '<data>'.length
+                    + row * metadata.obs_length + metadata.variables[column].byte_offset);
+            }
+        }
+    }
+    const bufferLabels = parse_value_labels(arrayBuffer, metadata);
+    exact_recorded_fields(Array.from(bufferLabels, ([name, entries]) => ({
+        name, entries: Array.from(entries, ([value, label]) => ({ value, label })),
+    })), oracle.value_label_tables, `${item.name} buffer value labels`);
     const file = await DtaFile.open(path.join(fixtureDir, item.name));
     try {
+        exact_recorded_fields(file.metadata, oracle.metadata, `${item.name} Node metadata`);
+        // The frozen oracle predates numbered notes and characteristics. Check
+        // those against the independent buffer path without assuming absence.
+        exact_recorded_fields(file.metadata, metadata, `${item.name} complete Node/buffer metadata`);
+        exact_recorded_fields(Array.from(file.value_label_tables, ([name, entries]) => ({
+            name, entries: Array.from(entries, ([value, label]) => ({ value, label })),
+        })), oracle.value_label_tables, `${item.name} Node value labels`);
+        const allRows = await file.read_rows(0, metadata.nobs);
+        const allColumns = await file.read_columns(metadata.variables.map((_, index) => index), { chunk_rows: 3 });
+        invariant(allRows.length === metadata.nobs && bufferRows.length === metadata.nobs,
+            `${item.name} full row counts`);
+        for (const column of oracle.columns) {
+            const index = column.variable_index;
+            invariant(metadata.variables[index]?.name === column.name
+                && metadata.variables[index]?.type === column.storage_type, `${item.name} oracle column identity`);
+            invariant(column.cells.length === metadata.nobs && allColumns.get(index)?.length === metadata.nobs,
+                `${item.name} full column counts`);
+            for (let row = 0; row < metadata.nobs; row++) {
+                const context = `${item.name}[${row},${index}]`;
+                compare_cell(allRows[row][index], column.cells[row], column.storage_type, `${context} Node row`);
+                compare_cell(allColumns.get(index)![row], column.cells[row], column.storage_type, `${context} Node column`);
+                compare_cell(bufferRows[row][index], column.cells[row], column.storage_type, `${context} buffer row`);
+            }
+        }
         invariant(file.nvar === metadata.nvar, `${item.name} nvar mismatch`);
         invariant(file.nobs === metadata.nobs, `${item.name} nobs mismatch`);
         invariant(
@@ -133,10 +216,62 @@ for (const item of manifest.fixture_cases) {
                 columns.get(index)?.slice(start, start + count).length === count,
                 `${item.name} projected row-window mismatch`
             );
+            const projectedRows = await file.read_rows(start, count, index, index + 1);
+            const column = oracle.columns[index];
+            for (let row = 0; row < count; row++) {
+                compare_cell(rows[row][index], column.cells[start + row], column.storage_type, `${item.name} window`);
+                compare_cell(columns.get(index)![start + row], column.cells[start + row], column.storage_type,
+                    `${item.name} projected column`);
+                compare_cell(projectedRows[row][0], column.cells[start + row], column.storage_type,
+                    `${item.name} projected row`);
+            }
         }
     } finally {
         file.close();
     }
+}
+
+function must_reject(operation: () => unknown, context: string): void {
+    let rejected = false;
+    try { operation(); } catch { rejected = true; }
+    invariant(rejected, `${context} was accepted`);
+}
+
+// Execute TypeScript rejection checks too; validating the native gate names
+// alone does not prove agreement on malformed input.
+const malformedBase = new Uint8Array(readFileSync(path.join(fixtureDir, 'auto_v118.dta')));
+for (const tag of ['<stata_dta>', '</K>', '</N>', '</map>', '</variable_types>', '</sortlist>']) {
+    const bytes = malformedBase.slice();
+    const offset = Buffer.from(bytes).indexOf(tag);
+    invariant(offset >= 0, `malformed source lacks ${tag}`);
+    bytes[offset] = 88;
+    must_reject(() => parse_metadata(bytes.buffer), `TypeScript invalid ${tag}`);
+}
+for (const tag of ['<data>', '</data>', '<strls>', '</strls>']) {
+    const bytes = malformedBase.slice();
+    const metadata = parse_metadata(bytes.buffer);
+    const offset = Buffer.from(bytes).indexOf(tag);
+    invariant(offset >= 0, `malformed source lacks ${tag}`);
+    bytes[offset] = 88;
+    must_reject(() => read_rows_from_buffer(bytes.buffer, metadata, 0, 1), `TypeScript invalid ${tag}`);
+}
+for (const tag of ['<value_labels>', '<lbl>', '</lbl>', '</value_labels>', '</stata_dta>']) {
+    const bytes = malformedBase.slice();
+    const metadata = parse_metadata(bytes.buffer);
+    const offset = Buffer.from(bytes).indexOf(tag, metadata.section_offsets.value_labels);
+    invariant(offset >= 0, `malformed source lacks ${tag}`);
+    bytes[offset] = 88;
+    must_reject(() => parse_value_labels(bytes.buffer, metadata), `TypeScript invalid ${tag}`);
+}
+{
+    const bytes = new Uint8Array(readFileSync(path.join(fixtureDir, 'strl_test_v118.dta')));
+    const metadata = parse_metadata(bytes.buffer);
+    const index = build_gso_index(bytes.buffer, metadata);
+    const variable = metadata.variables.find(variable => variable.type === 'strL')!;
+    const pointer = metadata.section_offsets.data + '<data>'.length + variable.byte_offset;
+    // Keep a structurally valid key but remove its object from the index.
+    index.clear();
+    must_reject(() => resolve_strl(bytes.buffer, metadata, index, pointer), 'TypeScript dangling strL pointer');
 }
 
 function replaceFirstByte(
@@ -210,7 +345,7 @@ invariant(
 
 process.stdout.write(
     `TypeScript fixture conformance: PASS (${manifest.fixture_cases.length} `
-        + `immutable fixtures); ${manifest.deterministic_cases.length} `
+        + `immutable fixtures, ${verifiedCells} decoded cell comparisons); ${manifest.deterministic_cases.length} `
         + 'deterministic native gate identities validated '
         + '(execution follows in scripts/conformance.sh)\n'
 );

@@ -29,10 +29,42 @@ import {
 // -----------------------------------------------------------
 
 const VALUE_LABELS_TAG = '<value_labels>';
+const VALUE_LABELS_CLOSE_TAG = '</value_labels>';
 const VALUE_LABELS_TAG_LENGTH = VALUE_LABELS_TAG.length;
 const LBL_OPEN_TAG = '<lbl>';
-const LBL_OPEN_TAG_LENGTH = LBL_OPEN_TAG.length; // 5
-const LBL_CLOSE_TAG_LENGTH = 6; // "</lbl>"
+const MAX_VALUE_LABEL_ENTRIES = 65_536;
+const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true });
+
+/** Invalid UTF-8 bytes decode independently; only split valid code points fail. */
+function is_utf8_boundary(bytes: Uint8Array, start: number, end: number, offset: number): boolean {
+    if (offset === start || (bytes[offset] & 0xc0) !== 0x80) return true;
+    let lead = offset;
+    // A valid UTF-8 code point has at most three continuation bytes.
+    // Invalid runs can be arbitrarily long and must not be rescanned per label.
+    const earliest = Math.max(start, offset - 3);
+    while (lead > earliest && (bytes[lead] & 0xc0) === 0x80) lead--;
+    const byte = bytes[lead];
+    const width = byte >= 0xc2 && byte <= 0xdf ? 2
+        : byte >= 0xe0 && byte <= 0xef ? 3
+        : byte >= 0xf0 && byte <= 0xf4 ? 4 : 0;
+    if (width === 0 || offset >= lead + width || lead + width > end) return true;
+    try {
+        STRICT_UTF8.decode(bytes.subarray(lead, lead + width));
+        return false;
+    } catch {
+        return true;
+    }
+}
+
+function expect_tag(bytes: Uint8Array, pos: number, tag: string, end: number): number {
+    if (pos + tag.length > end) throw new Error(`Truncated ${tag} tag`);
+    for (let i = 0; i < tag.length; i++) {
+        if (bytes[pos + i] !== tag.charCodeAt(i)) {
+            throw new Error(`Expected ${tag} at offset ${pos}`);
+        }
+    }
+    return pos + tag.length;
+}
 
 // Label name field widths for XML-wrapped formats
 const MODERN_LABEL_NAME_WIDTH: Record<number, number> = {
@@ -61,7 +93,9 @@ function parse_label_entry_payload(
     little_endian: boolean,
     pos: number,
     entry_end: number,
-    decoder: DtaTextDecoder
+    decoder: DtaTextDecoder,
+    declared_length: number,
+    utf8: boolean
 ): { label_map: Map<number, string>; next_pos: number } {
     // n (int32): number of entries
     if (pos + 8 > entry_end) {
@@ -82,6 +116,13 @@ function parse_label_entry_payload(
             + `or text length (n=${my_n}, `
             + `txt_len=${my_txt_len})`
         );
+    }
+
+    if (my_n > MAX_VALUE_LABEL_ENTRIES) {
+        throw new Error('Corrupt value label table: entry count exceeds 65,536');
+    }
+    if (declared_length !== 8 + my_n * 8 + my_txt_len) {
+        throw new Error('Corrupt value label table: inconsistent table length');
     }
 
     if (pos + my_n * 8 + my_txt_len > entry_end) {
@@ -109,6 +150,10 @@ function parse_label_entry_payload(
         }
         const my_str_start =
             my_text_start + my_text_offset;
+        if (utf8 && !is_utf8_boundary(bytes, my_text_start,
+            my_text_start + my_txt_len, my_str_start)) {
+            throw new Error('Corrupt value label table: text offset is inside a UTF-8 code point');
+        }
         let my_str_end = my_str_start;
         const my_str_limit =
             my_text_start + my_txt_len;
@@ -150,12 +195,16 @@ function read_label_name(
     bytes: Uint8Array,
     pos: number,
     name_width: number,
-    decoder: DtaTextDecoder
+    decoder: DtaTextDecoder,
+    require_terminator = false
 ): string {
     let my_end = pos;
     const my_limit = pos + name_width;
     while (my_end < my_limit && bytes[my_end] !== 0) {
         my_end++;
+    }
+    if (my_limit > bytes.length || (require_terminator && my_end === my_limit)) {
+        throw new Error('Corrupt value label table: unterminated or truncated table name');
     }
     return decode_text_range(decoder, bytes, pos, my_end);
 }
@@ -171,30 +220,26 @@ function parse_modern_entries(
     name_width: number,
     start_pos: number,
     section_end: number,
-    decoder: DtaTextDecoder
+    decoder: DtaTextDecoder,
+    utf8: boolean
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
 
-    while (pos + LBL_OPEN_TAG_LENGTH <= section_end) {
-        // Check for <lbl> opening tag
-        if (
-            bytes[pos] !== 0x3C     // '<'
-            || bytes[pos + 1] !== 0x6C  // 'l'
-            || bytes[pos + 2] !== 0x62  // 'b'
-            || bytes[pos + 3] !== 0x6C  // 'l'
-            || bytes[pos + 4] !== 0x3E  // '>'
-        ) {
-            break;
+    const tables_end = section_end - VALUE_LABELS_CLOSE_TAG.length;
+    while (pos < tables_end) {
+        pos = expect_tag(bytes, pos, LBL_OPEN_TAG, tables_end);
+        if (pos + 4 + name_width + PADDING_BYTES + 8 > tables_end) {
+            throw new Error('Corrupt value label table: truncated header');
         }
-        pos += LBL_OPEN_TAG_LENGTH;
 
         // table_length (int32)
+        const declared_length = view.getInt32(pos, little_endian);
         pos += 4;
 
         // label_name
         const my_label_name = read_label_name(
-            bytes, pos, name_width, decoder
+            bytes, pos, name_width, decoder, true
         );
         pos += name_width;
 
@@ -205,12 +250,16 @@ function parse_modern_entries(
         const { label_map, next_pos } =
             parse_label_entry_payload(
                 bytes, view, little_endian, pos,
-                section_end, decoder
+                tables_end, decoder, declared_length, utf8
             );
         my_result.set(my_label_name, label_map);
 
         // Skip past text block + </lbl>
-        pos = next_pos + LBL_CLOSE_TAG_LENGTH;
+        pos = expect_tag(bytes, next_pos, '</lbl>', tables_end);
+    }
+
+    if (expect_tag(bytes, pos, VALUE_LABELS_CLOSE_TAG, section_end) !== section_end) {
+        throw new Error('Corrupt value label section: trailing bytes');
     }
 
     return my_result;
@@ -227,7 +276,8 @@ function parse_legacy_entries(
     name_width: number,
     start_pos: number,
     section_end: number,
-    decoder: DtaTextDecoder
+    decoder: DtaTextDecoder,
+    utf8: boolean
 ): Map<string, Map<number, string>> {
     const my_result = new Map<string, Map<number, string>>();
     let pos = start_pos;
@@ -244,7 +294,7 @@ function parse_legacy_entries(
             }
         }
         if (my_known_nonzero < pos) break;
-        if (pos + 4 > section_end) {
+        if (pos + 4 + name_width + PADDING_BYTES + 8 > section_end) {
             throw new Error(
                 'Corrupt value label table: trailing bytes'
             );
@@ -274,7 +324,7 @@ function parse_legacy_entries(
         const { label_map, next_pos } =
             parse_label_entry_payload(
                 bytes, view, little_endian, pos,
-                section_end, decoder
+                section_end, decoder, my_table_len, utf8
             );
         my_result.set(my_label_name, label_map);
         pos = next_pos;
@@ -436,9 +486,10 @@ export function parse_value_labels(
     const my_legacy = is_legacy_format(
         metadata.format_version
     );
-    const my_decoder = text_decoder(resolve_text_encoding(
+    const encoding = resolve_text_encoding(
         metadata.format_version, metadata.text_encoding
-    ));
+    );
+    const my_decoder = text_decoder(encoding);
 
     // Start position: skip XML tag for modern formats
     const my_tag_skip = my_legacy
@@ -453,6 +504,18 @@ export function parse_value_labels(
     const my_section_end =
         metadata.section_offsets.stata_data_close
         - base_offset;
+    const section_start = metadata.section_offsets.value_labels - base_offset;
+    if (!Number.isSafeInteger(section_start) || !Number.isSafeInteger(my_section_end)
+        || section_start < 0 || my_section_end < section_start || my_section_end > bytes.length) {
+        throw new Error('Corrupt value label section: invalid bounds');
+    }
+    if (!my_legacy) {
+        expect_tag(bytes, section_start, VALUE_LABELS_TAG, my_section_end);
+        const end = expect_tag(bytes, my_section_end, '</stata_dta>', bytes.length);
+        if (end !== bytes.length || base_offset + end !== metadata.section_offsets.end_of_file) {
+            throw new Error('Corrupt value label section: mapped file extent mismatch');
+        }
+    }
 
     if (is_legacy_format(metadata.format_version)) {
         const my_layout = legacy_layout_for_version(
@@ -493,13 +556,13 @@ export function parse_value_labels(
         return parse_legacy_entries(
             bytes, view, little_endian,
             my_name_width, my_start_pos, my_section_end,
-            my_decoder
+            my_decoder, encoding === 'utf-8'
         );
     }
 
     return parse_modern_entries(
         bytes, view, little_endian,
         MODERN_LABEL_NAME_WIDTH[metadata.format_version],
-        my_start_pos, my_section_end, my_decoder
+        my_start_pos, my_section_end, my_decoder, encoding === 'utf-8'
     );
 }

@@ -1,4 +1,7 @@
 export { parse_metadata } from './header';
+export { ArrowBuffer } from './arrow-reader';
+export type { ArrowCell, ArrowRow, ArrowType, ArrowTimeUnit, ArrowVariable, ArrowMetadata, ArrowDictionary, ArrowOpenOptions, ArrowReadOptions } from './arrow-types';
+export type { ArrowFieldDocument, DatasetDocument, ArrowRSemantics, ArrowValueLabelEntry } from './arrow-profile';
 export { parse_legacy_metadata, legacy_metadata_buffer_size, } from './legacy-header';
 export { read_rows_from_buffer, read_rows_from_data_buffer, } from './data-reader';
 export { build_gso_index, decode_gso_entry, read_strl_pointer, resolve_strl, type GsoEntry, } from './strl-reader';

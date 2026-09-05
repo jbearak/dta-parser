@@ -1,0 +1,4 @@
+*.arrow binary
+*.raw binary
+*.lz4 binary
+*.zstd binary

@@ -1,7 +1,7 @@
 {
   "name": "@jbearak/dta-parser",
   "version": "0.6.0",
-  "description": "TypeScript parser for Stata .dta files",
+  "description": "TypeScript reader for Stata DTA and Arrow IPC files with dtatools metadata",
   "type": "module",
   "license": "GPL-3.0",
   "author": "Jonathan Marc Bearak",
